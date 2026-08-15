@@ -1,0 +1,513 @@
+{
+  "tool": "bodha_mechanisms_get",
+  "scenario": "native_primary",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "limit": 10
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"rows\":[{\"mechanism_id\":\"5088c9e6-9b21-4703-a426-2135abc92f0e\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Convergent dispositor chain onto Jupiter: Ketu → … → Jupiter, Mars → … → Jupiter, Mercury → … → Jupiter, Moon → … → Jupiter, Rahu → … → Jupiter, Saturn → … → Jupiter, Sun → … → Jupiter, Venus → … → Jupiter\",\"mechanism_class\":\"convergent_dispositor_chain\",\"valence\":\"mixed\",\"member_node_ids_array\":[\"3c28ff7c-e379-447a-b493-80cba3dc0312\",\"758da452-90e1-41fe-aecb-9b076ea77f2a\",\"077522fd-e4e0-456b-a3ab-3afaefd64bfa\",\"46415e47-da81-4fc9-8af7-dc6213bece2c\",\"147aa881-7f1b-4fac-a363-b5e4c24d47b9\",\"aaaf68bc-a256-428f-8daf-e9014bb731fc\",\"88b60248-9d83-4973-9d20-42617bcc5173\",\"e331eadc-8c11-45c2-be8f-ff5ed12ad45a\",\"329b624b-b861-4051-a560-31b43854f983\"],\"member_edge_ids_array\":[\"1fe6fd6f-19a2-464f-a025-42e9ac171ec0\",\"abfd8b9a-22fe-4ad3-902a-7756ecec46ce\",\"b976365a-d151-494d-af61-a85a1526a664\",\"d7e64f29-a9fd-4748-9f34-9d3b0acf6d12\",\"e3797f37-759b-4701-a7c1-4a8fbe411b9e\",\"87eea9f2-a81f-46b4-a715-07969b9672b5\",\"4397f888-d9d7-4858-ac4f-f8beaf306dc1\",\"adce5a65-26e4-491f-9413-9e6f9282f56d\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.567372,\"edge_strength_min\":0.460714,\"edge_strength_max\":0.642857,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"157144\",\"155545\",\"157138\",\"155543\",\"157141\",\"155541\",\"157139\",\"155557\",\"157142\",\"155537\",\"157137\",\"157143\",\"155539\",\"157136\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.87780235,\"member_count\":9,\"pagerank_avg\":0.02411199,\"betweenness_avg\":0.00375738,\"eigenvector_avg\":0.28330909},\"source_motif_id\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_yantra_mechanism/convergent_dispositor_chain/Jupiter\",\"citation_human\":\"CR-24 disposition (verified live, no closed circuit on this chart): 8 grahas (Ketu, Mars, Mercury, Moon, Rahu, Saturn, Sun, Venus) converge onto self-ruling Jupiter — the real dominant chain/circuit-class structure this chart carries.\",\"is_chain_circuit\":true},{\"mechanism_id\":\"9a39644c-c728-49b1-81ed-b6e79daba35d\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Mutual Aspect: Moon ↔ Sun\",\"mechanism_class\":\"mutual_aspect\",\"valence\":\"mixed\",\"member_node_ids_array\":[\"88b60248-9d83-4973-9d20-42617bcc5173\",\"329b624b-b861-4051-a560-31b43854f983\"],\"member_edge_ids_array\":[\"027e25e8-f6bf-4ec1-92d2-c6aabfdcca8e\",\"1bb588c2-5a12-46ee-af7d-2e4eab1fb5c8\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.437796,\"edge_strength_min\":0.43202,\"edge_strength_max\":0.443571,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"155539\",\"157136\",\"155537\",\"157137\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.79628916,\"member_count\":2,\"pagerank_avg\":0.02400431,\"betweenness_avg\":0.00169082,\"eigenvector_avg\":0.27935434},\"source_motif_id\":\"fdf83297-7699-4af1-98ca-4fdb8e7c7a4c\",\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_cgm_motifs/fdf83297-7699-4af1-98ca-4fdb8e7c7a4c\",\"citation_human\":\"Mechanism promoted from CGM motif: Mutual Aspect: Moon ↔ Sun\",\"is_chain_circuit\":false},{\"mechanism_id\":\"5cbf4d19-fdb2-4675-b150-6e6cb03d41d6\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Mutual Aspect: Sun ↔ Venus\",\"mechanism_class\":\"mutual_aspect\",\"valence\":\"mixed\",\"member_node_ids_array\":[\"329b624b-b861-4051-a560-31b43854f983\",\"077522fd-e4e0-456b-a3ab-3afaefd64bfa\"],\"member_edge_ids_array\":[\"6561c862-d30f-4930-a9c9-6a96730602a0\",\"dedd29f5-8fdf-44f8-9718-2a0bffbeb4e5\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.437796,\"edge_strength_min\":0.43202,\"edge_strength_max\":0.443571,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"155543\",\"157141\",\"155539\",\"157136\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.81495387,\"member_count\":2,\"pagerank_avg\":0.02465201,\"betweenness_avg\":0.00072464,\"eigenvector_avg\":0.29313672},\"source_motif_id\":\"9f81c17f-01ab-4231-9950-2214327460ab\",\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_cgm_motifs/9f81c17f-01ab-4231-9950-2214327460ab\",\"citation_human\":\"Mechanism promoted from CGM motif: Mutual Aspect: Sun ↔ Venus\",\"is_chain_circuit\":false},{\"mechanism_id\":\"b3935729-f360-4269-ae07-1cd0794fe6b3\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Mutual-Aspect Triangle: Venus, Sun, Moon\",\"mechanism_class\":\"mutual_aspect_triangle\",\"valence\":\"mixed\",\"member_node_ids_array\":[\"077522fd-e4e0-456b-a3ab-3afaefd64bfa\",\"329b624b-b861-4051-a560-31b43854f983\",\"88b60248-9d83-4973-9d20-42617bcc5173\"],\"member_edge_ids_array\":[\"6561c862-d30f-4930-a9c9-6a96730602a0\",\"dedd29f5-8fdf-44f8-9718-2a0bffbeb4e5\",\"725a47c7-b49b-4541-a6af-375cb4920ad9\",\"c7645eb4-b320-40ff-9d73-df97b1a75b8a\",\"027e25e8-f6bf-4ec1-92d2-c6aabfdcca8e\",\"1bb588c2-5a12-46ee-af7d-2e4eab1fb5c8\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.435871,\"edge_strength_min\":0.43202,\"edge_strength_max\":0.443571,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"155543\",\"157141\",\"155539\",\"157136\",\"155537\",\"157137\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.80963343,\"member_count\":3,\"pagerank_avg\":0.02448566,\"betweenness_avg\":0.00161031,\"eigenvector_avg\":0.2899529},\"source_motif_id\":\"8657dde8-caf9-4196-9245-c2b492db84c3\",\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_cgm_motifs/8657dde8-caf9-4196-9245-c2b492db84c3\",\"citation_human\":\"Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Venus, Sun, Moon\",\"is_chain_circuit\":false},{\"mechanism_id\":\"71cd03b8-a508-4232-bd89-b4bb77fed8b7\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Mutual Aspect: Moon ↔ Venus\",\"mechanism_class\":\"mutual_aspect\",\"valence\":\"benefic\",\"member_node_ids_array\":[\"88b60248-9d83-4973-9d20-42617bcc5173\",\"077522fd-e4e0-456b-a3ab-3afaefd64bfa\"],\"member_edge_ids_array\":[\"725a47c7-b49b-4541-a6af-375cb4920ad9\",\"c7645eb4-b320-40ff-9d73-df97b1a75b8a\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.43202,\"edge_strength_min\":0.43202,\"edge_strength_max\":0.43202,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"155543\",\"157141\",\"155537\",\"157137\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.81765724,\"member_count\":2,\"pagerank_avg\":0.02480065,\"betweenness_avg\":0.00241546,\"eigenvector_avg\":0.29736765},\"source_motif_id\":\"4c3f3020-7230-4296-b49a-4cc23b429555\",\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_cgm_motifs/4c3f3020-7230-4296-b49a-4cc23b429555\",\"citation_human\":\"Mechanism promoted from CGM motif: Mutual Aspect: Moon ↔ Venus\",\"is_chain_circuit\":false},{\"mechanism_id\":\"58ab728e-3024-4b3c-b744-e4dc39d3fdfc\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Mutual-Aspect Triangle: Sun, Jupiter, Moon\",\"mechanism_class\":\"mutual_aspect_triangle\",\"valence\":\"mixed\",\"member_node_ids_array\":[\"329b624b-b861-4051-a560-31b43854f983\",\"46415e47-da81-4fc9-8af7-dc6213bece2c\",\"88b60248-9d83-4973-9d20-42617bcc5173\"],\"member_edge_ids_array\":[\"68152616-d1c4-4c91-9d37-389072376c84\",\"4fffca12-4c4b-49ce-9105-df6c677f7c9e\",\"027e25e8-f6bf-4ec1-92d2-c6aabfdcca8e\",\"1bb588c2-5a12-46ee-af7d-2e4eab1fb5c8\",\"a2735c7e-feaa-4cd1-a95c-d93e13289cc4\",\"f9c4400d-88a5-43f1-a819-3922e054c0e9\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.43125,\"edge_strength_min\":0.418159,\"edge_strength_max\":0.443571,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"155539\",\"157136\",\"155561\",\"157140\",\"155537\",\"157137\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.83319406,\"member_count\":3,\"pagerank_avg\":0.02435655,\"betweenness_avg\":0.00225443,\"eigenvector_avg\":0.28833482},\"source_motif_id\":\"72ef1e05-ab97-49f4-a056-d8b8f1dc89cb\",\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_cgm_motifs/72ef1e05-ab97-49f4-a056-d8b8f1dc89cb\",\"citation_human\":\"Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Sun, Jupiter, Moon\",\"is_chain_circuit\":false},{\"mechanism_id\":\"f413a8b2-01f0-4f63-8345-90406333f539\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Mutual-Aspect Triangle: Venus, Sun, Jupiter\",\"mechanism_class\":\"mutual_aspect_triangle\",\"valence\":\"mixed\",\"member_node_ids_array\":[\"077522fd-e4e0-456b-a3ab-3afaefd64bfa\",\"329b624b-b861-4051-a560-31b43854f983\",\"46415e47-da81-4fc9-8af7-dc6213bece2c\"],\"member_edge_ids_array\":[\"6561c862-d30f-4930-a9c9-6a96730602a0\",\"dedd29f5-8fdf-44f8-9718-2a0bffbeb4e5\",\"84cc8896-3774-482a-8780-cfd7d43e76ae\",\"d9906451-4a13-4f0a-8749-6cabeb1c0a1e\",\"68152616-d1c4-4c91-9d37-389072376c84\",\"4fffca12-4c4b-49ce-9105-df6c677f7c9e\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.43125,\"edge_strength_min\":0.418159,\"edge_strength_max\":0.443571,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"155543\",\"157141\",\"155539\",\"157136\",\"155561\",\"157140\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.8456372,\"member_count\":3,\"pagerank_avg\":0.02478836,\"betweenness_avg\":0.00161031,\"eigenvector_avg\":0.29752307},\"source_motif_id\":\"68001b62-cf58-4c1b-b63d-008c0e49dd32\",\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_cgm_motifs/68001b62-cf58-4c1b-b63d-008c0e49dd32\",\"citation_human\":\"Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Venus, Sun, Jupiter\",\"is_chain_circuit\":false},{\"mechanism_id\":\"e44a0e96-625a-4cde-88b6-09b3a0a5bb24\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Mutual Aspect: Jupiter ↔ Sun\",\"mechanism_class\":\"mutual_aspect\",\"valence\":\"mixed\",\"member_node_ids_array\":[\"46415e47-da81-4fc9-8af7-dc6213bece2c\",\"329b624b-b861-4051-a560-31b43854f983\"],\"member_edge_ids_array\":[\"68152616-d1c4-4c91-9d37-389072376c84\",\"4fffca12-4c4b-49ce-9105-df6c677f7c9e\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.430865,\"edge_strength_min\":0.418159,\"edge_strength_max\":0.443571,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"155539\",\"157136\",\"155561\",\"157140\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.85029482,\"member_count\":2,\"pagerank_avg\":0.02445836,\"betweenness_avg\":0.00169082,\"eigenvector_avg\":0.2907096},\"source_motif_id\":\"a3f43fd3-4101-41e9-93a9-359e4d1faeae\",\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_cgm_motifs/a3f43fd3-4101-41e9-93a9-359e4d1faeae\",\"citation_human\":\"Mechanism promoted from CGM motif: Mutual Aspect: Jupiter ↔ Sun\",\"is_chain_circuit\":false},{\"mechanism_id\":\"b9a6aade-e1f7-4d92-90c5-f5af1be67699\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Mutual-Aspect Triangle: Venus, Jupiter, Moon\",\"mechanism_class\":\"mutual_aspect_triangle\",\"valence\":\"benefic\",\"member_node_ids_array\":[\"077522fd-e4e0-456b-a3ab-3afaefd64bfa\",\"46415e47-da81-4fc9-8af7-dc6213bece2c\",\"88b60248-9d83-4973-9d20-42617bcc5173\"],\"member_edge_ids_array\":[\"84cc8896-3774-482a-8780-cfd7d43e76ae\",\"d9906451-4a13-4f0a-8749-6cabeb1c0a1e\",\"725a47c7-b49b-4541-a6af-375cb4920ad9\",\"c7645eb4-b320-40ff-9d73-df97b1a75b8a\",\"a2735c7e-feaa-4cd1-a95c-d93e13289cc4\",\"f9c4400d-88a5-43f1-a819-3922e054c0e9\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.4274,\"edge_strength_min\":0.418159,\"edge_strength_max\":0.43202,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"155543\",\"157141\",\"155561\",\"157140\",\"155537\",\"157137\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.84743945,\"member_count\":3,\"pagerank_avg\":0.02488745,\"betweenness_avg\":0.00273752,\"eigenvector_avg\":0.3003437},\"source_motif_id\":\"f6fef6e6-8e8e-4e8a-ade1-e0ca45b97ba8\",\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_cgm_motifs/f6fef6e6-8e8e-4e8a-ade1-e0ca45b97ba8\",\"citation_human\":\"Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Venus, Jupiter, Moon\",\"is_chain_circuit\":false},{\"mechanism_id\":\"7aa85c2b-764b-44ee-b1f1-6c82535ac1ff\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Mutual-Aspect Triangle: Mercury, Sun, Moon\",\"mechanism_class\":\"mutual_aspect_triangle\",\"valence\":\"mixed\",\"member_node_ids_array\":[\"147aa881-7f1b-4fac-a363-b5e4c24d47b9\",\"329b624b-b861-4051-a560-31b43854f983\",\"88b60248-9d83-4973-9d20-42617bcc5173\"],\"member_edge_ids_array\":[\"551970dd-3f18-4ca9-ad29-99e5ddc523a3\",\"ab1e1d64-dc28-49c3-9e06-d34809ab7e10\",\"7df3458a-389b-4b90-a050-18eada29841c\",\"a0669460-12e6-4145-90eb-2e4c4db18c49\",\"027e25e8-f6bf-4ec1-92d2-c6aabfdcca8e\",\"1bb588c2-5a12-46ee-af7d-2e4eab1fb5c8\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.426044,\"edge_strength_min\":0.402541,\"edge_strength_max\":0.443571,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"155539\",\"157136\",\"155541\",\"157139\",\"155537\",\"157137\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.80775206,\"member_count\":3,\"pagerank_avg\":0.02389588,\"betweenness_avg\":0.00144927,\"eigenvector_avg\":0.27661968},\"source_motif_id\":\"2002139c-c392-4a44-b340-e8b5dfce1e96\",\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_cgm_motifs/2002139c-c392-4a44-b340-e8b5dfce1e96\",\"citation_human\":\"Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Mercury, Sun, Moon\",\"is_chain_circuit\":false}],\"count\":10,\"total_matching\":123,\"more_available\":true,\"chain_circuit_count\":1,\"facets\":{\"by_mechanism_class\":{\"mutual_aspect\":36,\"graha_bhava_affliction\":2,\"convergent_dispositor_chain\":1,\"mutual_aspect_triangle\":84},\"by_valence\":{\"mixed\":78,\"neutral\":8,\"malefic\":30,\"benefic\":7},\"chain_circuit_classes\":[\"convergent_dispositor_chain\",\"dispositor_cycle\",\"house_lordship_cycle\"]},\"empty_reason\":null,\"filters\":{\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"mechanism_class\":null,\"valence\":null,\"chain_circuit_only\":false,\"limit\":10,\"offset\":0},\"provenance\":{\"tables\":[\"bodha_mechanisms\"],\"source\":\"L2 Bodha mechanisms (bo_yantra_mechanism / migration 445); served chart-scoped, chain/circuit family first, budgeted. Edge-strength provenance: DR-7 edge_strength_v1.\"}},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "rows": [
+            {
+              "mechanism_id": "5088c9e6-9b21-4703-a426-2135abc92f0e",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Convergent dispositor chain onto Jupiter: Ketu → … → Jupiter, Mars → … → Jupiter, Mercury → … → Jupiter, Moon → … → Jupiter, Rahu → … → Jupiter, Saturn → … → Jupiter, Sun → … → Jupiter, Venus → … → Jupiter",
+              "mechanism_class": "convergent_dispositor_chain",
+              "valence": "mixed",
+              "member_node_ids_array": [
+                "3c28ff7c-e379-447a-b493-80cba3dc0312",
+                "758da452-90e1-41fe-aecb-9b076ea77f2a",
+                "077522fd-e4e0-456b-a3ab-3afaefd64bfa",
+                "46415e47-da81-4fc9-8af7-dc6213bece2c",
+                "147aa881-7f1b-4fac-a363-b5e4c24d47b9",
+                "aaaf68bc-a256-428f-8daf-e9014bb731fc",
+                "88b60248-9d83-4973-9d20-42617bcc5173",
+                "e331eadc-8c11-45c2-be8f-ff5ed12ad45a",
+                "329b624b-b861-4051-a560-31b43854f983"
+              ],
+              "member_edge_ids_array": [
+                "1fe6fd6f-19a2-464f-a025-42e9ac171ec0",
+                "abfd8b9a-22fe-4ad3-902a-7756ecec46ce",
+                "b976365a-d151-494d-af61-a85a1526a664",
+                "d7e64f29-a9fd-4748-9f34-9d3b0acf6d12",
+                "e3797f37-759b-4701-a7c1-4a8fbe411b9e",
+                "87eea9f2-a81f-46b4-a715-07969b9672b5",
+                "4397f888-d9d7-4858-ac4f-f8beaf306dc1",
+                "adce5a65-26e4-491f-9413-9e6f9282f56d"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.567372,
+              "edge_strength_min": 0.460714,
+              "edge_strength_max": 0.642857,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "157144",
+                "155545",
+                "157138",
+                "155543",
+                "157141",
+                "155541",
+                "157139",
+                "155557",
+                "157142",
+                "155537",
+                "157137",
+                "157143",
+                "155539",
+                "157136"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.87780235,
+                "member_count": 9,
+                "pagerank_avg": 0.02411199,
+                "betweenness_avg": 0.00375738,
+                "eigenvector_avg": 0.28330909
+              },
+              "source_motif_id": null,
+              "verification_pass_status": "single",
+              "citation_ref": "bo_yantra_mechanism/convergent_dispositor_chain/Jupiter",
+              "citation_human": "CR-24 disposition (verified live, no closed circuit on this chart): 8 grahas (Ketu, Mars, Mercury, Moon, Rahu, Saturn, Sun, Venus) converge onto self-ruling Jupiter — the real dominant chain/circuit-class structure this chart carries.",
+              "is_chain_circuit": true
+            },
+            {
+              "mechanism_id": "9a39644c-c728-49b1-81ed-b6e79daba35d",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Mutual Aspect: Moon ↔ Sun",
+              "mechanism_class": "mutual_aspect",
+              "valence": "mixed",
+              "member_node_ids_array": [
+                "88b60248-9d83-4973-9d20-42617bcc5173",
+                "329b624b-b861-4051-a560-31b43854f983"
+              ],
+              "member_edge_ids_array": [
+                "027e25e8-f6bf-4ec1-92d2-c6aabfdcca8e",
+                "1bb588c2-5a12-46ee-af7d-2e4eab1fb5c8"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.437796,
+              "edge_strength_min": 0.43202,
+              "edge_strength_max": 0.443571,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "155539",
+                "157136",
+                "155537",
+                "157137"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.79628916,
+                "member_count": 2,
+                "pagerank_avg": 0.02400431,
+                "betweenness_avg": 0.00169082,
+                "eigenvector_avg": 0.27935434
+              },
+              "source_motif_id": "fdf83297-7699-4af1-98ca-4fdb8e7c7a4c",
+              "verification_pass_status": "single",
+              "citation_ref": "bo_cgm_motifs/fdf83297-7699-4af1-98ca-4fdb8e7c7a4c",
+              "citation_human": "Mechanism promoted from CGM motif: Mutual Aspect: Moon ↔ Sun",
+              "is_chain_circuit": false
+            },
+            {
+              "mechanism_id": "5cbf4d19-fdb2-4675-b150-6e6cb03d41d6",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Mutual Aspect: Sun ↔ Venus",
+              "mechanism_class": "mutual_aspect",
+              "valence": "mixed",
+              "member_node_ids_array": [
+                "329b624b-b861-4051-a560-31b43854f983",
+                "077522fd-e4e0-456b-a3ab-3afaefd64bfa"
+              ],
+              "member_edge_ids_array": [
+                "6561c862-d30f-4930-a9c9-6a96730602a0",
+                "dedd29f5-8fdf-44f8-9718-2a0bffbeb4e5"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.437796,
+              "edge_strength_min": 0.43202,
+              "edge_strength_max": 0.443571,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "155543",
+                "157141",
+                "155539",
+                "157136"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.81495387,
+                "member_count": 2,
+                "pagerank_avg": 0.02465201,
+                "betweenness_avg": 0.00072464,
+                "eigenvector_avg": 0.29313672
+              },
+              "source_motif_id": "9f81c17f-01ab-4231-9950-2214327460ab",
+              "verification_pass_status": "single",
+              "citation_ref": "bo_cgm_motifs/9f81c17f-01ab-4231-9950-2214327460ab",
+              "citation_human": "Mechanism promoted from CGM motif: Mutual Aspect: Sun ↔ Venus",
+              "is_chain_circuit": false
+            },
+            {
+              "mechanism_id": "b3935729-f360-4269-ae07-1cd0794fe6b3",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Mutual-Aspect Triangle: Venus, Sun, Moon",
+              "mechanism_class": "mutual_aspect_triangle",
+              "valence": "mixed",
+              "member_node_ids_array": [
+                "077522fd-e4e0-456b-a3ab-3afaefd64bfa",
+                "329b624b-b861-4051-a560-31b43854f983",
+                "88b60248-9d83-4973-9d20-42617bcc5173"
+              ],
+              "member_edge_ids_array": [
+                "6561c862-d30f-4930-a9c9-6a96730602a0",
+                "dedd29f5-8fdf-44f8-9718-2a0bffbeb4e5",
+                "725a47c7-b49b-4541-a6af-375cb4920ad9",
+                "c7645eb4-b320-40ff-9d73-df97b1a75b8a",
+                "027e25e8-f6bf-4ec1-92d2-c6aabfdcca8e",
+                "1bb588c2-5a12-46ee-af7d-2e4eab1fb5c8"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.435871,
+              "edge_strength_min": 0.43202,
+              "edge_strength_max": 0.443571,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "155543",
+                "157141",
+                "155539",
+                "157136",
+                "155537",
+                "157137"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.80963343,
+                "member_count": 3,
+                "pagerank_avg": 0.02448566,
+                "betweenness_avg": 0.00161031,
+                "eigenvector_avg": 0.2899529
+              },
+              "source_motif_id": "8657dde8-caf9-4196-9245-c2b492db84c3",
+              "verification_pass_status": "single",
+              "citation_ref": "bo_cgm_motifs/8657dde8-caf9-4196-9245-c2b492db84c3",
+              "citation_human": "Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Venus, Sun, Moon",
+              "is_chain_circuit": false
+            },
+            {
+              "mechanism_id": "71cd03b8-a508-4232-bd89-b4bb77fed8b7",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Mutual Aspect: Moon ↔ Venus",
+              "mechanism_class": "mutual_aspect",
+              "valence": "benefic",
+              "member_node_ids_array": [
+                "88b60248-9d83-4973-9d20-42617bcc5173",
+                "077522fd-e4e0-456b-a3ab-3afaefd64bfa"
+              ],
+              "member_edge_ids_array": [
+                "725a47c7-b49b-4541-a6af-375cb4920ad9",
+                "c7645eb4-b320-40ff-9d73-df97b1a75b8a"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.43202,
+              "edge_strength_min": 0.43202,
+              "edge_strength_max": 0.43202,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "155543",
+                "157141",
+                "155537",
+                "157137"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.81765724,
+                "member_count": 2,
+                "pagerank_avg": 0.02480065,
+                "betweenness_avg": 0.00241546,
+                "eigenvector_avg": 0.29736765
+              },
+              "source_motif_id": "4c3f3020-7230-4296-b49a-4cc23b429555",
+              "verification_pass_status": "single",
+              "citation_ref": "bo_cgm_motifs/4c3f3020-7230-4296-b49a-4cc23b429555",
+              "citation_human": "Mechanism promoted from CGM motif: Mutual Aspect: Moon ↔ Venus",
+              "is_chain_circuit": false
+            },
+            {
+              "mechanism_id": "58ab728e-3024-4b3c-b744-e4dc39d3fdfc",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Mutual-Aspect Triangle: Sun, Jupiter, Moon",
+              "mechanism_class": "mutual_aspect_triangle",
+              "valence": "mixed",
+              "member_node_ids_array": [
+                "329b624b-b861-4051-a560-31b43854f983",
+                "46415e47-da81-4fc9-8af7-dc6213bece2c",
+                "88b60248-9d83-4973-9d20-42617bcc5173"
+              ],
+              "member_edge_ids_array": [
+                "68152616-d1c4-4c91-9d37-389072376c84",
+                "4fffca12-4c4b-49ce-9105-df6c677f7c9e",
+                "027e25e8-f6bf-4ec1-92d2-c6aabfdcca8e",
+                "1bb588c2-5a12-46ee-af7d-2e4eab1fb5c8",
+                "a2735c7e-feaa-4cd1-a95c-d93e13289cc4",
+                "f9c4400d-88a5-43f1-a819-3922e054c0e9"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.43125,
+              "edge_strength_min": 0.418159,
+              "edge_strength_max": 0.443571,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "155539",
+                "157136",
+                "155561",
+                "157140",
+                "155537",
+                "157137"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.83319406,
+                "member_count": 3,
+                "pagerank_avg": 0.02435655,
+                "betweenness_avg": 0.00225443,
+                "eigenvector_avg": 0.28833482
+              },
+              "source_motif_id": "72ef1e05-ab97-49f4-a056-d8b8f1dc89cb",
+              "verification_pass_status": "single",
+              "citation_ref": "bo_cgm_motifs/72ef1e05-ab97-49f4-a056-d8b8f1dc89cb",
+              "citation_human": "Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Sun, Jupiter, Moon",
+              "is_chain_circuit": false
+            },
+            {
+              "mechanism_id": "f413a8b2-01f0-4f63-8345-90406333f539",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Mutual-Aspect Triangle: Venus, Sun, Jupiter",
+              "mechanism_class": "mutual_aspect_triangle",
+              "valence": "mixed",
+              "member_node_ids_array": [
+                "077522fd-e4e0-456b-a3ab-3afaefd64bfa",
+                "329b624b-b861-4051-a560-31b43854f983",
+                "46415e47-da81-4fc9-8af7-dc6213bece2c"
+              ],
+              "member_edge_ids_array": [
+                "6561c862-d30f-4930-a9c9-6a96730602a0",
+                "dedd29f5-8fdf-44f8-9718-2a0bffbeb4e5",
+                "84cc8896-3774-482a-8780-cfd7d43e76ae",
+                "d9906451-4a13-4f0a-8749-6cabeb1c0a1e",
+                "68152616-d1c4-4c91-9d37-389072376c84",
+                "4fffca12-4c4b-49ce-9105-df6c677f7c9e"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.43125,
+              "edge_strength_min": 0.418159,
+              "edge_strength_max": 0.443571,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "155543",
+                "157141",
+                "155539",
+                "157136",
+                "155561",
+                "157140"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.8456372,
+                "member_count": 3,
+                "pagerank_avg": 0.02478836,
+                "betweenness_avg": 0.00161031,
+                "eigenvector_avg": 0.29752307
+              },
+              "source_motif_id": "68001b62-cf58-4c1b-b63d-008c0e49dd32",
+              "verification_pass_status": "single",
+              "citation_ref": "bo_cgm_motifs/68001b62-cf58-4c1b-b63d-008c0e49dd32",
+              "citation_human": "Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Venus, Sun, Jupiter",
+              "is_chain_circuit": false
+            },
+            {
+              "mechanism_id": "e44a0e96-625a-4cde-88b6-09b3a0a5bb24",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Mutual Aspect: Jupiter ↔ Sun",
+              "mechanism_class": "mutual_aspect",
+              "valence": "mixed",
+              "member_node_ids_array": [
+                "46415e47-da81-4fc9-8af7-dc6213bece2c",
+                "329b624b-b861-4051-a560-31b43854f983"
+              ],
+              "member_edge_ids_array": [
+                "68152616-d1c4-4c91-9d37-389072376c84",
+                "4fffca12-4c4b-49ce-9105-df6c677f7c9e"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.430865,
+              "edge_strength_min": 0.418159,
+              "edge_strength_max": 0.443571,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "155539",
+                "157136",
+                "155561",
+                "157140"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.85029482,
+                "member_count": 2,
+                "pagerank_avg": 0.02445836,
+                "betweenness_avg": 0.00169082,
+                "eigenvector_avg": 0.2907096
+              },
+              "source_motif_id": "a3f43fd3-4101-41e9-93a9-359e4d1faeae",
+              "verification_pass_status": "single",
+              "citation_ref": "bo_cgm_motifs/a3f43fd3-4101-41e9-93a9-359e4d1faeae",
+              "citation_human": "Mechanism promoted from CGM motif: Mutual Aspect: Jupiter ↔ Sun",
+              "is_chain_circuit": false
+            },
+            {
+              "mechanism_id": "b9a6aade-e1f7-4d92-90c5-f5af1be67699",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Mutual-Aspect Triangle: Venus, Jupiter, Moon",
+              "mechanism_class": "mutual_aspect_triangle",
+              "valence": "benefic",
+              "member_node_ids_array": [
+                "077522fd-e4e0-456b-a3ab-3afaefd64bfa",
+                "46415e47-da81-4fc9-8af7-dc6213bece2c",
+                "88b60248-9d83-4973-9d20-42617bcc5173"
+              ],
+              "member_edge_ids_array": [
+                "84cc8896-3774-482a-8780-cfd7d43e76ae",
+                "d9906451-4a13-4f0a-8749-6cabeb1c0a1e",
+                "725a47c7-b49b-4541-a6af-375cb4920ad9",
+                "c7645eb4-b320-40ff-9d73-df97b1a75b8a",
+                "a2735c7e-feaa-4cd1-a95c-d93e13289cc4",
+                "f9c4400d-88a5-43f1-a819-3922e054c0e9"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.4274,
+              "edge_strength_min": 0.418159,
+              "edge_strength_max": 0.43202,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "155543",
+                "157141",
+                "155561",
+                "157140",
+                "155537",
+                "157137"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.84743945,
+                "member_count": 3,
+                "pagerank_avg": 0.02488745,
+                "betweenness_avg": 0.00273752,
+                "eigenvector_avg": 0.3003437
+              },
+              "source_motif_id": "f6fef6e6-8e8e-4e8a-ade1-e0ca45b97ba8",
+              "verification_pass_status": "single",
+              "citation_ref": "bo_cgm_motifs/f6fef6e6-8e8e-4e8a-ade1-e0ca45b97ba8",
+              "citation_human": "Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Venus, Jupiter, Moon",
+              "is_chain_circuit": false
+            },
+            {
+              "mechanism_id": "7aa85c2b-764b-44ee-b1f1-6c82535ac1ff",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Mutual-Aspect Triangle: Mercury, Sun, Moon",
+              "mechanism_class": "mutual_aspect_triangle",
+              "valence": "mixed",
+              "member_node_ids_array": [
+                "147aa881-7f1b-4fac-a363-b5e4c24d47b9",
+                "329b624b-b861-4051-a560-31b43854f983",
+                "88b60248-9d83-4973-9d20-42617bcc5173"
+              ],
+              "member_edge_ids_array": [
+                "551970dd-3f18-4ca9-ad29-99e5ddc523a3",
+                "ab1e1d64-dc28-49c3-9e06-d34809ab7e10",
+                "7df3458a-389b-4b90-a050-18eada29841c",
+                "a0669460-12e6-4145-90eb-2e4c4db18c49",
+                "027e25e8-f6bf-4ec1-92d2-c6aabfdcca8e",
+                "1bb588c2-5a12-46ee-af7d-2e4eab1fb5c8"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.426044,
+              "edge_strength_min": 0.402541,
+              "edge_strength_max": 0.443571,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "155539",
+                "157136",
+                "155541",
+                "157139",
+                "155537",
+                "157137"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.80775206,
+                "member_count": 3,
+                "pagerank_avg": 0.02389588,
+                "betweenness_avg": 0.00144927,
+                "eigenvector_avg": 0.27661968
+              },
+              "source_motif_id": "2002139c-c392-4a44-b340-e8b5dfce1e96",
+              "verification_pass_status": "single",
+              "citation_ref": "bo_cgm_motifs/2002139c-c392-4a44-b340-e8b5dfce1e96",
+              "citation_human": "Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Mercury, Sun, Moon",
+              "is_chain_circuit": false
+            }
+          ],
+          "count": 10,
+          "total_matching": 123,
+          "more_available": true,
+          "chain_circuit_count": 1,
+          "facets": {
+            "by_mechanism_class": {
+              "mutual_aspect": 36,
+              "graha_bhava_affliction": 2,
+              "convergent_dispositor_chain": 1,
+              "mutual_aspect_triangle": 84
+            },
+            "by_valence": {
+              "mixed": 78,
+              "neutral": 8,
+              "malefic": 30,
+              "benefic": 7
+            },
+            "chain_circuit_classes": [
+              "convergent_dispositor_chain",
+              "dispositor_cycle",
+              "house_lordship_cycle"
+            ]
+          },
+          "empty_reason": null,
+          "filters": {
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "mechanism_class": null,
+            "valence": null,
+            "chain_circuit_only": false,
+            "limit": 10,
+            "offset": 0
+          },
+          "provenance": {
+            "tables": [
+              "bodha_mechanisms"
+            ],
+            "source": "L2 Bodha mechanisms (bo_yantra_mechanism / migration 445); served chart-scoped, chain/circuit family first, budgeted. Edge-strength provenance: DR-7 edge_strength_v1."
+          }
+        },
+        "is_error": false
+      }
+    }
+  }
+}

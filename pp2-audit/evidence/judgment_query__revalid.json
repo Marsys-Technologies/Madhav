@@ -1,0 +1,59 @@
+{
+  "tool": "judgment_query",
+  "scenario": "revalid_both_charts_domain_marriage_v3",
+  "note": "Re-verification with valid schema args: chart_id + domain='marriage' (required per schema: chart_id required, domain OR bhava required). v3 envelope. Real question-shaped test per assignment ('how is the marriage?').",
+  "calls": [
+    {
+      "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "marriage"},
+      "raw_response_excerpt": {
+        "envelope_version": "v3",
+        "verdict": {
+          "domain": "marriage", "bhava": 7, "verdict_grade": "contested", "composite_score": -3.5,
+          "d1_score": -1, "operative_varga": "D9", "varga_term": -2.5,
+          "varga_subscores": {"bhavesha": {"graha": "Venus", "varga": "D9", "dignity_state": "debilitated", "weight": -2, "contribution": -1.5}},
+          "receipt": {"bhava": true, "bhavesha": true, "karaka": true, "from_moon": true, "varga_confirmed": false, "varga_weighted_into_verdict": true, "yogas_checked": 13, "bhanga_checked": true, "timing_anchored": false}
+        },
+        "checklist": {
+          "bhavesha_condition": {"from_lagna": {"graha": "Venus", "house": 9, "sign": "Sagittarius", "dignity_state": "neutral"}, "from_chandra": {"graha": "Sun", "house": 10, "sign": "Capricorn", "dignity_state": "neutral"}},
+          "occupants": {"from_lagna": ["Mars", "Saturn"]},
+          "gochara_sweep": {"top_windows": [{"event_class": "marriage", "window_start": "2027-11-11", "window_end": "2027-11-11", "valence": "neutral"}]}
+        },
+        "judgment_flags": [
+          {"code": "bearing_yogas_no_domain_match", "detail": "13 yoga(s) fired on this chart but none name only this domain's bhāveśa/kāraka(s) (venus)."},
+          {"code": "afflictions_present", "detail": "15 adverse signal(s) served in the THREAT layer, separate from bearing_yogas."},
+          {"code": "sensitive_degree_firings_present", "detail": "5 fired sensitive-degree check(s) surfaced."},
+          {"code": "timing_anchored_forced_false", "detail": "the served timing_hooks are all empty on the wire — receipt.timing_anchored downgraded from an affirmative pre-trim value rather than shipping a fabricated affirmative receipt (Gate Ś #10; CLAUDE.md §N.6 point 3 / B.10)."},
+          {"code": "varga_confirmed_forced_false", "detail": "the served checklist.varga_confirmation.rows are empty on the wire — receipt.varga_confirmed downgraded rather than fabricated (CR-2/CR-63/R-38)."}
+        ],
+        "grounding": {"resolved_fact_count": 389, "resolvable": true},
+        "reading_checklist": {"units_served": 8, "units_total": 12, "units_unserved": ["ashtakavarga", "special_lagnas", "yogi_avayogi", "tajaka"]},
+        "chart_header": {"chart_id_short": "482012f1", "name": "Abhisek Mohanty", "lagna_sign": "Aries", "moon_sign": "Aquarius", "sun_sign": "Capricorn", "current_maha_antar": "Mercury MD / Saturn AD"}
+      }
+    },
+    {
+      "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "domain": "marriage"},
+      "raw_response_excerpt": {
+        "envelope_version": "v3",
+        "verdict": {
+          "domain": "marriage", "bhava": 7, "verdict_grade": "convergent_moderate", "composite_score": 1.9,
+          "d1_score": 1.9, "operative_varga": "D9", "varga_term": 0,
+          "varga_subscores": {"bhavesha": {"graha": "Venus", "varga": "D9", "dignity_state": "neutral", "weight": 0, "contribution": 0}},
+          "receipt": {"bhava": true, "bhavesha": true, "karaka": true, "from_moon": true, "varga_confirmed": false, "varga_weighted_into_verdict": true, "yogas_checked": 14, "bhanga_checked": true, "timing_anchored": false}
+        },
+        "checklist": {
+          "bhavesha_condition": {"from_lagna": {"graha": "Venus", "house": 12, "sign": "Pisces", "dignity_state": "exalted", "dignity_weight": 2}, "from_chandra": {"graha": "Jupiter", "house": 10, "sign": "Capricorn", "dignity_state": "debilitated", "dignity_weight": -2}},
+          "occupants": {"from_lagna": ["Ketu"]},
+          "gochara_sweep": {"top_windows": [{"event_class": "marriage", "window_start": "2028-03-15", "window_end": "2028-03-15", "valence": "neutral"}]}
+        },
+        "judgment_flags": [
+          {"code": "bearing_yogas_no_domain_match", "detail": "14 yoga(s) fired on this chart but none name only this domain's bhāveśa/kāraka(s) (venus)."},
+          {"code": "timing_anchored_forced_false", "detail": "the served timing_hooks are all empty on the wire — receipt.timing_anchored downgraded honestly rather than fabricated."},
+          {"code": "varga_confirmed_forced_false", "detail": "the served checklist.varga_confirmation.rows are empty on the wire — receipt downgraded honestly."}
+        ],
+        "grounding": {"resolved_fact_count": 351, "resolvable": true},
+        "chart_header": {"chart_id_short": "1c826d5a", "name": "Abhinandan Mohanty", "lagna_sign": "Aries", "moon_sign": "Gemini", "sun_sign": "Aquarius", "current_maha_antar": "Saturn MD / Rahu AD"}
+      }
+    }
+  ],
+  "cross_chart_coherence_check": "Passed: the two charts produce materially different, internally-consistent verdicts driven by the actual computed D9 dignity of Venus (native: debilitated -> contested/-3.5; zero-history: exalted -> convergent_moderate/+1.9). Both honestly disclose the same structural gaps (timing_anchored_forced_false, varga_confirmed_forced_false) rather than fabricating affirmative receipts — matches §N.7 Narration Fidelity Principle (honest null over invented judgment)."
+}

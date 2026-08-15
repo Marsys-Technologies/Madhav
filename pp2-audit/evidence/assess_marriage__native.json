@@ -1,0 +1,14 @@
+{
+  "tool": "assess_marriage",
+  "scenario": "native_chart_default_call",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+  "timing": {"before_ms": 1786801293031, "after_ms": 1786801301533, "latency_ms": 8502},
+  "is_error_serverside": false,
+  "client_side_failure": "MCP client returned a hard error: 'result (147,023 characters) exceeds maximum allowed tokens' -- saved to /Users/Dev/.claude/projects/.../tool-results/mcp-marsys-jis-direct-assess_marriage-1786801298054.txt.",
+  "raw_response_summary_from_saved_file": {
+    "is_error": false,
+    "budget_kb_applied": 40,
+    "judgment_flags": [{"code": "budget_exceeded_after_trim", "detail": "40kb budget still exceeded after full trim."}]
+  },
+  "finding": "THIRD of four assess_* calls to hit the identical 'budget_exceeded_after_trim' oversized-payload failure (147,023 chars vs 40KB declared budget, ~3.6x over)."
+}

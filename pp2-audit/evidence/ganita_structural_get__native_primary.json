@@ -1,0 +1,19 @@
+{
+  "tool": "ganita_structural_get",
+  "scenario": "native_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "facet": "houses",
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "MCP error -32602: Input validation error: Invalid arguments for tool ganita_structural_get: [\n  {\n    \"code\": \"invalid_value\",\n    \"values\": [\n      \"aspects\",\n      \"aspects_jaimini\",\n      \"aspects_tajik\",\n      \"argala\",\n      \"dispositors\",\n      \"parivartana\",\n      \"yoga_fires\",\n      \"dosha_fires\",\n      \"conjunctions\",\n      \"sambandha\",\n      \"functional\",\n      \"graha_yuddha\",\n      \"kala_sarpa\"\n    ],\n    \"path\": [\n      \"facet\"\n    ],\n    \"message\": \"Invalid option: expected one of \\\"aspects\\\"|\\\"aspects_jaimini\\\"|\\\"aspects_tajik\\\"|\\\"argala\\\"|\\\"dispositors\\\"|\\\"parivartana\\\"|\\\"yoga_fires\\\"|\\\"dosha_fires\\\"|\\\"conjunctions\\\"|\\\"sambandha\\\"|\\\"functional\\\"|\\\"graha_yuddha\\\"|\\\"kala_sarpa\\\"\"\n  }\n]"
+      }
+    ],
+    "isError": true
+  }
+}

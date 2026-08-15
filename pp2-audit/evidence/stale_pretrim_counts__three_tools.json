@@ -1,0 +1,45 @@
+{
+  "finding": "Pre-trim narrative/summary count fields go stale after the post-hoc auto-budget trim mutates the sibling array they describe, with no cross-reference or staleness flag in the response.",
+  "instances": [
+    {
+      "tool": "bodha_signals_get",
+      "args": { "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "top_k": 200 },
+      "observed": {
+        "verdict_summary": { "served_count": 200, "tier_distribution": { "chart_defining": 61, "supporting": 81, "major": 58 } },
+        "actual_signals_array_length_after_trim": 20,
+        "trim_report": [ { "path": "signals", "original_count": 200, "kept_count": 20, "reason": "signals: trimmed to 20", "recover_via": { "instrument": "bodha_signals_get", "hint": "call again with a smaller top_k, or paginate via offset" } } ]
+      },
+      "mechanism": "platform-mcp/src/tools/register_p1_aliases.ts:579-604 — verdict_summary is explicitly computed from `rows = inner['signals']` BEFORE `finalizeMcpBudget(inner, { maxKb: 25, sections: [signalsSection()] })` runs (comment at line 582: 'Built BEFORE the trimmer runs so the verdict reflects the untrimmed served set'). This is a deliberate design choice per the comment, but the response carries no field disclosing that verdict_summary and the signals array now describe different set sizes."
+    },
+    {
+      "tool": "synth_chart_brief_get",
+      "args": { "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "depth": "complete" },
+      "observed": {
+        "coverage_receipt": "115 topic slot(s) evaluated across 13 domain(s) (...): 27 domain verdicts, 4 load-bearing signals, 6 calibration strata, 20 cross-domain discoveries ranked.",
+        "actual_verdict_summary_array_length_after_trim": 13,
+        "trim_report": [ { "path": "verdict_summary", "original_count": 27, "kept_count": 13, "reason": "verdict_summary: trimmed to 13", "recover_via": { "instrument": "synth_chart_brief_get", "hint": "call again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"verdict_summary\"" } } ]
+      },
+      "mechanism": "coverage_receipt text states '27 domain verdicts' (the pre-trim total) while the verdict_summary array actually shipped in this same response holds only 13 objects post-trim; DIAGNOSIS-INCOMPLETE on the exact file:line (did not trace synth_chart_brief_get's handler file), but the trim_report entry + kept_count:13 confirms the array-vs-narrative mismatch live."
+    },
+    {
+      "tool": "kala_priority_ranking_get",
+      "args": { "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "top_k": 100 },
+      "observed": {
+        "content_signal_count_field": 100,
+        "actual_ranked_signals_array_length_after_trim": 50,
+        "trim_report": [ { "path": "content.ranked_signals", "original_count": 100, "kept_count": 50, "reason": "content.ranked_signals: trimmed to 50", "recover_via": { "instrument": "kala_priority_ranking_get", "hint": "call kala_priority_ranking_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.ranked_signals\"" } } ]
+      },
+      "mechanism": "content.signal_count=100 is computed by the underlying kala priority-ranking handler before the generic applyAutoBudgetToEnvelope/applyResponseBudget pass (response_budget.ts) trims content.ranked_signals in place from 100 to 50 entries; signal_count is never re-derived after the cut. Same root pattern as the other two instances. DIAGNOSIS-INCOMPLETE on the exact handler file:line for kala_priority_ranking_get's signal_count computation."
+    },
+    {
+      "tool": "kala_windows_get",
+      "args": { "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "limit": 25000 },
+      "observed": {
+        "content_activation_count_field": 500,
+        "actual_activations_array_length_after_trim": 5,
+        "trim_report": [ { "path": "content.activations", "original_count": 500, "kept_count": 5, "reason": "content.activations: floored to 5 (hard-cap)", "recover_via": { "instrument": "kala_windows_get", "hint": "call kala_windows_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.activations\"" } } ]
+      },
+      "mechanism": "Same pattern a fourth time: content.activation_count=500 (pre-trim) sits beside a content.activations array hard-capped to 5 objects post-trim, with no reconciling field. Note: this same response's `empty_reason: null` field IS correctly present and honest (chart is not empty), which is a genuine density_contract PASS on the empty-result-discipline axis even though it fails on this count-staleness axis."
+    }
+  ]
+}

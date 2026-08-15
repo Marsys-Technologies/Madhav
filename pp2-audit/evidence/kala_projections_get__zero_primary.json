@@ -1,0 +1,1154 @@
+{
+  "tool": "kala_projections_get",
+  "scenario": "zero_primary",
+  "args": {
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "limit": 10,
+    "offset": 0
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"projections\":[{\"id\":\"4230\",\"projection_rank\":1,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2030-04-17\",\"window_start\":\"2030-04-17\",\"window_end\":\"2032-09-29\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2030-04-17\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2030-04-17 despite favorable circumstances\",\"evaluation_date\":\"2030-04-17\",\"confirm_observable\":\"Observable within ±21 days of 2030-04-17: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"488867\",\"signal_id\":\"c1e12a75-a08f-47aa-9454-f8d065e4171a\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":488867}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=1\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4231\",\"projection_rank\":2,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2029-08-08\",\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2029-08-08\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2029-08-08 despite favorable circumstances\",\"evaluation_date\":\"2029-08-08\",\"confirm_observable\":\"Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"486276\",\"signal_id\":\"31e0fdc5-5628-45e8-9d55-a27db7b32489\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486276}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=2\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4232\",\"projection_rank\":3,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2030-04-17\",\"window_start\":\"2030-04-17\",\"window_end\":\"2032-09-29\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2030-04-17\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2030-04-17 despite favorable circumstances\",\"evaluation_date\":\"2030-04-17\",\"confirm_observable\":\"Observable within ±21 days of 2030-04-17: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"486291\",\"signal_id\":\"c9765093-9281-410a-a49b-a61d54869599\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486291}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=3\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4233\",\"projection_rank\":4,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2029-08-08\",\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2029-08-08\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2029-08-08 despite favorable circumstances\",\"evaluation_date\":\"2029-08-08\",\"confirm_observable\":\"Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"486282\",\"signal_id\":\"988393e8-8552-4b77-9e45-6f1ff06ccc1c\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486282}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=4\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4234\",\"projection_rank\":5,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2029-08-08\",\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2029-08-08\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2029-08-08 despite favorable circumstances\",\"evaluation_date\":\"2029-08-08\",\"confirm_observable\":\"Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"486284\",\"signal_id\":\"75eec0b0-3f08-4fc8-92ac-f2d0c16866ae\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486284}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=5\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4235\",\"projection_rank\":6,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2029-08-08\",\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2029-08-08\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2029-08-08 despite favorable circumstances\",\"evaluation_date\":\"2029-08-08\",\"confirm_observable\":\"Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"486262\",\"signal_id\":\"e2547408-bc3f-4d44-aba0-2d2aeb68616d\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486262}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=6\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4236\",\"projection_rank\":7,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2030-04-17\",\"window_start\":\"2030-04-17\",\"window_end\":\"2032-09-29\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2030-04-17\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2030-04-17 despite favorable circumstances\",\"evaluation_date\":\"2030-04-17\",\"confirm_observable\":\"Observable within ±21 days of 2030-04-17: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"486289\",\"signal_id\":\"7eab614e-21b2-405a-992d-5649a5efe1b5\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486289}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=7\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4237\",\"projection_rank\":8,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2029-08-08\",\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2029-08-08\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2029-08-08 despite favorable circumstances\",\"evaluation_date\":\"2029-08-08\",\"confirm_observable\":\"Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"486288\",\"signal_id\":\"7eab614e-21b2-405a-992d-5649a5efe1b5\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486288}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=8\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4238\",\"projection_rank\":9,\"domain\":\"career\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2030-04-17\",\"window_start\":\"2030-04-17\",\"window_end\":\"2032-09-29\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Career activation near 2030-04-17\",\"domain_context\":\"Domain: career. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable career event within ±21 days of 2030-04-17 despite favorable circumstances\",\"evaluation_date\":\"2030-04-17\",\"confirm_observable\":\"Observable within ±21 days of 2030-04-17: significant career event (new role, promotion, venture launch, client gain)\",\"evaluation_window_days\":21},\"convergence_id\":\"486301\",\"signal_id\":\"e6678888-fb04-4a80-90d9-7ffd6e90c583\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486301}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=9\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4239\",\"projection_rank\":10,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2030-04-17\",\"window_start\":\"2030-04-17\",\"window_end\":\"2032-09-29\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2030-04-17\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2030-04-17 despite favorable circumstances\",\"evaluation_date\":\"2030-04-17\",\"confirm_observable\":\"Observable within ±21 days of 2030-04-17: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"486281\",\"signal_id\":\"0c4156f5-03ef-42c3-beb8-639b99e8b89d\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486281}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=10\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4240\",\"projection_rank\":11,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2030-04-17\",\"window_start\":\"2030-04-17\",\"window_end\":\"2032-09-29\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2030-04-17\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2030-04-17 despite favorable circumstances\",\"evaluation_date\":\"2030-04-17\",\"confirm_observable\":\"Observable within ±21 days of 2030-04-17: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"486283\",\"signal_id\":\"988393e8-8552-4b77-9e45-6f1ff06ccc1c\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486283}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=11\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4241\",\"projection_rank\":12,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2029-08-08\",\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2029-08-08\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2029-08-08 despite favorable circumstances\",\"evaluation_date\":\"2029-08-08\",\"confirm_observable\":\"Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"486278\",\"signal_id\":\"dc900b4a-9af7-492c-ace9-629b58d17fe8\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486278}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=12\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4242\",\"projection_rank\":13,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2029-08-08\",\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2029-08-08\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2029-08-08 despite favorable circumstances\",\"evaluation_date\":\"2029-08-08\",\"confirm_observable\":\"Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"486274\",\"signal_id\":\"6f4402d9-0abb-44f4-a6c3-6edd3e3554cf\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486274}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=13\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4243\",\"projection_rank\":14,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2029-08-08\",\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2029-08-08\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2029-08-08 despite favorable circumstances\",\"evaluation_date\":\"2029-08-08\",\"confirm_observable\":\"Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"486268\",\"signal_id\":\"0a73e215-309b-4b92-8158-71edcf7beeed\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486268}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=14\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4244\",\"projection_rank\":15,\"domain\":\"career\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2029-08-08\",\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Career activation near 2029-08-08\",\"domain_context\":\"Domain: career. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable career event within ±21 days of 2029-08-08 despite favorable circumstances\",\"evaluation_date\":\"2029-08-08\",\"confirm_observable\":\"Observable within ±21 days of 2029-08-08: significant career event (new role, promotion, venture launch, client gain)\",\"evaluation_window_days\":21},\"convergence_id\":\"486300\",\"signal_id\":\"e6678888-fb04-4a80-90d9-7ffd6e90c583\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486300}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=15\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4245\",\"projection_rank\":16,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2030-04-17\",\"window_start\":\"2030-04-17\",\"window_end\":\"2032-09-29\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2030-04-17\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2030-04-17 despite favorable circumstances\",\"evaluation_date\":\"2030-04-17\",\"confirm_observable\":\"Observable within ±21 days of 2030-04-17: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"486181\",\"signal_id\":\"893e79b0-ccdd-40c6-a9a4-47365e46a4e6\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486181}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=16\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4246\",\"projection_rank\":17,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2029-08-08\",\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2029-08-08\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2029-08-08 despite favorable circumstances\",\"evaluation_date\":\"2029-08-08\",\"confirm_observable\":\"Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"489598\",\"signal_id\":\"097c12d8-7f82-4e96-b544-89702269b49e\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":489598}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=17\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4247\",\"projection_rank\":18,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2029-08-08\",\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2029-08-08\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2029-08-08 despite favorable circumstances\",\"evaluation_date\":\"2029-08-08\",\"confirm_observable\":\"Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"486290\",\"signal_id\":\"c9765093-9281-410a-a49b-a61d54869599\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486290}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=18\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4248\",\"projection_rank\":19,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2030-04-17\",\"window_start\":\"2030-04-17\",\"window_end\":\"2032-09-29\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2030-04-17\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2030-04-17 despite favorable circumstances\",\"evaluation_date\":\"2030-04-17\",\"confirm_observable\":\"Observable within ±21 days of 2030-04-17: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"489599\",\"signal_id\":\"097c12d8-7f82-4e96-b544-89702269b49e\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":489599}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=19\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4249\",\"projection_rank\":20,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2030-04-17\",\"window_start\":\"2030-04-17\",\"window_end\":\"2032-09-29\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2030-04-17\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2030-04-17 despite favorable circumstances\",\"evaluation_date\":\"2030-04-17\",\"confirm_observable\":\"Observable within ±21 days of 2030-04-17: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"489584\",\"signal_id\":\"92601157-01c0-49af-986b-7e76306ab9ab\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":489584}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=20\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4250\",\"projection_rank\":21,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2029-08-08\",\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2029-08-08\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2029-08-08 despite favorable circumstances\",\"evaluation_date\":\"2029-08-08\",\"confirm_observable\":\"Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"486318\",\"signal_id\":\"60a20a5f-a949-4abc-ad8f-a42ec016cc32\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486318}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=21\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4251\",\"projection_rank\":22,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2029-08-08\",\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2029-08-08\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2029-08-08 despite favorable circumstances\",\"evaluation_date\":\"2029-08-08\",\"confirm_observable\":\"Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"486292\",\"signal_id\":\"99319746-93bc-4b3b-b31f-b37864dd5095\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486292}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=22\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4252\",\"projection_rank\":23,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2029-08-08\",\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2029-08-08\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2029-08-08 despite favorable circumstances\",\"evaluation_date\":\"2029-08-08\",\"confirm_observable\":\"Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"489583\",\"signal_id\":\"92601157-01c0-49af-986b-7e76306ab9ab\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":489583}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=23\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4253\",\"projection_rank\":24,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2029-08-08\",\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2029-08-08\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2029-08-08 despite favorable circumstances\",\"evaluation_date\":\"2029-08-08\",\"confirm_observable\":\"Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"486280\",\"signal_id\":\"0c4156f5-03ef-42c3-beb8-639b99e8b89d\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":486280}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=24\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"},{\"id\":\"4254\",\"projection_rank\":25,\"domain\":\"character\",\"probability_tier\":\"tier_1_high\",\"effective_score\":0.7,\"peak_date\":\"2029-08-08\",\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2029-08-08\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"falsifiability\":{\"deny_observable\":\"No observable character event within ±21 days of 2029-08-08 despite favorable circumstances\",\"evaluation_date\":\"2029-08-08\",\"confirm_observable\":\"Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)\",\"evaluation_window_days\":21},\"convergence_id\":\"488986\",\"signal_id\":\"27b7a188-0dda-40b4-88de-d3fefa11c912\",\"source_chain\":[{\"mode\":\"C\",\"confidence\":\"moderate\",\"convergence_id\":488986}],\"outcome_recorded\":false,\"outcome_notes\":null,\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=25\",\"computed_at\":\"2026-08-12 17:09:23.181614+00\"}],\"projection_count\":50,\"projection_families\":[{\"window_start\":\"2030-04-17\",\"window_end\":\"2032-09-29\",\"domain\":\"character\",\"member_count\":33,\"member_ids\":[\"4230\",\"4232\",\"4236\",\"4239\",\"4240\",\"4245\",\"4248\",\"4249\",\"4255\",\"4260\"],\"member_signal_ids\":[\"c1e12a75-a08f-47aa-9454-f8d065e4171a\",\"c9765093-9281-410a-a49b-a61d54869599\",\"7eab614e-21b2-405a-992d-5649a5efe1b5\",\"0c4156f5-03ef-42c3-beb8-639b99e8b89d\",\"988393e8-8552-4b77-9e45-6f1ff06ccc1c\",\"893e79b0-ccdd-40c6-a9a4-47365e46a4e6\",\"097c12d8-7f82-4e96-b544-89702269b49e\",\"92601157-01c0-49af-986b-7e76306ab9ab\",\"7727691d-2294-4317-9288-457bdeb522da\",\"a4876a26-add6-4c2a-9835-d0a055a02331\"],\"probability_tier\":\"tier_1_high\",\"max_effective_score\":0.7,\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2030-04-17\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=1\"},{\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"domain\":\"character\",\"member_count\":55,\"member_ids\":[\"4231\",\"4233\",\"4234\",\"4235\",\"4237\",\"4241\",\"4242\",\"4243\",\"4246\",\"4247\"],\"member_signal_ids\":[\"31e0fdc5-5628-45e8-9d55-a27db7b32489\",\"988393e8-8552-4b77-9e45-6f1ff06ccc1c\",\"75eec0b0-3f08-4fc8-92ac-f2d0c16866ae\",\"e2547408-bc3f-4d44-aba0-2d2aeb68616d\",\"7eab614e-21b2-405a-992d-5649a5efe1b5\",\"dc900b4a-9af7-492c-ace9-629b58d17fe8\",\"6f4402d9-0abb-44f4-a6c3-6edd3e3554cf\",\"0a73e215-309b-4b92-8158-71edcf7beeed\",\"097c12d8-7f82-4e96-b544-89702269b49e\",\"c9765093-9281-410a-a49b-a61d54869599\"],\"probability_tier\":\"tier_1_high\",\"max_effective_score\":0.7,\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Character activation near 2029-08-08\",\"domain_context\":\"Domain: character. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=2\"},{\"window_start\":\"2030-04-17\",\"window_end\":\"2032-09-29\",\"domain\":\"career\",\"member_count\":4,\"member_ids\":[\"4238\",\"4285\",\"4303\",\"4311\"],\"member_signal_ids\":[\"e6678888-fb04-4a80-90d9-7ffd6e90c583\",\"a18e535e-b811-42cc-bf6b-b86fd0c727e0\",\"95307dec-c9a9-4f19-a140-0d0c95c97e2e\",\"4426e74b-4376-40c4-a855-96835a1b9654\"],\"probability_tier\":\"tier_1_high\",\"max_effective_score\":0.7,\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Career activation near 2030-04-17\",\"domain_context\":\"Domain: career. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=9\"},{\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"domain\":\"career\",\"member_count\":6,\"member_ids\":[\"4244\",\"4276\",\"4279\",\"4300\",\"4312\",\"4314\"],\"member_signal_ids\":[\"e6678888-fb04-4a80-90d9-7ffd6e90c583\",\"a18e535e-b811-42cc-bf6b-b86fd0c727e0\",\"3ca84624-495e-469d-8c26-1bc7a79d11d7\",\"95307dec-c9a9-4f19-a140-0d0c95c97e2e\",\"4426e74b-4376-40c4-a855-96835a1b9654\",\"a635acd5-8035-43b6-8bb4-c8d6984231fb\"],\"probability_tier\":\"tier_1_high\",\"max_effective_score\":0.7,\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Career activation near 2029-08-08\",\"domain_context\":\"Domain: career. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=15\"},{\"window_start\":\"2029-08-08\",\"window_end\":\"2032-01-21\",\"domain\":\"spirituality\",\"member_count\":1,\"member_ids\":[\"4256\"],\"member_signal_ids\":[\"ec31ae5f-90b1-470d-897f-7b50e038cec4\"],\"probability_tier\":\"tier_1_high\",\"max_effective_score\":0.7,\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Spirituality activation near 2029-08-08\",\"domain_context\":\"Domain: spirituality. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=27\"},{\"window_start\":\"2030-04-17\",\"window_end\":\"2032-09-29\",\"domain\":\"spirituality\",\"member_count\":1,\"member_ids\":[\"4292\"],\"member_signal_ids\":[\"ec31ae5f-90b1-470d-897f-7b50e038cec4\"],\"probability_tier\":\"tier_1_high\",\"max_effective_score\":0.7,\"narrative\":{\"caveat\":\"This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.\",\"headline\":\"Spirituality activation near 2030-04-17\",\"domain_context\":\"Domain: spirituality. Cycle type: 2.5-year cycle.\",\"probability_statement\":\"High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate.\"},\"source_citation\":\"ka_bhavishya_lekha:v1.0:rank=63\"}],\"projection_family_count\":6,\"signal_id_refs\":[\"c1e12a75-a08f-47aa-9454-f8d065e4171a\",\"31e0fdc5-5628-45e8-9d55-a27db7b32489\",\"c9765093-9281-410a-a49b-a61d54869599\",\"988393e8-8552-4b77-9e45-6f1ff06ccc1c\",\"75eec0b0-3f08-4fc8-92ac-f2d0c16866ae\",\"e2547408-bc3f-4d44-aba0-2d2aeb68616d\",\"7eab614e-21b2-405a-992d-5649a5efe1b5\",\"e6678888-fb04-4a80-90d9-7ffd6e90c583\",\"0c4156f5-03ef-42c3-beb8-639b99e8b89d\",\"dc900b4a-9af7-492c-ace9-629b58d17fe8\",\"6f4402d9-0abb-44f4-a6c3-6edd3e3554cf\",\"0a73e215-309b-4b92-8158-71edcf7beeed\",\"893e79b0-ccdd-40c6-a9a4-47365e46a4e6\",\"097c12d8-7f82-4e96-b544-89702269b49e\",\"92601157-01c0-49af-986b-7e76306ab9ab\",\"60a20a5f-a949-4abc-ad8f-a42ec016cc32\",\"99319746-93bc-4b3b-b31f-b37864dd5095\",\"27b7a188-0dda-40b4-88de-d3fefa11c912\",\"7727691d-2294-4317-9288-457bdeb522da\",\"ec31ae5f-90b1-470d-897f-7b50e038cec4\",\"c6180f6a-15ad-4d91-b612-9bd7ff3c1eb5\",\"7d6c0153-9b2a-4f15-b30a-16caafb9d571\",\"a4876a26-add6-4c2a-9835-d0a055a02331\",\"2cf1f2ee-d99b-47b6-8783-4355b5bf6b32\",\"4467a590-ff1c-437d-a328-18bad50162d7\",\"ffd4c875-e171-42ba-b457-25dc201b6045\",\"3bd2c6c7-6216-4b17-80c6-ae9d90734aa0\",\"7e32a8d9-59da-421c-9785-4d0bebc3d90d\",\"54d2dcbd-923d-46de-8bab-0c146b0bf457\",\"52eac1d0-0048-4739-829e-38a20f13ed2d\",\"778af20c-b2ed-4494-a71c-355e37ac9855\",\"c7feaf2e-46c1-4344-b0ed-dee4e957c859\",\"51a3ede6-ef70-48ca-90ca-125485468d46\",\"0e75e465-5e23-48ca-80b3-801480b72419\",\"a18e535e-b811-42cc-bf6b-b86fd0c727e0\",\"3ca84624-495e-469d-8c26-1bc7a79d11d7\"],\"filters\":{\"horizon_years\":5,\"limit\":50},\"provenance\":{\"tables\":[\"kala_bhavishya\"]}},\"is_error\":false,\"projections\":[],\"projections_total\":0,\"projections_returned\":0,\"budget_kb_applied\":40,\"trim_report\":[{\"path\":\"content.projections\",\"original_count\":50,\"kept_count\":25,\"reason\":\"content.projections: trimmed to 25\",\"recover_via\":{\"instrument\":\"kala_projections_get\",\"hint\":\"call kala_projections_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \\\"content.projections\\\"\"}}],\"drill_pointers\":[{\"instrument\":\"kala_projections_get\",\"hint\":\"call kala_projections_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \\\"content.projections\\\"\"}]}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+          "projections": [
+            {
+              "id": "4230",
+              "projection_rank": 1,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2030-04-17",
+              "window_start": "2030-04-17",
+              "window_end": "2032-09-29",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2030-04-17",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2030-04-17 despite favorable circumstances",
+                "evaluation_date": "2030-04-17",
+                "confirm_observable": "Observable within ±21 days of 2030-04-17: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "488867",
+              "signal_id": "c1e12a75-a08f-47aa-9454-f8d065e4171a",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 488867
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=1",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4231",
+              "projection_rank": 2,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2029-08-08",
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2029-08-08",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2029-08-08 despite favorable circumstances",
+                "evaluation_date": "2029-08-08",
+                "confirm_observable": "Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486276",
+              "signal_id": "31e0fdc5-5628-45e8-9d55-a27db7b32489",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486276
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=2",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4232",
+              "projection_rank": 3,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2030-04-17",
+              "window_start": "2030-04-17",
+              "window_end": "2032-09-29",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2030-04-17",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2030-04-17 despite favorable circumstances",
+                "evaluation_date": "2030-04-17",
+                "confirm_observable": "Observable within ±21 days of 2030-04-17: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486291",
+              "signal_id": "c9765093-9281-410a-a49b-a61d54869599",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486291
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=3",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4233",
+              "projection_rank": 4,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2029-08-08",
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2029-08-08",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2029-08-08 despite favorable circumstances",
+                "evaluation_date": "2029-08-08",
+                "confirm_observable": "Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486282",
+              "signal_id": "988393e8-8552-4b77-9e45-6f1ff06ccc1c",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486282
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=4",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4234",
+              "projection_rank": 5,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2029-08-08",
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2029-08-08",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2029-08-08 despite favorable circumstances",
+                "evaluation_date": "2029-08-08",
+                "confirm_observable": "Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486284",
+              "signal_id": "75eec0b0-3f08-4fc8-92ac-f2d0c16866ae",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486284
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=5",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4235",
+              "projection_rank": 6,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2029-08-08",
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2029-08-08",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2029-08-08 despite favorable circumstances",
+                "evaluation_date": "2029-08-08",
+                "confirm_observable": "Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486262",
+              "signal_id": "e2547408-bc3f-4d44-aba0-2d2aeb68616d",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486262
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=6",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4236",
+              "projection_rank": 7,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2030-04-17",
+              "window_start": "2030-04-17",
+              "window_end": "2032-09-29",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2030-04-17",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2030-04-17 despite favorable circumstances",
+                "evaluation_date": "2030-04-17",
+                "confirm_observable": "Observable within ±21 days of 2030-04-17: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486289",
+              "signal_id": "7eab614e-21b2-405a-992d-5649a5efe1b5",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486289
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=7",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4237",
+              "projection_rank": 8,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2029-08-08",
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2029-08-08",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2029-08-08 despite favorable circumstances",
+                "evaluation_date": "2029-08-08",
+                "confirm_observable": "Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486288",
+              "signal_id": "7eab614e-21b2-405a-992d-5649a5efe1b5",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486288
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=8",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4238",
+              "projection_rank": 9,
+              "domain": "career",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2030-04-17",
+              "window_start": "2030-04-17",
+              "window_end": "2032-09-29",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Career activation near 2030-04-17",
+                "domain_context": "Domain: career. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable career event within ±21 days of 2030-04-17 despite favorable circumstances",
+                "evaluation_date": "2030-04-17",
+                "confirm_observable": "Observable within ±21 days of 2030-04-17: significant career event (new role, promotion, venture launch, client gain)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486301",
+              "signal_id": "e6678888-fb04-4a80-90d9-7ffd6e90c583",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486301
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=9",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4239",
+              "projection_rank": 10,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2030-04-17",
+              "window_start": "2030-04-17",
+              "window_end": "2032-09-29",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2030-04-17",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2030-04-17 despite favorable circumstances",
+                "evaluation_date": "2030-04-17",
+                "confirm_observable": "Observable within ±21 days of 2030-04-17: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486281",
+              "signal_id": "0c4156f5-03ef-42c3-beb8-639b99e8b89d",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486281
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=10",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4240",
+              "projection_rank": 11,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2030-04-17",
+              "window_start": "2030-04-17",
+              "window_end": "2032-09-29",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2030-04-17",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2030-04-17 despite favorable circumstances",
+                "evaluation_date": "2030-04-17",
+                "confirm_observable": "Observable within ±21 days of 2030-04-17: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486283",
+              "signal_id": "988393e8-8552-4b77-9e45-6f1ff06ccc1c",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486283
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=11",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4241",
+              "projection_rank": 12,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2029-08-08",
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2029-08-08",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2029-08-08 despite favorable circumstances",
+                "evaluation_date": "2029-08-08",
+                "confirm_observable": "Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486278",
+              "signal_id": "dc900b4a-9af7-492c-ace9-629b58d17fe8",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486278
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=12",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4242",
+              "projection_rank": 13,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2029-08-08",
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2029-08-08",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2029-08-08 despite favorable circumstances",
+                "evaluation_date": "2029-08-08",
+                "confirm_observable": "Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486274",
+              "signal_id": "6f4402d9-0abb-44f4-a6c3-6edd3e3554cf",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486274
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=13",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4243",
+              "projection_rank": 14,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2029-08-08",
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2029-08-08",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2029-08-08 despite favorable circumstances",
+                "evaluation_date": "2029-08-08",
+                "confirm_observable": "Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486268",
+              "signal_id": "0a73e215-309b-4b92-8158-71edcf7beeed",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486268
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=14",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4244",
+              "projection_rank": 15,
+              "domain": "career",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2029-08-08",
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Career activation near 2029-08-08",
+                "domain_context": "Domain: career. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable career event within ±21 days of 2029-08-08 despite favorable circumstances",
+                "evaluation_date": "2029-08-08",
+                "confirm_observable": "Observable within ±21 days of 2029-08-08: significant career event (new role, promotion, venture launch, client gain)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486300",
+              "signal_id": "e6678888-fb04-4a80-90d9-7ffd6e90c583",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486300
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=15",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4245",
+              "projection_rank": 16,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2030-04-17",
+              "window_start": "2030-04-17",
+              "window_end": "2032-09-29",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2030-04-17",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2030-04-17 despite favorable circumstances",
+                "evaluation_date": "2030-04-17",
+                "confirm_observable": "Observable within ±21 days of 2030-04-17: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486181",
+              "signal_id": "893e79b0-ccdd-40c6-a9a4-47365e46a4e6",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486181
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=16",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4246",
+              "projection_rank": 17,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2029-08-08",
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2029-08-08",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2029-08-08 despite favorable circumstances",
+                "evaluation_date": "2029-08-08",
+                "confirm_observable": "Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "489598",
+              "signal_id": "097c12d8-7f82-4e96-b544-89702269b49e",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 489598
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=17",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4247",
+              "projection_rank": 18,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2029-08-08",
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2029-08-08",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2029-08-08 despite favorable circumstances",
+                "evaluation_date": "2029-08-08",
+                "confirm_observable": "Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486290",
+              "signal_id": "c9765093-9281-410a-a49b-a61d54869599",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486290
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=18",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4248",
+              "projection_rank": 19,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2030-04-17",
+              "window_start": "2030-04-17",
+              "window_end": "2032-09-29",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2030-04-17",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2030-04-17 despite favorable circumstances",
+                "evaluation_date": "2030-04-17",
+                "confirm_observable": "Observable within ±21 days of 2030-04-17: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "489599",
+              "signal_id": "097c12d8-7f82-4e96-b544-89702269b49e",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 489599
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=19",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4249",
+              "projection_rank": 20,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2030-04-17",
+              "window_start": "2030-04-17",
+              "window_end": "2032-09-29",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2030-04-17",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2030-04-17 despite favorable circumstances",
+                "evaluation_date": "2030-04-17",
+                "confirm_observable": "Observable within ±21 days of 2030-04-17: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "489584",
+              "signal_id": "92601157-01c0-49af-986b-7e76306ab9ab",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 489584
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=20",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4250",
+              "projection_rank": 21,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2029-08-08",
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2029-08-08",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2029-08-08 despite favorable circumstances",
+                "evaluation_date": "2029-08-08",
+                "confirm_observable": "Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486318",
+              "signal_id": "60a20a5f-a949-4abc-ad8f-a42ec016cc32",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486318
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=21",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4251",
+              "projection_rank": 22,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2029-08-08",
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2029-08-08",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2029-08-08 despite favorable circumstances",
+                "evaluation_date": "2029-08-08",
+                "confirm_observable": "Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486292",
+              "signal_id": "99319746-93bc-4b3b-b31f-b37864dd5095",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486292
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=22",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4252",
+              "projection_rank": 23,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2029-08-08",
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2029-08-08",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2029-08-08 despite favorable circumstances",
+                "evaluation_date": "2029-08-08",
+                "confirm_observable": "Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "489583",
+              "signal_id": "92601157-01c0-49af-986b-7e76306ab9ab",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 489583
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=23",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4253",
+              "projection_rank": 24,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2029-08-08",
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2029-08-08",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2029-08-08 despite favorable circumstances",
+                "evaluation_date": "2029-08-08",
+                "confirm_observable": "Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "486280",
+              "signal_id": "0c4156f5-03ef-42c3-beb8-639b99e8b89d",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 486280
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=24",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            },
+            {
+              "id": "4254",
+              "projection_rank": 25,
+              "domain": "character",
+              "probability_tier": "tier_1_high",
+              "effective_score": 0.7,
+              "peak_date": "2029-08-08",
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2029-08-08",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "falsifiability": {
+                "deny_observable": "No observable character event within ±21 days of 2029-08-08 despite favorable circumstances",
+                "evaluation_date": "2029-08-08",
+                "confirm_observable": "Observable within ±21 days of 2029-08-08: personal transformation (mindset shift, psychological change)",
+                "evaluation_window_days": 21
+              },
+              "convergence_id": "488986",
+              "signal_id": "27b7a188-0dda-40b4-88de-d3fefa11c912",
+              "source_chain": [
+                {
+                  "mode": "C",
+                  "confidence": "moderate",
+                  "convergence_id": 488986
+                }
+              ],
+              "outcome_recorded": false,
+              "outcome_notes": null,
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=25",
+              "computed_at": "2026-08-12 17:09:23.181614+00"
+            }
+          ],
+          "projection_count": 50,
+          "projection_families": [
+            {
+              "window_start": "2030-04-17",
+              "window_end": "2032-09-29",
+              "domain": "character",
+              "member_count": 33,
+              "member_ids": [
+                "4230",
+                "4232",
+                "4236",
+                "4239",
+                "4240",
+                "4245",
+                "4248",
+                "4249",
+                "4255",
+                "4260"
+              ],
+              "member_signal_ids": [
+                "c1e12a75-a08f-47aa-9454-f8d065e4171a",
+                "c9765093-9281-410a-a49b-a61d54869599",
+                "7eab614e-21b2-405a-992d-5649a5efe1b5",
+                "0c4156f5-03ef-42c3-beb8-639b99e8b89d",
+                "988393e8-8552-4b77-9e45-6f1ff06ccc1c",
+                "893e79b0-ccdd-40c6-a9a4-47365e46a4e6",
+                "097c12d8-7f82-4e96-b544-89702269b49e",
+                "92601157-01c0-49af-986b-7e76306ab9ab",
+                "7727691d-2294-4317-9288-457bdeb522da",
+                "a4876a26-add6-4c2a-9835-d0a055a02331"
+              ],
+              "probability_tier": "tier_1_high",
+              "max_effective_score": 0.7,
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2030-04-17",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=1"
+            },
+            {
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "domain": "character",
+              "member_count": 55,
+              "member_ids": [
+                "4231",
+                "4233",
+                "4234",
+                "4235",
+                "4237",
+                "4241",
+                "4242",
+                "4243",
+                "4246",
+                "4247"
+              ],
+              "member_signal_ids": [
+                "31e0fdc5-5628-45e8-9d55-a27db7b32489",
+                "988393e8-8552-4b77-9e45-6f1ff06ccc1c",
+                "75eec0b0-3f08-4fc8-92ac-f2d0c16866ae",
+                "e2547408-bc3f-4d44-aba0-2d2aeb68616d",
+                "7eab614e-21b2-405a-992d-5649a5efe1b5",
+                "dc900b4a-9af7-492c-ace9-629b58d17fe8",
+                "6f4402d9-0abb-44f4-a6c3-6edd3e3554cf",
+                "0a73e215-309b-4b92-8158-71edcf7beeed",
+                "097c12d8-7f82-4e96-b544-89702269b49e",
+                "c9765093-9281-410a-a49b-a61d54869599"
+              ],
+              "probability_tier": "tier_1_high",
+              "max_effective_score": 0.7,
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Character activation near 2029-08-08",
+                "domain_context": "Domain: character. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=2"
+            },
+            {
+              "window_start": "2030-04-17",
+              "window_end": "2032-09-29",
+              "domain": "career",
+              "member_count": 4,
+              "member_ids": [
+                "4238",
+                "4285",
+                "4303",
+                "4311"
+              ],
+              "member_signal_ids": [
+                "e6678888-fb04-4a80-90d9-7ffd6e90c583",
+                "a18e535e-b811-42cc-bf6b-b86fd0c727e0",
+                "95307dec-c9a9-4f19-a140-0d0c95c97e2e",
+                "4426e74b-4376-40c4-a855-96835a1b9654"
+              ],
+              "probability_tier": "tier_1_high",
+              "max_effective_score": 0.7,
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Career activation near 2030-04-17",
+                "domain_context": "Domain: career. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=9"
+            },
+            {
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "domain": "career",
+              "member_count": 6,
+              "member_ids": [
+                "4244",
+                "4276",
+                "4279",
+                "4300",
+                "4312",
+                "4314"
+              ],
+              "member_signal_ids": [
+                "e6678888-fb04-4a80-90d9-7ffd6e90c583",
+                "a18e535e-b811-42cc-bf6b-b86fd0c727e0",
+                "3ca84624-495e-469d-8c26-1bc7a79d11d7",
+                "95307dec-c9a9-4f19-a140-0d0c95c97e2e",
+                "4426e74b-4376-40c4-a855-96835a1b9654",
+                "a635acd5-8035-43b6-8bb4-c8d6984231fb"
+              ],
+              "probability_tier": "tier_1_high",
+              "max_effective_score": 0.7,
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Career activation near 2029-08-08",
+                "domain_context": "Domain: career. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=15"
+            },
+            {
+              "window_start": "2029-08-08",
+              "window_end": "2032-01-21",
+              "domain": "spirituality",
+              "member_count": 1,
+              "member_ids": [
+                "4256"
+              ],
+              "member_signal_ids": [
+                "ec31ae5f-90b1-470d-897f-7b50e038cec4"
+              ],
+              "probability_tier": "tier_1_high",
+              "max_effective_score": 0.7,
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Spirituality activation near 2029-08-08",
+                "domain_context": "Domain: spirituality. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=27"
+            },
+            {
+              "window_start": "2030-04-17",
+              "window_end": "2032-09-29",
+              "domain": "spirituality",
+              "member_count": 1,
+              "member_ids": [
+                "4292"
+              ],
+              "member_signal_ids": [
+                "ec31ae5f-90b1-470d-897f-7b50e038cec4"
+              ],
+              "probability_tier": "tier_1_high",
+              "max_effective_score": 0.7,
+              "narrative": {
+                "caveat": "This projection is probabilistic and calibrated. Record actual outcomes at evaluation_date for calibration refinement.",
+                "headline": "Spirituality activation near 2030-04-17",
+                "domain_context": "Domain: spirituality. Cycle type: 2.5-year cycle.",
+                "probability_statement": "High probability (>=70% convergence, clear activation). Effective convergence: 0.70. Confidence: moderate."
+              },
+              "source_citation": "ka_bhavishya_lekha:v1.0:rank=63"
+            }
+          ],
+          "projection_family_count": 6,
+          "signal_id_refs": [
+            "c1e12a75-a08f-47aa-9454-f8d065e4171a",
+            "31e0fdc5-5628-45e8-9d55-a27db7b32489",
+            "c9765093-9281-410a-a49b-a61d54869599",
+            "988393e8-8552-4b77-9e45-6f1ff06ccc1c",
+            "75eec0b0-3f08-4fc8-92ac-f2d0c16866ae",
+            "e2547408-bc3f-4d44-aba0-2d2aeb68616d",
+            "7eab614e-21b2-405a-992d-5649a5efe1b5",
+            "e6678888-fb04-4a80-90d9-7ffd6e90c583",
+            "0c4156f5-03ef-42c3-beb8-639b99e8b89d",
+            "dc900b4a-9af7-492c-ace9-629b58d17fe8",
+            "6f4402d9-0abb-44f4-a6c3-6edd3e3554cf",
+            "0a73e215-309b-4b92-8158-71edcf7beeed",
+            "893e79b0-ccdd-40c6-a9a4-47365e46a4e6",
+            "097c12d8-7f82-4e96-b544-89702269b49e",
+            "92601157-01c0-49af-986b-7e76306ab9ab",
+            "60a20a5f-a949-4abc-ad8f-a42ec016cc32",
+            "99319746-93bc-4b3b-b31f-b37864dd5095",
+            "27b7a188-0dda-40b4-88de-d3fefa11c912",
+            "7727691d-2294-4317-9288-457bdeb522da",
+            "ec31ae5f-90b1-470d-897f-7b50e038cec4",
+            "c6180f6a-15ad-4d91-b612-9bd7ff3c1eb5",
+            "7d6c0153-9b2a-4f15-b30a-16caafb9d571",
+            "a4876a26-add6-4c2a-9835-d0a055a02331",
+            "2cf1f2ee-d99b-47b6-8783-4355b5bf6b32",
+            "4467a590-ff1c-437d-a328-18bad50162d7",
+            "ffd4c875-e171-42ba-b457-25dc201b6045",
+            "3bd2c6c7-6216-4b17-80c6-ae9d90734aa0",
+            "7e32a8d9-59da-421c-9785-4d0bebc3d90d",
+            "54d2dcbd-923d-46de-8bab-0c146b0bf457",
+            "52eac1d0-0048-4739-829e-38a20f13ed2d",
+            "778af20c-b2ed-4494-a71c-355e37ac9855",
+            "c7feaf2e-46c1-4344-b0ed-dee4e957c859",
+            "51a3ede6-ef70-48ca-90ca-125485468d46",
+            "0e75e465-5e23-48ca-80b3-801480b72419",
+            "a18e535e-b811-42cc-bf6b-b86fd0c727e0",
+            "3ca84624-495e-469d-8c26-1bc7a79d11d7"
+          ],
+          "filters": {
+            "horizon_years": 5,
+            "limit": 50
+          },
+          "provenance": {
+            "tables": [
+              "kala_bhavishya"
+            ]
+          }
+        },
+        "is_error": false,
+        "projections": [],
+        "projections_total": 0,
+        "projections_returned": 0,
+        "budget_kb_applied": 40,
+        "trim_report": [
+          {
+            "path": "content.projections",
+            "original_count": 50,
+            "kept_count": 25,
+            "reason": "content.projections: trimmed to 25",
+            "recover_via": {
+              "instrument": "kala_projections_get",
+              "hint": "call kala_projections_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.projections\""
+            }
+          }
+        ],
+        "drill_pointers": [
+          {
+            "instrument": "kala_projections_get",
+            "hint": "call kala_projections_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.projections\""
+          }
+        ]
+      }
+    }
+  }
+}

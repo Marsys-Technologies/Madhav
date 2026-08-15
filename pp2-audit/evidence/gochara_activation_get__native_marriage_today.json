@@ -1,0 +1,33 @@
+{
+  "tool": "gochara_activation_get",
+  "scenario": "native_event_class_marriage_as_of_2026-08-15",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "as_of_date": "2026-08-15", "event_class": "marriage"},
+  "raw_response_summary": {
+    "window_count": 1,
+    "context_only_rows_in_page": 1,
+    "context_only_note": "1 of 1 served row(s) are era-scale/unresolved CONTEXT, not timing windows (PK-R-1)",
+    "window": {
+      "id": "61360",
+      "temporal_shape": "interval",
+      "window_start": "2024-02-05",
+      "window_end": "2034-01-30",
+      "peak_date": "2024-04-19",
+      "signed_intensity": 0.349999,
+      "resolution_disclosure": {"is_timing_window": false},
+      "activity_terms_contributing_planets": ["Mars", "Sun", "Jupiter", "Venus", "Moon"],
+      "no_rahu_ketu_contribution": true
+    },
+    "cross_check_current_nodal_positions_from_kala_now_get": {
+      "as_of_date": "2026-08-15",
+      "Rahu": {"transit_sign_name": "Aquarius", "house_from_lagna": 11},
+      "Ketu": {"transit_sign_name": "Leo", "house_from_lagna": 5},
+      "natal_7th_house_sign": "Libra",
+      "natal_Venus_sign_house": "Sagittarius (9th house), 7th-lord + marriage karaka",
+      "classical_aspect_math": {
+        "Rahu_in_Aquarius_to_Libra": "Aquarius is exactly 9 signs counted from itself to Libra (Aquarius=1,Pisces=2,Aries=3,Taurus=4,Gemini=5,Cancer=6,Leo=7,Virgo=8,Libra=9) -> a graha in Aquarius casts a classical 9th-house (trikona) drishti onto Libra, the natal 7th house.",
+        "Ketu_in_Leo_to_Venus_Sagittarius": "Leo is exactly 5 signs counted from itself to Sagittarius (Leo=1,Virgo=2,Libra=3,Scorpio=4,Sagittarius=5) -> a graha in Leo casts a classical 5th-house (trikona) drishti onto Sagittarius, natal Venus (7th lord + karaka)."
+      },
+      "conclusion": "Both nodes are RIGHT NOW positioned to cast real classical 5th/9th trikona aspects onto the two primary marriage-timing anchors (7th house cusp and 7th-lord/karaka Venus), yet neither gochara_activation_get nor gochara_forecast_get surfaces any Rahu/Ketu contribution to the marriage event class for this date or window -- consistent with, and directly explained by, the F-20 truncation at platform/python-sidecar/services/gochara_grammar/primitives.py:187-194 (_DEFAULT_DRISHTI_DEG = [180.0], applied to every graha not in SPECIAL_DRISHTI_DEG which only lists Mars/Jupiter/Saturn -- Rahu/Ketu fall through to the 7th-only default)."
+    }
+  }
+}

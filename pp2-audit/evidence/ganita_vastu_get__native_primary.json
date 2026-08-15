@@ -1,0 +1,132 @@
+{
+  "tool": "ganita_vastu_get",
+  "scenario": "native_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"rows\":[{\"id\":2325,\"graha\":\"Jupiter\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"direction\":\"Northeast\",\"condition_score\":0.77,\"dignity_d1\":\"moolatrikona\",\"direction_impact\":\"strengthened\",\"indication_tier\":\"traditional_vastu\",\"classical_citation\":\"Vastu Shastra (Mayamata Ch.6)\"},{\"id\":2323,\"graha\":\"Mars\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"direction\":\"South\",\"condition_score\":0.42,\"dignity_d1\":\"neutral_sign\",\"direction_impact\":\"neutral\",\"indication_tier\":\"traditional_vastu\",\"classical_citation\":\"Vastu Shastra (Mayamata Ch.6)\"},{\"id\":2324,\"graha\":\"Mercury\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"direction\":\"North\",\"condition_score\":0.445,\"dignity_d1\":\"neutral_sign\",\"direction_impact\":\"neutral\",\"indication_tier\":\"traditional_vastu\",\"classical_citation\":\"Vastu Shastra (Mayamata Ch.6)\"},{\"id\":2322,\"graha\":\"Moon\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"direction\":\"Northwest\",\"condition_score\":0.395,\"dignity_d1\":\"neutral_sign\",\"direction_impact\":\"weakened\",\"indication_tier\":\"traditional_vastu\",\"classical_citation\":\"Vastu Shastra (Mayamata Ch.6)\"},{\"id\":2328,\"graha\":\"Rahu\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"direction\":\"Southwest\",\"condition_score\":0.775,\"dignity_d1\":\"exalted\",\"direction_impact\":\"strengthened\",\"indication_tier\":\"traditional_vastu\",\"classical_citation\":\"Vastu Shastra (Mayamata Ch.6)\"},{\"id\":2327,\"graha\":\"Saturn\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"direction\":\"West\",\"condition_score\":0.775,\"dignity_d1\":\"exalted\",\"direction_impact\":\"strengthened\",\"indication_tier\":\"traditional_vastu\",\"classical_citation\":\"Vastu Shastra (Mayamata Ch.6)\"},{\"id\":2321,\"graha\":\"Sun\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"direction\":\"East\",\"condition_score\":0.26,\"dignity_d1\":\"enemy_sign\",\"direction_impact\":\"weakened\",\"indication_tier\":\"traditional_vastu\",\"classical_citation\":\"Vastu Shastra (Mayamata Ch.6)\"},{\"id\":2326,\"graha\":\"Venus\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"direction\":\"Southeast\",\"condition_score\":0.42,\"dignity_d1\":\"neutral_sign\",\"direction_impact\":\"neutral\",\"indication_tier\":\"traditional_vastu\",\"classical_citation\":\"Vastu Shastra (Mayamata Ch.6)\"}],\"count\":8,\"total_matching\":8,\"more_available\":false,\"filters\":{\"graha\":null,\"direction\":null,\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"indication_tier\":null,\"limit\":10},\"provenance\":{\"tables\":[\"ga_vastu_planet_direction_map\"],\"source\":\"L1 Gaṇita vastu direction map; served chart-scoped.\"}},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "rows": [
+            {
+              "id": 2325,
+              "graha": "Jupiter",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "direction": "Northeast",
+              "condition_score": 0.77,
+              "dignity_d1": "moolatrikona",
+              "direction_impact": "strengthened",
+              "indication_tier": "traditional_vastu",
+              "classical_citation": "Vastu Shastra (Mayamata Ch.6)"
+            },
+            {
+              "id": 2323,
+              "graha": "Mars",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "direction": "South",
+              "condition_score": 0.42,
+              "dignity_d1": "neutral_sign",
+              "direction_impact": "neutral",
+              "indication_tier": "traditional_vastu",
+              "classical_citation": "Vastu Shastra (Mayamata Ch.6)"
+            },
+            {
+              "id": 2324,
+              "graha": "Mercury",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "direction": "North",
+              "condition_score": 0.445,
+              "dignity_d1": "neutral_sign",
+              "direction_impact": "neutral",
+              "indication_tier": "traditional_vastu",
+              "classical_citation": "Vastu Shastra (Mayamata Ch.6)"
+            },
+            {
+              "id": 2322,
+              "graha": "Moon",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "direction": "Northwest",
+              "condition_score": 0.395,
+              "dignity_d1": "neutral_sign",
+              "direction_impact": "weakened",
+              "indication_tier": "traditional_vastu",
+              "classical_citation": "Vastu Shastra (Mayamata Ch.6)"
+            },
+            {
+              "id": 2328,
+              "graha": "Rahu",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "direction": "Southwest",
+              "condition_score": 0.775,
+              "dignity_d1": "exalted",
+              "direction_impact": "strengthened",
+              "indication_tier": "traditional_vastu",
+              "classical_citation": "Vastu Shastra (Mayamata Ch.6)"
+            },
+            {
+              "id": 2327,
+              "graha": "Saturn",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "direction": "West",
+              "condition_score": 0.775,
+              "dignity_d1": "exalted",
+              "direction_impact": "strengthened",
+              "indication_tier": "traditional_vastu",
+              "classical_citation": "Vastu Shastra (Mayamata Ch.6)"
+            },
+            {
+              "id": 2321,
+              "graha": "Sun",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "direction": "East",
+              "condition_score": 0.26,
+              "dignity_d1": "enemy_sign",
+              "direction_impact": "weakened",
+              "indication_tier": "traditional_vastu",
+              "classical_citation": "Vastu Shastra (Mayamata Ch.6)"
+            },
+            {
+              "id": 2326,
+              "graha": "Venus",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "direction": "Southeast",
+              "condition_score": 0.42,
+              "dignity_d1": "neutral_sign",
+              "direction_impact": "neutral",
+              "indication_tier": "traditional_vastu",
+              "classical_citation": "Vastu Shastra (Mayamata Ch.6)"
+            }
+          ],
+          "count": 8,
+          "total_matching": 8,
+          "more_available": false,
+          "filters": {
+            "graha": null,
+            "direction": null,
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "indication_tier": null,
+            "limit": 10
+          },
+          "provenance": {
+            "tables": [
+              "ga_vastu_planet_direction_map"
+            ],
+            "source": "L1 Gaṇita vastu direction map; served chart-scoped."
+          }
+        },
+        "is_error": false
+      }
+    }
+  }
+}

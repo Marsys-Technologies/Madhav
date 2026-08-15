@@ -1,0 +1,24 @@
+{
+  "tool": "mimamsa_lel_query",
+  "scenario": "primary",
+  "args": {
+    "limit": 10
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":false,\"error\":\"Error: [alias] primitive 'lel_query' failed (400)\",\"tool\":\"mimamsa_lel_query\"}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "ok": false,
+        "error": "Error: [alias] primitive 'lel_query' failed (400)",
+        "tool": "mimamsa_lel_query"
+      }
+    },
+    "isError": true
+  }
+}

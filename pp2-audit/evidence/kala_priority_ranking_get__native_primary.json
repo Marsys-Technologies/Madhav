@@ -1,0 +1,395 @@
+{
+  "tool": "kala_priority_ranking_get",
+  "scenario": "native_primary",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "limit": 10,
+    "offset": 0
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"date_from\":\"2026-08-15\",\"date_to\":\"2026-11-13\",\"domain_filter\":null,\"ranked_signals\":[{\"signal_id\":\"df5c4452-6e42-4bae-a6a2-15f3616a3703\",\"signal_headline_text\":\"SAT: arudha pada: sign = Aquarius [ga_sensitive]\",\"computed_salience\":1.890945,\"domains_affected_array\":[\"career\",\"wealth\",\"relationship\",\"residence\",\"progeny\",\"travel\"],\"signal_type_class\":\"karaka_alignment\",\"activation_strength\":1,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"DISPOSITOR_RELATIONAL\",\"neutral_dignity_downranked\":false,\"priority_score\":1.890945},{\"signal_id\":\"fdc3867e-f04a-47df-bbe7-3fa8400ff125\",\"signal_headline_text\":\"ashtakavarga bindu per varga: D16 = 4 [ga_structural]\",\"computed_salience\":1.377688,\"domains_affected_array\":[\"character\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":1,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.377688},{\"signal_id\":\"95c985a5-ca90-4bdd-87af-a823f926c18c\",\"signal_headline_text\":\"graha centrality: degree centrality = 4 [ga_structural]\",\"computed_salience\":1.296648,\"domains_affected_array\":[\"character\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":1,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.296648},{\"signal_id\":\"dcab3207-5f94-4b54-a6cf-ab5deaef272e\",\"signal_headline_text\":\"SAT: graha nakshatra join: yoni en = Tiger [ga_sensitive]\",\"computed_salience\":1.296648,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":1,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.296648},{\"signal_id\":\"f6e55799-0ef8-47a3-9034-17ffd38e05fc\",\"signal_headline_text\":\"SAT: aspect parashari given: house 4 = 1 [ga_structural]\",\"computed_salience\":1.296648,\"domains_affected_array\":[\"career\",\"relationship\",\"wealth\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":1,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.296648},{\"signal_id\":\"98a49afd-b11c-469d-a429-56522f2de267\",\"signal_headline_text\":\"SAT: graha nakshatra join: pakshi = Sparrow [ga_sensitive]\",\"computed_salience\":1.296648,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":1,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.296648},{\"signal_id\":\"05312dc7-4166-47fc-86c4-2c43cc7c5975\",\"signal_headline_text\":\"graha cheshta bala per varga: D14 = floored: no_canonical_per_varga_method [ga_structural]\",\"computed_salience\":1.296648,\"domains_affected_array\":[\"character\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":1,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.296648},{\"signal_id\":\"362e20cf-90e4-4f2c-ad32-eacbc589e149\",\"signal_headline_text\":\"ashtakavarga bindu per varga: D45 = 3 [ga_structural]\",\"computed_salience\":1.285843,\"domains_affected_array\":[\"character\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":1,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.285843},{\"signal_id\":\"e1e8fcd1-837e-4e45-8526-4fb958517549\",\"signal_headline_text\":\"kp planet significations: star lord = Mercury [ga_sensitive]\",\"computed_salience\":1.2075,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"signal_type_class\":\"tradition_specific\",\"activation_strength\":1,\"window_start\":\"2010-08-18\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"DIGNITY\",\"neutral_dignity_downranked\":false,\"priority_score\":1.2075},{\"signal_id\":\"168590ab-479b-49e4-9b0b-5f693542fc48\",\"signal_headline_text\":\"SAT: sun derived upagraha: sign = Capricorn [ga_sensitive]\",\"computed_salience\":2.16108,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.08054},{\"signal_id\":\"483e332a-a168-4cf1-b93b-0ad55d77d91c\",\"signal_headline_text\":\"SAT: saham position: sign = Capricorn [ga_sensitive]\",\"computed_salience\":2.16108,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.08054},{\"signal_id\":\"2a094b77-7265-4df1-a5fd-94c00a10befd\",\"signal_headline_text\":\"SAT: graha nakshatra join: nakshatra id ref = 16 [ga_sensitive]\",\"computed_salience\":2.16108,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.08054},{\"signal_id\":\"d49da2e1-4b63-45f1-920e-c274df3ded21\",\"signal_headline_text\":\"SAT: upagraha position: sign = Capricorn [ga_sensitive]\",\"computed_salience\":2.16108,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.08054},{\"signal_id\":\"ebb1c88a-8141-4c7e-860b-54ac293a06ac\",\"signal_headline_text\":\"SAT: esoteric point shiva: sign = Aquarius [ga_sensitive]\",\"computed_salience\":2.16108,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.08054},{\"signal_id\":\"aab518b5-9b81-4980-9dd7-8a35660bb4fd\",\"signal_headline_text\":\"SAT: bhrigu nadi point: sign = Capricorn [ga_sensitive]\",\"computed_salience\":2.16108,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.08054},{\"signal_id\":\"c31d3e74-2f44-41a6-8025-b32e44dbe1e2\",\"signal_headline_text\":\"SAT: upagraha position: sign = Aquarius [ga_sensitive]\",\"computed_salience\":2.16108,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.08054},{\"signal_id\":\"7e1dc960-dbf3-4073-af79-91b7e3fd1515\",\"signal_headline_text\":\"SAT: aprakasha position: sign = Capricorn [ga_sensitive]\",\"computed_salience\":2.16108,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.08054},{\"signal_id\":\"697e1f1b-f928-4249-bf64-d391c470189f\",\"signal_headline_text\":\"SAT: bhrigu nadi point: sign = Aquarius [ga_sensitive]\",\"computed_salience\":2.16108,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.08054},{\"signal_id\":\"2dff20cd-12f5-492e-a88e-3fef42547eca\",\"signal_headline_text\":\"SAT: saham position: sign = Aquarius [ga_sensitive]\",\"computed_salience\":2.16108,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.08054},{\"signal_id\":\"6f934483-e74f-42b4-b449-aa03c2ca8b84\",\"signal_headline_text\":\"SAT: graha pada join: pada number ref = 1 [ga_sensitive]\",\"computed_salience\":2.16108,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2024-12-08\",\"window_end\":\"2027-08-18\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":1.08054}],\"signal_count\":20,\"signal_id_refs\":[\"df5c4452-6e42-4bae-a6a2-15f3616a3703\",\"fdc3867e-f04a-47df-bbe7-3fa8400ff125\",\"95c985a5-ca90-4bdd-87af-a823f926c18c\",\"dcab3207-5f94-4b54-a6cf-ab5deaef272e\",\"f6e55799-0ef8-47a3-9034-17ffd38e05fc\",\"98a49afd-b11c-469d-a429-56522f2de267\",\"05312dc7-4166-47fc-86c4-2c43cc7c5975\",\"362e20cf-90e4-4f2c-ad32-eacbc589e149\",\"e1e8fcd1-837e-4e45-8526-4fb958517549\",\"168590ab-479b-49e4-9b0b-5f693542fc48\",\"483e332a-a168-4cf1-b93b-0ad55d77d91c\",\"2a094b77-7265-4df1-a5fd-94c00a10befd\",\"d49da2e1-4b63-45f1-920e-c274df3ded21\",\"ebb1c88a-8141-4c7e-860b-54ac293a06ac\",\"aab518b5-9b81-4980-9dd7-8a35660bb4fd\",\"c31d3e74-2f44-41a6-8025-b32e44dbe1e2\",\"7e1dc960-dbf3-4073-af79-91b7e3fd1515\",\"697e1f1b-f928-4249-bf64-d391c470189f\",\"2dff20cd-12f5-492e-a88e-3fef42547eca\",\"6f934483-e74f-42b4-b449-aa03c2ca8b84\"],\"neutral_dignity_downranked_count\":0},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "date_from": "2026-08-15",
+          "date_to": "2026-11-13",
+          "domain_filter": null,
+          "ranked_signals": [
+            {
+              "signal_id": "df5c4452-6e42-4bae-a6a2-15f3616a3703",
+              "signal_headline_text": "SAT: arudha pada: sign = Aquarius [ga_sensitive]",
+              "computed_salience": 1.890945,
+              "domains_affected_array": [
+                "career",
+                "wealth",
+                "relationship",
+                "residence",
+                "progeny",
+                "travel"
+              ],
+              "signal_type_class": "karaka_alignment",
+              "activation_strength": 1,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "DISPOSITOR_RELATIONAL",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.890945
+            },
+            {
+              "signal_id": "fdc3867e-f04a-47df-bbe7-3fa8400ff125",
+              "signal_headline_text": "ashtakavarga bindu per varga: D16 = 4 [ga_structural]",
+              "computed_salience": 1.377688,
+              "domains_affected_array": [
+                "character",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": 1,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.377688
+            },
+            {
+              "signal_id": "95c985a5-ca90-4bdd-87af-a823f926c18c",
+              "signal_headline_text": "graha centrality: degree centrality = 4 [ga_structural]",
+              "computed_salience": 1.296648,
+              "domains_affected_array": [
+                "character",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": 1,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.296648
+            },
+            {
+              "signal_id": "dcab3207-5f94-4b54-a6cf-ab5deaef272e",
+              "signal_headline_text": "SAT: graha nakshatra join: yoni en = Tiger [ga_sensitive]",
+              "computed_salience": 1.296648,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": 1,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.296648
+            },
+            {
+              "signal_id": "f6e55799-0ef8-47a3-9034-17ffd38e05fc",
+              "signal_headline_text": "SAT: aspect parashari given: house 4 = 1 [ga_structural]",
+              "computed_salience": 1.296648,
+              "domains_affected_array": [
+                "career",
+                "relationship",
+                "wealth"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": 1,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.296648
+            },
+            {
+              "signal_id": "98a49afd-b11c-469d-a429-56522f2de267",
+              "signal_headline_text": "SAT: graha nakshatra join: pakshi = Sparrow [ga_sensitive]",
+              "computed_salience": 1.296648,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": 1,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.296648
+            },
+            {
+              "signal_id": "05312dc7-4166-47fc-86c4-2c43cc7c5975",
+              "signal_headline_text": "graha cheshta bala per varga: D14 = floored: no_canonical_per_varga_method [ga_structural]",
+              "computed_salience": 1.296648,
+              "domains_affected_array": [
+                "character",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": 1,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.296648
+            },
+            {
+              "signal_id": "362e20cf-90e4-4f2c-ad32-eacbc589e149",
+              "signal_headline_text": "ashtakavarga bindu per varga: D45 = 3 [ga_structural]",
+              "computed_salience": 1.285843,
+              "domains_affected_array": [
+                "character",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": 1,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.285843
+            },
+            {
+              "signal_id": "e1e8fcd1-837e-4e45-8526-4fb958517549",
+              "signal_headline_text": "kp planet significations: star lord = Mercury [ga_sensitive]",
+              "computed_salience": 1.2075,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "signal_type_class": "tradition_specific",
+              "activation_strength": 1,
+              "window_start": "2010-08-18",
+              "window_end": "2027-08-18",
+              "trigger_type": "DIGNITY",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.2075
+            },
+            {
+              "signal_id": "168590ab-479b-49e4-9b0b-5f693542fc48",
+              "signal_headline_text": "SAT: sun derived upagraha: sign = Capricorn [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.08054
+            },
+            {
+              "signal_id": "483e332a-a168-4cf1-b93b-0ad55d77d91c",
+              "signal_headline_text": "SAT: saham position: sign = Capricorn [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.08054
+            },
+            {
+              "signal_id": "2a094b77-7265-4df1-a5fd-94c00a10befd",
+              "signal_headline_text": "SAT: graha nakshatra join: nakshatra id ref = 16 [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.08054
+            },
+            {
+              "signal_id": "d49da2e1-4b63-45f1-920e-c274df3ded21",
+              "signal_headline_text": "SAT: upagraha position: sign = Capricorn [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.08054
+            },
+            {
+              "signal_id": "ebb1c88a-8141-4c7e-860b-54ac293a06ac",
+              "signal_headline_text": "SAT: esoteric point shiva: sign = Aquarius [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.08054
+            },
+            {
+              "signal_id": "aab518b5-9b81-4980-9dd7-8a35660bb4fd",
+              "signal_headline_text": "SAT: bhrigu nadi point: sign = Capricorn [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.08054
+            },
+            {
+              "signal_id": "c31d3e74-2f44-41a6-8025-b32e44dbe1e2",
+              "signal_headline_text": "SAT: upagraha position: sign = Aquarius [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.08054
+            },
+            {
+              "signal_id": "7e1dc960-dbf3-4073-af79-91b7e3fd1515",
+              "signal_headline_text": "SAT: aprakasha position: sign = Capricorn [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.08054
+            },
+            {
+              "signal_id": "697e1f1b-f928-4249-bf64-d391c470189f",
+              "signal_headline_text": "SAT: bhrigu nadi point: sign = Aquarius [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.08054
+            },
+            {
+              "signal_id": "2dff20cd-12f5-492e-a88e-3fef42547eca",
+              "signal_headline_text": "SAT: saham position: sign = Aquarius [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.08054
+            },
+            {
+              "signal_id": "6f934483-e74f-42b4-b449-aa03c2ca8b84",
+              "signal_headline_text": "SAT: graha pada join: pada number ref = 1 [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.08054
+            }
+          ],
+          "signal_count": 20,
+          "signal_id_refs": [
+            "df5c4452-6e42-4bae-a6a2-15f3616a3703",
+            "fdc3867e-f04a-47df-bbe7-3fa8400ff125",
+            "95c985a5-ca90-4bdd-87af-a823f926c18c",
+            "dcab3207-5f94-4b54-a6cf-ab5deaef272e",
+            "f6e55799-0ef8-47a3-9034-17ffd38e05fc",
+            "98a49afd-b11c-469d-a429-56522f2de267",
+            "05312dc7-4166-47fc-86c4-2c43cc7c5975",
+            "362e20cf-90e4-4f2c-ad32-eacbc589e149",
+            "e1e8fcd1-837e-4e45-8526-4fb958517549",
+            "168590ab-479b-49e4-9b0b-5f693542fc48",
+            "483e332a-a168-4cf1-b93b-0ad55d77d91c",
+            "2a094b77-7265-4df1-a5fd-94c00a10befd",
+            "d49da2e1-4b63-45f1-920e-c274df3ded21",
+            "ebb1c88a-8141-4c7e-860b-54ac293a06ac",
+            "aab518b5-9b81-4980-9dd7-8a35660bb4fd",
+            "c31d3e74-2f44-41a6-8025-b32e44dbe1e2",
+            "7e1dc960-dbf3-4073-af79-91b7e3fd1515",
+            "697e1f1b-f928-4249-bf64-d391c470189f",
+            "2dff20cd-12f5-492e-a88e-3fef42547eca",
+            "6f934483-e74f-42b4-b449-aa03c2ca8b84"
+          ],
+          "neutral_dignity_downranked_count": 0
+        },
+        "is_error": false
+      }
+    }
+  }
+}

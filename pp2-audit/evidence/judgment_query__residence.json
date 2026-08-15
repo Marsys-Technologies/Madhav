@@ -1,0 +1,13 @@
+{
+  "tool": "judgment_query",
+  "scenario": "residence",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "residence"},
+  "timing": {"before_ms": 1786801100954, "after_ms": 1786801107578, "latency_ms": 6624},
+  "is_error": false,
+  "raw_response_summary": {
+    "verdict": {"domain": "residence", "domain_label": "Home / Residence / Property", "bhava": 4, "verdict_grade": "contested", "composite_score": -2.22, "operative_varga": "D4"},
+    "gochara_sweep_domain": "other (domain_covered=false)",
+    "judgment_flags_count": 6
+  },
+  "note": "Fields copied verbatim from actual tool response; full payload truncated for evidence-file size, not fabricated."
+}

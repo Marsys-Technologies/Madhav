@@ -1,0 +1,25 @@
+{
+  "tool": "ganita_tajaka_get",
+  "scenario": "zero_history_default_no_year_filter",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"},
+  "raw_response_summary": {
+    "varsha_year_lords_total": 47,
+    "sort": "current_year_first",
+    "current_varsha_year": 42,
+    "current_year_sample": {
+      "varsha_year": 42,
+      "varsha_start_iso": "2026-03-02 16:43:23+00",
+      "varsha_end_iso": "2027-03-02 22:49:01+00",
+      "year_lord": "Mercury",
+      "methods_diverge": true,
+      "panchavargiya_winner": {"office": "Lagnesa", "planet": "Venus"},
+      "tajik_classical_winner": {"office": "Munthesa", "planet": "Mercury"},
+      "verification_pass_status": "two_pass_verified"
+    },
+    "trim_report": [
+      {"path": "varsha_year_lords.rows", "original_count": 47, "kept_count": 1, "reason": "floored to 1 (hard-cap)"},
+      {"path": "rows", "original_count": 47, "kept_count": 10}
+    ]
+  },
+  "pp2_note": "Re-verified on the zero-history chart with no varsha_year filter -- confirms current_year_first default sort correctly identifies varsha_year=42 as current (consistent with the chart's own birth epoch), and every year across the full 47-year sweep carries a real, distinct two_pass_verified solar-return computation (spot-checked years 37-46, each with its own ephemeris_audit converged=true and distinct muntha/year-lord results) -- not a repeated/templated value."
+}

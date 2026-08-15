@@ -1,0 +1,34 @@
+{
+  "tool": "kala_bundle_get",
+  "scenario": "revalid_both_charts",
+  "note": "Re-verification with valid schema args: chart_id + date_range {start,end} (limit/offset removed, not in schema).",
+  "calls": [
+    {
+      "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "date_range": {"start": "2020-01-01", "end": "2026-08-15"}},
+      "raw_response_excerpt": {
+        "timeline_excerpt": [{"system_id": "vimshottari", "level_n": 1, "lord_graha": "Mercury", "period_start": "2010-08-18", "period_end": "2027-08-18", "quality": {"domains": ["education", "commerce", "communication", "wealth"]}}],
+        "snapshot": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "snapshot_date": "2026-08-13",
+          "active_dasha": {"md_lord": "Mercury", "ad_lord": "Saturn", "ad_start": "2024-12-08", "ad_end": "2027-08-18"},
+          "kala_readiness": {"score": 0.7, "interpretation": "auspicious_strong"},
+          "kala_summary": "Kāla-Darshana confluence active today: net_label=auspicious_strong, effective_score=0.7."
+        },
+        "provenance_envelope": {"timeline_count": 5, "convergence_count": 50, "obstruction_count": 50, "snapshot_included": true}
+      }
+    },
+    {
+      "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "date_range": {"start": "2020-01-01", "end": "2026-08-15"}},
+      "raw_response_excerpt": {
+        "timeline_excerpt": [{"system_id": "vimshottari", "level_n": 1, "lord_graha": "Saturn", "period_start": "2010-04-23", "period_end": "2029-04-23", "quality": {"domains": ["karma", "career", "longevity", "health"]}}],
+        "snapshot": {
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "snapshot_date": "2026-08-13",
+          "active_dasha": {"md_lord": "Saturn", "ad_lord": "Rahu", "ad_start": "2023-12-04", "ad_end": "2026-10-10"},
+          "kala_readiness": {"score": null, "interpretation": "No kala_darshana confluence row active for today — chart has no computed windows covering the current date."},
+          "kala_summary": "No active Kāla-Darshana confluence window for today."
+        },
+        "provenance_envelope": {"timeline_count": 6, "convergence_count": 50, "obstruction_count": 50, "snapshot_included": true},
+        "note": "Honest degradation confirmed: kala_readiness.score is null (not fabricated) with an explicit reason, for the zero-history chart."
+      }
+    }
+  ]
+}

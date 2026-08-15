@@ -1,0 +1,317 @@
+{
+  "tool": "ganita_yogas_get",
+  "scenario": "native_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"envelope_version\":\"v1\",\"tool\":\"ganita_yogas_get\",\"verdict\":null,\"ranking_basis\":null,\"grounding\":{\"fact_ids\":[],\"citations\":[],\"grounding_score\":null},\"pagination\":{\"offset\":0,\"limit\":10,\"total\":11,\"next_cursor\":null,\"more_available\":true},\"drill_pointers\":[],\"judgment_flags\":[],\"insight_type\":null,\"query_class\":\"per_chart_structural\",\"content\":{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"categories\":[\"yoga_fires\",\"yoga_label\",\"dosha_fires\",\"dosha_label\",\"bhadra_flag\",\"panchaka_flag\"],\"rows\":[{\"fact_id\":\"82b4dc48543929db\",\"fact_category\":\"bhadra_flag\",\"fact_subject\":\"BHADRA_FLAG_BIRTH\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"active_at_birth_flag\",\"fact_value_num\":null,\"fact_value_text\":\"false\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"bhadra_flag.BHADRA_FLAG_BIRTH.active_at_birth_flag@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=panchanga_engine/2.0.0-P2\"},{\"fact_id\":\"2ed777c21b86b03d\",\"fact_category\":\"dosha_label\",\"fact_subject\":\"manglik\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"dosha_name\",\"fact_value_num\":null,\"fact_value_text\":\"Manglik Dosha\",\"fact_value_jsonb\":{\"fires\":true,\"dosha_group\":\"graha_placement\",\"fire_reason\":\"bespoke_detector:manglik\",\"catalog_only\":false,\"uncatalogued\":false,\"bhanga_active\":false,\"source_chunk_ids\":[],\"bhanga_rule_fired\":null,\"classical_citations\":[{\"text_id\":\"bphs\"}],\"cancellation_na_reason\":null,\"constituent_facts_array\":[\"61ff5df8420a8b45\",\"6a2dd6c96896f8dd\"],\"cancellation_citation_ref\":\"bphs:manglik:own_exalt_or_jupiter_aspect_or_sign_specific_cancels\"},\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"dosha_label.manglik.dosha_name@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"cf76d73cf7edcf88\",\"fact_category\":\"panchaka_flag\",\"fact_subject\":\"PANCHAKA_FLAG_BIRTH\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"active_at_birth_flag\",\"fact_value_num\":null,\"fact_value_text\":\"true\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"panchaka_flag.PANCHAKA_FLAG_BIRTH.active_at_birth_flag@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=panchanga_engine/2.0.0-P2\"},{\"fact_id\":\"c80b5a445ffb0064\",\"fact_category\":\"panchaka_flag\",\"fact_subject\":\"PANCHAKA_FLAG_BIRTH\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"nakshatra_position\",\"fact_value_num\":null,\"fact_value_text\":\"Purva Bhadrapada\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"panchaka_flag.PANCHAKA_FLAG_BIRTH.nakshatra_position@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=panchanga_engine/2.0.0-P2\"},{\"fact_id\":\"a2e2f73d9daa2174\",\"fact_category\":\"yoga_label\",\"fact_subject\":\"anapha\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"yoga_name\",\"fact_value_num\":null,\"fact_value_text\":\"Anapha Yoga\",\"fact_value_jsonb\":{\"yoga_group\":\"other\",\"fire_reason\":\"requires_pass\",\"uncatalogued\":false,\"source_chunk_ids\":[],\"classical_citations\":[{\"chapter\":30,\"text_id\":\"bphs\"},{\"chapter\":38,\"text_id\":\"saravali\"}],\"constituent_facts_array\":[\"f64dce55043aca0d\"]},\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"yoga_label.anapha.yoga_name@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"f49e89728bf340a1\",\"fact_category\":\"yoga_label\",\"fact_subject\":\"gola\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"yoga_name\",\"fact_value_num\":null,\"fact_value_text\":\"Gola Yoga\",\"fact_value_jsonb\":{\"yoga_group\":\"other\",\"fire_reason\":\"4_distinct_signs\",\"uncatalogued\":false,\"source_chunk_ids\":[],\"classical_citations\":[{\"chapter\":35,\"text_id\":\"bphs\"}],\"constituent_facts_array\":[\"f64dce55043aca0d\"]},\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"yoga_label.gola.yoga_name@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"3b87a079c016ef87\",\"fact_category\":\"yoga_label\",\"fact_subject\":\"kedara\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"yoga_name\",\"fact_value_num\":null,\"fact_value_text\":\"Kedara Yoga\",\"fact_value_jsonb\":{\"yoga_group\":\"other\",\"fire_reason\":\"4_distinct_signs\",\"uncatalogued\":false,\"source_chunk_ids\":[],\"classical_citations\":[{\"chapter\":35,\"text_id\":\"bphs\"}],\"constituent_facts_array\":[\"f64dce55043aca0d\"]},\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"yoga_label.kedara.yoga_name@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"0a31d24add44a66d\",\"fact_category\":\"yoga_label\",\"fact_subject\":\"sasa\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"yoga_name\",\"fact_value_num\":null,\"fact_value_text\":\"Sasa Yoga\",\"fact_value_jsonb\":{\"yoga_group\":\"pancha_mahapurusha\",\"fire_reason\":\"requires_pass\",\"uncatalogued\":false,\"source_chunk_ids\":[],\"classical_citations\":[{\"chapter\":75,\"text_id\":\"bphs\"},{\"chapter\":27,\"text_id\":\"saravali\"}],\"constituent_facts_array\":[\"b29c679a755deeea\"]},\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"yoga_label.sasa.yoga_name@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"cc2b304e457bbd8d\",\"fact_category\":\"yoga_label\",\"fact_subject\":\"shoola\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"yoga_name\",\"fact_value_num\":null,\"fact_value_text\":\"Shoola Yoga\",\"fact_value_jsonb\":{\"yoga_group\":\"other\",\"fire_reason\":\"4_distinct_signs\",\"uncatalogued\":false,\"source_chunk_ids\":[],\"classical_citations\":[{\"chapter\":35,\"text_id\":\"bphs\"}],\"constituent_facts_array\":[\"f64dce55043aca0d\"]},\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"yoga_label.shoola.yoga_name@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"c2e12cc6983dba8e\",\"fact_category\":\"yoga_label\",\"fact_subject\":\"vasi\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"yoga_name\",\"fact_value_num\":null,\"fact_value_text\":\"Vasi Yoga\",\"fact_value_jsonb\":{\"yoga_group\":\"other\",\"fire_reason\":\"requires_pass\",\"uncatalogued\":false,\"source_chunk_ids\":[],\"classical_citations\":[{\"chapter\":30,\"text_id\":\"bphs\"},{\"chapter\":41,\"text_id\":\"saravali\"}],\"constituent_facts_array\":[\"f64dce55043aca0d\"]},\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"yoga_label.vasi.yoga_name@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"}],\"total\":11,\"firings_pointer\":{\"tool\":\"ganita_yoga_firings_get\",\"table\":\"ga_yoga_firings\",\"fired_count\":13,\"note\":\"ga_yoga_firings is the firings-authoritative source for this chart/ayanamsha — per-yoga strength scoring, bhaṅga (cancellation) state, partial-formation %, and dāśā-activation. This tool's yoga_label/dosha_label rows are single-pass catalog matches (JL-004); cross-check against ganita_yoga_firings_get before asserting a yoga did or did not fire.\"},\"catalog_only_rows_in_page\":3,\"dosha_label_gate\":{\"applied\":true,\"all\":false,\"excluded_total\":0,\"note\":\"No shared-stub dosha_label rows matched this filter — nothing was gated.\"},\"catalog_only_note\":\"3 of 10 row(s) in this page are catalog_only/requires_pass — single-pass label matches (JL-004), not yet cross-verified confirmed firings. Do not present them as settled findings; see ganita_yoga_firings_get for cross-verified detection detail.\"},\"trim_report\":null}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "envelope_version": "v1",
+        "tool": "ganita_yogas_get",
+        "verdict": null,
+        "ranking_basis": null,
+        "grounding": {
+          "fact_ids": [],
+          "citations": [],
+          "grounding_score": null
+        },
+        "pagination": {
+          "offset": 0,
+          "limit": 10,
+          "total": 11,
+          "next_cursor": null,
+          "more_available": true
+        },
+        "drill_pointers": [],
+        "judgment_flags": [],
+        "insight_type": null,
+        "query_class": "per_chart_structural",
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "categories": [
+            "yoga_fires",
+            "yoga_label",
+            "dosha_fires",
+            "dosha_label",
+            "bhadra_flag",
+            "panchaka_flag"
+          ],
+          "rows": [
+            {
+              "fact_id": "82b4dc48543929db",
+              "fact_category": "bhadra_flag",
+              "fact_subject": "BHADRA_FLAG_BIRTH",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "active_at_birth_flag",
+              "fact_value_num": null,
+              "fact_value_text": "false",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "bhadra_flag.BHADRA_FLAG_BIRTH.active_at_birth_flag@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=panchanga_engine/2.0.0-P2"
+            },
+            {
+              "fact_id": "2ed777c21b86b03d",
+              "fact_category": "dosha_label",
+              "fact_subject": "manglik",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "dosha_name",
+              "fact_value_num": null,
+              "fact_value_text": "Manglik Dosha",
+              "fact_value_jsonb": {
+                "fires": true,
+                "dosha_group": "graha_placement",
+                "fire_reason": "bespoke_detector:manglik",
+                "catalog_only": false,
+                "uncatalogued": false,
+                "bhanga_active": false,
+                "source_chunk_ids": [],
+                "bhanga_rule_fired": null,
+                "classical_citations": [
+                  {
+                    "text_id": "bphs"
+                  }
+                ],
+                "cancellation_na_reason": null,
+                "constituent_facts_array": [
+                  "61ff5df8420a8b45",
+                  "6a2dd6c96896f8dd"
+                ],
+                "cancellation_citation_ref": "bphs:manglik:own_exalt_or_jupiter_aspect_or_sign_specific_cancels"
+              },
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "dosha_label.manglik.dosha_name@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "cf76d73cf7edcf88",
+              "fact_category": "panchaka_flag",
+              "fact_subject": "PANCHAKA_FLAG_BIRTH",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "active_at_birth_flag",
+              "fact_value_num": null,
+              "fact_value_text": "true",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "panchaka_flag.PANCHAKA_FLAG_BIRTH.active_at_birth_flag@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=panchanga_engine/2.0.0-P2"
+            },
+            {
+              "fact_id": "c80b5a445ffb0064",
+              "fact_category": "panchaka_flag",
+              "fact_subject": "PANCHAKA_FLAG_BIRTH",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "nakshatra_position",
+              "fact_value_num": null,
+              "fact_value_text": "Purva Bhadrapada",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "panchaka_flag.PANCHAKA_FLAG_BIRTH.nakshatra_position@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=panchanga_engine/2.0.0-P2"
+            },
+            {
+              "fact_id": "a2e2f73d9daa2174",
+              "fact_category": "yoga_label",
+              "fact_subject": "anapha",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "yoga_name",
+              "fact_value_num": null,
+              "fact_value_text": "Anapha Yoga",
+              "fact_value_jsonb": {
+                "yoga_group": "other",
+                "fire_reason": "requires_pass",
+                "uncatalogued": false,
+                "source_chunk_ids": [],
+                "classical_citations": [
+                  {
+                    "chapter": 30,
+                    "text_id": "bphs"
+                  },
+                  {
+                    "chapter": 38,
+                    "text_id": "saravali"
+                  }
+                ],
+                "constituent_facts_array": [
+                  "f64dce55043aca0d"
+                ]
+              },
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "yoga_label.anapha.yoga_name@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "f49e89728bf340a1",
+              "fact_category": "yoga_label",
+              "fact_subject": "gola",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "yoga_name",
+              "fact_value_num": null,
+              "fact_value_text": "Gola Yoga",
+              "fact_value_jsonb": {
+                "yoga_group": "other",
+                "fire_reason": "4_distinct_signs",
+                "uncatalogued": false,
+                "source_chunk_ids": [],
+                "classical_citations": [
+                  {
+                    "chapter": 35,
+                    "text_id": "bphs"
+                  }
+                ],
+                "constituent_facts_array": [
+                  "f64dce55043aca0d"
+                ]
+              },
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "yoga_label.gola.yoga_name@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "3b87a079c016ef87",
+              "fact_category": "yoga_label",
+              "fact_subject": "kedara",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "yoga_name",
+              "fact_value_num": null,
+              "fact_value_text": "Kedara Yoga",
+              "fact_value_jsonb": {
+                "yoga_group": "other",
+                "fire_reason": "4_distinct_signs",
+                "uncatalogued": false,
+                "source_chunk_ids": [],
+                "classical_citations": [
+                  {
+                    "chapter": 35,
+                    "text_id": "bphs"
+                  }
+                ],
+                "constituent_facts_array": [
+                  "f64dce55043aca0d"
+                ]
+              },
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "yoga_label.kedara.yoga_name@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "0a31d24add44a66d",
+              "fact_category": "yoga_label",
+              "fact_subject": "sasa",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "yoga_name",
+              "fact_value_num": null,
+              "fact_value_text": "Sasa Yoga",
+              "fact_value_jsonb": {
+                "yoga_group": "pancha_mahapurusha",
+                "fire_reason": "requires_pass",
+                "uncatalogued": false,
+                "source_chunk_ids": [],
+                "classical_citations": [
+                  {
+                    "chapter": 75,
+                    "text_id": "bphs"
+                  },
+                  {
+                    "chapter": 27,
+                    "text_id": "saravali"
+                  }
+                ],
+                "constituent_facts_array": [
+                  "b29c679a755deeea"
+                ]
+              },
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "yoga_label.sasa.yoga_name@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "cc2b304e457bbd8d",
+              "fact_category": "yoga_label",
+              "fact_subject": "shoola",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "yoga_name",
+              "fact_value_num": null,
+              "fact_value_text": "Shoola Yoga",
+              "fact_value_jsonb": {
+                "yoga_group": "other",
+                "fire_reason": "4_distinct_signs",
+                "uncatalogued": false,
+                "source_chunk_ids": [],
+                "classical_citations": [
+                  {
+                    "chapter": 35,
+                    "text_id": "bphs"
+                  }
+                ],
+                "constituent_facts_array": [
+                  "f64dce55043aca0d"
+                ]
+              },
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "yoga_label.shoola.yoga_name@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "c2e12cc6983dba8e",
+              "fact_category": "yoga_label",
+              "fact_subject": "vasi",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "yoga_name",
+              "fact_value_num": null,
+              "fact_value_text": "Vasi Yoga",
+              "fact_value_jsonb": {
+                "yoga_group": "other",
+                "fire_reason": "requires_pass",
+                "uncatalogued": false,
+                "source_chunk_ids": [],
+                "classical_citations": [
+                  {
+                    "chapter": 30,
+                    "text_id": "bphs"
+                  },
+                  {
+                    "chapter": 41,
+                    "text_id": "saravali"
+                  }
+                ],
+                "constituent_facts_array": [
+                  "f64dce55043aca0d"
+                ]
+              },
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "yoga_label.vasi.yoga_name@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            }
+          ],
+          "total": 11,
+          "firings_pointer": {
+            "tool": "ganita_yoga_firings_get",
+            "table": "ga_yoga_firings",
+            "fired_count": 13,
+            "note": "ga_yoga_firings is the firings-authoritative source for this chart/ayanamsha — per-yoga strength scoring, bhaṅga (cancellation) state, partial-formation %, and dāśā-activation. This tool's yoga_label/dosha_label rows are single-pass catalog matches (JL-004); cross-check against ganita_yoga_firings_get before asserting a yoga did or did not fire."
+          },
+          "catalog_only_rows_in_page": 3,
+          "dosha_label_gate": {
+            "applied": true,
+            "all": false,
+            "excluded_total": 0,
+            "note": "No shared-stub dosha_label rows matched this filter — nothing was gated."
+          },
+          "catalog_only_note": "3 of 10 row(s) in this page are catalog_only/requires_pass — single-pass label matches (JL-004), not yet cross-verified confirmed firings. Do not present them as settled findings; see ganita_yoga_firings_get for cross-verified detection detail."
+        },
+        "trim_report": null
+      }
+    }
+  }
+}

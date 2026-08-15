@@ -1,0 +1,13 @@
+{
+  "tool": "bodha_remedies_get",
+  "scenario": "limit=25000, fields=all forces the response over the 40KB default budget, trimming the prescriptions array.",
+  "args": { "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "limit": 25000, "fields": "all" },
+  "observed": {
+    "content.prescription_count": 27,
+    "actual_prescriptions_array_length_after_trim": 13,
+    "content.resonance_count": 9,
+    "actual_resonances_array_length_untouched": 9,
+    "trim_report": [ { "path": "content.prescriptions", "original_count": 27, "kept_count": 13, "reason": "content.prescriptions: trimmed to 13", "recover_via": { "instrument": "bodha_remedies_get", "hint": "call bodha_remedies_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.prescriptions\"" } } ]
+  },
+  "note": "Fifth live-reproduced instance of the same stale-pre-trim-count defect class documented in stale_pretrim_counts__three_tools.json (bodha_signals_get, synth_chart_brief_get, kala_priority_ranking_get, kala_windows_get). content.prescription_count=27 is the pre-trim total, but the prescriptions array shipped in THIS SAME response only has 13 objects after trim_report's own kept_count:13 cut it down. By contrast content.resonance_count=9 correctly matches the (untrimmed) resonances array of 9 objects — confirming the mismatch specifically tracks which array got cut by the generic budget trimmer, not a general counting bug. recover_via correctly names 'bodha_remedies_get' (real, callable) — no unknown_tool defect on this tool."
+}

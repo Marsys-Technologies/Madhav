@@ -1,0 +1,193 @@
+{
+  "tool": "ganita_strength_get",
+  "scenario": "native_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"envelope_version\":\"v1\",\"tool\":\"ganita_strength_get\",\"verdict\":null,\"ranking_basis\":null,\"grounding\":{\"fact_ids\":[],\"citations\":[],\"grounding_score\":null},\"pagination\":{\"offset\":0,\"limit\":0,\"total\":null,\"next_cursor\":null,\"more_available\":false},\"drill_pointers\":[],\"judgment_flags\":[],\"insight_type\":null,\"query_class\":\"per_chart_structural\",\"content\":{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"categories\":[\"graha_shadbala_cheshta\",\"graha_shadbala_dig\",\"graha_shadbala_drik\",\"graha_shadbala_kala\",\"graha_shadbala_naisargika\",\"graha_shadbala_sthana\",\"graha_shadbala_total\",\"graha_vimsopaka_dasavarga\",\"graha_vimsopaka_saptavarga\",\"graha_vimsopaka_shadvarga\",\"graha_vimsopaka_shodasavarga\",\"vimsopaka_bala_per_graha\",\"graha_saptavargaja_bala_component\",\"graha_ishta_phala\",\"graha_kashta_phala\",\"pranic_strength_per_graha\",\"graha_in_house_composite_strength\",\"graha_composite_state_classification\",\"graha_special_state_rollup\",\"graha_yoga_karaka_flag\",\"graha_tri_deva_role_strength\"],\"frame\":\"lagna\",\"rows\":[{\"fact_id\":\"71a0773017c1fa52\",\"fact_category\":\"graha_composite_state_classification\",\"fact_subject\":\"SUN\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"classification\",\"fact_value_num\":null,\"fact_value_text\":\"neutral\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"graha_composite_state_classification.SUN.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"e822ddbdd780f169\",\"fact_category\":\"graha_composite_state_classification\",\"fact_subject\":\"MAR\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"classification\",\"fact_value_num\":null,\"fact_value_text\":\"neutral\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"graha_composite_state_classification.MAR.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"774ea3535ee1fb19\",\"fact_category\":\"graha_composite_state_classification\",\"fact_subject\":\"MER\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"classification\",\"fact_value_num\":null,\"fact_value_text\":\"neutral\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"graha_composite_state_classification.MER.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"dce4be738fa1ff86\",\"fact_category\":\"graha_composite_state_classification\",\"fact_subject\":\"MOON\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"classification\",\"fact_value_num\":null,\"fact_value_text\":\"neutral\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"graha_composite_state_classification.MOON.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"d1c6e7a967c1736d\",\"fact_category\":\"graha_composite_state_classification\",\"fact_subject\":\"VEN\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"classification\",\"fact_value_num\":null,\"fact_value_text\":\"neutral\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"graha_composite_state_classification.VEN.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"1b41b429eab3d750\",\"fact_category\":\"graha_composite_state_classification\",\"fact_subject\":\"SAT\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"classification\",\"fact_value_num\":null,\"fact_value_text\":\"well_placed\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"graha_composite_state_classification.SAT.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"df8f310649dcd7d9\",\"fact_category\":\"graha_composite_state_classification\",\"fact_subject\":\"RAH_MEAN\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"classification\",\"fact_value_num\":null,\"fact_value_text\":\"neutral\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"graha_composite_state_classification.RAH_MEAN.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"e654bce68cbb9a8e\",\"fact_category\":\"graha_composite_state_classification\",\"fact_subject\":\"KET_MEAN\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"classification\",\"fact_value_num\":null,\"fact_value_text\":\"neutral\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"graha_composite_state_classification.KET_MEAN.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"4c2f6f98339778d3\",\"fact_category\":\"graha_composite_state_classification\",\"fact_subject\":\"JUP\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"classification\",\"fact_value_num\":null,\"fact_value_text\":\"well_placed\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single_pass\",\"citation_ref\":\"graha_composite_state_classification.JUP.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"}],\"total\":9,\"all\":false,\"counterfactual_rows_dropped\":1,\"note\":\"1 counterfactual graha_in_house_composite_strength row(s) (\\\"what if this graha sat in a different house\\\") were dropped — only each graha's ACTUAL house (under frame:'lagna') is served by default. Pass all:true for every counterfactual placement.\"},\"trim_report\":null}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "envelope_version": "v1",
+        "tool": "ganita_strength_get",
+        "verdict": null,
+        "ranking_basis": null,
+        "grounding": {
+          "fact_ids": [],
+          "citations": [],
+          "grounding_score": null
+        },
+        "pagination": {
+          "offset": 0,
+          "limit": 0,
+          "total": null,
+          "next_cursor": null,
+          "more_available": false
+        },
+        "drill_pointers": [],
+        "judgment_flags": [],
+        "insight_type": null,
+        "query_class": "per_chart_structural",
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "categories": [
+            "graha_shadbala_cheshta",
+            "graha_shadbala_dig",
+            "graha_shadbala_drik",
+            "graha_shadbala_kala",
+            "graha_shadbala_naisargika",
+            "graha_shadbala_sthana",
+            "graha_shadbala_total",
+            "graha_vimsopaka_dasavarga",
+            "graha_vimsopaka_saptavarga",
+            "graha_vimsopaka_shadvarga",
+            "graha_vimsopaka_shodasavarga",
+            "vimsopaka_bala_per_graha",
+            "graha_saptavargaja_bala_component",
+            "graha_ishta_phala",
+            "graha_kashta_phala",
+            "pranic_strength_per_graha",
+            "graha_in_house_composite_strength",
+            "graha_composite_state_classification",
+            "graha_special_state_rollup",
+            "graha_yoga_karaka_flag",
+            "graha_tri_deva_role_strength"
+          ],
+          "frame": "lagna",
+          "rows": [
+            {
+              "fact_id": "71a0773017c1fa52",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "SUN",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "classification",
+              "fact_value_num": null,
+              "fact_value_text": "neutral",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "graha_composite_state_classification.SUN.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "e822ddbdd780f169",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "MAR",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "classification",
+              "fact_value_num": null,
+              "fact_value_text": "neutral",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "graha_composite_state_classification.MAR.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "774ea3535ee1fb19",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "MER",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "classification",
+              "fact_value_num": null,
+              "fact_value_text": "neutral",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "graha_composite_state_classification.MER.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "dce4be738fa1ff86",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "MOON",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "classification",
+              "fact_value_num": null,
+              "fact_value_text": "neutral",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "graha_composite_state_classification.MOON.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "d1c6e7a967c1736d",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "VEN",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "classification",
+              "fact_value_num": null,
+              "fact_value_text": "neutral",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "graha_composite_state_classification.VEN.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "1b41b429eab3d750",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "SAT",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "classification",
+              "fact_value_num": null,
+              "fact_value_text": "well_placed",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "graha_composite_state_classification.SAT.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "df8f310649dcd7d9",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "RAH_MEAN",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "classification",
+              "fact_value_num": null,
+              "fact_value_text": "neutral",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "graha_composite_state_classification.RAH_MEAN.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "e654bce68cbb9a8e",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "KET_MEAN",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "classification",
+              "fact_value_num": null,
+              "fact_value_text": "neutral",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "graha_composite_state_classification.KET_MEAN.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "4c2f6f98339778d3",
+              "fact_category": "graha_composite_state_classification",
+              "fact_subject": "JUP",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "classification",
+              "fact_value_num": null,
+              "fact_value_text": "well_placed",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single_pass",
+              "citation_ref": "graha_composite_state_classification.JUP.classification@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            }
+          ],
+          "total": 9,
+          "all": false,
+          "counterfactual_rows_dropped": 1,
+          "note": "1 counterfactual graha_in_house_composite_strength row(s) (\"what if this graha sat in a different house\") were dropped — only each graha's ACTUAL house (under frame:'lagna') is served by default. Pass all:true for every counterfactual placement."
+        },
+        "trim_report": null
+      }
+    }
+  }
+}

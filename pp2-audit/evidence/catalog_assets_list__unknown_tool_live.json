@@ -1,0 +1,23 @@
+{
+  "tool": "catalog_assets_list",
+  "scenario": "limit=500 (max window per API cap 1000, actual asset registry ~128 rows) forces the outer 40KB response-budget trim in register_p1_aliases.ts's bare `dualOutput(data)` call (no toolName arg -> defaults to 'unknown_tool')",
+  "args": { "limit": 500 },
+  "raw_response_excerpt": {
+    "content": { "assets": "[...128 assets truncated to 64 by trim...]", "total": 128, "returned": 128 },
+    "is_error": false,
+    "budget_kb_applied": 40,
+    "trim_report": [
+      {
+        "path": "content.assets",
+        "original_count": 128,
+        "kept_count": 64,
+        "reason": "content.assets: trimmed to 64",
+        "recover_via": { "instrument": "unknown_tool", "hint": "call unknown_tool again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.assets\"" }
+      }
+    ],
+    "drill_pointers": [
+      { "instrument": "unknown_tool", "hint": "call unknown_tool again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.assets\"" }
+    ]
+  },
+  "note": "LIVE reproduction of the same defect class already confirmed on bodha_graph_subgraph_get/bodha_graph_traverse_get, on a DIFFERENT tool (catalog_assets_list). Mechanism: platform-mcp/src/tools/register_p1_aliases.ts:188 `function dualOutput(data: unknown, toolName = 'unknown_tool')`; catalog_assets_list's own registration (near line 1137) calls `dualOutput(data)` with no second argument (bare call at line 1155), so the default fires whenever autoDetectTrimmableSections finds something to cut. Source grep found ~20 more `dualOutput(data)` bare-call sites in the SAME file sharing this exact defect (catalog_assets_all, catalog_assets_l0, ref_vector_search, ref_remedies_get, ref_remedies_chart_get, ref_remedies_by_category_list, ref_remedy_get, ref_tantric_remedies_get, ref_remedies_by_planet_get, ref_mantras_get, ref_remedies_search, kala_muhurta_get, mimamsa_outcome_record, mimamsa_calibration_get, ganita_natal_positions_compute, ganita_special_lagnas_get, kala_yoga_activation_get, plus bodha_signals_get's own OUTER wrapper as a dormant backstop) — one of these (phala_outlook_get, line ~1802) was already patched (RC-04, 2026-07-23) to pass the real tool name; the rest were not."
+}

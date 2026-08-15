@@ -1,0 +1,80 @@
+{
+  "tool": "intent_classify",
+  "scenario": "revalid_two_real_questions",
+  "note": "Re-verification with valid schema args (query only, per actual schema: {query: string}, additionalProperties:false). Two realistic natural-language Jyotish questions tested.",
+  "calls": [
+    {
+      "args": {"query": "When will I get married?"},
+      "raw_response": {
+        "scope_tuple": {
+          "intent": "unknown",
+          "domains": ["general"],
+          "width": "broad",
+          "depth": "deep",
+          "horizon": "near",
+          "intervention": "none",
+          "entitlement": "native"
+        },
+        "confidence": 0.1,
+        "method": "deterministic_rules",
+        "matched_rules": [
+          "deep_push:eval_verb",
+          "deep_push:domain_word",
+          "route:deep",
+          "width:broad<-default_comprehensive",
+          "depth:deep<-default_deepdive",
+          "horizon:near",
+          "entitlement:native<-default_native_instrument"
+        ],
+        "fallback_recommended": true,
+        "usage": "Low-confidence / unmatched intent — the scope_tuple is a best-effort default. Pass fallback_prompt to an LLM for a stronger classification, then correct the scope_tuple.",
+        "route": "deep",
+        "narrow_confidence": 0,
+        "depth_available": {
+          "available": false,
+          "depth": "deep",
+          "width": "broad",
+          "pointer": "Already routed to the full comprehensive (deepdive) reading — no deeper tier to escalate to."
+        }
+      }
+    },
+    {
+      "args": {"query": "Is this a good time to change jobs?"},
+      "raw_response": {
+        "scope_tuple": {
+          "intent": "unknown",
+          "domains": ["general"],
+          "width": "broad",
+          "depth": "deep",
+          "horizon": "atemporal",
+          "intervention": "none",
+          "entitlement": "native"
+        },
+        "confidence": 0,
+        "method": "deterministic_rules",
+        "matched_rules": [
+          "deep_push:eval_verb",
+          "deep_push:domain_word",
+          "route:deep",
+          "width:broad<-default_comprehensive",
+          "depth:deep<-default_deepdive",
+          "entitlement:native<-default_native_instrument"
+        ],
+        "fallback_recommended": true,
+        "usage": "Low-confidence / unmatched intent — the scope_tuple is a best-effort default. Pass fallback_prompt to an LLM for a stronger classification, then correct the scope_tuple.",
+        "route": "deep",
+        "narrow_confidence": 0,
+        "depth_available": {
+          "available": false,
+          "depth": "deep",
+          "width": "broad",
+          "pointer": "Already routed to the full comprehensive (deepdive) reading — no deeper tier to escalate to."
+        }
+      }
+    }
+  ],
+  "code_investigation": {
+    "file": "platform-mcp/src/tools/intent_scope_classifier.ts",
+    "finding": "intent:unknown is INTENDED design — INTENT_RULES (lines 140-176) only fire on literal Jyotish technique vocabulary (dasha, transit/gochar, yoga, bala) per DR-8 deterministic-first ruling (module header lines 6-19); neither test query contains such terms so unknown+fallback is documented behavior. HOWEVER domains:[\"general\"] is a REAL GAP: DOMAIN_RULES (lines 178-189) uses stale non-plural-safe regexes — marriage regex (line 181) does not match 'married', career regex (line 180) does not match 'jobs' (plural). A parallel, already-fixed list DEEP_DOMAIN_WORD (lines 232-233, 'F-Omega4-1 robustness fix', line 231) DOES contain married/marriages?/jobs? and correctly fires (explaining route:deep), but DOMAIN_RULES (the one that actually populates scope_tuple.domains and factors into confidence) was never given the same fix. Result: two realistic, canonical Jyotish questions both collapse to domains:['general'] and near-zero confidence (0.1 and 0) despite the system having, in a sibling code path, the correct regex to recognize them."
+  }
+}

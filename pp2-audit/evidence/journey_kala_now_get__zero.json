@@ -1,0 +1,13 @@
+{
+  "tool": "kala_now_get",
+  "scenario": "zero_history_journey_step3",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"},
+  "raw_response_summary": {
+    "calibration_maturity": {"n_events":0,"prospective_resolutions":0,"event_class_coverage":0,"weights_version":null,"skill_score":null},
+    "reading_prose_tail": "[tier: structural prior — pre-calibration]",
+    "coverage_honest_empties": ["kala_darshana_confluence","sudarshana_varsha","state_delta"],
+    "no_crash": true
+  },
+  "verdict": "PASS",
+  "note": "calibration_maturity block explicitly reports n_events=0, prospective_resolutions=0, event_class_coverage=0, weights_version=null, skill_score=null -- a fully honest, structured (not prose-buried) disclosure that this chart has zero outcome history feeding calibration. reading_prose is explicitly tagged '[tier: structural prior — pre-calibration]'. No crash, no fabricated confidence."
+}

@@ -1,0 +1,298 @@
+{
+  "tool": "dossier",
+  "scenario": "native_primary",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "domain": "career",
+    "receipt": true,
+    "budget_kb": 4
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"tool\":\"dossier\",\"mode\":\"receipt\",\"domain\":\"career\",\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"slice_size\":13825,\"coverage\":{\"served\":12455,\"empty_for_this_chart\":1364,\"not_computed_globally\":6,\"superseded_by_aggregate\":0,\"excluded_by_named_rule\":0,\"accounted\":13825,\"slice_size\":13825,\"pct\":100},\"chain_pattern_units\":45,\"families\":[[\"ganita_chart_facts_get\",\"ES\",12281,[\"fact_category\"]],[\"bodha_signals_get\",\"ES\",1240,[\"signal_tradition\",\"signal_type_class\",\"signal_type_id\",\"signature_class\"]],[\"catalog_assets_all\",\"E\",80,[\"asset_id\"]],[\"ganita_dashas_get\",\"S\",41,[\"@\",\"system_id\"]],[\"ganita_positions_get\",\"S\",33,[\"varga\"]],[\"bodha_graph_traverse_get\",\"S\",22,[\"edge_type\",\"path_type\",\"relationship_class\"]],[\"kala_windows_get\",\"S\",21,[\"domain\",\"mode\",\"obstruction_type\",\"quality\",\"scope_kind\"]],[\"mimamsa_insight_get\",\"S\",15,[\"discovery_class\",\"domain\",\"insight_type\",\"lifecycle_status\"]],[\"phala_anchors_get\",\"ES\",14,[\"domain\",\"event_type\"]],[\"bodha_graph_subgraph_get\",\"ES\",12,[\"motif_class\",\"node_type\",\"subgraph_type\"]],[\"bodha_mechanisms_get\",\"NS\",10,[\"mechanism_class\"]],[\"kala_life_arc_get\",\"ES\",8,[\"dominant_signal_class\",\"parva_quality\"]],[\"bodha_discoveries_get\",\"S\",7,[\"anomaly_type\",\"discovery_class\",\"novelty_class\"]],[\"kala_muhurta_get\",\"ES\",6,[\"action_class\",\"window_quality_verdict\"]],[\"kala_yoga_activation_get\",\"S\",6,[\"signature_class\"]],[\"gochara_forecast_get\",\"S\",5,[\"event_class\",\"valence\"]],[\"bodha_bundle_get\",\"S\",4,[\"domain\",\"status\"]],[\"phala_outlook_get\",\"S\",4,[\"domain\",\"narration_status\",\"relationship_type\"]],[\"mimamsa_calibration_get\",\"S\",3,[\"family_class\",\"family_id\"]],[\"phala_mitigation_get\",\"S\",3,[\"anomaly_type\"]],[\"phala_predictive_anchors_get\",\"S\",3,[\"window_status\"]],[\"bodha_domain_reading_get\",\"S\",2,[\"domain\",\"pattern_marker_type\"]],[\"kala_projections_get\",\"S\",2,[\"domain\"]],[\"bodha_chart_digest_get\",\"S\",1,[\"chart_typology_class\"]],[\"bodha_quality_get\",\"S\",1,[\"tension_class\"]],[\"judgment_query\",\"S\",1,[\"question_type\"]]],\"families_format\":\"[serving_tool, state_codes(S=served,E=empty_for_chart,N=not_computed,A=superseded,X=excluded), concept_count, arg_keys?]\",\"synthesis_gate\":\"OPEN\",\"gate_basis\":\"completeness_receipt\",\"gate_reason\":\"slice_fully_accounted\",\"reading_contract\":\"gate OPEN (completeness_receipt): slice 100% accounted. families[] is the drill index — call family[0] with {chart_id,[arg_key]:v} to hydrate rows. Per-concept catalog is on the paged path (omit `receipt`).\",\"drill_note\":\"families[] = every serving_tool for this slice + concept count + accounting states. No per-concept type-ids shipped (compact gate-summary, one call).\",\"receipt\":{\"receipt_id\":\"career:482012f1:compact\",\"basis\":\"completeness_receipt\",\"family_count\":26,\"persistence\":\"in_response_only\",\"persistence_note\":\"retrieval_receipts persistence needs the shared receipts writer (blocked-on-α); transient.\"},\"provenance\":{\"slice_bundle\":\"career_482012f1.json\",\"blocks_fingerprint\":\"f993e320bf5b8d2a\",\"basis_note\":\"From bundle accounting metadata only — no per-concept values, no recomputation (B.10).\"},\"judgment_flags\":[\"receipt_exceeds_2kb\"],\"receipt_bytes\":3086}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "ok": true,
+        "tool": "dossier",
+        "mode": "receipt",
+        "domain": "career",
+        "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+        "slice_size": 13825,
+        "coverage": {
+          "served": 12455,
+          "empty_for_this_chart": 1364,
+          "not_computed_globally": 6,
+          "superseded_by_aggregate": 0,
+          "excluded_by_named_rule": 0,
+          "accounted": 13825,
+          "slice_size": 13825,
+          "pct": 100
+        },
+        "chain_pattern_units": 45,
+        "families": [
+          [
+            "ganita_chart_facts_get",
+            "ES",
+            12281,
+            [
+              "fact_category"
+            ]
+          ],
+          [
+            "bodha_signals_get",
+            "ES",
+            1240,
+            [
+              "signal_tradition",
+              "signal_type_class",
+              "signal_type_id",
+              "signature_class"
+            ]
+          ],
+          [
+            "catalog_assets_all",
+            "E",
+            80,
+            [
+              "asset_id"
+            ]
+          ],
+          [
+            "ganita_dashas_get",
+            "S",
+            41,
+            [
+              "@",
+              "system_id"
+            ]
+          ],
+          [
+            "ganita_positions_get",
+            "S",
+            33,
+            [
+              "varga"
+            ]
+          ],
+          [
+            "bodha_graph_traverse_get",
+            "S",
+            22,
+            [
+              "edge_type",
+              "path_type",
+              "relationship_class"
+            ]
+          ],
+          [
+            "kala_windows_get",
+            "S",
+            21,
+            [
+              "domain",
+              "mode",
+              "obstruction_type",
+              "quality",
+              "scope_kind"
+            ]
+          ],
+          [
+            "mimamsa_insight_get",
+            "S",
+            15,
+            [
+              "discovery_class",
+              "domain",
+              "insight_type",
+              "lifecycle_status"
+            ]
+          ],
+          [
+            "phala_anchors_get",
+            "ES",
+            14,
+            [
+              "domain",
+              "event_type"
+            ]
+          ],
+          [
+            "bodha_graph_subgraph_get",
+            "ES",
+            12,
+            [
+              "motif_class",
+              "node_type",
+              "subgraph_type"
+            ]
+          ],
+          [
+            "bodha_mechanisms_get",
+            "NS",
+            10,
+            [
+              "mechanism_class"
+            ]
+          ],
+          [
+            "kala_life_arc_get",
+            "ES",
+            8,
+            [
+              "dominant_signal_class",
+              "parva_quality"
+            ]
+          ],
+          [
+            "bodha_discoveries_get",
+            "S",
+            7,
+            [
+              "anomaly_type",
+              "discovery_class",
+              "novelty_class"
+            ]
+          ],
+          [
+            "kala_muhurta_get",
+            "ES",
+            6,
+            [
+              "action_class",
+              "window_quality_verdict"
+            ]
+          ],
+          [
+            "kala_yoga_activation_get",
+            "S",
+            6,
+            [
+              "signature_class"
+            ]
+          ],
+          [
+            "gochara_forecast_get",
+            "S",
+            5,
+            [
+              "event_class",
+              "valence"
+            ]
+          ],
+          [
+            "bodha_bundle_get",
+            "S",
+            4,
+            [
+              "domain",
+              "status"
+            ]
+          ],
+          [
+            "phala_outlook_get",
+            "S",
+            4,
+            [
+              "domain",
+              "narration_status",
+              "relationship_type"
+            ]
+          ],
+          [
+            "mimamsa_calibration_get",
+            "S",
+            3,
+            [
+              "family_class",
+              "family_id"
+            ]
+          ],
+          [
+            "phala_mitigation_get",
+            "S",
+            3,
+            [
+              "anomaly_type"
+            ]
+          ],
+          [
+            "phala_predictive_anchors_get",
+            "S",
+            3,
+            [
+              "window_status"
+            ]
+          ],
+          [
+            "bodha_domain_reading_get",
+            "S",
+            2,
+            [
+              "domain",
+              "pattern_marker_type"
+            ]
+          ],
+          [
+            "kala_projections_get",
+            "S",
+            2,
+            [
+              "domain"
+            ]
+          ],
+          [
+            "bodha_chart_digest_get",
+            "S",
+            1,
+            [
+              "chart_typology_class"
+            ]
+          ],
+          [
+            "bodha_quality_get",
+            "S",
+            1,
+            [
+              "tension_class"
+            ]
+          ],
+          [
+            "judgment_query",
+            "S",
+            1,
+            [
+              "question_type"
+            ]
+          ]
+        ],
+        "families_format": "[serving_tool, state_codes(S=served,E=empty_for_chart,N=not_computed,A=superseded,X=excluded), concept_count, arg_keys?]",
+        "synthesis_gate": "OPEN",
+        "gate_basis": "completeness_receipt",
+        "gate_reason": "slice_fully_accounted",
+        "reading_contract": "gate OPEN (completeness_receipt): slice 100% accounted. families[] is the drill index — call family[0] with {chart_id,[arg_key]:v} to hydrate rows. Per-concept catalog is on the paged path (omit `receipt`).",
+        "drill_note": "families[] = every serving_tool for this slice + concept count + accounting states. No per-concept type-ids shipped (compact gate-summary, one call).",
+        "receipt": {
+          "receipt_id": "career:482012f1:compact",
+          "basis": "completeness_receipt",
+          "family_count": 26,
+          "persistence": "in_response_only",
+          "persistence_note": "retrieval_receipts persistence needs the shared receipts writer (blocked-on-α); transient."
+        },
+        "provenance": {
+          "slice_bundle": "career_482012f1.json",
+          "blocks_fingerprint": "f993e320bf5b8d2a",
+          "basis_note": "From bundle accounting metadata only — no per-concept values, no recomputation (B.10)."
+        },
+        "judgment_flags": [
+          "receipt_exceeds_2kb"
+        ],
+        "receipt_bytes": 3086
+      }
+    }
+  }
+}

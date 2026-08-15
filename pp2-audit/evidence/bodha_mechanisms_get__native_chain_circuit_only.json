@@ -1,0 +1,9 @@
+{
+  "tool": "bodha_mechanisms_get",
+  "scenario": "native_chain_circuit_only",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "chain_circuit_only": true, "limit": 5},
+  "raw_response": {
+    "structuredContent": {"type": "object", "object": {"content":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","rows":[{"mechanism_id":"5088c9e6-9b21-4703-a426-2135abc92f0e","mechanism_class":"convergent_dispositor_chain","valence":"mixed","mechanism_name":"Convergent dispositor chain onto Jupiter: Ketu → … → Jupiter, Mars → … → Jupiter, Mercury → … → Jupiter, Moon → … → Jupiter, Rahu → … → Jupiter, Saturn → … → Jupiter, Sun → … → Jupiter, Venus → … → Jupiter","is_chain_circuit":true}],"count":1,"total_matching":1,"more_available":false,"chain_circuit_count":1,"facets":{"by_mechanism_class":{"convergent_dispositor_chain":1},"by_valence":{"mixed":1},"chain_circuit_classes":["convergent_dispositor_chain","dispositor_cycle","house_lordship_cycle"]},"empty_reason":null,"filters":{"ayanamsha_id":"lahiri_chitrapaksha","mechanism_class":null,"valence":null,"chain_circuit_only":true,"limit":5,"offset":0},"provenance":{"tables":["bodha_mechanisms"],"source":"L2 Bodha mechanisms (bo_yantra_mechanism / migration 445); served chart-scoped, chain/circuit family first, budgeted. Edge-strength provenance: DR-7 edge_strength_v1."}},"is_error":false}}
+  },
+  "note": "chain_circuit_only=true correctly narrows to only the chain/circuit family (1 row, all is_chain_circuit:true, chain_circuit_count:1) vs the unfiltered 30 total_matching seen in other calls — filter demonstrably changes result set."
+}

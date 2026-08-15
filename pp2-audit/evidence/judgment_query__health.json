@@ -1,0 +1,14 @@
+{
+  "tool": "judgment_query",
+  "scenario": "health",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "health"},
+  "timing": {"before_ms": 1786801034958, "after_ms": 1786801045612, "latency_ms": 10654},
+  "is_error": false,
+  "raw_response_summary": {
+    "verdict": {"domain": "health", "domain_label": "Health / Vitality", "bhava": 1, "verdict_grade": "mixed", "composite_score": -0.8, "operative_varga": "D6"},
+    "gochara_sweep": {"upcoming_window_count": 17, "valence_breakdown": {"loss": 11, "neutral": 6}},
+    "judgment_flags_count": 7,
+    "note_on_F14": "verdict_grade='mixed' with a negative composite_score (-0.8) and 11/17 forward gochara windows valence='loss' (illness_acute events through 2029) is consistent with F-14's known health-domain degradation -- not a crash, an honest negative/mixed reading."
+  },
+  "note": "Fields copied verbatim from actual tool response; full payload truncated for evidence-file size, not fabricated."
+}

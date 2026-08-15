@@ -1,0 +1,8 @@
+{
+  "tool": "mcp_server_info",
+  "scenario": "reverify_with_client_catalog_version",
+  "args": {
+    "client_catalog_version": "catalog-1+t152+r653c2a1a98c8"
+  },
+  "raw_response": {"type":"object","object":{"name":"marsys-jis","version":"1.0.0","catalog_version":"catalog-1+t152+r653c2a1a98c8","tool_count":125,"tool_count_note":"Live count of the tools registered on THIS request's MCP server after all gates (strict-schema, RC-14 deprecated-name, profile) have been applied — mirrors the SDK tools/list filter exactly, so it equals the length of your own tools/list response. Profile-scoped: a narrower OAuth profile legitimately sees a smaller number.","retrieval_registry_profile_total":152,"retrieval_registry_profile_generated_at":"2026-07-24T05:06:15.709Z","retrieval_registry_profile_note":"Size of the retrieval registry's `full` MCP projection as recorded in the generated manifest at `retrieval_registry_profile_generated_at` — a BUILD-TIME figure over a DIFFERENT population from the served MCP catalog, not live telemetry. Until 2026-07-30 this number was served as `tool_count`; it was measured at 152 while tools/list returned 124, overlapping by 15 names. Use `tool_count` for \"how many tools can I call\".","tools_changed_at":"2026-08-13T11:40:22.000Z","tools_changed_at_note":"Filesystem mtime of the generated tool-catalog manifest (mcp_surface_profiles.generated.js) — best-effort, not a guaranteed-precise instant (some deploy pipelines reset file mtimes to checkout/build time). Compare `catalog_version` for an authoritative change signal.","stale":false,"list_changed_notified":false}}
+}

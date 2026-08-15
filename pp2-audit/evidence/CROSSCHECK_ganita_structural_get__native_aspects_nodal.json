@@ -1,0 +1,15 @@
+{
+  "tool": "ganita_structural_get",
+  "scenario": "GROUNDING_CROSSCHECK_native_facet_aspects (not one of the 10 assigned tools -- used only to corroborate/refute the R24 nodal-aspect finding against a sibling L1 tool)",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "facet": "aspects", "limit": 500},
+  "finding": "RAH_MEAN (natal Taurus, house 2) casts aspect_parashari_given rows onto house_6, house_8, house_10 -- i.e. the 5th (offset 5), 7th (offset 7) and 9th (offset 9) houses counted inclusively from house 2. KET_MEAN (natal Scorpio, house 8) casts aspect_parashari_given rows onto house_12, house_2, house_4 -- again the 5th/7th/9th houses from house 8. This CONFIRMS ga_structural_writer.py's NODE_PARASHARI_ASPECTS={5:1.0,7:1.0,9:1.0} table (line 564) is correctly wired end-to-end and IS observable in this tool's served data for the native chart -- Rahu/Ketu get full 5/7/9 aspects here, matching R24's expectation.",
+  "raw_response_sample_rows": [
+    {"fact_category":"aspect_parashari_given","fact_key":"house_6","fact_value_num":1,"unit":"strength","citation_ref":"aspect_parashari_given.RAH_MEAN.house_6@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"},
+    {"fact_category":"aspect_parashari_given","fact_key":"house_8","fact_value_num":1,"unit":"strength","citation_ref":"aspect_parashari_given.RAH_MEAN.house_8@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"},
+    {"fact_category":"aspect_parashari_given","fact_key":"house_10","fact_value_num":1,"unit":"strength","citation_ref":"aspect_parashari_given.RAH_MEAN.house_10@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"},
+    {"fact_category":"aspect_parashari_given","fact_key":"house_12","fact_value_num":1,"unit":"strength","citation_ref":"aspect_parashari_given.KET_MEAN.house_12@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"},
+    {"fact_category":"aspect_parashari_given","fact_key":"house_2","fact_value_num":1,"unit":"strength","citation_ref":"aspect_parashari_given.KET_MEAN.house_2@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"},
+    {"fact_category":"aspect_parashari_given","fact_key":"house_4","fact_value_num":1,"unit":"strength","citation_ref":"aspect_parashari_given.KET_MEAN.house_4@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"}
+  ],
+  "code_citation": "platform/python-sidecar/ga_writers/ga_structural_writer.py:564 (NODE_PARASHARI_ASPECTS = {5: 1.0, 7: 1.0, 9: 1.0}), consumed by _graha_aspects_house at lines 576-601."
+}

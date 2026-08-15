@@ -1,0 +1,144 @@
+{
+  "tool": "ganita_ayurdaya_get",
+  "scenario": "native_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"rows\":[{\"fact_id\":\"c90affea5b06b64e\",\"fact_subject\":\"AMSAYU\",\"fact_key\":\"total_years\",\"fact_value_num\":36.3448,\"fact_value_text\":\"madhyayu\",\"unit\":\"years\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-16/total_years\"},{\"fact_id\":\"9b63561d795f12ac\",\"fact_subject\":\"CHART\",\"fact_key\":\"applicable_method\",\"fact_value_num\":null,\"fact_value_text\":\"pindayu\",\"unit\":null,\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-16/applicable_method\"},{\"fact_id\":\"ce53a8025f335a1d\",\"fact_subject\":\"CHART\",\"fact_key\":\"maraka_grahas\",\"fact_value_num\":null,\"fact_value_text\":\"Mars,Saturn,Venus\",\"unit\":null,\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-16/maraka_grahas\"},{\"fact_id\":\"b07191f672ede137\",\"fact_subject\":\"JUP\",\"fact_key\":\"amsayu_contribution_years\",\"fact_value_num\":2.9362,\"fact_value_text\":\"amsayu\",\"unit\":\"years\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-16/amsayu_contribution_years\"},{\"fact_id\":\"ceecb16691647922\",\"fact_subject\":\"JUP\",\"fact_key\":\"nisargayu_contribution_years\",\"fact_value_num\":10.2606,\"fact_value_text\":\"nisargayu\",\"unit\":\"years\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-16/nisargayu_contribution_years\"},{\"fact_id\":\"931463046aafabad\",\"fact_subject\":\"JUP\",\"fact_key\":\"pindayu_contribution_years\",\"fact_value_num\":8.5505,\"fact_value_text\":\"pindayu\",\"unit\":\"years\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-16/pindayu_contribution_years\"},{\"fact_id\":\"0ca7ff22f698305a\",\"fact_subject\":\"MAR\",\"fact_key\":\"amsayu_contribution_years\",\"fact_value_num\":11.5558,\"fact_value_text\":\"amsayu\",\"unit\":\"years\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-16/amsayu_contribution_years\"},{\"fact_id\":\"deb91ae92dedae1f\",\"fact_subject\":\"MAR\",\"fact_key\":\"nisargayu_contribution_years\",\"fact_value_num\":1.4473,\"fact_value_text\":\"nisargayu\",\"unit\":\"years\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-16/nisargayu_contribution_years\"},{\"fact_id\":\"39143d65f5b5bd9d\",\"fact_subject\":\"MAR\",\"fact_key\":\"pindayu_contribution_years\",\"fact_value_num\":10.855,\"fact_value_text\":\"pindayu\",\"unit\":\"years\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-16/pindayu_contribution_years\"},{\"fact_id\":\"92d6efaa2789d03e\",\"fact_subject\":\"MER\",\"fact_key\":\"amsayu_contribution_years\",\"fact_value_num\":9.2516,\"fact_value_text\":\"amsayu\",\"unit\":\"years\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-16/amsayu_contribution_years\"}],\"count\":10,\"total_matching\":26,\"more_available\":true,\"filters\":{\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"method\":null,\"limit\":10},\"disclaimer\":\"NOT a death prediction — classical Āyurdāya longevity-band computation only.\",\"note\":\"fact_value_num = total_years for the method; fact_value_text = longevity band (alpayu/madhyayu/purnayu).\",\"provenance\":{\"tables\":[\"chart_facts\"],\"fact_category\":\"ayurdaya\"}},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "rows": [
+            {
+              "fact_id": "c90affea5b06b64e",
+              "fact_subject": "AMSAYU",
+              "fact_key": "total_years",
+              "fact_value_num": 36.3448,
+              "fact_value_text": "madhyayu",
+              "unit": "years",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-16/total_years"
+            },
+            {
+              "fact_id": "9b63561d795f12ac",
+              "fact_subject": "CHART",
+              "fact_key": "applicable_method",
+              "fact_value_num": null,
+              "fact_value_text": "pindayu",
+              "unit": null,
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-16/applicable_method"
+            },
+            {
+              "fact_id": "ce53a8025f335a1d",
+              "fact_subject": "CHART",
+              "fact_key": "maraka_grahas",
+              "fact_value_num": null,
+              "fact_value_text": "Mars,Saturn,Venus",
+              "unit": null,
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-16/maraka_grahas"
+            },
+            {
+              "fact_id": "b07191f672ede137",
+              "fact_subject": "JUP",
+              "fact_key": "amsayu_contribution_years",
+              "fact_value_num": 2.9362,
+              "fact_value_text": "amsayu",
+              "unit": "years",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-16/amsayu_contribution_years"
+            },
+            {
+              "fact_id": "ceecb16691647922",
+              "fact_subject": "JUP",
+              "fact_key": "nisargayu_contribution_years",
+              "fact_value_num": 10.2606,
+              "fact_value_text": "nisargayu",
+              "unit": "years",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-16/nisargayu_contribution_years"
+            },
+            {
+              "fact_id": "931463046aafabad",
+              "fact_subject": "JUP",
+              "fact_key": "pindayu_contribution_years",
+              "fact_value_num": 8.5505,
+              "fact_value_text": "pindayu",
+              "unit": "years",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-16/pindayu_contribution_years"
+            },
+            {
+              "fact_id": "0ca7ff22f698305a",
+              "fact_subject": "MAR",
+              "fact_key": "amsayu_contribution_years",
+              "fact_value_num": 11.5558,
+              "fact_value_text": "amsayu",
+              "unit": "years",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-16/amsayu_contribution_years"
+            },
+            {
+              "fact_id": "deb91ae92dedae1f",
+              "fact_subject": "MAR",
+              "fact_key": "nisargayu_contribution_years",
+              "fact_value_num": 1.4473,
+              "fact_value_text": "nisargayu",
+              "unit": "years",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-16/nisargayu_contribution_years"
+            },
+            {
+              "fact_id": "39143d65f5b5bd9d",
+              "fact_subject": "MAR",
+              "fact_key": "pindayu_contribution_years",
+              "fact_value_num": 10.855,
+              "fact_value_text": "pindayu",
+              "unit": "years",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-16/pindayu_contribution_years"
+            },
+            {
+              "fact_id": "92d6efaa2789d03e",
+              "fact_subject": "MER",
+              "fact_key": "amsayu_contribution_years",
+              "fact_value_num": 9.2516,
+              "fact_value_text": "amsayu",
+              "unit": "years",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-16/amsayu_contribution_years"
+            }
+          ],
+          "count": 10,
+          "total_matching": 26,
+          "more_available": true,
+          "filters": {
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "method": null,
+            "limit": 10
+          },
+          "disclaimer": "NOT a death prediction — classical Āyurdāya longevity-band computation only.",
+          "note": "fact_value_num = total_years for the method; fact_value_text = longevity band (alpayu/madhyayu/purnayu).",
+          "provenance": {
+            "tables": [
+              "chart_facts"
+            ],
+            "fact_category": "ayurdaya"
+          }
+        },
+        "is_error": false
+      }
+    }
+  }
+}

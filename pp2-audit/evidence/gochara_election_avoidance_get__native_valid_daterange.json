@@ -1,0 +1,3544 @@
+{
+  "tool": "gochara_election_avoidance_get",
+  "scenario": "native_valid_date_range_object",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "date_range": {
+      "start": "2026-08-15",
+      "end": "2026-09-15"
+    }
+  },
+  "raw_response": {
+    "windows": [
+      {
+        "event_class": "financial_deception",
+        "temporal_shape": "interval",
+        "window_start": "2024-02-05",
+        "window_end": "2034-01-30",
+        "peak_date": "2030-08-14",
+        "milestone_id": null,
+        "is_irreversibility_milestone": false,
+        "era_slice_key": "g3_2024_2034",
+        "generation": "3.0",
+        "term_breakdown": {
+          "formula": "PROMISE \u00d7 PERMISSION \u00d7 activity \u00d7 quality_gates",
+          "promise": 1,
+          "activity": 1,
+          "lambda_v3": 0.43,
+          "permission": 0.43,
+          "quality_gates": 1,
+          "activity_terms": [
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "2",
+              "target_weight": 1,
+              "transit_planet": "Rahu",
+              "event_datetime_ist": "2030-08-09T22:38:34"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Sun",
+              "event_datetime_ist": "2030-08-17T08:41:27"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Mars",
+              "event_datetime_ist": "2030-08-09T22:38:34"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-08-09T22:38:34"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Jupiter",
+              "event_datetime_ist": "2030-08-09T22:38:34"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Saturn",
+              "event_datetime_ist": "2030-08-09T22:38:34"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-13T22:18:16"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Sun",
+              "event_datetime_ist": "2030-08-17T08:41:27"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-13T22:18:16"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-14T04:45:53"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-14T11:15:47"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-14T17:48:09"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-15T00:23:08"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-15T07:00:55"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-15T13:41:38"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-15T20:25:26"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-08-10T10:11:28"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-16T03:12:25"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-16T03:12:25"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-16T10:02:43"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-16T16:56:24"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-16T23:53:31"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-17T06:54:08"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-17T13:58:15"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-17T21:05:50"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-18T04:16:52"
+            },
+            {
+              "p_i": 0,
+              "orb_decay": 0,
+              "primitive": "degree_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Rahu",
+              "event_datetime_ist": "2030-08-18T20:12:00"
+            },
+            {
+              "p_i": 0.8,
+              "orb_decay": 1,
+              "primitive": "degree_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Ketu",
+              "event_datetime_ist": "2030-08-18T20:12:00"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Rahu",
+              "event_datetime_ist": "2030-08-18T20:12:00"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Ketu",
+              "event_datetime_ist": "2030-08-18T20:12:00"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-18T11:31:14"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-18T18:48:52"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-19T02:09:35"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-19T09:33:15"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-19T16:59:37"
+            },
+            {
+              "p_i": 0,
+              "orb_decay": 0,
+              "primitive": "degree_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Rahu",
+              "event_datetime_ist": "2030-08-18T20:12:00"
+            },
+            {
+              "p_i": 0.8,
+              "orb_decay": 1,
+              "primitive": "degree_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Ketu",
+              "event_datetime_ist": "2030-08-18T20:12:00"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Rahu",
+              "event_datetime_ist": "2030-08-18T20:12:00"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Ketu",
+              "event_datetime_ist": "2030-08-18T20:12:00"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-18T11:31:14"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-18T18:48:52"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-19T02:09:35"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-19T09:33:15"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-19T16:59:37"
+            }
+          ]
+        },
+        "resolution": "era",
+        "parent_window_id": null,
+        "resolution_disclosure": {
+          "resolution": "era",
+          "resolution_source": "stored",
+          "is_timing_window": false,
+          "timing_window_blocked_reason": "era_resolution"
+        },
+        "signed_intensity": 0.43,
+        "raw_intensity": 0.43,
+        "valence": "loss",
+        "plateau_disclosure": null,
+        "clarity_statement": "Elevated adverse-valence configuration for 'financial_deception' (interval-shaped) over 2024-02-05..2034-01-30, raw magn\u2026[truncated for budget]",
+        "framing": {
+          "probabilistic": true,
+          "fatalistic_claim": false,
+          "note": "Never a death/ruin point-claim. The birth->birth+100y sweep horizon is uniform for every chart and is NOT tied to comput\u2026[truncated for budget]"
+        },
+        "falsifier": {
+          "statement": "This claim is falsified if no LEL-loggable adverse 'financial_deception' outcome is recorded for chart 482012f1-710e-4a2\u2026[truncated for budget]",
+          "checked_via": "G-5 prospective-ledger outcome matching (brahma_prospective_ledger, once this window is filed as a claim) \u2014 not yet file\u2026[truncated for budget]"
+        },
+        "suppression_state": {
+          "note": "v3-native suppression mechanism (see gochara_v3/engine.py's MR-41(c) wiring-decision comment); the v1 vedha_cancellation\u2026[truncated for budget]",
+          "value": 1,
+          "mechanism": "quality_gates",
+          "coverage_quality": {
+            "note": "financial_deception: 29 resonance target(s) in gochara_resonance_map backed this window (rich coverage). Never an invent\u2026[truncated for budget]",
+            "tier": "rich",
+            "target_count": 29
+          }
+        },
+        "mitigation": {
+          "available": false,
+          "reason": "no dominant contributing graha could be resolved from contributing_systems for this window -- honest gap, not a fabricat\u2026[truncated for budget]"
+        },
+        "confidence_disclosure": {
+          "calibration_state": "structural_prior",
+          "generation_tier": "3.0",
+          "era_slice_key": "g3_2024_2034",
+          "n_observations": null,
+          "control_delta": null,
+          "note": "D-5 ships structural_prior weights only (beta_e, PERMISSION system weights, suppression damping) -- empirical calibratio\u2026[truncated for budget]"
+        },
+        "contributing_systems_active": [],
+        "active_sentences_count": 0,
+        "peak_basis": "gochara_lambda_v3_coarse_argmax",
+        "source_citation": "kala_gochara_windows (L3 K\u0101la, W6.4 cutover ka_gochara materializer) \u2014 lambda_v3 via services/gochara_v3, consuming goch\u2026[truncated for budget]"
+      },
+      {
+        "event_class": "major_loss",
+        "temporal_shape": "interval",
+        "window_start": "2024-02-05",
+        "window_end": "2034-01-30",
+        "peak_date": "2030-08-14",
+        "milestone_id": null,
+        "is_irreversibility_milestone": false,
+        "era_slice_key": "g3_2024_2034",
+        "generation": "3.0",
+        "term_breakdown": {
+          "formula": "PROMISE \u00d7 PERMISSION \u00d7 activity \u00d7 quality_gates",
+          "promise": 1,
+          "activity": 1,
+          "lambda_v3": 0.43,
+          "permission": 0.43,
+          "quality_gates": 1,
+          "activity_terms": [
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "2",
+              "target_weight": 1,
+              "transit_planet": "Rahu",
+              "event_datetime_ist": "2030-08-09T22:38:34"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Sun",
+              "event_datetime_ist": "2030-08-17T08:41:27"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Mars",
+              "event_datetime_ist": "2030-08-09T22:38:34"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-08-09T22:38:34"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Jupiter",
+              "event_datetime_ist": "2030-08-09T22:38:34"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Saturn",
+              "event_datetime_ist": "2030-08-09T22:38:34"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-13T22:18:16"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Sun",
+              "event_datetime_ist": "2030-08-17T08:41:27"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-13T22:18:16"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-14T04:45:53"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-14T11:15:47"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-14T17:48:09"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-15T00:23:08"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-15T07:00:55"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-15T13:41:38"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-15T20:25:26"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "11",
+              "target_weight": 1,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-08-10T10:11:28"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-16T03:12:25"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-16T03:12:25"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-16T10:02:43"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-16T16:56:24"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-16T23:53:31"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-17T06:54:08"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-17T13:58:15"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-17T21:05:50"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-18T04:16:52"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-18T11:31:14"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-18T18:48:52"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-19T02:09:35"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-19T09:33:15"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-19T16:59:37"
+            },
+            {
+              "p_i": 0,
+              "orb_decay": 0,
+              "primitive": "degree_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Rahu",
+              "event_datetime_ist": "2030-08-18T20:12:00"
+            },
+            {
+              "p_i": 0.8,
+              "orb_decay": 1,
+              "primitive": "degree_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Ketu",
+              "event_datetime_ist": "2030-08-18T20:12:00"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Rahu",
+              "event_datetime_ist": "2030-08-18T20:12:00"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Ketu",
+              "event_datetime_ist": "2030-08-18T20:12:00"
+            },
+            {
+              "p_i": 0,
+              "orb_decay": 0,
+              "primitive": "degree_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Rahu",
+              "event_datetime_ist": "2030-08-18T20:12:00"
+            },
+            {
+              "p_i": 0.8,
+              "orb_decay": 1,
+              "primitive": "degree_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Ketu",
+              "event_datetime_ist": "2030-08-18T20:12:00"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Rahu",
+              "event_datetime_ist": "2030-08-18T20:12:00"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Ketu",
+              "event_datetime_ist": "2030-08-18T20:12:00"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-18T11:31:14"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-18T18:48:52"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-19T02:09:35"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-19T09:33:15"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-08-19T16:59:37"
+            }
+          ]
+        },
+        "resolution": "era",
+        "parent_window_id": null,
+        "resolution_disclosure": {
+          "resolution": "era",
+          "resolution_source": "stored",
+          "is_timing_window": false,
+          "timing_window_blocked_reason": "era_resolution"
+        },
+        "signed_intensity": 0.43,
+        "raw_intensity": 0.43,
+        "valence": "loss",
+        "plateau_disclosure": null,
+        "clarity_statement": "Elevated adverse-valence configuration for 'major_loss' (interval-shaped) over 2024-02-05..2034-01-30, raw magnitude 0.4\u2026[truncated for budget]",
+        "framing": {
+          "probabilistic": true,
+          "fatalistic_claim": false,
+          "note": "Never a death/ruin point-claim. The birth->birth+100y sweep horizon is uniform for every chart and is NOT tied to comput\u2026[truncated for budget]"
+        },
+        "falsifier": {
+          "statement": "This claim is falsified if no LEL-loggable adverse 'major_loss' outcome is recorded for chart 482012f1-710e-4a25-994a-93\u2026[truncated for budget]",
+          "checked_via": "G-5 prospective-ledger outcome matching (brahma_prospective_ledger, once this window is filed as a claim) \u2014 not yet file\u2026[truncated for budget]"
+        },
+        "suppression_state": {
+          "note": "v3-native suppression mechanism (see gochara_v3/engine.py's MR-41(c) wiring-decision comment); the v1 vedha_cancellation\u2026[truncated for budget]",
+          "value": 1,
+          "mechanism": "quality_gates",
+          "coverage_quality": {
+            "note": "major_loss: 29 resonance target(s) in gochara_resonance_map backed this window (rich coverage). Never an invented target\u2026[truncated for budget]",
+            "tier": "rich",
+            "target_count": 29
+          }
+        },
+        "mitigation": {
+          "available": false,
+          "reason": "no dominant contributing graha could be resolved from contributing_systems for this window -- honest gap, not a fabricat\u2026[truncated for budget]"
+        },
+        "confidence_disclosure": {
+          "calibration_state": "structural_prior",
+          "generation_tier": "3.0",
+          "era_slice_key": "g3_2024_2034",
+          "n_observations": null,
+          "control_delta": null,
+          "note": "D-5 ships structural_prior weights only (beta_e, PERMISSION system weights, suppression damping) -- empirical calibratio\u2026[truncated for budget]"
+        },
+        "contributing_systems_active": [],
+        "active_sentences_count": 0,
+        "peak_basis": "gochara_lambda_v3_coarse_argmax",
+        "source_citation": "kala_gochara_windows (L3 K\u0101la, W6.4 cutover ka_gochara materializer) \u2014 lambda_v3 via services/gochara_v3, consuming goch\u2026[truncated for budget]"
+      },
+      {
+        "event_class": "career_setback",
+        "temporal_shape": "interval",
+        "window_start": "2024-02-05",
+        "window_end": "2034-01-30",
+        "peak_date": "2030-10-27",
+        "milestone_id": null,
+        "is_irreversibility_milestone": false,
+        "era_slice_key": "g3_2024_2034",
+        "generation": "3.0",
+        "term_breakdown": {
+          "formula": "PROMISE \u00d7 PERMISSION \u00d7 activity \u00d7 quality_gates",
+          "promise": 1,
+          "activity": 1,
+          "lambda_v3": 0.44,
+          "permission": 0.44,
+          "quality_gates": 1,
+          "activity_terms": [
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-24T08:16:18"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-24T08:16:18"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-24T14:44:55"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-24T21:10:24"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-25T03:32:56"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-25T09:52:40"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-25T16:09:50"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-25T22:24:37"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T04:37:13"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Mars",
+              "event_datetime_ist": "2030-10-23T08:55:42"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Saturn",
+              "event_datetime_ist": "2030-10-23T08:55:42"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Ketu",
+              "event_datetime_ist": "2030-10-23T08:55:42"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T11:28:38"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T11:28:38"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T17:31:25"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T23:34:24"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T05:37:44"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T11:41:39"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T17:46:17"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T23:51:51"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-30T05:58:29"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Jupiter",
+              "event_datetime_ist": "2030-10-31T17:24:00"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "10",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-11-01T14:09:17"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "10",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-11-01T14:09:17"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "10",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-11-01T20:33:42"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "10",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-11-02T03:00:22"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-24T08:16:18"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Mars",
+              "event_datetime_ist": "2030-10-23T08:55:42"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Jupiter",
+              "event_datetime_ist": "2030-10-23T08:55:42"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-24T08:16:18"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-24T14:44:55"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-24T21:10:24"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-25T03:32:56"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-25T09:52:40"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-25T16:09:50"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-25T22:24:37"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "12",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T04:37:13"
+            },
+            {
+              "p_i": 0.8,
+              "orb_decay": 1,
+              "primitive": "degree_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T23:16:12"
+            },
+            {
+              "p_i": 0.8,
+              "orb_decay": 1,
+              "primitive": "degree_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-29T10:50:26"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T23:16:12"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-29T10:50:26"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T10:47:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "nakshatra_ingress_tara",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T19:20:32"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "nakshatra_ingress_tara",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-27T21:11:25"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Sun",
+              "event_datetime_ist": "2030-10-25T09:40:13"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Sun",
+              "event_datetime_ist": "2030-10-29T03:52:02"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Sun",
+              "event_datetime_ist": "2030-11-01T21:53:47"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T10:47:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T16:56:45"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T23:04:08"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T05:10:12"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T11:15:11"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T17:19:19"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T23:22:47"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T05:25:49"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-24T16:47:32"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-27T01:57:46"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-29T11:53:53"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-31T22:35:12"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Venus",
+              "event_datetime_ist": "2030-10-24T10:29:30"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Venus",
+              "event_datetime_ist": "2030-10-27T10:19:34"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Venus",
+              "event_datetime_ist": "2030-10-30T10:08:22"
+            },
+            {
+              "p_i": 0,
+              "orb_decay": 0,
+              "primitive": "degree_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T18:13:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T18:13:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Mars",
+              "event_datetime_ist": "2030-10-24T10:06:37"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "nakshatra_ingress_tara",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T03:36:34"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "eclipse_degree",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Rahu",
+              "event_datetime_ist": "2030-10-29T08:54:22"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T11:28:38"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T17:31:25"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T23:34:24"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T05:37:44"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T11:41:39"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T17:46:17"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T23:51:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-30T05:58:29"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Jupiter",
+              "event_datetime_ist": "2030-10-31T17:24:00"
+            },
+            {
+              "p_i": 0,
+              "orb_decay": 0,
+              "primitive": "degree_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T18:13:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T18:13:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Mars",
+              "event_datetime_ist": "2030-10-24T10:06:37"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "nakshatra_ingress_tara",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T03:36:34"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "eclipse_degree",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Rahu",
+              "event_datetime_ist": "2030-10-29T08:54:22"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T11:28:38"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T17:31:25"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T23:34:24"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T05:37:44"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T11:41:39"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T17:46:17"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T23:51:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-30T05:58:29"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Rahu",
+              "target_weight": 0.8,
+              "transit_planet": "Jupiter",
+              "event_datetime_ist": "2030-10-31T17:24:00"
+            },
+            {
+              "p_i": 0.8,
+              "orb_decay": 1,
+              "primitive": "degree_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T23:16:12"
+            },
+            {
+              "p_i": 0.8,
+              "orb_decay": 1,
+              "primitive": "degree_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-29T10:50:26"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T23:16:12"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-29T10:50:26"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T10:47:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "nakshatra_ingress_tara",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T19:20:32"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "nakshatra_ingress_tara",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-27T21:11:25"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Sun",
+              "event_datetime_ist": "2030-10-25T09:40:13"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Sun",
+              "event_datetime_ist": "2030-10-29T03:52:02"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Sun",
+              "event_datetime_ist": "2030-11-01T21:53:47"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T10:47:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T16:56:45"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T23:04:08"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T05:10:12"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T11:15:11"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T17:19:19"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T23:22:47"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T05:25:49"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-24T16:47:32"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-27T01:57:46"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-29T11:53:53"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-31T22:35:12"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Venus",
+              "event_datetime_ist": "2030-10-24T10:29:30"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Venus",
+              "event_datetime_ist": "2030-10-27T10:19:34"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Venus",
+              "event_datetime_ist": "2030-10-30T10:08:22"
+            }
+          ]
+        },
+        "resolution": "era",
+        "parent_window_id": null,
+        "resolution_disclosure": {
+          "resolution": "era",
+          "resolution_source": "stored",
+          "is_timing_window": false,
+          "timing_window_blocked_reason": "era_resolution"
+        },
+        "signed_intensity": 0.44,
+        "raw_intensity": 0.44,
+        "valence": "loss",
+        "plateau_disclosure": null,
+        "clarity_statement": "Elevated adverse-valence configuration for 'career_setback' (interval-shaped) over 2024-02-05..2034-01-30, raw magnitude\u2026[truncated for budget]",
+        "framing": {
+          "probabilistic": true,
+          "fatalistic_claim": false,
+          "note": "Never a death/ruin point-claim. The birth->birth+100y sweep horizon is uniform for every chart and is NOT tied to comput\u2026[truncated for budget]"
+        },
+        "falsifier": {
+          "statement": "This claim is falsified if no LEL-loggable adverse 'career_setback' outcome is recorded for chart 482012f1-710e-4a25-994\u2026[truncated for budget]",
+          "checked_via": "G-5 prospective-ledger outcome matching (brahma_prospective_ledger, once this window is filed as a claim) \u2014 not yet file\u2026[truncated for budget]"
+        },
+        "suppression_state": {
+          "note": "v3-native suppression mechanism (see gochara_v3/engine.py's MR-41(c) wiring-decision comment); the v1 vedha_cancellation\u2026[truncated for budget]",
+          "value": 1,
+          "mechanism": "quality_gates",
+          "coverage_quality": {
+            "note": "career_setback: 34 resonance target(s) in gochara_resonance_map backed this window (rich coverage). Never an invented ta\u2026[truncated for budget]",
+            "tier": "rich",
+            "target_count": 34
+          }
+        },
+        "mitigation": {
+          "available": false,
+          "reason": "no dominant contributing graha could be resolved from contributing_systems for this window -- honest gap, not a fabricat\u2026[truncated for budget]"
+        },
+        "confidence_disclosure": {
+          "calibration_state": "structural_prior",
+          "generation_tier": "3.0",
+          "era_slice_key": "g3_2024_2034",
+          "n_observations": null,
+          "control_delta": null,
+          "note": "D-5 ships structural_prior weights only (beta_e, PERMISSION system weights, suppression damping) -- empirical calibratio\u2026[truncated for budget]"
+        },
+        "contributing_systems_active": [],
+        "active_sentences_count": 0,
+        "peak_basis": "gochara_lambda_v3_coarse_argmax",
+        "source_citation": "kala_gochara_windows (L3 K\u0101la, W6.4 cutover ka_gochara materializer) \u2014 lambda_v3 via services/gochara_v3, consuming goch\u2026[truncated for budget]"
+      },
+      {
+        "event_class": "chronic_onset",
+        "temporal_shape": "interval",
+        "window_start": "2024-02-05",
+        "window_end": "2034-01-30",
+        "peak_date": "2030-10-27",
+        "milestone_id": null,
+        "is_irreversibility_milestone": false,
+        "era_slice_key": "g3_2024_2034",
+        "generation": "3.0",
+        "term_breakdown": {
+          "formula": "PROMISE \u00d7 PERMISSION \u00d7 activity \u00d7 quality_gates",
+          "promise": 1,
+          "activity": 1,
+          "lambda_v3": 0.44,
+          "permission": 0.44,
+          "quality_gates": 1,
+          "activity_terms": [
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-24T08:16:18"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-24T08:16:18"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-24T14:44:55"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-24T21:10:24"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-25T03:32:56"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-25T09:52:40"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-25T16:09:50"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-25T22:24:37"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T04:37:13"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Mars",
+              "event_datetime_ist": "2030-10-23T08:55:42"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Saturn",
+              "event_datetime_ist": "2030-10-23T08:55:42"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Ketu",
+              "event_datetime_ist": "2030-10-23T08:55:42"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T11:28:38"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T11:28:38"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T17:31:25"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T23:34:24"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T05:37:44"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T11:41:39"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T17:46:17"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-29T23:51:51"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-30T05:58:29"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Jupiter",
+              "event_datetime_ist": "2030-10-31T17:24:00"
+            },
+            {
+              "p_i": 0.8,
+              "orb_decay": 1,
+              "primitive": "degree_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T23:16:12"
+            },
+            {
+              "p_i": 0.8,
+              "orb_decay": 1,
+              "primitive": "degree_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-29T10:50:26"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T23:16:12"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-29T10:50:26"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T10:47:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "nakshatra_ingress_tara",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T19:20:32"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "nakshatra_ingress_tara",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-27T21:11:25"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Sun",
+              "event_datetime_ist": "2030-10-25T09:40:13"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Sun",
+              "event_datetime_ist": "2030-10-29T03:52:02"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Sun",
+              "event_datetime_ist": "2030-11-01T21:53:47"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T10:47:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T16:56:45"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T23:04:08"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T05:10:12"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T11:15:11"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T17:19:19"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T23:22:47"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T05:25:49"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-24T16:47:32"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-27T01:57:46"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-29T11:53:53"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-31T22:35:12"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Venus",
+              "event_datetime_ist": "2030-10-24T10:29:30"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Venus",
+              "event_datetime_ist": "2030-10-27T10:19:34"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Venus",
+              "event_datetime_ist": "2030-10-30T10:08:22"
+            },
+            {
+              "p_i": 0.8,
+              "orb_decay": 1,
+              "primitive": "degree_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T23:16:12"
+            },
+            {
+              "p_i": 0.8,
+              "orb_decay": 1,
+              "primitive": "degree_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-29T10:50:26"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T23:16:12"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-29T10:50:26"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T10:47:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "nakshatra_ingress_tara",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T19:20:32"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "nakshatra_ingress_tara",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-27T21:11:25"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Sun",
+              "event_datetime_ist": "2030-10-25T09:40:13"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Sun",
+              "event_datetime_ist": "2030-10-29T03:52:02"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Sun",
+              "event_datetime_ist": "2030-11-01T21:53:47"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T10:47:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T16:56:45"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-26T23:04:08"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T05:10:12"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T11:15:11"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T17:19:19"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-27T23:22:47"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2030-10-28T05:25:49"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-24T16:47:32"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-27T01:57:46"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-29T11:53:53"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Mercury",
+              "event_datetime_ist": "2030-10-31T22:35:12"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Venus",
+              "event_datetime_ist": "2030-10-24T10:29:30"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Venus",
+              "event_datetime_ist": "2030-10-27T10:19:34"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Venus",
+              "event_datetime_ist": "2030-10-30T10:08:22"
+            }
+          ]
+        },
+        "resolution": "era",
+        "parent_window_id": null,
+        "resolution_disclosure": {
+          "resolution": "era",
+          "resolution_source": "stored",
+          "is_timing_window": false,
+          "timing_window_blocked_reason": "era_resolution"
+        },
+        "signed_intensity": 0.44,
+        "raw_intensity": 0.44,
+        "valence": "loss",
+        "plateau_disclosure": null,
+        "clarity_statement": "Elevated adverse-valence configuration for 'chronic_onset' (interval-shaped) over 2024-02-05..2034-01-30, raw magnitude \u2026[truncated for budget]",
+        "framing": {
+          "probabilistic": true,
+          "fatalistic_claim": false,
+          "note": "Never a death/ruin point-claim. The birth->birth+100y sweep horizon is uniform for every chart and is NOT tied to comput\u2026[truncated for budget]"
+        },
+        "falsifier": {
+          "statement": "This claim is falsified if no LEL-loggable adverse 'chronic_onset' outcome is recorded for chart 482012f1-710e-4a25-994a\u2026[truncated for budget]",
+          "checked_via": "G-5 prospective-ledger outcome matching (brahma_prospective_ledger, once this window is filed as a claim) \u2014 not yet file\u2026[truncated for budget]"
+        },
+        "suppression_state": {
+          "note": "v3-native suppression mechanism (see gochara_v3/engine.py's MR-41(c) wiring-decision comment); the v1 vedha_cancellation\u2026[truncated for budget]",
+          "value": 1,
+          "mechanism": "quality_gates",
+          "coverage_quality": {
+            "note": "chronic_onset: 19 resonance target(s) in gochara_resonance_map backed this window (rich coverage). Never an invented tar\u2026[truncated for budget]",
+            "tier": "rich",
+            "target_count": 19
+          }
+        },
+        "mitigation": {
+          "available": false,
+          "reason": "no dominant contributing graha could be resolved from contributing_systems for this window -- honest gap, not a fabricat\u2026[truncated for budget]"
+        },
+        "confidence_disclosure": {
+          "calibration_state": "structural_prior",
+          "generation_tier": "3.0",
+          "era_slice_key": "g3_2024_2034",
+          "n_observations": null,
+          "control_delta": null,
+          "note": "D-5 ships structural_prior weights only (beta_e, PERMISSION system weights, suppression damping) -- empirical calibratio\u2026[truncated for budget]"
+        },
+        "contributing_systems_active": [],
+        "active_sentences_count": 0,
+        "peak_basis": "gochara_lambda_v3_coarse_argmax",
+        "source_citation": "kala_gochara_windows (L3 K\u0101la, W6.4 cutover ka_gochara materializer) \u2014 lambda_v3 via services/gochara_v3, consuming goch\u2026[truncated for budget]"
+      },
+      {
+        "event_class": "illness_acute",
+        "temporal_shape": "interval",
+        "window_start": "2024-02-05",
+        "window_end": "2034-01-30",
+        "peak_date": "2027-12-20",
+        "milestone_id": null,
+        "is_irreversibility_milestone": false,
+        "era_slice_key": "g3_2024_2034",
+        "generation": "3.0",
+        "term_breakdown": {
+          "formula": "PROMISE \u00d7 PERMISSION \u00d7 activity \u00d7 quality_gates",
+          "promise": 1,
+          "activity": 1,
+          "lambda_v3": 0.44,
+          "permission": 0.44,
+          "quality_gates": 1,
+          "activity_terms": [
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Saturn",
+              "event_datetime_ist": "2027-12-16T08:55:42"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-20T07:49:35"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-20T07:49:35"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-20T14:16:25"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-20T20:44:59"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-21T03:15:20"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-21T09:47:29"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-21T16:21:26"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-21T22:57:14"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "6",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-22T05:34:54"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-24T18:39:57"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-24T18:39:57"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-25T01:37:03"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-25T08:36:12"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-25T15:37:24"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-25T22:40:41"
+            },
+            {
+              "p_i": 0.5,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "8",
+              "target_weight": 1,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-26T05:46:05"
+            },
+            {
+              "p_i": 0.8,
+              "orb_decay": 1,
+              "primitive": "degree_contact",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T21:35:28"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T21:35:28"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-22T12:14:26"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "nakshatra_ingress_tara",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T00:09:23"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-22T12:14:26"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-22T18:55:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T01:39:10"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T08:24:25"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T15:11:35"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T22:00:42"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-24T04:51:48"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-24T11:44:52"
+            },
+            {
+              "p_i": 0.8,
+              "orb_decay": 1,
+              "primitive": "degree_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-24T04:44:19"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-24T04:44:19"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-22T12:14:26"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "nakshatra_ingress_tara",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-24T00:17:31"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-22T12:14:26"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-22T18:55:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T01:39:10"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T08:24:25"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T15:11:35"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T22:00:42"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-24T04:51:48"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-24T11:44:52"
+            },
+            {
+              "p_i": 0.8,
+              "orb_decay": 1,
+              "primitive": "degree_contact",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T21:35:28"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T21:35:28"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-22T12:14:26"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "nakshatra_ingress_tara",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T00:09:23"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-22T12:14:26"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-22T18:55:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T01:39:10"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T08:24:25"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T15:11:35"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T22:00:42"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-24T04:51:48"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Mars",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-24T11:44:52"
+            },
+            {
+              "p_i": 0.8,
+              "orb_decay": 1,
+              "primitive": "degree_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-24T04:44:19"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "drishti_contact",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-24T04:44:19"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "sign_ingress",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-22T12:14:26"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "nakshatra_ingress_tara",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-24T00:17:31"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-22T12:14:26"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-22T18:55:51"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T01:39:10"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T08:24:25"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T15:11:35"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-23T22:00:42"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-24T04:51:48"
+            },
+            {
+              "p_i": 0.4,
+              "orb_decay": 0.5,
+              "primitive": "kakshya_cell_crossing",
+              "target_ref": "Saturn",
+              "target_weight": 0.8,
+              "transit_planet": "Moon",
+              "event_datetime_ist": "2027-12-24T11:44:52"
+            }
+          ]
+        },
+        "resolution": null,
+        "parent_window_id": null,
+        "resolution_disclosure": {
+          "resolution": null,
+          "resolution_source": "unavailable",
+          "is_timing_window": false,
+          "timing_window_blocked_reason": "point_class_context_envelope"
+        },
+        "signed_intensity": 0.44,
+        "raw_intensity": 0.44,
+        "valence": "loss",
+        "plateau_disclosure": null,
+        "clarity_statement": "Elevated adverse-valence configuration for 'illness_acute' (interval-shaped) over 2024-02-05..2034-01-30, raw magnitude \u2026[truncated for budget]",
+        "framing": {
+          "probabilistic": true,
+          "fatalistic_claim": false,
+          "note": "Never a death/ruin point-claim. The birth->birth+100y sweep horizon is uniform for every chart and is NOT tied to comput\u2026[truncated for budget]"
+        },
+        "falsifier": {
+          "statement": "This claim is falsified if no LEL-loggable adverse 'illness_acute' outcome is recorded for chart 482012f1-710e-4a25-994a\u2026[truncated for budget]",
+          "checked_via": "G-5 prospective-ledger outcome matching (brahma_prospective_ledger, once this window is filed as a claim) \u2014 not yet file\u2026[truncated for budget]"
+        },
+        "suppression_state": {
+          "note": "v3-native suppression mechanism (see gochara_v3/engine.py's MR-41(c) wiring-decision comment); the v1 vedha_cancellation\u2026[truncated for budget]",
+          "value": 1,
+          "mechanism": "quality_gates",
+          "coverage_quality": {
+            "note": "illness_acute: 26 resonance target(s) in gochara_resonance_map backed this window (rich coverage). Never an invented tar\u2026[truncated for budget]",
+            "tier": "rich",
+            "target_count": 26
+          }
+        },
+        "mitigation": {
+          "available": false,
+          "reason": "no dominant contributing graha could be resolved from contributing_systems for this window -- honest gap, not a fabricat\u2026[truncated for budget]"
+        },
+        "confidence_disclosure": {
+          "calibration_state": "structural_prior",
+          "generation_tier": "3.0",
+          "era_slice_key": "g3_2024_2034",
+          "n_observations": null,
+          "control_delta": null,
+          "note": "D-5 ships structural_prior weights only (beta_e, PERMISSION system weights, suppression damping) -- empirical calibratio\u2026[truncated for budget]"
+        },
+        "contributing_systems_active": [],
+        "active_sentences_count": 0,
+        "peak_basis": "gochara_lambda_v3_coarse_argmax",
+        "source_citation": "kala_gochara_windows (L3 K\u0101la, W6.4 cutover ka_gochara materializer) \u2014 lambda_v3 via services/gochara_v3, consuming goch\u2026[truncated for budget]"
+      }
+    ],
+    "facets": {
+      "calibration_state": {
+        "empirically_calibrated": 0,
+        "structural_prior": 6,
+        "other": 0
+      },
+      "has_term_breakdown": true,
+      "generation_tier": "3.0",
+      "resolution": {
+        "era": 4,
+        "month": 0,
+        "day": 0,
+        "unavailable": 2
+      }
+    },
+    "coverage": {
+      "event_classes_covered": [
+        "achievement_recognition",
+        "bereavement",
+        "birth_anchor",
+        "business_launch",
+        "career_advancement",
+        "career_change",
+        "career_entry",
+        "career_setback",
+        "childbirth",
+        "chronic_onset",
+        "education_milestone",
+        "exam_outcome",
+        "financial_deception",
+        "foreign_settlement",
+        "illness_acute",
+        "major_gain",
+        "major_loss",
+        "marriage",
+        "parental_event",
+        "property_acquisition",
+        "psychological_arc",
+        "relocation",
+        "romantic_start",
+        "separation",
+        "spiritual_turn",
+        "surgery",
+        "travel_event"
+      ],
+      "event_classes_targeted_not_swept": [],
+      "domains_not_covered": [],
+      "universe_source": "event_classes_covered = DISTINCT gochara_resonance_map.event_class for this chart_id (G-1's own record of which event classes the D-5 sweep populated targets for, and therefore substepped over \u2014 the writer's docstring: \"one substep per populated gochara_resonance_map event_class x decade\" \u2014 more precise than kala_gochara_windows itself, which can under-report a class that was swept but produced zero rows) INTERSECTED with the classes whose sweep has actually committed at least one substep for this chart (build_substep_progress.substep_key is \"{event_class}:year:{n}\"); a class with targets but zero committed substeps is reported in event_classes_targeted_not_swept and is NOT counted as covered. Covered classes are resolved to brahma_event_ontology.domain; domains_not_covered = DISTINCT brahma_event_ontology.domain minus that covered set. Mechanically derived fresh every call from live table state \u2014 never hand-maintained.",
+      "coverage_quality": {
+        "tier": "rich",
+        "covered_class_count": 27,
+        "covered_domain_count": 13,
+        "reason": "27 event classes covered across 13 domains \u2014 rich coverage"
+      },
+      "sweep_completeness": {
+        "substeps_committed": 270,
+        "source": "build_substep_progress (asset_id=ka_gochara_v3_century_materialize, chart-scoped, century materializer)",
+        "note": "Execution completeness ONLY \u2014 how many substeps have committed for THIS chart (MR-02: asset_id is authority-aware: ka_gochara_sweep for v1-authority charts, ka_gochara_v3_century_materialize for v3-authority charts per kala_gochara_authority.authoritative_generation). NOT the same axis as the category coverage above (which domains the sweep can ever surface at all, per event_classes_covered/domains_not_covered) \u2014 a fully-executed sweep (every substep committed) still structurally excludes any domain in domains_not_covered. No total-planned-substep denominator is reported here: that figure is not independently queryable post-build without re-deriving the writer's own planning logic, and this field will not fabricate one."
+      }
+    },
+    "drill_pointers": [],
+    "provenance_envelope": {
+      "source": "gochara_election_avoidance_get",
+      "source_citation": "kala_gochara_windows (L3 K\u0101la, W6.4 cutover ka_gochara materializer) \u2014 lambda_v3 via services/gochara_v3, consuming goch\u2026[truncated for budget]",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "date_range": {
+        "start": "2026-08-15",
+        "end": "2026-09-15"
+      },
+      "event_class_filter": null,
+      "domain_filter": null,
+      "resolution_filter": null,
+      "computed_at": "2026-08-15T13:11:09.200Z",
+      "dr16_properties": [
+        "honest_clarity",
+        "probabilistic_never_fatalistic",
+        "falsifier_bearing",
+        "mitigation_paired",
+        "confidence_honest"
+      ],
+      "density_contract": {
+        "max_digest_bytes": 50000,
+        "paginated": true,
+        "facets": [
+          "event_class",
+          "temporal_shape",
+          "calibration_state",
+          "era_slice_key",
+          "resolution"
+        ],
+        "empty_reason": true,
+        "density_layering": "calibration_state:empirically_calibrated>structural_prior"
+      },
+      "window_count": 6,
+      "backing_data_reachable": true,
+      "context_only_rows_in_page": 6,
+      "context_only_note": "6 of 6 served row(s) are era-scale/unresolved CONTEXT, not timing windows (PK-R-1) -- see each row's resolution_disclosu\u2026[truncated for budget]",
+      "resolution_breakdown": {
+        "era": 4,
+        "month": 0,
+        "day": 0,
+        "unclassified": 2
+      },
+      "empty_reason": null
+    },
+    "budget_kb_applied": 50,
+    "trim_report": [
+      {
+        "path": "(trim_report)",
+        "original_count": 2,
+        "kept_count": 1,
+        "reason": "full trim_report omitted to fit budget",
+        "recover_via": {
+          "instrument": "response_format:legacy",
+          "hint": "full untrimmed response"
+        }
+      }
+    ],
+    "judgment_flags": [
+      {
+        "code": "budget_exceeded_after_trim",
+        "detail": "50kb budget still exceeded after full trim."
+      }
+    ]
+  }
+}

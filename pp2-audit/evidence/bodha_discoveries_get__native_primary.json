@@ -1,0 +1,758 @@
+{
+  "tool": "bodha_discoveries_get",
+  "scenario": "native_primary",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "domain": "career",
+    "limit": 10
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"envelope_version\":\"v1\",\"tool\":\"bodha_discoveries_get\",\"verdict\":null,\"ranking_basis\":null,\"grounding\":{\"fact_ids\":[],\"citations\":[],\"grounding_score\":null},\"pagination\":{\"offset\":0,\"limit\":0,\"total\":null,\"next_cursor\":null},\"drill_pointers\":[],\"judgment_flags\":[{\"code\":\"hollow_envelope_no_data_rows\",\"detail\":\"the served 'discoveries' field is empty for this call (other back-compat fields on this response may still carry unfiltered data — see the tool's field docs).\"}],\"insight_type\":null,\"query_class\":\"synthesis_cross_domain\",\"content\":{\"content\":{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"rows\":[{\"discovery_id\":\"09b0b29f-b9c2-48a2-87b1-a2ec8046b8d7\",\"ayanamsha_id\":\"raman\",\"discovery_class\":\"embedding_outlier\",\"discovery_subsystem\":\"ga_structural\",\"non_obviousness_score\":0.14973,\"consequence_score\":1,\"composite_discovery_rank\":0.179676,\"novelty_class\":\"instance_of_known_class\",\"corroboration_count\":1,\"corroborating_methods_array\":[\"embedding_outlier\"],\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"surface_reading\":\"Signal aspect_tajik:eesarpha appears unremarkable to pattern inspection\",\"depth_reading\":\"Embedding distance from chart centroid: 0.7486 — semantically unusual\",\"surface_depth_delta\":\"Semantic uniqueness 0.749 distinguishes this from all other chart signals\",\"hypothesis_text\":\"Pattern aspect_tajik:eesarpha represents a chart-unusual semantic configuration whose practical significance may be underweighted\",\"why_an_acharya_misses_it\":\"Semantically unusual (distance 0.749 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching\",\"meaningfulness_basis\":\"classical_keyword::aspect_tajik:eesarpha\",\"constituent_refs_jsonb\":{\"signal_ids\":[\"3e098b67-893c-49f8-bcc5-1d3c4caef5d7\"]},\"cross_subsystem_refs_jsonb\":null,\"computed_date\":\"2026-08-12\"},{\"discovery_id\":\"ecb1d4b2-b5ae-422c-83b8-98669cf33b44\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"discovery_class\":\"embedding_outlier\",\"discovery_subsystem\":\"ga_structural\",\"non_obviousness_score\":0.149812,\"consequence_score\":1,\"composite_discovery_rank\":0.179774,\"novelty_class\":\"instance_of_known_class\",\"corroboration_count\":1,\"corroborating_methods_array\":[\"embedding_outlier\"],\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"surface_reading\":\"Signal aspect_tajik:eesarpha appears unremarkable to pattern inspection\",\"depth_reading\":\"Embedding distance from chart centroid: 0.7491 — semantically unusual\",\"surface_depth_delta\":\"Semantic uniqueness 0.749 distinguishes this from all other chart signals\",\"hypothesis_text\":\"Pattern aspect_tajik:eesarpha represents a chart-unusual semantic configuration whose practical significance may be underweighted\",\"why_an_acharya_misses_it\":\"Semantically unusual (distance 0.749 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching\",\"meaningfulness_basis\":\"classical_keyword::aspect_tajik:eesarpha\",\"constituent_refs_jsonb\":{\"signal_ids\":[\"ca6d9d6f-f33e-4c0c-93b3-85dc357db01f\"]},\"cross_subsystem_refs_jsonb\":null,\"computed_date\":\"2026-08-12\"},{\"discovery_id\":\"b0b7bb3f-2eee-4df3-9833-994179a3442d\",\"ayanamsha_id\":\"true_chitra\",\"discovery_class\":\"embedding_outlier\",\"discovery_subsystem\":\"ga_structural\",\"non_obviousness_score\":0.14982,\"consequence_score\":1,\"composite_discovery_rank\":0.179783,\"novelty_class\":\"instance_of_known_class\",\"corroboration_count\":1,\"corroborating_methods_array\":[\"embedding_outlier\"],\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"surface_reading\":\"Signal aspect_tajik:eesarpha appears unremarkable to pattern inspection\",\"depth_reading\":\"Embedding distance from chart centroid: 0.7491 — semantically unusual\",\"surface_depth_delta\":\"Semantic uniqueness 0.749 distinguishes this from all other chart signals\",\"hypothesis_text\":\"Pattern aspect_tajik:eesarpha represents a chart-unusual semantic configuration whose practical significance may be underweighted\",\"why_an_acharya_misses_it\":\"Semantically unusual (distance 0.749 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching\",\"meaningfulness_basis\":\"classical_keyword::aspect_tajik:eesarpha\",\"constituent_refs_jsonb\":{\"signal_ids\":[\"a2787dc8-3612-4cf4-807b-8b63ba52a98c\"]},\"cross_subsystem_refs_jsonb\":null,\"computed_date\":\"2026-08-12\"},{\"discovery_id\":\"16cee537-ebd9-44d5-b6cb-4efc962c3003\",\"ayanamsha_id\":\"krishnamurti\",\"discovery_class\":\"embedding_outlier\",\"discovery_subsystem\":\"ga_structural\",\"non_obviousness_score\":0.14985,\"consequence_score\":1,\"composite_discovery_rank\":0.17982,\"novelty_class\":\"instance_of_known_class\",\"corroboration_count\":1,\"corroborating_methods_array\":[\"embedding_outlier\"],\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"surface_reading\":\"Signal aspect_tajik:eesarpha appears unremarkable to pattern inspection\",\"depth_reading\":\"Embedding distance from chart centroid: 0.7493 — semantically unusual\",\"surface_depth_delta\":\"Semantic uniqueness 0.749 distinguishes this from all other chart signals\",\"hypothesis_text\":\"Pattern aspect_tajik:eesarpha represents a chart-unusual semantic configuration whose practical significance may be underweighted\",\"why_an_acharya_misses_it\":\"Semantically unusual (distance 0.749 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching\",\"meaningfulness_basis\":\"classical_keyword::aspect_tajik:eesarpha\",\"constituent_refs_jsonb\":{\"signal_ids\":[\"f5f3a15b-7aae-47e6-8649-2eb30cf3907c\"]},\"cross_subsystem_refs_jsonb\":null,\"computed_date\":\"2026-08-12\"},{\"discovery_id\":\"cf42fd47-851c-45b4-b12d-0617ea5ebe81\",\"ayanamsha_id\":\"surya_siddhanta_classical\",\"discovery_class\":\"embedding_outlier\",\"discovery_subsystem\":\"ga_structural\",\"non_obviousness_score\":0.149874,\"consequence_score\":1,\"composite_discovery_rank\":0.179849,\"novelty_class\":\"instance_of_known_class\",\"corroboration_count\":1,\"corroborating_methods_array\":[\"embedding_outlier\"],\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"surface_reading\":\"Signal aspect_tajik:eesarpha appears unremarkable to pattern inspection\",\"depth_reading\":\"Embedding distance from chart centroid: 0.7494 — semantically unusual\",\"surface_depth_delta\":\"Semantic uniqueness 0.749 distinguishes this from all other chart signals\",\"hypothesis_text\":\"Pattern aspect_tajik:eesarpha represents a chart-unusual semantic configuration whose practical significance may be underweighted\",\"why_an_acharya_misses_it\":\"Semantically unusual (distance 0.749 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching\",\"meaningfulness_basis\":\"classical_keyword::aspect_tajik:eesarpha\",\"constituent_refs_jsonb\":{\"signal_ids\":[\"fe620efa-9786-4cdd-a3e4-c56f783c1dfd\"]},\"cross_subsystem_refs_jsonb\":null,\"computed_date\":\"2026-08-12\"},{\"discovery_id\":\"e80812e2-d690-4e64-8ec4-125fa241acae\",\"ayanamsha_id\":\"raman\",\"discovery_class\":\"embedding_outlier\",\"discovery_subsystem\":\"ga_structural\",\"non_obviousness_score\":0.152397,\"consequence_score\":1,\"composite_discovery_rank\":0.182876,\"novelty_class\":\"instance_of_known_class\",\"corroboration_count\":1,\"corroborating_methods_array\":[\"embedding_outlier\"],\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"surface_reading\":\"Signal aspect_tajik:ithasala appears unremarkable to pattern inspection\",\"depth_reading\":\"Embedding distance from chart centroid: 0.7620 — semantically unusual\",\"surface_depth_delta\":\"Semantic uniqueness 0.762 distinguishes this from all other chart signals\",\"hypothesis_text\":\"Pattern aspect_tajik:ithasala represents a chart-unusual semantic configuration whose practical significance may be underweighted\",\"why_an_acharya_misses_it\":\"Semantically unusual (distance 0.762 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching\",\"meaningfulness_basis\":\"classical_keyword::aspect_tajik:ithasala\",\"constituent_refs_jsonb\":{\"signal_ids\":[\"fec39da6-c857-491c-97f1-999c1485c451\"]},\"cross_subsystem_refs_jsonb\":null,\"computed_date\":\"2026-08-12\"},{\"discovery_id\":\"cbbe698b-6b3f-4662-9a1f-e08649828e1f\",\"ayanamsha_id\":\"raman\",\"discovery_class\":\"embedding_outlier\",\"discovery_subsystem\":\"ga_structural\",\"non_obviousness_score\":0.152397,\"consequence_score\":1,\"composite_discovery_rank\":0.182876,\"novelty_class\":\"instance_of_known_class\",\"corroboration_count\":1,\"corroborating_methods_array\":[\"embedding_outlier\"],\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"surface_reading\":\"Signal aspect_tajik:ithasala appears unremarkable to pattern inspection\",\"depth_reading\":\"Embedding distance from chart centroid: 0.7620 — semantically unusual\",\"surface_depth_delta\":\"Semantic uniqueness 0.762 distinguishes this from all other chart signals\",\"hypothesis_text\":\"Pattern aspect_tajik:ithasala represents a chart-unusual semantic configuration whose practical significance may be underweighted\",\"why_an_acharya_misses_it\":\"Semantically unusual (distance 0.762 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching\",\"meaningfulness_basis\":\"classical_keyword::aspect_tajik:ithasala\",\"constituent_refs_jsonb\":{\"signal_ids\":[\"72ab6c42-24f6-478d-bc82-84be954e4232\"]},\"cross_subsystem_refs_jsonb\":null,\"computed_date\":\"2026-08-12\"},{\"discovery_id\":\"2484211f-da55-4e07-b250-dad47e8c5b88\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"discovery_class\":\"embedding_outlier\",\"discovery_subsystem\":\"ga_structural\",\"non_obviousness_score\":0.152468,\"consequence_score\":1,\"composite_discovery_rank\":0.182961,\"novelty_class\":\"instance_of_known_class\",\"corroboration_count\":1,\"corroborating_methods_array\":[\"embedding_outlier\"],\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"surface_reading\":\"Signal aspect_tajik:ithasala appears unremarkable to pattern inspection\",\"depth_reading\":\"Embedding distance from chart centroid: 0.7623 — semantically unusual\",\"surface_depth_delta\":\"Semantic uniqueness 0.762 distinguishes this from all other chart signals\",\"hypothesis_text\":\"Pattern aspect_tajik:ithasala represents a chart-unusual semantic configuration whose practical significance may be underweighted\",\"why_an_acharya_misses_it\":\"Semantically unusual (distance 0.762 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching\",\"meaningfulness_basis\":\"classical_keyword::aspect_tajik:ithasala\",\"constituent_refs_jsonb\":{\"signal_ids\":[\"41f42e44-383e-4164-b829-6d0215e9c386\"]},\"cross_subsystem_refs_jsonb\":null,\"computed_date\":\"2026-08-12\"},{\"discovery_id\":\"79d61cc4-21f6-4515-b3a7-d36f973624ae\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"discovery_class\":\"embedding_outlier\",\"discovery_subsystem\":\"ga_structural\",\"non_obviousness_score\":0.152468,\"consequence_score\":1,\"composite_discovery_rank\":0.182961,\"novelty_class\":\"instance_of_known_class\",\"corroboration_count\":1,\"corroborating_methods_array\":[\"embedding_outlier\"],\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"surface_reading\":\"Signal aspect_tajik:ithasala appears unremarkable to pattern inspection\",\"depth_reading\":\"Embedding distance from chart centroid: 0.7623 — semantically unusual\",\"surface_depth_delta\":\"Semantic uniqueness 0.762 distinguishes this from all other chart signals\",\"hypothesis_text\":\"Pattern aspect_tajik:ithasala represents a chart-unusual semantic configuration whose practical significance may be underweighted\",\"why_an_acharya_misses_it\":\"Semantically unusual (distance 0.762 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching\",\"meaningfulness_basis\":\"classical_keyword::aspect_tajik:ithasala\",\"constituent_refs_jsonb\":{\"signal_ids\":[\"cee733a8-d7f6-43be-ba43-bd4556cacae1\"]},\"cross_subsystem_refs_jsonb\":null,\"computed_date\":\"2026-08-12\"},{\"discovery_id\":\"0858733d-022b-4096-80fb-0a45fb4b7e0b\",\"ayanamsha_id\":\"true_chitra\",\"discovery_class\":\"embedding_outlier\",\"discovery_subsystem\":\"ga_structural\",\"non_obviousness_score\":0.152472,\"consequence_score\":1,\"composite_discovery_rank\":0.182966,\"novelty_class\":\"instance_of_known_class\",\"corroboration_count\":1,\"corroborating_methods_array\":[\"embedding_outlier\"],\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"surface_reading\":\"Signal aspect_tajik:ithasala appears unremarkable to pattern inspection\",\"depth_reading\":\"Embedding distance from chart centroid: 0.7624 — semantically unusual\",\"surface_depth_delta\":\"Semantic uniqueness 0.762 distinguishes this from all other chart signals\",\"hypothesis_text\":\"Pattern aspect_tajik:ithasala represents a chart-unusual semantic configuration whose practical significance may be underweighted\",\"why_an_acharya_misses_it\":\"Semantically unusual (distance 0.762 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching\",\"meaningfulness_basis\":\"classical_keyword::aspect_tajik:ithasala\",\"constituent_refs_jsonb\":{\"signal_ids\":[\"129597b5-a82d-4fff-8131-f2508c69adf7\"]},\"cross_subsystem_refs_jsonb\":null,\"computed_date\":\"2026-08-12\"}],\"count\":10,\"total_matching\":154,\"more_available\":true,\"discovery_families\":[{\"discovery_class\":\"embedding_outlier\",\"discovery_subsystem\":\"ga_structural\",\"hypothesis_text\":\"Pattern aspect_tajik:eesarpha represents a chart-unusual semantic configuration whose practical significance may be underweighted\",\"member_count\":5,\"ayanamsha_count\":5,\"ayanamsha_ids\":[\"krishnamurti\",\"lahiri_chitrapaksha\",\"raman\",\"surya_siddhanta_classical\",\"true_chitra\"],\"ayanamsha_agreement\":\"5/5 ayanamshas agree\",\"member_discovery_ids\":[\"09b0b29f-b9c2-48a2-87b1-a2ec8046b8d7\",\"ecb1d4b2-b5ae-422c-83b8-98669cf33b44\",\"b0b7bb3f-2eee-4df3-9833-994179a3442d\",\"16cee537-ebd9-44d5-b6cb-4efc962c3003\",\"cf42fd47-851c-45b4-b12d-0617ea5ebe81\"],\"best_composite_discovery_rank\":0.179676,\"max_non_obviousness_score\":0.149874,\"max_consequence_score\":1,\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"affected_domains_variant_count\":1,\"surface_reading\":\"Signal aspect_tajik:eesarpha appears unremarkable to pattern inspection\",\"depth_reading\":\"Embedding distance from chart centroid: 0.7486 — semantically unusual\",\"why_an_acharya_misses_it\":\"Semantically unusual (distance 0.749 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching\",\"novelty_class\":\"instance_of_known_class\"},{\"discovery_class\":\"embedding_outlier\",\"discovery_subsystem\":\"ga_structural\",\"hypothesis_text\":\"Pattern aspect_tajik:ithasala represents a chart-unusual semantic configuration whose practical significance may be underweighted\",\"member_count\":10,\"ayanamsha_count\":5,\"ayanamsha_ids\":[\"krishnamurti\",\"lahiri_chitrapaksha\",\"raman\",\"surya_siddhanta_classical\",\"true_chitra\"],\"ayanamsha_agreement\":\"5/5 ayanamshas agree\",\"member_discovery_ids\":[\"e80812e2-d690-4e64-8ec4-125fa241acae\",\"cbbe698b-6b3f-4662-9a1f-e08649828e1f\",\"79d61cc4-21f6-4515-b3a7-d36f973624ae\",\"2484211f-da55-4e07-b250-dad47e8c5b88\",\"0858733d-022b-4096-80fb-0a45fb4b7e0b\",\"6e0fd4bf-b36a-4680-9ef8-41cc5d74a64b\",\"b893cdca-966d-40a2-87b1-386f91f5ab40\",\"4c26ca33-4a71-4835-9964-1b369738f0c2\",\"9efec773-a634-4a52-ad4f-d14f067535dc\",\"362c2c66-571d-4603-84d3-6ab5f391d3f5\"],\"best_composite_discovery_rank\":0.182876,\"max_non_obviousness_score\":0.15253,\"max_consequence_score\":1,\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"affected_domains_variant_count\":1,\"surface_reading\":\"Signal aspect_tajik:ithasala appears unremarkable to pattern inspection\",\"depth_reading\":\"Embedding distance from chart centroid: 0.7620 — semantically unusual\",\"why_an_acharya_misses_it\":\"Semantically unusual (distance 0.762 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching\",\"novelty_class\":\"instance_of_known_class\"},{\"discovery_class\":\"embedding_outlier\",\"discovery_subsystem\":\"ga_structural\",\"hypothesis_text\":\"Pattern aspect_tajik:manaau represents a chart-unusual semantic configuration whose practical significance may be underweighted\",\"member_count\":5,\"ayanamsha_count\":5,\"ayanamsha_ids\":[\"krishnamurti\",\"lahiri_chitrapaksha\",\"raman\",\"surya_siddhanta_classical\",\"true_chitra\"],\"ayanamsha_agreement\":\"5/5 ayanamshas agree\",\"member_discovery_ids\":[\"f67e9245-d7fc-4896-863c-e1d799d7d24f\",\"b75ee214-7393-44a9-b45a-49f3a99dc89a\",\"5ef142e5-2afa-4121-b39b-4f7a5d2ec074\",\"25b8054a-8136-48ec-a21f-1e455ccbc3f1\",\"7da96ac7-9025-4a3f-80ad-73b724c5177f\"],\"best_composite_discovery_rank\":0.187076,\"max_non_obviousness_score\":0.156103,\"max_consequence_score\":1,\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"affected_domains_variant_count\":1,\"surface_reading\":\"Signal aspect_tajik:manaau appears unremarkable to pattern inspection\",\"depth_reading\":\"Embedding distance from chart centroid: 0.7795 — semantically unusual\",\"why_an_acharya_misses_it\":\"Semantically unusual (distance 0.779 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching\",\"novelty_class\":\"instance_of_known_class\"},{\"discovery_class\":\"distributional_anomaly\",\"discovery_subsystem\":\"ga_structural\",\"hypothesis_text\":\"Pattern lord_aspects_lord_per_varga:aspects_JUP is a ga_structural outlier; predicts distinctly unusual outcomes in character, career\",\"member_count\":10,\"ayanamsha_count\":5,\"ayanamsha_ids\":[\"krishnamurti\",\"lahiri_chitrapaksha\",\"raman\",\"surya_siddhanta_classical\",\"true_chitra\"],\"ayanamsha_agreement\":\"5/5 ayanamshas agree\",\"member_discovery_ids\":[\"f75d4fc9-d19f-489a-86e7-81fbf34fb5e0\",\"66bab1ea-43f6-4cf9-a0c6-e85665a76e31\",\"740c537b-9886-448c-ab0b-93cf23500f47\",\"0751b617-65fa-4df4-b382-6601283d08c2\",\"9a147b29-a5e0-460c-b26b-d264f7b54ce4\",\"bb46c006-1067-49ac-ab88-a53c5cb2eb8f\",\"d7224ec6-36e2-4b65-961e-8fff6753378d\",\"1cbc23da-0a93-421c-a0b2-66551a30c8c0\",\"7d78a382-155d-4b06-9e3f-2e961b6953bd\",\"52772ac8-25f1-4451-8456-d53b328a2f18\"],\"best_composite_discovery_rank\":0.486135,\"max_non_obviousness_score\":0.773392,\"max_consequence_score\":1,\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"affected_domains_variant_count\":1,\"surface_reading\":\"Appears as one of many composite_state signals\",\"depth_reading\":\"Stands 2.0σ from ga_structural baseline (mean=0.465)\",\"why_an_acharya_misses_it\":\"Statistically extreme within ga_structural subsystem (2.0σ) but easy to miss when chart is read holistically\",\"novelty_class\":\"instance_of_known_class\"},{\"discovery_class\":\"distributional_anomaly\",\"discovery_subsystem\":\"ga_structural\",\"hypothesis_text\":\"Pattern lord_aspects_lord_per_varga:aspects_MER is a ga_structural outlier; predicts distinctly unusual outcomes in character, career\",\"member_count\":4,\"ayanamsha_count\":4,\"ayanamsha_ids\":[\"krishnamurti\",\"lahiri_chitrapaksha\",\"surya_siddhanta_classical\",\"true_chitra\"],\"ayanamsha_agreement\":\"4/5 ayanamshas agree\",\"member_discovery_ids\":[\"6d452db5-71ca-45c5-a185-dad14ef01376\",\"d6402ef5-3762-4383-9c40-8a0508f9badc\",\"d217fb56-11a5-474c-abc1-3bff62ed6884\",\"2db489a7-b91e-43ff-b1e2-212b48f5ad5b\"],\"best_composite_discovery_rank\":0.486135,\"max_non_obviousness_score\":0.626283,\"max_consequence_score\":1,\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"affected_domains_variant_count\":1,\"surface_reading\":\"Appears as one of many composite_state signals\",\"depth_reading\":\"Stands 2.0σ from ga_structural baseline (mean=0.465)\",\"why_an_acharya_misses_it\":\"Statistically extreme within ga_structural subsystem (2.0σ) but easy to miss when chart is read holistically\",\"novelty_class\":\"instance_of_known_class\"},{\"discovery_class\":\"distributional_anomaly\",\"discovery_subsystem\":\"ga_structural\",\"hypothesis_text\":\"Pattern dispositor_chain_per_varga:chain is a ga_structural outlier; predicts distinctly unusual outcomes in character, career\",\"member_count\":12,\"ayanamsha_count\":5,\"ayanamsha_ids\":[\"krishnamurti\",\"lahiri_chitrapaksha\",\"raman\",\"surya_siddhanta_classical\",\"true_chitra\"],\"ayanamsha_agreement\":\"5/5 ayanamshas agree\",\"member_discovery_ids\":[\"82823a54-151e-4a8d-b5da-96e5c6c56c3b\",\"38d2566e-267c-44b3-ac1e-d254bc071546\",\"1eee8a99-098f-4c86-84c2-9ced3fa58a04\",\"e45cfa44-8c86-4f2a-ba76-639f6191482c\",\"453e313b-f5d3-4f04-ad94-d9620afc9698\",\"45f85efe-5087-4cf7-bddf-191329136fc1\",\"63426eb7-cc5b-44e1-a400-85465c440e85\",\"f51716fb-fb82-44ff-b2d5-ac9500cb715b\",\"f300be6f-ca72-4ce7-a36b-1104a88993ff\",\"dcdd64df-c3bb-4544-a8b1-c6095d55cb43\"],\"best_composite_discovery_rank\":0.486135,\"max_non_obviousness_score\":0.773392,\"max_consequence_score\":1,\"affected_domains_array\":[\"character\",\"career\"],\"affected_domains_variant_count\":1,\"surface_reading\":\"Appears as one of many composite_state signals\",\"depth_reading\":\"Stands 2.0σ from ga_structural baseline (mean=0.465)\",\"why_an_acharya_misses_it\":\"Statistically extreme within ga_structural subsystem (2.0σ) but easy to miss when chart is read holistically\",\"novelty_class\":\"instance_of_known_class\"},{\"discovery_class\":\"distributional_anomaly\",\"discovery_subsystem\":\"ga_structural\",\"hypothesis_text\":\"Pattern lord_aspects_lord_per_varga:aspects_MOON is a ga_structural outlier; predicts distinctly unusual outcomes in character, career\",\"member_count\":6,\"ayanamsha_count\":5,\"ayanamsha_ids\":[\"krishnamurti\",\"lahiri_chitrapaksha\",\"raman\",\"surya_siddhanta_classical\",\"true_chitra\"],\"ayanamsha_agreement\":\"5/5 ayanamshas agree\",\"member_discovery_ids\":[\"bff62200-b23b-44a0-b19d-5624c2d5a67a\",\"1d44442a-9e87-4aa0-a2cc-07273d00cccd\",\"1037418f-3828-4a85-9fb2-7a307b534ec6\",\"e7458c4d-6219-4427-8aff-1815e49006d3\",\"eef62ec8-860e-42bc-923a-ddd04e6107d3\",\"286fd48f-65f6-438e-b8b0-2941f3b453f1\"],\"best_composite_discovery_rank\":0.486135,\"max_non_obviousness_score\":0.626283,\"max_consequence_score\":1,\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"affected_domains_variant_count\":1,\"surface_reading\":\"Appears as one of many composite_state signals\",\"depth_reading\":\"Stands 2.0σ from ga_structural baseline (mean=0.465)\",\"why_an_acharya_misses_it\":\"Statistically extreme within ga_structural subsystem (2.0σ) but easy to miss when chart is read holistically\",\"novelty_class\":\"instance_of_known_class\"},{\"discovery_class\":\"distributional_anomaly\",\"discovery_subsystem\":\"ga_structural\",\"hypothesis_text\":\"Pattern dispositor_tree:tree_position is a ga_structural outlier; predicts distinctly unusual outcomes in character, career\",\"member_count\":12,\"ayanamsha_count\":5,\"ayanamsha_ids\":[\"krishnamurti\",\"lahiri_chitrapaksha\",\"raman\",\"surya_siddhanta_classical\",\"true_chitra\"],\"ayanamsha_agreement\":\"5/5 ayanamshas agree\",\"member_discovery_ids\":[\"c15bfd98-79c5-48b9-b968-185b206a0d16\",\"06e695cf-bdc3-4511-a8f0-66be34e24245\",\"8608def2-c7e2-4a1c-a882-d58854a54068\",\"8738b760-3026-4a1b-94a5-05bac67487ff\",\"f9aaed34-4add-42d5-83a4-7fd9462fc1ef\",\"aae2a68f-cb62-4be1-b1e1-5121b60ae51d\",\"0810ae34-b8ce-4415-b614-b83bafba7d24\",\"1f34e69c-dd53-4799-9920-3fd14ac716fb\",\"75726ef0-86e7-4b62-9706-c4a705321e5e\",\"3ae0705e-176d-4a54-bcb9-30827cc0d46c\"],\"best_composite_discovery_rank\":0.486135,\"max_non_obviousness_score\":0.773392,\"max_consequence_score\":1,\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"affected_domains_variant_count\":1,\"surface_reading\":\"Appears as one of many composite_state signals\",\"depth_reading\":\"Stands 2.0σ from ga_structural baseline (mean=0.465)\",\"why_an_acharya_misses_it\":\"Statistically extreme within ga_structural subsystem (2.0σ) but easy to miss when chart is read holistically\",\"novelty_class\":\"instance_of_known_class\"},{\"discovery_class\":\"distributional_anomaly\",\"discovery_subsystem\":\"ga_structural\",\"hypothesis_text\":\"Pattern karaka_web_per_varga:aspect_SUN is a ga_structural outlier; predicts distinctly unusual outcomes in character, career\",\"member_count\":1,\"ayanamsha_count\":1,\"ayanamsha_ids\":[\"raman\"],\"ayanamsha_agreement\":\"1/5 ayanamshas agree\",\"member_discovery_ids\":[\"0413147b-4e71-425b-9c67-c4845b375bd4\"],\"best_composite_discovery_rank\":0.511088,\"max_non_obviousness_score\":0.425907,\"max_consequence_score\":1,\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"affected_domains_variant_count\":1,\"surface_reading\":\"Appears as one of many karaka_alignment signals\",\"depth_reading\":\"Stands 2.1σ from ga_structural baseline (mean=0.469)\",\"why_an_acharya_misses_it\":\"Statistically extreme within ga_structural subsystem (2.1σ) but easy to miss when chart is read holistically\",\"novelty_class\":\"instance_of_known_class\"},{\"discovery_class\":\"distributional_anomaly\",\"discovery_subsystem\":\"ga_structural\",\"hypothesis_text\":\"Pattern karaka_web_per_varga:aspect_RAH_MEAN is a ga_structural outlier; predicts distinctly unusual outcomes in character, career\",\"member_count\":4,\"ayanamsha_count\":2,\"ayanamsha_ids\":[\"raman\",\"surya_siddhanta_classical\"],\"ayanamsha_agreement\":\"2/5 ayanamshas agree\",\"member_discovery_ids\":[\"a3ef0a02-424a-4dcf-9b4f-3f9cc4cb6d17\",\"4cd856f7-356e-4541-9df5-256e965eecd9\",\"a61ffe96-f9b5-45a0-9651-eb2ffbe8b767\",\"7c134cef-414a-4139-b332-832d092c31a8\"],\"best_composite_discovery_rank\":0.511088,\"max_non_obviousness_score\":0.493066,\"max_consequence_score\":1,\"affected_domains_array\":[\"character\",\"career\",\"family\"],\"affected_domains_variant_count\":1,\"surface_reading\":\"Appears as one of many karaka_alignment signals\",\"depth_reading\":\"Stands 2.1σ from ga_structural baseline (mean=0.469)\",\"why_an_acharya_misses_it\":\"Statistically extreme within ga_structural subsystem (2.1σ) but easy to miss when chart is read holistically\",\"novelty_class\":\"instance_of_known_class\"}],\"discovery_family_count\":10,\"total_family_count\":30,\"more_families_available\":true,\"ayanamsha_universe_count\":5,\"filters\":{\"ayanamsha_id\":null,\"discovery_class\":null,\"domain\":\"career\",\"limit\":10,\"offset\":0},\"provenance\":{\"tables\":[\"bodha_discoveries\"],\"source\":\"L2 Bodha discovery ledger; served chart-scoped, budgeted.\",\"note\":\"discovery_families collapses (discovery_class, discovery_subsystem, hypothesis_text) duplicates across ayanāṃśa variants and repeated signal instances into one motif per family (MC-015/026). `rows` is the raw, undeduplicated set — kept for back-compat.\"}},\"is_error\":false,\"discoveries\":[],\"total\":0,\"returned\":0,\"min_salience_filter_applied\":null,\"source_table\":\"bodha_discoveries\"}}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "envelope_version": "v1",
+        "tool": "bodha_discoveries_get",
+        "verdict": null,
+        "ranking_basis": null,
+        "grounding": {
+          "fact_ids": [],
+          "citations": [],
+          "grounding_score": null
+        },
+        "pagination": {
+          "offset": 0,
+          "limit": 0,
+          "total": null,
+          "next_cursor": null
+        },
+        "drill_pointers": [],
+        "judgment_flags": [
+          {
+            "code": "hollow_envelope_no_data_rows",
+            "detail": "the served 'discoveries' field is empty for this call (other back-compat fields on this response may still carry unfiltered data — see the tool's field docs)."
+          }
+        ],
+        "insight_type": null,
+        "query_class": "synthesis_cross_domain",
+        "content": {
+          "content": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "rows": [
+              {
+                "discovery_id": "09b0b29f-b9c2-48a2-87b1-a2ec8046b8d7",
+                "ayanamsha_id": "raman",
+                "discovery_class": "embedding_outlier",
+                "discovery_subsystem": "ga_structural",
+                "non_obviousness_score": 0.14973,
+                "consequence_score": 1,
+                "composite_discovery_rank": 0.179676,
+                "novelty_class": "instance_of_known_class",
+                "corroboration_count": 1,
+                "corroborating_methods_array": [
+                  "embedding_outlier"
+                ],
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "surface_reading": "Signal aspect_tajik:eesarpha appears unremarkable to pattern inspection",
+                "depth_reading": "Embedding distance from chart centroid: 0.7486 — semantically unusual",
+                "surface_depth_delta": "Semantic uniqueness 0.749 distinguishes this from all other chart signals",
+                "hypothesis_text": "Pattern aspect_tajik:eesarpha represents a chart-unusual semantic configuration whose practical significance may be underweighted",
+                "why_an_acharya_misses_it": "Semantically unusual (distance 0.749 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching",
+                "meaningfulness_basis": "classical_keyword::aspect_tajik:eesarpha",
+                "constituent_refs_jsonb": {
+                  "signal_ids": [
+                    "3e098b67-893c-49f8-bcc5-1d3c4caef5d7"
+                  ]
+                },
+                "cross_subsystem_refs_jsonb": null,
+                "computed_date": "2026-08-12"
+              },
+              {
+                "discovery_id": "ecb1d4b2-b5ae-422c-83b8-98669cf33b44",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "discovery_class": "embedding_outlier",
+                "discovery_subsystem": "ga_structural",
+                "non_obviousness_score": 0.149812,
+                "consequence_score": 1,
+                "composite_discovery_rank": 0.179774,
+                "novelty_class": "instance_of_known_class",
+                "corroboration_count": 1,
+                "corroborating_methods_array": [
+                  "embedding_outlier"
+                ],
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "surface_reading": "Signal aspect_tajik:eesarpha appears unremarkable to pattern inspection",
+                "depth_reading": "Embedding distance from chart centroid: 0.7491 — semantically unusual",
+                "surface_depth_delta": "Semantic uniqueness 0.749 distinguishes this from all other chart signals",
+                "hypothesis_text": "Pattern aspect_tajik:eesarpha represents a chart-unusual semantic configuration whose practical significance may be underweighted",
+                "why_an_acharya_misses_it": "Semantically unusual (distance 0.749 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching",
+                "meaningfulness_basis": "classical_keyword::aspect_tajik:eesarpha",
+                "constituent_refs_jsonb": {
+                  "signal_ids": [
+                    "ca6d9d6f-f33e-4c0c-93b3-85dc357db01f"
+                  ]
+                },
+                "cross_subsystem_refs_jsonb": null,
+                "computed_date": "2026-08-12"
+              },
+              {
+                "discovery_id": "b0b7bb3f-2eee-4df3-9833-994179a3442d",
+                "ayanamsha_id": "true_chitra",
+                "discovery_class": "embedding_outlier",
+                "discovery_subsystem": "ga_structural",
+                "non_obviousness_score": 0.14982,
+                "consequence_score": 1,
+                "composite_discovery_rank": 0.179783,
+                "novelty_class": "instance_of_known_class",
+                "corroboration_count": 1,
+                "corroborating_methods_array": [
+                  "embedding_outlier"
+                ],
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "surface_reading": "Signal aspect_tajik:eesarpha appears unremarkable to pattern inspection",
+                "depth_reading": "Embedding distance from chart centroid: 0.7491 — semantically unusual",
+                "surface_depth_delta": "Semantic uniqueness 0.749 distinguishes this from all other chart signals",
+                "hypothesis_text": "Pattern aspect_tajik:eesarpha represents a chart-unusual semantic configuration whose practical significance may be underweighted",
+                "why_an_acharya_misses_it": "Semantically unusual (distance 0.749 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching",
+                "meaningfulness_basis": "classical_keyword::aspect_tajik:eesarpha",
+                "constituent_refs_jsonb": {
+                  "signal_ids": [
+                    "a2787dc8-3612-4cf4-807b-8b63ba52a98c"
+                  ]
+                },
+                "cross_subsystem_refs_jsonb": null,
+                "computed_date": "2026-08-12"
+              },
+              {
+                "discovery_id": "16cee537-ebd9-44d5-b6cb-4efc962c3003",
+                "ayanamsha_id": "krishnamurti",
+                "discovery_class": "embedding_outlier",
+                "discovery_subsystem": "ga_structural",
+                "non_obviousness_score": 0.14985,
+                "consequence_score": 1,
+                "composite_discovery_rank": 0.17982,
+                "novelty_class": "instance_of_known_class",
+                "corroboration_count": 1,
+                "corroborating_methods_array": [
+                  "embedding_outlier"
+                ],
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "surface_reading": "Signal aspect_tajik:eesarpha appears unremarkable to pattern inspection",
+                "depth_reading": "Embedding distance from chart centroid: 0.7493 — semantically unusual",
+                "surface_depth_delta": "Semantic uniqueness 0.749 distinguishes this from all other chart signals",
+                "hypothesis_text": "Pattern aspect_tajik:eesarpha represents a chart-unusual semantic configuration whose practical significance may be underweighted",
+                "why_an_acharya_misses_it": "Semantically unusual (distance 0.749 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching",
+                "meaningfulness_basis": "classical_keyword::aspect_tajik:eesarpha",
+                "constituent_refs_jsonb": {
+                  "signal_ids": [
+                    "f5f3a15b-7aae-47e6-8649-2eb30cf3907c"
+                  ]
+                },
+                "cross_subsystem_refs_jsonb": null,
+                "computed_date": "2026-08-12"
+              },
+              {
+                "discovery_id": "cf42fd47-851c-45b4-b12d-0617ea5ebe81",
+                "ayanamsha_id": "surya_siddhanta_classical",
+                "discovery_class": "embedding_outlier",
+                "discovery_subsystem": "ga_structural",
+                "non_obviousness_score": 0.149874,
+                "consequence_score": 1,
+                "composite_discovery_rank": 0.179849,
+                "novelty_class": "instance_of_known_class",
+                "corroboration_count": 1,
+                "corroborating_methods_array": [
+                  "embedding_outlier"
+                ],
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "surface_reading": "Signal aspect_tajik:eesarpha appears unremarkable to pattern inspection",
+                "depth_reading": "Embedding distance from chart centroid: 0.7494 — semantically unusual",
+                "surface_depth_delta": "Semantic uniqueness 0.749 distinguishes this from all other chart signals",
+                "hypothesis_text": "Pattern aspect_tajik:eesarpha represents a chart-unusual semantic configuration whose practical significance may be underweighted",
+                "why_an_acharya_misses_it": "Semantically unusual (distance 0.749 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching",
+                "meaningfulness_basis": "classical_keyword::aspect_tajik:eesarpha",
+                "constituent_refs_jsonb": {
+                  "signal_ids": [
+                    "fe620efa-9786-4cdd-a3e4-c56f783c1dfd"
+                  ]
+                },
+                "cross_subsystem_refs_jsonb": null,
+                "computed_date": "2026-08-12"
+              },
+              {
+                "discovery_id": "e80812e2-d690-4e64-8ec4-125fa241acae",
+                "ayanamsha_id": "raman",
+                "discovery_class": "embedding_outlier",
+                "discovery_subsystem": "ga_structural",
+                "non_obviousness_score": 0.152397,
+                "consequence_score": 1,
+                "composite_discovery_rank": 0.182876,
+                "novelty_class": "instance_of_known_class",
+                "corroboration_count": 1,
+                "corroborating_methods_array": [
+                  "embedding_outlier"
+                ],
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "surface_reading": "Signal aspect_tajik:ithasala appears unremarkable to pattern inspection",
+                "depth_reading": "Embedding distance from chart centroid: 0.7620 — semantically unusual",
+                "surface_depth_delta": "Semantic uniqueness 0.762 distinguishes this from all other chart signals",
+                "hypothesis_text": "Pattern aspect_tajik:ithasala represents a chart-unusual semantic configuration whose practical significance may be underweighted",
+                "why_an_acharya_misses_it": "Semantically unusual (distance 0.762 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching",
+                "meaningfulness_basis": "classical_keyword::aspect_tajik:ithasala",
+                "constituent_refs_jsonb": {
+                  "signal_ids": [
+                    "fec39da6-c857-491c-97f1-999c1485c451"
+                  ]
+                },
+                "cross_subsystem_refs_jsonb": null,
+                "computed_date": "2026-08-12"
+              },
+              {
+                "discovery_id": "cbbe698b-6b3f-4662-9a1f-e08649828e1f",
+                "ayanamsha_id": "raman",
+                "discovery_class": "embedding_outlier",
+                "discovery_subsystem": "ga_structural",
+                "non_obviousness_score": 0.152397,
+                "consequence_score": 1,
+                "composite_discovery_rank": 0.182876,
+                "novelty_class": "instance_of_known_class",
+                "corroboration_count": 1,
+                "corroborating_methods_array": [
+                  "embedding_outlier"
+                ],
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "surface_reading": "Signal aspect_tajik:ithasala appears unremarkable to pattern inspection",
+                "depth_reading": "Embedding distance from chart centroid: 0.7620 — semantically unusual",
+                "surface_depth_delta": "Semantic uniqueness 0.762 distinguishes this from all other chart signals",
+                "hypothesis_text": "Pattern aspect_tajik:ithasala represents a chart-unusual semantic configuration whose practical significance may be underweighted",
+                "why_an_acharya_misses_it": "Semantically unusual (distance 0.762 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching",
+                "meaningfulness_basis": "classical_keyword::aspect_tajik:ithasala",
+                "constituent_refs_jsonb": {
+                  "signal_ids": [
+                    "72ab6c42-24f6-478d-bc82-84be954e4232"
+                  ]
+                },
+                "cross_subsystem_refs_jsonb": null,
+                "computed_date": "2026-08-12"
+              },
+              {
+                "discovery_id": "2484211f-da55-4e07-b250-dad47e8c5b88",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "discovery_class": "embedding_outlier",
+                "discovery_subsystem": "ga_structural",
+                "non_obviousness_score": 0.152468,
+                "consequence_score": 1,
+                "composite_discovery_rank": 0.182961,
+                "novelty_class": "instance_of_known_class",
+                "corroboration_count": 1,
+                "corroborating_methods_array": [
+                  "embedding_outlier"
+                ],
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "surface_reading": "Signal aspect_tajik:ithasala appears unremarkable to pattern inspection",
+                "depth_reading": "Embedding distance from chart centroid: 0.7623 — semantically unusual",
+                "surface_depth_delta": "Semantic uniqueness 0.762 distinguishes this from all other chart signals",
+                "hypothesis_text": "Pattern aspect_tajik:ithasala represents a chart-unusual semantic configuration whose practical significance may be underweighted",
+                "why_an_acharya_misses_it": "Semantically unusual (distance 0.762 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching",
+                "meaningfulness_basis": "classical_keyword::aspect_tajik:ithasala",
+                "constituent_refs_jsonb": {
+                  "signal_ids": [
+                    "41f42e44-383e-4164-b829-6d0215e9c386"
+                  ]
+                },
+                "cross_subsystem_refs_jsonb": null,
+                "computed_date": "2026-08-12"
+              },
+              {
+                "discovery_id": "79d61cc4-21f6-4515-b3a7-d36f973624ae",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "discovery_class": "embedding_outlier",
+                "discovery_subsystem": "ga_structural",
+                "non_obviousness_score": 0.152468,
+                "consequence_score": 1,
+                "composite_discovery_rank": 0.182961,
+                "novelty_class": "instance_of_known_class",
+                "corroboration_count": 1,
+                "corroborating_methods_array": [
+                  "embedding_outlier"
+                ],
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "surface_reading": "Signal aspect_tajik:ithasala appears unremarkable to pattern inspection",
+                "depth_reading": "Embedding distance from chart centroid: 0.7623 — semantically unusual",
+                "surface_depth_delta": "Semantic uniqueness 0.762 distinguishes this from all other chart signals",
+                "hypothesis_text": "Pattern aspect_tajik:ithasala represents a chart-unusual semantic configuration whose practical significance may be underweighted",
+                "why_an_acharya_misses_it": "Semantically unusual (distance 0.762 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching",
+                "meaningfulness_basis": "classical_keyword::aspect_tajik:ithasala",
+                "constituent_refs_jsonb": {
+                  "signal_ids": [
+                    "cee733a8-d7f6-43be-ba43-bd4556cacae1"
+                  ]
+                },
+                "cross_subsystem_refs_jsonb": null,
+                "computed_date": "2026-08-12"
+              },
+              {
+                "discovery_id": "0858733d-022b-4096-80fb-0a45fb4b7e0b",
+                "ayanamsha_id": "true_chitra",
+                "discovery_class": "embedding_outlier",
+                "discovery_subsystem": "ga_structural",
+                "non_obviousness_score": 0.152472,
+                "consequence_score": 1,
+                "composite_discovery_rank": 0.182966,
+                "novelty_class": "instance_of_known_class",
+                "corroboration_count": 1,
+                "corroborating_methods_array": [
+                  "embedding_outlier"
+                ],
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "surface_reading": "Signal aspect_tajik:ithasala appears unremarkable to pattern inspection",
+                "depth_reading": "Embedding distance from chart centroid: 0.7624 — semantically unusual",
+                "surface_depth_delta": "Semantic uniqueness 0.762 distinguishes this from all other chart signals",
+                "hypothesis_text": "Pattern aspect_tajik:ithasala represents a chart-unusual semantic configuration whose practical significance may be underweighted",
+                "why_an_acharya_misses_it": "Semantically unusual (distance 0.762 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching",
+                "meaningfulness_basis": "classical_keyword::aspect_tajik:ithasala",
+                "constituent_refs_jsonb": {
+                  "signal_ids": [
+                    "129597b5-a82d-4fff-8131-f2508c69adf7"
+                  ]
+                },
+                "cross_subsystem_refs_jsonb": null,
+                "computed_date": "2026-08-12"
+              }
+            ],
+            "count": 10,
+            "total_matching": 154,
+            "more_available": true,
+            "discovery_families": [
+              {
+                "discovery_class": "embedding_outlier",
+                "discovery_subsystem": "ga_structural",
+                "hypothesis_text": "Pattern aspect_tajik:eesarpha represents a chart-unusual semantic configuration whose practical significance may be underweighted",
+                "member_count": 5,
+                "ayanamsha_count": 5,
+                "ayanamsha_ids": [
+                  "krishnamurti",
+                  "lahiri_chitrapaksha",
+                  "raman",
+                  "surya_siddhanta_classical",
+                  "true_chitra"
+                ],
+                "ayanamsha_agreement": "5/5 ayanamshas agree",
+                "member_discovery_ids": [
+                  "09b0b29f-b9c2-48a2-87b1-a2ec8046b8d7",
+                  "ecb1d4b2-b5ae-422c-83b8-98669cf33b44",
+                  "b0b7bb3f-2eee-4df3-9833-994179a3442d",
+                  "16cee537-ebd9-44d5-b6cb-4efc962c3003",
+                  "cf42fd47-851c-45b4-b12d-0617ea5ebe81"
+                ],
+                "best_composite_discovery_rank": 0.179676,
+                "max_non_obviousness_score": 0.149874,
+                "max_consequence_score": 1,
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "affected_domains_variant_count": 1,
+                "surface_reading": "Signal aspect_tajik:eesarpha appears unremarkable to pattern inspection",
+                "depth_reading": "Embedding distance from chart centroid: 0.7486 — semantically unusual",
+                "why_an_acharya_misses_it": "Semantically unusual (distance 0.749 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching",
+                "novelty_class": "instance_of_known_class"
+              },
+              {
+                "discovery_class": "embedding_outlier",
+                "discovery_subsystem": "ga_structural",
+                "hypothesis_text": "Pattern aspect_tajik:ithasala represents a chart-unusual semantic configuration whose practical significance may be underweighted",
+                "member_count": 10,
+                "ayanamsha_count": 5,
+                "ayanamsha_ids": [
+                  "krishnamurti",
+                  "lahiri_chitrapaksha",
+                  "raman",
+                  "surya_siddhanta_classical",
+                  "true_chitra"
+                ],
+                "ayanamsha_agreement": "5/5 ayanamshas agree",
+                "member_discovery_ids": [
+                  "e80812e2-d690-4e64-8ec4-125fa241acae",
+                  "cbbe698b-6b3f-4662-9a1f-e08649828e1f",
+                  "79d61cc4-21f6-4515-b3a7-d36f973624ae",
+                  "2484211f-da55-4e07-b250-dad47e8c5b88",
+                  "0858733d-022b-4096-80fb-0a45fb4b7e0b",
+                  "6e0fd4bf-b36a-4680-9ef8-41cc5d74a64b",
+                  "b893cdca-966d-40a2-87b1-386f91f5ab40",
+                  "4c26ca33-4a71-4835-9964-1b369738f0c2",
+                  "9efec773-a634-4a52-ad4f-d14f067535dc",
+                  "362c2c66-571d-4603-84d3-6ab5f391d3f5"
+                ],
+                "best_composite_discovery_rank": 0.182876,
+                "max_non_obviousness_score": 0.15253,
+                "max_consequence_score": 1,
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "affected_domains_variant_count": 1,
+                "surface_reading": "Signal aspect_tajik:ithasala appears unremarkable to pattern inspection",
+                "depth_reading": "Embedding distance from chart centroid: 0.7620 — semantically unusual",
+                "why_an_acharya_misses_it": "Semantically unusual (distance 0.762 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching",
+                "novelty_class": "instance_of_known_class"
+              },
+              {
+                "discovery_class": "embedding_outlier",
+                "discovery_subsystem": "ga_structural",
+                "hypothesis_text": "Pattern aspect_tajik:manaau represents a chart-unusual semantic configuration whose practical significance may be underweighted",
+                "member_count": 5,
+                "ayanamsha_count": 5,
+                "ayanamsha_ids": [
+                  "krishnamurti",
+                  "lahiri_chitrapaksha",
+                  "raman",
+                  "surya_siddhanta_classical",
+                  "true_chitra"
+                ],
+                "ayanamsha_agreement": "5/5 ayanamshas agree",
+                "member_discovery_ids": [
+                  "f67e9245-d7fc-4896-863c-e1d799d7d24f",
+                  "b75ee214-7393-44a9-b45a-49f3a99dc89a",
+                  "5ef142e5-2afa-4121-b39b-4f7a5d2ec074",
+                  "25b8054a-8136-48ec-a21f-1e455ccbc3f1",
+                  "7da96ac7-9025-4a3f-80ad-73b724c5177f"
+                ],
+                "best_composite_discovery_rank": 0.187076,
+                "max_non_obviousness_score": 0.156103,
+                "max_consequence_score": 1,
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "affected_domains_variant_count": 1,
+                "surface_reading": "Signal aspect_tajik:manaau appears unremarkable to pattern inspection",
+                "depth_reading": "Embedding distance from chart centroid: 0.7795 — semantically unusual",
+                "why_an_acharya_misses_it": "Semantically unusual (distance 0.779 from chart centroid) — stands apart from the chart's dominant patterns; invisible to pattern-matching",
+                "novelty_class": "instance_of_known_class"
+              },
+              {
+                "discovery_class": "distributional_anomaly",
+                "discovery_subsystem": "ga_structural",
+                "hypothesis_text": "Pattern lord_aspects_lord_per_varga:aspects_JUP is a ga_structural outlier; predicts distinctly unusual outcomes in character, career",
+                "member_count": 10,
+                "ayanamsha_count": 5,
+                "ayanamsha_ids": [
+                  "krishnamurti",
+                  "lahiri_chitrapaksha",
+                  "raman",
+                  "surya_siddhanta_classical",
+                  "true_chitra"
+                ],
+                "ayanamsha_agreement": "5/5 ayanamshas agree",
+                "member_discovery_ids": [
+                  "f75d4fc9-d19f-489a-86e7-81fbf34fb5e0",
+                  "66bab1ea-43f6-4cf9-a0c6-e85665a76e31",
+                  "740c537b-9886-448c-ab0b-93cf23500f47",
+                  "0751b617-65fa-4df4-b382-6601283d08c2",
+                  "9a147b29-a5e0-460c-b26b-d264f7b54ce4",
+                  "bb46c006-1067-49ac-ab88-a53c5cb2eb8f",
+                  "d7224ec6-36e2-4b65-961e-8fff6753378d",
+                  "1cbc23da-0a93-421c-a0b2-66551a30c8c0",
+                  "7d78a382-155d-4b06-9e3f-2e961b6953bd",
+                  "52772ac8-25f1-4451-8456-d53b328a2f18"
+                ],
+                "best_composite_discovery_rank": 0.486135,
+                "max_non_obviousness_score": 0.773392,
+                "max_consequence_score": 1,
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "affected_domains_variant_count": 1,
+                "surface_reading": "Appears as one of many composite_state signals",
+                "depth_reading": "Stands 2.0σ from ga_structural baseline (mean=0.465)",
+                "why_an_acharya_misses_it": "Statistically extreme within ga_structural subsystem (2.0σ) but easy to miss when chart is read holistically",
+                "novelty_class": "instance_of_known_class"
+              },
+              {
+                "discovery_class": "distributional_anomaly",
+                "discovery_subsystem": "ga_structural",
+                "hypothesis_text": "Pattern lord_aspects_lord_per_varga:aspects_MER is a ga_structural outlier; predicts distinctly unusual outcomes in character, career",
+                "member_count": 4,
+                "ayanamsha_count": 4,
+                "ayanamsha_ids": [
+                  "krishnamurti",
+                  "lahiri_chitrapaksha",
+                  "surya_siddhanta_classical",
+                  "true_chitra"
+                ],
+                "ayanamsha_agreement": "4/5 ayanamshas agree",
+                "member_discovery_ids": [
+                  "6d452db5-71ca-45c5-a185-dad14ef01376",
+                  "d6402ef5-3762-4383-9c40-8a0508f9badc",
+                  "d217fb56-11a5-474c-abc1-3bff62ed6884",
+                  "2db489a7-b91e-43ff-b1e2-212b48f5ad5b"
+                ],
+                "best_composite_discovery_rank": 0.486135,
+                "max_non_obviousness_score": 0.626283,
+                "max_consequence_score": 1,
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "affected_domains_variant_count": 1,
+                "surface_reading": "Appears as one of many composite_state signals",
+                "depth_reading": "Stands 2.0σ from ga_structural baseline (mean=0.465)",
+                "why_an_acharya_misses_it": "Statistically extreme within ga_structural subsystem (2.0σ) but easy to miss when chart is read holistically",
+                "novelty_class": "instance_of_known_class"
+              },
+              {
+                "discovery_class": "distributional_anomaly",
+                "discovery_subsystem": "ga_structural",
+                "hypothesis_text": "Pattern dispositor_chain_per_varga:chain is a ga_structural outlier; predicts distinctly unusual outcomes in character, career",
+                "member_count": 12,
+                "ayanamsha_count": 5,
+                "ayanamsha_ids": [
+                  "krishnamurti",
+                  "lahiri_chitrapaksha",
+                  "raman",
+                  "surya_siddhanta_classical",
+                  "true_chitra"
+                ],
+                "ayanamsha_agreement": "5/5 ayanamshas agree",
+                "member_discovery_ids": [
+                  "82823a54-151e-4a8d-b5da-96e5c6c56c3b",
+                  "38d2566e-267c-44b3-ac1e-d254bc071546",
+                  "1eee8a99-098f-4c86-84c2-9ced3fa58a04",
+                  "e45cfa44-8c86-4f2a-ba76-639f6191482c",
+                  "453e313b-f5d3-4f04-ad94-d9620afc9698",
+                  "45f85efe-5087-4cf7-bddf-191329136fc1",
+                  "63426eb7-cc5b-44e1-a400-85465c440e85",
+                  "f51716fb-fb82-44ff-b2d5-ac9500cb715b",
+                  "f300be6f-ca72-4ce7-a36b-1104a88993ff",
+                  "dcdd64df-c3bb-4544-a8b1-c6095d55cb43"
+                ],
+                "best_composite_discovery_rank": 0.486135,
+                "max_non_obviousness_score": 0.773392,
+                "max_consequence_score": 1,
+                "affected_domains_array": [
+                  "character",
+                  "career"
+                ],
+                "affected_domains_variant_count": 1,
+                "surface_reading": "Appears as one of many composite_state signals",
+                "depth_reading": "Stands 2.0σ from ga_structural baseline (mean=0.465)",
+                "why_an_acharya_misses_it": "Statistically extreme within ga_structural subsystem (2.0σ) but easy to miss when chart is read holistically",
+                "novelty_class": "instance_of_known_class"
+              },
+              {
+                "discovery_class": "distributional_anomaly",
+                "discovery_subsystem": "ga_structural",
+                "hypothesis_text": "Pattern lord_aspects_lord_per_varga:aspects_MOON is a ga_structural outlier; predicts distinctly unusual outcomes in character, career",
+                "member_count": 6,
+                "ayanamsha_count": 5,
+                "ayanamsha_ids": [
+                  "krishnamurti",
+                  "lahiri_chitrapaksha",
+                  "raman",
+                  "surya_siddhanta_classical",
+                  "true_chitra"
+                ],
+                "ayanamsha_agreement": "5/5 ayanamshas agree",
+                "member_discovery_ids": [
+                  "bff62200-b23b-44a0-b19d-5624c2d5a67a",
+                  "1d44442a-9e87-4aa0-a2cc-07273d00cccd",
+                  "1037418f-3828-4a85-9fb2-7a307b534ec6",
+                  "e7458c4d-6219-4427-8aff-1815e49006d3",
+                  "eef62ec8-860e-42bc-923a-ddd04e6107d3",
+                  "286fd48f-65f6-438e-b8b0-2941f3b453f1"
+                ],
+                "best_composite_discovery_rank": 0.486135,
+                "max_non_obviousness_score": 0.626283,
+                "max_consequence_score": 1,
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "affected_domains_variant_count": 1,
+                "surface_reading": "Appears as one of many composite_state signals",
+                "depth_reading": "Stands 2.0σ from ga_structural baseline (mean=0.465)",
+                "why_an_acharya_misses_it": "Statistically extreme within ga_structural subsystem (2.0σ) but easy to miss when chart is read holistically",
+                "novelty_class": "instance_of_known_class"
+              },
+              {
+                "discovery_class": "distributional_anomaly",
+                "discovery_subsystem": "ga_structural",
+                "hypothesis_text": "Pattern dispositor_tree:tree_position is a ga_structural outlier; predicts distinctly unusual outcomes in character, career",
+                "member_count": 12,
+                "ayanamsha_count": 5,
+                "ayanamsha_ids": [
+                  "krishnamurti",
+                  "lahiri_chitrapaksha",
+                  "raman",
+                  "surya_siddhanta_classical",
+                  "true_chitra"
+                ],
+                "ayanamsha_agreement": "5/5 ayanamshas agree",
+                "member_discovery_ids": [
+                  "c15bfd98-79c5-48b9-b968-185b206a0d16",
+                  "06e695cf-bdc3-4511-a8f0-66be34e24245",
+                  "8608def2-c7e2-4a1c-a882-d58854a54068",
+                  "8738b760-3026-4a1b-94a5-05bac67487ff",
+                  "f9aaed34-4add-42d5-83a4-7fd9462fc1ef",
+                  "aae2a68f-cb62-4be1-b1e1-5121b60ae51d",
+                  "0810ae34-b8ce-4415-b614-b83bafba7d24",
+                  "1f34e69c-dd53-4799-9920-3fd14ac716fb",
+                  "75726ef0-86e7-4b62-9706-c4a705321e5e",
+                  "3ae0705e-176d-4a54-bcb9-30827cc0d46c"
+                ],
+                "best_composite_discovery_rank": 0.486135,
+                "max_non_obviousness_score": 0.773392,
+                "max_consequence_score": 1,
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "affected_domains_variant_count": 1,
+                "surface_reading": "Appears as one of many composite_state signals",
+                "depth_reading": "Stands 2.0σ from ga_structural baseline (mean=0.465)",
+                "why_an_acharya_misses_it": "Statistically extreme within ga_structural subsystem (2.0σ) but easy to miss when chart is read holistically",
+                "novelty_class": "instance_of_known_class"
+              },
+              {
+                "discovery_class": "distributional_anomaly",
+                "discovery_subsystem": "ga_structural",
+                "hypothesis_text": "Pattern karaka_web_per_varga:aspect_SUN is a ga_structural outlier; predicts distinctly unusual outcomes in character, career",
+                "member_count": 1,
+                "ayanamsha_count": 1,
+                "ayanamsha_ids": [
+                  "raman"
+                ],
+                "ayanamsha_agreement": "1/5 ayanamshas agree",
+                "member_discovery_ids": [
+                  "0413147b-4e71-425b-9c67-c4845b375bd4"
+                ],
+                "best_composite_discovery_rank": 0.511088,
+                "max_non_obviousness_score": 0.425907,
+                "max_consequence_score": 1,
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "affected_domains_variant_count": 1,
+                "surface_reading": "Appears as one of many karaka_alignment signals",
+                "depth_reading": "Stands 2.1σ from ga_structural baseline (mean=0.469)",
+                "why_an_acharya_misses_it": "Statistically extreme within ga_structural subsystem (2.1σ) but easy to miss when chart is read holistically",
+                "novelty_class": "instance_of_known_class"
+              },
+              {
+                "discovery_class": "distributional_anomaly",
+                "discovery_subsystem": "ga_structural",
+                "hypothesis_text": "Pattern karaka_web_per_varga:aspect_RAH_MEAN is a ga_structural outlier; predicts distinctly unusual outcomes in character, career",
+                "member_count": 4,
+                "ayanamsha_count": 2,
+                "ayanamsha_ids": [
+                  "raman",
+                  "surya_siddhanta_classical"
+                ],
+                "ayanamsha_agreement": "2/5 ayanamshas agree",
+                "member_discovery_ids": [
+                  "a3ef0a02-424a-4dcf-9b4f-3f9cc4cb6d17",
+                  "4cd856f7-356e-4541-9df5-256e965eecd9",
+                  "a61ffe96-f9b5-45a0-9651-eb2ffbe8b767",
+                  "7c134cef-414a-4139-b332-832d092c31a8"
+                ],
+                "best_composite_discovery_rank": 0.511088,
+                "max_non_obviousness_score": 0.493066,
+                "max_consequence_score": 1,
+                "affected_domains_array": [
+                  "character",
+                  "career",
+                  "family"
+                ],
+                "affected_domains_variant_count": 1,
+                "surface_reading": "Appears as one of many karaka_alignment signals",
+                "depth_reading": "Stands 2.1σ from ga_structural baseline (mean=0.469)",
+                "why_an_acharya_misses_it": "Statistically extreme within ga_structural subsystem (2.1σ) but easy to miss when chart is read holistically",
+                "novelty_class": "instance_of_known_class"
+              }
+            ],
+            "discovery_family_count": 10,
+            "total_family_count": 30,
+            "more_families_available": true,
+            "ayanamsha_universe_count": 5,
+            "filters": {
+              "ayanamsha_id": null,
+              "discovery_class": null,
+              "domain": "career",
+              "limit": 10,
+              "offset": 0
+            },
+            "provenance": {
+              "tables": [
+                "bodha_discoveries"
+              ],
+              "source": "L2 Bodha discovery ledger; served chart-scoped, budgeted.",
+              "note": "discovery_families collapses (discovery_class, discovery_subsystem, hypothesis_text) duplicates across ayanāṃśa variants and repeated signal instances into one motif per family (MC-015/026). `rows` is the raw, undeduplicated set — kept for back-compat."
+            }
+          },
+          "is_error": false,
+          "discoveries": [],
+          "total": 0,
+          "returned": 0,
+          "min_salience_filter_applied": null,
+          "source_table": "bodha_discoveries"
+        }
+      }
+    }
+  }
+}

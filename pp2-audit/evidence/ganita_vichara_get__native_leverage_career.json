@@ -1,0 +1,6 @@
+{
+  "tool": "ganita_vichara_get",
+  "scenario": "native_family_leverage_index_domain_career",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "family": "leverage_index", "domain": "career", "limit": 25},
+  "raw_response": {"type":"object","object":{"content":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","verdict":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","total_rows":7,"served_rows":7,"family_counts":{"leverage_index":7},"as_of":"2026-08-15T13:11:04.795Z","note":"Counts are family totals under the SAME filters this page was drawn from (D5 coverage receipt) — not a re-guess."},"digest":{"families_present":["leverage_index"],"by_family":{"leverage_index":{"count":7,"sample_subjects":["JUP","MAR","MER","MOON","SAT","SUN","VEN"]}}},"rows_note":"7 rows returned: JUP, MAR, MER, MOON, SAT, SUN, VEN — no RAH/KET leverage_index rows exist for this chart/domain/family combination (Rahu/Ketu are excluded from leverage_index subjects; see notes)","total_matching":7,"more_available":false,"filters":{"ayanamsha_id":"lahiri_chitrapaksha","family":"leverage_index","domain":"career","subject":null,"limit":25,"offset":0},"provenance":{"tables":["chart_vichara"],"asset_id":"ga_vichara"}},"is_error":false}}
+}

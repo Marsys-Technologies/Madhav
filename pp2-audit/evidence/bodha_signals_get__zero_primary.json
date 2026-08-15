@@ -1,0 +1,523 @@
+{
+  "tool": "bodha_signals_get",
+  "scenario": "zero_primary",
+  "args": {
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "domain": "career",
+    "limit": 10
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"frame\":\"lagna\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"signals\":[{\"signal_id\":\"6a1cd6d8-5259-4df8-8b8a-92a1b87c5ac8\",\"signal_type_id\":\"net_argala_per_varga:net_argala\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=net_argala_per_varga | key=net_argala | value_num=2 | house=10 | net_argala=2.0 | varga=D1\",\"signal_headline_text\":\"net argala per varga: net argala = 2\",\"computed_salience\":0.4761,\"top_k_salience_rank\":3665,\"domains_affected_array\":[\"career\",\"character\"],\"constituent_facts_array\":[\"ad9e74eb821bfb55\"],\"source_subsystem\":\"structural\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"citation_human\":\"Net argala on H10 in D1: +2 (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"supporting\",\"configuration_jsonb\":{\"house\":10,\"varga\":\"D1\",\"fact_key\":\"net_argala\",\"net_argala\":2,\"fact_value_num\":2,\"fact_value_text\":null},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"dba4bf5b-bf01-40ec-a1d7-b3588f0f68e9\",\"signal_type_id\":\"convergence_count:total_edges\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=convergence_count | key=total_edges | value_num=1 | entity=house | house=10 | total_edges=1 | varga=D1\",\"signal_headline_text\":\"convergence count: total edges = 1\",\"computed_salience\":0.4761,\"top_k_salience_rank\":3559,\"domains_affected_array\":[\"career\",\"character\"],\"constituent_facts_array\":[\"b81de4577bdc08c6\"],\"source_subsystem\":\"structural\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"citation_human\":\"H10 convergence_count=1 in D1 (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"supporting\",\"configuration_jsonb\":{\"house\":10,\"varga\":\"D1\",\"entity\":\"house\",\"fact_key\":\"total_edges\",\"total_edges\":1,\"fact_value_num\":1,\"fact_value_text\":null},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"7a3ee856-7ab1-46e9-b05f-561741c1a1c5\",\"signal_type_id\":\"lord_in_house_per_varga:lord_placement\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=lord_in_house_per_varga | key=lord_placement | value_text=Saturn_in_H8 | value_num=8 | ayanamsha_id=lahiri_chitrapaksha | house=10 | lord=Saturn | lord_house_in_varga=8 | sign=Capricorn | uncatalogued=False | varga=D1\",\"signal_headline_text\":\"lord in house per varga: lord placement = Saturn_in_H8\",\"computed_salience\":0.4761,\"top_k_salience_rank\":3597,\"domains_affected_array\":[\"career\",\"wealth\",\"relationship\",\"progeny\",\"education\",\"family\"],\"constituent_facts_array\":[\"df69bf4786c9476d\"],\"source_subsystem\":\"structural\",\"valence\":\"malefic\",\"verification_pass_status\":\"single\",\"citation_human\":\"H10 (Capricorn) lord Saturn is in H8 in D1 (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"supporting\",\"configuration_jsonb\":{\"lord\":\"Saturn\",\"sign\":\"Capricorn\",\"house\":10,\"varga\":\"D1\",\"fact_key\":\"lord_placement\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"uncatalogued\":false,\"fact_value_num\":8,\"fact_value_text\":\"Saturn_in_H8\",\"lord_house_in_varga\":8},\"ratification_factor\":null,\"valence_source\":\"ga_vichara_v1\"},{\"signal_id\":\"8888cc09-8fc5-4d75-a5fa-d0b74f4f0b56\",\"signal_type_id\":\"graha_dignity_per_varga:dignity_state\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_dignity_per_varga | key=dignity_state | value_text=neutral | ayanamsha_id=lahiri_chitrapaksha | house=10 | sign=Leo | uncatalogued=False | varga=D9\",\"signal_headline_text\":\"graha dignity per varga: dignity state = neutral\",\"computed_salience\":0.49105,\"top_k_salience_rank\":3150,\"domains_affected_array\":[\"character\",\"career\"],\"constituent_facts_array\":[\"6f415d215eaac49b\"],\"source_subsystem\":\"structural\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"citation_human\":\"Saturn neutral in Leo (house 10) in D9 (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"supporting\",\"configuration_jsonb\":{\"sign\":\"Leo\",\"house\":10,\"varga\":\"D9\",\"fact_key\":\"dignity_state\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"uncatalogued\":false,\"fact_value_num\":null,\"fact_value_text\":\"neutral\"},\"ratification_factor\":1,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"01e608a3-6275-49ea-a372-ab36070dcbb0\",\"signal_type_id\":\"karaka_bhava_concordance:concordance_value\",\"signal_type_class\":\"karaka_alignment\",\"signal_tradition\":\"jaimini\",\"signal_summary_text\":\"category=karaka_bhava_concordance | key=concordance_value | value_text=enemy | bhava_lord=SAT | bhava_num=10 | bhava_sign=Capricorn | concordance=enemy | natural_karaka=SUN | significance=authority | varga=D1\",\"signal_headline_text\":\"karaka bhava concordance: concordance value = enemy\",\"computed_salience\":0.36225,\"top_k_salience_rank\":18710,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"constituent_facts_array\":[\"34206cd4d968f923\"],\"source_subsystem\":\"structural\",\"valence\":\"malefic\",\"verification_pass_status\":\"single\",\"citation_human\":\"authority (D1 lahiri_chitrapaksha): natural_karaka=Sun vs bhava10_lord=Saturn → enemy.\",\"lel_origin\":false,\"signature_tier\":\"supporting\",\"configuration_jsonb\":{\"varga\":\"D1\",\"fact_key\":\"concordance_value\",\"bhava_num\":10,\"bhava_lord\":\"SAT\",\"bhava_sign\":\"Capricorn\",\"concordance\":\"enemy\",\"significance\":\"authority\",\"fact_value_num\":null,\"natural_karaka\":\"SUN\",\"fact_value_text\":\"enemy\"},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"0b2ae534-d75e-4cf3-a4b7-4138d962c575\",\"signal_type_id\":\"lord_in_house_per_varga:lord_placement\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=lord_in_house_per_varga | key=lord_placement | value_text=Venus_in_H12 | value_num=12 | ayanamsha_id=lahiri_chitrapaksha | house=7 | lord=Venus | lord_house_in_varga=12 | sign=Libra | uncatalogued=False | varga=D1\",\"signal_headline_text\":\"lord in house per varga: lord placement = Venus_in_H12\",\"computed_salience\":0.4761,\"top_k_salience_rank\":3598,\"domains_affected_array\":[\"career\",\"wealth\",\"relationship\",\"progeny\",\"education\",\"family\"],\"constituent_facts_array\":[\"a182e29ae8c1e3d6\"],\"source_subsystem\":\"structural\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"citation_human\":\"H7 (Libra) lord Venus is in H12 in D1 (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"supporting\",\"configuration_jsonb\":{\"lord\":\"Venus\",\"sign\":\"Libra\",\"house\":7,\"varga\":\"D1\",\"fact_key\":\"lord_placement\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"uncatalogued\":false,\"fact_value_num\":12,\"fact_value_text\":\"Venus_in_H12\",\"lord_house_in_varga\":12},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"1c58a17f-e18b-45e7-a1bd-63a0900d9264\",\"signal_type_id\":\"karaka_bhava_concordance:concordance_value\",\"signal_type_class\":\"karaka_alignment\",\"signal_tradition\":\"jaimini\",\"signal_summary_text\":\"category=karaka_bhava_concordance | key=concordance_value | value_text=concordant | bhava_lord=SAT | bhava_num=10 | bhava_sign=Capricorn | concordance=concordant | natural_karaka=SAT | significance=career | varga=D1\",\"signal_headline_text\":\"karaka bhava concordance: concordance value = concordant\",\"computed_salience\":0.36225,\"top_k_salience_rank\":18721,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"constituent_facts_array\":[\"c02ed7d0c822d017\"],\"source_subsystem\":\"structural\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"citation_human\":\"career (D1 lahiri_chitrapaksha): natural_karaka=Saturn vs bhava10_lord=Saturn → concordant.\",\"lel_origin\":false,\"signature_tier\":\"supporting\",\"configuration_jsonb\":{\"varga\":\"D1\",\"fact_key\":\"concordance_value\",\"bhava_num\":10,\"bhava_lord\":\"SAT\",\"bhava_sign\":\"Capricorn\",\"concordance\":\"concordant\",\"significance\":\"career\",\"fact_value_num\":null,\"natural_karaka\":\"SAT\",\"fact_value_text\":\"concordant\"},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"64da120c-9ecb-44db-a8b8-7efac120e071\",\"signal_type_id\":\"aspect_parashari_given:house_6\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=aspect_parashari_given | key=house_6 | value_num=1 | graha=VEN | target_house=6\",\"signal_headline_text\":\"VEN: aspect parashari given: house 6 = 1\",\"computed_salience\":1.166727,\"top_k_salience_rank\":72,\"domains_affected_array\":[\"career\",\"relationship\",\"wealth\"],\"constituent_facts_array\":[\"993ef293ad3b4761\"],\"source_subsystem\":\"structural\",\"valence\":\"benefic\",\"verification_pass_status\":\"single\",\"citation_human\":\"Venus 7th aspect on house 6 (Virgo) at strength 1.00 (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"chart_defining\",\"configuration_jsonb\":{\"graha\":\"VEN\",\"fact_key\":\"house_6\",\"target_house\":6,\"fact_value_num\":1,\"fact_value_text\":null},\"ratification_factor\":null,\"valence_source\":\"ga_vichara_v1\"},{\"signal_id\":\"0334522a-9378-4db5-856d-2ffcaf9f5f00\",\"signal_type_id\":\"graha_dignity_per_varga:dignity_state\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_dignity_per_varga | key=dignity_state | value_text=neutral | ayanamsha_id=lahiri_chitrapaksha | house=11 | sign=Aquarius | uncatalogued=False | varga=D1\",\"signal_headline_text\":\"graha dignity per varga: dignity state = neutral\",\"computed_salience\":0.625968,\"top_k_salience_rank\":1948,\"domains_affected_array\":[\"character\",\"career\"],\"constituent_facts_array\":[\"20139876bb44c531\"],\"source_subsystem\":\"structural\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"citation_human\":\"Sun neutral in Aquarius (house 11) in D1 (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"supporting\",\"configuration_jsonb\":{\"sign\":\"Aquarius\",\"house\":11,\"varga\":\"D1\",\"fact_key\":\"dignity_state\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"uncatalogued\":false,\"fact_value_num\":null,\"fact_value_text\":\"neutral\"},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"fe0d2aac-9081-4bef-9315-f7edd610eeec\",\"signal_type_id\":\"graha_dignity_per_varga:dignity_state\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_dignity_per_varga | key=dignity_state | value_text=neutral | ayanamsha_id=lahiri_chitrapaksha | house=7 | sign=Libra | uncatalogued=False | varga=D1\",\"signal_headline_text\":\"graha dignity per varga: dignity state = neutral\",\"computed_salience\":0.4761,\"top_k_salience_rank\":3578,\"domains_affected_array\":[\"character\",\"career\"],\"constituent_facts_array\":[\"bc386b7074e8a2df\"],\"source_subsystem\":\"structural\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"citation_human\":\"Ketu neutral in Libra (house 7) in D1 (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"supporting\",\"configuration_jsonb\":{\"sign\":\"Libra\",\"house\":7,\"varga\":\"D1\",\"fact_key\":\"dignity_state\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"uncatalogued\":false,\"fact_value_num\":null,\"fact_value_text\":\"neutral\"},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"}],\"returned_count\":50,\"total_matching_filters\":2992,\"truncated\":false,\"ranking_basis\":{\"mode\":\"composite_4d\",\"priors_version\":\"1.2\",\"domain\":\"career\",\"top_signal\":{\"signal_id\":\"6a1cd6d8-5259-4df8-8b8a-92a1b87c5ac8\",\"class_prior\":1.25,\"topic_relevance\":2.64,\"intrinsic_strength\":0.5,\"structural_role\":1.2,\"temporal_activation\":1,\"composite_score\":1.98,\"percentile_within_class\":1,\"final_rank_score\":1.9801587001790781},\"varga_weight_basis\":{\"scheme\":\"Ṣoḍaśavarga (16-fold) Vimśopaka Bala\",\"source\":\"Bṛhat Parāśara Horā Śāstra Ch.6 (Ṣaḍvarga/Vimśopaka); cross-checked against L1 chart_facts.graha_vimsopaka_shodasavarga\"},\"note\":\"Composite = class_prior × topic_relevance × intrinsic_strength × structural_role × temporal_activation × percentile_within_class.\"},\"cross_surface\":{\"ranking_mode\":\"composite_4d\",\"agrees_with\":\"assess_career top_10_composite (same composite ranking path)\"},\"filters\":{\"domain\":\"career\",\"min_salience\":0,\"lel_enabled\":false,\"top_k\":50,\"offset\":0,\"paradigm\":null,\"projection\":[\"signal_id\",\"signal_type_id\",\"signal_type_class\",\"signal_tradition\",\"signal_summary_text\",\"signal_headline_text\",\"computed_salience\",\"top_k_salience_rank\",\"domains_affected_array\",\"constituent_facts_array\",\"source_subsystem\",\"valence\",\"verification_pass_status\",\"citation_human\",\"lel_origin\",\"signature_tier\",\"configuration_jsonb\",\"ratification_factor\",\"valence_source\"]},\"provenance\":{\"tables\":[\"bodha_msr_signals\"],\"ranking_note\":\"Composite 4D re-ranking applied: dual-pool A=500+B=150→564 unique (priors_version=1.2).\",\"defect_001\":{\"claim_id\":\"DEFECT-001\",\"status\":\"RESOLVED\",\"note\":\"constituent_facts_array resolution against chart_facts, derived live for chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a: 0/51 references orphaned (0%). All references resolve — DEFECT-001 no longer reproduces on this chart.\",\"as_of\":\"2026-08-15T11:07:40.489Z\",\"expires_on\":\"2026-08-16T11:07:40.489Z\",\"metrics\":{\"total_refs\":51,\"orphan_refs\":0,\"orphan_pct\":0}},\"signature_tier\":{\"claim_id\":\"SIGNATURE_TIER\",\"status\":\"POPULATED\",\"note\":\"signature_tier distribution, derived live for chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a: supporting=77.5%, background=11.1%, major=9%, chart_defining=2.4%. Column carries a real distribution (not degenerate, unlike the pre-R4 state) — ranking still uses computed_salience as primary, but signature_tier is now a usable secondary signal.\",\"as_of\":\"2026-08-15T11:07:40.490Z\",\"expires_on\":\"2026-08-16T11:07:40.490Z\",\"metrics\":{\"total\":10037,\"major\":9,\"chart_defining\":2.4,\"supporting\":77.5,\"background\":11.1}},\"defect_001_note\":\"constituent_facts_array resolution against chart_facts, derived live for chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a: 0/51 references orphaned (0%). All references resolve — DEFECT-001 no longer reproduces on this chart.\",\"signature_tier_note\":\"signature_tier distribution, derived live for chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a: supporting=77.5%, background=11.1%, major=9%, chart_defining=2.4%. Column carries a real distribution (not degenerate, unlike the pre-R4 state) — ranking still uses computed_salience as primary, but signature_tier is now a usable secondary signal.\",\"lel_note\":\"lel_origin=true signals: 0 rows currently. LEL filter is safe but returns empty.\",\"projection_note\":\"Default projection — 17 of 84 columns served (WP-1.3(g)/LCA-7). Pass projection:[\\\"*\\\"] or an explicit column array to reach the rest.\",\"paradigm_note\":\"No paradigm filter applied — signals from every classical tradition are present, each individually tagged via its own signal_tradition field. Do not treat this as one coherent method's output; a caller building a single-paradigm answer should pass paradigm to get one tradition's clean slice (design §27.4).\",\"elevation_columns_note\":\"ratification_factor + valence_source (Lane 4 MSR elevation) are present and served by default.\"},\"verdict_summary\":{\"served_count\":50,\"tier_distribution\":{\"supporting\":36,\"chart_defining\":6,\"major\":8},\"top_subjects_by_frequency\":[\"ad9e74eb821bfb55\",\"b81de4577bdc08c6\",\"df69bf4786c9476d\",\"6f415d215eaac49b\",\"34206cd4d968f923\"],\"note\":\"Small verdict over THIS response's own served rows (§N.6 (iii)) — not a re-query.\"},\"budget_kb_applied\":25,\"trim_report\":[{\"path\":\"signals\",\"original_count\":50,\"kept_count\":10,\"reason\":\"signals: floored to 10 (hard-cap)\",\"recover_via\":{\"instrument\":\"bodha_signals_get\",\"hint\":\"call again with a smaller top_k, or paginate via offset\"}}],\"drill_pointers\":[{\"instrument\":\"bodha_signals_get\",\"hint\":\"call again with a smaller top_k, or paginate via offset\"}]},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+          "frame": "lagna",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "signals": [
+            {
+              "signal_id": "6a1cd6d8-5259-4df8-8b8a-92a1b87c5ac8",
+              "signal_type_id": "net_argala_per_varga:net_argala",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=net_argala_per_varga | key=net_argala | value_num=2 | house=10 | net_argala=2.0 | varga=D1",
+              "signal_headline_text": "net argala per varga: net argala = 2",
+              "computed_salience": 0.4761,
+              "top_k_salience_rank": 3665,
+              "domains_affected_array": [
+                "career",
+                "character"
+              ],
+              "constituent_facts_array": [
+                "ad9e74eb821bfb55"
+              ],
+              "source_subsystem": "structural",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "citation_human": "Net argala on H10 in D1: +2 (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "supporting",
+              "configuration_jsonb": {
+                "house": 10,
+                "varga": "D1",
+                "fact_key": "net_argala",
+                "net_argala": 2,
+                "fact_value_num": 2,
+                "fact_value_text": null
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "dba4bf5b-bf01-40ec-a1d7-b3588f0f68e9",
+              "signal_type_id": "convergence_count:total_edges",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=convergence_count | key=total_edges | value_num=1 | entity=house | house=10 | total_edges=1 | varga=D1",
+              "signal_headline_text": "convergence count: total edges = 1",
+              "computed_salience": 0.4761,
+              "top_k_salience_rank": 3559,
+              "domains_affected_array": [
+                "career",
+                "character"
+              ],
+              "constituent_facts_array": [
+                "b81de4577bdc08c6"
+              ],
+              "source_subsystem": "structural",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "citation_human": "H10 convergence_count=1 in D1 (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "supporting",
+              "configuration_jsonb": {
+                "house": 10,
+                "varga": "D1",
+                "entity": "house",
+                "fact_key": "total_edges",
+                "total_edges": 1,
+                "fact_value_num": 1,
+                "fact_value_text": null
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "7a3ee856-7ab1-46e9-b05f-561741c1a1c5",
+              "signal_type_id": "lord_in_house_per_varga:lord_placement",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=lord_in_house_per_varga | key=lord_placement | value_text=Saturn_in_H8 | value_num=8 | ayanamsha_id=lahiri_chitrapaksha | house=10 | lord=Saturn | lord_house_in_varga=8 | sign=Capricorn | uncatalogued=False | varga=D1",
+              "signal_headline_text": "lord in house per varga: lord placement = Saturn_in_H8",
+              "computed_salience": 0.4761,
+              "top_k_salience_rank": 3597,
+              "domains_affected_array": [
+                "career",
+                "wealth",
+                "relationship",
+                "progeny",
+                "education",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "df69bf4786c9476d"
+              ],
+              "source_subsystem": "structural",
+              "valence": "malefic",
+              "verification_pass_status": "single",
+              "citation_human": "H10 (Capricorn) lord Saturn is in H8 in D1 (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "supporting",
+              "configuration_jsonb": {
+                "lord": "Saturn",
+                "sign": "Capricorn",
+                "house": 10,
+                "varga": "D1",
+                "fact_key": "lord_placement",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "uncatalogued": false,
+                "fact_value_num": 8,
+                "fact_value_text": "Saturn_in_H8",
+                "lord_house_in_varga": 8
+              },
+              "ratification_factor": null,
+              "valence_source": "ga_vichara_v1"
+            },
+            {
+              "signal_id": "8888cc09-8fc5-4d75-a5fa-d0b74f4f0b56",
+              "signal_type_id": "graha_dignity_per_varga:dignity_state",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_dignity_per_varga | key=dignity_state | value_text=neutral | ayanamsha_id=lahiri_chitrapaksha | house=10 | sign=Leo | uncatalogued=False | varga=D9",
+              "signal_headline_text": "graha dignity per varga: dignity state = neutral",
+              "computed_salience": 0.49105,
+              "top_k_salience_rank": 3150,
+              "domains_affected_array": [
+                "character",
+                "career"
+              ],
+              "constituent_facts_array": [
+                "6f415d215eaac49b"
+              ],
+              "source_subsystem": "structural",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "citation_human": "Saturn neutral in Leo (house 10) in D9 (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "supporting",
+              "configuration_jsonb": {
+                "sign": "Leo",
+                "house": 10,
+                "varga": "D9",
+                "fact_key": "dignity_state",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "uncatalogued": false,
+                "fact_value_num": null,
+                "fact_value_text": "neutral"
+              },
+              "ratification_factor": 1,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "01e608a3-6275-49ea-a372-ab36070dcbb0",
+              "signal_type_id": "karaka_bhava_concordance:concordance_value",
+              "signal_type_class": "karaka_alignment",
+              "signal_tradition": "jaimini",
+              "signal_summary_text": "category=karaka_bhava_concordance | key=concordance_value | value_text=enemy | bhava_lord=SAT | bhava_num=10 | bhava_sign=Capricorn | concordance=enemy | natural_karaka=SUN | significance=authority | varga=D1",
+              "signal_headline_text": "karaka bhava concordance: concordance value = enemy",
+              "computed_salience": 0.36225,
+              "top_k_salience_rank": 18710,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "34206cd4d968f923"
+              ],
+              "source_subsystem": "structural",
+              "valence": "malefic",
+              "verification_pass_status": "single",
+              "citation_human": "authority (D1 lahiri_chitrapaksha): natural_karaka=Sun vs bhava10_lord=Saturn → enemy.",
+              "lel_origin": false,
+              "signature_tier": "supporting",
+              "configuration_jsonb": {
+                "varga": "D1",
+                "fact_key": "concordance_value",
+                "bhava_num": 10,
+                "bhava_lord": "SAT",
+                "bhava_sign": "Capricorn",
+                "concordance": "enemy",
+                "significance": "authority",
+                "fact_value_num": null,
+                "natural_karaka": "SUN",
+                "fact_value_text": "enemy"
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "0b2ae534-d75e-4cf3-a4b7-4138d962c575",
+              "signal_type_id": "lord_in_house_per_varga:lord_placement",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=lord_in_house_per_varga | key=lord_placement | value_text=Venus_in_H12 | value_num=12 | ayanamsha_id=lahiri_chitrapaksha | house=7 | lord=Venus | lord_house_in_varga=12 | sign=Libra | uncatalogued=False | varga=D1",
+              "signal_headline_text": "lord in house per varga: lord placement = Venus_in_H12",
+              "computed_salience": 0.4761,
+              "top_k_salience_rank": 3598,
+              "domains_affected_array": [
+                "career",
+                "wealth",
+                "relationship",
+                "progeny",
+                "education",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "a182e29ae8c1e3d6"
+              ],
+              "source_subsystem": "structural",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "citation_human": "H7 (Libra) lord Venus is in H12 in D1 (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "supporting",
+              "configuration_jsonb": {
+                "lord": "Venus",
+                "sign": "Libra",
+                "house": 7,
+                "varga": "D1",
+                "fact_key": "lord_placement",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "uncatalogued": false,
+                "fact_value_num": 12,
+                "fact_value_text": "Venus_in_H12",
+                "lord_house_in_varga": 12
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "1c58a17f-e18b-45e7-a1bd-63a0900d9264",
+              "signal_type_id": "karaka_bhava_concordance:concordance_value",
+              "signal_type_class": "karaka_alignment",
+              "signal_tradition": "jaimini",
+              "signal_summary_text": "category=karaka_bhava_concordance | key=concordance_value | value_text=concordant | bhava_lord=SAT | bhava_num=10 | bhava_sign=Capricorn | concordance=concordant | natural_karaka=SAT | significance=career | varga=D1",
+              "signal_headline_text": "karaka bhava concordance: concordance value = concordant",
+              "computed_salience": 0.36225,
+              "top_k_salience_rank": 18721,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "c02ed7d0c822d017"
+              ],
+              "source_subsystem": "structural",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "citation_human": "career (D1 lahiri_chitrapaksha): natural_karaka=Saturn vs bhava10_lord=Saturn → concordant.",
+              "lel_origin": false,
+              "signature_tier": "supporting",
+              "configuration_jsonb": {
+                "varga": "D1",
+                "fact_key": "concordance_value",
+                "bhava_num": 10,
+                "bhava_lord": "SAT",
+                "bhava_sign": "Capricorn",
+                "concordance": "concordant",
+                "significance": "career",
+                "fact_value_num": null,
+                "natural_karaka": "SAT",
+                "fact_value_text": "concordant"
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "64da120c-9ecb-44db-a8b8-7efac120e071",
+              "signal_type_id": "aspect_parashari_given:house_6",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=aspect_parashari_given | key=house_6 | value_num=1 | graha=VEN | target_house=6",
+              "signal_headline_text": "VEN: aspect parashari given: house 6 = 1",
+              "computed_salience": 1.166727,
+              "top_k_salience_rank": 72,
+              "domains_affected_array": [
+                "career",
+                "relationship",
+                "wealth"
+              ],
+              "constituent_facts_array": [
+                "993ef293ad3b4761"
+              ],
+              "source_subsystem": "structural",
+              "valence": "benefic",
+              "verification_pass_status": "single",
+              "citation_human": "Venus 7th aspect on house 6 (Virgo) at strength 1.00 (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "chart_defining",
+              "configuration_jsonb": {
+                "graha": "VEN",
+                "fact_key": "house_6",
+                "target_house": 6,
+                "fact_value_num": 1,
+                "fact_value_text": null
+              },
+              "ratification_factor": null,
+              "valence_source": "ga_vichara_v1"
+            },
+            {
+              "signal_id": "0334522a-9378-4db5-856d-2ffcaf9f5f00",
+              "signal_type_id": "graha_dignity_per_varga:dignity_state",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_dignity_per_varga | key=dignity_state | value_text=neutral | ayanamsha_id=lahiri_chitrapaksha | house=11 | sign=Aquarius | uncatalogued=False | varga=D1",
+              "signal_headline_text": "graha dignity per varga: dignity state = neutral",
+              "computed_salience": 0.625968,
+              "top_k_salience_rank": 1948,
+              "domains_affected_array": [
+                "character",
+                "career"
+              ],
+              "constituent_facts_array": [
+                "20139876bb44c531"
+              ],
+              "source_subsystem": "structural",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "citation_human": "Sun neutral in Aquarius (house 11) in D1 (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "supporting",
+              "configuration_jsonb": {
+                "sign": "Aquarius",
+                "house": 11,
+                "varga": "D1",
+                "fact_key": "dignity_state",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "uncatalogued": false,
+                "fact_value_num": null,
+                "fact_value_text": "neutral"
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "fe0d2aac-9081-4bef-9315-f7edd610eeec",
+              "signal_type_id": "graha_dignity_per_varga:dignity_state",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_dignity_per_varga | key=dignity_state | value_text=neutral | ayanamsha_id=lahiri_chitrapaksha | house=7 | sign=Libra | uncatalogued=False | varga=D1",
+              "signal_headline_text": "graha dignity per varga: dignity state = neutral",
+              "computed_salience": 0.4761,
+              "top_k_salience_rank": 3578,
+              "domains_affected_array": [
+                "character",
+                "career"
+              ],
+              "constituent_facts_array": [
+                "bc386b7074e8a2df"
+              ],
+              "source_subsystem": "structural",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "citation_human": "Ketu neutral in Libra (house 7) in D1 (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "supporting",
+              "configuration_jsonb": {
+                "sign": "Libra",
+                "house": 7,
+                "varga": "D1",
+                "fact_key": "dignity_state",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "uncatalogued": false,
+                "fact_value_num": null,
+                "fact_value_text": "neutral"
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            }
+          ],
+          "returned_count": 50,
+          "total_matching_filters": 2992,
+          "truncated": false,
+          "ranking_basis": {
+            "mode": "composite_4d",
+            "priors_version": "1.2",
+            "domain": "career",
+            "top_signal": {
+              "signal_id": "6a1cd6d8-5259-4df8-8b8a-92a1b87c5ac8",
+              "class_prior": 1.25,
+              "topic_relevance": 2.64,
+              "intrinsic_strength": 0.5,
+              "structural_role": 1.2,
+              "temporal_activation": 1,
+              "composite_score": 1.98,
+              "percentile_within_class": 1,
+              "final_rank_score": 1.9801587001790781
+            },
+            "varga_weight_basis": {
+              "scheme": "Ṣoḍaśavarga (16-fold) Vimśopaka Bala",
+              "source": "Bṛhat Parāśara Horā Śāstra Ch.6 (Ṣaḍvarga/Vimśopaka); cross-checked against L1 chart_facts.graha_vimsopaka_shodasavarga"
+            },
+            "note": "Composite = class_prior × topic_relevance × intrinsic_strength × structural_role × temporal_activation × percentile_within_class."
+          },
+          "cross_surface": {
+            "ranking_mode": "composite_4d",
+            "agrees_with": "assess_career top_10_composite (same composite ranking path)"
+          },
+          "filters": {
+            "domain": "career",
+            "min_salience": 0,
+            "lel_enabled": false,
+            "top_k": 50,
+            "offset": 0,
+            "paradigm": null,
+            "projection": [
+              "signal_id",
+              "signal_type_id",
+              "signal_type_class",
+              "signal_tradition",
+              "signal_summary_text",
+              "signal_headline_text",
+              "computed_salience",
+              "top_k_salience_rank",
+              "domains_affected_array",
+              "constituent_facts_array",
+              "source_subsystem",
+              "valence",
+              "verification_pass_status",
+              "citation_human",
+              "lel_origin",
+              "signature_tier",
+              "configuration_jsonb",
+              "ratification_factor",
+              "valence_source"
+            ]
+          },
+          "provenance": {
+            "tables": [
+              "bodha_msr_signals"
+            ],
+            "ranking_note": "Composite 4D re-ranking applied: dual-pool A=500+B=150→564 unique (priors_version=1.2).",
+            "defect_001": {
+              "claim_id": "DEFECT-001",
+              "status": "RESOLVED",
+              "note": "constituent_facts_array resolution against chart_facts, derived live for chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a: 0/51 references orphaned (0%). All references resolve — DEFECT-001 no longer reproduces on this chart.",
+              "as_of": "2026-08-15T11:07:40.489Z",
+              "expires_on": "2026-08-16T11:07:40.489Z",
+              "metrics": {
+                "total_refs": 51,
+                "orphan_refs": 0,
+                "orphan_pct": 0
+              }
+            },
+            "signature_tier": {
+              "claim_id": "SIGNATURE_TIER",
+              "status": "POPULATED",
+              "note": "signature_tier distribution, derived live for chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a: supporting=77.5%, background=11.1%, major=9%, chart_defining=2.4%. Column carries a real distribution (not degenerate, unlike the pre-R4 state) — ranking still uses computed_salience as primary, but signature_tier is now a usable secondary signal.",
+              "as_of": "2026-08-15T11:07:40.490Z",
+              "expires_on": "2026-08-16T11:07:40.490Z",
+              "metrics": {
+                "total": 10037,
+                "major": 9,
+                "chart_defining": 2.4,
+                "supporting": 77.5,
+                "background": 11.1
+              }
+            },
+            "defect_001_note": "constituent_facts_array resolution against chart_facts, derived live for chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a: 0/51 references orphaned (0%). All references resolve — DEFECT-001 no longer reproduces on this chart.",
+            "signature_tier_note": "signature_tier distribution, derived live for chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a: supporting=77.5%, background=11.1%, major=9%, chart_defining=2.4%. Column carries a real distribution (not degenerate, unlike the pre-R4 state) — ranking still uses computed_salience as primary, but signature_tier is now a usable secondary signal.",
+            "lel_note": "lel_origin=true signals: 0 rows currently. LEL filter is safe but returns empty.",
+            "projection_note": "Default projection — 17 of 84 columns served (WP-1.3(g)/LCA-7). Pass projection:[\"*\"] or an explicit column array to reach the rest.",
+            "paradigm_note": "No paradigm filter applied — signals from every classical tradition are present, each individually tagged via its own signal_tradition field. Do not treat this as one coherent method's output; a caller building a single-paradigm answer should pass paradigm to get one tradition's clean slice (design §27.4).",
+            "elevation_columns_note": "ratification_factor + valence_source (Lane 4 MSR elevation) are present and served by default."
+          },
+          "verdict_summary": {
+            "served_count": 50,
+            "tier_distribution": {
+              "supporting": 36,
+              "chart_defining": 6,
+              "major": 8
+            },
+            "top_subjects_by_frequency": [
+              "ad9e74eb821bfb55",
+              "b81de4577bdc08c6",
+              "df69bf4786c9476d",
+              "6f415d215eaac49b",
+              "34206cd4d968f923"
+            ],
+            "note": "Small verdict over THIS response's own served rows (§N.6 (iii)) — not a re-query."
+          },
+          "budget_kb_applied": 25,
+          "trim_report": [
+            {
+              "path": "signals",
+              "original_count": 50,
+              "kept_count": 10,
+              "reason": "signals: floored to 10 (hard-cap)",
+              "recover_via": {
+                "instrument": "bodha_signals_get",
+                "hint": "call again with a smaller top_k, or paginate via offset"
+              }
+            }
+          ],
+          "drill_pointers": [
+            {
+              "instrument": "bodha_signals_get",
+              "hint": "call again with a smaller top_k, or paginate via offset"
+            }
+          ]
+        },
+        "is_error": false
+      }
+    }
+  }
+}

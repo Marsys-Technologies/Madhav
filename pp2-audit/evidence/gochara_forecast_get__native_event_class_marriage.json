@@ -1,0 +1,52 @@
+{
+  "tool": "gochara_forecast_get",
+  "scenario": "native_event_class_marriage_2026_2036",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "date_range": {"start": "2026-08-15", "end": "2036-08-15"}, "event_class": "marriage"},
+  "raw_response_summary": {
+    "window_count": 3,
+    "shape_breakdown": {"point": 1, "interval": 2, "chain": 0},
+    "context_only_rows_in_page": 2,
+    "context_only_note": "2 of 3 served row(s) are era-scale/unresolved CONTEXT, not timing windows (PK-R-1)",
+    "windows": [
+      {
+        "id": "61360",
+        "temporal_shape": "interval",
+        "window_start": "2024-02-05",
+        "window_end": "2034-01-30",
+        "peak_date": "2024-04-19",
+        "signed_intensity": 0.349999,
+        "valence": "neutral",
+        "resolution_disclosure": {"is_timing_window": false, "timing_window_blocked_reason": "point_class_context_envelope"},
+        "contributing_planets_in_active_sentences": [],
+        "contributing_planets_in_activity_terms": ["Mars", "Sun", "Jupiter", "Venus", "Moon"],
+        "note": "no Rahu/Ketu appear despite both nodes classically aspecting the 7th house/Venus via 5th-9th aspect in this era"
+      },
+      {
+        "id": "58903",
+        "temporal_shape": "point",
+        "window_start": "2027-11-11",
+        "window_end": "2027-11-11",
+        "peak_date": "2027-11-11",
+        "signed_intensity": 89703.73863,
+        "valence": "neutral",
+        "resolution_disclosure": {"is_timing_window": true, "timing_window_blocked_reason": null},
+        "note": "ONLY genuine (is_timing_window=true) marriage timing row in the entire 10-year sweep",
+        "active_sentences_contributing_planets": ["Mars", "Venus", "Saturn", "Moon"],
+        "active_sentences_target_refs": ["bhava 2 (Mars,Venus,Saturn drishti)", "bhava 7 (Moon drishti)"],
+        "note2": "no Rahu/Ketu among active_sentences despite Rahu (transit Aquarius) casting a real classical 9th-house drishti onto natal 7th house (Libra) as of the surrounding period, and Ketu (transit Leo) casting a real classical 5th-house drishti onto natal Venus/karaka (Sagittarius) -- both structurally excluded by the primitives.py _DEFAULT_DRISHTI_DEG=[180.0] truncation (F-20)."
+      },
+      {
+        "id": "61361",
+        "temporal_shape": "interval",
+        "window_start": "2034-02-05",
+        "window_end": "2044-01-31",
+        "peak_date": "2038-05-18",
+        "signed_intensity": 0.59,
+        "valence": "neutral",
+        "resolution_disclosure": {"is_timing_window": false, "timing_window_blocked_reason": "point_class_context_envelope"},
+        "contributing_planets_in_activity_terms": ["Sun", "Moon", "Mars", "Mercury", "Venus", "Saturn", "Ketu(eclipse_degree only, target=Venus itself not 7th/lord aspect)"],
+        "note": "this era-interval starts 2034-02-05, ~6 months before natal Venus (7th-lord+karaka) Mahadasha begins 2034-08-18 -- a genuine D1-dasha/gochara convergence point, but it is a context-only row (is_timing_window=false), not an actionable date."
+      }
+    ]
+  }
+}

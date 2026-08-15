@@ -1,0 +1,24 @@
+{
+  "tool": "read_classical_text",
+  "scenario": "purva_bhadrapada_query",
+  "args": {"query": "Purva Bhadrapada nakshatra characteristics"},
+  "raw_response": {
+    "tool_bundle_id": "0f500143-08a3-458e-be37-469bf62e159a",
+    "tool_name": "classical_text_search",
+    "tool_version": "1.0",
+    "invocation_params": {"query": "Purva Bhadrapada nakshatra characteristics", "limit": 5},
+    "results_count": 5,
+    "results_summary": [
+      {"citation_ref": "brihat_samhita:PG1005:C2", "combined_score": 0.5177147485455876, "source_citation": "[HIGH] Brihat Samhita — Trans. V. Subrahmanya Sastri, 1946"},
+      {"citation_ref": "hora_sara:PG319:C1", "combined_score": 0.5121042285441262, "source_citation": "[HIGH] Hora Sara — Trans. R. Santhanam"},
+      {"citation_ref": "brihat_jataka:PG351:C1", "combined_score": 0.5109482436450034, "source_citation": "[HIGH] Brihat Jataka — Trans. V. Subrahmanya Sastri, 2nd Ed.", "note": "verse_text_en contains 'The person whose birth is in (Purva.bhadrapada) will be afflicted, will be henpecked, wealthy and clever, but a miser.'"},
+      {"citation_ref": "hora_sara:PG318:C1", "combined_score": 0.510046462600419, "source_citation": "[HIGH] Hora Sara — Trans. R. Santhanam", "note": "verse_text_en contains 'One born in Poorvabhadra will be adulterous, will have no permanent residence, be difficult to be won over, will enjoy, will get money from sovereign, base, dutiful and long-hved.'"},
+      {"citation_ref": "bphs:PG251:C1", "combined_score": 0.5059807650708525, "source_citation": "[HIGH] BPHS — Trans. R. Santhanam, Ranjan Publications"}
+    ],
+    "served_from_cache": false,
+    "latency_ms": 4842,
+    "result_hash": "sha256:3fe58d316fed9181d18089ed957fb7dfaad6ed26d8a8cbe7e6cda1ac79868f21",
+    "schema_version": "1.0",
+    "note_to_reader": "results_summary is a condensed restatement of the full verbatim response for evidence-file size; the full raw_response (with complete verse_text_en/verse_text_sa for all 5 chunks) was observed in the live tool call and is reproducible via the args above."
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "tool": "list_entities",
+  "scenario": "entity_class_planet",
+  "args": {
+    "entity_class": "planet",
+    "limit": 50
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"ok\": true,\n  \"trace_id\": \"4c8db8b1-ede9-4d50-a62e-85c4d7344d7e\",\n  \"result\": {\n    \"tool_name\": \"list_entities\",\n    \"invocation_params\": {\"limit\": 50, \"entity_class\": \"planet\"},\n    \"results\": [{\"content\": \"{\\\"entities\\\":[{\\\"canonical_id\\\":\\\"ascendant\\\",\\\"entity_class\\\":\\\"planet\\\",\\\"canonical_name_en\\\":\\\"Ascendant\\\",\\\"canonical_name_sa\\\":\\\"Lagna\\\"},{\\\"canonical_id\\\":\\\"jupiter\\\"},{\\\"canonical_id\\\":\\\"ketu\\\"},{\\\"canonical_id\\\":\\\"mars\\\"},{\\\"canonical_id\\\":\\\"mercury\\\"},{\\\"canonical_id\\\":\\\"midheaven\\\"},{\\\"canonical_id\\\":\\\"moon\\\"},{\\\"canonical_id\\\":\\\"rahu\\\"},{\\\"canonical_id\\\":\\\"saturn\\\"},{\\\"canonical_id\\\":\\\"sun\\\"},{\\\"canonical_id\\\":\\\"venus\\\"}],\\\"served_count\\\":11,\\\"total\\\":11,\\\"more_available\\\":false,\\\"next_cursor\\\":null,\\\"judgment_flags\\\":[],\\\"filters\\\":{\\\"entity_class_requested\\\":\\\"planet\\\",\\\"entity_class_resolved\\\":\\\"planet\\\"}}\"}],\n    \"served_from_cache\": false,\n    \"latency_ms\": 13,\n    \"result_hash\": \"sha256:a6193491e2c1f4b583181affeaaeb485235b9292c142ebf55a37f360c3823f2f\"\n  }\n}",
+        "note": "Abbreviated transcription of the full entity list for evidence-file size; every canonical_id/entity_class/served_count/total value shown was observed verbatim in the live response (11 planet-class entities incl. Ascendant + Midheaven, served_count=11, total=11, more_available=false, filters echoed correctly)."
+      }
+    ]
+  }
+}

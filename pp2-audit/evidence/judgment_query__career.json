@@ -1,0 +1,26 @@
+{
+  "tool": "judgment_query",
+  "scenario": "career",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "career"},
+  "timing": {"before_ms": 1786800896255, "after_ms": 1786800907578, "latency_ms": 11323},
+  "is_error": false,
+  "raw_response_summary": {
+    "envelope_version": "v3",
+    "tool": "judgment_query",
+    "verdict": {
+      "domain": "career",
+      "domain_label": "Career / Vocation",
+      "bhava": 10,
+      "verdict_grade": "convergent_strong",
+      "composite_score": 4.58,
+      "operative_varga": "D10",
+      "receipt": {"bhava": true, "bhavesha": true, "karaka": true, "from_moon": true, "varga_confirmed": false, "varga_weighted_into_verdict": true, "yogas_checked": 13, "bhanga_checked": true, "timing_anchored": true}
+    },
+    "reading_checklist": {"units_served": 8, "units_total": 12, "units_unserved": ["ashtakavarga", "special_lagnas", "yogi_avayogi", "tajaka"]},
+    "judgment_flags_count": 8,
+    "chart_header": {"chart_id_short": "482012f1", "name": "Abhisek Mohanty", "lagna_sign": "Aries", "moon_sign": "Aquarius", "sun_sign": "Capricorn", "current_maha_antar": "Mercury MD / Saturn AD"},
+    "budget_kb_applied": 12,
+    "epistemic": {"grade": "structural_prior"}
+  },
+  "note": "Full raw response was very large (~15KB+ after server-side budget trim); this evidence file preserves the load-bearing fields actually observed (verdict, receipt, checklist coverage, timing, flags count, chart_header) rather than re-pasting the entire truncated payload verbatim. No field value here was invented — all copied from the actual tool result in this session."
+}

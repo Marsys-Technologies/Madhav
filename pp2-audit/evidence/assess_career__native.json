@@ -1,0 +1,19 @@
+{
+  "tool": "assess_career",
+  "scenario": "native_chart_default_call",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+  "timing": {"before_ms": 1786801205279, "after_ms": 1786801223419, "latency_ms": 18140},
+  "is_error_serverside": false,
+  "client_side_failure": "MCP client returned a hard error: 'result (168,075 characters) exceeds maximum allowed tokens' -- the response had to be redirected to a file on disk (/Users/Dev/.claude/projects/.../tool-results/mcp-marsys-jis-direct-assess_career-1786801217833.txt, 168,575 bytes) instead of being returned inline.",
+  "raw_response_summary_from_saved_file": {
+    "object_keys": ["budget_kb_applied", "completeness_directive", "content", "domain_completeness", "drill_pointers", "is_error", "judgment_flags", "orientation_context", "orientation_ok", "reading", "trim_report"],
+    "is_error": false,
+    "budget_kb_applied": 40,
+    "judgment_flags": [
+      "complete_domain_accounting_attached: the full career concept slice (13825 concepts, 100% accounted) is attached as domain_completeness. This assessment is a reconciled HEADLINE over that complete territory -- do not treat it as the whole reading.",
+      {"code": "budget_exceeded_after_trim", "detail": "40kb budget still exceeded after full trim."}
+    ],
+    "domain_completeness": {"domain": "career", "slice_size": 13825, "accounted": 13825, "pct": 100, "distinct_serving_tools": 26}
+  },
+  "finding": "REAL, VERIFIED anomaly (TIER2 candidate): assess_career's own server-side budget_kb_applied=40 (40KB) and its own judgment_flags explicitly say 'budget_exceeded_after_trim: 40kb budget still exceeded after full trim' -- yet the actual served payload is 168,575 bytes (~164KB), more than 4x the stated budget ceiling. The trim mechanism attempted to cap the response but failed to bring it anywhere close to the declared budget, and the resulting oversized payload triggered a hard client-side failure ('exceeds maximum allowed tokens') in this MCP client -- the tool call could only be completed by falling back to a file-based read workaround. A caller without that fallback (many MCP clients) would receive a straight failure on this exact call with these exact arguments. This is the first hard call-level failure observed in the whole domain sweep; judgment_query calls (12KB budget, same tool family) never exceeded readable size."
+}

@@ -1,0 +1,58 @@
+{
+  "tool": "ref_aspects_at_time_get",
+  "scenario": "primary",
+  "args": {
+    "date": "2026-08-15"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"date\":\"2026-08-15\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"orb_degrees\":1,\"aspects\":[{\"body1\":\"Jupiter\",\"body2\":\"Mercury\",\"aspect\":\"conjunction\",\"exact_angle\":0,\"actual_diff\":0.043,\"orb\":0.043,\"longitude_b1\":105.928,\"longitude_b2\":105.971,\"tropical_longitude_b1\":130.157,\"tropical_longitude_b2\":130.2},{\"body1\":\"Ketu\",\"body2\":\"Rahu\",\"aspect\":\"opposition\",\"exact_angle\":180,\"actual_diff\":180,\"orb\":0,\"longitude_b1\":125.566,\"longitude_b2\":305.566,\"tropical_longitude_b1\":149.795,\"tropical_longitude_b2\":329.795}],\"count\":2,\"note\":\"aspect/exact_angle/actual_diff/orb are ayanamsha-invariant; only the reported longitude_b1/longitude_b2 labelling changes with ayanamsha_id.\",\"provenance_envelope\":{\"source\":\"brahmagyan.ephemeris\",\"asset\":\"BRAHMA-BG-0-6\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"computed_at\":\"2026-08-15T12:27:48.843930+00:00\"}}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "ok": true,
+        "date": "2026-08-15",
+        "ayanamsha_id": "lahiri_chitrapaksha",
+        "orb_degrees": 1,
+        "aspects": [
+          {
+            "body1": "Jupiter",
+            "body2": "Mercury",
+            "aspect": "conjunction",
+            "exact_angle": 0,
+            "actual_diff": 0.043,
+            "orb": 0.043,
+            "longitude_b1": 105.928,
+            "longitude_b2": 105.971,
+            "tropical_longitude_b1": 130.157,
+            "tropical_longitude_b2": 130.2
+          },
+          {
+            "body1": "Ketu",
+            "body2": "Rahu",
+            "aspect": "opposition",
+            "exact_angle": 180,
+            "actual_diff": 180,
+            "orb": 0,
+            "longitude_b1": 125.566,
+            "longitude_b2": 305.566,
+            "tropical_longitude_b1": 149.795,
+            "tropical_longitude_b2": 329.795
+          }
+        ],
+        "count": 2,
+        "note": "aspect/exact_angle/actual_diff/orb are ayanamsha-invariant; only the reported longitude_b1/longitude_b2 labelling changes with ayanamsha_id.",
+        "provenance_envelope": {
+          "source": "brahmagyan.ephemeris",
+          "asset": "BRAHMA-BG-0-6",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "computed_at": "2026-08-15T12:27:48.843930+00:00"
+        }
+      }
+    }
+  }
+}

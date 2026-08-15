@@ -1,0 +1,12 @@
+{
+  "tool": "catalog_assets_all",
+  "scenario": "filter_layer_L2_has_writer_true",
+  "args": {"layer": "L2", "has_writer": true, "limit": 100},
+  "raw_response_summary": {
+    "total": 22,
+    "returned": 22,
+    "filters_echoed": {"layer": "bodha", "layer_requested": "L2", "has_writer": true, "limit": 100, "offset": 0},
+    "sample_asset_ids": ["bo_anveshana", "bo_arudha", "bo_bimba", "bo_cdlm_summary", "bo_upaya", "bo_yantra_mechanism"]
+  },
+  "note": "layer=L2 is translated internally to layer='bodha' (echoed as filters.layer_requested='L2' vs filters.layer='bodha') — confirms the L0-L5 -> brahmagyan/ganita/bodha/kala/phala/mimamsa alias mapping is live and working. All 22 returned assets have layer='bodha' and has_writer=true (spot-checked); the has_writer filter is a real predicate, not decorative. Global scope confirmed: no chart_id parameter exists in this tool's schema at all."
+}

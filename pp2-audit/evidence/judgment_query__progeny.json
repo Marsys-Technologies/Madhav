@@ -1,0 +1,13 @@
+{
+  "tool": "judgment_query",
+  "scenario": "progeny",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "progeny"},
+  "timing": {"before_ms": 1786801057818, "after_ms": 1786801071613, "latency_ms": 13795},
+  "is_error": false,
+  "raw_response_summary": {
+    "verdict": {"domain": "progeny", "domain_label": "Progeny / Children", "bhava": 5, "verdict_grade": "convergent_moderate", "composite_score": 2.1, "operative_varga": "D7"},
+    "judgment_flags_count": 7,
+    "gochara_sweep_domain": "other (domain_covered=false)"
+  },
+  "note": "Same gochara/bodha_signals 'domain=other' fallback pattern as education. Fields copied verbatim from actual tool response."
+}

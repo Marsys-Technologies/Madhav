@@ -1,0 +1,10 @@
+SELECT lifecycle_status, claim_shape, observation_window::text, count(*)
+FROM brahma_prospective_ledger
+WHERE chart_id = '482012f1-710e-4a25-994a-93821f5871aa'
+GROUP BY 1,2,3
+ORDER BY 1,2,3;
+
+Observed relevant row:
+open|interval|empty|4
+
+Query executed read-only against the production proxy on 2026-08-15.

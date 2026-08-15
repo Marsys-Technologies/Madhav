@@ -1,0 +1,1 @@
+{"tool": "find_verses_about", "scenario": "whitelist_reject", "args": {"topic": "exalted Mars in tenth house", "top_k": 3}, "raw_response": {"error": true, "tool": "find_verses_about", "message": "Tool not in surgical whitelist: find_verses_about"}}

@@ -1,0 +1,18 @@
+{
+  "tool": "judgment_query",
+  "scenario": "native_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "tool call error: tool call failed for `marsys_jis/judgment_query`\n\nCaused by:\n    Transport send error: Transport [codex_rmcp_client::event_notification_transport::EventNotificationTransport<rmcp::transport::worker::WorkerTransport<rmcp::transport::streamable_http_client::StreamableHttpClientWorker<codex_rmcp_client::http_client_adapter::StreamableHttpClientAdapter>>>] error: unexpected server response: HTTP 429: {\"error\":\"rate_limit_exceeded\",\"message\":\"Too many requests. Retry after 38 seconds.\",\"retry_after_seconds\":38}"
+      }
+    ],
+    "isError": true
+  }
+}

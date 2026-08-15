@@ -1,0 +1,10 @@
+{
+  "tool": "reading_notes_get",
+  "scenario": "zero_history",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"},
+  "raw_response": {
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "has_notes": false,
+    "reading_notes_markdown": "# Reading-Notes — 1c826d5a-41cb-4450-b4dc-59d440e5f75a\n\n*No verified reading-notes are logged for this chart. Reading-notes accrue in POST_REMEDIATION_CONSUMPTION_REGISTER as a reading matures; none exist yet for 1c826d5a-41cb-4450-b4dc-59d440e5f75a. Do not treat this absence as a chart defect.*"
+  }
+}

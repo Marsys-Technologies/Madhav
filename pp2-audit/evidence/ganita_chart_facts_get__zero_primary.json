@@ -1,0 +1,301 @@
+{
+  "tool": "ganita_chart_facts_get",
+  "scenario": "zero_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"shape\":\"pivoted\",\"facts\":[{\"fact_subject\":\"ABHIJIT_MUHURTA_BIRTH_DAY\",\"fact_category\":\"panchanga_abhijit_muhurta\",\"duration_minutes\":47.05,\"end_iso\":\"1985-03-02T06:52:32+00:00\",\"start_iso\":\"1985-03-02T06:05:29+00:00\",\"fact_ids\":{\"duration_minutes\":\"db178c8974174803\",\"end_iso\":\"cd2c54f81126275b\",\"start_iso\":\"fca70330e29af846\"}},{\"fact_subject\":\"AGASTYA_SPHUTA\",\"fact_category\":\"maharsi_specific_point\",\"absent_prerequisite_flag\":\"true\",\"longitude_sidereal\":null,\"fact_ids\":{\"absent_prerequisite_flag\":\"e0d4bae2b2a00df6\",\"longitude_sidereal\":\"1adef4b6306a0836\"}},{\"fact_subject\":\"AGNI_VASA_BIRTH\",\"fact_category\":\"panchanga_agni_vasa\",\"auspicious_for_yagna_flag\":\"false\",\"computation_formula\":\"tithi_id=10 → AGNI_VASA_TABLE\",\"residence\":\"Jala\",\"fact_ids\":{\"auspicious_for_yagna_flag\":\"6777671afb1c052a\",\"computation_formula\":\"0b220724813b5f27\",\"residence\":\"dbb5cd44b9f93fbe\"}},{\"fact_subject\":\"AK_PADA\",\"fact_category\":\"nakshatra_pada_sensitive\",\"longitude_sidereal\":327.390373259765,\"nakshatra\":\"Purva Bhadrapada\",\"navamsha_sign\":\"Aries\",\"pada\":3,\"fact_ids\":{\"longitude_sidereal\":\"505876191b8ffeca\",\"nakshatra\":\"bd41cb2faff805f7\",\"navamsha_sign\":\"42e0e5cec46086c5\",\"pada\":\"b6ec8a60f18676b3\"}},{\"fact_subject\":\"AMATYAKARAKA\",\"fact_category\":\"karaka_chara_position\",\"assigned_graha\":\"Mars\",\"degree_in_sign\":26.8218827070436,\"house_d1\":12,\"karaka_rank\":2,\"karaka_school\":\"kn_rao_rahu_included\",\"longitude_sidereal\":356.821882707044,\"sign\":\"Pisces\",\"fact_ids\":{\"assigned_graha\":\"5edf16760fca6ca1\",\"degree_in_sign\":\"204094590ab33db4\",\"house_d1\":\"afd07f89bee30e8f\",\"karaka_rank\":\"6482b48ab1621249\",\"karaka_school\":\"cd78cdf6d41f8582\",\"longitude_sidereal\":\"396ac3e383ec9a96\",\"sign\":\"b6ed2b965a038f49\"}},{\"fact_subject\":\"AMSAYU\",\"fact_category\":\"ayurdaya\",\"total_years\":51.0331,\"fact_ids\":{\"total_years\":\"a13ded80969fdbe6\"}},{\"fact_subject\":\"Aquarius\",\"fact_category\":\"aspect_jaimini\",\"on_Aries\":1,\"on_Cancer\":1,\"on_Gemini\":1,\"on_Leo\":1,\"on_Libra\":1,\"on_Sagittarius\":1,\"on_Scorpio\":1,\"on_Taurus\":1,\"on_Virgo\":1,\"fact_ids\":{\"on_Aries\":\"f98c1df26e58706e\",\"on_Cancer\":\"6e3ca88cf1bf2612\",\"on_Gemini\":\"823f565c4b134bb0\",\"on_Leo\":\"18373dd1fb9d36ae\",\"on_Libra\":\"3d763dacd1e64cc0\",\"on_Sagittarius\":\"d79aa7d2739df3c3\",\"on_Scorpio\":\"113da43f14f15bfd\",\"on_Taurus\":\"b3d4e4c6c0fa69b6\",\"on_Virgo\":\"59c71c32cea846b0\"}},{\"fact_subject\":\"Aries\",\"fact_category\":\"aspect_jaimini\",\"on_Aquarius\":1,\"on_Cancer\":1,\"on_Capricorn\":1,\"on_Gemini\":1,\"on_Leo\":1,\"on_Libra\":1,\"on_Sagittarius\":1,\"on_Scorpio\":1,\"on_Virgo\":1,\"fact_ids\":{\"on_Aquarius\":\"44ede14066039b60\",\"on_Cancer\":\"067644ebea5172fc\",\"on_Capricorn\":\"7ba858e93f1c30c3\",\"on_Gemini\":\"5ab2f19de76b7035\",\"on_Leo\":\"44f1a889514e0514\",\"on_Libra\":\"b29bbea0d9cca05c\",\"on_Sagittarius\":\"ca8187e9dab7ccc0\",\"on_Scorpio\":\"9d571e9ede9e41c4\",\"on_Virgo\":\"9714e2124333562d\"}},{\"fact_subject\":\"artha\",\"fact_category\":\"karakatva_strength_per_significance\",\"composite_strength\":0.5,\"natural_karaka\":\"Mercury\",\"fact_ids\":{\"composite_strength\":\"3b7d0fdd2dece58d\",\"natural_karaka\":\"088e57f3f83aa9eb\"}},{\"fact_subject\":\"ARTHA_PRAHARA\",\"fact_category\":\"sun_derived_upagraha\",\"house_d1\":3,\"longitude_sidereal\":77.8895316617351,\"nakshatra\":\"Ardra\",\"nakshatra_lord\":\"Rahu\",\"pada\":4,\"sign\":\"Gemini\",\"sign_lord\":\"Mercury\",\"fact_ids\":{\"house_d1\":\"49149ad54b7af758\",\"longitude_sidereal\":\"1bf6407c7cd168a8\",\"nakshatra\":\"724a07aec9c11b3b\",\"nakshatra_lord\":\"f19bd040ed444567\",\"pada\":\"ef02929ad83faf4d\",\"sign\":\"9f30e7d38aba54f8\",\"sign_lord\":\"af4bfd9dfcd541a1\"}}],\"returned_count\":10,\"offset\":0,\"limit\":10,\"total\":5749,\"more_available\":true,\"grounding\":{\"fact_ids\":[\"db178c8974174803\",\"cd2c54f81126275b\",\"fca70330e29af846\",\"e0d4bae2b2a00df6\",\"1adef4b6306a0836\",\"6777671afb1c052a\",\"0b220724813b5f27\",\"dbb5cd44b9f93fbe\",\"505876191b8ffeca\",\"bd41cb2faff805f7\",\"42e0e5cec46086c5\",\"b6ec8a60f18676b3\",\"0123dd19967dac8c\",\"5edf16760fca6ca1\",\"9b8da35aba9926a4\",\"204094590ab33db4\",\"6a14c98f64b66477\",\"afd07f89bee30e8f\",\"bbdf6cde05394494\",\"6482b48ab1621249\",\"ed905a645c841a6e\",\"cd78cdf6d41f8582\",\"e8863cd161f70ff4\",\"396ac3e383ec9a96\",\"ff05f34dee4a74ee\",\"b6ed2b965a038f49\",\"a13ded80969fdbe6\",\"f98c1df26e58706e\",\"6e3ca88cf1bf2612\",\"823f565c4b134bb0\",\"18373dd1fb9d36ae\",\"3d763dacd1e64cc0\",\"d79aa7d2739df3c3\",\"113da43f14f15bfd\",\"b3d4e4c6c0fa69b6\",\"59c71c32cea846b0\",\"44ede14066039b60\",\"067644ebea5172fc\",\"7ba858e93f1c30c3\",\"5ab2f19de76b7035\",\"44f1a889514e0514\",\"b29bbea0d9cca05c\",\"ca8187e9dab7ccc0\",\"9d571e9ede9e41c4\",\"9714e2124333562d\",\"3b7d0fdd2dece58d\",\"088e57f3f83aa9eb\",\"49149ad54b7af758\",\"1bf6407c7cd168a8\",\"724a07aec9c11b3b\",\"f19bd040ed444567\",\"ef02929ad83faf4d\",\"9f30e7d38aba54f8\",\"af4bfd9dfcd541a1\"],\"citations\":[\"panchanga_abhijit_muhurta.ABHIJIT_MUHURTA_BIRTH_DAY.duration_minutes@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=INVARIANT:eng=panchanga_engine/2.0.0-P2\",\"panchanga_abhijit_muhurta.ABHIJIT_MUHURTA_BIRTH_DAY.end_iso@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=INVARIANT:eng=panchanga_engine/2.0.0-P2\",\"panchanga_abhijit_muhurta.ABHIJIT_MUHURTA_BIRTH_DAY.start_iso@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=INVARIANT:eng=panchanga_engine/2.0.0-P2\",\"maharsi_specific_point.AGASTYA_SPHUTA.absent_prerequisite_flag@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"maharsi_specific_point.AGASTYA_SPHUTA.longitude_sidereal@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"panchanga_agni_vasa.AGNI_VASA_BIRTH.auspicious_for_yagna_flag@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=INVARIANT:eng=panchanga_engine/2.0.0-P2\",\"panchanga_agni_vasa.AGNI_VASA_BIRTH.computation_formula@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=INVARIANT:eng=panchanga_engine/2.0.0-P2\",\"panchanga_agni_vasa.AGNI_VASA_BIRTH.residence@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=INVARIANT:eng=panchanga_engine/2.0.0-P2\",\"nakshatra_pada_sensitive.AK_PADA.longitude_sidereal@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"nakshatra_pada_sensitive.AK_PADA.nakshatra@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"nakshatra_pada_sensitive.AK_PADA.navamsha_sign@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"nakshatra_pada_sensitive.AK_PADA.pada@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"karaka_chara_position.AMATYAKARAKA.assigned_graha@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"karaka_chara_position.AMATYAKARAKA.degree_in_sign@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"karaka_chara_position.AMATYAKARAKA.house_d1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"karaka_chara_position.AMATYAKARAKA.karaka_rank@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"karaka_chara_position.AMATYAKARAKA.karaka_school@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"karaka_chara_position.AMATYAKARAKA.longitude_sidereal@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"karaka_chara_position.AMATYAKARAKA.sign@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"WP-2.5/LCA-16/total_years\",\"aspect_jaimini.Aquarius.on_Aries@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"aspect_jaimini.Aquarius.on_Cancer@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"aspect_jaimini.Aquarius.on_Gemini@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"aspect_jaimini.Aquarius.on_Leo@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"aspect_jaimini.Aquarius.on_Libra@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"aspect_jaimini.Aquarius.on_Sagittarius@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"aspect_jaimini.Aquarius.on_Scorpio@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"aspect_jaimini.Aquarius.on_Taurus@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"aspect_jaimini.Aquarius.on_Virgo@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"aspect_jaimini.Aries.on_Aquarius@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"aspect_jaimini.Aries.on_Cancer@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"aspect_jaimini.Aries.on_Capricorn@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"aspect_jaimini.Aries.on_Gemini@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"aspect_jaimini.Aries.on_Leo@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"aspect_jaimini.Aries.on_Libra@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"aspect_jaimini.Aries.on_Sagittarius@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"aspect_jaimini.Aries.on_Scorpio@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"aspect_jaimini.Aries.on_Virgo@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"karakatva_strength_per_significance.artha.composite_strength@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"karakatva_strength_per_significance.artha.natural_karaka@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"sun_derived_upagraha.ARTHA_PRAHARA.house_d1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"sun_derived_upagraha.ARTHA_PRAHARA.longitude_sidereal@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"sun_derived_upagraha.ARTHA_PRAHARA.nakshatra@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"sun_derived_upagraha.ARTHA_PRAHARA.nakshatra_lord@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"sun_derived_upagraha.ARTHA_PRAHARA.pada@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"sun_derived_upagraha.ARTHA_PRAHARA.sign@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\",\"sun_derived_upagraha.ARTHA_PRAHARA.sign_lord@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"],\"grounding_score\":0.5},\"provenance\":{\"table\":\"chart_facts\",\"note\":\"fact_id references resolve to the canonical L1 chart_facts table.\"}},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "shape": "pivoted",
+          "facts": [
+            {
+              "fact_subject": "ABHIJIT_MUHURTA_BIRTH_DAY",
+              "fact_category": "panchanga_abhijit_muhurta",
+              "duration_minutes": 47.05,
+              "end_iso": "1985-03-02T06:52:32+00:00",
+              "start_iso": "1985-03-02T06:05:29+00:00",
+              "fact_ids": {
+                "duration_minutes": "db178c8974174803",
+                "end_iso": "cd2c54f81126275b",
+                "start_iso": "fca70330e29af846"
+              }
+            },
+            {
+              "fact_subject": "AGASTYA_SPHUTA",
+              "fact_category": "maharsi_specific_point",
+              "absent_prerequisite_flag": "true",
+              "longitude_sidereal": null,
+              "fact_ids": {
+                "absent_prerequisite_flag": "e0d4bae2b2a00df6",
+                "longitude_sidereal": "1adef4b6306a0836"
+              }
+            },
+            {
+              "fact_subject": "AGNI_VASA_BIRTH",
+              "fact_category": "panchanga_agni_vasa",
+              "auspicious_for_yagna_flag": "false",
+              "computation_formula": "tithi_id=10 → AGNI_VASA_TABLE",
+              "residence": "Jala",
+              "fact_ids": {
+                "auspicious_for_yagna_flag": "6777671afb1c052a",
+                "computation_formula": "0b220724813b5f27",
+                "residence": "dbb5cd44b9f93fbe"
+              }
+            },
+            {
+              "fact_subject": "AK_PADA",
+              "fact_category": "nakshatra_pada_sensitive",
+              "longitude_sidereal": 327.390373259765,
+              "nakshatra": "Purva Bhadrapada",
+              "navamsha_sign": "Aries",
+              "pada": 3,
+              "fact_ids": {
+                "longitude_sidereal": "505876191b8ffeca",
+                "nakshatra": "bd41cb2faff805f7",
+                "navamsha_sign": "42e0e5cec46086c5",
+                "pada": "b6ec8a60f18676b3"
+              }
+            },
+            {
+              "fact_subject": "AMATYAKARAKA",
+              "fact_category": "karaka_chara_position",
+              "assigned_graha": "Mars",
+              "degree_in_sign": 26.8218827070436,
+              "house_d1": 12,
+              "karaka_rank": 2,
+              "karaka_school": "kn_rao_rahu_included",
+              "longitude_sidereal": 356.821882707044,
+              "sign": "Pisces",
+              "fact_ids": {
+                "assigned_graha": "5edf16760fca6ca1",
+                "degree_in_sign": "204094590ab33db4",
+                "house_d1": "afd07f89bee30e8f",
+                "karaka_rank": "6482b48ab1621249",
+                "karaka_school": "cd78cdf6d41f8582",
+                "longitude_sidereal": "396ac3e383ec9a96",
+                "sign": "b6ed2b965a038f49"
+              }
+            },
+            {
+              "fact_subject": "AMSAYU",
+              "fact_category": "ayurdaya",
+              "total_years": 51.0331,
+              "fact_ids": {
+                "total_years": "a13ded80969fdbe6"
+              }
+            },
+            {
+              "fact_subject": "Aquarius",
+              "fact_category": "aspect_jaimini",
+              "on_Aries": 1,
+              "on_Cancer": 1,
+              "on_Gemini": 1,
+              "on_Leo": 1,
+              "on_Libra": 1,
+              "on_Sagittarius": 1,
+              "on_Scorpio": 1,
+              "on_Taurus": 1,
+              "on_Virgo": 1,
+              "fact_ids": {
+                "on_Aries": "f98c1df26e58706e",
+                "on_Cancer": "6e3ca88cf1bf2612",
+                "on_Gemini": "823f565c4b134bb0",
+                "on_Leo": "18373dd1fb9d36ae",
+                "on_Libra": "3d763dacd1e64cc0",
+                "on_Sagittarius": "d79aa7d2739df3c3",
+                "on_Scorpio": "113da43f14f15bfd",
+                "on_Taurus": "b3d4e4c6c0fa69b6",
+                "on_Virgo": "59c71c32cea846b0"
+              }
+            },
+            {
+              "fact_subject": "Aries",
+              "fact_category": "aspect_jaimini",
+              "on_Aquarius": 1,
+              "on_Cancer": 1,
+              "on_Capricorn": 1,
+              "on_Gemini": 1,
+              "on_Leo": 1,
+              "on_Libra": 1,
+              "on_Sagittarius": 1,
+              "on_Scorpio": 1,
+              "on_Virgo": 1,
+              "fact_ids": {
+                "on_Aquarius": "44ede14066039b60",
+                "on_Cancer": "067644ebea5172fc",
+                "on_Capricorn": "7ba858e93f1c30c3",
+                "on_Gemini": "5ab2f19de76b7035",
+                "on_Leo": "44f1a889514e0514",
+                "on_Libra": "b29bbea0d9cca05c",
+                "on_Sagittarius": "ca8187e9dab7ccc0",
+                "on_Scorpio": "9d571e9ede9e41c4",
+                "on_Virgo": "9714e2124333562d"
+              }
+            },
+            {
+              "fact_subject": "artha",
+              "fact_category": "karakatva_strength_per_significance",
+              "composite_strength": 0.5,
+              "natural_karaka": "Mercury",
+              "fact_ids": {
+                "composite_strength": "3b7d0fdd2dece58d",
+                "natural_karaka": "088e57f3f83aa9eb"
+              }
+            },
+            {
+              "fact_subject": "ARTHA_PRAHARA",
+              "fact_category": "sun_derived_upagraha",
+              "house_d1": 3,
+              "longitude_sidereal": 77.8895316617351,
+              "nakshatra": "Ardra",
+              "nakshatra_lord": "Rahu",
+              "pada": 4,
+              "sign": "Gemini",
+              "sign_lord": "Mercury",
+              "fact_ids": {
+                "house_d1": "49149ad54b7af758",
+                "longitude_sidereal": "1bf6407c7cd168a8",
+                "nakshatra": "724a07aec9c11b3b",
+                "nakshatra_lord": "f19bd040ed444567",
+                "pada": "ef02929ad83faf4d",
+                "sign": "9f30e7d38aba54f8",
+                "sign_lord": "af4bfd9dfcd541a1"
+              }
+            }
+          ],
+          "returned_count": 10,
+          "offset": 0,
+          "limit": 10,
+          "total": 5749,
+          "more_available": true,
+          "grounding": {
+            "fact_ids": [
+              "db178c8974174803",
+              "cd2c54f81126275b",
+              "fca70330e29af846",
+              "e0d4bae2b2a00df6",
+              "1adef4b6306a0836",
+              "6777671afb1c052a",
+              "0b220724813b5f27",
+              "dbb5cd44b9f93fbe",
+              "505876191b8ffeca",
+              "bd41cb2faff805f7",
+              "42e0e5cec46086c5",
+              "b6ec8a60f18676b3",
+              "0123dd19967dac8c",
+              "5edf16760fca6ca1",
+              "9b8da35aba9926a4",
+              "204094590ab33db4",
+              "6a14c98f64b66477",
+              "afd07f89bee30e8f",
+              "bbdf6cde05394494",
+              "6482b48ab1621249",
+              "ed905a645c841a6e",
+              "cd78cdf6d41f8582",
+              "e8863cd161f70ff4",
+              "396ac3e383ec9a96",
+              "ff05f34dee4a74ee",
+              "b6ed2b965a038f49",
+              "a13ded80969fdbe6",
+              "f98c1df26e58706e",
+              "6e3ca88cf1bf2612",
+              "823f565c4b134bb0",
+              "18373dd1fb9d36ae",
+              "3d763dacd1e64cc0",
+              "d79aa7d2739df3c3",
+              "113da43f14f15bfd",
+              "b3d4e4c6c0fa69b6",
+              "59c71c32cea846b0",
+              "44ede14066039b60",
+              "067644ebea5172fc",
+              "7ba858e93f1c30c3",
+              "5ab2f19de76b7035",
+              "44f1a889514e0514",
+              "b29bbea0d9cca05c",
+              "ca8187e9dab7ccc0",
+              "9d571e9ede9e41c4",
+              "9714e2124333562d",
+              "3b7d0fdd2dece58d",
+              "088e57f3f83aa9eb",
+              "49149ad54b7af758",
+              "1bf6407c7cd168a8",
+              "724a07aec9c11b3b",
+              "f19bd040ed444567",
+              "ef02929ad83faf4d",
+              "9f30e7d38aba54f8",
+              "af4bfd9dfcd541a1"
+            ],
+            "citations": [
+              "panchanga_abhijit_muhurta.ABHIJIT_MUHURTA_BIRTH_DAY.duration_minutes@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=INVARIANT:eng=panchanga_engine/2.0.0-P2",
+              "panchanga_abhijit_muhurta.ABHIJIT_MUHURTA_BIRTH_DAY.end_iso@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=INVARIANT:eng=panchanga_engine/2.0.0-P2",
+              "panchanga_abhijit_muhurta.ABHIJIT_MUHURTA_BIRTH_DAY.start_iso@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=INVARIANT:eng=panchanga_engine/2.0.0-P2",
+              "maharsi_specific_point.AGASTYA_SPHUTA.absent_prerequisite_flag@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "maharsi_specific_point.AGASTYA_SPHUTA.longitude_sidereal@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "panchanga_agni_vasa.AGNI_VASA_BIRTH.auspicious_for_yagna_flag@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=INVARIANT:eng=panchanga_engine/2.0.0-P2",
+              "panchanga_agni_vasa.AGNI_VASA_BIRTH.computation_formula@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=INVARIANT:eng=panchanga_engine/2.0.0-P2",
+              "panchanga_agni_vasa.AGNI_VASA_BIRTH.residence@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=INVARIANT:eng=panchanga_engine/2.0.0-P2",
+              "nakshatra_pada_sensitive.AK_PADA.longitude_sidereal@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "nakshatra_pada_sensitive.AK_PADA.nakshatra@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "nakshatra_pada_sensitive.AK_PADA.navamsha_sign@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "nakshatra_pada_sensitive.AK_PADA.pada@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "karaka_chara_position.AMATYAKARAKA.assigned_graha@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "karaka_chara_position.AMATYAKARAKA.degree_in_sign@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "karaka_chara_position.AMATYAKARAKA.house_d1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "karaka_chara_position.AMATYAKARAKA.karaka_rank@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "karaka_chara_position.AMATYAKARAKA.karaka_school@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "karaka_chara_position.AMATYAKARAKA.longitude_sidereal@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "karaka_chara_position.AMATYAKARAKA.sign@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "WP-2.5/LCA-16/total_years",
+              "aspect_jaimini.Aquarius.on_Aries@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "aspect_jaimini.Aquarius.on_Cancer@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "aspect_jaimini.Aquarius.on_Gemini@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "aspect_jaimini.Aquarius.on_Leo@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "aspect_jaimini.Aquarius.on_Libra@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "aspect_jaimini.Aquarius.on_Sagittarius@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "aspect_jaimini.Aquarius.on_Scorpio@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "aspect_jaimini.Aquarius.on_Taurus@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "aspect_jaimini.Aquarius.on_Virgo@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "aspect_jaimini.Aries.on_Aquarius@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "aspect_jaimini.Aries.on_Cancer@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "aspect_jaimini.Aries.on_Capricorn@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "aspect_jaimini.Aries.on_Gemini@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "aspect_jaimini.Aries.on_Leo@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "aspect_jaimini.Aries.on_Libra@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "aspect_jaimini.Aries.on_Sagittarius@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "aspect_jaimini.Aries.on_Scorpio@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "aspect_jaimini.Aries.on_Virgo@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "karakatva_strength_per_significance.artha.composite_strength@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "karakatva_strength_per_significance.artha.natural_karaka@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "sun_derived_upagraha.ARTHA_PRAHARA.house_d1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "sun_derived_upagraha.ARTHA_PRAHARA.longitude_sidereal@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "sun_derived_upagraha.ARTHA_PRAHARA.nakshatra@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "sun_derived_upagraha.ARTHA_PRAHARA.nakshatra_lord@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "sun_derived_upagraha.ARTHA_PRAHARA.pada@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "sun_derived_upagraha.ARTHA_PRAHARA.sign@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0",
+              "sun_derived_upagraha.ARTHA_PRAHARA.sign_lord@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            ],
+            "grounding_score": 0.5
+          },
+          "provenance": {
+            "table": "chart_facts",
+            "note": "fact_id references resolve to the canonical L1 chart_facts table."
+          }
+        },
+        "is_error": false
+      }
+    }
+  }
+}

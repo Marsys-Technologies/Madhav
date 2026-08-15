@@ -1,0 +1,14 @@
+{
+  "tool": "kala_now_get",
+  "scenario": "birth_instant",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "as_of": "1984-02-05"},
+  "raw_response_summary": {
+    "thesis": "1 temporal activation window(s) active as of 1984-02-05; strongest: YOGA/SUBSYSTEM/CLASSIFY_RESIDUAL/DIGNITY (orb strength 1.00, 20 contributing signal(s)). No Kaala-Darshana confluence window is active today.",
+    "janma_resonance": {"vara": {"resonance": true}, "nakshatra": {"resonance": true}, "tithi": {"resonance": true}},
+    "note_on_janma_resonance": "as_of == birth date, so vara/nakshatra/tithi resonance against the native's own birth panchanga is trivially true=true=true -- correctly self-consistent, no crash.",
+    "windows": [{"window_start":"1984-02-05","window_end":"1986-03-01","window_peak":"1985-02-16","member_count":20}],
+    "coverage_honest_empties": ["kala_darshana_confluence","kota_chakra","moorti_nirnaya","vedha_gochara"]
+  },
+  "verdict": "PASS",
+  "note": "kala_now_get at the exact birth instant computes correctly: activation windows, gulika_kalam, dasha_sandhi, janma_resonance all reachable and internally consistent (resonance=true across vara/nakshatra/tithi since as_of==birth date). No crash. Response was ~9KB; full JSON available on request but summarized here for evidence-file size."
+}

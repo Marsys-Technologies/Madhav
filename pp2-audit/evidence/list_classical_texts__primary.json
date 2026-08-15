@@ -1,0 +1,14 @@
+{
+  "tool": "list_classical_texts",
+  "scenario": "primary",
+  "args": {},
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\n  \"error\": true,\n  \"tool\": \"list_classical_texts\",\n  \"message\": \"Tool not in surgical whitelist: list_classical_texts\"\n}"
+      }
+    ],
+    "isError": true
+  }
+}

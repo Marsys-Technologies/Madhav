@@ -1,0 +1,63 @@
+{
+  "tool": "ref_dignity_reference_get",
+  "scenario": "primary",
+  "args": {
+    "planet": "sun",
+    "limit": 10
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"envelope_version\":\"v1\",\"tool\":\"ref_dignity_reference_get\",\"verdict\":null,\"ranking_basis\":null,\"grounding\":{\"fact_ids\":[],\"citations\":[],\"grounding_score\":null},\"pagination\":{\"offset\":0,\"limit\":0,\"total\":null,\"next_cursor\":null},\"drill_pointers\":[],\"judgment_flags\":[],\"insight_type\":null,\"query_class\":\"reference\",\"content\":{\"source\":\"bg_dignity_reference\",\"structured_filter_applied\":true,\"planet\":\"sun\",\"rows\":[{\"graha\":\"Sun\",\"exaltation_sign\":\"Aries\",\"exaltation_degree\":10,\"debilitation_sign\":\"Libra\",\"debilitation_degree\":10,\"moolatrikona_sign\":\"Leo\",\"moolatrikona_from\":0,\"moolatrikona_to\":20,\"own_signs\":[\"Leo\"],\"classical_citation\":\"BPHS Ch.3\",\"notes\":null}],\"total\":1}}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "envelope_version": "v1",
+        "tool": "ref_dignity_reference_get",
+        "verdict": null,
+        "ranking_basis": null,
+        "grounding": {
+          "fact_ids": [],
+          "citations": [],
+          "grounding_score": null
+        },
+        "pagination": {
+          "offset": 0,
+          "limit": 0,
+          "total": null,
+          "next_cursor": null
+        },
+        "drill_pointers": [],
+        "judgment_flags": [],
+        "insight_type": null,
+        "query_class": "reference",
+        "content": {
+          "source": "bg_dignity_reference",
+          "structured_filter_applied": true,
+          "planet": "sun",
+          "rows": [
+            {
+              "graha": "Sun",
+              "exaltation_sign": "Aries",
+              "exaltation_degree": 10,
+              "debilitation_sign": "Libra",
+              "debilitation_degree": 10,
+              "moolatrikona_sign": "Leo",
+              "moolatrikona_from": 0,
+              "moolatrikona_to": 20,
+              "own_signs": [
+                "Leo"
+              ],
+              "classical_citation": "BPHS Ch.3",
+              "notes": null
+            }
+          ],
+          "total": 1
+        }
+      }
+    }
+  }
+}

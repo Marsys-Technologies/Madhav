@@ -1,0 +1,29 @@
+{
+  "tool": "mimamsa_calibration_get",
+  "scenario": "valid_domain_native — chart_id + domain=career, compared against no-domain call to test whether domain filters",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "career"},
+  "raw_response": {
+    "type": "object",
+    "object": {
+      "ok": true,
+      "trace_id": "af95fe49-1638-4a73-8271-ec8176ea91ef",
+      "result": {
+        "tool_name": "query_calibration",
+        "invocation_params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "career"},
+        "results": [{"content": "{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"verdict_distribution\":[{\"composite_verdict\":\"UNRESOLVED\",\"n\":25,\"mea…[truncated for budget]"}],
+        "result_hash": "sha256:8e64ba7d16a7a2aa6f1155a250acafcaa717397aa6927fe90b496f33e1e833b5"
+      },
+      "budget_kb_applied": 40
+    }
+  },
+  "note_result_hash_identical_to_no_domain_call": "sha256:8e64ba7d16a7a2aa6f1155a250acafcaa717397aa6927fe90b496f33e1e833b5 (same as evidence/mimamsa_calibration_get__native_primary.json, which had no domain param at all) — proves domain filter is a complete no-op.",
+  "mechanism_trace": {
+    "alias_forwards_domain": "platform-mcp/src/tools/register_p1_aliases.ts:1857-1861 — callPlatformPrim('query_calibration', { chart_id, domain, limit, offset }, principal)",
+    "handler_ignores_domain": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts:64-67 — handler destructures only chart_id, include_held_out, promoted_only from args; domain/limit/offset are never read anywhere in the file.",
+    "db_verification": "SELECT composite_verdict, count(*) FROM mimamsa_calibration WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' GROUP BY 1 => UNRESOLVED=25, PARTIAL=23, REFUTED=7, CONFIRMED=2 (57 total rows) — a real, non-trivial verdict distribution exists, confirming the domain filter genuinely does nothing rather than correctly returning an already-filtered identical set."
+  },
+  "truncation_mechanism": {
+    "cause": "platform-mcp/src/lib/response_budget.ts:454 MAX_STRING_CHARS=120 — any single string value over 120 chars in the response gets hard-truncated with '…[truncated for budget]' appended, applied as a last-resort trim inside dualOutput() (register_p1_aliases.ts:188-201) BEFORE building both structuredContent and content — so there is no untruncated variant available in the MCP response at all.",
+    "no_override_param": "mimamsa_calibration_get's MCP schema (chart_id/domain/limit/offset only, additionalProperties:false) exposes no budget_kb or response_format override, unlike pact_query which does — so a caller has no way to retrieve the full verdict_distribution/reliability_curve/multipliers/qa_results payload through this tool."
+  }
+}

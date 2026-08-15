@@ -1,0 +1,4342 @@
+{
+  "tool": "ganita_tajaka_get",
+  "scenario": "native_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[large payload — see structuredContent]"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "envelope_version": "v1",
+        "tool": "ganita_tajaka_get",
+        "verdict": null,
+        "ranking_basis": null,
+        "grounding": {
+          "fact_ids": [],
+          "citations": [],
+          "grounding_score": null
+        },
+        "pagination": {
+          "offset": 0,
+          "limit": 0,
+          "total": null,
+          "next_cursor": null,
+          "more_available": false
+        },
+        "drill_pointers": [],
+        "judgment_flags": [],
+        "insight_type": null,
+        "query_class": "per_chart_structural",
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "chart_facts_categories": [
+            "tajik_hadda_lord",
+            "tajik_triraashipathi",
+            "tajik_vargottama_specific"
+          ],
+          "hadda_lord_facts": {
+            "included": false,
+            "rows": [],
+            "total": 245,
+            "returned_count": 0,
+            "note": "include_hadda=false (default) — 245 static hadda_lord/triraashipathi/vargottama rows exist but were not fetched (they do not vary by year). Pass include_hadda=true to retrieve them."
+          },
+          "varsha_year_lords": {
+            "rows": [
+              {
+                "varsha_id": "aac980bf-3a03-435e-9607-f444cc8b0e75",
+                "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+                "varsha_year": 43,
+                "varsha_start_iso": "2026-02-04 23:59:03+00",
+                "varsha_end_iso": "2027-02-05 06:03:58+00",
+                "year_lord_method": "tajik_classical",
+                "year_lord": "Venus",
+                "candidate_lord_jsonb": {
+                  "offices": {
+                    "Lagnesa": {
+                      "planet": "Saturn",
+                      "components": {
+                        "D1": {
+                          "sign": "Pisces",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D2": {
+                          "sign": "Aquarius",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D3": {
+                          "sign": "Capricorn",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D9": {
+                          "sign": "Leo",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D12": {
+                          "sign": "Taurus",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 105
+                    },
+                    "Munthesa": {
+                      "planet": "Venus",
+                      "components": {
+                        "D1": {
+                          "sign": "Capricorn",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D2": {
+                          "sign": "Scorpio",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D3": {
+                          "sign": "Virgo",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D9": {
+                          "sign": "Virgo",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D12": {
+                          "sign": "Pisces",
+                          "points": 45,
+                          "dignity": "exalted"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 90
+                    },
+                    "JanmaLagnesa": {
+                      "planet": "Mars",
+                      "components": {
+                        "D1": {
+                          "sign": "Capricorn",
+                          "points": 45,
+                          "dignity": "exalted"
+                        },
+                        "D2": {
+                          "sign": "Scorpio",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D3": {
+                          "sign": "Leo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D9": {
+                          "sign": "Taurus",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D12": {
+                          "sign": "Libra",
+                          "points": 15,
+                          "dignity": "neutral"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 127.5
+                    },
+                    "TriRashipati": {
+                      "planet": "Saturn",
+                      "components": {
+                        "D1": {
+                          "sign": "Pisces",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D2": {
+                          "sign": "Aquarius",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D3": {
+                          "sign": "Capricorn",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D9": {
+                          "sign": "Leo",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D12": {
+                          "sign": "Taurus",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 105
+                    },
+                    "Dinaratripati": {
+                      "planet": "Moon",
+                      "components": {
+                        "D1": {
+                          "sign": "Virgo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D2": {
+                          "sign": "Aquarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D3": {
+                          "sign": "Cancer",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D9": {
+                          "sign": "Capricorn",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D12": {
+                          "sign": "Aries",
+                          "points": 15,
+                          "dignity": "neutral"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 97.5
+                    }
+                  },
+                  "methods_diverge": true,
+                  "panchavargiya_winner": {
+                    "office": "JanmaLagnesa",
+                    "planet": "Mars"
+                  },
+                  "tajik_classical_winner": {
+                    "office": "Munthesa",
+                    "planet": "Venus"
+                  }
+                },
+                "muntha_position_jsonb": {
+                  "lord": "Venus",
+                  "sign": "Libra",
+                  "degree": 12.4311,
+                  "house_from_natal_lagna": 7,
+                  "house_from_varsha_lagna": 10
+                },
+                "applicable_tajik_yogas_array": [
+                  "Ishrafa",
+                  "Dutthottha"
+                ],
+                "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+                "ephemeris_audit_jsonb": {
+                  "solar_return": {
+                    "diff_deg": -0.000018,
+                    "converged": true,
+                    "iterations": 13,
+                    "bracket_days": 2
+                  },
+                  "varsha_lagna_sign": "Capricorn",
+                  "natal_sun_long_deg": 291.962617,
+                  "muntha_two_pass_match": true,
+                  "solar_return_cross_check_pass": true
+                },
+                "verification_pass_status": "two_pass_verified",
+                "citation_ref": "ga_tajaka.varsha43.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+                "citation_human": "Varsha 43 (2026-02-05→2027-02-05, lahiri_chitrapaksha): Muntha Libra (7H from Lagna, lord Venus); Vārṣeśa Venus (tajik_classical); Pañcavargīya winner Mars; methods diverge.",
+                "computed_at": "2026-08-12 15:25:22.279224+00",
+                "_source_table": "l1_tajik_varsha_year_lords"
+              },
+              {
+                "varsha_id": "7cfe6553-8736-4629-ad2a-29db000ab97a",
+                "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+                "varsha_year": 42,
+                "varsha_start_iso": "2025-02-04 17:44:17+00",
+                "varsha_end_iso": "2026-02-04 23:59:03+00",
+                "year_lord_method": "tajik_classical",
+                "year_lord": "Mercury",
+                "candidate_lord_jsonb": {
+                  "offices": {
+                    "Lagnesa": {
+                      "planet": "Venus",
+                      "components": {
+                        "D1": {
+                          "sign": "Pisces",
+                          "points": 45,
+                          "dignity": "exalted"
+                        },
+                        "D2": {
+                          "sign": "Aquarius",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D3": {
+                          "sign": "Capricorn",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D9": {
+                          "sign": "Leo",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D12": {
+                          "sign": "Gemini",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 120
+                    },
+                    "Munthesa": {
+                      "planet": "Mercury",
+                      "components": {
+                        "D1": {
+                          "sign": "Capricorn",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D2": {
+                          "sign": "Scorpio",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D3": {
+                          "sign": "Leo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D9": {
+                          "sign": "Gemini",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D12": {
+                          "sign": "Scorpio",
+                          "points": 15,
+                          "dignity": "neutral"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 97.5
+                    },
+                    "JanmaLagnesa": {
+                      "planet": "Mars",
+                      "components": {
+                        "D1": {
+                          "sign": "Gemini",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D2": {
+                          "sign": "Virgo",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D3": {
+                          "sign": "Sagittarius",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D9": {
+                          "sign": "Taurus",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D12": {
+                          "sign": "Aquarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 67.5
+                    },
+                    "TriRashipati": {
+                      "planet": "Saturn",
+                      "components": {
+                        "D1": {
+                          "sign": "Aquarius",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D2": {
+                          "sign": "Capricorn",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D3": {
+                          "sign": "Sagittarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Taurus",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D12": {
+                          "sign": "Capricorn",
+                          "points": 30,
+                          "dignity": "own"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 127.5
+                    },
+                    "Dinaratripati": {
+                      "planet": "Moon",
+                      "components": {
+                        "D1": {
+                          "sign": "Aries",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D2": {
+                          "sign": "Aries",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D3": {
+                          "sign": "Taurus",
+                          "points": 45,
+                          "dignity": "exalted"
+                        },
+                        "D9": {
+                          "sign": "Leo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D12": {
+                          "sign": "Virgo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 120
+                    }
+                  },
+                  "methods_diverge": true,
+                  "panchavargiya_winner": {
+                    "office": "TriRashipati",
+                    "planet": "Saturn"
+                  },
+                  "tajik_classical_winner": {
+                    "office": "Munthesa",
+                    "planet": "Mercury"
+                  }
+                },
+                "muntha_position_jsonb": {
+                  "lord": "Mercury",
+                  "sign": "Virgo",
+                  "degree": 12.4311,
+                  "house_from_natal_lagna": 6,
+                  "house_from_varsha_lagna": 12
+                },
+                "applicable_tajik_yogas_array": [
+                  "Ithasala",
+                  "Dutthottha"
+                ],
+                "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+                "ephemeris_audit_jsonb": {
+                  "solar_return": {
+                    "diff_deg": -0.000114,
+                    "converged": true,
+                    "iterations": 13,
+                    "bracket_days": 2
+                  },
+                  "varsha_lagna_sign": "Libra",
+                  "natal_sun_long_deg": 291.962617,
+                  "muntha_two_pass_match": true,
+                  "solar_return_cross_check_pass": true
+                },
+                "verification_pass_status": "two_pass_verified",
+                "citation_ref": "ga_tajaka.varsha42.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+                "citation_human": "Varsha 42 (2025-02-04→2026-02-05, lahiri_chitrapaksha): Muntha Virgo (6H from Lagna, lord Mercury); Vārṣeśa Mercury (tajik_classical); Pañcavargīya winner Saturn; methods diverge.",
+                "computed_at": "2026-08-12 15:25:22.222472+00",
+                "_source_table": "l1_tajik_varsha_year_lords"
+              },
+              {
+                "varsha_id": "a8454a62-32fb-4723-a239-44c866eadc75",
+                "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+                "varsha_year": 44,
+                "varsha_start_iso": "2027-02-05 06:03:58+00",
+                "varsha_end_iso": "2028-02-05 12:10:18+00",
+                "year_lord_method": "tajik_classical",
+                "year_lord": "Mars",
+                "candidate_lord_jsonb": {
+                  "offices": {
+                    "Lagnesa": {
+                      "planet": "Mars",
+                      "components": {
+                        "D1": {
+                          "sign": "Leo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D2": {
+                          "sign": "Sagittarius",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D3": {
+                          "sign": "Taurus",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Cancer",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D12": {
+                          "sign": "Leo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 86.25
+                    },
+                    "Munthesa": {
+                      "planet": "Mars",
+                      "components": {
+                        "D1": {
+                          "sign": "Leo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D2": {
+                          "sign": "Sagittarius",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D3": {
+                          "sign": "Taurus",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Cancer",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D12": {
+                          "sign": "Leo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 86.25
+                    },
+                    "JanmaLagnesa": {
+                      "planet": "Mars",
+                      "components": {
+                        "D1": {
+                          "sign": "Leo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D2": {
+                          "sign": "Sagittarius",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D3": {
+                          "sign": "Taurus",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Cancer",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D12": {
+                          "sign": "Leo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 86.25
+                    },
+                    "TriRashipati": {
+                      "planet": "Saturn",
+                      "components": {
+                        "D1": {
+                          "sign": "Pisces",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D2": {
+                          "sign": "Pisces",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D3": {
+                          "sign": "Aquarius",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D9": {
+                          "sign": "Scorpio",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D12": {
+                          "sign": "Libra",
+                          "points": 45,
+                          "dignity": "exalted"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 112.5
+                    },
+                    "Dinaratripati": {
+                      "planet": "Sun",
+                      "components": {
+                        "D1": {
+                          "sign": "Capricorn",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D2": {
+                          "sign": "Scorpio",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D3": {
+                          "sign": "Virgo",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Cancer",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D12": {
+                          "sign": "Sagittarius",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 90
+                    }
+                  },
+                  "methods_diverge": true,
+                  "panchavargiya_winner": {
+                    "office": "TriRashipati",
+                    "planet": "Saturn"
+                  },
+                  "tajik_classical_winner": {
+                    "office": "Munthesa",
+                    "planet": "Mars"
+                  }
+                },
+                "muntha_position_jsonb": {
+                  "lord": "Mars",
+                  "sign": "Scorpio",
+                  "degree": 12.4311,
+                  "house_from_natal_lagna": 8,
+                  "house_from_varsha_lagna": 8
+                },
+                "applicable_tajik_yogas_array": [
+                  "Ithasala",
+                  "Dutthottha"
+                ],
+                "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+                "ephemeris_audit_jsonb": {
+                  "solar_return": {
+                    "diff_deg": 0.000155,
+                    "converged": true,
+                    "iterations": 13,
+                    "bracket_days": 2
+                  },
+                  "varsha_lagna_sign": "Aries",
+                  "natal_sun_long_deg": 291.962617,
+                  "muntha_two_pass_match": true,
+                  "solar_return_cross_check_pass": true
+                },
+                "verification_pass_status": "two_pass_verified",
+                "citation_ref": "ga_tajaka.varsha44.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+                "citation_human": "Varsha 44 (2027-02-05→2028-02-05, lahiri_chitrapaksha): Muntha Scorpio (8H from Lagna, lord Mars); Vārṣeśa Mars (tajik_classical); Pañcavargīya winner Saturn; methods diverge.",
+                "computed_at": "2026-08-12 15:25:22.397586+00",
+                "_source_table": "l1_tajik_varsha_year_lords"
+              },
+              {
+                "varsha_id": "0217af0d-8159-4ee2-9159-1d52a188496d",
+                "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+                "varsha_year": 41,
+                "varsha_start_iso": "2024-02-05 11:38:39+00",
+                "varsha_end_iso": "2025-02-04 17:44:17+00",
+                "year_lord_method": "tajik_classical",
+                "year_lord": "Sun",
+                "candidate_lord_jsonb": {
+                  "offices": {
+                    "Lagnesa": {
+                      "planet": "Moon",
+                      "components": {
+                        "D1": {
+                          "sign": "Scorpio",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D2": {
+                          "sign": "Cancer",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D3": {
+                          "sign": "Pisces",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Capricorn",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D12": {
+                          "sign": "Sagittarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 78.75
+                    },
+                    "Munthesa": {
+                      "planet": "Sun",
+                      "components": {
+                        "D1": {
+                          "sign": "Capricorn",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D2": {
+                          "sign": "Scorpio",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D3": {
+                          "sign": "Virgo",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Cancer",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D12": {
+                          "sign": "Sagittarius",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 90
+                    },
+                    "JanmaLagnesa": {
+                      "planet": "Mars",
+                      "components": {
+                        "D1": {
+                          "sign": "Sagittarius",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D2": {
+                          "sign": "Virgo",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D3": {
+                          "sign": "Gemini",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D9": {
+                          "sign": "Sagittarius",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D12": {
+                          "sign": "Pisces",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 82.5
+                    },
+                    "TriRashipati": {
+                      "planet": "Saturn",
+                      "components": {
+                        "D1": {
+                          "sign": "Aquarius",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D2": {
+                          "sign": "Sagittarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D3": {
+                          "sign": "Scorpio",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D9": {
+                          "sign": "Capricorn",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D12": {
+                          "sign": "Virgo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 105
+                    },
+                    "Dinaratripati": {
+                      "planet": "Sun",
+                      "components": {
+                        "D1": {
+                          "sign": "Capricorn",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D2": {
+                          "sign": "Scorpio",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D3": {
+                          "sign": "Virgo",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Cancer",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D12": {
+                          "sign": "Sagittarius",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 90
+                    }
+                  },
+                  "methods_diverge": true,
+                  "panchavargiya_winner": {
+                    "office": "TriRashipati",
+                    "planet": "Saturn"
+                  },
+                  "tajik_classical_winner": {
+                    "office": "Munthesa",
+                    "planet": "Sun"
+                  }
+                },
+                "muntha_position_jsonb": {
+                  "lord": "Sun",
+                  "sign": "Leo",
+                  "degree": 12.4311,
+                  "house_from_natal_lagna": 5,
+                  "house_from_varsha_lagna": 2
+                },
+                "applicable_tajik_yogas_array": [
+                  "Ithasala",
+                  "Dutthottha"
+                ],
+                "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+                "ephemeris_audit_jsonb": {
+                  "solar_return": {
+                    "diff_deg": -0.000161,
+                    "converged": true,
+                    "iterations": 13,
+                    "bracket_days": 2
+                  },
+                  "varsha_lagna_sign": "Cancer",
+                  "natal_sun_long_deg": 291.962617,
+                  "muntha_two_pass_match": true,
+                  "solar_return_cross_check_pass": true
+                },
+                "verification_pass_status": "two_pass_verified",
+                "citation_ref": "ga_tajaka.varsha41.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+                "citation_human": "Varsha 41 (2024-02-05→2025-02-04, lahiri_chitrapaksha): Muntha Leo (5H from Lagna, lord Sun); Vārṣeśa Sun (tajik_classical); Pañcavargīya winner Saturn; methods diverge.",
+                "computed_at": "2026-08-12 15:25:22.16419+00",
+                "_source_table": "l1_tajik_varsha_year_lords"
+              },
+              {
+                "varsha_id": "28a2bcee-bf66-4aff-b0ac-cc44396cc575",
+                "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+                "varsha_year": 45,
+                "varsha_start_iso": "2028-02-05 12:10:18+00",
+                "varsha_end_iso": "2029-02-04 18:20:51+00",
+                "year_lord_method": "tajik_classical",
+                "year_lord": "Jupiter",
+                "candidate_lord_jsonb": {
+                  "offices": {
+                    "Lagnesa": {
+                      "planet": "Moon",
+                      "components": {
+                        "D1": {
+                          "sign": "Taurus",
+                          "points": 45,
+                          "dignity": "exalted"
+                        },
+                        "D2": {
+                          "sign": "Gemini",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D3": {
+                          "sign": "Leo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D9": {
+                          "sign": "Aries",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D12": {
+                          "sign": "Virgo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 127.5
+                    },
+                    "Munthesa": {
+                      "planet": "Jupiter",
+                      "components": {
+                        "D1": {
+                          "sign": "Virgo",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D2": {
+                          "sign": "Aquarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D3": {
+                          "sign": "Cancer",
+                          "points": 45,
+                          "dignity": "exalted"
+                        },
+                        "D9": {
+                          "sign": "Capricorn",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D12": {
+                          "sign": "Aries",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 93.75
+                    },
+                    "JanmaLagnesa": {
+                      "planet": "Mars",
+                      "components": {
+                        "D1": {
+                          "sign": "Aquarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D2": {
+                          "sign": "Sagittarius",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D3": {
+                          "sign": "Libra",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Libra",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D12": {
+                          "sign": "Aries",
+                          "points": 30,
+                          "dignity": "own"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 97.5
+                    },
+                    "TriRashipati": {
+                      "planet": "Saturn",
+                      "components": {
+                        "D1": {
+                          "sign": "Pisces",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D2": {
+                          "sign": "Pisces",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D3": {
+                          "sign": "Pisces",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Pisces",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D12": {
+                          "sign": "Pisces",
+                          "points": 15,
+                          "dignity": "neutral"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 75
+                    },
+                    "Dinaratripati": {
+                      "planet": "Sun",
+                      "components": {
+                        "D1": {
+                          "sign": "Capricorn",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D2": {
+                          "sign": "Scorpio",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D3": {
+                          "sign": "Virgo",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Cancer",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D12": {
+                          "sign": "Sagittarius",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 90
+                    }
+                  },
+                  "methods_diverge": true,
+                  "panchavargiya_winner": {
+                    "office": "Lagnesa",
+                    "planet": "Moon"
+                  },
+                  "tajik_classical_winner": {
+                    "office": "Munthesa",
+                    "planet": "Jupiter"
+                  }
+                },
+                "muntha_position_jsonb": {
+                  "lord": "Jupiter",
+                  "sign": "Sagittarius",
+                  "degree": 12.4311,
+                  "house_from_natal_lagna": 9,
+                  "house_from_varsha_lagna": 6
+                },
+                "applicable_tajik_yogas_array": [
+                  "Ithasala",
+                  "Dutthottha"
+                ],
+                "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+                "ephemeris_audit_jsonb": {
+                  "solar_return": {
+                    "diff_deg": -0.000226,
+                    "converged": true,
+                    "iterations": 13,
+                    "bracket_days": 2
+                  },
+                  "varsha_lagna_sign": "Cancer",
+                  "natal_sun_long_deg": 291.962617,
+                  "muntha_two_pass_match": true,
+                  "solar_return_cross_check_pass": true
+                },
+                "verification_pass_status": "two_pass_verified",
+                "citation_ref": "ga_tajaka.varsha45.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+                "citation_human": "Varsha 45 (2028-02-05→2029-02-04, lahiri_chitrapaksha): Muntha Sagittarius (9H from Lagna, lord Jupiter); Vārṣeśa Jupiter (tajik_classical); Pañcavargīya winner Moon; methods diverge.",
+                "computed_at": "2026-08-12 15:25:22.453723+00",
+                "_source_table": "l1_tajik_varsha_year_lords"
+              },
+              {
+                "varsha_id": "f5c3588e-fb5a-4243-90aa-c1e68cfe5ef8",
+                "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+                "varsha_year": 40,
+                "varsha_start_iso": "2023-02-05 05:33:44+00",
+                "varsha_end_iso": "2024-02-05 11:38:39+00",
+                "year_lord_method": "tajik_classical",
+                "year_lord": "Moon",
+                "candidate_lord_jsonb": {
+                  "offices": {
+                    "Lagnesa": {
+                      "planet": "Mars",
+                      "components": {
+                        "D1": {
+                          "sign": "Taurus",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D2": {
+                          "sign": "Cancer",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D3": {
+                          "sign": "Leo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D9": {
+                          "sign": "Gemini",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D12": {
+                          "sign": "Libra",
+                          "points": 15,
+                          "dignity": "neutral"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 63.75
+                    },
+                    "Munthesa": {
+                      "planet": "Moon",
+                      "components": {
+                        "D1": {
+                          "sign": "Cancer",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D2": {
+                          "sign": "Scorpio",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D3": {
+                          "sign": "Aquarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Scorpio",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D12": {
+                          "sign": "Libra",
+                          "points": 15,
+                          "dignity": "neutral"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 67.5
+                    },
+                    "JanmaLagnesa": {
+                      "planet": "Mars",
+                      "components": {
+                        "D1": {
+                          "sign": "Taurus",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D2": {
+                          "sign": "Cancer",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D3": {
+                          "sign": "Leo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D9": {
+                          "sign": "Gemini",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D12": {
+                          "sign": "Libra",
+                          "points": 15,
+                          "dignity": "neutral"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 63.75
+                    },
+                    "TriRashipati": {
+                      "planet": "Saturn",
+                      "components": {
+                        "D1": {
+                          "sign": "Aquarius",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D2": {
+                          "sign": "Sagittarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D3": {
+                          "sign": "Libra",
+                          "points": 45,
+                          "dignity": "exalted"
+                        },
+                        "D9": {
+                          "sign": "Libra",
+                          "points": 45,
+                          "dignity": "exalted"
+                        },
+                        "D12": {
+                          "sign": "Aries",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 138.75
+                    },
+                    "Dinaratripati": {
+                      "planet": "Sun",
+                      "components": {
+                        "D1": {
+                          "sign": "Capricorn",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D2": {
+                          "sign": "Scorpio",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D3": {
+                          "sign": "Virgo",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Cancer",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D12": {
+                          "sign": "Sagittarius",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 90
+                    }
+                  },
+                  "methods_diverge": true,
+                  "panchavargiya_winner": {
+                    "office": "TriRashipati",
+                    "planet": "Saturn"
+                  },
+                  "tajik_classical_winner": {
+                    "office": "Munthesa",
+                    "planet": "Moon"
+                  }
+                },
+                "muntha_position_jsonb": {
+                  "lord": "Moon",
+                  "sign": "Cancer",
+                  "degree": 12.4311,
+                  "house_from_natal_lagna": 4,
+                  "house_from_varsha_lagna": 4
+                },
+                "applicable_tajik_yogas_array": [
+                  "Ishrafa",
+                  "Dutthottha"
+                ],
+                "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+                "ephemeris_audit_jsonb": {
+                  "solar_return": {
+                    "diff_deg": 0.000171,
+                    "converged": true,
+                    "iterations": 13,
+                    "bracket_days": 2
+                  },
+                  "varsha_lagna_sign": "Aries",
+                  "natal_sun_long_deg": 291.962617,
+                  "muntha_two_pass_match": true,
+                  "solar_return_cross_check_pass": true
+                },
+                "verification_pass_status": "two_pass_verified",
+                "citation_ref": "ga_tajaka.varsha40.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+                "citation_human": "Varsha 40 (2023-02-05→2024-02-05, lahiri_chitrapaksha): Muntha Cancer (4H from Lagna, lord Moon); Vārṣeśa Moon (tajik_classical); Pañcavargīya winner Saturn; methods diverge.",
+                "computed_at": "2026-08-12 15:25:22.110724+00",
+                "_source_table": "l1_tajik_varsha_year_lords"
+              },
+              {
+                "varsha_id": "38e6efb0-8200-49e7-92e4-7691b5a95717",
+                "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+                "varsha_year": 46,
+                "varsha_start_iso": "2029-02-04 18:20:51+00",
+                "varsha_end_iso": "2030-02-05 00:27:52+00",
+                "year_lord_method": "tajik_classical",
+                "year_lord": "Moon",
+                "candidate_lord_jsonb": {
+                  "offices": {
+                    "Lagnesa": {
+                      "planet": "Venus",
+                      "components": {
+                        "D1": {
+                          "sign": "Capricorn",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D2": {
+                          "sign": "Libra",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D3": {
+                          "sign": "Leo",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D9": {
+                          "sign": "Aries",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D12": {
+                          "sign": "Leo",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 82.5
+                    },
+                    "Munthesa": {
+                      "planet": "Saturn",
+                      "components": {
+                        "D1": {
+                          "sign": "Aries",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D2": {
+                          "sign": "Aries",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D3": {
+                          "sign": "Taurus",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D9": {
+                          "sign": "Cancer",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D12": {
+                          "sign": "Leo",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 45
+                    },
+                    "JanmaLagnesa": {
+                      "planet": "Mars",
+                      "components": {
+                        "D1": {
+                          "sign": "Virgo",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D2": {
+                          "sign": "Pisces",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D3": {
+                          "sign": "Leo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D9": {
+                          "sign": "Gemini",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D12": {
+                          "sign": "Scorpio",
+                          "points": 30,
+                          "dignity": "own"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 90
+                    },
+                    "TriRashipati": {
+                      "planet": "Saturn",
+                      "components": {
+                        "D1": {
+                          "sign": "Aries",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D2": {
+                          "sign": "Aries",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D3": {
+                          "sign": "Taurus",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D9": {
+                          "sign": "Cancer",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D12": {
+                          "sign": "Leo",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 45
+                    },
+                    "Dinaratripati": {
+                      "planet": "Moon",
+                      "components": {
+                        "D1": {
+                          "sign": "Libra",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D2": {
+                          "sign": "Aries",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D3": {
+                          "sign": "Libra",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Sagittarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D12": {
+                          "sign": "Gemini",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": true,
+                      "panchavargiya_bala": 82.5
+                    }
+                  },
+                  "methods_diverge": true,
+                  "panchavargiya_winner": {
+                    "office": "JanmaLagnesa",
+                    "planet": "Mars"
+                  },
+                  "tajik_classical_winner": {
+                    "office": "Dinaratripati",
+                    "planet": "Moon"
+                  }
+                },
+                "muntha_position_jsonb": {
+                  "lord": "Saturn",
+                  "sign": "Capricorn",
+                  "degree": 12.4311,
+                  "house_from_natal_lagna": 10,
+                  "house_from_varsha_lagna": 4
+                },
+                "applicable_tajik_yogas_array": [
+                  "Ithasala",
+                  "Ishrafa",
+                  "Dutthottha"
+                ],
+                "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+                "ephemeris_audit_jsonb": {
+                  "solar_return": {
+                    "diff_deg": -0.000236,
+                    "converged": true,
+                    "iterations": 13,
+                    "bracket_days": 2
+                  },
+                  "varsha_lagna_sign": "Libra",
+                  "natal_sun_long_deg": 291.962617,
+                  "muntha_two_pass_match": true,
+                  "solar_return_cross_check_pass": true
+                },
+                "verification_pass_status": "two_pass_verified",
+                "citation_ref": "ga_tajaka.varsha46.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+                "citation_human": "Varsha 46 (2029-02-04→2030-02-05, lahiri_chitrapaksha): Muntha Capricorn (10H from Lagna, lord Saturn); Vārṣeśa Moon (tajik_classical); Pañcavargīya winner Mars; methods diverge.",
+                "computed_at": "2026-08-12 15:25:22.506773+00",
+                "_source_table": "l1_tajik_varsha_year_lords"
+              },
+              {
+                "varsha_id": "5c4f01cc-0aac-4d9c-874d-931a98ab9b6e",
+                "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+                "varsha_year": 39,
+                "varsha_start_iso": "2022-02-04 23:18:58+00",
+                "varsha_end_iso": "2023-02-05 05:33:44+00",
+                "year_lord_method": "tajik_classical",
+                "year_lord": "Mercury",
+                "candidate_lord_jsonb": {
+                  "offices": {
+                    "Lagnesa": {
+                      "planet": "Jupiter",
+                      "components": {
+                        "D1": {
+                          "sign": "Aquarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D2": {
+                          "sign": "Sagittarius",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D3": {
+                          "sign": "Scorpio",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D9": {
+                          "sign": "Aquarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D12": {
+                          "sign": "Virgo",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 90
+                    },
+                    "Munthesa": {
+                      "planet": "Mercury",
+                      "components": {
+                        "D1": {
+                          "sign": "Capricorn",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D2": {
+                          "sign": "Libra",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D3": {
+                          "sign": "Cancer",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D9": {
+                          "sign": "Capricorn",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D12": {
+                          "sign": "Aries",
+                          "points": 15,
+                          "dignity": "neutral"
+                        }
+                      },
+                      "aspects_lagna": true,
+                      "panchavargiya_bala": 75
+                    },
+                    "JanmaLagnesa": {
+                      "planet": "Mars",
+                      "components": {
+                        "D1": {
+                          "sign": "Sagittarius",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D2": {
+                          "sign": "Leo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D3": {
+                          "sign": "Taurus",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Leo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D12": {
+                          "sign": "Virgo",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 90
+                    },
+                    "TriRashipati": {
+                      "planet": "Saturn",
+                      "components": {
+                        "D1": {
+                          "sign": "Capricorn",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D2": {
+                          "sign": "Scorpio",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D3": {
+                          "sign": "Virgo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D9": {
+                          "sign": "Cancer",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D12": {
+                          "sign": "Sagittarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 82.5
+                    },
+                    "Dinaratripati": {
+                      "planet": "Moon",
+                      "components": {
+                        "D1": {
+                          "sign": "Pisces",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D2": {
+                          "sign": "Aquarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D3": {
+                          "sign": "Aquarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Libra",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D12": {
+                          "sign": "Leo",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 82.5
+                    }
+                  },
+                  "methods_diverge": true,
+                  "panchavargiya_winner": {
+                    "office": "Lagnesa",
+                    "planet": "Jupiter"
+                  },
+                  "tajik_classical_winner": {
+                    "office": "Munthesa",
+                    "planet": "Mercury"
+                  }
+                },
+                "muntha_position_jsonb": {
+                  "lord": "Mercury",
+                  "sign": "Gemini",
+                  "degree": 12.4311,
+                  "house_from_natal_lagna": 3,
+                  "house_from_varsha_lagna": 7
+                },
+                "applicable_tajik_yogas_array": [
+                  "Ithasala",
+                  "Ishrafa",
+                  "Nakta",
+                  "Dutthottha"
+                ],
+                "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+                "ephemeris_audit_jsonb": {
+                  "solar_return": {
+                    "diff_deg": -0.000211,
+                    "converged": true,
+                    "iterations": 13,
+                    "bracket_days": 2
+                  },
+                  "varsha_lagna_sign": "Sagittarius",
+                  "natal_sun_long_deg": 291.962617,
+                  "muntha_two_pass_match": true,
+                  "solar_return_cross_check_pass": true
+                },
+                "verification_pass_status": "two_pass_verified",
+                "citation_ref": "ga_tajaka.varsha39.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+                "citation_human": "Varsha 39 (2022-02-05→2023-02-05, lahiri_chitrapaksha): Muntha Gemini (3H from Lagna, lord Mercury); Vārṣeśa Mercury (tajik_classical); Pañcavargīya winner Jupiter; methods diverge.",
+                "computed_at": "2026-08-12 15:25:22.055084+00",
+                "_source_table": "l1_tajik_varsha_year_lords"
+              },
+              {
+                "varsha_id": "2feba1a0-6bdc-4ce9-8421-22250356ed53",
+                "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+                "varsha_year": 47,
+                "varsha_start_iso": "2030-02-05 00:27:52+00",
+                "varsha_end_iso": "2031-02-05 06:38:25+00",
+                "year_lord_method": "tajik_classical",
+                "year_lord": "Saturn",
+                "candidate_lord_jsonb": {
+                  "offices": {
+                    "Lagnesa": {
+                      "planet": "Saturn",
+                      "components": {
+                        "D1": {
+                          "sign": "Aries",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D2": {
+                          "sign": "Taurus",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D3": {
+                          "sign": "Gemini",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D9": {
+                          "sign": "Scorpio",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D12": {
+                          "sign": "Capricorn",
+                          "points": 30,
+                          "dignity": "own"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 86.25
+                    },
+                    "Munthesa": {
+                      "planet": "Saturn",
+                      "components": {
+                        "D1": {
+                          "sign": "Aries",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D2": {
+                          "sign": "Taurus",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D3": {
+                          "sign": "Gemini",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D9": {
+                          "sign": "Scorpio",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D12": {
+                          "sign": "Capricorn",
+                          "points": 30,
+                          "dignity": "own"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 86.25
+                    },
+                    "JanmaLagnesa": {
+                      "planet": "Mars",
+                      "components": {
+                        "D1": {
+                          "sign": "Aquarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D2": {
+                          "sign": "Capricorn",
+                          "points": 45,
+                          "dignity": "exalted"
+                        },
+                        "D3": {
+                          "sign": "Scorpio",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D9": {
+                          "sign": "Pisces",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D12": {
+                          "sign": "Scorpio",
+                          "points": 30,
+                          "dignity": "own"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 142.5
+                    },
+                    "TriRashipati": {
+                      "planet": "Saturn",
+                      "components": {
+                        "D1": {
+                          "sign": "Aries",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D2": {
+                          "sign": "Taurus",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D3": {
+                          "sign": "Gemini",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D9": {
+                          "sign": "Scorpio",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D12": {
+                          "sign": "Capricorn",
+                          "points": 30,
+                          "dignity": "own"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 86.25
+                    },
+                    "Dinaratripati": {
+                      "planet": "Moon",
+                      "components": {
+                        "D1": {
+                          "sign": "Aquarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D2": {
+                          "sign": "Capricorn",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D3": {
+                          "sign": "Sagittarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Aries",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D12": {
+                          "sign": "Sagittarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 75
+                    }
+                  },
+                  "methods_diverge": true,
+                  "panchavargiya_winner": {
+                    "office": "JanmaLagnesa",
+                    "planet": "Mars"
+                  },
+                  "tajik_classical_winner": {
+                    "office": "Munthesa",
+                    "planet": "Saturn"
+                  }
+                },
+                "muntha_position_jsonb": {
+                  "lord": "Saturn",
+                  "sign": "Aquarius",
+                  "degree": 12.4311,
+                  "house_from_natal_lagna": 11,
+                  "house_from_varsha_lagna": 2
+                },
+                "applicable_tajik_yogas_array": [
+                  "Ithasala",
+                  "Ishrafa",
+                  "Dutthottha"
+                ],
+                "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+                "ephemeris_audit_jsonb": {
+                  "solar_return": {
+                    "diff_deg": -0.000126,
+                    "converged": true,
+                    "iterations": 13,
+                    "bracket_days": 2
+                  },
+                  "varsha_lagna_sign": "Capricorn",
+                  "natal_sun_long_deg": 291.962617,
+                  "muntha_two_pass_match": true,
+                  "solar_return_cross_check_pass": true
+                },
+                "verification_pass_status": "two_pass_verified",
+                "citation_ref": "ga_tajaka.varsha47.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+                "citation_human": "Varsha 47 (2030-02-05→2031-02-05, lahiri_chitrapaksha): Muntha Aquarius (11H from Lagna, lord Saturn); Vārṣeśa Saturn (tajik_classical); Pañcavargīya winner Mars; methods diverge.",
+                "computed_at": "2026-08-12 15:25:22.565512+00",
+                "_source_table": "l1_tajik_varsha_year_lords"
+              },
+              {
+                "varsha_id": "396f7c2f-ccd4-48f2-8c8b-909884e82b8f",
+                "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+                "varsha_year": 38,
+                "varsha_start_iso": "2021-02-04 17:07:01+00",
+                "varsha_end_iso": "2022-02-04 23:18:58+00",
+                "year_lord_method": "tajik_classical",
+                "year_lord": "Venus",
+                "candidate_lord_jsonb": {
+                  "offices": {
+                    "Lagnesa": {
+                      "planet": "Venus",
+                      "components": {
+                        "D1": {
+                          "sign": "Capricorn",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D2": {
+                          "sign": "Libra",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D3": {
+                          "sign": "Cancer",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D9": {
+                          "sign": "Pisces",
+                          "points": 45,
+                          "dignity": "exalted"
+                        },
+                        "D12": {
+                          "sign": "Cancer",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 112.5
+                    },
+                    "Munthesa": {
+                      "planet": "Venus",
+                      "components": {
+                        "D1": {
+                          "sign": "Capricorn",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        },
+                        "D2": {
+                          "sign": "Libra",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D3": {
+                          "sign": "Cancer",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D9": {
+                          "sign": "Pisces",
+                          "points": 45,
+                          "dignity": "exalted"
+                        },
+                        "D12": {
+                          "sign": "Cancer",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 112.5
+                    },
+                    "JanmaLagnesa": {
+                      "planet": "Mars",
+                      "components": {
+                        "D1": {
+                          "sign": "Aries",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D2": {
+                          "sign": "Taurus",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D3": {
+                          "sign": "Gemini",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D9": {
+                          "sign": "Libra",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D12": {
+                          "sign": "Sagittarius",
+                          "points": 22.5,
+                          "dignity": "friend"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 90
+                    },
+                    "TriRashipati": {
+                      "planet": "Saturn",
+                      "components": {
+                        "D1": {
+                          "sign": "Capricorn",
+                          "points": 30,
+                          "dignity": "own"
+                        },
+                        "D2": {
+                          "sign": "Libra",
+                          "points": 45,
+                          "dignity": "exalted"
+                        },
+                        "D3": {
+                          "sign": "Leo",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        },
+                        "D9": {
+                          "sign": "Aries",
+                          "points": 3.75,
+                          "dignity": "debilitated"
+                        },
+                        "D12": {
+                          "sign": "Leo",
+                          "points": 7.5,
+                          "dignity": "enemy"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 93.75
+                    },
+                    "Dinaratripati": {
+                      "planet": "Moon",
+                      "components": {
+                        "D1": {
+                          "sign": "Libra",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D2": {
+                          "sign": "Taurus",
+                          "points": 45,
+                          "dignity": "exalted"
+                        },
+                        "D3": {
+                          "sign": "Sagittarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D9": {
+                          "sign": "Aries",
+                          "points": 15,
+                          "dignity": "neutral"
+                        },
+                        "D12": {
+                          "sign": "Sagittarius",
+                          "points": 15,
+                          "dignity": "neutral"
+                        }
+                      },
+                      "aspects_lagna": false,
+                      "panchavargiya_bala": 105
+                    }
+                  },
+                  "methods_diverge": false,
+                  "panchavargiya_winner": {
+                    "office": "Lagnesa",
+                    "planet": "Venus"
+                  },
+                  "tajik_classical_winner": {
+                    "office": "Munthesa",
+                    "planet": "Venus"
+                  }
+                },
+                "muntha_position_jsonb": {
+                  "lord": "Venus",
+                  "sign": "Taurus",
+                  "degree": 12.4311,
+                  "house_from_natal_lagna": 2,
+                  "house_from_varsha_lagna": 8
+                },
+                "applicable_tajik_yogas_array": [
+                  "Ithasala",
+                  "Ishrafa",
+                  "Dutthottha"
+                ],
+                "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+                "ephemeris_audit_jsonb": {
+                  "solar_return": {
+                    "diff_deg": 0.000065,
+                    "converged": true,
+                    "iterations": 13,
+                    "bracket_days": 2
+                  },
+                  "varsha_lagna_sign": "Libra",
+                  "natal_sun_long_deg": 291.962617,
+                  "muntha_two_pass_match": true,
+                  "solar_return_cross_check_pass": true
+                },
+                "verification_pass_status": "two_pass_verified",
+                "citation_ref": "ga_tajaka.varsha38.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+                "citation_human": "Varsha 38 (2021-02-04→2022-02-05, lahiri_chitrapaksha): Muntha Taurus (2H from Lagna, lord Venus); Vārṣeśa Venus (tajik_classical); Pañcavargīya winner Venus.",
+                "computed_at": "2026-08-12 15:25:22.001839+00",
+                "_source_table": "l1_tajik_varsha_year_lords"
+              }
+            ],
+            "offset": 0,
+            "limit": 10,
+            "total": 48,
+            "returned_count": 10,
+            "varsha_year_filter": null,
+            "current_varsha_year": 43,
+            "sort": "current_year_first"
+          },
+          "rows": [
+            {
+              "varsha_id": "aac980bf-3a03-435e-9607-f444cc8b0e75",
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+              "varsha_year": 43,
+              "varsha_start_iso": "2026-02-04 23:59:03+00",
+              "varsha_end_iso": "2027-02-05 06:03:58+00",
+              "year_lord_method": "tajik_classical",
+              "year_lord": "Venus",
+              "candidate_lord_jsonb": {
+                "offices": {
+                  "Lagnesa": {
+                    "planet": "Saturn",
+                    "components": {
+                      "D1": {
+                        "sign": "Pisces",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D2": {
+                        "sign": "Aquarius",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D3": {
+                        "sign": "Capricorn",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D9": {
+                        "sign": "Leo",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D12": {
+                        "sign": "Taurus",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 105
+                  },
+                  "Munthesa": {
+                    "planet": "Venus",
+                    "components": {
+                      "D1": {
+                        "sign": "Capricorn",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D2": {
+                        "sign": "Scorpio",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D3": {
+                        "sign": "Virgo",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D9": {
+                        "sign": "Virgo",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D12": {
+                        "sign": "Pisces",
+                        "points": 45,
+                        "dignity": "exalted"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 90
+                  },
+                  "JanmaLagnesa": {
+                    "planet": "Mars",
+                    "components": {
+                      "D1": {
+                        "sign": "Capricorn",
+                        "points": 45,
+                        "dignity": "exalted"
+                      },
+                      "D2": {
+                        "sign": "Scorpio",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D3": {
+                        "sign": "Leo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D9": {
+                        "sign": "Taurus",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D12": {
+                        "sign": "Libra",
+                        "points": 15,
+                        "dignity": "neutral"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 127.5
+                  },
+                  "TriRashipati": {
+                    "planet": "Saturn",
+                    "components": {
+                      "D1": {
+                        "sign": "Pisces",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D2": {
+                        "sign": "Aquarius",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D3": {
+                        "sign": "Capricorn",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D9": {
+                        "sign": "Leo",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D12": {
+                        "sign": "Taurus",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 105
+                  },
+                  "Dinaratripati": {
+                    "planet": "Moon",
+                    "components": {
+                      "D1": {
+                        "sign": "Virgo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D2": {
+                        "sign": "Aquarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D3": {
+                        "sign": "Cancer",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D9": {
+                        "sign": "Capricorn",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D12": {
+                        "sign": "Aries",
+                        "points": 15,
+                        "dignity": "neutral"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 97.5
+                  }
+                },
+                "methods_diverge": true,
+                "panchavargiya_winner": {
+                  "office": "JanmaLagnesa",
+                  "planet": "Mars"
+                },
+                "tajik_classical_winner": {
+                  "office": "Munthesa",
+                  "planet": "Venus"
+                }
+              },
+              "muntha_position_jsonb": {
+                "lord": "Venus",
+                "sign": "Libra",
+                "degree": 12.4311,
+                "house_from_natal_lagna": 7,
+                "house_from_varsha_lagna": 10
+              },
+              "applicable_tajik_yogas_array": [
+                "Ishrafa",
+                "Dutthottha"
+              ],
+              "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+              "ephemeris_audit_jsonb": {
+                "solar_return": {
+                  "diff_deg": -0.000018,
+                  "converged": true,
+                  "iterations": 13,
+                  "bracket_days": 2
+                },
+                "varsha_lagna_sign": "Capricorn",
+                "natal_sun_long_deg": 291.962617,
+                "muntha_two_pass_match": true,
+                "solar_return_cross_check_pass": true
+              },
+              "verification_pass_status": "two_pass_verified",
+              "citation_ref": "ga_tajaka.varsha43.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+              "citation_human": "Varsha 43 (2026-02-05→2027-02-05, lahiri_chitrapaksha): Muntha Libra (7H from Lagna, lord Venus); Vārṣeśa Venus (tajik_classical); Pañcavargīya winner Mars; methods diverge.",
+              "computed_at": "2026-08-12 15:25:22.279224+00",
+              "_source_table": "l1_tajik_varsha_year_lords"
+            },
+            {
+              "varsha_id": "7cfe6553-8736-4629-ad2a-29db000ab97a",
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+              "varsha_year": 42,
+              "varsha_start_iso": "2025-02-04 17:44:17+00",
+              "varsha_end_iso": "2026-02-04 23:59:03+00",
+              "year_lord_method": "tajik_classical",
+              "year_lord": "Mercury",
+              "candidate_lord_jsonb": {
+                "offices": {
+                  "Lagnesa": {
+                    "planet": "Venus",
+                    "components": {
+                      "D1": {
+                        "sign": "Pisces",
+                        "points": 45,
+                        "dignity": "exalted"
+                      },
+                      "D2": {
+                        "sign": "Aquarius",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D3": {
+                        "sign": "Capricorn",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D9": {
+                        "sign": "Leo",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D12": {
+                        "sign": "Gemini",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 120
+                  },
+                  "Munthesa": {
+                    "planet": "Mercury",
+                    "components": {
+                      "D1": {
+                        "sign": "Capricorn",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D2": {
+                        "sign": "Scorpio",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D3": {
+                        "sign": "Leo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D9": {
+                        "sign": "Gemini",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D12": {
+                        "sign": "Scorpio",
+                        "points": 15,
+                        "dignity": "neutral"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 97.5
+                  },
+                  "JanmaLagnesa": {
+                    "planet": "Mars",
+                    "components": {
+                      "D1": {
+                        "sign": "Gemini",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D2": {
+                        "sign": "Virgo",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D3": {
+                        "sign": "Sagittarius",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D9": {
+                        "sign": "Taurus",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D12": {
+                        "sign": "Aquarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 67.5
+                  },
+                  "TriRashipati": {
+                    "planet": "Saturn",
+                    "components": {
+                      "D1": {
+                        "sign": "Aquarius",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D2": {
+                        "sign": "Capricorn",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D3": {
+                        "sign": "Sagittarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Taurus",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D12": {
+                        "sign": "Capricorn",
+                        "points": 30,
+                        "dignity": "own"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 127.5
+                  },
+                  "Dinaratripati": {
+                    "planet": "Moon",
+                    "components": {
+                      "D1": {
+                        "sign": "Aries",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D2": {
+                        "sign": "Aries",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D3": {
+                        "sign": "Taurus",
+                        "points": 45,
+                        "dignity": "exalted"
+                      },
+                      "D9": {
+                        "sign": "Leo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D12": {
+                        "sign": "Virgo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 120
+                  }
+                },
+                "methods_diverge": true,
+                "panchavargiya_winner": {
+                  "office": "TriRashipati",
+                  "planet": "Saturn"
+                },
+                "tajik_classical_winner": {
+                  "office": "Munthesa",
+                  "planet": "Mercury"
+                }
+              },
+              "muntha_position_jsonb": {
+                "lord": "Mercury",
+                "sign": "Virgo",
+                "degree": 12.4311,
+                "house_from_natal_lagna": 6,
+                "house_from_varsha_lagna": 12
+              },
+              "applicable_tajik_yogas_array": [
+                "Ithasala",
+                "Dutthottha"
+              ],
+              "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+              "ephemeris_audit_jsonb": {
+                "solar_return": {
+                  "diff_deg": -0.000114,
+                  "converged": true,
+                  "iterations": 13,
+                  "bracket_days": 2
+                },
+                "varsha_lagna_sign": "Libra",
+                "natal_sun_long_deg": 291.962617,
+                "muntha_two_pass_match": true,
+                "solar_return_cross_check_pass": true
+              },
+              "verification_pass_status": "two_pass_verified",
+              "citation_ref": "ga_tajaka.varsha42.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+              "citation_human": "Varsha 42 (2025-02-04→2026-02-05, lahiri_chitrapaksha): Muntha Virgo (6H from Lagna, lord Mercury); Vārṣeśa Mercury (tajik_classical); Pañcavargīya winner Saturn; methods diverge.",
+              "computed_at": "2026-08-12 15:25:22.222472+00",
+              "_source_table": "l1_tajik_varsha_year_lords"
+            },
+            {
+              "varsha_id": "a8454a62-32fb-4723-a239-44c866eadc75",
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+              "varsha_year": 44,
+              "varsha_start_iso": "2027-02-05 06:03:58+00",
+              "varsha_end_iso": "2028-02-05 12:10:18+00",
+              "year_lord_method": "tajik_classical",
+              "year_lord": "Mars",
+              "candidate_lord_jsonb": {
+                "offices": {
+                  "Lagnesa": {
+                    "planet": "Mars",
+                    "components": {
+                      "D1": {
+                        "sign": "Leo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D2": {
+                        "sign": "Sagittarius",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D3": {
+                        "sign": "Taurus",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Cancer",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D12": {
+                        "sign": "Leo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 86.25
+                  },
+                  "Munthesa": {
+                    "planet": "Mars",
+                    "components": {
+                      "D1": {
+                        "sign": "Leo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D2": {
+                        "sign": "Sagittarius",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D3": {
+                        "sign": "Taurus",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Cancer",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D12": {
+                        "sign": "Leo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 86.25
+                  },
+                  "JanmaLagnesa": {
+                    "planet": "Mars",
+                    "components": {
+                      "D1": {
+                        "sign": "Leo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D2": {
+                        "sign": "Sagittarius",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D3": {
+                        "sign": "Taurus",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Cancer",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D12": {
+                        "sign": "Leo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 86.25
+                  },
+                  "TriRashipati": {
+                    "planet": "Saturn",
+                    "components": {
+                      "D1": {
+                        "sign": "Pisces",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D2": {
+                        "sign": "Pisces",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D3": {
+                        "sign": "Aquarius",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D9": {
+                        "sign": "Scorpio",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D12": {
+                        "sign": "Libra",
+                        "points": 45,
+                        "dignity": "exalted"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 112.5
+                  },
+                  "Dinaratripati": {
+                    "planet": "Sun",
+                    "components": {
+                      "D1": {
+                        "sign": "Capricorn",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D2": {
+                        "sign": "Scorpio",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D3": {
+                        "sign": "Virgo",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Cancer",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D12": {
+                        "sign": "Sagittarius",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 90
+                  }
+                },
+                "methods_diverge": true,
+                "panchavargiya_winner": {
+                  "office": "TriRashipati",
+                  "planet": "Saturn"
+                },
+                "tajik_classical_winner": {
+                  "office": "Munthesa",
+                  "planet": "Mars"
+                }
+              },
+              "muntha_position_jsonb": {
+                "lord": "Mars",
+                "sign": "Scorpio",
+                "degree": 12.4311,
+                "house_from_natal_lagna": 8,
+                "house_from_varsha_lagna": 8
+              },
+              "applicable_tajik_yogas_array": [
+                "Ithasala",
+                "Dutthottha"
+              ],
+              "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+              "ephemeris_audit_jsonb": {
+                "solar_return": {
+                  "diff_deg": 0.000155,
+                  "converged": true,
+                  "iterations": 13,
+                  "bracket_days": 2
+                },
+                "varsha_lagna_sign": "Aries",
+                "natal_sun_long_deg": 291.962617,
+                "muntha_two_pass_match": true,
+                "solar_return_cross_check_pass": true
+              },
+              "verification_pass_status": "two_pass_verified",
+              "citation_ref": "ga_tajaka.varsha44.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+              "citation_human": "Varsha 44 (2027-02-05→2028-02-05, lahiri_chitrapaksha): Muntha Scorpio (8H from Lagna, lord Mars); Vārṣeśa Mars (tajik_classical); Pañcavargīya winner Saturn; methods diverge.",
+              "computed_at": "2026-08-12 15:25:22.397586+00",
+              "_source_table": "l1_tajik_varsha_year_lords"
+            },
+            {
+              "varsha_id": "0217af0d-8159-4ee2-9159-1d52a188496d",
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+              "varsha_year": 41,
+              "varsha_start_iso": "2024-02-05 11:38:39+00",
+              "varsha_end_iso": "2025-02-04 17:44:17+00",
+              "year_lord_method": "tajik_classical",
+              "year_lord": "Sun",
+              "candidate_lord_jsonb": {
+                "offices": {
+                  "Lagnesa": {
+                    "planet": "Moon",
+                    "components": {
+                      "D1": {
+                        "sign": "Scorpio",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D2": {
+                        "sign": "Cancer",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D3": {
+                        "sign": "Pisces",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Capricorn",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D12": {
+                        "sign": "Sagittarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 78.75
+                  },
+                  "Munthesa": {
+                    "planet": "Sun",
+                    "components": {
+                      "D1": {
+                        "sign": "Capricorn",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D2": {
+                        "sign": "Scorpio",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D3": {
+                        "sign": "Virgo",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Cancer",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D12": {
+                        "sign": "Sagittarius",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 90
+                  },
+                  "JanmaLagnesa": {
+                    "planet": "Mars",
+                    "components": {
+                      "D1": {
+                        "sign": "Sagittarius",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D2": {
+                        "sign": "Virgo",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D3": {
+                        "sign": "Gemini",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D9": {
+                        "sign": "Sagittarius",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D12": {
+                        "sign": "Pisces",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 82.5
+                  },
+                  "TriRashipati": {
+                    "planet": "Saturn",
+                    "components": {
+                      "D1": {
+                        "sign": "Aquarius",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D2": {
+                        "sign": "Sagittarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D3": {
+                        "sign": "Scorpio",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D9": {
+                        "sign": "Capricorn",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D12": {
+                        "sign": "Virgo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 105
+                  },
+                  "Dinaratripati": {
+                    "planet": "Sun",
+                    "components": {
+                      "D1": {
+                        "sign": "Capricorn",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D2": {
+                        "sign": "Scorpio",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D3": {
+                        "sign": "Virgo",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Cancer",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D12": {
+                        "sign": "Sagittarius",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 90
+                  }
+                },
+                "methods_diverge": true,
+                "panchavargiya_winner": {
+                  "office": "TriRashipati",
+                  "planet": "Saturn"
+                },
+                "tajik_classical_winner": {
+                  "office": "Munthesa",
+                  "planet": "Sun"
+                }
+              },
+              "muntha_position_jsonb": {
+                "lord": "Sun",
+                "sign": "Leo",
+                "degree": 12.4311,
+                "house_from_natal_lagna": 5,
+                "house_from_varsha_lagna": 2
+              },
+              "applicable_tajik_yogas_array": [
+                "Ithasala",
+                "Dutthottha"
+              ],
+              "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+              "ephemeris_audit_jsonb": {
+                "solar_return": {
+                  "diff_deg": -0.000161,
+                  "converged": true,
+                  "iterations": 13,
+                  "bracket_days": 2
+                },
+                "varsha_lagna_sign": "Cancer",
+                "natal_sun_long_deg": 291.962617,
+                "muntha_two_pass_match": true,
+                "solar_return_cross_check_pass": true
+              },
+              "verification_pass_status": "two_pass_verified",
+              "citation_ref": "ga_tajaka.varsha41.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+              "citation_human": "Varsha 41 (2024-02-05→2025-02-04, lahiri_chitrapaksha): Muntha Leo (5H from Lagna, lord Sun); Vārṣeśa Sun (tajik_classical); Pañcavargīya winner Saturn; methods diverge.",
+              "computed_at": "2026-08-12 15:25:22.16419+00",
+              "_source_table": "l1_tajik_varsha_year_lords"
+            },
+            {
+              "varsha_id": "28a2bcee-bf66-4aff-b0ac-cc44396cc575",
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+              "varsha_year": 45,
+              "varsha_start_iso": "2028-02-05 12:10:18+00",
+              "varsha_end_iso": "2029-02-04 18:20:51+00",
+              "year_lord_method": "tajik_classical",
+              "year_lord": "Jupiter",
+              "candidate_lord_jsonb": {
+                "offices": {
+                  "Lagnesa": {
+                    "planet": "Moon",
+                    "components": {
+                      "D1": {
+                        "sign": "Taurus",
+                        "points": 45,
+                        "dignity": "exalted"
+                      },
+                      "D2": {
+                        "sign": "Gemini",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D3": {
+                        "sign": "Leo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D9": {
+                        "sign": "Aries",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D12": {
+                        "sign": "Virgo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 127.5
+                  },
+                  "Munthesa": {
+                    "planet": "Jupiter",
+                    "components": {
+                      "D1": {
+                        "sign": "Virgo",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D2": {
+                        "sign": "Aquarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D3": {
+                        "sign": "Cancer",
+                        "points": 45,
+                        "dignity": "exalted"
+                      },
+                      "D9": {
+                        "sign": "Capricorn",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D12": {
+                        "sign": "Aries",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 93.75
+                  },
+                  "JanmaLagnesa": {
+                    "planet": "Mars",
+                    "components": {
+                      "D1": {
+                        "sign": "Aquarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D2": {
+                        "sign": "Sagittarius",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D3": {
+                        "sign": "Libra",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Libra",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D12": {
+                        "sign": "Aries",
+                        "points": 30,
+                        "dignity": "own"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 97.5
+                  },
+                  "TriRashipati": {
+                    "planet": "Saturn",
+                    "components": {
+                      "D1": {
+                        "sign": "Pisces",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D2": {
+                        "sign": "Pisces",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D3": {
+                        "sign": "Pisces",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Pisces",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D12": {
+                        "sign": "Pisces",
+                        "points": 15,
+                        "dignity": "neutral"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 75
+                  },
+                  "Dinaratripati": {
+                    "planet": "Sun",
+                    "components": {
+                      "D1": {
+                        "sign": "Capricorn",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D2": {
+                        "sign": "Scorpio",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D3": {
+                        "sign": "Virgo",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Cancer",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D12": {
+                        "sign": "Sagittarius",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 90
+                  }
+                },
+                "methods_diverge": true,
+                "panchavargiya_winner": {
+                  "office": "Lagnesa",
+                  "planet": "Moon"
+                },
+                "tajik_classical_winner": {
+                  "office": "Munthesa",
+                  "planet": "Jupiter"
+                }
+              },
+              "muntha_position_jsonb": {
+                "lord": "Jupiter",
+                "sign": "Sagittarius",
+                "degree": 12.4311,
+                "house_from_natal_lagna": 9,
+                "house_from_varsha_lagna": 6
+              },
+              "applicable_tajik_yogas_array": [
+                "Ithasala",
+                "Dutthottha"
+              ],
+              "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+              "ephemeris_audit_jsonb": {
+                "solar_return": {
+                  "diff_deg": -0.000226,
+                  "converged": true,
+                  "iterations": 13,
+                  "bracket_days": 2
+                },
+                "varsha_lagna_sign": "Cancer",
+                "natal_sun_long_deg": 291.962617,
+                "muntha_two_pass_match": true,
+                "solar_return_cross_check_pass": true
+              },
+              "verification_pass_status": "two_pass_verified",
+              "citation_ref": "ga_tajaka.varsha45.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+              "citation_human": "Varsha 45 (2028-02-05→2029-02-04, lahiri_chitrapaksha): Muntha Sagittarius (9H from Lagna, lord Jupiter); Vārṣeśa Jupiter (tajik_classical); Pañcavargīya winner Moon; methods diverge.",
+              "computed_at": "2026-08-12 15:25:22.453723+00",
+              "_source_table": "l1_tajik_varsha_year_lords"
+            },
+            {
+              "varsha_id": "f5c3588e-fb5a-4243-90aa-c1e68cfe5ef8",
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+              "varsha_year": 40,
+              "varsha_start_iso": "2023-02-05 05:33:44+00",
+              "varsha_end_iso": "2024-02-05 11:38:39+00",
+              "year_lord_method": "tajik_classical",
+              "year_lord": "Moon",
+              "candidate_lord_jsonb": {
+                "offices": {
+                  "Lagnesa": {
+                    "planet": "Mars",
+                    "components": {
+                      "D1": {
+                        "sign": "Taurus",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D2": {
+                        "sign": "Cancer",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D3": {
+                        "sign": "Leo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D9": {
+                        "sign": "Gemini",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D12": {
+                        "sign": "Libra",
+                        "points": 15,
+                        "dignity": "neutral"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 63.75
+                  },
+                  "Munthesa": {
+                    "planet": "Moon",
+                    "components": {
+                      "D1": {
+                        "sign": "Cancer",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D2": {
+                        "sign": "Scorpio",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D3": {
+                        "sign": "Aquarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Scorpio",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D12": {
+                        "sign": "Libra",
+                        "points": 15,
+                        "dignity": "neutral"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 67.5
+                  },
+                  "JanmaLagnesa": {
+                    "planet": "Mars",
+                    "components": {
+                      "D1": {
+                        "sign": "Taurus",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D2": {
+                        "sign": "Cancer",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D3": {
+                        "sign": "Leo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D9": {
+                        "sign": "Gemini",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D12": {
+                        "sign": "Libra",
+                        "points": 15,
+                        "dignity": "neutral"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 63.75
+                  },
+                  "TriRashipati": {
+                    "planet": "Saturn",
+                    "components": {
+                      "D1": {
+                        "sign": "Aquarius",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D2": {
+                        "sign": "Sagittarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D3": {
+                        "sign": "Libra",
+                        "points": 45,
+                        "dignity": "exalted"
+                      },
+                      "D9": {
+                        "sign": "Libra",
+                        "points": 45,
+                        "dignity": "exalted"
+                      },
+                      "D12": {
+                        "sign": "Aries",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 138.75
+                  },
+                  "Dinaratripati": {
+                    "planet": "Sun",
+                    "components": {
+                      "D1": {
+                        "sign": "Capricorn",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D2": {
+                        "sign": "Scorpio",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D3": {
+                        "sign": "Virgo",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Cancer",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D12": {
+                        "sign": "Sagittarius",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 90
+                  }
+                },
+                "methods_diverge": true,
+                "panchavargiya_winner": {
+                  "office": "TriRashipati",
+                  "planet": "Saturn"
+                },
+                "tajik_classical_winner": {
+                  "office": "Munthesa",
+                  "planet": "Moon"
+                }
+              },
+              "muntha_position_jsonb": {
+                "lord": "Moon",
+                "sign": "Cancer",
+                "degree": 12.4311,
+                "house_from_natal_lagna": 4,
+                "house_from_varsha_lagna": 4
+              },
+              "applicable_tajik_yogas_array": [
+                "Ishrafa",
+                "Dutthottha"
+              ],
+              "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+              "ephemeris_audit_jsonb": {
+                "solar_return": {
+                  "diff_deg": 0.000171,
+                  "converged": true,
+                  "iterations": 13,
+                  "bracket_days": 2
+                },
+                "varsha_lagna_sign": "Aries",
+                "natal_sun_long_deg": 291.962617,
+                "muntha_two_pass_match": true,
+                "solar_return_cross_check_pass": true
+              },
+              "verification_pass_status": "two_pass_verified",
+              "citation_ref": "ga_tajaka.varsha40.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+              "citation_human": "Varsha 40 (2023-02-05→2024-02-05, lahiri_chitrapaksha): Muntha Cancer (4H from Lagna, lord Moon); Vārṣeśa Moon (tajik_classical); Pañcavargīya winner Saturn; methods diverge.",
+              "computed_at": "2026-08-12 15:25:22.110724+00",
+              "_source_table": "l1_tajik_varsha_year_lords"
+            },
+            {
+              "varsha_id": "38e6efb0-8200-49e7-92e4-7691b5a95717",
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+              "varsha_year": 46,
+              "varsha_start_iso": "2029-02-04 18:20:51+00",
+              "varsha_end_iso": "2030-02-05 00:27:52+00",
+              "year_lord_method": "tajik_classical",
+              "year_lord": "Moon",
+              "candidate_lord_jsonb": {
+                "offices": {
+                  "Lagnesa": {
+                    "planet": "Venus",
+                    "components": {
+                      "D1": {
+                        "sign": "Capricorn",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D2": {
+                        "sign": "Libra",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D3": {
+                        "sign": "Leo",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D9": {
+                        "sign": "Aries",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D12": {
+                        "sign": "Leo",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 82.5
+                  },
+                  "Munthesa": {
+                    "planet": "Saturn",
+                    "components": {
+                      "D1": {
+                        "sign": "Aries",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D2": {
+                        "sign": "Aries",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D3": {
+                        "sign": "Taurus",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D9": {
+                        "sign": "Cancer",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D12": {
+                        "sign": "Leo",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 45
+                  },
+                  "JanmaLagnesa": {
+                    "planet": "Mars",
+                    "components": {
+                      "D1": {
+                        "sign": "Virgo",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D2": {
+                        "sign": "Pisces",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D3": {
+                        "sign": "Leo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D9": {
+                        "sign": "Gemini",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D12": {
+                        "sign": "Scorpio",
+                        "points": 30,
+                        "dignity": "own"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 90
+                  },
+                  "TriRashipati": {
+                    "planet": "Saturn",
+                    "components": {
+                      "D1": {
+                        "sign": "Aries",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D2": {
+                        "sign": "Aries",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D3": {
+                        "sign": "Taurus",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D9": {
+                        "sign": "Cancer",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D12": {
+                        "sign": "Leo",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 45
+                  },
+                  "Dinaratripati": {
+                    "planet": "Moon",
+                    "components": {
+                      "D1": {
+                        "sign": "Libra",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D2": {
+                        "sign": "Aries",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D3": {
+                        "sign": "Libra",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Sagittarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D12": {
+                        "sign": "Gemini",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": true,
+                    "panchavargiya_bala": 82.5
+                  }
+                },
+                "methods_diverge": true,
+                "panchavargiya_winner": {
+                  "office": "JanmaLagnesa",
+                  "planet": "Mars"
+                },
+                "tajik_classical_winner": {
+                  "office": "Dinaratripati",
+                  "planet": "Moon"
+                }
+              },
+              "muntha_position_jsonb": {
+                "lord": "Saturn",
+                "sign": "Capricorn",
+                "degree": 12.4311,
+                "house_from_natal_lagna": 10,
+                "house_from_varsha_lagna": 4
+              },
+              "applicable_tajik_yogas_array": [
+                "Ithasala",
+                "Ishrafa",
+                "Dutthottha"
+              ],
+              "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+              "ephemeris_audit_jsonb": {
+                "solar_return": {
+                  "diff_deg": -0.000236,
+                  "converged": true,
+                  "iterations": 13,
+                  "bracket_days": 2
+                },
+                "varsha_lagna_sign": "Libra",
+                "natal_sun_long_deg": 291.962617,
+                "muntha_two_pass_match": true,
+                "solar_return_cross_check_pass": true
+              },
+              "verification_pass_status": "two_pass_verified",
+              "citation_ref": "ga_tajaka.varsha46.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+              "citation_human": "Varsha 46 (2029-02-04→2030-02-05, lahiri_chitrapaksha): Muntha Capricorn (10H from Lagna, lord Saturn); Vārṣeśa Moon (tajik_classical); Pañcavargīya winner Mars; methods diverge.",
+              "computed_at": "2026-08-12 15:25:22.506773+00",
+              "_source_table": "l1_tajik_varsha_year_lords"
+            },
+            {
+              "varsha_id": "5c4f01cc-0aac-4d9c-874d-931a98ab9b6e",
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+              "varsha_year": 39,
+              "varsha_start_iso": "2022-02-04 23:18:58+00",
+              "varsha_end_iso": "2023-02-05 05:33:44+00",
+              "year_lord_method": "tajik_classical",
+              "year_lord": "Mercury",
+              "candidate_lord_jsonb": {
+                "offices": {
+                  "Lagnesa": {
+                    "planet": "Jupiter",
+                    "components": {
+                      "D1": {
+                        "sign": "Aquarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D2": {
+                        "sign": "Sagittarius",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D3": {
+                        "sign": "Scorpio",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D9": {
+                        "sign": "Aquarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D12": {
+                        "sign": "Virgo",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 90
+                  },
+                  "Munthesa": {
+                    "planet": "Mercury",
+                    "components": {
+                      "D1": {
+                        "sign": "Capricorn",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D2": {
+                        "sign": "Libra",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D3": {
+                        "sign": "Cancer",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D9": {
+                        "sign": "Capricorn",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D12": {
+                        "sign": "Aries",
+                        "points": 15,
+                        "dignity": "neutral"
+                      }
+                    },
+                    "aspects_lagna": true,
+                    "panchavargiya_bala": 75
+                  },
+                  "JanmaLagnesa": {
+                    "planet": "Mars",
+                    "components": {
+                      "D1": {
+                        "sign": "Sagittarius",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D2": {
+                        "sign": "Leo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D3": {
+                        "sign": "Taurus",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Leo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D12": {
+                        "sign": "Virgo",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 90
+                  },
+                  "TriRashipati": {
+                    "planet": "Saturn",
+                    "components": {
+                      "D1": {
+                        "sign": "Capricorn",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D2": {
+                        "sign": "Scorpio",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D3": {
+                        "sign": "Virgo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D9": {
+                        "sign": "Cancer",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D12": {
+                        "sign": "Sagittarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 82.5
+                  },
+                  "Dinaratripati": {
+                    "planet": "Moon",
+                    "components": {
+                      "D1": {
+                        "sign": "Pisces",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D2": {
+                        "sign": "Aquarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D3": {
+                        "sign": "Aquarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Libra",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D12": {
+                        "sign": "Leo",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 82.5
+                  }
+                },
+                "methods_diverge": true,
+                "panchavargiya_winner": {
+                  "office": "Lagnesa",
+                  "planet": "Jupiter"
+                },
+                "tajik_classical_winner": {
+                  "office": "Munthesa",
+                  "planet": "Mercury"
+                }
+              },
+              "muntha_position_jsonb": {
+                "lord": "Mercury",
+                "sign": "Gemini",
+                "degree": 12.4311,
+                "house_from_natal_lagna": 3,
+                "house_from_varsha_lagna": 7
+              },
+              "applicable_tajik_yogas_array": [
+                "Ithasala",
+                "Ishrafa",
+                "Nakta",
+                "Dutthottha"
+              ],
+              "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+              "ephemeris_audit_jsonb": {
+                "solar_return": {
+                  "diff_deg": -0.000211,
+                  "converged": true,
+                  "iterations": 13,
+                  "bracket_days": 2
+                },
+                "varsha_lagna_sign": "Sagittarius",
+                "natal_sun_long_deg": 291.962617,
+                "muntha_two_pass_match": true,
+                "solar_return_cross_check_pass": true
+              },
+              "verification_pass_status": "two_pass_verified",
+              "citation_ref": "ga_tajaka.varsha39.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+              "citation_human": "Varsha 39 (2022-02-05→2023-02-05, lahiri_chitrapaksha): Muntha Gemini (3H from Lagna, lord Mercury); Vārṣeśa Mercury (tajik_classical); Pañcavargīya winner Jupiter; methods diverge.",
+              "computed_at": "2026-08-12 15:25:22.055084+00",
+              "_source_table": "l1_tajik_varsha_year_lords"
+            },
+            {
+              "varsha_id": "2feba1a0-6bdc-4ce9-8421-22250356ed53",
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+              "varsha_year": 47,
+              "varsha_start_iso": "2030-02-05 00:27:52+00",
+              "varsha_end_iso": "2031-02-05 06:38:25+00",
+              "year_lord_method": "tajik_classical",
+              "year_lord": "Saturn",
+              "candidate_lord_jsonb": {
+                "offices": {
+                  "Lagnesa": {
+                    "planet": "Saturn",
+                    "components": {
+                      "D1": {
+                        "sign": "Aries",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D2": {
+                        "sign": "Taurus",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D3": {
+                        "sign": "Gemini",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D9": {
+                        "sign": "Scorpio",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D12": {
+                        "sign": "Capricorn",
+                        "points": 30,
+                        "dignity": "own"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 86.25
+                  },
+                  "Munthesa": {
+                    "planet": "Saturn",
+                    "components": {
+                      "D1": {
+                        "sign": "Aries",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D2": {
+                        "sign": "Taurus",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D3": {
+                        "sign": "Gemini",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D9": {
+                        "sign": "Scorpio",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D12": {
+                        "sign": "Capricorn",
+                        "points": 30,
+                        "dignity": "own"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 86.25
+                  },
+                  "JanmaLagnesa": {
+                    "planet": "Mars",
+                    "components": {
+                      "D1": {
+                        "sign": "Aquarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D2": {
+                        "sign": "Capricorn",
+                        "points": 45,
+                        "dignity": "exalted"
+                      },
+                      "D3": {
+                        "sign": "Scorpio",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D9": {
+                        "sign": "Pisces",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D12": {
+                        "sign": "Scorpio",
+                        "points": 30,
+                        "dignity": "own"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 142.5
+                  },
+                  "TriRashipati": {
+                    "planet": "Saturn",
+                    "components": {
+                      "D1": {
+                        "sign": "Aries",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D2": {
+                        "sign": "Taurus",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D3": {
+                        "sign": "Gemini",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D9": {
+                        "sign": "Scorpio",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D12": {
+                        "sign": "Capricorn",
+                        "points": 30,
+                        "dignity": "own"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 86.25
+                  },
+                  "Dinaratripati": {
+                    "planet": "Moon",
+                    "components": {
+                      "D1": {
+                        "sign": "Aquarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D2": {
+                        "sign": "Capricorn",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D3": {
+                        "sign": "Sagittarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Aries",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D12": {
+                        "sign": "Sagittarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 75
+                  }
+                },
+                "methods_diverge": true,
+                "panchavargiya_winner": {
+                  "office": "JanmaLagnesa",
+                  "planet": "Mars"
+                },
+                "tajik_classical_winner": {
+                  "office": "Munthesa",
+                  "planet": "Saturn"
+                }
+              },
+              "muntha_position_jsonb": {
+                "lord": "Saturn",
+                "sign": "Aquarius",
+                "degree": 12.4311,
+                "house_from_natal_lagna": 11,
+                "house_from_varsha_lagna": 2
+              },
+              "applicable_tajik_yogas_array": [
+                "Ithasala",
+                "Ishrafa",
+                "Dutthottha"
+              ],
+              "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+              "ephemeris_audit_jsonb": {
+                "solar_return": {
+                  "diff_deg": -0.000126,
+                  "converged": true,
+                  "iterations": 13,
+                  "bracket_days": 2
+                },
+                "varsha_lagna_sign": "Capricorn",
+                "natal_sun_long_deg": 291.962617,
+                "muntha_two_pass_match": true,
+                "solar_return_cross_check_pass": true
+              },
+              "verification_pass_status": "two_pass_verified",
+              "citation_ref": "ga_tajaka.varsha47.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+              "citation_human": "Varsha 47 (2030-02-05→2031-02-05, lahiri_chitrapaksha): Muntha Aquarius (11H from Lagna, lord Saturn); Vārṣeśa Saturn (tajik_classical); Pañcavargīya winner Mars; methods diverge.",
+              "computed_at": "2026-08-12 15:25:22.565512+00",
+              "_source_table": "l1_tajik_varsha_year_lords"
+            },
+            {
+              "varsha_id": "396f7c2f-ccd4-48f2-8c8b-909884e82b8f",
+              "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "84790929-7258-4e46-8697-bfd85d9728ca",
+              "varsha_year": 38,
+              "varsha_start_iso": "2021-02-04 17:07:01+00",
+              "varsha_end_iso": "2022-02-04 23:18:58+00",
+              "year_lord_method": "tajik_classical",
+              "year_lord": "Venus",
+              "candidate_lord_jsonb": {
+                "offices": {
+                  "Lagnesa": {
+                    "planet": "Venus",
+                    "components": {
+                      "D1": {
+                        "sign": "Capricorn",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D2": {
+                        "sign": "Libra",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D3": {
+                        "sign": "Cancer",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D9": {
+                        "sign": "Pisces",
+                        "points": 45,
+                        "dignity": "exalted"
+                      },
+                      "D12": {
+                        "sign": "Cancer",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 112.5
+                  },
+                  "Munthesa": {
+                    "planet": "Venus",
+                    "components": {
+                      "D1": {
+                        "sign": "Capricorn",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      },
+                      "D2": {
+                        "sign": "Libra",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D3": {
+                        "sign": "Cancer",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D9": {
+                        "sign": "Pisces",
+                        "points": 45,
+                        "dignity": "exalted"
+                      },
+                      "D12": {
+                        "sign": "Cancer",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 112.5
+                  },
+                  "JanmaLagnesa": {
+                    "planet": "Mars",
+                    "components": {
+                      "D1": {
+                        "sign": "Aries",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D2": {
+                        "sign": "Taurus",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D3": {
+                        "sign": "Gemini",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D9": {
+                        "sign": "Libra",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D12": {
+                        "sign": "Sagittarius",
+                        "points": 22.5,
+                        "dignity": "friend"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 90
+                  },
+                  "TriRashipati": {
+                    "planet": "Saturn",
+                    "components": {
+                      "D1": {
+                        "sign": "Capricorn",
+                        "points": 30,
+                        "dignity": "own"
+                      },
+                      "D2": {
+                        "sign": "Libra",
+                        "points": 45,
+                        "dignity": "exalted"
+                      },
+                      "D3": {
+                        "sign": "Leo",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      },
+                      "D9": {
+                        "sign": "Aries",
+                        "points": 3.75,
+                        "dignity": "debilitated"
+                      },
+                      "D12": {
+                        "sign": "Leo",
+                        "points": 7.5,
+                        "dignity": "enemy"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 93.75
+                  },
+                  "Dinaratripati": {
+                    "planet": "Moon",
+                    "components": {
+                      "D1": {
+                        "sign": "Libra",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D2": {
+                        "sign": "Taurus",
+                        "points": 45,
+                        "dignity": "exalted"
+                      },
+                      "D3": {
+                        "sign": "Sagittarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D9": {
+                        "sign": "Aries",
+                        "points": 15,
+                        "dignity": "neutral"
+                      },
+                      "D12": {
+                        "sign": "Sagittarius",
+                        "points": 15,
+                        "dignity": "neutral"
+                      }
+                    },
+                    "aspects_lagna": false,
+                    "panchavargiya_bala": 105
+                  }
+                },
+                "methods_diverge": false,
+                "panchavargiya_winner": {
+                  "office": "Lagnesa",
+                  "planet": "Venus"
+                },
+                "tajik_classical_winner": {
+                  "office": "Munthesa",
+                  "planet": "Venus"
+                }
+              },
+              "muntha_position_jsonb": {
+                "lord": "Venus",
+                "sign": "Taurus",
+                "degree": 12.4311,
+                "house_from_natal_lagna": 2,
+                "house_from_varsha_lagna": 8
+              },
+              "applicable_tajik_yogas_array": [
+                "Ithasala",
+                "Ishrafa",
+                "Dutthottha"
+              ],
+              "classical_source_citation": "Tājaka Nīlakaṇṭhī Ch.3–4 (Vārṣeśa / Muntha) + Ch.5–6 (Tājik yogas) — bg_texts structured corpus (SOURCE_INVENTORY_TAJAKA).",
+              "ephemeris_audit_jsonb": {
+                "solar_return": {
+                  "diff_deg": 0.000065,
+                  "converged": true,
+                  "iterations": 13,
+                  "bracket_days": 2
+                },
+                "varsha_lagna_sign": "Libra",
+                "natal_sun_long_deg": 291.962617,
+                "muntha_two_pass_match": true,
+                "solar_return_cross_check_pass": true
+              },
+              "verification_pass_status": "two_pass_verified",
+              "citation_ref": "ga_tajaka.varsha38.lahiri_chitrapaksha@chart=482012f1-710e-4a25-994a-93821f5871aa:eng=ga_tajaka/1.0.0",
+              "citation_human": "Varsha 38 (2021-02-04→2022-02-05, lahiri_chitrapaksha): Muntha Taurus (2H from Lagna, lord Venus); Vārṣeśa Venus (tajik_classical); Pañcavargīya winner Venus.",
+              "computed_at": "2026-08-12 15:25:22.001839+00",
+              "_source_table": "l1_tajik_varsha_year_lords"
+            }
+          ],
+          "total": 48
+        },
+        "trim_report": null
+      }
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "tool": "ganita_natal_positions_compute",
+  "scenario": "native_valid_birthdata",
+  "args": {
+    "datetime_iso": "1984-02-05T10:43:00",
+    "latitude_deg": 20.2961,
+    "longitude_deg": 85.8245,
+    "tz_offset_hours": 5.5,
+    "ayanamsha_id": "lahiri"
+  },
+  "raw_response": {
+    "type": "object",
+    "object": {
+      "status": "ok",
+      "engine": "PyJHora/pyjhora/1.0.0",
+      "ayanamsha_used": "lahiri",
+      "graha_sthana": [
+        {"name": "Sun", "sign": "Capricorn", "sign_id": 10, "nakshatra": "Shravana", "nakshatra_id": 22, "pada": 4, "house": 10, "longitude_deg": 291.962617, "degree_in_sign": 21.962617284991552, "is_retrograde": false},
+        {"name": "Moon", "sign": "Aquarius", "sign_id": 11, "nakshatra": "Purva Bhadrapada", "nakshatra_id": 25, "pada": 3, "house": 11, "longitude_deg": 327.05523, "degree_in_sign": 27.055230133128987, "is_retrograde": false},
+        {"name": "Mars", "sign": "Libra", "sign_id": 7, "nakshatra": "Swati", "nakshatra_id": 15, "pada": 4, "house": 7, "longitude_deg": 198.519188, "is_retrograde": false},
+        {"name": "Mercury", "sign": "Capricorn", "sign_id": 10, "nakshatra": "Uttara Ashadha", "nakshatra_id": 21, "pada": 2, "house": 10, "longitude_deg": 270.838754, "is_retrograde": false},
+        {"name": "Jupiter", "sign": "Sagittarius", "sign_id": 9, "nakshatra": "Mula", "nakshatra_id": 19, "pada": 3, "house": 9, "longitude_deg": 249.787497, "is_retrograde": false},
+        {"name": "Venus", "sign": "Sagittarius", "sign_id": 9, "nakshatra": "Purva Ashadha", "nakshatra_id": 20, "pada": 2, "house": 9, "longitude_deg": 259.172696, "is_retrograde": false},
+        {"name": "Saturn", "sign": "Libra", "sign_id": 7, "nakshatra": "Vishakha", "nakshatra_id": 16, "pada": 1, "house": 7, "longitude_deg": 202.431986, "is_retrograde": false},
+        {"name": "Rahu", "sign": "Taurus", "sign_id": 2, "nakshatra": "Rohini", "nakshatra_id": 4, "pada": 3, "house": 2, "longitude_deg": 49.033044, "is_retrograde": false},
+        {"name": "Ketu", "sign": "Scorpio", "sign_id": 8, "nakshatra": "Jyeshtha", "nakshatra_id": 18, "pada": 1, "house": 8, "longitude_deg": 229.033044, "is_retrograde": false}
+      ],
+      "bhava_lagna": {"sign": "Aries", "sign_id": 1, "sign_lord": "Mars", "nakshatra": "Ashwini", "nakshatra_id": 1, "pada": 4, "longitude_deg": 12.421246458956041},
+      "special_lagnas": {"kaala": {"sign": "Aquarius"}, "mrityu": {"sign": "Pisces"}, "artha_prabhakara": {"sign": "Aries"}, "yama": {"sign": "Taurus"}, "gulika": {"sign": "Gemini"}, "maandi": {"sign": "Gemini"}, "dhuma": {"sign": "Gemini"}, "vyatipaata": {"sign": "Capricorn"}, "parivesha": {"sign": "Cancer"}, "indrachaapa": {"sign": "Sagittarius"}, "upaketu": {"sign": "Sagittarius"}},
+      "vimshottari_dasha": {
+        "system": "vimshottari",
+        "mahadasha_sequence": [
+          {"lord": "Jupiter", "years": 16, "start_iso": "1975-08-19T02:02:48", "end_iso": "1991-08-19T04:29:26"},
+          {"lord": "Saturn", "years": 19, "start_iso": "1991-08-19T04:29:26", "end_iso": "2010-08-19T01:23:33"},
+          {"lord": "Mercury", "years": 17, "start_iso": "2010-08-19T01:23:33", "end_iso": "2027-08-19T09:59:20"},
+          {"lord": "Ketu", "years": 7, "start_iso": "2027-08-19T09:59:20", "end_iso": "2034-08-19T05:03:29"},
+          {"lord": "Venus", "years": 20, "start_iso": "2034-08-19T05:03:29", "end_iso": "2054-08-19T08:06:46"},
+          {"lord": "Sun", "years": 6, "start_iso": "2054-08-19T08:06:46", "end_iso": "2060-08-18T21:01:45"},
+          {"lord": "Moon", "years": 10, "start_iso": "2060-08-18T21:01:45", "end_iso": "2070-08-19T10:33:24"},
+          {"lord": "Mars", "years": 7, "start_iso": "2070-08-19T10:33:24", "end_iso": "2077-08-19T05:37:33"},
+          {"lord": "Rahu", "years": 18, "start_iso": "2077-08-19T05:37:33", "end_iso": "2095-08-19T14:23:09"}
+        ]
+      },
+      "panchanga": {"tithi": "Shukla Tritiya", "tithi_id": 3, "vara": "Ravivara", "vara_id": 0, "nakshatra": "Purva Bhadrapada", "nakshatra_id": 25, "nakshatra_pada": 3, "yoga": "Shiva", "yoga_id": 20, "karana": "Garaja", "karana_id": 6},
+      "provenance": {"engine_version": "pyjhora/1.0.0", "ayanamsha_config_id": "lahiri", "ayanamsha_mode": "LAHIRI", "computed_at_iso": "2026-08-15T13:09:11.004097+00:00", "jd_ut": 2445735.9465277777}
+    }
+  },
+  "pp2_note": "Re-verified with the native's ACTUAL birth data (1984-02-05T10:43 IST, Bhubaneswar 20.2961/85.8245), correcting the prior session's dummy 1990-01-01 date + invalid limit/offset params (which caused a schema rejection). Result: all 7 FORENSIC anchors reproduced independently by this PyJHora sidecar compute path -- Sun=Capricorn(Shravana), Moon=Aquarius/Purva Bhadrapada, Lagna=Aries (derived: Sun in house 10 from Aries lagna = Capricorn, consistent), Tithi=Shukla Tritiya, Vara=Ravivara, Yoga=Shiva, Karana=Garaja. Matches chart_id 482012f1's stored L1 facts (see ganita_positions_get/ganita_sensitive_degrees_get evidence). This is a genuine independent deterministic computation (PyJHora sidecar), not a fabricated/LLM value -- B.10 compliant, and it cross-validates rather than contradicts L1."
+}

@@ -1,0 +1,8 @@
+{
+  "tool": "ganita_tajaka_get",
+  "scenario": "varsha_year_extreme_200",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "varsha_year": 200},
+  "raw_response": {"type":"object","object":{"envelope_version":"v1","tool":"ganita_tajaka_get","content":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","varsha_year_lords":{"rows":[],"offset":0,"limit":200,"total":0,"returned_count":0,"varsha_year_filter":200,"sort":"varsha_year_ascending"},"rows":[],"total":0},"trim_report":null}},
+  "verdict": "PASS",
+  "note": "varsha_year=200 (200th solar return -- ~204 years past a 1984 birth, an impossible human lifespan) is honestly served as an empty result set (total:0, returned_count:0) rather than fabricated Tajaka data. No crash, no nonsense rows. The tool does not, however, explicitly say 'this exceeds a plausible human horizon' -- it just returns the honest zero, distinguishable from a bug because varsha_year_filter correctly echoes back 200 and total=0 with no error."
+}

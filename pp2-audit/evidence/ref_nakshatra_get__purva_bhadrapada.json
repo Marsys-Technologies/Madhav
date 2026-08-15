@@ -1,0 +1,44 @@
+{
+  "tool": "ref_nakshatra_get",
+  "scenario": "purva_bhadrapada",
+  "args": {"nakshatra": "purva_bhadrapada", "limit": 5},
+  "raw_response": {
+    "type": "object",
+    "object": {
+      "envelope_version": "v1",
+      "tool": "ref_nakshatra_get",
+      "verdict": null,
+      "ranking_basis": null,
+      "grounding": {"fact_ids": [], "citations": [], "grounding_score": null},
+      "pagination": {"offset": 0, "limit": 0, "total": null, "next_cursor": null},
+      "drill_pointers": [],
+      "judgment_flags": [
+        {
+          "code": "hollow_envelope_shape_not_evaluated",
+          "detail": "no array-valued or total/returned field found on content — no honest-gap signal computable from this shape (never fabricated)."
+        }
+      ],
+      "insight_type": null,
+      "query_class": "reference",
+      "content": {
+        "structured_filter_applied": false,
+        "fallback_reason": "No structured bg_nakshatra catalog table exists — this is a classical-text hybrid search using the nakshatra/lord/keyword filter as the search query, not a WHERE-clause match.",
+        "content": {
+          "search_mode": "hybrid_vector_keyword",
+          "query_used": "purva_bhadrapada nakshatra",
+          "citations_count": 5,
+          "citations_summary": [
+            {"citation_ref": "muhurta_chintamani:PG20:C2", "combined_score": 0.5250924034015659},
+            {"citation_ref": "muhurta_chintamani:PG51:C2", "combined_score": 0.5232444812351448},
+            {"citation_ref": "brihat_samhita:PG1005:C2", "combined_score": 0.5176954519740236},
+            {"citation_ref": "muhurta_chintamani:PG54:C1", "combined_score": 0.5101828876308921},
+            {"citation_ref": "bphs:PG513:C2", "combined_score": 0.5100564533059968}
+          ],
+          "total": 5
+        }
+      },
+      "is_error": false
+    }
+  },
+  "note_to_reader": "citations_summary is a condensed restatement (for evidence-file size) of the full verbatim citations array observed in the live response; each row's full verse_text_en/verse_text_sa/source_citation fields were present and observed but omitted here for brevity. Nothing in the summary was fabricated — see the finding CAND-1 logged against this tool for the material defect: the tool's own description promises a structured nakshatra catalog (lord, devata, gender, gana, varna, nadi, pada lords, body part, symbol) but the response itself admits ('fallback_reason') that no such structured catalog table exists, and instead returns unstructured classical-text search hits with none of the described fields."
+}

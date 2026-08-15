@@ -1,0 +1,8 @@
+{
+  "tool": "dossier",
+  "scenario": "zero_history_journey_step5",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "domain": "career", "receipt": true},
+  "raw_response": {"ok":true,"tool":"dossier","mode":"receipt","domain":"career","chart_id":"1c826d5a-41cb-4450-b4dc-59d440e5f75a","slice_size":13825,"coverage":{"served":12207,"empty_for_this_chart":1612,"not_computed_globally":6,"superseded_by_aggregate":0,"excluded_by_named_rule":0,"accounted":13825,"slice_size":13825,"pct":100},"synthesis_gate":"OPEN","gate_basis":"completeness_receipt","gate_reason":"slice_fully_accounted","judgment_flags":["receipt_exceeds_2kb"]},
+  "verdict": "PASS",
+  "note": "Closes the journey: the full career concept slice (13825 concepts) is 100% accounted for the zero-history chart with an honest per-state breakdown (served=12207, empty_for_this_chart=1612, not_computed_globally=6) -- no crash, no fabricated completeness. synthesis_gate correctly reads OPEN since coverage=100%. The 1612 empty_for_this_chart rows are the honest signature of a chart with thinner derived data than the native chart, disclosed as a distinct accounting bucket rather than silently omitted."
+}

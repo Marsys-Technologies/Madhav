@@ -1,0 +1,907 @@
+{
+  "tool": "graha_portrait",
+  "scenario": "native_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "graha": "Saturn",
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[budget-capped response — see structuredContent; text duplicate suppressed for this instrument per R5.1 C1]"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "orientation_context": {
+          "content": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "response_format": "digest",
+            "digest": {
+              "msr_signal_count": 10003,
+              "yoga_count": 15,
+              "dosha_count": 5,
+              "avg_salience": 0.4864,
+              "max_salience": 2.1611,
+              "contradiction_count": 3,
+              "weakest_graha": "Venus",
+              "weakest_graha_source": "shadbala_total_min (BPHS Ch.27 six-fold strength; CR-55 fix)",
+              "top_priority_class": "critical",
+              "trap1_count": 0
+            },
+            "entity_profiles": [],
+            "top_signals": [],
+            "convergence_domains": [
+              {
+                "domain": "character",
+                "convergence_count": 7401,
+                "convergence_score": 5708.335704,
+                "cross_tradition_count": 6,
+                "salience_weighted_sum": 3805.711401,
+                "contradiction_count": 1
+              },
+              {
+                "domain": "family",
+                "convergence_count": 5684,
+                "convergence_score": 3938.534055,
+                "cross_tradition_count": 4,
+                "salience_weighted_sum": 2625.68937,
+                "contradiction_count": 0
+              },
+              {
+                "domain": "relationship",
+                "convergence_count": 3698,
+                "convergence_score": 2648.618218,
+                "cross_tradition_count": 6,
+                "salience_weighted_sum": 1765.745479,
+                "contradiction_count": 0
+              },
+              {
+                "domain": "career",
+                "convergence_count": 3043,
+                "convergence_score": 2229.441634,
+                "cross_tradition_count": 4,
+                "salience_weighted_sum": 1486.440966,
+                "contradiction_count": 1
+              },
+              {
+                "domain": "spirituality",
+                "convergence_count": 1238,
+                "convergence_score": 1187.231775,
+                "cross_tradition_count": 6,
+                "salience_weighted_sum": 791.48785,
+                "contradiction_count": 0
+              },
+              {
+                "domain": "health",
+                "convergence_count": 747,
+                "convergence_score": 319.691676,
+                "cross_tradition_count": 2,
+                "salience_weighted_sum": 290.745562,
+                "contradiction_count": 1
+              },
+              {
+                "domain": "transition",
+                "convergence_count": 611,
+                "convergence_score": 263.744593,
+                "cross_tradition_count": 2,
+                "salience_weighted_sum": 239.767812,
+                "contradiction_count": 0
+              }
+            ],
+            "grounding": {
+              "fact_ids": [
+                "3588a51b37aefd51",
+                "a474d495e002faba",
+                "bab0ebf52f1c647d",
+                "ee36eb22a1885cfc",
+                "4c7c90e2dd5c4e1d",
+                "883c24d8b09d8653",
+                "21a959ce2890563b",
+                "84c032b2bd1474ab",
+                "44f9b32bcf5d0557",
+                "645031d25d613917",
+                "9cb7d46ca2763306",
+                "1debfefa66d980d8",
+                "f08d4ab50986525d",
+                "93c1b533dd15e6c7",
+                "e9fa32db80e4fd9f",
+                "62b555880b2cfb3d",
+                "239917f498e5c269",
+                "0147202c924d009f",
+                "9f59819534283286",
+                "f817285f5e972498",
+                "b21f2ec4534d6b2c",
+                "67e7ffce9249f38e",
+                "b704c90915e4f2f2",
+                "9647d8ca598f11d5",
+                "e1c669cfc32a6f64",
+                "08002ae6f01d7dfd",
+                "c5180552f0e84909",
+                "96dfd7f73d2ed848",
+                "2cc33c02caba3f4e",
+                "0b6509b2368e95c0",
+                "67401b80145d594c",
+                "7eaa9897e7050064",
+                "31281248906f2975",
+                "00849d9729d79b31",
+                "5b218817aa4c444d",
+                "7d3c5eda20d9d83f",
+                "8d3b488e487bfc8e",
+                "5c3eb724a0ac965e",
+                "2975c6e4e330c189",
+                "82bd10e753b2f12d",
+                "4f904ffe33f18109",
+                "c1d53a5533efaa4a",
+                "949a46c6da4f6c4c",
+                "b6f352574f5bf11e",
+                "5515decf711ba8df",
+                "1d4a59c1bb613da6",
+                "6c91c4d7665b52cb",
+                "79b7a458bece3718",
+                "67a113c8ae758488",
+                "34dcf6c9c98b6e73",
+                "4a19b3424ef6d362",
+                "b6062524e3ff298d",
+                "3aaa31a0224ee0cd",
+                "189aeaaa76f0ce35",
+                "a1c0305c50ff15dc",
+                "930c37df6f620599",
+                "4888d74eb35e1b90",
+                "b2103f88391a4375",
+                "289c3793f9d81488",
+                "a5467d265eff6b7a",
+                "220560b22b850bbb",
+                "458c18213b80a158",
+                "4fcc0e71437028a8",
+                "7018ffcd5923f0ee",
+                "d43717dccfeed550",
+                "ca0b0ee9e0086dee",
+                "a279f70f4a3091a0",
+                "f4fddb121c5ec426",
+                "7d5733d947c31f84",
+                "42e2b0bbf59903de",
+                "d88668f150db43c6",
+                "9f9dfe29d4ec4f78",
+                "bec6132450b7334b",
+                "a441d4ec4a54ecf7",
+                "b32ac3740af7b96e",
+                "4e3ce92f22582d40",
+                "aab6e2756838df24",
+                "28a2b1b0900d519b",
+                "37bbab0e074ad83c",
+                "78da03399d7b9879",
+                "c3b0788d0a8686b2",
+                "0aec3580614d669f",
+                "16ce67b21d2c288d"
+              ],
+              "resolvable": true,
+              "resolved_fact_count": 389,
+              "note": "WP-1.2(a): fact_ids are the resolvable L1 chart_facts.fact_id set backing the ranked entity_profiles (each id verified p…[truncated for budget]"
+            },
+            "attribution": {
+              "served_unattributed_entities": 0,
+              "served_unattributed_share": 0,
+              "candidate_pool_size": 300,
+              "candidate_pool_unattributed": 0,
+              "note": "WP-1.2β: 0% UNATTRIBUTED on the served ranked surface — every served entity_profile resolves to a graha or a bhāva (char…[truncated for budget]"
+            },
+            "ranking_basis": {
+              "mode": "composite_4d",
+              "priors_version": "1.2",
+              "domain": null,
+              "top_signal": {
+                "signal_id": "bde5423d-ac30-4ecd-ab7b-1dbec4232742",
+                "class_prior": 1.3125,
+                "topic_relevance": 1,
+                "intrinsic_strength": 0.58792,
+                "structural_role": 1.2,
+                "temporal_activation": 1,
+                "composite_score": 0.925974,
+                "percentile_within_class": 1,
+                "final_rank_score": 0.9266943609999999
+              },
+              "varga_weight_basis": {
+                "scheme": "Ṣoḍaśavarga (16-fold) Vimśopaka Bala",
+                "source": "Bṛhat Parāśara Horā Śāstra Ch.6 (Ṣaḍvarga/Vimśopaka); cross-checked against L1 chart_facts.graha_vimsopaka_shodasavarga"
+              },
+              "note": "Composite = class_prior × topic_relevance × intrinsic_strength × structural_role × temporal_activation × percentile_with…[truncated for budget]"
+            },
+            "filters": {
+              "top_k": 10,
+              "top_k_entities": 10,
+              "signal_class": null,
+              "min_salience": 0
+            },
+            "provenance": {
+              "tables": [
+                "vw_chart_digest",
+                "bodha_msr_signals",
+                "bodha_convergence"
+              ],
+              "ranking_note": "E-6: entity_profiles + top_signals both composite-ranked (priors_version=1.2) — same pipeline as query_signals.ts, not a…[truncated for budget]",
+              "aggregation_note": "Hierarchical aggregation: 300 atomic candidate signals → 10 entity profile(s) (design §E-6).",
+              "family_aggregation_note": "E-6 completion (R5.1 C2 item 2): 300 atomic candidates → 172 family-collapsed row(s) before the top_k=10 cut; 46 of thos…[truncated for budget]"
+            }
+          },
+          "is_error": false
+        },
+        "orientation_ok": true,
+        "envelope_version": "v3",
+        "tool": "graha_portrait",
+        "verdict": {
+          "graha": "Saturn",
+          "graha_code": "SAT",
+          "completeness": {
+            "position": "✓",
+            "dignity": "✓",
+            "functional_nature": "✓",
+            "strength": "✓",
+            "avasthas": "✓",
+            "yogas": "✓",
+            "dashas": "✓",
+            "cgm_neighborhood": "✓"
+          },
+          "sections_populated": 8,
+          "sections_requested": 8,
+          "narration": "Saturn = 10th + 11th lord for Aries lagna (temporal malefic). Confirmed: Saturn is exalted (Libra, 7th house) in D1. In D9: debilitated (neecha) (Aries, 10th house) — but natal strength undercut by navamsha stress. Shadbala: 7.83 rupas vs 5.00 required — grade: strong (surplus) (+2.83 rupas). Avasthas — lajjitadi avastha: garvita; sayanadi avastha: naiveshya. Yoga/configuration: parivartana exchange — parivartana per varga: mutual exchange = Saturn_in_Capricorn_Saturn_in_Capricorn (signal_id cdb36112-96cc-4b05-b64f-8716c31e5646). Most recent Saturn Mahadasha (past): 1991-08-18 → 2010-08-18 (age 7). CGM neighborhood: 156 edge(s), top relations — graha_bhava_occupancy, graha_bhava_occupancy, graha_bhava_occupancy. Single-tradition read: dignity/strength above are BPHS/classical-dignity based only (JL-004 caveat) — not cross-checked against Jaimini/KP. Scope: graha_portrait assesses Saturn alone — any bhava-level claim (e.g. marriage promise via the 7th house, career via the 10th) needs judgment_query for the complete promise-register verdict.",
+          "note": "completeness uses the design §28.6 classical-units receipt vocabulary (✓ / zero_rows / error / not_requested) per section. narration is assembled from the sections already fetched by this same call (see grounding.fact_ids for the specific L1/L2 facts it cites) — never a new chart computation."
+        },
+        "ranking_basis": null,
+        "grounding": {
+          "fact_ids": [
+            "15db20f6a9d0dd29",
+            "3bdb8ce78eea8618",
+            "9b83e35877c63fe7",
+            "6a881a67a0340e54",
+            "5df58042087b1b92",
+            "485820e278c9b08d",
+            "322719df480ed54e",
+            "b29c679a755deeea",
+            "64969e22c8744c8d",
+            "5a94fd9e624047ef",
+            "355fe607160e1d76",
+            "b8f518f6d9543e91",
+            "802b98a85d32bc93",
+            "8f19be5232dfda99",
+            "cbd4685a-f455-4ea1-a89b-5e49d68ffcbc",
+            "d9fd860b-cdd5-45da-ad1f-ee864186b6ff"
+          ],
+          "citations": [],
+          "grounding_score": 1
+        },
+        "pagination": {
+          "offset": 0,
+          "limit": 0,
+          "total": null,
+          "next_cursor": null,
+          "more_available": false
+        },
+        "drill_pointers": [
+          {
+            "instrument": "ganita_dashas_get",
+            "hint": "Antardasha-level (level=2+) detail for this graha's Mahadasha periods, narrower window.",
+            "pointer_type": "dasha_of_promise"
+          },
+          {
+            "instrument": "bodha_graph_traverse_get",
+            "hint": "deeper CGM traversal (depth>1, paths mode) from this graha's neighborhood.",
+            "pointer_type": "dispositor_chain"
+          },
+          {
+            "instrument": "bodha_signals_get",
+            "hint": "raw MSR signal evidence for any yoga/dosha match surfaced here.",
+            "pointer_type": "karaka_condition"
+          },
+          {
+            "instrument": "judgment_query",
+            "hint": "the complete bhava-level (7th-house marriage, 10th-house career, etc.) promise-register verdict — this entity-scoped cal…[truncated for budget]",
+            "pointer_type": "karaka_condition"
+          }
+        ],
+        "judgment_flags": [
+          {
+            "code": "budget_exceeded_after_trim",
+            "detail": "12kb budget still exceeded after full trim."
+          }
+        ],
+        "insight_type": null,
+        "query_class": "per_chart_structural",
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "graha": "Saturn",
+          "graha_code": "SAT",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "position": {
+            "rows": [
+              {
+                "fact_id": "15db20f6a9d0dd29",
+                "fact_category": "graha_position",
+                "fact_subject": "SAT",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "fact_key": "combustion_state",
+                "fact_value_num": null,
+                "fact_value_text": "none",
+                "fact_value_jsonb": null,
+                "unit": null,
+                "verification_pass_status": "single"
+              }
+            ],
+            "count": 9
+          },
+          "dignity": {
+            "operative_vargas": [
+              "D1",
+              "D9",
+              "D10",
+              "D60"
+            ],
+            "operative_varga_rows": [
+              {
+                "fact_id": "355fe607160e1d76",
+                "fact_category": "graha_dignity_per_varga",
+                "fact_subject": "D1_SAT",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "fact_key": "dignity_state",
+                "fact_value_num": null,
+                "fact_value_text": "exalted",
+                "fact_value_jsonb": {
+                  "sign": "Libra",
+                  "house": 7,
+                  "varga": "D1",
+                  "ayanamsha_id": "lahiri_chitrapaksha",
+                  "uncatalogued": false
+                },
+                "unit": null,
+                "verification_pass_status": "single"
+              },
+              {
+                "fact_id": "b8f518f6d9543e91",
+                "fact_category": "graha_dignity_per_varga",
+                "fact_subject": "D9_SAT",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "fact_key": "dignity_state",
+                "fact_value_num": null,
+                "fact_value_text": "debilitated",
+                "fact_value_jsonb": {
+                  "sign": "Aries",
+                  "house": 10,
+                  "varga": "D9",
+                  "ayanamsha_id": "lahiri_chitrapaksha",
+                  "uncatalogued": false
+                },
+                "unit": null,
+                "verification_pass_status": "single"
+              }
+            ],
+            "all_varga_rows": [],
+            "other_rows": [],
+            "count": 56
+          },
+          "functional_nature": {
+            "rows": [
+              {
+                "fact_id": "5a94fd9e624047ef",
+                "fact_category": "graha_functional_class_per_ascendant",
+                "fact_subject": "SAT",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "fact_key": "bphs_canonical",
+                "fact_value_num": null,
+                "fact_value_text": "temporal_malefic",
+                "fact_value_jsonb": null,
+                "unit": null,
+                "verification_pass_status": "single"
+              }
+            ],
+            "count": 2
+          },
+          "strength": {
+            "rows": [
+              {
+                "fact_id": "1b41b429eab3d750",
+                "fact_category": "graha_composite_state_classification",
+                "fact_subject": "SAT",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "fact_key": "classification",
+                "fact_value_num": null,
+                "fact_value_text": "well_placed",
+                "fact_value_jsonb": null,
+                "unit": null,
+                "verification_pass_status": "single_pass"
+              },
+              {
+                "fact_id": "2b1145fc6855131f",
+                "fact_category": "graha_in_house_composite_strength",
+                "fact_subject": "SAT_IN_HOUSE_7",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "fact_key": "bphs_weighted",
+                "fact_value_num": 0.8339,
+                "fact_value_text": null,
+                "fact_value_jsonb": null,
+                "unit": null,
+                "verification_pass_status": "single"
+              },
+              {
+                "fact_id": "72628c346b89e934",
+                "fact_category": "graha_in_house_composite_strength",
+                "fact_subject": "SAT_IN_HOUSE_7",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "fact_key": "cross_formula_divergence",
+                "fact_value_num": 0,
+                "fact_value_text": null,
+                "fact_value_jsonb": null,
+                "unit": null,
+                "verification_pass_status": "computed_extension"
+              },
+              {
+                "fact_id": "088945e7a0002ae6",
+                "fact_category": "graha_in_house_composite_strength",
+                "fact_subject": "SAT_IN_HOUSE_7",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "fact_key": "simple_multiplication",
+                "fact_value_num": 0.8339,
+                "fact_value_text": null,
+                "fact_value_jsonb": null,
+                "unit": null,
+                "verification_pass_status": "single"
+              }
+            ],
+            "count": 27
+          },
+          "avasthas": {
+            "rows": [
+              {
+                "fact_id": "8713668d1aa76baa",
+                "fact_category": "graha_avastha_baladi",
+                "fact_subject": "SAT",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "fact_key": "baladi_state",
+                "fact_value_num": null,
+                "fact_value_text": "vriddha",
+                "fact_value_jsonb": null,
+                "unit": null,
+                "verification_pass_status": "single"
+              },
+              {
+                "fact_id": "c15ed252196eafd2",
+                "fact_category": "graha_avastha_deepta",
+                "fact_subject": "SAT",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "fact_key": "deepta_state",
+                "fact_value_num": null,
+                "fact_value_text": "deepta",
+                "fact_value_jsonb": null,
+                "unit": null,
+                "verification_pass_status": "single"
+              },
+              {
+                "fact_id": "0005964b87f1d71d",
+                "fact_category": "graha_avastha_jagrad",
+                "fact_subject": "SAT",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "fact_key": "jagrad_state",
+                "fact_value_num": null,
+                "fact_value_text": "jagrad",
+                "fact_value_jsonb": null,
+                "unit": null,
+                "verification_pass_status": "single"
+              }
+            ],
+            "count": 6
+          },
+          "yogas": {
+            "parivartana_exchanges": [
+              {
+                "signal_id": "cdb36112-96cc-4b05-b64f-8716c31e5646",
+                "signal_type_id": "parivartana_per_varga:mutual_exchange",
+                "signal_type_class": "parivartana",
+                "signal_tradition": "parashari",
+                "signal_summary_text": "category=parivartana_per_varga | key=mutual_exchange | value_text=Saturn_in_Capricorn_Saturn_in_Capricorn | ayanamsha_id…[truncated for budget]",
+                "signal_headline_text": "parivartana per varga: mutual exchange = Saturn_in_Capricorn_Saturn_in_Capricorn",
+                "computed_salience": 0.414,
+                "top_k_salience_rank": 17794,
+                "domains_affected_array": [
+                  "relationship"
+                ],
+                "constituent_facts_array": [
+                  "0c6ad28fc57453b4"
+                ],
+                "source_subsystem": "structural",
+                "valence": "neutral",
+                "verification_pass_status": "single",
+                "citation_human": "Parivartana Saturn↔Saturn in D5: Saturn in Capricorn, Saturn in Capricorn (lahiri_chitrapaksha).",
+                "lel_origin": false,
+                "signature_tier": "supporting",
+                "configuration_jsonb": {
+                  "varga": "D5",
+                  "sign_a": "Capricorn",
+                  "sign_b": "Capricorn",
+                  "fact_key": "mutual_exchange",
+                  "planet_a": "Saturn",
+                  "planet_b": "Saturn",
+                  "ayanamsha_id": "lahiri_chitrapaksha",
+                  "uncatalogued": false,
+                  "fact_value_num": null,
+                  "fact_value_text": "Saturn_in_Capricorn_Saturn_in_Capricorn"
+                },
+                "ratification_factor": null,
+                "valence_source": "keyword_heuristic_v1"
+              },
+              {
+                "signal_id": "b3d7527a-3400-4562-9740-aa50796c3b3d",
+                "signal_type_id": "parivartana_per_varga:mutual_exchange",
+                "signal_type_class": "parivartana",
+                "signal_tradition": "parashari",
+                "signal_summary_text": "category=parivartana_per_varga | key=mutual_exchange | value_text=Venus_in_Capricorn_Saturn_in_Libra | ayanamsha_id=lahi…[truncated for budget]",
+                "signal_headline_text": "parivartana per varga: mutual exchange = Venus_in_Capricorn_Saturn_in_Libra",
+                "computed_salience": 0.414,
+                "top_k_salience_rank": 17798,
+                "domains_affected_array": [
+                  "relationship"
+                ],
+                "constituent_facts_array": [
+                  "d26d1f8e102e992d"
+                ],
+                "source_subsystem": "structural",
+                "valence": "neutral",
+                "verification_pass_status": "single",
+                "citation_human": "Parivartana Venus↔Saturn in D33: Venus in Capricorn, Saturn in Libra (lahiri_chitrapaksha).",
+                "lel_origin": false,
+                "signature_tier": "supporting",
+                "configuration_jsonb": {
+                  "varga": "D33",
+                  "sign_a": "Capricorn",
+                  "sign_b": "Libra",
+                  "fact_key": "mutual_exchange",
+                  "planet_a": "Venus",
+                  "planet_b": "Saturn",
+                  "ayanamsha_id": "lahiri_chitrapaksha",
+                  "uncatalogued": false,
+                  "fact_value_num": null,
+                  "fact_value_text": "Venus_in_Capricorn_Saturn_in_Libra"
+                },
+                "ratification_factor": null,
+                "valence_source": "keyword_heuristic_v1"
+              },
+              {
+                "signal_id": "7718ae30-8224-41ed-aa48-09023298bb07",
+                "signal_type_id": "parivartana_per_varga:mutual_exchange",
+                "signal_type_class": "parivartana",
+                "signal_tradition": "parashari",
+                "signal_summary_text": "category=parivartana_per_varga | key=mutual_exchange | value_text=Sun_in_Capricorn_Saturn_in_Leo | ayanamsha_id=lahiri_c…[truncated for budget]",
+                "signal_headline_text": "parivartana per varga: mutual exchange = Sun_in_Capricorn_Saturn_in_Leo",
+                "computed_salience": 0.414,
+                "top_k_salience_rank": 17802,
+                "domains_affected_array": [
+                  "relationship"
+                ],
+                "constituent_facts_array": [
+                  "58e706c4d2cdcab7"
+                ],
+                "source_subsystem": "structural",
+                "valence": "neutral",
+                "verification_pass_status": "single",
+                "citation_human": "Parivartana Sun↔Saturn in D54: Sun in Capricorn, Saturn in Leo (lahiri_chitrapaksha).",
+                "lel_origin": false,
+                "signature_tier": "supporting",
+                "configuration_jsonb": {
+                  "varga": "D54",
+                  "sign_a": "Capricorn",
+                  "sign_b": "Leo",
+                  "fact_key": "mutual_exchange",
+                  "planet_a": "Sun",
+                  "planet_b": "Saturn",
+                  "ayanamsha_id": "lahiri_chitrapaksha",
+                  "uncatalogued": false,
+                  "fact_value_num": null,
+                  "fact_value_text": "Sun_in_Capricorn_Saturn_in_Leo"
+                },
+                "ratification_factor": null,
+                "valence_source": "keyword_heuristic_v1"
+              }
+            ],
+            "parivartana_count": 8,
+            "catalog_yoga_matches": [],
+            "catalog_dosha_matches": [],
+            "count": 8,
+            "note": "L1 yoga_fires: 0 confirmed-firing row(s) for this graha (0 is EXPECTED — yoga_fires/dosha_fires are 0 rows for both cano…[truncated for budget]"
+          },
+          "dashas": {
+            "system": "vimshottari",
+            "level": "maha",
+            "rows": [
+              {
+                "dasha_row_id": "555899cd-3292-4e65-94ef-82ead69c52c7",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "system_id": "vimshottari",
+                "level_n": 1,
+                "parent_row_id": null,
+                "lord_graha": "Saturn",
+                "lord_sign": "Libra",
+                "start_date": "1991-08-18",
+                "end_date": "2010-08-18",
+                "sandhi_flag": false,
+                "lord_natal_house_d1": 7,
+                "lord_natal_sign": "Libra",
+                "lord_natal_nakshatra": "Vishakha",
+                "lord_natal_dignity_d1": "exalted",
+                "lord_natal_shadbala_total": 7.83,
+                "verification_pass_status": "two_pass_verified"
+              }
+            ],
+            "count": 1,
+            "note": "Mahadasha-level (level=1) periods where this graha is lord, across a wide 1900-2100 window (not the tool's ±5y default) …[truncated for budget]"
+          },
+          "cgm_neighborhood": {
+            "nodes": [
+              {
+                "node_id": "4234178b-4538-41ab-b9e8-4654419d6714",
+                "node_type": "bhava",
+                "node_subject": "1",
+                "node_label_human": "House 1",
+                "msr_signal_id": null,
+                "pagerank_score": 0.04686537,
+                "betweenness_centrality": 0,
+                "hub_flag": true,
+                "hub_score": null,
+                "primary_domain": null,
+                "strength_score": 1.097928,
+                "dignity_state": null,
+                "source_subsystem": null,
+                "cluster_membership_array": null,
+                "present_in_traditions_array": [
+                  "parashari"
+                ]
+              },
+              {
+                "node_id": "d9227894-6d36-4335-bd01-accab7876b75",
+                "node_type": "bhava",
+                "node_subject": "11",
+                "node_label_human": "House 11",
+                "msr_signal_id": null,
+                "pagerank_score": 0.04656915,
+                "betweenness_centrality": 0,
+                "hub_flag": false,
+                "hub_score": null,
+                "primary_domain": null,
+                "strength_score": 1.36148,
+                "dignity_state": null,
+                "source_subsystem": null,
+                "cluster_membership_array": null,
+                "present_in_traditions_array": [
+                  "parashari"
+                ]
+              },
+              {
+                "node_id": "67264e69-77f8-4109-9c50-6f83148ada58",
+                "node_type": "bhava",
+                "node_subject": "4",
+                "node_label_human": "House 4",
+                "msr_signal_id": null,
+                "pagerank_score": 0.0408089,
+                "betweenness_centrality": 0,
+                "hub_flag": false,
+                "hub_score": null,
+                "primary_domain": null,
+                "strength_score": 1.013978,
+                "dignity_state": null,
+                "source_subsystem": null,
+                "cluster_membership_array": null,
+                "present_in_traditions_array": [
+                  "parashari"
+                ]
+              }
+            ],
+            "edges": [
+              {
+                "edge_id": "a85d0a97-fd14-4377-899f-207d967b4efd",
+                "from_node_id": "329b624b-b861-4051-a560-31b43854f983",
+                "to_node_id": "5b1c7fcf-0513-4357-9922-bfb21949cf34",
+                "edge_type": "occupancy",
+                "direction": "directed",
+                "computed_strength": 0.74999990625,
+                "valence": "neutral",
+                "relationship_basis": "graha_bhava_occupancy",
+                "affected_domains": [],
+                "is_cross_subsystem": false,
+                "subsystem_from": "parashari",
+                "subsystem_to": "parashari",
+                "underlying_msr_signal_ids_array": [],
+                "cancelled_flag": false,
+                "present_in_traditions_array": [
+                  "parashari"
+                ],
+                "cross_ayanamsha_edge_stability_score": null
+              },
+              {
+                "edge_id": "f7cfd819-a587-48f0-9dea-f37d8650a5ac",
+                "from_node_id": "88b60248-9d83-4973-9d20-42617bcc5173",
+                "to_node_id": "d9227894-6d36-4335-bd01-accab7876b75",
+                "edge_type": "occupancy",
+                "direction": "directed",
+                "computed_strength": 0.7304688125,
+                "valence": "neutral",
+                "relationship_basis": "graha_bhava_occupancy",
+                "affected_domains": [],
+                "is_cross_subsystem": false,
+                "subsystem_from": "parashari",
+                "subsystem_to": "parashari",
+                "underlying_msr_signal_ids_array": [],
+                "cancelled_flag": false,
+                "present_in_traditions_array": [
+                  "parashari"
+                ],
+                "cross_ayanamsha_edge_stability_score": null
+              },
+              {
+                "edge_id": "20cfe29b-c1f7-4486-b078-26a7523ef5f7",
+                "from_node_id": "077522fd-e4e0-456b-a3ab-3afaefd64bfa",
+                "to_node_id": "072f12b3-6a6e-4600-b8ce-8c497461f375",
+                "edge_type": "occupancy",
+                "direction": "directed",
+                "computed_strength": 0.7304688125,
+                "valence": "neutral",
+                "relationship_basis": "graha_bhava_occupancy",
+                "affected_domains": [],
+                "is_cross_subsystem": false,
+                "subsystem_from": "parashari",
+                "subsystem_to": "parashari",
+                "underlying_msr_signal_ids_array": [],
+                "cancelled_flag": false,
+                "present_in_traditions_array": [
+                  "parashari"
+                ],
+                "cross_ayanamsha_edge_stability_score": null
+              }
+            ],
+            "node_count": 15,
+            "edge_count": 156,
+            "about_resolution": [
+              "Saturn is placed in house 7 (Libra) in D1."
+            ]
+          },
+          "completeness": {
+            "position": "✓",
+            "dignity": "✓",
+            "functional_nature": "✓",
+            "strength": "✓",
+            "avasthas": "✓",
+            "yogas": "✓",
+            "dashas": "✓",
+            "cgm_neighborhood": "✓"
+          },
+          "notes": [],
+          "provenance": {
+            "synthesis_of": [],
+            "design_ref": "RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md §28.2"
+          }
+        },
+        "trim_report": [
+          {
+            "path": "(trim_report)",
+            "original_count": 13,
+            "kept_count": 1,
+            "reason": "full trim_report omitted to fit budget",
+            "recover_via": {
+              "instrument": "response_format:legacy",
+              "hint": "full untrimmed response"
+            }
+          }
+        ],
+        "response_format": "v3",
+        "chart_header": {
+          "chart_id_short": "482012f1",
+          "name": "Abhisek Mohanty",
+          "lagna_sign": "Aries",
+          "lagna_deg": 12.431149598843,
+          "moon_sign": "Aquarius",
+          "sun_sign": "Capricorn",
+          "ayanamsha": "lahiri_chitrapaksha",
+          "current_maha_antar": "Mercury MD / Saturn AD"
+        },
+        "epistemic": {
+          "grade": "structural_prior",
+          "verified_fraction": null,
+          "note": "No epistemic signal computed for this response."
+        },
+        "timing": {
+          "as_of_date": "2026-08-15",
+          "computed_at": "2026-08-15T11:09:26.258Z"
+        },
+        "coverage": null,
+        "prediction": null,
+        "build_id": null,
+        "ledger_version": null,
+        "register": [
+          {
+            "token": "parivartana",
+            "label": "Parivartana (mutual sign-exchange) between two grahas’ dispositors.",
+            "kind": "signal_class"
+          },
+          {
+            "token": "yoga",
+            "label": "Yoga signal — a named benefic/combinatorial planetary combination.",
+            "kind": "signal_class"
+          },
+          {
+            "token": "dosha",
+            "label": "Dosha signal — a named affliction/blemish planetary combination.",
+            "kind": "signal_class"
+          },
+          {
+            "token": "marsys://tool/L1/get_positions",
+            "label": "L1 Ganita tool — deterministic chart-fact lookup.",
+            "kind": "drill_uri"
+          },
+          {
+            "token": "marsys://tool/L1/get_dignity",
+            "label": "L1 Ganita tool — deterministic chart-fact lookup.",
+            "kind": "drill_uri"
+          },
+          {
+            "token": "marsys://tool/L1/get_strength",
+            "label": "L1 Ganita tool — deterministic chart-fact lookup.",
+            "kind": "drill_uri"
+          },
+          {
+            "token": "marsys://tool/L1/get_avasthas",
+            "label": "L1 Ganita tool — deterministic chart-fact lookup.",
+            "kind": "drill_uri"
+          },
+          {
+            "token": "marsys://tool/L1/get_yoga_dosha",
+            "label": "L1 Ganita tool — deterministic chart-fact lookup.",
+            "kind": "drill_uri"
+          },
+          {
+            "token": "marsys://tool/L1/get_dashas",
+            "label": "L1 Ganita tool — deterministic chart-fact lookup.",
+            "kind": "drill_uri"
+          },
+          {
+            "token": "marsys://tool/L2/query_signals",
+            "label": "L2 Bodha tool — interpreted signal / synthesis surface.",
+            "kind": "drill_uri"
+          },
+          {
+            "token": "marsys://tool/L2/traverse_chart_graph",
+            "label": "L2 Bodha tool — interpreted signal / synthesis surface.",
+            "kind": "drill_uri"
+          },
+          {
+            "token": "structural_prior",
+            "label": "Structural prior — a structural (uncalibrated) estimate; no outcome data yet backs the number.",
+            "kind": "epistemic_grade"
+          },
+          {
+            "token": "dasha_of_promise",
+            "label": "Next step: locate which dasha period carries/activates the promise.",
+            "kind": "pointer_type"
+          },
+          {
+            "token": "dispositor_chain",
+            "label": "Next step: follow the lord-of-the-lord (dispositor) indirection one level deeper.",
+            "kind": "pointer_type"
+          },
+          {
+            "token": "karaka_condition",
+            "label": "Next step: examine the significator (karaka) graha’s own condition directly.",
+            "kind": "pointer_type"
+          }
+        ],
+        "reading_contract": "This response is graded structural_prior: Structural prior — a structural (uncalibrated) estimate; no outcome data yet backs the number. Its reading is grounded in 16 resolvable L1 fact reference(s) — you may follow each fact_id down to its deterministic source. Internal tokens in this envelope (signal_class, drill_uri, epistemic_grade, pointer_type) each have a plain-language label in the `register` block — read the label adjacent to any token you do not recognise rather than guessing.",
+        "signal_reader_text": {
+          "parivartana": "A parivartana signal reports a mutual sign-exchange between two grahas’ dispositors, linking their houses. Read it as a …[truncated for budget]",
+          "yoga": "A yoga signal names a benefic/combinatorial planetary combination. IMPORTANT: an MSR yoga-class row is a catalog-level m…[truncated for budget]",
+          "dosha": "A dosha signal names an affliction/blemish combination. As with yoga, an MSR dosha row is catalog-level: check for cance…[truncated for budget]"
+        },
+        "budget_kb_applied": 12
+      }
+    }
+  }
+}

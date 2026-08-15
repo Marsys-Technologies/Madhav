@@ -1,0 +1,497 @@
+{
+  "tool": "bodha_mechanisms_get",
+  "scenario": "zero_primary",
+  "args": {
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "limit": 10
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"rows\":[{\"mechanism_id\":\"df4fc8c2-7f66-44ff-a91d-bf2b9aaf7b4f\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"House-lordship cycle: 12 → 10 → 8 → 12\",\"mechanism_class\":\"house_lordship_cycle\",\"valence\":\"neutral\",\"member_node_ids_array\":[\"23eb42e0-f54e-417b-8cd6-3e3782d1c68c\",\"a4f85ed2-cfcb-47a1-ae6e-e42f16afd218\",\"dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc\"],\"member_edge_ids_array\":[\"5e5fd840-c690-4542-b479-acd592be36eb\",\"6b41934d-98b6-47f5-8058-fcf0774d55be\",\"f18920cc-3c4e-49a4-9c62-bbbf9bedbbe5\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.704948,\"edge_strength_min\":0.679688,\"edge_strength_max\":0.734375,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"131068\",\"134243\",\"131060\",\"134247\",\"131036\",\"134239\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.60511923,\"member_count\":3,\"pagerank_avg\":0.03659552,\"betweenness_avg\":0,\"eigenvector_avg\":0.12746969},\"source_motif_id\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_yantra_mechanism/house_lordship_cycle/12_10_8\",\"citation_human\":\"Closed house-lordship circuit (CR-24's named specimen class): 12 → 10 → 8 → 12\",\"is_chain_circuit\":true},{\"mechanism_id\":\"19c86c47-f465-4cb1-88bf-4f94e3199ed8\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Dispositor cycle: Jupiter → Saturn → Mars → Jupiter\",\"mechanism_class\":\"dispositor_cycle\",\"valence\":\"mixed\",\"member_node_ids_array\":[\"a70c57ef-5644-4cf0-945e-af3b579c848b\",\"65eccbb9-5e03-4492-a02f-aec36a7f6f84\",\"c755a489-6a4a-4c0a-b34e-851c2f8fa248\"],\"member_edge_ids_array\":[\"fa1aa1bd-508c-41a5-8684-0c87104ba3ac\",\"2f523f75-35d5-4de4-8eaa-46f6fdaaa179\",\"b6aa7714-15a0-48fb-857a-27b0c337330e\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.604241,\"edge_strength_min\":0.582589,\"edge_strength_max\":0.629464,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"131068\",\"134243\",\"131060\",\"134247\",\"131036\",\"134239\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.92762515,\"member_count\":3,\"pagerank_avg\":0.0253411,\"betweenness_avg\":0.00531401,\"eigenvector_avg\":0.30437074},\"source_motif_id\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_yantra_mechanism/dispositor_cycle/Jupiter_Saturn_Mars\",\"citation_human\":\"Closed sign-dispositor cycle (CR-24 circuit class): Jupiter → Saturn → Mars → Jupiter\",\"is_chain_circuit\":true},{\"mechanism_id\":\"206e40fd-1860-458d-b929-5e5b5c181358\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Parivartana Chain (length 3): Mars → Jupiter → Saturn → Mars (cycle)\",\"mechanism_class\":\"parivartana_chain\",\"valence\":\"mixed\",\"member_node_ids_array\":[\"c755a489-6a4a-4c0a-b34e-851c2f8fa248\",\"a70c57ef-5644-4cf0-945e-af3b579c848b\",\"65eccbb9-5e03-4492-a02f-aec36a7f6f84\"],\"member_edge_ids_array\":[\"b6aa7714-15a0-48fb-857a-27b0c337330e\",\"fa1aa1bd-508c-41a5-8684-0c87104ba3ac\",\"2f523f75-35d5-4de4-8eaa-46f6fdaaa179\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.604241,\"edge_strength_min\":0.582589,\"edge_strength_max\":0.629464,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"131036\",\"134239\",\"131068\",\"134243\",\"131060\",\"134247\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.92762515,\"member_count\":3,\"pagerank_avg\":0.0253411,\"betweenness_avg\":0.00531401,\"eigenvector_avg\":0.30437074},\"source_motif_id\":\"f0e6f2de-6ef7-4ccf-a9f7-33a2d2ffb319\",\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_cgm_motifs/f0e6f2de-6ef7-4ccf-a9f7-33a2d2ffb319\",\"citation_human\":\"Mechanism promoted from CGM motif: Parivartana Chain (length 3): Mars → Jupiter → Saturn → Mars (cycle)\",\"is_chain_circuit\":false},{\"mechanism_id\":\"e6ab294d-19ee-4bf7-82b0-0a1addc77ef3\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Mutual Aspect: Sun ↔ Moon\",\"mechanism_class\":\"mutual_aspect\",\"valence\":\"mixed\",\"member_node_ids_array\":[\"18f4d8c4-060b-427e-967e-49aa88f46184\",\"41130dbe-3c5f-42c1-a784-b828151f6e07\"],\"member_edge_ids_array\":[\"c339f02b-d00f-4e46-8ac9-42755dc5ca82\",\"ec7f35bb-24a9-439a-96e1-da7eb21798cc\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.444727,\"edge_strength_min\":0.443571,\"edge_strength_max\":0.445882,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"131019\",\"134237\",\"131023\",\"134235\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.85236113,\"member_count\":2,\"pagerank_avg\":0.02370121,\"betweenness_avg\":0.00048309,\"eigenvector_avg\":0.27529043},\"source_motif_id\":\"7c210d85-87d6-4b3e-8e79-660ca35a3be0\",\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_cgm_motifs/7c210d85-87d6-4b3e-8e79-660ca35a3be0\",\"citation_human\":\"Mechanism promoted from CGM motif: Mutual Aspect: Sun ↔ Moon\",\"is_chain_circuit\":false},{\"mechanism_id\":\"5a603363-96ad-454f-802f-cb28aa072f7d\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Mutual-Aspect Triangle: Sun, Moon, Saturn\",\"mechanism_class\":\"mutual_aspect_triangle\",\"valence\":\"mixed\",\"member_node_ids_array\":[\"18f4d8c4-060b-427e-967e-49aa88f46184\",\"41130dbe-3c5f-42c1-a784-b828151f6e07\",\"65eccbb9-5e03-4492-a02f-aec36a7f6f84\"],\"member_edge_ids_array\":[\"c339f02b-d00f-4e46-8ac9-42755dc5ca82\",\"ec7f35bb-24a9-439a-96e1-da7eb21798cc\",\"5c7d819a-cd72-4cfb-a215-8a281ad004df\",\"d5ceaccb-08e5-4e60-a530-af76f9695d48\",\"d096fd6d-274a-46d0-9337-a8d7d0a4446b\",\"a7ccf945-99fd-4892-b59e-f62ce1d59315\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.441261,\"edge_strength_min\":0.43433,\"edge_strength_max\":0.445882,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"131019\",\"134237\",\"131023\",\"134235\",\"131060\",\"134247\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.87526379,\"member_count\":3,\"pagerank_avg\":0.02420252,\"betweenness_avg\":0.00177134,\"eigenvector_avg\":0.28385346},\"source_motif_id\":\"dea27007-359e-4489-b2f4-1475f4a0e65d\",\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_cgm_motifs/dea27007-359e-4489-b2f4-1475f4a0e65d\",\"citation_human\":\"Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Sun, Moon, Saturn\",\"is_chain_circuit\":false},{\"mechanism_id\":\"95502445-058a-4418-b55e-3ed6eec7bc42\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Mutual Aspect: Saturn ↔ Moon\",\"mechanism_class\":\"mutual_aspect\",\"valence\":\"mixed\",\"member_node_ids_array\":[\"65eccbb9-5e03-4492-a02f-aec36a7f6f84\",\"41130dbe-3c5f-42c1-a784-b828151f6e07\"],\"member_edge_ids_array\":[\"d096fd6d-274a-46d0-9337-a8d7d0a4446b\",\"a7ccf945-99fd-4892-b59e-f62ce1d59315\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.440106,\"edge_strength_min\":0.43433,\"edge_strength_max\":0.445882,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"131019\",\"134237\",\"131060\",\"134247\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.88356541,\"member_count\":2,\"pagerank_avg\":0.02448191,\"betweenness_avg\":0.002657,\"eigenvector_avg\":0.28668761},\"source_motif_id\":\"5513734a-6f8f-448f-ba8a-d36590d21b2e\",\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_cgm_motifs/5513734a-6f8f-448f-ba8a-d36590d21b2e\",\"citation_human\":\"Mechanism promoted from CGM motif: Mutual Aspect: Saturn ↔ Moon\",\"is_chain_circuit\":false},{\"mechanism_id\":\"02733891-38ed-41ca-aa29-630a2160fd9c\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Mutual Aspect: Sun ↔ Saturn\",\"mechanism_class\":\"mutual_aspect\",\"valence\":\"malefic\",\"member_node_ids_array\":[\"18f4d8c4-060b-427e-967e-49aa88f46184\",\"65eccbb9-5e03-4492-a02f-aec36a7f6f84\"],\"member_edge_ids_array\":[\"5c7d819a-cd72-4cfb-a215-8a281ad004df\",\"d5ceaccb-08e5-4e60-a530-af76f9695d48\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.438951,\"edge_strength_min\":0.43433,\"edge_strength_max\":0.443571,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"131060\",\"134247\",\"131023\",\"134235\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.88986484,\"member_count\":2,\"pagerank_avg\":0.02442444,\"betweenness_avg\":0.00217391,\"eigenvector_avg\":0.28958235},\"source_motif_id\":\"d4046755-b3ca-4c32-97e0-fc8853be5666\",\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_cgm_motifs/d4046755-b3ca-4c32-97e0-fc8853be5666\",\"citation_human\":\"Mechanism promoted from CGM motif: Mutual Aspect: Sun ↔ Saturn\",\"is_chain_circuit\":false},{\"mechanism_id\":\"157ea7bf-8b3e-4e29-bf28-3632afc2a5a0\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Mutual-Aspect Triangle: Sun, Moon, Mars\",\"mechanism_class\":\"mutual_aspect_triangle\",\"valence\":\"mixed\",\"member_node_ids_array\":[\"18f4d8c4-060b-427e-967e-49aa88f46184\",\"41130dbe-3c5f-42c1-a784-b828151f6e07\",\"c755a489-6a4a-4c0a-b34e-851c2f8fa248\"],\"member_edge_ids_array\":[\"c339f02b-d00f-4e46-8ac9-42755dc5ca82\",\"ec7f35bb-24a9-439a-96e1-da7eb21798cc\",\"d3f61a40-d9a8-4858-91af-83c9206ad905\",\"e390ddf8-afac-4f07-b5d3-763e2633c12b\",\"06e7fd6f-a541-41bd-9b79-02961d8044b2\",\"545b8bfd-29f5-4bd5-97b6-9ab3525d01d8\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.434638,\"edge_strength_min\":0.414462,\"edge_strength_max\":0.445882,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"131019\",\"134237\",\"131023\",\"134235\",\"131036\",\"134239\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.8687704,\"member_count\":3,\"pagerank_avg\":0.02416061,\"betweenness_avg\":0.00128824,\"eigenvector_avg\":0.28311026},\"source_motif_id\":\"0ee030ff-87c7-4cff-a285-6b5481e185b8\",\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_cgm_motifs/0ee030ff-87c7-4cff-a285-6b5481e185b8\",\"citation_human\":\"Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Sun, Moon, Mars\",\"is_chain_circuit\":false},{\"mechanism_id\":\"bda28a6b-da22-4183-a308-42680b37259b\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Mutual-Aspect Triangle: Sun, Moon, Venus\",\"mechanism_class\":\"mutual_aspect_triangle\",\"valence\":\"mixed\",\"member_node_ids_array\":[\"18f4d8c4-060b-427e-967e-49aa88f46184\",\"41130dbe-3c5f-42c1-a784-b828151f6e07\",\"4e5ce18d-317c-45ad-8eb5-5837853634de\"],\"member_edge_ids_array\":[\"c339f02b-d00f-4e46-8ac9-42755dc5ca82\",\"ec7f35bb-24a9-439a-96e1-da7eb21798cc\",\"14d4e413-4d35-47d3-a460-7d558fdd9885\",\"0636e153-a4c3-4486-99ca-cac75dc2d9b1\",\"858a21d1-2add-4d22-9466-ad9d80e2dd0c\",\"a5dac61e-b67f-4713-a643-1b27822130b0\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.43356,\"edge_strength_min\":0.411228,\"edge_strength_max\":0.445882,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"131019\",\"134237\",\"131023\",\"134235\",\"131032\",\"134245\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.85755033,\"member_count\":3,\"pagerank_avg\":0.02407892,\"betweenness_avg\":0.00064412,\"eigenvector_avg\":0.28138212},\"source_motif_id\":\"7a4bcf86-4405-466f-a69a-92e167d2d53b\",\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_cgm_motifs/7a4bcf86-4405-466f-a69a-92e167d2d53b\",\"citation_human\":\"Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Sun, Moon, Venus\",\"is_chain_circuit\":false},{\"mechanism_id\":\"35514e46-aade-4c3a-9135-0e9401aa0bd5\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":\"static_natal\",\"mechanism_name\":\"Mutual-Aspect Triangle: Moon, Saturn, Mars\",\"mechanism_class\":\"mutual_aspect_triangle\",\"valence\":\"mixed\",\"member_node_ids_array\":[\"41130dbe-3c5f-42c1-a784-b828151f6e07\",\"65eccbb9-5e03-4492-a02f-aec36a7f6f84\",\"c755a489-6a4a-4c0a-b34e-851c2f8fa248\"],\"member_edge_ids_array\":[\"d096fd6d-274a-46d0-9337-a8d7d0a4446b\",\"a7ccf945-99fd-4892-b59e-f62ce1d59315\",\"06e7fd6f-a541-41bd-9b79-02961d8044b2\",\"545b8bfd-29f5-4bd5-97b6-9ab3525d01d8\",\"c99c1380-fe29-43cf-ab6f-1c5b963784c1\",\"610d914b-d6c5-4eac-95fa-9770a41f0587\"],\"domains_affected_array\":null,\"edge_strength_avg\":0.431558,\"edge_strength_min\":0.414462,\"edge_strength_max\":0.445882,\"edge_strength_formula_version\":\"edge_strength_v1\",\"constituent_ga_vichara_ids_array\":[\"131019\",\"134237\",\"131060\",\"134247\",\"131036\",\"134239\"],\"centrality_summary_jsonb\":{\"harmonic_avg\":0.88957326,\"member_count\":3,\"pagerank_avg\":0.02468108,\"betweenness_avg\":0.00273752,\"eigenvector_avg\":0.29070838},\"source_motif_id\":\"d037b319-f3cd-4fdf-9c6c-50fc5d6d9d6d\",\"verification_pass_status\":\"single\",\"citation_ref\":\"bo_cgm_motifs/d037b319-f3cd-4fdf-9c6c-50fc5d6d9d6d\",\"citation_human\":\"Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Moon, Saturn, Mars\",\"is_chain_circuit\":false}],\"count\":10,\"total_matching\":126,\"more_available\":true,\"chain_circuit_count\":2,\"facets\":{\"by_mechanism_class\":{\"mutual_aspect\":36,\"graha_bhava_affliction\":3,\"parivartana_chain\":1,\"mutual_aspect_triangle\":84,\"house_lordship_cycle\":1,\"dispositor_cycle\":1},\"by_valence\":{\"mixed\":77,\"neutral\":9,\"malefic\":33,\"benefic\":7},\"chain_circuit_classes\":[\"convergent_dispositor_chain\",\"dispositor_cycle\",\"house_lordship_cycle\"]},\"empty_reason\":null,\"filters\":{\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"mechanism_class\":null,\"valence\":null,\"chain_circuit_only\":false,\"limit\":10,\"offset\":0},\"provenance\":{\"tables\":[\"bodha_mechanisms\"],\"source\":\"L2 Bodha mechanisms (bo_yantra_mechanism / migration 445); served chart-scoped, chain/circuit family first, budgeted. Edge-strength provenance: DR-7 edge_strength_v1.\"}},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+          "rows": [
+            {
+              "mechanism_id": "df4fc8c2-7f66-44ff-a91d-bf2b9aaf7b4f",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "House-lordship cycle: 12 → 10 → 8 → 12",
+              "mechanism_class": "house_lordship_cycle",
+              "valence": "neutral",
+              "member_node_ids_array": [
+                "23eb42e0-f54e-417b-8cd6-3e3782d1c68c",
+                "a4f85ed2-cfcb-47a1-ae6e-e42f16afd218",
+                "dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc"
+              ],
+              "member_edge_ids_array": [
+                "5e5fd840-c690-4542-b479-acd592be36eb",
+                "6b41934d-98b6-47f5-8058-fcf0774d55be",
+                "f18920cc-3c4e-49a4-9c62-bbbf9bedbbe5"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.704948,
+              "edge_strength_min": 0.679688,
+              "edge_strength_max": 0.734375,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "131068",
+                "134243",
+                "131060",
+                "134247",
+                "131036",
+                "134239"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.60511923,
+                "member_count": 3,
+                "pagerank_avg": 0.03659552,
+                "betweenness_avg": 0,
+                "eigenvector_avg": 0.12746969
+              },
+              "source_motif_id": null,
+              "verification_pass_status": "single",
+              "citation_ref": "bo_yantra_mechanism/house_lordship_cycle/12_10_8",
+              "citation_human": "Closed house-lordship circuit (CR-24's named specimen class): 12 → 10 → 8 → 12",
+              "is_chain_circuit": true
+            },
+            {
+              "mechanism_id": "19c86c47-f465-4cb1-88bf-4f94e3199ed8",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Dispositor cycle: Jupiter → Saturn → Mars → Jupiter",
+              "mechanism_class": "dispositor_cycle",
+              "valence": "mixed",
+              "member_node_ids_array": [
+                "a70c57ef-5644-4cf0-945e-af3b579c848b",
+                "65eccbb9-5e03-4492-a02f-aec36a7f6f84",
+                "c755a489-6a4a-4c0a-b34e-851c2f8fa248"
+              ],
+              "member_edge_ids_array": [
+                "fa1aa1bd-508c-41a5-8684-0c87104ba3ac",
+                "2f523f75-35d5-4de4-8eaa-46f6fdaaa179",
+                "b6aa7714-15a0-48fb-857a-27b0c337330e"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.604241,
+              "edge_strength_min": 0.582589,
+              "edge_strength_max": 0.629464,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "131068",
+                "134243",
+                "131060",
+                "134247",
+                "131036",
+                "134239"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.92762515,
+                "member_count": 3,
+                "pagerank_avg": 0.0253411,
+                "betweenness_avg": 0.00531401,
+                "eigenvector_avg": 0.30437074
+              },
+              "source_motif_id": null,
+              "verification_pass_status": "single",
+              "citation_ref": "bo_yantra_mechanism/dispositor_cycle/Jupiter_Saturn_Mars",
+              "citation_human": "Closed sign-dispositor cycle (CR-24 circuit class): Jupiter → Saturn → Mars → Jupiter",
+              "is_chain_circuit": true
+            },
+            {
+              "mechanism_id": "206e40fd-1860-458d-b929-5e5b5c181358",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Parivartana Chain (length 3): Mars → Jupiter → Saturn → Mars (cycle)",
+              "mechanism_class": "parivartana_chain",
+              "valence": "mixed",
+              "member_node_ids_array": [
+                "c755a489-6a4a-4c0a-b34e-851c2f8fa248",
+                "a70c57ef-5644-4cf0-945e-af3b579c848b",
+                "65eccbb9-5e03-4492-a02f-aec36a7f6f84"
+              ],
+              "member_edge_ids_array": [
+                "b6aa7714-15a0-48fb-857a-27b0c337330e",
+                "fa1aa1bd-508c-41a5-8684-0c87104ba3ac",
+                "2f523f75-35d5-4de4-8eaa-46f6fdaaa179"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.604241,
+              "edge_strength_min": 0.582589,
+              "edge_strength_max": 0.629464,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "131036",
+                "134239",
+                "131068",
+                "134243",
+                "131060",
+                "134247"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.92762515,
+                "member_count": 3,
+                "pagerank_avg": 0.0253411,
+                "betweenness_avg": 0.00531401,
+                "eigenvector_avg": 0.30437074
+              },
+              "source_motif_id": "f0e6f2de-6ef7-4ccf-a9f7-33a2d2ffb319",
+              "verification_pass_status": "single",
+              "citation_ref": "bo_cgm_motifs/f0e6f2de-6ef7-4ccf-a9f7-33a2d2ffb319",
+              "citation_human": "Mechanism promoted from CGM motif: Parivartana Chain (length 3): Mars → Jupiter → Saturn → Mars (cycle)",
+              "is_chain_circuit": false
+            },
+            {
+              "mechanism_id": "e6ab294d-19ee-4bf7-82b0-0a1addc77ef3",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Mutual Aspect: Sun ↔ Moon",
+              "mechanism_class": "mutual_aspect",
+              "valence": "mixed",
+              "member_node_ids_array": [
+                "18f4d8c4-060b-427e-967e-49aa88f46184",
+                "41130dbe-3c5f-42c1-a784-b828151f6e07"
+              ],
+              "member_edge_ids_array": [
+                "c339f02b-d00f-4e46-8ac9-42755dc5ca82",
+                "ec7f35bb-24a9-439a-96e1-da7eb21798cc"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.444727,
+              "edge_strength_min": 0.443571,
+              "edge_strength_max": 0.445882,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "131019",
+                "134237",
+                "131023",
+                "134235"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.85236113,
+                "member_count": 2,
+                "pagerank_avg": 0.02370121,
+                "betweenness_avg": 0.00048309,
+                "eigenvector_avg": 0.27529043
+              },
+              "source_motif_id": "7c210d85-87d6-4b3e-8e79-660ca35a3be0",
+              "verification_pass_status": "single",
+              "citation_ref": "bo_cgm_motifs/7c210d85-87d6-4b3e-8e79-660ca35a3be0",
+              "citation_human": "Mechanism promoted from CGM motif: Mutual Aspect: Sun ↔ Moon",
+              "is_chain_circuit": false
+            },
+            {
+              "mechanism_id": "5a603363-96ad-454f-802f-cb28aa072f7d",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Mutual-Aspect Triangle: Sun, Moon, Saturn",
+              "mechanism_class": "mutual_aspect_triangle",
+              "valence": "mixed",
+              "member_node_ids_array": [
+                "18f4d8c4-060b-427e-967e-49aa88f46184",
+                "41130dbe-3c5f-42c1-a784-b828151f6e07",
+                "65eccbb9-5e03-4492-a02f-aec36a7f6f84"
+              ],
+              "member_edge_ids_array": [
+                "c339f02b-d00f-4e46-8ac9-42755dc5ca82",
+                "ec7f35bb-24a9-439a-96e1-da7eb21798cc",
+                "5c7d819a-cd72-4cfb-a215-8a281ad004df",
+                "d5ceaccb-08e5-4e60-a530-af76f9695d48",
+                "d096fd6d-274a-46d0-9337-a8d7d0a4446b",
+                "a7ccf945-99fd-4892-b59e-f62ce1d59315"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.441261,
+              "edge_strength_min": 0.43433,
+              "edge_strength_max": 0.445882,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "131019",
+                "134237",
+                "131023",
+                "134235",
+                "131060",
+                "134247"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.87526379,
+                "member_count": 3,
+                "pagerank_avg": 0.02420252,
+                "betweenness_avg": 0.00177134,
+                "eigenvector_avg": 0.28385346
+              },
+              "source_motif_id": "dea27007-359e-4489-b2f4-1475f4a0e65d",
+              "verification_pass_status": "single",
+              "citation_ref": "bo_cgm_motifs/dea27007-359e-4489-b2f4-1475f4a0e65d",
+              "citation_human": "Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Sun, Moon, Saturn",
+              "is_chain_circuit": false
+            },
+            {
+              "mechanism_id": "95502445-058a-4418-b55e-3ed6eec7bc42",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Mutual Aspect: Saturn ↔ Moon",
+              "mechanism_class": "mutual_aspect",
+              "valence": "mixed",
+              "member_node_ids_array": [
+                "65eccbb9-5e03-4492-a02f-aec36a7f6f84",
+                "41130dbe-3c5f-42c1-a784-b828151f6e07"
+              ],
+              "member_edge_ids_array": [
+                "d096fd6d-274a-46d0-9337-a8d7d0a4446b",
+                "a7ccf945-99fd-4892-b59e-f62ce1d59315"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.440106,
+              "edge_strength_min": 0.43433,
+              "edge_strength_max": 0.445882,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "131019",
+                "134237",
+                "131060",
+                "134247"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.88356541,
+                "member_count": 2,
+                "pagerank_avg": 0.02448191,
+                "betweenness_avg": 0.002657,
+                "eigenvector_avg": 0.28668761
+              },
+              "source_motif_id": "5513734a-6f8f-448f-ba8a-d36590d21b2e",
+              "verification_pass_status": "single",
+              "citation_ref": "bo_cgm_motifs/5513734a-6f8f-448f-ba8a-d36590d21b2e",
+              "citation_human": "Mechanism promoted from CGM motif: Mutual Aspect: Saturn ↔ Moon",
+              "is_chain_circuit": false
+            },
+            {
+              "mechanism_id": "02733891-38ed-41ca-aa29-630a2160fd9c",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Mutual Aspect: Sun ↔ Saturn",
+              "mechanism_class": "mutual_aspect",
+              "valence": "malefic",
+              "member_node_ids_array": [
+                "18f4d8c4-060b-427e-967e-49aa88f46184",
+                "65eccbb9-5e03-4492-a02f-aec36a7f6f84"
+              ],
+              "member_edge_ids_array": [
+                "5c7d819a-cd72-4cfb-a215-8a281ad004df",
+                "d5ceaccb-08e5-4e60-a530-af76f9695d48"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.438951,
+              "edge_strength_min": 0.43433,
+              "edge_strength_max": 0.443571,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "131060",
+                "134247",
+                "131023",
+                "134235"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.88986484,
+                "member_count": 2,
+                "pagerank_avg": 0.02442444,
+                "betweenness_avg": 0.00217391,
+                "eigenvector_avg": 0.28958235
+              },
+              "source_motif_id": "d4046755-b3ca-4c32-97e0-fc8853be5666",
+              "verification_pass_status": "single",
+              "citation_ref": "bo_cgm_motifs/d4046755-b3ca-4c32-97e0-fc8853be5666",
+              "citation_human": "Mechanism promoted from CGM motif: Mutual Aspect: Sun ↔ Saturn",
+              "is_chain_circuit": false
+            },
+            {
+              "mechanism_id": "157ea7bf-8b3e-4e29-bf28-3632afc2a5a0",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Mutual-Aspect Triangle: Sun, Moon, Mars",
+              "mechanism_class": "mutual_aspect_triangle",
+              "valence": "mixed",
+              "member_node_ids_array": [
+                "18f4d8c4-060b-427e-967e-49aa88f46184",
+                "41130dbe-3c5f-42c1-a784-b828151f6e07",
+                "c755a489-6a4a-4c0a-b34e-851c2f8fa248"
+              ],
+              "member_edge_ids_array": [
+                "c339f02b-d00f-4e46-8ac9-42755dc5ca82",
+                "ec7f35bb-24a9-439a-96e1-da7eb21798cc",
+                "d3f61a40-d9a8-4858-91af-83c9206ad905",
+                "e390ddf8-afac-4f07-b5d3-763e2633c12b",
+                "06e7fd6f-a541-41bd-9b79-02961d8044b2",
+                "545b8bfd-29f5-4bd5-97b6-9ab3525d01d8"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.434638,
+              "edge_strength_min": 0.414462,
+              "edge_strength_max": 0.445882,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "131019",
+                "134237",
+                "131023",
+                "134235",
+                "131036",
+                "134239"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.8687704,
+                "member_count": 3,
+                "pagerank_avg": 0.02416061,
+                "betweenness_avg": 0.00128824,
+                "eigenvector_avg": 0.28311026
+              },
+              "source_motif_id": "0ee030ff-87c7-4cff-a285-6b5481e185b8",
+              "verification_pass_status": "single",
+              "citation_ref": "bo_cgm_motifs/0ee030ff-87c7-4cff-a285-6b5481e185b8",
+              "citation_human": "Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Sun, Moon, Mars",
+              "is_chain_circuit": false
+            },
+            {
+              "mechanism_id": "bda28a6b-da22-4183-a308-42680b37259b",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Mutual-Aspect Triangle: Sun, Moon, Venus",
+              "mechanism_class": "mutual_aspect_triangle",
+              "valence": "mixed",
+              "member_node_ids_array": [
+                "18f4d8c4-060b-427e-967e-49aa88f46184",
+                "41130dbe-3c5f-42c1-a784-b828151f6e07",
+                "4e5ce18d-317c-45ad-8eb5-5837853634de"
+              ],
+              "member_edge_ids_array": [
+                "c339f02b-d00f-4e46-8ac9-42755dc5ca82",
+                "ec7f35bb-24a9-439a-96e1-da7eb21798cc",
+                "14d4e413-4d35-47d3-a460-7d558fdd9885",
+                "0636e153-a4c3-4486-99ca-cac75dc2d9b1",
+                "858a21d1-2add-4d22-9466-ad9d80e2dd0c",
+                "a5dac61e-b67f-4713-a643-1b27822130b0"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.43356,
+              "edge_strength_min": 0.411228,
+              "edge_strength_max": 0.445882,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "131019",
+                "134237",
+                "131023",
+                "134235",
+                "131032",
+                "134245"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.85755033,
+                "member_count": 3,
+                "pagerank_avg": 0.02407892,
+                "betweenness_avg": 0.00064412,
+                "eigenvector_avg": 0.28138212
+              },
+              "source_motif_id": "7a4bcf86-4405-466f-a69a-92e167d2d53b",
+              "verification_pass_status": "single",
+              "citation_ref": "bo_cgm_motifs/7a4bcf86-4405-466f-a69a-92e167d2d53b",
+              "citation_human": "Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Sun, Moon, Venus",
+              "is_chain_circuit": false
+            },
+            {
+              "mechanism_id": "35514e46-aade-4c3a-9135-0e9401aa0bd5",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "snapshot_type": "static_natal",
+              "mechanism_name": "Mutual-Aspect Triangle: Moon, Saturn, Mars",
+              "mechanism_class": "mutual_aspect_triangle",
+              "valence": "mixed",
+              "member_node_ids_array": [
+                "41130dbe-3c5f-42c1-a784-b828151f6e07",
+                "65eccbb9-5e03-4492-a02f-aec36a7f6f84",
+                "c755a489-6a4a-4c0a-b34e-851c2f8fa248"
+              ],
+              "member_edge_ids_array": [
+                "d096fd6d-274a-46d0-9337-a8d7d0a4446b",
+                "a7ccf945-99fd-4892-b59e-f62ce1d59315",
+                "06e7fd6f-a541-41bd-9b79-02961d8044b2",
+                "545b8bfd-29f5-4bd5-97b6-9ab3525d01d8",
+                "c99c1380-fe29-43cf-ab6f-1c5b963784c1",
+                "610d914b-d6c5-4eac-95fa-9770a41f0587"
+              ],
+              "domains_affected_array": null,
+              "edge_strength_avg": 0.431558,
+              "edge_strength_min": 0.414462,
+              "edge_strength_max": 0.445882,
+              "edge_strength_formula_version": "edge_strength_v1",
+              "constituent_ga_vichara_ids_array": [
+                "131019",
+                "134237",
+                "131060",
+                "134247",
+                "131036",
+                "134239"
+              ],
+              "centrality_summary_jsonb": {
+                "harmonic_avg": 0.88957326,
+                "member_count": 3,
+                "pagerank_avg": 0.02468108,
+                "betweenness_avg": 0.00273752,
+                "eigenvector_avg": 0.29070838
+              },
+              "source_motif_id": "d037b319-f3cd-4fdf-9c6c-50fc5d6d9d6d",
+              "verification_pass_status": "single",
+              "citation_ref": "bo_cgm_motifs/d037b319-f3cd-4fdf-9c6c-50fc5d6d9d6d",
+              "citation_human": "Mechanism promoted from CGM motif: Mutual-Aspect Triangle: Moon, Saturn, Mars",
+              "is_chain_circuit": false
+            }
+          ],
+          "count": 10,
+          "total_matching": 126,
+          "more_available": true,
+          "chain_circuit_count": 2,
+          "facets": {
+            "by_mechanism_class": {
+              "mutual_aspect": 36,
+              "graha_bhava_affliction": 3,
+              "parivartana_chain": 1,
+              "mutual_aspect_triangle": 84,
+              "house_lordship_cycle": 1,
+              "dispositor_cycle": 1
+            },
+            "by_valence": {
+              "mixed": 77,
+              "neutral": 9,
+              "malefic": 33,
+              "benefic": 7
+            },
+            "chain_circuit_classes": [
+              "convergent_dispositor_chain",
+              "dispositor_cycle",
+              "house_lordship_cycle"
+            ]
+          },
+          "empty_reason": null,
+          "filters": {
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "mechanism_class": null,
+            "valence": null,
+            "chain_circuit_only": false,
+            "limit": 10,
+            "offset": 0
+          },
+          "provenance": {
+            "tables": [
+              "bodha_mechanisms"
+            ],
+            "source": "L2 Bodha mechanisms (bo_yantra_mechanism / migration 445); served chart-scoped, chain/circuit family first, budgeted. Edge-strength provenance: DR-7 edge_strength_v1."
+          }
+        },
+        "is_error": false
+      }
+    }
+  }
+}

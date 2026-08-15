@@ -1,0 +1,245 @@
+{
+  "tool": "catalog_assets_list",
+  "scenario": "primary",
+  "args": {
+    "limit": 10
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"assets\":[{\"asset_id\":\"bo_anveshana\",\"layer\":\"bodha\",\"sanskrit_name\":\"Anveṣaṇa\",\"english_name\":\"Discovery Engine\",\"target_table\":\"bodha_discoveries\",\"target_floor\":500,\"scope\":\"per_chart\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"CURRENT\",\"has_writer\":true,\"expected_volume_formula\":null,\"count_sql\":\"SELECT (SELECT count(*) FROM bodha_discoveries WHERE chart_id = $1) + (SELECT count(*) FROM bodha_anomalies WHERE chart_id = $1) AS count\",\"depends_on\":[\"bo_sangati\",\"bo_karanajala\",\"bo_samskara\",\"bo_drishti\",\"bo_bimba\",\"bo_laksana\"]},{\"asset_id\":\"bo_arudha\",\"layer\":\"bodha\",\"sanskrit_name\":\"arudha_pada\",\"english_name\":\"Jaimini Arudha (Perception Layer)\",\"target_table\":\"bodha_msr_signals\",\"target_floor\":15,\"scope\":\"per_chart\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"DRAFT\",\"has_writer\":true,\"expected_volume_formula\":null,\"count_sql\":\"SELECT count(*) FROM bodha_msr_signals WHERE chart_id = $1 AND signal_type_class = 'arudha'\",\"depends_on\":[\"ga_structural\",\"ga_positions\"]},{\"asset_id\":\"bo_bimba\",\"layer\":\"bodha\",\"sanskrit_name\":\"Bimba\",\"english_name\":\"Signal graph nodes (CGM)\",\"target_table\":\"bodha_cgm_nodes\",\"target_floor\":140,\"scope\":\"per_chart\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"CURRENT\",\"has_writer\":true,\"expected_volume_formula\":\"ACTUAL(bo_laksana)\",\"count_sql\":\"SELECT count(*) FROM bodha_cgm_nodes WHERE chart_id = $1\",\"depends_on\":[\"bo_laksana\"]},{\"asset_id\":\"bo_cdlm_summary\",\"layer\":\"bodha\",\"sanskrit_name\":\"bo_cdlm_summary\",\"english_name\":\"CDLM Summary\",\"target_table\":null,\"target_floor\":1,\"scope\":\"per_chart\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"DRAFT\",\"has_writer\":true,\"expected_volume_formula\":null,\"count_sql\":\"SELECT count(*) FROM bodha_cdlm_chart_summary WHERE chart_id = $1\",\"depends_on\":[\"bo_sangati\"]},{\"asset_id\":\"bo_cgm_motifs\",\"layer\":\"bodha\",\"sanskrit_name\":\"bo_cgm_motifs\",\"english_name\":\"CGM Motifs\",\"target_table\":\"bodha_cgm_motifs\",\"target_floor\":0,\"scope\":\"per_chart\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"CURRENT\",\"has_writer\":true,\"expected_volume_formula\":null,\"count_sql\":\"SELECT count(*) FROM bodha_cgm_motifs WHERE chart_id = $1\",\"depends_on\":[\"bo_bimba\",\"bo_karanajala\"]},{\"asset_id\":\"bo_cgm_paths\",\"layer\":\"bodha\",\"sanskrit_name\":\"bo_cgm_paths\",\"english_name\":\"CGM Paths\",\"target_table\":\"bodha_cgm_paths\",\"target_floor\":9,\"scope\":\"per_chart\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"CURRENT\",\"has_writer\":true,\"expected_volume_formula\":null,\"count_sql\":\"SELECT count(*) FROM bodha_cgm_paths WHERE chart_id = $1\",\"depends_on\":[\"bo_bimba\",\"bo_karanajala\"]},{\"asset_id\":\"bo_chart_gestalt\",\"layer\":\"bodha\",\"sanskrit_name\":\"bo_chart_gestalt\",\"english_name\":\"Chart Gestalt\",\"target_table\":null,\"target_floor\":1,\"scope\":\"per_chart\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"DRAFT\",\"has_writer\":true,\"expected_volume_formula\":null,\"count_sql\":\"SELECT count(*) FROM bodha_chart_gestalt WHERE chart_id = $1\",\"depends_on\":[\"bo_laksana\",\"bo_sangati\",\"bo_bimba\",\"bo_cgm_paths\",\"bo_anveshana\"]},{\"asset_id\":\"bo_drishti\",\"layer\":\"bodha\",\"sanskrit_name\":\"Dṛṣṭi\",\"english_name\":\"Question Lenses\",\"target_table\":\"bodha_question_lenses\",\"target_floor\":60,\"scope\":\"per_chart\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"CURRENT\",\"has_writer\":true,\"expected_volume_formula\":null,\"count_sql\":\"SELECT count(*) FROM bodha_question_lenses WHERE chart_id = $1\",\"depends_on\":[\"bo_laksana\",\"bo_sangati\",\"bo_karanajala\"]},{\"asset_id\":\"bo_karanajala\",\"layer\":\"bodha\",\"sanskrit_name\":\"Kāraṇajāla\",\"english_name\":\"Signal graph edges (CGM)\",\"target_table\":\"bodha_cgm_edges\",\"target_floor\":300,\"scope\":\"per_chart\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"CURRENT\",\"has_writer\":true,\"expected_volume_formula\":\"ACTUAL(bo_laksana) * EDGE_DENSITY\",\"count_sql\":\"SELECT count(*) FROM bodha_cgm_edges WHERE chart_id = $1\",\"depends_on\":[\"bo_laksana\",\"bo_bimba\",\"ga_positions\"]},{\"asset_id\":\"bo_laksana\",\"layer\":\"bodha\",\"sanskrit_name\":\"Lakṣaṇa\",\"english_name\":\"Signal store (MSR)\",\"target_table\":\"bodha_msr_signals\",\"target_floor\":60000,\"scope\":\"per_chart\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"CURRENT\",\"has_writer\":true,\"expected_volume_formula\":null,\"count_sql\":\"SELECT count(*) FROM bodha_msr_signals WHERE chart_id = $1 AND signal_type_class = ANY(ARRAY[\\n     'yoga','dosha','sade_sati','panchanga','karaka_alignment','tradition_specific',\\n     'parivartana','configuration','varga_pattern','annual','medical','vastu',\\n     'composite_state','varga_ratification_divergence','bhavat_bhavam_amplifier'\\n   ])\",\"depends_on\":[\"bg_rules\",\"ga_positions\",\"ga_strength\",\"ga_sensitive\",\"ga_panchanga\",\"ga_sade_sati\",\"ga_structural\",\"ga_nakshatra\",\"ga_condition\",\"ga_vargas\",\"ga_vichara\"]}],\"total\":128,\"returned\":10,\"filters\":{\"layer\":null,\"layer_requested\":null,\"asset_type\":null,\"catalog_status\":null,\"scope\":null,\"is_active\":null,\"has_writer\":null,\"limit\":10,\"offset\":0},\"snapshot_at\":\"2026-08-15T11:07:43.097Z\"},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "assets": [
+            {
+              "asset_id": "bo_anveshana",
+              "layer": "bodha",
+              "sanskrit_name": "Anveṣaṇa",
+              "english_name": "Discovery Engine",
+              "target_table": "bodha_discoveries",
+              "target_floor": 500,
+              "scope": "per_chart",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "CURRENT",
+              "has_writer": true,
+              "expected_volume_formula": null,
+              "count_sql": "SELECT (SELECT count(*) FROM bodha_discoveries WHERE chart_id = $1) + (SELECT count(*) FROM bodha_anomalies WHERE chart_id = $1) AS count",
+              "depends_on": [
+                "bo_sangati",
+                "bo_karanajala",
+                "bo_samskara",
+                "bo_drishti",
+                "bo_bimba",
+                "bo_laksana"
+              ]
+            },
+            {
+              "asset_id": "bo_arudha",
+              "layer": "bodha",
+              "sanskrit_name": "arudha_pada",
+              "english_name": "Jaimini Arudha (Perception Layer)",
+              "target_table": "bodha_msr_signals",
+              "target_floor": 15,
+              "scope": "per_chart",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "DRAFT",
+              "has_writer": true,
+              "expected_volume_formula": null,
+              "count_sql": "SELECT count(*) FROM bodha_msr_signals WHERE chart_id = $1 AND signal_type_class = 'arudha'",
+              "depends_on": [
+                "ga_structural",
+                "ga_positions"
+              ]
+            },
+            {
+              "asset_id": "bo_bimba",
+              "layer": "bodha",
+              "sanskrit_name": "Bimba",
+              "english_name": "Signal graph nodes (CGM)",
+              "target_table": "bodha_cgm_nodes",
+              "target_floor": 140,
+              "scope": "per_chart",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "CURRENT",
+              "has_writer": true,
+              "expected_volume_formula": "ACTUAL(bo_laksana)",
+              "count_sql": "SELECT count(*) FROM bodha_cgm_nodes WHERE chart_id = $1",
+              "depends_on": [
+                "bo_laksana"
+              ]
+            },
+            {
+              "asset_id": "bo_cdlm_summary",
+              "layer": "bodha",
+              "sanskrit_name": "bo_cdlm_summary",
+              "english_name": "CDLM Summary",
+              "target_table": null,
+              "target_floor": 1,
+              "scope": "per_chart",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "DRAFT",
+              "has_writer": true,
+              "expected_volume_formula": null,
+              "count_sql": "SELECT count(*) FROM bodha_cdlm_chart_summary WHERE chart_id = $1",
+              "depends_on": [
+                "bo_sangati"
+              ]
+            },
+            {
+              "asset_id": "bo_cgm_motifs",
+              "layer": "bodha",
+              "sanskrit_name": "bo_cgm_motifs",
+              "english_name": "CGM Motifs",
+              "target_table": "bodha_cgm_motifs",
+              "target_floor": 0,
+              "scope": "per_chart",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "CURRENT",
+              "has_writer": true,
+              "expected_volume_formula": null,
+              "count_sql": "SELECT count(*) FROM bodha_cgm_motifs WHERE chart_id = $1",
+              "depends_on": [
+                "bo_bimba",
+                "bo_karanajala"
+              ]
+            },
+            {
+              "asset_id": "bo_cgm_paths",
+              "layer": "bodha",
+              "sanskrit_name": "bo_cgm_paths",
+              "english_name": "CGM Paths",
+              "target_table": "bodha_cgm_paths",
+              "target_floor": 9,
+              "scope": "per_chart",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "CURRENT",
+              "has_writer": true,
+              "expected_volume_formula": null,
+              "count_sql": "SELECT count(*) FROM bodha_cgm_paths WHERE chart_id = $1",
+              "depends_on": [
+                "bo_bimba",
+                "bo_karanajala"
+              ]
+            },
+            {
+              "asset_id": "bo_chart_gestalt",
+              "layer": "bodha",
+              "sanskrit_name": "bo_chart_gestalt",
+              "english_name": "Chart Gestalt",
+              "target_table": null,
+              "target_floor": 1,
+              "scope": "per_chart",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "DRAFT",
+              "has_writer": true,
+              "expected_volume_formula": null,
+              "count_sql": "SELECT count(*) FROM bodha_chart_gestalt WHERE chart_id = $1",
+              "depends_on": [
+                "bo_laksana",
+                "bo_sangati",
+                "bo_bimba",
+                "bo_cgm_paths",
+                "bo_anveshana"
+              ]
+            },
+            {
+              "asset_id": "bo_drishti",
+              "layer": "bodha",
+              "sanskrit_name": "Dṛṣṭi",
+              "english_name": "Question Lenses",
+              "target_table": "bodha_question_lenses",
+              "target_floor": 60,
+              "scope": "per_chart",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "CURRENT",
+              "has_writer": true,
+              "expected_volume_formula": null,
+              "count_sql": "SELECT count(*) FROM bodha_question_lenses WHERE chart_id = $1",
+              "depends_on": [
+                "bo_laksana",
+                "bo_sangati",
+                "bo_karanajala"
+              ]
+            },
+            {
+              "asset_id": "bo_karanajala",
+              "layer": "bodha",
+              "sanskrit_name": "Kāraṇajāla",
+              "english_name": "Signal graph edges (CGM)",
+              "target_table": "bodha_cgm_edges",
+              "target_floor": 300,
+              "scope": "per_chart",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "CURRENT",
+              "has_writer": true,
+              "expected_volume_formula": "ACTUAL(bo_laksana) * EDGE_DENSITY",
+              "count_sql": "SELECT count(*) FROM bodha_cgm_edges WHERE chart_id = $1",
+              "depends_on": [
+                "bo_laksana",
+                "bo_bimba",
+                "ga_positions"
+              ]
+            },
+            {
+              "asset_id": "bo_laksana",
+              "layer": "bodha",
+              "sanskrit_name": "Lakṣaṇa",
+              "english_name": "Signal store (MSR)",
+              "target_table": "bodha_msr_signals",
+              "target_floor": 60000,
+              "scope": "per_chart",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "CURRENT",
+              "has_writer": true,
+              "expected_volume_formula": null,
+              "count_sql": "SELECT count(*) FROM bodha_msr_signals WHERE chart_id = $1 AND signal_type_class = ANY(ARRAY[\n     'yoga','dosha','sade_sati','panchanga','karaka_alignment','tradition_specific',\n     'parivartana','configuration','varga_pattern','annual','medical','vastu',\n     'composite_state','varga_ratification_divergence','bhavat_bhavam_amplifier'\n   ])",
+              "depends_on": [
+                "bg_rules",
+                "ga_positions",
+                "ga_strength",
+                "ga_sensitive",
+                "ga_panchanga",
+                "ga_sade_sati",
+                "ga_structural",
+                "ga_nakshatra",
+                "ga_condition",
+                "ga_vargas",
+                "ga_vichara"
+              ]
+            }
+          ],
+          "total": 128,
+          "returned": 10,
+          "filters": {
+            "layer": null,
+            "layer_requested": null,
+            "asset_type": null,
+            "catalog_status": null,
+            "scope": null,
+            "is_active": null,
+            "has_writer": null,
+            "limit": 10,
+            "offset": 0
+          },
+          "snapshot_at": "2026-08-15T11:07:43.097Z"
+        },
+        "is_error": false
+      }
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "tool": "judgment_query",
+  "scenario": "native_health_domain",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "health"},
+  "raw_response_summary": {
+    "note": "Full raw response was captured inline in the audit session (very large, v3 envelope). This summary preserves the load-bearing fields verified during the audit; see companion file judgment_query__native_health_domain_key_excerpts.json for verbatim excerpts.",
+    "envelope_version": "v3",
+    "tool": "judgment_query",
+    "verdict": {
+      "domain": "health",
+      "domain_label": "Health / Vitality",
+      "bhava": 1,
+      "verdict_grade": "mixed",
+      "composite_score": -0.8,
+      "d1_score": 0.7,
+      "operative_varga": "D6",
+      "varga_term": -1.5,
+      "varga_subscores": {
+        "bhavesha": {"graha": "Mars", "varga": "D6", "dignity_state": "debilitated", "weight": -2, "contribution": -1.5},
+        "karakas": [{"graha": "Sun", "varga": "D6", "dignity_state": "neutral", "weight": 0}]
+      },
+      "yoga_term": 0,
+      "receipt": {"bhava": true, "bhavesha": true, "karaka": true, "from_moon": true, "varga_confirmed": false, "varga_weighted_into_verdict": true, "yogas_checked": 13, "bhanga_checked": true, "timing_anchored": true}
+    },
+    "gochara_sweep": {
+      "domain": "health",
+      "domain_covered": true,
+      "upcoming_window_count": 17,
+      "valence_breakdown": {"loss": 11, "neutral": 6},
+      "window_range": {"start": "2026-08-15", "end": "2029-08-15"},
+      "top_windows_sample": [
+        {"event_class": "illness_acute", "temporal_shape": "point", "peak_date": "2029-04-13", "valence": "loss", "is_adverse": true},
+        {"event_class": "illness_acute", "temporal_shape": "point", "peak_date": "2028-12-13", "valence": "loss", "is_adverse": true},
+        {"event_class": "illness_acute", "temporal_shape": "point", "peak_date": "2029-07-18", "valence": "loss", "is_adverse": true},
+        {"event_class": "illness_acute", "temporal_shape": "point", "peak_date": "2027-08-21", "valence": "loss", "is_adverse": true},
+        {"event_class": "illness_acute", "temporal_shape": "point", "peak_date": "2028-11-21", "valence": "loss", "is_adverse": true}
+      ]
+    },
+    "bearing_afflictions_sample": [
+      {"signal_type_id": "varga_ratification_divergence:SAT:health", "value_text": "SATURN: D1 exalted vs D9 debilitated", "valence": "malefic", "computed_salience": 1.2},
+      {"signal_type_id": "sade_sati_cycle:duration_years", "value_num": 8.075, "valence": "malefic"},
+      {"signal_type_id": "sade_sati_cycle:cycle_end_iso", "value_text": "2057-04-07T02:24:50+00:00", "valence": "malefic"}
+    ],
+    "sensitive_degree_firings_count": 5,
+    "judgment_flags": [
+      {"code": "bearing_yogas_no_domain_match", "detail": "13 yoga(s) fired on this chart but none name only this domain's bhāveśa/kāraka(s) (mars, sun) — shown for context; none contributed to the verdict composite (verdict.yoga_term = 0)."},
+      {"code": "bearing_yogas_corroboration_caveat", "detail": "bearing_yogas_corroboration (MSR yoga signals) are requires_pass catalog label matches — not cross-verified confirmed firings."},
+      {"code": "notably_absent_not_checked", "detail": "near-miss yoga detection requires a data-plane addition (design §12 D3) not yet built — reported honestly, not fabricated."},
+      {"code": "kala_activations_trimmed", "detail": "10 raw activation row(s) deduped by window to 3 distinct window(s)."},
+      {"code": "kala_activations_single_cycle", "detail": "reflects ONE resolved dasha/convergence window per signal, not exhaustive."},
+      {"code": "afflictions_present", "detail": "15 adverse signal(s) + 0 affliction mechanism(s) served in the THREAT layer, separate from bearing_yogas."},
+      {"code": "sensitive_degree_firings_present", "detail": "5 fired sensitive-degree check(s) surfaced."},
+      {"code": "budget_exceeded_after_trim", "detail": "12kb budget still exceeded after full trim."},
+      {"code": "varga_confirmed_forced_false", "detail": "served checklist.varga_confirmation.rows are empty on the wire — receipt.varga_confirmed downgraded rather than shipping a ✓-with-empty-evidence receipt (CR-2/CR-63/R-38; CLAUDE.md §N.6 point 3 / B.10)."}
+    ],
+    "reading_checklist": {"units_served": 8, "units_total": 12, "units_unserved": ["ashtakavarga", "special_lagnas", "yogi_avayogi", "tajaka"]},
+    "reading_contract": "This response is graded structural_prior... grounded in 70 resolvable L1 fact reference(s)... carries 7 judgment flag(s) disclosing coverage/resolution gaps — read each as a stated limit on the verdict, not decoration.",
+    "epistemic": {"grade": "structural_prior", "verified_fraction": null}
+  }
+}

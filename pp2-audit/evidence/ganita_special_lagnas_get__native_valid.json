@@ -1,0 +1,25 @@
+{
+  "tool": "ganita_special_lagnas_get",
+  "scenario": "native_valid_chart_id",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+  "raw_response_summary": {
+    "categories": ["special_lagna", "upagraha_position", "sun_derived_upagraha"],
+    "total": 119,
+    "returned_after_budget_trim": 59,
+    "category_receipts": [
+      {"fact_category": "special_lagna", "confirmed_count": 49, "catalog_only_count": 0, "dark_count": 0, "receipt_state": "CONFIRMED"},
+      {"fact_category": "upagraha", "confirmed_count": 70, "catalog_only_count": 0, "dark_count": 0, "receipt_state": "CONFIRMED"}
+    ],
+    "sample_rows": [
+      {"fact_subject": "BHAVA_LAGNA", "fact_key": "sign", "fact_value_text": "Pisces", "verification_pass_status": "two_pass_verified"},
+      {"fact_subject": "HORA_LAGNA", "fact_key": "sign", "fact_value_text": "Gemini", "verification_pass_status": "two_pass_verified"},
+      {"fact_subject": "GHATI_LAGNA", "fact_key": "sign", "fact_value_text": "Sagittarius", "verification_pass_status": "two_pass_verified"},
+      {"fact_subject": "SREE_LAGNA", "fact_key": "sign", "fact_value_text": "Libra", "verification_pass_status": "two_pass_verified"},
+      {"fact_subject": "INDU_LAGNA", "fact_key": "sign", "fact_value_text": "Scorpio", "verification_pass_status": "two_pass_verified"},
+      {"fact_subject": "VARNADA_LAGNA", "fact_key": "sign", "fact_value_text": "Cancer", "verification_pass_status": "two_pass_verified"},
+      {"fact_subject": "KALA_SUN", "fact_key": "house_d1", "fact_value_num": 4, "verification_pass_status": "two_pass_verified"}
+    ],
+    "trim_report": [{"path": "rows", "original_count": 119, "kept_count": 59, "reason": "rows: trimmed to 59"}]
+  },
+  "pp2_note": "Re-verified with a valid arg (chart_id only). The prior session's call passed only limit/offset (no chart_id, and those keys are unrecognized by this schema) and was correctly rejected -- caller error, not a tool defect. Every row is verification_pass_status=two_pass_verified with a formula_provenance_text citing the specific BPHS chapter / PyJHora function, and several entries explicitly note they replaced a previously-fabricated proxy formula (e.g. HORA_LAGNA/GHATI_LAGNA/BHAVA_LAGNA notes: 'replacing the fabricated Sun within-sign-offset proxy (M-10)') -- a positive B.10 compliance signal, not a violation."
+}

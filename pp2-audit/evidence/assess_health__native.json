@@ -1,0 +1,14 @@
+{
+  "tool": "assess_health",
+  "scenario": "native_chart_default_call",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+  "timing": {"before_ms": 1786801270312, "after_ms": 1786801281034, "latency_ms": 10722},
+  "is_error_serverside": false,
+  "client_side_failure": "MCP client returned a hard error: 'result (142,742 characters) exceeds maximum allowed tokens' -- saved to /Users/Dev/.claude/projects/.../tool-results/mcp-marsys-jis-direct-assess_health-1786801276536.txt.",
+  "raw_response_summary_from_saved_file": {
+    "is_error": false,
+    "budget_kb_applied": 40,
+    "judgment_flags": [{"code": "budget_exceeded_after_trim", "detail": "40kb budget still exceeded after full trim."}]
+  },
+  "finding": "Same class of anomaly as assess_career: declared budget_kb_applied=40 (40KB) but actual served payload is 142,742 chars (~139KB), ~3.5x over budget, and again triggers a hard client-side size failure. This is the SECOND of four assess_* calls to hit the same oversized-payload failure -- consistent with F-14 (health degraded) in outcome grading, but this particular failure is about response SIZE, not content quality, and affects assess_career equally (which is a known-PASS domain per the audit brief), so it looks like a tool-family-wide issue rather than health-specific."
+}

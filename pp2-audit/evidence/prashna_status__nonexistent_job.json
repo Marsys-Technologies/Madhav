@@ -1,0 +1,6 @@
+{
+  "tool": "prashna_status",
+  "scenario": "nonexistent_job_id",
+  "args": {"job_id": "00000000-0000-0000-0000-000000000000"},
+  "raw_response": {"is_error": true, "error_text": "{\"ok\":false,\"error\":\"Unknown or expired job_id \\\"00000000-0000-0000-0000-000000000000\\\". Jobs are held in memory only and are evicted after a TTL — this id was either never issued by prashna_ask, belongs to a different server instance, or has expired. Call prashna_ask again to start a new job.\",\"tool\":\"prashna_status\",\"job_id\":\"00000000-0000-0000-0000-000000000000\"}"}
+}

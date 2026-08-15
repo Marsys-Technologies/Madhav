@@ -1,0 +1,16 @@
+{
+  "tool": "ref_classical_citation_get",
+  "scenario": "primary",
+  "args": {
+    "citation_id": "BPHS"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "MCP error -32602: Input validation error: Invalid arguments for tool ref_classical_citation_get: [\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"citation_id\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized key: \\\"citation_id\\\"\"\n  }\n]"
+      }
+    ],
+    "isError": true
+  }
+}

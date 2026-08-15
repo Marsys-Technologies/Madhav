@@ -1,0 +1,17 @@
+{
+  "tool": "judgment_query",
+  "scenario": "family",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "family"},
+  "timing": {"before_ms": 1786800985665, "after_ms": 1786801000912, "latency_ms": 15247},
+  "is_error": false,
+  "raw_response": {
+    "envelope_version": "v3",
+    "verdict": {"receipt": {}, "note": "Deterministic classical-checklist verdict + completeness receipt (design §28.6) — see `receipt` for which checklist items were actually checked this call."},
+    "grounding": {"fact_ids": [], "citations": [], "grounding_score": null},
+    "judgment_flags": [],
+    "drill_pointers": [{"instrument": "bodha_chart_digest_get", "hint": "full entity_profiles digest (this entity-scoped call dropped the generic orientation preamble to protect the entity-specific payload — recover the full holistic digest here)."}],
+    "content": {"error": "judgment_query requires either `domain` (marriage/career/wealth/health/progeny/education/spirituality) or `bhava` (1-12)."},
+    "epistemic": {"grade": "structural_prior"}
+  },
+  "note": "REAL, VERBATIM anomaly: 'family' is a first-class value in the system's own CANONICAL_DOMAINS 13-domain vocabulary (platform/src/lib/domain_vocabulary.ts) and appears as a convergence_domains entry in judgment_query's OWN orientation_context digest for this very call ('family' convergence_count=5684, the SECOND highest of all domains). Yet passing domain='family' to judgment_query itself produces an embedded content.error ('requires either domain (marriage/career/wealth/health/progeny/education/spirituality) or bhava (1-12)') with an EMPTY verdict{} and EMPTY grounding -- not a crash (is_error/isError not set true at the transport level), but a silently degraded 200-shaped envelope for a domain string the system's own vocabulary and its own digest treat as valid and high-salience. The tool's error message text itself is also stale/incomplete: it lists only 7 domain names (marriage/career/wealth/health/progeny/education/spirituality), omitting the 3 additional named concepts (moksha, character, residence) that the SHASTRA_MAP source (register_d9_judgment.ts) actually supports."
+}

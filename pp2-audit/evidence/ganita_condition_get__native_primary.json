@@ -1,0 +1,248 @@
+{
+  "tool": "ganita_condition_get",
+  "scenario": "native_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"envelope_version\":\"v1\",\"tool\":\"ganita_condition_get\",\"verdict\":null,\"ranking_basis\":null,\"grounding\":{\"fact_ids\":[],\"citations\":[],\"grounding_score\":null},\"pagination\":{\"offset\":0,\"limit\":0,\"total\":null,\"next_cursor\":null,\"more_available\":false},\"drill_pointers\":[],\"judgment_flags\":[],\"insight_type\":null,\"query_class\":\"per_chart_structural\",\"content\":{\"facet\":\"dignity\",\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"categories\":[\"graha_dignity_per_varga\",\"graha_effective_dignity_modified_by_aspects\",\"graha_sign_attributes\",\"graha_vargottama_amplification_factor\",\"vargottama_per_varga\",\"graha_functional_class_per_ascendant\"],\"rows\":[{\"fact_id\":\"c8d49365ebe51631\",\"fact_category\":\"graha_dignity_per_varga\",\"fact_subject\":\"D1_MAR\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"dignity_state\",\"fact_value_num\":null,\"fact_value_text\":\"neutral\",\"fact_value_jsonb\":{\"sign\":\"Libra\",\"house\":7,\"varga\":\"D1\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"uncatalogued\":false},\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_dignity_per_varga.D1_MAR.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"3cf75cd00efd908c\",\"fact_category\":\"graha_dignity_per_varga\",\"fact_subject\":\"D1_MER\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"dignity_state\",\"fact_value_num\":null,\"fact_value_text\":\"neutral\",\"fact_value_jsonb\":{\"sign\":\"Capricorn\",\"house\":10,\"varga\":\"D1\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"uncatalogued\":false},\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_dignity_per_varga.D1_MER.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"49e0b24b41598b72\",\"fact_category\":\"graha_dignity_per_varga\",\"fact_subject\":\"D1_JUP\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"dignity_state\",\"fact_value_num\":null,\"fact_value_text\":\"own\",\"fact_value_jsonb\":{\"sign\":\"Sagittarius\",\"house\":9,\"varga\":\"D1\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"uncatalogued\":false},\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_dignity_per_varga.D1_JUP.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"6d91cccd12d138e7\",\"fact_category\":\"graha_dignity_per_varga\",\"fact_subject\":\"D1_VEN\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"dignity_state\",\"fact_value_num\":null,\"fact_value_text\":\"neutral\",\"fact_value_jsonb\":{\"sign\":\"Sagittarius\",\"house\":9,\"varga\":\"D1\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"uncatalogued\":false},\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_dignity_per_varga.D1_VEN.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"355fe607160e1d76\",\"fact_category\":\"graha_dignity_per_varga\",\"fact_subject\":\"D1_SAT\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"dignity_state\",\"fact_value_num\":null,\"fact_value_text\":\"exalted\",\"fact_value_jsonb\":{\"sign\":\"Libra\",\"house\":7,\"varga\":\"D1\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"uncatalogued\":false},\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_dignity_per_varga.D1_SAT.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"67a2a93268fe4252\",\"fact_category\":\"graha_dignity_per_varga\",\"fact_subject\":\"D1_RAH_MEAN\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"dignity_state\",\"fact_value_num\":null,\"fact_value_text\":\"exalted\",\"fact_value_jsonb\":{\"sign\":\"Taurus\",\"house\":2,\"varga\":\"D1\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"uncatalogued\":false},\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_dignity_per_varga.D1_RAH_MEAN.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"4fcc0e71437028a8\",\"fact_category\":\"graha_dignity_per_varga\",\"fact_subject\":\"D1_KET_MEAN\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"dignity_state\",\"fact_value_num\":null,\"fact_value_text\":\"exalted\",\"fact_value_jsonb\":{\"sign\":\"Scorpio\",\"house\":8,\"varga\":\"D1\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"uncatalogued\":false},\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_dignity_per_varga.D1_KET_MEAN.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"7885e105f489eb00\",\"fact_category\":\"graha_dignity_per_varga\",\"fact_subject\":\"D2_SUN\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"dignity_state\",\"fact_value_num\":null,\"fact_value_text\":\"own\",\"fact_value_jsonb\":{\"sign\":\"Leo\",\"house\":1,\"varga\":\"D2\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"uncatalogued\":false},\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_dignity_per_varga.D2_SUN.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"ec3dba0c6ba2fa09\",\"fact_category\":\"graha_dignity_per_varga\",\"fact_subject\":\"D1_SUN\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"dignity_state\",\"fact_value_num\":null,\"fact_value_text\":\"neutral\",\"fact_value_jsonb\":{\"sign\":\"Capricorn\",\"house\":10,\"varga\":\"D1\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"uncatalogued\":false},\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_dignity_per_varga.D1_SUN.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"7dd0222900d540e6\",\"fact_category\":\"graha_dignity_per_varga\",\"fact_subject\":\"D1_MOON\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"dignity_state\",\"fact_value_num\":null,\"fact_value_text\":\"neutral\",\"fact_value_jsonb\":{\"sign\":\"Aquarius\",\"house\":11,\"varga\":\"D1\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"uncatalogued\":false},\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_dignity_per_varga.D1_MOON.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"}],\"total\":10},\"trim_report\":null}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "envelope_version": "v1",
+        "tool": "ganita_condition_get",
+        "verdict": null,
+        "ranking_basis": null,
+        "grounding": {
+          "fact_ids": [],
+          "citations": [],
+          "grounding_score": null
+        },
+        "pagination": {
+          "offset": 0,
+          "limit": 0,
+          "total": null,
+          "next_cursor": null,
+          "more_available": false
+        },
+        "drill_pointers": [],
+        "judgment_flags": [],
+        "insight_type": null,
+        "query_class": "per_chart_structural",
+        "content": {
+          "facet": "dignity",
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "categories": [
+            "graha_dignity_per_varga",
+            "graha_effective_dignity_modified_by_aspects",
+            "graha_sign_attributes",
+            "graha_vargottama_amplification_factor",
+            "vargottama_per_varga",
+            "graha_functional_class_per_ascendant"
+          ],
+          "rows": [
+            {
+              "fact_id": "c8d49365ebe51631",
+              "fact_category": "graha_dignity_per_varga",
+              "fact_subject": "D1_MAR",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "dignity_state",
+              "fact_value_num": null,
+              "fact_value_text": "neutral",
+              "fact_value_jsonb": {
+                "sign": "Libra",
+                "house": 7,
+                "varga": "D1",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "uncatalogued": false
+              },
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "graha_dignity_per_varga.D1_MAR.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "3cf75cd00efd908c",
+              "fact_category": "graha_dignity_per_varga",
+              "fact_subject": "D1_MER",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "dignity_state",
+              "fact_value_num": null,
+              "fact_value_text": "neutral",
+              "fact_value_jsonb": {
+                "sign": "Capricorn",
+                "house": 10,
+                "varga": "D1",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "uncatalogued": false
+              },
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "graha_dignity_per_varga.D1_MER.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "49e0b24b41598b72",
+              "fact_category": "graha_dignity_per_varga",
+              "fact_subject": "D1_JUP",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "dignity_state",
+              "fact_value_num": null,
+              "fact_value_text": "own",
+              "fact_value_jsonb": {
+                "sign": "Sagittarius",
+                "house": 9,
+                "varga": "D1",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "uncatalogued": false
+              },
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "graha_dignity_per_varga.D1_JUP.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "6d91cccd12d138e7",
+              "fact_category": "graha_dignity_per_varga",
+              "fact_subject": "D1_VEN",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "dignity_state",
+              "fact_value_num": null,
+              "fact_value_text": "neutral",
+              "fact_value_jsonb": {
+                "sign": "Sagittarius",
+                "house": 9,
+                "varga": "D1",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "uncatalogued": false
+              },
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "graha_dignity_per_varga.D1_VEN.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "355fe607160e1d76",
+              "fact_category": "graha_dignity_per_varga",
+              "fact_subject": "D1_SAT",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "dignity_state",
+              "fact_value_num": null,
+              "fact_value_text": "exalted",
+              "fact_value_jsonb": {
+                "sign": "Libra",
+                "house": 7,
+                "varga": "D1",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "uncatalogued": false
+              },
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "graha_dignity_per_varga.D1_SAT.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "67a2a93268fe4252",
+              "fact_category": "graha_dignity_per_varga",
+              "fact_subject": "D1_RAH_MEAN",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "dignity_state",
+              "fact_value_num": null,
+              "fact_value_text": "exalted",
+              "fact_value_jsonb": {
+                "sign": "Taurus",
+                "house": 2,
+                "varga": "D1",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "uncatalogued": false
+              },
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "graha_dignity_per_varga.D1_RAH_MEAN.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "4fcc0e71437028a8",
+              "fact_category": "graha_dignity_per_varga",
+              "fact_subject": "D1_KET_MEAN",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "dignity_state",
+              "fact_value_num": null,
+              "fact_value_text": "exalted",
+              "fact_value_jsonb": {
+                "sign": "Scorpio",
+                "house": 8,
+                "varga": "D1",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "uncatalogued": false
+              },
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "graha_dignity_per_varga.D1_KET_MEAN.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "7885e105f489eb00",
+              "fact_category": "graha_dignity_per_varga",
+              "fact_subject": "D2_SUN",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "dignity_state",
+              "fact_value_num": null,
+              "fact_value_text": "own",
+              "fact_value_jsonb": {
+                "sign": "Leo",
+                "house": 1,
+                "varga": "D2",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "uncatalogued": false
+              },
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "graha_dignity_per_varga.D2_SUN.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "ec3dba0c6ba2fa09",
+              "fact_category": "graha_dignity_per_varga",
+              "fact_subject": "D1_SUN",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "dignity_state",
+              "fact_value_num": null,
+              "fact_value_text": "neutral",
+              "fact_value_jsonb": {
+                "sign": "Capricorn",
+                "house": 10,
+                "varga": "D1",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "uncatalogued": false
+              },
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "graha_dignity_per_varga.D1_SUN.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            },
+            {
+              "fact_id": "7dd0222900d540e6",
+              "fact_category": "graha_dignity_per_varga",
+              "fact_subject": "D1_MOON",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "dignity_state",
+              "fact_value_num": null,
+              "fact_value_text": "neutral",
+              "fact_value_jsonb": {
+                "sign": "Aquarius",
+                "house": 11,
+                "varga": "D1",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "uncatalogued": false
+              },
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "graha_dignity_per_varga.D1_MOON.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+            }
+          ],
+          "total": 10
+        },
+        "trim_report": null
+      }
+    }
+  }
+}

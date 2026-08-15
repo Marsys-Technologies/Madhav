@@ -1,0 +1,7 @@
+{
+  "tool": "chart_snapshot",
+  "scenario": "zero_history_chart_include_navamsa_true",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "include_navamsa": true},
+  "raw_response": {"type":"object","object":{"content":{"chart_id":"1c826d5a-41cb-4450-b4dc-59d440e5f75a","ayanamsha_id":"lahiri_chitrapaksha","vargas":["D1","D9"],"snapshot_text":"D1 — Lagna Ari\n 1 Ari [L] Ra 28°18'\n 3 Gem     Mo 16°13'\n 7 Lib     Ke 28°18'\n 8 Sco     Sa 4°27'\n10 Cap     Ju 11°37'\n11 Aqu     Su 18°07', Me 27°49'\n12 Pis     Ve 26°14', Ma 26°59'\n\nD9 — Lagna Sco\n 1 Ari     Ju 11°37'\n 3 Gem     Me 27°49', Ke 28°18'\n 5 Leo     Sa 4°27'\n 8 Sco [L] -\n 9 Sag     Ra 28°18'\n11 Aqu     Mo 16°13', Ve 26°14'\n12 Pis     Su 18°07', Ma 26°59'","byte_length":521,"within_budget":true,"additional_vargas":[],"unresolved_vargas":[]},"is_error":false}},
+  "note": "Second chart (Abhinandan, zero-history) exercised for chart-scoping: D1 lagna Aries, D9 lagna Scorpio — self-consistent, distinct data from the native chart. Confirms tool is genuinely chart-scoped, not returning cached/static data."
+}

@@ -1,0 +1,50 @@
+{
+  "tool": "judgment_query",
+  "scenario": "zero_health_domain",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "domain": "health"},
+  "raw_response_summary": {
+    "note": "Full raw response was captured inline in the audit session (very large, v3 envelope). This summary preserves the load-bearing fields verified during the audit.",
+    "envelope_version": "v3",
+    "tool": "judgment_query",
+    "verdict": {
+      "domain": "health",
+      "domain_label": "Health / Vitality",
+      "bhava": 1,
+      "verdict_grade": "mixed",
+      "composite_score": 0.44,
+      "d1_score": -0.8,
+      "operative_varga": "D6",
+      "varga_term": 0,
+      "yoga_term": 1.24,
+      "yoga_subscore": {"domain_bearing_firings": 3, "total_fired_on_chart": 14},
+      "receipt": {"bhava": true, "bhavesha": true, "karaka": true, "from_moon": true, "varga_confirmed": false, "varga_weighted_into_verdict": true, "yogas_checked": 14, "bhanga_checked": true, "timing_anchored": true}
+    },
+    "gochara_sweep": {
+      "domain": "health",
+      "domain_covered": true,
+      "upcoming_window_count": 8,
+      "valence_breakdown": {"loss": 6, "neutral": 2},
+      "window_range": {"start": "2026-08-15", "end": "2029-08-15"},
+      "top_windows_sample": [
+        {"event_class": "illness_acute", "temporal_shape": "point", "peak_date": "2028-03-15", "valence": "loss", "is_adverse": true},
+        {"event_class": "surgery", "temporal_shape": "point", "peak_date": "2028-03-15", "valence": "neutral", "is_adverse": false},
+        {"event_class": "illness_acute", "temporal_shape": "point", "peak_date": "2027-09-09", "valence": "loss", "is_adverse": true},
+        {"event_class": "illness_acute", "temporal_shape": "interval", "peak_date": "2025-04-27", "valence": "loss", "is_adverse": true},
+        {"event_class": "chronic_onset", "temporal_shape": "interval", "peak_date": "2028-03-01", "valence": "loss", "is_adverse": true}
+      ]
+    },
+    "sensitive_degree_firings_count": 7,
+    "judgment_flags": [
+      {"code": "bearing_yogas_corroboration_caveat", "detail": "catalog label matches — not cross-verified confirmed firings."},
+      {"code": "notably_absent_not_checked", "detail": "near-miss yoga detection not yet built — reported honestly."},
+      {"code": "kala_activations_trimmed", "detail": "10 raw activation row(s) deduped to 1 distinct window(s)."},
+      {"code": "kala_activations_single_cycle", "detail": "reflects ONE resolved window, not exhaustive."},
+      {"code": "afflictions_present", "detail": "15 adverse signal(s) + 0 affliction mechanism(s) served separately."},
+      {"code": "sensitive_degree_firings_present", "detail": "7 fired sensitive-degree checks surfaced."},
+      {"code": "budget_exceeded_after_trim", "detail": "12kb budget still exceeded after full trim."},
+      {"code": "varga_confirmed_forced_false", "detail": "receipt.varga_confirmed downgraded rather than shipping a ✓-with-empty-evidence receipt."}
+    ],
+    "reading_checklist": {"units_served": 8, "units_total": 12, "units_unserved": ["ashtakavarga", "special_lagnas", "yogi_avayogi", "tajaka"]},
+    "epistemic": {"grade": "structural_prior", "verified_fraction": null}
+  }
+}

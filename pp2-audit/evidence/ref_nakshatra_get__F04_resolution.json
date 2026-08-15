@@ -1,0 +1,32 @@
+{
+  "tool": "ref_nakshatra_get",
+  "scenario": "F-04 DIAGNOSIS-INCOMPLETE resolution — tracing whether a structured bg_nakshatra-type catalog table exists anywhere in the live schema, or whether the tool's fallback_reason claim ('No structured bg_nakshatra catalog table exists') is true.",
+  "code_trace": {
+    "handler_file": "platform-mcp/src/tools/register_p1_reference.ts:410-447",
+    "handler_behavior": "ref_nakshatra_get unconditionally routes every call through marsys://tool/L0/query_classical_texts (unstructured hybrid vector+keyword search over scanned classical-text chunks), setting structured_filter_applied:false and fallback_reason:'No structured bg_nakshatra catalog table exists — this is a classical-text hybrid search...' (line 440). The inline comment at line 428 asserts the same premise: 'no structured bg_nakshatra catalog table exists'.",
+    "claim_is_false": true
+  },
+  "db_verification": {
+    "query_1": "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name LIKE '%nakshatra%'",
+    "result_1": ["bg_nakshatra_medical", "reference_nakshatra", "reference_nakshatra_matrix", "reference_nakshatra_pada", "reference_nakshatras"],
+    "query_2": "SELECT column_name, data_type FROM information_schema.columns WHERE table_name='reference_nakshatra' ORDER BY ordinal_position",
+    "result_2_columns": ["nakshatra_id", "name_sa_iast", "name_sa_devanagari", "name_en", "alt_names", "start_longitude", "end_longitude", "span_degrees", "rashis_spanned", "degree_in_rashi_ranges", "vimshottari_lord", "presiding_deity", "secondary_deities", "ruling_planet", "gana", "nadi", "yoni_en", "yoni_sa", "yoni_sex", "varna", "tatva", "guna", "pakshi", "nakshatra_gender", "muhurta_type", "disha", "favorable_acts", "prohibited_acts", "symbol", "shakti", "basis_above", "basis_below", "net_result", "motivation", "body_part", "paramayus", "naisargika_maturity_age", "deity_domain", "is_gandanta", "is_mula_sangya", "is_panchaka", "is_abhijit", "tradition_scope", "classical_source", "build_id", "created_at"],
+    "row_count_reference_nakshatra": 28,
+    "query_3": "SELECT name_en, vimshottari_lord, presiding_deity, nakshatra_gender, gana, varna, nadi, body_part, symbol FROM reference_nakshatra WHERE name_en ILIKE '%bhadrapada%'",
+    "result_3": [
+      {"name_en": "Purva Bhadrapada", "vimshottari_lord": "jupiter", "presiding_deity": "Aja Ekapada", "nakshatra_gender": "Male", "gana": "Manushya", "varna": "Brahmin", "nadi": "Adi", "body_part": "left side", "symbol": "Front of a funeral cot / double-faced man"},
+      {"name_en": "Uttara Bhadrapada", "vimshottari_lord": "saturn", "presiding_deity": "Ahir Budhnya", "nakshatra_gender": "Male", "gana": "Manushya", "varna": "Kshatriya", "nadi": "Antya", "body_part": "feet", "symbol": "Back of a funeral cot / twin serpents"}
+    ],
+    "secondary_table_reference_nakshatras": {
+      "row_count": 27,
+      "columns": ["id", "nakshatra_id", "canonical_name_en", "canonical_name_sa", "lord", "deity", "nature", "guna", "start_degree", "end_degree", "pada_lords", "body_part", "source_citation", "created_at"],
+      "purva_bhadrapada_row": {"canonical_name_en": "Purva Bhadrapada", "lord": "jupiter", "deity": "Aja Ekapada", "pada_lords": ["mars", "venus", "mercury", "moon"], "body_part": "sides"},
+      "status": "DEPRECATED per migration 302_deprecate_reference_nakshatras.sql — 'reference_nakshatras is superseded by reference_nakshatra (canonical, 28 rows via bg_nakshatra writer)'. Still populated and live, kept only because the bg_reference writer still inserts into it."
+    }
+  },
+  "canonical_table_provenance": {
+    "migration_comment_302": "COMMENT ON TABLE reference_nakshatras IS 'DEPRECATED — superseded by reference_nakshatra (28 rows, managed by bg_nakshatra writer). Do not add new columns or queries...'",
+    "conclusion": "reference_nakshatra (singular) is the officially canonical, currently-maintained, fully-populated (28 rows incl. Abhijit) L0 Brahmagyan nakshatra catalog table, managed by the bg_nakshatra writer, containing EXACTLY the fields ref_nakshatra_get's own tool description promises (lord, devata, gender, gana, varna, nadi, body part, symbol; pada_lords available on the deprecated sibling reference_nakshatras). No serving-layer TypeScript file (platform/src, platform-mcp/src) references either 'reference_nakshatra' or 'reference_nakshatras' anywhere — grep across both trees returns zero hits outside generated census/harvest artifacts and test fixtures."
+  },
+  "verdict": "F-04 RESOLVED: this is a genuine WIRING GAP, not a total absence. A live, populated, exactly-matching structured catalog table exists (reference_nakshatra, 28 rows) but ref_nakshatra_get's handler never queries it. The handler's own fallback_reason string and inline code comment are factually incorrect — most likely because the table naming convention here is 'reference_*' rather than the 'bg_*' prefix the developer searched for (matching sibling fixed tools like bg_dignity_reference, bg_dosha_catalog, bg_transit_rules)."
+}

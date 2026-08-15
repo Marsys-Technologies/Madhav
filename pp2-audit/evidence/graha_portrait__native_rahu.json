@@ -1,0 +1,23 @@
+{
+  "tool": "graha_portrait",
+  "scenario": "native_graha_rahu",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "graha": "Rahu"},
+  "raw_response_summary": {
+    "verdict": {
+      "graha": "Rahu", "graha_code": "RAH_MEAN",
+      "completeness": {"position":"✓","dignity":"✓","functional_nature":"zero_rows","strength":"✓","avasthas":"✓","yogas":"zero_rows","dashas":"✓","cgm_neighborhood":"✓"},
+      "sections_populated": 6, "sections_requested": 8,
+      "narration": "Confirmed: Rahu is exalted (Taurus, 2nd house) in D1. In D9: neutral (Gemini, 12th house) — and natal strength undercut by navamsha stress. Shadbala: 0.38 rupas total. Avasthas — lajjitadi avastha: garvita; sayanadi avastha: agamana. Yogas: no parivartana exchange and no catalog yoga/dosha candidates for Rahu in this chart. Next Rahu Mahadasha: 2077-08-18 -> 2095-08-18 (age 93)."
+    },
+    "dignity_D1": {"sign": "Taurus", "house": 2, "dignity_state": "exalted"},
+    "dignity_D9": {"sign": "Gemini", "house": 12, "dignity_state": "neutral"},
+    "dashas": {"level": "maha", "rows": [
+      {"lord_graha": "Rahu", "start_date": "1957-08-18", "end_date": "1975-08-18", "lord_natal_house_d1": 2, "lord_natal_dignity_d1": "exalted"},
+      {"lord_graha": "Rahu", "start_date": "2077-08-18", "end_date": "2095-08-18", "lord_natal_house_d1": 2, "lord_natal_dignity_d1": "exalted"}
+    ]},
+    "cgm_neighborhood": {"node_count": 13, "edge_count": 152},
+    "judgment_flags": [{"code": "no_parivartana_or_catalog_matches_for_graha"}, {"code": "budget_exceeded_after_trim", "detail": "12kb budget still exceeded after full trim."}],
+    "functional_nature_rows": [],
+    "note": "functional_nature and yogas both return zero_rows for Rahu despite being requested (include defaults to all sections). functional_nature (benefic/malefic/yoga-karaka classification for this lagna) is empty for Rahu -- worth checking whether functional_nature is computed for nodal points at all across the tool, since Rahu/Ketu functional-benefic/malefic classification IS a standard classical technique (e.g. Jaimini/Parashari lordship-based functional nature for nodes via their nakshatra-lord or occupied-sign co-lordship)."
+  }
+}

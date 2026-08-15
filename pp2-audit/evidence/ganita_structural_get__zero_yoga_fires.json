@@ -1,0 +1,19 @@
+{
+  "tool": "ganita_structural_get",
+  "scenario": "zero_history_yoga_fires",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "facet": "yoga_fires"},
+  "raw_response_summary": {
+    "categories": ["yoga_fires", "yoga_label", "bhadra_flag"],
+    "total": 9,
+    "sample_rows": [
+      {"fact_category": "bhadra_flag", "fact_subject": "BHADRA_FLAG_BIRTH", "fact_value_text": "false"},
+      {"fact_category": "yoga_label", "fact_subject": "gola", "yoga_name": "Gola Yoga", "fire_reason": "5_distinct_signs"},
+      {"fact_category": "yoga_label", "fact_subject": "ubhayachari", "yoga_name": "Ubhayachari Yoga", "fire_reason": "requires_pass"},
+      {"fact_category": "yoga_label", "fact_subject": "vasi", "yoga_name": "Vasi Yoga", "fire_reason": "requires_pass"}
+    ],
+    "firings_pointer": {"tool": "ganita_yoga_firings_get", "fired_count": 14},
+    "catalog_only_rows_in_page": 3,
+    "catalog_only_note": "3 of 9 row(s) in this page are catalog_only/requires_pass -- single-pass label matches (JL-004), not yet cross-verified confirmed firings."
+  },
+  "pp2_note": "Re-verified with a valid facet (yoga_fires) on the zero-history chart; prior session's call used facet='houses' (invalid enum value) and was correctly rejected -- caller error. Confirms §N.6 catalog-vs-confirmed density layering works correctly: 3/9 rows are explicitly flagged catalog_only/requires_pass with an honest catalog_only_note pointing to the firings-authoritative surface, rather than being presented as confirmed findings."
+}

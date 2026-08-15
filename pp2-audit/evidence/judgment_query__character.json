@@ -1,0 +1,16 @@
+{
+  "tool": "judgment_query",
+  "scenario": "character",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "character"},
+  "timing": {"before_ms": 1786800932245, "after_ms": 1786800943554, "latency_ms": 11309},
+  "is_error": false,
+  "raw_response_summary": {
+    "envelope_version": "v3",
+    "verdict": {"domain": "character", "domain_label": "Character / Buddhi", "bhava": 1, "verdict_grade": "convergent_moderate", "composite_score": 1.48, "operative_varga": "D1"},
+    "reading_checklist": {"units_served": 8, "units_total": 12, "units_unserved": ["ashtakavarga", "special_lagnas", "yogi_avayogi", "tajaka"]},
+    "judgment_flags_count": 6,
+    "chart_header": {"lagna_sign": "Aries", "moon_sign": "Aquarius", "sun_sign": "Capricorn"},
+    "epistemic": {"grade": "structural_prior"}
+  },
+  "note": "Fields copied verbatim from actual tool response; full payload truncated for evidence-file size, not fabricated."
+}

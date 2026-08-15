@@ -1,0 +1,360 @@
+{
+  "tool": "ganita_av_transit_gating_get",
+  "scenario": "zero_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"mode\":\"sav_bav_gating\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"lagna_sign_number\":1,\"classification_basis\":{\"mean_sav_bindus\":28.083333333333332,\"neutral_band\":1,\"note\":\"damping < mean-band < neutral < mean+band < amplifying; raw sav_bindus always served alongside.\"},\"rows\":[{\"sign_number\":1,\"sign_name\":\"Aries\",\"house\":1,\"sav_bindus\":33,\"sav_classification\":\"amplifying\",\"bav\":{\"JUP\":7,\"MAR\":5,\"MER\":5,\"MOON\":6,\"SAT\":3,\"SUN\":3,\"VEN\":4},\"fact_ids\":[\"5426ea2cc131d269\",\"46aa7802ac7e81de\",\"0539b32a5cf2d198\",\"38bf03da64e59618\",\"a92d3052974118da\",\"67078695b2850000\",\"b93eddc27adf9c28\",\"8dae816f2268c116\"]},{\"sign_number\":2,\"sign_name\":\"Taurus\",\"house\":2,\"sav_bindus\":21,\"sav_classification\":\"damping\",\"bav\":{\"JUP\":3,\"MAR\":1,\"MER\":3,\"MOON\":3,\"SAT\":3,\"SUN\":3,\"VEN\":5},\"fact_ids\":[\"8e52baa8aef5187f\",\"c8a9aa63c5f1182a\",\"026b057103a0a122\",\"35df14ec7fd62df5\",\"9c18331d6ccc07d2\",\"c4f56ce2259c8423\",\"61ee6891c8978c53\",\"b9d00c4c4631f40c\"]},{\"sign_number\":3,\"sign_name\":\"Gemini\",\"house\":3,\"sav_bindus\":31,\"sav_classification\":\"amplifying\",\"bav\":{\"JUP\":2,\"MAR\":6,\"MER\":6,\"MOON\":4,\"SAT\":2,\"SUN\":5,\"VEN\":6},\"fact_ids\":[\"7c218afc0135c2af\",\"84c34f80ebf95937\",\"fd9f742422f7e0f5\",\"8affa8a53807f040\",\"4a33b802fae378dc\",\"3cbaae01394df231\",\"29bedc01187035cb\",\"e88b0c57a2001a01\"]},{\"sign_number\":4,\"sign_name\":\"Cancer\",\"house\":4,\"sav_bindus\":29,\"sav_classification\":\"neutral\",\"bav\":{\"JUP\":5,\"MAR\":3,\"MER\":6,\"MOON\":4,\"SAT\":3,\"SUN\":3,\"VEN\":5},\"fact_ids\":[\"ac7f2e8b21b9daf4\",\"2fa3444e3637b8e8\",\"455341977a32ed03\",\"9a56ef2a08f5083a\",\"dfa00ce764be94fd\",\"5ea7cc795c198373\",\"9daa051fb0b9a884\",\"da687146d06df2f8\"]},{\"sign_number\":5,\"sign_name\":\"Leo\",\"house\":5,\"sav_bindus\":27,\"sav_classification\":\"damping\",\"bav\":{\"JUP\":4,\"MAR\":3,\"MER\":2,\"MOON\":5,\"SAT\":4,\"SUN\":4,\"VEN\":5},\"fact_ids\":[\"56cdbc59613ad01c\",\"cf16a30a60172df6\",\"76022a426ef12ac6\",\"ece6250b89d5a356\",\"d32aed767f4ff861\",\"22717a4eac5fbe6b\",\"e1e656aa7487f01c\",\"99a9ff78a2e37b44\"]},{\"sign_number\":6,\"sign_name\":\"Virgo\",\"house\":6,\"sav_bindus\":29,\"sav_classification\":\"neutral\",\"bav\":{\"JUP\":3,\"MAR\":3,\"MER\":4,\"MOON\":5,\"SAT\":4,\"SUN\":6,\"VEN\":4},\"fact_ids\":[\"901f24a15d6791aa\",\"93256ef8414ef852\",\"8fb4120a5086781d\",\"e159bc21070c7a00\",\"8cb8da9370a630da\",\"79cdb9eb5cd2efdc\",\"294d4a1be49b7347\",\"4b5b7ceac0bd08dc\"]},{\"sign_number\":7,\"sign_name\":\"Libra\",\"house\":7,\"sav_bindus\":23,\"sav_classification\":\"damping\",\"bav\":{\"JUP\":7,\"MAR\":3,\"MER\":4,\"MOON\":1,\"SAT\":1,\"SUN\":3,\"VEN\":4},\"fact_ids\":[\"891b0fd62ba5d10e\",\"fbb6b6796738b798\",\"eb1e6f54647c056e\",\"d082560cdb8710df\",\"d657e36520e97c4c\",\"5f9c53f8a663f734\",\"2e1c81f899d3aa26\",\"bb56a585abfb430b\"]},{\"sign_number\":8,\"sign_name\":\"Scorpio\",\"house\":8,\"sav_bindus\":34,\"sav_classification\":\"amplifying\",\"bav\":{\"JUP\":4,\"MAR\":4,\"MER\":7,\"MOON\":5,\"SAT\":4,\"SUN\":6,\"VEN\":4},\"fact_ids\":[\"207aa74537c00fa1\",\"6c900cd61631739d\",\"c081352ac1172a56\",\"88141eab38c2b036\",\"2136b641314334f0\",\"2268faa0d3d64d5b\",\"ec518b3f0a2eaf73\",\"63986b5f4f827c8f\"]},{\"sign_number\":9,\"sign_name\":\"Sagittarius\",\"house\":9,\"sav_bindus\":32,\"sav_classification\":\"amplifying\",\"bav\":{\"JUP\":6,\"MAR\":4,\"MER\":5,\"MOON\":5,\"SAT\":4,\"SUN\":4,\"VEN\":4},\"fact_ids\":[\"a0f0b8afd9b55ad3\",\"86e7abcf8542f34b\",\"f52d9fdf9607dfe3\",\"88cf4acef16d62fc\",\"13602e9443d69087\",\"22424086edd4e9d7\",\"6eb7470bed3e6ef5\",\"e7d12a20b0142508\"]},{\"sign_number\":10,\"sign_name\":\"Capricorn\",\"house\":10,\"sav_bindus\":32,\"sav_classification\":\"amplifying\",\"bav\":{\"JUP\":5,\"MAR\":3,\"MER\":6,\"MOON\":5,\"SAT\":5,\"SUN\":3,\"VEN\":5},\"fact_ids\":[\"09c26a4f9e7a3b24\",\"0bbc4e6e8cd12ba2\",\"45a65933a1c38c7c\",\"46f43638bb49d619\",\"7afc1a159e12785f\",\"1c2e25cc1a6103a1\",\"310b24bb9c04dba5\",\"d09d8f623c68cfa9\"]},{\"sign_number\":11,\"sign_name\":\"Aquarius\",\"house\":11,\"sav_bindus\":27,\"sav_classification\":\"damping\",\"bav\":{\"JUP\":5,\"MAR\":3,\"MER\":3,\"MOON\":4,\"SAT\":4,\"SUN\":4,\"VEN\":4},\"fact_ids\":[\"8771b3d2b341c859\",\"224333329514f38b\",\"d482de84202d50f1\",\"beecc9dc27926bf2\",\"f063b7bd9d3adc17\",\"ab9b405c5650e395\",\"124158eb9632998f\",\"40ae4eac687cdf95\"]},{\"sign_number\":12,\"sign_name\":\"Pisces\",\"house\":12,\"sav_bindus\":19,\"sav_classification\":\"damping\",\"bav\":{\"JUP\":5,\"MAR\":1,\"MER\":3,\"MOON\":2,\"SAT\":2,\"SUN\":4,\"VEN\":2},\"fact_ids\":[\"024187c9056b3740\",\"73b3b72ef784d41d\",\"62975a7e13202169\",\"c8b4a27351204930\",\"7b696872539ee495\",\"d0568cc9819920d1\",\"d881b0c5db11d184\",\"187286dd4c434826\"]}],\"total\":12,\"filters\":{\"sign_number\":null,\"house\":null,\"graha\":null},\"provenance\":{\"tables\":[\"chart_facts\"],\"fact_category\":\"ashtakavarga_bindu_sign\"}},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+          "mode": "sav_bav_gating",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "lagna_sign_number": 1,
+          "classification_basis": {
+            "mean_sav_bindus": 28.083333333333332,
+            "neutral_band": 1,
+            "note": "damping < mean-band < neutral < mean+band < amplifying; raw sav_bindus always served alongside."
+          },
+          "rows": [
+            {
+              "sign_number": 1,
+              "sign_name": "Aries",
+              "house": 1,
+              "sav_bindus": 33,
+              "sav_classification": "amplifying",
+              "bav": {
+                "JUP": 7,
+                "MAR": 5,
+                "MER": 5,
+                "MOON": 6,
+                "SAT": 3,
+                "SUN": 3,
+                "VEN": 4
+              },
+              "fact_ids": [
+                "5426ea2cc131d269",
+                "46aa7802ac7e81de",
+                "0539b32a5cf2d198",
+                "38bf03da64e59618",
+                "a92d3052974118da",
+                "67078695b2850000",
+                "b93eddc27adf9c28",
+                "8dae816f2268c116"
+              ]
+            },
+            {
+              "sign_number": 2,
+              "sign_name": "Taurus",
+              "house": 2,
+              "sav_bindus": 21,
+              "sav_classification": "damping",
+              "bav": {
+                "JUP": 3,
+                "MAR": 1,
+                "MER": 3,
+                "MOON": 3,
+                "SAT": 3,
+                "SUN": 3,
+                "VEN": 5
+              },
+              "fact_ids": [
+                "8e52baa8aef5187f",
+                "c8a9aa63c5f1182a",
+                "026b057103a0a122",
+                "35df14ec7fd62df5",
+                "9c18331d6ccc07d2",
+                "c4f56ce2259c8423",
+                "61ee6891c8978c53",
+                "b9d00c4c4631f40c"
+              ]
+            },
+            {
+              "sign_number": 3,
+              "sign_name": "Gemini",
+              "house": 3,
+              "sav_bindus": 31,
+              "sav_classification": "amplifying",
+              "bav": {
+                "JUP": 2,
+                "MAR": 6,
+                "MER": 6,
+                "MOON": 4,
+                "SAT": 2,
+                "SUN": 5,
+                "VEN": 6
+              },
+              "fact_ids": [
+                "7c218afc0135c2af",
+                "84c34f80ebf95937",
+                "fd9f742422f7e0f5",
+                "8affa8a53807f040",
+                "4a33b802fae378dc",
+                "3cbaae01394df231",
+                "29bedc01187035cb",
+                "e88b0c57a2001a01"
+              ]
+            },
+            {
+              "sign_number": 4,
+              "sign_name": "Cancer",
+              "house": 4,
+              "sav_bindus": 29,
+              "sav_classification": "neutral",
+              "bav": {
+                "JUP": 5,
+                "MAR": 3,
+                "MER": 6,
+                "MOON": 4,
+                "SAT": 3,
+                "SUN": 3,
+                "VEN": 5
+              },
+              "fact_ids": [
+                "ac7f2e8b21b9daf4",
+                "2fa3444e3637b8e8",
+                "455341977a32ed03",
+                "9a56ef2a08f5083a",
+                "dfa00ce764be94fd",
+                "5ea7cc795c198373",
+                "9daa051fb0b9a884",
+                "da687146d06df2f8"
+              ]
+            },
+            {
+              "sign_number": 5,
+              "sign_name": "Leo",
+              "house": 5,
+              "sav_bindus": 27,
+              "sav_classification": "damping",
+              "bav": {
+                "JUP": 4,
+                "MAR": 3,
+                "MER": 2,
+                "MOON": 5,
+                "SAT": 4,
+                "SUN": 4,
+                "VEN": 5
+              },
+              "fact_ids": [
+                "56cdbc59613ad01c",
+                "cf16a30a60172df6",
+                "76022a426ef12ac6",
+                "ece6250b89d5a356",
+                "d32aed767f4ff861",
+                "22717a4eac5fbe6b",
+                "e1e656aa7487f01c",
+                "99a9ff78a2e37b44"
+              ]
+            },
+            {
+              "sign_number": 6,
+              "sign_name": "Virgo",
+              "house": 6,
+              "sav_bindus": 29,
+              "sav_classification": "neutral",
+              "bav": {
+                "JUP": 3,
+                "MAR": 3,
+                "MER": 4,
+                "MOON": 5,
+                "SAT": 4,
+                "SUN": 6,
+                "VEN": 4
+              },
+              "fact_ids": [
+                "901f24a15d6791aa",
+                "93256ef8414ef852",
+                "8fb4120a5086781d",
+                "e159bc21070c7a00",
+                "8cb8da9370a630da",
+                "79cdb9eb5cd2efdc",
+                "294d4a1be49b7347",
+                "4b5b7ceac0bd08dc"
+              ]
+            },
+            {
+              "sign_number": 7,
+              "sign_name": "Libra",
+              "house": 7,
+              "sav_bindus": 23,
+              "sav_classification": "damping",
+              "bav": {
+                "JUP": 7,
+                "MAR": 3,
+                "MER": 4,
+                "MOON": 1,
+                "SAT": 1,
+                "SUN": 3,
+                "VEN": 4
+              },
+              "fact_ids": [
+                "891b0fd62ba5d10e",
+                "fbb6b6796738b798",
+                "eb1e6f54647c056e",
+                "d082560cdb8710df",
+                "d657e36520e97c4c",
+                "5f9c53f8a663f734",
+                "2e1c81f899d3aa26",
+                "bb56a585abfb430b"
+              ]
+            },
+            {
+              "sign_number": 8,
+              "sign_name": "Scorpio",
+              "house": 8,
+              "sav_bindus": 34,
+              "sav_classification": "amplifying",
+              "bav": {
+                "JUP": 4,
+                "MAR": 4,
+                "MER": 7,
+                "MOON": 5,
+                "SAT": 4,
+                "SUN": 6,
+                "VEN": 4
+              },
+              "fact_ids": [
+                "207aa74537c00fa1",
+                "6c900cd61631739d",
+                "c081352ac1172a56",
+                "88141eab38c2b036",
+                "2136b641314334f0",
+                "2268faa0d3d64d5b",
+                "ec518b3f0a2eaf73",
+                "63986b5f4f827c8f"
+              ]
+            },
+            {
+              "sign_number": 9,
+              "sign_name": "Sagittarius",
+              "house": 9,
+              "sav_bindus": 32,
+              "sav_classification": "amplifying",
+              "bav": {
+                "JUP": 6,
+                "MAR": 4,
+                "MER": 5,
+                "MOON": 5,
+                "SAT": 4,
+                "SUN": 4,
+                "VEN": 4
+              },
+              "fact_ids": [
+                "a0f0b8afd9b55ad3",
+                "86e7abcf8542f34b",
+                "f52d9fdf9607dfe3",
+                "88cf4acef16d62fc",
+                "13602e9443d69087",
+                "22424086edd4e9d7",
+                "6eb7470bed3e6ef5",
+                "e7d12a20b0142508"
+              ]
+            },
+            {
+              "sign_number": 10,
+              "sign_name": "Capricorn",
+              "house": 10,
+              "sav_bindus": 32,
+              "sav_classification": "amplifying",
+              "bav": {
+                "JUP": 5,
+                "MAR": 3,
+                "MER": 6,
+                "MOON": 5,
+                "SAT": 5,
+                "SUN": 3,
+                "VEN": 5
+              },
+              "fact_ids": [
+                "09c26a4f9e7a3b24",
+                "0bbc4e6e8cd12ba2",
+                "45a65933a1c38c7c",
+                "46f43638bb49d619",
+                "7afc1a159e12785f",
+                "1c2e25cc1a6103a1",
+                "310b24bb9c04dba5",
+                "d09d8f623c68cfa9"
+              ]
+            },
+            {
+              "sign_number": 11,
+              "sign_name": "Aquarius",
+              "house": 11,
+              "sav_bindus": 27,
+              "sav_classification": "damping",
+              "bav": {
+                "JUP": 5,
+                "MAR": 3,
+                "MER": 3,
+                "MOON": 4,
+                "SAT": 4,
+                "SUN": 4,
+                "VEN": 4
+              },
+              "fact_ids": [
+                "8771b3d2b341c859",
+                "224333329514f38b",
+                "d482de84202d50f1",
+                "beecc9dc27926bf2",
+                "f063b7bd9d3adc17",
+                "ab9b405c5650e395",
+                "124158eb9632998f",
+                "40ae4eac687cdf95"
+              ]
+            },
+            {
+              "sign_number": 12,
+              "sign_name": "Pisces",
+              "house": 12,
+              "sav_bindus": 19,
+              "sav_classification": "damping",
+              "bav": {
+                "JUP": 5,
+                "MAR": 1,
+                "MER": 3,
+                "MOON": 2,
+                "SAT": 2,
+                "SUN": 4,
+                "VEN": 2
+              },
+              "fact_ids": [
+                "024187c9056b3740",
+                "73b3b72ef784d41d",
+                "62975a7e13202169",
+                "c8b4a27351204930",
+                "7b696872539ee495",
+                "d0568cc9819920d1",
+                "d881b0c5db11d184",
+                "187286dd4c434826"
+              ]
+            }
+          ],
+          "total": 12,
+          "filters": {
+            "sign_number": null,
+            "house": null,
+            "graha": null
+          },
+          "provenance": {
+            "tables": [
+              "chart_facts"
+            ],
+            "fact_category": "ashtakavarga_bindu_sign"
+          }
+        },
+        "is_error": false
+      }
+    }
+  }
+}

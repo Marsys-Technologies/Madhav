@@ -1,0 +1,7 @@
+{
+  "tool": "ganita_vastu_get",
+  "scenario": "native_graha_filter_ketu",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "graha": "Ketu"},
+  "raw_response": {"type":"object","object":{"content":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","rows":[],"count":0,"total_matching":0,"more_available":false,"filters":{"graha":"Ketu","direction":null,"ayanamsha_id":"lahiri_chitrapaksha","indication_tier":null,"limit":50},"provenance":{"tables":["ga_vastu_planet_direction_map"],"source":"L1 Gaṇita vastu direction map; served chart-scoped."}},"is_error":false}},
+  "note": "Confirmed genuine: cross-checked against evidence/ganita_vastu_get__native_primary.json's unfiltered 8-row set (Jupiter/Mars/Mercury/Moon/Rahu/Saturn/Sun/Venus) -- Ketu has NO row in ga_vastu_planet_direction_map for this chart at all (8 of 9 classical grahas mapped; Ketu absent). The graha='Ketu' filter itself works correctly (0 rows is the honest answer, not a filter bug); the underlying L1 vastu writer simply does not emit a Ketu row for this chart. Not an aspect/drishti issue (vastu direction mapping does not consume graha aspects), so out of scope for the R24 nodal-aspect priority, but worth noting as a data-completeness gap in ga_vastu_planet_direction_map."
+}

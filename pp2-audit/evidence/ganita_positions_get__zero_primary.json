@@ -1,0 +1,162 @@
+{
+  "tool": "ganita_positions_get",
+  "scenario": "zero_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"categories\":[\"graha_position\"],\"frame\":\"lagna\",\"planet\":null,\"rows\":[{\"fact_id\":\"9a6a770b8f4c72b2\",\"fact_category\":\"graha_position\",\"fact_subject\":\"SAT\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"combustion_state\",\"fact_value_num\":null,\"fact_value_text\":\"none\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_position.SAT.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"4acd99c0e98ef91e\",\"fact_category\":\"graha_position\",\"fact_subject\":\"KET_MEAN\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"combustion_state\",\"fact_value_num\":null,\"fact_value_text\":\"none\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_position.KET_MEAN.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"687509e810573698\",\"fact_category\":\"graha_position\",\"fact_subject\":\"JUP\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"combustion_state\",\"fact_value_num\":null,\"fact_value_text\":\"none\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_position.JUP.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"a1df8932687c9c7b\",\"fact_category\":\"graha_position\",\"fact_subject\":\"VEN\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"combustion_state\",\"fact_value_num\":null,\"fact_value_text\":\"none\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_position.VEN.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"95c0be450292b599\",\"fact_category\":\"graha_position\",\"fact_subject\":\"MAR\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"combustion_state\",\"fact_value_num\":null,\"fact_value_text\":\"none\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_position.MAR.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"6b3d9f091878b03c\",\"fact_category\":\"graha_position\",\"fact_subject\":\"RAH_MEAN\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"combustion_state\",\"fact_value_num\":null,\"fact_value_text\":\"none\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_position.RAH_MEAN.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"192bf0220239ab3a\",\"fact_category\":\"graha_position\",\"fact_subject\":\"MOON\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"combustion_state\",\"fact_value_num\":null,\"fact_value_text\":\"none\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_position.MOON.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"c9442ae28359592a\",\"fact_category\":\"graha_position\",\"fact_subject\":\"SUN\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"combustion_state\",\"fact_value_num\":null,\"fact_value_text\":\"none\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_position.SUN.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"ba5a74b15686b50c\",\"fact_category\":\"graha_position\",\"fact_subject\":\"MER\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"combustion_state\",\"fact_value_num\":null,\"fact_value_text\":\"combust\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_position.MER.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"},{\"fact_id\":\"facd77618eeb54ed\",\"fact_category\":\"graha_position\",\"fact_subject\":\"SUN\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"house_d1\",\"fact_value_num\":11,\"fact_value_text\":null,\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"graha_position.SUN.house_d1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0\"}],\"total\":10,\"include_upagrahas\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+        "categories": [
+          "graha_position"
+        ],
+        "frame": "lagna",
+        "planet": null,
+        "rows": [
+          {
+            "fact_id": "9a6a770b8f4c72b2",
+            "fact_category": "graha_position",
+            "fact_subject": "SAT",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "none",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.SAT.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "4acd99c0e98ef91e",
+            "fact_category": "graha_position",
+            "fact_subject": "KET_MEAN",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "none",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.KET_MEAN.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "687509e810573698",
+            "fact_category": "graha_position",
+            "fact_subject": "JUP",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "none",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.JUP.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "a1df8932687c9c7b",
+            "fact_category": "graha_position",
+            "fact_subject": "VEN",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "none",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.VEN.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "95c0be450292b599",
+            "fact_category": "graha_position",
+            "fact_subject": "MAR",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "none",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.MAR.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "6b3d9f091878b03c",
+            "fact_category": "graha_position",
+            "fact_subject": "RAH_MEAN",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "none",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.RAH_MEAN.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "192bf0220239ab3a",
+            "fact_category": "graha_position",
+            "fact_subject": "MOON",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "none",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.MOON.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "c9442ae28359592a",
+            "fact_category": "graha_position",
+            "fact_subject": "SUN",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "none",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.SUN.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "ba5a74b15686b50c",
+            "fact_category": "graha_position",
+            "fact_subject": "MER",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "combustion_state",
+            "fact_value_num": null,
+            "fact_value_text": "combust",
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.MER.combustion_state@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          },
+          {
+            "fact_id": "facd77618eeb54ed",
+            "fact_category": "graha_position",
+            "fact_subject": "SUN",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "fact_key": "house_d1",
+            "fact_value_num": 11,
+            "fact_value_text": null,
+            "fact_value_jsonb": null,
+            "unit": null,
+            "verification_pass_status": "single",
+            "citation_ref": "graha_position.SUN.house_d1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+          }
+        ],
+        "total": 10,
+        "include_upagrahas": false
+      }
+    }
+  }
+}

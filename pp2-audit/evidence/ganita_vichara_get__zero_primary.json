@@ -1,0 +1,403 @@
+{
+  "tool": "ganita_vichara_get",
+  "scenario": "zero_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"verdict\":{\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"total_rows\":1649,\"served_rows\":10,\"family_counts\":{\"varga_ratification_divergence\":1,\"valence_pass\":1595,\"varga_consistency\":9,\"varga_ratification\":9,\"leverage_index\":35},\"as_of\":\"2026-08-15T11:09:20.709Z\",\"note\":\"Counts are family totals under the SAME filters this page was drawn from (D5 coverage receipt) — not a re-guess.\"},\"digest\":{\"families_present\":[\"varga_ratification_divergence\",\"valence_pass\",\"varga_consistency\",\"varga_ratification\",\"leverage_index\"],\"by_family\":{\"valence_pass\":{\"count\":1595,\"sample_subjects\":[]},\"varga_ratification\":{\"count\":9,\"sample_subjects\":[]},\"varga_ratification_divergence\":{\"count\":1,\"sample_subjects\":[]},\"varga_consistency\":{\"count\":9,\"sample_subjects\":[]},\"leverage_index\":{\"count\":35,\"sample_subjects\":[\"JUP\",\"MAR\",\"MER\",\"MOON\",\"SAT\",\"SUN\",\"VEN\"]}}},\"rows\":[{\"id\":\"134262\",\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"build_id\":\"765349a8-b721-4ff6-b5fb-64e57ff19f13\",\"vichara_family\":\"leverage_index\",\"subject\":\"JUP\",\"domain\":\"career\",\"varga_id\":null,\"value_num\":1.246731,\"value_text\":null,\"value_jsonb\":{\"capability\":0.4107,\"dignity_score\":0.25,\"years_to_start\":0.569,\"md_duration_years\":1.002,\"dasha_runway_found\":true,\"dasha_runway_weight\":1.0241,\"shadbala_percentile\":0.5714285714285714,\"domain_load_bearing_weight\":1.25,\"ratification_factor_rescaled\":null,\"domain_load_bearing_weight_normalized\":0.5},\"constituent_fact_ids\":[\"53b973bc5d19d219\",\"f9c2af2025140660\"],\"formula_version\":\"leverage_index_v1\",\"source_citation\":\"CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8\",\"computed_at\":\"2026-08-06 00:04:12.042843+00\"},{\"id\":\"134257\",\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"build_id\":\"765349a8-b721-4ff6-b5fb-64e57ff19f13\",\"vichara_family\":\"leverage_index\",\"subject\":\"MAR\",\"domain\":\"career\",\"varga_id\":null,\"value_num\":0.763636,\"value_text\":null,\"value_jsonb\":{\"capability\":0.3929,\"dignity_score\":0.5,\"dasha_runway_found\":false,\"dasha_runway_weight\":1,\"shadbala_percentile\":0.2857142857142857,\"domain_load_bearing_weight\":0.75,\"ratification_factor_rescaled\":null,\"domain_load_bearing_weight_normalized\":0.3},\"constituent_fact_ids\":[\"2189fec60e3a446b\",\"83d1e991f9d7b314\"],\"formula_version\":\"leverage_index_v1\",\"source_citation\":\"CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8\",\"computed_at\":\"2026-08-06 00:04:12.042843+00\"},{\"id\":\"134259\",\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"build_id\":\"765349a8-b721-4ff6-b5fb-64e57ff19f13\",\"vichara_family\":\"leverage_index\",\"subject\":\"MER\",\"domain\":\"career\",\"varga_id\":null,\"value_num\":0,\"value_text\":null,\"value_jsonb\":{\"capability\":0.75,\"dignity_score\":0.5,\"years_to_start\":2.571,\"md_duration_years\":0.999,\"dasha_runway_found\":true,\"dasha_runway_weight\":1.0207,\"shadbala_percentile\":1,\"domain_load_bearing_weight\":0,\"ratification_factor_rescaled\":null,\"domain_load_bearing_weight_normalized\":0},\"constituent_fact_ids\":[\"96b2731834c20118\",\"aa31b3f60573d144\"],\"formula_version\":\"leverage_index_v1\",\"source_citation\":\"CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8\",\"computed_at\":\"2026-08-06 00:04:12.042843+00\"},{\"id\":\"134255\",\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"build_id\":\"765349a8-b721-4ff6-b5fb-64e57ff19f13\",\"vichara_family\":\"leverage_index\",\"subject\":\"MOON\",\"domain\":\"career\",\"varga_id\":null,\"value_num\":0,\"value_text\":null,\"value_jsonb\":{\"capability\":0.4643,\"dignity_score\":0.5,\"years_to_start\":16.569,\"md_duration_years\":15.001,\"dasha_runway_found\":true,\"dasha_runway_weight\":1,\"shadbala_percentile\":0.42857142857142855,\"domain_load_bearing_weight\":0,\"ratification_factor_rescaled\":null,\"domain_load_bearing_weight_normalized\":0},\"constituent_fact_ids\":[\"6ab89ddecc36ada0\",\"e265a5e8b76cff39\"],\"formula_version\":\"leverage_index_v1\",\"source_citation\":\"CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8\",\"computed_at\":\"2026-08-06 00:04:12.042843+00\"},{\"id\":\"134266\",\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"build_id\":\"765349a8-b721-4ff6-b5fb-64e57ff19f13\",\"vichara_family\":\"leverage_index\",\"subject\":\"SAT\",\"domain\":\"career\",\"varga_id\":null,\"value_num\":3.87192,\"value_text\":null,\"value_jsonb\":{\"capability\":0.381,\"dignity_score\":0.5,\"years_to_start\":0,\"md_duration_years\":19.001,\"dasha_runway_found\":true,\"dasha_runway_weight\":1.475,\"shadbala_percentile\":0.14285714285714285,\"domain_load_bearing_weight\":2.5,\"ratification_factor_rescaled\":0.5,\"domain_load_bearing_weight_normalized\":1},\"constituent_fact_ids\":[\"b2cbc24542d1af07\",\"c9507b983bfb57cf\"],\"formula_version\":\"leverage_index_v1\",\"source_citation\":\"CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8\",\"computed_at\":\"2026-08-06 00:04:12.042843+00\"},{\"id\":\"134253\",\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"build_id\":\"765349a8-b721-4ff6-b5fb-64e57ff19f13\",\"vichara_family\":\"leverage_index\",\"subject\":\"SUN\",\"domain\":\"career\",\"varga_id\":null,\"value_num\":0,\"value_text\":null,\"value_jsonb\":{\"capability\":0.6071,\"dignity_score\":0.5,\"years_to_start\":10.571,\"md_duration_years\":5.999,\"dasha_runway_found\":true,\"dasha_runway_weight\":1.0443,\"shadbala_percentile\":0.7142857142857143,\"domain_load_bearing_weight\":0,\"ratification_factor_rescaled\":null,\"domain_load_bearing_weight_normalized\":0},\"constituent_fact_ids\":[\"20139876bb44c531\",\"2e1385f1ec49d145\"],\"formula_version\":\"leverage_index_v1\",\"source_citation\":\"CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8\",\"computed_at\":\"2026-08-06 00:04:12.042843+00\"},{\"id\":\"134264\",\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"build_id\":\"765349a8-b721-4ff6-b5fb-64e57ff19f13\",\"vichara_family\":\"leverage_index\",\"subject\":\"VEN\",\"domain\":\"career\",\"varga_id\":null,\"value_num\":0,\"value_text\":null,\"value_jsonb\":{\"capability\":0.9286,\"dignity_score\":1,\"years_to_start\":0,\"md_duration_years\":21.002,\"dasha_runway_found\":true,\"dasha_runway_weight\":1.5251,\"shadbala_percentile\":0.8571428571428571,\"domain_load_bearing_weight\":0,\"ratification_factor_rescaled\":null,\"domain_load_bearing_weight_normalized\":0},\"constituent_fact_ids\":[\"06ed3acd520fcf7c\",\"55ac923d80c18228\"],\"formula_version\":\"leverage_index_v1\",\"source_citation\":\"CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8\",\"computed_at\":\"2026-08-06 00:04:12.042843+00\"},{\"id\":\"134304\",\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"build_id\":\"765349a8-b721-4ff6-b5fb-64e57ff19f13\",\"vichara_family\":\"leverage_index\",\"subject\":\"JUP\",\"domain\":\"general\",\"varga_id\":null,\"value_num\":1.068626,\"value_text\":null,\"value_jsonb\":{\"capability\":0.4107,\"dignity_score\":0.25,\"years_to_start\":0.569,\"md_duration_years\":1.002,\"dasha_runway_found\":true,\"dasha_runway_weight\":1.0241,\"shadbala_percentile\":0.5714285714285714,\"domain_load_bearing_weight\":0.75,\"ratification_factor_rescaled\":null,\"domain_load_bearing_weight_normalized\":0.4286},\"constituent_fact_ids\":[\"53b973bc5d19d219\",\"f9c2af2025140660\"],\"formula_version\":\"leverage_index_v1\",\"source_citation\":\"CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8\",\"computed_at\":\"2026-08-06 00:04:12.042843+00\"},{\"id\":\"134300\",\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"build_id\":\"765349a8-b721-4ff6-b5fb-64e57ff19f13\",\"vichara_family\":\"leverage_index\",\"subject\":\"MAR\",\"domain\":\"general\",\"varga_id\":null,\"value_num\":2.333333,\"value_text\":null,\"value_jsonb\":{\"capability\":0.4286,\"dignity_score\":0.5,\"dasha_runway_found\":false,\"dasha_runway_weight\":1,\"shadbala_percentile\":0.2857142857142857,\"domain_load_bearing_weight\":1.75,\"ratification_factor_rescaled\":0.5,\"domain_load_bearing_weight_normalized\":1},\"constituent_fact_ids\":[\"2189fec60e3a446b\",\"83d1e991f9d7b314\"],\"formula_version\":\"leverage_index_v1\",\"source_citation\":\"CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8\",\"computed_at\":\"2026-08-06 00:04:12.042843+00\"},{\"id\":\"134302\",\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"build_id\":\"765349a8-b721-4ff6-b5fb-64e57ff19f13\",\"vichara_family\":\"leverage_index\",\"subject\":\"MER\",\"domain\":\"general\",\"varga_id\":null,\"value_num\":0,\"value_text\":null,\"value_jsonb\":{\"capability\":0.75,\"dignity_score\":0.5,\"years_to_start\":2.571,\"md_duration_years\":0.999,\"dasha_runway_found\":true,\"dasha_runway_weight\":1.0207,\"shadbala_percentile\":1,\"domain_load_bearing_weight\":0,\"ratification_factor_rescaled\":null,\"domain_load_bearing_weight_normalized\":0},\"constituent_fact_ids\":[\"96b2731834c20118\",\"aa31b3f60573d144\"],\"formula_version\":\"leverage_index_v1\",\"source_citation\":\"CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8\",\"computed_at\":\"2026-08-06 00:04:12.042843+00\"}],\"total_matching\":1649,\"more_available\":true,\"filters\":{\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"family\":null,\"domain\":null,\"subject\":null,\"limit\":10,\"offset\":0},\"provenance\":{\"tables\":[\"chart_vichara\"],\"asset_id\":\"ga_vichara\"}},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+          "verdict": {
+            "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+            "total_rows": 1649,
+            "served_rows": 10,
+            "family_counts": {
+              "varga_ratification_divergence": 1,
+              "valence_pass": 1595,
+              "varga_consistency": 9,
+              "varga_ratification": 9,
+              "leverage_index": 35
+            },
+            "as_of": "2026-08-15T11:09:20.709Z",
+            "note": "Counts are family totals under the SAME filters this page was drawn from (D5 coverage receipt) — not a re-guess."
+          },
+          "digest": {
+            "families_present": [
+              "varga_ratification_divergence",
+              "valence_pass",
+              "varga_consistency",
+              "varga_ratification",
+              "leverage_index"
+            ],
+            "by_family": {
+              "valence_pass": {
+                "count": 1595,
+                "sample_subjects": []
+              },
+              "varga_ratification": {
+                "count": 9,
+                "sample_subjects": []
+              },
+              "varga_ratification_divergence": {
+                "count": 1,
+                "sample_subjects": []
+              },
+              "varga_consistency": {
+                "count": 9,
+                "sample_subjects": []
+              },
+              "leverage_index": {
+                "count": 35,
+                "sample_subjects": [
+                  "JUP",
+                  "MAR",
+                  "MER",
+                  "MOON",
+                  "SAT",
+                  "SUN",
+                  "VEN"
+                ]
+              }
+            }
+          },
+          "rows": [
+            {
+              "id": "134262",
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "765349a8-b721-4ff6-b5fb-64e57ff19f13",
+              "vichara_family": "leverage_index",
+              "subject": "JUP",
+              "domain": "career",
+              "varga_id": null,
+              "value_num": 1.246731,
+              "value_text": null,
+              "value_jsonb": {
+                "capability": 0.4107,
+                "dignity_score": 0.25,
+                "years_to_start": 0.569,
+                "md_duration_years": 1.002,
+                "dasha_runway_found": true,
+                "dasha_runway_weight": 1.0241,
+                "shadbala_percentile": 0.5714285714285714,
+                "domain_load_bearing_weight": 1.25,
+                "ratification_factor_rescaled": null,
+                "domain_load_bearing_weight_normalized": 0.5
+              },
+              "constituent_fact_ids": [
+                "53b973bc5d19d219",
+                "f9c2af2025140660"
+              ],
+              "formula_version": "leverage_index_v1",
+              "source_citation": "CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8",
+              "computed_at": "2026-08-06 00:04:12.042843+00"
+            },
+            {
+              "id": "134257",
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "765349a8-b721-4ff6-b5fb-64e57ff19f13",
+              "vichara_family": "leverage_index",
+              "subject": "MAR",
+              "domain": "career",
+              "varga_id": null,
+              "value_num": 0.763636,
+              "value_text": null,
+              "value_jsonb": {
+                "capability": 0.3929,
+                "dignity_score": 0.5,
+                "dasha_runway_found": false,
+                "dasha_runway_weight": 1,
+                "shadbala_percentile": 0.2857142857142857,
+                "domain_load_bearing_weight": 0.75,
+                "ratification_factor_rescaled": null,
+                "domain_load_bearing_weight_normalized": 0.3
+              },
+              "constituent_fact_ids": [
+                "2189fec60e3a446b",
+                "83d1e991f9d7b314"
+              ],
+              "formula_version": "leverage_index_v1",
+              "source_citation": "CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8",
+              "computed_at": "2026-08-06 00:04:12.042843+00"
+            },
+            {
+              "id": "134259",
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "765349a8-b721-4ff6-b5fb-64e57ff19f13",
+              "vichara_family": "leverage_index",
+              "subject": "MER",
+              "domain": "career",
+              "varga_id": null,
+              "value_num": 0,
+              "value_text": null,
+              "value_jsonb": {
+                "capability": 0.75,
+                "dignity_score": 0.5,
+                "years_to_start": 2.571,
+                "md_duration_years": 0.999,
+                "dasha_runway_found": true,
+                "dasha_runway_weight": 1.0207,
+                "shadbala_percentile": 1,
+                "domain_load_bearing_weight": 0,
+                "ratification_factor_rescaled": null,
+                "domain_load_bearing_weight_normalized": 0
+              },
+              "constituent_fact_ids": [
+                "96b2731834c20118",
+                "aa31b3f60573d144"
+              ],
+              "formula_version": "leverage_index_v1",
+              "source_citation": "CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8",
+              "computed_at": "2026-08-06 00:04:12.042843+00"
+            },
+            {
+              "id": "134255",
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "765349a8-b721-4ff6-b5fb-64e57ff19f13",
+              "vichara_family": "leverage_index",
+              "subject": "MOON",
+              "domain": "career",
+              "varga_id": null,
+              "value_num": 0,
+              "value_text": null,
+              "value_jsonb": {
+                "capability": 0.4643,
+                "dignity_score": 0.5,
+                "years_to_start": 16.569,
+                "md_duration_years": 15.001,
+                "dasha_runway_found": true,
+                "dasha_runway_weight": 1,
+                "shadbala_percentile": 0.42857142857142855,
+                "domain_load_bearing_weight": 0,
+                "ratification_factor_rescaled": null,
+                "domain_load_bearing_weight_normalized": 0
+              },
+              "constituent_fact_ids": [
+                "6ab89ddecc36ada0",
+                "e265a5e8b76cff39"
+              ],
+              "formula_version": "leverage_index_v1",
+              "source_citation": "CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8",
+              "computed_at": "2026-08-06 00:04:12.042843+00"
+            },
+            {
+              "id": "134266",
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "765349a8-b721-4ff6-b5fb-64e57ff19f13",
+              "vichara_family": "leverage_index",
+              "subject": "SAT",
+              "domain": "career",
+              "varga_id": null,
+              "value_num": 3.87192,
+              "value_text": null,
+              "value_jsonb": {
+                "capability": 0.381,
+                "dignity_score": 0.5,
+                "years_to_start": 0,
+                "md_duration_years": 19.001,
+                "dasha_runway_found": true,
+                "dasha_runway_weight": 1.475,
+                "shadbala_percentile": 0.14285714285714285,
+                "domain_load_bearing_weight": 2.5,
+                "ratification_factor_rescaled": 0.5,
+                "domain_load_bearing_weight_normalized": 1
+              },
+              "constituent_fact_ids": [
+                "b2cbc24542d1af07",
+                "c9507b983bfb57cf"
+              ],
+              "formula_version": "leverage_index_v1",
+              "source_citation": "CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8",
+              "computed_at": "2026-08-06 00:04:12.042843+00"
+            },
+            {
+              "id": "134253",
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "765349a8-b721-4ff6-b5fb-64e57ff19f13",
+              "vichara_family": "leverage_index",
+              "subject": "SUN",
+              "domain": "career",
+              "varga_id": null,
+              "value_num": 0,
+              "value_text": null,
+              "value_jsonb": {
+                "capability": 0.6071,
+                "dignity_score": 0.5,
+                "years_to_start": 10.571,
+                "md_duration_years": 5.999,
+                "dasha_runway_found": true,
+                "dasha_runway_weight": 1.0443,
+                "shadbala_percentile": 0.7142857142857143,
+                "domain_load_bearing_weight": 0,
+                "ratification_factor_rescaled": null,
+                "domain_load_bearing_weight_normalized": 0
+              },
+              "constituent_fact_ids": [
+                "20139876bb44c531",
+                "2e1385f1ec49d145"
+              ],
+              "formula_version": "leverage_index_v1",
+              "source_citation": "CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8",
+              "computed_at": "2026-08-06 00:04:12.042843+00"
+            },
+            {
+              "id": "134264",
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "765349a8-b721-4ff6-b5fb-64e57ff19f13",
+              "vichara_family": "leverage_index",
+              "subject": "VEN",
+              "domain": "career",
+              "varga_id": null,
+              "value_num": 0,
+              "value_text": null,
+              "value_jsonb": {
+                "capability": 0.9286,
+                "dignity_score": 1,
+                "years_to_start": 0,
+                "md_duration_years": 21.002,
+                "dasha_runway_found": true,
+                "dasha_runway_weight": 1.5251,
+                "shadbala_percentile": 0.8571428571428571,
+                "domain_load_bearing_weight": 0,
+                "ratification_factor_rescaled": null,
+                "domain_load_bearing_weight_normalized": 0
+              },
+              "constituent_fact_ids": [
+                "06ed3acd520fcf7c",
+                "55ac923d80c18228"
+              ],
+              "formula_version": "leverage_index_v1",
+              "source_citation": "CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8",
+              "computed_at": "2026-08-06 00:04:12.042843+00"
+            },
+            {
+              "id": "134304",
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "765349a8-b721-4ff6-b5fb-64e57ff19f13",
+              "vichara_family": "leverage_index",
+              "subject": "JUP",
+              "domain": "general",
+              "varga_id": null,
+              "value_num": 1.068626,
+              "value_text": null,
+              "value_jsonb": {
+                "capability": 0.4107,
+                "dignity_score": 0.25,
+                "years_to_start": 0.569,
+                "md_duration_years": 1.002,
+                "dasha_runway_found": true,
+                "dasha_runway_weight": 1.0241,
+                "shadbala_percentile": 0.5714285714285714,
+                "domain_load_bearing_weight": 0.75,
+                "ratification_factor_rescaled": null,
+                "domain_load_bearing_weight_normalized": 0.4286
+              },
+              "constituent_fact_ids": [
+                "53b973bc5d19d219",
+                "f9c2af2025140660"
+              ],
+              "formula_version": "leverage_index_v1",
+              "source_citation": "CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8",
+              "computed_at": "2026-08-06 00:04:12.042843+00"
+            },
+            {
+              "id": "134300",
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "765349a8-b721-4ff6-b5fb-64e57ff19f13",
+              "vichara_family": "leverage_index",
+              "subject": "MAR",
+              "domain": "general",
+              "varga_id": null,
+              "value_num": 2.333333,
+              "value_text": null,
+              "value_jsonb": {
+                "capability": 0.4286,
+                "dignity_score": 0.5,
+                "dasha_runway_found": false,
+                "dasha_runway_weight": 1,
+                "shadbala_percentile": 0.2857142857142857,
+                "domain_load_bearing_weight": 1.75,
+                "ratification_factor_rescaled": 0.5,
+                "domain_load_bearing_weight_normalized": 1
+              },
+              "constituent_fact_ids": [
+                "2189fec60e3a446b",
+                "83d1e991f9d7b314"
+              ],
+              "formula_version": "leverage_index_v1",
+              "source_citation": "CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8",
+              "computed_at": "2026-08-06 00:04:12.042843+00"
+            },
+            {
+              "id": "134302",
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "build_id": "765349a8-b721-4ff6-b5fb-64e57ff19f13",
+              "vichara_family": "leverage_index",
+              "subject": "MER",
+              "domain": "general",
+              "varga_id": null,
+              "value_num": 0,
+              "value_text": null,
+              "value_jsonb": {
+                "capability": 0.75,
+                "dignity_score": 0.5,
+                "years_to_start": 2.571,
+                "md_duration_years": 0.999,
+                "dasha_runway_found": true,
+                "dasha_runway_weight": 1.0207,
+                "shadbala_percentile": 1,
+                "domain_load_bearing_weight": 0,
+                "ratification_factor_rescaled": null,
+                "domain_load_bearing_weight_normalized": 0
+              },
+              "constituent_fact_ids": [
+                "96b2731834c20118",
+                "aa31b3f60573d144"
+              ],
+              "formula_version": "leverage_index_v1",
+              "source_citation": "CR-69/CR-60 / DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §8",
+              "computed_at": "2026-08-06 00:04:12.042843+00"
+            }
+          ],
+          "total_matching": 1649,
+          "more_available": true,
+          "filters": {
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "family": null,
+            "domain": null,
+            "subject": null,
+            "limit": 10,
+            "offset": 0
+          },
+          "provenance": {
+            "tables": [
+              "chart_vichara"
+            ],
+            "asset_id": "ga_vichara"
+          }
+        },
+        "is_error": false
+      }
+    }
+  }
+}

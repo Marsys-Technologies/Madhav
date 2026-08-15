@@ -1,0 +1,33 @@
+{"tool": "resolve_entity", "scenario": "resolve_shani_to_saturn", "args": {"name": "Shani"}, "raw_response": {
+  "ok": true,
+  "trace_id": "505ba835-5f88-4dc3-835d-ef279efa37f5",
+  "epistemics": {
+    "surgical": true,
+    "confidence_band": "high",
+    "horizon_days": null,
+    "falsifier": null
+  },
+  "result": {
+    "tool_bundle_id": "8d25c416-4984-45f7-b5f0-5e85c7c52daf",
+    "tool_name": "resolve_entity",
+    "tool_version": "1.0",
+    "invocation_params": {
+      "name": "Shani"
+    },
+    "results": [
+      {
+        "content": "{\"canonical_id\":\"saturn\",\"entity_class\":\"planet\",\"canonical_name_en\":\"Saturn\",\"canonical_name_sa\":\"Shani\",\"synonyms\":[\"shani\",\"sani\",\"Saturn\",\"shanaischar\",\"manda\",\"Shanaischara\",\"SAT\",\"SATURN\"],\"description\":\"Karma, discipline, longevity, delays; natural malefic\",\"source_citation\":\"BPHS (Brihat Parasara Hora Sastra), classical tradition\"}"
+      }
+    ],
+    "served_from_cache": false,
+    "latency_ms": 17,
+    "result_hash": "sha256:e95a8453234844cfbd3ae5cbe54e33c8b38e45a65dcdac1048b4995151b52b80",
+    "schema_version": "1.0"
+  },
+  "citations": [],
+  "plan": null,
+  "predictions_logged": [],
+  "synthesis_audit": null,
+  "suggested_followups": [],
+  "warnings": []
+}}

@@ -1,0 +1,29 @@
+{
+  "tool": "kala_elect_get",
+  "scenario": "revalid_native_business",
+  "note": "Re-verification with valid schema args: chart_id + undertaking='business' (real Mode-3 undertaking, per assignment 'sign a business contract') + date_range (limit and offset removed where not in schema — offset was rejected, limit is valid).",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "undertaking": "business", "date_range": {"start": "2026-08-15", "end": "2026-11-13"}},
+  "raw_response_excerpt": {
+    "tool": "kala_elect_get", "undertaking": "business",
+    "reading": {"thesis": "For business, the strongest available window in the searched horizon is 2026-10-30T00:00:00+00:00 → 2026-11-01T00:00:00+00:00 (score 0.67 of 1.0), among 5 qualifying candidates."},
+    "frontier": {"candidate_count": 5, "best": {"start": "2026-10-30T00:00:00+00:00", "end": "2026-11-01T00:00:00+00:00", "score": 0.666, "tier": "silver"}, "best_tier": "silver", "gold_tier_present": false},
+    "coverage": [
+      {"concept": "panchanga_dasha_transit_muhurta_scoring", "state": "computed"},
+      {"concept": "tara_bala_personal_star_veto", "state": "honest_empty", "reason": "native_janma_nakshatra not supplied — tāra bala not applied (pass it to enable the adverse-tārā disqualification)"},
+      {"concept": "muhurta_lagna_strength", "state": "honest_empty", "reason": "instant-lagna strength is not refined into these candidates. The substrate exists but no lagna atom was returned for this horizon — the L0 lattice may not be rebuilt in this environment."},
+      {"concept": "janma_anchored_micro_rules", "state": "honest_empty", "reason": "native_janma_nakshatra was not supplied for this call."}
+    ],
+    "candidates_sample": [{
+      "start": "2026-10-30T00:00:00+00:00", "end": "2026-11-01T00:00:00+00:00", "score": 0.666, "grading_tier": "silver",
+      "drivers": ["panchanga_quality=0.64", "dasha_quality=0.72 (Mercury/Saturn)", "transit_quality=0.61", "signal_activation=0.72"],
+      "judgment_ledger": {"dosas_present": [], "net_standing": "clean"},
+      "paired_rite": null, "paired_rite_reason": "no auspicious combination-yoga span exists in the preparatory horizon"
+    }],
+    "lattice_adjudication": {
+      "pareto": {"frontier_candidate_ids": ["c0", "c3"], "dominated_candidate_ids": ["c1", "c2", "c4"], "axes_used": ["panchangika_quality", "residual_dosha_burden", "cited_auspicious_support"]},
+      "census_disposition_counts": {"computed": 42, "not_computed": 9, "not_in_corpus": 8},
+      "gap_report": {"factors_not_computed": ["chart_personal janma_tithi_vara_nakshatra_resonance", "degree_sensitive gandanta (global lane)", "degree_sensitive sandhi_zones"], "factors_not_in_corpus": ["dagdha_yoga", "hutasana_yoga", "mrityu_yoga", "mrityu_bhaga"]}
+    },
+    "judgment_flags": [{"code": "budget_exceeded_after_trim", "detail": "40kb budget still exceeded after full trim."}]
+  }
+}

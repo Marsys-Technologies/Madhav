@@ -1,0 +1,18 @@
+{
+  "tool": "intent_classify",
+  "scenario": "primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "query": "current dasha"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "MCP error -32602: Input validation error: Invalid arguments for tool intent_classify: [\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"limit\",\n      \"offset\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized keys: \\\"limit\\\", \\\"offset\\\"\"\n  }\n]"
+      }
+    ],
+    "isError": true
+  }
+}

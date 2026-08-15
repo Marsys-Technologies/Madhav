@@ -1,0 +1,25 @@
+{
+  "tool": "kala_muhurta_get",
+  "scenario": "native_marriage_windows_two_calls",
+  "call_1": {
+    "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "activity_type": "marriage", "start_date": "2027-10-01", "end_date": "2027-12-15"},
+    "raw_response": {"ok": true, "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "action_type": "marriage", "query_window": {"start": "2027-10-01", "end": "2027-12-15"}, "windows": [], "window_count": 0, "empty_reason": "date_range 2027-10-01..2027-12-15 falls outside the panchanga_daily populated window (2026-07-09..2027-07-09, rolling +12 months from the last panchanga_daily_writer.py run). No windows fabricated for dates outside the populated window — re-run the writer to extend coverage, or query a date_range inside it."},
+    "note": "IMPORTANT COHERENCE GAP: the confirmed gochara marriage timing window (event_class=marriage, is_timing_window=true) sits at 2027-11-11 -- but kala_muhurta_get cannot serve muhurta candidates for that date because panchanga_daily is only pre-populated ~12 months forward. A user told '2027-11-11 looks like your marriage window' cannot yet get a specific-date muhurta recommendation for it. This is an HONEST gap (clearly disclosed, not fabricated) but it is a real cross-tool coverage seam in the journey."
+  },
+  "call_2": {
+    "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "activity_type": "marriage", "start_date": "2026-08-15", "end_date": "2026-11-13"},
+    "raw_response_summary": {
+      "ok": true,
+      "window_count": 20,
+      "score_range": "0.582 - 0.68",
+      "algorithm": "panchanga_quality(40%) + dasha_quality(30%) + transit_quality(20%) + signal_activation(10%)",
+      "top_window": {"start": "2026-08-19", "end": "2026-08-21", "score": 0.68, "dasha_details": {"md_lord": "Mercury", "ad_lord": "Saturn"}, "tara_bala_natal": {"tara_class": "Atimitra", "adverse": false}},
+      "window_containing_2027-11-11_analog": "N/A -- this call's window ends 2026-11-13; the tool's confirmed 90-day max span means the 2027-11-11 gochara window can only be muhurta-scored once queried closer to that date and once panchanga_daily is extended to cover it",
+      "note": "All 20 scored windows are mid-range (0.58-0.68 out of an implied 0-1 scale) -- no premier/highly-auspicious window is surfaced in the near term, consistent with the judgment_query verdict_grade='contested' / composite_score=-3.5 D9 reading (Venus debilitated in navamsa) -- i.e. the muhurta tool's absence of a standout marriage date in the near term is directionally CONSISTENT with, not contradictory to, the D1+D9 verdict."
+    }
+  },
+  "max_span_constraint_evidence": {
+    "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "activity_type": "marriage", "start_date": "2026-08-15", "end_date": "2027-11-30"},
+    "raw_response": {"ok": false, "error": "Error: [alias] sidecar /api/compute/phala/muhurta_finder failed (422): {\"detail\":\"date_range spans 472 days; maximum is 90 days\"}", "tool": "kala_muhurta_get", "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"}
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "tool": "get_graha_yuddha",
+  "scenario": "native_valid_ayanamsha_filter",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "ayanamsha_id": "lahiri_chitrapaksha"},
+  "raw_response": {"type":"object","object":{"content":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","birth_date":"1984-02-05","pairs":[],"total":0,"provenance":{"note":"chart_facts.graha_yuddha remains FLOORED at rest (winner=NULL); this is a serve-time, read-only overlay per JL-027 Option A. No chart data was written.","ephemeris_note":null}},"is_error":false}},
+  "note": "Empty pairs=[] is expected/correct: graha_yuddha only applies to tara-graha pairs (Mars/Mercury/Jupiter/Venus/Saturn) within 1 degree orb in the same sign, per tool description. Native chart's transit anchors (see ganita_transit_anchors_get evidence) show no two tara-grahas within 1deg of each other in the same sign at birth, so an empty result is the honest/correct answer, not a defect. Rahu/Ketu are correctly excluded from graha_yuddha eligibility per classical convention (nodes do not fight planetary wars) -- this is NOT an R24 violation since graha_yuddha is a conjunction-based mechanism, not an aspect (drishti) mechanism."
+}

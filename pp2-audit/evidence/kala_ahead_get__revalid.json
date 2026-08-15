@@ -1,0 +1,45 @@
+{
+  "tool": "kala_ahead_get",
+  "scenario": "revalid_both_charts",
+  "note": "Re-verification with valid schema args: chart_id only (limit/offset removed, not in schema; default horizon_years=5 used).",
+  "calls": [
+    {
+      "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+      "raw_response_excerpt": {
+        "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+        "reading": {
+          "thesis": "5 forward-dated temporal window(s) identified over the next 5 year(s). 3 probabilistic projection(s) over the next 5 year(s); leading: character (high probability, window 2027-10-20..2030-04-03).",
+          "verdict": {"statement": "3 high, 0 moderate, 0 speculative forward window(s) identified over the next 5 year(s).", "tier": "structural_prior"},
+          "falsifier": {"statement": "No character event of this class materializes in the leading window", "resolves_by": "2030-04-03"}
+        },
+        "coverage_gaps_disclosed": ["promise_gated_forecasting (not_in_corpus, W2/W3)", "sky_event_calendar (not_in_corpus, W3)", "tithi_pravesa (not_in_corpus, W3)"],
+        "period_echo": [{
+          "level_name": "Antardasha", "lord_graha": "Saturn", "current_period": {"start_date": "2024-12-08", "end_date": "2027-08-18"},
+          "same_lord_past_occurrence_count": 1, "lel_corroborated_occurrence_count": 1,
+          "candidates": [{"start_date": "1991-08-18", "end_date": "1994-08-21", "lel_event_count": 2, "lel_events_sample": [
+            {"event_date": "1984-02-05", "category": "psychological", "description": "CORRECTION (native, 2026-07-19): stammering onset is CONGENITAL..."},
+            {"event_date": "1993-07-01", "category": "creative", "description": "Mother enrolled native in painting classes; native excelled and won multiple awards..."}
+          ]}],
+          "hypothesis": "Hypothesis: the current Saturn Antardasha ... may echo Saturn's prior Antardasha period ... because both share the same daśā lord at the same level. This is a structural resonance hypothesis, not a prediction.",
+          "status": "hypothesis_served"
+        }],
+        "note_on_lel_use": "For the native (64-event LEL) chart, kala_ahead_get's period_echo mining genuinely cross-references real LEL events (1991-08-18 to 1994-08-21 window, 2 real logged events surfaced verbatim) — this IS a working, exercised LEL cross-reference feature (contrast with kala_life_arc_get's advertised-but-unwired LEL cross-link, see kala_life_arc_get__lel_gap.json)."
+      }
+    },
+    {
+      "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"},
+      "raw_response_excerpt": {
+        "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+        "reading": {"thesis": "4 forward-dated temporal window(s) identified over the next 5 year(s). 6 probabilistic projection(s) over the next 5 year(s); leading: character (high probability, window 2030-04-17..2032-09-29)."},
+        "period_echo": [{
+          "level_name": "Antardasha", "lord_graha": "Rahu", "current_period": {"start_date": "2023-12-04", "end_date": "2026-10-10"},
+          "same_lord_past_occurrence_count": 1, "lel_corroborated_occurrence_count": 0,
+          "candidates": [{"start_date": "2007-11-28", "end_date": "2010-04-23", "lel_event_count": 0, "lel_events_sample": []}],
+          "confidence_basis": "N=1 same-lord prior Antardasha occurrence(s) found; 0 of 1 carry >=1 logged LEL life event within their span.",
+          "status": "hypothesis_served"
+        }],
+        "note": "Honest degradation confirmed: zero-history chart's period_echo correctly reports 0 LEL-corroborated occurrences (no fabricated life events invented for a chart with no LEL history) — same mechanism, honest empty result."
+      }
+    }
+  ]
+}

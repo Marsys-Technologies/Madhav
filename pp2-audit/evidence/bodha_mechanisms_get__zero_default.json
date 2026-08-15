@@ -1,0 +1,9 @@
+{
+  "tool": "bodha_mechanisms_get",
+  "scenario": "zero_default",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "limit": 10},
+  "raw_response": {
+    "structuredContent": {"type": "object", "object": {"content":{"chart_id":"1c826d5a-41cb-4450-b4dc-59d440e5f75a","rows":[{"mechanism_id":"df4fc8c2-7f66-44ff-a91d-bf2b9aaf7b4f","mechanism_class":"house_lordship_cycle","valence":"neutral","mechanism_name":"House-lordship cycle: 12 → 10 → 8 → 12","is_chain_circuit":true},{"mechanism_id":"19c86c47-f465-4cb1-88bf-4f94e3199ed8","mechanism_class":"dispositor_cycle","valence":"mixed","mechanism_name":"Dispositor cycle: Jupiter → Saturn → Mars → Jupiter","is_chain_circuit":true}],"count":10,"total_matching":126,"more_available":true,"chain_circuit_count":2,"facets":{"by_mechanism_class":{"mutual_aspect":36,"graha_bhava_affliction":3,"parivartana_chain":1,"mutual_aspect_triangle":84,"house_lordship_cycle":1,"dispositor_cycle":1},"by_valence":{"mixed":77,"neutral":9,"malefic":33,"benefic":7},"chain_circuit_classes":["convergent_dispositor_chain","dispositor_cycle","house_lordship_cycle"]},"empty_reason":null,"filters":{"ayanamsha_id":"lahiri_chitrapaksha","mechanism_class":null,"valence":null,"chain_circuit_only":false,"limit":10,"offset":0},"provenance":{"tables":["bodha_mechanisms"],"source":"L2 Bodha mechanisms (bo_yantra_mechanism / migration 445); served chart-scoped, chain/circuit family first, budgeted. Edge-strength provenance: DR-7 edge_strength_v1."}},"is_error":false}}
+  },
+  "note": "Zero-history chart legitimately has real, differentiated mechanism data (126 total_matching, distinct mechanism_ids/classes from the native chart) — not a silent failure or copy of native chart data. Confirms chart-scoping is real."
+}

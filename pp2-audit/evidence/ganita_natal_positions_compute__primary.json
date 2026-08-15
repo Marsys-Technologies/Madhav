@@ -1,0 +1,20 @@
+{
+  "tool": "ganita_natal_positions_compute",
+  "scenario": "primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "datetime_iso": "1990-01-01T12:00:00+05:30",
+    "latitude_deg": 20.2961,
+    "longitude_deg": 85.8245
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "MCP error -32602: Input validation error: Invalid arguments for tool ganita_natal_positions_compute: [\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"limit\",\n      \"offset\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized keys: \\\"limit\\\", \\\"offset\\\"\"\n  }\n]"
+      }
+    ],
+    "isError": true
+  }
+}

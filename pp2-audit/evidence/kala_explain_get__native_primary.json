@@ -1,0 +1,18 @@
+{
+  "tool": "kala_explain_get",
+  "scenario": "native_primary",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "limit": 10,
+    "offset": 0
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "MCP error -32602: Input validation error: Invalid arguments for tool kala_explain_get: [\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"limit\",\n      \"offset\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized keys: \\\"limit\\\", \\\"offset\\\"\"\n  }\n]"
+      }
+    ],
+    "isError": true
+  }
+}

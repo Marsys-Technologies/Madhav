@@ -1,0 +1,37 @@
+{
+  "tool": "kala_muhurta_get",
+  "scenario": "revalid_both_charts_marriage",
+  "note": "Re-verification with valid schema args: chart_id + activity_type='marriage' + start_date/end_date (limit/offset removed, not in schema).",
+  "calls": [
+    {
+      "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "activity_type": "marriage", "start_date": "2026-08-15", "end_date": "2026-09-14"},
+      "raw_response_excerpt": {
+        "ok": true, "action_type": "marriage", "window_count": 15,
+        "top_window": {
+          "start": "2026-08-19T00:00:00+00:00", "end": "2026-08-21T00:00:00+00:00", "score": 0.68,
+          "factors": {"panchanga_quality": 0.68, "dasha_quality": 0.72, "transit_quality": 0.65, "signal_activation": 0.62,
+            "tara_bala_natal": {"moon_nakshatra": "Swati", "tara_class": "Atimitra", "adverse": false}}
+        },
+        "worst_window_sample": {
+          "start": "2026-08-31T00:00:00+00:00", "score": 0.592,
+          "tara_bala_natal": {"tara_class": "Vipat", "adverse": true},
+          "avoid_notes": ["Vipat-tārā for the native: day Moon in Revati is classically moderately inauspicious relative to the native's own janma nakshatra."]
+        },
+        "provenance_envelope": {"asset": "PH-4-4", "algorithm": "panchanga_quality(40%) + dasha_quality(30%) + transit_quality(20%) + signal_activation(10%)", "windows_source": "on_the_fly", "b3_citation_compliant": true}
+      }
+    },
+    {
+      "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "activity_type": "marriage", "start_date": "2026-08-15", "end_date": "2026-09-14"},
+      "raw_response_excerpt": {
+        "ok": true, "action_type": "marriage", "window_count": 15,
+        "top_window": {
+          "start": "2026-08-19T00:00:00+00:00", "end": "2026-08-21T00:00:00+00:00", "score": 0.622,
+          "factors": {"panchanga_quality": 0.68, "dasha_quality": 0.55, "transit_quality": 0.65, "signal_activation": 0.55,
+            "dasha_details": {"md_lord": "Saturn", "ad_lord": "Rahu"},
+            "tara_bala_natal": {"moon_nakshatra": "Swati", "tara_class": "Janma", "adverse": false}}
+        },
+        "note": "Correctly chart-differentiated: same calendar dates score differently per chart (native top window 0.68 vs zero-chart 0.622) because dasha_quality/tara_bala are computed per-chart's own natal dasha lord and janma nakshatra, not copy-pasted."
+      }
+    }
+  ]
+}

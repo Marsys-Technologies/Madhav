@@ -1,0 +1,5 @@
+{"tool": "search_classical_texts", "scenario": "saturn_seventh_house_marriage_valid_args", "args": {"query": "Saturn in the seventh house effects on marriage", "top_k": 5}, "raw_response": {
+  "error": true,
+  "tool": "search_classical_texts",
+  "message": "Tool not in surgical whitelist: search_classical_texts"
+}}

@@ -1,0 +1,16 @@
+{
+  "tool": "gochara_forecast_get",
+  "scenario": "horizon_2084_partial_overlap",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "date_range": {"start": "2083-06-01", "end": "2085-06-01"}},
+  "raw_response_full_dump": "/Users/Dev/.claude/projects/-Users-Dev-Vibe-Coding-Apps-Madhav/a2d70062-56b8-48b2-bdaf-1bbd51e5c7d0/tool-results/mcp-marsys-jis-direct-gochara_forecast_get-1786800838836.txt",
+  "raw_response_summary": {
+    "provenance_envelope.window_count": 22,
+    "resolution_breakdown": {"era": 9, "month": 0, "day": 0, "unclassified": 13},
+    "empty_reason": null,
+    "judgment_flags": [{"code": "budget_exceeded_after_trim", "detail": "40kb budget still exceeded after full trim."}],
+    "sample_window": {"id":"61349","event_class":"major_loss","temporal_shape":"interval","window_start":"2074-02-05","window_end":"2084-01-31","peak_date":"2081-08-20","era_slice_key":"g3_2074_2084","calibration_state":"structural_prior"},
+    "all_returned_window_ends_capped_at": "2084-01-31 (no window in the response extends past this date, even though the queried date_range runs to 2085-06-01)"
+  },
+  "verdict": "GAP",
+  "note": "The chart's gochara sweep is materialized in decade slices up to birth+100y (era_slice_key g3_2074_2084, ending 2084-01-31 = the documented 2084 horizon ceiling for this chart born 1984-02-05). The query's date_range (2083-06-01..2085-06-01) straddles that horizon: the portion before 2084-01-31 is real, swept data; the portion after (2084-02-01..2085-06-01, ~16 months of the query) is silently absent. Because rows.length > 0, provenance_envelope.empty_reason is null (register_gochara_windows.ts computes empty_reason as `rows.length === 0 ? <explanation> : null` -- confirmed at platform-mcp/src/tools/retrieval/register_gochara_windows.ts line ~1429). There is no field anywhere in the response (coverage, provenance_envelope, judgment_flags) that discloses 'part of your requested date_range falls beyond this chart's swept horizon.' coverage.sweep_completeness reports substeps_committed=270 but explicitly states 'No total-planned-substep denominator is reported here' -- so a caller cannot even infer the horizon boundary from that field. Contrast with the fully-beyond-horizon case (date_range 2090-01-01..2091-01-01, see gochara_forecast_get__horizon_2084_fully_beyond.json) where the tool DOES supply an honest, explicit empty_reason with a caveat about unswept decades. The disclosure only fires when the WHOLE query is empty, not when it is partially truncated by the horizon -- an inconsistency in the density/honesty contract (CLAUDE.md SS N.6/N.7)."
+}

@@ -1,0 +1,14 @@
+{
+  "tool": "plan_retrieval",
+  "scenario": "Broad multi-domain deep-dive question forces the V-2 keyword-fallback classifier to resolve a wide scope_tuple (wealth/career/health/marriage x deepdive), producing a large plan.floor (56 items) and plan.adaptive_expansions (124 items) that get auto-trimmed to fit the 40KB default budget.",
+  "args": { "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "question": "Give me a complete deep-dive assessment of my career, wealth, health, and relationship prospects across the next 10 years with all classical yogas, dashas, transits, and remedies considered" },
+  "observed": {
+    "budget_kb_applied": 40,
+    "trim_report": [
+      { "path": "plan.adaptive_expansions", "original_count": 124, "kept_count": 10, "recover_via": { "instrument": "plan_retrieval", "hint": "call plan_retrieval again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"plan.adaptive_expansions\"" } },
+      { "path": "plan.floor", "original_count": 56, "kept_count": 28, "recover_via": { "instrument": "plan_retrieval", "hint": "call plan_retrieval again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"plan.floor\"" } }
+    ],
+    "completeness_receipt_coverage": { "floor_item_total": 46, "served": 0, "empty": 41, "dark": 5 }
+  },
+  "verdict": "PASS on the honesty axes tested — recover_via names the real, callable 'plan_retrieval' tool (not unknown_tool); budget_kb_applied is present. The completeness_receipt.coverage numbers (46 = 41+5) are internally self-consistent and are NOT the same defect as the stale-pretrim-count finding: floor_item_total counts unique floor_item_id keys (some primitive_ids like 'divisional_facts'/'taranga_curve'/'full_domain_dossier' repeat across multiple domains/vargas in the raw plan.floor array), a legitimately different metric from the raw array length, and it reconciles to itself (0+41+5=46) without claiming to describe the post-trim plan.floor array's row count."
+}

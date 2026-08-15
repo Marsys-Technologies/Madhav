@@ -1,0 +1,14 @@
+{
+  "tool": "assess_wealth",
+  "scenario": "native_chart_default_call",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+  "timing": {"before_ms": 1786801311101, "after_ms": 1786801320481, "latency_ms": 9380},
+  "is_error_serverside": false,
+  "client_side_failure": "MCP client returned a hard error: 'result (157,566 characters) exceeds maximum allowed tokens' -- saved to /Users/Dev/.claude/projects/.../tool-results/mcp-marsys-jis-direct-assess_wealth-1786801316800.txt.",
+  "raw_response_summary_from_saved_file": {
+    "is_error": false,
+    "budget_kb_applied": 40,
+    "judgment_flags_include": [{"code": "budget_exceeded_after_trim", "detail": "40kb budget still exceeded after full trim."}]
+  },
+  "finding": "FOURTH and FINAL of four assess_* calls (career/health/marriage/wealth) -- ALL FOUR hit the identical 'budget_exceeded_after_trim' oversized-payload class, ranging 142KB-168KB against a declared 40KB budget (3.5x-4.2x over). This is a 4/4 (100%) reproduction rate across the entire assess_* tool family regardless of domain (including career/marriage/wealth, all noted as known-PASS in the audit brief) -- confirming this is a structural response-budgeting defect in the assess_* tool family's trim logic, not a domain-specific data-quality issue. See CAND findings in the final report."
+}

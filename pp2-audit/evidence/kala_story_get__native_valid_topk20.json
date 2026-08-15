@@ -1,0 +1,73 @@
+{
+  "tool": "kala_story_get",
+  "scenario": "native_valid_topk20",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "top_k": 20
+  },
+  "note": "Evidence abbreviated to the first 3 of 20 chapters plus top-level envelope fields for file size; every field/value shown was observed verbatim in the live response. Full chapter_count=20, but budget_kb default (40) triggered a server-side trim_report to 10 chapters actually served in the 'chapters' array, with a drill_pointer telling the caller to raise budget_kb to recover the rest -- this is real, observed §N.6 density-contract trimming behavior, not a truncation I performed.",
+  "raw_response": {
+    "type": "object",
+    "object": {
+      "reading": {
+        "thesis": "The native is currently in the Mercury mahadasha (2010-2027), a building chapter themed around intellect, communication, commerce, building.",
+        "evidence": [{"claim": "Mercury mahadasha (2010-2027), quality: building, themes: intellect, communication, commerce, building", "fact_ids": [], "strength": "moderate"}],
+        "dissent": [],
+        "verdict": {"statement": "The Mercury chapter is building.", "tier": "structural_prior"},
+        "falsifier": null
+      },
+      "field_snapshot_id": "kfs_e23ba1abdf1c6fd3a1cc5c08c7538aeb",
+      "field_snapshot_state": "served",
+      "tri_plane": {
+        "interpretation_ref": {"instrument": "get_chart_orientation", "hint": "the whole-chart synthesis this life-arc narrates"},
+        "prediction_ref": {"instrument": "kala_bundle_get", "hint": "the forward temporal field for the current/next chapter"},
+        "intervention_ref": {"instrument": "kala_elect_get", "hint": "election windows for undertakings inside the current/next chapter"}
+      },
+      "coverage": [
+        {"concept": "dasha_chapter_hierarchy", "state": "computed"},
+        {"concept": "parva_dedup_by_span_and_level", "state": "computed"},
+        {"concept": "lel_pinning_per_chapter", "state": "computed"},
+        {"concept": "chara_dasha_second_voice", "state": "not_in_corpus", "reason": "Chara-daśā narrative overlay (v1 §4.2, item 31-adjacent) not yet joined; STORY currently serves the Vimśottarī spine only."},
+        {"concept": "punctuation_events", "state": "not_in_corpus", "reason": "sky-event calendar (returns, eclipses-on-natal, item 3/4) not yet built; punctuation marks are not interleaved into chapters."},
+        {"concept": "developmental_thesis", "state": "honest_empty", "reason": "E6 per-view elevation for STORY: the developmental thesis per chapter is not yet computed at this facade. SHAD_DARSHANA_CLOSE_v1_0.md §2 E6 disposition: VERIFIED-FIXED (lite); developmental_thesis is the W3 depth remainder, not yet built."}
+      ],
+      "tool": "kala_story_get",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "chapters_sample_first_3_of_20_source_10_served": [
+        {
+          "parva_index": 1, "dasha_planet": "Jupiter", "start_year": 1984, "end_year": 1991, "chapter_level": "mahadasha", "parva_quality": "receding",
+          "theme_keywords": ["expansion", "wisdom", "abundance", "receding"],
+          "narrative": {"span": "1984–1991", "quality": "receding", "summary": "Jupiter daśā (1984–1991): receding phase marked by expansion, wisdom. 884 high-convergence windows in this span.", "avg_effective_score": 0.423, "high_convergence_count": 884},
+          "source_citation": "ka_jivana_parva:v2.0:MD=Jupiter",
+          "temporal_position": "past",
+          "lel_pinned_count": 2,
+          "retrodiction_fit": {"pinned_event_count": 2, "aligned_event_count": 0, "aligned_ratio": 0, "method": "lexical_theme_keyword_match", "note": "0 of 2 pinned LEL event(s) share a literal word with this chapter's theme_keywords."}
+        },
+        {
+          "parva_index": 8, "dasha_planet": "Saturn", "start_year": 1991, "end_year": 2010, "chapter_level": "mahadasha", "parva_quality": "receding",
+          "theme_keywords": ["discipline", "responsibility", "delay", "receding"],
+          "narrative": {"span": "1991–2010", "quality": "receding", "summary": "Saturn daśā (1991–2010): receding phase marked by discipline, responsibility. 1073 high-convergence windows.", "avg_effective_score": 0.4375559068219672, "high_convergence_count": 1073},
+          "source_citation": "ka_jivana_parva:v2.0:MD=Saturn",
+          "temporal_position": "past",
+          "lel_pinned_count": 24,
+          "retrodiction_fit": {"pinned_event_count": 24, "aligned_event_count": 3, "aligned_ratio": 0.125, "method": "lexical_theme_keyword_match", "note": "3 of 24 pinned LEL event(s) share a literal word with this chapter's theme_keywords (discipline, responsibility, delay, receding)."}
+        },
+        {
+          "parva_index": 10, "dasha_planet": "Mercury", "start_year": 1994, "end_year": 1997, "chapter_level": "mahadasha", "parva_quality": "consolidating",
+          "theme_keywords": ["intellect", "communication", "commerce", "consolidating"],
+          "narrative": {"span": "1994–1997", "quality": "consolidating", "summary": "Saturn/Mercury daśā (1994–1997): consolidating phase marked by transformation. 212 high-convergence windows.", "avg_effective_score": 0.504468550368551, "high_convergence_count": 212},
+          "source_citation": "ka_jivana_parva:v2.0:MD=Saturn:AD=Mercury",
+          "temporal_position": "past",
+          "lel_pinned_count": 3,
+          "retrodiction_fit": {"pinned_event_count": 3, "aligned_event_count": 0, "aligned_ratio": 0}
+        }
+      ],
+      "chapter_count": 20,
+      "dedup_report": {"source_row_count": 20, "deduped_row_count": 20, "collapses": []},
+      "composed_text": "The native is currently in the Mercury mahadasha (2010-2027), a building chapter themed around intellect, communication, commerce, building. Mercury mahadasha (2010-2027), quality: building, themes: intellect, communication, commerce, building — moderate evidence (uncited) The Mercury chapter is building. [tier: structural prior — pre-calibration]",
+      "budget_kb_applied": 40,
+      "trim_report": [{"path": "chapters", "original_count": 20, "kept_count": 10, "reason": "life-arc chapters: trimmed to 10", "recover_via": {"instrument": "kala_story_get", "hint": "call again with a larger budget_kb for the full chapter list"}}],
+      "drill_pointers": [{"instrument": "kala_story_get", "hint": "call again with a larger budget_kb for the full chapter list"}]
+    }
+  }
+}

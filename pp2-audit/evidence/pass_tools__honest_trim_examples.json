@@ -1,0 +1,33 @@
+{
+  "note": "Consolidated evidence for tools that PASSED all four hunted defect classes in this pass (valid-JSON-under-extreme-trim, honest budget echo, real recover_via tool names, empty_reason/density_contract discipline).",
+  "dossier": {
+    "args": { "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "wealth", "budget_kb": 1 },
+    "observed": { "budget_kb_applied": 1, "budget_kb_requested": 1, "slice_size": 13820, "page_units_count": 1, "synthesis_gate": "BLOCKED", "gate_reason": "coverage_0.0pct_incomplete", "judgment_flags": ["atomic_unit_exceeds_budget_kb", "page_exceeds_budget_kb"] },
+    "verdict": "PASS — honest at the minimum budget: does not fabricate coverage, correctly reports BLOCKED gate + judgment_flags disclosing the single atomic unit exceeds even a 1KB page."
+  },
+  "ganita_database_schema_get": {
+    "args": { "budget_kb": 1, "limit": 200 },
+    "observed": { "trim_report": [ { "path": "entries", "original_count": 200, "kept_count": 50, "recover_via": { "instrument": "ganita_database_schema_get", "hint": "call ganita_database_schema_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"entries\"" } } ] },
+    "verdict": "PASS on real-tool-name recover_via and valid JSON. GAP noted separately: no visible budget_kb_applied field in this response despite genuine trimming — folded into the ganita_planet_get finding as corroborating evidence of the applyAutoBudgetToEnvelope wiring gap."
+  },
+  "scan_fetch_signals": {
+    "args": { "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "mode": "scan", "max_scan_bytes": 1000 },
+    "observed": { "total": 50, "returned": 9, "truncated": true, "next_step": "SCAN truncated at 9/50 rows by the 1000B cap — narrow the query (domain/type/salience facet) then re-scan, OR FETCH-by-id the rows you need from this page. Never read \"the rest are absent\" from a truncated scan (total=50 is authoritative)." },
+    "verdict": "PASS — honest, explicit truncation flag, and a working recovery path (FETCH-by-id) is described in plain text even though this tool doesn't use the trim_report/recover_via envelope shape."
+  },
+  "phala_outlook_get": {
+    "args": { "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "horizon_months": 120 },
+    "observed": { "budget_kb_applied": 40, "trim_report": [ { "path": "anchors", "original_count": 63, "kept_count": 5 }, { "path": "mitigations", "original_count": 100, "kept_count": 10 }, { "path": "auspicious_windows", "original_count": 30, "kept_count": 10 } ], "recover_via_instrument_all_three": "phala_outlook_get" },
+    "verdict": "PASS — live confirmation that the RC-04 fix (register_p1_aliases.ts ~line 1802, `dualOutput(data, 'phala_outlook_get')`) works correctly in production; no unknown_tool leakage despite 3 sections trimmed."
+  },
+  "ganita_positions_get": {
+    "args": { "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "include_upagrahas": true, "limit": 25000 },
+    "observed": { "budget_kb_applied": 40, "trim_report": [ { "path": "rows", "original_count": 163, "kept_count": 81, "recover_via": { "instrument": "ganita_positions_get" } } ], "total_field": 163 },
+    "verdict": "PASS — total:163 correctly reflects the true total (a legitimate pagination-style field, not a stale narrative count), recover_via real."
+  },
+  "kala_windows_get_zero_history_chart_empty_reason": {
+    "args": { "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "limit": 25000 },
+    "observed_field": "empty_reason: null",
+    "verdict": "PASS on density_contract's empty-result-discipline axis — the field exists and is explicitly null (not omitted) since this chart's kala_windows result was genuinely non-empty (500 activations). Confirms the schema reserves a real slot for empty_reason rather than only reporting it opportunistically."
+  }
+}

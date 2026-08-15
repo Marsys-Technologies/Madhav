@@ -1,0 +1,1867 @@
+{
+  "tool": "kala_elect_get",
+  "scenario": "zero_revalid",
+  "args": {
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "undertaking": "business",
+    "date_range": {
+      "start": "2026-08-15",
+      "end": "2026-11-13"
+    }
+  },
+  "raw_response": {
+    "type": "object",
+    "object": {
+      "reading": {
+        "thesis": "For business, the strongest available window in the searched horizon is 2026-10-30T00:00:00+00:00 → 2026-11-01T00:00:00+00:00 (score 0.60 of 1.0), among 5 qualifying candidates.",
+        "evidence": [
+          {
+            "claim": "2026-10-30T00:00:00+00:00 → 2026-11-01T00:00:00+00:00: score 0.60 (chart_dashas: Saturn MD(2010-04-23→2029-04-23) / Jupiter AD; panchanga_daily 2026-10-30 (Krishna Panchami/Mrigashira/Venus); tara_bala_natal_baseline (Atimitra); MSR v5.0 SIG.08/SIG.14/SIG.09 signal activation; BPHS ch.46 muhurta rules; PH-4-4 on-the-fly compute)",
+            "fact_ids": [],
+            "strength": "moderate"
+          }
+        ],
+        "dissent": [],
+        "verdict": {
+          "statement": "Elect 2026-10-30T00:00:00+00:00 → 2026-11-01T00:00:00+00:00 for business, or wait for the next comparably-scored window if this range is inconvenient.",
+          "tier": "structural_prior"
+        },
+        "falsifier": {
+          "statement": "if business is not undertaken by 2026-11-01T00:00:00+00:00, this specific elected window closes",
+          "resolves_by": "2026-11-01"
+        }
+      },
+      "question_frame": null,
+      "field_snapshot_id": "kfs_b3bcf77a5a4c3ce5296254bac3809451",
+      "field_snapshot_state": "served",
+      "field_snapshot_reason": null,
+      "tri_plane": {
+        "interpretation_ref": {
+          "instrument": "get_domain_reading",
+          "hint": "the domain reading behind why this undertaking's window scores as it does for this chart"
+        },
+        "prediction_ref": {
+          "instrument": "kala_bundle_get",
+          "hint": "the forward temporal field this election sits inside"
+        },
+        "intervention_ref": {
+          "no_lever": true,
+          "reason": "kala_elect_get IS the intervention plane — the election candidates in this response ARE the intervention lever, so there…[truncated for budget]"
+        }
+      },
+      "coverage": [
+        {
+          "concept": "panchanga_dasha_transit_muhurta_scoring",
+          "state": "computed"
+        },
+        {
+          "concept": "tara_bala_personal_star_veto",
+          "state": "honest_empty",
+          "reason": "native_janma_nakshatra not supplied — tāra bala not applied (pass it to enable the adverse-tārā disqualification)"
+        },
+        {
+          "concept": "target_graha_transit_gate",
+          "state": "honest_empty",
+          "reason": "target_graha not requested for this call"
+        },
+        {
+          "concept": "hora_ladder",
+          "state": "computed"
+        },
+        {
+          "concept": "candidate_grading_lite",
+          "state": "computed"
+        },
+        {
+          "concept": "elect_frontier_v0",
+          "state": "computed"
+        },
+        {
+          "concept": "contender_lattice_parihara_adjudication",
+          "state": "computed"
+        },
+        {
+          "concept": "muhurta_factor_census",
+          "state": "computed"
+        },
+        {
+          "concept": "muhurta_lagna_strength",
+          "state": "honest_empty",
+          "reason": "instant-lagna strength is not refined into these candidates. The substrate exists (bg_muhurta_lattice factor_family=lagna, ruling R-1) but no lagna atom was returned for this horizon — the L0 lattice may not be rebuilt in this environment."
+        },
+        {
+          "concept": "ritual_pairing",
+          "state": "computed"
+        },
+        {
+          "concept": "janma_anchored_micro_rules",
+          "state": "honest_empty",
+          "reason": "native_janma_nakshatra was not supplied for this call — janma-anchored micro-rules require the native's birth nakshatra. Supply native_janma_nakshatra to enable tārā-bala micro-rule computation, janma-nakshatra resonance, and the tārā-based veto check."
+        }
+      ],
+      "freshness": {
+        "ephemeris_version": null,
+        "sweep_build_date": null,
+        "field_hash": "kfh_6340965c86716454c40c9a8062c15156",
+        "stale": false,
+        "stale_reason": null
+      },
+      "calibration_maturity": {
+        "n_events": 0,
+        "prospective_resolutions": 0,
+        "event_class_coverage": 0,
+        "weights_version": null,
+        "skill_score": null
+      },
+      "tool": "kala_elect_get",
+      "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+      "undertaking": "business",
+      "query_window": {
+        "start": "2026-08-15",
+        "end": "2026-11-13"
+      },
+      "candidates": [
+        {
+          "start": "2026-10-30T00:00:00+00:00",
+          "end": "2026-11-01T00:00:00+00:00",
+          "score": 0.598,
+          "hard_flag": false,
+          "disqualified": false,
+          "rank_penalty_reason": [],
+          "drivers": [
+            "panchanga_quality=0.64",
+            "transit_quality=0.61"
+          ],
+          "source_citation": "chart_dashas: Saturn MD(2010-04-23→2029-04-23) / Jupiter AD; panchanga_daily 2026-10-30 (Krishna Panchami/Mrigashira/Ven…[truncated for budget]",
+          "grading_tier": "silver",
+          "grading_tier_label": "Silver — solid but not ideal",
+          "hora_ladder": [
+            {
+              "start_ist": "2026-10-30T06:00:00+05:30",
+              "end_ist": "2026-10-30T07:00:00+05:30",
+              "hora_lord": "Venus",
+              "benefic": true
+            },
+            {
+              "start_ist": "2026-10-30T07:00:00+05:30",
+              "end_ist": "2026-10-30T08:00:00+05:30",
+              "hora_lord": "Mercury",
+              "benefic": true
+            },
+            {
+              "start_ist": "2026-10-30T08:00:00+05:30",
+              "end_ist": "2026-10-30T09:00:00+05:30",
+              "hora_lord": "Moon",
+              "benefic": true
+            },
+            {
+              "start_ist": "2026-10-30T10:00:00+05:30",
+              "end_ist": "2026-10-30T11:00:00+05:30",
+              "hora_lord": "Jupiter",
+              "benefic": true
+            },
+            {
+              "start_ist": "2026-10-30T13:00:00+05:30",
+              "end_ist": "2026-10-30T14:00:00+05:30",
+              "hora_lord": "Venus",
+              "benefic": true
+            },
+            {
+              "start_ist": "2026-10-30T14:00:00+05:30",
+              "end_ist": "2026-10-30T15:00:00+05:30",
+              "hora_lord": "Mercury",
+              "benefic": true
+            },
+            {
+              "start_ist": "2026-10-30T15:00:00+05:30",
+              "end_ist": "2026-10-30T16:00:00+05:30",
+              "hora_lord": "Moon",
+              "benefic": true
+            },
+            {
+              "start_ist": "2026-10-30T17:00:00+05:30",
+              "end_ist": "2026-10-30T18:00:00+05:30",
+              "hora_lord": "Jupiter",
+              "benefic": true
+            },
+            {
+              "start_ist": "2026-10-30T20:00:00+05:30",
+              "end_ist": "2026-10-30T21:00:00+05:30",
+              "hora_lord": "Venus",
+              "benefic": true
+            },
+            {
+              "start_ist": "2026-10-30T21:00:00+05:30",
+              "end_ist": "2026-10-30T22:00:00+05:30",
+              "hora_lord": "Mercury",
+              "benefic": true
+            },
+            {
+              "start_ist": "2026-10-30T22:00:00+05:30",
+              "end_ist": "2026-10-30T23:00:00+05:30",
+              "hora_lord": "Moon",
+              "benefic": true
+            },
+            {
+              "start_ist": "2026-10-31T00:00:00+05:30",
+              "end_ist": "2026-10-31T01:00:00+05:30",
+              "hora_lord": "Jupiter",
+              "benefic": true
+            },
+            {
+              "start_ist": "2026-10-31T03:00:00+05:30",
+              "end_ist": "2026-10-31T04:00:00+05:30",
+              "hora_lord": "Venus",
+              "benefic": true
+            },
+            {
+              "start_ist": "2026-10-31T04:00:00+05:30",
+              "end_ist": "2026-10-31T05:00:00+05:30",
+              "hora_lord": "Mercury",
+              "benefic": true
+            },
+            {
+              "start_ist": "2026-10-31T05:00:00+05:30",
+              "end_ist": "2026-10-31T06:00:00+05:30",
+              "hora_lord": "Moon",
+              "benefic": true
+            }
+          ],
+          "judgment_ledger": {
+            "candidate_id": "c0",
+            "dosas_present": [],
+            "pariharas_applied": [],
+            "residual_dosas": [],
+            "supporting_factors": [],
+            "neutral_annotations": [],
+            "net_standing": "clean",
+            "convention_only_factors": [],
+            "convention_only_factor_count": 0,
+            "convention_only_keys": [],
+            "convention_only_note": null,
+            "adjudication_note": "No cited doṣa-bearing factor span overlaps this candidate."
+          },
+          "paired_rite": null,
+          "paired_rite_reason": "no auspicious combination-yoga span exists in the preparatory horizon (2026-09-30T00:00:00.000Z .. 2026-10-30T00:00:00.0…[truncated for budget]",
+          "janma_micro_rules": null
+        }
+      ],
+      "candidate_count": 5,
+      "gap_report": "2 of 5 candidate window(s) for business (ELECT act-time) survive Pareto adjudication across 3 available factor group(s);…[truncated for budget]",
+      "frontier": {
+        "statement": "5 candidates found for business in 2026-08-15..2026-11-13, none reaching gold tier; the best available is 2026-10-30T00:…[truncated for budget]",
+        "candidate_count": 5,
+        "best": {
+          "start": "2026-10-30T00:00:00+00:00",
+          "end": "2026-11-01T00:00:00+00:00",
+          "score": 0.598,
+          "tier": "silver",
+          "tier_label": "Silver — solid but not ideal"
+        },
+        "best_tier": "silver",
+        "gold_tier_present": false,
+        "convention_id": "lite_v0_frontier"
+      },
+      "lattice_adjudication": {
+        "ledgers": [
+          {
+            "candidate_id": "c0",
+            "dosas_present": [],
+            "pariharas_applied": [],
+            "residual_dosas": [],
+            "supporting_factors": [],
+            "neutral_annotations": [],
+            "net_standing": "clean",
+            "convention_only_factors": [],
+            "convention_only_factor_count": 0,
+            "convention_only_keys": [],
+            "convention_only_note": null,
+            "adjudication_note": "No cited doṣa-bearing factor span overlaps this candidate."
+          },
+          {
+            "candidate_id": "c1",
+            "dosas_present": [
+              {
+                "factor_family": "kalam",
+                "factor_key": "gulika_kalam",
+                "start_utc": "2026-09-04 01:34:59.25",
+                "end_utc": "2026-09-04 03:08:31.5",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (GULIKA_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "rahu_kalam",
+                "start_utc": "2026-09-04 04:42:03.75",
+                "end_utc": "2026-09-04 06:15:36",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (RAHU_KALAM_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "durmuhurta",
+                "start_utc": "2026-09-04 08:01:27",
+                "end_utc": "2026-09-04 08:49:27",
+                "source_citation": "Muhūrta Chintāmaṇi §9 (per panchang_engine.timings docstring); Drik Panchang (drikpanchang.com) published convention pub…[truncated for budget]"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "varjyam",
+                "start_utc": "2026-09-04 08:01:27",
+                "end_utc": "2026-09-04 09:37:27",
+                "source_citation": "Muhūrta Chintāmaṇi §8; Drik Panchang (drikpanchang.com) published convention convention"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "yamaganda",
+                "start_utc": "2026-09-04 09:22:40.5",
+                "end_utc": "2026-09-04 10:56:12.75",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (YAMAGANDAM_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "gulika_kalam",
+                "start_utc": "2026-09-05 00:01:40",
+                "end_utc": "2026-09-05 01:35:03.875",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (GULIKA_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "rahu_kalam",
+                "start_utc": "2026-09-05 03:08:27.75",
+                "end_utc": "2026-09-05 04:41:51.625",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (RAHU_KALAM_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "varjyam",
+                "start_utc": "2026-09-05 05:37:40",
+                "end_utc": "2026-09-05 07:13:40",
+                "source_citation": "Muhūrta Chintāmaṇi §8; Drik Panchang (drikpanchang.com) published convention convention"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "durmuhurta",
+                "start_utc": "2026-09-05 06:25:40",
+                "end_utc": "2026-09-05 07:13:40",
+                "source_citation": "Muhūrta Chintāmaṇi §9 (per panchang_engine.timings docstring); Drik Panchang (drikpanchang.com) published convention pub…[truncated for budget]"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "durmuhurta",
+                "start_utc": "2026-09-05 07:13:40",
+                "end_utc": "2026-09-05 08:01:40",
+                "source_citation": "Muhūrta Chintāmaṇi §9 (per panchang_engine.timings docstring); Drik Panchang (drikpanchang.com) published convention pub…[truncated for budget]"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "yamaganda",
+                "start_utc": "2026-09-05 07:48:39.375",
+                "end_utc": "2026-09-05 09:22:03.25",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (YAMAGANDAM_INDEX)"
+              }
+            ],
+            "pariharas_applied": [
+              {
+                "dosha_key": "rahu_kalam",
+                "dosha_name_en": "Rahu Kalam",
+                "cancellation_condition_text": "...the time goes under the special name of Abhijin Moohurta, and Abhijit Sarva Doshaghnam or that noon time which cuts a…[truncated for budget]",
+                "net_standing": "cancelled",
+                "source_citation": "Jaimini Sutras (bphs_jaimini), trans. B. Suryanarain Rao, 1949, PG213 [chunk bphs_jaimini_pg0213_c01]",
+                "extraction_context": "translator_gloss_in_narrative"
+              },
+              {
+                "dosha_key": "rahu_kalam",
+                "dosha_name_en": "Rahu Kalam",
+                "cancellation_condition_text": "...the time goes under the special name of Abhijin Moohurta, and Abhijit Sarva Doshaghnam or that noon time which cuts a…[truncated for budget]",
+                "net_standing": "cancelled",
+                "source_citation": "Jaimini Sutras (bphs_jaimini), trans. B. Suryanarain Rao, 1949, PG213 [chunk bphs_jaimini_pg0213_c01]",
+                "extraction_context": "translator_gloss_in_narrative"
+              }
+            ],
+            "residual_dosas": [
+              {
+                "factor_family": "kalam",
+                "factor_key": "gulika_kalam",
+                "start_utc": "2026-09-04 01:34:59.25",
+                "end_utc": "2026-09-04 03:08:31.5",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (GULIKA_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "durmuhurta",
+                "start_utc": "2026-09-04 08:01:27",
+                "end_utc": "2026-09-04 08:49:27",
+                "source_citation": "Muhūrta Chintāmaṇi §9 (per panchang_engine.timings docstring); Drik Panchang (drikpanchang.com) published convention pub…[truncated for budget]"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "varjyam",
+                "start_utc": "2026-09-04 08:01:27",
+                "end_utc": "2026-09-04 09:37:27",
+                "source_citation": "Muhūrta Chintāmaṇi §8; Drik Panchang (drikpanchang.com) published convention convention"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "yamaganda",
+                "start_utc": "2026-09-04 09:22:40.5",
+                "end_utc": "2026-09-04 10:56:12.75",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (YAMAGANDAM_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "gulika_kalam",
+                "start_utc": "2026-09-05 00:01:40",
+                "end_utc": "2026-09-05 01:35:03.875",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (GULIKA_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "varjyam",
+                "start_utc": "2026-09-05 05:37:40",
+                "end_utc": "2026-09-05 07:13:40",
+                "source_citation": "Muhūrta Chintāmaṇi §8; Drik Panchang (drikpanchang.com) published convention convention"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "durmuhurta",
+                "start_utc": "2026-09-05 06:25:40",
+                "end_utc": "2026-09-05 07:13:40",
+                "source_citation": "Muhūrta Chintāmaṇi §9 (per panchang_engine.timings docstring); Drik Panchang (drikpanchang.com) published convention pub…[truncated for budget]"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "durmuhurta",
+                "start_utc": "2026-09-05 07:13:40",
+                "end_utc": "2026-09-05 08:01:40",
+                "source_citation": "Muhūrta Chintāmaṇi §9 (per panchang_engine.timings docstring); Drik Panchang (drikpanchang.com) published convention pub…[truncated for budget]"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "yamaganda",
+                "start_utc": "2026-09-05 07:48:39.375",
+                "end_utc": "2026-09-05 09:22:03.25",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (YAMAGANDAM_INDEX)"
+              }
+            ],
+            "supporting_factors": [
+              {
+                "factor_family": "kalam",
+                "factor_key": "abhijit",
+                "start_utc": "2026-09-04 05:50:39.4",
+                "end_utc": "2026-09-04 06:40:32.6",
+                "source_citation": "Muhūrta Chintāmaṇi §5 (excluded on Wednesday)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "brahma_muhurta",
+                "start_utc": "2026-09-04 22:25:40",
+                "end_utc": "2026-09-04 23:13:40",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention convention (96-48 min before sunrise)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "abhijit",
+                "start_utc": "2026-09-05 05:50:21.133333",
+                "end_utc": "2026-09-05 06:40:09.866667",
+                "source_citation": "Muhūrta Chintāmaṇi §5 (excluded on Wednesday)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "brahma_muhurta",
+                "start_utc": "2026-09-05 22:25:54",
+                "end_utc": "2026-09-05 23:13:54",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention convention (96-48 min before sunrise)"
+              }
+            ],
+            "neutral_annotations": [
+              {
+                "factor_family": "agnivasa",
+                "factor_key": "agni_vasa_mc_arithmetic",
+                "start_utc": "2026-09-03 00:01:13",
+                "end_utc": "2026-09-04 00:01:27",
+                "source_citation": "Muhūrta-Cintāmaṇi verse 36 (MC 1.36), Rāma Daivajña, trans. Mahidhara Sharma (Khemraj Shrikrishnadas Press), chunk_id=mu…[truncated for budget]"
+              },
+              {
+                "factor_family": "nakshatra",
+                "factor_key": "krittika",
+                "start_utc": "2026-09-03 00:01:13",
+                "end_utc": "2026-09-04 00:01:27",
+                "source_citation": "panchang_engine.angas.compute_nakshatra (real boundary search over the Moon's sidereal longitude) + shastra_tables.NAKSH…[truncated for budget]"
+              },
+              {
+                "factor_family": "tithi",
+                "factor_key": "krishna_saptami",
+                "start_utc": "2026-09-03 00:01:13",
+                "end_utc": "2026-09-04 00:01:27",
+                "source_citation": "panchang_engine.angas.compute_tithi (real bisection over Moon−Sun sidereal separation) + shastra_tables.TITHI_NAMES (1..…[truncated for budget]"
+              },
+              {
+                "factor_family": "vara",
+                "factor_key": "guruvara",
+                "start_utc": "2026-09-03 00:01:13",
+                "end_utc": "2026-09-04 00:01:27",
+                "source_citation": "panchang_engine.angas.compute_vara + shastra_tables.VARA_NAMES (1=Ravivāra … 7=Śanivāra, sunrise-to-sunrise Hindu-day co…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_sun",
+                "start_utc": "2026-09-03 23:01:26.416667",
+                "end_utc": "2026-09-04 00:01:27",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "agnivasa",
+                "factor_key": "agni_vasa_mc_arithmetic",
+                "start_utc": "2026-09-04 00:01:27",
+                "end_utc": "2026-09-05 00:01:40",
+                "source_citation": "Muhūrta-Cintāmaṇi verse 36 (MC 1.36), Rāma Daivajña, trans. Mahidhara Sharma (Khemraj Shrikrishnadas Press), chunk_id=mu…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_venus",
+                "start_utc": "2026-09-04 00:01:27",
+                "end_utc": "2026-09-04 01:01:27.541667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "nakshatra",
+                "factor_key": "rohini",
+                "start_utc": "2026-09-04 00:01:27",
+                "end_utc": "2026-09-05 00:01:40",
+                "source_citation": "panchang_engine.angas.compute_nakshatra (real boundary search over the Moon's sidereal longitude) + shastra_tables.NAKSH…[truncated for budget]"
+              },
+              {
+                "factor_family": "tithi",
+                "factor_key": "krishna_ashtami",
+                "start_utc": "2026-09-04 00:01:27",
+                "end_utc": "2026-09-05 00:01:40",
+                "source_citation": "panchang_engine.angas.compute_tithi (real bisection over Moon−Sun sidereal separation) + shastra_tables.TITHI_NAMES (1..…[truncated for budget]"
+              },
+              {
+                "factor_family": "vara",
+                "factor_key": "shukravara",
+                "start_utc": "2026-09-04 00:01:27",
+                "end_utc": "2026-09-05 00:01:40",
+                "source_citation": "panchang_engine.angas.compute_vara + shastra_tables.VARA_NAMES (1=Ravivāra … 7=Śanivāra, sunrise-to-sunrise Hindu-day co…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mercury",
+                "start_utc": "2026-09-04 01:01:27.541667",
+                "end_utc": "2026-09-04 02:01:28.083333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_moon",
+                "start_utc": "2026-09-04 02:01:28.083333",
+                "end_utc": "2026-09-04 03:01:28.625",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_saturn",
+                "start_utc": "2026-09-04 03:01:28.625",
+                "end_utc": "2026-09-04 04:01:29.166667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_jupiter",
+                "start_utc": "2026-09-04 04:01:29.166667",
+                "end_utc": "2026-09-04 05:01:29.708333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mars",
+                "start_utc": "2026-09-04 05:01:29.708333",
+                "end_utc": "2026-09-04 06:01:30.25",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_sun",
+                "start_utc": "2026-09-04 06:01:30.25",
+                "end_utc": "2026-09-04 07:01:30.791667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_venus",
+                "start_utc": "2026-09-04 07:01:30.791667",
+                "end_utc": "2026-09-04 08:01:31.333333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mercury",
+                "start_utc": "2026-09-04 08:01:31.333333",
+                "end_utc": "2026-09-04 09:01:31.875",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_moon",
+                "start_utc": "2026-09-04 09:01:31.875",
+                "end_utc": "2026-09-04 10:01:32.416667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_saturn",
+                "start_utc": "2026-09-04 10:01:32.416667",
+                "end_utc": "2026-09-04 11:01:32.958333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_jupiter",
+                "start_utc": "2026-09-04 11:01:32.958333",
+                "end_utc": "2026-09-04 12:01:33.5",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mars",
+                "start_utc": "2026-09-04 12:01:33.5",
+                "end_utc": "2026-09-04 13:01:34.041667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_sun",
+                "start_utc": "2026-09-04 13:01:34.041667",
+                "end_utc": "2026-09-04 14:01:34.583333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_venus",
+                "start_utc": "2026-09-04 14:01:34.583333",
+                "end_utc": "2026-09-04 15:01:35.125",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mercury",
+                "start_utc": "2026-09-04 15:01:35.125",
+                "end_utc": "2026-09-04 16:01:35.666667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_moon",
+                "start_utc": "2026-09-04 16:01:35.666667",
+                "end_utc": "2026-09-04 17:01:36.208333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_saturn",
+                "start_utc": "2026-09-04 17:01:36.208333",
+                "end_utc": "2026-09-04 18:01:36.75",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_jupiter",
+                "start_utc": "2026-09-04 18:01:36.75",
+                "end_utc": "2026-09-04 19:01:37.291667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mars",
+                "start_utc": "2026-09-04 19:01:37.291667",
+                "end_utc": "2026-09-04 20:01:37.833333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_sun",
+                "start_utc": "2026-09-04 20:01:37.833333",
+                "end_utc": "2026-09-04 21:01:38.375",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_venus",
+                "start_utc": "2026-09-04 21:01:38.375",
+                "end_utc": "2026-09-04 22:01:38.916667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mercury",
+                "start_utc": "2026-09-04 22:01:38.916667",
+                "end_utc": "2026-09-04 23:01:39.458333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_moon",
+                "start_utc": "2026-09-04 23:01:39.458333",
+                "end_utc": "2026-09-05 00:01:40",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "agnivasa",
+                "factor_key": "agni_vasa_mc_arithmetic",
+                "start_utc": "2026-09-05 00:01:40",
+                "end_utc": "2026-09-06 00:01:54",
+                "source_citation": "Muhūrta-Cintāmaṇi verse 36 (MC 1.36), Rāma Daivajña, trans. Mahidhara Sharma (Khemraj Shrikrishnadas Press), chunk_id=mu…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_saturn",
+                "start_utc": "2026-09-05 00:01:40",
+                "end_utc": "2026-09-05 01:01:40.583333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "nakshatra",
+                "factor_key": "mrigashira",
+                "start_utc": "2026-09-05 00:01:40",
+                "end_utc": "2026-09-06 00:01:54",
+                "source_citation": "panchang_engine.angas.compute_nakshatra (real boundary search over the Moon's sidereal longitude) + shastra_tables.NAKSH…[truncated for budget]"
+              },
+              {
+                "factor_family": "tithi",
+                "factor_key": "krishna_navami",
+                "start_utc": "2026-09-05 00:01:40",
+                "end_utc": "2026-09-06 00:01:54",
+                "source_citation": "panchang_engine.angas.compute_tithi (real bisection over Moon−Sun sidereal separation) + shastra_tables.TITHI_NAMES (1..…[truncated for budget]"
+              },
+              {
+                "factor_family": "vara",
+                "factor_key": "shanivara",
+                "start_utc": "2026-09-05 00:01:40",
+                "end_utc": "2026-09-06 00:01:54",
+                "source_citation": "panchang_engine.angas.compute_vara + shastra_tables.VARA_NAMES (1=Ravivāra … 7=Śanivāra, sunrise-to-sunrise Hindu-day co…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_jupiter",
+                "start_utc": "2026-09-05 01:01:40.583333",
+                "end_utc": "2026-09-05 02:01:41.166667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mars",
+                "start_utc": "2026-09-05 02:01:41.166667",
+                "end_utc": "2026-09-05 03:01:41.75",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_sun",
+                "start_utc": "2026-09-05 03:01:41.75",
+                "end_utc": "2026-09-05 04:01:42.333333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_venus",
+                "start_utc": "2026-09-05 04:01:42.333333",
+                "end_utc": "2026-09-05 05:01:42.916667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mercury",
+                "start_utc": "2026-09-05 05:01:42.916667",
+                "end_utc": "2026-09-05 06:01:43.5",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_moon",
+                "start_utc": "2026-09-05 06:01:43.5",
+                "end_utc": "2026-09-05 07:01:44.083333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_saturn",
+                "start_utc": "2026-09-05 07:01:44.083333",
+                "end_utc": "2026-09-05 08:01:44.666667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_jupiter",
+                "start_utc": "2026-09-05 08:01:44.666667",
+                "end_utc": "2026-09-05 09:01:45.25",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mars",
+                "start_utc": "2026-09-05 09:01:45.25",
+                "end_utc": "2026-09-05 10:01:45.833333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_sun",
+                "start_utc": "2026-09-05 10:01:45.833333",
+                "end_utc": "2026-09-05 11:01:46.416667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_venus",
+                "start_utc": "2026-09-05 11:01:46.416667",
+                "end_utc": "2026-09-05 12:01:47",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mercury",
+                "start_utc": "2026-09-05 12:01:47",
+                "end_utc": "2026-09-05 13:01:47.583333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_moon",
+                "start_utc": "2026-09-05 13:01:47.583333",
+                "end_utc": "2026-09-05 14:01:48.166667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_saturn",
+                "start_utc": "2026-09-05 14:01:48.166667",
+                "end_utc": "2026-09-05 15:01:48.75",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_jupiter",
+                "start_utc": "2026-09-05 15:01:48.75",
+                "end_utc": "2026-09-05 16:01:49.333333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mars",
+                "start_utc": "2026-09-05 16:01:49.333333",
+                "end_utc": "2026-09-05 17:01:49.916667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_sun",
+                "start_utc": "2026-09-05 17:01:49.916667",
+                "end_utc": "2026-09-05 18:01:50.5",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_venus",
+                "start_utc": "2026-09-05 18:01:50.5",
+                "end_utc": "2026-09-05 19:01:51.083333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mercury",
+                "start_utc": "2026-09-05 19:01:51.083333",
+                "end_utc": "2026-09-05 20:01:51.666667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_moon",
+                "start_utc": "2026-09-05 20:01:51.666667",
+                "end_utc": "2026-09-05 21:01:52.25",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_saturn",
+                "start_utc": "2026-09-05 21:01:52.25",
+                "end_utc": "2026-09-05 22:01:52.833333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_jupiter",
+                "start_utc": "2026-09-05 22:01:52.833333",
+                "end_utc": "2026-09-05 23:01:53.416667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              }
+            ],
+            "net_standing": "residual_dosas_present",
+            "convention_only_factors": [],
+            "convention_only_factor_count": 111,
+            "convention_only_keys": [
+              "10:Puruhuta",
+              "11:Vahini",
+              "12:Naktankara",
+              "13:Varuna",
+              "14:Aryaman",
+              "15:Bhaga",
+              "16:Girisha",
+              "17:Ajapada",
+              "18:Ahirbudhnya",
+              "19:Pushya",
+              "1:Rudra",
+              "20:Ashvini",
+              "21:Yama",
+              "22:Agni",
+              "23:Vidhata",
+              "24:Kanda",
+              "25:Aditi",
+              "26:Jiva",
+              "27:Vishnu",
+              "28:Dyumadgadsuti",
+              "29:Brahma",
+              "2:Ahi",
+              "30:Samudram",
+              "3:Mitra",
+              "4:Pitri",
+              "5:Vasu",
+              "6:Vara",
+              "7:Vishvadeva",
+              "8:Vidhi",
+              "9:Sutamukhi",
+              "agni_vasa",
+              "dhanu",
+              "godhuli",
+              "kanya",
+              "karka",
+              "krakaca",
+              "kumbha",
+              "madhyahna_sandhya",
+              "makara",
+              "meena",
+              "mesha",
+              "mithuna",
+              "nishita",
+              "pratah_sandhya",
+              "sashtighati",
+              "sayam_sandhya",
+              "simha",
+              "tula",
+              "vijaya",
+              "visha_ghati",
+              "vrishabha",
+              "vrishchika",
+              "yamakantaka"
+            ],
+            "convention_only_note": "These factor spans are live deterministic conventions whose source table carries no per-row classical citation (corpus_s…[truncated for budget]",
+            "adjudication_note": "9 of 11 doṣa(s) remain residual. No muhūrta-scope parihāra rule in the corpus matches this specific residual doṣa by dos…[truncated for budget]"
+          },
+          {
+            "candidate_id": "c2",
+            "dosas_present": [
+              {
+                "factor_family": "kalam",
+                "factor_key": "yamaganda",
+                "start_utc": "2026-08-19 01:33:06.75",
+                "end_utc": "2026-08-19 03:08:48.5",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (YAMAGANDAM_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "gulika_kalam",
+                "start_utc": "2026-08-19 04:44:30.25",
+                "end_utc": "2026-08-19 06:20:12",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (GULIKA_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "durmuhurta",
+                "start_utc": "2026-08-19 05:33:25",
+                "end_utc": "2026-08-19 06:21:25",
+                "source_citation": "Muhūrta Chintāmaṇi §9 (per panchang_engine.timings docstring); Drik Panchang (drikpanchang.com) published convention pub…[truncated for budget]"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "rahu_kalam",
+                "start_utc": "2026-08-19 06:20:12",
+                "end_utc": "2026-08-19 07:55:53.75",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (RAHU_KALAM_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "durmuhurta",
+                "start_utc": "2026-08-19 06:21:25",
+                "end_utc": "2026-08-19 07:09:25",
+                "source_citation": "Muhūrta Chintāmaṇi §9 (per panchang_engine.timings docstring); Drik Panchang (drikpanchang.com) published convention pub…[truncated for budget]"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "varjyam",
+                "start_utc": "2026-08-19 12:45:25",
+                "end_utc": "2026-08-19 14:21:25",
+                "source_citation": "Muhūrta Chintāmaṇi §8; Drik Panchang (drikpanchang.com) published convention convention"
+              },
+              {
+                "factor_family": "combination_yoga",
+                "factor_key": "bhadra",
+                "start_utc": "2026-08-19 23:57:42",
+                "end_utc": "2026-08-20 02:46:21",
+                "source_citation": "Muhūrta Chintāmaṇi §2; Bṛhat Saṃhitā §2; Drik Panchang (drikpanchang.com) published convention (start/end display conven…[truncated for budget]"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "yamaganda",
+                "start_utc": "2026-08-19 23:57:42",
+                "end_utc": "2026-08-20 01:33:16",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (YAMAGANDAM_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "gulika_kalam",
+                "start_utc": "2026-08-20 03:08:50",
+                "end_utc": "2026-08-20 04:44:24",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (GULIKA_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "durmuhurta",
+                "start_utc": "2026-08-20 07:09:42",
+                "end_utc": "2026-08-20 07:57:42",
+                "source_citation": "Muhūrta Chintāmaṇi §9 (per panchang_engine.timings docstring); Drik Panchang (drikpanchang.com) published convention pub…[truncated for budget]"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "rahu_kalam",
+                "start_utc": "2026-08-20 07:55:32",
+                "end_utc": "2026-08-20 09:31:06",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (RAHU_KALAM_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "varjyam",
+                "start_utc": "2026-08-20 16:45:42",
+                "end_utc": "2026-08-20 18:21:42",
+                "source_citation": "Muhūrta Chintāmaṇi §8; Drik Panchang (drikpanchang.com) published convention convention"
+              }
+            ],
+            "pariharas_applied": [
+              {
+                "dosha_key": "rahu_kalam",
+                "dosha_name_en": "Rahu Kalam",
+                "cancellation_condition_text": "...the time goes under the special name of Abhijin Moohurta, and Abhijit Sarva Doshaghnam or that noon time which cuts a…[truncated for budget]",
+                "net_standing": "cancelled",
+                "source_citation": "Jaimini Sutras (bphs_jaimini), trans. B. Suryanarain Rao, 1949, PG213 [chunk bphs_jaimini_pg0213_c01]",
+                "extraction_context": "translator_gloss_in_narrative"
+              },
+              {
+                "dosha_key": "rahu_kalam",
+                "dosha_name_en": "Rahu Kalam",
+                "cancellation_condition_text": "...the time goes under the special name of Abhijin Moohurta, and Abhijit Sarva Doshaghnam or that noon time which cuts a…[truncated for budget]",
+                "net_standing": "cancelled",
+                "source_citation": "Jaimini Sutras (bphs_jaimini), trans. B. Suryanarain Rao, 1949, PG213 [chunk bphs_jaimini_pg0213_c01]",
+                "extraction_context": "translator_gloss_in_narrative"
+              }
+            ],
+            "residual_dosas": [
+              {
+                "factor_family": "kalam",
+                "factor_key": "yamaganda",
+                "start_utc": "2026-08-19 01:33:06.75",
+                "end_utc": "2026-08-19 03:08:48.5",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (YAMAGANDAM_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "gulika_kalam",
+                "start_utc": "2026-08-19 04:44:30.25",
+                "end_utc": "2026-08-19 06:20:12",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (GULIKA_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "durmuhurta",
+                "start_utc": "2026-08-19 05:33:25",
+                "end_utc": "2026-08-19 06:21:25",
+                "source_citation": "Muhūrta Chintāmaṇi §9 (per panchang_engine.timings docstring); Drik Panchang (drikpanchang.com) published convention pub…[truncated for budget]"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "durmuhurta",
+                "start_utc": "2026-08-19 06:21:25",
+                "end_utc": "2026-08-19 07:09:25",
+                "source_citation": "Muhūrta Chintāmaṇi §9 (per panchang_engine.timings docstring); Drik Panchang (drikpanchang.com) published convention pub…[truncated for budget]"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "varjyam",
+                "start_utc": "2026-08-19 12:45:25",
+                "end_utc": "2026-08-19 14:21:25",
+                "source_citation": "Muhūrta Chintāmaṇi §8; Drik Panchang (drikpanchang.com) published convention convention"
+              },
+              {
+                "factor_family": "combination_yoga",
+                "factor_key": "bhadra",
+                "start_utc": "2026-08-19 23:57:42",
+                "end_utc": "2026-08-20 02:46:21",
+                "source_citation": "Muhūrta Chintāmaṇi §2; Bṛhat Saṃhitā §2; Drik Panchang (drikpanchang.com) published convention (start/end display conven…[truncated for budget]"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "yamaganda",
+                "start_utc": "2026-08-19 23:57:42",
+                "end_utc": "2026-08-20 01:33:16",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (YAMAGANDAM_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "gulika_kalam",
+                "start_utc": "2026-08-20 03:08:50",
+                "end_utc": "2026-08-20 04:44:24",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention published index tables (GULIKA_INDEX)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "durmuhurta",
+                "start_utc": "2026-08-20 07:09:42",
+                "end_utc": "2026-08-20 07:57:42",
+                "source_citation": "Muhūrta Chintāmaṇi §9 (per panchang_engine.timings docstring); Drik Panchang (drikpanchang.com) published convention pub…[truncated for budget]"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "varjyam",
+                "start_utc": "2026-08-20 16:45:42",
+                "end_utc": "2026-08-20 18:21:42",
+                "source_citation": "Muhūrta Chintāmaṇi §8; Drik Panchang (drikpanchang.com) published convention convention"
+              }
+            ],
+            "supporting_factors": [
+              {
+                "factor_family": "kalam",
+                "factor_key": "brahma_muhurta",
+                "start_utc": "2026-08-19 22:21:42",
+                "end_utc": "2026-08-19 23:09:42",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention convention (96-48 min before sunrise)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "abhijit",
+                "start_utc": "2026-08-20 05:54:28.933333",
+                "end_utc": "2026-08-20 06:45:27.066667",
+                "source_citation": "Muhūrta Chintāmaṇi §5 (excluded on Wednesday)"
+              },
+              {
+                "factor_family": "kalam",
+                "factor_key": "brahma_muhurta",
+                "start_utc": "2026-08-20 22:21:58",
+                "end_utc": "2026-08-20 23:09:58",
+                "source_citation": "Drik Panchang (drikpanchang.com) published convention convention (96-48 min before sunrise)"
+              }
+            ],
+            "neutral_annotations": [
+              {
+                "factor_family": "agnivasa",
+                "factor_key": "agni_vasa_mc_arithmetic",
+                "start_utc": "2026-08-18 23:57:25",
+                "end_utc": "2026-08-19 23:57:42",
+                "source_citation": "Muhūrta-Cintāmaṇi verse 36 (MC 1.36), Rāma Daivajña, trans. Mahidhara Sharma (Khemraj Shrikrishnadas Press), chunk_id=mu…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mercury",
+                "start_utc": "2026-08-18 23:57:25",
+                "end_utc": "2026-08-19 00:57:25.708333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "nakshatra",
+                "factor_key": "swati",
+                "start_utc": "2026-08-18 23:57:25",
+                "end_utc": "2026-08-19 23:57:42",
+                "source_citation": "panchang_engine.angas.compute_nakshatra (real boundary search over the Moon's sidereal longitude) + shastra_tables.NAKSH…[truncated for budget]"
+              },
+              {
+                "factor_family": "tithi",
+                "factor_key": "shukla_saptami",
+                "start_utc": "2026-08-18 23:57:25",
+                "end_utc": "2026-08-19 23:57:42",
+                "source_citation": "panchang_engine.angas.compute_tithi (real bisection over Moon−Sun sidereal separation) + shastra_tables.TITHI_NAMES (1..…[truncated for budget]"
+              },
+              {
+                "factor_family": "vara",
+                "factor_key": "budhavara",
+                "start_utc": "2026-08-18 23:57:25",
+                "end_utc": "2026-08-19 23:57:42",
+                "source_citation": "panchang_engine.angas.compute_vara + shastra_tables.VARA_NAMES (1=Ravivāra … 7=Śanivāra, sunrise-to-sunrise Hindu-day co…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_moon",
+                "start_utc": "2026-08-19 00:57:25.708333",
+                "end_utc": "2026-08-19 01:57:26.416667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_saturn",
+                "start_utc": "2026-08-19 01:57:26.416667",
+                "end_utc": "2026-08-19 02:57:27.125",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_jupiter",
+                "start_utc": "2026-08-19 02:57:27.125",
+                "end_utc": "2026-08-19 03:57:27.833333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mars",
+                "start_utc": "2026-08-19 03:57:27.833333",
+                "end_utc": "2026-08-19 04:57:28.541667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_sun",
+                "start_utc": "2026-08-19 04:57:28.541667",
+                "end_utc": "2026-08-19 05:57:29.25",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_venus",
+                "start_utc": "2026-08-19 05:57:29.25",
+                "end_utc": "2026-08-19 06:57:29.958333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mercury",
+                "start_utc": "2026-08-19 06:57:29.958333",
+                "end_utc": "2026-08-19 07:57:30.666667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_moon",
+                "start_utc": "2026-08-19 07:57:30.666667",
+                "end_utc": "2026-08-19 08:57:31.375",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_saturn",
+                "start_utc": "2026-08-19 08:57:31.375",
+                "end_utc": "2026-08-19 09:57:32.083333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_jupiter",
+                "start_utc": "2026-08-19 09:57:32.083333",
+                "end_utc": "2026-08-19 10:57:32.791667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mars",
+                "start_utc": "2026-08-19 10:57:32.791667",
+                "end_utc": "2026-08-19 11:57:33.5",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_sun",
+                "start_utc": "2026-08-19 11:57:33.5",
+                "end_utc": "2026-08-19 12:57:34.208333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_venus",
+                "start_utc": "2026-08-19 12:57:34.208333",
+                "end_utc": "2026-08-19 13:57:34.916667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mercury",
+                "start_utc": "2026-08-19 13:57:34.916667",
+                "end_utc": "2026-08-19 14:57:35.625",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_moon",
+                "start_utc": "2026-08-19 14:57:35.625",
+                "end_utc": "2026-08-19 15:57:36.333333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_saturn",
+                "start_utc": "2026-08-19 15:57:36.333333",
+                "end_utc": "2026-08-19 16:57:37.041667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_jupiter",
+                "start_utc": "2026-08-19 16:57:37.041667",
+                "end_utc": "2026-08-19 17:57:37.75",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mars",
+                "start_utc": "2026-08-19 17:57:37.75",
+                "end_utc": "2026-08-19 18:57:38.458333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_sun",
+                "start_utc": "2026-08-19 18:57:38.458333",
+                "end_utc": "2026-08-19 19:57:39.166667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_venus",
+                "start_utc": "2026-08-19 19:57:39.166667",
+                "end_utc": "2026-08-19 20:57:39.875",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mercury",
+                "start_utc": "2026-08-19 20:57:39.875",
+                "end_utc": "2026-08-19 21:57:40.583333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_moon",
+                "start_utc": "2026-08-19 21:57:40.583333",
+                "end_utc": "2026-08-19 22:57:41.291667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_saturn",
+                "start_utc": "2026-08-19 22:57:41.291667",
+                "end_utc": "2026-08-19 23:57:42",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "agnivasa",
+                "factor_key": "agni_vasa_mc_arithmetic",
+                "start_utc": "2026-08-19 23:57:42",
+                "end_utc": "2026-08-20 23:57:58",
+                "source_citation": "Muhūrta-Cintāmaṇi verse 36 (MC 1.36), Rāma Daivajña, trans. Mahidhara Sharma (Khemraj Shrikrishnadas Press), chunk_id=mu…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_jupiter",
+                "start_utc": "2026-08-19 23:57:42",
+                "end_utc": "2026-08-20 00:57:42.666667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "nakshatra",
+                "factor_key": "vishakha",
+                "start_utc": "2026-08-19 23:57:42",
+                "end_utc": "2026-08-20 23:57:58",
+                "source_citation": "panchang_engine.angas.compute_nakshatra (real boundary search over the Moon's sidereal longitude) + shastra_tables.NAKSH…[truncated for budget]"
+              },
+              {
+                "factor_family": "tithi",
+                "factor_key": "shukla_ashtami",
+                "start_utc": "2026-08-19 23:57:42",
+                "end_utc": "2026-08-20 23:57:58",
+                "source_citation": "panchang_engine.angas.compute_tithi (real bisection over Moon−Sun sidereal separation) + shastra_tables.TITHI_NAMES (1..…[truncated for budget]"
+              },
+              {
+                "factor_family": "vara",
+                "factor_key": "guruvara",
+                "start_utc": "2026-08-19 23:57:42",
+                "end_utc": "2026-08-20 23:57:58",
+                "source_citation": "panchang_engine.angas.compute_vara + shastra_tables.VARA_NAMES (1=Ravivāra … 7=Śanivāra, sunrise-to-sunrise Hindu-day co…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mars",
+                "start_utc": "2026-08-20 00:57:42.666667",
+                "end_utc": "2026-08-20 01:57:43.333333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_sun",
+                "start_utc": "2026-08-20 01:57:43.333333",
+                "end_utc": "2026-08-20 02:57:44",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_venus",
+                "start_utc": "2026-08-20 02:57:44",
+                "end_utc": "2026-08-20 03:57:44.666667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mercury",
+                "start_utc": "2026-08-20 03:57:44.666667",
+                "end_utc": "2026-08-20 04:57:45.333333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_moon",
+                "start_utc": "2026-08-20 04:57:45.333333",
+                "end_utc": "2026-08-20 05:57:46",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_saturn",
+                "start_utc": "2026-08-20 05:57:46",
+                "end_utc": "2026-08-20 06:57:46.666667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_jupiter",
+                "start_utc": "2026-08-20 06:57:46.666667",
+                "end_utc": "2026-08-20 07:57:47.333333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mars",
+                "start_utc": "2026-08-20 07:57:47.333333",
+                "end_utc": "2026-08-20 08:57:48",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_sun",
+                "start_utc": "2026-08-20 08:57:48",
+                "end_utc": "2026-08-20 09:57:48.666667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_venus",
+                "start_utc": "2026-08-20 09:57:48.666667",
+                "end_utc": "2026-08-20 10:57:49.333333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mercury",
+                "start_utc": "2026-08-20 10:57:49.333333",
+                "end_utc": "2026-08-20 11:57:50",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_moon",
+                "start_utc": "2026-08-20 11:57:50",
+                "end_utc": "2026-08-20 12:57:50.666667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_saturn",
+                "start_utc": "2026-08-20 12:57:50.666667",
+                "end_utc": "2026-08-20 13:57:51.333333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_jupiter",
+                "start_utc": "2026-08-20 13:57:51.333333",
+                "end_utc": "2026-08-20 14:57:52",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mars",
+                "start_utc": "2026-08-20 14:57:52",
+                "end_utc": "2026-08-20 15:57:52.666667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_sun",
+                "start_utc": "2026-08-20 15:57:52.666667",
+                "end_utc": "2026-08-20 16:57:53.333333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_venus",
+                "start_utc": "2026-08-20 16:57:53.333333",
+                "end_utc": "2026-08-20 17:57:54",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mercury",
+                "start_utc": "2026-08-20 17:57:54",
+                "end_utc": "2026-08-20 18:57:54.666667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_moon",
+                "start_utc": "2026-08-20 18:57:54.666667",
+                "end_utc": "2026-08-20 19:57:55.333333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_saturn",
+                "start_utc": "2026-08-20 19:57:55.333333",
+                "end_utc": "2026-08-20 20:57:56",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_jupiter",
+                "start_utc": "2026-08-20 20:57:56",
+                "end_utc": "2026-08-20 21:57:56.666667",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_mars",
+                "start_utc": "2026-08-20 21:57:56.666667",
+                "end_utc": "2026-08-20 22:57:57.333333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_sun",
+                "start_utc": "2026-08-20 22:57:57.333333",
+                "end_utc": "2026-08-20 23:57:58",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "agnivasa",
+                "factor_key": "agni_vasa_mc_arithmetic",
+                "start_utc": "2026-08-20 23:57:58",
+                "end_utc": "2026-08-21 23:58:15",
+                "source_citation": "Muhūrta-Cintāmaṇi verse 36 (MC 1.36), Rāma Daivajña, trans. Mahidhara Sharma (Khemraj Shrikrishnadas Press), chunk_id=mu…[truncated for budget]"
+              },
+              {
+                "factor_family": "hora",
+                "factor_key": "hora_venus",
+                "start_utc": "2026-08-20 23:57:58",
+                "end_utc": "2026-08-21 00:57:58.708333",
+                "source_citation": "panchang_engine.timings.compute_hora — 24 planetary hours over the sunrise→next-sunrise cycle, Chaldean sequence (shastr…[truncated for budget]"
+              },
+              {
+                "factor_family": "nakshatra",
+                "factor_key": "anuradha",
+                "start_utc": "2026-08-20 23:57:58",
+                "end_utc": "2026-08-21 23:58:15",
+                "source_citation": "panchang_engine.angas.compute_nakshatra (real boundary search over the Moon's sidereal longitude) + shastra_tables.NAKSH…[truncated for budget]"
+              },
+              {
+                "factor_family": "tithi",
+                "factor_key": "shukla_navami",
+                "start_utc": "2026-08-20 23:57:58",
+                "end_utc": "2026-08-21 23:58:15",
+                "source_citation": "panchang_engine.angas.compute_tithi (real bisection over Moon−Sun sidereal separation) + shastra_tables.TITHI_NAMES (1..…[truncated for budget]"
+              },
+              {
+                "factor_family": "vara",
+                "factor_key": "shukravara",
+                "start_utc": "2026-08-20 23:57:58",
+                "end_utc": "2026-08-21 23:58:15",
+                "source_citation": "panchang_engine.angas.compute_vara + shastra_tables.VARA_NAMES (1=Ravivāra … 7=Śanivāra, sunrise-to-sunrise Hindu-day co…[truncated for budget]"
+              }
+            ],
+            "net_standing": "residual_dosas_present",
+            "convention_only_factors": [],
+            "convention_only_factor_count": 114,
+            "convention_only_keys": [
+              "10:Puruhuta",
+              "11:Vahini",
+              "12:Naktankara",
+              "13:Varuna",
+              "14:Aryaman",
+              "15:Bhaga",
+              "16:Girisha",
+              "17:Ajapada",
+              "18:Ahirbudhnya",
+              "19:Pushya",
+              "1:Rudra",
+              "20:Ashvini",
+              "21:Yama",
+              "22:Agni",
+              "23:Vidhata",
+              "24:Kanda",
+              "25:Aditi",
+              "26:Jiva",
+              "27:Vishnu",
+              "28:Dyumadgadsuti",
+              "29:Brahma",
+              "2:Ahi",
+              "30:Samudram",
+              "3:Mitra",
+              "4:Pitri",
+              "5:Vasu",
+              "6:Vara",
+              "7:Vishvadeva",
+              "8:Vidhi",
+              "9:Sutamukhi",
+              "agni_vasa",
+              "dhanu",
+              "godhuli",
+              "kanya",
+              "karka",
+              "krakaca",
+              "kumbha",
+              "madhyahna_sandhya",
+              "makara",
+              "meena",
+              "mesha",
+              "mithuna",
+              "nishita",
+              "pratah_sandhya",
+              "sashtighati",
+              "sayam_sandhya",
+              "simha",
+              "tula",
+              "vijaya",
+              "visha_ghati",
+              "vrishabha",
+              "vrishchika",
+              "yamakantaka"
+            ],
+            "convention_only_note": "These factor spans are live deterministic conventions whose source table carries no per-row classical citation (corpus_s…[truncated for budget]",
+            "adjudication_note": "10 of 12 doṣa(s) remain residual. No muhūrta-scope parihāra rule in the corpus matches this specific residual doṣa by do…[truncated for budget]"
+          },
+          {
+            "candidate_id": "c3",
+            "dosas_present": [],
+            "pariharas_applied": [],
+            "residual_dosas": [],
+            "supporting_factors": [],
+            "neutral_annotations": [],
+            "net_standing": "clean",
+            "convention_only_factors": [],
+            "convention_only_factor_count": 0,
+            "convention_only_keys": [],
+            "convention_only_note": null,
+            "adjudication_note": "No cited doṣa-bearing factor span overlaps this candidate."
+          },
+          {
+            "candidate_id": "c4",
+            "dosas_present": [],
+            "pariharas_applied": [],
+            "residual_dosas": [],
+            "supporting_factors": [],
+            "neutral_annotations": [],
+            "net_standing": "clean",
+            "convention_only_factors": [],
+            "convention_only_factor_count": 0,
+            "convention_only_keys": [],
+            "convention_only_note": null,
+            "adjudication_note": "No cited doṣa-bearing factor span overlaps this candidate."
+          }
+        ],
+        "pareto": {
+          "frontier_candidate_ids": [
+            "c0",
+            "c1"
+          ],
+          "dominated_candidate_ids": [
+            "c2",
+            "c3",
+            "c4"
+          ],
+          "axes_used": [
+            "panchangika_quality",
+            "residual_dosha_burden",
+            "cited_auspicious_support"
+          ],
+          "axes_excluded": [
+            {
+              "key": "personal_field_alignment",
+              "reason": "the field's λ for the rite's domain requires ka_kshetra field rows, which are not populated at this build tier (the life…[truncated for budget]"
+            },
+            {
+              "key": "rite_specific_resonance",
+              "reason": "the per-activity rule join (bg_muhurta_activity_rules, keyed on tithi/nakṣatra/vāra ids) cannot be resolved from the can…[truncated for budget]"
+            },
+            {
+              "key": "practical_feasibility",
+              "reason": "no substrate anywhere in this estate models a querent's practical constraints (travel, availability, participants), so t…[truncated for budget]"
+            }
+          ],
+          "method_note": "Pareto survival across factor groups (Elevation §9 stage 4): a candidate survives unless another candidate is at least a…[truncated for budget]"
+        },
+        "gap_report": {
+          "statement": "2 of 5 candidate window(s) for business (ELECT act-time) survive Pareto adjudication across 3 available factor group(s);…[truncated for budget]",
+          "factor_families_evaluated": [
+            "agnivasa",
+            "combination_yoga",
+            "hora",
+            "kalam",
+            "nakshatra",
+            "tithi",
+            "vara"
+          ],
+          "factors_not_computed": [
+            {
+              "factor_family": "chart_personal",
+              "factor_name": "janma_tithi_vara_nakshatra_resonance",
+              "reason": "Chart-personal by definition (reads a specific native's own birth tithi/vara/nakshatra) — out of THIS global lane's scop…[truncated for budget]",
+              "evidence_pointer": "kala_now_get (w1-flags PR #892); chart-bound, not this asset"
+            },
+            {
+              "factor_family": "degree_sensitive",
+              "factor_name": "gandanta",
+              "reason": "gandanta_dosha EXISTS as a real, cited NATAL dosha in brahma_dosha_catalog (canonical_id='gandanta_dosha', BPHS ch.9, re…[truncated for budget]",
+              "evidence_pointer": "brahma_dosha_catalog (canonical_id=gandanta_dosha, natal only); global span not built"
+            },
+            {
+              "factor_family": "degree_sensitive",
+              "factor_name": "sandhi_zones",
+              "reason": "Sign/nakshatra sandhi (junction) zones are computable in principle from existing sign-boundary/nakshatra-boundary data (…[truncated for budget]",
+              "evidence_pointer": "derivable from existing sign/nakshatra boundary computations; not yet built"
+            },
+            {
+              "factor_family": "panchangika",
+              "factor_name": "karana_lattice_family",
+              "reason": "lattice family not materialized. The karana pair IS computed (panchang_engine.angas.compute_karana_pair) and the ONE kar…[truncated for budget]",
+              "evidence_pointer": "panchang_engine/angas.py:compute_karana_pair (computed; only the vishti/bhadra member is emitted, as bg_muhurta_lattice …[truncated for budget]"
+            },
+            {
+              "factor_family": "panchangika",
+              "factor_name": "nakshatra_tara_bala",
+              "reason": "Chart-personal by construction (needs the native's own janma-nakshatra) — out of THIS global lane's scope per brief §2. …[truncated for budget]",
+              "evidence_pointer": "panchang_engine/tara_bala.py (chart-bound; see also w1-flags PR #892)"
+            },
+            {
+              "factor_family": "panchangika",
+              "factor_name": "nityayoga_lattice_family",
+              "reason": "lattice family not materialized. The 27-fold nitya-yoga IS computed (panchang_engine.angas.compute_yoga — see the siblin…[truncated for budget]",
+              "evidence_pointer": "panchang_engine/angas.py:compute_yoga (computed, not emitted to bg_muhurta_lattice)"
+            },
+            {
+              "factor_family": "panchangika",
+              "factor_name": "nityayoga_vyatipata_vaidhriti_special_status",
+              "reason": "compute_yoga returns the standard 27-fold nitya-yoga id/name only; no distinct Vyatipata/Vaidhriti inauspicious-flagging…[truncated for budget]",
+              "evidence_pointer": "panchang_engine/angas.py (gap — grep-verified, no VYATIPATA/VAIDHRITI-specific table found)"
+            },
+            {
+              "factor_family": "parihara_scope",
+              "factor_name": "vishti_conditional_undertaking_exception",
+              "reason": "A REAL, translated, in-corpus muhurta-scope Vishti/Bhadra exception was found and verified live 2026-08-02, and is delib…[truncated for budget]",
+              "evidence_pointer": "classical_text_chunks (chunk_id='brihat_samhita_pg0768_c01', Adh. C sl.3-4, translated, low_confidence_flag=false) — liv…[truncated for budget]"
+            },
+            {
+              "factor_family": "rite_specific",
+              "factor_name": "activity_rule_pareto_axis_in_frozen_engine",
+              "reason": "HONEST PARTIAL, disclosed rather than claimed. The DATA-LAYER join above is live and deterministic, so Mode 1's rite-spe…[truncated for budget]",
+              "evidence_pointer": "platform-mcp/src/lib/kala_lattice_query.ts:EXCLUDED_AXES (FROZEN for W4; module-private const, no injection mechanism)"
+            }
+          ],
+          "factors_not_in_corpus": [
+            {
+              "factor_family": "combination_yoga",
+              "factor_name": "dagdha_yoga",
+              "reason": "classical_text_chunks (text_id='muhurta_chintamani') ch.17-18 contains untranslated Devanagari Dagdha-yoga tithi x vara …[truncated for budget]",
+              "evidence_pointer": "classical_text_chunks (text_id='muhurta_chintamani', ch.17-18, content_en=content_sa untranslated)"
+            },
+            {
+              "factor_family": "combination_yoga",
+              "factor_name": "hutasana_yoga",
+              "reason": "Same untranslated-corpus evidence as dagdha_yoga (co-located in Muhurta Chintamani ch.17-18's Devanagari OCR). Ingestion…[truncated for budget]",
+              "evidence_pointer": "classical_text_chunks (text_id='muhurta_chintamani', ch.17-18, untranslated)"
+            },
+            {
+              "factor_family": "combination_yoga",
+              "factor_name": "jvalamukhi_yoga",
+              "reason": "CORRECTED (Opus corpus-citation review, 2026-07-30): the earlier claim 'no corpus evidence found even in untranslated fo…[truncated for budget]",
+              "evidence_pointer": "classical_text_chunks (text_id='muhurta_chintamani', chunk_id=muhurta_chintamani_pg0033_c01, ch.33, untranslated, ambigu…[truncated for budget]"
+            },
+            {
+              "factor_family": "combination_yoga",
+              "factor_name": "mrityu_yoga",
+              "reason": "No standalone Mrityu-yoga day-quality detector/table found anywhere in the codebase (grep-verified: 'mrityu'/'mrutyu' + …[truncated for budget]",
+              "evidence_pointer": "classical_text_chunks (text_id='muhurta_chintamani', untranslated)"
+            },
+            {
+              "factor_family": "degree_sensitive",
+              "factor_name": "mrityu_bhaga",
+              "reason": "No mrityu-bhaga (degree-sensitive sensitive-point) table found in panchang_engine or any brahma_* reference table (grep-…[truncated for budget]",
+              "evidence_pointer": "not found (grep-verified)"
+            },
+            {
+              "factor_family": "degree_sensitive",
+              "factor_name": "pushkara_navamsha_bhaga",
+              "reason": "No pushkara-navamsha/bhaga table found (grep-verified across panchang_engine and brahma_* tables). Ingestion work item.",
+              "evidence_pointer": "not found (grep-verified)"
+            },
+            {
+              "factor_family": "muhurta_lagna",
+              "factor_name": "lagna_shuddhi_rules",
+              "reason": "The classical muhurta-lagna DOCTRINE — which lagna suits which rite, lagna-suddhi (ascendant-purification) rules, the la…[truncated for budget]",
+              "evidence_pointer": "classical_text_chunks (text_id='muhurta_chintamani', untranslated: content_en=content_sa on 274/274 rows, cleaned_transl…[truncated for budget]"
+            },
+            {
+              "factor_family": "rite_residence",
+              "factor_name": "shiva_vasa",
+              "reason": "No Siva-vasa (or any other rite-specific vasa sibling beyond Agni/Chandra/Rahu/Disha/Nakshatra/Bhadra vasa) table found …[truncated for budget]",
+              "evidence_pointer": "not found (grep-verified)"
+            }
+          ],
+          "census_disposition_counts": {
+            "computed": 42,
+            "not_computed": 9,
+            "not_in_corpus": 8
+          },
+          "census_state": "computed",
+          "parihara_corpus_gap": null,
+          "next_occurrence": null
+        },
+        "coverage_state": "computed",
+        "coverage_reason": null,
+        "density": {
+          "cited_rows_in_horizon": 791,
+          "convention_only_rows_in_horizon": 1209,
+          "parihara_rules_total": 61,
+          "parihara_rules_muhurta_scope": 1
+        }
+      },
+      "composed_text": "For business, the strongest available window in the searched horizon is 2026-10-30T00:00:00+00:00 → 2026-11-01T00:00:00+…[truncated for budget]",
+      "budget_kb_applied": 40,
+      "trim_report": [
+        {
+          "path": "(trim_report)",
+          "original_count": 4,
+          "kept_count": 1,
+          "reason": "full trim_report omitted to fit budget",
+          "recover_via": {
+            "instrument": "response_format:legacy",
+            "hint": "full untrimmed response"
+          }
+        }
+      ],
+      "drill_pointers": [],
+      "judgment_flags": [
+        {
+          "code": "budget_exceeded_after_trim",
+          "detail": "40kb budget still exceeded after full trim."
+        }
+      ]
+    }
+  }
+}

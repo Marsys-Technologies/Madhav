@@ -1,0 +1,207 @@
+{
+  "tool": "catalog_assets_l0",
+  "scenario": "primary",
+  "args": {
+    "limit": 10
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"layer\":\"L0\",\"assets\":[{\"asset_id\":\"bg_class_lifetime_counts\",\"layer\":\"brahmagyan\",\"sanskrit_name\":\"Jīvana-Ghaṭanā-Saṅkhyā\",\"english_name\":\"Event-Class Lifetime Counts\",\"target_table\":\"brahma_class_priors\",\"target_floor\":0,\"scope\":\"global\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"CURRENT\",\"has_writer\":true,\"expected_volume_formula\":null,\"count_sql\":\"SELECT COUNT(*) FROM brahma_class_priors WHERE fact_kind='lifetime_count_per_100y'\",\"depends_on\":[]},{\"asset_id\":\"bg_class_priors\",\"layer\":\"brahmagyan\",\"sanskrit_name\":\"Pūrva-pakṣa-mānāḥ\",\"english_name\":\"Class Priors\",\"target_table\":\"brahma_class_priors\",\"target_floor\":null,\"scope\":\"global\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"CURRENT\",\"has_writer\":true,\"expected_volume_formula\":null,\"count_sql\":\"SELECT COUNT(*) FROM brahma_class_priors\",\"depends_on\":[]},{\"asset_id\":\"bg_cohort\",\"layer\":\"brahmagyan\",\"sanskrit_name\":\"Pratirūpa Samūha\",\"english_name\":\"Synthetic Reference Cohort\",\"target_table\":\"bg_synthetic_cohort\",\"target_floor\":10000,\"scope\":\"global\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"CURRENT\",\"has_writer\":true,\"expected_volume_formula\":\"COHORT_SIZE\",\"count_sql\":\"SELECT COUNT(*) FROM bg_synthetic_cohort\",\"depends_on\":[]},{\"asset_id\":\"bg_compendium_index\",\"layer\":\"brahmagyan\",\"sanskrit_name\":\"Anukrama\",\"english_name\":\"Compendium Index\",\"target_table\":\"brahma_compendium_index\",\"target_floor\":9538,\"scope\":\"global\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"CURRENT\",\"has_writer\":true,\"expected_volume_formula\":null,\"count_sql\":\"SELECT count(*) FROM brahma_compendium_index\",\"depends_on\":[\"bg_texts\",\"bg_reference\"]},{\"asset_id\":\"bg_concordance\",\"layer\":\"brahmagyan\",\"sanskrit_name\":\"Samanvaya\",\"english_name\":\"Concordance\",\"target_table\":\"classical_attributions\",\"target_floor\":800,\"scope\":\"global\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"CURRENT\",\"has_writer\":true,\"expected_volume_formula\":\"ACTUAL(bg_rules) * CONCORDANCE_DENSITY\",\"count_sql\":\"SELECT count(*) FROM classical_attributions\",\"depends_on\":[\"bg_rules\"]},{\"asset_id\":\"bg_dasha_systems\",\"layer\":\"brahmagyan\",\"sanskrit_name\":\"Daśā-paddhati\",\"english_name\":\"Dasha Systems\",\"target_table\":\"brahma_dasha_systems\",\"target_floor\":18,\"scope\":\"global\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"CURRENT\",\"has_writer\":true,\"expected_volume_formula\":null,\"count_sql\":\"SELECT count(*) FROM brahma_dasha_systems\",\"depends_on\":[\"bg_ontology\"]},{\"asset_id\":\"bg_dignity_reference\",\"layer\":\"brahmagyan\",\"sanskrit_name\":\"Graha-avasthā\",\"english_name\":\"Planetary Dignity & State Reference\",\"target_table\":\"bg_dignity_reference\",\"target_floor\":151,\"scope\":\"global\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"CURRENT\",\"has_writer\":true,\"expected_volume_formula\":null,\"count_sql\":\"SELECT (SELECT COUNT(*) FROM bg_dignity_reference) + (SELECT COUNT(*) FROM bg_avastha_schemes) + (SELECT COUNT(*) FROM bg_combustion_orbs) + (SELECT COUNT(*) FROM bg_graha_naisargika_friendship) + (SELECT COUNT(*) FROM bg_motion_state_thresholds) AS count\",\"depends_on\":[]},{\"asset_id\":\"bg_doshas\",\"layer\":\"brahmagyan\",\"sanskrit_name\":\"Doṣa-kośa\",\"english_name\":\"Dosha Catalog\",\"target_table\":\"brahma_dosha_catalog\",\"target_floor\":50,\"scope\":\"global\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"CURRENT\",\"has_writer\":true,\"expected_volume_formula\":null,\"count_sql\":\"SELECT count(*) FROM brahma_dosha_catalog\",\"depends_on\":[\"bg_ontology\"]},{\"asset_id\":\"bg_ephemeris\",\"layer\":\"brahmagyan\",\"sanskrit_name\":\"Graha-sphuṭa\",\"english_name\":\"Ephemeris (Graha Sphuṭa)\",\"target_table\":\"ephemeris_daily\",\"target_floor\":825084,\"scope\":\"global\",\"is_active\":true,\"asset_type\":\"data\",\"catalog_status\":\"CURRENT\",\"has_writer\":true,\"expected_volume_formula\":\"GRAHAS * DATE_RANGE_DAYS\",\"count_sql\":\"SELECT count(*) FROM ephemeris_daily\",\"depends_on\":[]},{\"asset_id\":\"bg_ephemeris_engine\",\"layer\":\"brahmagyan\",\"sanskrit_name\":\"Druk Ephemeris\",\"english_name\":\"Ephemeris Engine\",\"target_table\":null,\"target_floor\":null,\"scope\":\"global\",\"is_active\":true,\"asset_type\":\"service\",\"catalog_status\":\"CURRENT\",\"has_writer\":false,\"expected_volume_formula\":null,\"count_sql\":null,\"depends_on\":[]}],\"total\":40,\"returned\":10,\"filters\":{\"asset_type\":null,\"catalog_status\":null,\"scope\":null,\"is_active\":null,\"has_writer\":null,\"limit\":10,\"offset\":0},\"snapshot_at\":\"2026-08-15T11:07:42.608Z\"},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "layer": "L0",
+          "assets": [
+            {
+              "asset_id": "bg_class_lifetime_counts",
+              "layer": "brahmagyan",
+              "sanskrit_name": "Jīvana-Ghaṭanā-Saṅkhyā",
+              "english_name": "Event-Class Lifetime Counts",
+              "target_table": "brahma_class_priors",
+              "target_floor": 0,
+              "scope": "global",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "CURRENT",
+              "has_writer": true,
+              "expected_volume_formula": null,
+              "count_sql": "SELECT COUNT(*) FROM brahma_class_priors WHERE fact_kind='lifetime_count_per_100y'",
+              "depends_on": []
+            },
+            {
+              "asset_id": "bg_class_priors",
+              "layer": "brahmagyan",
+              "sanskrit_name": "Pūrva-pakṣa-mānāḥ",
+              "english_name": "Class Priors",
+              "target_table": "brahma_class_priors",
+              "target_floor": null,
+              "scope": "global",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "CURRENT",
+              "has_writer": true,
+              "expected_volume_formula": null,
+              "count_sql": "SELECT COUNT(*) FROM brahma_class_priors",
+              "depends_on": []
+            },
+            {
+              "asset_id": "bg_cohort",
+              "layer": "brahmagyan",
+              "sanskrit_name": "Pratirūpa Samūha",
+              "english_name": "Synthetic Reference Cohort",
+              "target_table": "bg_synthetic_cohort",
+              "target_floor": 10000,
+              "scope": "global",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "CURRENT",
+              "has_writer": true,
+              "expected_volume_formula": "COHORT_SIZE",
+              "count_sql": "SELECT COUNT(*) FROM bg_synthetic_cohort",
+              "depends_on": []
+            },
+            {
+              "asset_id": "bg_compendium_index",
+              "layer": "brahmagyan",
+              "sanskrit_name": "Anukrama",
+              "english_name": "Compendium Index",
+              "target_table": "brahma_compendium_index",
+              "target_floor": 9538,
+              "scope": "global",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "CURRENT",
+              "has_writer": true,
+              "expected_volume_formula": null,
+              "count_sql": "SELECT count(*) FROM brahma_compendium_index",
+              "depends_on": [
+                "bg_texts",
+                "bg_reference"
+              ]
+            },
+            {
+              "asset_id": "bg_concordance",
+              "layer": "brahmagyan",
+              "sanskrit_name": "Samanvaya",
+              "english_name": "Concordance",
+              "target_table": "classical_attributions",
+              "target_floor": 800,
+              "scope": "global",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "CURRENT",
+              "has_writer": true,
+              "expected_volume_formula": "ACTUAL(bg_rules) * CONCORDANCE_DENSITY",
+              "count_sql": "SELECT count(*) FROM classical_attributions",
+              "depends_on": [
+                "bg_rules"
+              ]
+            },
+            {
+              "asset_id": "bg_dasha_systems",
+              "layer": "brahmagyan",
+              "sanskrit_name": "Daśā-paddhati",
+              "english_name": "Dasha Systems",
+              "target_table": "brahma_dasha_systems",
+              "target_floor": 18,
+              "scope": "global",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "CURRENT",
+              "has_writer": true,
+              "expected_volume_formula": null,
+              "count_sql": "SELECT count(*) FROM brahma_dasha_systems",
+              "depends_on": [
+                "bg_ontology"
+              ]
+            },
+            {
+              "asset_id": "bg_dignity_reference",
+              "layer": "brahmagyan",
+              "sanskrit_name": "Graha-avasthā",
+              "english_name": "Planetary Dignity & State Reference",
+              "target_table": "bg_dignity_reference",
+              "target_floor": 151,
+              "scope": "global",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "CURRENT",
+              "has_writer": true,
+              "expected_volume_formula": null,
+              "count_sql": "SELECT (SELECT COUNT(*) FROM bg_dignity_reference) + (SELECT COUNT(*) FROM bg_avastha_schemes) + (SELECT COUNT(*) FROM bg_combustion_orbs) + (SELECT COUNT(*) FROM bg_graha_naisargika_friendship) + (SELECT COUNT(*) FROM bg_motion_state_thresholds) AS count",
+              "depends_on": []
+            },
+            {
+              "asset_id": "bg_doshas",
+              "layer": "brahmagyan",
+              "sanskrit_name": "Doṣa-kośa",
+              "english_name": "Dosha Catalog",
+              "target_table": "brahma_dosha_catalog",
+              "target_floor": 50,
+              "scope": "global",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "CURRENT",
+              "has_writer": true,
+              "expected_volume_formula": null,
+              "count_sql": "SELECT count(*) FROM brahma_dosha_catalog",
+              "depends_on": [
+                "bg_ontology"
+              ]
+            },
+            {
+              "asset_id": "bg_ephemeris",
+              "layer": "brahmagyan",
+              "sanskrit_name": "Graha-sphuṭa",
+              "english_name": "Ephemeris (Graha Sphuṭa)",
+              "target_table": "ephemeris_daily",
+              "target_floor": 825084,
+              "scope": "global",
+              "is_active": true,
+              "asset_type": "data",
+              "catalog_status": "CURRENT",
+              "has_writer": true,
+              "expected_volume_formula": "GRAHAS * DATE_RANGE_DAYS",
+              "count_sql": "SELECT count(*) FROM ephemeris_daily",
+              "depends_on": []
+            },
+            {
+              "asset_id": "bg_ephemeris_engine",
+              "layer": "brahmagyan",
+              "sanskrit_name": "Druk Ephemeris",
+              "english_name": "Ephemeris Engine",
+              "target_table": null,
+              "target_floor": null,
+              "scope": "global",
+              "is_active": true,
+              "asset_type": "service",
+              "catalog_status": "CURRENT",
+              "has_writer": false,
+              "expected_volume_formula": null,
+              "count_sql": null,
+              "depends_on": []
+            }
+          ],
+          "total": 40,
+          "returned": 10,
+          "filters": {
+            "asset_type": null,
+            "catalog_status": null,
+            "scope": null,
+            "is_active": null,
+            "has_writer": null,
+            "limit": 10,
+            "offset": 0
+          },
+          "snapshot_at": "2026-08-15T11:07:42.608Z"
+        },
+        "is_error": false
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "tool": "ganita_structural_get",
+  "scenario": "native_dosha_fires_v3",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "facet": "dosha_fires", "response_format": "v3"},
+  "raw_response_summary": {
+    "envelope_version": "v3",
+    "verdict": {
+      "facet": "dosha_fires",
+      "kala_sarpa_dosha": {
+        "natal_verdict": "not_formed",
+        "rahu_house": 2,
+        "ketu_house": 8,
+        "divisional_charts_with_fires_true": ["D10","D108","D12","D14","D150","D16","D2","D20","D24","D2700","D32","D4","D40","D50","D54","D6","D60","D8"],
+        "divisional_note": "Several divisional charts DO show Kala Sarpa formation; these do not contradict the D1 natal not-formed verdict."
+      }
+    },
+    "grounding": {"fact_ids": ["2ed777c21b86b03d"], "grounding_score": 0},
+    "content_rows": [
+      {"fact_category": "dosha_label", "fact_subject": "manglik", "fact_value_text": "Manglik Dosha", "fires": true, "fire_reason": "bespoke_detector:manglik", "bhanga_active": false}
+    ],
+    "firings_pointer": {"tool": "ganita_yoga_firings_get", "fired_count": 13},
+    "kala_sarpa_per_varga_natal": [{"fact_value_text": "none", "fires": false, "varga": "D1", "ketu_house": 8, "rahu_house": 2}],
+    "kala_sarpa_reconciliation": {"dosha_label_fires": false, "per_varga_d1_fires": false, "agrees": true},
+    "chart_header": {"chart_id_short": "482012f1", "name": "Abhisek Mohanty", "lagna_sign": "Aries", "lagna_deg": 12.431149598843, "moon_sign": "Aquarius", "sun_sign": "Capricorn", "ayanamsha": "lahiri_chitrapaksha", "current_maha_antar": "Mercury MD / Saturn AD"},
+    "epistemic": {"grade": "single_pass_signal", "verified_fraction": 0}
+  },
+  "pp2_note": "Re-verified with a valid facet (dosha_fires) + response_format=v3. The prior session's call passed facet='houses', not a member of the enum {aspects, aspects_jaimini, aspects_tajik, argala, dispositors, parivartana, yoga_fires, dosha_fires, conjunctions, sambandha, functional, graha_yuddha, kala_sarpa}, and was correctly rejected -- caller error, not a tool defect. The v3 envelope's chart_header independently reproduces 3 of the 7 FORENSIC anchors (lagna_sign=Aries, moon_sign=Aquarius, sun_sign=Capricorn). The Kala Sarpa verdict (Rahu house2/Ketu house8, not_formed natally) is internally consistent with ganita_positions_get's RAH_MEAN house_d1=2 / KET_MEAN house_d1=8 for the same chart -- cross-checked, consistent. Manglik dosha_label is honestly flagged catalog_only=false / bespoke_detector (not a shared-stub), separately from the firings-authoritative pointer -- correct §N.6 density layering."
+}

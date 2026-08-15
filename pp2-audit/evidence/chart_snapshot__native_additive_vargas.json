@@ -1,0 +1,7 @@
+{
+  "tool": "chart_snapshot",
+  "scenario": "native_chart_vargas_D10_D12_additive_no_navamsa",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "vargas": ["D10", "D12"]},
+  "raw_response": {"type":"object","object":{"content":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","ayanamsha_id":"lahiri_chitrapaksha","vargas":["D1"],"byte_length":260,"within_budget":true,"additional_vargas":[{"varga":"D10","text":"D10 — Lagna Leo\n 1 Ari     -\n 2 Tau     Su 22°11', Mo 29°46'\n 3 Gem     Ve 19°27'\n 4 Can     -\n 5 Leo [L] Ke 19°01', Ra 19°01'\n 6 Vir     -\n 7 Lib     Me 1°09', Ma 18°37'\n 8 Sco     Sa 22°26'\n 9 Sag     -\n10 Cap     -\n11 Aqu     -\n12 Pis     Ju 9°49'","byte_length":261},{"varga":"D12","text":"D12 — Lagna Leo\n 1 Ari     Me 1°09'\n 2 Tau     -\n 3 Gem     -\n 4 Can     Ju 9°49'\n 5 Leo [L] -\n 6 Vir     -\n 7 Lib     -\n 8 Sco     Ma 18°37', Ke 19°01', Ra 19°01', Ve 19°27'\n 9 Sag     Su 22°11', Sa 22°26'\n10 Cap     -\n11 Aqu     -\n12 Pis     Mo 29°46'","byte_length":264}],"unresolved_vargas":[]},"is_error":false}},
+  "note": "vargas:['D10','D12'] correctly served additively in additional_vargas (D1 grid unaffected, include_navamsa was not set so no D9). D10 lagna correctly computed as Leo, D12 lagna correctly Leo (distinct varga-specific lagna computation from D1's Aries lagna) -- internally consistent divisional-chart math, not a copy of D1."
+}

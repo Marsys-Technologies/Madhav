@@ -1,0 +1,36 @@
+{
+  "tool": "pact_query",
+  "scenario": "valid calls with domain param on both charts (prior PARTIAL call omitted domain/bhava entirely and got a validation rejection)",
+  "calls": [
+    {
+      "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "marriage"},
+      "result_summary": {
+        "pact_status": "denied_at_promise",
+        "stages_completed": 1,
+        "about": {"domain": "marriage", "bhava": 7, "label": "Marriage / Partnership", "karakas": ["Venus"], "operative_varga": "D9"},
+        "reason": "Rashi checklist does not promise this matter (contested composite: hostile occupants/aspects and/or a weak, poorly-disposed karaka).",
+        "chart_header": {"lagna_sign": "Aries", "moon_sign": "Aquarius", "sun_sign": "Capricorn", "current_maha_antar": "Mercury MD / Saturn AD"},
+        "grounding_fact_ids_count": 63,
+        "judgment_flags_count": 7
+      }
+    },
+    {
+      "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "domain": "career"},
+      "result_summary": {
+        "pact_status": "chain_complete",
+        "stages_completed": 4,
+        "stages": [
+          {"stage": "PROMISE", "status": "promised_weak"},
+          {"stage": "CONFIRMATION", "status": "confirmed"},
+          {"stage": "ACTIVATION", "status": "active_now"},
+          {"stage": "TRIGGER", "status": "gate_data_fetched"}
+        ],
+        "about": {"domain": "career", "bhava": 10, "label": "Career / Vocation", "karakas": ["Sun", "Mercury", "Saturn"], "operative_varga": "D10"},
+        "mahadasha": {"current_lord": "Saturn", "current_from": "2010-04-23", "current_to": "2029-04-23"},
+        "honest_gap_disclosed": "TRIGGER stage reason states: 'HONEST GAP: this instrument does not convert to sidereal / cross-...' (truncated) — self-discloses a documented data-plane limitation rather than fabricating a full sidereal vedha/aspect gate check.",
+        "chart_header": {"lagna_sign": "Aries", "moon_sign": "Gemini", "sun_sign": "Aquarius", "current_maha_antar": "Saturn MD / Rahu AD"}
+      }
+    }
+  ],
+  "verdict_note": "Both calls behave correctly and honestly: native chart's marriage PROMISE stage is genuinely denied and the chain halts per design (B.10 no-fabrication-past-denial); zero-history chart's career query runs the full 4-stage chain to chain_complete with an explicit honest gap disclosed at TRIGGER. response_format defaulted to a v3-shaped envelope with verdict/grounding/drill_pointers/chart_header populated even though 'legacy' is documented as the schema default — envelope shape did not match the tool description's stated default, but content itself is substantive and correct."
+}

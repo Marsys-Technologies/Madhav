@@ -1,0 +1,1213 @@
+{
+  "tool": "bodha_graph_traverse_get",
+  "scenario": "zero_primary",
+  "args": {
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "mode": "convergence",
+    "limit": 10
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"mode\":\"convergence\",\"top_k\":10,\"hub_nodes\":[{\"node_id\":\"09bad413-ba68-4d38-9f3d-ff953471e603\",\"node_type\":\"bhava\",\"node_subject\":\"2\",\"node_label_human\":\"House 2\",\"msr_signal_id\":null,\"pagerank_score\":0.06713476,\"betweenness_centrality\":0,\"eigenvector_centrality\":0.13563013,\"hub_flag\":false,\"hub_score\":null,\"hub_edge_types_array\":null,\"primary_domain\":null,\"domain_affiliations_jsonb\":null,\"cluster_membership_array\":null,\"strength_score\":0.548136,\"dignity_state\":null,\"source_subsystem\":null,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_presence_score\":null,\"articulation_point_flag\":false},{\"node_id\":\"dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc\",\"node_type\":\"bhava\",\"node_subject\":\"8\",\"node_label_human\":\"House 8\",\"msr_signal_id\":null,\"pagerank_score\":0.06600041,\"betweenness_centrality\":0,\"eigenvector_centrality\":0.1119984,\"hub_flag\":false,\"hub_score\":null,\"hub_edge_types_array\":null,\"primary_domain\":null,\"domain_affiliations_jsonb\":null,\"cluster_membership_array\":null,\"strength_score\":1.050055,\"dignity_state\":null,\"source_subsystem\":null,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_presence_score\":null,\"articulation_point_flag\":false},{\"node_id\":\"e4be7fe2-08d6-46a3-8ab5-9f372831a36a\",\"node_type\":\"bhava\",\"node_subject\":\"4\",\"node_label_human\":\"House 4\",\"msr_signal_id\":null,\"pagerank_score\":0.05559765,\"betweenness_centrality\":0,\"eigenvector_centrality\":0.0917752,\"hub_flag\":false,\"hub_score\":null,\"hub_edge_types_array\":null,\"primary_domain\":null,\"domain_affiliations_jsonb\":null,\"cluster_membership_array\":null,\"strength_score\":0.582746,\"dignity_state\":null,\"source_subsystem\":null,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_presence_score\":null,\"articulation_point_flag\":false},{\"node_id\":\"bf12fdb8-87b2-4a66-95e8-7194bf5a743a\",\"node_type\":\"bhava\",\"node_subject\":\"7\",\"node_label_human\":\"House 7\",\"msr_signal_id\":null,\"pagerank_score\":0.04941226,\"betweenness_centrality\":0,\"eigenvector_centrality\":0.16739196,\"hub_flag\":false,\"hub_score\":null,\"hub_edge_types_array\":null,\"primary_domain\":null,\"domain_affiliations_jsonb\":null,\"cluster_membership_array\":null,\"strength_score\":1.341736,\"dignity_state\":null,\"source_subsystem\":null,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_presence_score\":null,\"articulation_point_flag\":false},{\"node_id\":\"5e9102f3-d6b2-4d21-8aaa-a826461e7049\",\"node_type\":\"bhava\",\"node_subject\":\"11\",\"node_label_human\":\"House 11\",\"msr_signal_id\":null,\"pagerank_score\":0.04092431,\"betweenness_centrality\":0,\"eigenvector_centrality\":0.19557853,\"hub_flag\":false,\"hub_score\":null,\"hub_edge_types_array\":null,\"primary_domain\":null,\"domain_affiliations_jsonb\":null,\"cluster_membership_array\":null,\"strength_score\":0.625968,\"dignity_state\":null,\"source_subsystem\":null,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_presence_score\":null,\"articulation_point_flag\":false},{\"node_id\":\"e8f98446-6f3a-486f-811b-80e308d66462\",\"node_type\":\"bhava\",\"node_subject\":\"6\",\"node_label_human\":\"House 6\",\"msr_signal_id\":null,\"pagerank_score\":0.03862101,\"betweenness_centrality\":0,\"eigenvector_centrality\":0.16986184,\"hub_flag\":false,\"hub_score\":null,\"hub_edge_types_array\":null,\"primary_domain\":null,\"domain_affiliations_jsonb\":null,\"cluster_membership_array\":null,\"strength_score\":1.050055,\"dignity_state\":null,\"source_subsystem\":null,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_presence_score\":null,\"articulation_point_flag\":false},{\"node_id\":\"d609a2b2-a280-49c5-a7a2-a5a21f027a5c\",\"node_type\":\"bhava\",\"node_subject\":\"1\",\"node_label_human\":\"House 1\",\"msr_signal_id\":null,\"pagerank_score\":0.03756236,\"betweenness_centrality\":0,\"eigenvector_centrality\":0.12669082,\"hub_flag\":true,\"hub_score\":null,\"hub_edge_types_array\":null,\"primary_domain\":null,\"domain_affiliations_jsonb\":null,\"cluster_membership_array\":null,\"strength_score\":1.516745,\"dignity_state\":null,\"source_subsystem\":null,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_presence_score\":null,\"articulation_point_flag\":false},{\"node_id\":\"6e35a5c0-7ede-4399-84fd-2ba687d8d87e\",\"node_type\":\"bhava\",\"node_subject\":\"3\",\"node_label_human\":\"House 3\",\"msr_signal_id\":null,\"pagerank_score\":0.02969242,\"betweenness_centrality\":0,\"eigenvector_centrality\":0.17604628,\"hub_flag\":false,\"hub_score\":null,\"hub_edge_types_array\":null,\"primary_domain\":null,\"domain_affiliations_jsonb\":null,\"cluster_membership_array\":null,\"strength_score\":1.225064,\"dignity_state\":null,\"source_subsystem\":null,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_presence_score\":null,\"articulation_point_flag\":false},{\"node_id\":\"8b1e38a6-e4f4-4b6a-8c9c-87949e32f5a7\",\"node_type\":\"bhava\",\"node_subject\":\"5\",\"node_label_human\":\"House 5\",\"msr_signal_id\":null,\"pagerank_score\":0.02889811,\"betweenness_centrality\":0,\"eigenvector_centrality\":0.15483033,\"hub_flag\":true,\"hub_score\":null,\"hub_edge_types_array\":null,\"primary_domain\":null,\"domain_affiliations_jsonb\":null,\"cluster_membership_array\":null,\"strength_score\":1.400073,\"dignity_state\":null,\"source_subsystem\":null,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_presence_score\":null,\"articulation_point_flag\":false},{\"node_id\":\"a70c57ef-5644-4cf0-945e-af3b579c848b\",\"node_type\":\"graha\",\"node_subject\":\"Jupiter\",\"node_label_human\":\"Jupiter\",\"msr_signal_id\":null,\"pagerank_score\":0.02573873,\"betweenness_centrality\":0.00869565,\"eigenvector_centrality\":0.31338276,\"hub_flag\":false,\"hub_score\":null,\"hub_edge_types_array\":null,\"primary_domain\":null,\"domain_affiliations_jsonb\":null,\"cluster_membership_array\":null,\"strength_score\":1.6,\"dignity_state\":\"debilitated\",\"source_subsystem\":null,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_presence_score\":null,\"articulation_point_flag\":false}],\"hub_count\":10,\"hub_edges\":[{\"edge_id\":\"11af4955-ba4d-49b7-93de-601348242304\",\"from_node_id\":\"41130dbe-3c5f-42c1-a784-b828151f6e07\",\"to_node_id\":\"6e35a5c0-7ede-4399-84fd-2ba687d8d87e\",\"edge_type\":\"occupancy\",\"direction\":\"directed\",\"computed_strength\":0.75390634375,\"valence\":\"neutral\",\"relationship_basis\":\"graha_bhava_occupancy\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"1ac84484-1134-4606-af0e-e98eeda85ea7\",\"from_node_id\":\"18f4d8c4-060b-427e-967e-49aa88f46184\",\"to_node_id\":\"5e9102f3-d6b2-4d21-8aaa-a826461e7049\",\"edge_type\":\"occupancy\",\"direction\":\"directed\",\"computed_strength\":0.74999990625,\"valence\":\"neutral\",\"relationship_basis\":\"graha_bhava_occupancy\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"6b41934d-98b6-47f5-8058-fcf0774d55be\",\"from_node_id\":\"65eccbb9-5e03-4492-a02f-aec36a7f6f84\",\"to_node_id\":\"dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc\",\"edge_type\":\"occupancy\",\"direction\":\"directed\",\"computed_strength\":0.73437503125,\"valence\":\"neutral\",\"relationship_basis\":\"graha_bhava_occupancy\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"5e5fd840-c690-4542-b479-acd592be36eb\",\"from_node_id\":\"a70c57ef-5644-4cf0-945e-af3b579c848b\",\"to_node_id\":\"a4f85ed2-cfcb-47a1-ae6e-e42f16afd218\",\"edge_type\":\"occupancy\",\"direction\":\"directed\",\"computed_strength\":0.67968753125,\"valence\":\"neutral\",\"relationship_basis\":\"graha_bhava_occupancy\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"8f277557-ea6a-46cb-9818-958c1cbdd561\",\"from_node_id\":\"4120c184-b693-4e6e-be63-c52114c96f86\",\"to_node_id\":\"5e9102f3-d6b2-4d21-8aaa-a826461e7049\",\"edge_type\":\"occupancy\",\"direction\":\"directed\",\"computed_strength\":0.6531249725,\"valence\":\"neutral\",\"relationship_basis\":\"graha_bhava_occupancy\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"135eba17-f93e-4897-8d4c-615021e45ed0\",\"from_node_id\":\"82180885-880e-41ea-b94d-196f12480139\",\"to_node_id\":\"e4be7fe2-08d6-46a3-8ab5-9f372831a36a\",\"edge_type\":\"special_lagna_house\",\"direction\":\"directed\",\"computed_strength\":0.6462054375,\"valence\":\"neutral\",\"relationship_basis\":\"special_lagna_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"a40caef3-dff8-4d50-8b14-2f76f6a8c0d4\",\"from_node_id\":\"41130dbe-3c5f-42c1-a784-b828151f6e07\",\"to_node_id\":\"e4be7fe2-08d6-46a3-8ab5-9f372831a36a\",\"edge_type\":\"lordship\",\"direction\":\"directed\",\"computed_strength\":0.6462054375,\"valence\":\"neutral\",\"relationship_basis\":\"bhava_lordship\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"2db9522b-1aa6-44e7-bd19-332f42dcad6d\",\"from_node_id\":\"18f4d8c4-060b-427e-967e-49aa88f46184\",\"to_node_id\":\"8b1e38a6-e4f4-4b6a-8c9c-87949e32f5a7\",\"edge_type\":\"lordship\",\"direction\":\"directed\",\"computed_strength\":0.6428570625,\"valence\":\"neutral\",\"relationship_basis\":\"bhava_lordship\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"635bb61d-4375-49c0-8d7e-cc6da6735b4e\",\"from_node_id\":\"65eccbb9-5e03-4492-a02f-aec36a7f6f84\",\"to_node_id\":\"5e9102f3-d6b2-4d21-8aaa-a826461e7049\",\"edge_type\":\"lordship\",\"direction\":\"directed\",\"computed_strength\":0.6294643125,\"valence\":\"neutral\",\"relationship_basis\":\"bhava_lordship\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"b6aa7714-15a0-48fb-857a-27b0c337330e\",\"from_node_id\":\"c755a489-6a4a-4c0a-b34e-851c2f8fa248\",\"to_node_id\":\"a70c57ef-5644-4cf0-945e-af3b579c848b\",\"edge_type\":\"dispositor\",\"direction\":\"directed\",\"computed_strength\":0.6006696675,\"valence\":\"mixed\",\"relationship_basis\":\"sign_lordship\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"6599a869-2924-4f62-996e-346f7778037e\",\"from_node_id\":\"f4193e02-6592-443e-89a8-d9360493bbc9\",\"to_node_id\":\"dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc\",\"edge_type\":\"special_lagna_house\",\"direction\":\"directed\",\"computed_strength\":0.6006696675,\"valence\":\"neutral\",\"relationship_basis\":\"special_lagna_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"99d35f79-1704-4a5f-a744-12460a39864e\",\"from_node_id\":\"c755a489-6a4a-4c0a-b34e-851c2f8fa248\",\"to_node_id\":\"d609a2b2-a280-49c5-a7a2-a5a21f027a5c\",\"edge_type\":\"lordship\",\"direction\":\"directed\",\"computed_strength\":0.6006696675,\"valence\":\"neutral\",\"relationship_basis\":\"bhava_lordship\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"f793a101-0ac8-4369-b686-fe0f16b23e23\",\"from_node_id\":\"4804606a-fb8c-4eba-bcd3-5e8b4c021709\",\"to_node_id\":\"d609a2b2-a280-49c5-a7a2-a5a21f027a5c\",\"edge_type\":\"special_lagna_house\",\"direction\":\"directed\",\"computed_strength\":0.6006696675,\"valence\":\"neutral\",\"relationship_basis\":\"special_lagna_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"c0c1865c-d11b-4a7b-9240-5ef128f0461e\",\"from_node_id\":\"ccd77483-4406-47a8-8663-99ca286e1ee5\",\"to_node_id\":\"dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc\",\"edge_type\":\"special_lagna_house\",\"direction\":\"directed\",\"computed_strength\":0.6006696675,\"valence\":\"neutral\",\"relationship_basis\":\"special_lagna_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"75cd6a84-9ec7-4553-b538-654283d5015f\",\"from_node_id\":\"1aecab75-cc47-436b-8b5d-4b97481412d8\",\"to_node_id\":\"d609a2b2-a280-49c5-a7a2-a5a21f027a5c\",\"edge_type\":\"special_lagna_house\",\"direction\":\"directed\",\"computed_strength\":0.6006696675,\"valence\":\"neutral\",\"relationship_basis\":\"special_lagna_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"28972ffa-8211-4d82-b6c9-65783250d397\",\"from_node_id\":\"c755a489-6a4a-4c0a-b34e-851c2f8fa248\",\"to_node_id\":\"dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc\",\"edge_type\":\"lordship\",\"direction\":\"directed\",\"computed_strength\":0.6006696675,\"valence\":\"neutral\",\"relationship_basis\":\"bhava_lordship\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"617f61f8-8544-49cf-aa8c-4596c2b73f54\",\"from_node_id\":\"5271f9f3-474d-4a2e-920f-ebee6d144617\",\"to_node_id\":\"e4be7fe2-08d6-46a3-8ab5-9f372831a36a\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"535ccc44-7daa-48a0-a0dd-4d1f075e3d28\",\"from_node_id\":\"4f55ae9a-a847-4166-92c8-40f17919fda2\",\"to_node_id\":\"09bad413-ba68-4d38-9f3d-ff953471e603\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"5821f33f-29e0-4e0c-9507-0823531b3a8f\",\"from_node_id\":\"15cde0c2-8fae-4cf0-803e-3964912f506f\",\"to_node_id\":\"09bad413-ba68-4d38-9f3d-ff953471e603\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"1d268a4b-b060-404e-94f2-f7fb03a97144\",\"from_node_id\":\"3e5c6e74-f0fd-471c-bac4-17c297a0adc4\",\"to_node_id\":\"bf12fdb8-87b2-4a66-95e8-7194bf5a743a\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"e282c148-d7ad-4c72-a49a-65b7e01f4066\",\"from_node_id\":\"583b2001-f1fc-46b6-8819-330a08a99621\",\"to_node_id\":\"dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"5046e17b-9080-4b30-a308-301ad180d459\",\"from_node_id\":\"5d7f856f-72c2-4dda-8ce0-3394d5846328\",\"to_node_id\":\"09bad413-ba68-4d38-9f3d-ff953471e603\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"e3b900c0-287f-4eb1-9bc1-013e5d7bdbf2\",\"from_node_id\":\"65bdf0ef-ff88-4c64-b8ef-794e0439b256\",\"to_node_id\":\"e8f98446-6f3a-486f-811b-80e308d66462\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"a47bdb5c-c516-454f-b76b-80757b67f5e6\",\"from_node_id\":\"33b6d7bc-fd11-42d3-8029-15cfd8bc1988\",\"to_node_id\":\"5e9102f3-d6b2-4d21-8aaa-a826461e7049\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"27e53ce6-e017-40f9-a9b1-2408fe52b12a\",\"from_node_id\":\"d745a4a1-9242-41ef-9da5-a979785b6ab7\",\"to_node_id\":\"e4be7fe2-08d6-46a3-8ab5-9f372831a36a\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"67aefc5e-a13f-434c-b14e-43af2b55791b\",\"from_node_id\":\"0eb40968-89bb-49ca-913a-da207091e463\",\"to_node_id\":\"09bad413-ba68-4d38-9f3d-ff953471e603\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"fef58d87-db87-4557-894b-35d20a188fb2\",\"from_node_id\":\"e7a5a6c6-ced5-420d-b077-1a9807b16ca4\",\"to_node_id\":\"dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"80593a81-dbe3-4e46-b43f-b16673088c94\",\"from_node_id\":\"7e0a4c68-5eea-44c8-9cb8-6a7cd50e632b\",\"to_node_id\":\"bf12fdb8-87b2-4a66-95e8-7194bf5a743a\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"e30517b2-315c-4677-b488-ddb65a5934a9\",\"from_node_id\":\"9ad6dc26-a5f6-4f21-beaa-b9fc554204b6\",\"to_node_id\":\"09bad413-ba68-4d38-9f3d-ff953471e603\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"498703f8-4cd0-46f1-897e-549d3becc4ff\",\"from_node_id\":\"f5ea8c40-ed7d-48aa-8a56-bc51e7552ac3\",\"to_node_id\":\"dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"afb3739c-a8c2-433e-b452-bf5afaef3efc\",\"from_node_id\":\"8e6e9cf4-2cf2-4518-a0a0-4e6d4ed685b9\",\"to_node_id\":\"e8f98446-6f3a-486f-811b-80e308d66462\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"5eb1452b-e800-4d5a-a314-ede420b617a9\",\"from_node_id\":\"73050b4c-918e-4f0d-ba67-63841562b6b9\",\"to_node_id\":\"5e9102f3-d6b2-4d21-8aaa-a826461e7049\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"ca44f636-f8a6-49d3-b788-ce36327df3fe\",\"from_node_id\":\"1530b8bc-41f9-4367-a3fc-7c140ea402d3\",\"to_node_id\":\"e4be7fe2-08d6-46a3-8ab5-9f372831a36a\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"922305fc-3fb5-4133-949b-ee782692d336\",\"from_node_id\":\"43ec41ff-3c73-4ddb-a728-7f83c0039d8d\",\"to_node_id\":\"8b1e38a6-e4f4-4b6a-8c9c-87949e32f5a7\",\"edge_type\":\"arudha_house\",\"direction\":\"directed\",\"computed_strength\":0.6,\"valence\":\"neutral\",\"relationship_basis\":\"arudha_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"jaimini\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"jaimini\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"feda4fbb-8c15-404a-a6f7-276bb8d16dff\",\"from_node_id\":\"cf292eec-6d8b-40df-b129-67abaa181ced\",\"to_node_id\":\"bf12fdb8-87b2-4a66-95e8-7194bf5a743a\",\"edge_type\":\"occupancy\",\"direction\":\"directed\",\"computed_strength\":0.599999925,\"valence\":\"neutral\",\"relationship_basis\":\"graha_bhava_occupancy\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"3dbabdd6-9000-4c15-b9bc-73ca46d487d6\",\"from_node_id\":\"4e5ce18d-317c-45ad-8eb5-5837853634de\",\"to_node_id\":\"bf12fdb8-87b2-4a66-95e8-7194bf5a743a\",\"edge_type\":\"lordship\",\"direction\":\"directed\",\"computed_strength\":0.5959820625,\"valence\":\"neutral\",\"relationship_basis\":\"bhava_lordship\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"946ae279-b59a-433a-bf84-648ca320f4e3\",\"from_node_id\":\"4e5ce18d-317c-45ad-8eb5-5837853634de\",\"to_node_id\":\"a70c57ef-5644-4cf0-945e-af3b579c848b\",\"edge_type\":\"dispositor\",\"direction\":\"directed\",\"computed_strength\":0.5959820625,\"valence\":\"harmonious\",\"relationship_basis\":\"sign_lordship\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"126effc2-d8af-41ec-b4d2-9d13ca0f3213\",\"from_node_id\":\"4e5ce18d-317c-45ad-8eb5-5837853634de\",\"to_node_id\":\"09bad413-ba68-4d38-9f3d-ff953471e603\",\"edge_type\":\"lordship\",\"direction\":\"directed\",\"computed_strength\":0.5959820625,\"valence\":\"neutral\",\"relationship_basis\":\"bhava_lordship\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"4b74fbfc-46bd-43b9-ad2a-87881d26d71f\",\"from_node_id\":\"2bf3049c-2e67-4e36-959f-01ef38ba8b5c\",\"to_node_id\":\"bf12fdb8-87b2-4a66-95e8-7194bf5a743a\",\"edge_type\":\"special_lagna_house\",\"direction\":\"directed\",\"computed_strength\":0.5959820625,\"valence\":\"neutral\",\"relationship_basis\":\"special_lagna_house\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"6e7bc48d-c6df-486e-8989-a21c1cff981b\",\"from_node_id\":\"5689e878-f4e7-4a0e-807a-a8d0fdc9a3d6\",\"to_node_id\":\"d609a2b2-a280-49c5-a7a2-a5a21f027a5c\",\"edge_type\":\"occupancy\",\"direction\":\"directed\",\"computed_strength\":0.593749975,\"valence\":\"neutral\",\"relationship_basis\":\"graha_bhava_occupancy\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"4ee62319-2d72-4024-bfba-26b669c1ecb8\",\"from_node_id\":\"a70c57ef-5644-4cf0-945e-af3b579c848b\",\"to_node_id\":\"7e69b6a6-2fff-403c-908d-45fc9f4227d1\",\"edge_type\":\"lordship\",\"direction\":\"directed\",\"computed_strength\":0.5825893125,\"valence\":\"neutral\",\"relationship_basis\":\"bhava_lordship\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null},{\"edge_id\":\"ce5b3e8a-c34a-4a6e-af36-7eb3960259a3\",\"from_node_id\":\"a70c57ef-5644-4cf0-945e-af3b579c848b\",\"to_node_id\":\"23eb42e0-f54e-417b-8cd6-3e3782d1c68c\",\"edge_type\":\"lordship\",\"direction\":\"directed\",\"computed_strength\":0.5825893125,\"valence\":\"neutral\",\"relationship_basis\":\"bhava_lordship\",\"affected_domains\":[],\"is_cross_subsystem\":false,\"subsystem_from\":\"parashari\",\"subsystem_to\":\"parashari\",\"underlying_msr_signal_ids_array\":[],\"cancelled_flag\":false,\"present_in_traditions_array\":[\"parashari\"],\"cross_ayanamsha_edge_stability_score\":null}],\"topology_summary\":{\"total_nodes\":71,\"total_edges\":168,\"top_5_hub_nodes_jsonb\":[{\"label\":\"Mars\",\"degree\":14,\"node_id\":\"c755a489-6a4a-4c0a-b34e-851c2f8fa248\"},{\"label\":\"Jupiter\",\"degree\":14,\"node_id\":\"a70c57ef-5644-4cf0-945e-af3b579c848b\"},{\"label\":\"Saturn\",\"degree\":13,\"node_id\":\"65eccbb9-5e03-4492-a02f-aec36a7f6f84\"},{\"label\":\"Mercury\",\"degree\":12,\"node_id\":\"4120c184-b693-4e6e-be63-c52114c96f86\"},{\"label\":\"Rahu\",\"degree\":12,\"node_id\":\"5689e878-f4e7-4a0e-807a-a8d0fdc9a3d6\"}],\"top_5_central_nodes_jsonb\":[{\"label\":\"Mars\",\"degree\":14,\"node_id\":\"c755a489-6a4a-4c0a-b34e-851c2f8fa248\"},{\"label\":\"Jupiter\",\"degree\":14,\"node_id\":\"a70c57ef-5644-4cf0-945e-af3b579c848b\"},{\"label\":\"Saturn\",\"degree\":13,\"node_id\":\"65eccbb9-5e03-4492-a02f-aec36a7f6f84\"},{\"label\":\"Mercury\",\"degree\":12,\"node_id\":\"4120c184-b693-4e6e-be63-c52114c96f86\"},{\"label\":\"Rahu\",\"degree\":12,\"node_id\":\"5689e878-f4e7-4a0e-807a-a8d0fdc9a3d6\"}],\"graph_density\":0.040241,\"hub_dominance_score\":0.07,\"fragmentation_score\":0.338028,\"dispositor_cycle_jsonb\":[{\"nodes\":[\"c755a489-6a4a-4c0a-b34e-851c2f8fa248\",\"a70c57ef-5644-4cf0-945e-af3b579c848b\",\"65eccbb9-5e03-4492-a02f-aec36a7f6f84\"],\"motif_class\":\"parivartana_chain\"}]},\"provenance\":{\"tables\":[\"bodha_cgm_nodes\",\"bodha_cgm_edges\",\"bodha_cgm_chart_topology_summary\"],\"schema_version\":\"mig_325\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"snapshot_type\":null}},\"is_error\":false,\"budget_kb_applied\":40,\"trim_report\":[{\"path\":\"content.hub_edges\",\"original_count\":85,\"kept_count\":42,\"reason\":\"content.hub_edges: trimmed to 42\",\"recover_via\":{\"instrument\":\"unknown_tool\",\"hint\":\"call unknown_tool again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \\\"content.hub_edges\\\"\"}}],\"drill_pointers\":[{\"instrument\":\"unknown_tool\",\"hint\":\"call unknown_tool again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \\\"content.hub_edges\\\"\"}]}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+          "mode": "convergence",
+          "top_k": 10,
+          "hub_nodes": [
+            {
+              "node_id": "09bad413-ba68-4d38-9f3d-ff953471e603",
+              "node_type": "bhava",
+              "node_subject": "2",
+              "node_label_human": "House 2",
+              "msr_signal_id": null,
+              "pagerank_score": 0.06713476,
+              "betweenness_centrality": 0,
+              "eigenvector_centrality": 0.13563013,
+              "hub_flag": false,
+              "hub_score": null,
+              "hub_edge_types_array": null,
+              "primary_domain": null,
+              "domain_affiliations_jsonb": null,
+              "cluster_membership_array": null,
+              "strength_score": 0.548136,
+              "dignity_state": null,
+              "source_subsystem": null,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_presence_score": null,
+              "articulation_point_flag": false
+            },
+            {
+              "node_id": "dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc",
+              "node_type": "bhava",
+              "node_subject": "8",
+              "node_label_human": "House 8",
+              "msr_signal_id": null,
+              "pagerank_score": 0.06600041,
+              "betweenness_centrality": 0,
+              "eigenvector_centrality": 0.1119984,
+              "hub_flag": false,
+              "hub_score": null,
+              "hub_edge_types_array": null,
+              "primary_domain": null,
+              "domain_affiliations_jsonb": null,
+              "cluster_membership_array": null,
+              "strength_score": 1.050055,
+              "dignity_state": null,
+              "source_subsystem": null,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_presence_score": null,
+              "articulation_point_flag": false
+            },
+            {
+              "node_id": "e4be7fe2-08d6-46a3-8ab5-9f372831a36a",
+              "node_type": "bhava",
+              "node_subject": "4",
+              "node_label_human": "House 4",
+              "msr_signal_id": null,
+              "pagerank_score": 0.05559765,
+              "betweenness_centrality": 0,
+              "eigenvector_centrality": 0.0917752,
+              "hub_flag": false,
+              "hub_score": null,
+              "hub_edge_types_array": null,
+              "primary_domain": null,
+              "domain_affiliations_jsonb": null,
+              "cluster_membership_array": null,
+              "strength_score": 0.582746,
+              "dignity_state": null,
+              "source_subsystem": null,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_presence_score": null,
+              "articulation_point_flag": false
+            },
+            {
+              "node_id": "bf12fdb8-87b2-4a66-95e8-7194bf5a743a",
+              "node_type": "bhava",
+              "node_subject": "7",
+              "node_label_human": "House 7",
+              "msr_signal_id": null,
+              "pagerank_score": 0.04941226,
+              "betweenness_centrality": 0,
+              "eigenvector_centrality": 0.16739196,
+              "hub_flag": false,
+              "hub_score": null,
+              "hub_edge_types_array": null,
+              "primary_domain": null,
+              "domain_affiliations_jsonb": null,
+              "cluster_membership_array": null,
+              "strength_score": 1.341736,
+              "dignity_state": null,
+              "source_subsystem": null,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_presence_score": null,
+              "articulation_point_flag": false
+            },
+            {
+              "node_id": "5e9102f3-d6b2-4d21-8aaa-a826461e7049",
+              "node_type": "bhava",
+              "node_subject": "11",
+              "node_label_human": "House 11",
+              "msr_signal_id": null,
+              "pagerank_score": 0.04092431,
+              "betweenness_centrality": 0,
+              "eigenvector_centrality": 0.19557853,
+              "hub_flag": false,
+              "hub_score": null,
+              "hub_edge_types_array": null,
+              "primary_domain": null,
+              "domain_affiliations_jsonb": null,
+              "cluster_membership_array": null,
+              "strength_score": 0.625968,
+              "dignity_state": null,
+              "source_subsystem": null,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_presence_score": null,
+              "articulation_point_flag": false
+            },
+            {
+              "node_id": "e8f98446-6f3a-486f-811b-80e308d66462",
+              "node_type": "bhava",
+              "node_subject": "6",
+              "node_label_human": "House 6",
+              "msr_signal_id": null,
+              "pagerank_score": 0.03862101,
+              "betweenness_centrality": 0,
+              "eigenvector_centrality": 0.16986184,
+              "hub_flag": false,
+              "hub_score": null,
+              "hub_edge_types_array": null,
+              "primary_domain": null,
+              "domain_affiliations_jsonb": null,
+              "cluster_membership_array": null,
+              "strength_score": 1.050055,
+              "dignity_state": null,
+              "source_subsystem": null,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_presence_score": null,
+              "articulation_point_flag": false
+            },
+            {
+              "node_id": "d609a2b2-a280-49c5-a7a2-a5a21f027a5c",
+              "node_type": "bhava",
+              "node_subject": "1",
+              "node_label_human": "House 1",
+              "msr_signal_id": null,
+              "pagerank_score": 0.03756236,
+              "betweenness_centrality": 0,
+              "eigenvector_centrality": 0.12669082,
+              "hub_flag": true,
+              "hub_score": null,
+              "hub_edge_types_array": null,
+              "primary_domain": null,
+              "domain_affiliations_jsonb": null,
+              "cluster_membership_array": null,
+              "strength_score": 1.516745,
+              "dignity_state": null,
+              "source_subsystem": null,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_presence_score": null,
+              "articulation_point_flag": false
+            },
+            {
+              "node_id": "6e35a5c0-7ede-4399-84fd-2ba687d8d87e",
+              "node_type": "bhava",
+              "node_subject": "3",
+              "node_label_human": "House 3",
+              "msr_signal_id": null,
+              "pagerank_score": 0.02969242,
+              "betweenness_centrality": 0,
+              "eigenvector_centrality": 0.17604628,
+              "hub_flag": false,
+              "hub_score": null,
+              "hub_edge_types_array": null,
+              "primary_domain": null,
+              "domain_affiliations_jsonb": null,
+              "cluster_membership_array": null,
+              "strength_score": 1.225064,
+              "dignity_state": null,
+              "source_subsystem": null,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_presence_score": null,
+              "articulation_point_flag": false
+            },
+            {
+              "node_id": "8b1e38a6-e4f4-4b6a-8c9c-87949e32f5a7",
+              "node_type": "bhava",
+              "node_subject": "5",
+              "node_label_human": "House 5",
+              "msr_signal_id": null,
+              "pagerank_score": 0.02889811,
+              "betweenness_centrality": 0,
+              "eigenvector_centrality": 0.15483033,
+              "hub_flag": true,
+              "hub_score": null,
+              "hub_edge_types_array": null,
+              "primary_domain": null,
+              "domain_affiliations_jsonb": null,
+              "cluster_membership_array": null,
+              "strength_score": 1.400073,
+              "dignity_state": null,
+              "source_subsystem": null,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_presence_score": null,
+              "articulation_point_flag": false
+            },
+            {
+              "node_id": "a70c57ef-5644-4cf0-945e-af3b579c848b",
+              "node_type": "graha",
+              "node_subject": "Jupiter",
+              "node_label_human": "Jupiter",
+              "msr_signal_id": null,
+              "pagerank_score": 0.02573873,
+              "betweenness_centrality": 0.00869565,
+              "eigenvector_centrality": 0.31338276,
+              "hub_flag": false,
+              "hub_score": null,
+              "hub_edge_types_array": null,
+              "primary_domain": null,
+              "domain_affiliations_jsonb": null,
+              "cluster_membership_array": null,
+              "strength_score": 1.6,
+              "dignity_state": "debilitated",
+              "source_subsystem": null,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_presence_score": null,
+              "articulation_point_flag": false
+            }
+          ],
+          "hub_count": 10,
+          "hub_edges": [
+            {
+              "edge_id": "11af4955-ba4d-49b7-93de-601348242304",
+              "from_node_id": "41130dbe-3c5f-42c1-a784-b828151f6e07",
+              "to_node_id": "6e35a5c0-7ede-4399-84fd-2ba687d8d87e",
+              "edge_type": "occupancy",
+              "direction": "directed",
+              "computed_strength": 0.75390634375,
+              "valence": "neutral",
+              "relationship_basis": "graha_bhava_occupancy",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "1ac84484-1134-4606-af0e-e98eeda85ea7",
+              "from_node_id": "18f4d8c4-060b-427e-967e-49aa88f46184",
+              "to_node_id": "5e9102f3-d6b2-4d21-8aaa-a826461e7049",
+              "edge_type": "occupancy",
+              "direction": "directed",
+              "computed_strength": 0.74999990625,
+              "valence": "neutral",
+              "relationship_basis": "graha_bhava_occupancy",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "6b41934d-98b6-47f5-8058-fcf0774d55be",
+              "from_node_id": "65eccbb9-5e03-4492-a02f-aec36a7f6f84",
+              "to_node_id": "dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc",
+              "edge_type": "occupancy",
+              "direction": "directed",
+              "computed_strength": 0.73437503125,
+              "valence": "neutral",
+              "relationship_basis": "graha_bhava_occupancy",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "5e5fd840-c690-4542-b479-acd592be36eb",
+              "from_node_id": "a70c57ef-5644-4cf0-945e-af3b579c848b",
+              "to_node_id": "a4f85ed2-cfcb-47a1-ae6e-e42f16afd218",
+              "edge_type": "occupancy",
+              "direction": "directed",
+              "computed_strength": 0.67968753125,
+              "valence": "neutral",
+              "relationship_basis": "graha_bhava_occupancy",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "8f277557-ea6a-46cb-9818-958c1cbdd561",
+              "from_node_id": "4120c184-b693-4e6e-be63-c52114c96f86",
+              "to_node_id": "5e9102f3-d6b2-4d21-8aaa-a826461e7049",
+              "edge_type": "occupancy",
+              "direction": "directed",
+              "computed_strength": 0.6531249725,
+              "valence": "neutral",
+              "relationship_basis": "graha_bhava_occupancy",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "135eba17-f93e-4897-8d4c-615021e45ed0",
+              "from_node_id": "82180885-880e-41ea-b94d-196f12480139",
+              "to_node_id": "e4be7fe2-08d6-46a3-8ab5-9f372831a36a",
+              "edge_type": "special_lagna_house",
+              "direction": "directed",
+              "computed_strength": 0.6462054375,
+              "valence": "neutral",
+              "relationship_basis": "special_lagna_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "a40caef3-dff8-4d50-8b14-2f76f6a8c0d4",
+              "from_node_id": "41130dbe-3c5f-42c1-a784-b828151f6e07",
+              "to_node_id": "e4be7fe2-08d6-46a3-8ab5-9f372831a36a",
+              "edge_type": "lordship",
+              "direction": "directed",
+              "computed_strength": 0.6462054375,
+              "valence": "neutral",
+              "relationship_basis": "bhava_lordship",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "2db9522b-1aa6-44e7-bd19-332f42dcad6d",
+              "from_node_id": "18f4d8c4-060b-427e-967e-49aa88f46184",
+              "to_node_id": "8b1e38a6-e4f4-4b6a-8c9c-87949e32f5a7",
+              "edge_type": "lordship",
+              "direction": "directed",
+              "computed_strength": 0.6428570625,
+              "valence": "neutral",
+              "relationship_basis": "bhava_lordship",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "635bb61d-4375-49c0-8d7e-cc6da6735b4e",
+              "from_node_id": "65eccbb9-5e03-4492-a02f-aec36a7f6f84",
+              "to_node_id": "5e9102f3-d6b2-4d21-8aaa-a826461e7049",
+              "edge_type": "lordship",
+              "direction": "directed",
+              "computed_strength": 0.6294643125,
+              "valence": "neutral",
+              "relationship_basis": "bhava_lordship",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "b6aa7714-15a0-48fb-857a-27b0c337330e",
+              "from_node_id": "c755a489-6a4a-4c0a-b34e-851c2f8fa248",
+              "to_node_id": "a70c57ef-5644-4cf0-945e-af3b579c848b",
+              "edge_type": "dispositor",
+              "direction": "directed",
+              "computed_strength": 0.6006696675,
+              "valence": "mixed",
+              "relationship_basis": "sign_lordship",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "6599a869-2924-4f62-996e-346f7778037e",
+              "from_node_id": "f4193e02-6592-443e-89a8-d9360493bbc9",
+              "to_node_id": "dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc",
+              "edge_type": "special_lagna_house",
+              "direction": "directed",
+              "computed_strength": 0.6006696675,
+              "valence": "neutral",
+              "relationship_basis": "special_lagna_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "99d35f79-1704-4a5f-a744-12460a39864e",
+              "from_node_id": "c755a489-6a4a-4c0a-b34e-851c2f8fa248",
+              "to_node_id": "d609a2b2-a280-49c5-a7a2-a5a21f027a5c",
+              "edge_type": "lordship",
+              "direction": "directed",
+              "computed_strength": 0.6006696675,
+              "valence": "neutral",
+              "relationship_basis": "bhava_lordship",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "f793a101-0ac8-4369-b686-fe0f16b23e23",
+              "from_node_id": "4804606a-fb8c-4eba-bcd3-5e8b4c021709",
+              "to_node_id": "d609a2b2-a280-49c5-a7a2-a5a21f027a5c",
+              "edge_type": "special_lagna_house",
+              "direction": "directed",
+              "computed_strength": 0.6006696675,
+              "valence": "neutral",
+              "relationship_basis": "special_lagna_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "c0c1865c-d11b-4a7b-9240-5ef128f0461e",
+              "from_node_id": "ccd77483-4406-47a8-8663-99ca286e1ee5",
+              "to_node_id": "dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc",
+              "edge_type": "special_lagna_house",
+              "direction": "directed",
+              "computed_strength": 0.6006696675,
+              "valence": "neutral",
+              "relationship_basis": "special_lagna_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "75cd6a84-9ec7-4553-b538-654283d5015f",
+              "from_node_id": "1aecab75-cc47-436b-8b5d-4b97481412d8",
+              "to_node_id": "d609a2b2-a280-49c5-a7a2-a5a21f027a5c",
+              "edge_type": "special_lagna_house",
+              "direction": "directed",
+              "computed_strength": 0.6006696675,
+              "valence": "neutral",
+              "relationship_basis": "special_lagna_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "28972ffa-8211-4d82-b6c9-65783250d397",
+              "from_node_id": "c755a489-6a4a-4c0a-b34e-851c2f8fa248",
+              "to_node_id": "dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc",
+              "edge_type": "lordship",
+              "direction": "directed",
+              "computed_strength": 0.6006696675,
+              "valence": "neutral",
+              "relationship_basis": "bhava_lordship",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "617f61f8-8544-49cf-aa8c-4596c2b73f54",
+              "from_node_id": "5271f9f3-474d-4a2e-920f-ebee6d144617",
+              "to_node_id": "e4be7fe2-08d6-46a3-8ab5-9f372831a36a",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "535ccc44-7daa-48a0-a0dd-4d1f075e3d28",
+              "from_node_id": "4f55ae9a-a847-4166-92c8-40f17919fda2",
+              "to_node_id": "09bad413-ba68-4d38-9f3d-ff953471e603",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "5821f33f-29e0-4e0c-9507-0823531b3a8f",
+              "from_node_id": "15cde0c2-8fae-4cf0-803e-3964912f506f",
+              "to_node_id": "09bad413-ba68-4d38-9f3d-ff953471e603",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "1d268a4b-b060-404e-94f2-f7fb03a97144",
+              "from_node_id": "3e5c6e74-f0fd-471c-bac4-17c297a0adc4",
+              "to_node_id": "bf12fdb8-87b2-4a66-95e8-7194bf5a743a",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "e282c148-d7ad-4c72-a49a-65b7e01f4066",
+              "from_node_id": "583b2001-f1fc-46b6-8819-330a08a99621",
+              "to_node_id": "dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "5046e17b-9080-4b30-a308-301ad180d459",
+              "from_node_id": "5d7f856f-72c2-4dda-8ce0-3394d5846328",
+              "to_node_id": "09bad413-ba68-4d38-9f3d-ff953471e603",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "e3b900c0-287f-4eb1-9bc1-013e5d7bdbf2",
+              "from_node_id": "65bdf0ef-ff88-4c64-b8ef-794e0439b256",
+              "to_node_id": "e8f98446-6f3a-486f-811b-80e308d66462",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "a47bdb5c-c516-454f-b76b-80757b67f5e6",
+              "from_node_id": "33b6d7bc-fd11-42d3-8029-15cfd8bc1988",
+              "to_node_id": "5e9102f3-d6b2-4d21-8aaa-a826461e7049",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "27e53ce6-e017-40f9-a9b1-2408fe52b12a",
+              "from_node_id": "d745a4a1-9242-41ef-9da5-a979785b6ab7",
+              "to_node_id": "e4be7fe2-08d6-46a3-8ab5-9f372831a36a",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "67aefc5e-a13f-434c-b14e-43af2b55791b",
+              "from_node_id": "0eb40968-89bb-49ca-913a-da207091e463",
+              "to_node_id": "09bad413-ba68-4d38-9f3d-ff953471e603",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "fef58d87-db87-4557-894b-35d20a188fb2",
+              "from_node_id": "e7a5a6c6-ced5-420d-b077-1a9807b16ca4",
+              "to_node_id": "dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "80593a81-dbe3-4e46-b43f-b16673088c94",
+              "from_node_id": "7e0a4c68-5eea-44c8-9cb8-6a7cd50e632b",
+              "to_node_id": "bf12fdb8-87b2-4a66-95e8-7194bf5a743a",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "e30517b2-315c-4677-b488-ddb65a5934a9",
+              "from_node_id": "9ad6dc26-a5f6-4f21-beaa-b9fc554204b6",
+              "to_node_id": "09bad413-ba68-4d38-9f3d-ff953471e603",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "498703f8-4cd0-46f1-897e-549d3becc4ff",
+              "from_node_id": "f5ea8c40-ed7d-48aa-8a56-bc51e7552ac3",
+              "to_node_id": "dff1271a-8909-4e1f-b2e3-dc23ff6a9bfc",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "afb3739c-a8c2-433e-b452-bf5afaef3efc",
+              "from_node_id": "8e6e9cf4-2cf2-4518-a0a0-4e6d4ed685b9",
+              "to_node_id": "e8f98446-6f3a-486f-811b-80e308d66462",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "5eb1452b-e800-4d5a-a314-ede420b617a9",
+              "from_node_id": "73050b4c-918e-4f0d-ba67-63841562b6b9",
+              "to_node_id": "5e9102f3-d6b2-4d21-8aaa-a826461e7049",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "ca44f636-f8a6-49d3-b788-ce36327df3fe",
+              "from_node_id": "1530b8bc-41f9-4367-a3fc-7c140ea402d3",
+              "to_node_id": "e4be7fe2-08d6-46a3-8ab5-9f372831a36a",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "922305fc-3fb5-4133-949b-ee782692d336",
+              "from_node_id": "43ec41ff-3c73-4ddb-a728-7f83c0039d8d",
+              "to_node_id": "8b1e38a6-e4f4-4b6a-8c9c-87949e32f5a7",
+              "edge_type": "arudha_house",
+              "direction": "directed",
+              "computed_strength": 0.6,
+              "valence": "neutral",
+              "relationship_basis": "arudha_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "jaimini",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "jaimini"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "feda4fbb-8c15-404a-a6f7-276bb8d16dff",
+              "from_node_id": "cf292eec-6d8b-40df-b129-67abaa181ced",
+              "to_node_id": "bf12fdb8-87b2-4a66-95e8-7194bf5a743a",
+              "edge_type": "occupancy",
+              "direction": "directed",
+              "computed_strength": 0.599999925,
+              "valence": "neutral",
+              "relationship_basis": "graha_bhava_occupancy",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "3dbabdd6-9000-4c15-b9bc-73ca46d487d6",
+              "from_node_id": "4e5ce18d-317c-45ad-8eb5-5837853634de",
+              "to_node_id": "bf12fdb8-87b2-4a66-95e8-7194bf5a743a",
+              "edge_type": "lordship",
+              "direction": "directed",
+              "computed_strength": 0.5959820625,
+              "valence": "neutral",
+              "relationship_basis": "bhava_lordship",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "946ae279-b59a-433a-bf84-648ca320f4e3",
+              "from_node_id": "4e5ce18d-317c-45ad-8eb5-5837853634de",
+              "to_node_id": "a70c57ef-5644-4cf0-945e-af3b579c848b",
+              "edge_type": "dispositor",
+              "direction": "directed",
+              "computed_strength": 0.5959820625,
+              "valence": "harmonious",
+              "relationship_basis": "sign_lordship",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "126effc2-d8af-41ec-b4d2-9d13ca0f3213",
+              "from_node_id": "4e5ce18d-317c-45ad-8eb5-5837853634de",
+              "to_node_id": "09bad413-ba68-4d38-9f3d-ff953471e603",
+              "edge_type": "lordship",
+              "direction": "directed",
+              "computed_strength": 0.5959820625,
+              "valence": "neutral",
+              "relationship_basis": "bhava_lordship",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "4b74fbfc-46bd-43b9-ad2a-87881d26d71f",
+              "from_node_id": "2bf3049c-2e67-4e36-959f-01ef38ba8b5c",
+              "to_node_id": "bf12fdb8-87b2-4a66-95e8-7194bf5a743a",
+              "edge_type": "special_lagna_house",
+              "direction": "directed",
+              "computed_strength": 0.5959820625,
+              "valence": "neutral",
+              "relationship_basis": "special_lagna_house",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "6e7bc48d-c6df-486e-8989-a21c1cff981b",
+              "from_node_id": "5689e878-f4e7-4a0e-807a-a8d0fdc9a3d6",
+              "to_node_id": "d609a2b2-a280-49c5-a7a2-a5a21f027a5c",
+              "edge_type": "occupancy",
+              "direction": "directed",
+              "computed_strength": 0.593749975,
+              "valence": "neutral",
+              "relationship_basis": "graha_bhava_occupancy",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "4ee62319-2d72-4024-bfba-26b669c1ecb8",
+              "from_node_id": "a70c57ef-5644-4cf0-945e-af3b579c848b",
+              "to_node_id": "7e69b6a6-2fff-403c-908d-45fc9f4227d1",
+              "edge_type": "lordship",
+              "direction": "directed",
+              "computed_strength": 0.5825893125,
+              "valence": "neutral",
+              "relationship_basis": "bhava_lordship",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            },
+            {
+              "edge_id": "ce5b3e8a-c34a-4a6e-af36-7eb3960259a3",
+              "from_node_id": "a70c57ef-5644-4cf0-945e-af3b579c848b",
+              "to_node_id": "23eb42e0-f54e-417b-8cd6-3e3782d1c68c",
+              "edge_type": "lordship",
+              "direction": "directed",
+              "computed_strength": 0.5825893125,
+              "valence": "neutral",
+              "relationship_basis": "bhava_lordship",
+              "affected_domains": [],
+              "is_cross_subsystem": false,
+              "subsystem_from": "parashari",
+              "subsystem_to": "parashari",
+              "underlying_msr_signal_ids_array": [],
+              "cancelled_flag": false,
+              "present_in_traditions_array": [
+                "parashari"
+              ],
+              "cross_ayanamsha_edge_stability_score": null
+            }
+          ],
+          "topology_summary": {
+            "total_nodes": 71,
+            "total_edges": 168,
+            "top_5_hub_nodes_jsonb": [
+              {
+                "label": "Mars",
+                "degree": 14,
+                "node_id": "c755a489-6a4a-4c0a-b34e-851c2f8fa248"
+              },
+              {
+                "label": "Jupiter",
+                "degree": 14,
+                "node_id": "a70c57ef-5644-4cf0-945e-af3b579c848b"
+              },
+              {
+                "label": "Saturn",
+                "degree": 13,
+                "node_id": "65eccbb9-5e03-4492-a02f-aec36a7f6f84"
+              },
+              {
+                "label": "Mercury",
+                "degree": 12,
+                "node_id": "4120c184-b693-4e6e-be63-c52114c96f86"
+              },
+              {
+                "label": "Rahu",
+                "degree": 12,
+                "node_id": "5689e878-f4e7-4a0e-807a-a8d0fdc9a3d6"
+              }
+            ],
+            "top_5_central_nodes_jsonb": [
+              {
+                "label": "Mars",
+                "degree": 14,
+                "node_id": "c755a489-6a4a-4c0a-b34e-851c2f8fa248"
+              },
+              {
+                "label": "Jupiter",
+                "degree": 14,
+                "node_id": "a70c57ef-5644-4cf0-945e-af3b579c848b"
+              },
+              {
+                "label": "Saturn",
+                "degree": 13,
+                "node_id": "65eccbb9-5e03-4492-a02f-aec36a7f6f84"
+              },
+              {
+                "label": "Mercury",
+                "degree": 12,
+                "node_id": "4120c184-b693-4e6e-be63-c52114c96f86"
+              },
+              {
+                "label": "Rahu",
+                "degree": 12,
+                "node_id": "5689e878-f4e7-4a0e-807a-a8d0fdc9a3d6"
+              }
+            ],
+            "graph_density": 0.040241,
+            "hub_dominance_score": 0.07,
+            "fragmentation_score": 0.338028,
+            "dispositor_cycle_jsonb": [
+              {
+                "nodes": [
+                  "c755a489-6a4a-4c0a-b34e-851c2f8fa248",
+                  "a70c57ef-5644-4cf0-945e-af3b579c848b",
+                  "65eccbb9-5e03-4492-a02f-aec36a7f6f84"
+                ],
+                "motif_class": "parivartana_chain"
+              }
+            ]
+          },
+          "provenance": {
+            "tables": [
+              "bodha_cgm_nodes",
+              "bodha_cgm_edges",
+              "bodha_cgm_chart_topology_summary"
+            ],
+            "schema_version": "mig_325",
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "snapshot_type": null
+          }
+        },
+        "is_error": false,
+        "budget_kb_applied": 40,
+        "trim_report": [
+          {
+            "path": "content.hub_edges",
+            "original_count": 85,
+            "kept_count": 42,
+            "reason": "content.hub_edges: trimmed to 42",
+            "recover_via": {
+              "instrument": "unknown_tool",
+              "hint": "call unknown_tool again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.hub_edges\""
+            }
+          }
+        ],
+        "drill_pointers": [
+          {
+            "instrument": "unknown_tool",
+            "hint": "call unknown_tool again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.hub_edges\""
+          }
+        ]
+      }
+    }
+  }
+}

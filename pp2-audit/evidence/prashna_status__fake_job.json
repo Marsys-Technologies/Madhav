@@ -1,0 +1,13 @@
+{
+  "tool": "prashna_status",
+  "scenario": "prashna_status__fake_job",
+  "args": {
+    "job_id": "fake-job-id-nonexistent-12345"
+  },
+  "raw_response": {
+    "ok": false,
+    "error": "Unknown or expired job_id \"fake-job-id-nonexistent-12345\". Jobs are held in memory only and are evicted after a TTL — this id was either never issued by prashna_ask, belongs to a different server instance, or has expired. Call prashna_ask again to start a new job.",
+    "tool": "prashna_status",
+    "job_id": "fake-job-id-nonexistent-12345"
+  }
+}

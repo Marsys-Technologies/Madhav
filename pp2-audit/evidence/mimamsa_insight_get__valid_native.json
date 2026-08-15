@@ -1,0 +1,28 @@
+{
+  "tool": "mimamsa_insight_get",
+  "scenario": "valid_native — chart_id + top_k=15 (correcting prior PARTIAL call that used non-existent limit/offset params, which the real schema rejects with unrecognized_keys)",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "top_k": 15},
+  "raw_response_summary": {
+    "envelope_version": "v1",
+    "tool": "mimamsa_insight_get",
+    "query_class": "synthesis_calibration",
+    "content.mode": "STRUCTURAL",
+    "content.content.chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "content.content.insight_units_count_returned": 15,
+    "content.content.insight_units_sample": [
+      {"insight_id": "verdict_career_setback", "insight_type": "verdict_object", "domain": "career", "statement": "Career Setback: promised (grade 8.8/10). Strong evidence, corroborated across traditions.", "rank_consequence": 0.88},
+      {"insight_id": "disc_retro_1f9c6775-30c2-5f92-b1a5-24512f5681a6", "insight_type": "retrodiction", "domain": null, "statement": "Blind retrodiction for 1f9c6775-30c2-5f92-b1a5-24512f5681a6 (relationship) with T-90d cutoff 2026-01-17. Top-k anchors matched: 3.", "rank_consequence": 0.95}
+    ],
+    "content.content.calibration_summary": {"total_matches": 57, "confirmed": "0", "partial": "0", "denied": "0", "mean_composite_score": 0.495}
+  },
+  "cross_check_against_db": {
+    "sql": "SELECT composite_verdict, count(*) FROM mimamsa_calibration WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' GROUP BY 1",
+    "result": {"UNRESOLVED": 25, "PARTIAL": 23, "REFUTED": 7, "CONFIRMED": 2},
+    "discrepancy": "calibration_summary reports confirmed=0/partial=0/denied=0 out of total_matches=57, but the real mimamsa_calibration table for this exact chart_id has CONFIRMED=2, PARTIAL=23, REFUTED=7 (UNRESOLVED=25). The tool's own calibration_summary sub-object is silently wrong for every chart with real calibration data."
+  },
+  "mechanism_trace": {
+    "file": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts:115-124",
+    "code": "SELECT COUNT(*)::int AS total_matches, COUNT(*) FILTER (WHERE composite_verdict = 'confirmed') AS confirmed, COUNT(*) FILTER (WHERE composite_verdict = 'partial') AS partial, COUNT(*) FILTER (WHERE composite_verdict = 'denied') AS denied, AVG(composite_score)::numeric(4,3) AS mean_composite_score FROM mimamsa_calibration WHERE chart_id = $1",
+    "bug": "The FILTER clauses compare composite_verdict against lowercase literals 'confirmed'/'partial'/'denied', but the live mimamsa_calibration.composite_verdict column stores UPPERCASE values 'CONFIRMED'/'PARTIAL'/'REFUTED'/'UNRESOLVED' (verified via direct DB query). 'denied' also does not match the real label 'REFUTED' at all, even case-corrected. Postgres string comparison is case-sensitive and exact, so all three FILTER predicates always evaluate to zero matches regardless of real data — total_matches (a plain COUNT(*) with no verdict filter) is the only correct number in the block."
+  }
+}

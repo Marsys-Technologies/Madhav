@@ -1,0 +1,28 @@
+{
+  "tool": "ganita_tajaka_get",
+  "scenario": "native_varsha_year_42",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "varsha_year": 42},
+  "raw_response_summary": {
+    "varsha_year": 42,
+    "varsha_start_iso": "2025-02-04 17:44:17+00",
+    "varsha_end_iso": "2026-02-04 23:59:03+00",
+    "year_lord_method": "tajik_classical",
+    "year_lord": "Mercury",
+    "candidate_lord_offices": {
+      "Lagnesa": "Venus (exalted D1 Pisces, bala 120)",
+      "Munthesa": "Mercury (neutral D1, own D9, bala 97.5)",
+      "JanmaLagnesa": "Mars (enemy D1, bala 67.5)",
+      "TriRashipati": "Saturn (own D1/D2/D12, bala 127.5)",
+      "Dinaratripati": "Moon (exalted D3, bala 120)"
+    },
+    "methods_diverge": true,
+    "panchavargiya_winner": {"office": "TriRashipati", "planet": "Saturn"},
+    "tajik_classical_winner": {"office": "Munthesa", "planet": "Mercury"},
+    "muntha_position": {"lord": "Mercury", "sign": "Virgo", "degree": 12.4311, "house_from_natal_lagna": 6, "house_from_varsha_lagna": 12},
+    "applicable_tajik_yogas": ["Ithasala", "Dutthottha"],
+    "ephemeris_audit": {"solar_return": {"diff_deg": -0.000114, "converged": true, "iterations": 13}, "varsha_lagna_sign": "Libra", "muntha_two_pass_match": true, "solar_return_cross_check_pass": true},
+    "verification_pass_status": "two_pass_verified",
+    "hadda_lord_facts": {"included": false, "total": 245, "note": "245 static rows exist but not fetched by default; include_hadda=true would fetch them"}
+  },
+  "pp2_note": "Re-verified with a specific, well-formed varsha_year (42, covering 2025-02-04 to 2026-02-04, the current-year window as of audit date 2026-08-15). Prior session's call had no varsha_year/varsha_date specified, defaulting to current-year-first pagination -- functional but under-specified per the task brief ('varshaphala likely wants a specific year'). This call demonstrates real Tajaka computation: solar-return ephemeris converged (diff_deg=-0.000114, well within tolerance), two_pass_verified, and the tool HONESTLY discloses when the Panchavargiya and Tajik-classical year-lord methods disagree (methods_diverge=true, Saturn vs Mercury) rather than silently picking one -- a real, non-fabricated computation with disclosed method divergence, not a fabricated single answer."
+}

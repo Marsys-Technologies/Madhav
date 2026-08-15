@@ -1,0 +1,1 @@
+{"tool": "dossier", "scenario": "nonexistent_chart_uuid", "args": {"chart_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", "domain": "wealth", "receipt": true}, "raw_response": {"ok": false, "tool": "dossier", "error": {"class": "entitlement_denied", "message": "AUTHZ_DENIED: not authorized to access this chart"}, "chart_id": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"}}

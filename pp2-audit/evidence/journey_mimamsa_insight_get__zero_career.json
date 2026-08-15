@@ -1,0 +1,17 @@
+{
+  "tool": "mimamsa_insight_get",
+  "scenario": "zero_history_journey_step4",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "domain": "career"},
+  "raw_response_summary": {
+    "content.calibration_status": "prior_only",
+    "content.mode": "STRUCTURAL",
+    "content.note": "L5 Mīmāṃsā is SEALED in STRUCTURAL mode. Empirical calibration accrues as outcome data is recorded.",
+    "insight_units_sample": [
+      {"insight_id":"verdict_business_launch","statement":"Business Launch: conditional (grade 4.2/10). Conditional — context-dependent, per cross-tradition concordance.","evidence_grade":"structural","last_calibrated_at":null},
+      {"insight_id":"gram_career_ch_career_verbal_2","insight_type":"manifestation_grammar","statement":"For career events, the 'ch_career_verbal' channel fires with 0% propensity (n=9, empirical learning).","evidence_grade":"empirical","last_calibrated_at":"2026-08-12 17:12:31.519631+00"}
+    ],
+    "calibration_summary": {"total_matches":0,"confirmed":"0","partial":"0","denied":"0","mean_composite_score":null}
+  },
+  "verdict": "PASS",
+  "note": "This is the tool most directly responsible for calibration honesty and it delivers: top-level calibration_status='prior_only', mode='STRUCTURAL', an explicit prose note, and calibration_summary showing total_matches=0/confirmed=0/denied=0/mean_composite_score=null for this chart. Every chart-specific verdict_object insight carries evidence_grade='structural' (never 'verified'/'confirmed') and last_calibrated_at=null. One manifestation_grammar unit (gram_career_ch_career_verbal_2) carries evidence_grade='empirical' with n_support=9 and a real last_calibrated_at timestamp -- this is plausibly a cross-chart-mined pattern (per the tool's own description: 'emergent-law discoveries (pattern candidates from cross-chart mining)'), not an outcome derived from THIS zero-history chart's own life events, so it is not necessarily dishonest, but the response does not explicitly disambiguate 'this specific empirical evidence_grade item was learned from OTHER charts, not this chart's own history' inline on the unit itself -- flagged as a minor clarity gap, not a fabrication (see CAND finding)."
+}

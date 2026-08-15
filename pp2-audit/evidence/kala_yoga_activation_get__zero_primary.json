@@ -1,0 +1,445 @@
+{
+  "tool": "kala_yoga_activation_get",
+  "scenario": "zero_primary",
+  "args": {
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "limit": 10,
+    "offset": 0
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"query_window\":{\"dasha_period\":null,\"date_from\":\"2026-08-15\",\"date_to\":\"2029-08-14\"},\"activated_yogas\":[{\"signal_id\":\"9049ffa0-f0f3-49b0-865f-54e23dcee897\",\"yoga_type\":\"yoga_label:yoga_name\",\"signal_tradition\":\"parashari\",\"computed_salience\":0.68425,\"signal_summary\":\"category=yoga_label | key=yoga_name | value_text=Ubhayachari Yoga | classical_citations=[{'chapter': 30, 'text_id': 'bphs'}, {'chapter': 41, 'text_id': 'saravali'}] | fire_reason=requires_pass | source_chunk_ids=[] | uncatalogued=False | yoga_group=other\",\"constituent_fact_ids\":[\"ec10b50b5657d453\",\"aaea33c9be00669e\"],\"activation_id\":\"7841834\",\"activation_start\":\"2026-10-10\",\"activation_end\":\"2029-04-23\",\"activation_peak_date\":\"2028-01-16\",\"dasha_alignment_score\":0.3358,\"orb_strength\":null,\"convergence_score\":null,\"active_dasha_periods_jsonb\":[{\"end\":\"2029-04-23\",\"graha\":\"Jupiter\",\"level\":\"antardasha\",\"start\":\"2026-10-10\",\"source\":\"chart_dashas\",\"match_kind\":\"exact_lord\"},{\"end\":\"1990-11-10\",\"graha\":\"Venus\",\"level\":\"antardasha\",\"start\":\"1987-11-10\",\"source\":\"chart_dashas\",\"match_kind\":\"exact_lord\"},{\"end\":\"1991-10-05\",\"graha\":\"Sun\",\"level\":\"antardasha\",\"start\":\"1990-11-10\",\"source\":\"chart_dashas\",\"match_kind\":\"exact_lord\"},{\"end\":\"1994-04-23\",\"graha\":\"Mars\",\"level\":\"antardasha\",\"start\":\"1993-04-04\",\"source\":\"chart_dashas\",\"match_kind\":\"exact_lord\"},{\"end\":\"1996-06-10\",\"graha\":\"Jupiter\",\"level\":\"antardasha\",\"start\":\"1994-04-23\",\"source\":\"chart_dashas\",\"match_kind\":\"exact_lord\"},{\"end\":\"2004-11-03\",\"graha\":\"Venus\",\"level\":\"antardasha\",\"start\":\"2002-03-05\",\"source\":\"chart_dashas\",\"match_kind\":\"exact_lord\"},{\"end\":\"2005-08-22\",\"graha\":\"Sun\",\"level\":\"antardasha\",\"start\":\"2004-11-03\",\"source\":\"chart_dashas\",\"match_kind\":\"exact_lord\"},{\"end\":\"2007-11-28\",\"graha\":\"Mars\",\"level\":\"antardasha\",\"start\":\"2006-12-22\",\"source\":\"chart_dashas\",\"match_kind\":\"exact_lord\"}],\"source_citation\":\"ka_kalasutra:v1.0:signal=9049ffa0:src=dasha_timeline:period=0\",\"always_on_reason\":null},{\"signal_id\":\"e8eb492c-02f7-44cf-9b21-d483a3adff18\",\"yoga_type\":\"yoga_label:yoga_name\",\"signal_tradition\":\"parashari\",\"computed_salience\":0.68425,\"signal_summary\":\"category=yoga_label | key=yoga_name | value_text=Vasi Yoga | classical_citations=[{'chapter': 30, 'text_id': 'bphs'}, {'chapter': 41, 'text_id': 'saravali'}] | fire_reason=requires_pass | source_chunk_ids=[] | uncatalogued=False | yoga_group=other\",\"constituent_fact_ids\":[\"8c9ed88e9779e47c\",\"aaea33c9be00669e\"],\"activation_id\":\"7841828\",\"activation_start\":\"2028-12-19\",\"activation_end\":\"2029-01-02\",\"activation_peak_date\":\"2028-12-26\",\"dasha_alignment_score\":0.3358,\"orb_strength\":1,\"convergence_score\":0.0918,\"active_dasha_periods_jsonb\":[{\"end\":\"1991-10-05\",\"graha\":\"Sun\",\"level\":\"antardasha\",\"start\":\"1990-11-10\",\"source\":\"chart_dashas\",\"match_kind\":\"exact_lord\"},{\"end\":\"1996-06-10\",\"graha\":\"Jupiter\",\"level\":\"antardasha\",\"start\":\"1994-04-23\",\"source\":\"chart_dashas\",\"match_kind\":\"exact_lord\"},{\"end\":\"2005-08-22\",\"graha\":\"Sun\",\"level\":\"antardasha\",\"start\":\"2004-11-03\",\"source\":\"chart_dashas\",\"match_kind\":\"exact_lord\"},{\"end\":\"2021-03-26\",\"graha\":\"Sun\",\"level\":\"antardasha\",\"start\":\"2020-04-13\",\"source\":\"chart_dashas\",\"match_kind\":\"exact_lord\"},{\"end\":\"2029-04-23\",\"graha\":\"Jupiter\",\"level\":\"antardasha\",\"start\":\"2026-10-10\",\"source\":\"chart_dashas\",\"match_kind\":\"exact_lord\"},{\"end\":\"2036-05-23\",\"graha\":\"Sun\",\"level\":\"antardasha\",\"start\":\"2035-07-17\",\"source\":\"chart_dashas\",\"match_kind\":\"exact_lord\"},{\"end\":\"2043-08-14\",\"graha\":\"Jupiter\",\"level\":\"antardasha\",\"start\":\"2041-05-08\",\"source\":\"chart_dashas\",\"match_kind\":\"exact_lord\"},{\"end\":\"2048-03-26\",\"graha\":\"Sun\",\"level\":\"antardasha\",\"start\":\"2047-11-19\",\"source\":\"chart_dashas\",\"match_kind\":\"exact_lord\"}],\"source_citation\":\"ka_kalasutra:v1.0:signal=e8eb492c:src=convergence:period=4\",\"always_on_reason\":null},{\"signal_id\":\"b9c18fcb-2694-4f3f-9be0-0ff9711b8542\",\"yoga_type\":\"yoga_label:yoga_name\",\"signal_tradition\":\"parashari\",\"computed_salience\":0.68425,\"signal_summary\":\"category=yoga_label | key=yoga_name | value_text=Kedara Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other\",\"constituent_fact_ids\":[\"4050ac71018ac4c3\",\"aaea33c9be00669e\"],\"activation_id\":\"7841832\",\"activation_start\":\"2028-12-19\",\"activation_end\":\"2029-01-02\",\"activation_peak_date\":\"2028-12-26\",\"dasha_alignment_score\":0.3358,\"orb_strength\":1,\"convergence_score\":0.0918,\"active_dasha_periods_jsonb\":[{\"kind\":\"always_on\",\"reason\":\"distribution_yoga_sankhya\"}],\"source_citation\":\"ka_kalasutra:v1.0:signal=b9c18fcb:src=convergence:period=0:always_on=distribution_yoga_sankhya\",\"always_on_reason\":\"distribution_yoga_sankhya\"},{\"signal_id\":\"dc262b16-8189-4e43-9310-2856334d9a46\",\"yoga_type\":\"panchanga_yoga:arambha_iso\",\"signal_tradition\":\"parashari\",\"computed_salience\":0.483,\"signal_summary\":\"category=panchanga_yoga | key=arambha_iso | value_text=1985-03-02T19:12:44+00:00\",\"constituent_fact_ids\":[\"87215370d0eb7363\"],\"activation_id\":\"7841752\",\"activation_start\":\"2028-12-19\",\"activation_end\":\"2029-01-02\",\"activation_peak_date\":\"2028-12-26\",\"dasha_alignment_score\":0.3358,\"orb_strength\":1,\"convergence_score\":0.0918,\"active_dasha_periods_jsonb\":[],\"source_citation\":\"ka_kalasutra:v1.0:signal=dc262b16:src=convergence:period=0\",\"always_on_reason\":null},{\"signal_id\":\"205bcf27-b082-4db3-802b-d7a55c8e8efd\",\"yoga_type\":\"panchanga_yoga:inauspicious_flag\",\"signal_tradition\":\"parashari\",\"computed_salience\":0.483,\"signal_summary\":\"category=panchanga_yoga | key=inauspicious_flag | value_text=false\",\"constituent_fact_ids\":[\"431ddfd374957df2\"],\"activation_id\":\"7841751\",\"activation_start\":\"2028-12-19\",\"activation_end\":\"2029-01-02\",\"activation_peak_date\":\"2028-12-26\",\"dasha_alignment_score\":0.3358,\"orb_strength\":1,\"convergence_score\":0.0918,\"active_dasha_periods_jsonb\":[],\"source_citation\":\"ka_kalasutra:v1.0:signal=205bcf27:src=convergence:period=0\",\"always_on_reason\":null},{\"signal_id\":\"6eff2d07-a56f-4226-a258-e27463e2d2e4\",\"yoga_type\":\"yoga_label:yoga_name\",\"signal_tradition\":\"parashari\",\"computed_salience\":0.68425,\"signal_summary\":\"category=yoga_label | key=yoga_name | value_text=Shoola Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other\",\"constituent_fact_ids\":[\"f1b1d0216e032cdb\",\"aaea33c9be00669e\"],\"activation_id\":\"7841851\",\"activation_start\":null,\"activation_end\":null,\"activation_peak_date\":null,\"dasha_alignment_score\":0.5,\"orb_strength\":null,\"convergence_score\":null,\"active_dasha_periods_jsonb\":[{\"kind\":\"always_on\",\"reason\":\"distribution_yoga_sankhya\"}],\"source_citation\":\"ka_kalasutra:v1.0:signal=6eff2d07:src=none:period=0:always_on=distribution_yoga_sankhya\",\"always_on_reason\":\"distribution_yoga_sankhya\"},{\"signal_id\":\"ae67e963-7641-4bdf-89c1-0ee09e883ecd\",\"yoga_type\":\"yoga_label:yoga_name\",\"signal_tradition\":\"parashari\",\"computed_salience\":0.68425,\"signal_summary\":\"category=yoga_label | key=yoga_name | value_text=Pasha Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other\",\"constituent_fact_ids\":[\"d9ee56bb30672bba\",\"aaea33c9be00669e\"],\"activation_id\":\"7841852\",\"activation_start\":null,\"activation_end\":null,\"activation_peak_date\":null,\"dasha_alignment_score\":0.5,\"orb_strength\":null,\"convergence_score\":null,\"active_dasha_periods_jsonb\":[{\"kind\":\"always_on\",\"reason\":\"distribution_yoga_sankhya\"}],\"source_citation\":\"ka_kalasutra:v1.0:signal=ae67e963:src=none:period=0:always_on=distribution_yoga_sankhya\",\"always_on_reason\":\"distribution_yoga_sankhya\"},{\"signal_id\":\"2b08c05a-a434-4574-bec5-efe848595591\",\"yoga_type\":\"yoga_label:yoga_name\",\"signal_tradition\":\"parashari\",\"computed_salience\":0.68425,\"signal_summary\":\"category=yoga_label | key=yoga_name | value_text=Gola Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other\",\"constituent_fact_ids\":[\"b96c4b7e56da35af\",\"aaea33c9be00669e\"],\"activation_id\":\"7841833\",\"activation_start\":null,\"activation_end\":null,\"activation_peak_date\":null,\"dasha_alignment_score\":0.5,\"orb_strength\":1,\"convergence_score\":0.3036,\"active_dasha_periods_jsonb\":[{\"kind\":\"always_on\",\"reason\":\"distribution_yoga_sankhya\"}],\"source_citation\":\"ka_kalasutra:v1.0:signal=2b08c05a:src=none:period=0:always_on=distribution_yoga_sankhya\",\"always_on_reason\":\"distribution_yoga_sankhya\"},{\"signal_id\":\"d9e07116-7c31-4e12-a85b-078ae7135235\",\"yoga_type\":\"yoga_label:yoga_name\",\"signal_tradition\":\"parashari\",\"computed_salience\":0.68425,\"signal_summary\":\"category=yoga_label | key=yoga_name | value_text=Yuga Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other\",\"constituent_fact_ids\":[\"4e15a5612e0adc17\",\"aaea33c9be00669e\"],\"activation_id\":\"7841850\",\"activation_start\":null,\"activation_end\":null,\"activation_peak_date\":null,\"dasha_alignment_score\":0.5,\"orb_strength\":null,\"convergence_score\":null,\"active_dasha_periods_jsonb\":[{\"kind\":\"always_on\",\"reason\":\"distribution_yoga_sankhya\"}],\"source_citation\":\"ka_kalasutra:v1.0:signal=d9e07116:src=none:period=0:always_on=distribution_yoga_sankhya\",\"always_on_reason\":\"distribution_yoga_sankhya\"},{\"signal_id\":\"e4c921d6-cbaa-4b3e-bda5-f076ad7042b4\",\"yoga_type\":\"panchanga_yoga:name\",\"signal_tradition\":\"parashari\",\"computed_salience\":0.483,\"signal_summary\":\"category=panchanga_yoga | key=name | value_text=Ayushman\",\"constituent_fact_ids\":[\"03048b2c243d65f1\"],\"activation_id\":\"7841750\",\"activation_start\":null,\"activation_end\":null,\"activation_peak_date\":null,\"dasha_alignment_score\":0.5,\"orb_strength\":null,\"convergence_score\":null,\"active_dasha_periods_jsonb\":[],\"source_citation\":\"ka_kalasutra:v1.0:signal=e4c921d6:src=none:period=0\",\"always_on_reason\":null}],\"total_count\":10,\"undated_activation_count\":5,\"structurally_always_on_count\":4,\"undated_pending_window_count\":1,\"signal_id_refs\":[\"9049ffa0-f0f3-49b0-865f-54e23dcee897\",\"e8eb492c-02f7-44cf-9b21-d483a3adff18\",\"b9c18fcb-2694-4f3f-9be0-0ff9711b8542\",\"dc262b16-8189-4e43-9310-2856334d9a46\",\"205bcf27-b082-4db3-802b-d7a55c8e8efd\",\"6eff2d07-a56f-4226-a258-e27463e2d2e4\",\"ae67e963-7641-4bdf-89c1-0ee09e883ecd\",\"2b08c05a-a434-4574-bec5-efe848595591\",\"d9e07116-7c31-4e12-a85b-078ae7135235\",\"e4c921d6-cbaa-4b3e-bda5-f076ad7042b4\"],\"filters\":{\"date_from\":\"2026-08-15\",\"date_to\":\"2029-08-14\",\"top_k\":10,\"min_salience\":0,\"domain\":null},\"drill_next\":[\"marsys://tool/L2/query_signals\",\"marsys://tool/L3/query_temporal_activation\",\"marsys://tool/L2/classical_attribution_lookup\"],\"provenance\":{\"tables\":[\"bodha_msr_signals\",\"kala_activation\"],\"join_key\":\"signal_id (bodha_msr_signals.signal_id = kala_activation.signal_id)\",\"yoga_filter\":\"signal_type_class = 'yoga'\",\"defect_001\":{\"claim_id\":\"DEFECT-001\",\"status\":\"RESOLVED\",\"note\":\"constituent_facts_array resolution against chart_facts, derived live for chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a: 0/11 references orphaned (0%). All references resolve — DEFECT-001 no longer reproduces on this chart.\",\"as_of\":\"2026-08-15T11:11:13.820Z\",\"expires_on\":\"2026-08-16T11:11:13.820Z\",\"metrics\":{\"total_refs\":11,\"orphan_refs\":0,\"orphan_pct\":0}},\"defect_001_note\":\"constituent_facts_array resolution against chart_facts, derived live for chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a: 0/11 references orphaned (0%). All references resolve — DEFECT-001 no longer reproduces on this chart.\"}},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "query_window": {
+            "dasha_period": null,
+            "date_from": "2026-08-15",
+            "date_to": "2029-08-14"
+          },
+          "activated_yogas": [
+            {
+              "signal_id": "9049ffa0-f0f3-49b0-865f-54e23dcee897",
+              "yoga_type": "yoga_label:yoga_name",
+              "signal_tradition": "parashari",
+              "computed_salience": 0.68425,
+              "signal_summary": "category=yoga_label | key=yoga_name | value_text=Ubhayachari Yoga | classical_citations=[{'chapter': 30, 'text_id': 'bphs'}, {'chapter': 41, 'text_id': 'saravali'}] | fire_reason=requires_pass | source_chunk_ids=[] | uncatalogued=False | yoga_group=other",
+              "constituent_fact_ids": [
+                "ec10b50b5657d453",
+                "aaea33c9be00669e"
+              ],
+              "activation_id": "7841834",
+              "activation_start": "2026-10-10",
+              "activation_end": "2029-04-23",
+              "activation_peak_date": "2028-01-16",
+              "dasha_alignment_score": 0.3358,
+              "orb_strength": null,
+              "convergence_score": null,
+              "active_dasha_periods_jsonb": [
+                {
+                  "end": "2029-04-23",
+                  "graha": "Jupiter",
+                  "level": "antardasha",
+                  "start": "2026-10-10",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "1990-11-10",
+                  "graha": "Venus",
+                  "level": "antardasha",
+                  "start": "1987-11-10",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "1991-10-05",
+                  "graha": "Sun",
+                  "level": "antardasha",
+                  "start": "1990-11-10",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "1994-04-23",
+                  "graha": "Mars",
+                  "level": "antardasha",
+                  "start": "1993-04-04",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "1996-06-10",
+                  "graha": "Jupiter",
+                  "level": "antardasha",
+                  "start": "1994-04-23",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2004-11-03",
+                  "graha": "Venus",
+                  "level": "antardasha",
+                  "start": "2002-03-05",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2005-08-22",
+                  "graha": "Sun",
+                  "level": "antardasha",
+                  "start": "2004-11-03",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2007-11-28",
+                  "graha": "Mars",
+                  "level": "antardasha",
+                  "start": "2006-12-22",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                }
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=9049ffa0:src=dasha_timeline:period=0",
+              "always_on_reason": null
+            },
+            {
+              "signal_id": "e8eb492c-02f7-44cf-9b21-d483a3adff18",
+              "yoga_type": "yoga_label:yoga_name",
+              "signal_tradition": "parashari",
+              "computed_salience": 0.68425,
+              "signal_summary": "category=yoga_label | key=yoga_name | value_text=Vasi Yoga | classical_citations=[{'chapter': 30, 'text_id': 'bphs'}, {'chapter': 41, 'text_id': 'saravali'}] | fire_reason=requires_pass | source_chunk_ids=[] | uncatalogued=False | yoga_group=other",
+              "constituent_fact_ids": [
+                "8c9ed88e9779e47c",
+                "aaea33c9be00669e"
+              ],
+              "activation_id": "7841828",
+              "activation_start": "2028-12-19",
+              "activation_end": "2029-01-02",
+              "activation_peak_date": "2028-12-26",
+              "dasha_alignment_score": 0.3358,
+              "orb_strength": 1,
+              "convergence_score": 0.0918,
+              "active_dasha_periods_jsonb": [
+                {
+                  "end": "1991-10-05",
+                  "graha": "Sun",
+                  "level": "antardasha",
+                  "start": "1990-11-10",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "1996-06-10",
+                  "graha": "Jupiter",
+                  "level": "antardasha",
+                  "start": "1994-04-23",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2005-08-22",
+                  "graha": "Sun",
+                  "level": "antardasha",
+                  "start": "2004-11-03",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2021-03-26",
+                  "graha": "Sun",
+                  "level": "antardasha",
+                  "start": "2020-04-13",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2029-04-23",
+                  "graha": "Jupiter",
+                  "level": "antardasha",
+                  "start": "2026-10-10",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2036-05-23",
+                  "graha": "Sun",
+                  "level": "antardasha",
+                  "start": "2035-07-17",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2043-08-14",
+                  "graha": "Jupiter",
+                  "level": "antardasha",
+                  "start": "2041-05-08",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2048-03-26",
+                  "graha": "Sun",
+                  "level": "antardasha",
+                  "start": "2047-11-19",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                }
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=e8eb492c:src=convergence:period=4",
+              "always_on_reason": null
+            },
+            {
+              "signal_id": "b9c18fcb-2694-4f3f-9be0-0ff9711b8542",
+              "yoga_type": "yoga_label:yoga_name",
+              "signal_tradition": "parashari",
+              "computed_salience": 0.68425,
+              "signal_summary": "category=yoga_label | key=yoga_name | value_text=Kedara Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other",
+              "constituent_fact_ids": [
+                "4050ac71018ac4c3",
+                "aaea33c9be00669e"
+              ],
+              "activation_id": "7841832",
+              "activation_start": "2028-12-19",
+              "activation_end": "2029-01-02",
+              "activation_peak_date": "2028-12-26",
+              "dasha_alignment_score": 0.3358,
+              "orb_strength": 1,
+              "convergence_score": 0.0918,
+              "active_dasha_periods_jsonb": [
+                {
+                  "kind": "always_on",
+                  "reason": "distribution_yoga_sankhya"
+                }
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=b9c18fcb:src=convergence:period=0:always_on=distribution_yoga_sankhya",
+              "always_on_reason": "distribution_yoga_sankhya"
+            },
+            {
+              "signal_id": "dc262b16-8189-4e43-9310-2856334d9a46",
+              "yoga_type": "panchanga_yoga:arambha_iso",
+              "signal_tradition": "parashari",
+              "computed_salience": 0.483,
+              "signal_summary": "category=panchanga_yoga | key=arambha_iso | value_text=1985-03-02T19:12:44+00:00",
+              "constituent_fact_ids": [
+                "87215370d0eb7363"
+              ],
+              "activation_id": "7841752",
+              "activation_start": "2028-12-19",
+              "activation_end": "2029-01-02",
+              "activation_peak_date": "2028-12-26",
+              "dasha_alignment_score": 0.3358,
+              "orb_strength": 1,
+              "convergence_score": 0.0918,
+              "active_dasha_periods_jsonb": [],
+              "source_citation": "ka_kalasutra:v1.0:signal=dc262b16:src=convergence:period=0",
+              "always_on_reason": null
+            },
+            {
+              "signal_id": "205bcf27-b082-4db3-802b-d7a55c8e8efd",
+              "yoga_type": "panchanga_yoga:inauspicious_flag",
+              "signal_tradition": "parashari",
+              "computed_salience": 0.483,
+              "signal_summary": "category=panchanga_yoga | key=inauspicious_flag | value_text=false",
+              "constituent_fact_ids": [
+                "431ddfd374957df2"
+              ],
+              "activation_id": "7841751",
+              "activation_start": "2028-12-19",
+              "activation_end": "2029-01-02",
+              "activation_peak_date": "2028-12-26",
+              "dasha_alignment_score": 0.3358,
+              "orb_strength": 1,
+              "convergence_score": 0.0918,
+              "active_dasha_periods_jsonb": [],
+              "source_citation": "ka_kalasutra:v1.0:signal=205bcf27:src=convergence:period=0",
+              "always_on_reason": null
+            },
+            {
+              "signal_id": "6eff2d07-a56f-4226-a258-e27463e2d2e4",
+              "yoga_type": "yoga_label:yoga_name",
+              "signal_tradition": "parashari",
+              "computed_salience": 0.68425,
+              "signal_summary": "category=yoga_label | key=yoga_name | value_text=Shoola Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other",
+              "constituent_fact_ids": [
+                "f1b1d0216e032cdb",
+                "aaea33c9be00669e"
+              ],
+              "activation_id": "7841851",
+              "activation_start": null,
+              "activation_end": null,
+              "activation_peak_date": null,
+              "dasha_alignment_score": 0.5,
+              "orb_strength": null,
+              "convergence_score": null,
+              "active_dasha_periods_jsonb": [
+                {
+                  "kind": "always_on",
+                  "reason": "distribution_yoga_sankhya"
+                }
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=6eff2d07:src=none:period=0:always_on=distribution_yoga_sankhya",
+              "always_on_reason": "distribution_yoga_sankhya"
+            },
+            {
+              "signal_id": "ae67e963-7641-4bdf-89c1-0ee09e883ecd",
+              "yoga_type": "yoga_label:yoga_name",
+              "signal_tradition": "parashari",
+              "computed_salience": 0.68425,
+              "signal_summary": "category=yoga_label | key=yoga_name | value_text=Pasha Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other",
+              "constituent_fact_ids": [
+                "d9ee56bb30672bba",
+                "aaea33c9be00669e"
+              ],
+              "activation_id": "7841852",
+              "activation_start": null,
+              "activation_end": null,
+              "activation_peak_date": null,
+              "dasha_alignment_score": 0.5,
+              "orb_strength": null,
+              "convergence_score": null,
+              "active_dasha_periods_jsonb": [
+                {
+                  "kind": "always_on",
+                  "reason": "distribution_yoga_sankhya"
+                }
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=ae67e963:src=none:period=0:always_on=distribution_yoga_sankhya",
+              "always_on_reason": "distribution_yoga_sankhya"
+            },
+            {
+              "signal_id": "2b08c05a-a434-4574-bec5-efe848595591",
+              "yoga_type": "yoga_label:yoga_name",
+              "signal_tradition": "parashari",
+              "computed_salience": 0.68425,
+              "signal_summary": "category=yoga_label | key=yoga_name | value_text=Gola Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other",
+              "constituent_fact_ids": [
+                "b96c4b7e56da35af",
+                "aaea33c9be00669e"
+              ],
+              "activation_id": "7841833",
+              "activation_start": null,
+              "activation_end": null,
+              "activation_peak_date": null,
+              "dasha_alignment_score": 0.5,
+              "orb_strength": 1,
+              "convergence_score": 0.3036,
+              "active_dasha_periods_jsonb": [
+                {
+                  "kind": "always_on",
+                  "reason": "distribution_yoga_sankhya"
+                }
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=2b08c05a:src=none:period=0:always_on=distribution_yoga_sankhya",
+              "always_on_reason": "distribution_yoga_sankhya"
+            },
+            {
+              "signal_id": "d9e07116-7c31-4e12-a85b-078ae7135235",
+              "yoga_type": "yoga_label:yoga_name",
+              "signal_tradition": "parashari",
+              "computed_salience": 0.68425,
+              "signal_summary": "category=yoga_label | key=yoga_name | value_text=Yuga Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other",
+              "constituent_fact_ids": [
+                "4e15a5612e0adc17",
+                "aaea33c9be00669e"
+              ],
+              "activation_id": "7841850",
+              "activation_start": null,
+              "activation_end": null,
+              "activation_peak_date": null,
+              "dasha_alignment_score": 0.5,
+              "orb_strength": null,
+              "convergence_score": null,
+              "active_dasha_periods_jsonb": [
+                {
+                  "kind": "always_on",
+                  "reason": "distribution_yoga_sankhya"
+                }
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=d9e07116:src=none:period=0:always_on=distribution_yoga_sankhya",
+              "always_on_reason": "distribution_yoga_sankhya"
+            },
+            {
+              "signal_id": "e4c921d6-cbaa-4b3e-bda5-f076ad7042b4",
+              "yoga_type": "panchanga_yoga:name",
+              "signal_tradition": "parashari",
+              "computed_salience": 0.483,
+              "signal_summary": "category=panchanga_yoga | key=name | value_text=Ayushman",
+              "constituent_fact_ids": [
+                "03048b2c243d65f1"
+              ],
+              "activation_id": "7841750",
+              "activation_start": null,
+              "activation_end": null,
+              "activation_peak_date": null,
+              "dasha_alignment_score": 0.5,
+              "orb_strength": null,
+              "convergence_score": null,
+              "active_dasha_periods_jsonb": [],
+              "source_citation": "ka_kalasutra:v1.0:signal=e4c921d6:src=none:period=0",
+              "always_on_reason": null
+            }
+          ],
+          "total_count": 10,
+          "undated_activation_count": 5,
+          "structurally_always_on_count": 4,
+          "undated_pending_window_count": 1,
+          "signal_id_refs": [
+            "9049ffa0-f0f3-49b0-865f-54e23dcee897",
+            "e8eb492c-02f7-44cf-9b21-d483a3adff18",
+            "b9c18fcb-2694-4f3f-9be0-0ff9711b8542",
+            "dc262b16-8189-4e43-9310-2856334d9a46",
+            "205bcf27-b082-4db3-802b-d7a55c8e8efd",
+            "6eff2d07-a56f-4226-a258-e27463e2d2e4",
+            "ae67e963-7641-4bdf-89c1-0ee09e883ecd",
+            "2b08c05a-a434-4574-bec5-efe848595591",
+            "d9e07116-7c31-4e12-a85b-078ae7135235",
+            "e4c921d6-cbaa-4b3e-bda5-f076ad7042b4"
+          ],
+          "filters": {
+            "date_from": "2026-08-15",
+            "date_to": "2029-08-14",
+            "top_k": 10,
+            "min_salience": 0,
+            "domain": null
+          },
+          "drill_next": [
+            "marsys://tool/L2/query_signals",
+            "marsys://tool/L3/query_temporal_activation",
+            "marsys://tool/L2/classical_attribution_lookup"
+          ],
+          "provenance": {
+            "tables": [
+              "bodha_msr_signals",
+              "kala_activation"
+            ],
+            "join_key": "signal_id (bodha_msr_signals.signal_id = kala_activation.signal_id)",
+            "yoga_filter": "signal_type_class = 'yoga'",
+            "defect_001": {
+              "claim_id": "DEFECT-001",
+              "status": "RESOLVED",
+              "note": "constituent_facts_array resolution against chart_facts, derived live for chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a: 0/11 references orphaned (0%). All references resolve — DEFECT-001 no longer reproduces on this chart.",
+              "as_of": "2026-08-15T11:11:13.820Z",
+              "expires_on": "2026-08-16T11:11:13.820Z",
+              "metrics": {
+                "total_refs": 11,
+                "orphan_refs": 0,
+                "orphan_pct": 0
+              }
+            },
+            "defect_001_note": "constituent_facts_array resolution against chart_facts, derived live for chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a: 0/11 references orphaned (0%). All references resolve — DEFECT-001 no longer reproduces on this chart."
+          }
+        },
+        "is_error": false
+      }
+    }
+  }
+}

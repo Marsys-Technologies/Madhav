@@ -1,0 +1,20 @@
+{
+  "tool": "kala_elect_get",
+  "scenario": "native_primary",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "limit": 10,
+    "offset": 0,
+    "start": "2026-08-15",
+    "end": "2026-09-15"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "MCP error -32602: Input validation error: Invalid arguments for tool kala_elect_get: [\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"offset\",\n      \"start\",\n      \"end\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized keys: \\\"offset\\\", \\\"start\\\", \\\"end\\\"\"\n  }\n]"
+      }
+    ],
+    "isError": true
+  }
+}

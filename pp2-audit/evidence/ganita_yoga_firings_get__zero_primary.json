@@ -1,0 +1,379 @@
+{
+  "tool": "ganita_yoga_firings_get",
+  "scenario": "zero_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"rows\":[{\"id\":2556,\"yoga_canonical_id\":\"jaimini_karakamsha_sun\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fired\":true,\"strength\":1.44,\"strength_label\":\"computed_extension\",\"partial_formation_pct\":null,\"is_partial\":false,\"bhanga_active\":null,\"bhanga_rule_fired\":null,\"bhanga_na_reason\":\"No classical bhanga rule for Jaimini karakāṃśa occupation/aspect yogas in the Jaimini Sutram; honest NULL floor (B.10).\",\"constituent_planets\":[\"sun\"],\"constituent_houses\":[11],\"constituent_fact_ids\":[\"facd77618eeb54ed\",\"3a3d47a10543a4d9\"],\"family_ids\":[],\"activation_dasha_periods\":null,\"derivation\":\"constituent_bala_v1\",\"citation_ref\":\"jaimini_sutram:1.2_karakamsa_phala;bphs:ch34_karakamsa_phala_adhyaya:sun_aspect\",\"citation_human\":\"Jaimini Sutram 1.2 (karakāṃśa-phala) / BPHS Ch.34: Sun casting Jaimini chara-rāśi-dṛṣṭi on the karakāṃśa (Aries) from Aquarius gives government service, employment by royalty or authority. Ātmakāraka=Mercury; karakāṃśa reckoned as the D9 sign of the Ātmakāraka (ga_sensitive karakamsa_position, §N.5). Aspect model: Jaimini chara-rāśi-dṛṣṭi (sign aspects), not Parāśari graha aspects.\",\"grounds_jsonb\":null,\"constituent_planets_role_split_available\":false,\"constituent_planets_deprecated_note\":\"DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available.\"},{\"id\":2552,\"yoga_canonical_id\":\"vesi\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fired\":true,\"strength\":1.391,\"strength_label\":\"computed_extension\",\"partial_formation_pct\":null,\"is_partial\":false,\"bhanga_active\":null,\"bhanga_rule_fired\":null,\"bhanga_na_reason\":\"no classical bhanga (cancellation) rule exists for this yoga type\",\"constituent_planets\":[\"sun\",\"mars\",\"venus\"],\"constituent_houses\":[11,12],\"constituent_fact_ids\":[\"facd77618eeb54ed\",\"df62b24b70643c99\",\"e9251c9243f5759e\"],\"family_ids\":[],\"activation_dasha_periods\":null,\"derivation\":\"constituent_bala_v1\",\"citation_ref\":\"ga_yoga.strength:vesi:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total\",\"citation_human\":\"vesi strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['mars', 'sun', 'venus']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).\",\"grounds_jsonb\":null,\"constituent_planets_role_split_available\":false,\"constituent_planets_deprecated_note\":\"DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available.\"},{\"id\":2548,\"yoga_canonical_id\":\"dhana_yoga_lagna_2\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fired\":true,\"strength\":1.3665,\"strength_label\":\"computed_extension\",\"partial_formation_pct\":null,\"is_partial\":false,\"bhanga_active\":null,\"bhanga_rule_fired\":null,\"bhanga_na_reason\":\"no classical bhanga (cancellation) rule exists for this yoga type\",\"constituent_planets\":[\"mars\",\"venus\"],\"constituent_houses\":[12],\"constituent_fact_ids\":[\"df62b24b70643c99\",\"e9251c9243f5759e\"],\"family_ids\":[],\"activation_dasha_periods\":null,\"derivation\":\"constituent_bala_v1\",\"citation_ref\":\"ga_yoga.strength:dhana_yoga_lagna_2:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total\",\"citation_human\":\"dhana_yoga_lagna_2 strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['mars', 'venus']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).\",\"grounds_jsonb\":null,\"constituent_planets_role_split_available\":false,\"constituent_planets_deprecated_note\":\"DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available.\"},{\"id\":2555,\"yoga_canonical_id\":\"vipareeta_raja_yoga\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fired\":true,\"strength\":1.324,\"strength_label\":\"computed_extension\",\"partial_formation_pct\":null,\"is_partial\":false,\"bhanga_active\":true,\"bhanga_rule_fired\":\"conjunct_or_aspected_by_non_dusthana_lord:venus\",\"bhanga_na_reason\":null,\"constituent_planets\":[\"mars\"],\"constituent_houses\":[12],\"constituent_fact_ids\":[\"df62b24b70643c99\"],\"family_ids\":[],\"activation_dasha_periods\":null,\"derivation\":\"constituent_bala_v1\",\"citation_ref\":\"ga_yoga.strength:vipareeta_raja_yoga:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total\",\"citation_human\":\"vipareeta_raja_yoga strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['mars']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).\",\"grounds_jsonb\":null,\"constituent_planets_role_split_available\":false,\"constituent_planets_deprecated_note\":\"DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available.\"},{\"id\":2553,\"yoga_canonical_id\":\"vipareeta_sarala\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fired\":true,\"strength\":1.324,\"strength_label\":\"computed_extension\",\"partial_formation_pct\":null,\"is_partial\":false,\"bhanga_active\":null,\"bhanga_rule_fired\":null,\"bhanga_na_reason\":\"no classical bhanga (cancellation) rule exists for this yoga type\",\"constituent_planets\":[\"mars\"],\"constituent_houses\":[12],\"constituent_fact_ids\":[\"df62b24b70643c99\"],\"family_ids\":[],\"activation_dasha_periods\":null,\"derivation\":\"constituent_bala_v1\",\"citation_ref\":\"ga_yoga.strength:vipareeta_sarala:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total\",\"citation_human\":\"vipareeta_sarala strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['mars']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).\",\"grounds_jsonb\":null,\"constituent_planets_role_split_available\":false,\"constituent_planets_deprecated_note\":\"DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available.\"},{\"id\":2550,\"yoga_canonical_id\":\"ubhayachari\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fired\":true,\"strength\":1.3087,\"strength_label\":\"computed_extension\",\"partial_formation_pct\":null,\"is_partial\":false,\"bhanga_active\":null,\"bhanga_rule_fired\":null,\"bhanga_na_reason\":\"no classical bhanga (cancellation) rule exists for this yoga type\",\"constituent_planets\":[\"sun\",\"mars\",\"venus\",\"jupiter\"],\"constituent_houses\":[11,12,10],\"constituent_fact_ids\":[\"facd77618eeb54ed\",\"df62b24b70643c99\",\"e9251c9243f5759e\",\"1aa554cfe435808d\"],\"family_ids\":[],\"activation_dasha_periods\":null,\"derivation\":\"constituent_bala_v1\",\"citation_ref\":\"ga_yoga.strength:ubhayachari:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total\",\"citation_human\":\"ubhayachari strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['jupiter', 'mars', 'sun', 'venus']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).\",\"grounds_jsonb\":null,\"constituent_planets_role_split_available\":false,\"constituent_planets_deprecated_note\":\"DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available.\"},{\"id\":2546,\"yoga_canonical_id\":\"budha_aditya\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fired\":true,\"strength\":1.2886,\"strength_label\":\"computed_extension\",\"partial_formation_pct\":null,\"is_partial\":false,\"bhanga_active\":true,\"bhanga_rule_fired\":\"mercury_combust\",\"bhanga_na_reason\":null,\"constituent_planets\":[\"sun\",\"mercury\"],\"constituent_houses\":[11],\"constituent_fact_ids\":[\"facd77618eeb54ed\",\"3598a412ad78160e\"],\"family_ids\":[],\"activation_dasha_periods\":null,\"derivation\":\"constituent_bala_v1\",\"citation_ref\":\"ga_yoga.strength:budha_aditya:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total\",\"citation_human\":\"budha_aditya strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['mercury', 'sun']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).\",\"grounds_jsonb\":null,\"constituent_planets_role_split_available\":false,\"constituent_planets_deprecated_note\":\"DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available.\"},{\"id\":2551,\"yoga_canonical_id\":\"vasi\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fired\":true,\"strength\":1.2508,\"strength_label\":\"computed_extension\",\"partial_formation_pct\":null,\"is_partial\":false,\"bhanga_active\":null,\"bhanga_rule_fired\":null,\"bhanga_na_reason\":\"no classical bhanga (cancellation) rule exists for this yoga type\",\"constituent_planets\":[\"sun\",\"jupiter\"],\"constituent_houses\":[11,10],\"constituent_fact_ids\":[\"facd77618eeb54ed\",\"1aa554cfe435808d\"],\"family_ids\":[],\"activation_dasha_periods\":null,\"derivation\":\"constituent_bala_v1\",\"citation_ref\":\"ga_yoga.strength:vasi:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total\",\"citation_human\":\"vasi strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['jupiter', 'sun']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).\",\"grounds_jsonb\":null,\"constituent_planets_role_split_available\":false,\"constituent_planets_deprecated_note\":\"DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available.\"},{\"id\":2549,\"yoga_canonical_id\":\"pasha\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fired\":true,\"strength\":1.2352,\"strength_label\":\"computed_extension\",\"partial_formation_pct\":null,\"is_partial\":false,\"bhanga_active\":null,\"bhanga_rule_fired\":null,\"bhanga_na_reason\":\"no classical bhanga (cancellation) rule exists for this yoga type\",\"constituent_planets\":[\"sun\",\"moon\",\"mars\",\"mercury\",\"jupiter\",\"venus\",\"saturn\"],\"constituent_houses\":[],\"constituent_fact_ids\":[\"facd77618eeb54ed\",\"0b6911823535d148\",\"df62b24b70643c99\",\"3598a412ad78160e\",\"1aa554cfe435808d\",\"e9251c9243f5759e\",\"4519a2fb479d7fa1\"],\"family_ids\":[],\"activation_dasha_periods\":null,\"derivation\":\"constituent_bala_v1\",\"citation_ref\":\"ga_yoga.strength:pasha:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total\",\"citation_human\":\"pasha strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['jupiter', 'mars', 'mercury', 'moon', 'saturn', 'sun', 'venus']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).\",\"grounds_jsonb\":null,\"constituent_planets_role_split_available\":false,\"constituent_planets_deprecated_note\":\"DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available.\"},{\"id\":2547,\"yoga_canonical_id\":\"daridra_yoga\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fired\":true,\"strength\":1.146,\"strength_label\":\"computed_extension\",\"partial_formation_pct\":null,\"is_partial\":false,\"bhanga_active\":null,\"bhanga_rule_fired\":null,\"bhanga_na_reason\":\"classical bhanga (cancellation) rule exists in brahma_yoga_catalog.cancellation_conditions for this yoga but is not evaluated by ga_yoga_writer (no per-yoga bhanga formula implemented here to avoid fabrication — B.10)\",\"constituent_planets\":[\"saturn\"],\"constituent_houses\":[8],\"constituent_fact_ids\":[\"4519a2fb479d7fa1\"],\"family_ids\":[],\"activation_dasha_periods\":null,\"derivation\":\"constituent_bala_v1\",\"citation_ref\":\"ga_yoga.strength:daridra_yoga:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total\",\"citation_human\":\"daridra_yoga strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['saturn']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).\",\"grounds_jsonb\":null,\"constituent_planets_role_split_available\":false,\"constituent_planets_deprecated_note\":\"DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available.\"}],\"count\":10,\"total_matching\":14,\"more_available\":true,\"filters\":{\"fired\":true,\"all\":false,\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"bhanga_active\":null,\"is_partial\":null,\"yoga_canonical_id\":null,\"limit\":10},\"provenance\":{\"tables\":[\"ga_yoga_firings\"],\"note\":\"constituent_fact_ids resolve back to chart_facts.fact_id (§N.5). Default fired=true — a non-fired catalog row is never served as a finding unless all=true or fired=false is explicit (CR-72/CR-43).\",\"source\":\"L1 Gaṇita yoga-firing detail; served chart-scoped.\",\"grounds_jsonb_available\":true}},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+          "rows": [
+            {
+              "id": 2556,
+              "yoga_canonical_id": "jaimini_karakamsha_sun",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fired": true,
+              "strength": 1.44,
+              "strength_label": "computed_extension",
+              "partial_formation_pct": null,
+              "is_partial": false,
+              "bhanga_active": null,
+              "bhanga_rule_fired": null,
+              "bhanga_na_reason": "No classical bhanga rule for Jaimini karakāṃśa occupation/aspect yogas in the Jaimini Sutram; honest NULL floor (B.10).",
+              "constituent_planets": [
+                "sun"
+              ],
+              "constituent_houses": [
+                11
+              ],
+              "constituent_fact_ids": [
+                "facd77618eeb54ed",
+                "3a3d47a10543a4d9"
+              ],
+              "family_ids": [],
+              "activation_dasha_periods": null,
+              "derivation": "constituent_bala_v1",
+              "citation_ref": "jaimini_sutram:1.2_karakamsa_phala;bphs:ch34_karakamsa_phala_adhyaya:sun_aspect",
+              "citation_human": "Jaimini Sutram 1.2 (karakāṃśa-phala) / BPHS Ch.34: Sun casting Jaimini chara-rāśi-dṛṣṭi on the karakāṃśa (Aries) from Aquarius gives government service, employment by royalty or authority. Ātmakāraka=Mercury; karakāṃśa reckoned as the D9 sign of the Ātmakāraka (ga_sensitive karakamsa_position, §N.5). Aspect model: Jaimini chara-rāśi-dṛṣṭi (sign aspects), not Parāśari graha aspects.",
+              "grounds_jsonb": null,
+              "constituent_planets_role_split_available": false,
+              "constituent_planets_deprecated_note": "DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available."
+            },
+            {
+              "id": 2552,
+              "yoga_canonical_id": "vesi",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fired": true,
+              "strength": 1.391,
+              "strength_label": "computed_extension",
+              "partial_formation_pct": null,
+              "is_partial": false,
+              "bhanga_active": null,
+              "bhanga_rule_fired": null,
+              "bhanga_na_reason": "no classical bhanga (cancellation) rule exists for this yoga type",
+              "constituent_planets": [
+                "sun",
+                "mars",
+                "venus"
+              ],
+              "constituent_houses": [
+                11,
+                12
+              ],
+              "constituent_fact_ids": [
+                "facd77618eeb54ed",
+                "df62b24b70643c99",
+                "e9251c9243f5759e"
+              ],
+              "family_ids": [],
+              "activation_dasha_periods": null,
+              "derivation": "constituent_bala_v1",
+              "citation_ref": "ga_yoga.strength:vesi:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total",
+              "citation_human": "vesi strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['mars', 'sun', 'venus']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).",
+              "grounds_jsonb": null,
+              "constituent_planets_role_split_available": false,
+              "constituent_planets_deprecated_note": "DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available."
+            },
+            {
+              "id": 2548,
+              "yoga_canonical_id": "dhana_yoga_lagna_2",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fired": true,
+              "strength": 1.3665,
+              "strength_label": "computed_extension",
+              "partial_formation_pct": null,
+              "is_partial": false,
+              "bhanga_active": null,
+              "bhanga_rule_fired": null,
+              "bhanga_na_reason": "no classical bhanga (cancellation) rule exists for this yoga type",
+              "constituent_planets": [
+                "mars",
+                "venus"
+              ],
+              "constituent_houses": [
+                12
+              ],
+              "constituent_fact_ids": [
+                "df62b24b70643c99",
+                "e9251c9243f5759e"
+              ],
+              "family_ids": [],
+              "activation_dasha_periods": null,
+              "derivation": "constituent_bala_v1",
+              "citation_ref": "ga_yoga.strength:dhana_yoga_lagna_2:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total",
+              "citation_human": "dhana_yoga_lagna_2 strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['mars', 'venus']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).",
+              "grounds_jsonb": null,
+              "constituent_planets_role_split_available": false,
+              "constituent_planets_deprecated_note": "DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available."
+            },
+            {
+              "id": 2555,
+              "yoga_canonical_id": "vipareeta_raja_yoga",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fired": true,
+              "strength": 1.324,
+              "strength_label": "computed_extension",
+              "partial_formation_pct": null,
+              "is_partial": false,
+              "bhanga_active": true,
+              "bhanga_rule_fired": "conjunct_or_aspected_by_non_dusthana_lord:venus",
+              "bhanga_na_reason": null,
+              "constituent_planets": [
+                "mars"
+              ],
+              "constituent_houses": [
+                12
+              ],
+              "constituent_fact_ids": [
+                "df62b24b70643c99"
+              ],
+              "family_ids": [],
+              "activation_dasha_periods": null,
+              "derivation": "constituent_bala_v1",
+              "citation_ref": "ga_yoga.strength:vipareeta_raja_yoga:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total",
+              "citation_human": "vipareeta_raja_yoga strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['mars']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).",
+              "grounds_jsonb": null,
+              "constituent_planets_role_split_available": false,
+              "constituent_planets_deprecated_note": "DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available."
+            },
+            {
+              "id": 2553,
+              "yoga_canonical_id": "vipareeta_sarala",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fired": true,
+              "strength": 1.324,
+              "strength_label": "computed_extension",
+              "partial_formation_pct": null,
+              "is_partial": false,
+              "bhanga_active": null,
+              "bhanga_rule_fired": null,
+              "bhanga_na_reason": "no classical bhanga (cancellation) rule exists for this yoga type",
+              "constituent_planets": [
+                "mars"
+              ],
+              "constituent_houses": [
+                12
+              ],
+              "constituent_fact_ids": [
+                "df62b24b70643c99"
+              ],
+              "family_ids": [],
+              "activation_dasha_periods": null,
+              "derivation": "constituent_bala_v1",
+              "citation_ref": "ga_yoga.strength:vipareeta_sarala:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total",
+              "citation_human": "vipareeta_sarala strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['mars']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).",
+              "grounds_jsonb": null,
+              "constituent_planets_role_split_available": false,
+              "constituent_planets_deprecated_note": "DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available."
+            },
+            {
+              "id": 2550,
+              "yoga_canonical_id": "ubhayachari",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fired": true,
+              "strength": 1.3087,
+              "strength_label": "computed_extension",
+              "partial_formation_pct": null,
+              "is_partial": false,
+              "bhanga_active": null,
+              "bhanga_rule_fired": null,
+              "bhanga_na_reason": "no classical bhanga (cancellation) rule exists for this yoga type",
+              "constituent_planets": [
+                "sun",
+                "mars",
+                "venus",
+                "jupiter"
+              ],
+              "constituent_houses": [
+                11,
+                12,
+                10
+              ],
+              "constituent_fact_ids": [
+                "facd77618eeb54ed",
+                "df62b24b70643c99",
+                "e9251c9243f5759e",
+                "1aa554cfe435808d"
+              ],
+              "family_ids": [],
+              "activation_dasha_periods": null,
+              "derivation": "constituent_bala_v1",
+              "citation_ref": "ga_yoga.strength:ubhayachari:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total",
+              "citation_human": "ubhayachari strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['jupiter', 'mars', 'sun', 'venus']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).",
+              "grounds_jsonb": null,
+              "constituent_planets_role_split_available": false,
+              "constituent_planets_deprecated_note": "DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available."
+            },
+            {
+              "id": 2546,
+              "yoga_canonical_id": "budha_aditya",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fired": true,
+              "strength": 1.2886,
+              "strength_label": "computed_extension",
+              "partial_formation_pct": null,
+              "is_partial": false,
+              "bhanga_active": true,
+              "bhanga_rule_fired": "mercury_combust",
+              "bhanga_na_reason": null,
+              "constituent_planets": [
+                "sun",
+                "mercury"
+              ],
+              "constituent_houses": [
+                11
+              ],
+              "constituent_fact_ids": [
+                "facd77618eeb54ed",
+                "3598a412ad78160e"
+              ],
+              "family_ids": [],
+              "activation_dasha_periods": null,
+              "derivation": "constituent_bala_v1",
+              "citation_ref": "ga_yoga.strength:budha_aditya:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total",
+              "citation_human": "budha_aditya strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['mercury', 'sun']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).",
+              "grounds_jsonb": null,
+              "constituent_planets_role_split_available": false,
+              "constituent_planets_deprecated_note": "DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available."
+            },
+            {
+              "id": 2551,
+              "yoga_canonical_id": "vasi",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fired": true,
+              "strength": 1.2508,
+              "strength_label": "computed_extension",
+              "partial_formation_pct": null,
+              "is_partial": false,
+              "bhanga_active": null,
+              "bhanga_rule_fired": null,
+              "bhanga_na_reason": "no classical bhanga (cancellation) rule exists for this yoga type",
+              "constituent_planets": [
+                "sun",
+                "jupiter"
+              ],
+              "constituent_houses": [
+                11,
+                10
+              ],
+              "constituent_fact_ids": [
+                "facd77618eeb54ed",
+                "1aa554cfe435808d"
+              ],
+              "family_ids": [],
+              "activation_dasha_periods": null,
+              "derivation": "constituent_bala_v1",
+              "citation_ref": "ga_yoga.strength:vasi:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total",
+              "citation_human": "vasi strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['jupiter', 'sun']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).",
+              "grounds_jsonb": null,
+              "constituent_planets_role_split_available": false,
+              "constituent_planets_deprecated_note": "DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available."
+            },
+            {
+              "id": 2549,
+              "yoga_canonical_id": "pasha",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fired": true,
+              "strength": 1.2352,
+              "strength_label": "computed_extension",
+              "partial_formation_pct": null,
+              "is_partial": false,
+              "bhanga_active": null,
+              "bhanga_rule_fired": null,
+              "bhanga_na_reason": "no classical bhanga (cancellation) rule exists for this yoga type",
+              "constituent_planets": [
+                "sun",
+                "moon",
+                "mars",
+                "mercury",
+                "jupiter",
+                "venus",
+                "saturn"
+              ],
+              "constituent_houses": [],
+              "constituent_fact_ids": [
+                "facd77618eeb54ed",
+                "0b6911823535d148",
+                "df62b24b70643c99",
+                "3598a412ad78160e",
+                "1aa554cfe435808d",
+                "e9251c9243f5759e",
+                "4519a2fb479d7fa1"
+              ],
+              "family_ids": [],
+              "activation_dasha_periods": null,
+              "derivation": "constituent_bala_v1",
+              "citation_ref": "ga_yoga.strength:pasha:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total",
+              "citation_human": "pasha strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['jupiter', 'mars', 'mercury', 'moon', 'saturn', 'sun', 'venus']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).",
+              "grounds_jsonb": null,
+              "constituent_planets_role_split_available": false,
+              "constituent_planets_deprecated_note": "DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available."
+            },
+            {
+              "id": 2547,
+              "yoga_canonical_id": "daridra_yoga",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fired": true,
+              "strength": 1.146,
+              "strength_label": "computed_extension",
+              "partial_formation_pct": null,
+              "is_partial": false,
+              "bhanga_active": null,
+              "bhanga_rule_fired": null,
+              "bhanga_na_reason": "classical bhanga (cancellation) rule exists in brahma_yoga_catalog.cancellation_conditions for this yoga but is not evaluated by ga_yoga_writer (no per-yoga bhanga formula implemented here to avoid fabrication — B.10)",
+              "constituent_planets": [
+                "saturn"
+              ],
+              "constituent_houses": [
+                8
+              ],
+              "constituent_fact_ids": [
+                "4519a2fb479d7fa1"
+              ],
+              "family_ids": [],
+              "activation_dasha_periods": null,
+              "derivation": "constituent_bala_v1",
+              "citation_ref": "ga_yoga.strength:daridra_yoga:constituent_bala_v1@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:bala_gate=graha_shadbala_total",
+              "citation_human": "daridra_yoga strength = mean of normalized shadbala (actual/required rupa, graha_shadbala_total bala_gate) across constituent grahas ['saturn']; derivation=constituent_bala_v1 (computed_extension — not a classical per-yoga formula, B.10).",
+              "grounds_jsonb": null,
+              "constituent_planets_role_split_available": false,
+              "constituent_planets_deprecated_note": "DEPRECATED for role-sensitive reads: constituent_planets is a flat, unordered union of every planet involved in this firing regardless of role (e.g. for neecha_bhanga_raja_yoga it mixes the debilitated grahas with the unrelated rescuer grahas). Prefer the labeled role fields (debilitated_planets/rescuer_planets, or principal_planets/supporting_planets) when present — see constituent_planets_role_split_available."
+            }
+          ],
+          "count": 10,
+          "total_matching": 14,
+          "more_available": true,
+          "filters": {
+            "fired": true,
+            "all": false,
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "bhanga_active": null,
+            "is_partial": null,
+            "yoga_canonical_id": null,
+            "limit": 10
+          },
+          "provenance": {
+            "tables": [
+              "ga_yoga_firings"
+            ],
+            "note": "constituent_fact_ids resolve back to chart_facts.fact_id (§N.5). Default fired=true — a non-fired catalog row is never served as a finding unless all=true or fired=false is explicit (CR-72/CR-43).",
+            "source": "L1 Gaṇita yoga-firing detail; served chart-scoped.",
+            "grounds_jsonb_available": true
+          }
+        },
+        "is_error": false
+      }
+    }
+  }
+}

@@ -1,0 +1,924 @@
+{
+  "tool": "bodha_domain_reading_get",
+  "scenario": "zero_primary",
+  "args": {
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "domain": "career",
+    "lens_limit": 5,
+    "max_signals_per_lens": 5
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"domain\":\"career\",\"ranked_signals\":[{\"signal_id\":\"64da120c-9ecb-44db-a8b8-7efac120e071\",\"headline\":\"VEN: aspect parashari given: house 6 = 1 [ga_structural]\",\"summary\":\"category=aspect_parashari_given | key=house_6 | value_num=1 | graha=VEN | target_house=6\",\"computed_salience\":1.166727,\"signal_type_class\":\"composite_state\",\"signature_tier\":\"chart_defining\",\"bhava\":6,\"graha\":\"VEN\",\"final_rank_score\":1.2808434552945458,\"rationale\":\"bhāva 6 × career congruence 1.50; graha VEN × career affinity 1.00\"},{\"signal_id\":\"0334522a-9378-4db5-856d-2ffcaf9f5f00\",\"headline\":\"graha dignity per varga: dignity state = neutral [ga_structural]\",\"summary\":\"category=graha_dignity_per_varga | key=dignity_state | value_text=neutral | ayanamsha_id=lahiri_chitrapaksha | house=11 | sign=Aquarius | uncatalogued=False | varga=D1\",\"computed_salience\":0.625968,\"signal_type_class\":\"composite_state\",\"signature_tier\":\"supporting\",\"signature_tier_demoted_from\":\"major\",\"bhava\":11,\"graha\":null,\"final_rank_score\":1.25460865664,\"rationale\":\"bhāva 11 × career congruence 1.40\"},{\"signal_id\":\"47ffd748-3746-4b0a-a728-8c8e1b8a3b84\",\"headline\":\"sensitive degree check: pushkara = pushkara [ga_structural]\",\"summary\":\"category=sensitive_degree_check | key=pushkara | value_text=pushkara | value_num=6.111 | bhaga_orb_deg=6.1105 | fired=True | graha_deg_in_sign=17.8895 | in_pushkara_navamsa=True | on_pushkara_bhaga=False | pushkara_bhaga_deg=24.0 | pushkara_navamsa_start_deg=16.6667\",\"computed_salience\":0.59616,\"signal_type_class\":\"composite_state\",\"signature_tier\":\"supporting\",\"bhava\":null,\"graha\":null,\"final_rank_score\":1.1895320535758336,\"rationale\":\"no bhāva/graha resolved — ranked on class-prior × strength × salience only\"},{\"signal_id\":\"4db15ace-f371-4b50-b2f9-3e06ab71b9fc\",\"headline\":\"sensitive degree check: gandanta = gandanta [ga_structural]\",\"summary\":\"category=sensitive_degree_check | key=gandanta | value_text=gandanta | value_num=3.178 | distance_to_junction_deg=3.1781 | fired=True | gandanta_arc_deg=3.3333 | gandanta_zone=end_of_Pisces | graha_deg_in_sign=26.8219 | sign=Pisces\",\"computed_salience\":0.548136,\"signal_type_class\":\"composite_state\",\"signature_tier\":\"supporting\",\"bhava\":null,\"graha\":null,\"final_rank_score\":1.1895160454908336,\"rationale\":\"no bhāva/graha resolved — ranked on class-prior × strength × salience only\"},{\"signal_id\":\"1a364e67-d499-41d1-a153-fbd6697bc7c3\",\"headline\":\"graha dignity per varga: dignity state = neutral [ga_structural]\",\"summary\":\"category=graha_dignity_per_varga | key=dignity_state | value_text=neutral | ayanamsha_id=lahiri_chitrapaksha | house=1 | sign=Aries | uncatalogued=False | varga=D1\",\"computed_salience\":0.5382,\"signal_type_class\":\"composite_state\",\"signature_tier\":\"supporting\",\"bhava\":1,\"graha\":null,\"final_rank_score\":1.1493794000175002,\"rationale\":\"bhāva 1 × career congruence 1.30\"},{\"signal_id\":\"156d2b09-7279-4ee6-a9ea-fc06e9ebd2d1\",\"headline\":\"net argala per varga: net argala = -2 [ga_structural]\",\"summary\":\"category=net_argala_per_varga | key=net_argala | value_num=-2 | house=1 | net_argala=-2.0 | varga=D1\",\"computed_salience\":0.5382,\"signal_type_class\":\"composite_state\",\"signature_tier\":\"supporting\",\"bhava\":1,\"graha\":null,\"final_rank_score\":1.1493794000125002,\"rationale\":\"bhāva 1 × career congruence 1.30\"},{\"signal_id\":\"7e2ee9d9-7b69-4047-ac04-2be92488e4ef\",\"headline\":\"convergence count: total edges = 1 [ga_structural]\",\"summary\":\"category=convergence_count | key=total_edges | value_num=1 | entity=house | house=1 | total_edges=1 | varga=D1\",\"computed_salience\":0.5382,\"signal_type_class\":\"composite_state\",\"signature_tier\":\"supporting\",\"bhava\":1,\"graha\":null,\"final_rank_score\":1.1493794000075002,\"rationale\":\"bhāva 1 × career congruence 1.30\"},{\"signal_id\":\"d9e07116-7c31-4e12-a85b-078ae7135235\",\"headline\":\"yoga label: yoga name = Yuga Yoga [ga_yoga]\",\"summary\":\"category=yoga_label | key=yoga_name | value_text=Yuga Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other\",\"computed_salience\":0.68425,\"signal_type_class\":\"yoga\",\"signature_tier\":\"major\",\"bhava\":null,\"graha\":null,\"final_rank_score\":1.0467280840033333,\"rationale\":\"no bhāva/graha resolved — ranked on class-prior × strength × salience only\"},{\"signal_id\":\"6eff2d07-a56f-4226-a258-e27463e2d2e4\",\"headline\":\"yoga label: yoga name = Shoola Yoga [ga_yoga]\",\"summary\":\"category=yoga_label | key=yoga_name | value_text=Shoola Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other\",\"computed_salience\":0.68425,\"signal_type_class\":\"yoga\",\"signature_tier\":\"major\",\"bhava\":null,\"graha\":null,\"final_rank_score\":1.0467280840008333,\"rationale\":\"no bhāva/graha resolved — ranked on class-prior × strength × salience only\"},{\"signal_id\":\"a4fe6d01-b533-4e0d-8fce-418fad6386fd\",\"headline\":\"yoga label: yoga name = Vesi Yoga [ga_yoga]\",\"summary\":\"category=yoga_label | key=yoga_name | value_text=Vesi Yoga | classical_citations=[{'chapter': 30, 'text_id': 'bphs'}, {'chapter': 41, 'text_id': 'saravali'}] | fire_reason=requires_pass | source_chunk_ids=[] | uncatalogued=False | yoga_group=other\",\"computed_salience\":0.68425,\"signal_type_class\":\"yoga\",\"signature_tier\":\"major\",\"bhava\":null,\"graha\":null,\"final_rank_score\":1.0467280839983333,\"rationale\":\"no bhāva/graha resolved — ranked on class-prior × strength × salience only\"},{\"signal_id\":\"b9c18fcb-2694-4f3f-9be0-0ff9711b8542\",\"headline\":\"yoga label: yoga name = Kedara Yoga [ga_yoga]\",\"summary\":\"category=yoga_label | key=yoga_name | value_text=Kedara Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other\",\"computed_salience\":0.68425,\"signal_type_class\":\"yoga\",\"signature_tier\":\"major\",\"bhava\":null,\"graha\":null,\"final_rank_score\":1.0467280839958333,\"rationale\":\"no bhāva/graha resolved — ranked on class-prior × strength × salience only\"},{\"signal_id\":\"ae67e963-7641-4bdf-89c1-0ee09e883ecd\",\"headline\":\"yoga label: yoga name = Pasha Yoga [ga_yoga]\",\"summary\":\"category=yoga_label | key=yoga_name | value_text=Pasha Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other\",\"computed_salience\":0.68425,\"signal_type_class\":\"yoga\",\"signature_tier\":\"major\",\"bhava\":null,\"graha\":null,\"final_rank_score\":1.0467280839933333,\"rationale\":\"no bhāva/graha resolved — ranked on class-prior × strength × salience only\"},{\"signal_id\":\"e8eb492c-02f7-44cf-9b21-d483a3adff18\",\"headline\":\"yoga label: yoga name = Vasi Yoga [ga_yoga]\",\"summary\":\"category=yoga_label | key=yoga_name | value_text=Vasi Yoga | classical_citations=[{'chapter': 30, 'text_id': 'bphs'}, {'chapter': 41, 'text_id': 'saravali'}] | fire_reason=requires_pass | source_chunk_ids=[] | uncatalogued=False | yoga_group=other\",\"computed_salience\":0.68425,\"signal_type_class\":\"yoga\",\"signature_tier\":\"major\",\"bhava\":null,\"graha\":null,\"final_rank_score\":1.0467280839908333,\"rationale\":\"no bhāva/graha resolved — ranked on class-prior × strength × salience only\"},{\"signal_id\":\"2b08c05a-a434-4574-bec5-efe848595591\",\"headline\":\"yoga label: yoga name = Gola Yoga [ga_yoga]\",\"summary\":\"category=yoga_label | key=yoga_name | value_text=Gola Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other\",\"computed_salience\":0.68425,\"signal_type_class\":\"yoga\",\"signature_tier\":\"major\",\"bhava\":null,\"graha\":null,\"final_rank_score\":1.0467280839883333,\"rationale\":\"no bhāva/graha resolved — ranked on class-prior × strength × salience only\"},{\"signal_id\":\"9049ffa0-f0f3-49b0-865f-54e23dcee897\",\"headline\":\"yoga label: yoga name = Ubhayachari Yoga [ga_yoga]\",\"summary\":\"category=yoga_label | key=yoga_name | value_text=Ubhayachari Yoga | classical_citations=[{'chapter': 30, 'text_id': 'bphs'}, {'chapter': 41, 'text_id': 'saravali'}] | fire_reason=requires_pass | source_chunk_ids=[] | uncatalogued=False | yoga_group=other\",\"computed_salience\":0.68425,\"signal_type_class\":\"yoga\",\"signature_tier\":\"major\",\"bhava\":null,\"graha\":null,\"final_rank_score\":1.0467280839858333,\"rationale\":\"no bhāva/graha resolved — ranked on class-prior × strength × salience only\"},{\"signal_id\":\"c19c04cd-cb38-40ab-8eb6-64e7107dac5e\",\"headline\":\"lord in house per varga: lord placement = Mars_in_H12 [ga_structural]\",\"summary\":\"category=lord_in_house_per_varga | key=lord_placement | value_text=Mars_in_H12 | value_num=12 | ayanamsha_id=lahiri_chitrapaksha | house=1 | lord=Mars | lord_house_in_varga=12 | sign=Aries | uncatalogued=False | varga=D1\",\"computed_salience\":0.5382,\"signal_type_class\":\"composite_state\",\"signature_tier\":\"supporting\",\"bhava\":1,\"graha\":\"Mars\",\"final_rank_score\":0.9221498832100001,\"rationale\":\"bhāva 1 × career congruence 1.30; graha Mars × career affinity 1.20\"},{\"signal_id\":\"e53da988-e1f2-4ce2-bcfc-907fac5ba1c1\",\"headline\":\"MAR: aspect parashari given: house 6 = 1 [ga_structural]\",\"summary\":\"category=aspect_parashari_given | key=house_6 | value_num=1 | graha=MAR | target_house=6\",\"computed_salience\":0.548136,\"signal_type_class\":\"composite_state\",\"signature_tier\":\"supporting\",\"bhava\":6,\"graha\":\"MAR\",\"final_rank_score\":0.8826262320325001,\"rationale\":\"bhāva 6 × career congruence 1.50; graha MAR × career affinity 1.20\"},{\"signal_id\":\"77324d44-8e85-4822-b0b4-13a3060dab8d\",\"headline\":\"graha centrality: degree centrality = 1 [ga_structural]\",\"summary\":\"category=graha_centrality | key=degree_centrality | value_num=1 | connected_to=['Mars'] | degree_centrality=1 | varga=D1\",\"computed_salience\":1.166727,\"signal_type_class\":\"composite_state\",\"signature_tier\":\"chart_defining\",\"bhava\":null,\"graha\":null,\"final_rank_score\":0.8643889098974998,\"rationale\":\"no bhāva/graha resolved — ranked on class-prior × strength × salience only\"},{\"signal_id\":\"4f2147e5-d29c-4dba-849f-92a0ad031c0f\",\"headline\":\"convergence count: total edges = 1 [ga_structural]\",\"summary\":\"category=convergence_count | key=total_edges | value_num=1 | entity=graha | total_edges=1 | varga=D1\",\"computed_salience\":1.166727,\"signal_type_class\":\"composite_state\",\"signature_tier\":\"chart_defining\",\"bhava\":null,\"graha\":null,\"final_rank_score\":0.8643889098749998,\"rationale\":\"no bhāva/graha resolved — ranked on class-prior × strength × salience only\"},{\"signal_id\":\"8838f1b1-4aba-4ec6-b36c-14cfa5004930\",\"headline\":\"dispositor tree: tree position = JUP [ga_structural]\",\"summary\":\"category=dispositor_tree | key=tree_position | value_text=JUP | children=['KET_MEAN'] | depth=-1 | is_root=False | parent=JUP | sign=Pisces | varga=D1\",\"computed_salience\":1.166727,\"signal_type_class\":\"composite_state\",\"signature_tier\":\"chart_defining\",\"bhava\":null,\"graha\":null,\"final_rank_score\":0.8643889098724998,\"rationale\":\"no bhāva/graha resolved — ranked on class-prior × strength × salience only\"}],\"ranked_signals_note\":\"Composite-ranked over 400 'career'-tagged candidates with the career overlay (graha×bhāva×varga). See each row's rationale.\",\"question_lenses\":[{\"lens_id\":\"d355b948-3326-4385-88fe-0eab214008b6\",\"question_type\":\"career\",\"template_element_ids_jsonb\":{\"signal_ids\":[\"b102596c-42c6-4dc0-b276-c1bfa2cf5562\",\"9301b71b-c9c3-4b77-9251-281bc912d9b3\",\"5e8768fd-5f15-46d6-8e6f-4a3f745ae49a\",\"76e993b8-7289-48e0-b097-b80c8a881701\",\"936bed52-833f-4627-9d58-0372ab024353\"],\"signal_count\":2992,\"domains_matched\":[\"career\"],\"signal_ids_total\":2992,\"signal_ids_capped\":true},\"all_relevant_ranked_jsonb\":{\"total_count\":3012,\"ranked_signals\":[{\"salience\":2,\"signal_id\":\"b102596c-42c6-4dc0-b276-c1bfa2cf5562\",\"in_template\":true,\"source_l1_asset\":\"ga_divisionals\",\"signal_type_class\":\"varga_pattern\",\"non_template_significant\":false,\"headline\":\"D9 cross-check: Venus D1=exalted × D9=Friend → concordant_strong\",\"summary\":\"category=navamsha_d9_cross_check | key=venus | d1_dignity=exalted | d9_dignity=Friend | classification=concordant_strong | valence=benefic\",\"signature_tier\":\"chart_defining\"},{\"salience\":1.944545,\"signal_id\":\"9301b71b-c9c3-4b77-9251-281bc912d9b3\",\"in_template\":true,\"source_l1_asset\":\"ga_sensitive\",\"signal_type_class\":\"composite_state\",\"non_template_significant\":false,\"headline\":\"VEN: swamsa position: sign = Libra [ga_sensitive]\",\"summary\":\"category=swamsa_position | key=sign | value_text=Libra | graha=VEN\",\"signature_tier\":\"chart_defining\"},{\"salience\":1.944545,\"signal_id\":\"5e8768fd-5f15-46d6-8e6f-4a3f745ae49a\",\"in_template\":true,\"source_l1_asset\":\"ga_sensitive\",\"signal_type_class\":\"composite_state\",\"non_template_significant\":false,\"headline\":\"VEN: swamsa position: sign = Taurus [ga_sensitive]\",\"summary\":\"category=swamsa_position | key=sign | value_text=Taurus | graha=VEN\",\"signature_tier\":\"chart_defining\"},{\"salience\":1.944545,\"signal_id\":\"00ae552c-a194-43b4-8e7a-b0daecaed64c\",\"in_template\":false,\"source_l1_asset\":\"ga_sensitive\",\"signal_type_class\":\"composite_state\",\"non_template_significant\":true,\"headline\":\"VEN: esoteric point vishnu: sign = Libra [ga_sensitive]\",\"summary\":\"category=esoteric_point_vishnu | key=sign | value_text=Libra | graha=VEN\",\"signature_tier\":\"chart_defining\"},{\"salience\":1.944545,\"signal_id\":\"158047ac-f1fe-46ae-bb42-631b324a4dc1\",\"in_template\":false,\"source_l1_asset\":\"ga_sensitive\",\"signal_type_class\":\"composite_state\",\"non_template_significant\":true,\"headline\":\"VEN: special lagna: sign = Libra [ga_sensitive]\",\"summary\":\"category=special_lagna | key=sign | value_text=Libra | graha=VEN\",\"signature_tier\":\"chart_defining\"}],\"template_count\":2992,\"wildcard_count\":20},\"lens_template_version\":\"classical_v1.0\",\"points_only_assertion\":true,\"verification_pass_status\":\"documented_approximation\",\"computed_at\":\"2026-08-12 16:27:36.472808+00\",\"ranked_signals_total\":3012,\"ranked_signals_capped\":true},{\"lens_id\":\"75b6c7d9-68a6-4287-8e14-de6c774843f9\",\"question_type\":\"progeny\",\"template_element_ids_jsonb\":{\"signal_ids\":[\"b102596c-42c6-4dc0-b276-c1bfa2cf5562\",\"5e8768fd-5f15-46d6-8e6f-4a3f745ae49a\",\"a1b1862c-c6e2-4591-839e-de63bd156a3f\",\"9301b71b-c9c3-4b77-9251-281bc912d9b3\",\"5c167241-afef-445d-8547-5a28333b3210\"],\"signal_count\":5617,\"domains_matched\":[\"career\",\"relationship\"],\"signal_ids_total\":5617,\"signal_ids_capped\":true},\"all_relevant_ranked_jsonb\":{\"total_count\":5637,\"ranked_signals\":[{\"salience\":2,\"signal_id\":\"b102596c-42c6-4dc0-b276-c1bfa2cf5562\",\"in_template\":true,\"source_l1_asset\":\"ga_divisionals\",\"signal_type_class\":\"varga_pattern\",\"non_template_significant\":false,\"headline\":\"D9 cross-check: Venus D1=exalted × D9=Friend → concordant_strong\",\"summary\":\"category=navamsha_d9_cross_check | key=venus | d1_dignity=exalted | d9_dignity=Friend | classification=concordant_strong | valence=benefic\",\"signature_tier\":\"chart_defining\"},{\"salience\":1.944545,\"signal_id\":\"5e8768fd-5f15-46d6-8e6f-4a3f745ae49a\",\"in_template\":true,\"source_l1_asset\":\"ga_sensitive\",\"signal_type_class\":\"composite_state\",\"non_template_significant\":false,\"headline\":\"VEN: swamsa position: sign = Taurus [ga_sensitive]\",\"summary\":\"category=swamsa_position | key=sign | value_text=Taurus | graha=VEN\",\"signature_tier\":\"chart_defining\"},{\"salience\":1.944545,\"signal_id\":\"a1b1862c-c6e2-4591-839e-de63bd156a3f\",\"in_template\":true,\"source_l1_asset\":\"ga_sensitive\",\"signal_type_class\":\"composite_state\",\"non_template_significant\":false,\"headline\":\"VEN: midpoint: sign = Taurus [ga_sensitive]\",\"summary\":\"category=midpoint | key=sign | value_text=Taurus | graha=VEN\",\"signature_tier\":\"chart_defining\"},{\"salience\":1.944545,\"signal_id\":\"9301b71b-c9c3-4b77-9251-281bc912d9b3\",\"in_template\":true,\"source_l1_asset\":\"ga_sensitive\",\"signal_type_class\":\"composite_state\",\"non_template_significant\":false,\"headline\":\"VEN: swamsa position: sign = Libra [ga_sensitive]\",\"summary\":\"category=swamsa_position | key=sign | value_text=Libra | graha=VEN\",\"signature_tier\":\"chart_defining\"},{\"salience\":1.944545,\"signal_id\":\"5c167241-afef-445d-8547-5a28333b3210\",\"in_template\":true,\"source_l1_asset\":\"ga_sensitive\",\"signal_type_class\":\"composite_state\",\"non_template_significant\":false,\"headline\":\"VEN: bhrigu nadi point: sign = Libra [ga_sensitive]\",\"summary\":\"category=bhrigu_nadi_point | key=sign | value_text=Libra | graha=VEN\",\"signature_tier\":\"chart_defining\"}],\"template_count\":5617,\"wildcard_count\":20},\"lens_template_version\":\"classical_v1.0\",\"points_only_assertion\":true,\"verification_pass_status\":\"documented_approximation\",\"computed_at\":\"2026-08-12 16:27:36.472808+00\",\"ranked_signals_total\":5637,\"ranked_signals_capped\":true}],\"ranked_signals_per_lens_cap\":5,\"ranked_signals_per_lens_note\":\"Each question lens serves at most 5 ranked_signals (see per-lens ranked_signals_total for the true family size). Use response_format=full (cap 200/lens), max_signals_per_lens (≤100), or drill query_signals for the whole family.\",\"template_element_ids_per_lens_note\":\"Each lens's template_element_ids_jsonb.signal_ids is capped at 5 (see per-lens signal_ids_total / the sibling signal_count for the true family size). Use response_format=full or drill query_signals for the whole family.\",\"cdlm_cells\":[{\"cell_id\":\"46fb7693-be92-4201-a4af-ef87db06d54e\",\"domain_row\":\"career\",\"domain_col\":\"character\",\"domain_relationship_class\":null,\"shared_signal_count\":2063,\"net_linkage_strength\":908.27226,\"computed_linkage_strength\":1633.640805,\"dominant_linkage_rank_in_chart\":null,\"cell_remedy_priority_rank\":null,\"computed_at\":\"2026-08-07 14:43:00.513992+00\"},{\"cell_id\":\"c2c1811c-0bbd-4686-aca7-80421d678ca6\",\"domain_row\":\"career\",\"domain_col\":\"relationship\",\"domain_relationship_class\":null,\"shared_signal_count\":1109,\"net_linkage_strength\":457.518192,\"computed_linkage_strength\":808.022852,\"dominant_linkage_rank_in_chart\":null,\"cell_remedy_priority_rank\":null,\"computed_at\":\"2026-08-07 14:43:00.513992+00\"},{\"cell_id\":\"5ede6587-1d4c-4a95-9241-5541b75c29de\",\"domain_row\":\"career\",\"domain_col\":\"health\",\"domain_relationship_class\":null,\"shared_signal_count\":607,\"net_linkage_strength\":236.729657,\"computed_linkage_strength\":402.685416,\"dominant_linkage_rank_in_chart\":null,\"cell_remedy_priority_rank\":null,\"computed_at\":\"2026-08-07 14:43:00.513992+00\"},{\"cell_id\":\"d637fba8-c539-4dd2-8ffa-513f6318cdea\",\"domain_row\":\"career\",\"domain_col\":\"wealth\",\"domain_relationship_class\":null,\"shared_signal_count\":216,\"net_linkage_strength\":106.82053,\"computed_linkage_strength\":175.013292,\"dominant_linkage_rank_in_chart\":null,\"cell_remedy_priority_rank\":null,\"computed_at\":\"2026-08-07 14:43:00.513992+00\"},{\"cell_id\":\"f67ee0a4-bf0c-492d-8cf7-737ff001549d\",\"domain_row\":\"career\",\"domain_col\":\"spirituality\",\"domain_relationship_class\":null,\"shared_signal_count\":46,\"net_linkage_strength\":31.691997,\"computed_linkage_strength\":54.199404,\"dominant_linkage_rank_in_chart\":null,\"cell_remedy_priority_rank\":null,\"computed_at\":\"2026-08-07 14:43:00.513992+00\"}],\"signal_refs\":[{\"signal_id\":\"002cf4b5-e1b3-474a-8652-6f5305abce3e\",\"headline\":\"sensitive degree check: gandanta = not_gandanta [ga_structural]\",\"summary\":\"category=sensitive_degree_check | key=gandanta | value_text=not_gandanta | fired=False | gandanta_arc_deg=3.3333 | graha_deg_in_sign=27.3904 | sign=Aquarius\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"0032e774-39b9-4c59-9ad4-e89d0c73c83a\",\"headline\":\"ashtakavarga trikona shodhana: reduced bindus = 0 [ga_structural]\",\"summary\":\"category=ashtakavarga_trikona_shodhana | key=reduced_bindus | value_num=0\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"0032eca6-e106-4bec-9d3c-e9fa160bd2f5\",\"headline\":\"graha in house composite strength: bphs weighted = 0.0424 [ga_structural]\",\"summary\":\"category=graha_in_house_composite_strength | key=bphs_weighted | value_num=0.0424\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"0061cb7c-6292-4819-9735-013327925f22\",\"headline\":\"house strength classification rollup: classification = strong [ga_structural]\",\"summary\":\"category=house_strength_classification_rollup | key=classification | value_text=strong\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"0086fcd8-7302-4bbf-9fd2-7d6f70da393f\",\"headline\":\"panchadha maitri: compound relation = mitra [ga_structural]\",\"summary\":\"category=panchadha_maitri | key=compound_relation | value_text=mitra | compound_rule_id=860aa10a-1826-5ce1-b773-be5211c4b08e | natural_relation=neutral | source=Venus | target=Jupiter | temporal_relation=friend | temporal_rule_id=59eb315e-f111-549e-ba5c-060814557e34\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"00acf6e4-8b23-47a0-9612-691f19cb2261\",\"headline\":\"ashtakavarga pinda sarva per varga: D10 = 48 [ga_structural]\",\"summary\":\"category=ashtakavarga_pinda_sarva_per_varga | key=D10 | value_num=48\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"00e981dc-b018-4bb9-b042-dcec8dcac2cb\",\"headline\":\"aspect received by special point: aspected by JUP = 1 [ga_structural]\",\"summary\":\"category=aspect_received_by_special_point | key=aspected_by_JUP | value_num=1 | aspect_offset=5 | aspecting_graha=Jupiter | ayanamsha_id=lahiri_chitrapaksha | graha_house=10 | special_point=ARUDHA_A4 | strength=1.0 | target_house=2 | target_sign=Taurus | uncatalogued=False\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"00f501b9-8b5d-4636-a59a-5417194eb23b\",\"headline\":\"argala natal matrix: from sign 7 offset 7 = 0 [ga_structural]\",\"summary\":\"category=argala_natal_matrix | key=from_sign_7_offset_7 | value_num=0\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"00f55baf-f395-482b-8ba5-0e76e512bce7\",\"headline\":\"argala natal matrix: from sign 2 offset 3 = 0 [ga_structural]\",\"summary\":\"category=argala_natal_matrix | key=from_sign_2_offset_3 | value_num=0\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"010f6795-1727-4235-86c4-6f1a9970174b\",\"headline\":\"convergence count: total edges = 0 [ga_structural]\",\"summary\":\"category=convergence_count | key=total_edges | value_num=0 | entity=house | house=2 | total_edges=0 | varga=D10\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"01330efe-f299-4ec6-a68c-bee869dc3b6e\",\"headline\":\"significator path: shortest path length = 1 [ga_structural]\",\"summary\":\"category=significator_path | key=shortest_path_length | value_num=1 | classification=direct | from_graha=Saturn | path=['Saturn', 'Mercury'] | path_length=1 | to_graha=Mercury | varga=D1\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"013dd56a-1fe0-4faf-b738-29a14dd41274\",\"headline\":\"bhava cusps: placidus madhya = 149 [ga_structural]\",\"summary\":\"category=bhava_cusps | key=placidus_madhya | value_num=149\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"01b37978-7841-4078-8dff-897f64e4d290\",\"headline\":\"RAH_MEAN: graha position: sign lord = Mars [ga_structural]\",\"summary\":\"category=graha_position | key=sign_lord | value_text=Mars | graha=RAH_MEAN\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"01b9218f-49e8-42ec-b4ac-32d5704523aa\",\"headline\":\"argala natal matrix: from sign 2 offset 9 = 0 [ga_structural]\",\"summary\":\"category=argala_natal_matrix | key=from_sign_2_offset_9 | value_num=0\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"01e608a3-6275-49ea-a372-ab36070dcbb0\",\"headline\":\"karaka bhava concordance: concordance value = enemy [ga_structural]\",\"summary\":\"category=karaka_bhava_concordance | key=concordance_value | value_text=enemy | bhava_lord=SAT | bhava_num=10 | bhava_sign=Capricorn | concordance=enemy | natural_karaka=SUN | significance=authority | varga=D1\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"02181e09-c32f-4c1d-938f-1c99345c61a9\",\"headline\":\"karaka bhava concordance: concordance value = friendly [ga_structural]\",\"summary\":\"category=karaka_bhava_concordance | key=concordance_value | value_text=friendly | bhava_lord=MAR | bhava_num=1 | bhava_sign=Aries | concordance=friendly | natural_karaka=SUN | significance=self | varga=D9\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"021b00bb-ae95-431d-84bf-1c74c881d4c7\",\"headline\":\"aspect tajik: yamaya = 0.679 [ga_structural]\",\"summary\":\"category=aspect_tajik | key=yamaya | value_num=0.6795 | applying=True | deeptamsa_sum_deg=15.0 | house_diff=1 | orb_deg=0.6795 | orb_strength=1.0 | salience=high\",\"signature_tier\":\"background\"},{\"signal_id\":\"021fa1f4-fd32-4b91-905d-dee6c1e562d1\",\"headline\":\"graha in house composite strength: simple multiplication = 0.472 [ga_structural]\",\"summary\":\"category=graha_in_house_composite_strength | key=simple_multiplication | value_num=0.4725\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"025bccaa-082a-44e7-82eb-e8f41d50610d\",\"headline\":\"ashtakavarga kakshya boundary: end deg = 22.5 [ga_structural]\",\"summary\":\"category=ashtakavarga_kakshya_boundary | key=end_deg | value_num=22.5\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"0289c50f-b1f1-40e1-9bfe-9e0120903139\",\"headline\":\"bhava cusps: sripati start = 153 [ga_structural]\",\"summary\":\"category=bhava_cusps | key=sripati_start | value_num=152.9\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"02b313cc-235d-495d-a081-1dd8ae328f31\",\"headline\":\"D9 cross-check: Sun D1=neutral × D9=Friend → mixed\",\"summary\":\"category=navamsha_d9_cross_check | key=sun | d1_dignity=neutral | d9_dignity=Friend | classification=mixed | valence=neutral\",\"signature_tier\":\"major\"},{\"signal_id\":\"02c4f95a-5146-4105-96f8-83276f5a2859\",\"headline\":\"argala natal matrix: from sign 6 offset 11 = 1 [ga_structural]\",\"summary\":\"category=argala_natal_matrix | key=from_sign_6_offset_11 | value_num=1\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"0301db62-6252-4356-8bab-8227b9e7711c\",\"headline\":\"karaka bhava concordance: concordance value = concordant [ga_structural]\",\"summary\":\"category=karaka_bhava_concordance | key=concordance_value | value_text=concordant | bhava_lord=JUP | bhava_num=9 | bhava_sign=Sagittarius | concordance=concordant | natural_karaka=JUP | significance=luck | varga=D9\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"030c2493-829b-4ded-9c49-53a280d22ea8\",\"headline\":\"panchadha maitri: compound relation = sama [ga_structural]\",\"summary\":\"category=panchadha_maitri | key=compound_relation | value_text=sama | compound_rule_id=860aa10a-1826-5ce1-b773-be5211c4b08e | natural_relation=enemy | source=Sun | target=Saturn | temporal_relation=friend | temporal_rule_id=59eb315e-f111-549e-ba5c-060814557e34\",\"signature_tier\":\"supporting\"},{\"signal_id\":\"0334522a-9378-4db5-856d-2ffcaf9f5f00\",\"headline\":\"graha dignity per varga: dignity state = neutral [ga_structural]\",\"summary\":\"category=graha_dignity_per_varga | key=dignity_state | value_text=neutral | ayanamsha_id=lahiri_chitrapaksha | house=11 | sign=Aquarius | uncatalogued=False | varga=D1\",\"signature_tier\":\"supporting\",\"signature_tier_demoted_from\":\"major\"}],\"signal_id_refs\":[\"002cf4b5-e1b3-474a-8652-6f5305abce3e\",\"0032e774-39b9-4c59-9ad4-e89d0c73c83a\",\"0032eca6-e106-4bec-9d3c-e9fa160bd2f5\",\"0061cb7c-6292-4819-9735-013327925f22\",\"0086fcd8-7302-4bbf-9fd2-7d6f70da393f\",\"00acf6e4-8b23-47a0-9612-691f19cb2261\",\"00e981dc-b018-4bb9-b042-dcec8dcac2cb\",\"00f501b9-8b5d-4636-a59a-5417194eb23b\",\"00f55baf-f395-482b-8ba5-0e76e512bce7\",\"010f6795-1727-4235-86c4-6f1a9970174b\",\"01330efe-f299-4ec6-a68c-bee869dc3b6e\",\"013dd56a-1fe0-4faf-b738-29a14dd41274\",\"01b37978-7841-4078-8dff-897f64e4d290\",\"01b9218f-49e8-42ec-b4ac-32d5704523aa\",\"01e608a3-6275-49ea-a372-ab36070dcbb0\",\"02181e09-c32f-4c1d-938f-1c99345c61a9\",\"021b00bb-ae95-431d-84bf-1c74c881d4c7\",\"021fa1f4-fd32-4b91-905d-dee6c1e562d1\",\"025bccaa-082a-44e7-82eb-e8f41d50610d\",\"0289c50f-b1f1-40e1-9bfe-9e0120903139\",\"02b313cc-235d-495d-a081-1dd8ae328f31\",\"02c4f95a-5146-4105-96f8-83276f5a2859\",\"0301db62-6252-4356-8bab-8227b9e7711c\",\"030c2493-829b-4ded-9c49-53a280d22ea8\",\"0334522a-9378-4db5-856d-2ffcaf9f5f00\",\"035425f0-5187-4184-b615-2f07f8683104\",\"0354a5ec-e8fb-4fd1-815c-04d9ea02331f\",\"037c77d8-b2d1-46f3-9cd4-d3bfbe57c147\",\"037d3423-148e-4f0b-8cb6-48ede6f57a1a\",\"03852a12-4f09-4b28-8bc2-d8ab5aefff2d\",\"039b50e6-d736-40a7-8085-a158c9a7e8aa\",\"03cb4780-91bf-4d69-b4b9-7e12bc554c11\",\"03f70bb7-05ce-42fe-8d7e-d6ffc3d84be6\",\"03fc936a-1b2b-49e2-8d0a-6f124ff5824f\",\"04298990-8c39-4f30-9038-6d4a92ed87a0\",\"043c46ab-f57c-4190-ae3e-104f4f095e45\",\"046cdb65-e3a8-442f-a467-28e862542411\",\"047af546-c198-48c8-b130-a87ddf28fd06\",\"04a2a985-b501-41a1-a796-d2fbc93a4ae3\",\"04a62f90-78ff-47cd-ac44-30c89371cb22\",\"04b5df3f-5c58-4e6f-9dbf-8d0c37a816b4\",\"04b9169a-5dbe-47a3-b1a5-8797e80841e6\",\"0509705b-2f93-4382-9d37-967314b1551f\",\"050df5fa-66c2-4b17-a807-29fa729d4659\",\"051871c1-daa8-4377-a0d1-a83ad46640fa\",\"05257a84-8533-4fb6-8c6a-7a82cafb9c2d\",\"052ef87a-c18e-4948-946a-f92657d96e58\",\"0531c5f0-d270-4071-b033-6b76f108364c\",\"0575c45a-fc1e-4ca3-8170-13b66cda3275\",\"0595d296-c6f3-4444-b0da-5090acc156d9\",\"05a08b87-611d-4500-a6dd-852d88248f00\",\"05a521e8-468e-4b6b-9480-ef3445e08186\",\"05c55d40-8979-4aeb-9ca3-b8c2ae326305\",\"05ce1ab9-cb02-4f21-af46-290b7e72945c\",\"05e539eb-3850-4623-bd52-45fcff8c969f\",\"05f03b39-8a31-4ed7-8889-1b60127f6c3f\",\"05f60c82-0c08-4f53-9980-8fcfaa9798eb\",\"06034bba-5ce2-453f-9a91-541dfb194255\",\"063b2661-015b-46d2-be81-a7cd3f7e1dde\",\"069097de-afff-4c73-9438-7de2aaf208e5\",\"06988945-8f4c-4eac-abae-8ea3b22f150c\",\"06a4077b-13f7-46f0-a46e-6965bf161a00\",\"06ac1f70-e681-4b06-a4c7-899032afd497\",\"06b45eca-17a7-4309-b86a-4121b26a97e1\",\"06f04c43-1113-43ea-9545-c193f8f03023\",\"070a7ba5-b6de-477b-b0f3-5befc5833239\",\"072d67a6-6176-454c-ac0a-5a9694f5686e\",\"0768b5f6-0fc1-4aee-a999-891c875a8021\",\"07d08597-18bb-4c22-93d3-e01e1829754d\",\"07f78117-c3b6-4fd7-9ab0-c604d337c2d3\",\"0812268a-e99b-45e2-87f2-97bc3f3b48aa\",\"0872974c-b382-46f4-b162-ba2f61999b35\",\"089d593f-40c4-495a-9f7b-cc0515a8e8a3\",\"08b029c0-2455-4e61-a799-19f904896e25\",\"08fee2ba-7a81-44b0-8ec0-1727f96abc6d\",\"08ff3e6e-9b73-45a1-a429-4d9bffb0a5de\",\"091157e5-0654-4ef9-98d3-40a9aeb82b7d\",\"091d197d-5fce-400c-8f13-3bffb1b30c3b\",\"0921083b-b09d-4cff-bc34-f68ca7ef4c95\",\"0929d625-f372-4c8c-bc32-e6c57036dc65\",\"0947ff97-a038-45bb-bf95-9529c9b5a91d\",\"094e4847-05a4-48f6-b4f7-3b9fb723c3bf\",\"09a379ec-33f6-4e9b-abe8-d39e6c26158a\",\"09c69a9a-06c3-4f06-9cfb-639de89870c4\",\"09ea33a3-9634-4430-be72-e52469696134\",\"09f9474a-4f41-4151-a2ff-4592be71a12a\",\"0a4bf21a-f021-4233-abfa-d5bc21310c3d\",\"0a97c12f-1e2e-4089-97c1-32012eedb092\",\"0ae2ab8b-b725-4ebd-9b15-aa34df6c5e07\",\"0b0357bd-1426-4498-a512-0644ce134757\",\"0b2ca2bf-4ca0-401e-a44d-bd5bf0810e13\",\"0b917c0c-fa56-4062-956f-cf6159dbdcc2\",\"0bacf039-716d-4a97-bc9b-c9118b5ba352\",\"0be14b38-6839-4341-b788-466fb006af1a\",\"0c113d61-dfc7-4dbd-ace3-6a525771ce5e\",\"0c11dc4c-332b-41bc-932c-9e6db037bcdf\",\"0c48d791-f54b-4a7a-adea-dfc23eeebc40\",\"0c4dfc6c-c277-4b97-976a-36fac644fa99\",\"0c67a919-2ccb-49bc-aed2-41345716805e\",\"0c758e27-9450-45e3-8f06-8b3f842b91d4\",\"0ca73008-63ef-4f99-8e04-68d028bb050d\",\"0cdc19ca-682a-45af-bc1c-fe811a1eb0ac\",\"0cdd7a00-88cd-455f-b2f5-d04cd275ebe6\",\"0cef7024-f183-4658-89cd-955641caadc9\",\"0cf3d351-be54-4079-bcb2-ad551ac6a298\",\"0cf73beb-e860-45de-894f-36870b2fe07f\",\"0d156ba6-7a69-4e67-b155-44a946303ade\",\"0d9b17ba-c704-43a9-9d44-ff5680877956\",\"0dbcb12e-5e27-47e8-9277-fc3d143b6daf\",\"0dc547f2-21d4-4c0c-8a73-31b768882988\",\"0dc97ea3-20a7-41a3-a300-1aff5a788e99\",\"0e0dca94-8c8d-4db6-af28-2e9849a8f2f2\",\"0e263c24-4e8e-4d6a-a548-dc5d53ba22c2\",\"0e62faf3-0c7b-4538-b857-3a4ab5b31e11\",\"0e6c19ce-e55b-4a56-a010-0a4ee7a7f2dc\",\"0e726eff-d50b-43d7-92ef-d5d3a56f6347\",\"0e75e465-5e23-48ca-80b3-801480b72419\",\"0e777a8e-bf68-4b32-9eae-00ce069fb515\",\"0ea2092c-6f67-47a1-9dd3-342645c21f8e\",\"0ec723f8-c3bc-4d54-8fc4-3ff73bfd3a1f\",\"0ecb7a10-22fd-4c19-bc5a-a77b7222c399\",\"0ee4408e-1c27-4069-8b45-e1b6f157be3a\",\"0f22631f-cc33-4fbc-adf3-e34d84d7a4c8\",\"0f25a2b6-c381-4e3c-b07d-67ea11fdc2f6\",\"0f42a1d5-bf2b-4dda-9305-53ef07ce2797\",\"0f449740-d146-47b0-942c-eb6f7ee8649b\",\"0f649eb4-f5a8-4a08-8787-fabea8104705\",\"0f918ba8-3842-482b-a661-bebcb7982d90\",\"0f97a0d4-a9ea-4fd2-8d81-39fb56f99b34\",\"0f991cf4-92be-440a-bce1-b035d189814f\",\"0fe01fb4-8024-47ec-a9c7-5549b02e011f\",\"0fe41531-1731-4481-90a2-6131f994e2ba\",\"0fe723aa-3249-43e1-b3c7-538cf8d93dc9\",\"10075557-e22f-48a5-ac6b-fd777b71b5c9\",\"1011ac69-3c68-4e42-bb00-b8081654d443\",\"10535aef-3aa4-4e61-ab38-8f815b8455b2\",\"10820c9b-9c9c-4aa9-af44-5ce626d1053e\",\"109903cb-644f-46d0-bd9b-5b5803107e1d\",\"10f1e952-25ff-4c7c-829e-4fab66c17426\",\"111c698f-bd9e-4e14-8450-997545c12c9b\",\"1127712c-8d2b-489b-bae3-e22d69ec1c20\",\"112c2382-c43d-4b06-99b1-33496f9e55ae\",\"11333734-555a-4998-94aa-94eac94031fe\",\"11339dfc-cea7-4006-b7b0-2663365669a0\",\"1149caa1-2435-4381-8630-c3736318eaca\",\"11c1543a-a93b-4d1d-a5ff-f90d2489bace\",\"11cdf4ab-0265-4ff2-a40c-316ac7f78a00\",\"11d45ffa-aa8e-4932-b914-43c2e00d169c\",\"1216b156-a21c-4dc7-80a5-a24e21f32193\",\"12332da4-3113-46b3-a5de-d0e355f6df03\",\"1241b367-e77a-4747-8ff9-9653aa497837\",\"1261601b-3d93-4947-bc2c-48c09c5200dd\",\"1271aa97-e9ce-4d07-83aa-9ffba9fd86d0\",\"129e56cf-90c7-4793-9d7d-ed2b12c46348\",\"129fe1e6-c5a5-4a9c-92a3-cc3a9773f8e7\",\"12aa6b27-5ef6-4b32-8f0d-8fff5d11dcb4\",\"12b515af-5862-46c4-8d75-e191a401c5da\",\"12cee5e2-1903-41a2-901e-8aeda0d83a6e\",\"12e0b11a-f2a5-4a4e-9ba2-a9c81ac4a17a\",\"12e70e5f-5f1b-4b8d-9075-dacda1a2341f\",\"137d20e1-34d0-4d7b-91d4-38f235a56408\",\"139c079f-14d0-4a1c-9e57-6a75700acdd8\",\"13a2e515-4861-4457-aa75-a429227a3936\",\"14051679-ac01-4510-a7db-143867975965\",\"140d42a4-1534-490b-8822-c14d4baaee26\",\"145f9d56-cdad-4747-a6cd-6ded0fc91b9b\",\"14642b14-5fcd-41c3-b422-30aa083ef691\",\"14670ef1-173d-4226-9bf4-590a01f6c7a4\",\"14a62f5d-af38-4110-890d-606f80e162b3\",\"14bbedff-a57a-4641-b05b-228332cfda67\",\"14c44dfd-43f4-4ad5-8270-8d08a2546eec\",\"14c8c90b-6850-4830-9769-027f5d027e75\",\"14dd1bc7-c907-4d3f-ac06-270999e840e2\",\"14ffe3c9-3d4e-499e-af15-eb6afeedc176\",\"15238699-952a-48c6-bb98-e5f3c11d4048\",\"15305ebc-dce7-4ce9-909e-82d86792f811\",\"153a2ffe-0913-4619-8719-f0369808799d\",\"156d2b09-7279-4ee6-a9ea-fc06e9ebd2d1\",\"15733d43-029b-4c1f-955c-538f12a07982\",\"1589d039-a0bd-423f-859f-b1fa0ee4e633\",\"159f8ae7-f0f3-493a-9247-3161b37944d9\",\"15a9cc37-b1f2-486a-acbf-b153578ee91f\",\"15b4d269-ece1-41a4-be60-a4a248b48830\",\"15e8d269-efc9-4e42-9f6e-71c6dcedab9f\",\"16026c73-7fa8-4575-b8cb-aa7403592430\",\"161603e3-867d-4994-9259-efcdcd96e261\",\"163e7047-9a3b-4889-afeb-1aede3dfc545\",\"1672a463-80cd-420f-aa1e-f6bf5bde0585\",\"16922dea-1435-4263-92a8-3906b8ee19e6\",\"16c107c9-04a9-4d74-b0dd-c4505e22669a\",\"16f31e63-c3a9-4b57-8356-9806c613d2ea\",\"16f3aa83-2b52-4237-8dd2-9dc4ebe0bf6b\",\"1719b0f2-46c0-4c81-b9dc-96116a2748a2\",\"1752b554-3831-4342-8613-6c3cfa1eb059\",\"177d862b-8aa2-40ac-98fa-73990be2d23b\",\"17866c38-8aa2-46c5-9426-1b69d5621f3a\",\"178b7a60-0f30-4714-ac17-a568d64e2131\",\"17b495f3-3e6a-4de9-a4e0-918c46b542bb\",\"17ccd89c-7568-4eae-845a-ab884ebb9f94\",\"17d6d93e-7182-4b06-aba2-60765ca9dd02\"],\"signal_id_refs_total\":2988,\"signal_id_refs_capped\":true,\"lens_count\":2,\"lens_pagination\":{\"offset\":0,\"limit\":5,\"total\":2,\"returned_count\":2,\"more_available\":false},\"cdlm_cell_count\":5,\"drill_next\":\"marsys://tool/L2/query_signals\",\"response_format\":\"default\",\"provenance\":{\"tables\":[\"bodha_question_lenses\",\"bodha_cdlm_cells\"],\"model_mismatch_note\":\"bodha_question_lenses has no domain column; lenses are filtered at query-time via DOMAIN_TO_QUESTION_TYPES (source: bo_drishti.py::QUESTION_TYPE_CONFIG). Domain 'other' or unmapped domains return all lenses (no filter). Signal references derive from CDLM cells only.\",\"defect_001\":{\"claim_id\":\"DEFECT-001\",\"status\":\"RESOLVED\",\"note\":\"constituent_facts_array resolution against chart_facts, derived live for chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a: 6/72029 references orphaned (0%). All references resolve — DEFECT-001 no longer reproduces on this chart.\",\"as_of\":\"2026-08-15T11:07:33.796Z\",\"expires_on\":\"2026-08-16T11:07:33.796Z\",\"metrics\":{\"total_refs\":72029,\"orphan_refs\":6,\"orphan_pct\":0}},\"defect_001_note\":\"constituent_facts_array resolution against chart_facts, derived live for chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a: 6/72029 references orphaned (0%). All references resolve — DEFECT-001 no longer reproduces on this chart.\",\"hydration_note\":\"WP-1.2(e): signal_refs and lens ranked_signals carry headline/summary text (hydrated from bodha_msr_signals); 207 id(s) resolved to text. signature_tier on hydrated rows reflects the WP-1.2(d) serving cap.\",\"bounding_note\":\"response_format=default: shared_signal_ids_array omitted from cells (use shared_signal_count); signal_id_refs capped at 200 of 2988 total.\"}},\"is_error\":false,\"budget_kb_applied\":40,\"trim_report\":[{\"path\":\"content.signal_refs\",\"original_count\":200,\"kept_count\":25,\"reason\":\"content.signal_refs: trimmed to 25\",\"recover_via\":{\"instrument\":\"bodha_domain_reading_get\",\"hint\":\"call bodha_domain_reading_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \\\"content.signal_refs\\\"\"}}],\"drill_pointers\":[{\"instrument\":\"bodha_domain_reading_get\",\"hint\":\"call bodha_domain_reading_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \\\"content.signal_refs\\\"\"}]}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "domain": "career",
+          "ranked_signals": [
+            {
+              "signal_id": "64da120c-9ecb-44db-a8b8-7efac120e071",
+              "headline": "VEN: aspect parashari given: house 6 = 1 [ga_structural]",
+              "summary": "category=aspect_parashari_given | key=house_6 | value_num=1 | graha=VEN | target_house=6",
+              "computed_salience": 1.166727,
+              "signal_type_class": "composite_state",
+              "signature_tier": "chart_defining",
+              "bhava": 6,
+              "graha": "VEN",
+              "final_rank_score": 1.2808434552945458,
+              "rationale": "bhāva 6 × career congruence 1.50; graha VEN × career affinity 1.00"
+            },
+            {
+              "signal_id": "0334522a-9378-4db5-856d-2ffcaf9f5f00",
+              "headline": "graha dignity per varga: dignity state = neutral [ga_structural]",
+              "summary": "category=graha_dignity_per_varga | key=dignity_state | value_text=neutral | ayanamsha_id=lahiri_chitrapaksha | house=11 | sign=Aquarius | uncatalogued=False | varga=D1",
+              "computed_salience": 0.625968,
+              "signal_type_class": "composite_state",
+              "signature_tier": "supporting",
+              "signature_tier_demoted_from": "major",
+              "bhava": 11,
+              "graha": null,
+              "final_rank_score": 1.25460865664,
+              "rationale": "bhāva 11 × career congruence 1.40"
+            },
+            {
+              "signal_id": "47ffd748-3746-4b0a-a728-8c8e1b8a3b84",
+              "headline": "sensitive degree check: pushkara = pushkara [ga_structural]",
+              "summary": "category=sensitive_degree_check | key=pushkara | value_text=pushkara | value_num=6.111 | bhaga_orb_deg=6.1105 | fired=True | graha_deg_in_sign=17.8895 | in_pushkara_navamsa=True | on_pushkara_bhaga=False | pushkara_bhaga_deg=24.0 | pushkara_navamsa_start_deg=16.6667",
+              "computed_salience": 0.59616,
+              "signal_type_class": "composite_state",
+              "signature_tier": "supporting",
+              "bhava": null,
+              "graha": null,
+              "final_rank_score": 1.1895320535758336,
+              "rationale": "no bhāva/graha resolved — ranked on class-prior × strength × salience only"
+            },
+            {
+              "signal_id": "4db15ace-f371-4b50-b2f9-3e06ab71b9fc",
+              "headline": "sensitive degree check: gandanta = gandanta [ga_structural]",
+              "summary": "category=sensitive_degree_check | key=gandanta | value_text=gandanta | value_num=3.178 | distance_to_junction_deg=3.1781 | fired=True | gandanta_arc_deg=3.3333 | gandanta_zone=end_of_Pisces | graha_deg_in_sign=26.8219 | sign=Pisces",
+              "computed_salience": 0.548136,
+              "signal_type_class": "composite_state",
+              "signature_tier": "supporting",
+              "bhava": null,
+              "graha": null,
+              "final_rank_score": 1.1895160454908336,
+              "rationale": "no bhāva/graha resolved — ranked on class-prior × strength × salience only"
+            },
+            {
+              "signal_id": "1a364e67-d499-41d1-a153-fbd6697bc7c3",
+              "headline": "graha dignity per varga: dignity state = neutral [ga_structural]",
+              "summary": "category=graha_dignity_per_varga | key=dignity_state | value_text=neutral | ayanamsha_id=lahiri_chitrapaksha | house=1 | sign=Aries | uncatalogued=False | varga=D1",
+              "computed_salience": 0.5382,
+              "signal_type_class": "composite_state",
+              "signature_tier": "supporting",
+              "bhava": 1,
+              "graha": null,
+              "final_rank_score": 1.1493794000175002,
+              "rationale": "bhāva 1 × career congruence 1.30"
+            },
+            {
+              "signal_id": "156d2b09-7279-4ee6-a9ea-fc06e9ebd2d1",
+              "headline": "net argala per varga: net argala = -2 [ga_structural]",
+              "summary": "category=net_argala_per_varga | key=net_argala | value_num=-2 | house=1 | net_argala=-2.0 | varga=D1",
+              "computed_salience": 0.5382,
+              "signal_type_class": "composite_state",
+              "signature_tier": "supporting",
+              "bhava": 1,
+              "graha": null,
+              "final_rank_score": 1.1493794000125002,
+              "rationale": "bhāva 1 × career congruence 1.30"
+            },
+            {
+              "signal_id": "7e2ee9d9-7b69-4047-ac04-2be92488e4ef",
+              "headline": "convergence count: total edges = 1 [ga_structural]",
+              "summary": "category=convergence_count | key=total_edges | value_num=1 | entity=house | house=1 | total_edges=1 | varga=D1",
+              "computed_salience": 0.5382,
+              "signal_type_class": "composite_state",
+              "signature_tier": "supporting",
+              "bhava": 1,
+              "graha": null,
+              "final_rank_score": 1.1493794000075002,
+              "rationale": "bhāva 1 × career congruence 1.30"
+            },
+            {
+              "signal_id": "d9e07116-7c31-4e12-a85b-078ae7135235",
+              "headline": "yoga label: yoga name = Yuga Yoga [ga_yoga]",
+              "summary": "category=yoga_label | key=yoga_name | value_text=Yuga Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other",
+              "computed_salience": 0.68425,
+              "signal_type_class": "yoga",
+              "signature_tier": "major",
+              "bhava": null,
+              "graha": null,
+              "final_rank_score": 1.0467280840033333,
+              "rationale": "no bhāva/graha resolved — ranked on class-prior × strength × salience only"
+            },
+            {
+              "signal_id": "6eff2d07-a56f-4226-a258-e27463e2d2e4",
+              "headline": "yoga label: yoga name = Shoola Yoga [ga_yoga]",
+              "summary": "category=yoga_label | key=yoga_name | value_text=Shoola Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other",
+              "computed_salience": 0.68425,
+              "signal_type_class": "yoga",
+              "signature_tier": "major",
+              "bhava": null,
+              "graha": null,
+              "final_rank_score": 1.0467280840008333,
+              "rationale": "no bhāva/graha resolved — ranked on class-prior × strength × salience only"
+            },
+            {
+              "signal_id": "a4fe6d01-b533-4e0d-8fce-418fad6386fd",
+              "headline": "yoga label: yoga name = Vesi Yoga [ga_yoga]",
+              "summary": "category=yoga_label | key=yoga_name | value_text=Vesi Yoga | classical_citations=[{'chapter': 30, 'text_id': 'bphs'}, {'chapter': 41, 'text_id': 'saravali'}] | fire_reason=requires_pass | source_chunk_ids=[] | uncatalogued=False | yoga_group=other",
+              "computed_salience": 0.68425,
+              "signal_type_class": "yoga",
+              "signature_tier": "major",
+              "bhava": null,
+              "graha": null,
+              "final_rank_score": 1.0467280839983333,
+              "rationale": "no bhāva/graha resolved — ranked on class-prior × strength × salience only"
+            },
+            {
+              "signal_id": "b9c18fcb-2694-4f3f-9be0-0ff9711b8542",
+              "headline": "yoga label: yoga name = Kedara Yoga [ga_yoga]",
+              "summary": "category=yoga_label | key=yoga_name | value_text=Kedara Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other",
+              "computed_salience": 0.68425,
+              "signal_type_class": "yoga",
+              "signature_tier": "major",
+              "bhava": null,
+              "graha": null,
+              "final_rank_score": 1.0467280839958333,
+              "rationale": "no bhāva/graha resolved — ranked on class-prior × strength × salience only"
+            },
+            {
+              "signal_id": "ae67e963-7641-4bdf-89c1-0ee09e883ecd",
+              "headline": "yoga label: yoga name = Pasha Yoga [ga_yoga]",
+              "summary": "category=yoga_label | key=yoga_name | value_text=Pasha Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other",
+              "computed_salience": 0.68425,
+              "signal_type_class": "yoga",
+              "signature_tier": "major",
+              "bhava": null,
+              "graha": null,
+              "final_rank_score": 1.0467280839933333,
+              "rationale": "no bhāva/graha resolved — ranked on class-prior × strength × salience only"
+            },
+            {
+              "signal_id": "e8eb492c-02f7-44cf-9b21-d483a3adff18",
+              "headline": "yoga label: yoga name = Vasi Yoga [ga_yoga]",
+              "summary": "category=yoga_label | key=yoga_name | value_text=Vasi Yoga | classical_citations=[{'chapter': 30, 'text_id': 'bphs'}, {'chapter': 41, 'text_id': 'saravali'}] | fire_reason=requires_pass | source_chunk_ids=[] | uncatalogued=False | yoga_group=other",
+              "computed_salience": 0.68425,
+              "signal_type_class": "yoga",
+              "signature_tier": "major",
+              "bhava": null,
+              "graha": null,
+              "final_rank_score": 1.0467280839908333,
+              "rationale": "no bhāva/graha resolved — ranked on class-prior × strength × salience only"
+            },
+            {
+              "signal_id": "2b08c05a-a434-4574-bec5-efe848595591",
+              "headline": "yoga label: yoga name = Gola Yoga [ga_yoga]",
+              "summary": "category=yoga_label | key=yoga_name | value_text=Gola Yoga | classical_citations=[{'chapter': 35, 'text_id': 'bphs'}] | fire_reason=5_distinct_signs | source_chunk_ids=[] | uncatalogued=False | yoga_group=other",
+              "computed_salience": 0.68425,
+              "signal_type_class": "yoga",
+              "signature_tier": "major",
+              "bhava": null,
+              "graha": null,
+              "final_rank_score": 1.0467280839883333,
+              "rationale": "no bhāva/graha resolved — ranked on class-prior × strength × salience only"
+            },
+            {
+              "signal_id": "9049ffa0-f0f3-49b0-865f-54e23dcee897",
+              "headline": "yoga label: yoga name = Ubhayachari Yoga [ga_yoga]",
+              "summary": "category=yoga_label | key=yoga_name | value_text=Ubhayachari Yoga | classical_citations=[{'chapter': 30, 'text_id': 'bphs'}, {'chapter': 41, 'text_id': 'saravali'}] | fire_reason=requires_pass | source_chunk_ids=[] | uncatalogued=False | yoga_group=other",
+              "computed_salience": 0.68425,
+              "signal_type_class": "yoga",
+              "signature_tier": "major",
+              "bhava": null,
+              "graha": null,
+              "final_rank_score": 1.0467280839858333,
+              "rationale": "no bhāva/graha resolved — ranked on class-prior × strength × salience only"
+            },
+            {
+              "signal_id": "c19c04cd-cb38-40ab-8eb6-64e7107dac5e",
+              "headline": "lord in house per varga: lord placement = Mars_in_H12 [ga_structural]",
+              "summary": "category=lord_in_house_per_varga | key=lord_placement | value_text=Mars_in_H12 | value_num=12 | ayanamsha_id=lahiri_chitrapaksha | house=1 | lord=Mars | lord_house_in_varga=12 | sign=Aries | uncatalogued=False | varga=D1",
+              "computed_salience": 0.5382,
+              "signal_type_class": "composite_state",
+              "signature_tier": "supporting",
+              "bhava": 1,
+              "graha": "Mars",
+              "final_rank_score": 0.9221498832100001,
+              "rationale": "bhāva 1 × career congruence 1.30; graha Mars × career affinity 1.20"
+            },
+            {
+              "signal_id": "e53da988-e1f2-4ce2-bcfc-907fac5ba1c1",
+              "headline": "MAR: aspect parashari given: house 6 = 1 [ga_structural]",
+              "summary": "category=aspect_parashari_given | key=house_6 | value_num=1 | graha=MAR | target_house=6",
+              "computed_salience": 0.548136,
+              "signal_type_class": "composite_state",
+              "signature_tier": "supporting",
+              "bhava": 6,
+              "graha": "MAR",
+              "final_rank_score": 0.8826262320325001,
+              "rationale": "bhāva 6 × career congruence 1.50; graha MAR × career affinity 1.20"
+            },
+            {
+              "signal_id": "77324d44-8e85-4822-b0b4-13a3060dab8d",
+              "headline": "graha centrality: degree centrality = 1 [ga_structural]",
+              "summary": "category=graha_centrality | key=degree_centrality | value_num=1 | connected_to=['Mars'] | degree_centrality=1 | varga=D1",
+              "computed_salience": 1.166727,
+              "signal_type_class": "composite_state",
+              "signature_tier": "chart_defining",
+              "bhava": null,
+              "graha": null,
+              "final_rank_score": 0.8643889098974998,
+              "rationale": "no bhāva/graha resolved — ranked on class-prior × strength × salience only"
+            },
+            {
+              "signal_id": "4f2147e5-d29c-4dba-849f-92a0ad031c0f",
+              "headline": "convergence count: total edges = 1 [ga_structural]",
+              "summary": "category=convergence_count | key=total_edges | value_num=1 | entity=graha | total_edges=1 | varga=D1",
+              "computed_salience": 1.166727,
+              "signal_type_class": "composite_state",
+              "signature_tier": "chart_defining",
+              "bhava": null,
+              "graha": null,
+              "final_rank_score": 0.8643889098749998,
+              "rationale": "no bhāva/graha resolved — ranked on class-prior × strength × salience only"
+            },
+            {
+              "signal_id": "8838f1b1-4aba-4ec6-b36c-14cfa5004930",
+              "headline": "dispositor tree: tree position = JUP [ga_structural]",
+              "summary": "category=dispositor_tree | key=tree_position | value_text=JUP | children=['KET_MEAN'] | depth=-1 | is_root=False | parent=JUP | sign=Pisces | varga=D1",
+              "computed_salience": 1.166727,
+              "signal_type_class": "composite_state",
+              "signature_tier": "chart_defining",
+              "bhava": null,
+              "graha": null,
+              "final_rank_score": 0.8643889098724998,
+              "rationale": "no bhāva/graha resolved — ranked on class-prior × strength × salience only"
+            }
+          ],
+          "ranked_signals_note": "Composite-ranked over 400 'career'-tagged candidates with the career overlay (graha×bhāva×varga). See each row's rationale.",
+          "question_lenses": [
+            {
+              "lens_id": "d355b948-3326-4385-88fe-0eab214008b6",
+              "question_type": "career",
+              "template_element_ids_jsonb": {
+                "signal_ids": [
+                  "b102596c-42c6-4dc0-b276-c1bfa2cf5562",
+                  "9301b71b-c9c3-4b77-9251-281bc912d9b3",
+                  "5e8768fd-5f15-46d6-8e6f-4a3f745ae49a",
+                  "76e993b8-7289-48e0-b097-b80c8a881701",
+                  "936bed52-833f-4627-9d58-0372ab024353"
+                ],
+                "signal_count": 2992,
+                "domains_matched": [
+                  "career"
+                ],
+                "signal_ids_total": 2992,
+                "signal_ids_capped": true
+              },
+              "all_relevant_ranked_jsonb": {
+                "total_count": 3012,
+                "ranked_signals": [
+                  {
+                    "salience": 2,
+                    "signal_id": "b102596c-42c6-4dc0-b276-c1bfa2cf5562",
+                    "in_template": true,
+                    "source_l1_asset": "ga_divisionals",
+                    "signal_type_class": "varga_pattern",
+                    "non_template_significant": false,
+                    "headline": "D9 cross-check: Venus D1=exalted × D9=Friend → concordant_strong",
+                    "summary": "category=navamsha_d9_cross_check | key=venus | d1_dignity=exalted | d9_dignity=Friend | classification=concordant_strong | valence=benefic",
+                    "signature_tier": "chart_defining"
+                  },
+                  {
+                    "salience": 1.944545,
+                    "signal_id": "9301b71b-c9c3-4b77-9251-281bc912d9b3",
+                    "in_template": true,
+                    "source_l1_asset": "ga_sensitive",
+                    "signal_type_class": "composite_state",
+                    "non_template_significant": false,
+                    "headline": "VEN: swamsa position: sign = Libra [ga_sensitive]",
+                    "summary": "category=swamsa_position | key=sign | value_text=Libra | graha=VEN",
+                    "signature_tier": "chart_defining"
+                  },
+                  {
+                    "salience": 1.944545,
+                    "signal_id": "5e8768fd-5f15-46d6-8e6f-4a3f745ae49a",
+                    "in_template": true,
+                    "source_l1_asset": "ga_sensitive",
+                    "signal_type_class": "composite_state",
+                    "non_template_significant": false,
+                    "headline": "VEN: swamsa position: sign = Taurus [ga_sensitive]",
+                    "summary": "category=swamsa_position | key=sign | value_text=Taurus | graha=VEN",
+                    "signature_tier": "chart_defining"
+                  },
+                  {
+                    "salience": 1.944545,
+                    "signal_id": "00ae552c-a194-43b4-8e7a-b0daecaed64c",
+                    "in_template": false,
+                    "source_l1_asset": "ga_sensitive",
+                    "signal_type_class": "composite_state",
+                    "non_template_significant": true,
+                    "headline": "VEN: esoteric point vishnu: sign = Libra [ga_sensitive]",
+                    "summary": "category=esoteric_point_vishnu | key=sign | value_text=Libra | graha=VEN",
+                    "signature_tier": "chart_defining"
+                  },
+                  {
+                    "salience": 1.944545,
+                    "signal_id": "158047ac-f1fe-46ae-bb42-631b324a4dc1",
+                    "in_template": false,
+                    "source_l1_asset": "ga_sensitive",
+                    "signal_type_class": "composite_state",
+                    "non_template_significant": true,
+                    "headline": "VEN: special lagna: sign = Libra [ga_sensitive]",
+                    "summary": "category=special_lagna | key=sign | value_text=Libra | graha=VEN",
+                    "signature_tier": "chart_defining"
+                  }
+                ],
+                "template_count": 2992,
+                "wildcard_count": 20
+              },
+              "lens_template_version": "classical_v1.0",
+              "points_only_assertion": true,
+              "verification_pass_status": "documented_approximation",
+              "computed_at": "2026-08-12 16:27:36.472808+00",
+              "ranked_signals_total": 3012,
+              "ranked_signals_capped": true
+            },
+            {
+              "lens_id": "75b6c7d9-68a6-4287-8e14-de6c774843f9",
+              "question_type": "progeny",
+              "template_element_ids_jsonb": {
+                "signal_ids": [
+                  "b102596c-42c6-4dc0-b276-c1bfa2cf5562",
+                  "5e8768fd-5f15-46d6-8e6f-4a3f745ae49a",
+                  "a1b1862c-c6e2-4591-839e-de63bd156a3f",
+                  "9301b71b-c9c3-4b77-9251-281bc912d9b3",
+                  "5c167241-afef-445d-8547-5a28333b3210"
+                ],
+                "signal_count": 5617,
+                "domains_matched": [
+                  "career",
+                  "relationship"
+                ],
+                "signal_ids_total": 5617,
+                "signal_ids_capped": true
+              },
+              "all_relevant_ranked_jsonb": {
+                "total_count": 5637,
+                "ranked_signals": [
+                  {
+                    "salience": 2,
+                    "signal_id": "b102596c-42c6-4dc0-b276-c1bfa2cf5562",
+                    "in_template": true,
+                    "source_l1_asset": "ga_divisionals",
+                    "signal_type_class": "varga_pattern",
+                    "non_template_significant": false,
+                    "headline": "D9 cross-check: Venus D1=exalted × D9=Friend → concordant_strong",
+                    "summary": "category=navamsha_d9_cross_check | key=venus | d1_dignity=exalted | d9_dignity=Friend | classification=concordant_strong | valence=benefic",
+                    "signature_tier": "chart_defining"
+                  },
+                  {
+                    "salience": 1.944545,
+                    "signal_id": "5e8768fd-5f15-46d6-8e6f-4a3f745ae49a",
+                    "in_template": true,
+                    "source_l1_asset": "ga_sensitive",
+                    "signal_type_class": "composite_state",
+                    "non_template_significant": false,
+                    "headline": "VEN: swamsa position: sign = Taurus [ga_sensitive]",
+                    "summary": "category=swamsa_position | key=sign | value_text=Taurus | graha=VEN",
+                    "signature_tier": "chart_defining"
+                  },
+                  {
+                    "salience": 1.944545,
+                    "signal_id": "a1b1862c-c6e2-4591-839e-de63bd156a3f",
+                    "in_template": true,
+                    "source_l1_asset": "ga_sensitive",
+                    "signal_type_class": "composite_state",
+                    "non_template_significant": false,
+                    "headline": "VEN: midpoint: sign = Taurus [ga_sensitive]",
+                    "summary": "category=midpoint | key=sign | value_text=Taurus | graha=VEN",
+                    "signature_tier": "chart_defining"
+                  },
+                  {
+                    "salience": 1.944545,
+                    "signal_id": "9301b71b-c9c3-4b77-9251-281bc912d9b3",
+                    "in_template": true,
+                    "source_l1_asset": "ga_sensitive",
+                    "signal_type_class": "composite_state",
+                    "non_template_significant": false,
+                    "headline": "VEN: swamsa position: sign = Libra [ga_sensitive]",
+                    "summary": "category=swamsa_position | key=sign | value_text=Libra | graha=VEN",
+                    "signature_tier": "chart_defining"
+                  },
+                  {
+                    "salience": 1.944545,
+                    "signal_id": "5c167241-afef-445d-8547-5a28333b3210",
+                    "in_template": true,
+                    "source_l1_asset": "ga_sensitive",
+                    "signal_type_class": "composite_state",
+                    "non_template_significant": false,
+                    "headline": "VEN: bhrigu nadi point: sign = Libra [ga_sensitive]",
+                    "summary": "category=bhrigu_nadi_point | key=sign | value_text=Libra | graha=VEN",
+                    "signature_tier": "chart_defining"
+                  }
+                ],
+                "template_count": 5617,
+                "wildcard_count": 20
+              },
+              "lens_template_version": "classical_v1.0",
+              "points_only_assertion": true,
+              "verification_pass_status": "documented_approximation",
+              "computed_at": "2026-08-12 16:27:36.472808+00",
+              "ranked_signals_total": 5637,
+              "ranked_signals_capped": true
+            }
+          ],
+          "ranked_signals_per_lens_cap": 5,
+          "ranked_signals_per_lens_note": "Each question lens serves at most 5 ranked_signals (see per-lens ranked_signals_total for the true family size). Use response_format=full (cap 200/lens), max_signals_per_lens (≤100), or drill query_signals for the whole family.",
+          "template_element_ids_per_lens_note": "Each lens's template_element_ids_jsonb.signal_ids is capped at 5 (see per-lens signal_ids_total / the sibling signal_count for the true family size). Use response_format=full or drill query_signals for the whole family.",
+          "cdlm_cells": [
+            {
+              "cell_id": "46fb7693-be92-4201-a4af-ef87db06d54e",
+              "domain_row": "career",
+              "domain_col": "character",
+              "domain_relationship_class": null,
+              "shared_signal_count": 2063,
+              "net_linkage_strength": 908.27226,
+              "computed_linkage_strength": 1633.640805,
+              "dominant_linkage_rank_in_chart": null,
+              "cell_remedy_priority_rank": null,
+              "computed_at": "2026-08-07 14:43:00.513992+00"
+            },
+            {
+              "cell_id": "c2c1811c-0bbd-4686-aca7-80421d678ca6",
+              "domain_row": "career",
+              "domain_col": "relationship",
+              "domain_relationship_class": null,
+              "shared_signal_count": 1109,
+              "net_linkage_strength": 457.518192,
+              "computed_linkage_strength": 808.022852,
+              "dominant_linkage_rank_in_chart": null,
+              "cell_remedy_priority_rank": null,
+              "computed_at": "2026-08-07 14:43:00.513992+00"
+            },
+            {
+              "cell_id": "5ede6587-1d4c-4a95-9241-5541b75c29de",
+              "domain_row": "career",
+              "domain_col": "health",
+              "domain_relationship_class": null,
+              "shared_signal_count": 607,
+              "net_linkage_strength": 236.729657,
+              "computed_linkage_strength": 402.685416,
+              "dominant_linkage_rank_in_chart": null,
+              "cell_remedy_priority_rank": null,
+              "computed_at": "2026-08-07 14:43:00.513992+00"
+            },
+            {
+              "cell_id": "d637fba8-c539-4dd2-8ffa-513f6318cdea",
+              "domain_row": "career",
+              "domain_col": "wealth",
+              "domain_relationship_class": null,
+              "shared_signal_count": 216,
+              "net_linkage_strength": 106.82053,
+              "computed_linkage_strength": 175.013292,
+              "dominant_linkage_rank_in_chart": null,
+              "cell_remedy_priority_rank": null,
+              "computed_at": "2026-08-07 14:43:00.513992+00"
+            },
+            {
+              "cell_id": "f67ee0a4-bf0c-492d-8cf7-737ff001549d",
+              "domain_row": "career",
+              "domain_col": "spirituality",
+              "domain_relationship_class": null,
+              "shared_signal_count": 46,
+              "net_linkage_strength": 31.691997,
+              "computed_linkage_strength": 54.199404,
+              "dominant_linkage_rank_in_chart": null,
+              "cell_remedy_priority_rank": null,
+              "computed_at": "2026-08-07 14:43:00.513992+00"
+            }
+          ],
+          "signal_refs": [
+            {
+              "signal_id": "002cf4b5-e1b3-474a-8652-6f5305abce3e",
+              "headline": "sensitive degree check: gandanta = not_gandanta [ga_structural]",
+              "summary": "category=sensitive_degree_check | key=gandanta | value_text=not_gandanta | fired=False | gandanta_arc_deg=3.3333 | graha_deg_in_sign=27.3904 | sign=Aquarius",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "0032e774-39b9-4c59-9ad4-e89d0c73c83a",
+              "headline": "ashtakavarga trikona shodhana: reduced bindus = 0 [ga_structural]",
+              "summary": "category=ashtakavarga_trikona_shodhana | key=reduced_bindus | value_num=0",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "0032eca6-e106-4bec-9d3c-e9fa160bd2f5",
+              "headline": "graha in house composite strength: bphs weighted = 0.0424 [ga_structural]",
+              "summary": "category=graha_in_house_composite_strength | key=bphs_weighted | value_num=0.0424",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "0061cb7c-6292-4819-9735-013327925f22",
+              "headline": "house strength classification rollup: classification = strong [ga_structural]",
+              "summary": "category=house_strength_classification_rollup | key=classification | value_text=strong",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "0086fcd8-7302-4bbf-9fd2-7d6f70da393f",
+              "headline": "panchadha maitri: compound relation = mitra [ga_structural]",
+              "summary": "category=panchadha_maitri | key=compound_relation | value_text=mitra | compound_rule_id=860aa10a-1826-5ce1-b773-be5211c4b08e | natural_relation=neutral | source=Venus | target=Jupiter | temporal_relation=friend | temporal_rule_id=59eb315e-f111-549e-ba5c-060814557e34",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "00acf6e4-8b23-47a0-9612-691f19cb2261",
+              "headline": "ashtakavarga pinda sarva per varga: D10 = 48 [ga_structural]",
+              "summary": "category=ashtakavarga_pinda_sarva_per_varga | key=D10 | value_num=48",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "00e981dc-b018-4bb9-b042-dcec8dcac2cb",
+              "headline": "aspect received by special point: aspected by JUP = 1 [ga_structural]",
+              "summary": "category=aspect_received_by_special_point | key=aspected_by_JUP | value_num=1 | aspect_offset=5 | aspecting_graha=Jupiter | ayanamsha_id=lahiri_chitrapaksha | graha_house=10 | special_point=ARUDHA_A4 | strength=1.0 | target_house=2 | target_sign=Taurus | uncatalogued=False",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "00f501b9-8b5d-4636-a59a-5417194eb23b",
+              "headline": "argala natal matrix: from sign 7 offset 7 = 0 [ga_structural]",
+              "summary": "category=argala_natal_matrix | key=from_sign_7_offset_7 | value_num=0",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "00f55baf-f395-482b-8ba5-0e76e512bce7",
+              "headline": "argala natal matrix: from sign 2 offset 3 = 0 [ga_structural]",
+              "summary": "category=argala_natal_matrix | key=from_sign_2_offset_3 | value_num=0",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "010f6795-1727-4235-86c4-6f1a9970174b",
+              "headline": "convergence count: total edges = 0 [ga_structural]",
+              "summary": "category=convergence_count | key=total_edges | value_num=0 | entity=house | house=2 | total_edges=0 | varga=D10",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "01330efe-f299-4ec6-a68c-bee869dc3b6e",
+              "headline": "significator path: shortest path length = 1 [ga_structural]",
+              "summary": "category=significator_path | key=shortest_path_length | value_num=1 | classification=direct | from_graha=Saturn | path=['Saturn', 'Mercury'] | path_length=1 | to_graha=Mercury | varga=D1",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "013dd56a-1fe0-4faf-b738-29a14dd41274",
+              "headline": "bhava cusps: placidus madhya = 149 [ga_structural]",
+              "summary": "category=bhava_cusps | key=placidus_madhya | value_num=149",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "01b37978-7841-4078-8dff-897f64e4d290",
+              "headline": "RAH_MEAN: graha position: sign lord = Mars [ga_structural]",
+              "summary": "category=graha_position | key=sign_lord | value_text=Mars | graha=RAH_MEAN",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "01b9218f-49e8-42ec-b4ac-32d5704523aa",
+              "headline": "argala natal matrix: from sign 2 offset 9 = 0 [ga_structural]",
+              "summary": "category=argala_natal_matrix | key=from_sign_2_offset_9 | value_num=0",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "01e608a3-6275-49ea-a372-ab36070dcbb0",
+              "headline": "karaka bhava concordance: concordance value = enemy [ga_structural]",
+              "summary": "category=karaka_bhava_concordance | key=concordance_value | value_text=enemy | bhava_lord=SAT | bhava_num=10 | bhava_sign=Capricorn | concordance=enemy | natural_karaka=SUN | significance=authority | varga=D1",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "02181e09-c32f-4c1d-938f-1c99345c61a9",
+              "headline": "karaka bhava concordance: concordance value = friendly [ga_structural]",
+              "summary": "category=karaka_bhava_concordance | key=concordance_value | value_text=friendly | bhava_lord=MAR | bhava_num=1 | bhava_sign=Aries | concordance=friendly | natural_karaka=SUN | significance=self | varga=D9",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "021b00bb-ae95-431d-84bf-1c74c881d4c7",
+              "headline": "aspect tajik: yamaya = 0.679 [ga_structural]",
+              "summary": "category=aspect_tajik | key=yamaya | value_num=0.6795 | applying=True | deeptamsa_sum_deg=15.0 | house_diff=1 | orb_deg=0.6795 | orb_strength=1.0 | salience=high",
+              "signature_tier": "background"
+            },
+            {
+              "signal_id": "021fa1f4-fd32-4b91-905d-dee6c1e562d1",
+              "headline": "graha in house composite strength: simple multiplication = 0.472 [ga_structural]",
+              "summary": "category=graha_in_house_composite_strength | key=simple_multiplication | value_num=0.4725",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "025bccaa-082a-44e7-82eb-e8f41d50610d",
+              "headline": "ashtakavarga kakshya boundary: end deg = 22.5 [ga_structural]",
+              "summary": "category=ashtakavarga_kakshya_boundary | key=end_deg | value_num=22.5",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "0289c50f-b1f1-40e1-9bfe-9e0120903139",
+              "headline": "bhava cusps: sripati start = 153 [ga_structural]",
+              "summary": "category=bhava_cusps | key=sripati_start | value_num=152.9",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "02b313cc-235d-495d-a081-1dd8ae328f31",
+              "headline": "D9 cross-check: Sun D1=neutral × D9=Friend → mixed",
+              "summary": "category=navamsha_d9_cross_check | key=sun | d1_dignity=neutral | d9_dignity=Friend | classification=mixed | valence=neutral",
+              "signature_tier": "major"
+            },
+            {
+              "signal_id": "02c4f95a-5146-4105-96f8-83276f5a2859",
+              "headline": "argala natal matrix: from sign 6 offset 11 = 1 [ga_structural]",
+              "summary": "category=argala_natal_matrix | key=from_sign_6_offset_11 | value_num=1",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "0301db62-6252-4356-8bab-8227b9e7711c",
+              "headline": "karaka bhava concordance: concordance value = concordant [ga_structural]",
+              "summary": "category=karaka_bhava_concordance | key=concordance_value | value_text=concordant | bhava_lord=JUP | bhava_num=9 | bhava_sign=Sagittarius | concordance=concordant | natural_karaka=JUP | significance=luck | varga=D9",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "030c2493-829b-4ded-9c49-53a280d22ea8",
+              "headline": "panchadha maitri: compound relation = sama [ga_structural]",
+              "summary": "category=panchadha_maitri | key=compound_relation | value_text=sama | compound_rule_id=860aa10a-1826-5ce1-b773-be5211c4b08e | natural_relation=enemy | source=Sun | target=Saturn | temporal_relation=friend | temporal_rule_id=59eb315e-f111-549e-ba5c-060814557e34",
+              "signature_tier": "supporting"
+            },
+            {
+              "signal_id": "0334522a-9378-4db5-856d-2ffcaf9f5f00",
+              "headline": "graha dignity per varga: dignity state = neutral [ga_structural]",
+              "summary": "category=graha_dignity_per_varga | key=dignity_state | value_text=neutral | ayanamsha_id=lahiri_chitrapaksha | house=11 | sign=Aquarius | uncatalogued=False | varga=D1",
+              "signature_tier": "supporting",
+              "signature_tier_demoted_from": "major"
+            }
+          ],
+          "signal_id_refs": [
+            "002cf4b5-e1b3-474a-8652-6f5305abce3e",
+            "0032e774-39b9-4c59-9ad4-e89d0c73c83a",
+            "0032eca6-e106-4bec-9d3c-e9fa160bd2f5",
+            "0061cb7c-6292-4819-9735-013327925f22",
+            "0086fcd8-7302-4bbf-9fd2-7d6f70da393f",
+            "00acf6e4-8b23-47a0-9612-691f19cb2261",
+            "00e981dc-b018-4bb9-b042-dcec8dcac2cb",
+            "00f501b9-8b5d-4636-a59a-5417194eb23b",
+            "00f55baf-f395-482b-8ba5-0e76e512bce7",
+            "010f6795-1727-4235-86c4-6f1a9970174b",
+            "01330efe-f299-4ec6-a68c-bee869dc3b6e",
+            "013dd56a-1fe0-4faf-b738-29a14dd41274",
+            "01b37978-7841-4078-8dff-897f64e4d290",
+            "01b9218f-49e8-42ec-b4ac-32d5704523aa",
+            "01e608a3-6275-49ea-a372-ab36070dcbb0",
+            "02181e09-c32f-4c1d-938f-1c99345c61a9",
+            "021b00bb-ae95-431d-84bf-1c74c881d4c7",
+            "021fa1f4-fd32-4b91-905d-dee6c1e562d1",
+            "025bccaa-082a-44e7-82eb-e8f41d50610d",
+            "0289c50f-b1f1-40e1-9bfe-9e0120903139",
+            "02b313cc-235d-495d-a081-1dd8ae328f31",
+            "02c4f95a-5146-4105-96f8-83276f5a2859",
+            "0301db62-6252-4356-8bab-8227b9e7711c",
+            "030c2493-829b-4ded-9c49-53a280d22ea8",
+            "0334522a-9378-4db5-856d-2ffcaf9f5f00",
+            "035425f0-5187-4184-b615-2f07f8683104",
+            "0354a5ec-e8fb-4fd1-815c-04d9ea02331f",
+            "037c77d8-b2d1-46f3-9cd4-d3bfbe57c147",
+            "037d3423-148e-4f0b-8cb6-48ede6f57a1a",
+            "03852a12-4f09-4b28-8bc2-d8ab5aefff2d",
+            "039b50e6-d736-40a7-8085-a158c9a7e8aa",
+            "03cb4780-91bf-4d69-b4b9-7e12bc554c11",
+            "03f70bb7-05ce-42fe-8d7e-d6ffc3d84be6",
+            "03fc936a-1b2b-49e2-8d0a-6f124ff5824f",
+            "04298990-8c39-4f30-9038-6d4a92ed87a0",
+            "043c46ab-f57c-4190-ae3e-104f4f095e45",
+            "046cdb65-e3a8-442f-a467-28e862542411",
+            "047af546-c198-48c8-b130-a87ddf28fd06",
+            "04a2a985-b501-41a1-a796-d2fbc93a4ae3",
+            "04a62f90-78ff-47cd-ac44-30c89371cb22",
+            "04b5df3f-5c58-4e6f-9dbf-8d0c37a816b4",
+            "04b9169a-5dbe-47a3-b1a5-8797e80841e6",
+            "0509705b-2f93-4382-9d37-967314b1551f",
+            "050df5fa-66c2-4b17-a807-29fa729d4659",
+            "051871c1-daa8-4377-a0d1-a83ad46640fa",
+            "05257a84-8533-4fb6-8c6a-7a82cafb9c2d",
+            "052ef87a-c18e-4948-946a-f92657d96e58",
+            "0531c5f0-d270-4071-b033-6b76f108364c",
+            "0575c45a-fc1e-4ca3-8170-13b66cda3275",
+            "0595d296-c6f3-4444-b0da-5090acc156d9",
+            "05a08b87-611d-4500-a6dd-852d88248f00",
+            "05a521e8-468e-4b6b-9480-ef3445e08186",
+            "05c55d40-8979-4aeb-9ca3-b8c2ae326305",
+            "05ce1ab9-cb02-4f21-af46-290b7e72945c",
+            "05e539eb-3850-4623-bd52-45fcff8c969f",
+            "05f03b39-8a31-4ed7-8889-1b60127f6c3f",
+            "05f60c82-0c08-4f53-9980-8fcfaa9798eb",
+            "06034bba-5ce2-453f-9a91-541dfb194255",
+            "063b2661-015b-46d2-be81-a7cd3f7e1dde",
+            "069097de-afff-4c73-9438-7de2aaf208e5",
+            "06988945-8f4c-4eac-abae-8ea3b22f150c",
+            "06a4077b-13f7-46f0-a46e-6965bf161a00",
+            "06ac1f70-e681-4b06-a4c7-899032afd497",
+            "06b45eca-17a7-4309-b86a-4121b26a97e1",
+            "06f04c43-1113-43ea-9545-c193f8f03023",
+            "070a7ba5-b6de-477b-b0f3-5befc5833239",
+            "072d67a6-6176-454c-ac0a-5a9694f5686e",
+            "0768b5f6-0fc1-4aee-a999-891c875a8021",
+            "07d08597-18bb-4c22-93d3-e01e1829754d",
+            "07f78117-c3b6-4fd7-9ab0-c604d337c2d3",
+            "0812268a-e99b-45e2-87f2-97bc3f3b48aa",
+            "0872974c-b382-46f4-b162-ba2f61999b35",
+            "089d593f-40c4-495a-9f7b-cc0515a8e8a3",
+            "08b029c0-2455-4e61-a799-19f904896e25",
+            "08fee2ba-7a81-44b0-8ec0-1727f96abc6d",
+            "08ff3e6e-9b73-45a1-a429-4d9bffb0a5de",
+            "091157e5-0654-4ef9-98d3-40a9aeb82b7d",
+            "091d197d-5fce-400c-8f13-3bffb1b30c3b",
+            "0921083b-b09d-4cff-bc34-f68ca7ef4c95",
+            "0929d625-f372-4c8c-bc32-e6c57036dc65",
+            "0947ff97-a038-45bb-bf95-9529c9b5a91d",
+            "094e4847-05a4-48f6-b4f7-3b9fb723c3bf",
+            "09a379ec-33f6-4e9b-abe8-d39e6c26158a",
+            "09c69a9a-06c3-4f06-9cfb-639de89870c4",
+            "09ea33a3-9634-4430-be72-e52469696134",
+            "09f9474a-4f41-4151-a2ff-4592be71a12a",
+            "0a4bf21a-f021-4233-abfa-d5bc21310c3d",
+            "0a97c12f-1e2e-4089-97c1-32012eedb092",
+            "0ae2ab8b-b725-4ebd-9b15-aa34df6c5e07",
+            "0b0357bd-1426-4498-a512-0644ce134757",
+            "0b2ca2bf-4ca0-401e-a44d-bd5bf0810e13",
+            "0b917c0c-fa56-4062-956f-cf6159dbdcc2",
+            "0bacf039-716d-4a97-bc9b-c9118b5ba352",
+            "0be14b38-6839-4341-b788-466fb006af1a",
+            "0c113d61-dfc7-4dbd-ace3-6a525771ce5e",
+            "0c11dc4c-332b-41bc-932c-9e6db037bcdf",
+            "0c48d791-f54b-4a7a-adea-dfc23eeebc40",
+            "0c4dfc6c-c277-4b97-976a-36fac644fa99",
+            "0c67a919-2ccb-49bc-aed2-41345716805e",
+            "0c758e27-9450-45e3-8f06-8b3f842b91d4",
+            "0ca73008-63ef-4f99-8e04-68d028bb050d",
+            "0cdc19ca-682a-45af-bc1c-fe811a1eb0ac",
+            "0cdd7a00-88cd-455f-b2f5-d04cd275ebe6",
+            "0cef7024-f183-4658-89cd-955641caadc9",
+            "0cf3d351-be54-4079-bcb2-ad551ac6a298",
+            "0cf73beb-e860-45de-894f-36870b2fe07f",
+            "0d156ba6-7a69-4e67-b155-44a946303ade",
+            "0d9b17ba-c704-43a9-9d44-ff5680877956",
+            "0dbcb12e-5e27-47e8-9277-fc3d143b6daf",
+            "0dc547f2-21d4-4c0c-8a73-31b768882988",
+            "0dc97ea3-20a7-41a3-a300-1aff5a788e99",
+            "0e0dca94-8c8d-4db6-af28-2e9849a8f2f2",
+            "0e263c24-4e8e-4d6a-a548-dc5d53ba22c2",
+            "0e62faf3-0c7b-4538-b857-3a4ab5b31e11",
+            "0e6c19ce-e55b-4a56-a010-0a4ee7a7f2dc",
+            "0e726eff-d50b-43d7-92ef-d5d3a56f6347",
+            "0e75e465-5e23-48ca-80b3-801480b72419",
+            "0e777a8e-bf68-4b32-9eae-00ce069fb515",
+            "0ea2092c-6f67-47a1-9dd3-342645c21f8e",
+            "0ec723f8-c3bc-4d54-8fc4-3ff73bfd3a1f",
+            "0ecb7a10-22fd-4c19-bc5a-a77b7222c399",
+            "0ee4408e-1c27-4069-8b45-e1b6f157be3a",
+            "0f22631f-cc33-4fbc-adf3-e34d84d7a4c8",
+            "0f25a2b6-c381-4e3c-b07d-67ea11fdc2f6",
+            "0f42a1d5-bf2b-4dda-9305-53ef07ce2797",
+            "0f449740-d146-47b0-942c-eb6f7ee8649b",
+            "0f649eb4-f5a8-4a08-8787-fabea8104705",
+            "0f918ba8-3842-482b-a661-bebcb7982d90",
+            "0f97a0d4-a9ea-4fd2-8d81-39fb56f99b34",
+            "0f991cf4-92be-440a-bce1-b035d189814f",
+            "0fe01fb4-8024-47ec-a9c7-5549b02e011f",
+            "0fe41531-1731-4481-90a2-6131f994e2ba",
+            "0fe723aa-3249-43e1-b3c7-538cf8d93dc9",
+            "10075557-e22f-48a5-ac6b-fd777b71b5c9",
+            "1011ac69-3c68-4e42-bb00-b8081654d443",
+            "10535aef-3aa4-4e61-ab38-8f815b8455b2",
+            "10820c9b-9c9c-4aa9-af44-5ce626d1053e",
+            "109903cb-644f-46d0-bd9b-5b5803107e1d",
+            "10f1e952-25ff-4c7c-829e-4fab66c17426",
+            "111c698f-bd9e-4e14-8450-997545c12c9b",
+            "1127712c-8d2b-489b-bae3-e22d69ec1c20",
+            "112c2382-c43d-4b06-99b1-33496f9e55ae",
+            "11333734-555a-4998-94aa-94eac94031fe",
+            "11339dfc-cea7-4006-b7b0-2663365669a0",
+            "1149caa1-2435-4381-8630-c3736318eaca",
+            "11c1543a-a93b-4d1d-a5ff-f90d2489bace",
+            "11cdf4ab-0265-4ff2-a40c-316ac7f78a00",
+            "11d45ffa-aa8e-4932-b914-43c2e00d169c",
+            "1216b156-a21c-4dc7-80a5-a24e21f32193",
+            "12332da4-3113-46b3-a5de-d0e355f6df03",
+            "1241b367-e77a-4747-8ff9-9653aa497837",
+            "1261601b-3d93-4947-bc2c-48c09c5200dd",
+            "1271aa97-e9ce-4d07-83aa-9ffba9fd86d0",
+            "129e56cf-90c7-4793-9d7d-ed2b12c46348",
+            "129fe1e6-c5a5-4a9c-92a3-cc3a9773f8e7",
+            "12aa6b27-5ef6-4b32-8f0d-8fff5d11dcb4",
+            "12b515af-5862-46c4-8d75-e191a401c5da",
+            "12cee5e2-1903-41a2-901e-8aeda0d83a6e",
+            "12e0b11a-f2a5-4a4e-9ba2-a9c81ac4a17a",
+            "12e70e5f-5f1b-4b8d-9075-dacda1a2341f",
+            "137d20e1-34d0-4d7b-91d4-38f235a56408",
+            "139c079f-14d0-4a1c-9e57-6a75700acdd8",
+            "13a2e515-4861-4457-aa75-a429227a3936",
+            "14051679-ac01-4510-a7db-143867975965",
+            "140d42a4-1534-490b-8822-c14d4baaee26",
+            "145f9d56-cdad-4747-a6cd-6ded0fc91b9b",
+            "14642b14-5fcd-41c3-b422-30aa083ef691",
+            "14670ef1-173d-4226-9bf4-590a01f6c7a4",
+            "14a62f5d-af38-4110-890d-606f80e162b3",
+            "14bbedff-a57a-4641-b05b-228332cfda67",
+            "14c44dfd-43f4-4ad5-8270-8d08a2546eec",
+            "14c8c90b-6850-4830-9769-027f5d027e75",
+            "14dd1bc7-c907-4d3f-ac06-270999e840e2",
+            "14ffe3c9-3d4e-499e-af15-eb6afeedc176",
+            "15238699-952a-48c6-bb98-e5f3c11d4048",
+            "15305ebc-dce7-4ce9-909e-82d86792f811",
+            "153a2ffe-0913-4619-8719-f0369808799d",
+            "156d2b09-7279-4ee6-a9ea-fc06e9ebd2d1",
+            "15733d43-029b-4c1f-955c-538f12a07982",
+            "1589d039-a0bd-423f-859f-b1fa0ee4e633",
+            "159f8ae7-f0f3-493a-9247-3161b37944d9",
+            "15a9cc37-b1f2-486a-acbf-b153578ee91f",
+            "15b4d269-ece1-41a4-be60-a4a248b48830",
+            "15e8d269-efc9-4e42-9f6e-71c6dcedab9f",
+            "16026c73-7fa8-4575-b8cb-aa7403592430",
+            "161603e3-867d-4994-9259-efcdcd96e261",
+            "163e7047-9a3b-4889-afeb-1aede3dfc545",
+            "1672a463-80cd-420f-aa1e-f6bf5bde0585",
+            "16922dea-1435-4263-92a8-3906b8ee19e6",
+            "16c107c9-04a9-4d74-b0dd-c4505e22669a",
+            "16f31e63-c3a9-4b57-8356-9806c613d2ea",
+            "16f3aa83-2b52-4237-8dd2-9dc4ebe0bf6b",
+            "1719b0f2-46c0-4c81-b9dc-96116a2748a2",
+            "1752b554-3831-4342-8613-6c3cfa1eb059",
+            "177d862b-8aa2-40ac-98fa-73990be2d23b",
+            "17866c38-8aa2-46c5-9426-1b69d5621f3a",
+            "178b7a60-0f30-4714-ac17-a568d64e2131",
+            "17b495f3-3e6a-4de9-a4e0-918c46b542bb",
+            "17ccd89c-7568-4eae-845a-ab884ebb9f94",
+            "17d6d93e-7182-4b06-aba2-60765ca9dd02"
+          ],
+          "signal_id_refs_total": 2988,
+          "signal_id_refs_capped": true,
+          "lens_count": 2,
+          "lens_pagination": {
+            "offset": 0,
+            "limit": 5,
+            "total": 2,
+            "returned_count": 2,
+            "more_available": false
+          },
+          "cdlm_cell_count": 5,
+          "drill_next": "marsys://tool/L2/query_signals",
+          "response_format": "default",
+          "provenance": {
+            "tables": [
+              "bodha_question_lenses",
+              "bodha_cdlm_cells"
+            ],
+            "model_mismatch_note": "bodha_question_lenses has no domain column; lenses are filtered at query-time via DOMAIN_TO_QUESTION_TYPES (source: bo_drishti.py::QUESTION_TYPE_CONFIG). Domain 'other' or unmapped domains return all lenses (no filter). Signal references derive from CDLM cells only.",
+            "defect_001": {
+              "claim_id": "DEFECT-001",
+              "status": "RESOLVED",
+              "note": "constituent_facts_array resolution against chart_facts, derived live for chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a: 6/72029 references orphaned (0%). All references resolve — DEFECT-001 no longer reproduces on this chart.",
+              "as_of": "2026-08-15T11:07:33.796Z",
+              "expires_on": "2026-08-16T11:07:33.796Z",
+              "metrics": {
+                "total_refs": 72029,
+                "orphan_refs": 6,
+                "orphan_pct": 0
+              }
+            },
+            "defect_001_note": "constituent_facts_array resolution against chart_facts, derived live for chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a: 6/72029 references orphaned (0%). All references resolve — DEFECT-001 no longer reproduces on this chart.",
+            "hydration_note": "WP-1.2(e): signal_refs and lens ranked_signals carry headline/summary text (hydrated from bodha_msr_signals); 207 id(s) resolved to text. signature_tier on hydrated rows reflects the WP-1.2(d) serving cap.",
+            "bounding_note": "response_format=default: shared_signal_ids_array omitted from cells (use shared_signal_count); signal_id_refs capped at 200 of 2988 total."
+          }
+        },
+        "is_error": false,
+        "budget_kb_applied": 40,
+        "trim_report": [
+          {
+            "path": "content.signal_refs",
+            "original_count": 200,
+            "kept_count": 25,
+            "reason": "content.signal_refs: trimmed to 25",
+            "recover_via": {
+              "instrument": "bodha_domain_reading_get",
+              "hint": "call bodha_domain_reading_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.signal_refs\""
+            }
+          }
+        ],
+        "drill_pointers": [
+          {
+            "instrument": "bodha_domain_reading_get",
+            "hint": "call bodha_domain_reading_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.signal_refs\""
+          }
+        ]
+      }
+    }
+  }
+}

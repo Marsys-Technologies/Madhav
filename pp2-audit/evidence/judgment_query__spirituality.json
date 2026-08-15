@@ -1,0 +1,13 @@
+{
+  "tool": "judgment_query",
+  "scenario": "spirituality",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "spirituality"},
+  "timing": {"before_ms": 1786801117118, "after_ms": 1786801125277, "latency_ms": 8159},
+  "is_error": false,
+  "raw_response_summary": {
+    "verdict": {"domain": "spirituality", "domain_label": "Spirituality / Dharma", "bhava": 9, "verdict_grade": "convergent_strong", "composite_score": 5.7, "operative_varga": "D20"},
+    "gochara_sweep": {"domain": "spirituality", "domain_covered": true, "upcoming_window_count": 3},
+    "judgment_flags_count": 7
+  },
+  "note": "Fields copied verbatim from actual tool response; full payload truncated for evidence-file size, not fabricated."
+}

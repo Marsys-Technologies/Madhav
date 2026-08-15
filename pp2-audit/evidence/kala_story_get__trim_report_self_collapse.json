@@ -1,0 +1,36 @@
+{
+  "tool": "kala_story_get",
+  "scenario": "budget_kb=2 (extreme, forces the trim_report-degradation path in finalizeMcpBudget) vs budget_kb=8 (moderate, trim_report survives intact) vs default budget_kb=40 (mild trim)",
+  "args_variants": [
+    { "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "budget_kb": 2 },
+    { "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "budget_kb": 8 },
+    { "chart_id": "482012f1-710e-4a25-994a-93821f5871aa" }
+  ],
+  "raw_response_budget_kb_2": {
+    "chapters": [],
+    "chapter_count": 91,
+    "dedup_report": { "source_row_count": 91, "deduped_row_count": 91, "collapses": [] },
+    "budget_kb_applied": 2,
+    "budget_kb_requested": 2,
+    "trim_report": [
+      {
+        "path": "(trim_report)",
+        "original_count": 3,
+        "kept_count": 1,
+        "reason": "full trim_report omitted to fit budget",
+        "recover_via": { "instrument": "response_format:legacy", "hint": "full untrimmed response" }
+      }
+    ],
+    "drill_pointers": [],
+    "judgment_flags": [ { "code": "budget_exceeded_after_trim", "detail": "2kb budget still exceeded after full trim." } ]
+  },
+  "raw_response_budget_kb_8_trim_report_intact": {
+    "budget_kb_applied": 8,
+    "budget_kb_requested": 8,
+    "trim_report": [
+      { "path": "chapters", "original_count": 91, "kept_count": 1, "reason": "life-arc chapters: floored to 1 (hard-cap)", "recover_via": { "instrument": "kala_story_get", "hint": "call again with a larger budget_kb for the full chapter list" } },
+      { "path": "reading.evidence", "original_count": 3, "kept_count": 1, "reason": "argument evidence: trimmed to 1", "recover_via": { "instrument": "kala_story_get", "hint": "call again with a narrower top_k for full evidence" } }
+    ]
+  },
+  "note": "At budget_kb=2 the response stays syntactically valid JSON (no F-03-style truncation-mid-string corruption), but chapters is silently zeroed (91 -> 0) while chapter_count still reads 91, and the ONE trim_report entry that would have said so ('chapters: floored to 0') is itself replaced by a generic '(trim_report)' meta-entry because the trim_report array's own serialized bytes didn't fit the 2KB ceiling. drill_pointers is also emptied at this stage. The fallback recover_via names 'response_format:legacy' as the recovery instrument, but no schema on kala_story_get (or any tested tool) exposes a 'response_format' parameter — this is a second, non-'unknown_tool' instance of the same 'placeholder recover_via that names nothing callable' defect class. Mechanism: platform-mcp/src/lib/response_budget.ts:402-410 (the 1-entry-still-too-big fallback inside finalizeMcpBudget) and :292 (an earlier identical fallback inside applyResponseBudget's own '(whole response)' branch). At budget_kb=8 and at default (40KB) the trim_report stays intact and accurately names the real tool + a working recovery hint, so this defect is a function of trim PRESSURE, not a universal kala_story_get bug."
+}

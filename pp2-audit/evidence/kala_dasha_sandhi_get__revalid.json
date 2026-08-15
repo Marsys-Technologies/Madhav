@@ -1,0 +1,58 @@
+{
+  "tool": "kala_dasha_sandhi_get",
+  "scenario": "revalid_both_charts",
+  "note": "Re-verification with valid schema args (chart_id only; limit/offset removed as they are not in this tool's schema). Both charts return identical dispatch-failure honest_empty.",
+  "calls": [
+    {
+      "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+      "raw_response": {
+        "boundaries": [],
+        "as_of": "2026-08-15",
+        "horizon_start": "2021-08-15",
+        "horizon_end": "2031-08-15",
+        "coverage": [
+          {
+            "concept": "dasha_sandhi_calendar",
+            "state": "honest_empty",
+            "reason": "L1 dasha registry (marsys://tool/L1/get_dashas) could not be dispatched this call."
+          }
+        ],
+        "provenance": {
+          "dasha_source": "marsys://tool/L1/get_dashas",
+          "authority_note": "chart_dashas — L1 Gaṇita layer build artifact"
+        }
+      }
+    },
+    {
+      "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"},
+      "raw_response": {
+        "boundaries": [],
+        "as_of": "2026-08-15",
+        "horizon_start": "2021-08-15",
+        "horizon_end": "2031-08-15",
+        "coverage": [
+          {
+            "concept": "dasha_sandhi_calendar",
+            "state": "honest_empty",
+            "reason": "L1 dasha registry (marsys://tool/L1/get_dashas) could not be dispatched this call."
+          }
+        ],
+        "provenance": {
+          "dasha_source": "marsys://tool/L1/get_dashas",
+          "authority_note": "chart_dashas — L1 Gaṇita layer build artifact"
+        }
+      }
+    }
+  ],
+  "contradicting_evidence": {
+    "tool": "kala_now_get",
+    "note": "Called in the SAME session on the SAME two charts, kala_now_get successfully returned a fully-populated dasha_sandhi field with real boundary bands (level_n=1 Mahadasha and level_n=2 Antardasha period_start/period_end bands with real dates), sourced per its own provenance_envelope.assets from 'get_dashas (chart_dashas, level_n=4)'. This proves the underlying L1 dasha data is fully reachable — the failure is specific to kala_dasha_sandhi_get's own dispatch path.",
+    "evidence_file": "kala_now_get__revalid.json"
+  },
+  "code_investigation": {
+    "dispatch_site": "platform-mcp/src/tools/kala_views/dasha_sandhi.ts:174-185 — fetchDashaRows() calls callRegistry('marsys://tool/L1/get_dashas', ...), which POSTs to ${PLATFORM_URL}/api/retrieval/capability (dasha_sandhi.ts:69-89).",
+    "swallowed_error": "callRegistry throws Error on any non-2xx HTTP response or payload.ok===false (dasha_sandhi.ts:85). fetchDashaRows (dasha_sandhi.ts:173,187-189) wraps this in try{...}catch{return {rows:[], reachable:false}}, discarding the real error. computeDashaSandhiCalendar (dasha_sandhi.ts:277-291) converts reachable:false into the generic 'could not be dispatched this call' message, never surfacing the actual HTTP status/error text.",
+    "root_cause": "A dropped principal at tool-registration time. platform-mcp/src/tools/registry_bridge.ts:2112 receives the real, per-connection Principal (resolved from the caller's API key via validateMcpKeyFromHeader in server.ts:175/239) and passes it into registerAllKalaViews(server, principal) (registry_bridge.ts:4654). platform-mcp/src/tools/kala_views/register_all.ts:55-64 forwards that same real principal into every sibling kala_* tool registration (registerKalaNowGetTool(server, principal), etc.) EXCEPT registerDashaSandhiCalendar(server) (register_all.ts:64), which is called with NO principal argument. Inside dasha_sandhi.ts:358-362 the handler compensates by fabricating a hardcoded fake principal {user_uid:'system', key_id:'system', role:'super_admin'}. That fake identity does not correspond to a real MCP API key, so the platform's /api/retrieval/capability entitlement gate (route.ts:207-240, authorizeChartAccess) or key lookup fails/denies — producing the non-ok response that callRegistry throws on, silently converted to the 'could not be dispatched' honest-empty.",
+    "fix_direction": "Change registerDashaSandhiCalendar(server: McpServer) to accept a Principal parameter, update the call site at register_all.ts:64 to pass the real principal, and use it instead of the hardcoded 'system' principal in dasha_sandhi.ts:361."
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "tool": "phala_mitigation_get",
+  "scenario": "zero_history_no_domain",
+  "args": {
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
+  },
+  "raw_response": {
+    "type": "object",
+    "object": {
+      "ok": true,
+      "trace_id": "831c2444-ce84-4357-8a1c-03f8ecb1afcf",
+      "epistemics": {
+        "surgical": true,
+        "confidence_band": "high",
+        "horizon_days": null,
+        "falsifier": null
+      },
+      "result": {
+        "tool_bundle_id": "f11ef6d4-2850-4b1a-9c73-85172de952ad",
+        "tool_name": "query_remedy_program",
+        "tool_version": "1.0",
+        "invocation_params": {
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
+        },
+        "results": [
+          {
+            "content": "{\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"remedies\":[{\"mitigation_id\":\"820616ab-d6c1-4547-b4b5-14e26833d0eb\",\"\u2026[truncated for budget]"
+          }
+        ],
+        "served_from_cache": false,
+        "latency_ms": 12,
+        "result_hash": "sha256:08b17fc439ed0ce98b324bca8f6972b7ed81974826921946e36a8da481cfde60",
+        "schema_version": "1.0"
+      },
+      "citations": [],
+      "plan": null,
+      "predictions_logged": [],
+      "synthesis_audit": null,
+      "suggested_followups": [],
+      "warnings": [],
+      "budget_kb_applied": 40,
+      "trim_report": [
+        {
+          "path": "(trim_report)",
+          "original_count": 1,
+          "kept_count": 1,
+          "reason": "full trim_report omitted to fit budget",
+          "recover_via": {
+            "instrument": "response_format:legacy",
+            "hint": "full untrimmed response"
+          }
+        }
+      ],
+      "drill_pointers": []
+    }
+  }
+}

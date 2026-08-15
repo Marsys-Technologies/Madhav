@@ -1,0 +1,13 @@
+{
+  "tool": "bodha_graph_subgraph_get",
+  "scenario": "native_neighbors_depth2",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "mode": "neighbors", "start_node": "478359a4-0637-46b6-8a78-300ead95787f", "depth": 2},
+  "observed": {
+    "mode": "neighbors",
+    "node_count": 24,
+    "edge_count": 166,
+    "byte_identical_to": "bodha_graph_traverse_get__native_neighbors_depth2.json (both map to the same primitive param 'depth'; traverse_get's max_depth and subgraph_get's depth both translate to the identical primitive field)",
+    "budget_kb_applied": 40
+  },
+  "note": "Same 'unknown_tool' recover_via defect present in this response's trim_report as well."
+}

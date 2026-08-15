@@ -1,0 +1,378 @@
+{
+  "tool": "ref_doshas_get",
+  "scenario": "primary",
+  "args": {
+    "limit": 10
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"envelope_version\":\"v1\",\"tool\":\"ref_doshas_get\",\"verdict\":null,\"ranking_basis\":null,\"grounding\":{\"fact_ids\":[],\"citations\":[],\"grounding_score\":null},\"pagination\":{\"offset\":0,\"limit\":0,\"total\":null,\"next_cursor\":null},\"drill_pointers\":[],\"judgment_flags\":[{\"code\":\"hollow_envelope_shape_not_evaluated\",\"detail\":\"no array-valued or total/returned field found on content — no honest-gap signal computable from this shape (never fabricated).\"}],\"insight_type\":null,\"query_class\":\"reference\",\"content\":{\"content\":{\"rows\":[{\"canonical_id\":\"kala_sarpa_anant\",\"name_sa\":\"Ananta Kāla Sarpa\",\"name_en\":\"Anant Kala Sarpa\",\"category\":\"graha_placement\",\"formation_rule_jsonb\":{\"ketu_house\":7,\"rahu_house\":1},\"formation_text\":\"Rahu in 1st, Ketu in 7th, all planets within the arc.\",\"effects_text\":\"Self vs partnership tension; identity and marriage karma.\",\"severity_grades\":{\"moderate\":\"default\"},\"cancellation_conditions\":{},\"classical_citations\":[{\"text_id\":\"classical_tradition\"}],\"source_chunk_ids\":[],\"associated_remedies\":[],\"school\":\"parashari\",\"created_at\":\"2026-06-08 23:27:44.897014+00\"},{\"canonical_id\":\"angarak\",\"name_sa\":\"Aṅgāraka Doṣa\",\"name_en\":\"Angarak Dosha\",\"category\":\"graha_placement\",\"formation_rule_jsonb\":{\"conjunction\":[\"mars\",\"rahu\"]},\"formation_text\":\"Mars conjunct Rahu (fire-poison combination).\",\"effects_text\":\"Anger, accidents, impulsive conflict, blood/inflammation issues.\",\"severity_grades\":{\"severe\":\"in 1/4/7/8\",\"moderate\":\"default\"},\"cancellation_conditions\":{\"bhanga\":[\"Jupiter aspect\",\"Mars in own sign\"]},\"classical_citations\":[{\"text_id\":\"classical_tradition\"}],\"source_chunk_ids\":[],\"associated_remedies\":[],\"school\":\"parashari\",\"created_at\":\"2026-06-08 23:27:44.897014+00\"},{\"canonical_id\":\"badhaka_dosha\",\"name_sa\":\"Bādhaka Doṣa\",\"name_en\":\"Badhaka Dosha\",\"category\":\"graha_placement\",\"formation_rule_jsonb\":{\"badhaka_lord\":\"lord_of_badhaka_house_afflicting_lagna_or_lagna_lord\",\"badhaka_house_by_lagna_type\":{\"dual_lagna\":\"7th_house\",\"fixed_lagna\":\"9th_house\",\"movable_lagna\":\"11th_house\"}},\"formation_text\":\"The Badhaka lord (11th for movable lagnas, 9th for fixed, 7th for dual) afflicts the lagna or its lord.\",\"effects_text\":\"Hidden obstacles, unexplained chronic difficulties, enemies from unexpected quarters; effects are obstructive rather than directly harmful.\",\"severity_grades\":{\"mild\":\"badhaka lord weak or in friendly sign\",\"severe\":\"badhaka lord strong in kendra/dusthana aspecting lagna\"},\"cancellation_conditions\":{\"bhanga\":[\"badhaka lord debilitated\",\"strong benefic on badhaka house\"]},\"classical_citations\":[{\"text_id\":\"bphs\"}],\"source_chunk_ids\":[],\"associated_remedies\":[],\"school\":\"parashari\",\"created_at\":\"2026-06-18 11:58:10.824406+00\"},{\"canonical_id\":\"balarishta\",\"name_sa\":\"Bālāriṣṭa\",\"name_en\":\"Balarishta\",\"category\":\"graha_placement\",\"formation_rule_jsonb\":{\"requires\":\"afflicted Moon (with malefics, no benefic aspect) in early life indications\"},\"formation_text\":\"Malefic affliction to the Moon/lagna indicating affliction in infancy (per BPHS Arishta-adhyaya).\",\"effects_text\":\"Classical infant-affliction yoga; read with longevity factors.\",\"severity_grades\":{\"varies\":\"by benefic cancellation\"},\"cancellation_conditions\":{\"bhanga\":[\"benefic in kendra\",\"strong lagna lord\",\"Jupiter aspect on Moon\"]},\"classical_citations\":[{\"chapter\":9,\"text_id\":\"bphs\"}],\"source_chunk_ids\":[],\"associated_remedies\":[],\"school\":\"parashari\",\"created_at\":\"2026-06-08 23:27:44.897014+00\"},{\"canonical_id\":\"balarishta_sandhi\",\"name_sa\":\"Bālāriṣṭa (Sandhi)\",\"name_en\":\"Balarishta (Junction Birth)\",\"category\":\"graha_placement\",\"formation_rule_jsonb\":{\"requires\":\"birth at rashi/bhava sandhi (sign or house junction) with malefic influence on lagna/Moon\"},\"formation_text\":\"Birth at a sign or house junction (sandhi) with the lagna/Moon under malefic influence (BPHS Ch.9).\",\"effects_text\":\"Junction-birth arishta; vulnerability in early life.\",\"severity_grades\":{\"moderate\":\"default\"},\"cancellation_conditions\":{\"bhanga\":[\"strong benefic on lagna/Moon\"]},\"classical_citations\":[{\"chapter\":9,\"text_id\":\"bphs\"}],\"source_chunk_ids\":[],\"associated_remedies\":[],\"school\":\"parashari\",\"created_at\":\"2026-06-08 23:27:44.897014+00\"},{\"canonical_id\":\"balarishta_moon_dusthana\",\"name_sa\":\"Bālāriṣṭa (Candra Dusthāna)\",\"name_en\":\"Balarishta (Moon in Dusthana)\",\"category\":\"graha_placement\",\"formation_rule_jsonb\":{\"requires\":\"waning Moon in 6/8/12 conjunct/aspected by malefics without benefic relief\"},\"formation_text\":\"A weak (waning) Moon in the 6th, 8th or 12th, afflicted by malefics and without benefic aspect (a BPHS Ch.9 arishta).\",\"effects_text\":\"Classical infant-affliction configuration; weigh with longevity factors.\",\"severity_grades\":{\"severe\":\"no benefic relief\"},\"cancellation_conditions\":{\"bhanga\":[\"benefic in kendra\",\"Jupiter aspect on Moon\"]},\"classical_citations\":[{\"chapter\":9,\"text_id\":\"bphs\"}],\"source_chunk_ids\":[],\"associated_remedies\":[],\"school\":\"parashari\",\"created_at\":\"2026-06-08 23:27:44.897014+00\"},{\"canonical_id\":\"balarishta_paap_kartari\",\"name_sa\":\"Bālāriṣṭa (Pāpa Kartari)\",\"name_en\":\"Balarishta (Papa Kartari)\",\"category\":\"graha_placement\",\"formation_rule_jsonb\":{\"requires\":\"lagna or Moon hemmed by malefics in the 2nd and 12th from it (papa-kartari) without benefic aspect\"},\"formation_text\":\"The lagna or the Moon is hemmed between malefics (papa-kartari) with no benefic relief (BPHS Ch.9).\",\"effects_text\":\"Hemming arishta; squeezes the vitality of the hemmed point.\",\"severity_grades\":{\"severe\":\"both lagna and Moon hemmed\"},\"cancellation_conditions\":{\"bhanga\":[\"benefic aspect on the hemmed point\",\"shubha-kartari instead\"]},\"classical_citations\":[{\"chapter\":9,\"text_id\":\"bphs\"}],\"source_chunk_ids\":[],\"associated_remedies\":[],\"school\":\"parashari\",\"created_at\":\"2026-06-08 23:27:44.897014+00\"},{\"canonical_id\":\"chandal_yoga_dosha\",\"name_sa\":\"Cāṇḍāla Yoga Doṣa (Candra)\",\"name_en\":\"Chandal Yoga Dosha (Moon-Rahu)\",\"category\":\"graha_placement\",\"formation_rule_jsonb\":{\"conjunction\":[\"moon\",\"rahu\"]},\"formation_text\":\"Moon conjunct Rahu — Chandal yoga; the intellect and emotions corrupted.\",\"effects_text\":\"Mental distortions, deceptive tendencies, unconventional behaviour; can also give extraordinary perceptive ability if strong.\",\"severity_grades\":{\"mild\":\"wide orb, strong Moon\",\"severe\":\"close conjunction in 5th/9th/12th\"},\"cancellation_conditions\":{\"bhanga\":[\"Jupiter aspects Moon\",\"Moon in own/exaltation\"]},\"classical_citations\":[{\"text_id\":\"classical_tradition\"}],\"source_chunk_ids\":[],\"associated_remedies\":[],\"school\":\"parashari\",\"created_at\":\"2026-06-18 11:58:10.824406+00\"},{\"canonical_id\":\"chandra_grahan_dosha\",\"name_sa\":\"Candra Grahaṇa Doṣa\",\"name_en\":\"Chandra Grahan Dosha (Lunar Eclipse Dosha)\",\"category\":\"graha_placement\",\"formation_rule_jsonb\":{\"or\":{\"conjunction\":[\"moon\",\"ketu\"]},\"conjunction\":[\"moon\",\"rahu\"]},\"formation_text\":\"Moon conjunct Rahu or Ketu — natal lunar eclipse combination.\",\"effects_text\":\"Mental affliction, emotional instability, distorted perceptions; mother-related karma; Rahu conjunct Moon is also called Chandal combination.\",\"severity_grades\":{\"mild\":\"wide orb, strong Moon\",\"severe\":\"close conjunction in 4th/12th with weak Moon\",\"moderate\":\"Moon waning\"},\"cancellation_conditions\":{\"bhanga\":[\"Jupiter aspects Moon\",\"benefic in kendra from Moon\"]},\"classical_citations\":[{\"text_id\":\"classical_tradition\"}],\"source_chunk_ids\":[],\"associated_remedies\":[],\"school\":\"parashari\",\"created_at\":\"2026-06-18 11:58:10.824406+00\"},{\"canonical_id\":\"combust_dosha\",\"name_sa\":\"Maudhya Doṣa (Āsta)\",\"name_en\":\"Combust Dosha (Maudhya)\",\"category\":\"graha_placement\",\"formation_rule_jsonb\":{\"requires\":\"planet within combustion orb of Sun (varies by planet)\",\"orbs_degrees\":{\"mars\":17,\"moon\":12,\"venus\":10,\"saturn\":15,\"jupiter\":11,\"mercury\":14,\"venus_retrograde\":8,\"mercury_retrograde\":12}},\"formation_text\":\"A planet within its classical combustion orb of the Sun — Maudhya (burnt) state.\",\"effects_text\":\"Planet's significations burnt out or suppressed; the ego (Sun) overwhelms the planet's natural expression. House lordships of the combust planet are weakened.\",\"severity_grades\":{\"mild\":\"near combustion boundary\",\"severe\":\"deep combustion (< 2°) in enemy sign\"},\"cancellation_conditions\":{\"bhanga\":[\"planet retrograde (especially Mercury/Venus — reduces combustion effect)\",\"planet in own or exaltation sign despite combustion\"]},\"classical_citations\":[{\"text_id\":\"bphs\"}],\"source_chunk_ids\":[],\"associated_remedies\":[],\"school\":\"parashari\",\"created_at\":\"2026-06-18 11:58:10.824406+00\"}],\"total\":10},\"is_error\":false}}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "envelope_version": "v1",
+        "tool": "ref_doshas_get",
+        "verdict": null,
+        "ranking_basis": null,
+        "grounding": {
+          "fact_ids": [],
+          "citations": [],
+          "grounding_score": null
+        },
+        "pagination": {
+          "offset": 0,
+          "limit": 0,
+          "total": null,
+          "next_cursor": null
+        },
+        "drill_pointers": [],
+        "judgment_flags": [
+          {
+            "code": "hollow_envelope_shape_not_evaluated",
+            "detail": "no array-valued or total/returned field found on content — no honest-gap signal computable from this shape (never fabricated)."
+          }
+        ],
+        "insight_type": null,
+        "query_class": "reference",
+        "content": {
+          "content": {
+            "rows": [
+              {
+                "canonical_id": "kala_sarpa_anant",
+                "name_sa": "Ananta Kāla Sarpa",
+                "name_en": "Anant Kala Sarpa",
+                "category": "graha_placement",
+                "formation_rule_jsonb": {
+                  "ketu_house": 7,
+                  "rahu_house": 1
+                },
+                "formation_text": "Rahu in 1st, Ketu in 7th, all planets within the arc.",
+                "effects_text": "Self vs partnership tension; identity and marriage karma.",
+                "severity_grades": {
+                  "moderate": "default"
+                },
+                "cancellation_conditions": {},
+                "classical_citations": [
+                  {
+                    "text_id": "classical_tradition"
+                  }
+                ],
+                "source_chunk_ids": [],
+                "associated_remedies": [],
+                "school": "parashari",
+                "created_at": "2026-06-08 23:27:44.897014+00"
+              },
+              {
+                "canonical_id": "angarak",
+                "name_sa": "Aṅgāraka Doṣa",
+                "name_en": "Angarak Dosha",
+                "category": "graha_placement",
+                "formation_rule_jsonb": {
+                  "conjunction": [
+                    "mars",
+                    "rahu"
+                  ]
+                },
+                "formation_text": "Mars conjunct Rahu (fire-poison combination).",
+                "effects_text": "Anger, accidents, impulsive conflict, blood/inflammation issues.",
+                "severity_grades": {
+                  "severe": "in 1/4/7/8",
+                  "moderate": "default"
+                },
+                "cancellation_conditions": {
+                  "bhanga": [
+                    "Jupiter aspect",
+                    "Mars in own sign"
+                  ]
+                },
+                "classical_citations": [
+                  {
+                    "text_id": "classical_tradition"
+                  }
+                ],
+                "source_chunk_ids": [],
+                "associated_remedies": [],
+                "school": "parashari",
+                "created_at": "2026-06-08 23:27:44.897014+00"
+              },
+              {
+                "canonical_id": "badhaka_dosha",
+                "name_sa": "Bādhaka Doṣa",
+                "name_en": "Badhaka Dosha",
+                "category": "graha_placement",
+                "formation_rule_jsonb": {
+                  "badhaka_lord": "lord_of_badhaka_house_afflicting_lagna_or_lagna_lord",
+                  "badhaka_house_by_lagna_type": {
+                    "dual_lagna": "7th_house",
+                    "fixed_lagna": "9th_house",
+                    "movable_lagna": "11th_house"
+                  }
+                },
+                "formation_text": "The Badhaka lord (11th for movable lagnas, 9th for fixed, 7th for dual) afflicts the lagna or its lord.",
+                "effects_text": "Hidden obstacles, unexplained chronic difficulties, enemies from unexpected quarters; effects are obstructive rather than directly harmful.",
+                "severity_grades": {
+                  "mild": "badhaka lord weak or in friendly sign",
+                  "severe": "badhaka lord strong in kendra/dusthana aspecting lagna"
+                },
+                "cancellation_conditions": {
+                  "bhanga": [
+                    "badhaka lord debilitated",
+                    "strong benefic on badhaka house"
+                  ]
+                },
+                "classical_citations": [
+                  {
+                    "text_id": "bphs"
+                  }
+                ],
+                "source_chunk_ids": [],
+                "associated_remedies": [],
+                "school": "parashari",
+                "created_at": "2026-06-18 11:58:10.824406+00"
+              },
+              {
+                "canonical_id": "balarishta",
+                "name_sa": "Bālāriṣṭa",
+                "name_en": "Balarishta",
+                "category": "graha_placement",
+                "formation_rule_jsonb": {
+                  "requires": "afflicted Moon (with malefics, no benefic aspect) in early life indications"
+                },
+                "formation_text": "Malefic affliction to the Moon/lagna indicating affliction in infancy (per BPHS Arishta-adhyaya).",
+                "effects_text": "Classical infant-affliction yoga; read with longevity factors.",
+                "severity_grades": {
+                  "varies": "by benefic cancellation"
+                },
+                "cancellation_conditions": {
+                  "bhanga": [
+                    "benefic in kendra",
+                    "strong lagna lord",
+                    "Jupiter aspect on Moon"
+                  ]
+                },
+                "classical_citations": [
+                  {
+                    "chapter": 9,
+                    "text_id": "bphs"
+                  }
+                ],
+                "source_chunk_ids": [],
+                "associated_remedies": [],
+                "school": "parashari",
+                "created_at": "2026-06-08 23:27:44.897014+00"
+              },
+              {
+                "canonical_id": "balarishta_sandhi",
+                "name_sa": "Bālāriṣṭa (Sandhi)",
+                "name_en": "Balarishta (Junction Birth)",
+                "category": "graha_placement",
+                "formation_rule_jsonb": {
+                  "requires": "birth at rashi/bhava sandhi (sign or house junction) with malefic influence on lagna/Moon"
+                },
+                "formation_text": "Birth at a sign or house junction (sandhi) with the lagna/Moon under malefic influence (BPHS Ch.9).",
+                "effects_text": "Junction-birth arishta; vulnerability in early life.",
+                "severity_grades": {
+                  "moderate": "default"
+                },
+                "cancellation_conditions": {
+                  "bhanga": [
+                    "strong benefic on lagna/Moon"
+                  ]
+                },
+                "classical_citations": [
+                  {
+                    "chapter": 9,
+                    "text_id": "bphs"
+                  }
+                ],
+                "source_chunk_ids": [],
+                "associated_remedies": [],
+                "school": "parashari",
+                "created_at": "2026-06-08 23:27:44.897014+00"
+              },
+              {
+                "canonical_id": "balarishta_moon_dusthana",
+                "name_sa": "Bālāriṣṭa (Candra Dusthāna)",
+                "name_en": "Balarishta (Moon in Dusthana)",
+                "category": "graha_placement",
+                "formation_rule_jsonb": {
+                  "requires": "waning Moon in 6/8/12 conjunct/aspected by malefics without benefic relief"
+                },
+                "formation_text": "A weak (waning) Moon in the 6th, 8th or 12th, afflicted by malefics and without benefic aspect (a BPHS Ch.9 arishta).",
+                "effects_text": "Classical infant-affliction configuration; weigh with longevity factors.",
+                "severity_grades": {
+                  "severe": "no benefic relief"
+                },
+                "cancellation_conditions": {
+                  "bhanga": [
+                    "benefic in kendra",
+                    "Jupiter aspect on Moon"
+                  ]
+                },
+                "classical_citations": [
+                  {
+                    "chapter": 9,
+                    "text_id": "bphs"
+                  }
+                ],
+                "source_chunk_ids": [],
+                "associated_remedies": [],
+                "school": "parashari",
+                "created_at": "2026-06-08 23:27:44.897014+00"
+              },
+              {
+                "canonical_id": "balarishta_paap_kartari",
+                "name_sa": "Bālāriṣṭa (Pāpa Kartari)",
+                "name_en": "Balarishta (Papa Kartari)",
+                "category": "graha_placement",
+                "formation_rule_jsonb": {
+                  "requires": "lagna or Moon hemmed by malefics in the 2nd and 12th from it (papa-kartari) without benefic aspect"
+                },
+                "formation_text": "The lagna or the Moon is hemmed between malefics (papa-kartari) with no benefic relief (BPHS Ch.9).",
+                "effects_text": "Hemming arishta; squeezes the vitality of the hemmed point.",
+                "severity_grades": {
+                  "severe": "both lagna and Moon hemmed"
+                },
+                "cancellation_conditions": {
+                  "bhanga": [
+                    "benefic aspect on the hemmed point",
+                    "shubha-kartari instead"
+                  ]
+                },
+                "classical_citations": [
+                  {
+                    "chapter": 9,
+                    "text_id": "bphs"
+                  }
+                ],
+                "source_chunk_ids": [],
+                "associated_remedies": [],
+                "school": "parashari",
+                "created_at": "2026-06-08 23:27:44.897014+00"
+              },
+              {
+                "canonical_id": "chandal_yoga_dosha",
+                "name_sa": "Cāṇḍāla Yoga Doṣa (Candra)",
+                "name_en": "Chandal Yoga Dosha (Moon-Rahu)",
+                "category": "graha_placement",
+                "formation_rule_jsonb": {
+                  "conjunction": [
+                    "moon",
+                    "rahu"
+                  ]
+                },
+                "formation_text": "Moon conjunct Rahu — Chandal yoga; the intellect and emotions corrupted.",
+                "effects_text": "Mental distortions, deceptive tendencies, unconventional behaviour; can also give extraordinary perceptive ability if strong.",
+                "severity_grades": {
+                  "mild": "wide orb, strong Moon",
+                  "severe": "close conjunction in 5th/9th/12th"
+                },
+                "cancellation_conditions": {
+                  "bhanga": [
+                    "Jupiter aspects Moon",
+                    "Moon in own/exaltation"
+                  ]
+                },
+                "classical_citations": [
+                  {
+                    "text_id": "classical_tradition"
+                  }
+                ],
+                "source_chunk_ids": [],
+                "associated_remedies": [],
+                "school": "parashari",
+                "created_at": "2026-06-18 11:58:10.824406+00"
+              },
+              {
+                "canonical_id": "chandra_grahan_dosha",
+                "name_sa": "Candra Grahaṇa Doṣa",
+                "name_en": "Chandra Grahan Dosha (Lunar Eclipse Dosha)",
+                "category": "graha_placement",
+                "formation_rule_jsonb": {
+                  "or": {
+                    "conjunction": [
+                      "moon",
+                      "ketu"
+                    ]
+                  },
+                  "conjunction": [
+                    "moon",
+                    "rahu"
+                  ]
+                },
+                "formation_text": "Moon conjunct Rahu or Ketu — natal lunar eclipse combination.",
+                "effects_text": "Mental affliction, emotional instability, distorted perceptions; mother-related karma; Rahu conjunct Moon is also called Chandal combination.",
+                "severity_grades": {
+                  "mild": "wide orb, strong Moon",
+                  "severe": "close conjunction in 4th/12th with weak Moon",
+                  "moderate": "Moon waning"
+                },
+                "cancellation_conditions": {
+                  "bhanga": [
+                    "Jupiter aspects Moon",
+                    "benefic in kendra from Moon"
+                  ]
+                },
+                "classical_citations": [
+                  {
+                    "text_id": "classical_tradition"
+                  }
+                ],
+                "source_chunk_ids": [],
+                "associated_remedies": [],
+                "school": "parashari",
+                "created_at": "2026-06-18 11:58:10.824406+00"
+              },
+              {
+                "canonical_id": "combust_dosha",
+                "name_sa": "Maudhya Doṣa (Āsta)",
+                "name_en": "Combust Dosha (Maudhya)",
+                "category": "graha_placement",
+                "formation_rule_jsonb": {
+                  "requires": "planet within combustion orb of Sun (varies by planet)",
+                  "orbs_degrees": {
+                    "mars": 17,
+                    "moon": 12,
+                    "venus": 10,
+                    "saturn": 15,
+                    "jupiter": 11,
+                    "mercury": 14,
+                    "venus_retrograde": 8,
+                    "mercury_retrograde": 12
+                  }
+                },
+                "formation_text": "A planet within its classical combustion orb of the Sun — Maudhya (burnt) state.",
+                "effects_text": "Planet's significations burnt out or suppressed; the ego (Sun) overwhelms the planet's natural expression. House lordships of the combust planet are weakened.",
+                "severity_grades": {
+                  "mild": "near combustion boundary",
+                  "severe": "deep combustion (< 2°) in enemy sign"
+                },
+                "cancellation_conditions": {
+                  "bhanga": [
+                    "planet retrograde (especially Mercury/Venus — reduces combustion effect)",
+                    "planet in own or exaltation sign despite combustion"
+                  ]
+                },
+                "classical_citations": [
+                  {
+                    "text_id": "bphs"
+                  }
+                ],
+                "source_chunk_ids": [],
+                "associated_remedies": [],
+                "school": "parashari",
+                "created_at": "2026-06-18 11:58:10.824406+00"
+              }
+            ],
+            "total": 10
+          },
+          "is_error": false
+        }
+      }
+    }
+  }
+}

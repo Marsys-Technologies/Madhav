@@ -1,0 +1,69 @@
+{
+  "tool": "mimamsa_calibration_get",
+  "scenario": "native_primary",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "limit": 10,
+    "offset": 0
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":true,\"trace_id\":\"5c6b2bab-5bd0-48b6-b258-c32a662ee8ba\",\"epistemics\":{\"surgical\":true,\"confidence_band\":\"high\",\"horizon_days\":null,\"falsifier\":null},\"result\":{\"tool_bundle_id\":\"ec837692-c646-4e70-8d97-b19ac3f456ff\",\"tool_name\":\"query_calibration\",\"tool_version\":\"1.0\",\"invocation_params\":{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"limit\":10,\"offset\":0},\"results\":[{\"content\":\"{\\\"chart_id\\\":\\\"482012f1-710e-4a25-994a-93821f5871aa\\\",\\\"verdict_distribution\\\":[{\\\"composite_verdict\\\":\\\"UNRESOLVED\\\",\\\"n\\\":25,\\\"mea…[truncated for budget]\"}],\"served_from_cache\":false,\"latency_ms\":109,\"result_hash\":\"sha256:8e64ba7d16a7a2aa6f1155a250acafcaa717397aa6927fe90b496f33e1e833b5\",\"schema_version\":\"1.0\"},\"citations\":[],\"plan\":null,\"predictions_logged\":[],\"synthesis_audit\":null,\"suggested_followups\":[],\"warnings\":[],\"budget_kb_applied\":40,\"trim_report\":[{\"path\":\"(trim_report)\",\"original_count\":1,\"kept_count\":1,\"reason\":\"full trim_report omitted to fit budget\",\"recover_via\":{\"instrument\":\"response_format:legacy\",\"hint\":\"full untrimmed response\"}}],\"drill_pointers\":[]}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "ok": true,
+        "trace_id": "5c6b2bab-5bd0-48b6-b258-c32a662ee8ba",
+        "epistemics": {
+          "surgical": true,
+          "confidence_band": "high",
+          "horizon_days": null,
+          "falsifier": null
+        },
+        "result": {
+          "tool_bundle_id": "ec837692-c646-4e70-8d97-b19ac3f456ff",
+          "tool_name": "query_calibration",
+          "tool_version": "1.0",
+          "invocation_params": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "limit": 10,
+            "offset": 0
+          },
+          "results": [
+            {
+              "content": "{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"verdict_distribution\":[{\"composite_verdict\":\"UNRESOLVED\",\"n\":25,\"mea…[truncated for budget]"
+            }
+          ],
+          "served_from_cache": false,
+          "latency_ms": 109,
+          "result_hash": "sha256:8e64ba7d16a7a2aa6f1155a250acafcaa717397aa6927fe90b496f33e1e833b5",
+          "schema_version": "1.0"
+        },
+        "citations": [],
+        "plan": null,
+        "predictions_logged": [],
+        "synthesis_audit": null,
+        "suggested_followups": [],
+        "warnings": [],
+        "budget_kb_applied": 40,
+        "trim_report": [
+          {
+            "path": "(trim_report)",
+            "original_count": 1,
+            "kept_count": 1,
+            "reason": "full trim_report omitted to fit budget",
+            "recover_via": {
+              "instrument": "response_format:legacy",
+              "hint": "full untrimmed response"
+            }
+          }
+        ],
+        "drill_pointers": []
+      }
+    }
+  }
+}

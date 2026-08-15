@@ -1,0 +1,14 @@
+{
+  "tool": "judgment_query",
+  "scenario": "general",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "general"},
+  "timing": {"before_ms": 1786801017977, "after_ms": 1786801024064, "latency_ms": 6087},
+  "is_error": false,
+  "raw_response": {
+    "verdict": {"receipt": {}},
+    "grounding": {"fact_ids": [], "citations": [], "grounding_score": null},
+    "judgment_flags": [],
+    "content": {"error": "judgment_query requires either `domain` (marriage/career/wealth/health/progeny/education/spirituality) or `bhava` (1-12)."}
+  },
+  "note": "Same soft-failure shape as domain='family': 'general' is a CANONICAL_DOMAINS vocabulary entry (spine SSoT) but judgment_query's SHASTRA_MAP has no bhava mapping for a domain-less/general reading, so it returns an embedded content.error with empty verdict/grounding rather than isError:true or a graceful all-domains overview. Not counted as a hard error (no crash) but is a genuine usability/consistency gap between the two 'domain' vocabularies the system exposes."
+}

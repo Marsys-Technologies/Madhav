@@ -1,0 +1,12 @@
+{
+  "tool": "multi (ganita_dasha_periods_get, kala_now_get, ref_planet_transit_get, gochara_forecast_get)",
+  "scenario": "leap_day",
+  "args_and_results": [
+    {"tool":"ganita_dasha_periods_get","args":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","as_of_date":"2024-02-29"},"result_summary":"Correctly resolves L3 boundary: Venus Pratyantardasha ends exactly 2024-02-29 and Sun Pratyantardasha starts exactly 2024-02-29 -- both rows returned (total:4, two L3 rows sharing the leap-day boundary date), no off-by-one, no crash."},
+    {"tool":"kala_now_get","args":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","as_of":"2028-02-29"},"result_summary":"Full NOW envelope computed without error for 2028-02-29 (another leap day): activation windows, darshana confluence (auspicious_strong 0.7), gulika_kalam, sudarshana_varsha, tithi_pravesha all computed. No crash."},
+    {"tool":"ref_planet_transit_get","args":{"planet":"Saturn","start_date":"2024-02-27","end_date":"2024-03-02"},"result_summary":"5 daily rows returned spanning 2024-02-27..2024-03-02 inclusive of leap day 2024-02-29, monotonically increasing longitude (315.41 -> 315.90), no gap or duplicate on the leap day."},
+    {"tool":"gochara_forecast_get","args":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","date_range":{"start":"2024-02-28","end":"2024-03-01"}},"result_summary":"Returned real window data spanning the leap day with no error/exception/traceback in the raw response body."}
+  ],
+  "verdict": "PASS",
+  "note": "All four tools handle 2024-02-29 and 2028-02-29 (leap days) correctly: no crash, no off-by-one at day boundaries, dasha period boundaries land exactly on the leap day as expected from the underlying date arithmetic."
+}

@@ -1,0 +1,15 @@
+{
+  "tool": "bodha_graph_traverse_get",
+  "scenario": "native_neighbors_depth2",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "mode": "neighbors", "start_node": "478359a4-0637-46b6-8a78-300ead95787f", "max_depth": 2},
+  "observed": {
+    "mode": "neighbors",
+    "seed_node_ids": ["478359a4-0637-46b6-8a78-300ead95787f"],
+    "depth_requested": 2,
+    "node_count": 24,
+    "edge_count": 166,
+    "budget_kb_applied": 40,
+    "trim_report": [{"path": "content.edges", "original_count": 166, "kept_count": 41, "reason": "content.edges: trimmed to 41", "recover_via": {"instrument": "unknown_tool", "hint": "call unknown_tool again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.edges\""}}]
+  },
+  "note": "max_depth=2 correctly mapped to the primitive's depth param (24 nodes / 166 edges returned vs a much smaller 1-hop neighborhood at depth=1, confirming the param has real effect). Same 'unknown_tool' recover_via defect as the paths-mode call."
+}

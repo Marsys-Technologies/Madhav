@@ -1,0 +1,21 @@
+{
+  "tool": "kala_life_arc_get",
+  "scenario": "lel_crosslink_gap_investigation",
+  "note": "The existing PARTIAL evidence (kala_life_arc_get__native_primary.json / __zero_primary.json) already used VALID schema args (chart_id, limit, offset — this tool's schema DOES include limit/offset, unlike its sibling kala_* tools) and returned real, non-error data for both charts. Re-examined that captured evidence specifically for the tool's own advertised LEL cross-link feature.",
+  "tool_description_claim": "'cross-links to LEL events that fell within that Parva. Use as the temporal backbone for reading the native's life story.' Parameter include_lel_events: 'Include Life Event Log matches for each Parva (default: true).'",
+  "observed_gap": "Both prior captures (native chart with 64 documented LEL life events, and zero-history chart) return parvas[] objects containing ONLY: id, parva_index, dasha_planet, dominant_signal_class, start_year, end_year, parva_quality, theme_keywords, high_convergence_count, avg_effective_score, narrative, source_citation, computed_at. NO lel_events/lel_matches/similar field appears anywhere in either response, despite include_lel_events defaulting to true and the native chart having a rich, well-populated LEL (64 events) that SHOULD have produced visible cross-links on at least some of the 10 returned parvas spanning 1984-2010.",
+  "sample_parva_native_full_object": {
+    "id": "46062", "parva_index": 1, "dasha_planet": "Jupiter", "dominant_signal_class": "YOGA",
+    "start_year": 1984, "end_year": 1991, "parva_quality": "receding",
+    "theme_keywords": ["expansion", "wisdom", "abundance", "receding"],
+    "high_convergence_count": 884, "avg_effective_score": 0.4227,
+    "narrative": {"span": "1984-1991", "summary": "Jupiter daśā (1984-1991): receding phase marked by expansion, wisdom. 884 high-convergence windows in this span."},
+    "source_citation": "ka_jivana_parva:v2.0:MD=Jupiter", "computed_at": "2026-08-13 01:15:53.835895+00"
+  },
+  "code_investigation": {
+    "wrapper_file": "platform-mcp/src/tools/register_p1_synthesis.ts:644-681",
+    "handler_file": "platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts",
+    "finding": "The tool description (register_p1_synthesis.ts:649) and include_lel_events param (lines 653-654) are NOT wired through. The wrapper passes include_lel_events to the registry capability (line 671), but query_life_arc.ts's handler (lines 93-197) never reads args['include_lel_events'], and its SQL (lines 147-177) only selects from kala_jivana_parva — no LEL table/join exists anywhere in the query. Confirmed definitively by the capability descriptor itself: lel_capable: false at query_life_arc.ts:39.",
+    "conclusion": "This is a classic accepted-but-unused parameter backing an unimplemented feature — the description overpromises a capability (LEL cross-linking) that the underlying handler was never built to deliver, and the descriptor's own lel_capable:false flag confirms this is a known, self-disclosed (at the code level, not the served response level) limitation that never surfaces to the MCP caller."
+  }
+}

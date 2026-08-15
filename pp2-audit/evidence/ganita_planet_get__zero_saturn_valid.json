@@ -1,0 +1,20 @@
+{
+  "tool": "ganita_planet_get",
+  "scenario": "zero_history_saturn_valid",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "planet": "Saturn"},
+  "raw_response_summary": {
+    "planet": {"input": "Saturn", "code": "SAT", "name": "Saturn"},
+    "position_sample": [
+      {"ayanamsha_id": "krishnamurti", "fact_key": "sign", "fact_value_text": "Scorpio"},
+      {"ayanamsha_id": "krishnamurti", "fact_key": "nakshatra", "fact_value_text": "Anuradha"},
+      {"ayanamsha_id": "krishnamurti", "fact_key": "house_d1", "fact_value_num": 8}
+    ],
+    "dignity_sample": [{"fact_subject": "D8_SAT", "dignity_state": "own", "sign": "Capricorn"}, {"fact_subject": "D11_SAT", "dignity_state": "exalted", "sign": "Libra"}],
+    "yogas_firings_authoritative_sample": ["pasha (fired=true)", "daridra_yoga (fired=true, saturn in house 8)", "jaimini_karakamsha_saturn (fired=true)"],
+    "trim_report": [
+      {"path": "dispositor.rows", "original_count": 251, "kept_count": 10},
+      {"path": "yogas.firings_authoritative", "original_count": 12, "kept_count": 10}
+    ]
+  },
+  "pp2_note": "Re-verified on the zero-history chart (1c826d5a) with valid args -- the prior session's call added limit/offset which this tool's schema rejects (unrecognized_keys), a caller error not a defect. Confirms the tool works consistently for a second, independent chart (different natal Saturn position: Scorpio house8 vs native's Libra house7), and correctly derives daridra_yoga from Saturn's actual 8th-house placement in THIS chart -- not a copy-pasted or cached result."
+}

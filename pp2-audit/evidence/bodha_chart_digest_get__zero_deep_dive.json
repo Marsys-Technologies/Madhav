@@ -1,0 +1,13 @@
+{
+  "tool": "bodha_chart_digest_get",
+  "scenario": "zero_deep_dive",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "reading_depth": "deep_dive"},
+  "observed": {
+    "response_format": "full",
+    "digest": {"msr_signal_count": 10037, "yoga_count": 13, "dosha_count": 7, "avg_salience": 0.4289, "max_salience": 2, "weakest_graha": "Jupiter"},
+    "entity_profiles_top": "VENUS (aggregate_score 102.6, signal_count 276)",
+    "budget_kb_applied": 40,
+    "trim_report": [{"path": "content.top_signals", "original_count": 100, "kept_count": 25, "reason": "content.top_signals: trimmed to 25", "recover_via": {"instrument": "bodha_chart_digest_get", "hint": "call bodha_chart_digest_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.top_signals\""}}]
+  },
+  "note": "reading_depth:deep_dive correctly forces response_format:full (top_k_signals:100, trimmed to 25 by the 40kb budget). Zero-history chart shows real, differentiated digest data vs native (weakest_graha Jupiter vs Venus, msr_signal_count 10037 vs 10003, different entity_profiles) -- not a stale copy. drill_pointers.recover_via.instrument correctly names 'bodha_chart_digest_get' (a real, callable tool) -- contrasts with the 'unknown_tool' literal found in bodha_graph_traverse_get/bodha_graph_subgraph_get's recover_via."
+}

@@ -1,0 +1,18 @@
+{
+  "tool": "mimamsa_insight_get",
+  "scenario": "zero_primary",
+  "args": {
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "limit": 10,
+    "offset": 0
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "MCP error -32602: Input validation error: Invalid arguments for tool mimamsa_insight_get: [\n  {\n    \"code\": \"unrecognized_keys\",\n    \"keys\": [\n      \"limit\",\n      \"offset\"\n    ],\n    \"path\": [],\n    \"message\": \"Unrecognized keys: \\\"limit\\\", \\\"offset\\\"\"\n  }\n]"
+      }
+    ],
+    "isError": true
+  }
+}

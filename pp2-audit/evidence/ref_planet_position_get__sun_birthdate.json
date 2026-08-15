@@ -1,0 +1,37 @@
+{
+  "tool": "ref_planet_position_get",
+  "scenario": "sun_birthdate",
+  "args": {"date": "1984-02-05", "planet": "Sun"},
+  "raw_response": {
+    "type": "object",
+    "object": {
+      "ok": true,
+      "date": "1984-02-05",
+      "positions": [
+        {
+          "body": "Sun",
+          "longitude": 292.23936,
+          "sign_number": 10,
+          "degree_in_sign": 22.239,
+          "nakshatra_number": 22,
+          "pada": 4,
+          "ayanamsha_offset": 23.634937,
+          "is_retrograde": false,
+          "speed_dps": 1.0141239,
+          "tropical_longitude": 315.874297,
+          "source_citation": "pyswisseph DE441 + Swiss Ephemeris (pyswisseph==2.10.3.2)"
+        }
+      ],
+      "count": 1,
+      "ayanamsha_id": "lahiri_chitrapaksha",
+      "provenance_envelope": {
+        "source": "brahmagyan.ephemeris",
+        "asset": "BRAHMA-BG-0-6",
+        "ayanamsha_id": "lahiri_chitrapaksha",
+        "date_queried": "1984-02-05",
+        "computed_at": "2026-08-15T12:33:25.549494+00:00"
+      }
+    }
+  },
+  "note": "sign_number 10 = Capricorn, degree_in_sign 22.239 — matches FORENSIC anchor Sun=Capricorn for the 1984-02-05 birthdate. Confirms the tool computes real sidereal (lahiri) ephemeris positions."
+}

@@ -1,0 +1,13 @@
+{
+  "tool": "judgment_query",
+  "scenario": "relationship",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "relationship"},
+  "timing": {"before_ms": 1786801080341, "after_ms": 1786801090706, "latency_ms": 10365},
+  "is_error": false,
+  "raw_response_summary": {
+    "verdict": {"domain": "relationship", "domain_label": "Marriage / Partnership", "bhava": 7, "verdict_grade": "contested", "composite_score": -3.5, "operative_varga": "D9", "varga_subscores_bhavesha": {"graha": "Venus", "dignity_state": "debilitated"}},
+    "gochara_sweep": {"domain": "relationship", "domain_covered": true, "upcoming_window_count": 3},
+    "judgment_flags_count": 7
+  },
+  "note": "Fields copied verbatim from actual tool response; full payload truncated for evidence-file size, not fabricated."
+}

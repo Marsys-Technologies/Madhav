@@ -1,0 +1,83 @@
+{
+  "tool": "kala_now_get",
+  "scenario": "revalid_both_charts",
+  "note": "Re-verification with valid schema args (chart_id only). Full responses were very large (rich multi-concept envelope); key fields reproduced verbatim below including the dasha_sandhi field that contradicts kala_dasha_sandhi_get's dispatch failure, and honest-empty degradation for the zero-history chart.",
+  "calls": [
+    {
+      "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+      "raw_response_excerpt": {
+        "tool": "kala_now_get",
+        "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+        "as_of_date": "2026-08-15",
+        "reading": {
+          "thesis": "2 temporal activation window(s) active as of 2026-08-15; strongest: CLASSIFY_RESIDUAL/DIGNITY/YOGA/SUBSYSTEM (orb strength 1.00, 10 contributing signal(s)). Kāla-Darshana confluence: auspicious_strong (effective_score 0.7).",
+          "verdict": {"statement": "Kāla state: auspicious_strong.", "tier": "structural_prior"}
+        },
+        "coverage": [
+          {"concept": "temporal_activation_windows", "state": "computed"},
+          {"concept": "kala_darshana_confluence", "state": "computed"},
+          {"concept": "dasha_sandhi", "state": "computed"},
+          {"concept": "transit_moorti", "state": "not_in_corpus", "reason": "Per-ingress moorti-nirṇaya not yet computed — SHAD_DARSHANA_BRIEF_v2_0.md item 4 (wave W3)."},
+          {"concept": "disha_shula", "state": "computed"},
+          {"concept": "gulika_kalam_now", "state": "computed"},
+          {"concept": "chandrashtama", "state": "computed"},
+          {"concept": "hora_now", "state": "computed"},
+          {"concept": "janma_resonance", "state": "computed"},
+          {"concept": "dual_reference_gochara", "state": "computed"},
+          {"concept": "dasha_lord_current_transit_condition", "state": "computed"},
+          {"concept": "sukshma_boundary_uncertainty", "state": "computed"},
+          {"concept": "kota_chakra", "state": "computed"},
+          {"concept": "sudarshana_varsha", "state": "computed"},
+          {"concept": "moorti_nirnaya", "state": "computed"},
+          {"concept": "vedha_gochara", "state": "computed"},
+          {"concept": "tithi_pravesha", "state": "computed"},
+          {"concept": "state_delta", "state": "honest_empty", "reason": "E6 per-view elevation for NOW: field diff against previous inflection point not yet computed."}
+        ],
+        "darshana": {
+          "id": "37304", "effective_score": 0.7, "net_label": "auspicious_strong",
+          "peak_date": "2025-03-29", "window_start": "2025-03-29", "window_end": "2027-09-12",
+          "source_citation": "ka_kala_darshana:v1.0:conv=505974"
+        },
+        "dasha_sandhi_PROOF_OF_LIVE_DATA": {
+          "as_of_date": "2026-08-15",
+          "band_convention": "LITE convention (item 1-lite, wave W1): each daśā-period boundary carries a band of ± round(3% × period span in days).",
+          "bands": [
+            {"level_n": 1, "level_name": "Mahadasha", "lord_graha": "Mercury", "boundary_kind": "period_start", "boundary_date": "2010-08-18", "band_start_date": "2010-02-13", "band_end_date": "2011-02-20", "band_width_days": 186, "is_now_within_band": false},
+            {"level_n": 1, "level_name": "Mahadasha", "lord_graha": "Mercury", "boundary_kind": "period_end", "boundary_date": "2027-08-18", "band_start_date": "2027-02-13", "band_end_date": "2028-02-20", "band_width_days": 186, "is_now_within_band": false},
+            {"level_n": 2, "level_name": "Antardasha", "lord_graha": "Saturn", "boundary_kind": "period_start", "boundary_date": "2024-12-08", "band_start_date": "2024-11-09", "band_end_date": "2025-01-06", "band_width_days": 29, "is_now_within_band": false},
+            {"level_n": 2, "level_name": "Antardasha", "lord_graha": "Saturn", "boundary_kind": "period_end", "boundary_date": "2027-08-18", "band_start_date": "2027-07-20", "band_end_date": "2027-09-16", "band_width_days": 29, "is_now_within_band": false}
+          ]
+        },
+        "provenance_envelope_assets_include": "get_dashas (chart_dashas, level_n=4) — confirms kala_now_get sources the SAME chart_dashas table kala_dasha_sandhi_get claims it 'could not dispatch' to."
+      }
+    },
+    {
+      "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"},
+      "raw_response_excerpt": {
+        "tool": "kala_now_get",
+        "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+        "as_of_date": "2026-08-15",
+        "reading": {
+          "thesis": "1 temporal activation window(s) active as of 2026-08-15; strongest: DIGNITY/CLASSIFY_RESIDUAL (orb strength 0.00, 20 contributing signal(s)). No Kāla-Darshana confluence window is active today.",
+          "verdict": {"statement": "1 structural activation window(s) currently bear on this chart.", "tier": "structural_prior"}
+        },
+        "coverage_diff_vs_native": [
+          {"concept": "kala_darshana_confluence", "state": "honest_empty", "reason": "The L3 Kāla darshana registry fetch succeeded but returned zero rows for this chart/date — no darshana confluence window is active today."},
+          {"concept": "sudarshana_varsha", "state": "honest_empty", "reason": "ka_sudarshana_varsha has not built this chart, or 2026-08-15 falls outside the birth..birth+120y built horizon — honest empty, not fabricated."}
+        ],
+        "darshana": null,
+        "sudarshana_varsha": null,
+        "dasha_sandhi": {
+          "as_of_date": "2026-08-15",
+          "bands": [
+            {"level_n": 1, "level_name": "Mahadasha", "lord_graha": "Saturn", "boundary_kind": "period_start", "boundary_date": "2010-04-23", "band_start_date": "2009-09-27", "band_end_date": "2010-11-17", "band_width_days": 208, "is_now_within_band": false},
+            {"level_n": 1, "level_name": "Mahadasha", "lord_graha": "Saturn", "boundary_kind": "period_end", "boundary_date": "2029-04-23", "band_start_date": "2028-09-27", "band_end_date": "2029-11-17", "band_width_days": 208, "is_now_within_band": false},
+            {"level_n": 2, "level_name": "Antardasha", "lord_graha": "Rahu", "boundary_kind": "period_start", "boundary_date": "2023-12-04", "band_start_date": "2023-11-03", "band_end_date": "2024-01-04", "band_width_days": 31, "is_now_within_band": false},
+            {"level_n": 2, "level_name": "Antardasha", "lord_graha": "Rahu", "boundary_kind": "period_end", "boundary_date": "2026-10-10", "band_start_date": "2026-09-09", "band_end_date": "2026-11-10", "band_width_days": 31, "is_now_within_band": false}
+          ]
+        },
+        "note": "Honest degradation confirmed: zero-history chart correctly shows null darshana/sudarshana_varsha (no fabrication) while still correctly computing dasha_sandhi bands from the same L1 chart_dashas source kala_dasha_sandhi_get fails to reach."
+      }
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "tool": "kala_now_get",
+  "scenario": "pre_birth",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "as_of": "1980-01-01"},
+  "raw_response_summary": {
+    "thesis": "No temporal activation window is active for this chart as of 1980-01-01. No Kaala-Darshana confluence window is active today.",
+    "janma_resonance": {"vara": {"resonance": false}, "nakshatra": {"resonance": false}, "tithi": {"resonance": false}},
+    "sudarshana_varsha": null,
+    "coverage_honest_empty_reason_example": "ka_sudarshana_varsha has not built this chart, or 1980-01-01 falls outside the birth..birth+120y built horizon -- honest empty, not fabricated."
+  },
+  "verdict": "PASS",
+  "note": "Unlike ganita_dasha_periods_get, kala_now_get degrades gracefully and honestly for a pre-birth as_of date: 0 activation windows (correctly, since nothing derived from post-birth field data exists yet), sudarshana_varsha explicitly honest_empty with a reason citing the birth..birth+120y horizon, and janma_resonance correctly computes resonance=false (not a crash) by comparing the query date's own panchanga against birth panchanga. No fabrication, no crash. This tool's coverage[] discipline is doing real work here."
+}

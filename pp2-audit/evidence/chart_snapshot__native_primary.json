@@ -1,0 +1,276 @@
+{
+  "tool": "chart_snapshot",
+  "scenario": "native_primary",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "budget_kb": 8,
+    "include_navamsa": true
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[budget-capped response — see structuredContent; text duplicate suppressed for this instrument per R5.1 C1]"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "vargas": [
+            "D1",
+            "D9"
+          ],
+          "snapshot_text": "D1 — Lagna Ari\n 1 Ari [L] -\n 2 Tau     Ra 19°01'\n 3 Gem     -\n 4 Can     -\n 5 Leo     -\n 6 Vir     -\n 7 Lib     Ma 18°37', Sa 22°26'\n 8 Sco     Ke 19°01'\n 9 Sag     Ju 9°49', Ve 19°27'\n10 Cap     Me 1°09', Su 22°11'\n11 Aqu     Mo 29°46'\n12 Pis     -\n\nD9 — Lagna Can\n 1 Ari     Sa 22°26'\n 2 Tau     -\n 3 Gem     Ju 9°49', Ra 19°01', Mo 29°46'\n 4 Can [L] Su 22°11'\n 5 Leo     -\n 6 Vir     Ve 19°27'\n 7 Lib     -\n 8 Sco     -\n 9 Sag     Ke 19°01'\n10 Cap     Me 1°09'\n11 Aqu     -\n12 Pis     Ma 18°37'",
+          "byte_length": 519,
+          "within_budget": true,
+          "grids": {
+            "D1": [
+              {
+                "sign": "Aries",
+                "lagna": true,
+                "occupants": []
+              },
+              {
+                "sign": "Taurus",
+                "lagna": false,
+                "occupants": [
+                  {
+                    "graha": "Ra",
+                    "degree_in_sign": 19.0209
+                  }
+                ]
+              },
+              {
+                "sign": "Gemini",
+                "lagna": false,
+                "occupants": []
+              },
+              {
+                "sign": "Cancer",
+                "lagna": false,
+                "occupants": []
+              },
+              {
+                "sign": "Leo",
+                "lagna": false,
+                "occupants": []
+              },
+              {
+                "sign": "Virgo",
+                "lagna": false,
+                "occupants": []
+              },
+              {
+                "sign": "Libra",
+                "lagna": false,
+                "occupants": [
+                  {
+                    "graha": "Ma",
+                    "degree_in_sign": 18.6213
+                  },
+                  {
+                    "graha": "Sa",
+                    "degree_in_sign": 22.4395
+                  }
+                ]
+              },
+              {
+                "sign": "Scorpio",
+                "lagna": false,
+                "occupants": [
+                  {
+                    "graha": "Ke",
+                    "degree_in_sign": 19.0209
+                  }
+                ]
+              },
+              {
+                "sign": "Sagittarius",
+                "lagna": false,
+                "occupants": [
+                  {
+                    "graha": "Ju",
+                    "degree_in_sign": 9.8325
+                  },
+                  {
+                    "graha": "Ve",
+                    "degree_in_sign": 19.4542
+                  }
+                ]
+              },
+              {
+                "sign": "Capricorn",
+                "lagna": false,
+                "occupants": [
+                  {
+                    "graha": "Me",
+                    "degree_in_sign": 1.161
+                  },
+                  {
+                    "graha": "Su",
+                    "degree_in_sign": 22.195
+                  }
+                ]
+              },
+              {
+                "sign": "Aquarius",
+                "lagna": false,
+                "occupants": [
+                  {
+                    "graha": "Mo",
+                    "degree_in_sign": 29.7721
+                  }
+                ]
+              },
+              {
+                "sign": "Pisces",
+                "lagna": false,
+                "occupants": []
+              }
+            ],
+            "D9": [
+              {
+                "sign": "Aries",
+                "lagna": false,
+                "occupants": [
+                  {
+                    "graha": "Sa",
+                    "degree_in_sign": 22.4395
+                  }
+                ]
+              },
+              {
+                "sign": "Taurus",
+                "lagna": false,
+                "occupants": []
+              },
+              {
+                "sign": "Gemini",
+                "lagna": false,
+                "occupants": [
+                  {
+                    "graha": "Ju",
+                    "degree_in_sign": 9.8325
+                  },
+                  {
+                    "graha": "Ra",
+                    "degree_in_sign": 19.0209
+                  },
+                  {
+                    "graha": "Mo",
+                    "degree_in_sign": 29.7721
+                  }
+                ]
+              },
+              {
+                "sign": "Cancer",
+                "lagna": true,
+                "occupants": [
+                  {
+                    "graha": "Su",
+                    "degree_in_sign": 22.195
+                  }
+                ]
+              },
+              {
+                "sign": "Leo",
+                "lagna": false,
+                "occupants": []
+              },
+              {
+                "sign": "Virgo",
+                "lagna": false,
+                "occupants": [
+                  {
+                    "graha": "Ve",
+                    "degree_in_sign": 19.4542
+                  }
+                ]
+              },
+              {
+                "sign": "Libra",
+                "lagna": false,
+                "occupants": []
+              },
+              {
+                "sign": "Scorpio",
+                "lagna": false,
+                "occupants": []
+              },
+              {
+                "sign": "Sagittarius",
+                "lagna": false,
+                "occupants": [
+                  {
+                    "graha": "Ke",
+                    "degree_in_sign": 19.0209
+                  }
+                ]
+              },
+              {
+                "sign": "Capricorn",
+                "lagna": false,
+                "occupants": [
+                  {
+                    "graha": "Me",
+                    "degree_in_sign": 1.161
+                  }
+                ]
+              },
+              {
+                "sign": "Aquarius",
+                "lagna": false,
+                "occupants": []
+              },
+              {
+                "sign": "Pisces",
+                "lagna": false,
+                "occupants": [
+                  {
+                    "graha": "Ma",
+                    "degree_in_sign": 18.6213
+                  }
+                ]
+              }
+            ]
+          },
+          "additional_vargas": [],
+          "unresolved_vargas": [],
+          "grounding": {
+            "fact_ids": [
+              "bf92363e-c798-4d52-a00f-5f49d258f8fa",
+              "daeea52f-9c76-47d9-8e5b-ec94e19d6d5b",
+              "810f353f-f191-4c41-8d8a-38d5444c2d37",
+              "c7d7202f-9ac0-4685-bc96-06a367757dfd",
+              "03f51780-e17c-497f-a2ab-f24b181a2480",
+              "189a608f-107d-4586-bdef-21abe98d13a4",
+              "fc7b04fb-3e78-4238-9839-074955cd55f2",
+              "ab7c003c-7423-4990-aeb4-98fd3e2676f2",
+              "824ab283-0749-4ce6-a3cb-2feef411c233",
+              "86305851-e63d-49f5-997b-4e2d0a517b35",
+              "1dd5c36a-6bb3-4f81-9a78-6fd3e842ce7f",
+              "1c0b3684-5398-4500-949c-bccaf96d5f99",
+              "20faca0e-0d8f-42b3-8204-4da2beb04690",
+              "320844f2-2a19-450c-9a95-47b319e1bce7",
+              "e0b0bf5e-cd6f-49ee-a030-92ba12362646",
+              "d5ff5ab6-e75a-4847-8bf6-fe8fea7e61d5",
+              "432a2645-b43c-4aaf-8482-695145ae77c0",
+              "47d00fcd-c11e-4970-898c-33922c0a0e10",
+              "d4739db9-12b2-4456-9f59-56b6ded65adc",
+              "ab24efc9-d85b-49b7-aa27-b7132d1d7d96"
+            ],
+            "table": "chart_divisionals",
+            "fact_category": "varga_position"
+          },
+          "provenance": {
+            "note": "Positions rendered verbatim from chart_divisionals (varga_position); no new computation. D9 included only when include_navamsa=true was explicitly passed. Any vargas requested via the `vargas` param are served additively in `additional_vargas`, never replacing D1/D9."
+          }
+        },
+        "is_error": false
+      }
+    }
+  }
+}

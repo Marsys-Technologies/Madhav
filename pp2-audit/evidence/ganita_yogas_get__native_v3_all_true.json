@@ -1,0 +1,17 @@
+{
+  "tool": "ganita_yogas_get",
+  "scenario": "native_response_format_v3_all_true",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "all": true, "response_format": "v3", "limit": 200},
+  "raw_response_summary": {
+    "envelope_version": "v3",
+    "verdict": {"yogas_fired": 7, "doshas_fired": 1, "bhadra_flag_rows": 1, "panchaka_flag_rows": 2,
+      "pancha_mahapurusha": {"summary": "Yes, 1 of 5 Pancha Mahapurusha yoga — Sasa (Saturn Mahapurusha Yoga) — is formed; the other 4 are not formed."}},
+    "pagination": {"offset": 0, "limit": 200, "total": 11, "more_available": false},
+    "judgment_flags": [{"code": "catalog_only_rows_present", "detail": "3 row(s) in this page are catalog_only/requires_pass label matches (JL-004), not cross-verified confirmed firings."}],
+    "chart_header": {"chart_id_short": "482012f1", "name": "Abhisek Mohanty", "lagna_sign": "Aries", "moon_sign": "Aquarius", "sun_sign": "Capricorn", "ayanamsha": "lahiri_chitrapaksha", "current_maha_antar": "Mercury MD / Saturn AD"},
+    "content_categories": ["yoga_fires", "yoga_label", "dosha_fires", "dosha_label", "bhadra_flag", "panchaka_flag"],
+    "rows_fact_subjects": ["BHADRA_FLAG_BIRTH", "manglik", "PANCHAKA_FLAG_BIRTH(x2)", "anapha", "gola", "kedara", "sasa", "shoola", "vasi", "yuga_nabhasa"],
+    "firings_pointer": {"tool": "ganita_yoga_firings_get", "table": "ga_yoga_firings", "fired_count": 13},
+    "manglik_dosha_row": {"fact_value_jsonb": {"fires": true, "dosha_group": "graha_placement", "fire_reason": "bespoke_detector:manglik", "bhanga_active": false, "classical_citations": [{"text_id": "bphs"}], "constituent_facts_array": ["61ff5df8420a8b45", "6a2dd6c96896f8dd"]}}
+  }
+}

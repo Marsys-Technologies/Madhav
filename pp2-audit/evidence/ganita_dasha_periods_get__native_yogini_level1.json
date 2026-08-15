@@ -1,0 +1,6 @@
+{"tool": "ganita_dasha_periods_get", "scenario": "native_yogini_system_level1", "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "system": "yogini", "level": 1, "ayanamsha_id": "lahiri_chitrapaksha"}, "raw_response": {"content": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "source_table": "chart_dashas", "facets_applied": {"system": "yogini", "level": 1, "window": {"start": "2021-08-15", "end": "2031-08-15"}}, "rows": [
+  {"lord_graha": "Pingala", "lord_sign": "Capricorn", "start_date": "2021-02-04", "end_date": "2023-02-04", "verification_pass_status": "classical_match"},
+  {"lord_graha": "Dhanya", "lord_sign": "Sagittarius", "start_date": "2023-02-04", "end_date": "2026-02-04", "verification_pass_status": "classical_match"},
+  {"lord_graha": "Bhramari", "lord_sign": "Libra", "start_date": "2026-02-04", "end_date": "2030-02-04", "verification_pass_status": "classical_match"},
+  {"lord_graha": "Bhadrika", "lord_sign": "Capricorn", "start_date": "2030-02-04", "end_date": "2035-02-04", "verification_pass_status": "classical_match"}
+], "total": 4}, "is_error": false}, "note": "system=yogini facet honored correctly (distinct lord names Pingala/Dhanya/Bhramari/Bhadrika, not vimshottari graha names)."}

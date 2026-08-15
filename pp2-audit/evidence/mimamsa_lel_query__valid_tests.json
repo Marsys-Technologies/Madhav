@@ -1,0 +1,22 @@
+{
+  "tool": "mimamsa_lel_query",
+  "scenario": "three valid calls: (a) no-query baseline, (b) query with a word absent from any event ('marriage relationship events'), (c) query with a word present in events ('stammering')",
+  "calls": [
+    {
+      "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "limit": 10},
+      "result_summary": {"count": 10, "total_matching": 64, "has_more": true, "note": "confirms all 64 life_events for native chart are reachable with no query filter"}
+    },
+    {
+      "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "query": "marriage relationship events", "limit": 10},
+      "result_summary": {"count": 0, "total_matching": 0, "note": "AND-semantics ILIKE search requires every whitespace-split word to match somewhere in description/domain/category/event_type/source_citation for a row. The word 'events' (generic, not present in any life_events row) makes the whole AND-query match nothing, even though a genuinely on-topic row exists (category=relationship, domain=relationship/romantic_long_term_started, description mentions 'wife (married 2013-12-11)')."}
+    },
+    {
+      "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "query": "stammering", "limit": 10},
+      "result_summary": {"count": 2, "total_matching": 2, "note": "correctly returns the 2 stammering-related life events (congenital-onset correction row + original 1995 three-phase-arc row) — confirms the ILIKE AND-search mechanism does work correctly when query words are actually present in the corpus."}
+    }
+  ],
+  "mechanism_trace": {
+    "file": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_life_events.ts:129-161",
+    "note": "Comment at line 145 (tag 'WP-B1 F-LEL-NOOP') documents that `query` used to be a complete no-op (forwarded but never read) and was deliberately fixed to an AND-semantics case-insensitive ILIKE substring search across 5 text columns, split on whitespace, 'so a non-matching query honestly narrows to zero rows instead of silently ignoring the filter'. This is working as designed — not a defect — but the tool's declared param description ('Natural language life-event query') overstates the actual mechanism, which is a strict literal-substring AND match, not semantic/NL understanding. A multi-word natural-language phrase like a caller might plausibly type ('marriage relationship events') can honestly return zero hits even when clearly relevant events exist, simply because one incidental word (here 'events') isn't in the corpus text."
+  }
+}

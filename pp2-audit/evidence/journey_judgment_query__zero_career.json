@@ -1,0 +1,13 @@
+{
+  "tool": "judgment_query",
+  "scenario": "zero_history_journey_step1_career",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "domain": "career", "response_format": "v3"},
+  "raw_response_summary": {
+    "verdict": {"domain":"career","verdict_grade":"mixed","composite_score":0.82,"operative_varga":"D10"},
+    "epistemic": {"grade":"structural_prior","verified_fraction":null,"note":"No epistemic signal computed for this response."},
+    "reading_contract": "This response is graded structural_prior ... no outcome data yet backs the number. ... 7 judgment flag(s) disclosing coverage/resolution gaps ... read each as a stated limit on the verdict, not decoration.",
+    "judgment_flags_sample": ["complete_domain_accounting_available","bearing_yogas_corroboration_caveat","notably_absent_not_checked","kala_activations_trimmed","afflictions_present","sensitive_degree_firings_present","varga_confirmed_forced_false"]
+  },
+  "verdict": "PASS",
+  "note": "\"Will I have career success?\" answered via judgment_query on the zero-history chart. The tool does NOT crash and does NOT silently present a calibrated-sounding number: envelope.epistemic.grade is explicitly 'structural_prior' with the note 'No epistemic signal computed for this response', and reading_contract spells out in prose that no outcome data backs the number. 7 judgment_flags disclose specific coverage gaps (varga_confirmed_forced_false, corroboration caveat, etc.) rather than hiding them. Verdict is computed deterministically from D1/varga/yoga signals (composite_score = d1_score+varga_term+yoga_term), never from calibrated probability -- appropriate honesty for a chart with no outcome history."
+}

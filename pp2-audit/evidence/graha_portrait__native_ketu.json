@@ -1,0 +1,22 @@
+{
+  "tool": "graha_portrait",
+  "scenario": "native_graha_ketu",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "graha": "Ketu"},
+  "raw_response_summary": {
+    "verdict": {
+      "graha": "Ketu", "graha_code": "KET_MEAN",
+      "completeness": {"position":"✓","dignity":"✓","functional_nature":"zero_rows","strength":"✓","avasthas":"✓","yogas":"zero_rows","dashas":"✓","cgm_neighborhood":"✓"},
+      "sections_populated": 6, "sections_requested": 8,
+      "narration": "Confirmed: Ketu is exalted (Scorpio, 8th house) in D1. In D9: neutral (Sagittarius, 6th house) — and natal strength undercut by navamsha stress. But this dignity sits in the 8th house (dusthana). Shadbala: 0.63 rupas total. Avasthas — lajjitadi avastha: garvita; sayanadi avastha: agamana. Yogas: no parivartana exchange and no catalog yoga/dosha candidates for Ketu. Next Ketu Mahadasha: 2027-08-18 -> 2034-08-18 (age 43)."
+    },
+    "dignity_D1": {"sign": "Scorpio", "house": 8, "dignity_state": "exalted"},
+    "dignity_D9": {"sign": "Sagittarius", "house": 6, "dignity_state": "neutral"},
+    "dashas": {"level": "maha", "rows": [
+      {"lord_graha": "Ketu", "start_date": "2027-08-18", "end_date": "2034-08-18", "lord_natal_house_d1": 8, "lord_natal_dignity_d1": "exalted"}
+    ]},
+    "cgm_neighborhood": {"node_count": 13, "edge_count": 149},
+    "judgment_flags": [{"code": "no_parivartana_or_catalog_matches_for_graha"}, {"code": "budget_exceeded_after_trim", "detail": "12kb budget still exceeded after full trim."}],
+    "functional_nature_rows": [],
+    "note": "Same functional_nature=zero_rows gap as Rahu -- consistent pattern, likely a real coverage gap for nodal points in the functional_nature data source across the tool, not a per-call fluke."
+  }
+}

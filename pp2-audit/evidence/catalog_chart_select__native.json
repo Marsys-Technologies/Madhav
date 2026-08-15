@@ -1,0 +1,25 @@
+{
+  "tool": "catalog_chart_select",
+  "scenario": "native",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+  "raw_response": {
+    "ok": true,
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "display_name": "Abhisek",
+    "session_key": "default",
+    "message": "Chart selected: Abhisek. Pass this chart_id to subsequent tools.",
+    "provenance_stamp": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "priors_version": "1.2",
+      "formula_versions": { "salience_formula_ver": null },
+      "ranking_config": { "mode": "composite_v1" },
+      "build_id": "985de5f3-0b29-4f13-ba25-544f269a4f6c",
+      "build_status": "completed",
+      "ledger_version": null,
+      "now_context_date": "2026-08-15",
+      "pinned_at": "2026-08-15T12:32:56.986Z"
+    },
+    "judgment_flags": ["chart_rebuilt_mid_provenance_stamp_refreshed"],
+    "advisories": ["Chart 482012f1-710e-4a25-994a-93821f5871aa was rebuilt since your provenance stamp was last set — stamp refreshed to the new build."]
+  }
+}

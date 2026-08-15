@@ -1,0 +1,25 @@
+{
+  "tool": "judgment_query",
+  "scenario": "zero_history_chart_marriage_v3",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "domain": "marriage", "response_format": "v3"},
+  "raw_response_summary": {
+    "chart_header": {"name": "Abhinandan Mohanty", "lagna_sign": "Aries", "moon_sign": "Gemini", "sun_sign": "Aquarius", "current_maha_antar": "Saturn MD / Rahu AD"},
+    "verdict": {"verdict_grade": "convergent_moderate", "composite_score": 1.9, "d1_score": 1.9, "varga_term": 0, "operative_varga": "D9", "receipt": {"timing_anchored": false, "varga_confirmed": false, "yogas_checked": 14, "bhanga_checked": true}},
+    "epistemic": {"grade": "structural_prior", "verified_fraction": null, "note": "No epistemic signal computed for this response."},
+    "checklist_bhavesha": {"from_lagna": {"graha": "Venus", "house": 12, "sign": "Pisces", "dignity_state": "exalted"}, "from_chandra": {"graha": "Jupiter", "house": 10, "sign": "Capricorn", "dignity_state": "debilitated"}},
+    "timing_hooks": {"current": [], "lord_mahadasha_windows": [], "karaka_mahadasha_windows": [], "kala_activations": [], "mahadasha_windows_by_graha": {}},
+    "judgment_flags_key": [
+      "timing_anchored_forced_false: served timing_hooks are all empty on the wire -- receipt.timing_anchored downgraded rather than shipping a false-positive receipt",
+      "varga_confirmed_forced_false: same honest-downgrade pattern for the D9 varga_confirmation.rows (empty on wire)",
+      "bearing_yogas_no_domain_match, bearing_yogas_corroboration_caveat, notably_absent_not_checked, afflictions_present, sensitive_degree_firings_present -- IDENTICAL flag set (same codes, same disclosure pattern) as the native chart's response"
+    ],
+    "gochara_sweep": {"domain": "relationship", "domain_covered": true, "upcoming_window_count": 3, "top_windows": [
+      {"event_class": "marriage", "temporal_shape": "point", "window_start": "2028-03-15", "peak_date": "2028-03-15", "valence": "neutral"},
+      {"event_class": "marriage", "temporal_shape": "interval", "window_start": "2024-02-05", "window_end": "2034-01-30", "peak_date": "2031-08-21", "valence": "neutral"},
+      {"event_class": "romantic_start", "temporal_shape": "interval", "window_start": "2024-02-05", "window_end": "2034-01-30", "peak_date": "2029-10-20", "valence": "gain"}
+    ]},
+    "digest_convergence_domains_relationship": {"convergence_count": 3734, "convergence_score": 2538.30279, "cross_tradition_count": 6, "contradiction_count": 0},
+    "reading_contract": "This response is graded structural_prior... It carries 5 judgment flag(s) disclosing coverage/resolution gaps (see judgment_flags) -- read each as a stated limit on the verdict, not decoration."
+  },
+  "honesty_assessment": "This chart (1c826d5a, 'Abhinandan Mohanty') is NOT an empty/blank chart -- it has full L1-L5 build data (10,037 MSR signals, 14 yoga firings, populated convergence domains). It is the CLAUDE.md-designated operator E2E test chart, distinguished from the native by lacking outcome/calibration history (zero LEL entries), not by lacking structural data. The response DOES degrade honestly: identical epistemic.grade='structural_prior', identical judgment_flags disclosure machinery (timing_anchored_forced_false, varga_confirmed_forced_false, verified_fraction=null), and the SAME reading_contract caveat language as the native chart -- no fabricated confidence, no silent gap. However this also means the 'zero-history' distinction produces NO differentiated degradation signal (no chart-specific 'insufficient outcome history' caveat beyond the generic structural_prior grade shared by every chart in this system, since L5 calibration is systemically not-yet-populated per CLAUDE.md L5 seal note) -- i.e. the honesty here is systemic (applies to native too) rather than a special zero-history-aware code path."
+}

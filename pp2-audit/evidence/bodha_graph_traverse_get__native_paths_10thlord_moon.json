@@ -1,0 +1,17 @@
+{
+  "tool": "bodha_graph_traverse_get",
+  "scenario": "native_paths_10thlord_moon",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "mode": "paths", "about_from": "lord_of(bhava 10)", "about_to": {"type": "graha", "graha": "Moon"}, "direction": "directed"},
+  "observed": {
+    "mode": "paths",
+    "about_resolution": ["House 10 counted from lagna (Aries) = Capricorn.", "Capricorn is ruled by Saturn (classical rulership).", "The 10th lord is Saturn, placed in the 7th (Libra).", "Moon is placed in house 11 (Aquarius) in D1."],
+    "from_node_id": "aaaf68bc-a256-428f-8daf-e9014bb731fc (Saturn)",
+    "to_node_id": "88b60248-9d83-4973-9d20-42617bcc5173 (Moon)",
+    "path_found": true,
+    "path_count": 5,
+    "budget_kb_applied": 40,
+    "trim_report": [{"path": "content.edges", "original_count": 97, "kept_count": 48, "reason": "content.edges: trimmed to 48", "recover_via": {"instrument": "unknown_tool", "hint": "call unknown_tool again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.edges\""}}],
+    "drill_pointers": [{"instrument": "unknown_tool", "hint": "call unknown_tool again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.edges\""}]
+  },
+  "note": "The documented gate ('a 10th-lord to Moon path resolves in ONE call via mode=paths, about_from=lord_of(bhava 10), about_to={type:graha,graha:Moon}, direction=directed') WORKS -- about_resolution correctly chains lagna->house10->Capricorn->Saturn->placement, path_found=true, 5 paths returned. BUT the response's own trim_report/drill_pointers.recover_via.instrument is the literal string 'unknown_tool' instead of 'bodha_graph_traverse_get' -- a caller following the documented recovery instruction verbatim ('call unknown_tool again') has no real tool to call. Root cause: platform-mcp/src/tools/register_p1_aliases.ts:657 calls `return dualOutput(data)` without passing the tool's own name, so dualOutput's `toolName = 'unknown_tool'` default (line 188) is used by applyAutoBudgetToEnvelope when building recover_via."
+}

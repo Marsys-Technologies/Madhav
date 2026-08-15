@@ -1,0 +1,22 @@
+{
+  "tool": "gochara_activation_get",
+  "scenario": "zero_history_chart_event_class_marriage_as_of_2026-08-15",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "event_class": "marriage"},
+  "raw_response_summary": {
+    "window_count": 1,
+    "context_only_rows_in_page": 1,
+    "window": {
+      "id": "60780",
+      "temporal_shape": "interval",
+      "window_start": "2024-02-05",
+      "window_end": "2034-01-30",
+      "peak_date": "2031-08-21",
+      "signed_intensity": 0.48,
+      "resolution_disclosure": {"is_timing_window": false},
+      "activity_terms_contributing_planets": ["Moon", "Mars", "Jupiter", "Ketu"],
+      "note": "Ketu appears here (drishti_contact target_ref=7, i.e. classical 7th/opposition aspect onto the 7th house) -- this is the DEFAULT 7th-only aspect nodes still get under the F-20 truncation, not a 5th/9th aspect. No Rahu contribution at all in this window's activity_terms."
+    },
+    "coverage": {"tier": "rich", "covered_class_count": 27, "covered_domain_count": 13},
+    "empty_reason": null
+  }
+}

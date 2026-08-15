@@ -1,0 +1,28 @@
+{
+  "tool": "catalog_chart_select",
+  "scenario": "zero_history",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"},
+  "raw_response": {
+    "ok": true,
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "display_name": "Abhinandan",
+    "session_key": "default",
+    "message": "Chart selected: Abhinandan. Pass this chart_id to subsequent tools.",
+    "provenance_stamp": {
+      "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+      "priors_version": "1.2",
+      "formula_versions": { "salience_formula_ver": null },
+      "ranking_config": { "mode": "composite_v1" },
+      "build_id": "80886c05-dd95-474f-aada-40a314027915",
+      "build_status": "completed",
+      "ledger_version": null,
+      "now_context_date": "2026-08-15",
+      "pinned_at": "2026-08-15T12:33:06.504Z"
+    },
+    "judgment_flags": ["chart_rebuilt_mid_provenance_stamp_refreshed", "concept_ledger_updated_mid_provenance_stamp_refreshed"],
+    "advisories": [
+      "You have switched to a different chart from your previous session. Consider starting a new conversation to avoid mixing chart contexts. Previous: 482012f1-710e-4a25-994a-93821f5871aa → New: 1c826d5a-41cb-4450-b4dc-59d440e5f75a.",
+      "Chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a was rebuilt since your provenance stamp was last set — stamp refreshed to the new build."
+    ]
+  }
+}

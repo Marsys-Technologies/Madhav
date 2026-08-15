@@ -1,0 +1,202 @@
+{
+  "tool": "ganita_sade_sati_get",
+  "scenario": "zero_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"envelope_version\":\"v1\",\"tool\":\"ganita_sade_sati_get\",\"verdict\":null,\"ranking_basis\":null,\"grounding\":{\"fact_ids\":[],\"citations\":[],\"grounding_score\":null},\"pagination\":{\"offset\":0,\"limit\":0,\"total\":null,\"next_cursor\":null,\"more_available\":false},\"drill_pointers\":[],\"judgment_flags\":[],\"insight_type\":null,\"query_class\":\"per_chart_structural\",\"content\":{\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"categories\":[\"sade_sati_cycle\",\"sade_sati_phase\",\"sade_sati_phase_quarter\",\"sade_sati_modifier_overlay\",\"sade_sati_cancellation_check\",\"sade_sati_concurrent_dasha_overlay\",\"sade_sati_downstream_cross_reference\",\"sade_sati_saturn_retrograde_subset\",\"janma_shani_period\",\"anumukha_shani_period\",\"ardha_ashtama_shani_period\",\"ashtama_shani_period\",\"dhaiya_period\",\"vishakha_shani_period\",\"kantaka_shani_period\"],\"rows\":[{\"fact_id\":\"95d2f0d5311e307d\",\"fact_category\":\"ardha_ashtama_shani_period\",\"fact_subject\":\"DHAIYA_8H_7\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"house_from_moon\",\"fact_value_num\":8,\"fact_value_text\":null,\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"ardha_ashtama_shani_period.DHAIYA_8H_7.house_from_moon@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0\"},{\"fact_id\":\"85b1832cee34cda6\",\"fact_category\":\"ardha_ashtama_shani_period\",\"fact_subject\":\"DHAIYA_8H_7\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"period_end_iso\",\"fact_value_num\":null,\"fact_value_text\":\"2023-01-17T12:37:58+00:00\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"ardha_ashtama_shani_period.DHAIYA_8H_7.period_end_iso@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0\"},{\"fact_id\":\"46c9a08117f83bf0\",\"fact_category\":\"ardha_ashtama_shani_period\",\"fact_subject\":\"DHAIYA_8H_7\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"period_start_iso\",\"fact_value_num\":null,\"fact_value_text\":\"2022-07-12T09:15:28+00:00\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"ardha_ashtama_shani_period.DHAIYA_8H_7.period_start_iso@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0\"},{\"fact_id\":\"a474961c9370d2ba\",\"fact_category\":\"ardha_ashtama_shani_period\",\"fact_subject\":\"DHAIYA_8H_6\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"house_from_moon\",\"fact_value_num\":8,\"fact_value_text\":null,\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"ardha_ashtama_shani_period.DHAIYA_8H_6.house_from_moon@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0\"},{\"fact_id\":\"8e609f751d8595fa\",\"fact_category\":\"ardha_ashtama_shani_period\",\"fact_subject\":\"DHAIYA_8H_6\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"period_end_iso\",\"fact_value_num\":null,\"fact_value_text\":\"2022-04-29T02:22:01+00:00\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"ardha_ashtama_shani_period.DHAIYA_8H_6.period_end_iso@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0\"},{\"fact_id\":\"2e32ca0a4ce71d1d\",\"fact_category\":\"ardha_ashtama_shani_period\",\"fact_subject\":\"DHAIYA_8H_6\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"period_start_iso\",\"fact_value_num\":null,\"fact_value_text\":\"2020-01-24T04:20:09+00:00\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"ardha_ashtama_shani_period.DHAIYA_8H_6.period_start_iso@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0\"},{\"fact_id\":\"79227defd21e1902\",\"fact_category\":\"ashtama_shani_period\",\"fact_subject\":\"DHAIYA_8H_6\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"duration_days\",\"fact_value_num\":825.92,\"fact_value_text\":null,\"fact_value_jsonb\":null,\"unit\":\"days\",\"verification_pass_status\":\"single\",\"citation_ref\":\"ashtama_shani_period.DHAIYA_8H_6.duration_days@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0\"},{\"fact_id\":\"20da5880ebd85f09\",\"fact_category\":\"ashtama_shani_period\",\"fact_subject\":\"DHAIYA_8H_6\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"period_end_iso\",\"fact_value_num\":null,\"fact_value_text\":\"2022-04-29T02:22:01+00:00\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"ashtama_shani_period.DHAIYA_8H_6.period_end_iso@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0\"},{\"fact_id\":\"ff07e3e83178383c\",\"fact_category\":\"ashtama_shani_period\",\"fact_subject\":\"DHAIYA_8H_6\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"period_start_iso\",\"fact_value_num\":null,\"fact_value_text\":\"2020-01-24T04:20:09+00:00\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"ashtama_shani_period.DHAIYA_8H_6.period_start_iso@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0\"},{\"fact_id\":\"8966a09141f84257\",\"fact_category\":\"ashtama_shani_period\",\"fact_subject\":\"DHAIYA_8H_6\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"fact_key\":\"saturn_sign\",\"fact_value_num\":null,\"fact_value_text\":\"Capricorn\",\"fact_value_jsonb\":null,\"unit\":null,\"verification_pass_status\":\"single\",\"citation_ref\":\"ashtama_shani_period.DHAIYA_8H_6.saturn_sign@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0\"}],\"total\":10,\"total_before_window_filter\":1256,\"total_after_window_filter\":201,\"periods_dropped_outside_window\":160,\"window_filter_applied\":true,\"note\":\"160 period(s)/cycle(s) outside the current+adjacent window were dropped from this default view (they carry a real start/end date pair that does not overlap now ± 5 years). Pass all:true to retrieve the full ~1950-2100 historical+future sweep.\",\"drill_uri\":\"marsys://tool/L1/get_sade_sati (all:true)\"},\"trim_report\":null}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "envelope_version": "v1",
+        "tool": "ganita_sade_sati_get",
+        "verdict": null,
+        "ranking_basis": null,
+        "grounding": {
+          "fact_ids": [],
+          "citations": [],
+          "grounding_score": null
+        },
+        "pagination": {
+          "offset": 0,
+          "limit": 0,
+          "total": null,
+          "next_cursor": null,
+          "more_available": false
+        },
+        "drill_pointers": [],
+        "judgment_flags": [],
+        "insight_type": null,
+        "query_class": "per_chart_structural",
+        "content": {
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+          "categories": [
+            "sade_sati_cycle",
+            "sade_sati_phase",
+            "sade_sati_phase_quarter",
+            "sade_sati_modifier_overlay",
+            "sade_sati_cancellation_check",
+            "sade_sati_concurrent_dasha_overlay",
+            "sade_sati_downstream_cross_reference",
+            "sade_sati_saturn_retrograde_subset",
+            "janma_shani_period",
+            "anumukha_shani_period",
+            "ardha_ashtama_shani_period",
+            "ashtama_shani_period",
+            "dhaiya_period",
+            "vishakha_shani_period",
+            "kantaka_shani_period"
+          ],
+          "rows": [
+            {
+              "fact_id": "95d2f0d5311e307d",
+              "fact_category": "ardha_ashtama_shani_period",
+              "fact_subject": "DHAIYA_8H_7",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "house_from_moon",
+              "fact_value_num": 8,
+              "fact_value_text": null,
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "ardha_ashtama_shani_period.DHAIYA_8H_7.house_from_moon@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0"
+            },
+            {
+              "fact_id": "85b1832cee34cda6",
+              "fact_category": "ardha_ashtama_shani_period",
+              "fact_subject": "DHAIYA_8H_7",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "period_end_iso",
+              "fact_value_num": null,
+              "fact_value_text": "2023-01-17T12:37:58+00:00",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "ardha_ashtama_shani_period.DHAIYA_8H_7.period_end_iso@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0"
+            },
+            {
+              "fact_id": "46c9a08117f83bf0",
+              "fact_category": "ardha_ashtama_shani_period",
+              "fact_subject": "DHAIYA_8H_7",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "period_start_iso",
+              "fact_value_num": null,
+              "fact_value_text": "2022-07-12T09:15:28+00:00",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "ardha_ashtama_shani_period.DHAIYA_8H_7.period_start_iso@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0"
+            },
+            {
+              "fact_id": "a474961c9370d2ba",
+              "fact_category": "ardha_ashtama_shani_period",
+              "fact_subject": "DHAIYA_8H_6",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "house_from_moon",
+              "fact_value_num": 8,
+              "fact_value_text": null,
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "ardha_ashtama_shani_period.DHAIYA_8H_6.house_from_moon@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0"
+            },
+            {
+              "fact_id": "8e609f751d8595fa",
+              "fact_category": "ardha_ashtama_shani_period",
+              "fact_subject": "DHAIYA_8H_6",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "period_end_iso",
+              "fact_value_num": null,
+              "fact_value_text": "2022-04-29T02:22:01+00:00",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "ardha_ashtama_shani_period.DHAIYA_8H_6.period_end_iso@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0"
+            },
+            {
+              "fact_id": "2e32ca0a4ce71d1d",
+              "fact_category": "ardha_ashtama_shani_period",
+              "fact_subject": "DHAIYA_8H_6",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "period_start_iso",
+              "fact_value_num": null,
+              "fact_value_text": "2020-01-24T04:20:09+00:00",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "ardha_ashtama_shani_period.DHAIYA_8H_6.period_start_iso@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0"
+            },
+            {
+              "fact_id": "79227defd21e1902",
+              "fact_category": "ashtama_shani_period",
+              "fact_subject": "DHAIYA_8H_6",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "duration_days",
+              "fact_value_num": 825.92,
+              "fact_value_text": null,
+              "fact_value_jsonb": null,
+              "unit": "days",
+              "verification_pass_status": "single",
+              "citation_ref": "ashtama_shani_period.DHAIYA_8H_6.duration_days@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0"
+            },
+            {
+              "fact_id": "20da5880ebd85f09",
+              "fact_category": "ashtama_shani_period",
+              "fact_subject": "DHAIYA_8H_6",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "period_end_iso",
+              "fact_value_num": null,
+              "fact_value_text": "2022-04-29T02:22:01+00:00",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "ashtama_shani_period.DHAIYA_8H_6.period_end_iso@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0"
+            },
+            {
+              "fact_id": "ff07e3e83178383c",
+              "fact_category": "ashtama_shani_period",
+              "fact_subject": "DHAIYA_8H_6",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "period_start_iso",
+              "fact_value_num": null,
+              "fact_value_text": "2020-01-24T04:20:09+00:00",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "ashtama_shani_period.DHAIYA_8H_6.period_start_iso@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0"
+            },
+            {
+              "fact_id": "8966a09141f84257",
+              "fact_category": "ashtama_shani_period",
+              "fact_subject": "DHAIYA_8H_6",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "fact_key": "saturn_sign",
+              "fact_value_num": null,
+              "fact_value_text": "Capricorn",
+              "fact_value_jsonb": null,
+              "unit": null,
+              "verification_pass_status": "single",
+              "citation_ref": "ashtama_shani_period.DHAIYA_8H_6.saturn_sign@chart=1c826d5a-41cb-4450-b4dc-59d440e5f75a:ay=lahiri_chitrapaksha:eng=ga9/1.0.0"
+            }
+          ],
+          "total": 10,
+          "total_before_window_filter": 1256,
+          "total_after_window_filter": 201,
+          "periods_dropped_outside_window": 160,
+          "window_filter_applied": true,
+          "note": "160 period(s)/cycle(s) outside the current+adjacent window were dropped from this default view (they carry a real start/end date pair that does not overlap now ± 5 years). Pass all:true to retrieve the full ~1950-2100 historical+future sweep.",
+          "drill_uri": "marsys://tool/L1/get_sade_sati (all:true)"
+        },
+        "trim_report": null
+      }
+    }
+  }
+}

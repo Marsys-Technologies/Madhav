@@ -1,0 +1,8 @@
+{
+  "tool": "ganita_dasha_periods_get",
+  "scenario": "birth_instant",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "as_of_date": "1984-02-05", "ayanamsha_id": "lahiri_chitrapaksha"},
+  "raw_response": {"type":"object","object":{"content":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","source_table":"chart_dashas","levels_available":4,"facets_applied":{"system":"vimshottari","level":"cap<=3","window":null,"date_filter":{"as_of_date":"1984-02-05"},"fields":"compact"},"rows":[{"dasha_row_id":"ce7677bc-5b39-4415-9c2d-96a01a99114d","lord_graha":"Jupiter","level_n":1,"start_date":"1975-08-18","end_date":"1991-08-18"},{"dasha_row_id":"286a1f4d-0cb7-4e8a-a73e-46b69fa2446c","lord_graha":"Venus","level_n":2,"start_date":"1983-07-01","end_date":"1986-03-01"},{"dasha_row_id":"4b14b24c-9e9d-4964-b8ab-2796daced3e2","lord_graha":"Moon","level_n":3,"start_date":"1984-01-28","end_date":"1984-04-18"}],"total":3,"narration":"You are in Jupiter Mahadasha (ends 1991-08-18, age ~7) -> Venus Antardasha (ends 1986-03-01, age ~2) -> Moon Pratyantardasha (current, ends 1984-04-18, age ~0). Venus, your Antardasha lord, is neutral in your 9 house (Purva Ashadha). Moon, your Pratyantardasha lord, is neutral in your 11 house (Purva Bhadrapada)."},"is_error":false}},
+  "verdict": "PASS",
+  "note": "Birth-instant as_of_date (1984-02-05, the native's actual birth date) resolves correctly to the L3 Pratyantardasha active at birth (Moon, ends 1984-04-18, age ~0). No crash, no off-by-one, correct dasha nesting shown. Full un-truncated response captured verbatim above (compact field projection keeps it short)."
+}

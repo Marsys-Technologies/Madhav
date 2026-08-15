@@ -1,0 +1,11 @@
+{
+  "tool": "ref_mantras_get",
+  "scenario": "Adjudicating prior PARTIAL evidence (planet=Saturn, limit=10) — the MCP response itself showed several rows with mantra_sanskrit:null and mantra_text:null despite mantra_transliteration being populated for some. Checked whether this is a wiring bug or a genuine corpus-coverage gap.",
+  "db_verification": {
+    "query_saturn_only": "SELECT count(*) total, count(mantra_text) has_mantra_text, count(mantra_sanskrit) has_mantra_sanskrit, count(mantra_transliteration) has_translit FROM brahma_remedy_corpus WHERE remedy_type='mantra' AND planet ILIKE 'saturn'",
+    "result_saturn_only": {"total": 10, "has_mantra_text": 3, "has_mantra_sanskrit": 1, "has_translit": 5},
+    "query_full_corpus": "SELECT count(*) total, count(mantra_text) has_mantra_text, count(mantra_sanskrit) has_mantra_sanskrit FROM brahma_remedy_corpus WHERE remedy_type='mantra'",
+    "result_full_corpus": {"total": 67, "has_mantra_text": 16, "has_mantra_sanskrit": 9}
+  },
+  "conclusion": "The MCP response's nulls faithfully reflect real underlying data: only 16/67 (24%) of the whole mantra corpus has mantra_text populated and only 9/67 (13%) has mantra_sanskrit populated. This is NOT a wiring bug (unlike ref_nakshatra_get/ref_dasha_systems_get) — the tool correctly queries brahma_remedy_corpus and honestly returns null rather than fabricating text (consistent with CLAUDE.md N.7 item 6 'honest null beats invented judgment'). It IS a genuine, quantified corpus-completeness gap: for a tool whose entire purpose is 'mantra corpus query', most rows lack the actual mantra (Sanskrit or transliterated) and only carry prescription_text (contextual guidance/remedy instructions) plus classical_ref. Downgrades verdict to PARTIAL rather than a clean PASS."
+}

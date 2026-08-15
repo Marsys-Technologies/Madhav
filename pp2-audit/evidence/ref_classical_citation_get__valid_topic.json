@@ -1,0 +1,22 @@
+{
+  "tool": "ref_classical_citation_get",
+  "scenario": "valid_topic — prior PARTIAL call used a non-existent 'citation_id' param, rejected by schema (unrecognized_keys). Real schema accepts author/keyword/topic/limit/offset.",
+  "args": {"topic": "marriage", "limit": 10},
+  "raw_response_summary": {
+    "search_mode": "hybrid_vector_keyword",
+    "query_used": "marriage",
+    "total": 10,
+    "citations_returned": 10,
+    "sample_citation": {
+      "citation_ref": "muhurta_chintamani:PG31:C1",
+      "text_id": "muhurta_chintamani",
+      "tradition_school": "vedic:parashari",
+      "verse_text_en_snippet": "(19) With the Hindi tika (commentary)\n\n(47) Initiation, the establishment of the sacred fire, marriage, tonsure, the fir...[truncated for budget]",
+      "vector_score": 0.7195,
+      "keyword_score": 0.0117,
+      "combined_score": 0.4718,
+      "source_citation": "[MEDIUM] Muhurta Chintamani — Mahidhara Sharma bhasha tika, Khemraj Shrikrishnadas Press (archive.org: wzIF_muhurta-chintamani-khemraj, CC0)"
+    }
+  },
+  "note": "Real hybrid vector+keyword search over classical text corpus, all 10 results genuinely topically relevant (Muhurta Chintamani marriage-timing verses). PASS with valid args."
+}

@@ -1,0 +1,16 @@
+{
+  "tool": "bodha_domain_reading_get",
+  "scenario": "zero_health",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "domain": "health", "lens_limit": 5},
+  "observed": {
+    "domain": "health",
+    "ranked_signals_top": ["Gola Yoga [ga_yoga]", "Ubhayachari Yoga [ga_yoga]", "VENUS (D1): combustion per varga"],
+    "lens_count": 2,
+    "lens_pagination": {"offset": 0, "limit": 5, "total": 2, "returned_count": 2, "more_available": false},
+    "cdlm_cell_count": 5,
+    "defect_001_status": "RESOLVED (6/72029 refs orphaned, 0%)",
+    "budget_kb_applied": 40,
+    "drill_pointers_instrument": "empty (trim_report was pre-collapsed to 1 entry, no per-field drill needed at this budget)"
+  },
+  "note": "Zero-history chart returns real, domain-appropriate, differentiated health-domain data (distinct yoga set, sade_sati signal_refs, distinct cdlm_cell_count=5 vs native's 10) -- not a copy of native chart's response, confirming honest chart-scoping. DEFECT-001 (constituent_facts_array orphan resolution) is disclosed inline as RESOLVED for this chart -- informational, not a new finding."
+}

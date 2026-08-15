@@ -1,0 +1,19 @@
+{
+  "tool": "ganita_special_lagnas_get",
+  "scenario": "zero_history_valid_chart_id",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"},
+  "raw_response_summary": {
+    "categories": ["special_lagna", "upagraha_position", "sun_derived_upagraha"],
+    "total": 119,
+    "category_receipts": [
+      {"fact_category": "special_lagna", "confirmed_count": 49, "receipt_state": "CONFIRMED"},
+      {"fact_category": "upagraha", "confirmed_count": 70, "receipt_state": "CONFIRMED"}
+    ],
+    "sample_rows": [
+      {"fact_subject": "BHAVA_LAGNA", "fact_key": "sign", "fact_value_text": "Aries"},
+      {"fact_subject": "HORA_LAGNA", "fact_key": "sign", "fact_value_text": "Gemini"},
+      {"fact_subject": "INDU_LAGNA", "fact_key": "sign", "fact_value_text": "Aries"}
+    ]
+  },
+  "pp2_note": "Re-verified on the second (zero-history) chart with valid args -- confirms the tool is not chart-hardcoded: different special-lagna sign placements from the native chart (e.g. BHAVA_LAGNA=Aries here vs Pisces for native), all two_pass_verified."
+}

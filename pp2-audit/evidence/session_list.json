@@ -1,0 +1,18 @@
+{
+  "tool": "session_list",
+  "scenario": "session_list",
+  "args": {},
+  "raw_response": {
+    "ok": true,
+    "count": 1,
+    "sessions": [
+      {
+        "session_id": "fdfe6357-edb1-4021-b63c-ccadd84c9266",
+        "session_key": "default",
+        "active_chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+        "last_seen_at": "2026-08-15 12:33:53.881032+00"
+      }
+    ],
+    "usage_hint": "Showing 1 session(s). Use recall_session with session_key to resume a specific session."
+  }
+}

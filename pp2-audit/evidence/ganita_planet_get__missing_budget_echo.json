@@ -1,0 +1,21 @@
+{
+  "tool": "ganita_planet_get",
+  "scenario": "planet=Saturn, no size-limiting param on this tool's schema at all — response is trimmed anyway by the generic auto-budget pass, but never echoes budget_kb_applied/budget_kb_requested or merges recover_via into top-level drill_pointers, unlike the finalizeMcpBudget-wired tools tested elsewhere in this dimension.",
+  "args": { "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "planet": "Saturn" },
+  "observed_trim_report": [
+    { "path": "dispositor.rows", "original_count": 224, "kept_count": 10 },
+    { "path": "shadbala.rows", "original_count": 137, "kept_count": 10 },
+    { "path": "yogas.firings_authoritative", "original_count": 20, "kept_count": 10 },
+    { "path": "dignity.rows", "original_count": 54, "kept_count": 10 },
+    { "path": "position.rows", "original_count": 45, "kept_count": 10 },
+    { "path": "avasthas.rows", "original_count": 30, "kept_count": 10 }
+  ],
+  "observed_missing_fields": {
+    "budget_kb_applied": "ABSENT from the response despite 6 sections being genuinely trimmed",
+    "budget_kb_requested": "ABSENT (tool has no budget_kb param, so N/A is arguably fine on its own, but budget_kb_applied should still disclose the ceiling that was applied)",
+    "top_level_drill_pointers": "[] (empty) — the 6 recover_via pointers from trim_report were never merged in, unlike every other trimmed tool tested in this dimension"
+  },
+  "recover_via_instrument_names": "All 6 correctly say 'ganita_planet_get' (real, callable) — NOT the unknown_tool defect class. This finding is purely about the missing honesty-echo fields, not a placeholder-instrument bug.",
+  "mechanism": "platform-mcp/src/tools/register_p1_ganita.ts:155-168 `function dualOutput(data)` calls `applyAutoBudgetToEnvelope(obj, toolName)` (toolName correctly resolved from obj['tool'], confirmed by the correct recover_via names above) instead of the stronger `finalizeMcpBudget`. `applyAutoBudgetToEnvelope` is defined at platform-mcp/src/lib/response_budget.ts:584-598: it calls `applyResponseBudget` and appends the resulting trim_report to the envelope, but — unlike `finalizeMcpBudget` (same file, lines 361-441, which explicitly sets `mutable['budget_kb_applied']`/`budget_kb_requested` at lines 380-381 and merges `recover_via` into drill_pointers at line 384) — it does neither. response_budget.ts's own doc-comment on applyAutoBudgetToEnvelope (line 575-582) names this as the shared wiring point for 'every dualOutput() in register_p1_ganita.ts / register_p1_synthesis.ts / register_p1_aliases.ts ... (ganita_condition_get, kala_life_arc_get, kala_projections_get, ganita_positions_get, mimamsa_lel_query, and the rest of the estate)' — implying this missing-honesty-echo gap plausibly extends beyond ganita_planet_get to that whole list, though only ganita_planet_get (and, per a separate evidence file, ganita_database_schema_get) were live-verified in this pass.",
+  "corroborating_note": "ganita_database_schema_get (chart schema tool, registered elsewhere) was also observed missing a top-level budget_kb_applied field in its trimmed response (budget_kb=1 request produced a trim_report with a correct real recover_via name but no visible budget_kb_applied echo), suggesting this is not isolated to a single file/tool."
+}

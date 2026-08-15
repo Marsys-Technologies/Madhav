@@ -1,0 +1,45 @@
+{
+  "tool": "ref_remedies_by_category_list",
+  "scenario": "mantra",
+  "args": {"category": "mantra"},
+  "raw_response": {
+    "type": "object",
+    "object": {
+      "ok": true,
+      "trace_id": "816f300c-40ba-43e2-8b33-30410e9e08cb",
+      "epistemics": {"surgical": true, "confidence_band": "high", "horizon_days": null, "falsifier": null},
+      "result": {
+        "tool_bundle_id": "1160e1b5-1d2b-4215-8434-2db821a7be30",
+        "tool_name": "list_remedies_by_category",
+        "tool_version": "1.0",
+        "invocation_params": {"category": "mantra"},
+        "results_raw_truncated_note": "the underlying 'results[0].content' string was itself truncated by the server's own budget trimmer mid-JSON ('...[truncated for budget]'), observed verbatim below.",
+        "results": [
+          {"content": "{\"category\":\"mantra\",\"remedies\":[{\"remedy_id\":\"dosha_balarishta_jupiter_mantra\",\"planet\":\"jupiter\",\"domain\":\"health\",\"ca…[truncated for budget]"}
+        ],
+        "served_from_cache": false,
+        "latency_ms": 7,
+        "result_hash": "sha256:ad8a27bbdc37a7b8f37586af5bfcaee7463895dd36599891073203a45008006c",
+        "schema_version": "1.0"
+      },
+      "citations": [],
+      "plan": null,
+      "predictions_logged": [],
+      "synthesis_audit": null,
+      "suggested_followups": [],
+      "warnings": [],
+      "budget_kb_applied": 40,
+      "trim_report": [
+        {
+          "path": "(trim_report)",
+          "original_count": 1,
+          "kept_count": 1,
+          "reason": "full trim_report omitted to fit budget",
+          "recover_via": {"instrument": "response_format:legacy", "hint": "full untrimmed response"}
+        }
+      ],
+      "drill_pointers": []
+    }
+  },
+  "note": "Server-side budget trimming truncated the single results[0].content string mid-JSON (ends '...[truncated for budget]'), leaving an unparseable content payload for this category/limit combination. Compare with ref_remedies_by_planet_get__saturn.json (same underlying corpus, planet-filtered) which returned a full well-formed remedies array under the same 40KB budget — planet-filter narrows the row count enough to fit, category-filter (mantra alone, no planet) does not."
+}

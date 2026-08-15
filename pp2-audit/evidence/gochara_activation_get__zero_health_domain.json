@@ -1,0 +1,29 @@
+{
+  "tool": "gochara_activation_get",
+  "scenario": "zero_health_domain",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "domain": "health"},
+  "raw_response_summary": {
+    "note": "Full raw response captured inline (very large, includes per-window term_breakdown.activity_terms transit ephemeris detail). This summary preserves load-bearing fields.",
+    "windows_count": 3,
+    "windows": [
+      {"id": "60673", "event_class": "illness_acute", "temporal_shape": "interval", "window_start": "2024-02-05", "window_end": "2034-01-30", "peak_date": "2025-04-27", "signed_intensity": 0.57, "valence": "loss", "is_adverse": true, "calibration_state": "structural_prior", "resolution_disclosure": {"resolution": null, "is_timing_window": false, "timing_window_blocked_reason": "point_class_context_envelope"}},
+      {"id": "60571", "event_class": "chronic_onset", "temporal_shape": "interval", "window_start": "2024-02-05", "window_end": "2034-01-30", "peak_date": "2028-03-04", "signed_intensity": 0.5, "valence": "loss", "is_adverse": true, "calibration_state": "structural_prior", "resolution_disclosure": {"resolution": "era", "is_timing_window": false, "timing_window_blocked_reason": "era_resolution"}},
+      {"id": "60790", "event_class": "surgery", "temporal_shape": "interval", "window_start": "2024-02-05", "window_end": "2034-01-30", "peak_date": "2025-04-27", "signed_intensity": 0.34, "valence": "neutral", "is_adverse": false, "calibration_state": "structural_prior", "resolution_disclosure": {"resolution": null, "is_timing_window": false, "timing_window_blocked_reason": "point_class_context_envelope"}}
+    ],
+    "coverage": {
+      "event_classes_covered_count": 27,
+      "domains_not_covered": [],
+      "coverage_quality": {"tier": "rich", "covered_class_count": 27, "covered_domain_count": 13}
+    },
+    "provenance_envelope": {
+      "domain_filter": "health",
+      "window_count": 3,
+      "backing_data_reachable": true,
+      "context_only_rows_in_page": 3,
+      "context_only_note": "3 of 3 served row(s) are era-scale/unresolved CONTEXT, not timing windows (PK-R-1) — see each row's resolution_disclosure.",
+      "resolution_breakdown": {"era": 1, "month": 0, "day": 0, "unclassified": 2},
+      "empty_reason": null
+    },
+    "judgment_flags": [{"code": "budget_exceeded_after_trim", "detail": "20kb budget still exceeded after full trim."}]
+  }
+}

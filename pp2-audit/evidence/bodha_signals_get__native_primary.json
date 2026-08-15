@@ -1,0 +1,828 @@
+{
+  "tool": "bodha_signals_get",
+  "scenario": "native_primary",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "domain": "career",
+    "limit": 10
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"frame\":\"lagna\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"signals\":[{\"signal_id\":\"0dfe2c1f-1ea8-482f-a3ea-a6823b965e53\",\"signal_type_id\":\"karaka_bhava_concordance:concordance_value\",\"signal_type_class\":\"karaka_alignment\",\"signal_tradition\":\"jaimini\",\"signal_summary_text\":\"category=karaka_bhava_concordance | key=concordance_value | value_text=concordant | bhava_lord=SAT | bhava_num=10 | bhava_sign=Capricorn | concordance=concordant | natural_karaka=SAT | significance=career | varga=D1\",\"signal_headline_text\":\"karaka bhava concordance: concordance value = concordant\",\"computed_salience\":0.36225,\"top_k_salience_rank\":19562,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"constituent_facts_array\":[\"21201e6cc53d7d9c\"],\"source_subsystem\":\"structural\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"citation_human\":\"career (D1 lahiri_chitrapaksha): natural_karaka=Saturn vs bhava10_lord=Saturn → concordant.\",\"lel_origin\":false,\"signature_tier\":\"supporting\",\"configuration_jsonb\":{\"varga\":\"D1\",\"fact_key\":\"concordance_value\",\"bhava_num\":10,\"bhava_lord\":\"SAT\",\"bhava_sign\":\"Capricorn\",\"concordance\":\"concordant\",\"significance\":\"career\",\"fact_value_num\":null,\"natural_karaka\":\"SAT\",\"fact_value_text\":\"concordant\"},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"392f7ba9-be49-455a-8d62-bd2458812382\",\"signal_type_id\":\"aspect_parashari_given:house_10\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=aspect_parashari_given | key=house_10 | value_num=1 | graha=RAH_MEAN | target_house=10\",\"signal_headline_text\":\"RAH_MEAN: aspect parashari given: house 10 = 1\",\"computed_salience\":0.828,\"top_k_salience_rank\":1413,\"domains_affected_array\":[\"career\",\"relationship\",\"wealth\"],\"constituent_facts_array\":[\"6afc26519c996528\"],\"source_subsystem\":\"structural\",\"valence\":\"malefic\",\"verification_pass_status\":\"single\",\"citation_human\":\"Rahu 9th aspect on house 10 (Capricorn) at strength 1.00 (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"major\",\"configuration_jsonb\":{\"graha\":\"RAH_MEAN\",\"fact_key\":\"house_10\",\"target_house\":10,\"fact_value_num\":1,\"fact_value_text\":null},\"ratification_factor\":null,\"valence_source\":\"ga_vichara_v1\"},{\"signal_id\":\"7d13a6da-8f86-48d2-b582-d487ba8b27f5\",\"signal_type_id\":\"karaka_bhava_concordance:concordance_value\",\"signal_type_class\":\"karaka_alignment\",\"signal_tradition\":\"jaimini\",\"signal_summary_text\":\"category=karaka_bhava_concordance | key=concordance_value | value_text=friendly_reverse | bhava_lord=MER | bhava_num=6 | bhava_sign=Virgo | concordance=friendly_reverse | natural_karaka=SAT | significance=enemies | varga=D1\",\"signal_headline_text\":\"karaka bhava concordance: concordance value = friendly_reverse\",\"computed_salience\":0.36225,\"top_k_salience_rank\":19600,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"constituent_facts_array\":[\"23fb5b0ad479074c\"],\"source_subsystem\":\"structural\",\"valence\":\"benefic\",\"verification_pass_status\":\"single\",\"citation_human\":\"enemies (D1 lahiri_chitrapaksha): natural_karaka=Saturn vs bhava6_lord=Mercury → friendly_reverse.\",\"lel_origin\":false,\"signature_tier\":\"supporting\",\"configuration_jsonb\":{\"varga\":\"D1\",\"fact_key\":\"concordance_value\",\"bhava_num\":6,\"bhava_lord\":\"MER\",\"bhava_sign\":\"Virgo\",\"concordance\":\"friendly_reverse\",\"significance\":\"enemies\",\"fact_value_num\":null,\"natural_karaka\":\"SAT\",\"fact_value_text\":\"friendly_reverse\"},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"3867cc9b-f804-453a-a60f-ba2885752acd\",\"signal_type_id\":\"aspect_parashari_given:house_1\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=aspect_parashari_given | key=house_1 | value_num=1 | graha=SAT | target_house=1\",\"signal_headline_text\":\"SAT: aspect parashari given: house 1 = 1\",\"computed_salience\":1.296648,\"top_k_salience_rank\":300,\"domains_affected_array\":[\"career\",\"relationship\",\"wealth\"],\"constituent_facts_array\":[\"caf818e1d9d04e48\"],\"source_subsystem\":\"structural\",\"valence\":\"malefic\",\"verification_pass_status\":\"single\",\"citation_human\":\"Saturn 7th aspect on house 1 (Aries) at strength 1.00 (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"major\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"house_1\",\"target_house\":1,\"fact_value_num\":1,\"fact_value_text\":null},\"ratification_factor\":null,\"valence_source\":\"ga_vichara_v1\"},{\"signal_id\":\"d27304a0-71f2-44c3-914c-cecceeae822c\",\"signal_type_id\":\"karaka_bhava_concordance:concordance_value\",\"signal_type_class\":\"karaka_alignment\",\"signal_tradition\":\"jaimini\",\"signal_summary_text\":\"category=karaka_bhava_concordance | key=concordance_value | value_text=enemy | bhava_lord=SAT | bhava_num=10 | bhava_sign=Capricorn | concordance=enemy | natural_karaka=SUN | significance=authority | varga=D1\",\"signal_headline_text\":\"karaka bhava concordance: concordance value = enemy\",\"computed_salience\":0.36225,\"top_k_salience_rank\":19528,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"constituent_facts_array\":[\"1431ced48db341ec\"],\"source_subsystem\":\"structural\",\"valence\":\"malefic\",\"verification_pass_status\":\"single\",\"citation_human\":\"authority (D1 lahiri_chitrapaksha): natural_karaka=Sun vs bhava10_lord=Saturn → enemy.\",\"lel_origin\":false,\"signature_tier\":\"supporting\",\"configuration_jsonb\":{\"varga\":\"D1\",\"fact_key\":\"concordance_value\",\"bhava_num\":10,\"bhava_lord\":\"SAT\",\"bhava_sign\":\"Capricorn\",\"concordance\":\"enemy\",\"significance\":\"authority\",\"fact_value_num\":null,\"natural_karaka\":\"SUN\",\"fact_value_text\":\"enemy\"},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"f0a0bc4e-b732-4783-adc6-2f380c94863a\",\"signal_type_id\":\"graha_dignity_per_varga:dignity_state\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_dignity_per_varga | key=dignity_state | value_text=debilitated | ayanamsha_id=lahiri_chitrapaksha | house=10 | sign=Aries | uncatalogued=False | varga=D9\",\"signal_headline_text\":\"graha dignity per varga: dignity state = debilitated\",\"computed_salience\":1.073625,\"top_k_salience_rank\":749,\"domains_affected_array\":[\"character\",\"career\"],\"constituent_facts_array\":[\"b8f518f6d9543e91\"],\"source_subsystem\":\"structural\",\"valence\":\"malefic\",\"verification_pass_status\":\"single\",\"citation_human\":\"Saturn debilitated in Aries (house 10) in D9 (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"supporting\",\"configuration_jsonb\":{\"sign\":\"Aries\",\"house\":10,\"varga\":\"D9\",\"fact_key\":\"dignity_state\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"uncatalogued\":false,\"fact_value_num\":null,\"fact_value_text\":\"debilitated\"},\"ratification_factor\":0.8,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"2f9e0ce3-ce9a-4087-b725-bb1949728c37\",\"signal_type_id\":\"swamsa_position:sign\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=swamsa_position | key=sign | value_text=Capricorn | graha=SAT\",\"signal_headline_text\":\"SAT: swamsa position: sign = Capricorn\",\"computed_salience\":2.16108,\"top_k_salience_rank\":46,\"domains_affected_array\":[\"spirituality\",\"career\"],\"constituent_facts_array\":[\"645031d25d613917\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"two_pass_verified\",\"citation_human\":\"swamsa_position.SWAMSA_HOUSE_10.sign = Capricorn (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"chart_defining\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"sign\",\"fact_value_num\":null,\"fact_value_text\":\"Capricorn\"},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"bde5423d-ac30-4ecd-ab7b-1dbec4232742\",\"signal_type_id\":\"swamsa_position:sign\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=swamsa_position | key=sign | value_text=Aquarius | graha=SAT\",\"signal_headline_text\":\"SAT: swamsa position: sign = Aquarius\",\"computed_salience\":2.16108,\"top_k_salience_rank\":47,\"domains_affected_array\":[\"spirituality\",\"career\"],\"constituent_facts_array\":[\"3588a51b37aefd51\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"two_pass_verified\",\"citation_human\":\"swamsa_position.SWAMSA_HOUSE_11.sign = Aquarius (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"chart_defining\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"sign\",\"fact_value_num\":null,\"fact_value_text\":\"Aquarius\"},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"59ad276e-a84e-44de-adac-72401576b772\",\"signal_type_id\":\"graha_dignity_per_varga:dignity_state\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_dignity_per_varga | key=dignity_state | value_text=exalted | ayanamsha_id=lahiri_chitrapaksha | house=7 | sign=Libra | uncatalogued=False | varga=D1\",\"signal_headline_text\":\"graha dignity per varga: dignity state = exalted\",\"computed_salience\":1.491145,\"top_k_salience_rank\":144,\"domains_affected_array\":[\"character\",\"career\"],\"constituent_facts_array\":[\"355fe607160e1d76\"],\"source_subsystem\":\"structural\",\"valence\":\"benefic\",\"verification_pass_status\":\"single\",\"citation_human\":\"Saturn exalted in Libra (house 7) in D1 (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"supporting\",\"configuration_jsonb\":{\"sign\":\"Libra\",\"house\":7,\"varga\":\"D1\",\"fact_key\":\"dignity_state\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"uncatalogued\":false,\"fact_value_num\":null,\"fact_value_text\":\"exalted\"},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"ba0d55b2-6c86-41e7-b55f-3acbb49c8e1a\",\"signal_type_id\":\"graha_position:pada\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_position | key=pada | value_num=1 | graha=SAT\",\"signal_headline_text\":\"SAT: graha position: pada = 1\",\"computed_salience\":1.296648,\"top_k_salience_rank\":414,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"constituent_facts_array\":[\"485820e278c9b08d\"],\"source_subsystem\":\"structural\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"citation_human\":\"Saturn nakshatra pada: 1 (Lahiri Chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"major\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"pada\",\"fact_value_num\":1,\"fact_value_text\":null},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"0e40268a-d0ce-4efd-b356-4ffe8be60463\",\"signal_type_id\":\"graha_avastha_lifetime_exposure_summary:baladi_dominant\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_avastha_lifetime_exposure_summary | key=baladi_dominant | value_text=vriddha | current_baladi=vriddha | current_deepta=deepta | current_jagrad=jagrad | graha=SAT | note=Lifetime exposure requires GA7 dasha timeline join (A7 dasha × avastha state)\",\"signal_headline_text\":\"SAT: graha avastha lifetime exposure summary: baladi dominant = vriddha\",\"computed_salience\":1.296648,\"top_k_salience_rank\":352,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"constituent_facts_array\":[\"7e030ff57e9a1134\"],\"source_subsystem\":\"structural\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"citation_human\":\"Saturn dominant avastha: vriddha (natal baseline; full timeline via GA7) (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"major\",\"configuration_jsonb\":{\"note\":\"Lifetime exposure requires GA7 dasha timeline join (A7 dasha × avastha state)\",\"graha\":\"SAT\",\"fact_key\":\"baladi_dominant\",\"current_baladi\":\"vriddha\",\"current_deepta\":\"deepta\",\"current_jagrad\":\"jagrad\",\"fact_value_num\":null,\"fact_value_text\":\"vriddha\"},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"967b5cd0-9685-4054-b22b-88c647750df7\",\"signal_type_id\":\"graha_position:longitude_sidereal\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_position | key=longitude_sidereal | value_num=202.4 | graha=SAT\",\"signal_headline_text\":\"SAT: graha position: longitude sidereal = 202\",\"computed_salience\":1.296648,\"top_k_salience_rank\":411,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"constituent_facts_array\":[\"9b83e35877c63fe7\"],\"source_subsystem\":\"structural\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"citation_human\":\"Saturn sidereal longitude: 202.431986 deg (Lahiri Chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"major\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"longitude_sidereal\",\"fact_value_num\":202.431986059195,\"fact_value_text\":null},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"17de6ae8-5cf8-4c4e-82d5-72675159e1f2\",\"signal_type_id\":\"graha_position:sign\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_position | key=sign | value_text=Aquarius | graha=SAT\",\"signal_headline_text\":\"SAT: graha position: sign = Aquarius\",\"computed_salience\":1.296648,\"top_k_salience_rank\":417,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"constituent_facts_array\":[\"3c4b0dbb52ba31eb\"],\"source_subsystem\":\"structural\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"citation_human\":\"Moon is in Aquarius (Lahiri Chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"major\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"sign\",\"fact_value_num\":null,\"fact_value_text\":\"Aquarius\"},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"73464c32-3788-4277-9d22-c14444784d25\",\"signal_type_id\":\"graha_position:house_d1\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_position | key=house_d1 | value_num=7 | graha=SAT\",\"signal_headline_text\":\"SAT: graha position: house d1 = 7\",\"computed_salience\":1.296648,\"top_k_salience_rank\":410,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"constituent_facts_array\":[\"3bdb8ce78eea8618\"],\"source_subsystem\":\"structural\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"citation_human\":\"Saturn whole-sign house: 7 (Lahiri Chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"major\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"house_d1\",\"fact_value_num\":7,\"fact_value_text\":null},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"932e6950-a624-4b7e-b0f7-a5647a4e2e55\",\"signal_type_id\":\"graha_functional_class_per_ascendant:raman_variant\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_functional_class_per_ascendant | key=raman_variant | value_text=temporal_malefic | graha=SAT\",\"signal_headline_text\":\"SAT: graha functional class per ascendant: raman variant = temporal_malefic\",\"computed_salience\":1.296648,\"top_k_salience_rank\":385,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"constituent_facts_array\":[\"134bc0cb620938ff\"],\"source_subsystem\":\"structural\",\"valence\":\"malefic\",\"verification_pass_status\":\"single\",\"citation_human\":\"Saturn functional class for Aries lagna (Raman): temporal_malefic (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"major\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"raman_variant\",\"fact_value_num\":null,\"fact_value_text\":\"temporal_malefic\"},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"5e878aa1-c878-4c7b-b5ec-07b9e88b4cff\",\"signal_type_id\":\"graha_position:sign\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_position | key=sign | value_text=Capricorn | graha=SAT\",\"signal_headline_text\":\"SAT: graha position: sign = Capricorn\",\"computed_salience\":1.296648,\"top_k_salience_rank\":416,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"constituent_facts_array\":[\"ad7bb13b5e37c508\"],\"source_subsystem\":\"structural\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"citation_human\":\"Mercury is in Capricorn (Lahiri Chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"major\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"sign\",\"fact_value_num\":null,\"fact_value_text\":\"Capricorn\"},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"d355cb8b-ac18-449f-b718-a6250723bac4\",\"signal_type_id\":\"graha_functional_class_per_ascendant:bphs_canonical\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_functional_class_per_ascendant | key=bphs_canonical | value_text=temporal_malefic | graha=SAT\",\"signal_headline_text\":\"SAT: graha functional class per ascendant: bphs canonical = temporal_malefic\",\"computed_salience\":1.296648,\"top_k_salience_rank\":384,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"constituent_facts_array\":[\"5a94fd9e624047ef\"],\"source_subsystem\":\"structural\",\"valence\":\"malefic\",\"verification_pass_status\":\"single\",\"citation_human\":\"Saturn functional class for Aries lagna (BPHS): temporal_malefic (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"major\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"bphs_canonical\",\"fact_value_num\":null,\"fact_value_text\":\"temporal_malefic\"},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"7cb65e46-cdf5-4771-ac8f-455bc7d3626f\",\"signal_type_id\":\"graha_sign_attributes:sign_num\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_sign_attributes | key=sign_num | value_num=7 | graha=SAT\",\"signal_headline_text\":\"SAT: graha sign attributes: sign num = 7\",\"computed_salience\":1.296648,\"top_k_salience_rank\":422,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"constituent_facts_array\":[\"62930acc0df9ca52\"],\"source_subsystem\":\"structural\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"citation_human\":\"Saturn sign number: 7 (Lahiri Chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"major\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"sign_num\",\"fact_value_num\":7,\"fact_value_text\":null},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"ee5d90d0-438e-4149-88e0-945d7c237eef\",\"signal_type_id\":\"graha_position:nakshatra_lord\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_position | key=nakshatra_lord | value_text=Jupiter | graha=SAT\",\"signal_headline_text\":\"SAT: graha position: nakshatra lord = Jupiter\",\"computed_salience\":1.296648,\"top_k_salience_rank\":413,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"constituent_facts_array\":[\"5df58042087b1b92\"],\"source_subsystem\":\"structural\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"citation_human\":\"Saturn nakshatra lord: Jupiter (Lahiri Chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"major\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"nakshatra_lord\",\"fact_value_num\":null,\"fact_value_text\":\"Jupiter\"},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"},{\"signal_id\":\"17fa786a-b5e7-4d7f-8470-5ea10238e739\",\"signal_type_id\":\"graha_position:retrograde_flag\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_position | key=retrograde_flag | value_text=direct | graha=SAT\",\"signal_headline_text\":\"SAT: graha position: retrograde flag = direct\",\"computed_salience\":1.296648,\"top_k_salience_rank\":415,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"constituent_facts_array\":[\"322719df480ed54e\"],\"source_subsystem\":\"structural\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"citation_human\":\"Saturn is direct at birth.\",\"lel_origin\":false,\"signature_tier\":\"major\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"retrograde_flag\",\"fact_value_num\":null,\"fact_value_text\":\"direct\"},\"ratification_factor\":null,\"valence_source\":\"keyword_heuristic_v1\"}],\"returned_count\":50,\"total_matching_filters\":3043,\"truncated\":false,\"ranking_basis\":{\"mode\":\"composite_4d\",\"priors_version\":\"1.2\",\"domain\":\"career\",\"top_signal\":{\"signal_id\":\"0dfe2c1f-1ea8-482f-a3ea-a6823b965e53\",\"class_prior\":1.045,\"topic_relevance\":3.696,\"intrinsic_strength\":0.58792,\"structural_role\":1.05,\"temporal_activation\":1,\"composite_score\":2.38427193312,\"percentile_within_class\":1,\"final_rank_score\":2.3843926831986324},\"varga_weight_basis\":{\"scheme\":\"Ṣoḍaśavarga (16-fold) Vimśopaka Bala\",\"source\":\"Bṛhat Parāśara Horā Śāstra Ch.6 (Ṣaḍvarga/Vimśopaka); cross-checked against L1 chart_facts.graha_vimsopaka_shodasavarga\"},\"note\":\"Composite = class_prior × topic_relevance × intrinsic_strength × structural_role × temporal_activation × percentile_within_class.\"},\"cross_surface\":{\"ranking_mode\":\"composite_4d\",\"agrees_with\":\"assess_career top_10_composite (same composite ranking path)\"},\"filters\":{\"domain\":\"career\",\"min_salience\":0,\"lel_enabled\":false,\"top_k\":50,\"offset\":0,\"paradigm\":null,\"projection\":[\"signal_id\",\"signal_type_id\",\"signal_type_class\",\"signal_tradition\",\"signal_summary_text\",\"signal_headline_text\",\"computed_salience\",\"top_k_salience_rank\",\"domains_affected_array\",\"constituent_facts_array\",\"source_subsystem\",\"valence\",\"verification_pass_status\",\"citation_human\",\"lel_origin\",\"signature_tier\",\"configuration_jsonb\",\"ratification_factor\",\"valence_source\"]},\"provenance\":{\"tables\":[\"bodha_msr_signals\"],\"ranking_note\":\"Composite 4D re-ranking applied: dual-pool A=500+B=150→585 unique (priors_version=1.2).\",\"defect_001\":{\"claim_id\":\"DEFECT-001\",\"status\":\"RESOLVED\",\"note\":\"constituent_facts_array resolution against chart_facts, derived live for chart 482012f1-710e-4a25-994a-93821f5871aa: 0/51 references orphaned (0%). All references resolve — DEFECT-001 no longer reproduces on this chart.\",\"as_of\":\"2026-08-15T11:07:40.089Z\",\"expires_on\":\"2026-08-16T11:07:40.089Z\",\"metrics\":{\"total_refs\":51,\"orphan_refs\":0,\"orphan_pct\":0}},\"signature_tier\":{\"claim_id\":\"SIGNATURE_TIER\",\"status\":\"POPULATED\",\"note\":\"signature_tier distribution, derived live for chart 482012f1-710e-4a25-994a-93821f5871aa: supporting=78.9%, major=12.2%, background=8.2%, chart_defining=0.8%. Column carries a real distribution (not degenerate, unlike the pre-R4 state) — ranking still uses computed_salience as primary, but signature_tier is now a usable secondary signal.\",\"as_of\":\"2026-08-15T11:07:40.089Z\",\"expires_on\":\"2026-08-16T11:07:40.089Z\",\"metrics\":{\"total\":10003,\"major\":12.2,\"chart_defining\":0.8,\"supporting\":78.9,\"background\":8.2}},\"defect_001_note\":\"constituent_facts_array resolution against chart_facts, derived live for chart 482012f1-710e-4a25-994a-93821f5871aa: 0/51 references orphaned (0%). All references resolve — DEFECT-001 no longer reproduces on this chart.\",\"signature_tier_note\":\"signature_tier distribution, derived live for chart 482012f1-710e-4a25-994a-93821f5871aa: supporting=78.9%, major=12.2%, background=8.2%, chart_defining=0.8%. Column carries a real distribution (not degenerate, unlike the pre-R4 state) — ranking still uses computed_salience as primary, but signature_tier is now a usable secondary signal.\",\"lel_note\":\"lel_origin=true signals: 0 rows currently. LEL filter is safe but returns empty.\",\"projection_note\":\"Default projection — 17 of 84 columns served (WP-1.3(g)/LCA-7). Pass projection:[\\\"*\\\"] or an explicit column array to reach the rest.\",\"paradigm_note\":\"No paradigm filter applied — signals from every classical tradition are present, each individually tagged via its own signal_tradition field. Do not treat this as one coherent method's output; a caller building a single-paradigm answer should pass paradigm to get one tradition's clean slice (design §27.4).\",\"elevation_columns_note\":\"ratification_factor + valence_source (Lane 4 MSR elevation) are present and served by default.\"},\"verdict_summary\":{\"served_count\":50,\"tier_distribution\":{\"supporting\":21,\"major\":21,\"chart_defining\":8},\"top_subjects_by_frequency\":[\"355fe607160e1d76\",\"21201e6cc53d7d9c\",\"6afc26519c996528\",\"23fb5b0ad479074c\",\"caf818e1d9d04e48\"],\"note\":\"Small verdict over THIS response's own served rows (§N.6 (iii)) — not a re-query.\"},\"budget_kb_applied\":25,\"trim_report\":[{\"path\":\"signals\",\"original_count\":50,\"kept_count\":20,\"reason\":\"signals: trimmed to 20\",\"recover_via\":{\"instrument\":\"bodha_signals_get\",\"hint\":\"call again with a smaller top_k, or paginate via offset\"}}],\"drill_pointers\":[{\"instrument\":\"bodha_signals_get\",\"hint\":\"call again with a smaller top_k, or paginate via offset\"}]},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "frame": "lagna",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "signals": [
+            {
+              "signal_id": "0dfe2c1f-1ea8-482f-a3ea-a6823b965e53",
+              "signal_type_id": "karaka_bhava_concordance:concordance_value",
+              "signal_type_class": "karaka_alignment",
+              "signal_tradition": "jaimini",
+              "signal_summary_text": "category=karaka_bhava_concordance | key=concordance_value | value_text=concordant | bhava_lord=SAT | bhava_num=10 | bhava_sign=Capricorn | concordance=concordant | natural_karaka=SAT | significance=career | varga=D1",
+              "signal_headline_text": "karaka bhava concordance: concordance value = concordant",
+              "computed_salience": 0.36225,
+              "top_k_salience_rank": 19562,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "21201e6cc53d7d9c"
+              ],
+              "source_subsystem": "structural",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "citation_human": "career (D1 lahiri_chitrapaksha): natural_karaka=Saturn vs bhava10_lord=Saturn → concordant.",
+              "lel_origin": false,
+              "signature_tier": "supporting",
+              "configuration_jsonb": {
+                "varga": "D1",
+                "fact_key": "concordance_value",
+                "bhava_num": 10,
+                "bhava_lord": "SAT",
+                "bhava_sign": "Capricorn",
+                "concordance": "concordant",
+                "significance": "career",
+                "fact_value_num": null,
+                "natural_karaka": "SAT",
+                "fact_value_text": "concordant"
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "392f7ba9-be49-455a-8d62-bd2458812382",
+              "signal_type_id": "aspect_parashari_given:house_10",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=aspect_parashari_given | key=house_10 | value_num=1 | graha=RAH_MEAN | target_house=10",
+              "signal_headline_text": "RAH_MEAN: aspect parashari given: house 10 = 1",
+              "computed_salience": 0.828,
+              "top_k_salience_rank": 1413,
+              "domains_affected_array": [
+                "career",
+                "relationship",
+                "wealth"
+              ],
+              "constituent_facts_array": [
+                "6afc26519c996528"
+              ],
+              "source_subsystem": "structural",
+              "valence": "malefic",
+              "verification_pass_status": "single",
+              "citation_human": "Rahu 9th aspect on house 10 (Capricorn) at strength 1.00 (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "configuration_jsonb": {
+                "graha": "RAH_MEAN",
+                "fact_key": "house_10",
+                "target_house": 10,
+                "fact_value_num": 1,
+                "fact_value_text": null
+              },
+              "ratification_factor": null,
+              "valence_source": "ga_vichara_v1"
+            },
+            {
+              "signal_id": "7d13a6da-8f86-48d2-b582-d487ba8b27f5",
+              "signal_type_id": "karaka_bhava_concordance:concordance_value",
+              "signal_type_class": "karaka_alignment",
+              "signal_tradition": "jaimini",
+              "signal_summary_text": "category=karaka_bhava_concordance | key=concordance_value | value_text=friendly_reverse | bhava_lord=MER | bhava_num=6 | bhava_sign=Virgo | concordance=friendly_reverse | natural_karaka=SAT | significance=enemies | varga=D1",
+              "signal_headline_text": "karaka bhava concordance: concordance value = friendly_reverse",
+              "computed_salience": 0.36225,
+              "top_k_salience_rank": 19600,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "23fb5b0ad479074c"
+              ],
+              "source_subsystem": "structural",
+              "valence": "benefic",
+              "verification_pass_status": "single",
+              "citation_human": "enemies (D1 lahiri_chitrapaksha): natural_karaka=Saturn vs bhava6_lord=Mercury → friendly_reverse.",
+              "lel_origin": false,
+              "signature_tier": "supporting",
+              "configuration_jsonb": {
+                "varga": "D1",
+                "fact_key": "concordance_value",
+                "bhava_num": 6,
+                "bhava_lord": "MER",
+                "bhava_sign": "Virgo",
+                "concordance": "friendly_reverse",
+                "significance": "enemies",
+                "fact_value_num": null,
+                "natural_karaka": "SAT",
+                "fact_value_text": "friendly_reverse"
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "3867cc9b-f804-453a-a60f-ba2885752acd",
+              "signal_type_id": "aspect_parashari_given:house_1",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=aspect_parashari_given | key=house_1 | value_num=1 | graha=SAT | target_house=1",
+              "signal_headline_text": "SAT: aspect parashari given: house 1 = 1",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 300,
+              "domains_affected_array": [
+                "career",
+                "relationship",
+                "wealth"
+              ],
+              "constituent_facts_array": [
+                "caf818e1d9d04e48"
+              ],
+              "source_subsystem": "structural",
+              "valence": "malefic",
+              "verification_pass_status": "single",
+              "citation_human": "Saturn 7th aspect on house 1 (Aries) at strength 1.00 (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "house_1",
+                "target_house": 1,
+                "fact_value_num": 1,
+                "fact_value_text": null
+              },
+              "ratification_factor": null,
+              "valence_source": "ga_vichara_v1"
+            },
+            {
+              "signal_id": "d27304a0-71f2-44c3-914c-cecceeae822c",
+              "signal_type_id": "karaka_bhava_concordance:concordance_value",
+              "signal_type_class": "karaka_alignment",
+              "signal_tradition": "jaimini",
+              "signal_summary_text": "category=karaka_bhava_concordance | key=concordance_value | value_text=enemy | bhava_lord=SAT | bhava_num=10 | bhava_sign=Capricorn | concordance=enemy | natural_karaka=SUN | significance=authority | varga=D1",
+              "signal_headline_text": "karaka bhava concordance: concordance value = enemy",
+              "computed_salience": 0.36225,
+              "top_k_salience_rank": 19528,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "1431ced48db341ec"
+              ],
+              "source_subsystem": "structural",
+              "valence": "malefic",
+              "verification_pass_status": "single",
+              "citation_human": "authority (D1 lahiri_chitrapaksha): natural_karaka=Sun vs bhava10_lord=Saturn → enemy.",
+              "lel_origin": false,
+              "signature_tier": "supporting",
+              "configuration_jsonb": {
+                "varga": "D1",
+                "fact_key": "concordance_value",
+                "bhava_num": 10,
+                "bhava_lord": "SAT",
+                "bhava_sign": "Capricorn",
+                "concordance": "enemy",
+                "significance": "authority",
+                "fact_value_num": null,
+                "natural_karaka": "SUN",
+                "fact_value_text": "enemy"
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "f0a0bc4e-b732-4783-adc6-2f380c94863a",
+              "signal_type_id": "graha_dignity_per_varga:dignity_state",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_dignity_per_varga | key=dignity_state | value_text=debilitated | ayanamsha_id=lahiri_chitrapaksha | house=10 | sign=Aries | uncatalogued=False | varga=D9",
+              "signal_headline_text": "graha dignity per varga: dignity state = debilitated",
+              "computed_salience": 1.073625,
+              "top_k_salience_rank": 749,
+              "domains_affected_array": [
+                "character",
+                "career"
+              ],
+              "constituent_facts_array": [
+                "b8f518f6d9543e91"
+              ],
+              "source_subsystem": "structural",
+              "valence": "malefic",
+              "verification_pass_status": "single",
+              "citation_human": "Saturn debilitated in Aries (house 10) in D9 (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "supporting",
+              "configuration_jsonb": {
+                "sign": "Aries",
+                "house": 10,
+                "varga": "D9",
+                "fact_key": "dignity_state",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "uncatalogued": false,
+                "fact_value_num": null,
+                "fact_value_text": "debilitated"
+              },
+              "ratification_factor": 0.8,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "2f9e0ce3-ce9a-4087-b725-bb1949728c37",
+              "signal_type_id": "swamsa_position:sign",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=swamsa_position | key=sign | value_text=Capricorn | graha=SAT",
+              "signal_headline_text": "SAT: swamsa position: sign = Capricorn",
+              "computed_salience": 2.16108,
+              "top_k_salience_rank": 46,
+              "domains_affected_array": [
+                "spirituality",
+                "career"
+              ],
+              "constituent_facts_array": [
+                "645031d25d613917"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "two_pass_verified",
+              "citation_human": "swamsa_position.SWAMSA_HOUSE_10.sign = Capricorn (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "chart_defining",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "sign",
+                "fact_value_num": null,
+                "fact_value_text": "Capricorn"
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "bde5423d-ac30-4ecd-ab7b-1dbec4232742",
+              "signal_type_id": "swamsa_position:sign",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=swamsa_position | key=sign | value_text=Aquarius | graha=SAT",
+              "signal_headline_text": "SAT: swamsa position: sign = Aquarius",
+              "computed_salience": 2.16108,
+              "top_k_salience_rank": 47,
+              "domains_affected_array": [
+                "spirituality",
+                "career"
+              ],
+              "constituent_facts_array": [
+                "3588a51b37aefd51"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "two_pass_verified",
+              "citation_human": "swamsa_position.SWAMSA_HOUSE_11.sign = Aquarius (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "chart_defining",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "sign",
+                "fact_value_num": null,
+                "fact_value_text": "Aquarius"
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "59ad276e-a84e-44de-adac-72401576b772",
+              "signal_type_id": "graha_dignity_per_varga:dignity_state",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_dignity_per_varga | key=dignity_state | value_text=exalted | ayanamsha_id=lahiri_chitrapaksha | house=7 | sign=Libra | uncatalogued=False | varga=D1",
+              "signal_headline_text": "graha dignity per varga: dignity state = exalted",
+              "computed_salience": 1.491145,
+              "top_k_salience_rank": 144,
+              "domains_affected_array": [
+                "character",
+                "career"
+              ],
+              "constituent_facts_array": [
+                "355fe607160e1d76"
+              ],
+              "source_subsystem": "structural",
+              "valence": "benefic",
+              "verification_pass_status": "single",
+              "citation_human": "Saturn exalted in Libra (house 7) in D1 (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "supporting",
+              "configuration_jsonb": {
+                "sign": "Libra",
+                "house": 7,
+                "varga": "D1",
+                "fact_key": "dignity_state",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "uncatalogued": false,
+                "fact_value_num": null,
+                "fact_value_text": "exalted"
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "ba0d55b2-6c86-41e7-b55f-3acbb49c8e1a",
+              "signal_type_id": "graha_position:pada",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_position | key=pada | value_num=1 | graha=SAT",
+              "signal_headline_text": "SAT: graha position: pada = 1",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 414,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "485820e278c9b08d"
+              ],
+              "source_subsystem": "structural",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "citation_human": "Saturn nakshatra pada: 1 (Lahiri Chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "pada",
+                "fact_value_num": 1,
+                "fact_value_text": null
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "0e40268a-d0ce-4efd-b356-4ffe8be60463",
+              "signal_type_id": "graha_avastha_lifetime_exposure_summary:baladi_dominant",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_avastha_lifetime_exposure_summary | key=baladi_dominant | value_text=vriddha | current_baladi=vriddha | current_deepta=deepta | current_jagrad=jagrad | graha=SAT | note=Lifetime exposure requires GA7 dasha timeline join (A7 dasha × avastha state)",
+              "signal_headline_text": "SAT: graha avastha lifetime exposure summary: baladi dominant = vriddha",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 352,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "7e030ff57e9a1134"
+              ],
+              "source_subsystem": "structural",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "citation_human": "Saturn dominant avastha: vriddha (natal baseline; full timeline via GA7) (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "configuration_jsonb": {
+                "note": "Lifetime exposure requires GA7 dasha timeline join (A7 dasha × avastha state)",
+                "graha": "SAT",
+                "fact_key": "baladi_dominant",
+                "current_baladi": "vriddha",
+                "current_deepta": "deepta",
+                "current_jagrad": "jagrad",
+                "fact_value_num": null,
+                "fact_value_text": "vriddha"
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "967b5cd0-9685-4054-b22b-88c647750df7",
+              "signal_type_id": "graha_position:longitude_sidereal",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_position | key=longitude_sidereal | value_num=202.4 | graha=SAT",
+              "signal_headline_text": "SAT: graha position: longitude sidereal = 202",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 411,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "9b83e35877c63fe7"
+              ],
+              "source_subsystem": "structural",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "citation_human": "Saturn sidereal longitude: 202.431986 deg (Lahiri Chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "longitude_sidereal",
+                "fact_value_num": 202.431986059195,
+                "fact_value_text": null
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "17de6ae8-5cf8-4c4e-82d5-72675159e1f2",
+              "signal_type_id": "graha_position:sign",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_position | key=sign | value_text=Aquarius | graha=SAT",
+              "signal_headline_text": "SAT: graha position: sign = Aquarius",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 417,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "3c4b0dbb52ba31eb"
+              ],
+              "source_subsystem": "structural",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "citation_human": "Moon is in Aquarius (Lahiri Chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "sign",
+                "fact_value_num": null,
+                "fact_value_text": "Aquarius"
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "73464c32-3788-4277-9d22-c14444784d25",
+              "signal_type_id": "graha_position:house_d1",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_position | key=house_d1 | value_num=7 | graha=SAT",
+              "signal_headline_text": "SAT: graha position: house d1 = 7",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 410,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "3bdb8ce78eea8618"
+              ],
+              "source_subsystem": "structural",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "citation_human": "Saturn whole-sign house: 7 (Lahiri Chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "house_d1",
+                "fact_value_num": 7,
+                "fact_value_text": null
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "932e6950-a624-4b7e-b0f7-a5647a4e2e55",
+              "signal_type_id": "graha_functional_class_per_ascendant:raman_variant",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_functional_class_per_ascendant | key=raman_variant | value_text=temporal_malefic | graha=SAT",
+              "signal_headline_text": "SAT: graha functional class per ascendant: raman variant = temporal_malefic",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 385,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "134bc0cb620938ff"
+              ],
+              "source_subsystem": "structural",
+              "valence": "malefic",
+              "verification_pass_status": "single",
+              "citation_human": "Saturn functional class for Aries lagna (Raman): temporal_malefic (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "raman_variant",
+                "fact_value_num": null,
+                "fact_value_text": "temporal_malefic"
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "5e878aa1-c878-4c7b-b5ec-07b9e88b4cff",
+              "signal_type_id": "graha_position:sign",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_position | key=sign | value_text=Capricorn | graha=SAT",
+              "signal_headline_text": "SAT: graha position: sign = Capricorn",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 416,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "ad7bb13b5e37c508"
+              ],
+              "source_subsystem": "structural",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "citation_human": "Mercury is in Capricorn (Lahiri Chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "sign",
+                "fact_value_num": null,
+                "fact_value_text": "Capricorn"
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "d355cb8b-ac18-449f-b718-a6250723bac4",
+              "signal_type_id": "graha_functional_class_per_ascendant:bphs_canonical",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_functional_class_per_ascendant | key=bphs_canonical | value_text=temporal_malefic | graha=SAT",
+              "signal_headline_text": "SAT: graha functional class per ascendant: bphs canonical = temporal_malefic",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 384,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "5a94fd9e624047ef"
+              ],
+              "source_subsystem": "structural",
+              "valence": "malefic",
+              "verification_pass_status": "single",
+              "citation_human": "Saturn functional class for Aries lagna (BPHS): temporal_malefic (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "bphs_canonical",
+                "fact_value_num": null,
+                "fact_value_text": "temporal_malefic"
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "7cb65e46-cdf5-4771-ac8f-455bc7d3626f",
+              "signal_type_id": "graha_sign_attributes:sign_num",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_sign_attributes | key=sign_num | value_num=7 | graha=SAT",
+              "signal_headline_text": "SAT: graha sign attributes: sign num = 7",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 422,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "62930acc0df9ca52"
+              ],
+              "source_subsystem": "structural",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "citation_human": "Saturn sign number: 7 (Lahiri Chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "sign_num",
+                "fact_value_num": 7,
+                "fact_value_text": null
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "ee5d90d0-438e-4149-88e0-945d7c237eef",
+              "signal_type_id": "graha_position:nakshatra_lord",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_position | key=nakshatra_lord | value_text=Jupiter | graha=SAT",
+              "signal_headline_text": "SAT: graha position: nakshatra lord = Jupiter",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 413,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "5df58042087b1b92"
+              ],
+              "source_subsystem": "structural",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "citation_human": "Saturn nakshatra lord: Jupiter (Lahiri Chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "nakshatra_lord",
+                "fact_value_num": null,
+                "fact_value_text": "Jupiter"
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            },
+            {
+              "signal_id": "17fa786a-b5e7-4d7f-8470-5ea10238e739",
+              "signal_type_id": "graha_position:retrograde_flag",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_position | key=retrograde_flag | value_text=direct | graha=SAT",
+              "signal_headline_text": "SAT: graha position: retrograde flag = direct",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 415,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "constituent_facts_array": [
+                "322719df480ed54e"
+              ],
+              "source_subsystem": "structural",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "citation_human": "Saturn is direct at birth.",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "retrograde_flag",
+                "fact_value_num": null,
+                "fact_value_text": "direct"
+              },
+              "ratification_factor": null,
+              "valence_source": "keyword_heuristic_v1"
+            }
+          ],
+          "returned_count": 50,
+          "total_matching_filters": 3043,
+          "truncated": false,
+          "ranking_basis": {
+            "mode": "composite_4d",
+            "priors_version": "1.2",
+            "domain": "career",
+            "top_signal": {
+              "signal_id": "0dfe2c1f-1ea8-482f-a3ea-a6823b965e53",
+              "class_prior": 1.045,
+              "topic_relevance": 3.696,
+              "intrinsic_strength": 0.58792,
+              "structural_role": 1.05,
+              "temporal_activation": 1,
+              "composite_score": 2.38427193312,
+              "percentile_within_class": 1,
+              "final_rank_score": 2.3843926831986324
+            },
+            "varga_weight_basis": {
+              "scheme": "Ṣoḍaśavarga (16-fold) Vimśopaka Bala",
+              "source": "Bṛhat Parāśara Horā Śāstra Ch.6 (Ṣaḍvarga/Vimśopaka); cross-checked against L1 chart_facts.graha_vimsopaka_shodasavarga"
+            },
+            "note": "Composite = class_prior × topic_relevance × intrinsic_strength × structural_role × temporal_activation × percentile_within_class."
+          },
+          "cross_surface": {
+            "ranking_mode": "composite_4d",
+            "agrees_with": "assess_career top_10_composite (same composite ranking path)"
+          },
+          "filters": {
+            "domain": "career",
+            "min_salience": 0,
+            "lel_enabled": false,
+            "top_k": 50,
+            "offset": 0,
+            "paradigm": null,
+            "projection": [
+              "signal_id",
+              "signal_type_id",
+              "signal_type_class",
+              "signal_tradition",
+              "signal_summary_text",
+              "signal_headline_text",
+              "computed_salience",
+              "top_k_salience_rank",
+              "domains_affected_array",
+              "constituent_facts_array",
+              "source_subsystem",
+              "valence",
+              "verification_pass_status",
+              "citation_human",
+              "lel_origin",
+              "signature_tier",
+              "configuration_jsonb",
+              "ratification_factor",
+              "valence_source"
+            ]
+          },
+          "provenance": {
+            "tables": [
+              "bodha_msr_signals"
+            ],
+            "ranking_note": "Composite 4D re-ranking applied: dual-pool A=500+B=150→585 unique (priors_version=1.2).",
+            "defect_001": {
+              "claim_id": "DEFECT-001",
+              "status": "RESOLVED",
+              "note": "constituent_facts_array resolution against chart_facts, derived live for chart 482012f1-710e-4a25-994a-93821f5871aa: 0/51 references orphaned (0%). All references resolve — DEFECT-001 no longer reproduces on this chart.",
+              "as_of": "2026-08-15T11:07:40.089Z",
+              "expires_on": "2026-08-16T11:07:40.089Z",
+              "metrics": {
+                "total_refs": 51,
+                "orphan_refs": 0,
+                "orphan_pct": 0
+              }
+            },
+            "signature_tier": {
+              "claim_id": "SIGNATURE_TIER",
+              "status": "POPULATED",
+              "note": "signature_tier distribution, derived live for chart 482012f1-710e-4a25-994a-93821f5871aa: supporting=78.9%, major=12.2%, background=8.2%, chart_defining=0.8%. Column carries a real distribution (not degenerate, unlike the pre-R4 state) — ranking still uses computed_salience as primary, but signature_tier is now a usable secondary signal.",
+              "as_of": "2026-08-15T11:07:40.089Z",
+              "expires_on": "2026-08-16T11:07:40.089Z",
+              "metrics": {
+                "total": 10003,
+                "major": 12.2,
+                "chart_defining": 0.8,
+                "supporting": 78.9,
+                "background": 8.2
+              }
+            },
+            "defect_001_note": "constituent_facts_array resolution against chart_facts, derived live for chart 482012f1-710e-4a25-994a-93821f5871aa: 0/51 references orphaned (0%). All references resolve — DEFECT-001 no longer reproduces on this chart.",
+            "signature_tier_note": "signature_tier distribution, derived live for chart 482012f1-710e-4a25-994a-93821f5871aa: supporting=78.9%, major=12.2%, background=8.2%, chart_defining=0.8%. Column carries a real distribution (not degenerate, unlike the pre-R4 state) — ranking still uses computed_salience as primary, but signature_tier is now a usable secondary signal.",
+            "lel_note": "lel_origin=true signals: 0 rows currently. LEL filter is safe but returns empty.",
+            "projection_note": "Default projection — 17 of 84 columns served (WP-1.3(g)/LCA-7). Pass projection:[\"*\"] or an explicit column array to reach the rest.",
+            "paradigm_note": "No paradigm filter applied — signals from every classical tradition are present, each individually tagged via its own signal_tradition field. Do not treat this as one coherent method's output; a caller building a single-paradigm answer should pass paradigm to get one tradition's clean slice (design §27.4).",
+            "elevation_columns_note": "ratification_factor + valence_source (Lane 4 MSR elevation) are present and served by default."
+          },
+          "verdict_summary": {
+            "served_count": 50,
+            "tier_distribution": {
+              "supporting": 21,
+              "major": 21,
+              "chart_defining": 8
+            },
+            "top_subjects_by_frequency": [
+              "355fe607160e1d76",
+              "21201e6cc53d7d9c",
+              "6afc26519c996528",
+              "23fb5b0ad479074c",
+              "caf818e1d9d04e48"
+            ],
+            "note": "Small verdict over THIS response's own served rows (§N.6 (iii)) — not a re-query."
+          },
+          "budget_kb_applied": 25,
+          "trim_report": [
+            {
+              "path": "signals",
+              "original_count": 50,
+              "kept_count": 20,
+              "reason": "signals: trimmed to 20",
+              "recover_via": {
+                "instrument": "bodha_signals_get",
+                "hint": "call again with a smaller top_k, or paginate via offset"
+              }
+            }
+          ],
+          "drill_pointers": [
+            {
+              "instrument": "bodha_signals_get",
+              "hint": "call again with a smaller top_k, or paginate via offset"
+            }
+          ]
+        },
+        "is_error": false
+      }
+    }
+  }
+}

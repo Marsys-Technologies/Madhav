@@ -1,0 +1,26 @@
+{"tool": "session_recall", "scenario": "explicit_chart_id_native_chart_overrides_active_session_chart", "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"}, "raw_response": {
+  "ok": true,
+  "session": {
+    "session_id": "fdfe6357-edb1-4021-b63c-ccadd84c9266",
+    "session_key": "default",
+    "active_chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "last_seen_at": "2026-08-15 12:33:53.783733+00",
+    "created_at": "2026-07-01 11:06:36.422158+00"
+  },
+  "provenance_stamp": {
+    "build_id": "985de5f3-0b29-4f13-ba25-544f269a4f6c",
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "pinned_at": "2026-08-15T12:32:56.986Z",
+    "build_status": "completed",
+    "ledger_version": null,
+    "priors_version": "1.2",
+    "ranking_config": {
+      "mode": "composite_v1"
+    },
+    "formula_versions": {
+      "salience_formula_ver": null
+    },
+    "now_context_date": "2026-08-15"
+  },
+  "usage_hint": "Your active chart is 1c826d5a-41cb-4450-b4dc-59d440e5f75a. Pass it to chart-scoped tools, or use select_chart to switch."
+}}

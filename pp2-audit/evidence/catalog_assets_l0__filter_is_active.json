@@ -1,0 +1,12 @@
+{
+  "tool": "catalog_assets_l0",
+  "scenario": "filter_is_active_true",
+  "args": {"is_active": true, "limit": 100},
+  "raw_response_summary": {
+    "layer": "L0",
+    "total": 40,
+    "returned": 40,
+    "filters_echoed": {"asset_type": null, "catalog_status": null, "scope": null, "is_active": true, "has_writer": null, "limit": 100, "offset": 0}
+  },
+  "note": "is_active=true filter accepted and echoed. Response scoped to L0/brahmagyan assets only (bg_* asset_ids), confirming this tool is layer-locked to L0 as documented, distinct from catalog_assets_all/catalog_assets_list which span all layers. Global scope confirmed: no chart_id parameter in schema."
+}

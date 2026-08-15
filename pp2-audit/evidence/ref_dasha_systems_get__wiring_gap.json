@@ -1,0 +1,45 @@
+{
+  "tool": "ref_dasha_systems_get",
+  "scenario": "Adjudicating the existing PARTIAL evidence (limit:10 call, large payload via structuredContent) — investigating whether the classical-text-fallback content returned is actually relevant, and whether a structured table exists (same question class as F-04 for ref_nakshatra_get).",
+  "prior_evidence_observation": {
+    "args": {"limit": 10},
+    "structured_filter_applied": false,
+    "fallback_reason": "No structured bg_dasha_systems catalog table exists — this is a classical-text hybrid search using the system/keyword filter as the search query, not a WHERE-clause match.",
+    "query_used": "dasha system",
+    "top_result_relevance_problem": "The top hybrid-search citations returned are Muhurta Chintamani wedding-timing verses about ekargala/upagraha/pata/latta doshas (marriage-muhurta afflictions) — topically unrelated to Vimshottari/Yogini/Ashtottari dasha SEQUENCING, which is what the tool's own description promises ('system name, total years, planet sequence with period lengths, activation criteria, and source authority')."
+  },
+  "code_trace": {
+    "handler_file": "platform-mcp/src/tools/register_p1_reference.ts:369-408",
+    "inline_comment": "line 385-386: 'no structured bg_dasha_systems catalog table exists (confirmed absent from the migration set)' — same false-premise pattern as ref_nakshatra_get's fallback_reason."
+  },
+  "db_verification": {
+    "query": "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND (table_name LIKE '%dasha_system%' OR table_name LIKE '%dasa_system%')",
+    "result": ["brahma_dasha_systems", "reference_dasha_systems"],
+    "brahma_dasha_systems_columns": ["canonical_id", "name_sa", "name_en", "total_cycle_years", "base_unit", "sequence_jsonb", "computation_method", "computation_pseudocode", "conditions_for_use", "school", "classical_citations", "source_chunk_ids", "python_impl_module", "created_at"],
+    "brahma_dasha_systems_row_count": 20,
+    "sample_row_vimshottari": {
+      "canonical_id": "vimshottari",
+      "name_en": "Vimshottari Dasha",
+      "total_cycle_years": "120",
+      "base_unit": "nakshatra_lord",
+      "sequence_jsonb": [
+        {"ruler": "ketu", "years": 7}, {"ruler": "venus", "years": 20}, {"ruler": "sun", "years": 6},
+        {"ruler": "moon", "years": 10}, {"ruler": "mars", "years": 7}, {"ruler": "rahu", "years": 18},
+        {"ruler": "jupiter", "years": 16}, {"ruler": "saturn", "years": 19}, {"ruler": "mercury", "years": 17}
+      ],
+      "conditions_for_use": "Universal default dasha; applicable to all charts. Reckoned from Moon's nakshatra."
+    },
+    "sequence_sums_correctly_to_120_years": true,
+    "reference_dasha_systems_columns": ["canonical_id", "name_en", "school"],
+    "reference_dasha_systems_note": "thinner sibling table (id/name/school only), also live, not the rich table."
+  },
+  "stronger_finding_a_correct_capability_already_exists": {
+    "file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts",
+    "uri": "marsys://tool/L0/query_dasha_systems",
+    "registered_at": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/index.ts:44 (imported as queryDashaSystemsCapability)",
+    "has_own_test_file": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/__tests__/query_dasha_systems.test.ts",
+    "behavior": "Correctly queries `SELECT canonical_id, name_sa, name_en, total_cycle_years, base_unit, sequence_jsonb, computation_method, computation_pseudocode, conditions_for_use, school, classical_citations FROM brahma_dasha_systems` with proper canonical_id/school filters — exactly matching ref_dasha_systems_get's tool description ('system name, total years, planet sequence with period lengths, activation criteria, and source authority').",
+    "not_exposed_anywhere": "grep across platform-mcp/src/tools/*.ts and server.ts for 'query_dasha_systems' returns zero hits — this correct, tested capability is registered in the internal capability registry but is not called by ref_dasha_systems_get (which calls query_classical_texts instead, register_p1_reference.ts:395) and is not exposed as its own MCP tool under any name either. It is effectively dead code reachable by nothing external."
+  },
+  "verdict": "Same defect class as F-04/ref_nakshatra_get, but with stronger evidence: not only does the live, fully-populated (20 rows) brahma_dasha_systems table exist with exactly the fields ref_dasha_systems_get's description promises (verified correct for Vimshottari: 7+20+6+10+7+18+16+19+17=120 years, matching classical values exactly) — a complete, correct, already-registered-and-tested capability (query_dasha_systems) that queries this exact table already exists in the codebase. ref_dasha_systems_get's handler (register_p1_reference.ts:369-408) simply calls the wrong capability URI (query_classical_texts) instead of the right one (query_dasha_systems), producing topically-irrelevant classical-text search hits (Muhurta Chintamani marriage-timing dosha verses) in place of correct structured Vimshottari/Yogini/Ashtottari/Jaimini sequence data that was one URI-string away from being wired correctly."
+}

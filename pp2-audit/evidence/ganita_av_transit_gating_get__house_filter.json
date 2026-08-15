@@ -1,0 +1,7 @@
+{
+  "tool": "ganita_av_transit_gating_get",
+  "scenario": "native_chart_sav_bav_gating_house_filter_10",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "house": 10},
+  "raw_response": {"type":"object","object":{"content":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","mode":"sav_bav_gating","ayanamsha_id":"lahiri_chitrapaksha","lagna_sign_number":1,"classification_basis":{"mean_sav_bindus":28.083333333333332,"neutral_band":1},"rows":[{"sign_number":10,"sign_name":"Capricorn","house":10,"sav_bindus":27,"sav_classification":"damping","bav":{"JUP":6,"MAR":3,"MER":5,"MOON":3,"SAT":2,"SUN":4,"VEN":4}}],"total":1,"filters":{"sign_number":null,"house":10,"graha":null},"provenance":{"tables":["chart_facts"],"fact_category":"ashtakavarga_bindu_sign"}},"is_error":false}},
+  "note": "house=10 filter correctly resolves via LAGNA: chart's lagna_sign_number=1 (Aries), so house 10 maps to sign_number 10 (Capricorn) -- matches classical whole-sign house counting (house = ((sign_number - lagna_sign_number) mod 12) + 1, i.e. sign_number=10 gives house=10 when lagna=sign1). Response correctly restricted to exactly 1 row (sign 10 only). Confirms the house-filter's LAGNA-relative resolution is real and mathematically correct, not a pass-through of sign_number."
+}

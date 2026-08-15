@@ -1,0 +1,334 @@
+{
+  "tool": "kala_life_arc_get",
+  "scenario": "native_primary",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "limit": 10,
+    "offset": 0
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"envelope_version\":\"v1\",\"tool\":\"kala_life_arc_get\",\"verdict\":null,\"ranking_basis\":null,\"grounding\":{\"fact_ids\":[],\"citations\":[],\"grounding_score\":null},\"pagination\":{\"offset\":0,\"limit\":0,\"total\":null,\"next_cursor\":null},\"drill_pointers\":[],\"judgment_flags\":[{\"code\":\"hollow_envelope_shape_not_evaluated\",\"detail\":\"no array-valued or total/returned field found on content — no honest-gap signal computable from this shape (never fabricated).\"}],\"insight_type\":null,\"query_class\":\"temporal_life_arc\",\"content\":{\"content\":{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"parvas\":[{\"id\":\"46062\",\"parva_index\":1,\"dasha_planet\":\"Jupiter\",\"dominant_signal_class\":\"YOGA\",\"start_year\":1984,\"end_year\":1991,\"parva_quality\":\"receding\",\"theme_keywords\":[\"expansion\",\"wisdom\",\"abundance\",\"receding\"],\"high_convergence_count\":884,\"avg_effective_score\":0.422700097323604,\"narrative\":{\"span\":\"1984–1991\",\"quality\":\"receding\",\"summary\":\"Jupiter daśā (1984–1991): receding phase marked by expansion, wisdom. 884 high-convergence windows in this span.\",\"dasha_planet\":\"Jupiter\",\"avg_effective_score\":0.423,\"high_convergence_count\":884},\"source_citation\":\"ka_jivana_parva:v2.0:MD=Jupiter\",\"computed_at\":\"2026-08-13 01:15:53.835895+00\"},{\"id\":\"46063\",\"parva_index\":2,\"dasha_planet\":\"Venus\",\"dominant_signal_class\":\"YOGA\",\"start_year\":1984,\"end_year\":1986,\"parva_quality\":\"consolidating\",\"theme_keywords\":[\"beauty\",\"relationship\",\"creativity\",\"consolidating\"],\"high_convergence_count\":178,\"avg_effective_score\":0.4540951999999991,\"narrative\":{\"span\":\"1984–1986\",\"quality\":\"consolidating\",\"summary\":\"Jupiter/Venus daśā (1984–1986): consolidating phase marked by transformation. 178 high-convergence windows in this span.\",\"dasha_planet\":\"Jupiter/Venus\",\"avg_effective_score\":0.454,\"high_convergence_count\":178},\"source_citation\":\"ka_jivana_parva:v2.0:MD=Jupiter:AD=Venus\",\"computed_at\":\"2026-08-13 01:15:53.835895+00\"},{\"id\":\"46064\",\"parva_index\":3,\"dasha_planet\":\"Sun\",\"dominant_signal_class\":\"DIGNITY\",\"start_year\":1986,\"end_year\":1986,\"parva_quality\":\"transitional\",\"theme_keywords\":[\"authority\",\"identity\",\"recognition\",\"transitional\"],\"high_convergence_count\":0,\"avg_effective_score\":0,\"narrative\":{\"span\":\"1986–1986\",\"quality\":\"transitional\",\"summary\":\"Jupiter/Sun daśā (1986–1986): transitional phase marked by transformation. 0 high-convergence windows in this span.\",\"dasha_planet\":\"Jupiter/Sun\",\"avg_effective_score\":null,\"high_convergence_count\":0},\"source_citation\":\"ka_jivana_parva:v2.0:MD=Jupiter:AD=Sun\",\"computed_at\":\"2026-08-13 01:15:53.835895+00\"},{\"id\":\"46065\",\"parva_index\":4,\"dasha_planet\":\"Moon\",\"dominant_signal_class\":\"YOGA\",\"start_year\":1986,\"end_year\":1988,\"parva_quality\":\"receding\",\"theme_keywords\":[\"nourishment\",\"emotional_depth\",\"home\",\"receding\"],\"high_convergence_count\":87,\"avg_effective_score\":0.38013432203389796,\"narrative\":{\"span\":\"1986–1988\",\"quality\":\"receding\",\"summary\":\"Jupiter/Moon daśā (1986–1988): receding phase marked by transformation. 87 high-convergence windows in this span.\",\"dasha_planet\":\"Jupiter/Moon\",\"avg_effective_score\":0.38,\"high_convergence_count\":87},\"source_citation\":\"ka_jivana_parva:v2.0:MD=Jupiter:AD=Moon\",\"computed_at\":\"2026-08-13 01:15:53.835895+00\"},{\"id\":\"46066\",\"parva_index\":5,\"dasha_planet\":\"Mars\",\"dominant_signal_class\":\"DISPOSITOR_RELATIONAL\",\"start_year\":1988,\"end_year\":1989,\"parva_quality\":\"receding\",\"theme_keywords\":[\"action\",\"ambition\",\"conflict\",\"receding\"],\"high_convergence_count\":30,\"avg_effective_score\":0.4132640000000006,\"narrative\":{\"span\":\"1988–1989\",\"quality\":\"receding\",\"summary\":\"Jupiter/Mars daśā (1988–1989): receding phase marked by transformation. 30 high-convergence windows in this span.\",\"dasha_planet\":\"Jupiter/Mars\",\"avg_effective_score\":0.413,\"high_convergence_count\":30},\"source_citation\":\"ka_jivana_parva:v2.0:MD=Jupiter:AD=Mars\",\"computed_at\":\"2026-08-13 01:15:53.835895+00\"},{\"id\":\"46067\",\"parva_index\":6,\"dasha_planet\":\"Rahu\",\"dominant_signal_class\":\"YOGA\",\"start_year\":1989,\"end_year\":1991,\"parva_quality\":\"consolidating\",\"theme_keywords\":[\"ambition\",\"disruption\",\"innovation\",\"consolidating\"],\"high_convergence_count\":177,\"avg_effective_score\":0.45450611111111155,\"narrative\":{\"span\":\"1989–1991\",\"quality\":\"consolidating\",\"summary\":\"Jupiter/Rahu daśā (1989–1991): consolidating phase marked by transformation. 177 high-convergence windows in this span.\",\"dasha_planet\":\"Jupiter/Rahu\",\"avg_effective_score\":0.455,\"high_convergence_count\":177},\"source_citation\":\"ka_jivana_parva:v2.0:MD=Jupiter:AD=Rahu\",\"computed_at\":\"2026-08-13 01:15:53.835895+00\"},{\"id\":\"46069\",\"parva_index\":8,\"dasha_planet\":\"Saturn\",\"dominant_signal_class\":\"DOSHA\",\"start_year\":1991,\"end_year\":2010,\"parva_quality\":\"receding\",\"theme_keywords\":[\"discipline\",\"responsibility\",\"delay\",\"receding\"],\"high_convergence_count\":1073,\"avg_effective_score\":0.4375559068219672,\"narrative\":{\"span\":\"1991–2010\",\"quality\":\"receding\",\"summary\":\"Saturn daśā (1991–2010): receding phase marked by discipline, responsibility. 1073 high-convergence windows in this span.\",\"dasha_planet\":\"Saturn\",\"avg_effective_score\":0.438,\"high_convergence_count\":1073},\"source_citation\":\"ka_jivana_parva:v2.0:MD=Saturn\",\"computed_at\":\"2026-08-13 01:15:53.835895+00\"},{\"id\":\"46070\",\"parva_index\":9,\"dasha_planet\":\"Saturn\",\"dominant_signal_class\":\"YOGA\",\"start_year\":1991,\"end_year\":1994,\"parva_quality\":\"consolidating\",\"theme_keywords\":[\"discipline\",\"responsibility\",\"delay\",\"consolidating\"],\"high_convergence_count\":235,\"avg_effective_score\":0.5131934624697343,\"narrative\":{\"span\":\"1991–1994\",\"quality\":\"consolidating\",\"summary\":\"Saturn/Saturn daśā (1991–1994): consolidating phase marked by transformation. 235 high-convergence windows in this span.\",\"dasha_planet\":\"Saturn/Saturn\",\"avg_effective_score\":0.513,\"high_convergence_count\":235},\"source_citation\":\"ka_jivana_parva:v2.0:MD=Saturn:AD=Saturn\",\"computed_at\":\"2026-08-13 01:15:53.835895+00\"},{\"id\":\"46071\",\"parva_index\":10,\"dasha_planet\":\"Mercury\",\"dominant_signal_class\":\"DIGNITY\",\"start_year\":1994,\"end_year\":1997,\"parva_quality\":\"consolidating\",\"theme_keywords\":[\"intellect\",\"communication\",\"commerce\",\"consolidating\"],\"high_convergence_count\":212,\"avg_effective_score\":0.504468550368551,\"narrative\":{\"span\":\"1994–1997\",\"quality\":\"consolidating\",\"summary\":\"Saturn/Mercury daśā (1994–1997): consolidating phase marked by transformation. 212 high-convergence windows in this span.\",\"dasha_planet\":\"Saturn/Mercury\",\"avg_effective_score\":0.504,\"high_convergence_count\":212},\"source_citation\":\"ka_jivana_parva:v2.0:MD=Saturn:AD=Mercury\",\"computed_at\":\"2026-08-13 01:15:53.835895+00\"},{\"id\":\"46072\",\"parva_index\":11,\"dasha_planet\":\"Ketu\",\"dominant_signal_class\":\"DOSHA\",\"start_year\":1997,\"end_year\":1998,\"parva_quality\":\"receding\",\"theme_keywords\":[\"renunciation\",\"spirituality\",\"detachment\",\"receding\"],\"high_convergence_count\":57,\"avg_effective_score\":0.4037540740740738,\"narrative\":{\"span\":\"1997–1998\",\"quality\":\"receding\",\"summary\":\"Saturn/Ketu daśā (1997–1998): receding phase marked by transformation. 57 high-convergence windows in this span.\",\"dasha_planet\":\"Saturn/Ketu\",\"avg_effective_score\":0.404,\"high_convergence_count\":57},\"source_citation\":\"ka_jivana_parva:v2.0:MD=Saturn:AD=Ketu\",\"computed_at\":\"2026-08-13 01:15:53.835895+00\"}],\"parva_count\":10,\"filters\":{\"top_k\":10,\"offset\":0},\"provenance\":{\"tables\":[\"kala_jivana_parva\"]}},\"is_error\":false}}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "envelope_version": "v1",
+        "tool": "kala_life_arc_get",
+        "verdict": null,
+        "ranking_basis": null,
+        "grounding": {
+          "fact_ids": [],
+          "citations": [],
+          "grounding_score": null
+        },
+        "pagination": {
+          "offset": 0,
+          "limit": 0,
+          "total": null,
+          "next_cursor": null
+        },
+        "drill_pointers": [],
+        "judgment_flags": [
+          {
+            "code": "hollow_envelope_shape_not_evaluated",
+            "detail": "no array-valued or total/returned field found on content — no honest-gap signal computable from this shape (never fabricated)."
+          }
+        ],
+        "insight_type": null,
+        "query_class": "temporal_life_arc",
+        "content": {
+          "content": {
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "parvas": [
+              {
+                "id": "46062",
+                "parva_index": 1,
+                "dasha_planet": "Jupiter",
+                "dominant_signal_class": "YOGA",
+                "start_year": 1984,
+                "end_year": 1991,
+                "parva_quality": "receding",
+                "theme_keywords": [
+                  "expansion",
+                  "wisdom",
+                  "abundance",
+                  "receding"
+                ],
+                "high_convergence_count": 884,
+                "avg_effective_score": 0.422700097323604,
+                "narrative": {
+                  "span": "1984–1991",
+                  "quality": "receding",
+                  "summary": "Jupiter daśā (1984–1991): receding phase marked by expansion, wisdom. 884 high-convergence windows in this span.",
+                  "dasha_planet": "Jupiter",
+                  "avg_effective_score": 0.423,
+                  "high_convergence_count": 884
+                },
+                "source_citation": "ka_jivana_parva:v2.0:MD=Jupiter",
+                "computed_at": "2026-08-13 01:15:53.835895+00"
+              },
+              {
+                "id": "46063",
+                "parva_index": 2,
+                "dasha_planet": "Venus",
+                "dominant_signal_class": "YOGA",
+                "start_year": 1984,
+                "end_year": 1986,
+                "parva_quality": "consolidating",
+                "theme_keywords": [
+                  "beauty",
+                  "relationship",
+                  "creativity",
+                  "consolidating"
+                ],
+                "high_convergence_count": 178,
+                "avg_effective_score": 0.4540951999999991,
+                "narrative": {
+                  "span": "1984–1986",
+                  "quality": "consolidating",
+                  "summary": "Jupiter/Venus daśā (1984–1986): consolidating phase marked by transformation. 178 high-convergence windows in this span.",
+                  "dasha_planet": "Jupiter/Venus",
+                  "avg_effective_score": 0.454,
+                  "high_convergence_count": 178
+                },
+                "source_citation": "ka_jivana_parva:v2.0:MD=Jupiter:AD=Venus",
+                "computed_at": "2026-08-13 01:15:53.835895+00"
+              },
+              {
+                "id": "46064",
+                "parva_index": 3,
+                "dasha_planet": "Sun",
+                "dominant_signal_class": "DIGNITY",
+                "start_year": 1986,
+                "end_year": 1986,
+                "parva_quality": "transitional",
+                "theme_keywords": [
+                  "authority",
+                  "identity",
+                  "recognition",
+                  "transitional"
+                ],
+                "high_convergence_count": 0,
+                "avg_effective_score": 0,
+                "narrative": {
+                  "span": "1986–1986",
+                  "quality": "transitional",
+                  "summary": "Jupiter/Sun daśā (1986–1986): transitional phase marked by transformation. 0 high-convergence windows in this span.",
+                  "dasha_planet": "Jupiter/Sun",
+                  "avg_effective_score": null,
+                  "high_convergence_count": 0
+                },
+                "source_citation": "ka_jivana_parva:v2.0:MD=Jupiter:AD=Sun",
+                "computed_at": "2026-08-13 01:15:53.835895+00"
+              },
+              {
+                "id": "46065",
+                "parva_index": 4,
+                "dasha_planet": "Moon",
+                "dominant_signal_class": "YOGA",
+                "start_year": 1986,
+                "end_year": 1988,
+                "parva_quality": "receding",
+                "theme_keywords": [
+                  "nourishment",
+                  "emotional_depth",
+                  "home",
+                  "receding"
+                ],
+                "high_convergence_count": 87,
+                "avg_effective_score": 0.38013432203389796,
+                "narrative": {
+                  "span": "1986–1988",
+                  "quality": "receding",
+                  "summary": "Jupiter/Moon daśā (1986–1988): receding phase marked by transformation. 87 high-convergence windows in this span.",
+                  "dasha_planet": "Jupiter/Moon",
+                  "avg_effective_score": 0.38,
+                  "high_convergence_count": 87
+                },
+                "source_citation": "ka_jivana_parva:v2.0:MD=Jupiter:AD=Moon",
+                "computed_at": "2026-08-13 01:15:53.835895+00"
+              },
+              {
+                "id": "46066",
+                "parva_index": 5,
+                "dasha_planet": "Mars",
+                "dominant_signal_class": "DISPOSITOR_RELATIONAL",
+                "start_year": 1988,
+                "end_year": 1989,
+                "parva_quality": "receding",
+                "theme_keywords": [
+                  "action",
+                  "ambition",
+                  "conflict",
+                  "receding"
+                ],
+                "high_convergence_count": 30,
+                "avg_effective_score": 0.4132640000000006,
+                "narrative": {
+                  "span": "1988–1989",
+                  "quality": "receding",
+                  "summary": "Jupiter/Mars daśā (1988–1989): receding phase marked by transformation. 30 high-convergence windows in this span.",
+                  "dasha_planet": "Jupiter/Mars",
+                  "avg_effective_score": 0.413,
+                  "high_convergence_count": 30
+                },
+                "source_citation": "ka_jivana_parva:v2.0:MD=Jupiter:AD=Mars",
+                "computed_at": "2026-08-13 01:15:53.835895+00"
+              },
+              {
+                "id": "46067",
+                "parva_index": 6,
+                "dasha_planet": "Rahu",
+                "dominant_signal_class": "YOGA",
+                "start_year": 1989,
+                "end_year": 1991,
+                "parva_quality": "consolidating",
+                "theme_keywords": [
+                  "ambition",
+                  "disruption",
+                  "innovation",
+                  "consolidating"
+                ],
+                "high_convergence_count": 177,
+                "avg_effective_score": 0.45450611111111155,
+                "narrative": {
+                  "span": "1989–1991",
+                  "quality": "consolidating",
+                  "summary": "Jupiter/Rahu daśā (1989–1991): consolidating phase marked by transformation. 177 high-convergence windows in this span.",
+                  "dasha_planet": "Jupiter/Rahu",
+                  "avg_effective_score": 0.455,
+                  "high_convergence_count": 177
+                },
+                "source_citation": "ka_jivana_parva:v2.0:MD=Jupiter:AD=Rahu",
+                "computed_at": "2026-08-13 01:15:53.835895+00"
+              },
+              {
+                "id": "46069",
+                "parva_index": 8,
+                "dasha_planet": "Saturn",
+                "dominant_signal_class": "DOSHA",
+                "start_year": 1991,
+                "end_year": 2010,
+                "parva_quality": "receding",
+                "theme_keywords": [
+                  "discipline",
+                  "responsibility",
+                  "delay",
+                  "receding"
+                ],
+                "high_convergence_count": 1073,
+                "avg_effective_score": 0.4375559068219672,
+                "narrative": {
+                  "span": "1991–2010",
+                  "quality": "receding",
+                  "summary": "Saturn daśā (1991–2010): receding phase marked by discipline, responsibility. 1073 high-convergence windows in this span.",
+                  "dasha_planet": "Saturn",
+                  "avg_effective_score": 0.438,
+                  "high_convergence_count": 1073
+                },
+                "source_citation": "ka_jivana_parva:v2.0:MD=Saturn",
+                "computed_at": "2026-08-13 01:15:53.835895+00"
+              },
+              {
+                "id": "46070",
+                "parva_index": 9,
+                "dasha_planet": "Saturn",
+                "dominant_signal_class": "YOGA",
+                "start_year": 1991,
+                "end_year": 1994,
+                "parva_quality": "consolidating",
+                "theme_keywords": [
+                  "discipline",
+                  "responsibility",
+                  "delay",
+                  "consolidating"
+                ],
+                "high_convergence_count": 235,
+                "avg_effective_score": 0.5131934624697343,
+                "narrative": {
+                  "span": "1991–1994",
+                  "quality": "consolidating",
+                  "summary": "Saturn/Saturn daśā (1991–1994): consolidating phase marked by transformation. 235 high-convergence windows in this span.",
+                  "dasha_planet": "Saturn/Saturn",
+                  "avg_effective_score": 0.513,
+                  "high_convergence_count": 235
+                },
+                "source_citation": "ka_jivana_parva:v2.0:MD=Saturn:AD=Saturn",
+                "computed_at": "2026-08-13 01:15:53.835895+00"
+              },
+              {
+                "id": "46071",
+                "parva_index": 10,
+                "dasha_planet": "Mercury",
+                "dominant_signal_class": "DIGNITY",
+                "start_year": 1994,
+                "end_year": 1997,
+                "parva_quality": "consolidating",
+                "theme_keywords": [
+                  "intellect",
+                  "communication",
+                  "commerce",
+                  "consolidating"
+                ],
+                "high_convergence_count": 212,
+                "avg_effective_score": 0.504468550368551,
+                "narrative": {
+                  "span": "1994–1997",
+                  "quality": "consolidating",
+                  "summary": "Saturn/Mercury daśā (1994–1997): consolidating phase marked by transformation. 212 high-convergence windows in this span.",
+                  "dasha_planet": "Saturn/Mercury",
+                  "avg_effective_score": 0.504,
+                  "high_convergence_count": 212
+                },
+                "source_citation": "ka_jivana_parva:v2.0:MD=Saturn:AD=Mercury",
+                "computed_at": "2026-08-13 01:15:53.835895+00"
+              },
+              {
+                "id": "46072",
+                "parva_index": 11,
+                "dasha_planet": "Ketu",
+                "dominant_signal_class": "DOSHA",
+                "start_year": 1997,
+                "end_year": 1998,
+                "parva_quality": "receding",
+                "theme_keywords": [
+                  "renunciation",
+                  "spirituality",
+                  "detachment",
+                  "receding"
+                ],
+                "high_convergence_count": 57,
+                "avg_effective_score": 0.4037540740740738,
+                "narrative": {
+                  "span": "1997–1998",
+                  "quality": "receding",
+                  "summary": "Saturn/Ketu daśā (1997–1998): receding phase marked by transformation. 57 high-convergence windows in this span.",
+                  "dasha_planet": "Saturn/Ketu",
+                  "avg_effective_score": 0.404,
+                  "high_convergence_count": 57
+                },
+                "source_citation": "ka_jivana_parva:v2.0:MD=Saturn:AD=Ketu",
+                "computed_at": "2026-08-13 01:15:53.835895+00"
+              }
+            ],
+            "parva_count": 10,
+            "filters": {
+              "top_k": 10,
+              "offset": 0
+            },
+            "provenance": {
+              "tables": [
+                "kala_jivana_parva"
+              ]
+            }
+          },
+          "is_error": false
+        }
+      }
+    }
+  }
+}

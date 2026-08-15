@@ -1,0 +1,7 @@
+{
+  "tool": "bodha_signals_get",
+  "scenario": "native_chart_signal_type_class_yoga_min_weight_0.5",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "signal_type_class": "yoga", "min_weight": 0.5, "limit": 10},
+  "raw_response": {"type":"object","object":{"content":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","frame":"lagna","returned_count":11,"total_matching_filters":11,"filters":{"signal_type_class":"yoga","min_salience":0.5,"lel_enabled":false,"top_k":50,"offset":0,"paradigm":null},"provenance":{"tables":["bodha_msr_signals"],"paradigm_note":"No paradigm filter applied — signals from every classical tradition are present, each individually tagged via its own signal_tradition field."}},"is_error":false}},
+  "note": "signal_type_class=yoga correctly restricts every returned row's signal_type_class to 'yoga' (verified: Vasi Yoga, Gola Yoga, Yuga Yoga, Sasa Yoga, Anapha Yoga, Shoola Yoga, Kedara Yoga, graha_yoga_karaka_flag, panchanga_special_yoga_combinations rows). min_weight=0.5 is echoed back as filters.min_salience:0.5 and all 11 returned rows carry computed_salience >= 0.538 — filter applied correctly (min_weight maps to the min_salience internal name)."
+}

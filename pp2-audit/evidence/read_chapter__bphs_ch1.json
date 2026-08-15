@@ -1,0 +1,10 @@
+{
+  "tool": "read_chapter",
+  "scenario": "bphs_ch1",
+  "args": {"text_id": "bphs", "chapter": 1},
+  "raw_response": {
+    "error": true,
+    "tool": "read_chapter",
+    "message": "Tool not in surgical whitelist: read_chapter"
+  }
+}

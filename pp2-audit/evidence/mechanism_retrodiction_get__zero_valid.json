@@ -1,0 +1,21 @@
+{
+  "tool": "mechanism_retrodiction_get",
+  "scenario": "zero_valid",
+  "args": {
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "limit": 50
+  },
+  "raw_response": {
+    "ok": true,
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "ayanamsha_id": "lahiri_chitrapaksha",
+    "lagna_sign": "Aries",
+    "mechanisms": [],
+    "unmapped_events": [],
+    "not_confirmed_events": [],
+    "usage_note": "CONFIRMATION ONLY — historical retrodictive evidence. Never use as prediction input.",
+    "sealed_test_split_note": "Events on/after 2020-01-01 are excluded from this surface unconditionally (sealed test split, ESCALATION_POLICY §4) — gate-runner/anti-gaming territory only.",
+    "empty_reason": "no_pre_2020_life_events_for_chart"
+  },
+  "note": "Confirms honest-empty behavior on the zero-history chart: no life_events rows exist for this chart, so mechanisms/unmapped_events/not_confirmed_events are all correctly empty arrays with an explicit empty_reason (no_pre_2020_life_events_for_chart) rather than an error or a fabricated result."
+}

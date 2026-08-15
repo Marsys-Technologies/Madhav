@@ -1,0 +1,2756 @@
+{
+  "tool": "kala_windows_get",
+  "scenario": "native_primary",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "limit": 10,
+    "offset": 0
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[large payload — see structuredContent]"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "activations": [
+            {
+              "id": "7842339",
+              "signal_id": "8fb953d5-054d-48a0-b6d9-188b50b7e8ed",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "CLASSIFY_RESIDUAL",
+              "activation_start": "2010-08-18",
+              "activation_end": "2027-08-18",
+              "activation_peak_date": "2019-02-16",
+              "orb_strength": 1,
+              "convergence_score": 0.3036,
+              "dasha_activation_proximity_score": 0.27995,
+              "active_dasha_periods_jsonb": [
+                {
+                  "end": "2027-08-18",
+                  "graha": "Mercury",
+                  "level": "mahadasha",
+                  "start": "2010-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "1997-04-30",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "1994-08-21",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2013-01-14",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2010-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2034-08-18",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2033-08-21",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2053-06-18",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2050-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2059-04-13",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2058-06-06",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2067-11-18",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2066-06-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2075-02-14",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2074-02-17",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                }
+              ],
+              "activation_predicted_dates_jsonb": [
+                {
+                  "date": "2010-08-18",
+                  "graha": "Mercury",
+                  "level": 1,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2019-02-16",
+                  "graha": "Mercury",
+                  "level": 1,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2027-08-18",
+                  "graha": "Mercury",
+                  "level": 1,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "1994-08-21",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "1995-12-25",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "1997-04-30",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2010-08-18",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2011-11-01",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2013-01-14",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2033-08-21",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2034-02-18",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2034-08-18",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2050-08-18",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2052-01-17",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2053-06-18",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2058-06-06",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2058-11-08",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2059-04-13",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2066-06-18",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2067-03-04",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2067-11-18",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2074-02-17",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2074-08-17",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2075-02-14",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "unclassified",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                }
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=8fb953d5:src=dasha_timeline:period=0",
+              "domains_affected_array": [
+                "wealth"
+              ]
+            },
+            {
+              "id": "7849017",
+              "signal_id": "e1e8fcd1-837e-4e45-8526-4fb958517549",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "DIGNITY",
+              "activation_start": "2010-08-18",
+              "activation_end": "2027-08-18",
+              "activation_peak_date": "2019-02-16",
+              "orb_strength": 1,
+              "convergence_score": 0.3086,
+              "dasha_activation_proximity_score": 0.5599,
+              "active_dasha_periods_jsonb": [
+                {
+                  "end": "2027-08-18",
+                  "graha": "Mercury",
+                  "level": "mahadasha",
+                  "start": "2010-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "1997-04-30",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "1994-08-21",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2013-01-14",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2010-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2034-08-18",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2033-08-21",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2053-06-18",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2050-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2059-04-13",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2058-06-06",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2067-11-18",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2066-06-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2075-02-14",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2074-02-17",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                }
+              ],
+              "activation_predicted_dates_jsonb": [
+                {
+                  "date": "2031-07-18",
+                  "source": "convergence_peak",
+                  "trigger": "graha_activation",
+                  "strength": 0.4
+                },
+                {
+                  "date": "2031-07-19",
+                  "source": "convergence_peak",
+                  "trigger": "graha_activation",
+                  "strength": 0.6
+                },
+                {
+                  "date": "2031-07-20",
+                  "source": "convergence_peak",
+                  "trigger": "graha_activation",
+                  "strength": 0.8
+                },
+                {
+                  "date": "2031-07-21",
+                  "source": "convergence_peak",
+                  "trigger": "graha_activation",
+                  "strength": 1
+                },
+                {
+                  "date": "2031-07-22",
+                  "source": "convergence_peak",
+                  "trigger": "graha_activation",
+                  "strength": 0.8
+                },
+                {
+                  "date": "2031-07-23",
+                  "source": "convergence_peak",
+                  "trigger": "graha_activation",
+                  "strength": 0.6
+                },
+                {
+                  "date": "2031-07-24",
+                  "source": "convergence_peak",
+                  "trigger": "graha_activation",
+                  "strength": 0.4
+                }
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=e1e8fcd1:src=dasha_timeline:period=0",
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ]
+            },
+            {
+              "id": "8177250",
+              "signal_id": "c516edf0-0f2d-410b-b876-5ed04c5fa67a",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "YOGA",
+              "activation_start": "2010-08-18",
+              "activation_end": "2027-08-18",
+              "activation_peak_date": "2019-02-16",
+              "orb_strength": 1,
+              "convergence_score": 0.1095,
+              "dasha_activation_proximity_score": 0.27995,
+              "active_dasha_periods_jsonb": [
+                {
+                  "end": "2027-08-18",
+                  "graha": "Mercury",
+                  "level": "mahadasha",
+                  "start": "2010-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "1988-04-18",
+                  "graha": "Moon",
+                  "level": "antardasha",
+                  "start": "1986-12-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "1997-04-30",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "1994-08-21",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2004-02-20",
+                  "graha": "Moon",
+                  "level": "antardasha",
+                  "start": "2002-07-22",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2013-01-14",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2010-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2019-02-17",
+                  "graha": "Moon",
+                  "level": "antardasha",
+                  "start": "2017-09-17",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2030-02-20",
+                  "graha": "Moon",
+                  "level": "antardasha",
+                  "start": "2029-07-22",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2034-08-18",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2033-08-21",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                }
+              ],
+              "activation_predicted_dates_jsonb": [
+                {
+                  "date": "2028-12-23",
+                  "source": "convergence_peak",
+                  "trigger": "benefic_transit_to_kendra_trikona",
+                  "strength": 0.4
+                },
+                {
+                  "date": "2028-12-24",
+                  "source": "convergence_peak",
+                  "trigger": "benefic_transit_to_kendra_trikona",
+                  "strength": 0.6
+                },
+                {
+                  "date": "2028-12-25",
+                  "source": "convergence_peak",
+                  "trigger": "benefic_transit_to_kendra_trikona",
+                  "strength": 0.8
+                },
+                {
+                  "date": "2028-12-26",
+                  "source": "convergence_peak",
+                  "trigger": "benefic_transit_to_kendra_trikona",
+                  "strength": 1
+                },
+                {
+                  "date": "2028-12-27",
+                  "source": "convergence_peak",
+                  "trigger": "benefic_transit_to_kendra_trikona",
+                  "strength": 0.8
+                },
+                {
+                  "date": "2028-12-28",
+                  "source": "convergence_peak",
+                  "trigger": "benefic_transit_to_kendra_trikona",
+                  "strength": 0.6
+                },
+                {
+                  "date": "2028-12-29",
+                  "source": "convergence_peak",
+                  "trigger": "benefic_transit_to_kendra_trikona",
+                  "strength": 0.4
+                }
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=c516edf0:src=dasha_timeline:period=0",
+              "domains_affected_array": [
+                "career",
+                "wealth",
+                "health",
+                "relationship",
+                "spirituality",
+                "progeny",
+                "education"
+              ]
+            },
+            {
+              "id": "7845661",
+              "signal_id": "b9989921-54f0-4d2a-89c1-3609c791601a",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "DIGNITY",
+              "activation_start": "2010-08-18",
+              "activation_end": "2027-08-18",
+              "activation_peak_date": "2019-02-16",
+              "orb_strength": 1,
+              "convergence_score": 0.3086,
+              "dasha_activation_proximity_score": 0.5599,
+              "active_dasha_periods_jsonb": [
+                {
+                  "end": "2027-08-18",
+                  "graha": "Mercury",
+                  "level": "mahadasha",
+                  "start": "2010-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "1997-04-30",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "1994-08-21",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2013-01-14",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2010-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2034-08-18",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2033-08-21",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2053-06-18",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2050-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2059-04-13",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2058-06-06",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2067-11-18",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2066-06-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2075-02-14",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2074-02-17",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                }
+              ],
+              "activation_predicted_dates_jsonb": [
+                {
+                  "date": "2031-07-18",
+                  "source": "convergence_peak",
+                  "trigger": "graha_activation",
+                  "strength": 0.4
+                },
+                {
+                  "date": "2031-07-19",
+                  "source": "convergence_peak",
+                  "trigger": "graha_activation",
+                  "strength": 0.6
+                },
+                {
+                  "date": "2031-07-20",
+                  "source": "convergence_peak",
+                  "trigger": "graha_activation",
+                  "strength": 0.8
+                },
+                {
+                  "date": "2031-07-21",
+                  "source": "convergence_peak",
+                  "trigger": "graha_activation",
+                  "strength": 1
+                },
+                {
+                  "date": "2031-07-22",
+                  "source": "convergence_peak",
+                  "trigger": "graha_activation",
+                  "strength": 0.8
+                },
+                {
+                  "date": "2031-07-23",
+                  "source": "convergence_peak",
+                  "trigger": "graha_activation",
+                  "strength": 0.6
+                },
+                {
+                  "date": "2031-07-24",
+                  "source": "convergence_peak",
+                  "trigger": "graha_activation",
+                  "strength": 0.4
+                }
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=b9989921:src=dasha_timeline:period=0",
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ]
+            },
+            {
+              "id": "7971728",
+              "signal_id": "9e99078d-24d2-43d1-8c30-6384c3e81ac8",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "SUBSYSTEM",
+              "activation_start": "2010-08-18",
+              "activation_end": "2027-08-18",
+              "activation_peak_date": "2019-02-16",
+              "orb_strength": 1,
+              "convergence_score": 0.7,
+              "dasha_activation_proximity_score": 0.8768,
+              "active_dasha_periods_jsonb": [
+                {
+                  "end": "2027-08-18",
+                  "graha": "Mercury",
+                  "level": "mahadasha",
+                  "start": "2010-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "1997-04-30",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "1994-08-21",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2013-01-14",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2010-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2034-08-18",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2033-08-21",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2053-06-18",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2050-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2059-04-13",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2058-06-06",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2067-11-18",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2066-06-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2075-02-14",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2074-02-17",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                }
+              ],
+              "activation_predicted_dates_jsonb": [
+                {
+                  "date": "2027-10-17",
+                  "source": "convergence_peak",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4
+                },
+                {
+                  "date": "2027-10-18",
+                  "source": "convergence_peak",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6
+                },
+                {
+                  "date": "2027-10-19",
+                  "source": "convergence_peak",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.8
+                },
+                {
+                  "date": "2027-10-20",
+                  "source": "convergence_peak",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1
+                },
+                {
+                  "date": "2027-10-21",
+                  "source": "convergence_peak",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.8
+                },
+                {
+                  "date": "2027-10-22",
+                  "source": "convergence_peak",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6
+                },
+                {
+                  "date": "2027-10-23",
+                  "source": "convergence_peak",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4
+                }
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=9e99078d:src=dasha_timeline:period=0",
+              "domains_affected_array": [
+                "character"
+              ]
+            },
+            {
+              "id": "8004277",
+              "signal_id": "c73a8b57-53e9-4d2b-9e0d-9b4c92b4549d",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "SUBSYSTEM",
+              "activation_start": "2010-08-18",
+              "activation_end": "2027-08-18",
+              "activation_peak_date": "2019-02-16",
+              "orb_strength": 1,
+              "convergence_score": 1,
+              "dasha_activation_proximity_score": 0.5599,
+              "active_dasha_periods_jsonb": [
+                {
+                  "end": "2027-08-18",
+                  "graha": "Mercury",
+                  "level": "mahadasha",
+                  "start": "2010-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "1997-04-30",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "1994-08-21",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2013-01-14",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2010-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2034-08-18",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2033-08-21",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2053-06-18",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2050-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2059-04-13",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2058-06-06",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2067-11-18",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2066-06-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2075-02-14",
+                  "graha": "Mercury",
+                  "level": "antardasha",
+                  "start": "2074-02-17",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                }
+              ],
+              "activation_predicted_dates_jsonb": [
+                {
+                  "date": "2010-08-18",
+                  "graha": "Mercury",
+                  "level": 1,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2019-02-16",
+                  "graha": "Mercury",
+                  "level": 1,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2027-08-18",
+                  "graha": "Mercury",
+                  "level": 1,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "1994-08-21",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "1995-12-25",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "1997-04-30",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2010-08-18",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2011-11-01",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2013-01-14",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2033-08-21",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2034-02-18",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2034-08-18",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2050-08-18",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2052-01-17",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2053-06-18",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2058-06-06",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2058-11-08",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2059-04-13",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2066-06-18",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2067-03-04",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2067-11-18",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2074-02-17",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2074-08-17",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2075-02-14",
+                  "graha": "Mercury",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                }
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=c73a8b57:src=dasha_timeline:period=0",
+              "domains_affected_array": [
+                "character"
+              ]
+            },
+            {
+              "id": "8046330",
+              "signal_id": "10d5472e-ef78-4260-ad70-c1ef17edb8e5",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "SUBSYSTEM",
+              "activation_start": "2024-12-08",
+              "activation_end": "2027-08-18",
+              "activation_peak_date": "2026-04-13",
+              "orb_strength": 1,
+              "convergence_score": 0.7,
+              "dasha_activation_proximity_score": 0.8768,
+              "active_dasha_periods_jsonb": [
+                {
+                  "end": "1994-08-21",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "1991-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2027-08-18",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2024-12-08",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2033-08-21",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2032-07-12",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2050-08-18",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2047-06-19",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2058-06-06",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2057-06-24",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2066-06-18",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2064-11-17",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2074-02-17",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2073-01-08",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2085-07-31",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2082-09-24",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                }
+              ],
+              "activation_predicted_dates_jsonb": [
+                {
+                  "date": "2027-10-17",
+                  "source": "convergence_peak",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4
+                },
+                {
+                  "date": "2027-10-18",
+                  "source": "convergence_peak",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6
+                },
+                {
+                  "date": "2027-10-19",
+                  "source": "convergence_peak",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.8
+                },
+                {
+                  "date": "2027-10-20",
+                  "source": "convergence_peak",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1
+                },
+                {
+                  "date": "2027-10-21",
+                  "source": "convergence_peak",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.8
+                },
+                {
+                  "date": "2027-10-22",
+                  "source": "convergence_peak",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6
+                },
+                {
+                  "date": "2027-10-23",
+                  "source": "convergence_peak",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4
+                }
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=10d5472e:src=dasha_timeline:period=1",
+              "domains_affected_array": [
+                "character",
+                "family"
+              ]
+            },
+            {
+              "id": "7970865",
+              "signal_id": "05312dc7-4166-47fc-86c4-2c43cc7c5975",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "SUBSYSTEM",
+              "activation_start": "2024-12-08",
+              "activation_end": "2027-08-18",
+              "activation_peak_date": "2026-04-13",
+              "orb_strength": 1,
+              "convergence_score": 1,
+              "dasha_activation_proximity_score": 0.8768,
+              "active_dasha_periods_jsonb": [
+                {
+                  "end": "1994-08-21",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "1991-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2027-08-18",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2024-12-08",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2033-08-21",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2032-07-12",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2050-08-18",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2047-06-19",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2058-06-06",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2057-06-24",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2066-06-18",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2064-11-17",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2074-02-17",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2073-01-08",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2085-07-31",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2082-09-24",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                }
+              ],
+              "activation_predicted_dates_jsonb": [
+                {
+                  "date": "1991-08-18",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "1993-02-17",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "1994-08-21",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2024-12-08",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2026-04-13",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2027-08-18",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2032-07-12",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2033-01-30",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2033-08-21",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2047-06-19",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2049-01-17",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2050-08-18",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2057-06-24",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2057-12-14",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2058-06-06",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2064-11-17",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2065-09-02",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2066-06-18",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2073-01-08",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2073-07-29",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2074-02-17",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2082-09-24",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2084-02-26",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2085-07-31",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                }
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=05312dc7:src=dasha_timeline:period=1",
+              "domains_affected_array": [
+                "character",
+                "family"
+              ]
+            },
+            {
+              "id": "7858084",
+              "signal_id": "df5c4452-6e42-4bae-a6a2-15f3616a3703",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "DISPOSITOR_RELATIONAL",
+              "activation_start": "2024-12-08",
+              "activation_end": "2027-08-18",
+              "activation_peak_date": "2026-04-13",
+              "orb_strength": 1,
+              "convergence_score": 0.6071,
+              "dasha_activation_proximity_score": 0.8768,
+              "active_dasha_periods_jsonb": [
+                {
+                  "end": "1994-08-21",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "1991-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2027-08-18",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2024-12-08",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2033-08-21",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2032-07-12",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2050-08-18",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2047-06-19",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2058-06-06",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2057-06-24",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2066-06-18",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2064-11-17",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2074-02-17",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2073-01-08",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2085-07-31",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2082-09-24",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                }
+              ],
+              "activation_predicted_dates_jsonb": [
+                {
+                  "date": "1991-08-18",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "1993-02-17",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "1994-08-21",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2024-12-08",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2026-04-13",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2027-08-18",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2032-07-12",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2033-01-30",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2033-08-21",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2047-06-19",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2049-01-17",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2050-08-18",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2057-06-24",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2057-12-14",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2058-06-06",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2064-11-17",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2065-09-02",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2066-06-18",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2073-01-08",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2073-07-29",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2074-02-17",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2082-09-24",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2084-02-26",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2085-07-31",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "relational_link_transit",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                }
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=df5c4452:src=dasha_timeline:period=1",
+              "domains_affected_array": [
+                "career",
+                "wealth",
+                "relationship",
+                "residence",
+                "progeny",
+                "travel"
+              ]
+            },
+            {
+              "id": "7996323",
+              "signal_id": "362e20cf-90e4-4f2c-ad32-eacbc589e149",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "SUBSYSTEM",
+              "activation_start": "2024-12-08",
+              "activation_end": "2027-08-18",
+              "activation_peak_date": "2026-04-13",
+              "orb_strength": 1,
+              "convergence_score": 1,
+              "dasha_activation_proximity_score": 0.8768,
+              "active_dasha_periods_jsonb": [
+                {
+                  "end": "1994-08-21",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "1991-08-18",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2027-08-18",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2024-12-08",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2033-08-21",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2032-07-12",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2050-08-18",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2047-06-19",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2058-06-06",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2057-06-24",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2066-06-18",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2064-11-17",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2074-02-17",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2073-01-08",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                },
+                {
+                  "end": "2085-07-31",
+                  "graha": "Saturn",
+                  "level": "antardasha",
+                  "start": "2082-09-24",
+                  "source": "chart_dashas",
+                  "match_kind": "exact_lord"
+                }
+              ],
+              "activation_predicted_dates_jsonb": [
+                {
+                  "date": "1991-08-18",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "1993-02-17",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "1994-08-21",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2024-12-08",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2026-04-13",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2027-08-18",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2032-07-12",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2033-01-30",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2033-08-21",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2047-06-19",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2049-01-17",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2050-08-18",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2057-06-24",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2057-12-14",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2058-06-06",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2064-11-17",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2065-09-02",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2066-06-18",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2073-01-08",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2073-07-29",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2074-02-17",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                },
+                {
+                  "date": "2082-09-24",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.6,
+                  "point_kind": "period_start"
+                },
+                {
+                  "date": "2084-02-26",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 1,
+                  "point_kind": "period_peak"
+                },
+                {
+                  "date": "2085-07-31",
+                  "graha": "Saturn",
+                  "level": 2,
+                  "source": "dasha_timeline",
+                  "trigger": "subsystem_trigger",
+                  "strength": 0.4,
+                  "point_kind": "period_end"
+                }
+              ],
+              "source_citation": "ka_kalasutra:v1.0:signal=362e20cf:src=dasha_timeline:period=1",
+              "domains_affected_array": [
+                "character",
+                "family"
+              ]
+            }
+          ],
+          "activation_count": 10,
+          "window_families": [
+            {
+              "window_start": "2010-08-18",
+              "window_end": "2027-08-18",
+              "window_peak": "2019-02-16",
+              "member_count": 6,
+              "member_signal_ids": [
+                "8fb953d5-054d-48a0-b6d9-188b50b7e8ed",
+                "e1e8fcd1-837e-4e45-8526-4fb958517549",
+                "c516edf0-0f2d-410b-b876-5ed04c5fa67a",
+                "b9989921-54f0-4d2a-89c1-3609c791601a",
+                "9e99078d-24d2-43d1-8c30-6384c3e81ac8",
+                "c73a8b57-53e9-4d2b-9e0d-9b4c92b4549d"
+              ],
+              "signature_classes": [
+                "CLASSIFY_RESIDUAL",
+                "DIGNITY",
+                "YOGA",
+                "SUBSYSTEM"
+              ],
+              "domains": [
+                "wealth",
+                "character",
+                "relationship",
+                "spirituality",
+                "career",
+                "health",
+                "progeny",
+                "education"
+              ],
+              "max_orb_strength": 1
+            },
+            {
+              "window_start": "2024-12-08",
+              "window_end": "2027-08-18",
+              "window_peak": "2026-04-13",
+              "member_count": 4,
+              "member_signal_ids": [
+                "10d5472e-ef78-4260-ad70-c1ef17edb8e5",
+                "05312dc7-4166-47fc-86c4-2c43cc7c5975",
+                "df5c4452-6e42-4bae-a6a2-15f3616a3703",
+                "362e20cf-90e4-4f2c-ad32-eacbc589e149"
+              ],
+              "signature_classes": [
+                "SUBSYSTEM",
+                "DISPOSITOR_RELATIONAL"
+              ],
+              "domains": [
+                "character",
+                "family",
+                "career",
+                "wealth",
+                "relationship",
+                "residence",
+                "progeny",
+                "travel"
+              ],
+              "max_orb_strength": 1
+            }
+          ],
+          "window_family_count": 2,
+          "forward_windows": [],
+          "forward_window_count": 0,
+          "predicates": [
+            {
+              "id": "3609645",
+              "signal_id": "05312dc7-4166-47fc-86c4-2c43cc7c5975",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "SUBSYSTEM",
+              "dasha_eligibility_rule_jsonb": {
+                "type": "subsystem_specific",
+                "subsystem": "composite_state",
+                "pratijna_ids": [
+                  "fdf3baa3-2a60-4f65-8c62-2c0351b7cf18",
+                  "936b6c77-bb3b-4932-a58a-3e96ac92b602",
+                  "28714432-19f8-4217-87bc-5aaf57f44f89",
+                  "ef219bc7-d71e-402b-beb6-8934a60117f1",
+                  "f0ff3c67-76a9-48d8-a49f-a3c2c6aa933a"
+                ],
+                "constituent_lords": [
+                  "Saturn"
+                ],
+                "cdlm_domain_strength": 0.5,
+                "cgm_centrality_weight": 0.5,
+                "constituent_lords_source": "ka_yojaka:fact_subject_tokens",
+                "multi_system_confirmation_count": 5
+              },
+              "transit_trigger_jsonb": {
+                "type": "subsystem_trigger",
+                "subsystem": "composite_state"
+              },
+              "strength_affliction_hook_jsonb": {
+                "scale_by": "subsystem_severity",
+                "dignity_score": 1,
+                "non_affliction": 0.8768
+              },
+              "derivation_ledger_jsonb": {
+                "ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2",
+                "template_version": "v1.0",
+                "bg_transit_rules_ids": []
+              },
+              "template_version": "v1.0"
+            },
+            {
+              "id": "3614314",
+              "signal_id": "10d5472e-ef78-4260-ad70-c1ef17edb8e5",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "SUBSYSTEM",
+              "dasha_eligibility_rule_jsonb": {
+                "type": "subsystem_specific",
+                "subsystem": "composite_state",
+                "pratijna_ids": [
+                  "fdf3baa3-2a60-4f65-8c62-2c0351b7cf18",
+                  "936b6c77-bb3b-4932-a58a-3e96ac92b602",
+                  "28714432-19f8-4217-87bc-5aaf57f44f89",
+                  "ef219bc7-d71e-402b-beb6-8934a60117f1",
+                  "f0ff3c67-76a9-48d8-a49f-a3c2c6aa933a"
+                ],
+                "constituent_lords": [
+                  "Saturn"
+                ],
+                "cdlm_domain_strength": 0.5,
+                "cgm_centrality_weight": 0.5,
+                "constituent_lords_source": "ka_yojaka:fact_subject_tokens",
+                "multi_system_confirmation_count": 5
+              },
+              "transit_trigger_jsonb": {
+                "type": "subsystem_trigger",
+                "subsystem": "composite_state"
+              },
+              "strength_affliction_hook_jsonb": {
+                "scale_by": "subsystem_severity",
+                "dignity_score": 1,
+                "non_affliction": 0.8768
+              },
+              "derivation_ledger_jsonb": {
+                "ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2",
+                "template_version": "v1.0",
+                "bg_transit_rules_ids": []
+              },
+              "template_version": "v1.0"
+            },
+            {
+              "id": "3605924",
+              "signal_id": "362e20cf-90e4-4f2c-ad32-eacbc589e149",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "SUBSYSTEM",
+              "dasha_eligibility_rule_jsonb": {
+                "type": "subsystem_specific",
+                "subsystem": "composite_state",
+                "pratijna_ids": [
+                  "fdf3baa3-2a60-4f65-8c62-2c0351b7cf18",
+                  "936b6c77-bb3b-4932-a58a-3e96ac92b602",
+                  "28714432-19f8-4217-87bc-5aaf57f44f89",
+                  "ef219bc7-d71e-402b-beb6-8934a60117f1",
+                  "f0ff3c67-76a9-48d8-a49f-a3c2c6aa933a"
+                ],
+                "constituent_lords": [
+                  "Saturn"
+                ],
+                "cdlm_domain_strength": 0.5,
+                "cgm_centrality_weight": 0.5,
+                "constituent_lords_source": "ka_yojaka:fact_subject_tokens",
+                "multi_system_confirmation_count": 5
+              },
+              "transit_trigger_jsonb": {
+                "type": "subsystem_trigger",
+                "subsystem": "composite_state"
+              },
+              "strength_affliction_hook_jsonb": {
+                "scale_by": "subsystem_severity",
+                "dignity_score": 1,
+                "non_affliction": 0.8768
+              },
+              "derivation_ledger_jsonb": {
+                "ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2",
+                "template_version": "v1.0",
+                "bg_transit_rules_ids": []
+              },
+              "template_version": "v1.0"
+            },
+            {
+              "id": "3605203",
+              "signal_id": "8fb953d5-054d-48a0-b6d9-188b50b7e8ed",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "CLASSIFY_RESIDUAL",
+              "dasha_eligibility_rule_jsonb": {
+                "type": "unclassified",
+                "pratijna_ids": [
+                  "8274222d-8db3-46d6-8b09-6c0501c7b442",
+                  "4dd02796-555b-4a28-9d79-477e3651111f",
+                  "6cb98855-0958-41e4-baa4-cdcdd102483c",
+                  "81226737-3439-4248-8a32-92c45adc263a",
+                  "a64630a2-9aef-4895-a0ef-3f7d3dc55b6b"
+                ],
+                "constituent_lords": [
+                  "Mercury"
+                ],
+                "cdlm_domain_strength": 0.7133,
+                "cgm_centrality_weight": 0.5,
+                "constituent_lords_source": "ka_yojaka:extract_lords_from_config",
+                "multi_system_confirmation_count": 5
+              },
+              "transit_trigger_jsonb": {
+                "type": "unclassified"
+              },
+              "strength_affliction_hook_jsonb": {
+                "scale_by": "none",
+                "dignity_score": 0.5,
+                "non_affliction": 0.5599
+              },
+              "derivation_ledger_jsonb": {
+                "ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2",
+                "template_version": "v1.0",
+                "bg_transit_rules_ids": []
+              },
+              "template_version": "v1.0"
+            },
+            {
+              "id": "3609753",
+              "signal_id": "9e99078d-24d2-43d1-8c30-6384c3e81ac8",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "SUBSYSTEM",
+              "dasha_eligibility_rule_jsonb": {
+                "type": "subsystem_specific",
+                "subsystem": "composite_state",
+                "pratijna_ids": [
+                  "fdf3baa3-2a60-4f65-8c62-2c0351b7cf18",
+                  "936b6c77-bb3b-4932-a58a-3e96ac92b602",
+                  "28714432-19f8-4217-87bc-5aaf57f44f89",
+                  "ef219bc7-d71e-402b-beb6-8934a60117f1",
+                  "f0ff3c67-76a9-48d8-a49f-a3c2c6aa933a"
+                ],
+                "constituent_lords": [
+                  "Mercury"
+                ],
+                "cdlm_domain_strength": 0.5,
+                "cgm_centrality_weight": 0.5,
+                "constituent_lords_source": "ka_yojaka:extract_lords_from_config",
+                "multi_system_confirmation_count": 5
+              },
+              "transit_trigger_jsonb": {
+                "type": "subsystem_trigger",
+                "subsystem": "composite_state"
+              },
+              "strength_affliction_hook_jsonb": {
+                "scale_by": "subsystem_severity",
+                "dignity_score": 1,
+                "non_affliction": 0.8768
+              },
+              "derivation_ledger_jsonb": {
+                "ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2",
+                "template_version": "v1.0",
+                "bg_transit_rules_ids": []
+              },
+              "template_version": "v1.0"
+            },
+            {
+              "id": "3610191",
+              "signal_id": "b9989921-54f0-4d2a-89c1-3609c791601a",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "DIGNITY",
+              "dasha_eligibility_rule_jsonb": {
+                "type": "own_dasha",
+                "match": "MD_or_AD lord = the graha itself OR dispositor",
+                "pratijna_ids": [
+                  "fdf3baa3-2a60-4f65-8c62-2c0351b7cf18",
+                  "936b6c77-bb3b-4932-a58a-3e96ac92b602",
+                  "28714432-19f8-4217-87bc-5aaf57f44f89",
+                  "ef219bc7-d71e-402b-beb6-8934a60117f1",
+                  "f0ff3c67-76a9-48d8-a49f-a3c2c6aa933a"
+                ],
+                "constituent_lords": [
+                  "Mercury"
+                ],
+                "cdlm_domain_strength": 0.5,
+                "cgm_centrality_weight": 0.3057,
+                "constituent_lords_source": "ka_yojaka:extract_lords_from_config",
+                "multi_system_confirmation_count": 5
+              },
+              "transit_trigger_jsonb": {
+                "type": "graha_activation",
+                "trigger_events": [
+                  "benefic_aspect_to_graha",
+                  "graha_return",
+                  "ingress_dignity_sign"
+                ]
+              },
+              "strength_affliction_hook_jsonb": {
+                "scale_by": "dignity_score",
+                "dignity_score": 1,
+                "non_affliction": 0.5599,
+                "neechabhanga_boost": true
+              },
+              "derivation_ledger_jsonb": {
+                "ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2",
+                "template_version": "v1.0",
+                "bg_transit_rules_ids": [
+                  1,
+                  2,
+                  3,
+                  8,
+                  9,
+                  10
+                ]
+              },
+              "template_version": "v1.0"
+            },
+            {
+              "id": "3613859",
+              "signal_id": "c516edf0-0f2d-410b-b876-5ed04c5fa67a",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "YOGA",
+              "dasha_eligibility_rule_jsonb": {
+                "type": "dasha_lord_in_constituents",
+                "match": "MD_or_AD_lord IN constituent_lords OR dispositors OR house_lords",
+                "pratijna_ids": [
+                  "fdf3baa3-2a60-4f65-8c62-2c0351b7cf18",
+                  "936b6c77-bb3b-4932-a58a-3e96ac92b602",
+                  "28714432-19f8-4217-87bc-5aaf57f44f89",
+                  "ef219bc7-d71e-402b-beb6-8934a60117f1",
+                  "f0ff3c67-76a9-48d8-a49f-a3c2c6aa933a"
+                ],
+                "strength_ranking": [
+                  "exact_lord",
+                  "dispositor",
+                  "house_lord"
+                ],
+                "constituent_lords": [
+                  "Moon",
+                  "Mercury"
+                ],
+                "cdlm_domain_strength": 0.5,
+                "cgm_centrality_weight": 0.5,
+                "constituent_lords_source": "ka_yojaka:ga_yoga_firings",
+                "multi_system_confirmation_count": 5
+              },
+              "transit_trigger_jsonb": {
+                "type": "benefic_transit_to_kendra_trikona",
+                "kendra": [
+                  1,
+                  4,
+                  7,
+                  10
+                ],
+                "orb_deg": 1,
+                "trikona": [
+                  1,
+                  5,
+                  9
+                ],
+                "trigger_events": [
+                  "constituent_lord_ingress_kendra_trikona",
+                  "benefic_transit_conjoin_yoga_lord",
+                  "constituent_lord_return"
+                ]
+              },
+              "strength_affliction_hook_jsonb": {
+                "veto_if": "combust OR dusthana_transit OR malefic_conjunction",
+                "scale_by": "dignity_score",
+                "dignity_score": 0.5,
+                "non_affliction": 0.5599
+              },
+              "derivation_ledger_jsonb": {
+                "ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2",
+                "template_version": "v1.0",
+                "bg_transit_rules_ids": [
+                  1,
+                  2,
+                  3,
+                  4
+                ]
+              },
+              "template_version": "v1.0"
+            },
+            {
+              "id": "3609814",
+              "signal_id": "c73a8b57-53e9-4d2b-9e0d-9b4c92b4549d",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "SUBSYSTEM",
+              "dasha_eligibility_rule_jsonb": {
+                "type": "subsystem_specific",
+                "subsystem": "composite_state",
+                "pratijna_ids": [
+                  "fdf3baa3-2a60-4f65-8c62-2c0351b7cf18",
+                  "936b6c77-bb3b-4932-a58a-3e96ac92b602",
+                  "28714432-19f8-4217-87bc-5aaf57f44f89",
+                  "ef219bc7-d71e-402b-beb6-8934a60117f1",
+                  "f0ff3c67-76a9-48d8-a49f-a3c2c6aa933a"
+                ],
+                "constituent_lords": [
+                  "Mercury"
+                ],
+                "cdlm_domain_strength": 0.5,
+                "cgm_centrality_weight": 0.5,
+                "constituent_lords_source": "ka_yojaka:extract_lords_from_config",
+                "multi_system_confirmation_count": 5
+              },
+              "transit_trigger_jsonb": {
+                "type": "subsystem_trigger",
+                "subsystem": "composite_state"
+              },
+              "strength_affliction_hook_jsonb": {
+                "scale_by": "subsystem_severity",
+                "dignity_score": 1,
+                "non_affliction": 0.5599
+              },
+              "derivation_ledger_jsonb": {
+                "ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2",
+                "template_version": "v1.0",
+                "bg_transit_rules_ids": []
+              },
+              "template_version": "v1.0"
+            },
+            {
+              "id": "3605729",
+              "signal_id": "df5c4452-6e42-4bae-a6a2-15f3616a3703",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "DISPOSITOR_RELATIONAL",
+              "dasha_eligibility_rule_jsonb": {
+                "type": "related_lords_dasha",
+                "match": "MD_or_AD lord IN related_lords",
+                "pratijna_ids": [
+                  "8274222d-8db3-46d6-8b09-6c0501c7b442",
+                  "4dd02796-555b-4a28-9d79-477e3651111f",
+                  "6cb98855-0958-41e4-baa4-cdcdd102483c",
+                  "81226737-3439-4248-8a32-92c45adc263a",
+                  "a64630a2-9aef-4895-a0ef-3f7d3dc55b6b"
+                ],
+                "constituent_lords": [
+                  "Saturn"
+                ],
+                "cdlm_domain_strength": 0.7133,
+                "cgm_centrality_weight": 0.3244,
+                "constituent_lords_source": "ka_yojaka:extract_lords_from_config",
+                "multi_system_confirmation_count": 5
+              },
+              "transit_trigger_jsonb": {
+                "type": "relational_link_transit",
+                "trigger_events": [
+                  "lord_transits_other_bhava",
+                  "aspect_completing_exchange"
+                ]
+              },
+              "strength_affliction_hook_jsonb": {
+                "scale_by": "composite_dispositor_strength",
+                "dampen_if": "either_lord_afflicted",
+                "dignity_score": 1,
+                "non_affliction": 0.8768
+              },
+              "derivation_ledger_jsonb": {
+                "ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2",
+                "template_version": "v1.0",
+                "bg_transit_rules_ids": [
+                  1,
+                  2,
+                  3
+                ]
+              },
+              "template_version": "v1.0"
+            },
+            {
+              "id": "3612153",
+              "signal_id": "e1e8fcd1-837e-4e45-8526-4fb958517549",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "signature_class": "DIGNITY",
+              "dasha_eligibility_rule_jsonb": {
+                "type": "own_dasha",
+                "match": "MD_or_AD lord = the graha itself OR dispositor",
+                "pratijna_ids": [
+                  "fdf3baa3-2a60-4f65-8c62-2c0351b7cf18",
+                  "936b6c77-bb3b-4932-a58a-3e96ac92b602",
+                  "28714432-19f8-4217-87bc-5aaf57f44f89",
+                  "ef219bc7-d71e-402b-beb6-8934a60117f1",
+                  "f0ff3c67-76a9-48d8-a49f-a3c2c6aa933a"
+                ],
+                "constituent_lords": [
+                  "Mercury"
+                ],
+                "cdlm_domain_strength": 0.5,
+                "cgm_centrality_weight": 0.3057,
+                "constituent_lords_source": "ka_yojaka:extract_lords_from_config",
+                "multi_system_confirmation_count": 5
+              },
+              "transit_trigger_jsonb": {
+                "type": "graha_activation",
+                "trigger_events": [
+                  "benefic_aspect_to_graha",
+                  "graha_return",
+                  "ingress_dignity_sign"
+                ]
+              },
+              "strength_affliction_hook_jsonb": {
+                "scale_by": "dignity_score",
+                "dignity_score": 1,
+                "non_affliction": 0.5599,
+                "neechabhanga_boost": true
+              },
+              "derivation_ledger_jsonb": {
+                "ratified_by": "L3_KALA_ACTIVATION_TEMPLATES_AND_WEIGHTS_v1_0.md §2",
+                "template_version": "v1.0",
+                "bg_transit_rules_ids": [
+                  1,
+                  2,
+                  3,
+                  8,
+                  9,
+                  10
+                ]
+              },
+              "template_version": "v1.0"
+            }
+          ],
+          "predicate_count": 10,
+          "signal_id_refs": [
+            "8fb953d5-054d-48a0-b6d9-188b50b7e8ed",
+            "e1e8fcd1-837e-4e45-8526-4fb958517549",
+            "c516edf0-0f2d-410b-b876-5ed04c5fa67a",
+            "b9989921-54f0-4d2a-89c1-3609c791601a",
+            "9e99078d-24d2-43d1-8c30-6384c3e81ac8",
+            "c73a8b57-53e9-4d2b-9e0d-9b4c92b4549d",
+            "10d5472e-ef78-4260-ad70-c1ef17edb8e5",
+            "05312dc7-4166-47fc-86c4-2c43cc7c5975",
+            "df5c4452-6e42-4bae-a6a2-15f3616a3703",
+            "362e20cf-90e4-4f2c-ad32-eacbc589e149"
+          ],
+          "filters": {
+            "date_from": "2026-08-15",
+            "date_to": "2027-08-15",
+            "as_of": null,
+            "top_k": 10,
+            "min_strength": 0,
+            "domain": null
+          },
+          "date_filter": {
+            "mode": "range",
+            "as_of": null,
+            "date_from": "2026-08-15",
+            "date_to": "2027-08-15",
+            "range_defaulted": true,
+            "honored": true
+          },
+          "empty_reason": null,
+          "awaiting_activation_dates": false,
+          "caveats": [
+            "single_cycle_per_signal: each activation/window here reflects one resolved dasha or convergence cycle per signal — not a…[truncated for budget]",
+            "near_tier_build_date_relative: convergence \"near\"-tier windows are computed relative to this chart's last build date, no…[truncated for budget]"
+          ],
+          "drill_next": [
+            "marsys://tool/L3/query_convergence_windows",
+            "marsys://tool/L3/query_life_arc"
+          ],
+          "provenance": {
+            "tables": [
+              "kala_activation",
+              "kala_activation_predicates"
+            ]
+          }
+        },
+        "is_error": false,
+        "budget_kb_applied": 40,
+        "trim_report": [
+          {
+            "path": "(trim_report)",
+            "original_count": 1,
+            "kept_count": 1,
+            "reason": "full trim_report omitted to fit budget",
+            "recover_via": {
+              "instrument": "response_format:legacy",
+              "hint": "full untrimmed response"
+            }
+          }
+        ],
+        "drill_pointers": [],
+        "judgment_flags": [
+          {
+            "code": "budget_exceeded_after_trim",
+            "detail": "40kb budget still exceeded after full trim."
+          }
+        ]
+      }
+    }
+  }
+}

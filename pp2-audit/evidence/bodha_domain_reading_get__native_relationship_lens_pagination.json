@@ -1,0 +1,11 @@
+{
+  "tool": "bodha_domain_reading_get",
+  "scenario": "native_relationship_lens_pagination (two calls: lens_offset=0 vs lens_offset=3, lens_limit=3 both)",
+  "args_page1": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "relationship", "lens_limit": 3, "lens_offset": 0, "max_signals_per_lens": 3},
+  "args_page2": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "relationship", "lens_limit": 3, "lens_offset": 3, "max_signals_per_lens": 3},
+  "observed": {
+    "page1": {"lens_count": 2, "question_lenses_returned": ["marriage", "progeny"], "lens_pagination": {"offset": 0, "limit": 3, "total": 2, "returned_count": 2, "more_available": false}},
+    "page2": {"lens_count": 0, "question_lenses_returned": [], "lens_pagination": {"offset": 3, "limit": 3, "total": 2, "returned_count": 0, "more_available": false}}
+  },
+  "note": "Pagination is correct and consistent: total=2 lenses for domain=relationship; offset=0/limit=3 returns both (returned_count=2); offset=3 (beyond total) correctly returns an empty page with returned_count=0, not an error or stale data. trim_report/drill_pointers.instrument correctly reads 'bodha_domain_reading_get' (a REAL, callable recovery instrument) in both pages -- contrasts with the 'unknown_tool' defect found in bodha_graph_traverse_get/bodha_graph_subgraph_get."
+}

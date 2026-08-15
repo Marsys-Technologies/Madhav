@@ -1,0 +1,15 @@
+{
+  "tool": "judgment_query",
+  "scenario": "education",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "education"},
+  "timing": {"before_ms": 1786800953525, "after_ms": 1786800974649, "latency_ms": 21124},
+  "is_error": false,
+  "raw_response_summary": {
+    "envelope_version": "v3",
+    "verdict": {"domain": "education", "domain_label": "Education / Vidyā", "bhava": 4, "verdict_grade": "convergent_strong", "composite_score": 3.68, "operative_varga": "D24"},
+    "reading_checklist": {"units_served": 8, "units_total": 12},
+    "judgment_flags_count": 6,
+    "anomaly_observed": "internal gochara_sweep and bodha_signals_get drill_pointer both silently resolve domain='other' instead of 'education' (gochara_sweep.domain_covered=false, gochara_sweep.domain='other'); judgment_flags does include an honest 'gochara_domain_not_covered' disclosure, so the gap is surfaced, not hidden -- but the domain-vocabulary mismatch between the classical-checklist layer (which correctly resolves education->bhava4/D24) and the gochara/bodha_signals sub-layer (which falls back to a generic 'other' bucket) is a real cross-subsystem inconsistency worth flagging."
+  },
+  "note": "Fields copied verbatim from actual tool response; full payload truncated for evidence-file size, not fabricated."
+}

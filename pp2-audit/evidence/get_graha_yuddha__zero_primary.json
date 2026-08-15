@@ -1,0 +1,214 @@
+{
+  "tool": "get_graha_yuddha",
+  "scenario": "zero_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[budget-capped response — see structuredContent; text duplicate suppressed for this instrument per R5.1 C1]"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+          "birth_date": "1985-03-02",
+          "pairs": [
+            {
+              "pair_key": "VEN_v_MAR",
+              "ayanamsha_id": "krishnamurti",
+              "sign": "Pisces",
+              "orb_deg": 0.679509,
+              "floor_fact_ids": [
+                "98e370e213b57380",
+                "c6ff08d78eda8f51",
+                "833bc1fa714a4faf"
+              ],
+              "winner": "VEN",
+              "loser": "MAR",
+              "method": "option_a_northern_latitude",
+              "citation": "Brhat Parasara Hora Sastra (graha-yuddha sloka): Venus is conqueror whether North or South; among Mars/Mercury/Jupiter/Saturn the one further North is conqueror. Corroborated by Brhat Samhita (Varahamihira), Grahayuddhadhyaya ch.17 (northern/brighter = jayin, southern = parajita). Verse numbers pending critical-edition verification (JL_027_GRAHA_YUDDHA_WINNER_RULE_OPTIONS_v1_0.md §5).",
+              "note": "Venus is held to conquer regardless of North/South (BPHS).",
+              "derivation_ledger": {
+                "rule": "JL-027 Option A (Parasari northern-latitude)",
+                "constituent_facts": [
+                  {
+                    "subject": "VEN",
+                    "ecliptic_latitude_deg": 5.446363,
+                    "source": "ephemeris_daily(date=1985-03-02, body=Venus, ayanamsha_id=tropical)"
+                  },
+                  {
+                    "subject": "MAR",
+                    "ecliptic_latitude_deg": -0.081261,
+                    "source": "ephemeris_daily(date=1985-03-02, body=Mars, ayanamsha_id=tropical)"
+                  }
+                ],
+                "floored_source_fact_ids": [
+                  "98e370e213b57380",
+                  "c6ff08d78eda8f51",
+                  "833bc1fa714a4faf"
+                ]
+              }
+            },
+            {
+              "pair_key": "VEN_v_MAR",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "sign": "Pisces",
+              "orb_deg": 0.679509,
+              "floor_fact_ids": [
+                "c232242b59e5c123",
+                "cc2b122811b133ac",
+                "72bd7c793bde8bae"
+              ],
+              "winner": "VEN",
+              "loser": "MAR",
+              "method": "option_a_northern_latitude",
+              "citation": "Brhat Parasara Hora Sastra (graha-yuddha sloka): Venus is conqueror whether North or South; among Mars/Mercury/Jupiter/Saturn the one further North is conqueror. Corroborated by Brhat Samhita (Varahamihira), Grahayuddhadhyaya ch.17 (northern/brighter = jayin, southern = parajita). Verse numbers pending critical-edition verification (JL_027_GRAHA_YUDDHA_WINNER_RULE_OPTIONS_v1_0.md §5).",
+              "note": "Venus is held to conquer regardless of North/South (BPHS).",
+              "derivation_ledger": {
+                "rule": "JL-027 Option A (Parasari northern-latitude)",
+                "constituent_facts": [
+                  {
+                    "subject": "VEN",
+                    "ecliptic_latitude_deg": 5.446363,
+                    "source": "ephemeris_daily(date=1985-03-02, body=Venus, ayanamsha_id=tropical)"
+                  },
+                  {
+                    "subject": "MAR",
+                    "ecliptic_latitude_deg": -0.081261,
+                    "source": "ephemeris_daily(date=1985-03-02, body=Mars, ayanamsha_id=tropical)"
+                  }
+                ],
+                "floored_source_fact_ids": [
+                  "c232242b59e5c123",
+                  "cc2b122811b133ac",
+                  "72bd7c793bde8bae"
+                ]
+              }
+            },
+            {
+              "pair_key": "VEN_v_MAR",
+              "ayanamsha_id": "raman",
+              "sign": "Pisces",
+              "orb_deg": 0.679509,
+              "floor_fact_ids": [
+                "083551def9fc3aff",
+                "b46461e708abc5aa",
+                "77f835405ac8bfb3"
+              ],
+              "winner": "VEN",
+              "loser": "MAR",
+              "method": "option_a_northern_latitude",
+              "citation": "Brhat Parasara Hora Sastra (graha-yuddha sloka): Venus is conqueror whether North or South; among Mars/Mercury/Jupiter/Saturn the one further North is conqueror. Corroborated by Brhat Samhita (Varahamihira), Grahayuddhadhyaya ch.17 (northern/brighter = jayin, southern = parajita). Verse numbers pending critical-edition verification (JL_027_GRAHA_YUDDHA_WINNER_RULE_OPTIONS_v1_0.md §5).",
+              "note": "Venus is held to conquer regardless of North/South (BPHS).",
+              "derivation_ledger": {
+                "rule": "JL-027 Option A (Parasari northern-latitude)",
+                "constituent_facts": [
+                  {
+                    "subject": "VEN",
+                    "ecliptic_latitude_deg": 5.446363,
+                    "source": "ephemeris_daily(date=1985-03-02, body=Venus, ayanamsha_id=tropical)"
+                  },
+                  {
+                    "subject": "MAR",
+                    "ecliptic_latitude_deg": -0.081261,
+                    "source": "ephemeris_daily(date=1985-03-02, body=Mars, ayanamsha_id=tropical)"
+                  }
+                ],
+                "floored_source_fact_ids": [
+                  "083551def9fc3aff",
+                  "b46461e708abc5aa",
+                  "77f835405ac8bfb3"
+                ]
+              }
+            },
+            {
+              "pair_key": "VEN_v_MAR",
+              "ayanamsha_id": "surya_siddhanta_classical",
+              "sign": "Pisces",
+              "orb_deg": 0.679509,
+              "floor_fact_ids": [
+                "5eeb15bbfac65ec6",
+                "bca76dbb85673aca",
+                "bb70f77055e5c625"
+              ],
+              "winner": "VEN",
+              "loser": "MAR",
+              "method": "option_a_northern_latitude",
+              "citation": "Brhat Parasara Hora Sastra (graha-yuddha sloka): Venus is conqueror whether North or South; among Mars/Mercury/Jupiter/Saturn the one further North is conqueror. Corroborated by Brhat Samhita (Varahamihira), Grahayuddhadhyaya ch.17 (northern/brighter = jayin, southern = parajita). Verse numbers pending critical-edition verification (JL_027_GRAHA_YUDDHA_WINNER_RULE_OPTIONS_v1_0.md §5).",
+              "note": "Venus is held to conquer regardless of North/South (BPHS).",
+              "derivation_ledger": {
+                "rule": "JL-027 Option A (Parasari northern-latitude)",
+                "constituent_facts": [
+                  {
+                    "subject": "VEN",
+                    "ecliptic_latitude_deg": 5.446363,
+                    "source": "ephemeris_daily(date=1985-03-02, body=Venus, ayanamsha_id=tropical)"
+                  },
+                  {
+                    "subject": "MAR",
+                    "ecliptic_latitude_deg": -0.081261,
+                    "source": "ephemeris_daily(date=1985-03-02, body=Mars, ayanamsha_id=tropical)"
+                  }
+                ],
+                "floored_source_fact_ids": [
+                  "5eeb15bbfac65ec6",
+                  "bca76dbb85673aca",
+                  "bb70f77055e5c625"
+                ]
+              }
+            },
+            {
+              "pair_key": "VEN_v_MAR",
+              "ayanamsha_id": "true_chitra",
+              "sign": "Pisces",
+              "orb_deg": 0.679509,
+              "floor_fact_ids": [
+                "d980085b31c4e5f5",
+                "f056ad02625bb009",
+                "b2343dbb1f185601"
+              ],
+              "winner": "VEN",
+              "loser": "MAR",
+              "method": "option_a_northern_latitude",
+              "citation": "Brhat Parasara Hora Sastra (graha-yuddha sloka): Venus is conqueror whether North or South; among Mars/Mercury/Jupiter/Saturn the one further North is conqueror. Corroborated by Brhat Samhita (Varahamihira), Grahayuddhadhyaya ch.17 (northern/brighter = jayin, southern = parajita). Verse numbers pending critical-edition verification (JL_027_GRAHA_YUDDHA_WINNER_RULE_OPTIONS_v1_0.md §5).",
+              "note": "Venus is held to conquer regardless of North/South (BPHS).",
+              "derivation_ledger": {
+                "rule": "JL-027 Option A (Parasari northern-latitude)",
+                "constituent_facts": [
+                  {
+                    "subject": "VEN",
+                    "ecliptic_latitude_deg": 5.446363,
+                    "source": "ephemeris_daily(date=1985-03-02, body=Venus, ayanamsha_id=tropical)"
+                  },
+                  {
+                    "subject": "MAR",
+                    "ecliptic_latitude_deg": -0.081261,
+                    "source": "ephemeris_daily(date=1985-03-02, body=Mars, ayanamsha_id=tropical)"
+                  }
+                ],
+                "floored_source_fact_ids": [
+                  "d980085b31c4e5f5",
+                  "f056ad02625bb009",
+                  "b2343dbb1f185601"
+                ]
+              }
+            }
+          ],
+          "total": 5,
+          "provenance": {
+            "note": "chart_facts.graha_yuddha remains FLOORED at rest (winner=NULL); this is a serve-time, read-only overlay per JL-027 Option A. No chart data was written.",
+            "ephemeris_note": null
+          }
+        },
+        "is_error": false
+      }
+    }
+  }
+}

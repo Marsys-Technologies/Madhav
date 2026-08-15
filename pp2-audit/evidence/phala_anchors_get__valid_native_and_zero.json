@@ -1,0 +1,20 @@
+{
+  "tool": "phala_anchors_get",
+  "scenario": "valid calls with date_range object on both charts (prior PARTIAL call used non-existent limit/offset params, which the real schema rejects). Also tested chart_id alone (no date_range) on zero chart to check whether date_range is truly optional per the MCP schema.",
+  "calls": [
+    {
+      "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "date_range": {"start": "2026-01-01", "end": "2027-12-31"}},
+      "result_summary": {"anchor_count": 27, "anchors_returned_after_trim": 13, "sample_anchor": {"domain": "relationship", "event_type": "marriage", "direction": "mixed", "confidence": 0.3022, "magnitude": "minor", "structured_falsifier_present": true}, "provenance_envelope": {"asset": "PH-4-1", "algorithm": "dasha_quality x signal_strength x convergence_score", "b3_citation_compliant": true, "all_falsifiers_present": true}, "trim_report": "anchors trimmed 27->13 to fit 40kb budget, with recover_via hint to narrow date_range"}
+    },
+    {
+      "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "date_range": {"start": "2026-01-01", "end": "2027-12-31"}},
+      "result_summary": {"anchor_count": 6, "anchors_returned": 6, "no_trim_needed": true, "sample_domains": ["character", "career", "relationship", "health", "transition"]}
+    },
+    {
+      "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"},
+      "result_summary": null,
+      "error": "{\"ok\":false,\"error\":\"Error: [alias] sidecar /api/compute/phala/event_anchors failed (422): {\\\"detail\\\":[{\\\"type\\\":\\\"missing\\\",\\\"loc\\\":[\\\"body\\\",\\\"date_range\\\"],\\\"msg\\\":\\\"Field required\\\",\\\"input\\\":{\\\"chart_id\\\":\\\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\\\"}}]}\",\"tool\":\"phala_anchors_get\"}"
+    }
+  ],
+  "minor_finding": "The MCP tool's own JSON-schema does not list date_range in `required` (only chart_id is required), but the underlying Python sidecar (/api/compute/phala/event_anchors) treats date_range as a mandatory body field and 422s without it. This is a schema/implementation mismatch — not silently wrong data (the 422 is an honest, typed rejection), so it does not rise to a GAP, but the MCP-exposed schema is misleading about which args are truly optional."
+}

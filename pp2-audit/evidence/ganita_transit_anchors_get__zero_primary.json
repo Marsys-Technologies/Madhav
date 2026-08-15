@@ -1,0 +1,150 @@
+{
+  "tool": "ganita_transit_anchors_get",
+  "scenario": "zero_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"envelope_version\":\"v1\",\"tool\":\"ganita_transit_anchors_get\",\"verdict\":null,\"ranking_basis\":null,\"grounding\":{\"fact_ids\":[],\"citations\":[],\"grounding_score\":null},\"pagination\":{\"offset\":0,\"limit\":0,\"total\":null,\"next_cursor\":null,\"more_available\":false},\"drill_pointers\":[],\"judgment_flags\":[],\"insight_type\":null,\"query_class\":\"per_chart_structural\",\"content\":{\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"anchors\":[{\"id\":2359,\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"krishnamurti\",\"graha\":\"jupiter\",\"natal_sign\":\"capricorn\",\"natal_house_from_moon\":8,\"natal_degree_absolute\":281.665518443467,\"computed_at\":\"2026-07-26 06:43:36.218088+00\"},{\"id\":2360,\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"krishnamurti\",\"graha\":\"ketu\",\"natal_sign\":\"libra\",\"natal_house_from_moon\":5,\"natal_degree_absolute\":208.412332351519,\"computed_at\":\"2026-07-26 06:43:36.218088+00\"},{\"id\":2361,\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"krishnamurti\",\"graha\":\"mars\",\"natal_sign\":\"pisces\",\"natal_house_from_moon\":10,\"natal_degree_absolute\":356.918735038979,\"computed_at\":\"2026-07-26 06:43:36.218088+00\"},{\"id\":2362,\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"krishnamurti\",\"graha\":\"mercury\",\"natal_sign\":\"aquarius\",\"natal_house_from_moon\":9,\"natal_degree_absolute\":327.4872255917,\"computed_at\":\"2026-07-26 06:43:36.218088+00\"},{\"id\":2363,\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"krishnamurti\",\"graha\":\"moon\",\"natal_sign\":\"gemini\",\"natal_house_from_moon\":1,\"natal_degree_absolute\":73.3246769705241,\"computed_at\":\"2026-07-26 06:43:36.218088+00\"},{\"id\":2364,\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"krishnamurti\",\"graha\":\"rahu\",\"natal_sign\":\"aries\",\"natal_house_from_moon\":11,\"natal_degree_absolute\":28.412332351519,\"computed_at\":\"2026-07-26 06:43:36.218088+00\"},{\"id\":2365,\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"krishnamurti\",\"graha\":\"saturn\",\"natal_sign\":\"scorpio\",\"natal_house_from_moon\":6,\"natal_degree_absolute\":214.55250268814,\"computed_at\":\"2026-07-26 06:43:36.218088+00\"},{\"id\":2366,\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"krishnamurti\",\"graha\":\"sun\",\"natal_sign\":\"aquarius\",\"natal_house_from_moon\":9,\"natal_degree_absolute\":317.98638399367,\"computed_at\":\"2026-07-26 06:43:36.218088+00\"},{\"id\":2367,\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"krishnamurti\",\"graha\":\"venus\",\"natal_sign\":\"pisces\",\"natal_house_from_moon\":10,\"natal_degree_absolute\":356.239226161007,\"computed_at\":\"2026-07-26 06:43:36.218088+00\"},{\"id\":2341,\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"graha\":\"jupiter\",\"natal_sign\":\"capricorn\",\"natal_house_from_moon\":8,\"natal_degree_absolute\":281.568666111532,\"computed_at\":\"2026-07-26 06:43:35.376716+00\"}],\"total\":10,\"note\":\"natal_house_from_moon: classical 1-based count from natal Moon sign; natal_degree_absolute: sidereal 0-360°\"},\"trim_report\":null}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "envelope_version": "v1",
+        "tool": "ganita_transit_anchors_get",
+        "verdict": null,
+        "ranking_basis": null,
+        "grounding": {
+          "fact_ids": [],
+          "citations": [],
+          "grounding_score": null
+        },
+        "pagination": {
+          "offset": 0,
+          "limit": 0,
+          "total": null,
+          "next_cursor": null,
+          "more_available": false
+        },
+        "drill_pointers": [],
+        "judgment_flags": [],
+        "insight_type": null,
+        "query_class": "per_chart_structural",
+        "content": {
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+          "anchors": [
+            {
+              "id": 2359,
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "krishnamurti",
+              "graha": "jupiter",
+              "natal_sign": "capricorn",
+              "natal_house_from_moon": 8,
+              "natal_degree_absolute": 281.665518443467,
+              "computed_at": "2026-07-26 06:43:36.218088+00"
+            },
+            {
+              "id": 2360,
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "krishnamurti",
+              "graha": "ketu",
+              "natal_sign": "libra",
+              "natal_house_from_moon": 5,
+              "natal_degree_absolute": 208.412332351519,
+              "computed_at": "2026-07-26 06:43:36.218088+00"
+            },
+            {
+              "id": 2361,
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "krishnamurti",
+              "graha": "mars",
+              "natal_sign": "pisces",
+              "natal_house_from_moon": 10,
+              "natal_degree_absolute": 356.918735038979,
+              "computed_at": "2026-07-26 06:43:36.218088+00"
+            },
+            {
+              "id": 2362,
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "krishnamurti",
+              "graha": "mercury",
+              "natal_sign": "aquarius",
+              "natal_house_from_moon": 9,
+              "natal_degree_absolute": 327.4872255917,
+              "computed_at": "2026-07-26 06:43:36.218088+00"
+            },
+            {
+              "id": 2363,
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "krishnamurti",
+              "graha": "moon",
+              "natal_sign": "gemini",
+              "natal_house_from_moon": 1,
+              "natal_degree_absolute": 73.3246769705241,
+              "computed_at": "2026-07-26 06:43:36.218088+00"
+            },
+            {
+              "id": 2364,
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "krishnamurti",
+              "graha": "rahu",
+              "natal_sign": "aries",
+              "natal_house_from_moon": 11,
+              "natal_degree_absolute": 28.412332351519,
+              "computed_at": "2026-07-26 06:43:36.218088+00"
+            },
+            {
+              "id": 2365,
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "krishnamurti",
+              "graha": "saturn",
+              "natal_sign": "scorpio",
+              "natal_house_from_moon": 6,
+              "natal_degree_absolute": 214.55250268814,
+              "computed_at": "2026-07-26 06:43:36.218088+00"
+            },
+            {
+              "id": 2366,
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "krishnamurti",
+              "graha": "sun",
+              "natal_sign": "aquarius",
+              "natal_house_from_moon": 9,
+              "natal_degree_absolute": 317.98638399367,
+              "computed_at": "2026-07-26 06:43:36.218088+00"
+            },
+            {
+              "id": 2367,
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "krishnamurti",
+              "graha": "venus",
+              "natal_sign": "pisces",
+              "natal_house_from_moon": 10,
+              "natal_degree_absolute": 356.239226161007,
+              "computed_at": "2026-07-26 06:43:36.218088+00"
+            },
+            {
+              "id": 2341,
+              "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "graha": "jupiter",
+              "natal_sign": "capricorn",
+              "natal_house_from_moon": 8,
+              "natal_degree_absolute": 281.568666111532,
+              "computed_at": "2026-07-26 06:43:35.376716+00"
+            }
+          ],
+          "total": 10,
+          "note": "natal_house_from_moon: classical 1-based count from natal Moon sign; natal_degree_absolute: sidereal 0-360°"
+        },
+        "trim_report": null
+      }
+    }
+  }
+}

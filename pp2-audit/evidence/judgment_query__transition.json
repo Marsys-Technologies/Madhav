@@ -1,0 +1,14 @@
+{
+  "tool": "judgment_query",
+  "scenario": "transition",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "transition"},
+  "timing": {"before_ms": 1786801134543, "after_ms": 1786801141763, "latency_ms": 7220},
+  "is_error": false,
+  "raw_response": {
+    "verdict": {"receipt": {}},
+    "grounding": {"fact_ids": [], "citations": [], "grounding_score": null},
+    "judgment_flags": [],
+    "content": {"error": "judgment_query requires either `domain` (marriage/career/wealth/health/progeny/education/spirituality) or `bhava` (1-12)."}
+  },
+  "note": "Same soft-failure shape as domain='family'/'general': 'transition' is a CANONICAL_DOMAINS vocabulary entry AND actually appears in judgment_query's OWN orientation digest ('transition' convergence_count=611) but has no SHASTRA_MAP bhava mapping, so it errors with an empty verdict."
+}

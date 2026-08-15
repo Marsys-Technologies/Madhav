@@ -1,0 +1,22 @@
+{
+  "tool": "ganita_positions_get",
+  "scenario": "native_frame_chandra",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "frame": "chandra"},
+  "raw_response_summary": {
+    "categories": ["graha_position"],
+    "frame": "chandra",
+    "total": 86,
+    "sample_rows": [
+      {"fact_subject": "LAGNA", "fact_key": "sign", "fact_value_text": "Aries"},
+      {"fact_subject": "LAGNA", "fact_key": "house_d1", "fact_value_num": 1, "house_from_frame": 3},
+      {"fact_subject": "MOON", "fact_key": "house_d1", "fact_value_num": 11, "house_from_frame": 1},
+      {"fact_subject": "MOON", "fact_key": "sign", "fact_value_text": "Aquarius"},
+      {"fact_subject": "MOON", "fact_key": "nakshatra", "fact_value_text": "Purva Bhadrapada"},
+      {"fact_subject": "RAH_MEAN", "fact_key": "house_d1", "fact_value_num": 2, "house_from_frame": 4},
+      {"fact_subject": "KET_MEAN", "fact_key": "house_d1", "fact_value_num": 8, "house_from_frame": 10},
+      {"fact_subject": "SUN", "fact_key": "sign", "fact_value_text": "Capricorn"}
+    ],
+    "frame_note": "houses re-based from chandra (reference sign: Aquarius, ayanamsha lahiri_chitrapaksha) as house_from_frame alongside the stored lagna-relative house_d1: 10/10 house_d1 rows in this page carry it. Rows whose ayanamsha differs from lahiri_chitrapaksha are NOT re-based."
+  },
+  "pp2_note": "Real-feature verification of the R5 W2 frame re-basing capability (frame=chandra, i.e. 'what house is X from Moon'). Arithmetic checked by hand: Moon sign=Aquarius -> counting Aquarius=1 for the chandra frame, Lagna sign Aries is the 3rd sign from Aquarius (Aquarius=1,Pisces=2,Aries=3) -> LAGNA house_from_frame=3, matches. Also confirms FORENSIC anchors again in the same page: Lagna sign=Aries, Moon sign=Aquarius/nakshatra=Purva Bhadrapada, Sun sign=Capricorn. frame_note honestly discloses exact re-basing coverage (10/10 rows in this page) rather than silently omitting the field."
+}

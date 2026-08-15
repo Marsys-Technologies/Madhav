@@ -1,0 +1,1311 @@
+{
+  "tool": "bodha_chart_digest_get",
+  "scenario": "native_full",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "mode": "full",
+    "limit": 20
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"response_format\":\"full\",\"digest\":{\"msr_signal_count\":10003,\"yoga_count\":15,\"dosha_count\":5,\"avg_salience\":0.4864,\"max_salience\":2.1611,\"contradiction_count\":3,\"weakest_graha\":\"Venus\",\"weakest_graha_source\":\"shadbala_total_min (BPHS Ch.27 six-fold strength; CR-55 fix)\",\"top_priority_class\":\"critical\",\"trap1_count\":0},\"entity_profiles\":[{\"entity_type\":\"graha\",\"entity\":\"SATURN\",\"aggregate_score\":94.08856290085266,\"peak_score\":0.9266943609999999,\"signal_count\":213,\"dominant_domains\":[\"character\",\"family\",\"career\"],\"dominant_valence\":\"neutral\",\"signal_type_classes\":[\"composite_state\",\"karaka_alignment\",\"varga_pattern\",\"bhavat_bhavam_amplifier\",\"varga_ratification_divergence\",\"tradition_specific\"],\"top_signal_ids\":[\"bde5423d-ac30-4ecd-ab7b-1dbec4232742\",\"c31d3e74-2f44-41a6-8025-b32e44dbe1e2\",\"168590ab-479b-49e4-9b0b-5f693542fc48\"],\"fact_ids\":[\"3588a51b37aefd51\",\"a474d495e002faba\",\"bab0ebf52f1c647d\",\"ee36eb22a1885cfc\",\"4c7c90e2dd5c4e1d\",\"883c24d8b09d8653\",\"21a959ce2890563b\",\"84c032b2bd1474ab\",\"44f9b32bcf5d0557\",\"645031d25d613917\",\"9cb7d46ca2763306\",\"1debfefa66d980d8\",\"f08d4ab50986525d\",\"93c1b533dd15e6c7\",\"e9fa32db80e4fd9f\",\"62b555880b2cfb3d\",\"239917f498e5c269\",\"0147202c924d009f\",\"9f59819534283286\",\"f817285f5e972498\",\"b21f2ec4534d6b2c\",\"67e7ffce9249f38e\",\"b704c90915e4f2f2\",\"9647d8ca598f11d5\",\"e1c669cfc32a6f64\"]},{\"entity_type\":\"graha\",\"entity\":\"JUPITER\",\"aggregate_score\":17.28057647085212,\"peak_score\":0.5894897292509091,\"signal_count\":40,\"dominant_domains\":[\"character\",\"career\",\"family\"],\"dominant_valence\":\"neutral\",\"signal_type_classes\":[\"composite_state\",\"tradition_specific\",\"karaka_alignment\",\"varga_pattern\"],\"top_signal_ids\":[\"080495f3-d0cd-4441-af7a-0aeb6e120c3d\",\"03fe99e4-7974-44cd-b168-94a4d6ab56c3\",\"d6d2389c-65c5-48fb-9e87-a23a83d8a28a\"],\"fact_ids\":[\"08002ae6f01d7dfd\",\"c5180552f0e84909\",\"96dfd7f73d2ed848\",\"2cc33c02caba3f4e\",\"0b6509b2368e95c0\",\"67401b80145d594c\",\"7eaa9897e7050064\",\"31281248906f2975\",\"00849d9729d79b31\",\"5b218817aa4c444d\",\"7d3c5eda20d9d83f\",\"8d3b488e487bfc8e\",\"5c3eb724a0ac965e\",\"2975c6e4e330c189\",\"82bd10e753b2f12d\",\"4f904ffe33f18109\",\"c1d53a5533efaa4a\",\"949a46c6da4f6c4c\",\"b6f352574f5bf11e\",\"5515decf711ba8df\",\"1d4a59c1bb613da6\",\"6c91c4d7665b52cb\",\"79b7a458bece3718\",\"67a113c8ae758488\",\"34dcf6c9c98b6e73\"]},{\"entity_type\":\"bhava\",\"entity\":\"BHAVA_11\",\"aggregate_score\":2.3580666693636365,\"peak_score\":0.5895501391742424,\"signal_count\":4,\"dominant_domains\":[\"character\",\"family\",\"career\"],\"dominant_valence\":\"neutral\",\"signal_type_classes\":[\"composite_state\"],\"top_signal_ids\":[\"b2e4d65a-d514-4d6e-b154-1dc09bb6f8b0\",\"70fc3d61-3fe8-4761-9bc8-6d48244494e8\",\"b33a1e5f-0964-47e1-aaa8-668ec84b80bb\"],\"fact_ids\":[\"4a19b3424ef6d362\",\"b6062524e3ff298d\",\"3aaa31a0224ee0cd\",\"189aeaaa76f0ce35\"]},{\"entity_type\":\"bhava\",\"entity\":\"BHAVA_9\",\"aggregate_score\":2.358036053830303,\"peak_score\":0.5895195236709091,\"signal_count\":4,\"dominant_domains\":[\"character\",\"family\",\"career\"],\"dominant_valence\":\"neutral\",\"signal_type_classes\":[\"composite_state\"],\"top_signal_ids\":[\"15f548c0-6ff4-453d-a819-c3f4b9586152\",\"27418cf4-8c11-40ed-ba8f-501628e3875c\",\"237319c6-7271-4e2f-832a-d0ad71912258\"],\"fact_ids\":[\"a1c0305c50ff15dc\",\"930c37df6f620599\",\"4888d74eb35e1b90\",\"b2103f88391a4375\"]},{\"entity_type\":\"graha\",\"entity\":\"KETU\",\"aggregate_score\":2.146822986295152,\"peak_score\":0.5894819091609091,\"signal_count\":5,\"dominant_domains\":[\"character\",\"career\",\"relationship\"],\"dominant_valence\":\"neutral\",\"signal_type_classes\":[\"composite_state\",\"tradition_specific\",\"varga_pattern\"],\"top_signal_ids\":[\"45e8f2ce-170d-4e81-9d54-f077644620ae\",\"6488e613-908f-47e3-8384-66f4b77eb203\",\"e1e8fcd1-837e-4e45-8526-4fb958517549\"],\"fact_ids\":[\"289c3793f9d81488\",\"a5467d265eff6b7a\",\"220560b22b850bbb\",\"458c18213b80a158\",\"4fcc0e71437028a8\"]},{\"entity_type\":\"graha\",\"entity\":\"RAHU\",\"aggregate_score\":2.1279482276460606,\"peak_score\":0.5894819091642425,\"signal_count\":4,\"dominant_domains\":[\"career\",\"character\",\"family\"],\"dominant_valence\":\"neutral\",\"signal_type_classes\":[\"composite_state\",\"tradition_specific\"],\"top_signal_ids\":[\"c7f20e9b-8b97-42dd-bfac-55defac49839\",\"ed277acc-83c4-442b-97ec-4d4d2ead5010\",\"20506c80-bf4e-4855-b932-76bbf0e23968\"],\"fact_ids\":[\"7018ffcd5923f0ee\",\"d43717dccfeed550\",\"ca0b0ee9e0086dee\",\"a279f70f4a3091a0\"]},{\"entity_type\":\"bhava\",\"entity\":\"BHAVA_8\",\"aggregate_score\":1.7685593920460605,\"peak_score\":0.5895501391875757,\"signal_count\":3,\"dominant_domains\":[\"character\",\"family\",\"career\"],\"dominant_valence\":\"neutral\",\"signal_type_classes\":[\"composite_state\"],\"top_signal_ids\":[\"06dba586-c1a8-469f-9a14-9f0ba4051299\",\"48be031f-1077-4f03-b158-93304b9926bc\",\"ebc92c42-8093-400b-942b-a0d098c4d7de\"],\"fact_ids\":[\"f4fddb121c5ec426\",\"7d5733d947c31f84\",\"42e2b0bbf59903de\"]},{\"entity_type\":\"bhava\",\"entity\":\"BHAVA_10\",\"aggregate_score\":1.7685287764827273,\"peak_score\":0.5895195236542424,\"signal_count\":3,\"dominant_domains\":[\"character\",\"family\",\"career\"],\"dominant_valence\":\"neutral\",\"signal_type_classes\":[\"composite_state\"],\"top_signal_ids\":[\"362e20cf-90e4-4f2c-ad32-eacbc589e149\",\"5f52ff65-956f-4ddd-8c9f-451ac0f574a1\",\"7b188fdd-4ce2-4554-b206-3042b092b5f4\"],\"fact_ids\":[\"d88668f150db43c6\",\"9f9dfe29d4ec4f78\",\"bec6132450b7334b\"]},{\"entity_type\":\"graha\",\"entity\":\"SUN\",\"aggregate_score\":1.6011854985418186,\"peak_score\":0.200148187329394,\"signal_count\":8,\"dominant_domains\":[\"spirituality\",\"character\",\"relationship\"],\"dominant_valence\":\"neutral\",\"signal_type_classes\":[\"composite_state\"],\"top_signal_ids\":[\"9973e9ec-4dfd-47b6-95bc-4065b16e7da3\",\"fcfc4120-1c9b-4059-8b30-c967ce490102\",\"b4053afa-c94c-44d8-9fed-1936e1a1088c\"],\"fact_ids\":[\"a441d4ec4a54ecf7\",\"b32ac3740af7b96e\",\"4e3ce92f22582d40\",\"aab6e2756838df24\",\"28a2b1b0900d519b\",\"37bbab0e074ad83c\",\"78da03399d7b9879\",\"c3b0788d0a8686b2\"]},{\"entity_type\":\"bhava\",\"entity\":\"BHAVA_4\",\"aggregate_score\":1.179149262588485,\"peak_score\":0.5896419852775757,\"signal_count\":2,\"dominant_domains\":[\"character\",\"family\",\"career\"],\"dominant_valence\":\"neutral\",\"signal_type_classes\":[\"composite_state\"],\"top_signal_ids\":[\"c13b6892-a48c-4301-bbf3-aed0efb6d43d\",\"50b17900-7b16-4ff0-809c-9cc78010a759\"],\"fact_ids\":[\"0aec3580614d669f\",\"16ce67b21d2c288d\"]}],\"top_signals\":[{\"signal_id\":\"bde5423d-ac30-4ecd-ab7b-1dbec4232742\",\"signal_type_id\":\"swamsa_position:sign\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=swamsa_position | key=sign | value_text=Aquarius | graha=SAT\",\"signal_headline_text\":\"SAT: swamsa position: sign = Aquarius [ga_sensitive]\",\"computed_salience\":2.16108,\"top_k_salience_rank\":47,\"domains_affected_array\":[\"spirituality\",\"career\"],\"constituent_facts_array\":[\"3588a51b37aefd51\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"two_pass_verified\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"sign\",\"fact_value_num\":null,\"fact_value_text\":\"Aquarius\"},\"citation_human\":\"swamsa_position.SWAMSA_HOUSE_11.sign = Aquarius (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"chart_defining\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9266943609999999,\"is_family_composite\":true,\"family_key\":\"SAT::swamsa_position:sign\",\"family_member_count\":2,\"family_member_pointers\":[\"2f9e0ce3-ce9a-4087-b725-bb1949728c37\"]},{\"signal_id\":\"c31d3e74-2f44-41a6-8025-b32e44dbe1e2\",\"signal_type_id\":\"upagraha_position:sign\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=upagraha_position | key=sign | value_text=Aquarius | graha=SAT\",\"signal_headline_text\":\"SAT: upagraha position: sign = Aquarius [ga_sensitive]\",\"computed_salience\":2.16108,\"top_k_salience_rank\":49,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"constituent_facts_array\":[\"a474d495e002faba\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"two_pass_verified\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"sign\",\"fact_value_num\":null,\"fact_value_text\":\"Aquarius\"},\"citation_human\":\"upagraha_position.KALA.sign = Aquarius (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"chart_defining\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9266943609966666,\"is_family_composite\":true,\"family_key\":\"SAT::upagraha_position:sign\",\"family_member_count\":2,\"family_member_pointers\":[\"d49da2e1-4b63-45f1-920e-c274df3ded21\"]},{\"signal_id\":\"168590ab-479b-49e4-9b0b-5f693542fc48\",\"signal_type_id\":\"sun_derived_upagraha:sign\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=sun_derived_upagraha | key=sign | value_text=Capricorn | graha=SAT\",\"signal_headline_text\":\"SAT: sun derived upagraha: sign = Capricorn [ga_sensitive]\",\"computed_salience\":2.16108,\"top_k_salience_rank\":45,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"constituent_facts_array\":[\"bab0ebf52f1c647d\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"two_pass_verified\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"sign\",\"fact_value_num\":null,\"fact_value_text\":\"Capricorn\"},\"citation_human\":\"sun_derived_upagraha.MRITYU_SUN.sign = Capricorn (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"chart_defining\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9266943609933332,\"is_family_composite\":false,\"family_key\":\"SAT::sun_derived_upagraha:sign\",\"family_member_count\":1,\"family_member_pointers\":[]},{\"signal_id\":\"ebb1c88a-8141-4c7e-860b-54ac293a06ac\",\"signal_type_id\":\"esoteric_point_shiva:sign\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"esoteric\",\"signal_summary_text\":\"category=esoteric_point_shiva | key=sign | value_text=Aquarius | graha=SAT\",\"signal_headline_text\":\"SAT: esoteric point shiva: sign = Aquarius [ga_sensitive]\",\"computed_salience\":2.16108,\"top_k_salience_rank\":5,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"constituent_facts_array\":[\"ee36eb22a1885cfc\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"two_pass_verified\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"sign\",\"fact_value_num\":null,\"fact_value_text\":\"Aquarius\"},\"citation_human\":\"esoteric_point_shiva.SHIVA_POINT.sign = Aquarius (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"chart_defining\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9266943609899999,\"is_family_composite\":false,\"family_key\":\"SAT::esoteric_point_shiva:sign\",\"family_member_count\":1,\"family_member_pointers\":[]},{\"signal_id\":\"6f934483-e74f-42b4-b449-aa03c2ca8b84\",\"signal_type_id\":\"graha_pada_join:pada_number_ref\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_pada_join | key=pada_number_ref | value_num=1 | graha=SAT\",\"signal_headline_text\":\"SAT: graha pada join: pada number ref = 1 [ga_sensitive]\",\"computed_salience\":2.16108,\"top_k_salience_rank\":8,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"constituent_facts_array\":[\"883c24d8b09d8653\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"two_pass_verified\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"pada_number_ref\",\"fact_value_num\":1,\"fact_value_text\":null},\"citation_human\":\"SAT pada_number_ref: 1.0 [graha_pada_join]\",\"lel_origin\":false,\"signature_tier\":\"chart_defining\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9266943609833332,\"is_family_composite\":false,\"family_key\":\"SAT::graha_pada_join:pada_number_ref\",\"family_member_count\":1,\"family_member_pointers\":[]},{\"signal_id\":\"697e1f1b-f928-4249-bf64-d391c470189f\",\"signal_type_id\":\"bhrigu_nadi_point:sign\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=bhrigu_nadi_point | key=sign | value_text=Aquarius | graha=SAT\",\"signal_headline_text\":\"SAT: bhrigu nadi point: sign = Aquarius [ga_sensitive]\",\"computed_salience\":2.16108,\"top_k_salience_rank\":4,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"constituent_facts_array\":[\"21a959ce2890563b\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"two_pass_verified\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"sign\",\"fact_value_num\":null,\"fact_value_text\":\"Aquarius\"},\"citation_human\":\"bhrigu_nadi_point.BHRIGU_CHAKRA_8.sign = Aquarius (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"chart_defining\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9266943609799999,\"is_family_composite\":true,\"family_key\":\"SAT::bhrigu_nadi_point:sign\",\"family_member_count\":2,\"family_member_pointers\":[\"aab518b5-9b81-4980-9dd7-8a35660bb4fd\"]},{\"signal_id\":\"ba354a21-ea82-4cfc-9b0c-3878107a6ddc\",\"signal_type_id\":\"midpoint:sign\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=midpoint | key=sign | value_text=Capricorn | graha=SAT\",\"signal_headline_text\":\"SAT: midpoint: sign = Capricorn [ga_sensitive]\",\"computed_salience\":2.16108,\"top_k_salience_rank\":10,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"constituent_facts_array\":[\"44f9b32bcf5d0557\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"two_pass_verified\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"sign\",\"fact_value_num\":null,\"fact_value_text\":\"Capricorn\"},\"citation_human\":\"midpoint.MC-SUN.sign = Capricorn (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"chart_defining\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9266943609733332,\"is_family_composite\":true,\"family_key\":\"SAT::midpoint:sign\",\"family_member_count\":2,\"family_member_pointers\":[\"af93de8e-6efe-4ecf-b9f5-9ffef0936a6f\"]},{\"signal_id\":\"483e332a-a168-4cf1-b93b-0ad55d77d91c\",\"signal_type_id\":\"saham_position:sign\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=saham_position | key=sign | value_text=Capricorn | graha=SAT\",\"signal_headline_text\":\"SAT: saham position: sign = Capricorn [ga_sensitive]\",\"computed_salience\":2.16108,\"top_k_salience_rank\":28,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"constituent_facts_array\":[\"9cb7d46ca2763306\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"two_pass_verified\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"sign\",\"fact_value_num\":null,\"fact_value_text\":\"Capricorn\"},\"citation_human\":\"saham_position.SAHAM_TAPAS.sign = Capricorn (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"chart_defining\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9266943609666666,\"is_family_composite\":true,\"family_key\":\"SAT::saham_position:sign\",\"family_member_count\":2,\"family_member_pointers\":[\"2dff20cd-12f5-492e-a88e-3fef42547eca\"]},{\"signal_id\":\"2a094b77-7265-4df1-a5fd-94c00a10befd\",\"signal_type_id\":\"graha_nakshatra_join:nakshatra_id_ref\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_nakshatra_join | key=nakshatra_id_ref | value_num=16 | graha=SAT\",\"signal_headline_text\":\"SAT: graha nakshatra join: nakshatra id ref = 16 [ga_sensitive]\",\"computed_salience\":2.16108,\"top_k_salience_rank\":7,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"constituent_facts_array\":[\"f08d4ab50986525d\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"two_pass_verified\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"nakshatra_id_ref\",\"fact_value_num\":16,\"fact_value_text\":null},\"citation_human\":\"SAT nakshatra_id_ref: 16.0 [graha_nakshatra_join]\",\"lel_origin\":false,\"signature_tier\":\"chart_defining\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9266943609599999,\"is_family_composite\":false,\"family_key\":\"SAT::graha_nakshatra_join:nakshatra_id_ref\",\"family_member_count\":1,\"family_member_pointers\":[]},{\"signal_id\":\"7e1dc960-dbf3-4073-af79-91b7e3fd1515\",\"signal_type_id\":\"aprakasha_position:sign\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=aprakasha_position | key=sign | value_text=Capricorn | graha=SAT\",\"signal_headline_text\":\"SAT: aprakasha position: sign = Capricorn [ga_sensitive]\",\"computed_salience\":2.16108,\"top_k_salience_rank\":1,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"constituent_facts_array\":[\"93c1b533dd15e6c7\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"two_pass_verified\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"sign\",\"fact_value_num\":null,\"fact_value_text\":\"Capricorn\"},\"citation_human\":\"aprakasha_position.KANDANGA.sign = Capricorn (lahiri_chitrapaksha).\",\"lel_origin\":false,\"signature_tier\":\"chart_defining\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9266943609566666,\"is_family_composite\":false,\"family_key\":\"SAT::aprakasha_position:sign\",\"family_member_count\":1,\"family_member_pointers\":[]},{\"signal_id\":\"5b78243c-49d0-4fe2-946f-74e28c535ff6\",\"signal_type_id\":\"nakshatra_dispositor:is_cycle\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=nakshatra_dispositor | key=is_cycle | value_text=false | graha=SAT\",\"signal_headline_text\":\"SAT: nakshatra dispositor: is cycle = false [ga_sensitive]\",\"computed_salience\":1.296648,\"top_k_salience_rank\":439,\"domains_affected_array\":[\"character\",\"relationship\"],\"constituent_facts_array\":[\"62b555880b2cfb3d\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"is_cycle\",\"fact_value_num\":null,\"fact_value_text\":\"false\"},\"citation_human\":\"SAT is_cycle: false [nakshatra_dispositor]\",\"lel_origin\":false,\"signature_tier\":\"major\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9264062167233332,\"is_family_composite\":false,\"family_key\":\"SAT::nakshatra_dispositor:is_cycle\",\"family_member_count\":1,\"family_member_pointers\":[]},{\"signal_id\":\"ed018cc4-5089-42f4-8cd6-c33470a40050\",\"signal_type_id\":\"nakshatra_dispositor:lord_chain\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=nakshatra_dispositor | key=lord_chain | value_text=[\\\"Saturn\\\"] | graha=SAT\",\"signal_headline_text\":\"SAT: nakshatra dispositor: lord chain = [\\\"Saturn\\\"] [ga_sensitive]\",\"computed_salience\":1.296648,\"top_k_salience_rank\":440,\"domains_affected_array\":[\"character\",\"relationship\"],\"constituent_facts_array\":[\"239917f498e5c269\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"lord_chain\",\"fact_value_num\":null,\"fact_value_text\":\"[\\\"Saturn\\\"]\"},\"citation_human\":\"SAT lord_chain: [\\\"Saturn\\\"] [nakshatra_dispositor]\",\"lel_origin\":false,\"signature_tier\":\"major\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9264062167133332,\"is_family_composite\":false,\"family_key\":\"SAT::nakshatra_dispositor:lord_chain\",\"family_member_count\":1,\"family_member_pointers\":[]},{\"signal_id\":\"e6fbc122-ba48-4be2-847b-85af1413b787\",\"signal_type_id\":\"graha_gandanta:is_gandanta\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_gandanta | key=is_gandanta | value_text=false | graha=SAT\",\"signal_headline_text\":\"SAT: graha gandanta: is gandanta = false [ga_sensitive]\",\"computed_salience\":1.296648,\"top_k_salience_rank\":386,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"constituent_facts_array\":[\"0147202c924d009f\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"is_gandanta\",\"fact_value_num\":null,\"fact_value_text\":\"false\"},\"citation_human\":\"SAT is_gandanta: false [graha_gandanta]\",\"lel_origin\":false,\"signature_tier\":\"major\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9264062167099999,\"is_family_composite\":false,\"family_key\":\"SAT::graha_gandanta:is_gandanta\",\"family_member_count\":1,\"family_member_pointers\":[]},{\"signal_id\":\"0ef1ebd4-d36d-46e2-97a8-e58b923feeb8\",\"signal_type_id\":\"nakshatra_dispositor:chain_depth\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=nakshatra_dispositor | key=chain_depth | value_num=1 | graha=SAT\",\"signal_headline_text\":\"SAT: nakshatra dispositor: chain depth = 1 [ga_sensitive]\",\"computed_salience\":1.296648,\"top_k_salience_rank\":438,\"domains_affected_array\":[\"character\",\"relationship\"],\"constituent_facts_array\":[\"9f59819534283286\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"chain_depth\",\"fact_value_num\":1,\"fact_value_text\":null},\"citation_human\":\"SAT chain_depth: 1.0 [nakshatra_dispositor]\",\"lel_origin\":false,\"signature_tier\":\"major\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9264062166799999,\"is_family_composite\":false,\"family_key\":\"SAT::nakshatra_dispositor:chain_depth\",\"family_member_count\":1,\"family_member_pointers\":[]},{\"signal_id\":\"65fa7563-c780-474a-8cbc-c594b533e8e1\",\"signal_type_id\":\"graha_pada_join:navamsa_sign\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_pada_join | key=navamsa_sign | value_text=Capricorn | graha=SAT\",\"signal_headline_text\":\"SAT: graha pada join: navamsa sign = Capricorn [ga_sensitive]\",\"computed_salience\":1.296648,\"top_k_salience_rank\":407,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"constituent_facts_array\":[\"f817285f5e972498\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"navamsa_sign\",\"fact_value_num\":null,\"fact_value_text\":\"Capricorn\"},\"citation_human\":\"MER navamsa_sign: Capricorn [graha_pada_join]\",\"lel_origin\":false,\"signature_tier\":\"major\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9264062166566667,\"is_family_composite\":false,\"family_key\":\"SAT::graha_pada_join:navamsa_sign\",\"family_member_count\":1,\"family_member_pointers\":[]},{\"signal_id\":\"5154a22e-33fb-4a97-9cd1-ab3b2f904796\",\"signal_type_id\":\"graha_nakshatra_join:varna\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_nakshatra_join | key=varna | value_text=Mleccha | graha=SAT\",\"signal_headline_text\":\"SAT: graha nakshatra join: varna = Mleccha [ga_sensitive]\",\"computed_salience\":1.296648,\"top_k_salience_rank\":403,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"constituent_facts_array\":[\"b21f2ec4534d6b2c\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"varna\",\"fact_value_num\":null,\"fact_value_text\":\"Mleccha\"},\"citation_human\":\"SAT varna: Mleccha [graha_nakshatra_join]\",\"lel_origin\":false,\"signature_tier\":\"supporting\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9264062166366667,\"is_family_composite\":false,\"family_key\":\"SAT::graha_nakshatra_join:varna\",\"family_member_count\":1,\"family_member_pointers\":[],\"signature_tier_demoted_from\":\"major\",\"signature_tier_demotion_reason\":\"Demoted: descriptive/per-varga signals are not served at major/chart_defining tier\"},{\"signal_id\":\"75e11443-679d-4645-96ce-5025b5327a60\",\"signal_type_id\":\"graha_nakshatra_join:symbol\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_nakshatra_join | key=symbol | value_text=Branched tree / triumphal arch | graha=SAT\",\"signal_headline_text\":\"SAT: graha nakshatra join: symbol = Branched tree / triumphal arch [ga_sensitive]\",\"computed_salience\":1.296648,\"top_k_salience_rank\":401,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"constituent_facts_array\":[\"67e7ffce9249f38e\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"symbol\",\"fact_value_num\":null,\"fact_value_text\":\"Branched tree / triumphal arch\"},\"citation_human\":\"SAT symbol: Branched tree / triumphal arch [graha_nakshatra_join]\",\"lel_origin\":false,\"signature_tier\":\"supporting\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9264062165433333,\"is_family_composite\":false,\"family_key\":\"SAT::graha_nakshatra_join:symbol\",\"family_member_count\":1,\"family_member_pointers\":[],\"signature_tier_demoted_from\":\"major\",\"signature_tier_demotion_reason\":\"Demoted: descriptive/per-varga signals are not served at major/chart_defining tier\"},{\"signal_id\":\"13275203-d607-4033-92af-f39a427b1229\",\"signal_type_id\":\"nakshatra_cross_ayanamsha:nak_5ay_consistency\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=nakshatra_cross_ayanamsha | key=nak_5ay_consistency | value_text=5/5 | graha=SAT\",\"signal_headline_text\":\"SAT: nakshatra cross ayanamsha: nak 5ay consistency = 5/5 [ga_sensitive]\",\"computed_salience\":1.296648,\"top_k_salience_rank\":456,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"constituent_facts_array\":[\"b704c90915e4f2f2\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"nak_5ay_consistency\",\"fact_value_num\":null,\"fact_value_text\":\"5/5\"},\"citation_human\":\"SAT nak_5ay_consistency: 5/5 [nakshatra_cross_ayanamsha]\",\"lel_origin\":false,\"signature_tier\":\"major\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9264062165266667,\"is_family_composite\":false,\"family_key\":\"SAT::nakshatra_cross_ayanamsha:nak_5ay_consistency\",\"family_member_count\":1,\"family_member_pointers\":[]},{\"signal_id\":\"da909f36-f400-4e78-920e-a5a2d3cae392\",\"signal_type_id\":\"graha_nakshatra_join:nadi\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_nakshatra_join | key=nadi | value_text=Adi | graha=SAT\",\"signal_headline_text\":\"SAT: graha nakshatra join: nadi = Adi [ga_sensitive]\",\"computed_salience\":1.296648,\"top_k_salience_rank\":396,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"constituent_facts_array\":[\"9647d8ca598f11d5\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"nadi\",\"fact_value_num\":null,\"fact_value_text\":\"Adi\"},\"citation_human\":\"SAT nadi: Adi [graha_nakshatra_join]\",\"lel_origin\":false,\"signature_tier\":\"supporting\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9264062164833333,\"is_family_composite\":false,\"family_key\":\"SAT::graha_nakshatra_join:nadi\",\"family_member_count\":1,\"family_member_pointers\":[],\"signature_tier_demoted_from\":\"major\",\"signature_tier_demotion_reason\":\"Demoted: descriptive/per-varga signals are not served at major/chart_defining tier\"},{\"signal_id\":\"24a83482-cfc5-4112-b929-cdf5a9be8747\",\"signal_type_id\":\"graha_nakshatra_join:motivation\",\"signal_type_class\":\"composite_state\",\"signal_tradition\":\"parashari\",\"signal_summary_text\":\"category=graha_nakshatra_join | key=motivation | value_text=dharma | graha=SAT\",\"signal_headline_text\":\"SAT: graha nakshatra join: motivation = dharma [ga_sensitive]\",\"computed_salience\":1.296648,\"top_k_salience_rank\":395,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"constituent_facts_array\":[\"e1c669cfc32a6f64\"],\"source_subsystem\":\"nakshatra\",\"valence\":\"neutral\",\"verification_pass_status\":\"single\",\"configuration_jsonb\":{\"graha\":\"SAT\",\"fact_key\":\"motivation\",\"fact_value_num\":null,\"fact_value_text\":\"dharma\"},\"citation_human\":\"SAT motivation: dharma [graha_nakshatra_join]\",\"lel_origin\":false,\"signature_tier\":\"major\",\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9264062164566667,\"is_family_composite\":false,\"family_key\":\"SAT::graha_nakshatra_join:motivation\",\"family_member_count\":1,\"family_member_pointers\":[]}],\"convergence_domains\":[{\"domain\":\"character\",\"convergence_count\":7401,\"convergence_score\":5708.335704,\"cross_tradition_count\":6,\"salience_weighted_sum\":3805.711401,\"contradiction_count\":1},{\"domain\":\"family\",\"convergence_count\":5684,\"convergence_score\":3938.534055,\"cross_tradition_count\":4,\"salience_weighted_sum\":2625.68937,\"contradiction_count\":0},{\"domain\":\"relationship\",\"convergence_count\":3698,\"convergence_score\":2648.618218,\"cross_tradition_count\":6,\"salience_weighted_sum\":1765.745479,\"contradiction_count\":0},{\"domain\":\"career\",\"convergence_count\":3043,\"convergence_score\":2229.441634,\"cross_tradition_count\":4,\"salience_weighted_sum\":1486.440966,\"contradiction_count\":1},{\"domain\":\"spirituality\",\"convergence_count\":1238,\"convergence_score\":1187.231775,\"cross_tradition_count\":6,\"salience_weighted_sum\":791.48785,\"contradiction_count\":0},{\"domain\":\"health\",\"convergence_count\":747,\"convergence_score\":319.691676,\"cross_tradition_count\":2,\"salience_weighted_sum\":290.745562,\"contradiction_count\":1},{\"domain\":\"transition\",\"convergence_count\":611,\"convergence_score\":263.744593,\"cross_tradition_count\":2,\"salience_weighted_sum\":239.767812,\"contradiction_count\":0}],\"grounding\":{\"fact_ids\":[\"3588a51b37aefd51\",\"a474d495e002faba\",\"bab0ebf52f1c647d\",\"ee36eb22a1885cfc\",\"4c7c90e2dd5c4e1d\",\"883c24d8b09d8653\",\"21a959ce2890563b\",\"84c032b2bd1474ab\",\"44f9b32bcf5d0557\",\"645031d25d613917\",\"9cb7d46ca2763306\",\"1debfefa66d980d8\",\"f08d4ab50986525d\",\"93c1b533dd15e6c7\",\"e9fa32db80e4fd9f\",\"62b555880b2cfb3d\",\"239917f498e5c269\",\"0147202c924d009f\",\"9f59819534283286\",\"f817285f5e972498\",\"b21f2ec4534d6b2c\",\"67e7ffce9249f38e\",\"b704c90915e4f2f2\",\"9647d8ca598f11d5\",\"e1c669cfc32a6f64\",\"08002ae6f01d7dfd\",\"c5180552f0e84909\",\"96dfd7f73d2ed848\",\"2cc33c02caba3f4e\",\"0b6509b2368e95c0\",\"67401b80145d594c\",\"7eaa9897e7050064\",\"31281248906f2975\",\"00849d9729d79b31\",\"5b218817aa4c444d\",\"7d3c5eda20d9d83f\",\"8d3b488e487bfc8e\",\"5c3eb724a0ac965e\",\"2975c6e4e330c189\",\"82bd10e753b2f12d\",\"4f904ffe33f18109\",\"c1d53a5533efaa4a\",\"949a46c6da4f6c4c\",\"b6f352574f5bf11e\",\"5515decf711ba8df\",\"1d4a59c1bb613da6\",\"6c91c4d7665b52cb\",\"79b7a458bece3718\",\"67a113c8ae758488\",\"34dcf6c9c98b6e73\",\"4a19b3424ef6d362\",\"b6062524e3ff298d\",\"3aaa31a0224ee0cd\",\"189aeaaa76f0ce35\",\"a1c0305c50ff15dc\",\"930c37df6f620599\",\"4888d74eb35e1b90\",\"b2103f88391a4375\",\"289c3793f9d81488\",\"a5467d265eff6b7a\",\"220560b22b850bbb\",\"458c18213b80a158\",\"4fcc0e71437028a8\",\"7018ffcd5923f0ee\",\"d43717dccfeed550\",\"ca0b0ee9e0086dee\",\"a279f70f4a3091a0\",\"f4fddb121c5ec426\",\"7d5733d947c31f84\",\"42e2b0bbf59903de\",\"d88668f150db43c6\",\"9f9dfe29d4ec4f78\",\"bec6132450b7334b\",\"a441d4ec4a54ecf7\",\"b32ac3740af7b96e\",\"4e3ce92f22582d40\",\"aab6e2756838df24\",\"28a2b1b0900d519b\",\"37bbab0e074ad83c\",\"78da03399d7b9879\",\"c3b0788d0a8686b2\",\"0aec3580614d669f\",\"16ce67b21d2c288d\"],\"resolvable\":true,\"resolved_fact_count\":389,\"note\":\"WP-1.2(a): fact_ids are the resolvable L1 chart_facts.fact_id set backing the ranked entity_profiles (each id verified present in chart_facts, §N.5). Per-entity fact_ids live on entity_profiles[].fact_ids; per-signal on top_signals[].constituent_facts_array.\"},\"attribution\":{\"served_unattributed_entities\":0,\"served_unattributed_share\":0,\"candidate_pool_size\":300,\"candidate_pool_unattributed\":0,\"note\":\"WP-1.2β: 0% UNATTRIBUTED on the served ranked surface — every served entity_profile resolves to a graha or a bhāva (chart address). candidate_pool_unattributed genuinely un-attributable signals (typically panchāṅga/muhūrta birth-moment descriptors carrying neither a graha nor a bhāva) are EXCLUDED from the served profiles and disclosed here (not silently dropped — B.10); drill them via query_signals if needed.\"},\"ranking_basis\":{\"mode\":\"composite_4d\",\"priors_version\":\"1.2\",\"domain\":null,\"top_signal\":{\"signal_id\":\"bde5423d-ac30-4ecd-ab7b-1dbec4232742\",\"class_prior\":1.3125,\"topic_relevance\":1,\"intrinsic_strength\":0.58792,\"structural_role\":1.2,\"temporal_activation\":1,\"composite_score\":0.925974,\"percentile_within_class\":1,\"final_rank_score\":0.9266943609999999},\"varga_weight_basis\":{\"scheme\":\"Ṣoḍaśavarga (16-fold) Vimśopaka Bala\",\"source\":\"Bṛhat Parāśara Horā Śāstra Ch.6 (Ṣaḍvarga/Vimśopaka); cross-checked against L1 chart_facts.graha_vimsopaka_shodasavarga\"},\"note\":\"Composite = class_prior × topic_relevance × intrinsic_strength × structural_role × temporal_activation × percentile_within_class.\"},\"filters\":{\"top_k\":20,\"top_k_entities\":10,\"signal_class\":null,\"min_salience\":0},\"provenance\":{\"tables\":[\"vw_chart_digest\",\"bodha_msr_signals\",\"bodha_convergence\"],\"ranking_note\":\"E-6: entity_profiles + top_signals both composite-ranked (priors_version=1.2) — same pipeline as query_signals.ts, not a separate stored-band or raw-salience order.\",\"aggregation_note\":\"Hierarchical aggregation: 300 atomic candidate signals → 10 entity profile(s) (design §E-6).\",\"family_aggregation_note\":\"E-6 completion (R5.1 C2 item 2): 300 atomic candidates → 172 family-collapsed row(s) before the top_k=20 cut; 46 of those are composite rows representing >1 same-family atom (same graha × signal_type_id, e.g. a per-varga dignity construct). Collapsed atoms are demoted to family_member_pointers on the representative row, not deleted — drill via query_signals with the same signal_type_id/graha to reach them.\"}},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "response_format": "full",
+          "digest": {
+            "msr_signal_count": 10003,
+            "yoga_count": 15,
+            "dosha_count": 5,
+            "avg_salience": 0.4864,
+            "max_salience": 2.1611,
+            "contradiction_count": 3,
+            "weakest_graha": "Venus",
+            "weakest_graha_source": "shadbala_total_min (BPHS Ch.27 six-fold strength; CR-55 fix)",
+            "top_priority_class": "critical",
+            "trap1_count": 0
+          },
+          "entity_profiles": [
+            {
+              "entity_type": "graha",
+              "entity": "SATURN",
+              "aggregate_score": 94.08856290085266,
+              "peak_score": 0.9266943609999999,
+              "signal_count": 213,
+              "dominant_domains": [
+                "character",
+                "family",
+                "career"
+              ],
+              "dominant_valence": "neutral",
+              "signal_type_classes": [
+                "composite_state",
+                "karaka_alignment",
+                "varga_pattern",
+                "bhavat_bhavam_amplifier",
+                "varga_ratification_divergence",
+                "tradition_specific"
+              ],
+              "top_signal_ids": [
+                "bde5423d-ac30-4ecd-ab7b-1dbec4232742",
+                "c31d3e74-2f44-41a6-8025-b32e44dbe1e2",
+                "168590ab-479b-49e4-9b0b-5f693542fc48"
+              ],
+              "fact_ids": [
+                "3588a51b37aefd51",
+                "a474d495e002faba",
+                "bab0ebf52f1c647d",
+                "ee36eb22a1885cfc",
+                "4c7c90e2dd5c4e1d",
+                "883c24d8b09d8653",
+                "21a959ce2890563b",
+                "84c032b2bd1474ab",
+                "44f9b32bcf5d0557",
+                "645031d25d613917",
+                "9cb7d46ca2763306",
+                "1debfefa66d980d8",
+                "f08d4ab50986525d",
+                "93c1b533dd15e6c7",
+                "e9fa32db80e4fd9f",
+                "62b555880b2cfb3d",
+                "239917f498e5c269",
+                "0147202c924d009f",
+                "9f59819534283286",
+                "f817285f5e972498",
+                "b21f2ec4534d6b2c",
+                "67e7ffce9249f38e",
+                "b704c90915e4f2f2",
+                "9647d8ca598f11d5",
+                "e1c669cfc32a6f64"
+              ]
+            },
+            {
+              "entity_type": "graha",
+              "entity": "JUPITER",
+              "aggregate_score": 17.28057647085212,
+              "peak_score": 0.5894897292509091,
+              "signal_count": 40,
+              "dominant_domains": [
+                "character",
+                "career",
+                "family"
+              ],
+              "dominant_valence": "neutral",
+              "signal_type_classes": [
+                "composite_state",
+                "tradition_specific",
+                "karaka_alignment",
+                "varga_pattern"
+              ],
+              "top_signal_ids": [
+                "080495f3-d0cd-4441-af7a-0aeb6e120c3d",
+                "03fe99e4-7974-44cd-b168-94a4d6ab56c3",
+                "d6d2389c-65c5-48fb-9e87-a23a83d8a28a"
+              ],
+              "fact_ids": [
+                "08002ae6f01d7dfd",
+                "c5180552f0e84909",
+                "96dfd7f73d2ed848",
+                "2cc33c02caba3f4e",
+                "0b6509b2368e95c0",
+                "67401b80145d594c",
+                "7eaa9897e7050064",
+                "31281248906f2975",
+                "00849d9729d79b31",
+                "5b218817aa4c444d",
+                "7d3c5eda20d9d83f",
+                "8d3b488e487bfc8e",
+                "5c3eb724a0ac965e",
+                "2975c6e4e330c189",
+                "82bd10e753b2f12d",
+                "4f904ffe33f18109",
+                "c1d53a5533efaa4a",
+                "949a46c6da4f6c4c",
+                "b6f352574f5bf11e",
+                "5515decf711ba8df",
+                "1d4a59c1bb613da6",
+                "6c91c4d7665b52cb",
+                "79b7a458bece3718",
+                "67a113c8ae758488",
+                "34dcf6c9c98b6e73"
+              ]
+            },
+            {
+              "entity_type": "bhava",
+              "entity": "BHAVA_11",
+              "aggregate_score": 2.3580666693636365,
+              "peak_score": 0.5895501391742424,
+              "signal_count": 4,
+              "dominant_domains": [
+                "character",
+                "family",
+                "career"
+              ],
+              "dominant_valence": "neutral",
+              "signal_type_classes": [
+                "composite_state"
+              ],
+              "top_signal_ids": [
+                "b2e4d65a-d514-4d6e-b154-1dc09bb6f8b0",
+                "70fc3d61-3fe8-4761-9bc8-6d48244494e8",
+                "b33a1e5f-0964-47e1-aaa8-668ec84b80bb"
+              ],
+              "fact_ids": [
+                "4a19b3424ef6d362",
+                "b6062524e3ff298d",
+                "3aaa31a0224ee0cd",
+                "189aeaaa76f0ce35"
+              ]
+            },
+            {
+              "entity_type": "bhava",
+              "entity": "BHAVA_9",
+              "aggregate_score": 2.358036053830303,
+              "peak_score": 0.5895195236709091,
+              "signal_count": 4,
+              "dominant_domains": [
+                "character",
+                "family",
+                "career"
+              ],
+              "dominant_valence": "neutral",
+              "signal_type_classes": [
+                "composite_state"
+              ],
+              "top_signal_ids": [
+                "15f548c0-6ff4-453d-a819-c3f4b9586152",
+                "27418cf4-8c11-40ed-ba8f-501628e3875c",
+                "237319c6-7271-4e2f-832a-d0ad71912258"
+              ],
+              "fact_ids": [
+                "a1c0305c50ff15dc",
+                "930c37df6f620599",
+                "4888d74eb35e1b90",
+                "b2103f88391a4375"
+              ]
+            },
+            {
+              "entity_type": "graha",
+              "entity": "KETU",
+              "aggregate_score": 2.146822986295152,
+              "peak_score": 0.5894819091609091,
+              "signal_count": 5,
+              "dominant_domains": [
+                "character",
+                "career",
+                "relationship"
+              ],
+              "dominant_valence": "neutral",
+              "signal_type_classes": [
+                "composite_state",
+                "tradition_specific",
+                "varga_pattern"
+              ],
+              "top_signal_ids": [
+                "45e8f2ce-170d-4e81-9d54-f077644620ae",
+                "6488e613-908f-47e3-8384-66f4b77eb203",
+                "e1e8fcd1-837e-4e45-8526-4fb958517549"
+              ],
+              "fact_ids": [
+                "289c3793f9d81488",
+                "a5467d265eff6b7a",
+                "220560b22b850bbb",
+                "458c18213b80a158",
+                "4fcc0e71437028a8"
+              ]
+            },
+            {
+              "entity_type": "graha",
+              "entity": "RAHU",
+              "aggregate_score": 2.1279482276460606,
+              "peak_score": 0.5894819091642425,
+              "signal_count": 4,
+              "dominant_domains": [
+                "career",
+                "character",
+                "family"
+              ],
+              "dominant_valence": "neutral",
+              "signal_type_classes": [
+                "composite_state",
+                "tradition_specific"
+              ],
+              "top_signal_ids": [
+                "c7f20e9b-8b97-42dd-bfac-55defac49839",
+                "ed277acc-83c4-442b-97ec-4d4d2ead5010",
+                "20506c80-bf4e-4855-b932-76bbf0e23968"
+              ],
+              "fact_ids": [
+                "7018ffcd5923f0ee",
+                "d43717dccfeed550",
+                "ca0b0ee9e0086dee",
+                "a279f70f4a3091a0"
+              ]
+            },
+            {
+              "entity_type": "bhava",
+              "entity": "BHAVA_8",
+              "aggregate_score": 1.7685593920460605,
+              "peak_score": 0.5895501391875757,
+              "signal_count": 3,
+              "dominant_domains": [
+                "character",
+                "family",
+                "career"
+              ],
+              "dominant_valence": "neutral",
+              "signal_type_classes": [
+                "composite_state"
+              ],
+              "top_signal_ids": [
+                "06dba586-c1a8-469f-9a14-9f0ba4051299",
+                "48be031f-1077-4f03-b158-93304b9926bc",
+                "ebc92c42-8093-400b-942b-a0d098c4d7de"
+              ],
+              "fact_ids": [
+                "f4fddb121c5ec426",
+                "7d5733d947c31f84",
+                "42e2b0bbf59903de"
+              ]
+            },
+            {
+              "entity_type": "bhava",
+              "entity": "BHAVA_10",
+              "aggregate_score": 1.7685287764827273,
+              "peak_score": 0.5895195236542424,
+              "signal_count": 3,
+              "dominant_domains": [
+                "character",
+                "family",
+                "career"
+              ],
+              "dominant_valence": "neutral",
+              "signal_type_classes": [
+                "composite_state"
+              ],
+              "top_signal_ids": [
+                "362e20cf-90e4-4f2c-ad32-eacbc589e149",
+                "5f52ff65-956f-4ddd-8c9f-451ac0f574a1",
+                "7b188fdd-4ce2-4554-b206-3042b092b5f4"
+              ],
+              "fact_ids": [
+                "d88668f150db43c6",
+                "9f9dfe29d4ec4f78",
+                "bec6132450b7334b"
+              ]
+            },
+            {
+              "entity_type": "graha",
+              "entity": "SUN",
+              "aggregate_score": 1.6011854985418186,
+              "peak_score": 0.200148187329394,
+              "signal_count": 8,
+              "dominant_domains": [
+                "spirituality",
+                "character",
+                "relationship"
+              ],
+              "dominant_valence": "neutral",
+              "signal_type_classes": [
+                "composite_state"
+              ],
+              "top_signal_ids": [
+                "9973e9ec-4dfd-47b6-95bc-4065b16e7da3",
+                "fcfc4120-1c9b-4059-8b30-c967ce490102",
+                "b4053afa-c94c-44d8-9fed-1936e1a1088c"
+              ],
+              "fact_ids": [
+                "a441d4ec4a54ecf7",
+                "b32ac3740af7b96e",
+                "4e3ce92f22582d40",
+                "aab6e2756838df24",
+                "28a2b1b0900d519b",
+                "37bbab0e074ad83c",
+                "78da03399d7b9879",
+                "c3b0788d0a8686b2"
+              ]
+            },
+            {
+              "entity_type": "bhava",
+              "entity": "BHAVA_4",
+              "aggregate_score": 1.179149262588485,
+              "peak_score": 0.5896419852775757,
+              "signal_count": 2,
+              "dominant_domains": [
+                "character",
+                "family",
+                "career"
+              ],
+              "dominant_valence": "neutral",
+              "signal_type_classes": [
+                "composite_state"
+              ],
+              "top_signal_ids": [
+                "c13b6892-a48c-4301-bbf3-aed0efb6d43d",
+                "50b17900-7b16-4ff0-809c-9cc78010a759"
+              ],
+              "fact_ids": [
+                "0aec3580614d669f",
+                "16ce67b21d2c288d"
+              ]
+            }
+          ],
+          "top_signals": [
+            {
+              "signal_id": "bde5423d-ac30-4ecd-ab7b-1dbec4232742",
+              "signal_type_id": "swamsa_position:sign",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=swamsa_position | key=sign | value_text=Aquarius | graha=SAT",
+              "signal_headline_text": "SAT: swamsa position: sign = Aquarius [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "top_k_salience_rank": 47,
+              "domains_affected_array": [
+                "spirituality",
+                "career"
+              ],
+              "constituent_facts_array": [
+                "3588a51b37aefd51"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "two_pass_verified",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "sign",
+                "fact_value_num": null,
+                "fact_value_text": "Aquarius"
+              },
+              "citation_human": "swamsa_position.SWAMSA_HOUSE_11.sign = Aquarius (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "chart_defining",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9266943609999999,
+              "is_family_composite": true,
+              "family_key": "SAT::swamsa_position:sign",
+              "family_member_count": 2,
+              "family_member_pointers": [
+                "2f9e0ce3-ce9a-4087-b725-bb1949728c37"
+              ]
+            },
+            {
+              "signal_id": "c31d3e74-2f44-41a6-8025-b32e44dbe1e2",
+              "signal_type_id": "upagraha_position:sign",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=upagraha_position | key=sign | value_text=Aquarius | graha=SAT",
+              "signal_headline_text": "SAT: upagraha position: sign = Aquarius [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "top_k_salience_rank": 49,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "constituent_facts_array": [
+                "a474d495e002faba"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "two_pass_verified",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "sign",
+                "fact_value_num": null,
+                "fact_value_text": "Aquarius"
+              },
+              "citation_human": "upagraha_position.KALA.sign = Aquarius (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "chart_defining",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9266943609966666,
+              "is_family_composite": true,
+              "family_key": "SAT::upagraha_position:sign",
+              "family_member_count": 2,
+              "family_member_pointers": [
+                "d49da2e1-4b63-45f1-920e-c274df3ded21"
+              ]
+            },
+            {
+              "signal_id": "168590ab-479b-49e4-9b0b-5f693542fc48",
+              "signal_type_id": "sun_derived_upagraha:sign",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=sun_derived_upagraha | key=sign | value_text=Capricorn | graha=SAT",
+              "signal_headline_text": "SAT: sun derived upagraha: sign = Capricorn [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "top_k_salience_rank": 45,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "constituent_facts_array": [
+                "bab0ebf52f1c647d"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "two_pass_verified",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "sign",
+                "fact_value_num": null,
+                "fact_value_text": "Capricorn"
+              },
+              "citation_human": "sun_derived_upagraha.MRITYU_SUN.sign = Capricorn (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "chart_defining",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9266943609933332,
+              "is_family_composite": false,
+              "family_key": "SAT::sun_derived_upagraha:sign",
+              "family_member_count": 1,
+              "family_member_pointers": []
+            },
+            {
+              "signal_id": "ebb1c88a-8141-4c7e-860b-54ac293a06ac",
+              "signal_type_id": "esoteric_point_shiva:sign",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "esoteric",
+              "signal_summary_text": "category=esoteric_point_shiva | key=sign | value_text=Aquarius | graha=SAT",
+              "signal_headline_text": "SAT: esoteric point shiva: sign = Aquarius [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "top_k_salience_rank": 5,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "constituent_facts_array": [
+                "ee36eb22a1885cfc"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "two_pass_verified",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "sign",
+                "fact_value_num": null,
+                "fact_value_text": "Aquarius"
+              },
+              "citation_human": "esoteric_point_shiva.SHIVA_POINT.sign = Aquarius (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "chart_defining",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9266943609899999,
+              "is_family_composite": false,
+              "family_key": "SAT::esoteric_point_shiva:sign",
+              "family_member_count": 1,
+              "family_member_pointers": []
+            },
+            {
+              "signal_id": "6f934483-e74f-42b4-b449-aa03c2ca8b84",
+              "signal_type_id": "graha_pada_join:pada_number_ref",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_pada_join | key=pada_number_ref | value_num=1 | graha=SAT",
+              "signal_headline_text": "SAT: graha pada join: pada number ref = 1 [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "top_k_salience_rank": 8,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "constituent_facts_array": [
+                "883c24d8b09d8653"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "two_pass_verified",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "pada_number_ref",
+                "fact_value_num": 1,
+                "fact_value_text": null
+              },
+              "citation_human": "SAT pada_number_ref: 1.0 [graha_pada_join]",
+              "lel_origin": false,
+              "signature_tier": "chart_defining",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9266943609833332,
+              "is_family_composite": false,
+              "family_key": "SAT::graha_pada_join:pada_number_ref",
+              "family_member_count": 1,
+              "family_member_pointers": []
+            },
+            {
+              "signal_id": "697e1f1b-f928-4249-bf64-d391c470189f",
+              "signal_type_id": "bhrigu_nadi_point:sign",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=bhrigu_nadi_point | key=sign | value_text=Aquarius | graha=SAT",
+              "signal_headline_text": "SAT: bhrigu nadi point: sign = Aquarius [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "top_k_salience_rank": 4,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "constituent_facts_array": [
+                "21a959ce2890563b"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "two_pass_verified",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "sign",
+                "fact_value_num": null,
+                "fact_value_text": "Aquarius"
+              },
+              "citation_human": "bhrigu_nadi_point.BHRIGU_CHAKRA_8.sign = Aquarius (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "chart_defining",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9266943609799999,
+              "is_family_composite": true,
+              "family_key": "SAT::bhrigu_nadi_point:sign",
+              "family_member_count": 2,
+              "family_member_pointers": [
+                "aab518b5-9b81-4980-9dd7-8a35660bb4fd"
+              ]
+            },
+            {
+              "signal_id": "ba354a21-ea82-4cfc-9b0c-3878107a6ddc",
+              "signal_type_id": "midpoint:sign",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=midpoint | key=sign | value_text=Capricorn | graha=SAT",
+              "signal_headline_text": "SAT: midpoint: sign = Capricorn [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "top_k_salience_rank": 10,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "constituent_facts_array": [
+                "44f9b32bcf5d0557"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "two_pass_verified",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "sign",
+                "fact_value_num": null,
+                "fact_value_text": "Capricorn"
+              },
+              "citation_human": "midpoint.MC-SUN.sign = Capricorn (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "chart_defining",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9266943609733332,
+              "is_family_composite": true,
+              "family_key": "SAT::midpoint:sign",
+              "family_member_count": 2,
+              "family_member_pointers": [
+                "af93de8e-6efe-4ecf-b9f5-9ffef0936a6f"
+              ]
+            },
+            {
+              "signal_id": "483e332a-a168-4cf1-b93b-0ad55d77d91c",
+              "signal_type_id": "saham_position:sign",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=saham_position | key=sign | value_text=Capricorn | graha=SAT",
+              "signal_headline_text": "SAT: saham position: sign = Capricorn [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "top_k_salience_rank": 28,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "constituent_facts_array": [
+                "9cb7d46ca2763306"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "two_pass_verified",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "sign",
+                "fact_value_num": null,
+                "fact_value_text": "Capricorn"
+              },
+              "citation_human": "saham_position.SAHAM_TAPAS.sign = Capricorn (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "chart_defining",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9266943609666666,
+              "is_family_composite": true,
+              "family_key": "SAT::saham_position:sign",
+              "family_member_count": 2,
+              "family_member_pointers": [
+                "2dff20cd-12f5-492e-a88e-3fef42547eca"
+              ]
+            },
+            {
+              "signal_id": "2a094b77-7265-4df1-a5fd-94c00a10befd",
+              "signal_type_id": "graha_nakshatra_join:nakshatra_id_ref",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_nakshatra_join | key=nakshatra_id_ref | value_num=16 | graha=SAT",
+              "signal_headline_text": "SAT: graha nakshatra join: nakshatra id ref = 16 [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "top_k_salience_rank": 7,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "constituent_facts_array": [
+                "f08d4ab50986525d"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "two_pass_verified",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "nakshatra_id_ref",
+                "fact_value_num": 16,
+                "fact_value_text": null
+              },
+              "citation_human": "SAT nakshatra_id_ref: 16.0 [graha_nakshatra_join]",
+              "lel_origin": false,
+              "signature_tier": "chart_defining",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9266943609599999,
+              "is_family_composite": false,
+              "family_key": "SAT::graha_nakshatra_join:nakshatra_id_ref",
+              "family_member_count": 1,
+              "family_member_pointers": []
+            },
+            {
+              "signal_id": "7e1dc960-dbf3-4073-af79-91b7e3fd1515",
+              "signal_type_id": "aprakasha_position:sign",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=aprakasha_position | key=sign | value_text=Capricorn | graha=SAT",
+              "signal_headline_text": "SAT: aprakasha position: sign = Capricorn [ga_sensitive]",
+              "computed_salience": 2.16108,
+              "top_k_salience_rank": 1,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "constituent_facts_array": [
+                "93c1b533dd15e6c7"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "two_pass_verified",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "sign",
+                "fact_value_num": null,
+                "fact_value_text": "Capricorn"
+              },
+              "citation_human": "aprakasha_position.KANDANGA.sign = Capricorn (lahiri_chitrapaksha).",
+              "lel_origin": false,
+              "signature_tier": "chart_defining",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9266943609566666,
+              "is_family_composite": false,
+              "family_key": "SAT::aprakasha_position:sign",
+              "family_member_count": 1,
+              "family_member_pointers": []
+            },
+            {
+              "signal_id": "5b78243c-49d0-4fe2-946f-74e28c535ff6",
+              "signal_type_id": "nakshatra_dispositor:is_cycle",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=nakshatra_dispositor | key=is_cycle | value_text=false | graha=SAT",
+              "signal_headline_text": "SAT: nakshatra dispositor: is cycle = false [ga_sensitive]",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 439,
+              "domains_affected_array": [
+                "character",
+                "relationship"
+              ],
+              "constituent_facts_array": [
+                "62b555880b2cfb3d"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "is_cycle",
+                "fact_value_num": null,
+                "fact_value_text": "false"
+              },
+              "citation_human": "SAT is_cycle: false [nakshatra_dispositor]",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9264062167233332,
+              "is_family_composite": false,
+              "family_key": "SAT::nakshatra_dispositor:is_cycle",
+              "family_member_count": 1,
+              "family_member_pointers": []
+            },
+            {
+              "signal_id": "ed018cc4-5089-42f4-8cd6-c33470a40050",
+              "signal_type_id": "nakshatra_dispositor:lord_chain",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=nakshatra_dispositor | key=lord_chain | value_text=[\"Saturn\"] | graha=SAT",
+              "signal_headline_text": "SAT: nakshatra dispositor: lord chain = [\"Saturn\"] [ga_sensitive]",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 440,
+              "domains_affected_array": [
+                "character",
+                "relationship"
+              ],
+              "constituent_facts_array": [
+                "239917f498e5c269"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "lord_chain",
+                "fact_value_num": null,
+                "fact_value_text": "[\"Saturn\"]"
+              },
+              "citation_human": "SAT lord_chain: [\"Saturn\"] [nakshatra_dispositor]",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9264062167133332,
+              "is_family_composite": false,
+              "family_key": "SAT::nakshatra_dispositor:lord_chain",
+              "family_member_count": 1,
+              "family_member_pointers": []
+            },
+            {
+              "signal_id": "e6fbc122-ba48-4be2-847b-85af1413b787",
+              "signal_type_id": "graha_gandanta:is_gandanta",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_gandanta | key=is_gandanta | value_text=false | graha=SAT",
+              "signal_headline_text": "SAT: graha gandanta: is gandanta = false [ga_sensitive]",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 386,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "constituent_facts_array": [
+                "0147202c924d009f"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "is_gandanta",
+                "fact_value_num": null,
+                "fact_value_text": "false"
+              },
+              "citation_human": "SAT is_gandanta: false [graha_gandanta]",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9264062167099999,
+              "is_family_composite": false,
+              "family_key": "SAT::graha_gandanta:is_gandanta",
+              "family_member_count": 1,
+              "family_member_pointers": []
+            },
+            {
+              "signal_id": "0ef1ebd4-d36d-46e2-97a8-e58b923feeb8",
+              "signal_type_id": "nakshatra_dispositor:chain_depth",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=nakshatra_dispositor | key=chain_depth | value_num=1 | graha=SAT",
+              "signal_headline_text": "SAT: nakshatra dispositor: chain depth = 1 [ga_sensitive]",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 438,
+              "domains_affected_array": [
+                "character",
+                "relationship"
+              ],
+              "constituent_facts_array": [
+                "9f59819534283286"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "chain_depth",
+                "fact_value_num": 1,
+                "fact_value_text": null
+              },
+              "citation_human": "SAT chain_depth: 1.0 [nakshatra_dispositor]",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9264062166799999,
+              "is_family_composite": false,
+              "family_key": "SAT::nakshatra_dispositor:chain_depth",
+              "family_member_count": 1,
+              "family_member_pointers": []
+            },
+            {
+              "signal_id": "65fa7563-c780-474a-8cbc-c594b533e8e1",
+              "signal_type_id": "graha_pada_join:navamsa_sign",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_pada_join | key=navamsa_sign | value_text=Capricorn | graha=SAT",
+              "signal_headline_text": "SAT: graha pada join: navamsa sign = Capricorn [ga_sensitive]",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 407,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "constituent_facts_array": [
+                "f817285f5e972498"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "navamsa_sign",
+                "fact_value_num": null,
+                "fact_value_text": "Capricorn"
+              },
+              "citation_human": "MER navamsa_sign: Capricorn [graha_pada_join]",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9264062166566667,
+              "is_family_composite": false,
+              "family_key": "SAT::graha_pada_join:navamsa_sign",
+              "family_member_count": 1,
+              "family_member_pointers": []
+            },
+            {
+              "signal_id": "5154a22e-33fb-4a97-9cd1-ab3b2f904796",
+              "signal_type_id": "graha_nakshatra_join:varna",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_nakshatra_join | key=varna | value_text=Mleccha | graha=SAT",
+              "signal_headline_text": "SAT: graha nakshatra join: varna = Mleccha [ga_sensitive]",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 403,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "constituent_facts_array": [
+                "b21f2ec4534d6b2c"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "varna",
+                "fact_value_num": null,
+                "fact_value_text": "Mleccha"
+              },
+              "citation_human": "SAT varna: Mleccha [graha_nakshatra_join]",
+              "lel_origin": false,
+              "signature_tier": "supporting",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9264062166366667,
+              "is_family_composite": false,
+              "family_key": "SAT::graha_nakshatra_join:varna",
+              "family_member_count": 1,
+              "family_member_pointers": [],
+              "signature_tier_demoted_from": "major",
+              "signature_tier_demotion_reason": "Demoted: descriptive/per-varga signals are not served at major/chart_defining tier"
+            },
+            {
+              "signal_id": "75e11443-679d-4645-96ce-5025b5327a60",
+              "signal_type_id": "graha_nakshatra_join:symbol",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_nakshatra_join | key=symbol | value_text=Branched tree / triumphal arch | graha=SAT",
+              "signal_headline_text": "SAT: graha nakshatra join: symbol = Branched tree / triumphal arch [ga_sensitive]",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 401,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "constituent_facts_array": [
+                "67e7ffce9249f38e"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "symbol",
+                "fact_value_num": null,
+                "fact_value_text": "Branched tree / triumphal arch"
+              },
+              "citation_human": "SAT symbol: Branched tree / triumphal arch [graha_nakshatra_join]",
+              "lel_origin": false,
+              "signature_tier": "supporting",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9264062165433333,
+              "is_family_composite": false,
+              "family_key": "SAT::graha_nakshatra_join:symbol",
+              "family_member_count": 1,
+              "family_member_pointers": [],
+              "signature_tier_demoted_from": "major",
+              "signature_tier_demotion_reason": "Demoted: descriptive/per-varga signals are not served at major/chart_defining tier"
+            },
+            {
+              "signal_id": "13275203-d607-4033-92af-f39a427b1229",
+              "signal_type_id": "nakshatra_cross_ayanamsha:nak_5ay_consistency",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=nakshatra_cross_ayanamsha | key=nak_5ay_consistency | value_text=5/5 | graha=SAT",
+              "signal_headline_text": "SAT: nakshatra cross ayanamsha: nak 5ay consistency = 5/5 [ga_sensitive]",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 456,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "constituent_facts_array": [
+                "b704c90915e4f2f2"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "nak_5ay_consistency",
+                "fact_value_num": null,
+                "fact_value_text": "5/5"
+              },
+              "citation_human": "SAT nak_5ay_consistency: 5/5 [nakshatra_cross_ayanamsha]",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9264062165266667,
+              "is_family_composite": false,
+              "family_key": "SAT::nakshatra_cross_ayanamsha:nak_5ay_consistency",
+              "family_member_count": 1,
+              "family_member_pointers": []
+            },
+            {
+              "signal_id": "da909f36-f400-4e78-920e-a5a2d3cae392",
+              "signal_type_id": "graha_nakshatra_join:nadi",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_nakshatra_join | key=nadi | value_text=Adi | graha=SAT",
+              "signal_headline_text": "SAT: graha nakshatra join: nadi = Adi [ga_sensitive]",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 396,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "constituent_facts_array": [
+                "9647d8ca598f11d5"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "nadi",
+                "fact_value_num": null,
+                "fact_value_text": "Adi"
+              },
+              "citation_human": "SAT nadi: Adi [graha_nakshatra_join]",
+              "lel_origin": false,
+              "signature_tier": "supporting",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9264062164833333,
+              "is_family_composite": false,
+              "family_key": "SAT::graha_nakshatra_join:nadi",
+              "family_member_count": 1,
+              "family_member_pointers": [],
+              "signature_tier_demoted_from": "major",
+              "signature_tier_demotion_reason": "Demoted: descriptive/per-varga signals are not served at major/chart_defining tier"
+            },
+            {
+              "signal_id": "24a83482-cfc5-4112-b929-cdf5a9be8747",
+              "signal_type_id": "graha_nakshatra_join:motivation",
+              "signal_type_class": "composite_state",
+              "signal_tradition": "parashari",
+              "signal_summary_text": "category=graha_nakshatra_join | key=motivation | value_text=dharma | graha=SAT",
+              "signal_headline_text": "SAT: graha nakshatra join: motivation = dharma [ga_sensitive]",
+              "computed_salience": 1.296648,
+              "top_k_salience_rank": 395,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "constituent_facts_array": [
+                "e1c669cfc32a6f64"
+              ],
+              "source_subsystem": "nakshatra",
+              "valence": "neutral",
+              "verification_pass_status": "single",
+              "configuration_jsonb": {
+                "graha": "SAT",
+                "fact_key": "motivation",
+                "fact_value_num": null,
+                "fact_value_text": "dharma"
+              },
+              "citation_human": "SAT motivation: dharma [graha_nakshatra_join]",
+              "lel_origin": false,
+              "signature_tier": "major",
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9264062164566667,
+              "is_family_composite": false,
+              "family_key": "SAT::graha_nakshatra_join:motivation",
+              "family_member_count": 1,
+              "family_member_pointers": []
+            }
+          ],
+          "convergence_domains": [
+            {
+              "domain": "character",
+              "convergence_count": 7401,
+              "convergence_score": 5708.335704,
+              "cross_tradition_count": 6,
+              "salience_weighted_sum": 3805.711401,
+              "contradiction_count": 1
+            },
+            {
+              "domain": "family",
+              "convergence_count": 5684,
+              "convergence_score": 3938.534055,
+              "cross_tradition_count": 4,
+              "salience_weighted_sum": 2625.68937,
+              "contradiction_count": 0
+            },
+            {
+              "domain": "relationship",
+              "convergence_count": 3698,
+              "convergence_score": 2648.618218,
+              "cross_tradition_count": 6,
+              "salience_weighted_sum": 1765.745479,
+              "contradiction_count": 0
+            },
+            {
+              "domain": "career",
+              "convergence_count": 3043,
+              "convergence_score": 2229.441634,
+              "cross_tradition_count": 4,
+              "salience_weighted_sum": 1486.440966,
+              "contradiction_count": 1
+            },
+            {
+              "domain": "spirituality",
+              "convergence_count": 1238,
+              "convergence_score": 1187.231775,
+              "cross_tradition_count": 6,
+              "salience_weighted_sum": 791.48785,
+              "contradiction_count": 0
+            },
+            {
+              "domain": "health",
+              "convergence_count": 747,
+              "convergence_score": 319.691676,
+              "cross_tradition_count": 2,
+              "salience_weighted_sum": 290.745562,
+              "contradiction_count": 1
+            },
+            {
+              "domain": "transition",
+              "convergence_count": 611,
+              "convergence_score": 263.744593,
+              "cross_tradition_count": 2,
+              "salience_weighted_sum": 239.767812,
+              "contradiction_count": 0
+            }
+          ],
+          "grounding": {
+            "fact_ids": [
+              "3588a51b37aefd51",
+              "a474d495e002faba",
+              "bab0ebf52f1c647d",
+              "ee36eb22a1885cfc",
+              "4c7c90e2dd5c4e1d",
+              "883c24d8b09d8653",
+              "21a959ce2890563b",
+              "84c032b2bd1474ab",
+              "44f9b32bcf5d0557",
+              "645031d25d613917",
+              "9cb7d46ca2763306",
+              "1debfefa66d980d8",
+              "f08d4ab50986525d",
+              "93c1b533dd15e6c7",
+              "e9fa32db80e4fd9f",
+              "62b555880b2cfb3d",
+              "239917f498e5c269",
+              "0147202c924d009f",
+              "9f59819534283286",
+              "f817285f5e972498",
+              "b21f2ec4534d6b2c",
+              "67e7ffce9249f38e",
+              "b704c90915e4f2f2",
+              "9647d8ca598f11d5",
+              "e1c669cfc32a6f64",
+              "08002ae6f01d7dfd",
+              "c5180552f0e84909",
+              "96dfd7f73d2ed848",
+              "2cc33c02caba3f4e",
+              "0b6509b2368e95c0",
+              "67401b80145d594c",
+              "7eaa9897e7050064",
+              "31281248906f2975",
+              "00849d9729d79b31",
+              "5b218817aa4c444d",
+              "7d3c5eda20d9d83f",
+              "8d3b488e487bfc8e",
+              "5c3eb724a0ac965e",
+              "2975c6e4e330c189",
+              "82bd10e753b2f12d",
+              "4f904ffe33f18109",
+              "c1d53a5533efaa4a",
+              "949a46c6da4f6c4c",
+              "b6f352574f5bf11e",
+              "5515decf711ba8df",
+              "1d4a59c1bb613da6",
+              "6c91c4d7665b52cb",
+              "79b7a458bece3718",
+              "67a113c8ae758488",
+              "34dcf6c9c98b6e73",
+              "4a19b3424ef6d362",
+              "b6062524e3ff298d",
+              "3aaa31a0224ee0cd",
+              "189aeaaa76f0ce35",
+              "a1c0305c50ff15dc",
+              "930c37df6f620599",
+              "4888d74eb35e1b90",
+              "b2103f88391a4375",
+              "289c3793f9d81488",
+              "a5467d265eff6b7a",
+              "220560b22b850bbb",
+              "458c18213b80a158",
+              "4fcc0e71437028a8",
+              "7018ffcd5923f0ee",
+              "d43717dccfeed550",
+              "ca0b0ee9e0086dee",
+              "a279f70f4a3091a0",
+              "f4fddb121c5ec426",
+              "7d5733d947c31f84",
+              "42e2b0bbf59903de",
+              "d88668f150db43c6",
+              "9f9dfe29d4ec4f78",
+              "bec6132450b7334b",
+              "a441d4ec4a54ecf7",
+              "b32ac3740af7b96e",
+              "4e3ce92f22582d40",
+              "aab6e2756838df24",
+              "28a2b1b0900d519b",
+              "37bbab0e074ad83c",
+              "78da03399d7b9879",
+              "c3b0788d0a8686b2",
+              "0aec3580614d669f",
+              "16ce67b21d2c288d"
+            ],
+            "resolvable": true,
+            "resolved_fact_count": 389,
+            "note": "WP-1.2(a): fact_ids are the resolvable L1 chart_facts.fact_id set backing the ranked entity_profiles (each id verified present in chart_facts, §N.5). Per-entity fact_ids live on entity_profiles[].fact_ids; per-signal on top_signals[].constituent_facts_array."
+          },
+          "attribution": {
+            "served_unattributed_entities": 0,
+            "served_unattributed_share": 0,
+            "candidate_pool_size": 300,
+            "candidate_pool_unattributed": 0,
+            "note": "WP-1.2β: 0% UNATTRIBUTED on the served ranked surface — every served entity_profile resolves to a graha or a bhāva (chart address). candidate_pool_unattributed genuinely un-attributable signals (typically panchāṅga/muhūrta birth-moment descriptors carrying neither a graha nor a bhāva) are EXCLUDED from the served profiles and disclosed here (not silently dropped — B.10); drill them via query_signals if needed."
+          },
+          "ranking_basis": {
+            "mode": "composite_4d",
+            "priors_version": "1.2",
+            "domain": null,
+            "top_signal": {
+              "signal_id": "bde5423d-ac30-4ecd-ab7b-1dbec4232742",
+              "class_prior": 1.3125,
+              "topic_relevance": 1,
+              "intrinsic_strength": 0.58792,
+              "structural_role": 1.2,
+              "temporal_activation": 1,
+              "composite_score": 0.925974,
+              "percentile_within_class": 1,
+              "final_rank_score": 0.9266943609999999
+            },
+            "varga_weight_basis": {
+              "scheme": "Ṣoḍaśavarga (16-fold) Vimśopaka Bala",
+              "source": "Bṛhat Parāśara Horā Śāstra Ch.6 (Ṣaḍvarga/Vimśopaka); cross-checked against L1 chart_facts.graha_vimsopaka_shodasavarga"
+            },
+            "note": "Composite = class_prior × topic_relevance × intrinsic_strength × structural_role × temporal_activation × percentile_within_class."
+          },
+          "filters": {
+            "top_k": 20,
+            "top_k_entities": 10,
+            "signal_class": null,
+            "min_salience": 0
+          },
+          "provenance": {
+            "tables": [
+              "vw_chart_digest",
+              "bodha_msr_signals",
+              "bodha_convergence"
+            ],
+            "ranking_note": "E-6: entity_profiles + top_signals both composite-ranked (priors_version=1.2) — same pipeline as query_signals.ts, not a separate stored-band or raw-salience order.",
+            "aggregation_note": "Hierarchical aggregation: 300 atomic candidate signals → 10 entity profile(s) (design §E-6).",
+            "family_aggregation_note": "E-6 completion (R5.1 C2 item 2): 300 atomic candidates → 172 family-collapsed row(s) before the top_k=20 cut; 46 of those are composite rows representing >1 same-family atom (same graha × signal_type_id, e.g. a per-varga dignity construct). Collapsed atoms are demoted to family_member_pointers on the representative row, not deleted — drill via query_signals with the same signal_type_id/graha to reach them."
+          }
+        },
+        "is_error": false
+      }
+    }
+  }
+}

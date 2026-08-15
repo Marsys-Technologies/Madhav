@@ -1,0 +1,12 @@
+{
+  "tool": "catalog_assets_list",
+  "scenario": "filter_catalog_status_DRAFT_crosscheck_vs_catalog_assets_all",
+  "args": {"catalog_status": "DRAFT", "limit": 100},
+  "raw_response_summary": {
+    "total": 47,
+    "returned": 47,
+    "filters_echoed": {"layer": null, "catalog_status": "DRAFT", "limit": 100, "offset": 0},
+    "layers_present": ["bodha", "brahmagyan", "ganita", "kala", "mimamsa", "phala"]
+  },
+  "note": "catalog_status=DRAFT correctly restricts to 47 assets, every asset_id spot-checked carries catalog_status:'DRAFT'. Cross-check: calling catalog_assets_all with the identical args {catalog_status:'DRAFT', limit:100} returned the byte-identical 47-asset list (same asset_ids, same order, same snapshot shape) -- confirms catalog_assets_all and catalog_assets_list are true aliases of the same underlying handler, exactly as each tool's description states ('same as asset_registry_all' / 'same as list_assets'). This is documented intentional duplication, not a hidden defect."
+}

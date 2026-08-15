@@ -1,0 +1,1648 @@
+{
+  "catalog_evidence_file": "evidence/mcp_server_info__p0_catalog.json",
+  "catalog_tools_evidence_file": "evidence/live_tools_list__p0_catalog.json",
+  "catalog_version": "catalog-1+t152+r653c2a1a98c8",
+  "dimension_signoff": {
+    "A": null,
+    "B": null,
+    "C": null,
+    "D": null,
+    "E": null,
+    "F": null,
+    "G": null,
+    "H": null,
+    "I": null,
+    "J": null
+  },
+  "findings": [
+    {
+      "id": "F-01",
+      "claim": "standing_predictions_read returns is_error:true for a valid native chart relationship query.",
+      "reproduce_cmd": "MCP standing_predictions_read {chart_id:'482012f1-710e-4a25-994a-93821f5871aa'}",
+      "evidence_file": "evidence/standing_predictions_read__native_default_repro.json",
+      "severity": "TIER1-CORRECTNESS",
+      "mechanism": "Live open ledger rows include four interval rows whose observation_window renders as PostgreSQL literal 'empty' (evidence/sql__f01_empty_ledger_windows.txt). The L4 handler maps every open row through toServed (platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts:191), which calls deriveWindowFields (lines 66-68); deriveWindowFields passes a truthy 'empty' string to parseDaterange (platform/src/lib/lel/prospective_ledger.ts:591-594), whose regex fails and throws (lines 758-760). The handler catches it and serves String(err) in content.error (query_prospective_ledger.ts:230-234), leaking the parser literal. Fix commit 525188467 exists locally but is not an ancestor of HEAD, and the live MCP still reproduces the failure."
+    },
+    {
+      "id": "F-02",
+      "claim": "Four live, read-only MCP tools -- read_chapter, list_classical_texts, find_verses_about, and search_classical_texts (F-07) -- are 100% unreachable for any argument. All four are registered in platform-mcp/src/tools/read_classical_text.ts and share the identical root cause: their MCP-facing name was never added as a key to MCP_TO_RETRIEVAL_TOOL (tool_name_bridge.ts:508+), so isAllowedSurgicalTool() always rejects them regardless of arguments. Confirmed live for all four (read_chapter, list_classical_texts, find_verses_about, search_classical_texts). A systematic sweep (evidence/whitelist_sweep_report.json) diffed every primitive name invoked via callPlatformPrimitive/callPlatformPrim against the whitelist and found no further live-tool instances of this class.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__read_chapter({text_id:'bphs', chapter:1}) | mcp__marsys-jis-direct__list_classical_texts({}) | mcp__marsys-jis-direct__find_verses_about({topic:'exalted Mars in tenth house'}) | mcp__marsys-jis-direct__search_classical_texts({query:'Saturn in the seventh house effects on marriage'}) -- all four return {error:true, message:'Tool not in surgical whitelist: <name>'}",
+      "evidence_file": "evidence/whitelist_sweep_report.json",
+      "severity": "TIER1-CORRECTNESS",
+      "mechanism": "platform/src/app/api/mcp/primitives/[tool]/route.ts:113-124 (whitelist check calls isAllowedSurgicalTool(mcpToolName), 400s on false) + platform/src/lib/retrieval/registry/tool_name_bridge.ts:602-606 (isAllowedSurgicalTool: `return Object.hasOwn(MCP_TO_RETRIEVAL_TOOL, mcpToolName)`) + tool_name_bridge.ts:505-608 (MCP_TO_RETRIEVAL_TOOL object literal -- 'read_chapter' is never a key). The only place 'read_chapter' appears wired is TOOL_NAME_TO_URI at tool_name_bridge.ts:110, an unrelated map keyed differently, so it does not satisfy the whitelist check. MCP server (platform-mcp/src/tools/read_classical_text.ts:90-106) faithfully proxies and surfaces the platform's 400 verbatim as isError:true. Confirmed as a 4-tool class via systematic sweep, not just the original 2: list_classical_texts (read_classical_text.ts:126) and find_verses_about (read_classical_text.ts:154) fail identically (evidence/list_classical_texts__whitelist_reject.json, evidence/find_verses_about__whitelist_reject.json)."
+    },
+    {
+      "id": "F-03",
+      "claim": "ref_remedies_by_category_list's limit/offset schema parameters are complete no-ops -- the underlying SQL never applies them -- so a populous category always fetches every row, gets serialized into one JSON string, and the generic response-budget trimmer hard-truncates that string mid-JSON when it exceeds 40KB, producing an unparseable payload with no recovery path.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__ref_remedies_by_category_list({category: 'mantra'}) vs mcp__marsys-jis-direct__ref_remedies_by_category_list({category: 'mantra', limit: 5}) -- both return result_hash sha256:ad8a27bbdc37a7b8f37586af5bfcaee7463895dd36599891073203a45008006c, proving limit is ignored",
+      "evidence_file": "evidence/ref_remedies_by_category_list__mantra.json",
+      "severity": "TIER2",
+      "mechanism": "platform/src/lib/retrieve/remedy_tools.ts:171-188 (listRemediesByCategory.retrieve() reads only params?.category; SQL has no LIMIT clause, never reads params?.limit/offset) reached via platform-mcp/src/tools/register_p1_aliases.ts:1576-1583 (alias forwards {category, limit, offset} believing they're honored) -> oversized result hits platform-mcp/src/lib/response_budget.ts:462-488 (truncateLongStringsInPlace), hard-truncating mid-character with '...[truncated for budget]', producing invalid embedded JSON."
+    },
+    {
+      "id": "F-04",
+      "claim": "ref_nakshatra_get's description promises a structured nakshatra catalog (lord, devata, gender, gana, varna, nadi, pada lords, body part, symbol) but the tool always routes through unstructured classical-text hybrid search (structured_filter_applied:false), even though a live, fully-populated (28 rows) structured catalog table with exactly these fields (reference_nakshatra, managed by the bg_nakshatra writer, canonical per migration 302) exists in the database and is never queried by any serving-layer code.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__ref_nakshatra_get({nakshatra: 'purva_bhadrapada', limit: 5})",
+      "evidence_file": "evidence/ref_nakshatra_get__F04_resolution.json",
+      "severity": "TIER2",
+      "mechanism": "RESOLVED (was DIAGNOSIS-INCOMPLETE): genuine wiring gap, not a total absence. Handler platform-mcp/src/tools/register_p1_reference.ts:410-447 unconditionally calls marsys://tool/L0/query_classical_texts and its fallback_reason string (line 440) / inline comment (line 428) both falsely assert 'No structured bg_nakshatra catalog table exists'. DB verification: `SELECT table_name FROM information_schema.tables WHERE table_name LIKE '%nakshatra%'` returns reference_nakshatra (28 rows, canonical per migration 302_deprecate_reference_nakshatras.sql) with columns vimshottari_lord/presiding_deity/nakshatra_gender/gana/varna/nadi/body_part/symbol -- verified populated and correct for Purva Bhadrapada (jupiter/Aja Ekapada/Male/Manushya/Brahmin/Adi/left side/Front of a funeral cot). No file in platform/src or platform-mcp/src references reference_nakshatra or reference_nakshatras (grep-empty outside generated census artifacts). Root cause: the naming-convention search likely looked only for a 'bg_*'-prefixed table and missed the 'reference_*'-prefixed canonical one. See evidence/ref_nakshatra_get__F04_resolution.json."
+    },
+    {
+      "id": "F-05",
+      "claim": "ref_tantric_remedies_get can never return a non-empty result in production for any argument combination, because the only content-ingestion path for tantric remedies (tantric.yaml) is dead code never wired into the actual production seeding pipeline.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__ref_tantric_remedies_get({}) or with any planet/deity filter -> always {remedies:[], returned_count:0}; cross-check: SELECT remedy_type, count(*) FROM brahma_remedy_corpus GROUP BY remedy_type -- 'tantric' never appears",
+      "evidence_file": "evidence/ref_tantric_remedies_get__saturn_rahu_and_unfiltered.json",
+      "severity": "TIER3",
+      "mechanism": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1720 (query logic itself correct). Root cause upstream: platform/python-sidecar/brahmagyan/remedy_corpus/tantric.yaml is only loaded by l0_remedy_loader.py::load_remedies() (sets remedy_type/category='tantric'), which has zero callers anywhere in the repo. The actually-registered production writer (bg_remedies.py -> l0_remedy_corpus.py::build_all_remedies()/seed_remedy_corpus()) never emits 'tantric' despite declaring it in VALID_REMEDY_TYPES."
+    },
+    {
+      "id": "F-06",
+      "claim": "ref_remedies_chart_get's tool description promises 'chart-specific remedy suggestions,' but neither the MCP-facing parameter schema nor the server-side query implementation actually scope by chart -- chart_id cannot even be passed by a caller, and where the underlying capability does accept an optional chart_id it is used only for provenance/logging, never in the SQL WHERE clause.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__ref_remedies_chart_get({affliction:'Saturn', top_k:5}) -- schema accepts only {affliction, top_k}, no chart_id field exists",
+      "evidence_file": "evidence/ref_remedies_chart_get__saturn_career_mars.json",
+      "severity": "TIER2",
+      "mechanism": "MCP alias: platform-mcp/src/tools/register_p1_aliases.ts:1563-1573 exposes only {affliction, top_k}, forwarding to primitive query_remedies_for_chart. Live server handler: platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1437-1526 -- input_schema (1453-1468) declares chart_id optional with the code's own comment 'optional -- provenance only'; SQL at 1495-1504 has no chart_id predicate anywhere, and chart_id is not even reachable through the public alias tool's schema."
+    },
+    {
+      "id": "F-07",
+      "claim": "The MCP tool search_classical_texts -- fully registered with its own contract (annotations.surgical:true) and JSONSchema -- is unconditionally rejected by the actual MCP dispatch whitelist for every call, valid or not, making the tool 100% non-functional. Same defect class and root cause as F-02 (read_chapter).",
+      "reproduce_cmd": "mcp__marsys-jis-direct__search_classical_texts({query: 'Saturn in the seventh house effects on marriage', top_k: 5})",
+      "evidence_file": "evidence/search_classical_texts__saturn_seventh.json",
+      "severity": "TIER1-CORRECTNESS",
+      "mechanism": "platform/src/app/api/mcp/primitives/[tool]/route.ts:115-119 calls isAllowedSurgicalTool(mcpToolName) (tool_name_bridge.ts:602-605, Object.hasOwn(MCP_TO_RETRIEVAL_TOOL, mcpToolName)). MCP_TO_RETRIEVAL_TOOL (tool_name_bridge.ts:508+) only keys 'read_classical_text' -> 'classical_text_search' (line 525); no key 'search_classical_texts'. TOOL_NAME_TO_URI (line 107, a separate map) does map 'search_classical_texts' -> 'marsys://tool/L0/query_classical_texts', and the tool's own contract (registry.ts:172-209) declares surgical:true with a full schema -- but that contract/URI mapping is never consulted by the actual dispatcher. Every call 400s before reaching any executor.",
+      "note_addendum": "Confirmed part of the F-02 4-tool whitelist class (see F-02, extended); see evidence/whitelist_sweep_report.json for the full systematic sweep."
+    },
+    {
+      "id": "F-08",
+      "claim": "phala_mitigation_get's domain parameter is silently ignored end-to-end -- passing domain='career' vs. omitting it entirely produces byte-identical results for the native chart, giving callers false confidence that domain-scoping occurred.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__phala_mitigation_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa'}) vs mcp__marsys-jis-direct__phala_mitigation_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa', domain: 'career'}) -- compare result.result_hash in both responses (both sha256:abbd452f...50a4d02)",
+      "evidence_file": "evidence/phala_mitigation_get__native_domain_career.json",
+      "severity": "TIER2",
+      "mechanism": "platform-mcp/src/tools/register_p1_aliases.ts:1739-1747 (alias forwards {chart_id, domain} to callPlatformPrim('mitigation_map', ...)), routed via tool_name_bridge.ts:565 (mitigation_map -> query_remedy_program) to platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts:334-421 (queryRemedyProgramCapability). input_schema (357-364) only declares chart_id/intensity_tier/limit/offset; handler (367-421) never reads args['domain'] in the SQL WHERE clause -- dropped at the primitive boundary."
+    },
+    {
+      "id": "F-09",
+      "claim": "The shared response-budget trim helper emits a generic recover_via.hint ('call <tool> again with a narrower filter/date_range, or a smaller top_k/limit') on phala_outlook_get and plan_retrieval even though neither tool's actual parameter schema has a date_range/top_k/limit field -- the recovery advice is not actionable via the named instrument.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__phala_outlook_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa'}) -- inspect trim_report[].recover_via.hint; same pattern in mcp__marsys-jis-direct__plan_retrieval({chart_id: '482012f1-710e-4a25-994a-93821f5871aa', question: 'What does my career look like over the next year?'})",
+      "evidence_file": "evidence/phala_outlook_get__native_default.json",
+      "severity": "TIER4",
+      "mechanism": "platform/src/lib/response_budget.ts:527 -- a generic, tool-schema-unaware boilerplate hint string emitted by the shared trim/budget helper regardless of what parameters the target tool actually declares."
+    },
+    {
+      "id": "F-10",
+      "claim": "prashna_undertaking_get's election_windows sub-query applies no domain/action_class filter whatsoever, despite an inline code comment claiming a domain->action-class mapping is applied there. For domain='health', top-ranked 'best election windows' were action_class='marriage' (ranked above the actually health-relevant 'medical' window); for domain='career', all returned windows were action_class='new_venture' rather than the domain-mapped 'business_start'. A caller trusting the top election window for an undertaking is handed a wrong-domain recommendation with no mismatch disclosure.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__prashna_undertaking_get({chart_id: '1c826d5a-41cb-4450-b4dc-59d440e5f75a', domain: 'health'}) -- inspect content.election_windows[].action_class vs content.action_class",
+      "evidence_file": "evidence/prashna_undertaking_get__zero_health.json",
+      "severity": "TIER1-CORRECTNESS",
+      "mechanism": "platform-mcp/src/tools/register_p1_synthesis.ts:902-913 -- muhurtaResult SQL (`SELECT ... FROM phala_muhurta pm WHERE pm.chart_id = $1 AND pm.composite_quality IS NOT NULL ORDER BY pm.composite_quality DESC NULLS LAST LIMIT $2`) has no action_class predicate, even though the comment directly above it (line 902) claims domain->action-class mapping is applied. actionClass IS correctly computed via _DOMAIN_TO_ACTION (934-946) and correctly used to filter the separate ontologyResult query (947-951) -- the domain filter was simply never wired into the muhurtaResult query."
+    },
+    {
+      "id": "F-11",
+      "claim": "CONFIRMED (was UNCONFIRMED LEAD): query_kala_paddhati_profile is unreachable from kala_ritual_get's Mode-2 sky_pattern_spec path -- live call returns 'query_kala_paddhati_profile returned status 400' (same whitelist-wiring defect class as F-02: absent from MCP_TO_RETRIEVAL_TOOL). However, the surface degrades HONESTLY, not silently: coverage[] carries {concept:'paddhati_profile', state:'honest_empty', reason:'query_kala_paddhati_profile returned status 400'} and the nested paddhati block carries {available:false, unavailable_reason:'...', census_statement: '...an unreachable profile is reported as unreachable, never restated as not on record.'}. Net: the underlying primitive is broken, but the caller-facing contract correctly reports the gap per CLAUDE.md SS N.7 item 6 (honest null over fabricated value) -- not a correctness/honesty defect, just an unfixed wiring gap feeding an honest degrade path.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__kala_ritual_get({chart_id:'482012f1-710e-4a25-994a-93821f5871aa', sky_pattern_spec:{all:[{factor_type:'vara',factor_id:6}], horizon:{months:3}}}) -- inspect response.opportunities.paddhati.available / unavailable_reason and coverage[] entry for concept='paddhati_profile'",
+      "evidence_file": "evidence/kala_ritual_get__native_mode2_sky_pattern_spec.json",
+      "severity": "TIER4",
+      "mechanism": "Live-confirmed: query_kala_paddhati_profile returns HTTP 400 (absent from MCP_TO_RETRIEVAL_TOOL, tool_name_bridge.ts:508+ -- same class as F-02). The remaining actionable work is fixing the primitive's routing, not the serving-layer honesty around it, which is already correct."
+    },
+    {
+      "id": "F-12",
+      "claim": "ganita_condition_get's content.total field (dignity/avasthas/karakas facets) is computed as the returned row count post-LIMIT, not a real COUNT(*) -- so any call with a limit smaller than the true matching-row count silently reports a false, truncated total with no more_available signal to compensate.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__ganita_condition_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa', facet: 'dignity', limit: 3}) -> content.total=3; then limit=25000 -> content.total=563 (true value)",
+      "evidence_file": "evidence/ganita_condition_get__native_dignity_limit3_total_bug.json",
+      "severity": "TIER2",
+      "mechanism": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts:85 (`total: result.rows?.length ?? 0`), identically in get_avasthas.ts:72 and get_karakas.ts:118 -- all three condition-facet handlers set total to the post-LIMIT SQL result length instead of a separate SELECT COUNT(*) (contrast with get_condition_composite.ts:90-92 in the same directory, which does this correctly). avasthas/karakas happened to report correctly only because their default limits (300/500) exceed true row counts (54/382), masking the same defect."
+    },
+    {
+      "id": "F-13",
+      "claim": "kala_ritual_get has no response-size control on either mode (Mode 1 opportunity scan or Mode 2 sky_pattern_spec search). A Mode-2 call produced a 1.30MB/15,420-line response and a Mode-1 call (limit=10) produced 570KB/8,899 lines -- both exceeded a normal MCP client's tool-output token ceiling. The driver is an exhaustive per-candidate census (gap_report.factors_not_computed/factors_not_in_corpus) with multi-paragraph prose per candidate window, multiplied across every candidate. Unlike sibling kala_story_get (has budget_kb, default 40, demonstrably trims with a trim_report), kala_ritual_get's schema exposes no budget_kb/max_kb -- 'limit' only bounds candidate count, not per-candidate payload size.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__kala_ritual_get({chart_id:'482012f1-710e-4a25-994a-93821f5871aa', sky_pattern_spec:{all:[{factor_type:'vara',factor_id:6}], horizon:{months:3}}}) -- observe response byte size vs. schema (no budget_kb) vs. kala_story_get's schema (has budget_kb)",
+      "evidence_file": "evidence/kala_ritual_get__native_mode2_sky_pattern_spec.json",
+      "severity": "TIER2",
+      "mechanism": "DIAGNOSIS-INCOMPLETE on exact file/line for the census-generation code (likely Mode-2 gap_report/census builder inside kala_sky_pattern.ts or kala_lattice_query.ts's adjudication path). Confirmed at the contract level: kala_ritual_get's MCP schema has no budget_kb/max_kb property, unlike kala_story_get's schema which does and visibly exercises it. Violates CLAUDE.md SS N.6 Serving Density Principle's requirement that every served surface bound its own payload."
+    },
+    {
+      "id": "F-14",
+      "claim": "assess_health never returns the documented W7 substance-inline reading digest / domain_completeness / completeness_directive fields, on any chart or budget setting, because DOMAIN_READING_FAMILIES has no 'health' entry.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__assess_health({chart_id: '482012f1-710e-4a25-994a-93821f5871aa', reading_depth: 'deep_dive'}) -- inspect top-level keys, 'reading' and 'domain_completeness' are absent",
+      "evidence_file": "evidence/assess_health__native_deep_dive.json",
+      "severity": "TIER1-CORRECTNESS",
+      "mechanism": "platform-mcp/src/tools/registry_bridge.ts:1034 (DOMAIN_READING_FAMILIES missing 'health' key) + :1568-1574 (attachDomainReading early-returns on families_total===0)"
+    },
+    {
+      "id": "F-15",
+      "claim": "assess_marriage never returns the documented W7 substance-inline reading digest / domain_completeness / completeness_directive fields, on any chart or budget setting, because DOMAIN_READING_FAMILIES has no 'relationship' entry (assess_marriage's internal domain key).",
+      "reproduce_cmd": "mcp__marsys-jis-direct__assess_marriage({chart_id: '482012f1-710e-4a25-994a-93821f5871aa', reading_depth: 'deep_dive'}) -- inspect top-level keys, 'reading' and 'domain_completeness' are absent",
+      "evidence_file": "evidence/assess_marriage__native_deep_dive.json",
+      "severity": "TIER1-CORRECTNESS",
+      "mechanism": "platform-mcp/src/tools/registry_bridge.ts:1034 (DOMAIN_READING_FAMILIES missing 'relationship' key) + :1568-1574 (attachDomainReading early-returns on families_total===0). Same root cause and same file as F-14 -- one fix (adding health/relationship keys to DOMAIN_READING_FAMILIES) likely closes both."
+    },
+    {
+      "id": "F-16",
+      "claim": "bodha_discoveries_get's primary discoveries field (and total/returned/min_salience_filter_applied) is always empty/zero because the handler reads content['rows'] one nesting level too shallow -- the registry capability response is double-enveloped and the real data lives at content['content']['rows'].",
+      "reproduce_cmd": "mcp__marsys-jis-direct__bodha_discoveries_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa', domain: 'wealth', min_salience: 0.5, limit: 5}) -- compare top-level discoveries:[]/total:0 against content.content.rows (5 real rows) and content.content.total_matching (29)",
+      "evidence_file": "evidence/bodha_discoveries_get__native_wealth_minsalience.json",
+      "severity": "TIER1-CORRECTNESS",
+      "mechanism": "platform-mcp/src/tools/register_p1_synthesis.ts:611-618 -- callRegistryCapability('marsys://tool/L2/query_discoveries', ...) returns an object already shaped {content: {rows, total_matching, ...}, is_error} (query_discoveries.ts:196-199 wraps its own response in {content: {...}}), but line 617-618 reads content['rows'] without unwrapping the extra content.content level, so allRows is always []."
+    },
+    {
+      "id": "F-17",
+      "claim": "bodha_graph_subgraph_get's trim_report/drill_pointers.recover_via.instrument is the literal placeholder 'unknown_tool' instead of the real tool name whenever a response is budget-trimmed.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__bodha_graph_subgraph_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa', mode: 'neighbors', start_node: '478359a4-0637-46b6-8a78-300ead95787f', depth: 2}) -- content.edges gets trimmed (166->41), recover_via.instrument reads 'unknown_tool'",
+      "evidence_file": "evidence/bodha_graph_subgraph_get__native_neighbors_depth2.json",
+      "severity": "TIER3",
+      "mechanism": "platform-mcp/src/tools/register_p1_aliases.ts:1249 `return dualOutput(data)` omits the toolName argument, so dualOutput's default (register_p1_aliases.ts:188, toolName='unknown_tool') is what applyAutoBudgetToEnvelope uses when constructing recover_via. A sibling fix pattern for this exact defect class already exists in the same file (comments at lines 1800-1803) but was not applied here."
+    },
+    {
+      "id": "F-18",
+      "claim": "bodha_graph_traverse_get's trim_report/drill_pointers.recover_via.instrument is the literal placeholder 'unknown_tool' instead of the real tool name whenever a response is budget-trimmed. Same root cause as F-17.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__bodha_graph_traverse_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa', mode: 'paths', about_from: 'lord_of(bhava 10)', about_to: {type:'graha',graha:'Moon'}, direction: 'directed'}) -- content.edges gets trimmed (97->48), recover_via.instrument reads 'unknown_tool'",
+      "evidence_file": "evidence/bodha_graph_traverse_get__native_paths_10thlord_moon.json",
+      "severity": "TIER3",
+      "mechanism": "platform-mcp/src/tools/register_p1_aliases.ts:657 `return dualOutput(data)` omits the toolName argument, same defect class/root cause as F-17."
+    },
+    {
+      "id": "F-19",
+      "claim": "Rahu/Ketu's classical 5th/7th/9th special aspects are silently truncated to 7th-only in the Vipareeta Raja Yoga dilution/cancellation check (ganita_yoga_firings_get), contradicting both R24 and this same codebase's own correct nodal-aspect table used elsewhere (ga_structural_writer.py's NODE_PARASHARI_ASPECTS={5,7,9}, confirmed empirically live via ganita_structural_get facet=aspects on the same chart).",
+      "reproduce_cmd": "Code read: platform/python-sidecar/ga_writers/ga_yoga_writer.py:1499-1504 (NB_GRAHA_DRISHTI table omits rahu/ketu, falls to NB_DEFAULT_DRISHTI={7}) consulted by _cancel_vipareeta_raja_yoga (2302-2340, specifically 2325). Cross-check: evidence/CROSSCHECK_ganita_structural_get__native_aspects_nodal.json shows RAH_MEAN/KET_MEAN casting correct 5/7/9 aspects elsewhere in the same codebase.",
+      "evidence_file": "evidence/ganita_yoga_firings_get__native_all_true.json",
+      "severity": "TIER2",
+      "mechanism": "NB_GRAHA_DRISHTI dict (ga_yoga_writer.py:1499-1504) omits rahu/ketu keys; _nb_aspects_house (1588-1592) falls back to NB_DEFAULT_DRISHTI={7} for nodes. Latent for both ground-truth charts (vipareeta_raja_yoga did not fire in either chart's current firing set, so it hasn't manifested in served output yet), but a real, reproducible code defect that would silently suppress a legitimate VRY dilution finding whenever a node's only aspect onto the relevant dusthana-lord's house is via the 5th or 9th (not conjunction or the universal 7th). nbry_rule_3_lord_aspect is NOT affected -- its candidate aspectors are drawn only from NB_SIGN_LORDS, which never resolves to rahu/ketu."
+    },
+    {
+      "id": "F-20",
+      "claim": "The core drishti_contact primitive shared by gochara_activation_get, gochara_forecast_get, and gochara_election_avoidance_get treats transiting Rahu and Ketu as casting ONLY the universal 7th-house aspect, never their classical 5th/9th special aspects -- the exact 'aspect-less/truncated shadow point' pattern R24 warns against. Confirmed both in code and empirically in live served data.",
+      "reproduce_cmd": "Code read: platform/python-sidecar/services/gochara_grammar/primitives.py:187-194 (SPECIAL_DRISHTI_DEG={Mars:[90,180,210], Jupiter:[120,180,240], Saturn:[60,180,270]}; _DEFAULT_DRISHTI_DEG=[180.0] applies to every graha not in that dict, including Rahu/Ketu). Empirically confirmed live: evidence/gochara_election_avoidance_get__native_valid_daterange.json shows Rahu drishti_contact activity_terms only ever at the 7th-equivalent contact, never 5th/9th.",
+      "evidence_file": "evidence/gochara_activation_get__native_valid_asof.json",
+      "severity": "TIER1-CORRECTNESS",
+      "mechanism": "SPECIAL_DRISHTI_DEG (primitives.py:187-194) has no Rahu/Ketu entries; the comment above it does not even acknowledge nodes as a special case, unlike w30_nodal_drishti.py which explicitly documents the later-tradition classical basis for full nodal 5/7/9 aspects. Systemic: affects every transiting Rahu/Ketu contact computed across all three gochara_* tools, which all read the same primitive/table. Affects three live MCP tools: gochara_activation_get, gochara_forecast_get, gochara_election_avoidance_get."
+    },
+    {
+      "id": "F-21",
+      "claim": "A separate, newer w30_nodal_drishti mechanism exists in engine.py (later-tradition Rahu/Ketu 5/7/9 special-aspect compensator, enabled by default) that would partially offset F-20, but the currently-served native/zero-chart gochara window data shows no trace of it -- the served term_breakdown.formula string is an older formula predating the w30/tara-bala additions, suggesting these charts' gochara windows have not been rebuilt since those mechanisms were added to the codebase.",
+      "reproduce_cmd": "Code read: platform/python-sidecar/services/gochara_v3/engine.py:594-639 (w30_modifier/tara_modifier computed and merged into formula 'lambda_v3 = PROMISE * PERMISSION * activity * tara_modifier * w30_modifier * quality_gates'). Contrast served data: evidence/gochara_activation_get__native_valid_asof.json and evidence/gochara_forecast_get__native_valid_daterange.json -- every window's term_breakdown carries only {formula, promise, activity, lambda_v3, permission, quality_gates, activity_terms} with the OLDER formula string and zero occurrences of tara_modifier/w30_modifier.",
+      "evidence_file": "evidence/gochara_forecast_get__native_valid_daterange.json",
+      "severity": "TIER3",
+      "mechanism": "DIAGNOSIS-INCOMPLETE -- read-only audit cannot distinguish 'charts genuinely need a rebuild to pick up the newer engine' from 'a serving-layer regression drops these fields'. The observable fact (served data does not reflect the codebase's own nodal-aspect compensation mechanism) is confirmed and reproducible, but the root cause is not."
+    },
+    {
+      "id": "F-22",
+      "claim": "ref_dasha_systems_get's description promises structured dasha-system fields (total years, planet sequence with period lengths, activation criteria, source authority) but always routes through unstructured classical-text hybrid search (structured_filter_applied:false), returning topically-irrelevant Muhurta Chintamani wedding-timing verses for a query_used:'dasha system' search -- even though a live, fully-populated (20 rows) structured table (brahma_dasha_systems) with exactly these fields exists AND a complete, correct, already-registered-and-tested capability (query_dasha_systems) that queries it already exists in the codebase, unused.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__ref_dasha_systems_get({system:'vimshottari', limit:10}) -- observe structured_filter_applied:false, query_used:'dasha system', and irrelevant marriage-muhurta citations returned instead of the Vimshottari 120-year 9-planet sequence",
+      "evidence_file": "evidence/ref_dasha_systems_get__wiring_gap.json",
+      "severity": "TIER2",
+      "mechanism": "Handler platform-mcp/src/tools/register_p1_reference.ts:369-408 calls marsys://tool/L0/query_classical_texts; its inline comment (line 385-386) and emitted fallback_reason both falsely assert 'no structured bg_dasha_systems catalog table exists (confirmed absent from the migration set)'. DB verification: brahma_dasha_systems (20 rows) exists with columns canonical_id/name_en/total_cycle_years/base_unit/sequence_jsonb/computation_method/computation_pseudocode/conditions_for_use/school/classical_citations -- verified correct for Vimshottari (Ketu 7 + Venus 20 + Sun 6 + Moon 10 + Mars 7 + Rahu 18 + Jupiter 16 + Saturn 19 + Mercury 17 = 120 years, matching classical values exactly). A complete, correct, tested capability already querying this exact table exists at platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts (uri marsys://tool/L0/query_dasha_systems, registered in index.ts:44, own test file present) but is never called by ref_dasha_systems_get and is not exposed as any MCP tool -- the fix is a one-URI-string change from query_classical_texts to query_dasha_systems, not new development."
+    },
+    {
+      "id": "F-23",
+      "claim": "ref_mantras_get correctly queries brahma_remedy_corpus and honestly returns null (not fabricated text) for missing fields, but the underlying corpus is sparse: only 16/67 (24%) of all remedy_type='mantra' rows have mantra_text populated, and only 9/67 (13%) have mantra_sanskrit populated -- most rows carry only prescription_text (contextual remedy guidance) with the actual mantra itself absent.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__ref_mantras_get({planet:'Saturn', limit:10}) then `SELECT count(*), count(mantra_text), count(mantra_sanskrit) FROM brahma_remedy_corpus WHERE remedy_type='mantra'`",
+      "evidence_file": "evidence/ref_mantras_get__coverage_check.json",
+      "severity": "TIER3",
+      "mechanism": "Not a wiring bug -- the tool correctly queries brahma_remedy_corpus per platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:1825ff and honestly nulls missing fields (consistent with CLAUDE.md N.7 item 6). This is a genuine, quantified data-completeness gap in the underlying corpus, not a serving-layer defect."
+    },
+    {
+      "id": "F-24",
+      "claim": "intent_classify collapses realistic questions to domains:['general'] and near-zero confidence despite a corrected regex list existing elsewhere in the same file that would recognize them.",
+      "reproduce_cmd": "MCP intent_classify {query:'When will I get married?'} and {query:'Is this a good time to change jobs?'}",
+      "evidence_file": "evidence/intent_classify__revalid.json",
+      "severity": "TIER2-QUALITY",
+      "mechanism": "platform-mcp/src/tools/intent_scope_classifier.ts:178-189 (DOMAIN_RULES, stale non-plural-safe regex, misses 'married'/'jobs') vs lines 232-233 (DEEP_DOMAIN_WORD, already-fixed regex, not wired to scope_tuple.domains output)."
+    },
+    {
+      "id": "F-25",
+      "claim": "kala_dasha_sandhi_get is non-functional for all charts due to a dropped Principal at tool registration, causing every dispatch to the L1 dasha registry to fail authorization and get silently reported as an honest-empty result -- proven by sibling tool kala_now_get successfully serving the identical chart_dashas data via its own dasha_sandhi sub-field in the same session.",
+      "reproduce_cmd": "MCP kala_dasha_sandhi_get {chart_id:'482012f1-710e-4a25-994a-93821f5871aa'} vs MCP kala_now_get {chart_id:'482012f1-710e-4a25-994a-93821f5871aa'} (compare dasha_sandhi field)",
+      "evidence_file": "evidence/kala_dasha_sandhi_get__revalid.json",
+      "severity": "TIER1-CORRECTNESS",
+      "mechanism": "platform-mcp/src/tools/kala_views/register_all.ts:64 omits the real Principal when calling registerDashaSandhiCalendar (unlike all sibling kala_* registrations); dasha_sandhi.ts:358-362 falls back to a hardcoded fake 'system' principal that fails the /api/retrieval/capability entitlement gate; dasha_sandhi.ts:173,187-189 swallows the resulting error into a generic honest-empty message that reads as a data gap, not an auth failure."
+    },
+    {
+      "id": "F-26",
+      "claim": "kala_life_arc_get advertises LEL life-event cross-linking (include_lel_events param, default true) that is entirely unwired: the parameter is accepted but never read, and the underlying SQL never joins to any LEL table -- confirmed absent even for the native chart's 64-event history.",
+      "reproduce_cmd": "MCP kala_life_arc_get {chart_id:'482012f1-710e-4a25-994a-93821f5871aa', include_lel_events:true} -- inspect parvas[] for lel_events (absent)",
+      "evidence_file": "evidence/kala_life_arc_get__lel_gap.json",
+      "severity": "TIER2-QUALITY",
+      "mechanism": "platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts never reads include_lel_events and its SQL (lines 147-177) only selects kala_jivana_parva; the capability descriptor itself declares lel_capable:false (line 39)."
+    },
+    {
+      "id": "F-27",
+      "claim": "mimamsa_calibration_get's domain parameter is a complete no-op -- identical result_hash returned with and without it -- despite real, distinct 57-row calibration data (across 4 verdict classes) existing in the DB that a real domain filter should be able to narrow.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__mimamsa_calibration_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa'}) vs mcp__marsys-jis-direct__mimamsa_calibration_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa', domain: 'career'}) -- compare result_hash",
+      "evidence_file": "evidence/mimamsa_calibration_get__valid_domain_native.json",
+      "severity": "TIER2",
+      "mechanism": "DIAGNOSIS-INCOMPLETE on exact file:line -- recovered from a compressed agent summary after a concurrent-write race deleted the original finding's full detail (see audit-integrity note on this recovery in the P1 status report); the underlying observation (domain is DB-verified real but not honored) was independently reproduced and is not in question, only the precise source line was lost."
+    },
+    {
+      "id": "F-28",
+      "claim": "mimamsa_calibration_get's response content is unconditionally hard-truncated to roughly 120 characters with no override parameter, making the real underlying 57-row/4-verdict-class calibration data practically unrecoverable through this tool even though it demonstrably exists in the DB.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__mimamsa_calibration_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa'}) -- observe response content length vs. DB row count for the same chart",
+      "evidence_file": "evidence/mimamsa_calibration_get__valid_domain_native.json",
+      "severity": "TIER2",
+      "mechanism": "DIAGNOSIS-INCOMPLETE on exact file:line -- same recovery caveat as F-27 (concurrent-write race deleted the original finding's full detail). The truncation-to-~120-chars observation with no recovery path was independently reproduced and DB-cross-checked; only the precise source line was lost in the race."
+    },
+    {
+      "id": "F-29",
+      "claim": "mimamsa_insight_get's calibration_summary always reports 0 confirmed / 0 partial / 0 denied regardless of the chart's real calibration state, due to a case-sensitivity SQL FILTER mismatch -- verified against live DB data showing a real, non-trivial distribution (2 CONFIRMED / 23 PARTIAL / 7 REFUTED) that the served summary should reflect but never does.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__mimamsa_insight_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa'}) -- inspect content.calibration_summary (always {confirmed:0, partial:0, denied:0}); cross-check against a direct read-only SQL count of the same chart's calibration verdict rows (2/23/7)",
+      "evidence_file": "evidence/mimamsa_insight_get__valid_native.json",
+      "severity": "TIER1-CORRECTNESS",
+      "mechanism": "query_insights.ts:118-120 -- a lowercase-vs-UPPERCASE SQL FILTER predicate mismatch against the verdict enum values (the stored verdict strings are uppercase (CONFIRMED/PARTIAL/REFUTED) but the FILTER clause compares against lowercase literals, so every FILTER(WHERE verdict = '...') aggregate matches zero rows). File:line preserved from the original agent's report (not lost in the concurrent-write race, unlike F-27/F-28)."
+    },
+    {
+      "id": "F-30",
+      "claim": "bodha_bundle_get (the B.11 whole-chart-read floor's own bundle tool) reports status='degraded' with 5 of its 7 constituent subsystems (MSR, CGM, LEL, PANCHANG, DASHA) erroring on every call, reproducibly, on both the native and zero-history ground-truth charts -- only UCN/RM/CDLM ever fire successfully. The tool discloses this honestly (b11_floor_passed:false, explicit sub_errors_note) rather than laundering it into a false-complete envelope, but the aggregate capability is nonetheless broken: a caller relying on this tool for a genuine whole-chart read gets a majority-failed bundle every time.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__bodha_bundle_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa'}) and mcp__marsys-jis-direct__bodha_bundle_get({chart_id: '1c826d5a-41cb-4450-b4dc-59d440e5f75a'}) -- both return status:'degraded' with identical sub_errors:['MSR','CGM','LEL','PANCHANG','DASHA']",
+      "evidence_file": "evidence/bodha_bundle_get__native_primary.json",
+      "severity": "TIER1-CORRECTNESS",
+      "mechanism": "DIAGNOSIS-INCOMPLETE -- five independent sub-tool failures (MSR, CGM, LEL, PANCHANG, DASHA) inside the bundle dispatcher have not been individually traced to file:line in this pass; each would need its own root-cause investigation (this bundle tool's holistic_bundle route is bundle_adapters-based, distinct from the callPlatformPrimitive whitelist class in F-02/F-07/F-11). Flagged as a priority item for the next investigative pass given its centrality to B.11 whole-chart-read discipline."
+    },
+    {
+      "id": "F-31",
+      "claim": "assess_health omits the documented reading/domain_completeness/completeness_directive fields for the health domain (F-14) WITHOUT emitting any judgment_flag disclosing the omission, even though the response's own judgment_flags mechanism is live and used for a different, lower-stakes gap in the same payload (budget_exceeded_after_trim). This breaks the self-disclosure pattern the rest of the health-journey chain follows (judgment_query flags 'varga_confirmed_forced_false'/'notably_absent_not_checked' for its own analogous gaps).",
+      "reproduce_cmd": "assess_health(chart_id='482012f1-710e-4a25-994a-93821f5871aa', reading_depth='deep_dive') and assess_health(chart_id='1c826d5a-41cb-4450-b4dc-59d440e5f75a', reading_depth='deep_dive') -- inspect content (no reading/domain_completeness/completeness_directive key) vs judgment_flags (no corresponding disclosure entry)",
+      "evidence_file": "evidence/assess_health__native_deep_dive.json",
+      "severity": "TIER3",
+      "mechanism": "DIAGNOSIS-INCOMPLETE -- DOMAIN_READING_FAMILIES lookup table and handler location already established by F-14; this finding's contribution is the measured downstream consequence (no judgment_flag self-disclosure), not a new code-location claim."
+    },
+    {
+      "id": "F-32",
+      "claim": "POSITIVE/NON-DEFECT finding, logged for audit completeness: judgment_query(domain='health') and assess_health(reading_depth='deep_dive') independently compute matching gochara_sweep figures for the same chart (native: upcoming_window_count=17, matching peak dates; zero: upcoming_window_count=8, matching peak dates), both correctly chart-differentiated (composite_score -0.8 native mixed-negative vs +0.44 zero mixed-positive). This demonstrates the F-14 gap does not create a false impression of shallowness within the full health journey -- judgment_query independently surfaces the same underlying signal set through a richer, complete envelope.",
+      "reproduce_cmd": "compare content.gochara_sweep in evidence/judgment_query__native_health_domain.json vs the embedded gochara_sweep in evidence/assess_health__native_deep_dive.json",
+      "evidence_file": "evidence/judgment_query__native_health_domain.json",
+      "severity": "TIER4",
+      "mechanism": "N/A -- observational cross-tool coherence confirmation, not a defect."
+    },
+    {
+      "id": "F-33",
+      "claim": "ganita_dasha_periods_get accepts an as_of_date that precedes the chart's own birth date and silently serves computed, two_pass_verified-tier dasha rows with no structured pre-birth flag or guard -- the only signal the query is nonsensical is a free-text narration side-effect ('age ~-4'), not a machine-checkable field.",
+      "reproduce_cmd": "MCP ganita_dasha_periods_get {chart_id:'482012f1-710e-4a25-994a-93821f5871aa', as_of_date:'1980-01-01', ayanamsha_id:'lahiri_chitrapaksha'} -- native chart born 1984-02-05",
+      "evidence_file": "evidence/ganita_dasha_periods_get__pre_birth.json",
+      "severity": "TIER3",
+      "mechanism": "DIAGNOSIS-INCOMPLETE -- behavior confirmed live but the exact serving-handler file/line was not pinned. Arguably by-design (Vimshottari balance-of-dasha math is well-defined before birth), so the finding is about missing DISCLOSURE, not incorrect math."
+    },
+    {
+      "id": "F-34",
+      "claim": "gochara_forecast_get silently truncates results at the chart's build horizon (birth+100y) when a query's date_range partially overlaps the horizon, without any field disclosing that part of the requested range is unswept -- even though the same tool DOES supply an explicit empty_reason/coverage caveat when the ENTIRE query falls beyond the horizon. Disclosure only fires on total emptiness, not partial truncation.",
+      "reproduce_cmd": "MCP gochara_forecast_get {chart_id:'482012f1-710e-4a25-994a-93821f5871aa', date_range:{start:'2083-06-01', end:'2085-06-01'}} -- empty_reason is null despite ~16 months of the query being past the swept horizon; compare against a fully-beyond-horizon query which DOES disclose",
+      "evidence_file": "evidence/gochara_forecast_get__horizon_2084_partial_overlap.json",
+      "severity": "TIER2",
+      "mechanism": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts:1429 -- empty_reason is gated purely on rows.length===0; no branch checks whether the requested date_range extends past the chart's actually-swept horizon when rows.length>0. Confirmed live: 2083-06-01..2085-06-01 query returns 22 windows all capped at window_end<=2084-01-31 (era_slice_key g3_2074_2084) with empty_reason=null."
+    },
+    {
+      "id": "F-35",
+      "claim": "mimamsa_insight_get, on a zero-history chart, mixes chart-specific structural-tier insights (evidence_grade='structural') with at least one cross-chart manifestation_grammar insight carrying evidence_grade='empirical' and a real last_calibrated_at timestamp, without an inline marker disambiguating that the 'empirical' grade reflects population-level cross-chart mining rather than this chart's own outcome history.",
+      "reproduce_cmd": "MCP mimamsa_insight_get {chart_id:'1c826d5a-41cb-4450-b4dc-59d440e5f75a', domain:'career'} -- inspect insight_units[] for insight_id='gram_career_ch_career_verbal_2' (evidence_grade='empirical') alongside sibling verdict_object units (evidence_grade='structural')",
+      "evidence_file": "evidence/journey_mimamsa_insight_get__zero_career.json",
+      "severity": "TIER4",
+      "mechanism": "DIAGNOSIS-INCOMPLETE -- plausible correct-by-design (documented cross-chart insight_type), but per-unit JSON lacks an explicit population-level marker, so a caller filtering on evidence_grade alone could momentarily conflate it with the chart's own calibration. Exact source file for insight-unit assembly not located in this pass."
+    },
+    {
+      "id": "F-36",
+      "claim": "ganita_chart_facts_get (marsys://tool/L1/chart_facts_query, backing register_d7_channel.ts) silently clamps any requested `offset` above 100,000 down to exactly 100,000, and echoes the CLAMPED value back in the response's `offset` field as though it were the caller's own input \u2014 with no disclosure field (no `offset_clamped`, `requested_offset`, or similar) anywhere in the schema or response. A caller paging deep into a large fact set (e.g. the 5,750-fact chart_facts catalog) using their own offset arithmetic will silently get page 100000 forever past a certain point, with no way to detect the substitution from the response alone.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__ganita_chart_facts_get(chart_id='482012f1-710e-4a25-994a-93821f5871aa', offset=999999)  -- and again with offset=500000, both return offset:100000 in the payload",
+      "evidence_file": "evidence/ganita_chart_facts_get__pagination_past_end_offset999999.json",
+      "severity": "TIER2",
+      "mechanism": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts:924 \u2014 `const offset = Math.max(0, Math.min(Number(args['offset'] ?? 0), 100_000))`; response fields built at lines 1130-1223 echo this post-clamp local variable, not the original request value."
+    },
+    {
+      "id": "F-37",
+      "claim": "ref_yogas_get (query_yoga_catalog capability) reports `total` as the number of rows returned on the CURRENT page (`rows.length`), not the true count of matching rows in the brahma_yoga_catalog table. Verified three ways: offset=0/default limit=100 \u2192 total:100 (=page size); offset=50/limit=10 \u2192 total:10 (=page size, and the 10 rows are genuinely DIFFERENT yogas than page 1, proving the real catalog exceeds 60 rows); offset=999999 \u2192 total:0 (should still report the true catalog/filtered size, per the tool's own description promising 'discloses pagination (total + more_available)'-style honesty seen correctly implemented elsewhere, e.g. ganita_chart_facts_get keeps total=5750 constant across offsets). A caller cannot determine the true catalog size from any single call to this tool.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__ref_yogas_get() then mcp__marsys-jis-direct__ref_yogas_get(offset=50, limit=10) then mcp__marsys-jis-direct__ref_yogas_get(offset=999999) \u2014 compare the three `total` values",
+      "evidence_file": "evidence/ref_yogas_get__pagination_control_offset50_limit10.json",
+      "severity": "TIER2",
+      "mechanism": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:61 \u2014 `total: rows.length` inside the handler's returned content object; no separate COUNT(*) query is issued."
+    },
+    {
+      "id": "F-38",
+      "claim": "kala_now_get performs no entitlement/existence check on chart_id before doing substantial work, unlike every other chart-scoped tool tested in this audit (ganita_chart_facts_get, assess_career, judgment_query, dossier, catalog_chart_select all cleanly reject a nonexistent chart_id with ENTITLEMENT_DENIED/AUTHZ_DENIED before any computation). Given a syntactically-valid but nonexistent chart UUID, kala_now_get instead returns a full, structurally successful-looking envelope: real (but chart-UNRELATED) live planetary transit data in gochara_dual_reference, a populated reading/verdict/tri_plane/coverage structure, and \u2014 inside provenance_envelope.panchanga_native_context_error \u2014 the raw upstream microservice error string `\"HTTP 404: Chart 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee' not found\"` leaking through verbatim. The caller receives no clean signal anywhere in the envelope that the chart_id does not exist; they would have to notice that most `coverage[].state` entries read 'honest_empty'/'unreachable' and infer it themselves.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__kala_now_get(chart_id='aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee')",
+      "evidence_file": "evidence/kala_now_get__nonexistent_uuid.json",
+      "severity": "TIER2",
+      "mechanism": "DIAGNOSIS-INCOMPLETE \u2014 behavior pinned by live response only; did not trace the kala_now_get handler source in platform/src to confirm exactly where the entitlement check is skipped or where panchanga_native_context_error is populated verbatim from the upstream HTTP client. Response shape strongly suggests kala_now_get's substrate calls (panchanga service, L3 registries) are invoked directly without a preceding chart-entitlement gate that the other tested tools share."
+    },
+    {
+      "id": "F-39",
+      "claim": "The shared ENTITLEMENT_DENIED error message template used by ganita_chart_facts_get / assess_career / judgment_query (and similar registry_bridge-backed tools) unconditionally states '(distinct from an empty result \u2014 this chart exists but you are not granted)' even when the chart_id supplied is a syntactically-valid but entirely fabricated/nonexistent UUID. The message asserts a specific fact ('this chart exists') that is false in the nonexistent-UUID case, conflating two genuinely different situations (real chart the caller lacks access to, vs. no such chart at all) into one message that actively misstates the nonexistent case. This is a narration-fidelity issue, not a security leak \u2014 the denial itself is appropriately generic/safe \u2014 but the message text should not assert existence it cannot verify.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__ganita_chart_facts_get(chart_id='aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee')",
+      "evidence_file": "evidence/ganita_chart_facts_get__nonexistent_uuid.json",
+      "severity": "TIER3",
+      "mechanism": "platform-mcp/src/tools/registry_bridge.ts (message template containing the literal string 'this chart exists but you are not granted') \u2014 exact line not pinned; DIAGNOSIS-INCOMPLETE on line number, but the message string was directly observed verbatim across three independent tool calls (ganita_chart_facts_get, assess_career, judgment_query) so the shared template's existence is confirmed, only the precise source line is not."
+    },
+    {
+      "id": "F-40",
+      "claim": "gochara_forecast_get's tool description explicitly documents a guarantee (the 'S4-05 fix'): passing `domain` gets 'an explicit not_covered refusal with a cross_pointer to the capable instrument (kala_windows_get) instead of relying on silence' whenever the sweep does not cover that domain \u2014 specifically to prevent a caller from misreading silence on a domain as an all-clear. Passing an unrecognized/garbage domain value ('nonexistent_domain_xyz', which cannot match any real domain) does NOT trigger this documented refusal path: `coverage.domains_not_covered` stays empty (it is computed independently of the requested filter, from the chart's own global sweep coverage) and the response instead silently returns `windows:[]` with a generic, unrelated empty_reason ('no kala_gochara_windows rows overlap this date_range/filter combination'). This is exactly the failure mode the tool's own documentation says it was fixed to prevent, just triggered by a misspelled/unknown domain string rather than a genuinely-uncovered real domain.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__gochara_forecast_get(chart_id='482012f1-710e-4a25-994a-93821f5871aa', date_range={start:'2026-08-15',end:'2026-11-15'}, domain='nonexistent_domain_xyz')",
+      "evidence_file": "evidence/gochara_forecast_get__unknown_domain.json",
+      "severity": "TIER2",
+      "mechanism": "DIAGNOSIS-INCOMPLETE \u2014 behavior confirmed live (domains_not_covered empty regardless of an unrecognized domain filter, no not_covered refusal fires); did not trace the gochara_forecast_get handler source in platform/src to pin the exact file:line where the domain filter is applied without vocabulary validation."
+    },
+    {
+      "id": "F-41",
+      "claim": "judgment_query, when passed an unrecognized `domain` value ('nonexistent_domain_xyz', not one of the seven documented domain names), does not reject the call. Instead it silently treats the domain as if it were absent/undefined, computes and returns a large chart-wide 'orientation_context' payload (full entity_profiles across every graha/bhava, convergence_domains, thousands of resolved fact_ids), and only then reports the actual validation failure \u2014 'judgment_query requires either domain (...) or bhava (1-12)' \u2014 nested three levels deep at `content.error`, inside an otherwise fully-populated v3 envelope (top-level `verdict`, `chart_header`, `epistemic`, `register`, `reading_contract` all present, no top-level `ok:false` or `is_error:true`). A caller checking only top-level envelope shape would reasonably conclude the call succeeded.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__judgment_query(chart_id='482012f1-710e-4a25-994a-93821f5871aa', domain='nonexistent_domain_xyz')",
+      "evidence_file": "evidence/judgment_query__unknown_domain.json",
+      "severity": "TIER2",
+      "mechanism": "DIAGNOSIS-INCOMPLETE \u2014 confirmed live via response shape only; did not trace the judgment_query handler source (likely platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts per the tool description) to pin the exact file:line where an unrecognized domain string falls through to the missing-domain branch instead of being validated against the enum up front."
+    },
+    {
+      "id": "F-42",
+      "claim": "ganita_dashas_get's `ayanamsha_id` parameter accepts any free-form string with no validation against the six known stored ayanamshas (lahiri_chitrapaksha, krishnamurti, raman, surya_siddhanta_classical, true_chitra, INVARIANT). Passing an unrecognized value ('not_a_real_ayanamsha') silently returns `rows:[], total:0` with no error or empty_reason disclosing that the ayanamsha itself is not recognized. Verified against a control call with identical chart_id and default window but `ayanamsha_id='lahiri_chitrapaksha'`, which returns 90 real dasha-period rows \u2014 proving the empty result for the bad ayanamsha value is a silently-swallowed invalid input, not an honest 'no data in this window' result. A caller who mistypes an ayanamsha name gets an indistinguishable-from-legitimate empty page.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__ganita_dashas_get(chart_id='482012f1-710e-4a25-994a-93821f5871aa', ayanamsha_id='not_a_real_ayanamsha')  -- compare to the same call with ayanamsha_id='lahiri_chitrapaksha'",
+      "evidence_file": "evidence/ganita_dashas_get__unknown_ayanamsha_silent_empty.json",
+      "severity": "TIER2",
+      "mechanism": "DIAGNOSIS-INCOMPLETE \u2014 confirmed live via the control-vs-test comparison; did not trace the get_dashas handler source (platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts per earlier grep) to pin the exact file:line where ayanamsha_id is used unvalidated in the underlying query."
+    },
+    {
+      "id": "F-43",
+      "claim": "The 'unknown_tool' placeholder recover_via defect (already confirmed on bodha_graph_subgraph_get/bodha_graph_traverse_get, F-17/F-18) is not isolated -- live-reproduced on catalog_assets_list, and source inspection finds ~19 more register_p1_aliases.ts tool registrations sharing the identical bare dualOutput(data) call site (no toolName argument), so the same defect fires on ANY of them the moment auto-detected trimming triggers: catalog_assets_all, catalog_assets_l0, ref_vector_search, ref_remedies_get, ref_remedies_chart_get, ref_remedies_by_category_list, ref_remedy_get, ref_tantric_remedies_get, ref_remedies_by_planet_get, ref_mantras_get, kala_muhurta_get, mimamsa_calibration_get, ganita_natal_positions_compute, ganita_special_lagnas_get, kala_yoga_activation_get, plus bodha_signals_get's own outer wrapper. One sibling (phala_outlook_get) was already patched (RC-04, 2026-07-23) by passing the real tool name explicitly, proving the fix pattern is known but was not applied file-wide. NOTE: only catalog_assets_list (plus the original 2) were live-reproduced this pass; the other ~16 names are source-grep-identified, not independently re-tested -- their existing PASS verdicts from earlier waves are NOT retroactively downgraded without live confirmation.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__catalog_assets_list({limit: 500}) -- observe trim_report[0].recover_via.instrument === 'unknown_tool' and drill_pointers[0].instrument === 'unknown_tool'",
+      "evidence_file": "evidence/catalog_assets_list__unknown_tool_live.json",
+      "severity": "TIER2",
+      "mechanism": "platform-mcp/src/tools/register_p1_aliases.ts:188 (function dualOutput(data, toolName='unknown_tool')) combined with the bare dualOutput(data) call for catalog_assets_list at line 1155; ~19 additional bare-call line numbers found via grep at lines 606, 657, 1207, 1249, 1368, 1499, 1522, 1558, 1570, 1582, 1594, 1606, 1618, 1630, 1670, 1781(fixed/RC-04), 1844, 1860, 1874, 1971 in the same file."
+    },
+    {
+      "id": "F-44",
+      "claim": "kala_story_get's honesty mechanism (trim_report) can itself be trimmed away under extreme budget pressure (budget_kb=2), replacing the real per-section trim entries with a generic collapsed summary that (a) does not disclose WHICH section was cut to zero -- chapters silently drops from 91 real chapter objects to an empty array while chapter_count still reads 91 -- and (b) names a non-real, non-actionable recover_via instrument, 'response_format:legacy', which does not correspond to any parameter on kala_story_get's schema. Same defect class as F-17/F-18/F-43 (unknown_tool) -- a recover_via pointer naming nothing a caller can actually call -- reached via a different code path (the trim_report degrades itself). At budget_kb=8 and the 40KB default, trim_report stays intact and fully honest.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__kala_story_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa', budget_kb: 2}) vs budget_kb: 8 vs omitted -- compare chapters.length, chapter_count, and trim_report[0].recover_via.instrument across the three calls",
+      "evidence_file": "evidence/kala_story_get__trim_report_self_collapse.json",
+      "severity": "TIER2",
+      "mechanism": "platform-mcp/src/lib/response_budget.ts:402-410 (finalizeMcpBudget's 1-entry-still-too-big fallback, recover_via:{instrument:'response_format:legacy'}) and an identical fallback at :292 inside applyResponseBudget's own '(whole response)' branch."
+    },
+    {
+      "id": "F-45",
+      "claim": "A systemic, repeatedly-live-reproduced defect: several tools compute a narrative/summary count field (verdict_summary.served_count, coverage_receipt text, content.signal_count, content.activation_count, content.prescription_count) BEFORE the generic post-hoc budget trimmer cuts the sibling array those fields describe, and never re-derive or flag the field as stale afterward. Confirmed live on FIVE independent tools: bodha_signals_get (served_count:200 vs signals.length:20), synth_chart_brief_get (coverage_receipt '27 domain verdicts' vs verdict_summary.length:13), kala_priority_ranking_get (signal_count:100 vs ranked_signals.length:50), kala_windows_get (activation_count:500 vs activations.length:5), and bodha_remedies_get (prescription_count:27 vs prescriptions.length:13, while the untouched resonance_count:9 correctly matches its own array -- confirming the mismatch tracks specifically with which array the generic trimmer cut).",
+      "reproduce_cmd": "mcp__marsys-jis-direct__bodha_signals_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa', top_k: 200}) -> compare content.verdict_summary.served_count to content.signals.length; or mcp__marsys-jis-direct__bodha_remedies_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa', limit: 25000, fields: 'all'}) -> compare content.prescription_count to content.prescriptions.length",
+      "evidence_file": "evidence/stale_pretrim_counts__three_tools.json",
+      "severity": "TIER2",
+      "mechanism": "platform-mcp/src/tools/register_p1_aliases.ts:579-604 for bodha_signals_get specifically (comment at line 582: 'Built BEFORE the trimmer runs so the verdict reflects the untrimmed served set' -- an acknowledged design choice, undisclosed to the API consumer). Root cause for the other four instances is the same shared pattern but their exact handler file:line was not individually traced -- DIAGNOSIS-INCOMPLETE on the precise source line for synth_chart_brief_get, kala_priority_ranking_get, and kala_windows_get specifically, though live behavioral evidence for all five is confirmed."
+    },
+    {
+      "id": "F-46",
+      "claim": "ganita_planet_get (and, per response_budget.ts's own doc-comment, likely ganita_condition_get, kala_life_arc_get, kala_projections_get, mimamsa_lel_query, and other tools sharing the same wiring) genuinely trims multiple response sections but never echoes budget_kb_applied/budget_kb_requested and never merges the trim's recover_via pointers into the top-level drill_pointers array -- both of which the stronger finalizeMcpBudget mechanism used elsewhere DOES provide. Inconsistent honest-budget-echo contract across the tool estate. ganita_database_schema_get was also observed missing budget_kb_applied despite trimming, corroborating this gap is not isolated to one tool.",
+      "reproduce_cmd": "mcp__marsys-jis-direct__ganita_planet_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa', planet: 'Saturn'}) -- observe 6 trim_report entries each floored to 10, yet no budget_kb_applied field anywhere and top-level drill_pointers remains []",
+      "evidence_file": "evidence/ganita_planet_get__missing_budget_echo.json",
+      "severity": "TIER3",
+      "mechanism": "platform-mcp/src/tools/register_p1_ganita.ts:155-168 (dualOutput calling applyAutoBudgetToEnvelope) vs. the stronger finalizeMcpBudget (platform-mcp/src/lib/response_budget.ts:361-441, sets budget_kb_applied/budget_kb_requested at lines 380-381 and merges recover_via into drill_pointers at line 384). applyAutoBudgetToEnvelope (response_budget.ts:584-598) only appends trim_report -- never attaches the honesty-echo fields the sibling function does."
+    },
+    {
+      "id": "F-47",
+      "claim": "kala_elect_get and kala_muhurta_get share one underlying scoring engine (PH-4-4/muhurta.py) in which 50% of the composite auspiciousness score (dasha_quality 30% + transit_quality 20%) is computed with NO action_type/undertaking parameter at all, making it domain-blind -- only panchanga_quality (40%) and signal_activation (10%) are genuinely domain-sensitive. Not F-10's total domain-blindness, but a real partial one: the same top-ranked window came out #1 for business, marriage, AND medical in this test, differing only in numeric score.",
+      "reproduce_cmd": "kala_muhurta_get(chart_id='482012f1-710e-4a25-994a-93821f5871aa', activity_type='business'|'marriage'|'medical', start_date='2026-08-15', end_date='2026-09-14') -- compare factors.dasha_quality and factors.transit_quality per matching window; dasha_quality=0.72 in every window of every domain",
+      "evidence_file": "evidence/kala_muhurta_get__business.json",
+      "severity": "TIER2",
+      "mechanism": "platform/python-sidecar/brahmagyan/phala/muhurta.py:372 (_dasha_quality_for_chart -- no action_type param) and :420 (_transit_quality_for_window -- no action_type param), confirmed called at muhurta.py:814-815/858 without action_type. Contrast with :231 _panchanga_quality_for_action and :468 _signal_activation_for_action, which DO take action_type and produce domain-differentiated scores."
+    },
+    {
+      "id": "F-48",
+      "claim": "The transit_quality field served by kala_elect_get/kala_muhurta_get (20% of composite score) contains no actual planetary transit computation -- it is a lunar-phase approximation plus a static day-of-week lookup table. A SS N.8 earned-signal violation: a signal named 'transit quality' with no transit detector behind it, by the code's own docstring admission.",
+      "reproduce_cmd": "Read platform/python-sidecar/brahmagyan/phala/muhurta.py:420-465 (_transit_quality_for_window); docstring admits 'Full transit computation requires Swiss Ephemeris... simplified seasonal approximation... All values are approximations only'",
+      "evidence_file": "evidence/kala_muhurta_get__business.json",
+      "severity": "TIER2",
+      "mechanism": "platform/python-sidecar/brahmagyan/phala/muhurta.py:420-465"
+    },
+    {
+      "id": "F-49",
+      "claim": "The three remedy surfaces for the native chart DISAGREE on which planet needs remediation. bodha_remedies_get (unfiltered) independently ranks Venus #1/critical priority. kala_upaya_get for domain='marriage' AND domain='health' both return interventions dominated by 50 identical Saturn-targeted rows and never surface Venus at all, because pact_query's diagnosis failed to name a specific targeted graha for marriage, which silently disabled the one filter that could have scoped remedies correctly.",
+      "reproduce_cmd": "bodha_remedies_get(chart_id='482012f1-710e-4a25-994a-93821f5871aa') -> resonance_ranked[0].graha='Venus', priority='critical'. Then kala_upaya_get(chart_id=..., domain='marriage') and domain='health' -> both include 50 identical Saturn-targeted rows, no Venus row in either.",
+      "evidence_file": "evidence/bodha_remedies_get__unfiltered.json",
+      "severity": "TIER1-CORRECTNESS",
+      "mechanism": "platform-mcp/src/lib/kala_upaya_diagnosis.ts:507 -- callPlatformPrimitive('mitigation_map', {chart_id, limit:50}, principal) passes neither domain nor targetedGraha, so this intervention source is structurally domain/graha-blind. Contrast with kala_upaya_diagnosis.ts:508-511 (bodha_rm_prescriptions_get / query_remedies_for_chart), which DO receive targetedGraha -- but that filter silently no-ops to 'return everything' whenever pact_query's diagnosis fails to name a specific graha, exactly what happened for domain='marriage'."
+    },
+    {
+      "id": "F-50",
+      "claim": "bodha_remedies_get's graha-filtered call reports the requested planet as the user's '#1 remedy-priority target' even when that planet is actually one of the chart's STRONGER planets. graha='Saturn' produces narration '#1 remedy-priority target' but the unfiltered call shows Saturn is rank 8-of-9 (nearly the strongest), consistent with D1 Saturn exalted in Libra house 7. Underlying numeric fields are honestly reported alongside, so a careful reader isn't misled, but the narration sentence in isolation overstates priority.",
+      "reproduce_cmd": "bodha_remedies_get(chart_id='482012f1-710e-4a25-994a-93821f5871aa', graha='Saturn') -> narration says '#1 remedy-priority target'; compare ganita_condition_get(facet='dignity') D1_SAT=exalted and bodha_remedies_get unfiltered -> Saturn rank 8 of 9",
+      "evidence_file": "evidence/bodha_remedies_get__saturn.json",
+      "severity": "TIER3",
+      "mechanism": "DIAGNOSIS-INCOMPLETE -- narration-wording observation ('#1 of 1' phrasing under single-graha filter), not traced to a specific file:line."
+    },
+    {
+      "id": "F-51",
+      "claim": "judgment_query's marriage-domain timing_hooks are ALL empty for both charts, and the tool honestly downgrades receipt.timing_anchored=false via judgment_flag -- but this reads as 'no timing evidence exists' when the lord/karaka's Mahadasha IS on file (native: Venus MD 2034-2054, two_pass_verified) and sibling tool assess_marriage, called on the identical chart_id+domain, DOES surface a real dated activating_dasha (Mercury MD 2010-2027). Direct cross-tool contradiction inside one 'when will I marry' journey.",
+      "reproduce_cmd": "judgment_query(chart_id='482012f1-710e-4a25-994a-93821f5871aa', domain='marriage', response_format='v3') -> checklist.timing_hooks all-empty + timing_anchored_forced_false; contrast assess_marriage(chart_id=..., reading_depth='deep_dive') -> activating_dasha.activations[0] has real Mercury MD dates",
+      "evidence_file": "evidence/judgment_query__native_marriage.json",
+      "severity": "TIER1-CORRECTNESS",
+      "mechanism": "CONFIRMED, not a date-window bug: register_d9_judgment.ts:708-738 fetches Venus's real 2034-2054 mahadasha correctly with an explicit 1900-2100 window. Root cause is POST-SERVE BUDGET TRIMMING: judgment_query defaults to a 12KB ceiling (registry_bridge.ts:323). The timing_hooks.current (minKeep:3, :3505-3524) and mahadasha_windows_by_graha (minKeep:4, :3526-3555) trim sections are declared WITHOUT hardFloor:true -- unlike >10 other sections in the same file including bearing_yogas (:3437,3457,3475). Per response_budget.ts:118-131's PASS-2 hard-cap fallback, sections without hardFloor:true get floored to 0 first -- the exact failure mode the code's own comment (response_budget.ts:122-127) says hardFloor exists to prevent, citing bearing_yogas as the worked fix example. timing_hooks was never given the same protection. Direct violation of CLAUDE.md SS N.6 Serving Density Principle point 2."
+    },
+    {
+      "id": "F-52",
+      "claim": "Live confirmation of F-20 (Rahu/Ketu 5th/9th aspect truncation) as a currently-active, concrete distortion in this exact chart's marriage journey: as of 2026-08-15, Ketu transiting Leo casts a real classical 5th aspect onto natal Venus (7th-lord + marriage karaka) and Rahu transiting Aquarius casts a real 9th aspect onto the natal 7th house -- both textbook nodal marriage-timing triggers -- yet gochara_activation_get's one active marriage window shows zero Rahu/Ketu contribution. Not hypothetical: this is F-20 actively suppressing a real, present-day nodal contribution to this chart's own marriage timing.",
+      "reproduce_cmd": "gochara_activation_get(chart_id='482012f1-710e-4a25-994a-93821f5871aa', event_class='marriage', as_of_date='2026-08-15') -> windows[0].term_breakdown.activity_terms lists only Mars/Sun/Jupiter/Venus/Moon, no Rahu/Ketu; cross-check kala_now_get gochara_dual_reference for Rahu=Aquarius/Ketu=Leo positions",
+      "evidence_file": "evidence/gochara_activation_get__native_marriage_today.json",
+      "severity": "TIER1-CORRECTNESS",
+      "mechanism": "Same root cause as F-19/F-20: primitives.py:184-194,208,340 -- SPECIAL_DRISHTI_DEG omits Rahu/Ketu, both call sites fall through to 7th-only _DEFAULT_DRISHTI_DEG. This finding's contribution is the live-chart, present-day concrete confirmation of real impact, not a new mechanism."
+    },
+    {
+      "id": "F-53",
+      "claim": "gochara_forecast_get/gochara_activation_get's domain parameter silently returns a false 'honest zero' when passed domain='marriage' -- a natural value since 'marriage' IS the event_class name -- because 'marriage' is not itself a valid domain (the real domain is 'relationship'), and the not-covered refusal guard only fires for domains that are real-but-uncovered, not for domain values that aren't real domains at all.",
+      "reproduce_cmd": "gochara_forecast_get(chart_id='482012f1-710e-4a25-994a-93821f5871aa', date_range={start:'2026-08-15',end:'2036-08-15'}, domain='marriage') -> window_count=0 with a completed-scan-worded empty_reason; contrast domain='relationship' -> window_count=8, or event_class='marriage' -> window_count=3",
+      "evidence_file": "evidence/gochara_forecast_get__native_domain_marriage_empty.json",
+      "severity": "TIER3",
+      "mechanism": "register_gochara_windows.ts:1090-1117 notCoveredFor(domain, coverage): domains_not_covered is populated only from real brahma_event_ontology.domain values, so an invalid string like 'marriage' never appears in that list and the refusal guard silently returns null, letting the downstream SQL filter produce a misleading zero-row result."
+    },
+    {
+      "id": "F-54",
+      "claim": "kala_muhurta_get cannot serve muhurta candidates for the one genuine gochara marriage window this same journey surfaces (2027-11-11), due to a hard 90-day max query span plus panchanga_daily's rolling ~12-month population horizon. A user told 'your marriage window is around 2027-11-11' cannot get a same-journey muhurta recommendation for it today.",
+      "reproduce_cmd": "kala_muhurta_get(chart_id='482012f1-710e-4a25-994a-93821f5871aa', activity_type='marriage', start_date='2027-10-01', end_date='2027-12-15') -> window_count=0, empty_reason cites panchanga_daily populated window 2026-07-09..2027-07-09; wider span -> 422 'maximum is 90 days'",
+      "evidence_file": "evidence/kala_muhurta_get__native_marriage.json",
+      "severity": "TIER3",
+      "mechanism": "DIAGNOSIS-INCOMPLETE on exact source file:line for the 90-day cap / rolling horizon; confirmed live via verbatim error/empty_reason text."
+    },
+    {
+      "id": "F-55",
+      "claim": "judgment_query's domain resolver does not support 4 of the 13 domain values in the system's own CANONICAL_DOMAINS vocabulary (family, general, transition, travel) -- each call returns is_error:false but with an empty verdict and an embedded content.error, even though 'family' and 'transition' appear as live, high-salience entries in that SAME call's own orientation_context.convergence_domains digest (family convergence_count=5684, 2nd highest of all domains present). The tool's own error message is additionally stale: it lists only 7 domain names, omitting 3 more (moksha, character, residence) the SHASTRA_MAP source actually supports.",
+      "reproduce_cmd": "judgment_query(chart_id='482012f1-710e-4a25-994a-93821f5871aa', domain='family')  # or domain='general'/'transition'/'travel'",
+      "evidence_file": "evidence/judgment_query__family.json",
+      "severity": "TIER2",
+      "mechanism": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts SHASTRA_MAP (~lines 103-139) has no bhava mapping for family/general/transition/travel; BHAVA_TO_DOMAIN reverse-lookup (~162-175) also has no fallback for them. Error message string at ~345-397 is stale relative to the map's actual 10-concept coverage."
+    },
+    {
+      "id": "F-56",
+      "claim": "All 4 assess_* tools (career, health, marriage, wealth) shipped responses 3.5x-4.2x over their own declared 40KB budget ceiling on this exact native-chart call (168,575 / 142,742 / 147,023 / 157,566 bytes). Each response's own judgment_flags includes 'budget_exceeded_after_trim' -- the server KNOWS it exceeded budget and ships the oversized payload anyway. In this audit's MCP client, all 4 calls triggered a hard tool-output token-limit failure requiring a file-based fallback to read; a client without that fallback gets an unrecoverable failure on every assess_* call against this chart, including the two domains (career, marriage) previously verdicted PASS.",
+      "reproduce_cmd": "assess_career(chart_id='482012f1-710e-4a25-994a-93821f5871aa')  # and assess_health / assess_marriage / assess_wealth, all reproduce identically, 100% rate",
+      "evidence_file": "evidence/assess_career__native.json",
+      "severity": "TIER1-CORRECTNESS",
+      "mechanism": "DIAGNOSIS-INCOMPLETE -- root cause not traced to source in this pass (trim logic lives in platform-mcp/src/lib/response_budget.ts per CLAUDE.md SS N.6, not opened to confirm why the trim pass fails to converge for this tool family specifically). Confirmed and reproducible: 4/4 assess_* calls exceed budget by 3.5x-4.2x; judgment_query calls in the same session (12KB budget) never did."
+    },
+    {
+      "id": "F-57",
+      "claim": "For domains education, progeny, and residence, judgment_query's internal gochara_sweep and bodha_signals_get drill_pointer silently resolve to a generic domain='other' bucket instead of the actually-requested domain -- a cross-subsystem domain-vocabulary mismatch between the classical-checklist layer (correctly resolves these to bhava 4/5/4) and the transit-forecast layer underneath. Honestly disclosed via a 'gochara_domain_not_covered' judgment_flag each time -- lesser severity than F-55/F-56.",
+      "reproduce_cmd": "judgment_query(chart_id='482012f1-710e-4a25-994a-93821f5871aa', domain='education')  # check content.gochara_sweep.domain",
+      "evidence_file": "evidence/judgment_query__education.json",
+      "severity": "TIER3",
+      "mechanism": "DIAGNOSIS-INCOMPLETE -- likely the gochara_windows/bodha_signals domain enum does not include education/progeny/residence as first-class values and falls back to 'other'; not traced to exact source line."
+    },
+    {
+      "id": "F-58",
+      "claim": "'moksha' is a fully functional judgment_query domain (bhava 12, D20, verdict_grade=convergent_strong) but does not appear anywhere in the CANONICAL_DOMAINS 13-domain vocabulary that is the actual basis for the system's '13 life domains' claim -- the inverse gap to F-55 (there, canonical domains judgment_query can't serve; here, a working domain absent from the canonical list).",
+      "reproduce_cmd": "judgment_query(chart_id='482012f1-710e-4a25-994a-93821f5871aa', domain='moksha')",
+      "evidence_file": "evidence/judgment_query__moksha.json",
+      "severity": "TIER4",
+      "mechanism": "platform/src/lib/domain_vocabulary.ts CANONICAL_DOMAINS array (13 entries) vs. register_d9_judgment.ts SHASTRA_MAP (10 concepts) -- the two domain vocabularies were never reconciled 1:1. Not a functional bug, a documentation/consistency gap."
+    }
+  ],
+  "tool_count_declared": 125,
+  "tools": {
+    "assess_career": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/assess_career__native_deep_dive.json",
+      "note": "reading_depth=deep_dive on both charts returns a well-formed reconciled bundle: verdict, house/karaka/varga_analysis, activating_dasha, contradictions, plus the W7 reading digest (12 families) + domain_completeness + completeness_directive. Both charts differentiate correctly."
+    },
+    "assess_health": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/assess_health__native_deep_dive.json",
+      "note": "Core response served correctly, but the tool never produces the reading/domain_completeness/completeness_directive fields its siblings (assess_career, assess_wealth) reliably produce, on any chart/budget/depth setting. Root cause: DOMAIN_READING_FAMILIES has no 'health' key. See finding F-14 (TIER1-CORRECTNESS)."
+    },
+    "assess_marriage": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/assess_marriage__native_deep_dive.json",
+      "note": "Same defect class as assess_health: content.domain resolves to 'relationship', and DOMAIN_READING_FAMILIES has no 'relationship' key either, so reading/domain_completeness/completeness_directive never appear. See finding F-15 (TIER1-CORRECTNESS)."
+    },
+    "assess_wealth": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/assess_wealth__native_deep_dive.json",
+      "note": "reading (13 families) + domain_completeness + completeness_directive + leverage_index_by_graha all present and well-formed on both charts at multiple budget settings."
+    },
+    "bodha_bundle_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/bodha_bundle_get__native_primary.json",
+      "note": "This was a pre-existing GAP from before the current session with no finding ever logged -- closed now. Confirmed reproducible on both charts: status='degraded', 5 of 7 subsystems (MSR, CGM, LEL, PANCHANG, DASHA) error inside the bundle every time, leaving only UCN/RM/CDLM fired. The failure is honestly disclosed (b11_floor_passed:false, sub_errors_note explains the read is not exhaustive) -- not a silent laundering -- but the aggregate whole-chart-read capability itself is broken for both ground-truth charts. See finding F-30 (TIER1-CORRECTNESS)."
+    },
+    "bodha_chart_digest_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/bodha_chart_digest_get__zero_deep_dive.json",
+      "note": "mode/reading_depth contract works as documented; deep_dive forces full response, honestly trimmed by budget with correct trim_report/drill_pointers naming the right recovery instrument. Native and zero-history show real, differentiated digests."
+    },
+    "bodha_discoveries_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/bodha_discoveries_get__native_wealth_minsalience.json",
+      "note": "The tool's documented primary field 'discoveries' (and total/returned/min_salience_filter_applied) is always empty/zero on both charts and any filter value, even though real matching data exists one nesting level deeper in the back-compat content.content.rows (29-193 real rows). min_salience has zero observable effect on the primary field. See finding F-16 (TIER1-CORRECTNESS)."
+    },
+    "bodha_domain_reading_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/bodha_domain_reading_get__native_relationship_lens_pagination.json",
+      "note": "lens_limit/lens_offset pagination verified correct including an empty-page boundary case. domain filter demonstrably changes ranked_signals/question_lenses/cdlm_cells. Zero-history chart shows real, differentiated, domain-appropriate data."
+    },
+    "bodha_graph_subgraph_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/bodha_graph_subgraph_get__native_paths_10thlord_moon.json",
+      "note": "Core functionality correct (10th-lord-to-Moon one-call gate resolves correctly, neighbors mode works). But trim_report/drill_pointers.recover_via.instrument is the literal placeholder 'unknown_tool' instead of the real tool name whenever a response is trimmed. See finding F-17 (TIER3)."
+    },
+    "bodha_graph_traverse_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/bodha_graph_traverse_get__native_paths_10thlord_moon.json",
+      "note": "Same defect class as bodha_graph_subgraph_get: core traversal correct, but recover_via.instrument reads 'unknown_tool' when trimmed. See finding F-18 (TIER3)."
+    },
+    "bodha_mechanisms_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/bodha_mechanisms_get__native_chain_circuit_only.json",
+      "note": "chain_circuit_only, valence, and default filters all demonstrably change served rows and facets. Zero-history chart shows real, differentiated mechanism data."
+    },
+    "bodha_quality_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/bodha_quality_get__native_primary.json",
+      "note": "Valid chart_id on both charts; scorecard + live-derived defect_001 orphan-ref tracking confirmed real (differs meaningfully between charts). limit/offset are vestigial (singleton-object endpoint) but not a functional defect."
+    },
+    "bodha_remedies_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/bodha_remedies_get__native_primary.json",
+      "note": "GAP: prescription_count=27 vs 13 actual post-trim prescriptions array (resonance_count=9 correctly matches its untouched array, confirming the mismatch tracks specifically with the trimmed array). Real recover_via. See finding F-45 (TIER2)."
+    },
+    "bodha_signals_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/bodha_signals_get__native_primary.json",
+      "note": "GAP: verdict_summary.served_count=200 while content.signals shipped only 20 post-trim, with no disclosure the summary count predates the generic trimmer. See finding F-45 (TIER2)."
+    },
+    "catalog_assets_all": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/catalog_assets_all__primary.json",
+      "note": "Global scope confirmed (no chart_id param). Filters real. Confirmed true alias of catalog_assets_list (byte-identical under identical filters) -- intentional per documented 'same as' relationship, not a hidden defect."
+    },
+    "catalog_assets_l0": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/catalog_assets_l0__primary.json",
+      "note": "Global scope confirmed; correctly layer-locked to L0/brahmagyan assets; is_active filter verified real."
+    },
+    "catalog_assets_list": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/catalog_assets_list__primary.json",
+      "note": "GAP: live-reproduced 'unknown_tool' placeholder recover_via bug (same defect class as F-17/F-18) on a tool other than the two previously confirmed. See finding F-43 (TIER2)."
+    },
+    "catalog_chart_select": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/catalog_chart_select__native.json",
+      "note": "Tested both charts (zero-history: evidence/catalog_chart_select__zero_history.json). Both returned ok:true with chart_id, display_name, session_key, provenance_stamp, and honest advisories. Matches stated purpose."
+    },
+    "catalog_charts_list": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/catalog_charts_list__p0_catalog.json",
+      "note": "Confirmed global/session-level (empty param schema); returns both ground-truth charts correctly labeled."
+    },
+    "chart_snapshot": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/chart_snapshot__native_primary.json",
+      "note": "vargas[] additive param and include_navamsa verified on both charts with independently-computed varga-specific lagnas; non-standard varga code (D100) honestly flagged in unresolved_vargas with a specific reason rather than silently dropped."
+    },
+    "dossier": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/dossier__native_primary.json",
+      "note": "receipt=true one-call gate satisfaction verified (100% coverage, OPEN gate, honest over-budget self-flag). Cursor paging mechanically verified real across 2 pages. Small budget_kb produces atomic 1-concept pages with an honest judgment_flag explaining why -- a boundary-test artifact, not a defect."
+    },
+    "find_verses_about": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/find_verses_about__whitelist_reject.json",
+      "note": "Valid-argument call (topic='exalted Mars in tenth house', top_k=3) fails every time: 'Tool not in surgical whitelist: find_verses_about'. Part of the F-02 4-tool whitelist-wiring class. See finding F-02."
+    },
+    "ganita_av_transit_gating_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_av_transit_gating_get__native_primary.json",
+      "note": "mode=kakshya_windows (previously untested) exercised fully -- honest empty result with specific, chart-consistent reason plus methodology disclosure. sav_bav_gating house filter verified mathematically correct via lagna-relative resolution."
+    },
+    "ganita_ayurdaya_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_ayurdaya_get__native_method_pindayu.json",
+      "note": "method=PINDAYU (native) and full unfiltered call (zero-history) both return distinct, internally-consistent longevity data with honest count/total_matching/more_available fields."
+    },
+    "ganita_chart_facts_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_chart_facts_get__native_panchanga_full.json",
+      "note": "Full FORENSIC 7/7 cross-checked against live output: Sun=Capricorn, Moon=Purva Bhadrapada (via dasha lord + KP RP_MOON_STAR_LORD), Lagna=Aries, Tithi=Shukla Tritiya, Vara=Ravivara, Yoga=Shiva, Karana=Garaja -- all match exactly. Filters honored; honest empty_reason on no-match query."
+    },
+    "ganita_concept_locate": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_concept_locate__gulika_hit.json",
+      "note": "Re-verified with valid single-arg call (original PARTIAL was a strict-schema rejection of an invalid extra param, not a defect). Alias hit resolves correctly; genuine miss returns honest empty_reason naming what was checked."
+    },
+    "ganita_condition_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/ganita_condition_get__native_dignity_limit3_total_bug.json",
+      "note": "dignity/avasthas/karakas facets serve real data, but the dignity facet's disclosed 'total' is min(limit, row_count), not a real COUNT(*) -- confirmed via limit=3 (total:3) vs limit=25000 (total:563, true value). See finding F-12 (medium)."
+    },
+    "ganita_dasha_lord_capability_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_dasha_lord_capability_get__native.json",
+      "note": "Re-verified with chart_id-only (actual required schema -- original PARTIAL was a strict-schema rejection of invalid params). All 9 grahas with deterministic warning_tier, honest judgment_flags, differing correctly across charts."
+    },
+    "ganita_dasha_periods_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_dasha_periods_get__native_asof_birthdate_forensic.json",
+      "note": "system=yogini/vimshottari both honored. as_of_date=birth correctly returns Jupiter as birth Mahadasha lord, matching classical expectation for Purva Bhadrapada Moon -- real forensic cross-check pass."
+    },
+    "ganita_dashas_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_dashas_get__native_gate_shape_today.json",
+      "note": "Gate-target shape returns correct current-dasha row (Mercury MD, matches ganita_dasha_periods_get). Default call trims 90->45 with honest trim_report; total unaffected by trim, unlike the ganita_condition_get bug."
+    },
+    "ganita_database_schema_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/ganita_database_schema_get__native_paginated.json",
+      "note": "Real recover_via tool name (correct on the unknown_tool axis), but GAP: no budget_kb_applied field despite genuine trimming, corroborating the ganita_planet_get budget-echo gap. See finding F-46 (TIER3)."
+    },
+    "ganita_kp_cusps_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_kp_cusps_get__native_with_graha_lords_forensic.json",
+      "note": "Re-verified with chart_id + include_graha_kp_lords=true. All 12 cusps, full KP chains present. House-1 sign matches FORENSIC Lagna=Aries; RP_MOON_STAR_LORD=Jupiter consistent with Moon=Purva Bhadrapada."
+    },
+    "ganita_medical_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_medical_get__native_graha_filter.json",
+      "note": "graha=Saturn filter correctly narrows to 1 row with honest total_matching/count/more_available. Disclaimer and indication_tier fields present."
+    },
+    "ganita_nakshatra_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_nakshatra_get__native_primary.json",
+      "note": "chart_id-only call returns real Tara Bala (9-fold) and Chandra Bala data for both charts."
+    },
+    "ganita_natal_positions_compute": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_natal_positions_compute__native_valid_birthdata.json",
+      "note": "Re-verified with real birth data (prior call used dummy date + invalid params). Independently reproduces all 7 FORENSIC anchors via PyJHora sidecar -- genuine deterministic compute-path, cross-validates rather than contradicts L1, B.10 compliant."
+    },
+    "ganita_planet_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/ganita_planet_get__native_moon_valid.json",
+      "note": "GAP: 6 sections genuinely trimmed with correct real recover_via names, but budget_kb_applied/budget_kb_requested never echoed and top-level drill_pointers never populated -- uses the weaker applyAutoBudgetToEnvelope path instead of finalizeMcpBudget. See finding F-46 (TIER3)."
+    },
+    "ganita_positions_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_positions_get__native_frame_chandra.json",
+      "note": "Default page and frame=chandra re-basing both verified with hand-checked arithmetic. Confirms Lagna=Aries, Moon=Aquarius/Purva Bhadrapada, Sun=Capricorn FORENSIC anchors."
+    },
+    "ganita_sade_sati_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_sade_sati_get__native_primary.json",
+      "note": "Valid chart_id-only call returns substantive Sade Sati data with real dates for both charts, spanning all 15 documented period categories."
+    },
+    "ganita_sensitive_degrees_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_sensitive_degrees_get__native_primary.json",
+      "note": "sarvatobhadra_vedha data; nakshatra_by_graha.Moon='Purva Bhadrapada' independently cross-checks the FORENSIC anchor. Both charts tested."
+    },
+    "ganita_special_lagnas_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_special_lagnas_get__native_valid.json",
+      "note": "Re-verified with chart_id (prior call omitted it). 119 facts, category_receipts confirmed, every row two_pass_verified with formula_provenance_text. Notes several entries replaced formerly-fabricated proxy formulas -- positive B.10 signal."
+    },
+    "ganita_strength_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_strength_get__native_primary.json",
+      "note": "Valid chart_id-only call returns substantive Shadbala/Vimsopaka/Ishta-Kashta data for both charts."
+    },
+    "ganita_structural_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_structural_get__native_dosha_fires_v3.json",
+      "note": "Re-verified with valid facets (prior call used an out-of-enum facet). v3 chart_header reproduces 3 FORENSIC anchors. Kala Sarpa verdict internally consistent with stored positions. catalog_only rows correctly flagged separately per SS N.6."
+    },
+    "ganita_tajaka_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_tajaka_get__native_varsha42.json",
+      "note": "Real Tajaka/Varshaphala computation, solar-return ephemeris converged <0.0002deg, two_pass_verified. Honestly discloses when Panchavargiya vs Tajik-classical year-lord methods disagree rather than silently resolving."
+    },
+    "ganita_transit_anchors_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_transit_anchors_get__native_full45.json",
+      "note": "Re-verified with valid args on both charts. Complete 9-graha natal anchor substrate including rahu/ketu with correct data. Raw positional substrate only, no aspect computation -- R24 not applicable here."
+    },
+    "ganita_vastu_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_vastu_get__native_ketu_filter.json",
+      "note": "graha=Ketu returns 0 rows -- cross-checked against ga_vastu_writer.py:51 which explicitly documents 'Ketu: intentionally omitted -- no canonical direction per Mayamata'. Deliberate, classically-grounded design, not a bug. Not an aspect surface, out of R24 scope."
+    },
+    "ganita_vichara_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_vichara_get__native_leverage_career.json",
+      "note": "family=leverage_index + domain=career filters verified real. No RAH/KET rows in leverage_index, consistent with house-lordship-derived weighting (nodes aren't house lords). Not an aspect surface, out of R24 scope."
+    },
+    "ganita_yoga_firings_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/ganita_yoga_firings_get__native_all_true.json",
+      "note": "all=true full ledger correct; neecha_bhanga_raja_yoga fires correctly with complete grounds_jsonb. Code inspection surfaced a real R24-class defect in the Vipareeta Raja Yoga dilution check, latent (not yet manifesting) for the two ground-truth charts. See finding F-19 (medium)."
+    },
+    "ganita_yogas_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ganita_yogas_get__native_v3_all_true.json",
+      "note": "response_format=v3 + all=true correctly serves density-layered envelope; pancha_mahapurusha cross-checked against transit-anchor data (Saturn exalted kendra -> Sasa formed, correct). Single-pass catalog surface, doesn't itself compute drishti -- cross-references the firings surface where F-19 actually lives."
+    },
+    "get_graha_yuddha": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/get_graha_yuddha__native_ayanamsha_filter.json",
+      "note": "Empty pairs=[] confirmed honest (no tara-graha pair within 1 degree at birth). Graha yuddha is conjunction-based, restricted to 5 tara grahas by classical definition -- Rahu/Ketu correctly excluded, R24 not applicable."
+    },
+    "gochara_activation_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/gochara_activation_get__native_valid_asof.json",
+      "note": "Re-verified with valid as_of_date; well-formed envelope. Confirmed a real, systemic R24 defect shared across all three gochara_* tools (same primitive/table). See findings F-20 (high) and F-21 (medium, DIAGNOSIS-INCOMPLETE)."
+    },
+    "gochara_election_avoidance_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/gochara_election_avoidance_get__native_valid_daterange.json",
+      "note": "Original PARTIAL was a caller-arg defect (date_range passed as string, not {start,end} object) -- resolved with correct args on both charts (zero-history: evidence/gochara_election_avoidance_get__zero_valid_daterange.json). Tool works correctly with valid args but inherits the shared F-20 defect."
+    },
+    "gochara_forecast_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/gochara_forecast_get__native_valid_daterange.json",
+      "note": "Same caller-arg fix as gochara_election_avoidance_get, verified on both charts. Works correctly on valid args but inherits the shared F-20/F-21 defects."
+    },
+    "graha_portrait": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/graha_portrait__native_rahu.json",
+      "note": "Re-verified with graha=Rahu and graha=Ketu explicitly. Both portraits correct (position/dignity/strength/avasthas/dashas/cgm_neighborhood populate correctly, e.g. Rahu exalted Taurus H2). functional_nature zero_rows for nodes traced to ga_structural_writer.py:135 CLASSICAL_GRAHAS scope (7 planets only), honestly disclosed via completeness='zero_rows', not a silent failure."
+    },
+    "intent_classify": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/intent_classify__revalid.json",
+      "note": "Schema is query-only (confirmed: the earlier PARTIAL was a strict-schema rejection of extraneous limit/offset, not a defect). Re-verified with two realistic natural-language questions. intent:unknown+fallback is INTENDED design (INTENT_RULES only fire on literal technique vocabulary like dasha/transit/yoga/bala, per DR-8). BUT domains defaulting to [\"general\"] is a real, reproducible gap: DOMAIN_RULES (intent_scope_classifier.ts:178-189) uses stale non-plural regexes that miss \"married\" and \"jobs\" (plural), while a parallel already-fixed list DEEP_DOMAIN_WORD (lines 232-233) contains the correct patterns and fires separately (explaining route:deep) but never feeds scope_tuple.domains. See finding F-19."
+    },
+    "judgment_query": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/judgment_query__revalid.json",
+      "note": "Re-verified with valid required domain param (marriage) on both charts, v3 envelope. Verdicts are correctly chart-differentiated by real D9 dignity (native Venus debilitated -> contested/-3.5; zero-history Venus exalted -> convergent_moderate/+1.9). Honest gap disclosure via judgment_flags (timing_anchored_forced_false, varga_confirmed_forced_false) rather than fabricated affirmative receipts \u2014 compliant with N.7."
+    },
+    "kala_ahead_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/kala_ahead_get__revalid.json",
+      "note": "Re-verified with chart_id only (valid schema; earlier PARTIAL was a strict-schema rejection of limit/offset which are not in this tool schema). Real forward-window/projection data both charts; period_echo genuinely cross-references real LEL events for the native chart (64-event history) and honestly reports 0 LEL-corroborated occurrences for the zero-history chart \u2014 a working, exercised LEL feature, contrasting with kala_life_arc_get's unwired one."
+    },
+    "kala_bundle_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/kala_bundle_get__revalid.json",
+      "note": "Re-verified with chart_id + valid date_range object (earlier PARTIAL was a strict-schema rejection: start/end/limit/offset at top level are not in schema, only nested date_range.start/end). Real dasha timeline/convergence/obstruction/snapshot for both charts; honest null kala_readiness.score with explicit reason for the zero-history chart (no confluence window)."
+    },
+    "kala_dasha_sandhi_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/kala_dasha_sandhi_get__revalid.json",
+      "note": "Re-verified with chart_id only (valid schema). Tool is COMPLETELY BROKEN for both charts: returns empty boundaries with \"L1 dasha registry ... could not be dispatched this call.\" Proven to be a real dispatch failure, not data absence: kala_now_get, called on the same charts in the same session, successfully serves a fully-populated dasha_sandhi field sourced from the SAME chart_dashas table. Root cause (dasha_sandhi.ts / register_all.ts:64): registerDashaSandhiCalendar is registered WITHOUT the real per-connection Principal (unlike every sibling kala_* tool), so it falls back to a hardcoded fake system principal that fails entitlement/key lookup against /api/retrieval/capability; the resulting error is silently swallowed into a generic honest-empty message. See finding F-20."
+    },
+    "kala_elect_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/kala_elect_get__revalid_native.json",
+      "note": "Re-verified with real undertaking=\"business\" (Mode-3 electional, per assignment \"sign a business contract\") + valid date_range, both charts (zero-chart response: evidence/kala_elect_get__zero_revalid.json). Rich, honest election responses: ranked candidates with gold/silver/bronze tiers, full do\u1e63a/parih\u0101ra lattice adjudication with citations, Pareto frontier, and extensive honest coverage gaps (tara_bala/muhurta_lagna_strength/janma_micro_rules all correctly report honest_empty when native_janma_nakshatra is not supplied, rather than fabricating)."
+    },
+    "kala_explain_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/kala_explain_get__revalid.json",
+      "note": "Re-verified with chart_id + domain=\"marriage\" (bhava/domain required, missing in earlier PARTIAL call). Cross-tool coherence CONFIRMED: kala_explain_get's PROMISE-stage verdict_grade/composite_score for both charts EXACTLY matches judgment_query's own verdict, proving it correctly chains off (not independently re-derives) the PACT protocol. KP-vs-Parasari school dissent surfaced honestly as a named disagreement, not silently resolved."
+    },
+    "kala_life_arc_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/kala_life_arc_get__lel_gap.json",
+      "note": "Original PARTIAL evidence already used valid schema args (this tool uniquely accepts limit/offset) and returned real, non-error parva data for both charts \u2014 re-examined specifically for the tool's own advertised LEL cross-link feature. GAP confirmed: description promises \"cross-links to LEL events that fell within that Parva\" and include_lel_events defaults to true, but NO lel_events field appears anywhere in either chart's response, including the native chart with 64 real LEL events spanning the returned parvas. Code confirms: query_life_arc.ts never reads include_lel_events, the SQL only selects kala_jivana_parva with no LEL join, and the descriptor itself declares lel_capable:false. See finding F-21."
+    },
+    "kala_muhurta_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/kala_muhurta_get__revalid.json",
+      "note": "Re-verified with chart_id + activity_type=\"marriage\" + start_date/end_date (earlier PARTIAL was a strict-schema rejection of limit/offset). Real, chart-differentiated 15-window muhurta calendar for both charts (dasha_quality and tara_bala genuinely differ per chart's own natal dasha/nakshatra) with honest adverse-t\u0101r\u0101 flagging on inauspicious windows."
+    },
+    "kala_now_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/kala_now_get__revalid.json",
+      "note": "Re-verified with chart_id only (valid schema; earlier PARTIAL was a strict-schema rejection of limit/offset). Extremely rich, honest 18-concept NOW envelope for both charts; correctly serves null darshana/sudarshana_varsha for the zero-history chart rather than fabricating. Notably, this tool's own dasha_sandhi sub-field works correctly and sources the same L1 chart_dashas data that the STANDALONE kala_dasha_sandhi_get tool fails to dispatch to \u2014 the key contradicting evidence for the F-20 finding."
+    },
+    "kala_priority_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/kala_priority_get__native_valid_career.json",
+      "note": "Prior PARTIAL was a strict-schema rejection of unsupported limit/offset (tool uses top_k). Re-tested with valid args on both charts (zero-history: evidence/kala_priority_get__zero_valid.json). Rich argument-shaped readings, coverage honestly not_in_corpus where applicable, domain_filter correctly applied, per-chart field_hash differs correctly."
+    },
+    "kala_priority_ranking_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/kala_priority_ranking_get__native_primary.json",
+      "note": "GAP: top_k=100 on zero-history chart, content.signal_count=100 vs 50 actual post-trim ranked_signals, with no disclosure. Real recover_via. See finding F-45 (TIER2)."
+    },
+    "kala_projections_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/kala_projections_get__native_primary.json",
+      "note": "Schema includes limit/offset; original calls already succeeded on both charts with real probabilistic projections including falsifiability blocks."
+    },
+    "kala_ritual_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/kala_ritual_get__native_mode2_sky_pattern_spec.json",
+      "note": "Mode 1 and Mode 2 core logic both correct -- honest 5-factor score vectors, never zero-filled. Mode 2 confirms F-11 (query_kala_paddhati_profile unreachable) but degrades HONESTLY via unavailable_reason, not silently. New defect: no budget_kb/size-control param on this tool's schema -- Mode 1 and Mode 2 responses reached 570KB and 1.3MB respectively, exceeding normal client token limits, unlike sibling kala_story_get which has budget_kb and demonstrably trims. See finding F-13 (TIER2)."
+    },
+    "kala_story_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/kala_story_get__native_valid_topk20.json",
+      "note": "PASS under default/budget_kb=8, but GAP under extreme budget pressure (budget_kb=2): trim_report self-collapses, hiding chapters silently zeroed (91->0) while chapter_count still reads 91, and falls back to a non-real recover_via instrument 'response_format:legacy'. See finding F-44 (TIER2)."
+    },
+    "kala_upaya_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/kala_upaya_get__native_career.json",
+      "note": "chart_id+domain=career, plain read. Full UPAYA-SETU envelope: PACT diagnosis (honest no_lever), 78 interventions correctly tagged targets_link:null, efficacy_report honest_empty. Suspected dup-label defect investigated and confirmed NOT a bug (distinct source_pk/window per row, wording repeats only because severity/magnitude combo repeats)."
+    },
+    "kala_windows_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/kala_windows_get__native_primary.json",
+      "note": "GAP: on zero-history chart, activation_count=500 vs 5 actual post-trim activations, with no disclosure. Real recover_via (PASS on that sub-axis). See finding F-45 (TIER2)."
+    },
+    "kala_yoga_activation_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/kala_yoga_activation_get__native_primary.json",
+      "note": "Schema includes limit/offset; original calls already succeeded on both charts with real activated_yogas data including constituent_fact_ids and classical citations."
+    },
+    "list_classical_texts": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/list_classical_texts__whitelist_reject.json",
+      "note": "No-arg call (valid per schema -- empty input) fails every time: 'Tool not in surgical whitelist: list_classical_texts'. Part of the F-02 4-tool whitelist-wiring class (read_classical_text.ts registers this tool but its MCP-facing name was never added to MCP_TO_RETRIEVAL_TOOL). See finding F-02."
+    },
+    "list_entities": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/list_entities__entity_class_planet.json",
+      "note": "Original call already succeeded (737 total entities). Re-tested with entity_class=planet filter: correctly scoped to 11 planet-class entities, filters echoed correctly."
+    },
+    "mcp_server_info": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/mcp_server_info__reverify_with_client_catalog_version.json",
+      "note": "Re-verified live: tool_count=125, catalog_version matches ground truth exactly. client_catalog_version staleness-check path (EL-13) correctly returns stale=false. No live defect."
+    },
+    "mechanism_retrodiction_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/mechanism_retrodiction_get__native_valid_both_levels.json",
+      "note": "Prior PARTIAL was a strict-schema rejection of unsupported offset param. Re-tested with valid args on both charts (zero-history: evidence/mechanism_retrodiction_get__zero_valid.json). Native returns real house-lord/dasha-activation mechanism data with honest unmapped/not_confirmed buckets; zero-history honestly empty with explicit empty_reason matching the documented 2020-01-01 cutoff policy."
+    },
+    "mimamsa_calibration_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/mimamsa_calibration_get__valid_domain_native.json",
+      "note": "Re-verified with valid args (chart_id + domain). Two real defects found (F-19, F-20): (1) `domain` filter is a complete no-op -- identical result_hash with/without it, confirmed by tracing the handler which never reads domain/limit/offset at all. (2) Response content is unconditionally hard-truncated to ~120 chars by the generic response-budget trimmer with no override param exposed on this tool, so verdict_distribution/reliability_curve/multipliers/qa_results are practically unrecoverable through the MCP tool -- DB cross-check (mimamsa_calibration table) confirms real, non-trivial data (57 rows: 25 UNRESOLVED/23 PARTIAL/7 REFUTED/2 CONFIRMED) exists but is inaccessible via this tool."
+    },
+    "mimamsa_insight_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/mimamsa_insight_get__valid_native.json",
+      "note": "Re-verified with valid args (chart_id + top_k, no limit/offset -- those are rejected by the real schema with unrecognized_keys, confirming the prior PARTIAL call's failure was a caller error, not a tool defect). With valid args the tool returns rich, substantive insight_units (verdict_object, retrodiction, load_bearing rows with real grades/salience/tradition_concordance). However found a real defect (F-21): calibration_summary.confirmed/partial/denied are always '0'/'0'/'0' due to a case-sensitivity bug in the underlying SQL FILTER clauses, verified against real DB data showing 2 CONFIRMED / 23 PARTIAL / 7 REFUTED for the same chart."
+    },
+    "mimamsa_lel_query": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/mimamsa_lel_query__valid_tests.json",
+      "note": "Re-verified with valid args (chart_id, optionally query/limit). Baseline (no query) correctly returns 64/64 life events. `query` param does real, honest ILIKE AND-semantics substring search across 5 text columns (verified: 'stammering' correctly returns exactly the 2 matching events). A multi-word query can honestly return zero hits if any one word isn't literally present in the corpus (e.g. 'marriage relationship events' returns 0 because 'events' isn't in any row) -- this is documented, intentional behavior (code comment cites WP-B1 F-LEL-NOOP fix), not a defect, though the schema description 'Natural language life-event query' somewhat overstates what is actually a literal-substring AND match."
+    },
+    "mimamsa_outcome_record": {
+      "verdict": "NOT-APPLICABLE",
+      "evidence_file": null,
+      "note": "Confirmed WRITE via schema inspection (not invoked, per campaign safety directive). Description: '[Phase-1 alias] Record an outcome against a prediction (same as record_outcome).' Params: chart_id, prediction_id, outcome, verdict (enum confirmed/partial/denied). Records real prediction-outcome data into the production calibration loop -- the synthetic-data-into-real-calibration-loop defect class CLAUDE.md SS N.8 warns against. Excluded from this read-only sweep."
+    },
+    "pact_query": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/pact_query__valid_domain_native_and_zero.json",
+      "note": "Re-verified with valid args (chart_id + domain -- the prior PARTIAL call omitted both domain and bhava, which the tool correctly rejects as a validation error, confirming that was caller error not a tool defect). Native chart marriage query correctly halts at denied_at_promise per B.10 no-fabrication-past-denial design. Zero-history chart career query correctly runs the full 4-stage chain to chain_complete with an honestly-disclosed sidereal-conversion gap at the TRIGGER stage. Both responses are substantive, well-grounded (60-75 resolvable L1 fact_ids), and self-consistent."
+    },
+    "phala_anchors_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/phala_anchors_get__valid_native_and_zero.json",
+      "note": "Re-verified with valid args (chart_id + date_range object -- the prior PARTIAL call used non-existent limit/offset params, correctly rejected). Both charts return rich, well-formed anchor data with structured falsifiers, derivation ledgers, and causal chains (native: 27 anchors trimmed to 13 with a clear recover_via hint; zero-history: 6 anchors, no trim needed). Minor schema/implementation mismatch noted: the MCP schema does not mark date_range as required, but the underlying sidecar 422s without it -- an honest typed rejection, not silently wrong data, so this does not rise to a GAP."
+    },
+    "phala_mitigation_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/phala_mitigation_get__native_no_domain.json",
+      "note": "Tested with/without domain=career on native (evidence/phala_mitigation_get__native_domain_career.json) and once on zero-history (evidence/phala_mitigation_get__zero_no_domain.json). The domain parameter is a complete silent no-op -- byte-identical result_hash with/without it. See finding F-08 (TIER2)."
+    },
+    "phala_outlook_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/phala_outlook_get__native_default.json",
+      "note": "chart_id only (horizon_months defaults 12). Composite outlook itself well-formed, richly cited, correct. Low-severity defect in recover_via hint metadata -- see finding F-09 (TIER4, shared root cause with plan_retrieval)."
+    },
+    "phala_predictive_anchors_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/phala_predictive_anchors_get__native_top5.json",
+      "note": "chart_id+top_k=5 both charts (zero-history: evidence/phala_predictive_anchors_get__zero_top5.json). Non-empty well-formed anchor arrays with magnitude/confidence_band/posterior/posterior_provenance (honest base_rate_source, never fabricated N), falsifier text."
+    },
+    "phala_rectification_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/phala_rectification_get__native_top5.json",
+      "note": "chart_id+top_k on native (zero-history observed live, not separately saved). Candidate birth times, LEL-fit scoring with honest non_discriminating flag, D43 NO-AUTO-OVERRIDE note. Suspicious identical 'Aries x3' competing_candidates cross-checked via read-only SQL against phala_rectification_best/phala_rectification tables -- confirmed genuine (both charts' lagna at +/-5min offsets really is Aries), not a bug."
+    },
+    "plan_retrieval": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/plan_retrieval__native_career.json",
+      "note": "chart_id+question, no scope_tuple (coarse-keyword fallback path). Read-only, no writes. Well-formed retrieval plan with honest fallback_recommended flagging and CR-tagged dark floor items. Same recover_via defect as phala_outlook_get -- see finding F-09."
+    },
+    "prashna_ask": {
+      "verdict": "NOT-APPLICABLE",
+      "evidence_file": null,
+      "note": "Excluded per read-only safety directive. Description confirms it creates server-side job state and dispatches a broad multi-tool synthesis pipeline with no dry-run/preview flag (platform-mcp/src/lib/job_registry.ts + platform/src/lib/pipeline/prashna_ask_synthesis.ts). Not invoked."
+    },
+    "prashna_status": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/prashna_status__nonexistent_job.json",
+      "note": "Called with a well-formed but never-issued job_id (safe read, no mutation). Returned a clear, well-formed error matching the tool's own description verbatim."
+    },
+    "prashna_undertaking_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/prashna_undertaking_get__native_career.json",
+      "note": "Tested both charts (zero-history/health: evidence/prashna_undertaking_get__zero_health.json). prashna_verdict honestly empty on both (neither is a real horary chart, as expected). composite score/fructification_anchors/fructification_rules correct. election_windows is NOT domain-filtered at all despite a code comment claiming it is -- real TIER1 correctness defect. See finding F-10."
+    },
+    "read_chapter": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/read_chapter__bphs_ch1.json",
+      "note": "Valid-argument call (text_id='bphs', chapter=1) returns a hard 400 error every time: 'Tool not in surgical whitelist: read_chapter'. Registered end-to-end at MCP layer but platform primitives whitelist check never recognizes the name. 100% failure rate for any argument. See finding F-02."
+    },
+    "read_classical_text": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/read_classical_text__purva_bhadrapada_query.json",
+      "note": "Valid semantic query returned 5 well-formed hybrid vector+keyword search results with real citation_ref/verse_ref/chapter/verse_text_en/source_citation from BPHS, Hora Sara, Brihat Jataka, Brihat Samhita. Content topically on-point."
+    },
+    "reading_notes_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/reading_notes_get__native.json",
+      "note": "Tested both charts. Native returned has_notes:true with substantial structured reading-notes appendix. Zero-history returned has_notes:false with honest empty note (evidence/reading_notes_get__zero_history.json)."
+    },
+    "ref_aspects_at_time_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_aspects_at_time_get__primary.json",
+      "note": "Prior evidence (date=2026-08-15) already used valid, well-formed args and returned correct, ayanamsha-invariant aspect data (Jupiter-Mercury conjunction, Rahu-Ketu opposition) with plausible longitudes. Re-adjudicated: no defects found."
+    },
+    "ref_classical_citation_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_classical_citation_get__valid_topic.json",
+      "note": "Re-verified with valid schema args (topic='marriage' -- the prior PARTIAL call used a non-existent 'citation_id' param, correctly rejected by the schema, confirming caller error not a tool defect). Returns real, topically relevant hybrid vector+keyword search results (Muhurta Chintamani marriage-timing verses) with plausible vector/keyword/combined scores."
+    },
+    "ref_dasha_systems_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/ref_dasha_systems_get__wiring_gap.json",
+      "note": "Re-adjudicated the prior PARTIAL evidence (system filter via classical-text fallback). Found a real, well-evidenced wiring gap (F-22): structured_filter_applied:false with a fallback_reason falsely claiming no structured table exists, returning topically-irrelevant Muhurta Chintamani wedding-dosha verses for a Vimshottari query -- while a live, fully-populated (20 rows) structured table (brahma_dasha_systems, verified correct for Vimshottari's 120-year sequence) exists AND a complete, correct, already-registered-and-tested capability (query_dasha_systems) querying it already exists in the codebase, unused by this tool."
+    },
+    "ref_dignity_reference_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_dignity_reference_get__primary.json",
+      "note": "Prior evidence (planet='sun', limit=10) already used valid args and correctly returned structured_filter_applied:true with real bg_dignity_reference row data (exaltation/debilitation/moolatrikona for Sun). Handler code confirmed to correctly query the structured table directly (register_p1_reference.ts:326-346) -- this is the exemplar of how ref_nakshatra_get/ref_dasha_systems_get should have been wired. No defects found."
+    },
+    "ref_doshas_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_doshas_get__primary.json",
+      "note": "Prior evidence (limit=10) already used valid args and returned rich, real structured dosha catalog rows (formation_rule_jsonb, effects_text, severity_grades, cancellation_conditions, classical_citations) for kala_sarpa/angarak/badhaka/balarishta doshas. The 'hollow_envelope_shape_not_evaluated' judgment_flag is a cosmetic self-diagnostic limitation (the generic envelope-flag deriver doesn't look inside the nested content.content.rows shape) not a functional defect -- real data is present and correct underneath."
+    },
+    "ref_entities_list": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_entities_list__primary.json",
+      "note": "Prior evidence (entity_class='graha', limit=10) already used valid args and correctly returned 10 of 11 total planet-class entities (ascendant, jupiter, ketu, mars, mercury, midheaven, moon, rahu, saturn, sun -- venus alphabetically past the limit=10 cutoff, confirming pagination works correctly, not a bug)."
+    },
+    "ref_entity_resolve": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_entity_resolve__primary.json",
+      "note": "Prior evidence (name='Saturn') already used valid args and correctly resolved to canonical_id='saturn' with full synonym list, description, and source_citation. No defects found."
+    },
+    "ref_ephemeris_year_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_ephemeris_year_get__primary.json",
+      "note": "Prior evidence (year=2026) already used valid args and returned real Swiss-Ephemeris-sourced daily planetary position rows (longitude, sign, nakshatra/pada, retrograde flag, speed, tropical longitude) with correct source_citation. No defects found."
+    },
+    "ref_mantras_get": {
+      "verdict": "PARTIAL",
+      "evidence_file": "evidence/ref_mantras_get__coverage_check.json",
+      "note": "Prior evidence (planet='Saturn', limit=10) already used valid args; the tool correctly queries brahma_remedy_corpus and honestly nulls missing fields (not a wiring bug). DB cross-check (F-23) quantifies a genuine corpus-completeness gap: only 16/67 (24%) of all mantra rows have mantra_text and only 9/67 (13%) have mantra_sanskrit populated across the whole corpus -- most rows serve only prescription_text/classical_ref rather than the mantra itself, which is a real limitation for a tool whose stated purpose is mantra retrieval."
+    },
+    "ref_nakshatra_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/ref_nakshatra_get__F04_resolution.json",
+      "note": "F-04's DIAGNOSIS-INCOMPLETE status RESOLVED: this is a genuine wiring gap, not a total absence. A live, fully-populated (28 rows) structured catalog table (reference_nakshatra, canonical per migration 302, managed by the bg_nakshatra writer) exists with exactly the fields the tool's description promises (lord, devata, gender, gana, varna, nadi, body part, symbol -- verified correct for Purva Bhadrapada), but the handler (register_p1_reference.ts:410-447) never queries it and its own fallback_reason/inline comment falsely claim no such table exists."
+    },
+    "ref_planet_position_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_planet_position_get__sun_birthdate.json",
+      "note": "date=1984-02-05, planet=Sun. Returned real Swiss-Ephemeris sidereal position: sign_number 10 (Capricorn), degree_in_sign 22.239, lahiri_chitrapaksha -- matches FORENSIC anchor Sun=Capricorn exactly. source_citation confirms pyswisseph DE441 computation."
+    },
+    "ref_planet_transit_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_planet_transit_get__saturn_1984.json",
+      "note": "planet=Saturn, 1984 full year. Real daily ephemeris series, budget-trimmed correctly with drill_pointers. Saturn's 1984 station-retrograde correctly captured (speed_dps sign flip 1984-02-24->02-25 matching real astronomy)."
+    },
+    "ref_remedies_by_category_list": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/ref_remedies_by_category_list__mantra.json",
+      "note": "category=mantra response truncated mid-JSON-string, unparseable. limit=5 retry returned byte-identical result_hash to unlimited call -- limit/offset are dead parameters, never reach the SQL. See finding F-03 (TIER2)."
+    },
+    "ref_remedies_by_planet_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_remedies_by_planet_get__saturn.json",
+      "note": "planet=saturn returned full well-formed 38-row remedies array across domains/categories with source_canonical_id. Fits budget without truncation, unlike ref_remedies_by_category_list."
+    },
+    "ref_remedies_chart_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/ref_remedies_chart_get__saturn_career_mars.json",
+      "note": "Tool description promises 'chart-specific remedy suggestions' but the MCP-exposed schema has no chart_id parameter at all -- functionally a global affliction-keyword lookup, near-identical to ref_remedies_get. Could not test native vs zero-history chart differentiation because no such parameter is reachable. See finding F-06 (TIER2)."
+    },
+    "ref_remedies_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_remedies_get__planet_saturn.json",
+      "note": "planet=Saturn, limit=20. 20/38 real rows from brahma_remedy_corpus across remedy_type ayurvedic/behavioral/charity/gemstone/homa/japa/mantra. Pagination fields correct and honest."
+    },
+    "ref_remedy_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_remedy_get__sat_health_ayurvedic_01.json",
+      "note": "Single-remedy lookup by real remedy_id. Returned full row with correct nulls for inapplicable fields, source_citation, classical_ref, found:true."
+    },
+    "ref_retrograde_periods_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_retrograde_periods_get__mercury_2024.json",
+      "note": "Mercury 2024 (7 stations, 69 retro days) and Jupiter 1984 birth year (2 stations, 122 retro days, evidence/ref_retrograde_periods_get__jupiter_1984_birthyear.json). Well-formed sidereal+tropical data with provenance."
+    },
+    "ref_rules_search": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_rules_search__keyword_rajayoga.json",
+      "note": "keyword=Rajayoga: 10 real BPHS/BNN verse chunks. topic=yoga hybrid search mode (evidence/ref_rules_search__topic_yoga.json). keyword='Sade Sati'+author=Parashara: honest empty result with clear non-fabricated empty_reason (evidence/ref_rules_search__sadesati_honest_empty.json) -- correct honest-null behavior, not a defect."
+    },
+    "ref_sign_medical_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_sign_medical_get__aries_and_capricorn.json",
+      "note": "sign_name=Aries and sign_number=10 (Capricorn, native's own Sun sign). Correct classical Kalapurusha body_part/organ_systems/element/dosha mappings with not-medical-advice disclaimer and provenance."
+    },
+    "ref_tantric_remedies_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/ref_tantric_remedies_get__saturn_rahu_and_unfiltered.json",
+      "note": "planet=Saturn, planet=Rahu, unfiltered -- all return well-formed empty results with honest empty_reason (no fabrication), but the tool is permanently non-functional in production: the only tantric-remedy content source (tantric.yaml, 3 BPHS-sourced rows) is loaded by a function with zero callers in the repo; the actually-registered production seeding pipeline never emits remedy_type/category='tantric'. See finding F-05 (TIER3)."
+    },
+    "ref_transit_rules_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_transit_rules_get__saturn.json",
+      "note": "graha=saturn: 8 real Gochara rules with vedha_house/classical_citation. house=7 filter: 6 rules (evidence/ref_transit_rules_get__house7.json). Both filters function correctly against bg_transit_rules."
+    },
+    "ref_vector_search": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_vector_search__native_career.json",
+      "note": "Query 'career struggles and professional turning points', top_k=5. Hybrid vector+keyword search over classical corpus, 5 scored citations with vector_score/keyword_score/combined_score, verse text, source_citation with provenance tier. Matches documented purpose."
+    },
+    "ref_yogas_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/ref_yogas_get__raja_filter.json",
+      "note": "yoga_name=Raja: 10 real Parashari/Jaimini definitions. domain=wealth correctly rejected with corrected_call hint (vocabulary is 'dhana' not 'wealth'); retried per hint successfully (evidence/ref_yogas_get__domain_wealth_rejected_then_dhana.json). Good input-validation UX, not a defect."
+    },
+    "resolve_entity": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/resolve_entity__shani.json",
+      "note": "Resolved 'Shani' -> canonical_id 'saturn', entity_class 'planet', full synonym list, description, source_citation (BPHS). Matches documented purpose exactly."
+    },
+    "scan_fetch_signals": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/scan_fetch_signals__native_scan.json",
+      "note": "Tested both modes. scan mode: total=50, returned=50, dense index lines with id/class/tier/salience/subject/domain. fetch mode with 3 ids from scan (evidence/scan_fetch_signals__native_fetch.json): requested=3, resolved=3, full rows with signal_summary_text/headline/salience/verification_pass_status/constituent_facts_array/citation_human. Two-pass scan->fetch contract works as documented."
+    },
+    "search_classical_texts": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/search_classical_texts__saturn_seventh.json",
+      "note": "Every valid-argument call fails: 'Tool not in surgical whitelist: search_classical_texts'. Reproduced twice with different well-formed queries. Same defect class as read_chapter (F-02) -- registered contract + schema exist but the MCP dispatch whitelist doesn't recognize the name. See finding F-07 (TIER1-CORRECTNESS)."
+    },
+    "session_list": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/session_list__default.json",
+      "note": "No-arg call. count:1 session row with session_id/session_key/active_chart_id/last_seen_at plus usage_hint. Matches documented purpose."
+    },
+    "session_recall": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/session_recall__default_no_chart_id.json",
+      "note": "Tested with and without explicit chart_id (evidence/session_recall__explicit_native_chart_id.json). Explicit chart_id correctly switches provenance_stamp without mutating session state, matching documented 'explicit chart_id always preferred' behavior. Both calls read-only."
+    },
+    "standing_predictions_read": {
+      "evidence_file": "evidence/standing_predictions_read__native_relationship.json",
+      "note": "Served text response contains is_error:true for a realistic chart/domain call; mechanism unverified.",
+      "verdict": "GAP"
+    },
+    "synth_chart_brief_get": {
+      "verdict": "GAP",
+      "evidence_file": "evidence/synth_chart_brief_get__native_standard.json",
+      "note": "GAP: depth=complete coverage_receipt narrates '27 domain verdicts' while verdict_summary array shipped only 13 post-trim. See finding F-45 (TIER2)."
+    },
+    "synth_tail_divergence_get": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/synth_tail_divergence_get__native_career.json",
+      "note": "Native chart, domain=career. 10 tail_signals (bottom-decile salience, salience_pctl:0), divergence_memo citing BA-P4 70/20/10 attention budget. Matches documented purpose of surfacing dissent/tail tier."
+    },
+    "tool_search": {
+      "verdict": "PASS",
+      "evidence_file": "evidence/tool_search__dasha_activation.json",
+      "note": "Keyword query 'dasha activation timing': total_matches:48, returned:10 with uri/name/type/layer/scope/family/one_line/description/score/matched_keywords, catalog_total:182. Matches documented keyword-search (non-fuzzy) behavior."
+    }
+  },
+  "journey_reports": [
+    {
+      "journey": "health_rough_patch",
+      "coherence_verdict": "COHERENT",
+      "f14_impact_assessment": "F-14 (assess_health never returns 'reading'/domain_completeness/completeness_directive for any chart, health or otherwise) is confirmed again here on BOTH charts at reading_depth='deep_dive' (evidence: assess_health__native_deep_dive.json, assess_health__zero_deep_dive.json \u2014 content keys present are domain, domain_label, chart_id, ayanamsha_id, ranking_basis, verdict, reading_checklist, verdict_skeleton, step_results, house_analysis, karaka_analysis, varga_analysis, sensitive_degree_firings, kp_cusp_chain, gochara_sweep, activating_dasha, contradictions, yoga_fact_ids, citations, judgment_flags, provenance \u2014 no 'reading', 'domain_completeness', or 'completeness_directive' key in either). MEASURED IMPACT ON THE JOURNEY: materially small, not a black hole. assess_health's own content.verdict.clauses field independently supplies a 5-sentence grounded narrative for the native chart ('Health / Vitality assessment draws on 10 composite-ranked signal(s)...', '13 yoga(s) fired... but none name only this domain's bh\u0101ve\u015ba/k\u0101raka(s)... shown for context, not domain-confirmed', '\u1e62a\u1e63\u1e6dh\u0101\u1e41\u015ba (D6) placements were consumed directly from L1...', '1 domain-tagged tension(s) surfaced...', 'A dated da\u015b\u0101-activation window is available...'), each clause carrying fact_ids and an explicit grounded:true/false flag. Alongside that, assess_health serves content.contradictions (domain-filtered to health, 1 of 3 chart-wide tensions), content.discoveries, content.activating_dasha (real dasha date windows), and content.gochara_sweep \u2014 the SAME domain='health' forward-transit sweep judgment_query independently computes (upcoming_window_count=17 for native / 8 for zero, identical top illness_acute/chronic_onset/surgery windows with peak dates, in both tools). judgment_query (called separately with domain='health') is in fact richer than the missing digest would have been: it returns a full classical checklist (bhava/bh\u0101ve\u015ba/k\u0101raka condition from both lagna and chandra, D6 varga confirmation, bearing_yogas vs bearing_yogas_corroboration split, bearing_afflictions including the Saturn D1-exalted/D9-debilitated divergence and Sade Sati cycle end date, sensitive-degree firings, KP cusp chain, and a reading_checklist receipt disclosing units_served=8/12 with the 4 unserved units named explicitly). So a caller chaining judgment_query -> assess_health -> ganita_medical_get -> gochara_* for this exact question ends up with MORE synthesized narrative content than the single missing 'reading' field would have added, not less. The real cost of F-14 is narrower than 'the health journey is broken': it is (a) an API-contract violation for any caller that specifically probes content.reading / domain_completeness / completeness_directive as a completeness signal for the health domain and gets nothing back although the schema promises it, and (b) internal inconsistency versus other domains where those exact fields DO populate (established by the prior F-14 finding, not re-litigated here). Within THIS journey specifically, no user reading the assembled multi-tool answer would receive a materially worse or more shallow picture than intended, because the richer judgment_query call and assess_health's own verdict/contradictions/gochara_sweep sections carry the substantive content the missing digest would have wrapped in a different envelope.",
+      "honest_refusal_check": "No case of silence-in-place-of-a-caveated-partial-answer was found in this journey. Every tool that trimmed, filtered, or omitted data disclosed it explicitly: (1) judgment_query's judgment_flags array is exemplary \u2014 'varga_confirmed_forced_false' explicitly downgrades a receipt field rather than shipping a checkmark with empty evidence (direct CLAUDE.md \u00a7N.6/B.10 citation in the flag text itself), 'notably_absent_not_checked' names a not-yet-built check rather than silently skipping it, 'bearing_yogas_no_domain_match' (native chart) explicitly states none of the 13 fired yogas name the health bh\u0101ve\u015ba/k\u0101raka so yoga_term=0 is an honest absence not a fabricated boost, and reading_checklist.units_unserved names the 4 classical units (ashtakavarga, special_lagnas, yogi_avayogi, tajaka) NOT folded into this call by name rather than omitting them silently. (2) gochara_forecast_get / gochara_activation_get carry a domain-aware not_covered refusal path (per their own tool descriptions, the explicit S4-05 fix target scenario is verbatim 'is there a rough patch coming for my health?') \u2014 not exercised here because health WAS covered for both charts (coverage.domains_not_covered=[] on all 4 calls), but its presence means an uncovered domain would get a named refusal + cross_pointer to kala_windows_get rather than a misleading empty scan. (3) ganita_sade_sati_get's default view honestly discloses '146 period(s)/cycle(s) outside the current+adjacent window were dropped... Pass all:true to retrieve the full ~1950-2100 historical+future sweep' rather than silently truncating. The ONE partial exception, which is exactly the F-14 gap: assess_health's own top-level judgment_flags array (both charts, deep_dive) contains only 'budget_exceeded_after_trim' \u2014 it does NOT carry a flag disclosing that the documented reading/domain_completeness/completeness_directive fields are absent for this domain, even though the SAME response mechanism (judgment_flags) is actively used for a different, less consequential gap in the same payload. This is a real but narrow consistency defect: the rest of the health journey chain (especially judgment_query) treats 'a documented field silently vanishing' as build-fatal-worthy of a flag; assess_health's own reading-digest gap does not get the same treatment, in the same response, from the same tool family.",
+      "tools_called": [
+        {
+          "tool": "judgment_query",
+          "scenario": "native_health_domain",
+          "evidence_file": "pp2-audit/evidence/judgment_query__native_health_domain.json"
+        },
+        {
+          "tool": "judgment_query",
+          "scenario": "zero_health_domain",
+          "evidence_file": "pp2-audit/evidence/judgment_query__zero_health_domain.json"
+        },
+        {
+          "tool": "assess_health",
+          "scenario": "native_deep_dive",
+          "evidence_file": "pp2-audit/evidence/assess_health__native_deep_dive.json"
+        },
+        {
+          "tool": "assess_health",
+          "scenario": "zero_deep_dive",
+          "evidence_file": "pp2-audit/evidence/assess_health__zero_deep_dive.json"
+        },
+        {
+          "tool": "ganita_medical_get",
+          "scenario": "native_primary",
+          "evidence_file": "pp2-audit/evidence/ganita_medical_get__native_primary.json"
+        },
+        {
+          "tool": "ganita_medical_get",
+          "scenario": "zero_primary",
+          "evidence_file": "pp2-audit/evidence/ganita_medical_get__zero_primary.json"
+        },
+        {
+          "tool": "gochara_forecast_get",
+          "scenario": "native_health_domain",
+          "evidence_file": "pp2-audit/evidence/gochara_forecast_get__native_health_domain.json"
+        },
+        {
+          "tool": "gochara_forecast_get",
+          "scenario": "zero_health_domain",
+          "evidence_file": "pp2-audit/evidence/gochara_forecast_get__zero_health_domain.json"
+        },
+        {
+          "tool": "gochara_activation_get",
+          "scenario": "native_health_domain",
+          "evidence_file": "pp2-audit/evidence/gochara_activation_get__native_health_domain.json"
+        },
+        {
+          "tool": "gochara_activation_get",
+          "scenario": "zero_health_domain",
+          "evidence_file": "pp2-audit/evidence/gochara_activation_get__zero_health_domain.json"
+        },
+        {
+          "tool": "ganita_sade_sati_get",
+          "scenario": "native_primary",
+          "evidence_file": "pp2-audit/evidence/ganita_sade_sati_get__native_primary.json"
+        },
+        {
+          "tool": "ganita_sade_sati_get",
+          "scenario": "zero_primary",
+          "evidence_file": "pp2-audit/evidence/ganita_sade_sati_get__zero_primary.json"
+        }
+      ]
+    },
+    {
+      "journey": "election_muhurta_remedies_prashna_session",
+      "election_muhurta": {
+        "coherence_verdict": "PARTIAL_DEFECT \u2014 not F-10's total domain-blindness, but a real, code-confirmed partial domain-blindness: 50% of kala_elect_get/kala_muhurta_get's composite score (dasha_quality + transit_quality) ignores the undertaking entirely, and the 'transit_quality' label overclaims what is actually a lunar-phase/weekday heuristic. Consequence for a user asking 'when should I sign this contract' (business): the answer's top-ranked window is shaped in part by a dasha_quality score that would be numerically IDENTICAL if the same user had instead asked 'when should I get married' or 'when should I schedule surgery' \u2014 and empirically, the SAME top-ranked 2026-08-19\u219208-21 window came out #1 for business, marriage, AND medical in this test (differing only in numeric score, not in which window won). A user could reasonably be handed a window whose 'strength' is 50% attributable to domain-irrelevant factors, though the framing (window recommended FOR business specifically) is not literally wrong-purpose the way F-10's cross-domain window leakage was.",
+        "f10_impact_on_kala_elect_get": "kala_elect_get does NOT reproduce F-10's exact defect (total absence of any domain/action_class filter). Confirmed via platform-mcp/src/tools/kala_views/elect.ts:62, kala_elect_get delegates directly to handleMuhurtaFinder \u2014 the SAME underlying muhurta_finder.py/PH-4-4 engine kala_muhurta_get uses (both tools' provenance_envelope.asset='PH-4-4'). Two of the four weighted score components DO vary by undertaking: panchanga_quality (40% weight, action_type-aware per muhurta.py's _panchanga_quality_for_action) and signal_activation (10% weight, action_type-aware per _signal_activation_for_action, muhurta.py:468). BUT the other two components \u2014 50% of the total composite score \u2014 are computed identically regardless of undertaking: dasha_quality (30% weight, muhurta.py:372 _dasha_quality_for_chart(chart_id, window_start) takes NO action_type parameter; for the native chart returns a flat 0.72 for any year 2026-2043 irrespective of business/marriage/medical) and transit_quality (20% weight, muhurta.py:420 _transit_quality_for_window(window_start) also takes NO action_type parameter). Empirically confirmed: querying kala_muhurta_get for business/marriage/medical over the identical 2026-08-15..2026-09-14 window returns the SAME 15 two-day candidate windows with dasha_quality=0.72 in literally every window of every domain, and identical transit_quality per calendar date across all three domains (e.g. the 2026-08-19 window shows transit_quality=0.65 in business, marriage, AND medical calls). A secondary, distinct defect: transit_quality is a misnomer \u2014 its implementation (muhurta.py:420-465) computes a lunar-phase (29.53-day cycle) approximation plus a static day-of-week table, with ZERO actual planetary-transit computation; the function's own docstring admits 'Full transit computation requires Swiss Ephemeris... All values are approximations only.' This is a \u00a7N.8 earned-signal violation: a field named 'transit_quality' with no transit detector behind it."
+      },
+      "remedies": {
+        "agreement_verdict": "DISAGREE"
+      },
+      "prashna_session": {
+        "coherence_verdict": "COHERENT \u2014 no defect found. prashna_status with a fabricated job_id returned a clean, structured, honest error ('Unknown or expired job_id... Jobs are held in memory only... Call prashna_ask again') rather than a silent/empty/misleading response. session_list and session_recall agree on session_id (fdfe6357-edb1-4021-b63c-ccadd84c9266), session_key ('default'), and active_chart_id (1c826d5a-41cb-4450-b4dc-59d440e5f75a \u2014 the ZERO-HISTORY chart, not the native chart 482012f1 this audit targeted); session_recall's last_seen_at (13:36:44) correctly advances past session_list's earlier snapshot (12:33:53), consistent with recall itself being a new access that updates the timestamp. Minor observational note (not a formal finding, out of this journey's explicit scope): the MCP session's implicit active_chart_id is the zero-history chart, not the native chart \u2014 every call in this audit passed chart_id explicitly so this had no effect here, but a caller that omitted chart_id and relied on session-implicit resolution would silently get the wrong chart."
+      }
+    },
+    {
+      "journey": "when_will_i_marry",
+      "coherence_verdict": "PARTIALLY_COHERENT",
+      "r24_distortion_check": "CONFIRMED_DISTORTION",
+      "coherence_notes": "The journey holds together at the level of GRAND narrative (D1 promise: 7th house Libra with Mars+Saturn occupying, Venus as 7th-lord/karaka; D9 promise: Venus debilitated -> judgment_query's composite verdict is 'contested'/-3.5; the only genuine (is_timing_window=true) gochara marriage-timing row across a 10-year sweep is a single point on 2027-11-11; Venus's own Mahadasha, the classical 'dasha of the promise' for a 7th-lord/karaka, runs 2034-08-18 to 2054-08-18, and a second, less-precise gochara marriage-era-window (2034-02-05 to 2044-01-31, context-only) opens almost exactly when that Mahadasha begins -- a real, non-fabricated convergence between the D1/dasha layer and the gochara layer). However the journey breaks down at the FIELD/TIMING layer specifically: judgment_query -- the tool the codebase's own tool description calls the 'richer, shastra-shaped successor' to assess_marriage -- serves completely EMPTY dasha timing_hooks (current/lord_mahadasha_windows/karaka_mahadasha_windows/kala_activations/mahadasha_windows_by_graha) for the marriage domain on BOTH the native and the comparison chart, forcing receipt.timing_anchored=false via an explicit judgment_flag, even though the underlying Venus Mahadasha data IS fetched correctly server-side (confirmed: judgment_query's own timing_hooks-building code explicitly queries chart_dashas over a 1900-2100 window, not a narrow \u00b15y default) and is then silently zeroed by a post-fetch response-budget trim that -- unlike >10 other sections in the same file including bearing_yogas -- was never given the hardFloor:true protection CLAUDE.md's own \u00a7N.6 doctrine prescribes for confirmed-finding sections (see CAND-1 for the full file:line diagnosis); meanwhile the sibling tool assess_marriage, run on the identical chart_id+domain in the same journey, DOES surface a real, dated activating_dasha (Mercury MD 2010-08-18 to 2027-08-18, peak 2019-02-16, with a full antardasha sub-window list). A user running judgment_query then ass ...[truncated, full text in original agent report]",
+      "tools_called": [
+        {
+          "tool": "judgment_query",
+          "scenario": "native_marriage_v3_exhaustive",
+          "evidence_file": "pp2-audit/evidence/judgment_query__native_marriage.json"
+        },
+        {
+          "tool": "assess_marriage",
+          "scenario": "native_deep_dive",
+          "evidence_file": "pp2-audit/evidence/assess_marriage__native_deep_dive.json"
+        },
+        {
+          "tool": "ganita_dasha_periods_get",
+          "scenario": "native_default_window_now_plus_minus_5y",
+          "evidence_file": "pp2-audit/evidence/ganita_dasha_periods_get__native_default_window.json"
+        },
+        {
+          "tool": "ganita_dasha_periods_get",
+          "scenario": "native_wide_window_1984_2060_reveals_venus_md_2034_2054",
+          "evidence_file": "pp2-audit/evidence/ganita_dasha_periods_get__native_wide_window.json"
+        },
+        {
+          "tool": "kala_now_get",
+          "scenario": "native_question_frame_marriage_timing",
+          "evidence_file": "pp2-audit/evidence/kala_now_get__native_marriage_frame.json"
+        },
+        {
+          "tool": "gochara_forecast_get",
+          "scenario": "native_domain_marriage_literal_returns_zero_UX_trap",
+          "evidence_file": "pp2-audit/evidence/gochara_forecast_get__native_domain_marriage_empty.json"
+        },
+        {
+          "tool": "gochara_forecast_get",
+          "scenario": "native_domain_relationship_2026_2036",
+          "evidence_file": "pp2-audit/evidence/gochara_forecast_get__native_domain_relationship.json"
+        },
+        {
+          "tool": "gochara_forecast_get",
+          "scenario": "native_event_class_marriage_2026_2036",
+          "evidence_file": "pp2-audit/evidence/gochara_forecast_get__native_event_class_marriage.json"
+        },
+        {
+          "tool": "gochara_activation_get",
+          "scenario": "native_event_class_marriage_as_of_2026-08-15",
+          "evidence_file": "pp2-audit/evidence/gochara_activation_get__native_marriage_today.json"
+        },
+        {
+          "tool": "kala_muhurta_get",
+          "scenario": "native_marriage_windows_two_calls_plus_max_span_error",
+          "evidence_file": "pp2-audit/evidence/kala_muhurta_get__native_marriage.json"
+        },
+        {
+          "tool": "judgment_query",
+          "scenario": "zero_history_chart_marriage_v3",
+          "evidence_file": "pp2-audit/evidence/judgment_query__zero_history_marriage.json"
+        },
+        {
+          "tool": "gochara_activation_get",
+          "scenario": "zero_history_chart_event_class_marriage_as_of_2026-08-15",
+          "evidence_file": "pp2-audit/evidence/gochara_activation_get__zero_history_marriage_today.json"
+        }
+      ]
+    },
+    {
+      "journey": "assess_suite_13_domains_latency",
+      "domains_tested": [
+        "career",
+        "character",
+        "education",
+        "family",
+        "general",
+        "health",
+        "progeny",
+        "relationship",
+        "residence",
+        "spirituality",
+        "transition",
+        "travel",
+        "wealth",
+        "moksha"
+      ],
+      "latency_p50_ms_estimate": 9903,
+      "latency_p95_ms_estimate": 18588,
+      "hard_error_count": 0,
+      "domain_vocabulary_note": "judgment_query's schema description names only 7 domain concepts (marriage/career/wealth/health/progeny/education/spirituality), but reading its SHASTRA_MAP source (platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts) shows 10 concept-groups actually supported: marriage/relationship/partnership (bhava 7), career/vocation (bhava 10), wealth/finance (bhava 2), health/vitality (bhava 1), progeny/children (bhava 5), education/vidya (bhava 4), spirituality (bhava 9), moksha/liberation (bhava 12), character/buddhi (bhava 1), residence/property/home (bhava 4). Separately, the codebase's actual '13 domains' claim traces to a DIFFERENT vocabulary, CANONICAL_DOMAINS (platform/src/lib/domain_vocabulary.ts): career, character, education, family, general, health, progeny, relationship, residence, spirituality, transition, travel, wealth. This audit tested all 13 CANONICAL_DOMAINS values through judgment_query (the system's own claimed domain list) plus 'moksha' as a bonus 14th test of a SHASTRA_MAP-only domain not in CANONICAL_DOMAINS."
+    }
+  ],
+  "dimension_reports": {
+    "J-boundary": {
+      "tools_tested": [
+        {
+          "tool": "ganita_dasha_periods_get",
+          "scenario": "birth_instant",
+          "verdict": "PASS",
+          "evidence_file": "evidence/ganita_dasha_periods_get__birth_instant.json",
+          "note": "as_of_date=1984-02-05 (native's exact birth date) correctly resolves the L3 Pratyantardasha active at birth (Moon, age ~0). No crash, no off-by-one."
+        },
+        {
+          "tool": "kala_now_get",
+          "scenario": "birth_instant",
+          "verdict": "PASS",
+          "evidence_file": "evidence/kala_now_get__birth_instant.json",
+          "note": "as_of=1984-02-05 computes a full NOW envelope; janma_resonance correctly reads true/true/true (query date == birth date). No crash."
+        },
+        {
+          "tool": "ganita_dasha_periods_get",
+          "scenario": "pre_birth",
+          "verdict": "GAP",
+          "evidence_file": "evidence/ganita_dasha_periods_get__pre_birth.json",
+          "note": "as_of_date=1980-01-01 (~4y before native's 1984-02-05 birth) is silently computed and served as two_pass_verified dasha rows with no structured pre-birth guard/flag -- only signal is the free-text narration's own arithmetic artifact 'age ~-4'. See CAND-1."
+        },
+        {
+          "tool": "kala_now_get",
+          "scenario": "pre_birth",
+          "verdict": "PASS",
+          "evidence_file": "evidence/kala_now_get__pre_birth.json",
+          "note": "as_of=1980-01-01 degrades honestly: 0 activation windows, sudarshana_varsha explicitly honest_empty citing the birth..birth+120y horizon, janma_resonance correctly computes resonance=false. No crash, no fabrication."
+        },
+        {
+          "tool": "gochara_forecast_get",
+          "scenario": "horizon_2084",
+          "verdict": "GAP",
+          "evidence_file": "evidence/gochara_forecast_get__horizon_2084_partial_overlap.json",
+          "note": "date_range 2083-06-01..2085-06-01 straddles the chart's birth+100y=2084 sweep horizon. Returns 22 real windows (all capped at window_end<=2084-01-31) with empty_reason=null and no field disclosing that ~16 months of the requested range (2084-02-01..2085-06-01) is beyond the swept horizon. See CAND-2."
+        },
+        {
+          "tool": "gochara_forecast_get",
+          "scenario": "horizon_2084",
+          "verdict": "PASS",
+          "evidence_file": "evidence/gochara_forecast_get__horizon_2084_fully_beyond.json",
+          "note": "date_range 2090-01-01..2091-01-01 (fully beyond the 2084 horizon) returns an honest empty result with an explicit empty_reason caveat: 'an empty result for an unswept decade is a coverage gap, not a negative signal.'"
+        },
+        {
+          "tool": "kala_windows_get",
+          "scenario": "horizon_2084",
+          "verdict": "PASS",
+          "evidence_file": "N/A (inline in transcript; not separately saved -- dasha-timeline-derived activations, not gochara-sweep-bounded)",
+          "note": "as_of=2085-01-01 (just past the 2084 gochara-sweep horizon) still returns real, correctly-computed activation windows because kala_activation is dasha-timeline-derived (deterministic arithmetic, no sweep-horizon cap) rather than reading the century-materialized gochara table. Not a fabrication -- a different, uncapped substrate."
+        },
+        {
+          "tool": "ganita_tajaka_get",
+          "scenario": "horizon_2084",
+          "verdict": "PASS",
+          "evidence_file": "evidence/ganita_tajaka_get__varsha_year_extreme.json",
+          "note": "varsha_year=200 (an impossible 200th solar return) returns an honest empty result set (total:0) rather than fabricated annual-chart data."
+        },
+        {
+          "tool": "ganita_dasha_periods_get + kala_now_get + ref_planet_transit_get + gochara_forecast_get",
+          "scenario": "leap_day",
+          "verdict": "PASS",
+          "evidence_file": "evidence/leap_day__multi_tool.json",
+          "note": "2024-02-29 and 2028-02-29 handled correctly across all four tools: dasha L3 boundary lands exactly on the leap day (Venus AD ends 2024-02-29, Sun AD starts 2024-02-29), ephemeris rows are monotonic and gap-free through the leap day, no crash/exception/traceback anywhere."
+        },
+        {
+          "tool": "judgment_query",
+          "scenario": "zero_history_journey",
+          "verdict": "PASS",
+          "evidence_file": "evidence/journey_judgment_query__zero_career.json",
+          "note": "\"Will I have career success?\" (domain=career) on chart 1c826d5a: verdict served (mixed, composite_score 0.82) but epistemic.grade explicitly 'structural_prior' with note 'No epistemic signal computed for this response'; reading_contract prose states 'no outcome data yet backs the number'; 7 judgment_flags disclose specific coverage gaps."
+        },
+        {
+          "tool": "assess_career",
+          "scenario": "zero_history_journey",
+          "verdict": "PASS",
+          "evidence_file": "evidence/journey_assess_career__zero.json",
+          "note": "No crash on zero-history chart. Fully fact-grounded deterministic D1/varga/yoga/dasha reading with 100%-accounted domain_completeness receipt; never claims a calibrated outcome-based confidence it doesn't have (that surface correctly lives at mimamsa_insight_get)."
+        },
+        {
+          "tool": "kala_now_get",
+          "scenario": "zero_history_journey",
+          "verdict": "PASS",
+          "evidence_file": "evidence/journey_kala_now_get__zero.json",
+          "note": "calibration_maturity block explicitly reports n_events=0, prospective_resolutions=0, event_class_coverage=0, weights_version=null, skill_score=null -- a structured, honest disclosure. reading_prose explicitly tagged '[tier: structural prior \u2014 pre-calibration]'."
+        },
+        {
+          "tool": "mimamsa_insight_get",
+          "scenario": "zero_history_journey",
+          "verdict": "PASS",
+          "evidence_file": "evidence/journey_mimamsa_insight_get__zero_career.json",
+          "note": "calibration_status='prior_only', mode='STRUCTURAL', calibration_summary shows total_matches=0/confirmed=0/denied=0/mean_composite_score=null. Every chart-specific verdict carries evidence_grade='structural', last_calibrated_at=null. Minor clarity note filed as CAND-3 (not a fabrication)."
+        },
+        {
+          "tool": "dossier",
+          "scenario": "zero_history_journey",
+          "verdict": "PASS",
+          "evidence_file": "evidence/journey_dossier__zero_career_receipt.json",
+          "note": "Closes the journey: 13825-concept career slice 100% accounted (served=12207, empty_for_this_chart=1612, not_computed_globally=6) with synthesis_gate correctly OPEN. No crash, no fabricated completeness."
+        }
+      ]
+    },
+    "J-edge": {
+      "tools_tested": [
+        {
+          "tool": "ganita_chart_facts_get",
+          "scenario": "nonexistent_uuid",
+          "verdict": "PASS",
+          "evidence_file": "evidence/ganita_chart_facts_get__nonexistent_uuid.json",
+          "note": "Clean ENTITLEMENT_DENIED / AUTHZ_DENIED error, no crash, no leak."
+        },
+        {
+          "tool": "kala_now_get",
+          "scenario": "nonexistent_uuid",
+          "verdict": "GAP",
+          "evidence_file": "evidence/kala_now_get__nonexistent_uuid.json",
+          "note": "No entitlement/existence check performed at all \u2014 returns a full 200-shaped response with real (but unrelated) live transit data mixed among many honest_empty/not_in_corpus/unreachable flags, and leaks the upstream panchanga microservice's raw error string 'HTTP 404: Chart '...' not found' into panchanga_native_context_error. See CAND-3."
+        },
+        {
+          "tool": "assess_career",
+          "scenario": "nonexistent_uuid",
+          "verdict": "PASS",
+          "evidence_file": "evidence/assess_career__nonexistent_uuid.json",
+          "note": "Clean ENTITLEMENT_DENIED."
+        },
+        {
+          "tool": "judgment_query",
+          "scenario": "nonexistent_uuid",
+          "verdict": "PASS",
+          "evidence_file": "evidence/judgment_query__nonexistent_uuid.json",
+          "note": "Clean ENTITLEMENT_DENIED, though message wording is misleading \u2014 see CAND-4."
+        },
+        {
+          "tool": "dossier",
+          "scenario": "nonexistent_uuid",
+          "verdict": "PASS",
+          "evidence_file": "evidence/dossier__nonexistent_uuid.json",
+          "note": "Clean entitlement_denied."
+        },
+        {
+          "tool": "catalog_chart_select",
+          "scenario": "nonexistent_uuid",
+          "verdict": "PASS",
+          "evidence_file": "evidence/catalog_chart_select__sentinel_zero_uuid.json",
+          "note": "Tested with the specially-allowlisted all-zero UUID sentinel from the tool's own regex; cleanly rejected with AUTHZ_DENIED."
+        },
+        {
+          "tool": "ganita_dashas_get",
+          "scenario": "malformed_args",
+          "verdict": "PASS",
+          "evidence_file": "evidence/ganita_dashas_get__malformed_limit_type.json",
+          "note": "limit as string cleanly rejected by Zod with a precise type-mismatch message."
+        },
+        {
+          "tool": "gochara_forecast_get",
+          "scenario": "malformed_args",
+          "verdict": "PASS",
+          "evidence_file": "evidence/gochara_forecast_get__malformed_missing_daterange.json",
+          "note": "Missing required date_range cleanly rejected."
+        },
+        {
+          "tool": "catalog_chart_select",
+          "scenario": "malformed_args",
+          "verdict": "PASS",
+          "evidence_file": "evidence/catalog_chart_select__malformed_invalid_uuid_string.json",
+          "note": "Non-UUID string cleanly rejected with 'Invalid UUID'."
+        },
+        {
+          "tool": "ganita_chart_facts_get",
+          "scenario": "malformed_args",
+          "verdict": "PASS",
+          "evidence_file": "evidence/ganita_chart_facts_get__malformed_extra_field.json",
+          "note": "Extra unknown field cleanly rejected via additionalProperties:false / unrecognized_keys."
+        },
+        {
+          "tool": "kala_elect_get",
+          "scenario": "malformed_args",
+          "verdict": "PASS",
+          "evidence_file": "evidence/kala_elect_get__malformed_invalid_enum.json",
+          "note": "Invalid undertaking enum value cleanly rejected, listing valid options."
+        },
+        {
+          "tool": "judgment_query",
+          "scenario": "malformed_args",
+          "verdict": "PASS",
+          "evidence_file": "evidence/judgment_query__malformed_bhava_out_of_range.json",
+          "note": "bhava=13 (out of 1-12 range) cleanly rejected."
+        },
+        {
+          "tool": "ganita_dashas_get",
+          "scenario": "malformed_args",
+          "verdict": "GAP",
+          "evidence_file": "evidence/ganita_dashas_get__unknown_ayanamsha_silent_empty.json",
+          "note": "ayanamsha_id is a free string with no enum validation; an unrecognized value silently returns rows:[],total:0 with no error/empty_reason, indistinguishable from a genuinely empty result. See CAND-7."
+        },
+        {
+          "tool": "judgment_query",
+          "scenario": "unknown_domain",
+          "verdict": "GAP",
+          "evidence_file": "evidence/judgment_query__unknown_domain.json",
+          "note": "Unrecognized domain silently treated as absent; large orientation_context payload computed and returned, actual error buried 3 levels deep at content.error with no top-level ok:false. See CAND-6."
+        },
+        {
+          "tool": "kala_priority_get",
+          "scenario": "unknown_domain",
+          "verdict": "PASS",
+          "evidence_file": "evidence/kala_priority_get__unknown_domain.json",
+          "note": "Clean honest_empty, domain echoed back in the reading/coverage."
+        },
+        {
+          "tool": "gochara_forecast_get",
+          "scenario": "unknown_domain",
+          "verdict": "GAP",
+          "evidence_file": "evidence/gochara_forecast_get__unknown_domain.json",
+          "note": "Tool's own docstring promises an explicit not_covered refusal for a domain the sweep doesn't cover; an unrecognized domain string never triggers it \u2014 silent empty windows[] instead. See CAND-5."
+        },
+        {
+          "tool": "bodha_signals_get",
+          "scenario": "unknown_domain",
+          "verdict": "PASS",
+          "evidence_file": "evidence/bodha_signals_get__unknown_domain.json",
+          "note": "Clean honest empty_reason naming the exact chart+domain that matched nothing."
+        },
+        {
+          "tool": "ganita_chart_facts_get",
+          "scenario": "pagination_past_end",
+          "verdict": "GAP",
+          "evidence_file": "evidence/ganita_chart_facts_get__pagination_past_end_offset999999.json",
+          "note": "offset silently clamped to 100000 and the clamped value echoed back as if it were requested, no disclosure field. Confirmed with a second value (offset=500000) in evidence/ganita_chart_facts_get__pagination_past_end_offset500000.json. See CAND-1."
+        },
+        {
+          "tool": "ref_yogas_get",
+          "scenario": "pagination_past_end",
+          "verdict": "GAP",
+          "evidence_file": "evidence/ref_yogas_get__pagination_past_end_offset999999.json",
+          "note": "total field equals the current page's row count (rows.length), not a true catalog COUNT(*); confirmed with a second control call (offset=50/limit=10 returning 10 DIFFERENT rows, total:10) in evidence/ref_yogas_get__pagination_control_offset50_limit10.json. See CAND-2."
+        },
+        {
+          "tool": "bodha_signals_get",
+          "scenario": "pagination_past_end",
+          "verdict": "PASS",
+          "evidence_file": "evidence/bodha_signals_get__pagination_past_end.json",
+          "note": "total_matching_filters correctly stays at the true unpaginated total (10003) regardless of offset \u2014 clean, honest empty page."
+        },
+        {
+          "tool": "kala_now_get",
+          "scenario": "not_applicable_tier_class",
+          "verdict": "PASS",
+          "evidence_file": "evidence/kala_now_get__zero_history_chart_not_applicable_check.json",
+          "note": "Concepts genuinely not yet built (transit_moorti, sudarshana_varsha, state_delta) are honestly reported as not_in_corpus/honest_empty with a specific reason rather than fabricated; other concepts on the same chart ARE genuinely computed, confirming 'zero-history' means zero LEL/outcome data, not zero build data."
+        },
+        {
+          "tool": "gochara_forecast_get",
+          "scenario": "malformed_args_edge",
+          "verdict": "PASS",
+          "evidence_file": "evidence/gochara_forecast_get__inverted_date_range.json",
+          "note": "Inverted date_range (end before start) produces no crash/leak; the result is internally consistent with the tool's own documented overlap semantics (only spanning windows match), just non-intuitive \u2014 soft observation only, not counted as a finding."
+        }
+      ]
+    },
+    "I": {
+      "tools_tested": [
+        {
+          "tool": "kala_story_get",
+          "verdict": "GAP",
+          "evidence_file": "pp2-audit/evidence/kala_story_get__trim_report_self_collapse.json",
+          "note": "Valid JSON survives even at budget_kb=2, but trim_report self-collapses under extreme pressure, hiding that chapters was zeroed (91->0) and falling back to a non-real 'response_format:legacy' recover_via instrument. Honest at budget_kb=8 and default."
+        },
+        {
+          "tool": "dossier",
+          "verdict": "PASS",
+          "evidence_file": "pp2-audit/evidence/pass_tools__honest_trim_examples.json",
+          "note": "budget_kb=1: honest BLOCKED gate + judgment_flags, no fabricated coverage."
+        },
+        {
+          "tool": "ganita_database_schema_get",
+          "verdict": "GAP",
+          "evidence_file": "pp2-audit/evidence/pass_tools__honest_trim_examples.json",
+          "note": "Real recover_via tool name (PASS on unknown_tool axis), but no budget_kb_applied field visible despite genuine trimming (corroborates the ganita_planet_get finding)."
+        },
+        {
+          "tool": "scan_fetch_signals",
+          "verdict": "PASS",
+          "evidence_file": "pp2-audit/evidence/pass_tools__honest_trim_examples.json",
+          "note": "Honest truncated:true flag with true total and a working, plain-text recovery path."
+        },
+        {
+          "tool": "bodha_chart_digest_get",
+          "verdict": "PASS",
+          "evidence_file": null,
+          "note": "mode=full, limit=25000: large valid response, no size-limiting failure observed; no budget_kb param on this tool so trim-corruption axis not directly applicable."
+        },
+        {
+          "tool": "ganita_positions_get",
+          "verdict": "PASS",
+          "evidence_file": "pp2-audit/evidence/pass_tools__honest_trim_examples.json",
+          "note": "Honest trim_report, real recover_via, total field genuinely a pagination total (not stale)."
+        },
+        {
+          "tool": "ganita_planet_get",
+          "verdict": "GAP",
+          "evidence_file": "pp2-audit/evidence/ganita_planet_get__missing_budget_echo.json",
+          "note": "6 sections genuinely trimmed with correct real recover_via names, but budget_kb_applied/budget_kb_requested never echoed and top-level drill_pointers never populated \u2014 uses the weaker applyAutoBudgetToEnvelope path instead of finalizeMcpBudget."
+        },
+        {
+          "tool": "phala_outlook_get",
+          "verdict": "PASS",
+          "evidence_file": "pp2-audit/evidence/pass_tools__honest_trim_examples.json",
+          "note": "Live confirmation the RC-04 unknown_tool fix holds in production across 3 trimmed sections."
+        },
+        {
+          "tool": "synth_chart_brief_get",
+          "verdict": "GAP",
+          "evidence_file": "pp2-audit/evidence/stale_pretrim_counts__three_tools.json",
+          "note": "depth=complete: coverage_receipt narrates '27 domain verdicts' while the verdict_summary array shipped only 13 post-trim."
+        },
+        {
+          "tool": "mimamsa_insight_get",
+          "verdict": "PASS",
+          "evidence_file": null,
+          "note": "top_k=200: honest hollow_envelope_shape_not_evaluated judgment_flag, real recover_via, total_returned is a genuine total field not contradicted elsewhere in-band."
+        },
+        {
+          "tool": "bodha_signals_get",
+          "verdict": "GAP",
+          "evidence_file": "pp2-audit/evidence/stale_pretrim_counts__three_tools.json",
+          "note": "top_k=200: verdict_summary.served_count=200 / tier_distribution sums to 200 while the signals array shipped only 20 post-trim \u2014 source comment confirms this is by design but it is never disclosed to the caller."
+        },
+        {
+          "tool": "kala_windows_get",
+          "verdict": "GAP",
+          "evidence_file": "pp2-audit/evidence/stale_pretrim_counts__three_tools.json",
+          "note": "On zero-history chart: activation_count=500 vs 5 actual post-trim activations. Real recover_via (already fixed per source comment), and empty_reason:null correctly present (PASS on that sub-axis)."
+        },
+        {
+          "tool": "kala_priority_ranking_get",
+          "verdict": "GAP",
+          "evidence_file": "pp2-audit/evidence/stale_pretrim_counts__three_tools.json",
+          "note": "top_k=100 on zero-history chart: content.signal_count=100 vs 50 actual post-trim ranked_signals. Real recover_via."
+        },
+        {
+          "tool": "plan_retrieval",
+          "verdict": "PASS",
+          "evidence_file": "pp2-audit/evidence/plan_retrieval__budget_kb2_trim.json",
+          "note": "Real recover_via, honest budget echo, self-consistent (non-stale) completeness_receipt coverage numbers."
+        },
+        {
+          "tool": "bodha_remedies_get",
+          "verdict": "GAP",
+          "evidence_file": "pp2-audit/evidence/bodha_remedies_get__prescription_count_stale.json",
+          "note": "prescription_count=27 vs 13 actual post-trim prescriptions array; resonance_count=9 correctly matches its untouched array. Real recover_via."
+        },
+        {
+          "tool": "catalog_assets_list",
+          "verdict": "GAP",
+          "evidence_file": "pp2-audit/evidence/catalog_assets_list__unknown_tool_live.json",
+          "note": "LIVE reproduction of the unknown_tool placeholder recover_via bug on a tool other than the two already-confirmed ones."
+        }
+      ]
+    }
+  }
+}

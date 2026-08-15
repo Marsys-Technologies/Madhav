@@ -1,0 +1,29 @@
+{
+  "tool": "pact_query",
+  "scenario": "native_primary",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "limit": 10,
+    "offset": 0
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"ok\":false,\"error\":{\"class\":\"validation\",\"message\":\"either `domain` or `bhava` is required\"},\"tool\":\"pact_query\"}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "ok": false,
+        "error": {
+          "class": "validation",
+          "message": "either `domain` or `bhava` is required"
+        },
+        "tool": "pact_query"
+      }
+    },
+    "isError": true
+  }
+}

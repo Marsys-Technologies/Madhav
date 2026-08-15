@@ -1,0 +1,14 @@
+{
+  "tool": "judgment_query",
+  "scenario": "moksha",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "moksha"},
+  "timing": {"before_ms": 1786801183135, "after_ms": 1786801192576, "latency_ms": 9441},
+  "is_error": false,
+  "raw_response_summary": {
+    "verdict": {"domain": "moksha", "domain_label": "Moksha / Liberation", "bhava": 12, "verdict_grade": "convergent_strong", "composite_score": 8.33, "operative_varga": "D20"},
+    "gochara_sweep": {"domain": "spirituality", "domain_covered": true, "upcoming_window_count": 3},
+    "judgment_flags_count": 4,
+    "anomaly": "gochara_sweep silently reuses domain='spirituality' bucket rather than a moksha-specific one, and the 'timing_hooks' for the dasha layer are all empty (kala_activations=[]) -- receipt.timing_anchored correctly downgraded to false via 'timing_anchored_forced_false' flag, an honest disclosure of the gap."
+  },
+  "note": "'moksha' works (part of SHASTRA_MAP, bhava 12) but is NOT in the CANONICAL_DOMAINS 13-domain vocabulary at all -- an inverse mismatch to family/general/transition/travel. Fields copied verbatim from actual tool response."
+}

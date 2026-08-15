@@ -1,0 +1,188 @@
+{
+  "tool": "ref_entities_list",
+  "scenario": "primary",
+  "args": {
+    "entity_class": "graha",
+    "limit": 10
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"entities\":[{\"canonical_id\":\"ascendant\",\"entity_class\":\"planet\",\"canonical_name_en\":\"Ascendant\",\"canonical_name_sa\":\"Lagna\",\"synonyms\":[\"lagna\",\"ascendant\",\"rising_sign\",\"udaya_lagna\",\"AC\",\"LAGNA\"]},{\"canonical_id\":\"jupiter\",\"entity_class\":\"planet\",\"canonical_name_en\":\"Jupiter\",\"canonical_name_sa\":\"Guru\",\"synonyms\":[\"guru\",\"brihaspati\",\"brhaspati\",\"Jupiter\",\"Brahmanaspati\",\"devaguru\",\"JUP\",\"JUPITER\"]},{\"canonical_id\":\"ketu\",\"entity_class\":\"planet\",\"canonical_name_en\":\"Ketu\",\"canonical_name_sa\":\"Ketu\",\"synonyms\":[\"ketu\",\"cauda_draconis\",\"south_node\",\"dragon_tail\",\"descending_node\",\"KET_MEAN\",\"KETU\"]},{\"canonical_id\":\"mars\",\"entity_class\":\"planet\",\"canonical_name_en\":\"Mars\",\"canonical_name_sa\":\"Mangala\",\"synonyms\":[\"mangala\",\"kuja\",\"angaraka\",\"bhumi\",\"Mars\",\"Mangal\",\"MAR\",\"MARS\"]},{\"canonical_id\":\"mercury\",\"entity_class\":\"planet\",\"canonical_name_en\":\"Mercury\",\"canonical_name_sa\":\"Budha\",\"synonyms\":[\"budha\",\"buddha\",\"Mercury\",\"Budh\",\"MER\",\"MERCURY\"]},{\"canonical_id\":\"midheaven\",\"entity_class\":\"planet\",\"canonical_name_en\":\"Midheaven\",\"canonical_name_sa\":\"Madhya Lagna\",\"synonyms\":[\"mc\",\"midheaven\",\"madhya_lagna\",\"medium_coeli\",\"MC\"]},{\"canonical_id\":\"moon\",\"entity_class\":\"planet\",\"canonical_name_en\":\"Moon\",\"canonical_name_sa\":\"Chandra\",\"synonyms\":[\"chandra\",\"soma\",\"luna\",\"indu\",\"Chandra\",\"Moon\",\"chandrama\",\"MOON\"]},{\"canonical_id\":\"rahu\",\"entity_class\":\"planet\",\"canonical_name_en\":\"Rahu\",\"canonical_name_sa\":\"Rahu\",\"synonyms\":[\"rahu\",\"caput_draconis\",\"north_node\",\"dragon_head\",\"ascending_node\",\"RAH_MEAN\",\"RAHU\"]},{\"canonical_id\":\"saturn\",\"entity_class\":\"planet\",\"canonical_name_en\":\"Saturn\",\"canonical_name_sa\":\"Shani\",\"synonyms\":[\"shani\",\"sani\",\"Saturn\",\"shanaischar\",\"manda\",\"Shanaischara\",\"SAT\",\"SATURN\"]},{\"canonical_id\":\"sun\",\"entity_class\":\"planet\",\"canonical_name_en\":\"Sun\",\"canonical_name_sa\":\"Surya\",\"synonyms\":[\"surya\",\"ravi\",\"aditya\",\"Sol\",\"Sūrya\",\"Arka\",\"arka\",\"bhaskar\",\"SUN\"]}],\"served_count\":10,\"total\":11,\"more_available\":true,\"next_cursor\":\"eyJvZmZzZXQiOjEwLCJmcCI6IjA4ZmMyMzQ4NThlOTdiIn0=\",\"judgment_flags\":[],\"budget_note\":\"Showing 10 of 11 entities — raise `limit` (max 500) or narrow by entity_class to see the rest. No rows are silently dropped.\",\"filters\":{\"entity_class_requested\":\"graha\",\"entity_class_resolved\":\"planet\"}},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "entities": [
+            {
+              "canonical_id": "ascendant",
+              "entity_class": "planet",
+              "canonical_name_en": "Ascendant",
+              "canonical_name_sa": "Lagna",
+              "synonyms": [
+                "lagna",
+                "ascendant",
+                "rising_sign",
+                "udaya_lagna",
+                "AC",
+                "LAGNA"
+              ]
+            },
+            {
+              "canonical_id": "jupiter",
+              "entity_class": "planet",
+              "canonical_name_en": "Jupiter",
+              "canonical_name_sa": "Guru",
+              "synonyms": [
+                "guru",
+                "brihaspati",
+                "brhaspati",
+                "Jupiter",
+                "Brahmanaspati",
+                "devaguru",
+                "JUP",
+                "JUPITER"
+              ]
+            },
+            {
+              "canonical_id": "ketu",
+              "entity_class": "planet",
+              "canonical_name_en": "Ketu",
+              "canonical_name_sa": "Ketu",
+              "synonyms": [
+                "ketu",
+                "cauda_draconis",
+                "south_node",
+                "dragon_tail",
+                "descending_node",
+                "KET_MEAN",
+                "KETU"
+              ]
+            },
+            {
+              "canonical_id": "mars",
+              "entity_class": "planet",
+              "canonical_name_en": "Mars",
+              "canonical_name_sa": "Mangala",
+              "synonyms": [
+                "mangala",
+                "kuja",
+                "angaraka",
+                "bhumi",
+                "Mars",
+                "Mangal",
+                "MAR",
+                "MARS"
+              ]
+            },
+            {
+              "canonical_id": "mercury",
+              "entity_class": "planet",
+              "canonical_name_en": "Mercury",
+              "canonical_name_sa": "Budha",
+              "synonyms": [
+                "budha",
+                "buddha",
+                "Mercury",
+                "Budh",
+                "MER",
+                "MERCURY"
+              ]
+            },
+            {
+              "canonical_id": "midheaven",
+              "entity_class": "planet",
+              "canonical_name_en": "Midheaven",
+              "canonical_name_sa": "Madhya Lagna",
+              "synonyms": [
+                "mc",
+                "midheaven",
+                "madhya_lagna",
+                "medium_coeli",
+                "MC"
+              ]
+            },
+            {
+              "canonical_id": "moon",
+              "entity_class": "planet",
+              "canonical_name_en": "Moon",
+              "canonical_name_sa": "Chandra",
+              "synonyms": [
+                "chandra",
+                "soma",
+                "luna",
+                "indu",
+                "Chandra",
+                "Moon",
+                "chandrama",
+                "MOON"
+              ]
+            },
+            {
+              "canonical_id": "rahu",
+              "entity_class": "planet",
+              "canonical_name_en": "Rahu",
+              "canonical_name_sa": "Rahu",
+              "synonyms": [
+                "rahu",
+                "caput_draconis",
+                "north_node",
+                "dragon_head",
+                "ascending_node",
+                "RAH_MEAN",
+                "RAHU"
+              ]
+            },
+            {
+              "canonical_id": "saturn",
+              "entity_class": "planet",
+              "canonical_name_en": "Saturn",
+              "canonical_name_sa": "Shani",
+              "synonyms": [
+                "shani",
+                "sani",
+                "Saturn",
+                "shanaischar",
+                "manda",
+                "Shanaischara",
+                "SAT",
+                "SATURN"
+              ]
+            },
+            {
+              "canonical_id": "sun",
+              "entity_class": "planet",
+              "canonical_name_en": "Sun",
+              "canonical_name_sa": "Surya",
+              "synonyms": [
+                "surya",
+                "ravi",
+                "aditya",
+                "Sol",
+                "Sūrya",
+                "Arka",
+                "arka",
+                "bhaskar",
+                "SUN"
+              ]
+            }
+          ],
+          "served_count": 10,
+          "total": 11,
+          "more_available": true,
+          "next_cursor": "eyJvZmZzZXQiOjEwLCJmcCI6IjA4ZmMyMzQ4NThlOTdiIn0=",
+          "judgment_flags": [],
+          "budget_note": "Showing 10 of 11 entities — raise `limit` (max 500) or narrow by entity_class to see the rest. No rows are silently dropped.",
+          "filters": {
+            "entity_class_requested": "graha",
+            "entity_class_resolved": "planet"
+          }
+        },
+        "is_error": false
+      }
+    }
+  }
+}

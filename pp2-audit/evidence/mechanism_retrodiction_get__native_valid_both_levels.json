@@ -1,0 +1,60 @@
+{
+  "tool": "mechanism_retrodiction_get",
+  "scenario": "native_valid_both_levels",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "dasha_level": "both",
+    "limit": 50
+  },
+  "raw_response": {
+    "ok": true,
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "ayanamsha_id": "lahiri_chitrapaksha",
+    "lagna_sign": "Aries",
+    "mechanisms": [
+      {"house": 10, "house_sign": "Capricorn", "house_lord": "Saturn", "domains_signified": ["career"], "fired_count": 2, "fired_events": [
+        {"event_id": "fd04fecc-21f7-5dfd-b68b-f1a6f1cd6bfa", "event_date": "2007-06-10", "domain": "career/first_job_joined", "dasha_level": "MD", "dasha_lord": "Saturn", "dasha_row_id": "555899cd-3292-4e65-94ef-82ead69c52c7"},
+        {"event_id": "aed78f94-87ca-5347-a1d0-7f277a99b6c4", "event_date": "2008-06-09", "domain": "career/first_job_exited", "dasha_level": "MD", "dasha_lord": "Saturn", "dasha_row_id": "555899cd-3292-4e65-94ef-82ead69c52c7"}
+      ]},
+      {"house": 6, "house_sign": "Virgo", "house_lord": "Mercury", "domains_signified": ["health"], "fired_count": 1, "fired_events": [
+        {"event_id": "64c475da-5248-5332-9127-9331fae79f23", "event_date": "1995-07-01", "domain": "health/chronic_onset", "dasha_level": "AD", "dasha_lord": "Mercury", "dasha_row_id": "35cbcab2-6708-473a-9c60-72e24002ba9e"}
+      ]},
+      {"house": 4, "house_sign": "Cancer", "house_lord": "Moon", "domains_signified": ["education", "family"], "fired_count": 1, "fired_events": [
+        {"event_id": "4a1b1dc0-df38-56d8-a2c8-0383bb2acc7c", "event_date": "2003-06-15", "domain": "education/entrance_exam_preparation_ended", "dasha_level": "AD", "dasha_lord": "Moon", "dasha_row_id": "30b414ff-7ac0-4ee3-9525-6c9380fea519"}
+      ]},
+      {"house": 11, "house_sign": "Aquarius", "house_lord": "Saturn", "domains_signified": ["wealth", "finance"], "fired_count": 1, "fired_events": [
+        {"event_id": "bd7f5711-8668-5315-8e25-94dc94f2a101", "event_date": "2010-07-01", "domain": "finance/family_windfall", "dasha_level": "MD", "dasha_lord": "Saturn", "dasha_row_id": "555899cd-3292-4e65-94ef-82ead69c52c7"}
+      ]},
+      {"house": 9, "house_sign": "Sagittarius", "house_lord": "Jupiter", "domains_signified": ["spiritual", "spirituality", "travel"], "fired_count": 1, "fired_events": [
+        {"event_id": "132b61e0-3409-53fd-bb1a-80b4b6bdcc67", "event_date": "2010-07-01", "domain": "spiritual/devata_adoption", "dasha_level": "AD", "dasha_lord": "Jupiter", "dasha_row_id": "7a60629d-fa5b-481a-8a70-d259bdff5044"}
+      ]},
+      {"house": 12, "house_sign": "Pisces", "house_lord": "Jupiter", "domains_signified": ["spiritual", "spirituality", "travel"], "fired_count": 1, "fired_events": [
+        {"event_id": "132b61e0-3409-53fd-bb1a-80b4b6bdcc67", "event_date": "2010-07-01", "domain": "spiritual/devata_adoption", "dasha_level": "AD", "dasha_lord": "Jupiter", "dasha_row_id": "7a60629d-fa5b-481a-8a70-d259bdff5044"}
+      ]},
+      {"house": 3, "house_sign": "Gemini", "house_lord": "Mercury", "domains_signified": ["travel"], "fired_count": 1, "fired_events": [
+        {"event_id": "a1ef10c2-c52d-536e-9fd5-51342d58721e", "event_date": "2010-12-15", "domain": "travel/first_foreign_trip", "dasha_level": "MD", "dasha_lord": "Mercury", "dasha_row_id": "5c187669-99e3-412c-8088-79fabb16b342"}
+      ]}
+    ],
+    "unmapped_events_count_observed": 8,
+    "not_confirmed_events_count_observed": 20,
+    "unmapped_events_sample": [
+      {"event_id": "3e96c6da-3ad6-5329-a40b-0b9240a1cbdb-corr-congenital", "event_date": "1984-02-05", "domain": "psychological/speech_pattern_arc", "reason": "no classical house mapping for domain prefix 'psychological'"},
+      {"event_id": "928a1f56-0940-5428-a35a-8591f84fd5b4", "event_date": "2019-05-15", "domain": "residential+travel/foreign_move_start", "reason": "no classical house mapping for domain prefix 'residential+travel'"}
+    ],
+    "not_confirmed_events_sample": [
+      {"event_id": "3a37fa76-cfc1-599b-bbdf-97cff784f5ac", "event_date": "1998-02-16", "domain": "relationship/romantic_long_term_started", "mapped_houses": [7], "reason": "neither MD nor AD lord matched house 7's lord (Venus) on this date"},
+      {"event_id": "b72f40f7-687e-51dd-a21d-06b184fc24c1", "event_date": "2013-12-11", "domain": "family/marriage", "mapped_houses": [2, 4], "reason": "neither MD nor AD lord matched house 2/4's lord (Venus/Moon) on this date"},
+      {"event_id": "b75c63f4-ead1-5d6d-9811-011277347d57", "event_date": "2018-11-28", "domain": "loss/parent_passing", "mapped_houses": [8], "reason": "neither MD nor AD lord matched house 8's lord (Mars) on this date"}
+    ],
+    "usage_note": "CONFIRMATION ONLY — historical retrodictive evidence from dasha-lord/house-activation overlap with observed LEL events. Never use as prediction input; feeds L5 retrodictive-evidence section only.",
+    "sealed_test_split_note": "Events on/after 2020-01-01 are excluded from this surface unconditionally (sealed test split, ESCALATION_POLICY §4) — gate-runner/anti-gaming territory only.",
+    "mechanism_scope_note": "Reports the classical dasha-lord/house-activation mechanism only (BPHS bhāva-dasha doctrine) — independent of B-1's still-resolving peak-timing bakeoff. domains_signified lists ALL DOMAIN_TO_HOUSES prefixes mapped to that house, not just the domain(s) observed in this response.",
+    "provenance": {
+      "tables": ["life_events", "chart_dashas", "chart_facts"],
+      "lagna_fact_id": "e8e5300adea7bc58",
+      "grounding": "house_sign = whole-sign walk from chart_facts LAGNA sign (lagna_fact_id); house_lord = classical fixed sign rulership; dasha spans = chart_dashas (system_id=vimshottari), each firing cites dasha_row_id.",
+      "no_leakage_note": "life_events is a calibration corpus only — must not feed prediction generation. This tool is CONFIRMATION-ONLY."
+    }
+  },
+  "transcription_note": "Evidence file lists the full 'mechanisms' array (7 houses) verbatim and provides representative samples of 'unmapped_events' (8 total observed) and 'not_confirmed_events' (20 total observed) for file-size reasons; all sampled values were observed verbatim in the live response, none fabricated."
+}

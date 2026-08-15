@@ -1,0 +1,24 @@
+{
+  "tool": "kala_now_get",
+  "scenario": "native_question_frame_marriage_timing",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "question_frame": {"domain": "marriage", "intent_verb": "timing"}},
+  "raw_response_summary": {
+    "reading_thesis": "2 temporal activation window(s) active as of 2026-08-15; strongest: CLASSIFY_RESIDUAL/DIGNITY/YOGA/SUBSYSTEM (orb strength 1.00, 10 contributing signal(s)). Kala-Darshana confluence: auspicious_strong (effective_score 0.7).",
+    "windows": [
+      {"window_start": "2010-08-18", "window_end": "2027-08-18", "window_peak": "2019-02-16", "domains": ["wealth","character","relationship","spirituality","career","health","progeny","education"]},
+      {"window_start": "2024-12-08", "window_end": "2027-08-18", "window_peak": "2026-04-13", "domains": ["character","relationship","spirituality","career","wealth","family","residence","progeny","travel"]}
+    ],
+    "darshana": {"effective_score": 0.7, "net_label": "auspicious_strong", "window_start": "2025-03-29", "window_end": "2027-09-12", "peak_date": "2025-03-29"},
+    "gochara_dual_reference_relevant_rows": [
+      {"planet": "Rahu", "transit_sign_name": "Aquarius", "house_from_lagna": 11, "house_from_moon": 1},
+      {"planet": "Ketu", "transit_sign_name": "Leo", "house_from_lagna": 5, "house_from_moon": 7},
+      {"planet": "Venus", "transit_sign_name": "Virgo", "house_from_lagna": 6, "house_from_moon": 8}
+    ],
+    "dasha_lord_transit_condition": [
+      {"level_name": "Mahadasha", "lord_graha": "Mercury", "transit_sign_name": "Cancer", "house_from_lagna": 4, "dignity": "neutral"},
+      {"level_name": "Antardasha", "lord_graha": "Saturn", "transit_sign_name": "Pisces", "house_from_lagna": 12, "dignity": "neutral"}
+    ],
+    "gochara_narrative": {"active_windows": [], "field_gochara_alignment": "insufficient_data", "narrative_tier": "thin"},
+    "note": "question_frame is accepted and echoed but W0 does not yet condition the reading on it (per the tool's own schema description) -- passing domain=marriage/intent_verb=timing produced a generic whole-chart NOW reading, not a marriage-specific one; the only marriage-relevant content surfaced is the raw gochara_dual_reference planet table, which the caller must interpret manually."
+  }
+}

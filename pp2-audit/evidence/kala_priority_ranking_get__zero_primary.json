@@ -1,0 +1,379 @@
+{
+  "tool": "kala_priority_ranking_get",
+  "scenario": "zero_primary",
+  "args": {
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "limit": 10,
+    "offset": 0
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"date_from\":\"2026-08-15\",\"date_to\":\"2026-11-13\",\"domain_filter\":null,\"ranked_signals\":[{\"signal_id\":\"786c3c2e-1a51-428b-aba5-f5fb805075e9\",\"signal_headline_text\":\"VEN: graha kp lords: sub sub lord = Jupiter [ga_sensitive]\",\"computed_salience\":1.020886,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"signal_type_class\":\"tradition_specific\",\"activation_strength\":1,\"window_start\":\"2026-10-26\",\"window_end\":\"2026-11-05\",\"trigger_type\":\"DIGNITY\",\"neutral_dignity_downranked\":false,\"priority_score\":1.020886},{\"signal_id\":\"7eab614e-21b2-405a-992d-5649a5efe1b5\",\"signal_headline_text\":\"dispositor tree: tree position = JUP [ga_structural]\",\"computed_salience\":0.875045,\"domains_affected_array\":[\"character\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":1,\"window_start\":\"2026-10-10\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.875045},{\"signal_id\":\"c48b591f-4827-4f17-8104-6cd8bf1e254a\",\"signal_headline_text\":\"D9 cross-check: Jupiter D1=debilitated × D9=Friend → neecha_bhanga_redeemed\",\"computed_salience\":1.6,\"domains_affected_array\":[\"career\",\"character\"],\"signal_type_class\":\"varga_pattern\",\"activation_strength\":null,\"window_start\":\"2026-10-10\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.8},{\"signal_id\":\"722c8835-d4db-4e52-b02c-8b25b0b67cb9\",\"signal_headline_text\":\"graha dignity per varga: dignity state = exalted [ga_structural]\",\"computed_salience\":1.400073,\"domains_affected_array\":[\"character\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2026-10-10\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.7000365},{\"signal_id\":\"c436bcf8-10ea-4a5a-b6c6-437b15526233\",\"signal_headline_text\":\"JUPITER: D1 debilitated vs D2 exalted — wealth ratification fails in D2\",\"computed_salience\":1.2,\"domains_affected_array\":[\"wealth\"],\"signal_type_class\":\"varga_ratification_divergence\",\"activation_strength\":null,\"window_start\":\"2026-10-10\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"CLASSIFY_RESIDUAL\",\"neutral_dignity_downranked\":false,\"priority_score\":0.6},{\"signal_id\":\"5f416520-54f5-47ff-a0c0-fab9f3b11f5a\",\"signal_headline_text\":\"graha dignity per varga: dignity state = exalted [ga_structural]\",\"computed_salience\":1.190062,\"domains_affected_array\":[\"character\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2026-10-10\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.595031},{\"signal_id\":\"e76b641e-dc28-4113-b9f1-13554d96edbb\",\"signal_headline_text\":\"sensitive degree check: mrityu bhaga = not_fired [ga_structural]\",\"computed_salience\":1.166727,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2026-10-10\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.5833635},{\"signal_id\":\"5d14aa8e-93b4-475c-8188-32f4ed286ba0\",\"signal_headline_text\":\"dispositor tree: tree position = SAT [ga_structural]\",\"computed_salience\":1.166727,\"domains_affected_array\":[\"character\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2010-04-23\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.5833635},{\"signal_id\":\"2899d871-b779-422d-b3a9-783571fcaeb8\",\"signal_headline_text\":\"dispositor tree: tree position = JUP [ga_structural]\",\"computed_salience\":1.166727,\"domains_affected_array\":[\"character\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2026-10-10\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.5833635},{\"signal_id\":\"1e64548e-19aa-4de0-b1b4-79bccc70531d\",\"signal_headline_text\":\"dispositor tree: tree position = SAT [ga_structural]\",\"computed_salience\":1.166727,\"domains_affected_array\":[\"character\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2010-04-23\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.5833635},{\"signal_id\":\"0e808a0e-6840-4fcf-94e3-bad276d3cdc5\",\"signal_headline_text\":\"dispositor tree: tree position = SAT [ga_structural]\",\"computed_salience\":1.166727,\"domains_affected_array\":[\"character\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2010-04-23\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.5833635},{\"signal_id\":\"5e711f2f-fc09-4b33-bd8e-b3497d146201\",\"signal_headline_text\":\"dispositor tree: tree position = JUP [ga_structural]\",\"computed_salience\":1.166727,\"domains_affected_array\":[\"character\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2026-10-10\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.5833635},{\"signal_id\":\"04c7a51d-ccf0-4c05-8104-233a438caed3\",\"signal_headline_text\":\"dispositor tree: tree position = SAT [ga_structural]\",\"computed_salience\":1.166727,\"domains_affected_array\":[\"character\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2010-04-23\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.5833635},{\"signal_id\":\"711bb457-f032-44a7-8905-7861d45776f1\",\"signal_headline_text\":\"sensitive degree check: gandanta = not_gandanta [ga_structural]\",\"computed_salience\":1.166727,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2026-10-10\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.5833635},{\"signal_id\":\"41da8f41-ca80-41c8-9e40-ade9b53b8a0c\",\"signal_headline_text\":\"dispositor tree: tree position = SAT [ga_structural]\",\"computed_salience\":1.166727,\"domains_affected_array\":[\"character\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2010-04-23\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.5833635},{\"signal_id\":\"cc737b66-ca63-42be-8cfc-b1bdbc608307\",\"signal_headline_text\":\"VEN: graha pada join: pada lord = saturn [ga_sensitive]\",\"computed_salience\":1.166727,\"domains_affected_array\":[\"character\",\"relationship\",\"spirituality\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2010-04-23\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.5833635},{\"signal_id\":\"8354cb13-22c8-412e-949c-99ffb54f34e1\",\"signal_headline_text\":\"dispositor tree: tree position = SAT [ga_structural]\",\"computed_salience\":1.166727,\"domains_affected_array\":[\"character\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2010-04-23\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.5833635},{\"signal_id\":\"bb2168d1-3816-4148-b575-e15f8b604858\",\"signal_headline_text\":\"VEN: graha position: sign lord = Jupiter [ga_structural]\",\"computed_salience\":1.166727,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2026-10-10\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.5833635},{\"signal_id\":\"8838f1b1-4aba-4ec6-b36c-14cfa5004930\",\"signal_headline_text\":\"dispositor tree: tree position = JUP [ga_structural]\",\"computed_salience\":1.166727,\"domains_affected_array\":[\"character\",\"career\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2026-10-10\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.5833635},{\"signal_id\":\"c280221b-c615-43d7-a5a1-0d3017618ae7\",\"signal_headline_text\":\"dispositor tree: tree position = SAT [ga_structural]\",\"computed_salience\":1.166727,\"domains_affected_array\":[\"character\",\"family\"],\"signal_type_class\":\"composite_state\",\"activation_strength\":null,\"window_start\":\"2010-04-23\",\"window_end\":\"2029-04-23\",\"trigger_type\":\"SUBSYSTEM\",\"neutral_dignity_downranked\":false,\"priority_score\":0.5833635}],\"signal_count\":20,\"signal_id_refs\":[\"786c3c2e-1a51-428b-aba5-f5fb805075e9\",\"7eab614e-21b2-405a-992d-5649a5efe1b5\",\"c48b591f-4827-4f17-8104-6cd8bf1e254a\",\"722c8835-d4db-4e52-b02c-8b25b0b67cb9\",\"c436bcf8-10ea-4a5a-b6c6-437b15526233\",\"5f416520-54f5-47ff-a0c0-fab9f3b11f5a\",\"e76b641e-dc28-4113-b9f1-13554d96edbb\",\"5d14aa8e-93b4-475c-8188-32f4ed286ba0\",\"2899d871-b779-422d-b3a9-783571fcaeb8\",\"1e64548e-19aa-4de0-b1b4-79bccc70531d\",\"0e808a0e-6840-4fcf-94e3-bad276d3cdc5\",\"5e711f2f-fc09-4b33-bd8e-b3497d146201\",\"04c7a51d-ccf0-4c05-8104-233a438caed3\",\"711bb457-f032-44a7-8905-7861d45776f1\",\"41da8f41-ca80-41c8-9e40-ade9b53b8a0c\",\"cc737b66-ca63-42be-8cfc-b1bdbc608307\",\"8354cb13-22c8-412e-949c-99ffb54f34e1\",\"bb2168d1-3816-4148-b575-e15f8b604858\",\"8838f1b1-4aba-4ec6-b36c-14cfa5004930\",\"c280221b-c615-43d7-a5a1-0d3017618ae7\"],\"neutral_dignity_downranked_count\":0},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "date_from": "2026-08-15",
+          "date_to": "2026-11-13",
+          "domain_filter": null,
+          "ranked_signals": [
+            {
+              "signal_id": "786c3c2e-1a51-428b-aba5-f5fb805075e9",
+              "signal_headline_text": "VEN: graha kp lords: sub sub lord = Jupiter [ga_sensitive]",
+              "computed_salience": 1.020886,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "signal_type_class": "tradition_specific",
+              "activation_strength": 1,
+              "window_start": "2026-10-26",
+              "window_end": "2026-11-05",
+              "trigger_type": "DIGNITY",
+              "neutral_dignity_downranked": false,
+              "priority_score": 1.020886
+            },
+            {
+              "signal_id": "7eab614e-21b2-405a-992d-5649a5efe1b5",
+              "signal_headline_text": "dispositor tree: tree position = JUP [ga_structural]",
+              "computed_salience": 0.875045,
+              "domains_affected_array": [
+                "character",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": 1,
+              "window_start": "2026-10-10",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.875045
+            },
+            {
+              "signal_id": "c48b591f-4827-4f17-8104-6cd8bf1e254a",
+              "signal_headline_text": "D9 cross-check: Jupiter D1=debilitated × D9=Friend → neecha_bhanga_redeemed",
+              "computed_salience": 1.6,
+              "domains_affected_array": [
+                "career",
+                "character"
+              ],
+              "signal_type_class": "varga_pattern",
+              "activation_strength": null,
+              "window_start": "2026-10-10",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.8
+            },
+            {
+              "signal_id": "722c8835-d4db-4e52-b02c-8b25b0b67cb9",
+              "signal_headline_text": "graha dignity per varga: dignity state = exalted [ga_structural]",
+              "computed_salience": 1.400073,
+              "domains_affected_array": [
+                "character"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2026-10-10",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.7000365
+            },
+            {
+              "signal_id": "c436bcf8-10ea-4a5a-b6c6-437b15526233",
+              "signal_headline_text": "JUPITER: D1 debilitated vs D2 exalted — wealth ratification fails in D2",
+              "computed_salience": 1.2,
+              "domains_affected_array": [
+                "wealth"
+              ],
+              "signal_type_class": "varga_ratification_divergence",
+              "activation_strength": null,
+              "window_start": "2026-10-10",
+              "window_end": "2029-04-23",
+              "trigger_type": "CLASSIFY_RESIDUAL",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.6
+            },
+            {
+              "signal_id": "5f416520-54f5-47ff-a0c0-fab9f3b11f5a",
+              "signal_headline_text": "graha dignity per varga: dignity state = exalted [ga_structural]",
+              "computed_salience": 1.190062,
+              "domains_affected_array": [
+                "character"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2026-10-10",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.595031
+            },
+            {
+              "signal_id": "e76b641e-dc28-4113-b9f1-13554d96edbb",
+              "signal_headline_text": "sensitive degree check: mrityu bhaga = not_fired [ga_structural]",
+              "computed_salience": 1.166727,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2026-10-10",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.5833635
+            },
+            {
+              "signal_id": "5d14aa8e-93b4-475c-8188-32f4ed286ba0",
+              "signal_headline_text": "dispositor tree: tree position = SAT [ga_structural]",
+              "computed_salience": 1.166727,
+              "domains_affected_array": [
+                "character",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2010-04-23",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.5833635
+            },
+            {
+              "signal_id": "2899d871-b779-422d-b3a9-783571fcaeb8",
+              "signal_headline_text": "dispositor tree: tree position = JUP [ga_structural]",
+              "computed_salience": 1.166727,
+              "domains_affected_array": [
+                "character",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2026-10-10",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.5833635
+            },
+            {
+              "signal_id": "1e64548e-19aa-4de0-b1b4-79bccc70531d",
+              "signal_headline_text": "dispositor tree: tree position = SAT [ga_structural]",
+              "computed_salience": 1.166727,
+              "domains_affected_array": [
+                "character",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2010-04-23",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.5833635
+            },
+            {
+              "signal_id": "0e808a0e-6840-4fcf-94e3-bad276d3cdc5",
+              "signal_headline_text": "dispositor tree: tree position = SAT [ga_structural]",
+              "computed_salience": 1.166727,
+              "domains_affected_array": [
+                "character",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2010-04-23",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.5833635
+            },
+            {
+              "signal_id": "5e711f2f-fc09-4b33-bd8e-b3497d146201",
+              "signal_headline_text": "dispositor tree: tree position = JUP [ga_structural]",
+              "computed_salience": 1.166727,
+              "domains_affected_array": [
+                "character",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2026-10-10",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.5833635
+            },
+            {
+              "signal_id": "04c7a51d-ccf0-4c05-8104-233a438caed3",
+              "signal_headline_text": "dispositor tree: tree position = SAT [ga_structural]",
+              "computed_salience": 1.166727,
+              "domains_affected_array": [
+                "character",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2010-04-23",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.5833635
+            },
+            {
+              "signal_id": "711bb457-f032-44a7-8905-7861d45776f1",
+              "signal_headline_text": "sensitive degree check: gandanta = not_gandanta [ga_structural]",
+              "computed_salience": 1.166727,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2026-10-10",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.5833635
+            },
+            {
+              "signal_id": "41da8f41-ca80-41c8-9e40-ade9b53b8a0c",
+              "signal_headline_text": "dispositor tree: tree position = SAT [ga_structural]",
+              "computed_salience": 1.166727,
+              "domains_affected_array": [
+                "character",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2010-04-23",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.5833635
+            },
+            {
+              "signal_id": "cc737b66-ca63-42be-8cfc-b1bdbc608307",
+              "signal_headline_text": "VEN: graha pada join: pada lord = saturn [ga_sensitive]",
+              "computed_salience": 1.166727,
+              "domains_affected_array": [
+                "character",
+                "relationship",
+                "spirituality"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2010-04-23",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.5833635
+            },
+            {
+              "signal_id": "8354cb13-22c8-412e-949c-99ffb54f34e1",
+              "signal_headline_text": "dispositor tree: tree position = SAT [ga_structural]",
+              "computed_salience": 1.166727,
+              "domains_affected_array": [
+                "character",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2010-04-23",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.5833635
+            },
+            {
+              "signal_id": "bb2168d1-3816-4148-b575-e15f8b604858",
+              "signal_headline_text": "VEN: graha position: sign lord = Jupiter [ga_structural]",
+              "computed_salience": 1.166727,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2026-10-10",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.5833635
+            },
+            {
+              "signal_id": "8838f1b1-4aba-4ec6-b36c-14cfa5004930",
+              "signal_headline_text": "dispositor tree: tree position = JUP [ga_structural]",
+              "computed_salience": 1.166727,
+              "domains_affected_array": [
+                "character",
+                "career",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2026-10-10",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.5833635
+            },
+            {
+              "signal_id": "c280221b-c615-43d7-a5a1-0d3017618ae7",
+              "signal_headline_text": "dispositor tree: tree position = SAT [ga_structural]",
+              "computed_salience": 1.166727,
+              "domains_affected_array": [
+                "character",
+                "family"
+              ],
+              "signal_type_class": "composite_state",
+              "activation_strength": null,
+              "window_start": "2010-04-23",
+              "window_end": "2029-04-23",
+              "trigger_type": "SUBSYSTEM",
+              "neutral_dignity_downranked": false,
+              "priority_score": 0.5833635
+            }
+          ],
+          "signal_count": 20,
+          "signal_id_refs": [
+            "786c3c2e-1a51-428b-aba5-f5fb805075e9",
+            "7eab614e-21b2-405a-992d-5649a5efe1b5",
+            "c48b591f-4827-4f17-8104-6cd8bf1e254a",
+            "722c8835-d4db-4e52-b02c-8b25b0b67cb9",
+            "c436bcf8-10ea-4a5a-b6c6-437b15526233",
+            "5f416520-54f5-47ff-a0c0-fab9f3b11f5a",
+            "e76b641e-dc28-4113-b9f1-13554d96edbb",
+            "5d14aa8e-93b4-475c-8188-32f4ed286ba0",
+            "2899d871-b779-422d-b3a9-783571fcaeb8",
+            "1e64548e-19aa-4de0-b1b4-79bccc70531d",
+            "0e808a0e-6840-4fcf-94e3-bad276d3cdc5",
+            "5e711f2f-fc09-4b33-bd8e-b3497d146201",
+            "04c7a51d-ccf0-4c05-8104-233a438caed3",
+            "711bb457-f032-44a7-8905-7861d45776f1",
+            "41da8f41-ca80-41c8-9e40-ade9b53b8a0c",
+            "cc737b66-ca63-42be-8cfc-b1bdbc608307",
+            "8354cb13-22c8-412e-949c-99ffb54f34e1",
+            "bb2168d1-3816-4148-b575-e15f8b604858",
+            "8838f1b1-4aba-4ec6-b36c-14cfa5004930",
+            "c280221b-c615-43d7-a5a1-0d3017618ae7"
+          ],
+          "neutral_dignity_downranked_count": 0
+        },
+        "is_error": false
+      }
+    }
+  }
+}

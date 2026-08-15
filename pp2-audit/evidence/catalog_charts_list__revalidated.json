@@ -1,0 +1,19 @@
+{
+  "tool": "catalog_charts_list",
+  "scenario": "no_args_global_chart_roster",
+  "args": {},
+  "raw_response": {
+    "ok": true,
+    "count": 6,
+    "charts": [
+      {"index": 0, "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "display_name": "Abhinandan"},
+      {"index": 1, "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "display_name": "Abhisek"},
+      {"index": 2, "chart_id": "acdf0d66-7541-451c-be35-80285028810b", "display_name": "Arunima"},
+      {"index": 3, "chart_id": "fdee25b5-55a0-47a6-bbb9-0869bf936ca5", "display_name": "Elon"},
+      {"index": 4, "chart_id": "cb73cd3d-9eba-4220-9902-0de91566e980", "display_name": "Kiran"},
+      {"index": 5, "chart_id": "e36ba429-9b44-417a-940c-38a3c6a3053b", "display_name": "Steve"}
+    ],
+    "usage_hint": "Pass chart_id to chart-scoped tools, or use select_chart to validate a choice."
+  },
+  "note": "Tool schema has empty properties {} — confirmed no filter/pagination params exist, matching 'list all charts you are entitled to access' description. Global/session-level, not chart-scoped. Both audit ground-truth chart_ids (482012f1 native, 1c826d5a zero-history) are present and correctly labeled Abhisek/Abhinandan respectively."
+}

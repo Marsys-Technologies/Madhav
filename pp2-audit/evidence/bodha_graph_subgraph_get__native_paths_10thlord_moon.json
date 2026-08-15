@@ -1,0 +1,14 @@
+{
+  "tool": "bodha_graph_subgraph_get",
+  "scenario": "native_paths_10thlord_moon",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "mode": "paths", "about_from": "lord_of(bhava 10)", "about_to": {"type": "graha", "graha": "Moon"}, "direction": "directed"},
+  "observed": {
+    "mode": "paths",
+    "path_found": true,
+    "path_count": 5,
+    "byte_identical_to": "bodha_graph_traverse_get__native_paths_10thlord_moon.json (both proxy the same underlying capability marsys://tool/L2/traverse_chart_graph -- confirmed intentional by code comments '[Phase-1 alias]', 'same as X', 'full parameter parity' in platform-mcp/src/tools/register_p1_aliases.ts around lines 611-658 (traverse_get) and 1212-1250 (subgraph_get))",
+    "budget_kb_applied": 40,
+    "trim_report": [{"path": "content.edges", "original_count": 97, "kept_count": 48, "reason": "content.edges: trimmed to 48", "recover_via": {"instrument": "unknown_tool", "hint": "call unknown_tool again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"content.edges\""}}]
+  },
+  "note": "Same 'unknown_tool' recover_via defect as bodha_graph_traverse_get -- register_p1_aliases.ts:1249 also calls `return dualOutput(data)` with no toolName arg. The byte-identical output vs bodha_graph_traverse_get in this and the neighbors-mode test is NOT a bug: both are documented thin aliases over the same primitive with equivalent param translation; differentiation would require a param one tool supports and the other doesn't (e.g. traverse_get's max_depth/relation vs subgraph_get's direct depth -- neither exercised here)."
+}

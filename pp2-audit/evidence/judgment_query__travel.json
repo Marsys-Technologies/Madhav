@@ -1,0 +1,14 @@
+{
+  "tool": "judgment_query",
+  "scenario": "travel",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "travel"},
+  "timing": {"before_ms": 1786801150630, "after_ms": 1786801157272, "latency_ms": 6642},
+  "is_error": false,
+  "raw_response": {
+    "verdict": {"receipt": {}},
+    "grounding": {"fact_ids": [], "citations": [], "grounding_score": null},
+    "judgment_flags": [],
+    "content": {"error": "judgment_query requires either `domain` (marriage/career/wealth/health/progeny/education/spirituality) or `bhava` (1-12)."}
+  },
+  "note": "4th of 4 CANONICAL_DOMAINS entries (family, general, transition, travel) confirmed unsupported by judgment_query's domain resolver -- same soft-failure shape each time."
+}

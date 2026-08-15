@@ -1,0 +1,62 @@
+{
+  "tool": "bodha_quality_get",
+  "scenario": "native_primary",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "limit": 10
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"scorecard\":{\"scorecard_id\":\"fdebb35e-fb5c-4125-aaeb-167ed7053431\",\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"build_id\":\"e24e06c1-d557-4d99-a188-e5bb5829541d\",\"msr_signal_count\":50104,\"cdlm_cell_count\":280,\"cgm_node_count\":385,\"cgm_edge_count\":849,\"two_pass_verified_pct\":8.42,\"documented_approximation_pct\":2.06,\"msr_citation_ref_coverage_pct\":100,\"trap1_authority_inversion_count\":0,\"trap2_narration_leak_count\":0,\"unresolved_constituent_facts_count\":49,\"scored_at\":\"2026-08-12 23:44:25.161185+00\"},\"no_data\":false,\"defect_001\":{\"claim_id\":\"DEFECT-001\",\"status\":\"MOSTLY_RESOLVED\",\"note\":\"constituent_facts_array resolution against chart_facts, derived live for chart 482012f1-710e-4a25-994a-93821f5871aa: 49/71967 references orphaned (0.1%). DEFECT-001 is substantially resolved on this chart (historical baseline pre-R4 rebuild was ~91.5% orphan) — a small residual remains. Treat unresolved refs as reference-only, not an error.\",\"as_of\":\"2026-08-15T11:07:38.296Z\",\"expires_on\":\"2026-08-16T11:07:38.296Z\",\"metrics\":{\"total_refs\":71967,\"orphan_refs\":49,\"orphan_pct\":0.1}},\"defect_001_alert\":{\"severity\":\"HIGH\",\"message\":\"DEFECT-001 status (derived live, as_of=2026-08-15T11:07:38.296Z): MOSTLY_RESOLVED. constituent_facts_array resolution against chart_facts, derived live for chart 482012f1-710e-4a25-994a-93821f5871aa: 49/71967 references orphaned (0.1%). DEFECT-001 is substantially resolved on this chart (historical baseline pre-R4 rebuild was ~91.5% orphan) — a small residual remains. Treat unresolved refs as reference-only, not an error. The served scorecard.unresolved_constituent_facts_count field above is overwritten with this same live-derived count (SAMĀPANA Track C, GA.1-class fix) — it no longer disagrees with defect_001. The underlying synthesis_quality_scorecard DB row itself remains a writer-time snapshot from before the L1 SHA hash rebuild and is not updated in place; only the value served here is corrected.\",\"total_refs\":71967,\"orphan_refs\":49,\"orphan_pct\":0.1}},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "scorecard": {
+            "scorecard_id": "fdebb35e-fb5c-4125-aaeb-167ed7053431",
+            "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+            "build_id": "e24e06c1-d557-4d99-a188-e5bb5829541d",
+            "msr_signal_count": 50104,
+            "cdlm_cell_count": 280,
+            "cgm_node_count": 385,
+            "cgm_edge_count": 849,
+            "two_pass_verified_pct": 8.42,
+            "documented_approximation_pct": 2.06,
+            "msr_citation_ref_coverage_pct": 100,
+            "trap1_authority_inversion_count": 0,
+            "trap2_narration_leak_count": 0,
+            "unresolved_constituent_facts_count": 49,
+            "scored_at": "2026-08-12 23:44:25.161185+00"
+          },
+          "no_data": false,
+          "defect_001": {
+            "claim_id": "DEFECT-001",
+            "status": "MOSTLY_RESOLVED",
+            "note": "constituent_facts_array resolution against chart_facts, derived live for chart 482012f1-710e-4a25-994a-93821f5871aa: 49/71967 references orphaned (0.1%). DEFECT-001 is substantially resolved on this chart (historical baseline pre-R4 rebuild was ~91.5% orphan) — a small residual remains. Treat unresolved refs as reference-only, not an error.",
+            "as_of": "2026-08-15T11:07:38.296Z",
+            "expires_on": "2026-08-16T11:07:38.296Z",
+            "metrics": {
+              "total_refs": 71967,
+              "orphan_refs": 49,
+              "orphan_pct": 0.1
+            }
+          },
+          "defect_001_alert": {
+            "severity": "HIGH",
+            "message": "DEFECT-001 status (derived live, as_of=2026-08-15T11:07:38.296Z): MOSTLY_RESOLVED. constituent_facts_array resolution against chart_facts, derived live for chart 482012f1-710e-4a25-994a-93821f5871aa: 49/71967 references orphaned (0.1%). DEFECT-001 is substantially resolved on this chart (historical baseline pre-R4 rebuild was ~91.5% orphan) — a small residual remains. Treat unresolved refs as reference-only, not an error. The served scorecard.unresolved_constituent_facts_count field above is overwritten with this same live-derived count (SAMĀPANA Track C, GA.1-class fix) — it no longer disagrees with defect_001. The underlying synthesis_quality_scorecard DB row itself remains a writer-time snapshot from before the L1 SHA hash rebuild and is not updated in place; only the value served here is corrected.",
+            "total_refs": 71967,
+            "orphan_refs": 49,
+            "orphan_pct": 0.1
+          }
+        },
+        "is_error": false
+      }
+    }
+  }
+}

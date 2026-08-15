@@ -1,0 +1,13 @@
+{
+  "tool": "judgment_query",
+  "scenario": "wealth",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "wealth"},
+  "timing": {"before_ms": 1786801166140, "after_ms": 1786801173247, "latency_ms": 7107},
+  "is_error": false,
+  "raw_response_summary": {
+    "verdict": {"domain": "wealth", "domain_label": "Wealth / Prosperity", "bhava": 2, "verdict_grade": "convergent_moderate", "composite_score": 2.38, "operative_varga": "D2"},
+    "gochara_sweep": {"domain": "wealth", "domain_covered": true, "upcoming_window_count": 3},
+    "judgment_flags_count": 7
+  },
+  "note": "Fields copied verbatim from actual tool response; full payload truncated for evidence-file size, not fabricated."
+}

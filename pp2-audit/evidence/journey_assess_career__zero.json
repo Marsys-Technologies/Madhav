@@ -1,0 +1,15 @@
+{
+  "tool": "assess_career",
+  "scenario": "zero_history_journey_step2",
+  "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"},
+  "raw_response_full_dump": "/Users/Dev/.claude/projects/-Users-Dev-Vibe-Coding-Apps-Madhav/a2d70062-56b8-48b2-bdaf-1bbd51e5c7d0/tool-results/mcp-marsys-jis-direct-assess_career-1786801017646.txt",
+  "raw_response_summary": {
+    "is_error": false,
+    "completeness_directive": "SUBSTANCE-INLINE: this response's `reading` field carries 11/12 career concept families as grounded sentences (fact_id-cited) -- read it directly ... For the full 13825-concept territory, call dossier(domain=\"career\", chart_id).",
+    "judgment_flags": ["complete_domain_accounting_attached: the full career concept slice (13825 concepts, 100% accounted) is attached as domain_completeness ...", "budget_exceeded_after_trim"],
+    "reading_length": 12,
+    "content_keys": ["domain","domain_label","chart_id","ayanamsha_id","ranking_basis","verdict","reading_checklist","verdict_skeleton","step_results","house_analysis","karaka_analysis","varga_analysis","sensitive_degree_firings","kp_cusp_chain","gochara_sweep","activating_dasha","contradictions","yoga_fact_ids","citations","judgment_flags","provenance"]
+  },
+  "verdict": "PASS",
+  "note": "No crash on the zero-history chart. assess_career serves a fully fact-grounded, deterministic D1/varga/yoga/dasha reading (identical structural-tier discipline to judgment_query) with a 100%-accounted domain_completeness receipt. It does not claim a calibrated outcome-based confidence anywhere in content -- it never had an 'empirical calibration' surface to begin with at this tool tier, so there is no dishonest gap to find; the honesty burden for calibration lives correctly at mimamsa_insight_get (L5), which IS explicit about prior_only/STRUCTURAL mode (see journey_mimamsa_insight_get__zero_career.json)."
+}

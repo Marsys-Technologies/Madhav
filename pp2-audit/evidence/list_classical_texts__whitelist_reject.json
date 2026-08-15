@@ -1,0 +1,1 @@
+{"tool": "list_classical_texts", "scenario": "whitelist_reject", "args": {}, "raw_response": {"error": true, "tool": "list_classical_texts", "message": "Tool not in surgical whitelist: list_classical_texts"}}

@@ -1,0 +1,96 @@
+{
+  "tool": "phala_predictive_anchors_get",
+  "scenario": "zero_history_top5",
+  "args": {
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "top_k": 5
+  },
+  "raw_response": {
+    "type": "object",
+    "object": {
+      "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+      "anchors": [
+        {
+          "anchor_id": "e58fb9d6-68aa-49c0-9d59-5104667b0e4d",
+          "domain": "character",
+          "event_type": "psychological_arc",
+          "direction": "mixed",
+          "horizon_tier": "lifetime",
+          "anchor_source": "convergence",
+          "signal_id": "da03f71a-8759-415c-8789-86fafa5a7a51",
+          "convergence_id": "486048",
+          "window_start": "2032-05-30",
+          "peak_date": "2032-05-30",
+          "window_end": "2034-11-13",
+          "magnitude": "moderate",
+          "confidence_low": 0.711,
+          "confidence_high": 0.8,
+          "posterior": 0.7608
+        },
+        {
+          "anchor_id": "eecb7e3a-1eac-4f3d-957b-027a0e7fd276",
+          "domain": "spirituality",
+          "event_type": "spiritual_turn",
+          "window_start": "2032-05-30",
+          "peak_date": "2032-05-30",
+          "window_end": "2034-11-13",
+          "magnitude": "moderate",
+          "posterior": 0.5367
+        },
+        {
+          "anchor_id": "2300fe19-533c-4ca8-8e60-d0ecd2fc6d53",
+          "domain": "relationship",
+          "event_type": "marriage",
+          "window_start": "2032-05-30",
+          "peak_date": "2032-05-30",
+          "window_end": "2034-11-13",
+          "magnitude": "moderate",
+          "posterior": 0.3736
+        },
+        {
+          "anchor_id": "d6e3577d-f8ca-4637-9cf0-17bf4cf54f88",
+          "domain": "career",
+          "event_type": "career_entry",
+          "window_start": "2032-05-30",
+          "peak_date": "2032-05-30",
+          "window_end": "2034-11-13",
+          "magnitude": "moderate",
+          "posterior": 0.1598
+        },
+        {
+          "anchor_id": "9786e13c-ccf3-4d5f-bafe-303f10374d12",
+          "domain": "spirituality",
+          "event_type": "spiritual_turn",
+          "window_start": "2002-07-23",
+          "peak_date": "2002-07-23",
+          "window_end": "2005-01-04",
+          "magnitude": "moderate",
+          "posterior": 0.23
+        }
+      ],
+      "anchor_count": 5,
+      "empty_reason": null,
+      "known_gap": null,
+      "signal_id_refs": [
+        "da03f71a-8759-415c-8789-86fafa5a7a51",
+        "ec31ae5f-90b1-470d-897f-7b50e038cec4",
+        "184e28a6-9dfe-4dde-b39f-baf206deeb2d",
+        "4426e74b-4376-40c4-a855-96835a1b9654"
+      ],
+      "filters": {
+        "top_k": 5
+      },
+      "drill_next": [
+        "marsys://tool/L4/query_domain_result",
+        "marsys://tool/L4/query_falsifiers"
+      ],
+      "provenance": {
+        "tables": [
+          "phala_anchors"
+        ],
+        "backing_data_reachable": true
+      },
+      "_evidence_note": "Anchor rows condensed to their key fields (anchor_id, domain, event_type, window_start/peak_date/window_end, magnitude, posterior) for evidence-file brevity; full per-anchor shape (lift_vector_jsonb, posterior_provenance, falsifier text, karmic_frame, malleability, etc.) matches the fully-verbatim native-chart evidence file phala_predictive_anchors_get__native_top5.json. anchor_count, empty_reason, known_gap, signal_id_refs, filters, drill_next, provenance are all unmodified verbatim from the live response."
+    }
+  }
+}

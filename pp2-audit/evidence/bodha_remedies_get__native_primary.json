@@ -1,0 +1,428 @@
+{
+  "tool": "bodha_remedies_get",
+  "scenario": "native_primary",
+  "args": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "domain": "career",
+    "limit": 10
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"narration\":{\"lead\":\"Your Bodha remedy layer flags Ketu as your #1 remedy-priority target — resonance_score 0.139, priority class high — followed by Rahu, Moon, Jupiter.\",\"resonance_ranked\":[{\"rank\":1,\"graha\":\"Ketu\",\"resonance_score\":0.138642,\"weakness_score\":0.13331,\"contradiction_factor\":0,\"remedy_priority_class\":\"high\",\"is_yoga_karaka_flag\":false,\"weakest_rank_in_chart\":2,\"named_affliction_mapping\":\"Ketu weakness (rank 2 in the chart, non-yogakaraka)\",\"citation\":\"Resonance: Ketu | sha=1.00 dosha_count=0\"},{\"rank\":2,\"graha\":\"Rahu\",\"resonance_score\":0.1261,\"weakness_score\":0.12125,\"contradiction_factor\":0,\"remedy_priority_class\":\"high\",\"is_yoga_karaka_flag\":false,\"weakest_rank_in_chart\":3,\"named_affliction_mapping\":\"Rahu weakness (rank 3 in the chart, non-yogakaraka)\",\"citation\":\"Resonance: Rahu | sha=1.00 dosha_count=0\"},{\"rank\":3,\"graha\":\"Moon\",\"resonance_score\":0.116022,\"weakness_score\":0.11156,\"contradiction_factor\":0,\"remedy_priority_class\":\"medium\",\"is_yoga_karaka_flag\":false,\"weakest_rank_in_chart\":4,\"named_affliction_mapping\":\"Moon weakness (rank 4 in the chart, non-yogakaraka)\",\"citation\":\"Resonance: Moon | sha=0.94 dosha_count=0\"},{\"rank\":4,\"graha\":\"Jupiter\",\"resonance_score\":0.11466,\"weakness_score\":0.11025,\"contradiction_factor\":0,\"remedy_priority_class\":\"medium\",\"is_yoga_karaka_flag\":false,\"weakest_rank_in_chart\":5,\"named_affliction_mapping\":\"Jupiter weakness (rank 5 in the chart, non-yogakaraka)\",\"citation\":\"Resonance: Jupiter | sha=1.20 dosha_count=0\"},{\"rank\":5,\"graha\":\"Mars\",\"resonance_score\":0.1027,\"weakness_score\":0.09875,\"contradiction_factor\":0,\"remedy_priority_class\":\"medium\",\"is_yoga_karaka_flag\":false,\"weakest_rank_in_chart\":6,\"named_affliction_mapping\":\"Mars weakness (rank 6 in the chart, non-yogakaraka)\",\"citation\":\"Resonance: Mars | sha=1.11 dosha_count=0\"},{\"rank\":6,\"graha\":\"Sun\",\"resonance_score\":0.097822,\"weakness_score\":0.09406,\"contradiction_factor\":0,\"remedy_priority_class\":\"low\",\"is_yoga_karaka_flag\":false,\"weakest_rank_in_chart\":7,\"named_affliction_mapping\":\"Sun weakness (rank 7 in the chart, non-yogakaraka)\",\"citation\":\"Resonance: Sun | sha=1.69 dosha_count=0\"},{\"rank\":7,\"graha\":\"Saturn\",\"resonance_score\":0.094032,\"weakness_score\":0.090415,\"contradiction_factor\":0,\"remedy_priority_class\":\"low\",\"is_yoga_karaka_flag\":false,\"weakest_rank_in_chart\":8,\"named_affliction_mapping\":\"Saturn weakness (rank 8 in the chart, non-yogakaraka)\",\"citation\":\"Resonance: Saturn | sha=1.57 dosha_count=0\"}],\"data_gap_note\":\"bo_upaya data-population gap (writer-level, not dropped here): associated_doshas_array (formal named-dosha tagging on resonances) and estimated_cost_inr_range_jsonb (exact INR cost on prescriptions) remain NULL for every chart built so far. Named-affliction mapping below is derived instead from graha + remedy_priority_class + weakest_rank_in_chart + is_yoga_karaka_flag; cost is a qualitative tier derived from remedy_category + ritual_complexity_class, not a computed INR figure. (CR-67 CLOSED: associated_cdlm_cells_array is now populated — resonances carry their material CDLM cross-domain-linkage cells; use domain=… to join.)\"},\"resonances\":[{\"resonance_id\":\"fc2ac26a-20e8-4011-bb7d-5b6425e30a16\",\"graha\":\"Ketu\",\"resonance_score\":0.138642,\"weakness_score\":0.13331,\"contradiction_factor\":0,\"domain_burden\":0,\"motif_burden\":0.4,\"remedy_priority_class\":\"high\",\"is_yoga_karaka_flag\":false,\"weakest_rank_in_chart\":2,\"associated_cdlm_cell_count\":5,\"named_affliction_mapping\":\"Ketu weakness (rank 2 in the chart, non-yogakaraka)\",\"computed_at\":\"2026-08-10 01:52:11.356374+00\"},{\"resonance_id\":\"40f5ec51-f8b9-4506-8d0b-706cabdb3386\",\"graha\":\"Rahu\",\"resonance_score\":0.1261,\"weakness_score\":0.12125,\"contradiction_factor\":0,\"domain_burden\":0,\"motif_burden\":0.4,\"remedy_priority_class\":\"high\",\"is_yoga_karaka_flag\":false,\"weakest_rank_in_chart\":3,\"associated_cdlm_cell_count\":5,\"named_affliction_mapping\":\"Rahu weakness (rank 3 in the chart, non-yogakaraka)\",\"computed_at\":\"2026-08-10 01:52:11.356374+00\"},{\"resonance_id\":\"566dfda3-ebe3-475b-8b78-897199dc87e6\",\"graha\":\"Moon\",\"resonance_score\":0.116022,\"weakness_score\":0.11156,\"contradiction_factor\":0,\"domain_burden\":0,\"motif_burden\":0.4,\"remedy_priority_class\":\"medium\",\"is_yoga_karaka_flag\":false,\"weakest_rank_in_chart\":4,\"associated_cdlm_cell_count\":2,\"named_affliction_mapping\":\"Moon weakness (rank 4 in the chart, non-yogakaraka)\",\"computed_at\":\"2026-08-10 01:52:11.356374+00\"},{\"resonance_id\":\"ebd0157a-6def-4fe2-a24a-0d6c18dc1551\",\"graha\":\"Jupiter\",\"resonance_score\":0.11466,\"weakness_score\":0.11025,\"contradiction_factor\":0,\"domain_burden\":0,\"motif_burden\":0.4,\"remedy_priority_class\":\"medium\",\"is_yoga_karaka_flag\":false,\"weakest_rank_in_chart\":5,\"associated_cdlm_cell_count\":9,\"named_affliction_mapping\":\"Jupiter weakness (rank 5 in the chart, non-yogakaraka)\",\"computed_at\":\"2026-08-10 01:52:11.356374+00\"},{\"resonance_id\":\"3ffe82b8-4820-4ef3-a83e-826ee56c1789\",\"graha\":\"Mars\",\"resonance_score\":0.1027,\"weakness_score\":0.09875,\"contradiction_factor\":0,\"domain_burden\":0,\"motif_burden\":0.4,\"remedy_priority_class\":\"medium\",\"is_yoga_karaka_flag\":false,\"weakest_rank_in_chart\":6,\"associated_cdlm_cell_count\":3,\"named_affliction_mapping\":\"Mars weakness (rank 6 in the chart, non-yogakaraka)\",\"computed_at\":\"2026-08-10 01:52:11.356374+00\"},{\"resonance_id\":\"e521c9aa-79dd-4049-a34b-42b2b32e562d\",\"graha\":\"Sun\",\"resonance_score\":0.097822,\"weakness_score\":0.09406,\"contradiction_factor\":0,\"domain_burden\":0,\"motif_burden\":0.4,\"remedy_priority_class\":\"low\",\"is_yoga_karaka_flag\":false,\"weakest_rank_in_chart\":7,\"associated_cdlm_cell_count\":25,\"named_affliction_mapping\":\"Sun weakness (rank 7 in the chart, non-yogakaraka)\",\"computed_at\":\"2026-08-10 01:52:11.356374+00\"},{\"resonance_id\":\"28380eca-6c00-489b-b3be-f853a941edc4\",\"graha\":\"Saturn\",\"resonance_score\":0.094032,\"weakness_score\":0.090415,\"contradiction_factor\":0,\"domain_burden\":0,\"motif_burden\":0.4,\"remedy_priority_class\":\"low\",\"is_yoga_karaka_flag\":false,\"weakest_rank_in_chart\":8,\"associated_cdlm_cell_count\":10,\"named_affliction_mapping\":\"Saturn weakness (rank 8 in the chart, non-yogakaraka)\",\"computed_at\":\"2026-08-10 01:52:11.356374+00\"}],\"resonance_count\":7,\"prescriptions\":[{\"prescription_id\":\"9a5d8f95-6e3d-4371-8e4f-602af602711f\",\"target_resonance_id\":\"566dfda3-ebe3-475b-8b78-897199dc87e6\",\"target_graha\":\"Moon\",\"tradition\":\"parashari\",\"sub_tradition\":null,\"remedy_category\":\"mantra\",\"remedy_label_human\":\"Recite the Moon beej mantra 'Om Shraam Shreem Shraum Sah Chandraya Namah' 108 times daily on Monday, facing east. Complete mahadasha-count japa over the dasha period.\",\"classical_strength_rating\":\"0.90\",\"feasibility_score\":0.9,\"ritual_complexity_class\":\"simple\",\"requires_acharya_review_flag\":false,\"cost_tier_estimate\":\"free/low (category-derived estimate)\",\"classical_citation\":\"BPHS Ch.91-94 (Upaya-adhyaya)\",\"maraka_contraindication_verdict\":null,\"computed_at\":\"2026-08-10 01:52:11.356374+00\"},{\"prescription_id\":\"2ecb7995-9f4c-4148-a531-c9950686afcc\",\"target_resonance_id\":\"3ffe82b8-4820-4ef3-a83e-826ee56c1789\",\"target_graha\":\"Mars\",\"tradition\":\"parashari\",\"sub_tradition\":null,\"remedy_category\":\"mantra\",\"remedy_label_human\":\"Recite the Mars beej mantra 'Om Kraam Kreem Kraum Sah Bhaumaya Namah' 108 times daily on Tuesday, facing east. Complete mahadasha-count japa over the dasha period.\",\"classical_strength_rating\":\"0.90\",\"feasibility_score\":0.9,\"ritual_complexity_class\":\"simple\",\"requires_acharya_review_flag\":false,\"cost_tier_estimate\":\"free/low (category-derived estimate)\",\"classical_citation\":\"BPHS Ch.91-94 (Upaya-adhyaya)\",\"maraka_contraindication_verdict\":null,\"computed_at\":\"2026-08-10 01:52:11.356374+00\"},{\"prescription_id\":\"76aeb25b-bd35-4b5f-95fc-cafb80b072a3\",\"target_resonance_id\":\"fc2ac26a-20e8-4011-bb7d-5b6425e30a16\",\"target_graha\":\"Ketu\",\"tradition\":\"parashari\",\"sub_tradition\":null,\"remedy_category\":\"mantra\",\"remedy_label_human\":\"Recite the Ketu beej mantra 'Om Sraam Sreem Sraum Sah Ketave Namah' 108 times daily on Saturday/Tuesday, facing east. Complete mahadasha-count japa over the dasha period.\",\"classical_strength_rating\":\"0.90\",\"feasibility_score\":0.9,\"ritual_complexity_class\":\"simple\",\"requires_acharya_review_flag\":false,\"cost_tier_estimate\":\"free/low (category-derived estimate)\",\"classical_citation\":\"BPHS Ch.91-94 (Upaya-adhyaya)\",\"maraka_contraindication_verdict\":null,\"computed_at\":\"2026-08-10 01:52:11.356374+00\"},{\"prescription_id\":\"13638302-7074-47f8-ac6d-31def1b24c43\",\"target_resonance_id\":\"40f5ec51-f8b9-4506-8d0b-706cabdb3386\",\"target_graha\":\"Rahu\",\"tradition\":\"parashari\",\"sub_tradition\":null,\"remedy_category\":\"mantra\",\"remedy_label_human\":\"Recite the Rahu beej mantra 'Om Bhraam Bhreem Bhraum Sah Rahave Namah' 108 times daily on Saturday, facing east. Complete mahadasha-count japa over the dasha period.\",\"classical_strength_rating\":\"0.90\",\"feasibility_score\":0.9,\"ritual_complexity_class\":\"simple\",\"requires_acharya_review_flag\":false,\"cost_tier_estimate\":\"free/low (category-derived estimate)\",\"classical_citation\":\"BPHS Ch.91-94 (Upaya-adhyaya)\",\"maraka_contraindication_verdict\":null,\"computed_at\":\"2026-08-10 01:52:11.356374+00\"},{\"prescription_id\":\"b7fc908a-d36c-48a6-a638-467a614f9bea\",\"target_resonance_id\":\"ebd0157a-6def-4fe2-a24a-0d6c18dc1551\",\"target_graha\":\"Jupiter\",\"tradition\":\"parashari\",\"sub_tradition\":null,\"remedy_category\":\"mantra\",\"remedy_label_human\":\"Recite the Jupiter beej mantra 'Om Graam Greem Graum Sah Gurave Namah' 108 times daily on Thursday, facing east. Complete mahadasha-count japa over the dasha period.\",\"classical_strength_rating\":\"0.90\",\"feasibility_score\":0.9,\"ritual_complexity_class\":\"simple\",\"requires_acharya_review_flag\":false,\"cost_tier_estimate\":\"free/low (category-derived estimate)\",\"classical_citation\":\"BPHS Ch.91-94 (Upaya-adhyaya)\",\"maraka_contraindication_verdict\":null,\"computed_at\":\"2026-08-10 01:52:11.356374+00\"},{\"prescription_id\":\"8de24c1e-fa40-48fa-a124-88290ae57d75\",\"target_resonance_id\":\"ebd0157a-6def-4fe2-a24a-0d6c18dc1551\",\"target_graha\":\"Jupiter\",\"tradition\":\"parashari\",\"sub_tradition\":null,\"remedy_category\":\"mantra\",\"remedy_label_human\":\"Chant Guru Ashtottara Shatanamavali 108 times on Thursdays. Jupiter (Guru) blesses with wisdom, wealth, and progeny when propitiated.\",\"classical_strength_rating\":\"0.90\",\"feasibility_score\":0.9,\"ritual_complexity_class\":\"simple\",\"requires_acharya_review_flag\":false,\"cost_tier_estimate\":\"free/low (category-derived estimate)\",\"classical_citation\":\"BPHS Ch.88\",\"maraka_contraindication_verdict\":null,\"computed_at\":\"2026-08-10 01:52:11.356374+00\"},{\"prescription_id\":\"14c52ea6-5bb8-41e3-9799-5f70f6bbaf21\",\"target_resonance_id\":\"28380eca-6c00-489b-b3be-f853a941edc4\",\"target_graha\":\"Saturn\",\"tradition\":\"parashari\",\"sub_tradition\":null,\"remedy_category\":\"japa\",\"remedy_label_human\":\"For Saturn-ruled chronic disease (bones, joints, nervous system; Saturn in 6H/8H or Sade Sati with health impact): perform Mahamrityunjaya japa to the prescribed count — 1,25,000 (1.25 lakh) for a ful\",\"classical_strength_rating\":\"0.92\",\"feasibility_score\":0.9,\"ritual_complexity_class\":\"simple\",\"requires_acharya_review_flag\":false,\"cost_tier_estimate\":\"free/low (category-derived estimate)\",\"classical_citation\":\"Rigveda 7.59.12; BPHS Ch.88 (Shani health upaya)\",\"maraka_contraindication_verdict\":null,\"computed_at\":\"2026-08-10 01:52:11.356374+00\"},{\"prescription_id\":\"4b3e88e9-40ed-416f-98e0-622d387c691c\",\"target_resonance_id\":\"ebd0157a-6def-4fe2-a24a-0d6c18dc1551\",\"target_graha\":\"Jupiter\",\"tradition\":\"parashari\",\"sub_tradition\":null,\"remedy_category\":\"japa\",\"remedy_label_human\":\"For afflicted Jupiter (debilitated in Capricorn, Guru Chandal dosha, retrograde in dasha): recite Vishnu Sahasranama (Mahabharata, Anushasana Parva 149) once daily on Thursdays. Jupiter is the karaka \",\"classical_strength_rating\":\"0.88\",\"feasibility_score\":0.9,\"ritual_complexity_class\":\"simple\",\"requires_acharya_review_flag\":false,\"cost_tier_estimate\":\"free/low (category-derived estimate)\",\"classical_citation\":\"Phaladeepika remedial section; Mahabharata Anushasana Parva 149\",\"maraka_contraindication_verdict\":null,\"computed_at\":\"2026-08-10 01:52:11.356374+00\"},{\"prescription_id\":\"cb8941a5-f6ef-4ddb-b416-83d26e214280\",\"target_resonance_id\":\"e521c9aa-79dd-4049-a34b-42b2b32e562d\",\"target_graha\":\"Sun\",\"tradition\":\"parashari\",\"sub_tradition\":null,\"remedy_category\":\"japa\",\"remedy_label_human\":\"For afflicted Sun (combust, debilitated in Libra, or in 6/8/12): recite Aditya Hridayam (from Valmiki Ramayana, Yuddha Kanda Ch.107) in full at sunrise facing east, daily during Sun dasha/antardasha. \",\"classical_strength_rating\":\"0.90\",\"feasibility_score\":0.9,\"ritual_complexity_class\":\"simple\",\"requires_acharya_review_flag\":false,\"cost_tier_estimate\":\"free/low (category-derived estimate)\",\"classical_citation\":\"Valmiki Ramayana, Yuddha Kanda 107; BPHS Ch.88 (Surya upaya)\",\"maraka_contraindication_verdict\":null,\"computed_at\":\"2026-08-10 01:52:11.356374+00\"},{\"prescription_id\":\"8ebc0834-9da5-41e1-b447-9f6fb620f981\",\"target_resonance_id\":\"e521c9aa-79dd-4049-a34b-42b2b32e562d\",\"target_graha\":\"Sun\",\"tradition\":\"parashari\",\"sub_tradition\":null,\"remedy_category\":\"mantra\",\"remedy_label_human\":\"Recite the Sun beej mantra 'Om Hraam Hreem Hraum Sah Suryaya Namah' 108 times daily on Sunday, facing east. Complete mahadasha-count japa over the dasha period.\",\"classical_strength_rating\":\"0.90\",\"feasibility_score\":0.9,\"ritual_complexity_class\":\"simple\",\"requires_acharya_review_flag\":false,\"cost_tier_estimate\":\"free/low (category-derived estimate)\",\"classical_citation\":\"BPHS Ch.91-94 (Upaya-adhyaya)\",\"maraka_contraindication_verdict\":null,\"computed_at\":\"2026-08-10 01:52:11.356374+00\"}],\"prescription_count\":10,\"filters\":{\"fields\":\"compact\",\"domain\":\"career\",\"keyword\":null,\"limit\":10,\"leverage_ranked\":false},\"drill_pointers\":[{\"type\":\"refine\",\"instrument\":\"bodha_remedies_get\",\"hint\":\"Call again with tradition=gemstone|mantra|charity for a deeper single-tradition cut.\"},{\"type\":\"build_state\",\"asset_id\":\"bo_upaya\",\"hint\":\"associated_doshas_array and estimated_cost_inr_range_jsonb remain unpopulated bo_upaya-wide — see build-state ledger (writer gap, not a serving-layer drop). associated_cdlm_cells_array is now populated (CR-67 closed).\"},{\"type\":\"recover\",\"instrument\":\"bodha_remedies_get\",\"hint\":\"Call with fields='all' for full raw rows (associated_*_array, estimated_cost_inr_range_jsonb, prescription_detail_jsonb).\"}],\"provenance\":{\"tables\":[\"bodha_rm_resonances\",\"bodha_rm_remedy_prescriptions\"]}},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "ayanamsha_id": "lahiri_chitrapaksha",
+          "narration": {
+            "lead": "Your Bodha remedy layer flags Ketu as your #1 remedy-priority target — resonance_score 0.139, priority class high — followed by Rahu, Moon, Jupiter.",
+            "resonance_ranked": [
+              {
+                "rank": 1,
+                "graha": "Ketu",
+                "resonance_score": 0.138642,
+                "weakness_score": 0.13331,
+                "contradiction_factor": 0,
+                "remedy_priority_class": "high",
+                "is_yoga_karaka_flag": false,
+                "weakest_rank_in_chart": 2,
+                "named_affliction_mapping": "Ketu weakness (rank 2 in the chart, non-yogakaraka)",
+                "citation": "Resonance: Ketu | sha=1.00 dosha_count=0"
+              },
+              {
+                "rank": 2,
+                "graha": "Rahu",
+                "resonance_score": 0.1261,
+                "weakness_score": 0.12125,
+                "contradiction_factor": 0,
+                "remedy_priority_class": "high",
+                "is_yoga_karaka_flag": false,
+                "weakest_rank_in_chart": 3,
+                "named_affliction_mapping": "Rahu weakness (rank 3 in the chart, non-yogakaraka)",
+                "citation": "Resonance: Rahu | sha=1.00 dosha_count=0"
+              },
+              {
+                "rank": 3,
+                "graha": "Moon",
+                "resonance_score": 0.116022,
+                "weakness_score": 0.11156,
+                "contradiction_factor": 0,
+                "remedy_priority_class": "medium",
+                "is_yoga_karaka_flag": false,
+                "weakest_rank_in_chart": 4,
+                "named_affliction_mapping": "Moon weakness (rank 4 in the chart, non-yogakaraka)",
+                "citation": "Resonance: Moon | sha=0.94 dosha_count=0"
+              },
+              {
+                "rank": 4,
+                "graha": "Jupiter",
+                "resonance_score": 0.11466,
+                "weakness_score": 0.11025,
+                "contradiction_factor": 0,
+                "remedy_priority_class": "medium",
+                "is_yoga_karaka_flag": false,
+                "weakest_rank_in_chart": 5,
+                "named_affliction_mapping": "Jupiter weakness (rank 5 in the chart, non-yogakaraka)",
+                "citation": "Resonance: Jupiter | sha=1.20 dosha_count=0"
+              },
+              {
+                "rank": 5,
+                "graha": "Mars",
+                "resonance_score": 0.1027,
+                "weakness_score": 0.09875,
+                "contradiction_factor": 0,
+                "remedy_priority_class": "medium",
+                "is_yoga_karaka_flag": false,
+                "weakest_rank_in_chart": 6,
+                "named_affliction_mapping": "Mars weakness (rank 6 in the chart, non-yogakaraka)",
+                "citation": "Resonance: Mars | sha=1.11 dosha_count=0"
+              },
+              {
+                "rank": 6,
+                "graha": "Sun",
+                "resonance_score": 0.097822,
+                "weakness_score": 0.09406,
+                "contradiction_factor": 0,
+                "remedy_priority_class": "low",
+                "is_yoga_karaka_flag": false,
+                "weakest_rank_in_chart": 7,
+                "named_affliction_mapping": "Sun weakness (rank 7 in the chart, non-yogakaraka)",
+                "citation": "Resonance: Sun | sha=1.69 dosha_count=0"
+              },
+              {
+                "rank": 7,
+                "graha": "Saturn",
+                "resonance_score": 0.094032,
+                "weakness_score": 0.090415,
+                "contradiction_factor": 0,
+                "remedy_priority_class": "low",
+                "is_yoga_karaka_flag": false,
+                "weakest_rank_in_chart": 8,
+                "named_affliction_mapping": "Saturn weakness (rank 8 in the chart, non-yogakaraka)",
+                "citation": "Resonance: Saturn | sha=1.57 dosha_count=0"
+              }
+            ],
+            "data_gap_note": "bo_upaya data-population gap (writer-level, not dropped here): associated_doshas_array (formal named-dosha tagging on resonances) and estimated_cost_inr_range_jsonb (exact INR cost on prescriptions) remain NULL for every chart built so far. Named-affliction mapping below is derived instead from graha + remedy_priority_class + weakest_rank_in_chart + is_yoga_karaka_flag; cost is a qualitative tier derived from remedy_category + ritual_complexity_class, not a computed INR figure. (CR-67 CLOSED: associated_cdlm_cells_array is now populated — resonances carry their material CDLM cross-domain-linkage cells; use domain=… to join.)"
+          },
+          "resonances": [
+            {
+              "resonance_id": "fc2ac26a-20e8-4011-bb7d-5b6425e30a16",
+              "graha": "Ketu",
+              "resonance_score": 0.138642,
+              "weakness_score": 0.13331,
+              "contradiction_factor": 0,
+              "domain_burden": 0,
+              "motif_burden": 0.4,
+              "remedy_priority_class": "high",
+              "is_yoga_karaka_flag": false,
+              "weakest_rank_in_chart": 2,
+              "associated_cdlm_cell_count": 5,
+              "named_affliction_mapping": "Ketu weakness (rank 2 in the chart, non-yogakaraka)",
+              "computed_at": "2026-08-10 01:52:11.356374+00"
+            },
+            {
+              "resonance_id": "40f5ec51-f8b9-4506-8d0b-706cabdb3386",
+              "graha": "Rahu",
+              "resonance_score": 0.1261,
+              "weakness_score": 0.12125,
+              "contradiction_factor": 0,
+              "domain_burden": 0,
+              "motif_burden": 0.4,
+              "remedy_priority_class": "high",
+              "is_yoga_karaka_flag": false,
+              "weakest_rank_in_chart": 3,
+              "associated_cdlm_cell_count": 5,
+              "named_affliction_mapping": "Rahu weakness (rank 3 in the chart, non-yogakaraka)",
+              "computed_at": "2026-08-10 01:52:11.356374+00"
+            },
+            {
+              "resonance_id": "566dfda3-ebe3-475b-8b78-897199dc87e6",
+              "graha": "Moon",
+              "resonance_score": 0.116022,
+              "weakness_score": 0.11156,
+              "contradiction_factor": 0,
+              "domain_burden": 0,
+              "motif_burden": 0.4,
+              "remedy_priority_class": "medium",
+              "is_yoga_karaka_flag": false,
+              "weakest_rank_in_chart": 4,
+              "associated_cdlm_cell_count": 2,
+              "named_affliction_mapping": "Moon weakness (rank 4 in the chart, non-yogakaraka)",
+              "computed_at": "2026-08-10 01:52:11.356374+00"
+            },
+            {
+              "resonance_id": "ebd0157a-6def-4fe2-a24a-0d6c18dc1551",
+              "graha": "Jupiter",
+              "resonance_score": 0.11466,
+              "weakness_score": 0.11025,
+              "contradiction_factor": 0,
+              "domain_burden": 0,
+              "motif_burden": 0.4,
+              "remedy_priority_class": "medium",
+              "is_yoga_karaka_flag": false,
+              "weakest_rank_in_chart": 5,
+              "associated_cdlm_cell_count": 9,
+              "named_affliction_mapping": "Jupiter weakness (rank 5 in the chart, non-yogakaraka)",
+              "computed_at": "2026-08-10 01:52:11.356374+00"
+            },
+            {
+              "resonance_id": "3ffe82b8-4820-4ef3-a83e-826ee56c1789",
+              "graha": "Mars",
+              "resonance_score": 0.1027,
+              "weakness_score": 0.09875,
+              "contradiction_factor": 0,
+              "domain_burden": 0,
+              "motif_burden": 0.4,
+              "remedy_priority_class": "medium",
+              "is_yoga_karaka_flag": false,
+              "weakest_rank_in_chart": 6,
+              "associated_cdlm_cell_count": 3,
+              "named_affliction_mapping": "Mars weakness (rank 6 in the chart, non-yogakaraka)",
+              "computed_at": "2026-08-10 01:52:11.356374+00"
+            },
+            {
+              "resonance_id": "e521c9aa-79dd-4049-a34b-42b2b32e562d",
+              "graha": "Sun",
+              "resonance_score": 0.097822,
+              "weakness_score": 0.09406,
+              "contradiction_factor": 0,
+              "domain_burden": 0,
+              "motif_burden": 0.4,
+              "remedy_priority_class": "low",
+              "is_yoga_karaka_flag": false,
+              "weakest_rank_in_chart": 7,
+              "associated_cdlm_cell_count": 25,
+              "named_affliction_mapping": "Sun weakness (rank 7 in the chart, non-yogakaraka)",
+              "computed_at": "2026-08-10 01:52:11.356374+00"
+            },
+            {
+              "resonance_id": "28380eca-6c00-489b-b3be-f853a941edc4",
+              "graha": "Saturn",
+              "resonance_score": 0.094032,
+              "weakness_score": 0.090415,
+              "contradiction_factor": 0,
+              "domain_burden": 0,
+              "motif_burden": 0.4,
+              "remedy_priority_class": "low",
+              "is_yoga_karaka_flag": false,
+              "weakest_rank_in_chart": 8,
+              "associated_cdlm_cell_count": 10,
+              "named_affliction_mapping": "Saturn weakness (rank 8 in the chart, non-yogakaraka)",
+              "computed_at": "2026-08-10 01:52:11.356374+00"
+            }
+          ],
+          "resonance_count": 7,
+          "prescriptions": [
+            {
+              "prescription_id": "9a5d8f95-6e3d-4371-8e4f-602af602711f",
+              "target_resonance_id": "566dfda3-ebe3-475b-8b78-897199dc87e6",
+              "target_graha": "Moon",
+              "tradition": "parashari",
+              "sub_tradition": null,
+              "remedy_category": "mantra",
+              "remedy_label_human": "Recite the Moon beej mantra 'Om Shraam Shreem Shraum Sah Chandraya Namah' 108 times daily on Monday, facing east. Complete mahadasha-count japa over the dasha period.",
+              "classical_strength_rating": "0.90",
+              "feasibility_score": 0.9,
+              "ritual_complexity_class": "simple",
+              "requires_acharya_review_flag": false,
+              "cost_tier_estimate": "free/low (category-derived estimate)",
+              "classical_citation": "BPHS Ch.91-94 (Upaya-adhyaya)",
+              "maraka_contraindication_verdict": null,
+              "computed_at": "2026-08-10 01:52:11.356374+00"
+            },
+            {
+              "prescription_id": "2ecb7995-9f4c-4148-a531-c9950686afcc",
+              "target_resonance_id": "3ffe82b8-4820-4ef3-a83e-826ee56c1789",
+              "target_graha": "Mars",
+              "tradition": "parashari",
+              "sub_tradition": null,
+              "remedy_category": "mantra",
+              "remedy_label_human": "Recite the Mars beej mantra 'Om Kraam Kreem Kraum Sah Bhaumaya Namah' 108 times daily on Tuesday, facing east. Complete mahadasha-count japa over the dasha period.",
+              "classical_strength_rating": "0.90",
+              "feasibility_score": 0.9,
+              "ritual_complexity_class": "simple",
+              "requires_acharya_review_flag": false,
+              "cost_tier_estimate": "free/low (category-derived estimate)",
+              "classical_citation": "BPHS Ch.91-94 (Upaya-adhyaya)",
+              "maraka_contraindication_verdict": null,
+              "computed_at": "2026-08-10 01:52:11.356374+00"
+            },
+            {
+              "prescription_id": "76aeb25b-bd35-4b5f-95fc-cafb80b072a3",
+              "target_resonance_id": "fc2ac26a-20e8-4011-bb7d-5b6425e30a16",
+              "target_graha": "Ketu",
+              "tradition": "parashari",
+              "sub_tradition": null,
+              "remedy_category": "mantra",
+              "remedy_label_human": "Recite the Ketu beej mantra 'Om Sraam Sreem Sraum Sah Ketave Namah' 108 times daily on Saturday/Tuesday, facing east. Complete mahadasha-count japa over the dasha period.",
+              "classical_strength_rating": "0.90",
+              "feasibility_score": 0.9,
+              "ritual_complexity_class": "simple",
+              "requires_acharya_review_flag": false,
+              "cost_tier_estimate": "free/low (category-derived estimate)",
+              "classical_citation": "BPHS Ch.91-94 (Upaya-adhyaya)",
+              "maraka_contraindication_verdict": null,
+              "computed_at": "2026-08-10 01:52:11.356374+00"
+            },
+            {
+              "prescription_id": "13638302-7074-47f8-ac6d-31def1b24c43",
+              "target_resonance_id": "40f5ec51-f8b9-4506-8d0b-706cabdb3386",
+              "target_graha": "Rahu",
+              "tradition": "parashari",
+              "sub_tradition": null,
+              "remedy_category": "mantra",
+              "remedy_label_human": "Recite the Rahu beej mantra 'Om Bhraam Bhreem Bhraum Sah Rahave Namah' 108 times daily on Saturday, facing east. Complete mahadasha-count japa over the dasha period.",
+              "classical_strength_rating": "0.90",
+              "feasibility_score": 0.9,
+              "ritual_complexity_class": "simple",
+              "requires_acharya_review_flag": false,
+              "cost_tier_estimate": "free/low (category-derived estimate)",
+              "classical_citation": "BPHS Ch.91-94 (Upaya-adhyaya)",
+              "maraka_contraindication_verdict": null,
+              "computed_at": "2026-08-10 01:52:11.356374+00"
+            },
+            {
+              "prescription_id": "b7fc908a-d36c-48a6-a638-467a614f9bea",
+              "target_resonance_id": "ebd0157a-6def-4fe2-a24a-0d6c18dc1551",
+              "target_graha": "Jupiter",
+              "tradition": "parashari",
+              "sub_tradition": null,
+              "remedy_category": "mantra",
+              "remedy_label_human": "Recite the Jupiter beej mantra 'Om Graam Greem Graum Sah Gurave Namah' 108 times daily on Thursday, facing east. Complete mahadasha-count japa over the dasha period.",
+              "classical_strength_rating": "0.90",
+              "feasibility_score": 0.9,
+              "ritual_complexity_class": "simple",
+              "requires_acharya_review_flag": false,
+              "cost_tier_estimate": "free/low (category-derived estimate)",
+              "classical_citation": "BPHS Ch.91-94 (Upaya-adhyaya)",
+              "maraka_contraindication_verdict": null,
+              "computed_at": "2026-08-10 01:52:11.356374+00"
+            },
+            {
+              "prescription_id": "8de24c1e-fa40-48fa-a124-88290ae57d75",
+              "target_resonance_id": "ebd0157a-6def-4fe2-a24a-0d6c18dc1551",
+              "target_graha": "Jupiter",
+              "tradition": "parashari",
+              "sub_tradition": null,
+              "remedy_category": "mantra",
+              "remedy_label_human": "Chant Guru Ashtottara Shatanamavali 108 times on Thursdays. Jupiter (Guru) blesses with wisdom, wealth, and progeny when propitiated.",
+              "classical_strength_rating": "0.90",
+              "feasibility_score": 0.9,
+              "ritual_complexity_class": "simple",
+              "requires_acharya_review_flag": false,
+              "cost_tier_estimate": "free/low (category-derived estimate)",
+              "classical_citation": "BPHS Ch.88",
+              "maraka_contraindication_verdict": null,
+              "computed_at": "2026-08-10 01:52:11.356374+00"
+            },
+            {
+              "prescription_id": "14c52ea6-5bb8-41e3-9799-5f70f6bbaf21",
+              "target_resonance_id": "28380eca-6c00-489b-b3be-f853a941edc4",
+              "target_graha": "Saturn",
+              "tradition": "parashari",
+              "sub_tradition": null,
+              "remedy_category": "japa",
+              "remedy_label_human": "For Saturn-ruled chronic disease (bones, joints, nervous system; Saturn in 6H/8H or Sade Sati with health impact): perform Mahamrityunjaya japa to the prescribed count — 1,25,000 (1.25 lakh) for a ful",
+              "classical_strength_rating": "0.92",
+              "feasibility_score": 0.9,
+              "ritual_complexity_class": "simple",
+              "requires_acharya_review_flag": false,
+              "cost_tier_estimate": "free/low (category-derived estimate)",
+              "classical_citation": "Rigveda 7.59.12; BPHS Ch.88 (Shani health upaya)",
+              "maraka_contraindication_verdict": null,
+              "computed_at": "2026-08-10 01:52:11.356374+00"
+            },
+            {
+              "prescription_id": "4b3e88e9-40ed-416f-98e0-622d387c691c",
+              "target_resonance_id": "ebd0157a-6def-4fe2-a24a-0d6c18dc1551",
+              "target_graha": "Jupiter",
+              "tradition": "parashari",
+              "sub_tradition": null,
+              "remedy_category": "japa",
+              "remedy_label_human": "For afflicted Jupiter (debilitated in Capricorn, Guru Chandal dosha, retrograde in dasha): recite Vishnu Sahasranama (Mahabharata, Anushasana Parva 149) once daily on Thursdays. Jupiter is the karaka ",
+              "classical_strength_rating": "0.88",
+              "feasibility_score": 0.9,
+              "ritual_complexity_class": "simple",
+              "requires_acharya_review_flag": false,
+              "cost_tier_estimate": "free/low (category-derived estimate)",
+              "classical_citation": "Phaladeepika remedial section; Mahabharata Anushasana Parva 149",
+              "maraka_contraindication_verdict": null,
+              "computed_at": "2026-08-10 01:52:11.356374+00"
+            },
+            {
+              "prescription_id": "cb8941a5-f6ef-4ddb-b416-83d26e214280",
+              "target_resonance_id": "e521c9aa-79dd-4049-a34b-42b2b32e562d",
+              "target_graha": "Sun",
+              "tradition": "parashari",
+              "sub_tradition": null,
+              "remedy_category": "japa",
+              "remedy_label_human": "For afflicted Sun (combust, debilitated in Libra, or in 6/8/12): recite Aditya Hridayam (from Valmiki Ramayana, Yuddha Kanda Ch.107) in full at sunrise facing east, daily during Sun dasha/antardasha. ",
+              "classical_strength_rating": "0.90",
+              "feasibility_score": 0.9,
+              "ritual_complexity_class": "simple",
+              "requires_acharya_review_flag": false,
+              "cost_tier_estimate": "free/low (category-derived estimate)",
+              "classical_citation": "Valmiki Ramayana, Yuddha Kanda 107; BPHS Ch.88 (Surya upaya)",
+              "maraka_contraindication_verdict": null,
+              "computed_at": "2026-08-10 01:52:11.356374+00"
+            },
+            {
+              "prescription_id": "8ebc0834-9da5-41e1-b447-9f6fb620f981",
+              "target_resonance_id": "e521c9aa-79dd-4049-a34b-42b2b32e562d",
+              "target_graha": "Sun",
+              "tradition": "parashari",
+              "sub_tradition": null,
+              "remedy_category": "mantra",
+              "remedy_label_human": "Recite the Sun beej mantra 'Om Hraam Hreem Hraum Sah Suryaya Namah' 108 times daily on Sunday, facing east. Complete mahadasha-count japa over the dasha period.",
+              "classical_strength_rating": "0.90",
+              "feasibility_score": 0.9,
+              "ritual_complexity_class": "simple",
+              "requires_acharya_review_flag": false,
+              "cost_tier_estimate": "free/low (category-derived estimate)",
+              "classical_citation": "BPHS Ch.91-94 (Upaya-adhyaya)",
+              "maraka_contraindication_verdict": null,
+              "computed_at": "2026-08-10 01:52:11.356374+00"
+            }
+          ],
+          "prescription_count": 10,
+          "filters": {
+            "fields": "compact",
+            "domain": "career",
+            "keyword": null,
+            "limit": 10,
+            "leverage_ranked": false
+          },
+          "drill_pointers": [
+            {
+              "type": "refine",
+              "instrument": "bodha_remedies_get",
+              "hint": "Call again with tradition=gemstone|mantra|charity for a deeper single-tradition cut."
+            },
+            {
+              "type": "build_state",
+              "asset_id": "bo_upaya",
+              "hint": "associated_doshas_array and estimated_cost_inr_range_jsonb remain unpopulated bo_upaya-wide — see build-state ledger (writer gap, not a serving-layer drop). associated_cdlm_cells_array is now populated (CR-67 closed)."
+            },
+            {
+              "type": "recover",
+              "instrument": "bodha_remedies_get",
+              "hint": "Call with fields='all' for full raw rows (associated_*_array, estimated_cost_inr_range_jsonb, prescription_detail_jsonb)."
+            }
+          ],
+          "provenance": {
+            "tables": [
+              "bodha_rm_resonances",
+              "bodha_rm_remedy_prescriptions"
+            ]
+          }
+        },
+        "is_error": false
+      }
+    }
+  }
+}

@@ -1,0 +1,239 @@
+{
+  "tool": "ganita_sensitive_degrees_get",
+  "scenario": "zero_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\",\"rows\":[{\"fact_id\":\"531563fa2a702d0a\",\"fact_category\":\"sensitive_degree_check\",\"fact_subject\":\"CHART\",\"fact_key\":\"sarvatobhadra_vedha\",\"fact_value_num\":null,\"fact_value_text\":\"nakshatra_occupancy_recorded\",\"fact_value_jsonb\":{\"nakshatra_by_graha\":{\"Sun\":\"Shatabhisha\",\"Ketu\":\"Vishakha\",\"Mars\":\"Revati\",\"Moon\":\"Ardra\",\"Rahu\":\"Krittika\",\"Venus\":\"Revati\",\"Saturn\":\"Anuradha\",\"Jupiter\":\"Shravana\",\"Mercury\":\"Purva Bhadrapada\"}},\"unit\":null,\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-10/sarvatobhadra_vedha\"},{\"fact_id\":\"929009c56d84c50a\",\"fact_category\":\"sensitive_degree_check\",\"fact_subject\":\"JUP\",\"fact_key\":\"gandanta\",\"fact_value_num\":null,\"fact_value_text\":\"not_gandanta\",\"fact_value_jsonb\":{\"sign\":\"Capricorn\",\"fired\":false,\"gandanta_zone\":null,\"gandanta_arc_deg\":3.3333,\"graha_deg_in_sign\":11.5687,\"distance_to_junction_deg\":null},\"unit\":null,\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-10/gandanta\"},{\"fact_id\":\"a9cb2d0d4b1f31d7\",\"fact_category\":\"sensitive_degree_check\",\"fact_subject\":\"JUP\",\"fact_key\":\"kartari\",\"fact_value_num\":null,\"fact_value_text\":\"none\",\"fact_value_jsonb\":{\"fired\":false,\"benefics_2nd\":[\"Mercury\"],\"kartari_type\":null,\"malefics_2nd\":[\"Sun\"],\"second_house\":11,\"benefics_12th\":[],\"malefics_12th\":[],\"twelfth_house\":9},\"unit\":null,\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-10/kartari\"},{\"fact_id\":\"40922db1f2dcba38\",\"fact_category\":\"sensitive_degree_check\",\"fact_subject\":\"JUP\",\"fact_key\":\"kranti\",\"fact_value_num\":null,\"fact_value_text\":\"ayanamsha_offset_unresolved\",\"fact_value_jsonb\":{\"note\":\"tropical longitude unresolvable at build; W3 refinement\",\"longitude_sidereal\":281.568666111532},\"unit\":null,\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-10/kranti\"},{\"fact_id\":\"66a711f360574eba\",\"fact_category\":\"sensitive_degree_check\",\"fact_subject\":\"JUP\",\"fact_key\":\"mrityu_bhaga\",\"fact_value_num\":0.5687,\"fact_value_text\":\"not_fired\",\"fact_value_jsonb\":{\"sign\":\"Capricorn\",\"fired\":false,\"orb_deg\":0.5687,\"tolerance_deg\":0.25,\"mrityu_bhaga_deg\":11,\"graha_deg_in_sign\":11.5687},\"unit\":\"deg\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-10/mrityu_bhaga\"},{\"fact_id\":\"0ccd9060b2313780\",\"fact_category\":\"sensitive_degree_check\",\"fact_subject\":\"JUP\",\"fact_key\":\"neecha_bhanga\",\"fact_value_num\":null,\"fact_value_text\":\"not_applicable_or_intact\",\"fact_value_jsonb\":{\"detector\":\"ga_yoga_writer.detect_neecha_bhanga\"},\"unit\":null,\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-10/neecha_bhanga\"},{\"fact_id\":\"82a4b9221d6155f6\",\"fact_category\":\"sensitive_degree_check\",\"fact_subject\":\"JUP\",\"fact_key\":\"pushkara\",\"fact_value_num\":2.4313,\"fact_value_text\":\"not_pushkara\",\"fact_value_jsonb\":{\"fired\":false,\"bhaga_orb_deg\":2.4313,\"graha_deg_in_sign\":11.5687,\"on_pushkara_bhaga\":false,\"pushkara_bhaga_deg\":14,\"in_pushkara_navamsa\":false,\"pushkara_navamsa_start_deg\":6.6667},\"unit\":\"deg\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-10/pushkara\"},{\"fact_id\":\"87ff83e9c797caff\",\"fact_category\":\"sensitive_degree_check\",\"fact_subject\":\"KET_MEAN\",\"fact_key\":\"gandanta\",\"fact_value_num\":null,\"fact_value_text\":\"not_gandanta\",\"fact_value_jsonb\":{\"sign\":\"Libra\",\"fired\":false,\"gandanta_zone\":null,\"gandanta_arc_deg\":3.3333,\"graha_deg_in_sign\":28.3155,\"distance_to_junction_deg\":null},\"unit\":null,\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-10/gandanta\"},{\"fact_id\":\"dc95481124b42638\",\"fact_category\":\"sensitive_degree_check\",\"fact_subject\":\"KET_MEAN\",\"fact_key\":\"kartari\",\"fact_value_num\":null,\"fact_value_text\":\"none\",\"fact_value_jsonb\":{\"fired\":false,\"benefics_2nd\":[],\"kartari_type\":null,\"malefics_2nd\":[\"Saturn\"],\"second_house\":8,\"benefics_12th\":[],\"malefics_12th\":[],\"twelfth_house\":6},\"unit\":null,\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-10/kartari\"},{\"fact_id\":\"03b757d6f3961a6d\",\"fact_category\":\"sensitive_degree_check\",\"fact_subject\":\"KET_MEAN\",\"fact_key\":\"kranti\",\"fact_value_num\":null,\"fact_value_text\":\"ayanamsha_offset_unresolved\",\"fact_value_jsonb\":{\"note\":\"tropical longitude unresolvable at build; W3 refinement\",\"longitude_sidereal\":208.315480019584},\"unit\":null,\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"citation_ref\":\"WP-2.5/LCA-10/kranti\"}],\"count\":10,\"total_matching\":67,\"more_available\":true,\"filters\":{\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"subject\":null,\"check_type\":null,\"limit\":10},\"provenance\":{\"tables\":[\"chart_facts\"],\"fact_category\":[\"sensitive_degree_check\",\"sensitive_point_yogi\"]}},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+          "rows": [
+            {
+              "fact_id": "531563fa2a702d0a",
+              "fact_category": "sensitive_degree_check",
+              "fact_subject": "CHART",
+              "fact_key": "sarvatobhadra_vedha",
+              "fact_value_num": null,
+              "fact_value_text": "nakshatra_occupancy_recorded",
+              "fact_value_jsonb": {
+                "nakshatra_by_graha": {
+                  "Sun": "Shatabhisha",
+                  "Ketu": "Vishakha",
+                  "Mars": "Revati",
+                  "Moon": "Ardra",
+                  "Rahu": "Krittika",
+                  "Venus": "Revati",
+                  "Saturn": "Anuradha",
+                  "Jupiter": "Shravana",
+                  "Mercury": "Purva Bhadrapada"
+                }
+              },
+              "unit": null,
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-10/sarvatobhadra_vedha"
+            },
+            {
+              "fact_id": "929009c56d84c50a",
+              "fact_category": "sensitive_degree_check",
+              "fact_subject": "JUP",
+              "fact_key": "gandanta",
+              "fact_value_num": null,
+              "fact_value_text": "not_gandanta",
+              "fact_value_jsonb": {
+                "sign": "Capricorn",
+                "fired": false,
+                "gandanta_zone": null,
+                "gandanta_arc_deg": 3.3333,
+                "graha_deg_in_sign": 11.5687,
+                "distance_to_junction_deg": null
+              },
+              "unit": null,
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-10/gandanta"
+            },
+            {
+              "fact_id": "a9cb2d0d4b1f31d7",
+              "fact_category": "sensitive_degree_check",
+              "fact_subject": "JUP",
+              "fact_key": "kartari",
+              "fact_value_num": null,
+              "fact_value_text": "none",
+              "fact_value_jsonb": {
+                "fired": false,
+                "benefics_2nd": [
+                  "Mercury"
+                ],
+                "kartari_type": null,
+                "malefics_2nd": [
+                  "Sun"
+                ],
+                "second_house": 11,
+                "benefics_12th": [],
+                "malefics_12th": [],
+                "twelfth_house": 9
+              },
+              "unit": null,
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-10/kartari"
+            },
+            {
+              "fact_id": "40922db1f2dcba38",
+              "fact_category": "sensitive_degree_check",
+              "fact_subject": "JUP",
+              "fact_key": "kranti",
+              "fact_value_num": null,
+              "fact_value_text": "ayanamsha_offset_unresolved",
+              "fact_value_jsonb": {
+                "note": "tropical longitude unresolvable at build; W3 refinement",
+                "longitude_sidereal": 281.568666111532
+              },
+              "unit": null,
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-10/kranti"
+            },
+            {
+              "fact_id": "66a711f360574eba",
+              "fact_category": "sensitive_degree_check",
+              "fact_subject": "JUP",
+              "fact_key": "mrityu_bhaga",
+              "fact_value_num": 0.5687,
+              "fact_value_text": "not_fired",
+              "fact_value_jsonb": {
+                "sign": "Capricorn",
+                "fired": false,
+                "orb_deg": 0.5687,
+                "tolerance_deg": 0.25,
+                "mrityu_bhaga_deg": 11,
+                "graha_deg_in_sign": 11.5687
+              },
+              "unit": "deg",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-10/mrityu_bhaga"
+            },
+            {
+              "fact_id": "0ccd9060b2313780",
+              "fact_category": "sensitive_degree_check",
+              "fact_subject": "JUP",
+              "fact_key": "neecha_bhanga",
+              "fact_value_num": null,
+              "fact_value_text": "not_applicable_or_intact",
+              "fact_value_jsonb": {
+                "detector": "ga_yoga_writer.detect_neecha_bhanga"
+              },
+              "unit": null,
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-10/neecha_bhanga"
+            },
+            {
+              "fact_id": "82a4b9221d6155f6",
+              "fact_category": "sensitive_degree_check",
+              "fact_subject": "JUP",
+              "fact_key": "pushkara",
+              "fact_value_num": 2.4313,
+              "fact_value_text": "not_pushkara",
+              "fact_value_jsonb": {
+                "fired": false,
+                "bhaga_orb_deg": 2.4313,
+                "graha_deg_in_sign": 11.5687,
+                "on_pushkara_bhaga": false,
+                "pushkara_bhaga_deg": 14,
+                "in_pushkara_navamsa": false,
+                "pushkara_navamsa_start_deg": 6.6667
+              },
+              "unit": "deg",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-10/pushkara"
+            },
+            {
+              "fact_id": "87ff83e9c797caff",
+              "fact_category": "sensitive_degree_check",
+              "fact_subject": "KET_MEAN",
+              "fact_key": "gandanta",
+              "fact_value_num": null,
+              "fact_value_text": "not_gandanta",
+              "fact_value_jsonb": {
+                "sign": "Libra",
+                "fired": false,
+                "gandanta_zone": null,
+                "gandanta_arc_deg": 3.3333,
+                "graha_deg_in_sign": 28.3155,
+                "distance_to_junction_deg": null
+              },
+              "unit": null,
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-10/gandanta"
+            },
+            {
+              "fact_id": "dc95481124b42638",
+              "fact_category": "sensitive_degree_check",
+              "fact_subject": "KET_MEAN",
+              "fact_key": "kartari",
+              "fact_value_num": null,
+              "fact_value_text": "none",
+              "fact_value_jsonb": {
+                "fired": false,
+                "benefics_2nd": [],
+                "kartari_type": null,
+                "malefics_2nd": [
+                  "Saturn"
+                ],
+                "second_house": 8,
+                "benefics_12th": [],
+                "malefics_12th": [],
+                "twelfth_house": 6
+              },
+              "unit": null,
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-10/kartari"
+            },
+            {
+              "fact_id": "03b757d6f3961a6d",
+              "fact_category": "sensitive_degree_check",
+              "fact_subject": "KET_MEAN",
+              "fact_key": "kranti",
+              "fact_value_num": null,
+              "fact_value_text": "ayanamsha_offset_unresolved",
+              "fact_value_jsonb": {
+                "note": "tropical longitude unresolvable at build; W3 refinement",
+                "longitude_sidereal": 208.315480019584
+              },
+              "unit": null,
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "citation_ref": "WP-2.5/LCA-10/kranti"
+            }
+          ],
+          "count": 10,
+          "total_matching": 67,
+          "more_available": true,
+          "filters": {
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "subject": null,
+            "check_type": null,
+            "limit": 10
+          },
+          "provenance": {
+            "tables": [
+              "chart_facts"
+            ],
+            "fact_category": [
+              "sensitive_degree_check",
+              "sensitive_point_yogi"
+            ]
+          }
+        },
+        "is_error": false
+      }
+    }
+  }
+}

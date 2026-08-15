@@ -1,0 +1,42 @@
+{
+  "tool": "kala_explain_get",
+  "scenario": "revalid_both_charts_domain_marriage",
+  "note": "Re-verification with valid schema args: chart_id + domain='marriage' (bhava required if domain omitted). PACT chain (promise->confirmation->activation->trigger) with multi-school dissent.",
+  "calls": [
+    {
+      "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "marriage"},
+      "raw_response_excerpt": {
+        "ok": true,
+        "reading": {"thesis": "Why for Marriage / Partnership as of 2026-08-15: This matter is not promised by the rashi checklist — the chain halts at PROMISE; no later stage can deliver what the rashi does not promise."},
+        "pact_status": "denied_at_promise",
+        "weakest_link": {"stage": "PROMISE", "status": "denied", "reason": "The rashi checklist does not promise this matter (contested composite: hostile occupants/aspects and/or a weak, poorly-disposed bhāveśa outweigh supportive factors)."},
+        "school_voices": [{
+          "school": "kp", "kp_stance": "signified", "parasari_stance": "denied", "agreement": "dissents",
+          "claim": "the running AD/KP_SUB lords (Saturn) signify the 7th house on the KP ladder ... so KP reads this window as actively delivering the 7th house's matters. This DISSENTS from the Parāśarī reading, which halts the chain before delivery."
+        }],
+        "chain": [{"stage": "PROMISE", "status": "denied", "verdict_grade": "contested", "composite_score": -3.5}],
+        "a5_gochara_agreement": {"agreement": "insufficient_data", "gochara_windows_active": 0, "note": "No active gochara windows found for this domain/period."}
+      }
+    },
+    {
+      "args": {"chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a", "domain": "marriage"},
+      "raw_response_excerpt": {
+        "ok": true,
+        "reading": {"thesis": "Why for Marriage / Partnership as of 2026-08-15: The promise is confirmed and a future dasha window carries it, but that window has not opened yet — TRIGGER is not yet reachable."},
+        "pact_status": "chain_pending_activation",
+        "weakest_link": {"stage": "TRIGGER", "status": "not_yet", "reason": "ACTIVATION is pending (window opens 2053-04-23) — no window is open yet to check a transit gate against."},
+        "school_voices": [{
+          "school": "kp", "kp_stance": "not_signified", "parasari_stance": "promised", "agreement": "dissents",
+          "claim": "no running daśā lord signifies the 7th house on the KP ladder (ranked significators: Saturn, Ketu, Venus) ... This DISSENTS from the Parāśarī reading, which finds the matter promised and its window open."
+        }],
+        "chain": [
+          {"stage": "PROMISE", "status": "promised", "verdict_grade": "convergent_moderate", "composite_score": 1.9},
+          {"stage": "CONFIRMATION", "status": "confirmed", "reason": "D9 dignity is net-supportive or neutral (weight 0) for the promise-carrying graha(s)."},
+          {"stage": "ACTIVATION", "status": "pending", "reason": "No promise-carrying dasha is running now, but a future mahadasha window begins 2053-04-23 — pending, NOT denied.", "next_window_start": "2053-04-23"},
+          {"stage": "TRIGGER", "status": "not_yet"}
+        ]
+      }
+    }
+  ],
+  "coherence_check": "PASSED — this is direct, verifiable cross-tool coherence: kala_explain_get's chain[0] (PROMISE stage: status/verdict_grade/composite_score) for both charts EXACTLY matches judgment_query's own verdict (native: denied/contested/-3.5; zero-history: promised/convergent_moderate/1.9), confirming kala_explain_get correctly re-derives from (not re-computes independently of) judgment_query's PROMISE stage as the tool's own design claims (PACT-protocol chained investigation over pact_query calls). The KP-vs-Parasari dissent is surfaced honestly as a named methodological disagreement rather than silently picking one school."
+}

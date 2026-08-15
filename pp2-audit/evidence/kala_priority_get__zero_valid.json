@@ -1,0 +1,10 @@
+{
+  "tool": "kala_priority_get",
+  "scenario": "zero_valid",
+  "args": {
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "top_k": 10
+  },
+  "raw_response": {"type":"object","object":{"ok":true,"tool":"kala_priority_get","chart_id":"1c826d5a-41cb-4450-b4dc-59d440e5f75a","reading":{"thesis":"Top priority signal for 2026-08-15–2026-11-13: \"VEN: graha kp lords: sub sub lord = Jupiter [ga_sensitive]\".","verdict":{"statement":"10 signal(s) ranked for 2026-08-15–2026-11-13; see evidence for the top 5.","tier":"structural_prior"},"falsifier":null},"field_snapshot_id":"kfs_b3bcf77a5a4c3ce5296254bac3809451","signal_count":10,"neutral_dignity_downranked_count":0,"salience_vector_five_axis":{"state":"computed","rows_count":7650,"factor_consequence":0.453,"factor_relevance":1,"factor_reliability":0.5},"ranked_signals_sample":[{"signal_id":"786c3c2e-1a51-428b-aba5-f5fb805075e9","signal_headline_text":"VEN: graha kp lords: sub sub lord = Jupiter [ga_sensitive]","computed_salience":1.020886,"priority_score":1.020886},{"signal_id":"7eab614e-21b2-405a-992d-5649a5efe1b5","signal_headline_text":"dispositor tree: tree position = JUP [ga_structural]","computed_salience":0.875045,"priority_score":0.875045}]}},
+  "note": "Confirms kala_priority_get works correctly on the zero-history (no LEL) chart too — different chart-specific ranked signals returned (VEN/Jupiter KP sublord etc., all Ganita-derived, none LEL-dependent), field_snapshot_id differs from the native chart's (kfs_b3bcf77a5a4c3ce5296254bac3809451 vs kfs_e23ba1abdf1c6fd3a1cc5c08c7538aeb), confirming per-chart field isolation."
+}

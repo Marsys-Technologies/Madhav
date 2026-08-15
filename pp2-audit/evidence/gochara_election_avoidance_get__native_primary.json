@@ -1,0 +1,19 @@
+{
+  "tool": "gochara_election_avoidance_get",
+  "scenario": "native_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "date_range": "2026-08-15/2026-09-15",
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "MCP error -32602: Input validation error: Invalid arguments for tool gochara_election_avoidance_get: [\n  {\n    \"expected\": \"object\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"date_range\"\n    ],\n    \"message\": \"Invalid input: expected object, received string\"\n  }\n]"
+      }
+    ],
+    "isError": true
+  }
+}

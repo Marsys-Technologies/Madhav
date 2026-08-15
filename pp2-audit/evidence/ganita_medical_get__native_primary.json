@@ -1,0 +1,261 @@
+{
+  "tool": "ganita_medical_get",
+  "scenario": "native_primary",
+  "args": {
+    "limit": 10,
+    "offset": 0,
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"rows\":[{\"id\":2615,\"graha\":\"Jupiter\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"natal_sign\":\"Sagittarius\",\"natal_nakshatra\":\"Mula\",\"indication_strength\":\"mild\",\"dosha_aggravated\":[\"kapha\"],\"organ_watch\":[\"liver\",\"pancreas\"],\"body_part_watch\":[\"thighs\",\"liver\",\"ears\"],\"nakshatra_body_part\":null,\"indication_tier\":\"jyotish_indication\",\"not_diagnosis\":true,\"classical_citation\":\"BPHS Ch.18 / Ashtanga Hridayam\"},{\"id\":2619,\"graha\":\"Ketu\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"natal_sign\":\"Scorpio\",\"natal_nakshatra\":\"Jyeshtha\",\"indication_strength\":\"mild\",\"dosha_aggravated\":[\"pitta\",\"vata\"],\"organ_watch\":[\"intestines\"],\"body_part_watch\":[\"abdomen\",\"anus\"],\"nakshatra_body_part\":null,\"indication_tier\":\"jyotish_indication\",\"not_diagnosis\":true,\"classical_citation\":\"BPHS Ch.18 (Ketu disease indications)\"},{\"id\":2613,\"graha\":\"Mars\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"natal_sign\":\"Libra\",\"natal_nakshatra\":\"Swati\",\"indication_strength\":\"moderate\",\"dosha_aggravated\":[\"pitta\"],\"organ_watch\":[\"marrow\",\"red_blood_cells\"],\"body_part_watch\":[\"right_ear\",\"bile\",\"genitals\"],\"nakshatra_body_part\":null,\"indication_tier\":\"jyotish_indication\",\"not_diagnosis\":true,\"classical_citation\":\"BPHS Ch.18 / Ashtanga Hridayam\"},{\"id\":2614,\"graha\":\"Mercury\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"natal_sign\":\"Capricorn\",\"natal_nakshatra\":\"Uttara Ashadha\",\"indication_strength\":\"moderate\",\"dosha_aggravated\":[\"tridosha\"],\"organ_watch\":[\"nervous_system\",\"skin\"],\"body_part_watch\":[\"tongue\",\"hands\",\"arms\"],\"nakshatra_body_part\":null,\"indication_tier\":\"jyotish_indication\",\"not_diagnosis\":true,\"classical_citation\":\"BPHS Ch.18 / Charaka Samhita\"},{\"id\":2612,\"graha\":\"Moon\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"natal_sign\":\"Aquarius\",\"natal_nakshatra\":\"Purva Bhadrapada\",\"indication_strength\":\"strong\",\"dosha_aggravated\":[\"kapha\",\"vata\"],\"organ_watch\":[\"mind\",\"lungs\",\"stomach\"],\"body_part_watch\":[\"left_eye\",\"breast\",\"uterus\"],\"nakshatra_body_part\":\"left_side\",\"indication_tier\":\"jyotish_indication\",\"not_diagnosis\":true,\"classical_citation\":\"BPHS Ch.18 / Charaka Samhita\"},{\"id\":2618,\"graha\":\"Rahu\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"natal_sign\":\"Taurus\",\"natal_nakshatra\":\"Rohini\",\"indication_strength\":\"mild\",\"dosha_aggravated\":[\"vata\"],\"organ_watch\":[\"nervous_system\"],\"body_part_watch\":[\"skin\",\"limbs\"],\"nakshatra_body_part\":null,\"indication_tier\":\"jyotish_indication\",\"not_diagnosis\":true,\"classical_citation\":\"BPHS Ch.18 (Rahu disease indications)\"},{\"id\":2617,\"graha\":\"Saturn\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"natal_sign\":\"Libra\",\"natal_nakshatra\":\"Vishakha\",\"indication_strength\":\"mild\",\"dosha_aggravated\":[\"vata\"],\"organ_watch\":[\"large_intestine\",\"spleen\"],\"body_part_watch\":[\"teeth\",\"bones\",\"joints\",\"legs\"],\"nakshatra_body_part\":null,\"indication_tier\":\"jyotish_indication\",\"not_diagnosis\":true,\"classical_citation\":\"BPHS Ch.18 / Ashtanga Hridayam\"},{\"id\":2611,\"graha\":\"Sun\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"natal_sign\":\"Capricorn\",\"natal_nakshatra\":\"Shravana\",\"indication_strength\":\"strong\",\"dosha_aggravated\":[\"pitta\"],\"organ_watch\":[\"heart\",\"eyes\"],\"body_part_watch\":[\"right_eye\",\"spine\",\"heart\"],\"nakshatra_body_part\":null,\"indication_tier\":\"jyotish_indication\",\"not_diagnosis\":true,\"classical_citation\":\"BPHS Ch.18 / Ashtanga Hridayam\"},{\"id\":2616,\"graha\":\"Venus\",\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"natal_sign\":\"Sagittarius\",\"natal_nakshatra\":\"Purva Ashadha\",\"indication_strength\":\"moderate\",\"dosha_aggravated\":[\"kapha\",\"vata\"],\"organ_watch\":[\"reproductive\",\"kidneys\"],\"body_part_watch\":[\"face\",\"neck\",\"genitals\"],\"nakshatra_body_part\":null,\"indication_tier\":\"jyotish_indication\",\"not_diagnosis\":true,\"classical_citation\":\"BPHS Ch.18 / Charaka Samhita\"}],\"count\":9,\"total_matching\":9,\"more_available\":false,\"filters\":{\"graha\":null,\"ayanamsha_id\":\"lahiri_chitrapaksha\",\"indication_tier\":null,\"limit\":10},\"disclaimer\":\"NOT a medical diagnosis — classical Vaidya-phala watch-indications only.\",\"provenance\":{\"tables\":[\"ga_medical\"],\"source\":\"L1 Gaṇita Vaidya-phala; served chart-scoped.\"}},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+          "rows": [
+            {
+              "id": 2615,
+              "graha": "Jupiter",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "natal_sign": "Sagittarius",
+              "natal_nakshatra": "Mula",
+              "indication_strength": "mild",
+              "dosha_aggravated": [
+                "kapha"
+              ],
+              "organ_watch": [
+                "liver",
+                "pancreas"
+              ],
+              "body_part_watch": [
+                "thighs",
+                "liver",
+                "ears"
+              ],
+              "nakshatra_body_part": null,
+              "indication_tier": "jyotish_indication",
+              "not_diagnosis": true,
+              "classical_citation": "BPHS Ch.18 / Ashtanga Hridayam"
+            },
+            {
+              "id": 2619,
+              "graha": "Ketu",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "natal_sign": "Scorpio",
+              "natal_nakshatra": "Jyeshtha",
+              "indication_strength": "mild",
+              "dosha_aggravated": [
+                "pitta",
+                "vata"
+              ],
+              "organ_watch": [
+                "intestines"
+              ],
+              "body_part_watch": [
+                "abdomen",
+                "anus"
+              ],
+              "nakshatra_body_part": null,
+              "indication_tier": "jyotish_indication",
+              "not_diagnosis": true,
+              "classical_citation": "BPHS Ch.18 (Ketu disease indications)"
+            },
+            {
+              "id": 2613,
+              "graha": "Mars",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "natal_sign": "Libra",
+              "natal_nakshatra": "Swati",
+              "indication_strength": "moderate",
+              "dosha_aggravated": [
+                "pitta"
+              ],
+              "organ_watch": [
+                "marrow",
+                "red_blood_cells"
+              ],
+              "body_part_watch": [
+                "right_ear",
+                "bile",
+                "genitals"
+              ],
+              "nakshatra_body_part": null,
+              "indication_tier": "jyotish_indication",
+              "not_diagnosis": true,
+              "classical_citation": "BPHS Ch.18 / Ashtanga Hridayam"
+            },
+            {
+              "id": 2614,
+              "graha": "Mercury",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "natal_sign": "Capricorn",
+              "natal_nakshatra": "Uttara Ashadha",
+              "indication_strength": "moderate",
+              "dosha_aggravated": [
+                "tridosha"
+              ],
+              "organ_watch": [
+                "nervous_system",
+                "skin"
+              ],
+              "body_part_watch": [
+                "tongue",
+                "hands",
+                "arms"
+              ],
+              "nakshatra_body_part": null,
+              "indication_tier": "jyotish_indication",
+              "not_diagnosis": true,
+              "classical_citation": "BPHS Ch.18 / Charaka Samhita"
+            },
+            {
+              "id": 2612,
+              "graha": "Moon",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "natal_sign": "Aquarius",
+              "natal_nakshatra": "Purva Bhadrapada",
+              "indication_strength": "strong",
+              "dosha_aggravated": [
+                "kapha",
+                "vata"
+              ],
+              "organ_watch": [
+                "mind",
+                "lungs",
+                "stomach"
+              ],
+              "body_part_watch": [
+                "left_eye",
+                "breast",
+                "uterus"
+              ],
+              "nakshatra_body_part": "left_side",
+              "indication_tier": "jyotish_indication",
+              "not_diagnosis": true,
+              "classical_citation": "BPHS Ch.18 / Charaka Samhita"
+            },
+            {
+              "id": 2618,
+              "graha": "Rahu",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "natal_sign": "Taurus",
+              "natal_nakshatra": "Rohini",
+              "indication_strength": "mild",
+              "dosha_aggravated": [
+                "vata"
+              ],
+              "organ_watch": [
+                "nervous_system"
+              ],
+              "body_part_watch": [
+                "skin",
+                "limbs"
+              ],
+              "nakshatra_body_part": null,
+              "indication_tier": "jyotish_indication",
+              "not_diagnosis": true,
+              "classical_citation": "BPHS Ch.18 (Rahu disease indications)"
+            },
+            {
+              "id": 2617,
+              "graha": "Saturn",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "natal_sign": "Libra",
+              "natal_nakshatra": "Vishakha",
+              "indication_strength": "mild",
+              "dosha_aggravated": [
+                "vata"
+              ],
+              "organ_watch": [
+                "large_intestine",
+                "spleen"
+              ],
+              "body_part_watch": [
+                "teeth",
+                "bones",
+                "joints",
+                "legs"
+              ],
+              "nakshatra_body_part": null,
+              "indication_tier": "jyotish_indication",
+              "not_diagnosis": true,
+              "classical_citation": "BPHS Ch.18 / Ashtanga Hridayam"
+            },
+            {
+              "id": 2611,
+              "graha": "Sun",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "natal_sign": "Capricorn",
+              "natal_nakshatra": "Shravana",
+              "indication_strength": "strong",
+              "dosha_aggravated": [
+                "pitta"
+              ],
+              "organ_watch": [
+                "heart",
+                "eyes"
+              ],
+              "body_part_watch": [
+                "right_eye",
+                "spine",
+                "heart"
+              ],
+              "nakshatra_body_part": null,
+              "indication_tier": "jyotish_indication",
+              "not_diagnosis": true,
+              "classical_citation": "BPHS Ch.18 / Ashtanga Hridayam"
+            },
+            {
+              "id": 2616,
+              "graha": "Venus",
+              "ayanamsha_id": "lahiri_chitrapaksha",
+              "natal_sign": "Sagittarius",
+              "natal_nakshatra": "Purva Ashadha",
+              "indication_strength": "moderate",
+              "dosha_aggravated": [
+                "kapha",
+                "vata"
+              ],
+              "organ_watch": [
+                "reproductive",
+                "kidneys"
+              ],
+              "body_part_watch": [
+                "face",
+                "neck",
+                "genitals"
+              ],
+              "nakshatra_body_part": null,
+              "indication_tier": "jyotish_indication",
+              "not_diagnosis": true,
+              "classical_citation": "BPHS Ch.18 / Charaka Samhita"
+            }
+          ],
+          "count": 9,
+          "total_matching": 9,
+          "more_available": false,
+          "filters": {
+            "graha": null,
+            "ayanamsha_id": "lahiri_chitrapaksha",
+            "indication_tier": null,
+            "limit": 10
+          },
+          "disclaimer": "NOT a medical diagnosis — classical Vaidya-phala watch-indications only.",
+          "provenance": {
+            "tables": [
+              "ga_medical"
+            ],
+            "source": "L1 Gaṇita Vaidya-phala; served chart-scoped."
+          }
+        },
+        "is_error": false
+      }
+    }
+  }
+}

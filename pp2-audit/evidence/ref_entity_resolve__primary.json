@@ -1,0 +1,39 @@
+{
+  "tool": "ref_entity_resolve",
+  "scenario": "primary",
+  "args": {
+    "name": "Saturn"
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"canonical_id\":\"saturn\",\"entity_class\":\"planet\",\"canonical_name_en\":\"Saturn\",\"canonical_name_sa\":\"Shani\",\"synonyms\":[\"shani\",\"sani\",\"Saturn\",\"shanaischar\",\"manda\",\"Shanaischara\",\"SAT\",\"SATURN\"],\"description\":\"Karma, discipline, longevity, delays; natural malefic\",\"source_citation\":\"BPHS (Brihat Parasara Hora Sastra), classical tradition\"},\"is_error\":false}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "canonical_id": "saturn",
+          "entity_class": "planet",
+          "canonical_name_en": "Saturn",
+          "canonical_name_sa": "Shani",
+          "synonyms": [
+            "shani",
+            "sani",
+            "Saturn",
+            "shanaischar",
+            "manda",
+            "Shanaischara",
+            "SAT",
+            "SATURN"
+          ],
+          "description": "Karma, discipline, longevity, delays; natural malefic",
+          "source_citation": "BPHS (Brihat Parasara Hora Sastra), classical tradition"
+        },
+        "is_error": false
+      }
+    }
+  }
+}

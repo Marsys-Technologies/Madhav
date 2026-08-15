@@ -1,0 +1,34 @@
+{
+  "tool": "ganita_planet_get",
+  "scenario": "native_moon_valid",
+  "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "planet": "Moon"},
+  "raw_response_summary": {
+    "content_planet": {"input": "Moon", "code": "MOON", "name": "Moon"},
+    "position_sample_rows": [
+      {"fact_subject": "MOON", "ayanamsha_id": "krishnamurti", "fact_key": "nakshatra", "fact_value_text": "Purva Bhadrapada"},
+      {"fact_subject": "MOON", "ayanamsha_id": "krishnamurti", "fact_key": "sign", "fact_value_text": "Aquarius"},
+      {"fact_subject": "MOON", "ayanamsha_id": "krishnamurti", "fact_key": "nakshatra_lord", "fact_value_text": "Jupiter"},
+      {"fact_subject": "MOON", "ayanamsha_id": "krishnamurti", "fact_key": "house_d1", "fact_value_num": 11},
+      {"fact_subject": "MOON", "ayanamsha_id": "krishnamurti", "fact_key": "sign_lord", "fact_value_text": "Saturn"},
+      {"fact_subject": "MOON", "ayanamsha_id": "lahiri_chitrapaksha", "fact_key": "combustion_state", "fact_value_text": "none"}
+    ],
+    "dignity_sample": [
+      {"fact_subject": "D32_MOON", "dignity_state": "own", "sign": "Cancer"},
+      {"fact_subject": "D16_MOON", "dignity_state": "debilitated", "sign": "Scorpio"}
+    ],
+    "shadbala_classification_all_ayanamshas": "neutral",
+    "avasthas": {"baladi_state": "mrit", "deepta_state": "dina"},
+    "aspects": {"rows": [], "note": "best-effort text-match filter over get_aspects rows -- no rows matched, does not prove no aspects"},
+    "yogas_firings_authoritative_sample": ["ardhachandra (fired=true, strength=1.2385)", "chatra (fired=true)", "kedara (fired=true)"],
+    "dispositor_sample": [{"varga": "D3", "chain": "Moon->Venus->Mars->Saturn->Mercury"}],
+    "trim_report": [
+      {"path": "dispositor.rows", "original_count": 141, "kept_count": 10},
+      {"path": "shadbala.rows", "original_count": 137, "kept_count": 10},
+      {"path": "yogas.firings_authoritative", "original_count": 19, "kept_count": 5},
+      {"path": "dignity.rows", "original_count": 55, "kept_count": 10},
+      {"path": "position.rows", "original_count": 45, "kept_count": 10},
+      {"path": "avasthas.rows", "original_count": 30, "kept_count": 10}
+    ]
+  },
+  "pp2_note": "Re-verified with valid args (chart_id+planet only -- the prior session's call added limit/offset which this tool's schema does not accept and correctly rejected with unrecognized_keys; that was a caller error, not a tool defect). Moon nakshatra=Purva Bhadrapada confirmed here, consistent with ganita_positions_get and ganita_sensitive_degrees_get evidence for the same chart -- cross-validated FORENSIC anchor. Assembled-entity tool correctly gathers position/dignity/shadbala/avasthas/aspects/yogas/dispositor in one call, with an honest trim_report + recover_via pointer when rows exceed budget (§N.6 density discipline)."
+}

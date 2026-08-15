@@ -1,0 +1,27 @@
+{
+  "tool": "standing_predictions_read",
+  "scenario": "zero_relationship",
+  "args": {
+    "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+    "domain": "relationship",
+    "limit": 5
+  },
+  "raw_response": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"content\":{\"error\":\"Error: parseDaterange: could not parse daterange literal 'empty'\",\"chart_id\":\"1c826d5a-41cb-4450-b4dc-59d440e5f75a\"},\"is_error\":true}"
+      }
+    ],
+    "structuredContent": {
+      "type": "object",
+      "object": {
+        "content": {
+          "error": "Error: parseDaterange: could not parse daterange literal 'empty'",
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
+        },
+        "is_error": true
+      }
+    }
+  }
+}
