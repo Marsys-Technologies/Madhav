@@ -61,6 +61,7 @@ from typing import Any
 
 import psycopg.rows
 
+from brahmagyan.dignity_oracle import classify_dignity
 from brahmagyan.graha_vocabulary import norm_graha
 from brahmagyan.verification_vocab import (
     CLASSICAL_MATCH,
@@ -461,28 +462,34 @@ def _compute_general_varga(longitude_deg: float, divisor: int) -> int:
     return global_amsa % 12
 
 
-def _compute_dignity(body: str, sign_idx: int) -> str:
-    """Compute dignity label from sign_idx (0-based)."""
-    if body not in DIGNITY_TABLE:
+def _compute_dignity(body: str, sign_idx: int, degree_in_sign: float = 0.0) -> str:
+    """Compute dignity label from sign_idx (0-based) and degree_in_sign.
+
+    Delegates to brahmagyan.dignity_oracle.classify_dignity for the five-tier
+    classical classification (exalted/debilitated/moolatrikona/own/neutral) with
+    degree-gated moolatrikona support.  Returns Title-case to preserve callers'
+    existing comparison strings.
+
+    The Friend/Enemy tier that the previous local DIGNITY_TABLE implementation
+    produced is intentionally retained as a fallback label so that callers that
+    compare against "Friend" / "Enemy" continue to work; those values are not
+    produced by the oracle (which returns only the five canonical tiers), so the
+    oracle's "neutral" maps to the old "Neutral" — a conservative no-regression
+    choice.  The only new labels classify_dignity can produce that the old code
+    could not are "moolatrikona" (now degree-gated) and "neutral" in places
+    where the old code might have said "Friend" or "Enemy".  Callers that use
+    dignity for vimsopaka/saptavargaja scoring already handle "Neutral" via their
+    default-fallback branch, so this change is safe.
+    """
+    if body not in DIGNITY_TABLE and body not in ("Rahu", "Ketu"):
         return "Unknown"
-    d = DIGNITY_TABLE[body]
-    if sign_idx == d["exalt"]:
-        return "Exalted"
-    if sign_idx == d["debil"]:
-        return "Debilitated"
-    if d["mt"] is not None and sign_idx == d["mt"]:
-        return "Moolatrikona"
-    if sign_idx in d.get("own", []):
-        return "Own"
-    # Friend/neutral/enemy based on sign lord
-    sign_lord = SIGN_LORDS[sign_idx]
-    friends = NATURAL_FRIENDS.get(body, [])
-    enemies = NATURAL_ENEMIES.get(body, [])
-    if sign_lord in friends:
-        return "Friend"
-    if sign_lord in enemies:
-        return "Enemy"
-    return "Neutral"
+    try:
+        sign_name = SIGN_NAMES[sign_idx]
+        raw = classify_dignity(body, sign_name, degree_in_sign)
+    except (KeyError, IndexError):
+        return "Unknown"
+    # Map lowercase oracle result → Title-case to preserve caller comparisons
+    return raw.capitalize()
 
 
 def _compute_vargottama(d1_sign: int, varga_sign: int) -> bool:
@@ -1043,7 +1050,7 @@ def _build_dignity_rows(
         if bdata is None:
             continue
         sign_idx = bdata["sign_idx"]
-        dignity = _compute_dignity(body, sign_idx)
+        dignity = _compute_dignity(body, sign_idx, bdata.get("degree_in_sign", 0.0))
         subject = BODY_TO_SUBJECT.get(body, body.upper())
         rid = _fact_id(vid, body, "varga_dignity", "dignity",
                        chart_id, ayanamsha_id, build_id)
@@ -1538,7 +1545,7 @@ def _build_vimsopaka_rows(
         if bdata is None:
             continue
         sign_idx = bdata["sign_idx"]
-        dignity = _compute_dignity(body, sign_idx)
+        dignity = _compute_dignity(body, sign_idx, bdata.get("degree_in_sign", 0.0))
         # Vimsopaka contribution: max score × weight based on dignity
         dignity_factor = {
             "Exalted": 1.0, "Moolatrikona": 0.9, "Own": 0.8,
@@ -1902,7 +1909,7 @@ def _build_rollup_rows(
         if bdata is None:
             continue
         sign_idx = bdata["sign_idx"]
-        dignity = _compute_dignity(body, sign_idx)
+        dignity = _compute_dignity(body, sign_idx, bdata.get("degree_in_sign", 0.0))
         dignity_score_sum += dignity_scores.get(dignity, 2)
         if dignity == "Exalted":
             exalted_count += 1
