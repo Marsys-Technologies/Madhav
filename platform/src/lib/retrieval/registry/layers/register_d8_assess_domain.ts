@@ -48,8 +48,45 @@ import {
   checklistExhaustiveness,
   DOMAIN_KP_CUSPS,
   type ChecklistUnit,
+  type GocharaSweepWindow,
 } from './reading_checklist'
 import { judgmentFlag, type JudgmentFlagEntry } from '../../envelope'
+
+// F-119 (EKAVĀKYATĀ A-06): attach resolution_disclosure to gochara_sweep rows
+// so callers can distinguish genuine timing windows from era-scale context rows.
+// GocharaSweepWindow carries only 7 fields — too few for the full
+// deriveResolutionDisclosure() from register_gochara_windows.ts (which needs
+// resolution, peak_basis, milestone_id, shape_conformance). We derive the
+// disclosure from what is available: temporal_shape + peak_date.
+//
+// Rule (mirrors PK-R-1's second floor): a point-shaped row with a peak_date
+// is a genuine timing claim (is_timing_window=true). A row with temporal_shape
+// 'interval' or null without verifiable resolution data is era-scale context
+// (is_timing_window=false). Bare point rows (temporal_shape='point', peak_date
+// null) are suppressed — they carry no actionable timing claim.
+interface SweepWindowDisclosure {
+  is_timing_window: boolean
+  timing_window_blocked_reason: 'era_scale_context' | 'bare_point_no_date' | null
+}
+
+function withSweepDisclosure(
+  rows: GocharaSweepWindow[]
+): Array<GocharaSweepWindow & { resolution_disclosure: SweepWindowDisclosure }> {
+  // Suppress bare point rows (temporal_shape='point' but peak_date is null) —
+  // §N.6: do not serve a row that cannot support any timing claim.
+  const retained = rows.filter(
+    (r) => !(r.temporal_shape === 'point' && r.peak_date == null)
+  )
+  return retained.map((row) => {
+    const isPoint = row.temporal_shape === 'point'
+    return {
+      ...row,
+      resolution_disclosure: isPoint
+        ? { is_timing_window: true, timing_window_blocked_reason: null }
+        : { is_timing_window: false, timing_window_blocked_reason: 'era_scale_context' },
+    }
+  })
+}
 import { applyCompositeRanking, type MsrSignalRow } from '../../ranking/composite_ranker'
 import { fetchL1Context } from '../../ranking/l1_context_fetcher'
 import { rankGrahasByShadbala, type GrahaShadbalaInput } from '../../ranking/rank_vocabulary'
@@ -1151,7 +1188,10 @@ async function runAssessDomain(
           upcoming_window_count: t5Gochara.upcoming_window_count,
           valence_breakdown: t5Gochara.valence_breakdown,
           window_range: t5Gochara.window_range,
-          top_windows: t5Gochara.windows,
+          // F-119 (EKAVĀKYATĀ A-06): attach resolution_disclosure so callers
+          // distinguish genuine timing windows from era-scale context rows.
+          // Bare point rows (point-shaped, no peak_date) are suppressed per §N.6.
+          top_windows: withSweepDisclosure(t5Gochara.windows ?? []),
           note: t5Gochara.note,
         },
         activating_dasha: (() => {
