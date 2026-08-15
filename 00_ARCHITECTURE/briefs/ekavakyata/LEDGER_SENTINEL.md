@@ -216,6 +216,63 @@ None yet.
 
 **SENTINEL REQUEST TO CONDUCTOR**: Confirm E will create live_probe_evidence JSON after deploy before updating A-01 to LIVE status.
 
+### HB-015 — 2026-08-16T22:40Z / ~04:10+0530 (Cycle 14)
+
+**A-04 MERGED — MCP DEPLOY INCOMING (FM-09 re-derived)**
+
+**A-04 merge confirmed:**
+- SHA: `a2ce6dc37ef3` — `ekv(a-04): F-140 — wire kala_field_skill into calibration_maturity (5 kala_views facades) (#1292)`
+- MQ CI run `31906805153`: **COMPLETED / SUCCESS** (16/16 jobs)
+- A-04 files changed (FM-09 diff `20266702a..a2ce6dc37ef3`):
+  - `platform-mcp/src/lib/kala_envelope.ts`
+  - `platform-mcp/src/tools/kala_views/ahead.ts`
+  - `platform-mcp/src/tools/kala_views/elect.ts`
+  - `platform-mcp/src/tools/kala_views/explain.ts`
+  - `platform-mcp/src/tools/kala_views/priority.ts`
+  - `platform-mcp/src/tools/kala_views/upaya.ts`
+- **ALL 6 changed files are under `platform-mcp/`** — gate WILL detect and fire MCP deploy
+
+**A-04 Deploy `31907248672` QUEUED on main @ `a2ce6dc37ef3`:**
+- `Gate & detect changed paths`: QUEUED (not skipped — deploy triggered by merge)
+- When gate runs: diff `a2ce6dc37ef3` vs `20266702a` → all platform-mcp → `Build & Deploy MCP` will FIRE
+- This will finally deploy to MCP service:
+  1. A-01: `platform-mcp/src/tools/registry_bridge.ts` (hardFloor:true) — merged `55a476fbd`
+  2. A-03: `platform-mcp/src/tools/register_p1_synthesis.ts` (unwrapCapabilityResult) — merged `12cbf5e14`
+  3. A-04: `kala_envelope.ts` + 5 `kala_views/*.ts` — merged `a2ce6dc37ef3`
+- MCP deployment gap closes when `31907248672` completes
+
+**C-01 Deploy `31906815008`: COMPLETED / SUCCESS**
+- `Build & Deploy Sidecar`: success — **migration 572 ran on prod** ✓
+  - `brahma_prospective_ledger` empty-daterange rows → 0 on prod (EKV-R-1 migration delivered)
+- `Build & Deploy Web`: success
+- `Build & Deploy MCP`: skipped (expected — C-01 touched sidecar/migrations only)
+- **E must now run 4 post-deploy assertions per EKV-R-1 conditions and record in LEDGER_E**
+
+**A-02 (PR #1294) in merge queue:**
+- MQ CI queued: `31907212584` (TAP) + `31907212577` (Ganga) on `gh-readonly-queue/main/pr-1294-a2ce6dc37ef3f460cab`
+- base: `a2ce6dc37ef3` (A-04 merge SHA) ✓
+- autoMerge field: False (manually queued) — in queue regardless
+
+**Manifest state (FM-09 re-derived from disk):**
+- `deployed_main_sha`: `cfc37fc381661fd2671b299978d28cb5a9f13aad` — STALE (was A-06; now 2 commits behind A-04 merge)
+- Main tip: `a2ce6dc37ef3` — E must update `deployed_main_sha` after A-04 deploy completes
+- `CL-00: result: null` — still not written; E must write after deploy batch
+- A-01: LIVE (EKV-DISPUTE-001 still OPEN — evidence file DNE; MCP not yet deployed at time of check)
+
+**New branch CI active (SENTINEL noted — not W0 scope):**
+- `ekv/a-12-inv2-determinism`: Deploy to Cloud Run in_progress (`31907155505`)
+- `ekv/a-13-error-boundary`: Deploy to Cloud Run in_progress (`31907163723`)
+- `ekv/a-16-vocab-sync`: Deploy to Cloud Run in_progress (`31907166436`)
+- `ekv/a-17-upaya-graha-scope`: Deploy to Cloud Run in_progress (`31907169036`)
+- Stream A building W1 lanes in parallel
+
+**Pending actions after `31907248672` MCP deploy completes:**
+- Run A-01 exit test: call MCP `judgment_query` marriage domain at 12KB budget; verify timing_hooks non-empty
+- Create `evidence/a01_judgment_timing.json` with exit test result
+- E: update `deployed_main_sha` to `a2ce6dc37ef3`
+- E: write CL-00 result to manifest (re-run CL-00 harness post-deploy)
+- E: run 4 EKV-R-1 post-deploy assertions for migration 572
+
 ### HB-014 — 2026-08-16T22:20Z / ~03:50+0530 (Cycle 13)
 
 **A-11 CI FAILED AGAIN — different job this time:**
