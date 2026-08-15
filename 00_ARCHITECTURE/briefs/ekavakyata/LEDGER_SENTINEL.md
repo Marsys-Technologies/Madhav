@@ -406,6 +406,32 @@ FM-09 re-derived via `git show origin/main:platform-mcp/src/tools/registry_bridg
 
 **Gate unchanged:** 3 blockers (PROD-SYNC stale at 6a0f8c9d2841 vs main 0a056aec841a; CL-00 null; A-02 evidence DNE)
 
+### HB-027 — 2026-08-17T03:25Z / ~08:55+0530 (Cycle 25 — A-15 merged, sampled PASS)
+
+**New merge:** A-15 (`7a1c79bf4da000f1c09f5a468d24ce262afcfcc0`) — PR #1300 F-59, 10 resolveChartFactsAyanamsha() wires + delete local alias map.
+
+**W1 15% sample — A-15 (SENTINEL independent verification):**
+
+Exit test: `10 resolveChartFactsAyanamsha() wires; local alias deleted; bogus id errors`
+
+FM-09 re-derived via `git show origin/main:platform-mcp/src/tools/register_p1_aliases.ts`:
+- `resolveChartFactsAyanamsha` imported at L26 ✓
+- 13 call sites confirmed: L377, L489, L567, L645, L697, L915, L965, L1087, L1194, L1239, L1285, L1342, L1949 (all ≥10 required) ✓
+- No local `AYANAMSHA_MAP` constant present in merged file ✓
+
+**A-15 SENTINEL 15% sample: PASS** (code-level)
+
+**Gate unchanged (re-run FM-09):** 3 blockers
+- PROD-SYNC: deployed_sha `6a0f8c9d2841` vs main `7a1c79bf4da0` (now stale by B-05 + A-15)
+- CL-00: manifest null (SENTINEL ran full CL-00 PASS but E hasn't updated manifest)
+- A-02: `a02_deploy.json` DNE
+
+**W1 15% sampling tally so far (this session):**
+| Lane | Sample result |
+|------|--------------|
+| A-09 | PASS (code: buildAssessResponse + verdict_skeleton + activating_dasha) |
+| A-15 | PASS (code: 13 resolveChartFactsAyanamsha wires, no local alias) |
+
 ### HB-020 — 2026-08-17T00:40Z / ~06:10+0530 (Cycle 19)
 
 **⚠️ CONDUCTOR STALE 3.5H + GATE SEQUENCE INCOMPLETE (FM-09)**
