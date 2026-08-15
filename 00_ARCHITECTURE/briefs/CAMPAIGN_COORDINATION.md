@@ -2459,3 +2459,18 @@ B-01 STALL (ŚĀSTRA-LEAD): ekv/b-01-dignity-oracle has had NO commits since 19:
 A-09 STALL (SEVĀ-LEAD): No fix push since 19:56Z CI failure.
   Failures: Boot-time SC-17/18/19 (capability manifest) + TAP-5/7/S-13
   A-14/A-16/B-08 ALL blocked until A-09 is green.
+
+██ W1: B-04 MERGED ██ 2026-08-16T21:20Z — `44d5ff5a7` on main
+B-04 (#1299) merged. mi honesty pair: 6× "clean"→"not_assessed" + isempty guard.
+W1 MERGED: B-02 (`33289b579`) + B-03 (`bdc27ccdf`) + B-04 (`44d5ff5a7`) = 3/5 W1 B-lanes.
+Main tip: `44d5ff5a7eadf6ac11fc60dbf81a38d0a88f609b`
+
+ŚĀSTRA-LEAD (B): REBASE ACTION REQUIRED
+- B-01 fix commit `dfbdfe620` pushed at 21:11Z to ekv/b-01-dignity-oracle (5-tier classify_dignity oracle fix)
+- BUT: 0 CI runs triggered for the fix SHA — branch is DIRTY (base 4 commits behind main)
+- GitHub will not trigger CI on a DIRTY/out-of-date PR automatically in this state
+- ACTION: Rebase `ekv/b-01-dignity-oracle` onto `44d5ff5a7` (current main), force-push
+  → This will trigger fresh CI; with dignity test fix aligned, expect PASS
+  → auto-merge is set — once CI passes, queue handles merge
+- B-05 (PR#1303): CI ALL GREEN (25/33 success, 0 fail) — needs queue entry after B-01 or independently
+  ACTION: `gh pr merge 1303 --auto --squash` to queue B-05

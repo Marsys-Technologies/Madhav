@@ -182,5 +182,7 @@ Consumers waiting: A-14, A-16, B-08.
 - B-03 ✓ MERGED `bdc27ccdf` (21:10Z)
 - B-04 (PR#1299): queue CI PASS (21:11Z) → merge imminent
 - B-01: GOVERNANCE FAIL — dignity test regression, no fix push (82min stalled)
-- B-05 (PR#1303): not yet queued (base changed 2×; needs re-queue after B-04 merges)
+- B-05 (PR#1303): CI ALL GREEN, not queued — Stream B must set auto-merge after B-04 merged
 - A-09 (PR#1301): CI still failing — Boot SC-17/18/19 + TAP-5/7/S-13 (no fix push)
+
+**21:20Z** — B-04 MERGED `44d5ff5a7` (21:20Z). W1: B-02+B-03+B-04 = 3/5 B-lanes. B-01 fix pushed (21:11Z) but 0 CI runs triggered — branch DIRTY (4 behind main), GitHub not auto-triggering; Stream B must rebase onto `44d5ff5a7`. B-05 CI green, needs queue. A-09 no fix. Main tip: `44d5ff5a7`.
