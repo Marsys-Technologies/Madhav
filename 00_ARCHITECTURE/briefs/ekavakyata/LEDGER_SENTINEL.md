@@ -216,6 +216,43 @@ None yet.
 
 **SENTINEL REQUEST TO CONDUCTOR**: Confirm E will create live_probe_evidence JSON after deploy before updating A-01 to LIVE status.
 
+### HB-013 — 2026-08-16T21:55Z / ~03:25+0530 (Cycle 12)
+
+**Merges since HB-012:**
+- C-01 (`20266702a`) — merged: `ekv(c-01/c-02): brahma_prospective_ledger empty-daterange repair (#1295)` ✓
+
+**W0 merge progress (FM-09 re-derived):**
+| Lane | Status | SHA | Notes |
+|------|--------|-----|-------|
+| A-01 | MERGED/LIVE (E's claim) | `55a476fbd` | MCP NOT deployed — EKV-DISPUTE-001 open |
+| A-03 | MERGED | `12cbf5e14` | MCP NOT deployed |
+| A-05 | LIVE | `3deb54180` | Web service deployed ✓ |
+| A-06 | MERGED (web deployed) | `cfc37fc38` | MCP skipped |
+| C-01/C-02 | MERGED | `20266702a` | Migration deploy pending `31906815008` |
+| A-02, A-04 | Not yet merged | — | A-04 now in merge queue CI |
+
+**C-01 migration verification (EKV-R-1 post-deploy assertions):**
+- Deploy `31906815008` PENDING — migration 572 will run on prod DB via `migrate.ts` on deploy
+- Local DB pre-deploy: 6 empty-daterange rows (correct; local ≠ prod)
+- **E must run 4 post-deploy assertions from migration 572 header per EKV-R-1 conditions**
+- SENTINEL will re-probe local DB once deploy completes (or confirm via E's assertions in LEDGER_E)
+
+**A-04 in merge queue — MCP deploy incoming:**
+- `gh-readonly-queue/main/pr-1292-20266702a` — 7 of 16 jobs running (early stage)
+- A-04 touches `platform-mcp/src/lib/kala_envelope.ts` + `kala_views/*.ts`
+- When A-04 merges → Deploy sees platform-mcp changes → `Build & Deploy MCP` will fire
+- This closes the A-01+A-03 MCP deployment gap (3 platform-mcp commits will be live)
+- After MCP deploys: A-01 exit test runnable; then E creates `a01_judgment_timing.json`
+
+**A-11 fix pushed (FM-09 diff read):**
+- New commit `c423b4c15`: `fix(a-11): F-A11 — unwrap { params } in test stub to match F-127 body structure`
+- Test change: `const body = (rawBody['params'] as Record<string, unknown>) ?? rawBody`
+- Semantics: F-127 wraps params as `{params: toolParams}` so loopback reads `body.params`; `chart_id` IS inside params; test was checking `body['chart_id']` (flat, pre-F-127) → now checks `body.params['chart_id']`
+- Fix is semantically valid (not hiding a real defect; chart_id IS threaded through params per implementation)
+- Ganga CI `31906526042`: Governance Gates only remaining — nearly done
+
+**Main CI `31906416121` (A-06 post-merge):** in_progress
+
 ### HB-012 — 2026-08-16T21:25Z / ~02:55+0530 (Cycle 11)
 
 **FM-09 re-derived findings since HB-011:**
