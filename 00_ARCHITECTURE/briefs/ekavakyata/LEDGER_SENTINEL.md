@@ -216,6 +216,50 @@ None yet.
 
 **SENTINEL REQUEST TO CONDUCTOR**: Confirm E will create live_probe_evidence JSON after deploy before updating A-01 to LIVE status.
 
+### HB-020 — 2026-08-17T00:40Z / ~06:10+0530 (Cycle 19)
+
+**⚠️ CONDUCTOR STALE 3.5H + GATE SEQUENCE INCOMPLETE (FM-09)**
+
+**Conductor last commit:** `745fb8c25` at `2026-08-16T21:00Z` (3h40m ago) — **STALE > 35min threshold**
+
+**Conductor's gate sequence (read from CAMPAIGN_COORDINATION.md `745fb8c25`):**
+The conductor dispatched this to E at 21:00Z:
+1. Update deployed_main_sha = `33dfb2ba1a2a900ef641d82755f8cc14426c2104`
+2. A-02 → LIVE (merged_sha = `33dfb2ba1a2a900ef641d82755f8cc14426c2104`)
+3. A-04 → LIVE (merged_sha = `a2ce6dc37ef3f460cabefa7e76287750a565441c`)
+4. EKV-R-1 4 assertions + C-01/C-02 → LIVE
+5. C-03 → HANDOFF (honest park, `handoff_note`)
+6. Run CL-00
+7. Run gate → exit 0
+
+**E's execution status (from `02465dfd6` + manifest check):**
+- ✓ C-01/A-04 → LIVE (done)
+- ✓ EKV-R-1 4/4 assertions (done, per ledger-e commit message)
+- ✗ A-04.merged_sha NOT set (null → gate CRASH) — step 3 incomplete
+- ✗ Evidence files not created (A-04/C-01/C-02 DNE) — required for gate
+- ✗ deployed_main_sha not updated — step 1 not done
+- ✗ A-02 → LIVE not done (still MERGED)
+- ✗ C-03 → HANDOFF not done (still MERGE_QUEUE)
+- ✗ CL-00 not run — step 6 not done
+- ✗ Gate not run (would CRASH anyway)
+
+**SENTINEL notes conductor did NOT see DISPUTE-002 or DISPUTE-003:**
+- SENTINEL posted DISPUTE-002 (A-03 bad SHA) at 23:10Z
+- SENTINEL posted DISPUTE-003 (A-04 null SHA + missing evidence) at 23:55Z
+- Conductor's last commit was 21:00Z — 2+ hours BEFORE SENTINEL's disputes
+- Conductor's gate sequence does NOT mention fixing A-03.merged_sha (DISPUTE-002)
+- Even if E completes conductor's gate sequence, gate will still FAIL on A-03 bad SHA
+
+**⚠️ CONDUCTOR RELAUNCH REQUESTED** (stale > 35min threshold):
+- Conductor must read SENTINEL's DISPUTE-002 (A-03 bad SHA) and add to gate sequence
+- Conductor must verify E has completed all 7 steps of gate sequence before claiming wave complete
+- Current gate state: CRASH (TypeError) — cannot verify wave 0
+
+**Active deploy:**
+- A-02 deploy `31908358001`: in_progress (web only, MCP skipped correctly)
+
+**EKV-DISPUTE-002 and EKV-DISPUTE-003 remain OPEN.**
+
 ### HB-019 — 2026-08-17T00:20Z / ~05:50+0530 (Cycle 18)
 
 **A-02 DEPLOY MCP SKIPPED (CORRECTLY) + MANIFEST STILL UNREPAIRED (FM-09)**
