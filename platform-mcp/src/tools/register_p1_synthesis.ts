@@ -99,6 +99,23 @@ async function callRegistryCapability(uri: string, args: Record<string, unknown>
   return data.content
 }
 
+/**
+ * Unwraps the ToolResult shape that callRegistryCapability returns.
+ * callRegistryCapability returns `data.content` from the HTTP response,
+ * where the capability handler's own return value is `{ content: T, is_error: boolean }`.
+ * So the raw result from callRegistryCapability IS that ToolResult — callers must
+ * unwrap `.content` to get the actual payload. This helper does that unwrap typed.
+ * Falls back to the raw value if `.content` is absent (defensive).
+ */
+function unwrapCapabilityResult(raw: unknown): Record<string, unknown> {
+  const wrapper = raw as Record<string, unknown>
+  const inner = wrapper['content']
+  if (inner !== null && typeof inner === 'object' && !Array.isArray(inner)) {
+    return inner as Record<string, unknown>
+  }
+  return wrapper
+}
+
 // R5 W0a punch-list (P6): the route now exists at /api/mcp/db/query (whitelisted,
 // two-layer auth — see platform/src/app/api/mcp/db/query/route.ts). Callers MUST
 // pass the resolved principal so Layer 2 (X-MCP-User/X-MCP-Key-Id) is satisfied —
@@ -556,11 +573,12 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           top_k: top_k ?? 30,
           include_negative_knowledge: include_negative_knowledge !== false,
         }, principal)
+        const inner = unwrapCapabilityResult(data)
         const wrapped = {
           calibration_status: 'prior_only',
           mode: 'STRUCTURAL',
           note: 'L5 Mīmāṃsā is SEALED in STRUCTURAL mode. Empirical calibration accrues as outcome data is recorded.',
-          ...(typeof data === 'object' && data ? data : { content: data }),
+          ...inner,
         }
         return dualOutput(envelope(wrapped, 'mimamsa_insight_get', 'synthesis_calibration'))
       } catch (err) {
@@ -614,7 +632,7 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           limit: limit ?? 30,
           offset: offset ?? 0,
         }, principal)
-        const content = data as Record<string, unknown>
+        const content = unwrapCapabilityResult(data)
         const allRows = (content['rows'] as Record<string, unknown>[] | undefined) ?? []
         const rows = (min_salience != null && min_salience > 0)
           ? allRows.filter(r => Number(r['non_obviousness_score'] ?? 0) >= min_salience)
@@ -675,7 +693,7 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           top_k: limit ?? 50,
           offset: offset ?? 0,
         }, principal)
-        return dualOutput(envelope(data, 'kala_life_arc_get', 'temporal_life_arc'))
+        return dualOutput(envelope(unwrapCapabilityResult(data), 'kala_life_arc_get', 'temporal_life_arc'))
       } catch (err) {
         return errorOutput('kala_life_arc_get', String(err), { chart_id })
       }
