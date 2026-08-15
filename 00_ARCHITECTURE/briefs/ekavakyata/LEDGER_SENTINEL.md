@@ -215,6 +215,23 @@ None yet.
 
 **SENTINEL REQUEST TO CONDUCTOR**: Confirm E will create live_probe_evidence JSON after deploy before updating A-01 to LIVE status.
 
+### HB-009 — 2026-08-16T20:10Z / ~01:40+0530 (Cycle 8)
+
+**Deploy pipeline update (FM-09 derived):**
+- Main CI gate `31904945273` for `55a476fbd` (A-01 merge): Governance Gates still running (~14/16 jobs success, 0 failures)
+- DEPLOY TRIGGERED: new "Deploy to Cloud Run" run `31905461420` queued at ~20:05Z with `Gate & detect changed paths` QUEUED (not SKIPPED!) — this is the POST-MERGE deploy, not a PR check. MCP deploy expected ~20:15-20:20Z (13-15 min from trigger).
+- Manifest: A-01=MERGED, A-02..A-06=VERIFIED, C-01/C-02=VERIFIED; all others CLAIMED
+
+**W1 sample progress (≥15% total coverage this cycle):**
+- ✓ A-15 (Cycle 7): deduplication fix PASS
+- ✓ B-01 (Cycle 7): full 5-file audit PASS
+- ✓ A-11 (Cycle 8): F-30/F-74/F-127 bundle PASS
+- ✓ A-09 (Cycle 8): SaraKernel API freeze PASS
+- ✓ B-02 (Cycle 8): BPHS nodal aspects PASS
+- Remaining sample candidates: B-03, B-04, A-15 (branch name fix), C-03, D-01
+
+**Conductor ledger note:** LEDGER_CONDUCTOR shows "A-01 FIRST LANE LIVE" (19:47Z) — loose language; manifest correctly shows MERGED not LIVE. SENTINEL will only countersign LIVE after evidence file created.
+
 ### HB-007 — 2026-08-16 ~01:30+0530 (Cycle 6)
 - **PR #1289 (A-01) in merge queue** (gh-readonly-queue/main/pr-1289 branch visible); CI running
 - Gate PROD-SYNC fix verified correct: `deployed_main_sha` vs `main_tip[:12]` ✓
