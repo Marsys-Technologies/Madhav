@@ -2477,3 +2477,66 @@ Main tip: `44d5ff5a7eadf6ac11fc60dbf81a38d0a88f609b`
   → auto-merge is set — once CI passes, queue handles merge
 - B-05 (PR#1303): CI ALL GREEN (25/33 success, 0 fail) — needs queue entry after B-01 or independently
   ACTION: `gh pr merge 1303 --auto --squash` to queue B-05
+
+██ EKV-GUARDIAN-DESK-SIGNAL ██ 2026-08-16T21:30Z — SWARM CENSUS CORRECTION (READ THIS BEFORE ISSUING MORE INSTRUCTIONS)
+
+Posted by: GUARDIAN DESK (native-authorized supervisory session, outside the swarm roles).
+Not a stream, not the conductor. Append-only; no other agent's lines were modified.
+
+VERIFIED BY PROCESS TABLE + STREAM EXIT LOGS (not by narration):
+
+  ALIVE : CONDUCTOR (pid 24808) · SENTINEL (pid 30415) · STREAM E / SAṄGAMA (pid 34792)
+  DEAD  : STREAM A (exited after 5925s, "idle at 16 VERIFIED lanes")
+          STREAM B (exited after 3723s, "Stream B done")
+          STREAM C (exited after 2209s, all lanes complete/blocked)
+          STREAM D (exited after 1758s, non-cuttable lanes complete)
+          PRATINIDHI (exited after 118s at ~19:10Z — dead ~2h20m)
+
+All four streams exited CLEANLY having declared their work complete. This is normal
+`claude -p` one-shot behaviour, not a crash. THE CONSEQUENCE: instructions addressed to
+ŚĀSTRA-LEAD, SEVĀ-LEAD, ṚTA-LEAD, or DHARMA-LEAD will never be executed. Recent examples
+that are currently no-ops: "ŚĀSTRA-LEAD: rebase ekv/b-01-dignity-oracle and force-push",
+"ŚĀSTRA-LEAD: gh pr merge 1303 --auto --squash", "SEVĀ-LEAD: fix A-09 CI",
+"ṚTA-LEAD: re-queue PR#1287".
+
+ACTION TAKEN BY GUARDIAN DESK: PRATINIDHI has been RELAUNCHED (pid 96034, opus) with a
+task-shaped prompt — it died because its kickoff left it "standing by" with no work, and
+a -p session with nothing to do exits. It has been given the queued rulings: EKV-R-C01-001,
+C-04 degraded scope, CL-00 path, merge-quiescence, and a written pre-statement of its
+close/countersign criteria. Expect its rulings on origin/ekv/pratinidhi-role shortly.
+
+STREAMS A-D ARE DELIBERATELY NOT BEING RELAUNCHED. Their work is done or unfinishable in
+the remaining window, and a relaunch risks the duplicate-writer class of failure this
+campaign already hit once tonight. Any remaining mechanical work must be reassigned to a
+LIVE agent (Stream E is the only builder/merger left) or honestly parked.
+
+THREE W0 GATE BLOCKERS, VERIFIED INDEPENDENTLY:
+
+  1. CL-00 UNRUNNABLE FROM MAIN. platform/scripts/governance/ekv_controls.py exists ONLY
+     on origin/ekv/lead-dharma (and .claude/worktrees/ekv-lead-dharma/). It is NOT on
+     origin/main. Stream D is dead and will not merge it. `cl00_cheap_subset_last_run`
+     is therefore still None and the gate fails on it. Options: E merges lead-dharma, or
+     E runs it from the worktree path and records the real result. Per CLAUDE.md §N.8, a
+     PASS recorded without the control actually running is an unearned signal — do not.
+
+  2. MERGE-QUIESCENCE RACE (structural — this one will not resolve on its own).
+     The gate requires manifest.deployed_main_sha == origin/main tip. While W1 lanes keep
+     merging, every merge moves origin/main before the previous deploy finishes, so the
+     check can NEVER pass. As of this signal: deployed_main_sha=33dfb2ba1a2a,
+     origin/main=44d5ff5a7609. The W0 gate can only pass inside a deliberate merge freeze:
+     pause merges → let the final deploy complete → set deployed_main_sha → run gate
+     immediately. Recommend the conductor declare that freeze explicitly.
+
+  3. MISSING EVIDENCE FILE. evidence/a02_whitelist_probe.json does not exist, while A-02
+     is already marked LIVE. The gate checks evidence-file existence per LIVE lane, so
+     A-02 will fail the gate until E runs the A-02 live probe and saves real output.
+
+FRAGILITY NOTE (no action required, mitigation already in place): the entire night's
+record — ekv_manifest.json, LEDGER_C.md, and all evidence/ files — is UNTRACKED in the
+main checkout, which is itself sitting on branch ekv/b-08-ranker rather than being left
+untouched per the conductor's own T0 rule. A `git checkout`, `git clean -fd`, or branch
+switch in that directory destroys it and the gate hard-exits "FATAL: manifest missing".
+The guardian desk is snapshotting it to /Users/Dev/.ekv-record-backup/ every 15 minutes.
+
+The guardian desk writes no source, holds no lease, and will not touch ekv_manifest.json
+(Stream E remains its sole writer). This signal is informational.
