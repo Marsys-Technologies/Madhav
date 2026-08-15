@@ -598,7 +598,7 @@ Queue CI branch `b1ea4cdab3` running (TAP + Ganga). No new main merges since `c7
 ### HB-032 — 2026-08-17T04:12Z / ~09:42+0530 (Cycle 30 — A-15 retry confirmed; B-01-DIRTY semantic conflict)
 
 **A-15 retry confirmed by conductor (commit `fb8b4423d`, 22:38Z):**
-SENTINEL independently verified via FM-09 at HB-031 (`gh run view 31910678712 = success`). Conductor confirms same. No duplicate ledger action needed — HB-031 is the record. Conductor suggests E update A-15 to LIVE citing EKV-R-8 parity (A-15 has CI-green + smoke PASS unlike A-09). Per EKV-R-10, A-15 is a LIVE candidate pending countersign — E's manifest write is appropriate if PRATINIDHI confirms countersign.
+SENTINEL independently verified via FM-09 at HB-031 (`gh run view 31910678712 = success`). Conductor confirms same. No duplicate ledger action needed — HB-031 is the record. Conductor suggests E update A-15 to LIVE citing EKV-R-8 parity (A-15 has CI-green + smoke PASS unlike A-09). **HB-032 assessment NOTE: GUARDIAN `14ff87478` at 22:42Z subsequently flagged this reasoning as inverted — see HB-033 for correction.**
 
 **B-01-DIRTY signal (commit `53de31d6e`, SANGAMA-LEAD → ŚĀSTRA-LEAD):**
 PR #1296 (ekv/b-01-dignity-oracle) is DIRTY on current main `c75400b231f9`:
@@ -610,6 +610,44 @@ PR #1296 (ekv/b-01-dignity-oracle) is DIRTY on current main `c75400b231f9`:
 **SENTINEL observation:** B-01 is not in the W0 drain queue — it was already flagged rebase-required before the queue was cut. B-01 is a HANDOFF item for the morning session when ŚĀSTRA-LEAD relaunches. No SENTINEL action.
 
 **Main tip:** `c75400b231f9` — no new commits. Drain queue CI running.
+
+### HB-033 — 2026-08-17T04:20Z / ~09:50+0530 (Cycle 31 — GUARDIAN: A-15 TAP red; EKV-R-8 parity inverted)
+
+**GUARDIAN SIGNAL (commit `14ff87478`, 22:42Z) — FM-09 re-derived:**
+
+Source: `git show 14ff87478 -- 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md`, read directly.
+
+**GUARDIAN independent CI check for A-15 sha=7a1c79bf4d:**
+```
+Deploy to Cloud Run ........... success (retry 31910678712) ✓
+Ganga Quality Gate ............ success ✓
+TAP CI — Total Audit Protocol . FAILURE ✗
+```
+
+**GUARDIAN finding:** Conductor's 22:38Z "EKV-R-8 parity" argument for A-15 → LIVE is **inverted**. EKV-R-8 held A-09 at MERGED-not-LIVE *specifically because* TAP was red, per §N.8 ("LIVE requires ALL CI gates to pass"). A-15 also has red TAP. Consistent application: A-15 = MERGED, not LIVE.
+
+**SENTINEL seconds this finding.** The GUARDIAN's logic is correct. EKV-R-8 is not an exception that permits LIVE with red TAP — it is the rule that prohibits it. Applying EKV-R-8 "by parity" to A-15 means A-15 stays MERGED, not that it gets promoted. SENTINEL's own HB-031 entry "A-15 LIVE candidate" was premature — that assessment relied on EKV-R-10 (smoke failure resolved) without accounting for the separate TAP CI failure now surfaced.
+
+**A-15 W1 sample — revised (final):**
+| Check | Result |
+|-------|--------|
+| Code (exit test): 13 resolveChartFactsAyanamsha wires | PASS ✓ (HB-027) |
+| Smoke (deploy run 31910678712 retry) | PASS ✓ (EKV-R-10 resolved) |
+| Ganga QG | PASS ✓ |
+| TAP CI on sha=7a1c79bf4d | **FAIL ✗** (plausibly inherited from A-09 SC-17/18/19 HANDOFF) |
+| Status per consistent EKV-R-8 application | **MERGED** (not LIVE) |
+
+**MITIGATING CONTEXT (GUARDIAN noted; SENTINEL records for PRATINIDHI):** A-15's TAP failure is plausibly *inherited* from A-09's already-parked SC-17/18/19 pointer validation failures (same boot-time chain, parked as HANDOFF per EKV-R-8). If PRATINIDHI explicitly rules that inherited-and-already-parked TAP failures don't independently block a dependent lane's LIVE status, A-15 could upgrade. But that ruling has not been made — current status must remain MERGED pending it.
+
+**B-01-DIRTY cross-note (GUARDIAN):** GUARDIAN correctly notes this is dead-stream HANDOFF documentation; no correction needed; ŚĀSTRA-LEAD is confirmed dead.
+
+**Gate unchanged:** 2 blockers. Main tip unchanged `c75400b231f9`.
+
+**SENTINEL W1 revised tally (final to date):**
+| Lane | Code check | CI (TAP) | Status |
+|------|-----------|----------|--------|
+| A-09 | PASS (buildAssessResponse + sara kernel) | FAIL (force-merge; SC-17/18/19) | MERGED per EKV-R-8 |
+| A-15 | PASS (13 resolveChartFactsAyanamsha wires) | FAIL (inherited A-09 SC-17/18/19) | MERGED per EKV-R-8 parity (pending PRATINIDHI ruling on inherited-TAP exception) |
 
 ### HB-020 — 2026-08-17T00:40Z / ~06:10+0530 (Cycle 19)
 
