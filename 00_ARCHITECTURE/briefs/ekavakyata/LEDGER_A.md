@@ -45,6 +45,13 @@ Lane worktrees and branches:
   - A-06: gochara_sweep.top_windows in register_d8_assess_domain.ts lacks withResolutionDisclosure; function exists in register_gochara_windows.ts ✓
 - NEXT: A-01 worktree FIRST (hot-file rule), then parallel A-02..A-06
 
+### 2026-08-16 HB-3 ~19:55Z
+- EKV-KERNEL-API-FROZEN posted — dcc2fb5a pushed ekv/a-09-sara-kernel
+  - SaraKernel / SaraPromiseJoin / CompositionReport / SaraLayeredContent / assembleSaraContent
+  - Consumers A-14, A-16, B-08 may now build against these types
+- Worktrees created: ekv-a-09, ekv-a-15, ekv-a-11
+- NEXT: dispatch A-15 (ayanamsha) + A-11 (bundle) builders; continue A-09 tool conversion
+
 ### 2026-08-16 HB-2 ~19:35Z
 - W0 ALL 6 LANES BUILT + PUSHED TO ORIGIN
   - A-01 (38b7a137): hardFloor:true on 2 timing_hooks sections in registry_bridge.ts — PUSHED ✓
@@ -98,6 +105,8 @@ EKV-A-03-VERIFIED — a7089cbc pushed ekv/a-03-typed-unwrap — unwrapCapability
 EKV-A-04-VERIFIED — 39bc414f pushed ekv/a-04-lel-calibration — fetchCalibrationMaturity replaces zero-stub at 5 facades
 EKV-A-05-VERIFIED — 52abb3d6 pushed ekv/a-05-enum-fix — CONFIRMED/PARTIAL/REFUTED/UNRESOLVED uppercase enum fix
 EKV-A-06-VERIFIED — 4cdf3dfc pushed ekv/a-06-gochara-disclosure — withSweepDisclosure on d8+d9 top_windows, bare-point rows suppressed
+
+EKV-KERNEL-API-FROZEN — dcc2fb5a pushed ekv/a-09-sara-kernel — SaraKernel/SaraPromiseJoin/CompositionReport/SaraLayeredContent/assembleSaraContent stable in response_budget.ts
 
 ## BLOCKED LANES
 
