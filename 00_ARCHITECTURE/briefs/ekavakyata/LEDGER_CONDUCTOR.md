@@ -156,3 +156,5 @@ Consumers waiting: A-14, A-16, B-08.
 ## CLOSE LOG
 
 <!-- Terminal: RUN-TERMINAL: SESSION-EKAVAKYATA-NIGHT1-COMPLETE (only after gate exit 0 + SENTINEL + PRATINIDHI countersign) -->
+
+**20:50Z (context-resume #3)** — CORRECTION: W0 DEADLINE SLIP was premature. A-02 Ganga QG started 20:47Z (was queued behind concurrent feature-branch CI runs, not stuck indefinitely). TAP ✓. ETA merge: ~21:00Z. W0 6/7 LIVE — deadline achievable. Manifest stale: A-04 (a2ce6dc37) IS on main; deployed_main_sha still at A-06; C-01/C-02 at MERGED not LIVE. C-03: no queue branch found — possible dequeue after A-04 base change. C-03 must re-queue. Signals posted to CAMPAIGN_COORDINATION.

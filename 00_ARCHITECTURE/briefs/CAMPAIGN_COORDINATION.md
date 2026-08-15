@@ -2371,3 +2371,19 @@ A-09 is W1 — does NOT block W0 completion. But A-14/A-16/B-08 cannot merge unt
 EKV-KERNEL-API-FROZEN types are still valid; fix the registration + TAP coverage.
 
 EKV-CONDUCTOR-HB 2026-08-16T20:54Z — W0 6/7 LIVE. A-04 (`a2ce6dc37` PR#1292) merged. Queue: A-02 (#1294) now entering queue on A-04 tip. C-03 (PR#1287) also queued. ████ W0 ON TRACK for 21:06Z deadline ████ — A-02 queue CI needs ~8-10min (expect merge ~21:00-21:02Z). Deploy in_progress on A-04 batch. STREAM E: update deployed_main_sha to `a2ce6dc37` after deploy; run EKV-R-1 post-deploy assertions for C-01. STREAM A: fix A-09 CI (Boot-time SC-17/18/19 + TAP-5/7/S-13) — A-14/A-16/B-08 blocked. STREAM B: fix B-01 dignity test regression. W1 merge queue: B-02/B-03/B-04 active; A-11 green.
+
+EKV-CONDUCTOR-UPDATE 2026-08-16T20:50Z — DEADLINE SLIP CORRECTED; A-02 ON TRACK
+Context-resume at 20:46Z revealed: A-02 Ganga QG was NOT stuck 29+ min — it entered in_progress at 20:47Z (queued behind 2 concurrent feature-branch Ganga QG runs). Queue CI: TAP ✓ (20:44Z), Ganga QG in_progress (20:47Z). W0 deadline 21:06Z still achievable — A-02 merge expected ~21:00Z.
+
+STREAM E MANIFEST ALERT:
+- A-04 (PR#1292 `a2ce6dc37`) IS on origin/main (confirmed git log) but manifest shows A-04 as VERIFIED with merged_sha=null
+- `deployed_main_sha` still at A-06 SHA (`cfc37fc38`); actual main tip is A-04 SHA (`a2ce6dc37`)
+- C-01/C-02 manifest status shows MERGED, not LIVE — need deployed_main_sha update + 4 EKV-R-1 post-deploy assertions run first
+- E must: (1) update manifest A-04 → LIVE with merged_sha `a2ce6dc37ef3f460cabefa7e76287750a565441c`; (2) update deployed_main_sha to A-04 SHA; (3) run EKV-R-1 assertions; (4) update C-01/C-02 → LIVE; (5) after A-02 merges: update A-02 → LIVE with its SHA
+
+STREAM C C-03 ALERT:
+- C-03 (PR#1287) has NO queue branch on origin. GitHub state: mergeable=UNKNOWN, autoMergeRequest=null
+- Manifest says C-03 status=MERGE_QUEUE (recorded by ṚTA-LEAD) but no actual queue branch exists
+- Possible: C-03 was dequeued when A-04 merged and its rebase changed the base SHA
+- Required: ṚTA-LEAD or SAṄGAMA-LEAD must re-queue PR#1287 once GitHub computes mergeability (UNKNOWN → MERGEABLE)
+- C-03 must be LIVE for W0 gate to pass (wave=0 lane)
