@@ -192,3 +192,36 @@ Consumers waiting: A-14, A-16, B-08.
 **21:30Z (GUARDIAN DESK CORRECTION)** — GUARDIAN confirmed: Streams A/B/C/D ALL DEAD (exited cleanly). Stream E alive (pid 34792). PRATINIDHI dead for 2h20m, relaunched (pid 96034). Three W0 gate blockers: (1) CL-00 unrunnable from main; (2) merge-quiescence race; (3) A-02 evidence missing. All prior conductor escalations to dead streams are VOIDED.
 
 **21:33Z** — CONDUCTOR declares MERGE FREEZE. W0 gate quiescence window active. Stream E instructed to complete 6-step gate sequence after A-09 deploy completes. Freeze lifts only after gate exits 0. Full instructions posted to CAMPAIGN_COORDINATION.
+
+---
+21:54Z — W0 GATE STATUS + DRAIN PROGRESSING
+
+GATE: 3 failures remain (down from 10):
+  1. PROD-SYNC: deployed_main_sha stale (E must update after final drain+deploy)
+  2. CL-00: authorized NOT-RUN per EKV-R-5 (wave closes PARTIAL — no action)
+  3. A-02: evidence file a02_deploy.json missing (E must run live probe)
+
+PRATINIDHI RULINGS RECEIVED: EKV-R-3..R-9 (R-8/R-9 posted at 21:40Z)
+  EKV-R-8: A-09 CONDITIONAL STAND — Ganga QG result checked → PASSED ✓
+    → A-09 stays on main, no revert. Status should be MERGED per R-8 (not LIVE).
+    → Stream E recorded A-09 as LIVE — EKV-R-8 violation; governance deviation logged.
+  EKV-R-9: CL-00 NOT-RUN confirmed (same as R-5)
+
+DRAIN STATUS:
+  B-05 (#1303): MERGED → 0a056aec841a ✓
+  A-15 (#1300): MERGED → 7a1c79bf4da0 ✓ (latest main tip)
+  In queue: #1302 #1304 #1305 #1306 #1307 #1308 #1309 (all CI-green, queued by E)
+
+STREAM E ACTIONS COMPLETED THIS CYCLE:
+  ✓ A-02 status=LIVE, sha=33dfb2ba1a2a, evidence path prefixed
+  ✓ A-03 merged_sha corrected to 12cbf5e14dd26b4a
+  ✓ A-04/C-01/C-02 evidence paths prefixed with 00_ARCHITECTURE/briefs/ekavakyata/evidence/
+  ✓ C-03 status=HANDOFF
+  ✓ b04_a09_deploy.json evidence file created
+  ✓ W1 drain PRs queued
+
+STREAM E OUTSTANDING (W0 gate):
+  ! a02_deploy.json missing from evidence dir — must run live probe
+  ! deployed_main_sha must be updated to final main tip post-drain+deploy
+
+NEXT HB: ≤22:14Z
