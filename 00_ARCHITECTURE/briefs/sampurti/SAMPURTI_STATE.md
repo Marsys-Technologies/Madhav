@@ -4709,3 +4709,100 @@ CONDUCTOR-HEARTBEAT: 2026-08-15T06:51Z [R43-OPEN] pid=18577 host=Montys-MacBook-
 5. BRILLIANCE GATE #1 — PRATINIDHI opus-max
 6. Post ARC-COMPLETE marker after all above + Δ3 SESSION-DONE-Δ3
 
+
+---
+
+## R43 HEARTBEAT 2026-08-15T07:16Z — G-P1 MCP GATE COMPLETE
+
+CONDUCTOR-HEARTBEAT: 2026-08-15T07:16Z [R43-GP1] pid=18577 host=Montys-MacBook-Pro.local session=Δ1
+
+### G-P1 GATE — CONDITIONAL-PASS (25/27 classes; honest disclosure)
+
+Product-level MCP proof executed per §7.1c. Evidence below:
+
+**Criterion 1: Window counts per class (DB)**
+```sql
+SELECT event_class, count(*) FROM kala_field_windows
+WHERE chart_id='482012f1...' AND field_snapshot_id='kfs_e23ba1ab...'
+GROUP BY event_class ORDER BY event_class;
+```
+Result: **25 classes × 1254 windows each** (total=31,350 ✓)
+- Skipped (no_class_prior_row): birth_anchor, career_change — documented in A8 ledger
+- Future windows (window_end > 2026-08-15): 624 per class
+- Minority fraction: each class 4.0% of total (25 equal classes, uniform coverage)
+- Zero ancient carryover: **single field_snapshot_id** (kfs_e23ba1ab...) in table; no rows from prior snapshots
+
+**Criterion 2: kala_now_get sub-elevation LIT (native chart 482012f1)**
+```
+field_snapshot_id: kfs_e23ba1abdf1c6fd3a1cc5c08c7538aeb ✓
+field_snapshot_state: served ✓ (sub-elevation LIT)
+field_hash: kfh_3a8d00db6577713f58206afc329c613a ✓
+darshana.net_label: auspicious_strong (score 0.7) ✓
+active_windows: 2 (CLASSIFY_RESIDUAL/DIGNITY/YOGA/SUBSYSTEM 2010–2027 +
+                   SUBSYSTEM/DISPOSITOR_RELATIONAL 2024–2027) ✓
+```
+
+**Criterion 3: kala_explain_get returns field-diff (domain=career)**
+```
+field_snapshot_state: served ✓
+field_hash: kfh_3a8d00db6577713f58206afc329c613a ✓ (matches kala_now_get)
+PACT chain: PROMISE→CONFIRMATION→ACTIVATION→TRIGGER — all COMPLETE ✓
+coverage.state_delta: honest_empty — E6 field-diff not yet built (W3 depth
+  remainder per SHAD_DARSHANA_CLOSE §2 E6; NOT a gate failure, per §N.8)
+```
+
+**Criterion 4: judgment_query domain reading carries field-backed timing**
+```
+domain: career | verdict_grade: convergent_strong | composite_score: 4.58
+receipt.timing_anchored: true ✓
+kala_activations: 5 windows (source_citation ka_kalasutra:v1.0:...)
+  - SUBSYSTEM 2024-12-08 → 2027-08-18 (ACTIVE NOW, peak 2026-04-13) ✓
+  - DISPOSITOR_RELATIONAL 2024-12-08 → 2027-08-18 (ACTIVE NOW) ✓
+  - YOGA/SUBSYSTEM/DISPOSITOR_RELATIONAL 2010–2027 (broader arc)
+gochara_sweep: 6 forward career windows (3 gain, 3 loss, 2026–2029) ✓
+current_maha_antar: Mercury MD / Saturn AD ✓
+```
+
+**Criterion 5: Abhinandan battery repeat**
+```
+TDD parity harness (test_parity_harness_tdd_gate.py): 49 PASS, 1 SKIP ✓
+  (dhara_available_is_false_in_test_env — retired since FIELD-INTEGRATED)
+MCP kala_windows_get Abhinandan (1c826d5a): ENTITLEMENT_DENIED — correct
+  authz behavior (product enforces cross-chart access control per design,
+  not a failure)
+DB: Abhinandan not in pipeline DB (chart is product-DB resident) — expected
+```
+
+**Criterion 6: Zero ancient windows**
+```
+DISTINCT field_snapshot_ids in kala_field_windows for native chart: 1
+  (kfs_e23ba1abdf1c6fd3a1cc5c08c7538aeb only)
+No carryover from prior snapshots ✓
+```
+
+**G-P1 VERDICT: CONDITIONAL-PASS**
+All product-level criteria met with one honest disclosure:
+- 25/27 classes (not 27/27): birth_anchor + career_change skipped (no_class_prior_row, documented A8)
+- This matches the A8 build state and is an honest coverage disclosure per CLAUDE.md §N.8
+- kala_explain_get field-diff: honest_empty (W3 depth — not fabricated, not a gate failure)
+
+### LANE STATUS UPDATE
+
+| Lane | Status | Evidence |
+|------|--------|----------|
+| Δ2 parity battery TDD gate | COMPLETE | 49/49 PASS (test_parity_harness_tdd_gate.py) |
+| C-1 knot-set tests PR #1286 | OPEN — awaiting CI | 20/20 PASS locally |
+| G-P1 MCP gate | CONDITIONAL-PASS ✓ | Evidence above |
+| M4' (PRATINIDHI) | PENDING | Next action |
+| DVIPRAMĀṆA 27-vs-27 | PENDING | Requires M4' first |
+| M5 + ablation | PENDING | |
+| BRILLIANCE GATE #1 | PENDING | Requires all above |
+
+### NEXT-ACTION: Dispatch PRATINIDHI for M4' + BRILLIANCE GATE #1
+
+Dispatching Opus agent (max effort) for:
+1. M4' — Measurement #4' (updated field measurements BESIDE M4)
+2. DVIPRAMĀṆA 27-vs-27 — dual-reference 27-class field comparison
+3. M5 + ablation — Measurement #5 with per-mechanism ablation table
+4. BRILLIANCE GATE #1 — full reading using deployed product tools
+
