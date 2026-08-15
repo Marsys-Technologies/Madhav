@@ -164,6 +164,22 @@ export const SHASTRA_MAP: Record<string, DomainSpec> = {
   residence:    { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'other' },
   property:     { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'other' },
   home:         { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'other' },
+  // F-55: 4 canonical domains absent from SHASTRA_MAP — reconcile CANONICAL_DOMAINS 1:1.
+  // Family / kutumba — 2nd house (kutumba-sthāna, family lineage, speech); karakas Jupiter
+  // (family prosperity, sons) + Moon (nurturing/maternal bond); D12 (dvādaśāṃśa, lineage/ancestry).
+  // Bhavat-Bhavam: bhava 2 is EVEN → derived_bhavas: [] (even houses receive nothing — doctrine).
+  family:     { bhava: 2,  karakas: ['Jupiter', 'Moon'],              varga: 'D12', label: 'Family / Kutumba',            signal_domain: 'other' },
+  // General / overall life pattern — lagna (1st house) as the catch-all life lens; karakas Sun
+  // (ātmakāraka/soul) + Moon (manas/mind); D1 (natal chart, full-chart read).
+  general:    { bhava: 1,  karakas: ['Sun', 'Moon'],                  varga: 'D1',  label: 'General / Life Pattern',      signal_domain: 'other' },
+  // Transition / transformation — 8th house (āyu-sthāna, sudden change, parivartan, hidden matters);
+  // karakas Saturn (delay/vairāgya), Rahu (unexpected upheaval/foreign), Mars (acute crisis);
+  // D8 (ashtamsha, transformative varga). Bhavat-Bhavam: bhava 8 EVEN → derived_bhavas: [].
+  transition: { bhava: 8,  karakas: ['Saturn', 'Rahu', 'Mars'],       varga: 'D8',  label: 'Transition / Transformation', signal_domain: 'other' },
+  // Travel / foreign — 9th house (dharma-sthāna, long journeys, fortune, foreign connections);
+  // karakas Jupiter (long-distance dharma travel) + Rahu (foreign settlement, ativāsa);
+  // D9 (navamsha, dharma/fortune varga). Bhavat-Bhavam: bhava 9 ODD → derived_bhavas: [5, 11].
+  travel:     { bhava: 9,  karakas: ['Jupiter', 'Rahu'],              varga: 'D9',  label: 'Travel / Foreign',            signal_domain: 'other' },
 }
 
 // D-1.5b Lane B-4 (CR-97): extend every SHASTRA_MAP domain with its Bhavat-Bhavam derived
@@ -484,6 +500,20 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
     // chain instead of a hardcoded `today` — see Step 9 below.
     const as_of_date = (args['as_of_date'] as string | undefined) ?? new Date().toISOString().slice(0, 10)
 
+    // F-41: reject unknown domain before any DB work so callers get a typed error, not a silent
+    // orientation-context flood. A truthy domainInput that is absent from SHASTRA_MAP is always
+    // a caller mistake — reject explicitly with the live key list (never stale).
+    if (domainInput && !SHASTRA_MAP[domainInput]) {
+      return {
+        content: {
+          error:
+            `judgment_query: unrecognized domain '${domainInput}'. ` +
+            `Recognized domains: ${Object.keys(SHASTRA_MAP).sort().join(', ')}. ` +
+            `Pass \`bhava\` (1-12) for any unlisted house question.`,
+        },
+        is_error: true,
+      }
+    }
     let spec: DomainSpec
     let domainKey: string | null = null
     if (domainInput && SHASTRA_MAP[domainInput]) {
@@ -512,7 +542,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       return {
         content: {
           error:
-            'judgment_query requires either `domain` (marriage/career/wealth/health/progeny/education/spirituality) ' +
+            'judgment_query requires either `domain` (see recognized domain list) ' +
             'or `bhava` (1-12).',
         },
         is_error: true,
