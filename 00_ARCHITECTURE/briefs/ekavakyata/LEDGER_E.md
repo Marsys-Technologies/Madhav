@@ -91,17 +91,28 @@ Gate's `main_tip.startswith(sha12)` will ALWAYS fail.
 
 | Time (IST) | Lane | PR# | Merged SHA | Deploy SHA | Status |
 |------------|------|-----|-----------|-----------|--------|
-| ~01:00 IST | A-01 | #1289 | (merge queue — CLEAN 19:38Z) | — | IN MERGE QUEUE |
-| ~01:00 IST | A-05 | #1290 | (CI running) | — | CI RUNNING |
-| ~01:00 IST | A-06 | #1291 | (CI running) | — | CI RUNNING |
-| ~01:00 IST | A-04 | #1292 | (CI running) | — | CI RUNNING |
-| ~01:00 IST | A-03 | #1293 | (CI running) | — | CI RUNNING |
-| ~01:00 IST | A-02 | #1294 | (CI re-running after count gate fix) | — | CI RE-RUN |
-| ~01:15 IST | C-01/C-02 | #1295 | (CI running; EKV-R-1 auth) | — | CI RUNNING |
+| ~01:50 IST | A-01 | #1289 | 55a476fbd28f16abfaae756633a4729a23016379 | pending | **MERGED** (CI on main in_progress 19:53Z) |
+| ~01:00 IST | A-05 | #1290 | — | — | MERGE QUEUE (25/25 checks pass) |
+| ~01:00 IST | A-06 | #1291 | — | — | MERGE QUEUE (queued) |
+| ~01:00 IST | A-04 | #1292 | — | — | MERGE QUEUE (queued) |
+| ~01:00 IST | A-03 | #1293 | — | — | MERGE QUEUE (queued) |
+| ~01:30 IST | A-02 | #1294 | — | — | MERGE QUEUE (CI CLEAN 19:54Z; already queued) |
+| ~01:15 IST | C-01/C-02 | #1295 | — | — | MERGE QUEUE (EKV-R-1 auth; queued) |
+| ~01:48 IST | B-01 | #1296 | — | — | CI RUNNING (autoMerge set) |
+| ~01:48 IST | B-02 | #1297 | — | — | CI RUNNING (autoMerge set) |
+| ~01:48 IST | B-03 | #1298 | — | — | CI RUNNING (autoMerge set) |
+| ~01:48 IST | B-04 | #1299 | — | — | CI RUNNING (autoMerge set) |
+| ~01:50 IST | A-15 | #1300 | — | — | CI RUNNING (autoMerge set) |
+| ~01:24 IST | A-09 | #1301 | — | — | CI RUNNING (autoMerge set; just created) |
+| ~01:24 IST | A-11 | #1302 | — | — | CI RUNNING (autoMerge set; just created) |
+| ~01:24 IST | B-05 | #1303 | — | — | CI RUNNING (autoMerge set; just created) |
 
 ### Integration notes
 - A-02 (#1294): count gate `56→60` fix pushed (47c7ec6e5). Two test files updated.
 - C-01 (#1295): EKV-R-1 AUTHORIZED. 4 post-deploy assertions required before LIVE.
+- A-09 (#1301): 2 commits — dcc2fb5a (SaraKernel API freeze) + ceadae8cb (buildAssessResponse). registry_bridge.ts relock after merge.
+- B-05 (#1303): LEASE EXCEPTION — writes register_d8_assess_domain.ts (Stream A territory); pre-authorized per LEDGER_B.
+- Context-resume at ~20:00Z (19:54Z UTC): new PRs created for A-09/A-11/B-05; merge queue processing A-05 first.
 
 ---
 
