@@ -87,20 +87,22 @@ Monitoring: C-01 migration must bring this to 0; C-02 must identify + fix the wr
 
 | Lane | Branch | Pushed | Diff Verified | Lease | Sentinel Verdict |
 |------|--------|--------|--------------|-------|-----------------|
-| A-01 | ekv/a-01-timing-hooks-hardfloor | ✓ | `hardFloor:true` added at :3520 + :3551; minKeep already ≥3 at both ✓ | A ✓ | PRE-PASS; pending E deploy + live test |
+| A-01 | ekv/a-01-timing-hooks-hardfloor | ✓ | `hardFloor:true` added at :3520 + :3551; minKeep already ≥3 at both ✓ | A ✓ | PRE-PASS; CI green PR #1289 (all 34 checks PASS); pending E merge + live test |
 | A-02 | ekv/a-02-whitelist-4-keys | ✓ | 4 keys (read_chapter/list_classical_texts/find_verses_about/search_classical_texts) added to MCP_TO_RETRIEVAL_TOOL ✓ | A ✓ | PRE-PASS; pending E deploy + live test |
 | A-03 | ekv/a-03-typed-unwrap | ✓ | `unwrapCapabilityResult()` helper added and wired at call sites ✓ | A ✓ | PRE-PASS; pending E deploy + live test |
 | A-04 | ekv/a-04-lel-calibration | ✓ | `noLelCalibrationMaturity` removed at 5 call sites; real `kala_field_skill` SQL wired; correct fallback on no-row ✓ | A ✓ | PRE-PASS; pending E deploy + live test |
 | A-05 | ekv/a-05-enum-fix | ✓ | CONFIRMED/PARTIAL/REFUTED/UNRESOLVED uppercase; 4 output columns; 'denied'→'REFUTED' ✓ | A ✓ | PRE-PASS; pending E deploy + live test |
 | A-06 | ekv/a-06-gochara-disclosure | ✓ | `withSweepDisclosure()` adds `{is_timing_window, timing_window_blocked_reason}`; bare-point-no-date rows suppressed ✓. NOTE: `resolution` field not included — GocharaSweepWindow lacks source fields (documented in code); exit test still satisfiable | A ✓ | PRE-PASS; NOTE logged re: resolution field |
-| C-01+C-02 | ekv/c-01-ledger-repair | ✓ | Migration 572: deletes 6 isempty rows + CHECK (NOT isempty(observation_window)) ✓; writer guard: timedelta(days=1) min-window ✓. ⚠️ LEASE: touches `python-sidecar/` (B's territory) | ⚠️ B-touch — see BLOCK below | **MERGE HOLD: EKV-R-C01-001 not yet in PRATINIDHI ledger** |
-| C-03 | ekv/c-03-pr1287-rebase | ✗ Not yet | — | — | Not yet pushed |
+| C-01 | ekv/c-01-ledger-repair | ✓ | Migration 572: deletes 6 isempty rows + CHECK (NOT isempty(observation_window)) ✓; PR #1295 OPEN (CI awaited) | ⚠️ B-touch — EKV-R-1 CLEARED | **VERIFIED** — EKV-R-1 authorized merge; pending E deploy |
+| C-02 | (on ekv/c-01-ledger-repair, PR #1295) | ✓ | Writer guard: `timedelta(days=1)` min-window if window_end≤window_start ✓. NOTE: manifest branch `ekv/c-02-writer-hunt` but actual code is in C-01 branch — MANIFEST DISCREPANCY | B-touch in C-01 — EKV-R-1 covers | **VERIFIED** (per manifest) — manifest branch discrepancy noted |
+| C-03 | ekv/c-03-pr1287-adoption | ✗ Not yet pushed | — | — | CLAIMED |
 
 ### W1+ Lanes Observed (≥15% sample, highest-tier first)
 
 | Lane | Branch | Pushed | Diff Summary | Sentinel Note |
 |------|--------|--------|-------------|---------------|
-| B-01 | ekv/b-01-dignity-oracle | ✓ | 534 line diff — dignity oracle module | Pending 15% sample |
+| A-15 | ekv/a-15-ayanamsha-wire | ✓ | 1 file. Removes local `AYANAMSHA_ALIAS`/`na()` shadow; replaces 10 call sites with `resolveChartFactsAyanamsha()` imported from `./registry_bridge.js` ✓. Deduplication — canonical resolver, not a shadow. **⚠️ MANIFEST DISCREPANCY**: manifest branch field = `ekv/a-15-ayanamsha`; actual remote = `ekv/a-15-ayanamsha-wire` | A ✓ | 15% SAMPLE PASS |
+| B-01 | ekv/b-01-dignity-oracle | ✓ | **5-file full audit**: (1) `dignity_oracle.py` — standalone classifier, 9 planets+nodes, 5-tier, degree-gated MT ✓; (2) `test_dignity_oracle.py` — 168 lines, 6 goldens (Jup 9.79°Sag→MT, Jup 15°Sag→own, Rahu Taurus→exalted, Ketu→neutral, Sun 10°Leo→MT, Sun 25°Leo→own), Moon exalt-over-MT priority ✓; (3) `ga_structural_writer.py` — replaces ad-hoc 3-case check with `classify_dignity(g,sign,get_degree(g))`; `get_degree` defined locally at L4854 ✓; (4) `ga_vargas_writer.py` — `_compute_dignity()` delegates to oracle; Friend/Enemy callers handled via "neutral" fallback (conservative, documented) ✓; (5) `bo_pratijna_v4_engine.py` — imports oracle as `_oracle_classify_dignity`; degree defaults to 0.0 for varga positions (acknowledged limitation in comment — degree_in_sign not threaded through chart reader yet; MT ranges starting at 0° still fire) ✓ | B ✓ | 15% SAMPLE PASS — known limitation in pratijna_v4_engine documented |
 | B-02 | ekv/b-02-nodal-aspects | ✓ | NODE_PARASHARI_ASPECTS hoisted to brahmagyan/aspects.py; Rahu/Ketu SPECIAL_DRISHTI_DEG fixed; tests for 5/7/9 BPHS aspects ✓ | Pending live test |
 | B-03 | ekv/b-03-yoga-predicate | ✓ | `>= 5` → `len(placed)==7 and len(houses)==7` — exact 7-planet/7-distinct spec ✓ | Pending live test |
 | B-04 | ekv/b-04-mi-honesty | ✓ | 6× `'clean'`→`'not_assessed'` in mi_darshana.py ✓ | Pending live test |
@@ -192,6 +194,20 @@ None yet.
 - ISSUE: C-01 has lease cross into B's territory; EKV-R-C01-001 missing from PRATINIDHI ledger → MERGE HOLD posted
 - A-06 NOTE: resolution field omitted from disclosure (data type constraint) — not a dispute, noted
 - Next: watch for VERIFIED markers + E merge actions; run live exit tests when E deploys
+
+### HB-008 — 2026-08-16T19:44Z / ~01:14+0530 (Cycle 7 — new session after context compaction)
+
+**State on resume (FM-09 re-derived, not inherited):**
+- Main tip: `63049a6e327e46a552496d7fc3a66f87a67d5ee8` — UNCHANGED since session start; no merges yet
+- Gate status: **8 VERIFIED** (A-01..A-06, C-01, C-02); 2 BUILT (D-01, D-04); 30 CLAIMED
+- PR status: PRs #1289-1295 all OPEN; all CI green on #1289 (A-01: 34/34 COMPLETED/SUCCESS)
+- **⚠️ PR STALL ALERT**: PR #1289 has mergeStateStatus=CLEAN, all CI SUCCESS, but `autoMergeRequest=null` — conductor has NOT enabled auto-merge. PRs will not self-merge. Stream E must either manually merge or set auto-merge on each PR. This blocks all LIVE status transitions.
+- A-15 diff audited: branch name discrepancy (manifest=`ekv/a-15-ayanamsha`, actual=`ekv/a-15-ayanamsha-wire`); code correct ✓
+- B-01 expanded audit complete: all 5 files (oracle + 3 writers + tests) PASS ✓
+- C-02 manifest branch discrepancy: manifest=`ekv/c-02-writer-hunt`, actual commits on `ekv/c-01-ledger-repair` in PR #1295
+- DB: not re-verified this cycle (no schema-changing merges occurred)
+
+**SENTINEL REQUEST TO CONDUCTOR**: Instruct Stream E to enable auto-merge (or manually merge) PRs #1289-1295. Campaign cannot advance to LIVE status without merges to main.
 
 ### HB-007 — 2026-08-16 ~01:30+0530 (Cycle 6)
 - **PR #1289 (A-01) in merge queue** (gh-readonly-queue/main/pr-1289 branch visible); CI running
