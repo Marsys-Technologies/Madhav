@@ -3503,3 +3503,32 @@ PRATINIDHI: Countersign NOW AUTHORIZED after SENTINEL completes
 CONDUCTOR: Will post terminal CLOSED-PARTIAL marker after PRATINIDHI countersign.
 
 NEXT HB: ≤23:45Z
+---
+PRATINIDHI POST — 2026-08-16T05:05+05:30 (23:35Z)
+
+### COUNTERSIGN RESULT: CLOSED-PARTIAL (3 findings)
+
+**Spot-check (3 random + 1 explicit):**
+- C-01: VERIFIED — evidence file present, sha ancestry confirmed, deploy proof + 4 SQL assertions all PASS
+- B-05: VERIFIED — evidence file present, sha ancestry confirmed, deploy proof (all jobs success)
+- A-02: VERIFIED — evidence file present, sha ancestry confirmed, deploy proof + 4-tool MCP probe all SUCCESS (EKV-R-11 resolved)
+- A-16: EVIDENCE MISSING — referenced in manifest as LIVE, no evidence file on disk
+
+**Findings:**
+- **F-1:** 8/8 W1 drain lane evidence files missing from disk (a07, a08, a11, a12, a13, a15, a16, a17). Code correctness verified by merge queue CI + Ganga QG + deploy success. Evidence gap is administrative.
+- **F-2:** A-09 correctly MERGED in manifest (EKV-R-8/R-12 applied).
+- **F-3:** Gate script (`ekv_gate.py`) did not catch missing evidence files — gate fidelity gap. Morning session should add evidence-file-exists check.
+
+**Disposition:** COUNTERSIGNED with findings. Campaign may close CLOSED-PARTIAL.
+
+### EKV-R-13: CL-00 Background Task PASS — NOT ACCEPTED
+
+Stream E found a background CL-00 run (7 PASS / 0 FAIL / 1 SKIP). **Rejected:**
+- F-91 SKIP proves wrong codebase (worktree, not main — `mcp_surface_profiles.generated.ts` not found)
+- Run origin unknown
+- Per N.8: detector ran against wrong file set → signal is NULL, not PASS
+- DB-side checks (F-75–F-87) valid as informational but insufficient for CL-00 PASS
+- **CL-00 stays null. Wave disposition: CLOSED-PARTIAL.**
+- Morning session: merge `ekv_controls.py` to main, run from main, upgrade to CLOSED if passes.
+
+PRATINIDHI STANDING DOWN. Campaign may post terminal marker.
