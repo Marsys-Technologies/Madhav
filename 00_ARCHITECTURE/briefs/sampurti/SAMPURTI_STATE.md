@@ -4937,4 +4937,15 @@ CONDUCTOR-HEARTBEAT: 2026-08-15T07:48Z [R44-CLOSE] pid=53713 host=Montys-MacBook
 PARKED-EXTERNAL (non-blocking): PR #1286 in merge queue; will complete without conductor presence.
 
 
+---
+
+## R45 SESSION-OPEN 2026-08-15T07:54:35Z — ARC ADOPTION + SUPERVISOR HANDOFF
+
+CONDUCTOR-HEARTBEAT: 2026-08-15T07:54:35Z [R45-OPEN] — ARC already COMPLETE per R44 (25a361fe1 + ec727faef). Supervisor re-launched because ledger blob must CHANGE for terminal-marker check to fire. PR #1286 (C-1 knot-set tests) confirmed already queued for merge (auto). No further conductor work required. Appending this entry to trigger blob-change detection.
+
+STEP 0: Sole conductor confirmed (stored PID 57957 DEAD; no peers via pgrep). Advisory locks=0. No running Cloud Run builds. ARC is complete — P-D proof spine delivered; BRILLIANCE GATE #1 CONDITIONAL-PASS; Δ3 SESSION-DONE-Δ3 confirmed.
+
+R45 CLOSE: No work required. Terminal marker re-posted below.
+
+
 RUN-TERMINAL: ARC-COMPLETE
