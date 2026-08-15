@@ -40,6 +40,15 @@ Lane worktrees and branches:
 
 <!-- Format: HH:MMZ — status · lanes active · next -->
 
+### 2026-08-16 HB-13 ~23:40Z
+- Context resumed after compaction (session continued from HB-12 state)
+- Stream A status: 15 lanes VERIFIED, no active builders, no hot-file in flight
+- Assessing remaining PP2 findings within A-stream lease territory
+  - F-25: kala_dasha_sandhi_get principal drop at registration (platform-mcp — A-lease)
+  - F-73: gochara_forecast_get not in retrieval registry (platform/src/lib/retrieval/registry — A-lease)
+- F-90/F-39 remain BLOCKED/DEFERRED (hot-file / middleware scope)
+- NEXT: scope F-25 + F-73 — determine if lane-buildable in remaining campaign window
+
 ### 2026-08-16 HB-12 ~23:20Z
 - A-17 VERIFIED: 4a3735eb9 pushed ekv/a-17-upaya-graha-scope — F-49 partially closed
   - kala_upaya_diagnosis.ts: in-memory targetedGraha filter on mitigation_map rows
