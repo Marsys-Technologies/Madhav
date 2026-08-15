@@ -330,6 +330,45 @@ may cite them by tag (SP-n). They do not consume an EKV-R number.
 - **Time spent:** ~15 minutes (evidence review + Ganga CI status check + proportionality analysis)
 - **Outcome:** Conditional stand with Ganga gate as the arbiter; procedural violation recorded
 
+### EKV-R-12: Inherited TAP Failures — EXPLICIT CARVE-OUT FOR LIVE STATUS
+
+- **Asked by:** Guardian desk (22:42Z signal) — explicit ruling requested on whether inherited-and-parked TAP failures block dependent lanes' LIVE status
+- **Question:** EKV-R-8 held A-09 to MERGED because TAP failed. A-15 (and every subsequent merge) inherits A-09's TAP failure (SC-17/18/19 pointer validation). Does EKV-R-8 categorically block every post-A-09 lane from LIVE status until TAP is fixed?
+- **Options considered:**
+  - **(A) Strict categorical — all MERGED until TAP fixed:** Consistent with the letter of EKV-R-8. But creates a cascade: no lane after A-09 can ever be LIVE tonight, regardless of its own correctness. The campaign would close with many lanes at MERGED that have no defect of their own.
+  - **(B) Inherited-failure carve-out with evidence criteria:** Distinguish between "TAP failed because of YOUR code" and "TAP failed because a prior, already-parked defect is still on main." Require explicit evidence for the carve-out.
+- **Ruling:** **(B) — Inherited-failure carve-out, with conditions.**
+  - A lane whose TAP failure is entirely inherited from a prior lane's already-parked defect may be LIVE if ALL of:
+    1. **Ganga QG passes** on the lane's merged sha (application correctness verified)
+    2. **Deploy smoke passes** on the lane's merged sha (production function verified)
+    3. **Zero diff intersection**: the lane's own diff has no files in common with the failing TAP checks' scope
+    4. **Root cause already parked**: the TAP failure is the exact same check(s) failing on a prior lane that has a numbered EKV-R ruling acknowledging the failure and parking it for remediation
+  - **For A-15 specifically**: A-15's diff is `resolveChartFactsAyanamsha` wiring at 10 sites. TAP failures are SC-17/18/19 pointer validation (introduced by A-09, parked at EKV-R-8 HANDOFF). Zero intersection. Ganga passes. Deploy smoke passes (retry). **A-15 may be LIVE.**
+  - The inherited TAP failure remains a campaign-level finding (EKV-R-8 HANDOFF for morning session). It does not block individual lane LIVE status when the lane has zero causal relationship to the failure.
+  - **This carve-out does NOT apply to A-09 itself** — A-09 introduced the TAP failure and owns it. A-09 remains MERGED per EKV-R-8.
+- **Rationale:** N.8 says a signal must be earned by a detector that measures the specific claim. The claim is "this lane's code works in production." TAP's pointer validation measures "governance pointers are correct" — a real concern, but not one attributable to a lane that didn't touch pointers. Blocking a lane for a failure it didn't cause is not safety; it's noise that degrades the signal/noise ratio of the LIVE/MERGED distinction. The four conditions ensure the carve-out is evidence-gated, not a blanket exemption.
+- **Reversibility:** If any lane claiming this carve-out is later found to have actually contributed to TAP failure (evidence of diff intersection), revert to MERGED. The carve-out criteria are designed to be mechanically verifiable.
+- **Timestamp:** 2026-08-16T03:36+05:30
+
+## COUNTERSIGN LOG
+
+<!-- Night-close countersign goes here ONLY after:
+  1. ekv_gate.py verify exit 0 output pasted
+  2. SENTINEL's independent re-run pasted
+  3. PRATINIDHI's own spot-check of 3 random LIVE lanes' evidence
+  EXPLICIT SPOT-CHECK TARGETS (not random):
+  - A-02: per EKV-R-11, evidence gap between deploy proof and function claim
+          (UPDATED: conductor ran 4-tool MCP probe at 23:08Z — evidence now complete;
+           independent verification still required at countersign)
+-->
+
+## ESCALATION LOG
+
+### ESC-1: A-09 Force-Merge (EKV-R-8)
+- **Self-escalated to maximum deliberation:** irreversible-class, production-affecting
+- **Time spent:** ~15 minutes (evidence review + Ganga CI status check + proportionality analysis)
+- **Outcome:** Conditional stand with Ganga gate as the arbiter; procedural violation recorded
+
 ### ESC-2: A-15 Deploy Smoke Failure (EKV-R-10)
 - **Escalated by:** Conductor (SP-4 alert at 22:14Z)
 - **Time spent:** ~10 minutes (diff review + smoke failure analysis + SP-4 scoping)
