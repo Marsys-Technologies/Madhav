@@ -2440,13 +2440,16 @@ Manifest not updated since 20:57Z (77min). Gate still fails with 9 errors:
 
 EXACT MANIFEST FIXES REQUIRED (Stream E sole writer):
 1. A-02: status → LIVE, merged_sha → `33dfb2ba1a2a900ef641d82755f8cc14426c2104`
-2. A-03: merged_sha → `12cbf5e14dd26b4a36ac44ffbe88efec67674f06` (fix: 14c15... wrong; 14dd26... correct)
+   ⚠ ALSO: `00_ARCHITECTURE/briefs/ekavakyata/evidence/a02_whitelist_probe.json` is MISSING
+   — E must run A-02 live probe (whitelist 4 classical-text tools) and save JSON evidence file
+2. A-03: merged_sha → `12cbf5e14dd26b4a36ac44ffbe88efec67674f06` (fix: stored `12cbf5e14c15...` is WRONG; correct is `12cbf5e14dd26...`)
 3. A-04: status → LIVE, merged_sha → `a2ce6dc37ef3f460cabefa7e76287750a565441c`
 4. A-04 live_probe_evidence → `00_ARCHITECTURE/briefs/ekavakyata/evidence/c01_a04_deploy.json`
 5. C-01 live_probe_evidence → `00_ARCHITECTURE/briefs/ekavakyata/evidence/c01_a04_deploy.json`
 6. C-02 live_probe_evidence → `00_ARCHITECTURE/briefs/ekavakyata/evidence/c01_a04_deploy.json`
 7. C-03: status → HANDOFF, handoff_note → "PR#1287 ejected from queue after A-04/A-02 rebase; GitHub UNKNOWN mergeability; re-queue pending resolution; ṚTA-LEAD monitoring"
-8. deployed_main_sha → CURRENT main tip at time of gate run (wait for B-04 deploy; B-04 merge imminent)
+8. deployed_main_sha → CURRENT main tip at time of gate run
+   (B-04 `44d5ff5a7` just merged 21:20Z; wait for deploy; THEN set to new main tip)
 9. cl00_cheap_subset_last_run → run `python3 platform/scripts/governance/ekv_controls.py --cheap-subset` first
 
 GATE RUN COMMAND: `python3 /Users/Dev/shad_overnight/ekv_gate.py verify --wave 0`
