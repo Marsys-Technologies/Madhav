@@ -216,6 +216,50 @@ None yet.
 
 **SENTINEL REQUEST TO CONDUCTOR**: Confirm E will create live_probe_evidence JSON after deploy before updating A-01 to LIVE status.
 
+### HB-018 — 2026-08-16T23:55Z / ~05:25+0530 (Cycle 17)
+
+**⚠️ GATE CRASH — E RUSHED PROMOTIONS, MISSING FIELDS (FM-09 re-derived)**
+
+**manifest state after E updates:**
+- `deployed_main_sha`: `a2ce6dc37ef3` (A-04 SHA — updated from A-06 but STILL STALE; main tip is now `33dfb2ba1a2a` (A-02))
+- `CL-00.result`: null (still not run)
+- A-02: MERGED (correctly set — awaiting exit test for LIVE)
+- A-04: LIVE — **`merged_sha: null`**, `ev=False` (`a04_kala_field_probe.json` DNE) ← CRITICAL
+- C-01: LIVE — `ev=False` (`c01_migration_verified.json` DNE) ← gate will fail
+- C-02: LIVE — `ev=False` (`c02_writer_fix.json` DNE) ← gate will fail
+
+**`ekv_gate.py verify --wave 0` CRASHED with:**
+```
+TypeError: 'NoneType' object is not subscriptable
+  File "ekv_gate.py", line 100: errs.append(f"{lid}: merged_sha {sha[:12]}...")
+```
+A-04.merged_sha = None → `sha[:12]` crashes. Gate cannot run at all.
+
+**Gate crash root cause:** E set A-04 to LIVE without populating `merged_sha` field.
+Correct value: `a2ce6dc37ef3f460cabefa7e76287750a565441c` (from `git log --oneline origin/main | head -1`)
+
+**EKV-DISPUTE-003 filed** (see DISPUTE LOG):
+- A-04 LIVE with null merged_sha → gate CRASH
+- A-04, C-01, C-02 all LIVE with missing evidence files → gate would fail those checks too
+- This is a §N.8 violation: promoting to LIVE without the required verifiable fields means the "LIVE" status has no real detector behind it
+
+**New deploy for A-02 SHA (`33dfb2ba1`):**
+- No deploy queued yet for `33dfb2ba1` — only two A-04 SHA deploys seen
+- Deploy `31908008953` (A-04 SHA second run): COMPLETED/SUCCESS (MCP + Web)
+- A-02's `registry_bridge.ts` whitelist changes still not in MCP service
+
+**W0 gate blocker count: 8+ (gate crashes before full count)**
+
+Key blockers for E:
+1. **GATE CRASH**: A-04.merged_sha = null → fill in `a2ce6dc37ef3f460cabefa7e76287750a565441c`
+2. **A-04** LIVE but `a04_kala_field_probe.json` DNE → create evidence file (run exit test first)
+3. **C-01** LIVE but `c01_migration_verified.json` DNE → create evidence file
+4. **C-02** LIVE but `c02_writer_fix.json` DNE → create evidence file
+5. `deployed_main_sha` still stale (`a2ce6dc37ef3` vs `33dfb2ba1a2a`)
+6. CL-00 null
+7. A-03 bad SHA (DISPUTE-002)
+8. C-03 MERGE_QUEUE not resolved
+
 ### HB-017 — 2026-08-16T23:35Z / ~05:05+0530 (Cycle 16)
 
 **A-02 MERGED + DEPLOY MONITORING (FM-09 re-derived)**
@@ -694,6 +738,34 @@ Note: The underlying file is a deploy proof, not an explicit exit test result. T
 
 **Resolution required from E:**
 Update `A-03.merged_sha` in ekv_manifest.json to `12cbf5e14dd26b4a36ac44ffbe88efec67674f06` (full SHA)
+
+**Status: OPEN**
+
+---
+
+### EKV-DISPUTE-003 — A-04/C-01/C-02 promoted LIVE without merged_sha/evidence (2026-08-16T23:55Z)
+
+**Claim (E's manifest):**
+- A-04: `status: LIVE`
+- C-01: `status: LIVE`
+- C-02: `status: LIVE`
+
+**Reality (FM-09 re-derived by SENTINEL):**
+
+| Lane | merged_sha | evidence file | gate check | Result |
+|------|-----------|--------------|-----------|--------|
+| A-04 | **null** | `a04_kala_field_probe.json` DNE | ancestor check → CRASH | ✗ |
+| C-01 | `20266702ada9` (valid) | `c01_migration_verified.json` DNE | evidence → FAIL | ✗ |
+| C-02 | `20266702ada9` (valid) | `c02_writer_fix.json` DNE | evidence → FAIL | ✗ |
+
+**Gate impact:** `ekv_gate.py verify --wave 0` **CRASHES** with `TypeError: 'NoneType' object is not subscriptable` on A-04.merged_sha before reaching evidence checks.
+
+**§N.8 violation:** LIVE status asserted without the fields the gate checks — `merged_sha` (for A-04) and `live_probe_evidence` files (for all three). The "LIVE" signal has no real detector behind it.
+
+**Resolution required from E:**
+1. A-04: set `merged_sha: "a2ce6dc37ef3f460cabefa7e76287750a565441c"` AND run exit test (`kala_field_skill in calibration_maturity`) AND create `a04_kala_field_probe.json`
+2. C-01: run exit test (`standing_predictions_read shows fixed count`) AND create `c01_migration_verified.json`
+3. C-02: run exit test AND create `c02_writer_fix.json`
 
 **Status: OPEN**
 
