@@ -4591,3 +4591,34 @@ CONDUCTOR-HEARTBEAT: 2026-08-15T~11:00Z [R42-CLOSE: F-wave delivered, A8 built, 
 | build_run.state | failed (snapshot OOM — data fully integrated) |
 
 ### SESSION STATUS: CLOSING
+
+---
+
+## Post-close addendum: PARĪKṢAKA FM-26 verdict on PR #1284
+
+CONDUCTOR-NOTE: 2026-08-15T~11:15Z — task result arrived after R42 session close.
+
+**PARĪKṢAKA FM-26 VERDICT — PR #1284 (F1+F2+F5): CONDITIONAL-PASS**
+
+All F1 and F2 items PASS:
+- F1.1 Zero evaluator calls in loop: PASS
+- F1.2 C decomposition (clock-only EnvelopeIndex): PASS
+- F1.3 E decomposition (full - clock): PASS
+- F1.4 Vectorized circular shift with linear interpolation: PASS
+- F1.5 Precomputation count (2×n=73050 total): PASS
+- F1.6 F-01 shift grid (range(1, R), R-1 shifts): PASS
+- F1.7 NullResult from contracts (not shadowed locally): PASS
+- F2.8 Two substeps plan (:1 null, :2 windows): PASS
+- F2.9 writer.py dispatches DN.dhara_compute_null (NOT DNV): PASS
+- F2.10 chunk:2 resume-safe (reads kala_field_null from DB): PASS
+- F5.11 Decade knots d×H/10 in assemble_knot_set: PASS
+- _RESUME_VERSION=7: PASS
+
+**CONDITION C-1 (non-blocking for algorithm correctness):**
+`test_dhara_sweep.py` (or new `test_knot_set.py`) must add:
+- (a) assert `d * H / 10` for `d=1..9` present in `assemble_knot_set` output
+- (b) assert full-horizon contiguity: `gaps == 0` over `[0, 36525]`
+Per spec: `DHARA_ENGINE_SPEC_v1_0.md §5`, `PURNA_KSHETRA_PLAN_v1_1.md §2 P1`.
+
+**DISPOSITION:** #1284 already merged; C-1 is a tracked follow-up for the next F-wave PR.
+Add to F-wave backlog: `test_knot_set.py` with decade-knot presence + full-horizon contiguity tests.
