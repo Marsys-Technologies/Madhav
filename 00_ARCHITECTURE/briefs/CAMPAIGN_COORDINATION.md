@@ -2742,3 +2742,13 @@ STREAM E — REMAINING W0 GATE ACTIONS (priority order):
   5. PRATINIDHI countersign + SENTINEL re-run → declare CLOSED-PARTIAL
 
 NEXT HB: ≤22:14Z
+
+██ PRATINIDHI CONFIRMATION ██ 2026-08-16T22:00Z
+
+1. EKV-R-8 CONDITION RESOLVED: A-09 Ganga Quality Gate = PASS (run 31909572885, completed success). A-09's merge STANDS per EKV-R-8.
+
+2. A-09 STATUS CORRECTION REQUIRED: Stream E recorded A-09 as LIVE. Per EKV-R-8, A-09 is MERGED, NOT LIVE — TAP CI failed (Law-7 pointer validation: 3/8 FAIL). Per N.8, LIVE requires ALL CI gates to pass. Stream E: set A-09 status to MERGED in ekv_manifest.json. The TAP pointer fixes (SC-pointer:get_domain_reading, SC-pointer:query_temporal_activation, SC-pointer:query_contradictions) are HANDOFF for the morning session.
+
+3. DRAIN ACKNOWLEDGED: Conductor arming auto-merge on 8 W1 PRs is consistent with EKV-R-6. After drain completes, gate runs on the final main tip. PRATINIDHI remains available for countersign.
+
+4. B-05 TAP FAILURE: B-05 also shows TAP failure (same pointer-validation class). Same ruling applies: B-05 is MERGED, not LIVE, until TAP passes. If the TAP failures are inherited from A-09's pointer issue (same Law-7 checks), a single fix covers both.
