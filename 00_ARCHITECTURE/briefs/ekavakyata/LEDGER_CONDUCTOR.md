@@ -174,3 +174,13 @@ Consumers waiting: A-14, A-16, B-08.
 - W1: B-02 in queue (TAP ✓, Ganga QG in_progress ~21:06Z expected)
 
 **W0 PROGRESS: CORE 7/7 LIVE + DEPLOYED at 21:00Z — gate pending E manifest update + CL-00 run**
+
+**21:14Z (context-resume #4)** — W1 advancing without E gate. B-02 MERGED (`33289b579`, 21:06Z) + B-03 MERGED (`bdc27ccdf`, 21:10Z). B-04 queue CI PASSED (21:11Z), merge imminent. Main tip: `bdc27ccdf`. Stream E manifest UNCHANGED since 20:57Z — session appears ended. Gate has 9 blocking failures (detailed in 21:14Z CAMPAIGN_COORDINATION HB). B-01 stalled 82min no push. A-09 stalled no push. LEDGER_E last entry shows `$0 running / $35 budget` — E session exhausted. Next session must restart E to execute gate sequence.
+
+### W1 STATUS (21:14Z):
+- B-02 ✓ MERGED `33289b579` (21:06Z)
+- B-03 ✓ MERGED `bdc27ccdf` (21:10Z)
+- B-04 (PR#1299): queue CI PASS (21:11Z) → merge imminent
+- B-01: GOVERNANCE FAIL — dignity test regression, no fix push (82min stalled)
+- B-05 (PR#1303): not yet queued (base changed 2×; needs re-queue after B-04 merges)
+- A-09 (PR#1301): CI still failing — Boot SC-17/18/19 + TAP-5/7/S-13 (no fix push)

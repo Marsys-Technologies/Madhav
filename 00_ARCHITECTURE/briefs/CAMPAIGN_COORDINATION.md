@@ -2417,3 +2417,45 @@ STREAM E — TIME CRITICAL: Begin gate sequence NOW:
 6. Run CL-00: `python3 platform/scripts/governance/ekv_controls.py --cheap-subset` or equivalent
 7. Run gate: `python3 /Users/Dev/shad_overnight/ekv_gate.py verify --wave 0`
 Gate will PASS once A-02/A-04/C-01→LIVE, C-03→HANDOFF (honest park), CL-00 PASS, deployed_main_sha matches.
+
+EKV-CONDUCTOR-HB 2026-08-16T21:14Z — W1: B-02+B-03 MERGED · B-04 queue CI PASS (merge imminent) · Gate 9 failures pending E
+
+W1 MERGE QUEUE STATUS:
+- B-02 (`33289b579`) ✓ MERGED to main (21:06Z)
+- B-03 (`bdc27ccdf`) ✓ MERGED to main (21:10Z) — consecutive-house yoga predicate fix
+- B-04 (PR#1299): queue CI COMPLETED SUCCESS (21:11Z) — MERGE IMMINENT
+- Current main tip: `bdc27ccdfabdea33e4620a9b80de186f359171d7`
+
+STREAM E — GATE SEQUENCE (9 BLOCKING FAILURES):
+Manifest not updated since 20:57Z (77min). Gate still fails with 9 errors:
+  ✗ PROD-SYNC: deployed_main_sha `a2ce6dc37` ≠ origin/main (now `bdc27ccdf`, was `33289b579`)
+  ✗ CL-00 cheap subset not PASS (got None)
+  ✗ A-02: status 'MERGED' — must be LIVE
+  ✗ A-03: merged_sha `12cbf5e14c15` NOT ancestor of origin/main (SHA IS WRONG — see below)
+  ✗ A-04: merged_sha null/missing
+  ✗ A-04: live_probe_evidence 'c01_a04_deploy.json' missing (needs directory prefix)
+  ✗ C-01: live_probe_evidence 'c01_a04_deploy.json' missing (needs directory prefix)
+  ✗ C-02: live_probe_evidence 'c01_a04_deploy.json' missing (needs directory prefix)
+  ✗ C-03: status 'MERGE_QUEUE' — must be LIVE or honestly parked (HANDOFF)
+
+EXACT MANIFEST FIXES REQUIRED (Stream E sole writer):
+1. A-02: status → LIVE, merged_sha → `33dfb2ba1a2a900ef641d82755f8cc14426c2104`
+2. A-03: merged_sha → `12cbf5e14dd26b4a36ac44ffbe88efec67674f06` (fix: 14c15... wrong; 14dd26... correct)
+3. A-04: status → LIVE, merged_sha → `a2ce6dc37ef3f460cabefa7e76287750a565441c`
+4. A-04 live_probe_evidence → `00_ARCHITECTURE/briefs/ekavakyata/evidence/c01_a04_deploy.json`
+5. C-01 live_probe_evidence → `00_ARCHITECTURE/briefs/ekavakyata/evidence/c01_a04_deploy.json`
+6. C-02 live_probe_evidence → `00_ARCHITECTURE/briefs/ekavakyata/evidence/c01_a04_deploy.json`
+7. C-03: status → HANDOFF, handoff_note → "PR#1287 ejected from queue after A-04/A-02 rebase; GitHub UNKNOWN mergeability; re-queue pending resolution; ṚTA-LEAD monitoring"
+8. deployed_main_sha → CURRENT main tip at time of gate run (wait for B-04 deploy; B-04 merge imminent)
+9. cl00_cheap_subset_last_run → run `python3 platform/scripts/governance/ekv_controls.py --cheap-subset` first
+
+GATE RUN COMMAND: `python3 /Users/Dev/shad_overnight/ekv_gate.py verify --wave 0`
+IMPORTANT: ekv_gate.py was patched this session (null merged_sha crash fix applied at /Users/Dev/shad_overnight/ekv_gate.py). Gate is runnable.
+
+B-01 STALL (ŚĀSTRA-LEAD): ekv/b-01-dignity-oracle has had NO commits since 19:52Z CI failure (82+ min).
+  Failures: test_ga6_writer.py::TestDignity::test_friend_sign + test_enemy_sign (_compute_dignity returning "Neutral")
+  This blocks W1 gate. Fix tests or revert dignity-guard change on ekv/b-01-dignity-oracle.
+
+A-09 STALL (SEVĀ-LEAD): No fix push since 19:56Z CI failure.
+  Failures: Boot-time SC-17/18/19 (capability manifest) + TAP-5/7/S-13
+  A-14/A-16/B-08 ALL blocked until A-09 is green.
