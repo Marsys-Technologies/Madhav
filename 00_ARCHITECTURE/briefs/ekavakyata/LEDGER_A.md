@@ -35,10 +35,25 @@ Lane worktrees and branches:
 | A-16 | ekv/a-16-vocab-sync | .claude/worktrees/ekv-a-16 | VERIFIED |
 | A-17 | ekv/a-17-upaya-graha-scope | .claude/worktrees/ekv-a-17 | VERIFIED |
 | A-15 | ekv/a-15-ayanamsha-wire | .claude/worktrees/ekv-a-15 | VERIFIED |
+| A-25 | ekv/a-25-dasha-sandhi-principal | .claude/worktrees/ekv-a-25 | VERIFIED |
 
 ## HEARTBEATS
 
 <!-- Format: HH:MMZ — status · lanes active · next -->
+
+### 2026-08-16 HB-14 ~00:00Z
+- A-25 VERIFIED: 8bf6ff85d pushed ekv/a-25-dasha-sandhi-principal — F-25 closed
+  - dasha_sandhi.ts: `registerDashaSandhiCalendar(server, principal: Principal)` — real caller identity now closed over
+  - Hardcoded `{ user_uid: 'system', key_id: 'system', role: 'super_admin' }` removed from MCP handler
+  - register_all.ts: `registerDashaSandhiCalendar(server, principal)` — principal now passed through
+  - Pattern matches all 8 sibling kala_views/* registrars; no hot-file touch
+  - Root cause: every `kala_dasha_sandhi_get` call was failing auth → silently honest-empty
+- F-73 scoping: `marsys://tool/L4/gochara_forecast_get` has NO retrieval capability handler
+  - kala_now_get and kala_explain_get call this URI internally; it 404s → field_gochara_alignment:'insufficient_data'
+  - Fix requires new retrieval capability file in platform/src/lib/retrieval/registry/layers/
+  - Scope: medium-large (new capability + handler + URI alignment); deferred — F-73 OUT OF CAMPAIGN WINDOW
+- Stream A total: 16 lanes VERIFIED; F-90/F-39/F-73 remain BLOCKED/DEFERRED/DEFERRED
+- No further actionable A-stream findings within campaign window identified
 
 ### 2026-08-16 HB-13 ~23:40Z
 - Context resumed after compaction (session continued from HB-12 state)
