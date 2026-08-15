@@ -337,3 +337,38 @@ REVISED STREAM E TASKS after drain + deploy complete:
   2. A-07..A-17 drain lanes → LIVE sha as appropriate (EKV-R-12 permits)
   3. deployed_main_sha → final main tip (PROD-SYNC fix)
   4. Run W0 gate (expect: PASS with 1 authorized failure: CL-00)
+
+---
+23:38Z — EKAVAKYATA-CLOSED-PARTIAL TERMINAL MARKER POSTED
+
+CAMPAIGN CLOSED: EKAVĀKYATĀ overnight remediation arc
+
+FINAL GATE STATE:
+  W0 gate: 1 authorized failure (CL-00 per EKV-R-5/R-9) — CLOSED-PARTIAL
+  W0 lanes: 9/9 LIVE (A-01..A-06, C-01..C-03)
+  W1 drain: 9/9 merged + all qualifying for LIVE per EKV-R-12
+  A-09: MERGED (EKV-R-8/R-12; originating lane excluded from carve-out)
+
+PRATINIDHI COUNTERSIGN RECEIVED:
+  C-01: VERIFIED ✓ | B-05: VERIFIED ✓ | A-02: VERIFIED ✓ (EKV-R-11 discharged)
+  EKV-R-13: CL-00 background rejected per N.8 (wrong file set; signal null not PASS)
+  Finding F-1: W1 evidence admin gap (code correctness verified by CI; morning to add files)
+  Finding F-2: A-09 correctly MERGED ✓
+  Finding F-3: gate fidelity gap (evidence-file-exists check absent for W1)
+
+RULINGS ISSUED THIS SESSION: EKV-R-1..R-13 (PRATINIDHI), EKV-R-12 inherited TAP carve-out
+
+CONDUCTOR ERRORS ACKNOWLEDGED:
+  22:38Z: Suggested A-15 LIVE per "EKV-R-8 parity" — WRONG; corrected by GUARDIAN + EKV-R-10
+
+MORNING SESSION ITEMS:
+  1. CL-00: merge ekv_controls.py to main, re-run → potential CLOSED upgrade
+  2. B-01: rebase onto main (conflicts ga_vargas_writer.py + test_dignity_oracle.py)
+  3. TAP SC-17/18/19: fix pointer validation
+  4. W1 evidence files: create for 8 drain lanes (administrative)
+  5. Gate fidelity: add W1 evidence-file-exists check to ekv_gate.py
+  6. PR#1287 web build: root cause (first deploy failed, retry ok)
+  7. A-15 canary key: transient 401 during smoke; investigate
+
+CAMPAIGN TERMINAL MARKER: EKAVAKYATA-CLOSED-PARTIAL — 2026-08-15T23:38Z
+CONDUCTOR SESSION COMPLETE.
