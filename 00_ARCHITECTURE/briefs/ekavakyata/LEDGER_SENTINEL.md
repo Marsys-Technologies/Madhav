@@ -195,19 +195,23 @@ None yet.
 - A-06 NOTE: resolution field omitted from disclosure (data type constraint) — not a dispute, noted
 - Next: watch for VERIFIED markers + E merge actions; run live exit tests when E deploys
 
-### HB-008 — 2026-08-16T19:44Z / ~01:14+0530 (Cycle 7 — new session after context compaction)
+### HB-008 — 2026-08-16T19:44-19:58Z / ~01:14+0530 (Cycle 7 — new session after context compaction)
 
 **State on resume (FM-09 re-derived, not inherited):**
-- Main tip: `63049a6e327e46a552496d7fc3a66f87a67d5ee8` — UNCHANGED since session start; no merges yet
+- Main tip at start: `63049a6e` — UNCHANGED; no merges yet
 - Gate status: **8 VERIFIED** (A-01..A-06, C-01, C-02); 2 BUILT (D-01, D-04); 30 CLAIMED
 - PR status: PRs #1289-1295 all OPEN; all CI green on #1289 (A-01: 34/34 COMPLETED/SUCCESS)
-- **⚠️ PR STALL ALERT**: PR #1289 has mergeStateStatus=CLEAN, all CI SUCCESS, but `autoMergeRequest=null` — conductor has NOT enabled auto-merge. PRs will not self-merge. Stream E must either manually merge or set auto-merge on each PR. This blocks all LIVE status transitions.
+- ~~⚠️ PR STALL ALERT~~ — **RESOLVED**: A-01 MERGED at 2026-08-15T19:48:15Z; SHA `55a476fbd28f16abfaae756633a4729a23016379`. E did use merge queue.
 - A-15 diff audited: branch name discrepancy (manifest=`ekv/a-15-ayanamsha`, actual=`ekv/a-15-ayanamsha-wire`); code correct ✓
 - B-01 expanded audit complete: all 5 files (oracle + 3 writers + tests) PASS ✓
 - C-02 manifest branch discrepancy: manifest=`ekv/c-02-writer-hunt`, actual commits on `ekv/c-01-ledger-repair` in PR #1295
-- DB: not re-verified this cycle (no schema-changing merges occurred)
+- F-84: BOTH checks PASS (FM-09 re-run — kala_field 0 dupes, chart_facts 0 dupes)
+- E LEDGER: commit `18157151` confirms rulings received, merge queue for A-02..A-06/C-01 CI running
+- Deploy: 2× "Deploy to Cloud Run" workflows `in_progress` at 19:48Z/19:50Z — expected completion ~20:01-20:05Z
+- **⚠️ A-01 manifest watch**: `exit_test_result: PASS` pre-filled before deploy completed; `live_probe_evidence` file DNE at 19:50Z. Gate catches this at LIVE check (evidence file required). Monitor: E must create evidence file + update to LIVE after deploy.
+- Manifest source: working-tree file at `/Users/Dev/Vibe-Coding/Apps/Madhav/00_ARCHITECTURE/briefs/ekavakyata/ekv_manifest.json` (uncommitted) — gate reads working-tree, campaign-coordination branch still has T0-2 seed (all PENDING)
 
-**SENTINEL REQUEST TO CONDUCTOR**: Instruct Stream E to enable auto-merge (or manually merge) PRs #1289-1295. Campaign cannot advance to LIVE status without merges to main.
+**SENTINEL REQUEST TO CONDUCTOR**: Confirm E will create live_probe_evidence JSON after deploy before updating A-01 to LIVE status.
 
 ### HB-007 — 2026-08-16 ~01:30+0530 (Cycle 6)
 - **PR #1289 (A-01) in merge queue** (gh-readonly-queue/main/pr-1289 branch visible); CI running
@@ -277,7 +281,8 @@ Targets: SENTINEL=$25 · total warn=$340 · hard cap=$420.
 
 | Run | Trigger | Time | F-75 | F-76 | F-83 | F-84 | F-85 | F-87 | Verdict |
 |-----|---------|------|------|------|------|------|------|------|---------|
-| CL-00-0 | Baseline | C0 ~00:10+0530 | PASS(0) | PASS(250,25) | PASS(0) | PENDING | PASS | PASS(0→36525) | PARTIAL — F-84 slow |
+| CL-00-0 | Baseline | C0 ~00:10+0530 | PASS(0) | PASS(250,25) | PASS(0) | PASS | PASS | PASS(0→36525) | ✓ FULL PASS |
+| CL-00-1 | A-01 merge | C7 ~01:14+0530 | — | — | — | PASS | — | — | F-84 re-run — kala_field 0 dupes ✓, chart_facts 0 dupes ✓ |
 
 ---
 
