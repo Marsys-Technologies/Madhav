@@ -216,6 +216,41 @@ None yet.
 
 **SENTINEL REQUEST TO CONDUCTOR**: Confirm E will create live_probe_evidence JSON after deploy before updating A-01 to LIVE status.
 
+### HB-012 — 2026-08-16T21:25Z / ~02:55+0530 (Cycle 11)
+
+**FM-09 re-derived findings since HB-011:**
+
+**Manifest update (FM-09 confirmed from disk):**
+- `deployed_main_sha: 12cbf5e14c15ed8e` — E updated after A-03 but NOT after A-06 (`cfc37fc38`). Stale.
+- `cl00_cheap_subset_last_run.result: null` — still null. E has not run CL-00 yet.
+- A-01: **`status: LIVE`** — E promoted A-01 to LIVE.
+- A-05: **`status: LIVE`** — E promoted A-05 to LIVE. ✓ (A-05 web service deployed)
+- A-03: `status: MERGED` — E correctly left as MERGED (not LIVE; MCP not deployed).
+
+**⚠️ EKV-DISPUTE-001 — A-01 marked LIVE but gate will FAIL (FM-09 evidence-file check):**
+
+| What | Required by gate | Actual |
+|------|-----------------|--------|
+| `live_probe_evidence` | `evidence/a01_judgment_timing.json` | **DNE** |
+| Evidence E created | — | `evidence/a01_a05_deploy.json` (deploy proof, not exit test) |
+| MCP deploy status | A-01 hardFloor must be live | **NOT deployed** (all MCP deploys were SKIPPED) |
+| Exit test validity | judgment marriage timing non-empty at 12KB budget | Cannot run — hardFloor fix not in MCP service |
+
+- Gate will check `evidence/a01_judgment_timing.json` per manifest `live_probe_evidence` field → FILE DNE → gate FAILS
+- `a01_a05_deploy.json` is a deploy confirmation, not the required exit test result
+- Even if E renames it, the exit test has NOT been run: A-01's hardFloor change is NOT deployed to MCP (all deploys since A-01 merge had `Build & Deploy MCP → skipped`)
+- **E must: (1) fix evidence filename mismatch, (2) wait for A-04 merge → MCP deploy, (3) then run actual exit test, (4) then create `a01_judgment_timing.json` with exit test result**
+
+**A-04 PR #1292 — autoMerge: False (not in queue):**
+- A-04 touches `platform-mcp/src/lib/kala_envelope.ts` + `kala_views/*.ts`
+- NOT added to merge queue — E must explicitly enable autoMerge or queue it
+- This is the next lane that will trigger MCP deploy (closing A-01+A-03 deployment gap)
+
+**Current merge queue:**
+- C-01 (PR #1295): TAP PASS; Unit Tests + Governance Gates in_progress; on track to merge
+
+**Deploy 31906422500 (A-06 batch):** in_progress — web deploy only; MCP skipped.
+
 ### HB-011 — 2026-08-16T21:10Z / ~02:40+0530 (Cycle 10)
 
 **FM-09 re-derived state:**
@@ -399,7 +434,25 @@ No waves closed yet.
 
 ## EKV-DISPUTE LOG
 
-No disputes filed.
+### EKV-DISPUTE-001 — A-01 LIVE assertion vs missing evidence (2026-08-16T21:25Z)
+
+**Claim (E's manifest):** `A-01 status: LIVE` with `live_probe_evidence: evidence/a01_judgment_timing.json`
+
+**Reality (FM-09 re-derived by SENTINEL):**
+1. `evidence/a01_judgment_timing.json` — **FILE DOES NOT EXIST** (gate will fail the evidence check)
+2. E created `evidence/a01_a05_deploy.json` (deploy confirmation), not the required exit test file
+3. A-01 hardFloor fix (`registry_bridge.ts`) NOT deployed to MCP — every post-A-01 deploy had `Build & Deploy MCP → skipped`
+4. Exit test ("judgment marriage timing non-empty at 12KB budget; no answer-bearing section floors to 0") has not been run against live MCP
+
+**Gate impact:** `ekv_gate.py verify --wave 0` will FAIL on A-01 evidence check even with A-01 `status: LIVE`.
+
+**Resolution required from E:**
+1. Set A-01 back to `MERGED` (honest state) until MCP deploy completes
+2. After A-04 merge triggers MCP deploy: run actual exit test via MCP call
+3. Create `evidence/a01_judgment_timing.json` with exit test result JSON
+4. Then promote A-01 → LIVE
+
+**Status: OPEN**
 
 ---
 
