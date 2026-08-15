@@ -68,6 +68,7 @@ model: sonnet-high (lead) · sonnet-medium (builders)
 | Time (Z) | Lane | Status | Note |
 |---|---|---|---|
 | 00:06 | ALL | LEAD-ONLINE | Source audit complete; dispatching B-01..B-05 parallel |
+| ~00:20 | B-02 | **EKV-B-02-BUILT** | 14/14 goldens pass; sha=692563430; pushed; lead review PASS |
 
 ---
 
@@ -76,7 +77,7 @@ model: sonnet-high (lead) · sonnet-medium (builders)
 | Lane | Branch | Status | Exit Test | Verifier |
 |---|---|---|---|---|
 | B-01 | ekv/b-01-dignity-oracle | DISPATCHED | golden: Jup 9.79°→MT, 15°→own, nodes→neutral | pending |
-| B-02 | ekv/b-02-nodal-aspects | DISPATCHED | golden: Ketu-Leo 5th→Venus-Sag; census: no local aspect dict | pending |
+| B-02 | ekv/b-02-nodal-aspects | **BUILT** ✓ sha=692563430 | 14/14 pass incl. Ketu-Leo→Sag 5th ✓ | pending verifier |
 | B-03 | ekv/b-03-yoga-predicate | DISPATCHED | golden: 4-house non-fire; Kedara fires | pending |
 | B-04 | ekv/b-04-mi-honesty | DISPATCHED | 6× not_assessed in DB; mi_bhara no TypeError | pending |
 | B-05 | ekv/b-05-spec-pack | DISPATCHED | A-16 spec delivered; checklist units present | pending |
@@ -95,4 +96,4 @@ model: sonnet-high (lead) · sonnet-medium (builders)
 
 ---
 
-*ŚĀSTRA-LEAD — LEDGER_B — last updated 2026-08-16T00:06Z*
+*ŚĀSTRA-LEAD — LEDGER_B — last updated 2026-08-16T00:20Z*
