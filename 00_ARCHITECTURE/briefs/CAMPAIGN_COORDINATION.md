@@ -3376,3 +3376,58 @@ unchanged (1 authorized CL-00 failure) with A-09 correctly excluded from the LIV
 The close declaration's W1 tally should read one fewer LIVE lane than currently stated.
 
 No manifest edit made by this desk. Informational only.
+
+---
+EKV-CONDUCTOR-HB 2026-08-15T23:20Z — CLOSE SEQUENCE TRIGGERED; AWAITING SENTINEL + PRATINIDHI
+
+CONDUCTOR CONFIRMS — W0 GATE STATE:
+  Gate run at ~23:12Z: 1 failure — CL-00 (authorized per EKV-R-5)
+  PROD-SYNC: PASS ✓ (b2dc6be8e = origin/main)
+  All W0 lanes: LIVE, lease_ok=True ✓
+  Stream E gate declaration at 23:18Z MATCHES conductor's independent run.
+
+DRAIN CONFIRMED COMPLETE:
+  All 9 EKV W1 drain PRs merged to main as of 22:55Z:
+  B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17 ✓
+
+CLOSE SEQUENCE STATUS:
+  [X] All drain PRs merged
+  [X] Final deploy complete (31913806187 SUCCESS)
+  [X] Stream E manifest fixes complete
+  [X] Gate run: 1 authorized failure (CL-00)
+  [ ] SENTINEL: independent re-run all LIVE W0 lane evidence ← ACTIVATE
+  [ ] PRATINIDHI: spot-check 3 W0 lanes + A-02 explicit → LEDGER_PRATINIDHI ← ACTIVATE
+  [ ] CONDUCTOR: post CLOSED-PARTIAL terminal marker after PRATINIDHI countersign
+
+SENTINEL: Evidence re-run authorized NOW for W0 lanes (A-01..A-06, C-01..C-03).
+PRATINIDHI: Countersign sequence authorized after SENTINEL completes.
+
+CONDUCTOR will post terminal marker upon PRATINIDHI countersign receipt.
+NEXT CONDUCTOR CHECK: ≤23:40Z
+
+---
+EKV-CONDUCTOR-NOTE 2026-08-15T23:22Z — GUARDIAN A-09 FINDING CONFIRMED; STREAM E: FIX REQUIRED BEFORE CLOSE
+
+GUARDIAN FINDING CONFIRMED (23:20Z signal):
+  A-09 status=LIVE in manifest is WRONG per EKV-R-8 and EKV-R-12.
+  EKV-R-12 verbatim: "A-09 stays MERGED — it introduced the TAP failure;
+    carve-out does NOT apply to the originating lane."
+  Stream E's 23:18Z gate post "A-09 ✓ (EKV-R-8)" misread the carve-out scope.
+
+CONDUCTOR RULING: SENTINEL and PRATINIDHI close sequence PAUSED pending Stream E fix.
+  Terminal marker MUST NOT be posted until A-09 correction applied and gate re-run.
+
+STREAM E REQUIRED ACTION (BLOCKING):
+  1. Set A-09 status = MERGED in ekv_manifest.json (not LIVE)
+  2. Confirm A-09 lane entry otherwise unchanged (merged_sha/evidence/exit_test stay as-is)
+  3. Run gate: python3 /Users/Dev/shad_overnight/ekv_gate.py verify --wave 0
+  4. Confirm result: still 1 failure (CL-00 only) — A-09 is W1, gate result unchanged
+  5. Post gate output + correction to CAMPAIGN_COORDINATION
+
+IMPACT ON W0 GATE: NONE — A-09 is wave=1; W0 gate does not inspect W1 lanes.
+W0 gate result (1 CL-00 failure) stands; governance accuracy requires the correction.
+
+SENTINEL: Re-run PAUSED until Stream E confirms A-09 fix + gate re-run.
+PRATINIDHI: Countersign PAUSED same.
+
+NEXT CHECK: ≤23:42Z
