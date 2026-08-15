@@ -33,11 +33,22 @@ Lane worktrees and branches:
 | A-12 | ekv/a-12-inv2-determinism | .claude/worktrees/ekv-a-12 | VERIFIED |
 | A-13 | ekv/a-13-error-boundary | .claude/worktrees/ekv-a-13 | VERIFIED |
 | A-16 | ekv/a-16-vocab-sync | .claude/worktrees/ekv-a-16 | VERIFIED |
+| A-17 | ekv/a-17-upaya-graha-scope | .claude/worktrees/ekv-a-17 | VERIFIED |
 | A-15 | ekv/a-15-ayanamsha-wire | .claude/worktrees/ekv-a-15 | VERIFIED |
 
 ## HEARTBEATS
 
 <!-- Format: HH:MMZ — status · lanes active · next -->
+
+### 2026-08-16 HB-12 ~23:20Z
+- A-17 VERIFIED: 4a3735eb9 pushed ekv/a-17-upaya-graha-scope — F-49 partially closed
+  - kala_upaya_diagnosis.ts: in-memory targetedGraha filter on mitigation_map rows
+  - Mirrors existing bodha_rm_prescriptions_get filter pattern (lines 543-545)
+  - Null targetedGraha → no-op filter (no regression for unconstrained calls)
+  - Lease: platform-mcp/src/lib/kala_upaya_diagnosis.ts only; no hot-file touch
+  - HANDOFF: bodha resonance rank-1 fallback when targetedGraha=null not implemented (requires new API call)
+- Stream A total: 13 lanes VERIFIED (A-01..A-09, A-11..A-13, A-15..A-17); F-90/F-39 remain BLOCKED
+- W4 DONE. Stream A work substantially complete for this campaign run.
 
 ### 2026-08-16 HB-11 ~23:00Z
 - A-16 VERIFIED: b0dc139f5 pushed ekv/a-16-vocab-sync — F-24 closed
@@ -193,6 +204,8 @@ EKV-A-07-VERIFIED — 02d891bde pushed ekv/a-07-domain-charter — F-55/F-41: SH
 EKV-A-13-VERIFIED — 33250d56d pushed ekv/a-13-error-boundary — F-89: looksInternal regex +2 Postgres encoding patterns; raw UTF8 exception text now sanitized to generic safe_message
 
 EKV-A-16-VERIFIED — b0dc139f5 pushed ekv/a-16-vocab-sync — F-24: DOMAIN_RULES plural-safe patterns aligned with DEEP_DOMAIN_WORD; 'married'/'jobs'/'relationships' etc. now resolve to correct scope_tuple.domains
+
+EKV-A-17-VERIFIED — 4a3735eb9 pushed ekv/a-17-upaya-graha-scope — F-49: mitigation_map rows filtered by targetedGraha in-memory; Venus-targeted marriage queries no longer return 50 identical Saturn rows
 
 EKV-KERNEL-API-FROZEN — dcc2fb5a pushed ekv/a-09-sara-kernel — SaraKernel/SaraPromiseJoin/CompositionReport/SaraLayeredContent/assembleSaraContent stable in response_budget.ts
 
