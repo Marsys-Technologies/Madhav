@@ -74,7 +74,35 @@ import {
   checklistExhaustiveness,
   DOMAIN_KP_CUSPS,
   type ChecklistUnit,
+  type GocharaSweepWindow,
 } from './reading_checklist'
+
+// F-119 (EKAVĀKYATĀ A-06): attach resolution_disclosure to gochara_sweep rows.
+// Mirrors the same helper in register_d8_assess_domain.ts — see that file for the
+// full rationale. GocharaSweepWindow has only temporal_shape + peak_date to work
+// from; the full deriveResolutionDisclosure() (register_gochara_windows.ts) is not
+// reachable from this package.
+interface SweepWindowDisclosure {
+  is_timing_window: boolean
+  timing_window_blocked_reason: 'era_scale_context' | 'bare_point_no_date' | null
+}
+
+function withSweepDisclosure(
+  rows: GocharaSweepWindow[]
+): Array<GocharaSweepWindow & { resolution_disclosure: SweepWindowDisclosure }> {
+  const retained = rows.filter(
+    (r) => !(r.temporal_shape === 'point' && r.peak_date == null)
+  )
+  return retained.map((row) => {
+    const isPoint = row.temporal_shape === 'point'
+    return {
+      ...row,
+      resolution_disclosure: isPoint
+        ? { is_timing_window: true, timing_window_blocked_reason: null }
+        : { is_timing_window: false, timing_window_blocked_reason: 'era_scale_context' },
+    }
+  })
+}
 
 // ── The Shastra Map (design §28.5) ───────────────────────────────────────────────
 
@@ -1189,7 +1217,10 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
               upcoming_window_count: gochara.upcoming_window_count,
               valence_breakdown: gochara.valence_breakdown,
               window_range: gochara.window_range,
-              top_windows: gochara.windows,
+              // F-119 (EKAVĀKYATĀ A-06): attach resolution_disclosure so callers
+              // distinguish genuine timing windows from era-scale context rows.
+              // Bare point rows (point-shaped, no peak_date) are suppressed per §N.6.
+              top_windows: withSweepDisclosure(gochara.windows ?? []),
               note: gochara.note,
             },
           },
