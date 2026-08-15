@@ -527,6 +527,10 @@ class SalienceInputsV2:
     # Completeness tracking
     inputs_complete: bool = True    # set False when any field fell back to a default
 
+    # B-08: domain-affinity and abstention marker
+    domain_count: int = 3           # number of domains signal covers; higher = broader = less specific
+    is_abstention_marker: bool = False  # True for "floored:*" and similar computation-abstention labels
+
 
 def salience_formula_v2(s: SalienceInputsV2) -> dict[str, Any]:
     """BA-P3B salience formula v2.0 — ONE canonical site (C5 fix).
@@ -542,6 +546,44 @@ def salience_formula_v2(s: SalienceInputsV2) -> dict[str, Any]:
     bala_gate: yoga signals with weak constituent planets are demoted, not excluded.
     specificity and salience_pctl_in_class are filled in a second pass by bo_laksana.
     """
+    # B-08: abstention markers get zero salience — they are internal computation
+    # placeholders ("floored: no_canonical_per_varga_method", etc.), not
+    # astrological findings.  Return early with a zeroed-out result that still
+    # carries all expected dict keys so callers never KeyError.
+    if s.is_abstention_marker:
+        # Build neutral intermediate values for the zero-salience row
+        _vr = VERIFICATION_RESCALE.get(
+            s.verification_pass_status,
+            VERIFICATION_RESCALE["documented_approximation"],
+        )
+        _vw = VARGA_WEIGHT.get(s.varga_id or "D1", 1.00)
+        _hw = HOUSE_WEIGHT.get(s.house_number, 1.00)
+        _av = _av_multiplier(s.ashtakavarga_bindus)
+        _ct = (
+            s.orb_tightness * min(s.shadbala_norm, 2.0) * s.dignity_score
+            * _hw * _av * (1 + s.vargottama_amplification)
+            * s.neechabhanga_modifier * s.cancellation_modifier
+        )
+        _gate = s.bala_gate if s.bala_gate is not None else 1.0
+        _ds = 1.0 / (1.0 + 0.25 * max(0, s.domain_count - 1))
+        return {
+            "class_prior":                      round(s.class_prior, 6),
+            "varga_weight":                     round(_vw, 6),
+            "specificity":                      round(s.specificity, 6),
+            "verification_rescale":             round(_vr, 6),
+            "condition_terms":                  round(_ct, 6),
+            "bala_gate":                        round(_gate, 6),
+            "functional_context":               round(s.functional_context, 6),
+            "domain_specificity":               round(_ds, 6),
+            "computed_salience":                0.0,
+            "salience_formula_version":         VERSION_SALIENCE_FORMULA_V2,
+            "salience_inputs_complete":         s.inputs_complete,
+            "present_but_enfeebled":            (s.bala_gate is not None) and (s.bala_gate < 0.60),
+            # v1 compat keys
+            "house_weight_multiplier":          round(_hw, 6),
+            "ashtakavarga_support_multiplier":  round(_av, 6),
+        }
+
     verification_rescale = VERIFICATION_RESCALE.get(
         s.verification_pass_status,
         VERIFICATION_RESCALE["documented_approximation"],
@@ -564,7 +606,26 @@ def salience_formula_v2(s: SalienceInputsV2) -> dict[str, Any]:
     gate = s.bala_gate if s.bala_gate is not None else 1.0
     present_but_enfeebled = (s.bala_gate is not None) and (s.bala_gate < 0.60)
 
-    computed_salience = (
+    # B-08: domain-specificity multiplier — broad signals (many domains) are
+    # penalised because domain_salience already divides by n_domains at the row
+    # level, but computed_salience itself was identical regardless of breadth,
+    # causing all signals with the same planetary inputs to tie (F-114 plateau).
+    #
+    # Formula: domain_specificity = 1 / (1 + 0.25 × (domain_count − 1))
+    #   domain_count=1  → 1.000  (no penalty — single-domain signals unaffected)
+    #   domain_count=2  → 0.800  (20% penalty; cross-domain signals deprioritised)
+    #   domain_count=3  → 0.667  (default _DOMAIN_MAP entry; moderate penalty)
+    #   domain_count=7  → 0.400
+    #   domain_count=10 → 0.308
+    #
+    # Reciprocal form guarantees: (a) always positive, (b) monotone decreasing,
+    # (c) all integer domain_counts yield distinct values (no floor collision),
+    # (d) the 20% step at dc=2 is large enough to push even the strongest
+    # broad signal below the weakest same-planet single-domain signal when
+    # other inputs are equal (F-131 / F-114 plateau fix).
+    domain_specificity = 1.0 / (1.0 + 0.25 * max(0, s.domain_count - 1))
+
+    computed_salience = round(
         s.class_prior
         * varga_weight
         * s.specificity
@@ -572,6 +633,8 @@ def salience_formula_v2(s: SalienceInputsV2) -> dict[str, Any]:
         * condition_terms
         * gate
         * s.functional_context
+        * domain_specificity,
+        6,
     )
 
     return {
@@ -582,7 +645,8 @@ def salience_formula_v2(s: SalienceInputsV2) -> dict[str, Any]:
         "condition_terms":          round(condition_terms, 6),
         "bala_gate":                round(gate, 6),
         "functional_context":       round(s.functional_context, 6),
-        "computed_salience":        round(computed_salience, 6),
+        "domain_specificity":       round(domain_specificity, 6),
+        "computed_salience":        computed_salience,
         "salience_formula_version": VERSION_SALIENCE_FORMULA_V2,
         "salience_inputs_complete": s.inputs_complete,
         "present_but_enfeebled":    present_but_enfeebled,
