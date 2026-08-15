@@ -108,7 +108,7 @@ Monitoring: C-01 migration must bring this to 0; C-02 must identify + fix the wr
 | A-09 | ekv/a-09-sara-kernel | ✓ | 2 files: `response_budget.ts` + `registry_bridge.ts`. Types: `SaraKernel{verdict,flags,promise,pointers}` + `SaraPromiseJoin{projection,promise_verdict,shared_fact_ids,stance}` + `SaraLayeredContent<K,G,E>` + `CompositionReport` ✓. `assembleSaraContent()`: ≤2KB kernel enforced by trim-pointers-then-flags loop; grounding/evidence greedy-included if budget allows ✓. EKV-KERNEL-API-FROZEN: A-14/A-16/B-08 unblocked. `registry_bridge.ts`: `buildAssessResponse()` wires kernel from `response['verdict']`/`response['judgment_flags']`; verdict_skeleton/activating_dasha now in evidence layer (invisible to trimmer → composition path) ✓. Promise: null until A-08 PACT spine lands | A ✓ | 15% SAMPLE PASS |
 | A-11 | ekv/a-11-bundle-principal | ✓ | 1 file: `bundle_adapters.ts`. F-127: params wrapped `{params}` so loopback reads `body.params` (chart_id was silently dropped flat) ✓; F-30/F-74: `PrimitiveResult.upstream_status` always present; error_class derived 401/403→`auth_denied`, 400→`validation_error`, 408/0→`timeout`, 5xx→`upstream_error` ✓; callPrimitive never throws ✓ | A ✓ | 15% SAMPLE PASS |
 | B-03 | ekv/b-03-yoga-predicate | ✓ | 2 files. `ga_yoga_writer.py`: `len(placed)==7 and all(p in ps_in_houses for p in placed) and len(houses_occupied_by_placed)==7` — 3-condition nabhasa (exactly 7 planets, all in window, all in distinct houses). `houses_occupied_by_placed` computed from `state.lagna_house_planets` correctly. Test: `test_ga_yoga_b03_predicate.py` covers exact-7/distinct-7 ✓ | B ✓ | 15% SAMPLE PASS |
-| B-04 | ekv/b-04-mi-honesty | ✓ | 6× `'clean'`→`'not_assessed'` in mi_darshana.py ✓ | Pending live test |
+| B-04 | ekv/b-04-mi-honesty | ✓ | **3-file audit**: (1) `mi_darshana.py` — 6× `"clean"`→`"not_assessed"` at INSERT leakage_status positions; no real leak detector exists → §N.7-4 honest null ✓; (2) `mi_bhara/db.py` — `AND NOT isempty(observation_window)` guard added to `fetch_open_predictions` SQL (crash guard for C-01 target rows) ✓; (3) `test_b04_mi_honesty.py` — tests both fixes: source-parse check + no-`"clean"`-literal scan + isempty guard assertion ✓. Lease: B territory ✓ | B ✓ | 15% SAMPLE PASS |
 
 ### MERGE BLOCK — C-01 ✅ CLEARED (EKV-R-1 filed 01:15+0530)
 
@@ -215,6 +215,55 @@ None yet.
 - Manifest source: working-tree file at `/Users/Dev/Vibe-Coding/Apps/Madhav/00_ARCHITECTURE/briefs/ekavakyata/ekv_manifest.json` (uncommitted) — gate reads working-tree, campaign-coordination branch still has T0-2 seed (all PENDING)
 
 **SENTINEL REQUEST TO CONDUCTOR**: Confirm E will create live_probe_evidence JSON after deploy before updating A-01 to LIVE status.
+
+### HB-010 — 2026-08-16T20:30Z / ~02:00+0530 (Cycle 9 — post-context-compaction resume)
+
+**FM-09 re-derived state (not inherited from summary):**
+
+**Deploy / CI:**
+- Deploy `31905461420` (main, A-01+A-05): **COMPLETE / SUCCESS** — web service live at ~20:15Z
+- Main CI `31905403125`: in_progress — only Governance Gates remain
+- A-03 merge queue CI `31905403862`: in_progress — only Governance Gates remain (TAP PASS, all other jobs SUCCESS)
+- B-05 Ganga CI `31905329576`: in_progress — Governance Gates running
+- Main tip: **3deb54180** (unchanged; A-01+A-05 only)
+
+**⚠️ CRITICAL — A-11 GANGA FAIL (#1302):**
+- `bundle_adapters.test.ts` line 78: `expect(call.body['chart_id']).toBe(CHART_ID)` → received `undefined`
+- Test: `executeBundlePrimitive` must thread `chart_id` into sub-tool request body for holistic sub-tools (MSR/CGM/LEL/PANCHANG/DASHA)
+- Failure: `body['chart_id']` is `undefined` — chart_id threading is NOT working despite F-127 body-wrapping fix
+- SENTINEL read confirmed from `--log-failed` of run `31905311409`
+- **A-11 is BLOCKED until chart_id threading test passes. Conductor must alert A lead.**
+
+**⚠️ EKV-GATE BLOCKER — cl00 not written to manifest:**
+- `ekv_manifest.json`: `cl00_cheap_subset_last_run.result = null`
+- E's note: "Will run after first W0 deploy batch completes" — batch IS complete (A-01+A-05 deployed)
+- `ekv_gate.py verify --wave 0` will FAIL on CL-00 check until E writes `result: PASS` + timestamp
+- SENTINEL re-confirms CL-00 DB state valid (F-75/76/83/84/85/87 all PASS from C0+C7 runs; no DB schema changes in this deploy batch)
+- **ACTION REQUIRED: E must now run CL-00 harness and write result to manifest**
+
+**evidence/ directory:**
+- `00_ARCHITECTURE/briefs/ekavakyata/evidence/` — **EMPTY** (0 files)
+- All MERGED/VERIFIED lanes list evidence JSON files that do not exist yet
+- Non-blocking: gate only checks evidence at `status: LIVE`; no lane is LIVE yet
+- **E must create evidence files before any lane transitions MERGED/VERIFIED → LIVE**
+
+**Manifest discrepancies resolved:**
+- A-15 branch: manifest now correctly shows `ekv/a-15-ayanamsha-wire` ✓ (E updated)
+- C-02: bundled in PR #1295 with C-01, `_note` explains ✓
+
+**DB state (FM-09 re-derived):**
+- `brahma_prospective_ledger` empty daterange rows: **6** (C-01 migration not yet landed — in queue)
+- DB ping: ✓ ALIVE
+
+**W1 sampling this cycle:**
+- ✓ B-04 (this cycle): 3-file audit — mi_darshana 6× clean→not_assessed + mi_bhara isempty guard + test suite → 15% SAMPLE PASS
+- Running total: A-09, A-11, A-15, B-01, B-02, B-03, B-04 = 7 W1 lanes sampled (≥15% ✓)
+
+**Pending actions:**
+- A-03 governance gates → merge → MCP deploy triggers → A-01 live exit test runnable
+- E: write CL-00 to manifest (deploy batch complete)
+- A lead: fix A-11 chart_id threading test failure
+- E: create evidence files before LIVE transitions
 
 ### HB-009 — 2026-08-16T20:10Z / ~01:40+0530 (Cycle 8)
 
