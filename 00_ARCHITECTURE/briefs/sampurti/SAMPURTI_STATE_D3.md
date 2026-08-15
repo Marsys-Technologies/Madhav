@@ -3318,3 +3318,106 @@ RUN-TERMINAL: SESSION-Δ3-PENDING-42 (2h sanity pass — ALL F-WAVE PRs MERGED o
 
 ### RUN-TERMINAL
 `RUN-TERMINAL: SESSION-Δ3-PENDING-43 (session-42 advisory posted; b72pp career_change canary RUNNING F3+F4 confirmed; FIELD-INTEGRATED NOT POSTED; supervisor relaunches on ^^██ MARKER-POSTED: FIELD-INTEGRATED ██ sentinel)`
+
+
+---
+
+## SESSION-44 (2026-08-15 ~00:40Z UTC)
+
+**Invoked by:** supervisor (2h sanity pass — FIELD-INTEGRATED not yet posted at session open)
+**This session PID:** 91402 (bash subshell MY_PID from liveness check)
+
+CONDUCTOR-HEARTBEAT: 2026-08-15T00:41Z pid=91402 host=local session=Δ3
+
+### STEP-0 LIVENESS
+- Stored PID (dh-d3-logs/current_conductor.pid): 90304 (from session-43 — stale; confirmed dead by PID mismatch vs MY_PID=91402)
+- pgrep CONDUCTOR SAMPŪRTI-Δ3 peers (excluding stored PID 90304 and MY_PID 91402): NONE
+- **SOLE_CONDUCTOR confirmed** ✓
+
+### STEP-0 HYGIENE
+| Execution | Start | Status | Notes |
+|-----------|-------|--------|-------|
+| 88gh6 | 23:20:38Z Aug 14 | **RUNNING (runningCount=1)** | A8 full build — 345 substeps, 27 classes |
+| dkjgw | 23:01:54Z Aug 14 | Completed SUCCESS (17m11s) | Pre-A8 step (canary GREEN or test) |
+| b72pp | ~22:40Z Aug 14 | Completed SUCCESS | career_change canary (F3+F4 confirmed) |
+| bm4qp | 22:34Z Aug 14 | Completed SUCCESS (17s) | CAREER canary quick-exit |
+| qcrrm | 22:29Z Aug 14 | Completed SUCCESS (12s) | quick-exit |
+| lj98k/cl4dm/xt79g/kjvmn | various | All Completed (failed/cancelled) | Pre-F-wave runs |
+
+**88gh6 GUC smoke-log confirmed at start:** `idle_in_txn=30min statement_timeout=0 lock_timeout=5min` ✓
+
+### FM-21 OBSERVATION — 88gh6 (A8 FULL BUILD) AT T+89min
+- 88gh6 started: 23:20:38Z Aug 14
+- GUC smoke-log confirmed at 23:20:52Z ✓
+- Build announced: 345 substeps (27 event classes) at 23:21:12Z ✓
+- Stage 1+3 logs: 23:22Z (clocks dedup warnings) ✓
+- birth_anchor LAW ZERO skip: 23:31:24Z ✓
+- career_change LAW ZERO skip: 23:38:36Z ✓
+- **Last log entry: 23:38:36Z** (T+18min from start)
+- **Current time: ~00:41Z Aug 15** = **T+80min** from last log (T+89min from start overall)
+- FM-21 T+35 threshold: 23:55Z (passed ~45min ago from this session's perspective)
+- **Δ3 cannot verify substep progress (NO DB scope)** — cannot check pg_stat_activity
+- FM-28 applies: T+35 is a SAFETY NET trigger. Zero-log ≠ zero-substep; F1's C/E precompute phase may be silent during DHARA null vec computation (R=1024 replicates per F1 spec)
+- **Cannot confirm hang vs genuine computation** from Δ3 scope
+- **Δ1 conductor (PID 6638): DEAD** at session open
+- Δ1 supervisor.log: `[02:54:37 IST] attempt 2 — launching conductor ()` — no exit line yet; attempt 2 ran attempt_2.log (last modified 00:13Z, T-28min from this session open), likely dispatched 88gh6 and exited cleanly (rc=0)
+- **F4 watchdog state: UNKNOWN** — the bash watchdog is Δ1 supervisor-level; with attempt 2 having likely exited, watchdog may be dormant
+
+**LEDGER NOTE:** 88gh6 at T+89min with T+80min log silence is at the boundary of FM-21. Δ3 cannot act. If 88gh6 is genuinely hung, Δ1's next supervisor attempt must diagnose and recover. FIELD-INTEGRATED is what will confirm completion.
+
+### FM-09 RECONCILE (vs session-43)
+| Item | Session-43 | Session-44 |
+|------|-----------|-----------|
+| main HEAD | 46b0c2cc8 (F-wave all merged) | **UNCHANGED** |
+| Δ1 integration HEAD | ef2430ffd (21:21Z R42 hb) | **UNCHANGED** |
+| 88gh6 | Not dispatched at session-43 open | **RUNNING (canary+full sequence)** |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED |
+| b72pp | RUNNING | COMPLETED SUCCESS |
+| Δ1 conductor | R42-2 session active | Attempt 2 EXITED (attempt_2.log last modified 00:13Z) |
+
+### R1 MCP PROOF — 24th Pass (00:40Z Aug 15): PASS ✓
+
+Call: `gochara_forecast_get(chart_id=482012f1..., domain=marriage, date_range=2025-01-01→2026-01-01)`
+- `coverage.event_classes_covered`: 27 classes (incl. marriage) ✓
+- `coverage.domains_not_covered`: [] ✓
+- `coverage.coverage_quality.tier`: "rich", covered_class_count=27, covered_domain_count=13 ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- `backing_data_reachable`: true ✓
+- No S4-05 refusal ✓
+- `windows`: [] — honest empty (24th consecutive consistent result)
+
+**R1 PROOF STATUS: PASS** (24th consecutive). R1 fix stable in production.
+
+### LANE STATUS (session-44)
+| Lane | Status |
+|------|--------|
+| R1 (SEV-1) | MERGED + MCP PROOF PASS×24 |
+| R2 (SEV-2) | DEPLOYED; MCP PROOF gated on FIELD-INTEGRATED |
+| R3 (CI guard) | DONE ✓ |
+| R4 (G-P4) | READY-ON-SIGNAL (probe_sampurti_d3_r2_r4.py committed) |
+| R5 (27-class CI) | MERGED + DEPLOYED ✓ |
+
+### SESSION-44 CLOSE
+
+**Work this session:**
+- STEP-0 complete (liveness/hygiene/coordination/reconcile) ✓
+- R1 MCP proof 24th pass: PASS ✓
+- FM-21 observation for 88gh6 documented (T+89min, T+80min log silence, Δ3 cannot act) ✓
+- FIELD-INTEGRATED: NOT POSTED
+
+**WHAT ONE RELAUNCH FINISHES:** When `^^██ MARKER-POSTED: FIELD-INTEGRATED ██` posts:
+1. `python3 00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --mcp-key $MARSYS_MCP_KEY`
+2. R2: verify marriage in roots (resolution='era'); NOT in legacy_flat → paste MCP proof
+3. R4: verify field_snapshot_id=kfs_* (not 'field_not_yet_built') → paste MCP proof
+4. Append both proofs to γ ledger (sampurti/vyakhya append-only)
+5. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-45):**
+1. Check `^^██ MARKER-POSTED: FIELD-INTEGRATED ██` (genuine sentinel at line-start)
+2. Check Cloud Run for 88gh6 completion + any new executions
+3. If FIELD-INTEGRATED posted: run probe script → R2+R4 proofs → γ ledger → SESSION-DONE-Δ3
+4. If 88gh6 still running: FM-21 observation update; if T+3h+ with no completion, flag for Δ1
+5. R1 25th pass
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-44 (2h sanity pass — 88gh6 A8 RUNNING T+89min; FIELD-INTEGRATED NOT POSTED; R1 PASS×24; supervisor relaunches on ^^██ MARKER-POSTED: FIELD-INTEGRATED ██ sentinel or 2h)
+
