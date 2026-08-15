@@ -216,6 +216,49 @@ None yet.
 
 **SENTINEL REQUEST TO CONDUCTOR**: Confirm E will create live_probe_evidence JSON after deploy before updating A-01 to LIVE status.
 
+### HB-017 — 2026-08-16T23:35Z / ~05:05+0530 (Cycle 16)
+
+**A-02 MERGED + DEPLOY MONITORING (FM-09 re-derived)**
+
+**A-02 merged to main:**
+- SHA: `33dfb2ba1a2a` — `ekv(a-02): F-02/F-07 — whitelist 4 classical-text tools + begin TOOL_NAME_TO_URI retirement (#1294)`
+- MQ CI `31907212577`: COMPLETED / SUCCESS (16/16) ✓
+- MQ TAP `31907212584`: COMPLETED / SUCCESS ✓
+
+**W0 MERGED status (cumulative — FM-09):**
+
+| Lane | SHA | Status | MCP deployed |
+|------|-----|--------|-------------|
+| A-01 | 55a476fbd | LIVE | ✓ (A-04 deploy) |
+| A-02 | 33dfb2ba1 | VERIFIED | awaiting E exit test |
+| A-03 | 12cbf5e14dd2 (manifest: wrong 12cbf5e14c15) | LIVE | ✓ |
+| A-04 | a2ce6dc37 | VERIFIED | ✓ (A-04 deploy) |
+| A-05 | 3deb54180 | LIVE | ✓ (web service) |
+| A-06 | cfc37fc38 | LIVE | ✓ (web service) |
+| C-01/C-02 | 20266702a | MERGED | ✓ (sidecar, migration 572) |
+
+**Deploy activity:**
+- `31908008953` (A-04 SHA re-trigger): `Build & Deploy MCP` SUCCESS, `Build & Deploy Web` in_progress
+  - This is a second deploy for `a2ce6dc37ef3` triggered by main CI completion
+- A-02 SHA (`33dfb2ba1`) deploy: NOT YET QUEUED — likely triggers after main CI for A-02 completes
+  - Main CI for A-02 SHA in_progress: `31908035140` (Ganga), `31908035232` (TAP)
+  - A-02 touches `platform-mcp/src/tools/registry_bridge.ts` — MCP deploy WILL fire when this triggers
+
+**A-02 files changed (relevant to MCP):**
+- `platform-mcp/src/tools/registry_bridge.ts` — TOOL_NAME_TO_URI retirement + whitelist update
+- These changes need MCP deploy to be live
+
+**Pending E actions (gate blockers):**
+1. Fix `A-03.merged_sha` → `12cbf5e14dd26b4a36ac44ffbe88efec67674f06` (EKV-DISPUTE-002)
+2. Update `deployed_main_sha` → `33dfb2ba1a2a` (currently `cfc37fc38` = A-06, stale by 4 merges)
+3. Run CL-00 harness + write result to manifest
+4. Run A-02 exit test → promote A-02 VERIFIED→LIVE
+5. Run A-04 exit test → promote A-04 VERIFIED→LIVE
+6. Decide C-01/C-02 disposition: LIVE or BLOCKED+handoff_note
+7. Decide C-03 disposition: awaiting merge
+
+**Gate status:** FAIL — 8 blockers (all E-side actions; no data corruption found)
+
 ### HB-016 — 2026-08-16T23:10Z / ~04:40+0530 (Cycle 15)
 
 **A-04 DEPLOY COMPLETE + A-01 EXIT TEST PASSED + GATE RUN (FM-09 re-derived)**
