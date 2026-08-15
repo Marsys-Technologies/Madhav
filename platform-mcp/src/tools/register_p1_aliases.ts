@@ -36,11 +36,6 @@ const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 const PYTHON_SIDECAR_URL = (process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001').replace(/\/$/, '')
 const SIDECAR_API_KEY = process.env['PYTHON_SIDECAR_API_KEY'] ?? ''
 
-const AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri: 'lahiri_chitrapaksha', LAHIRI: 'lahiri_chitrapaksha', Lahiri: 'lahiri_chitrapaksha',
-  lahiri_chitrapaksha: 'lahiri_chitrapaksha', true_chitra: 'lahiri_chitrapaksha',
-}
-function na(id?: string): string { return id ? (AYANAMSHA_ALIAS[id] ?? id) : 'lahiri_chitrapaksha' }
 
 async function callRegistryCap(uri: string, args: Record<string, unknown>, principal: Principal): Promise<unknown> {
   const res = await fetch(`${PLATFORM_URL}/api/retrieval/capability`, {
@@ -379,7 +374,7 @@ function regAlias(
           }
         }
         const data = await callRegistryCap(uri, {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...resolvedRest,
         }, principal)
         return dualOutput(data, name)
@@ -491,7 +486,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         // touches `mode` at all.
         const response_format = rd === 'deep_dive' ? 'full' : (mode as string | undefined ?? 'summary')
         const data = await callRegistryCap('marsys://tool/L2/query_ucd', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0,
           ...rest, response_format,
           ...(rd === 'deep_dive' ? { top_k_signals: 100 } : {}),
@@ -569,7 +564,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         // before forwarding; an explicit `min_salience` in the caller's own params (if ever
         // added) still wins since it would already be a rest key.
         const data = await callRegistryCap('marsys://tool/L2/query_signals', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0,
           ...(min_weight != null && rest['min_salience'] == null ? { min_salience: min_weight } : {}),
           ...rest,
@@ -647,7 +642,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         const resolvedSeedIds = (seed_node_ids as string[] | undefined) ?? (start_node ? [start_node as string] : undefined)
         const resolvedEdgeTypes = (edge_types as string[] | undefined) ?? (relation ? [relation as string] : undefined)
         const data = await callRegistryCap('marsys://tool/L2/traverse_chart_graph', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           ...(resolvedSeedIds ? { seed_node_ids: resolvedSeedIds } : {}),
           ...(max_depth != null ? { depth: max_depth } : {}),
           ...(resolvedEdgeTypes ? { edge_types: resolvedEdgeTypes } : {}),
@@ -699,7 +694,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       try {
         const requestedCategories = rest['categories'] as string[] | undefined
         const data = await callRegistryCap('marsys://tool/L1/get_positions', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...rest,
         }, principal)
         const payload = unwrapCapabilityPayload(data)
@@ -917,7 +912,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       if (!chart_id) return errOut('kala_windows_get', 'chart_id is required')
       try {
         const data = await callRegistryCap('marsys://tool/L3/query_temporal_activation', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           ...(start_date ? { date_from: start_date } : {}),
           ...(end_date ? { date_to: end_date } : {}),
           ...(as_of ? { as_of } : {}),
@@ -967,7 +962,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       if (!chart_id) return errOut('kala_projections_get', 'chart_id is required')
       try {
         const data = await callRegistryCap('marsys://tool/L3/query_projections', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           ...(domain ? { domain } : {}),
           horizon_years: (horizon_years as number | undefined) ?? 5,
         }, principal)
@@ -1196,7 +1191,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       if (!chart_id) return errOut('kala_yoga_activation_get', 'chart_id is required')
       try {
         const data = await callRegistryCap('marsys://tool/L-TIMING/yoga_activation_by_dasha', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           ...(start_date ? { date_from: start_date } : {}),
           ...(end_date ? { date_to: end_date } : {}),
           ...(domain ? { domain } : {}),
@@ -1241,7 +1236,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       try {
         const resolvedSeedIds = (seed_node_ids as string[] | undefined) ?? (start_node ? [start_node as string] : undefined)
         const data = await callRegistryCap('marsys://tool/L2/traverse_chart_graph', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           ...(resolvedSeedIds ? { seed_node_ids: resolvedSeedIds } : {}),
           ...(limit != null ? { top_k_hubs: limit } : {}),
           ...rest,
@@ -1287,7 +1282,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       if (!chart_id) return errOut('bodha_mechanisms_get', 'chart_id is required')
       try {
         const data = await callRegistryCap('marsys://tool/L2/query_mechanisms', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           ...(mechanism_class ? { mechanism_class } : {}),
           ...(valence ? { valence } : {}),
           ...(chain_circuit_only != null ? { chain_circuit_only } : {}),
