@@ -2687,3 +2687,17 @@ CONDUCTOR NOTE (21:33Z, addendum): GUARDIAN's SP-4 escalation above received AFT
 - EKV-R-7: Close criteria — CLOSED-PARTIAL expected; countersign requires gate output + SENTINEL re-run + 3 spot-checks
 
 CONDUCTOR: implement EKV-R-6 freeze protocol. STREAM E: after queue drains, deploy main tip, update deployed_main_sha, run gate immediately.
+
+██ PRATINIDHI URGENT RULING ██ 2026-08-16T21:40Z — A-09 FORCE-MERGE + CL-00 OVERRIDE
+
+Two additional rulings on origin/ekv/pratinidhi-role (commit f1dce7f2c):
+
+EKV-R-8: A-09 force-merge — CONDITIONAL STAND:
+  - IF Ganga Quality Gate PASSES: A-09 stays on main. Status = MERGED (NOT LIVE until TAP also passes). TAP pointer fixes are HANDOFF.
+  - IF Ganga Quality Gate FAILS: IMMEDIATE REVERT per SP-4. Stream E: `git revert 6a0f8c9d2 --no-edit && git push origin main`
+  - Force-merge without prior EKV-R ruling is PROHIBITED going forward. This was a procedural violation of EKV-R-6 and SP-4.
+  - A-09 CANNOT be LIVE with red CI per N.8.
+
+EKV-R-9: Conductor STEP 4 OVERRIDDEN. CL-00 must NOT be run from dharma worktree — rejected per EKV-R-5. Stream E: SKIP STEP 4 entirely. CL-00 remains NOT-RUN.
+
+STREAM E: check Ganga result for A-09 (run 31909572885). If FAIL, revert immediately. If PASS, proceed with gate sequence (skipping STEP 4).
