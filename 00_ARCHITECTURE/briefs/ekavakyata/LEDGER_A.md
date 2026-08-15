@@ -26,7 +26,7 @@ Lane worktrees and branches:
 | A-04 | ekv/a-04-lel-calibration | .claude/worktrees/ekv-a-04 | VERIFIED |
 | A-05 | ekv/a-05-enum-fix | .claude/worktrees/ekv-a-05 | VERIFIED |
 | A-06 | ekv/a-06-gochara-disclosure | .claude/worktrees/ekv-a-06 | VERIFIED |
-| A-09 | ekv/a-09-sara-kernel | .claude/worktrees/ekv-a-09 | IN-PROGRESS (tool conversion) |
+| A-09 | ekv/a-09-sara-kernel | .claude/worktrees/ekv-a-09 | VERIFIED |
 | A-11 | ekv/a-11-bundle-principal | .claude/worktrees/ekv-a-11 | VERIFIED |
 | A-15 | ekv/a-15-ayanamsha-wire | .claude/worktrees/ekv-a-15 | VERIFIED |
 
@@ -120,6 +120,7 @@ EKV-A-04-VERIFIED — 39bc414f pushed ekv/a-04-lel-calibration — fetchCalibrat
 EKV-A-05-VERIFIED — 52abb3d6 pushed ekv/a-05-enum-fix — CONFIRMED/PARTIAL/REFUTED/UNRESOLVED uppercase enum fix
 EKV-A-06-VERIFIED — 4cdf3dfc pushed ekv/a-06-gochara-disclosure — withSweepDisclosure on d8+d9 top_windows, bare-point rows suppressed
 
+EKV-A-09-VERIFIED — ceadae8cb pushed ekv/a-09-sara-kernel — F-56/F-111: buildAssessResponse() moves verdict_skeleton+activating_dasha to evidence layer for all 4 assess_* tools; judgment_query excluded (named sections + hardFloor already correct); SaraKernel/assembleSaraContent API frozen
 EKV-A-11-VERIFIED — 53929cb2e pushed ekv/a-11-bundle-principal — PrimitiveResult typed + params wrapped {params} (F-127) + upstream_status surfaced (F-30/74) + error classification
 EKV-A-15-VERIFIED — 08ce27108 pushed ekv/a-15-ayanamsha-wire — 10 na()→resolveChartFactsAyanamsha() replacements in register_p1_aliases.ts, local AYANAMSHA_ALIAS+na() deleted
 
