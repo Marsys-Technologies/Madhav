@@ -3421,3 +3421,93 @@ Call: `gochara_forecast_get(chart_id=482012f1..., domain=marriage, date_range=20
 
 RUN-TERMINAL: SESSION-Δ3-PENDING-44 (2h sanity pass — 88gh6 A8 RUNNING T+89min; FIELD-INTEGRATED NOT POSTED; R1 PASS×24; supervisor relaunches on ^^██ MARKER-POSTED: FIELD-INTEGRATED ██ sentinel or 2h)
 
+---
+
+## SESSION-45 (2026-08-15 ~02:42Z UTC / 08:12 IST)
+
+CONDUCTOR-HEARTBEAT: 2026-08-15T02:42Z pid=32969 host=Montys-MacBook-Pro session=Δ3-s45
+
+### STEP-0 (session-45)
+
+**Liveness:** CLEAN
+- Stored PID 28648 = `/bin/bash /Users/Dev/shad_overnight/run_dh_d3.sh` (supervisor bash, alive 01:10 elapsed, NOT a peer conductor)
+- `pgrep -f "CONDUCTOR of SAMPŪRTI-Δ3"` = NONE (excluding stored PID 28648 and MY_PID 32969)
+- **SOLE_CONDUCTOR confirmed** — PID 32969 written to dh-d3-logs/current_conductor.pid ✓
+
+**Hygiene:** 88gh6 RUNNING (LIVE BUILD — touch nothing)
+- brahma-build-pipeline-job-88gh6: runningCount=1, completionTime=NONE, creationTimestamp=2026-08-14T23:20:34Z
+- API condition: `"Waiting for execution to complete."` (still RUNNING at T+202min from session open)
+- Δ1 attempt_2.log last modified 08:10 IST Aug 15 (02:40Z) — CURRENT: log contains "T+200: 10/27 classes through stage5" ← build is progressing
+- No DB scope for Δ3; no proxy started
+
+**Coordination (fetched 02:42Z):** FIELD-INTEGRATED NOT POSTED
+- Last commit on campaign-coordination: `a0e20961f` = Δ3 session-44 advisory (00:41Z Aug 15)
+- No `^^██ MARKER-POSTED: FIELD-INTEGRATED ██` sentinel at line-start — confirmed
+- No new Δ1 entries since R42-attempt2 at 21:24Z Aug 14
+
+**FM-09 Reconcile:**
+
+| Surface | Session-44 | Session-45 |
+|---------|-----------|-----------|
+| main HEAD | 46b0c2cc8 (F-wave all merged) | **UNCHANGED** |
+| 88gh6 | RUNNING T+89min, T+80min log silence | **RUNNING T+202min; 10/27 classes stage5 COMPLETE** (per Δ1 log) |
+| FIELD-INTEGRATED | NOT POSTED | NOT POSTED |
+| Δ1 PID 6638 | DEAD | DEAD (but attempt_2.log active 02:40Z → different process has custody) |
+| Δ1 supervisor | attempt 2 running from 02:54 IST | SAME; no attempt 3 in supervisor.log |
+
+**FM-21 Assessment (88gh6, T+202min):**
+- Last log at T+18min (23:38:36Z); T+184min log silence as of this session
+- BUT: Δ1 attempt_2.log shows "T+200: 10/27 classes stage5" — this IS progress observation from the Δ1 conductor
+- 10/27 classes done in stage5 at T+200min ≈ 20min/class stage5 rate
+- Remaining: ~17 classes × 20min/class ≈ 340min remaining → ETA completion ~08:22Z Aug 15 (~08:52 IST)
+- FM-28: build is making SUBSTEP PROGRESS (Δ1 confirmed). NOT a hang. Do NOT abort.
+- Δ1 conductor owns FM-21 recovery authority; Δ3 cannot act (NO DB scope)
+
+### R1 MCP PROOF — 25th Pass (02:43Z Aug 15): PASS ✓
+
+Call: `gochara_forecast_get(chart=482012f1, domain=marriage, date_range=2025-01-01→2026-01-01)`
+- `coverage.event_classes_covered`: 27 classes (all 27 incl. marriage) ✓
+- `coverage.domains_not_covered`: [] ✓
+- `coverage.coverage_quality.tier`: "rich", covered_class_count=27, covered_domain_count=13 ✓
+- `sweep_completeness.substeps_committed`: 270 under `ka_gochara_v3_century_materialize` ✓
+- `backing_data_reachable`: true ✓
+- No S4-05 refusal ✓
+- `windows`: [] — honest empty (25th consecutive consistent result)
+
+**R1 PROOF STATUS: PASS** (25th consecutive — sessions 15/19/20/21/22/23/25/27–45). R1 fix stable in production.
+
+### Δ3 LANE STATUS (session-45, unchanged)
+
+| Lane | Status | Notes |
+|------|--------|-------|
+| R1 (SEV-1) | MERGED + MCP PROOF PASS×25 | 25th pass 02:43Z session-45; 27 classes, 270 substeps, no S4-05 |
+| R2 (SEV-2) | DEPLOYED; MCP PROOF gated | Sidecar v3.2 live; gated on FIELD-INTEGRATED |
+| R3 (CI guard) | DONE ✓ | commit 66e35c216 (sampurti/vyakhya) |
+| R4 (G-P4) | READY-ON-SIGNAL | probe_sampurti_d3_r2_r4.py committed; gated on FIELD-INTEGRATED |
+| R5 (27-class CI) | MERGED + DEPLOYED ✓ | PR #1280; CI PASSING on main |
+
+### SESSION-45 CLOSE
+
+**Work this session:**
+- STEP-0 complete (liveness/hygiene/coordination/reconcile) ✓
+- FM-09: 88gh6 at T+200min with 10/27 classes stage5 CONFIRMED PROGRESS (Δ1 log) ✓
+- FM-21 assessment: NOT a hang; Δ1 confirmed progress; do not abort ✓
+- R1 MCP proof 25th pass: PASS ✓
+- FIELD-INTEGRATED: NOT POSTED — gated on 88gh6 completion (~08:22Z ETA)
+
+**WHAT ONE RELAUNCH FINISHES:** When `^^██ MARKER-POSTED: FIELD-INTEGRATED ██` posts:
+1. `python3 00_ARCHITECTURE/briefs/sampurti/probe_sampurti_d3_r2_r4.py --chart-id 482012f1-710e-4a25-994a-93821f5871aa --mcp-key $MARSYS_MCP_KEY`
+2. R2: verify marriage in roots (resolution='era'); NOT in legacy_flat → paste MCP proof
+3. R4: verify field_snapshot_id=kfs_* (not 'field_not_yet_built') → paste MCP proof
+4. Append both proofs to γ ledger (sampurti/vyakhya append-only)
+5. Post SESSION-DONE-Δ3 to coordination → RUN-TERMINAL: SESSION-Δ3-COMPLETE
+
+**NEXT-ACTION (session-46):**
+1. Check `^^██ MARKER-POSTED: FIELD-INTEGRATED ██` (genuine sentinel at line-start)
+2. Check Cloud Run for 88gh6 completion (ETA ~08:22Z Aug 15 UTC / ~13:52 IST)
+3. If FIELD-INTEGRATED posted: run probe script → R2+R4 proofs → γ ledger → SESSION-DONE-Δ3
+4. If 88gh6 still running: confirm progress via Δ1 log + FM-21 re-assessment
+5. R1 26th pass
+
+RUN-TERMINAL: SESSION-Δ3-PENDING-45 (2h sanity pass — 88gh6 A8 RUNNING T+202min, 10/27 classes stage5 CONFIRMED PROGRESS; FIELD-INTEGRATED NOT POSTED; R1 PASS×25; supervisor relaunches on ^^██ MARKER-POSTED: FIELD-INTEGRATED ██ sentinel or 2h)
+
