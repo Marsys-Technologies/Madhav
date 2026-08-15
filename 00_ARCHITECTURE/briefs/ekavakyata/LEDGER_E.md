@@ -91,8 +91,8 @@ Gate's `main_tip.startswith(sha12)` will ALWAYS fail.
 
 | Time (IST) | Lane | PR# | Merged SHA | Deploy SHA | Status |
 |------------|------|-----|-----------|-----------|--------|
-| ~01:50 IST | A-01 | #1289 | 55a476fbd28f16abfaae756633a4729a23016379 | pending | **MERGED** (CI on main in_progress 19:53Z) |
-| ~01:00 IST | A-05 | #1290 | — | — | MERGE QUEUE (25/25 checks pass) |
+| ~01:50 IST | A-01 | #1289 | 55a476fbd28f16abfaae756633a4729a23016379 | 3deb54180 | **LIVE** (A-01+A-05 co-deployed ~20:09Z; MCP up) |
+| ~01:30 IST | A-05 | #1290 | 3deb54180deeb2f6141f189899da29284638ac54 | 3deb54180 | **LIVE** (A-01+A-05 co-deployed ~20:09Z) |
 | ~01:00 IST | A-06 | #1291 | — | — | MERGE QUEUE (queued) |
 | ~01:00 IST | A-04 | #1292 | — | — | MERGE QUEUE (queued) |
 | ~01:00 IST | A-03 | #1293 | — | — | MERGE QUEUE (queued) |
@@ -113,6 +113,8 @@ Gate's `main_tip.startswith(sha12)` will ALWAYS fail.
 - A-09 (#1301): 2 commits — dcc2fb5a (SaraKernel API freeze) + ceadae8cb (buildAssessResponse). registry_bridge.ts relock after merge.
 - B-05 (#1303): LEASE EXCEPTION — writes register_d8_assess_domain.ts (Stream A territory); pre-authorized per LEDGER_B.
 - Context-resume at ~20:00Z (19:54Z UTC): new PRs created for A-09/A-11/B-05; merge queue processing A-05 first.
+- A-15 (#1300): TypeScript TS2304 failure found (2 missed na() calls at lines 1087+1949); dequeued via GraphQL, fix pushed f7402c99e, re-queued. CI re-running.
+- A-01+A-05 deploy confirmed LIVE at ~20:09Z: deploy.yml sha=3deb5418 conclusion=success; MCP server up; catalog_version unchanged (non-catalog lanes). Evidence: a01_a05_deploy.json.
 
 ---
 
