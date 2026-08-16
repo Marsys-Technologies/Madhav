@@ -181,24 +181,52 @@ export const queryPredictiveAnchorsCapability: CapabilityDescriptor = {
       // n_observations lives at L5 query_calibration's mimamsa_multipliers. Anchors written
       // before BA-P5B (posterior/lift_vector_jsonb null) get an honest null block, never a
       // backfilled guess.
+      const NOT_YET_CALIBRATED = 'structural_not_yet_empirical'
+
       const anchorsWithProvenance = (result.rows as Array<Record<string, unknown>>).map(row => {
-        const liftVector = row['lift_vector_jsonb'] as Record<string, unknown> | null
-        const posterior = row['posterior'] as number | null
+        const basis = row['confidence_basis']
+        // P3-b tier-suppression (F-68): fail-closed — null/missing/NOT_YET_CALIBRATED all suppress.
+        // Mirrors ka_kshetra/stage8_spec.py:136's `None if window.get("baseline_is_synthetic") else
+        // float(...)`. The stored phala_anchors row is never mutated — only the served shape changes.
+        const isCalibrated = basis != null && basis !== NOT_YET_CALIBRATED
+
+        const posterior      = isCalibrated ? (row['posterior'] as number | null)       : null
+        const confidenceLow  = isCalibrated ? (row['confidence_low'] as number | null)  : null
+        const confidenceHigh = isCalibrated ? (row['confidence_high'] as number | null) : null
+        const liftVector     = isCalibrated
+          ? (row['lift_vector_jsonb'] as Record<string, unknown> | null)
+          : null
+
+        const base = { ...row, posterior, confidence_low: confidenceLow, confidence_high: confidenceHigh,
+                       lift_vector_jsonb: liftVector }
+
         if (posterior == null || liftVector == null) {
           return {
-            ...row,
+            ...base,
             posterior_provenance: null,
-            posterior_provenance_note: 'posterior/lift_vector_jsonb not computed for this anchor (pre-BA-P5B row or backfill pending) — no cardinality/base_rate_source to report.',
+            // Secondary guard on raw DB value: distinguish two distinct reasons for a null served posterior.
+            // (isCalibrated || row['posterior'] == null) is true for:
+            //   (a) calibrated rows whose posterior/liftVector happen to be null (pre-BA-P5B backfill
+            //       pending) — the 'not computed' note is honest: the value was never computed.
+            //   (b) pre-BA-P5B legacy rows with a null posterior IN THE DB (no confidence_basis key,
+            //       isCalibrated=false, but row['posterior'] is already null — the gate did not suppress
+            //       a real value; nothing was computed to suppress) — 'not computed' is still honest.
+            // It is false only when isCalibrated=false AND row['posterior'] is non-null (the suppression
+            // case proper: a real value exists in the DB but we must not serve it). Only THAT case
+            // receives the 'suppressed at serve time' note.
+            posterior_provenance_note: (isCalibrated || row['posterior'] == null)
+              ? 'posterior/lift_vector_jsonb not computed for this anchor (pre-BA-P5B row or backfill pending) — no cardinality/base_rate_source to report.'
+              : `posterior/confidence_low/confidence_high/lift_vector_jsonb suppressed at serve time: confidence_basis=${JSON.stringify(basis)} — no empirically-derived posterior exists for this anchor yet (P3-b tier-suppression; see services/ka_kshetra/stage8_spec.py for the precedent this mirrors). The computed values remain stored in phala_anchors, unaffected.`,
           }
         }
         return {
-          ...row,
+          ...base,
           posterior_provenance: {
             model: 'deterministic_product_lift',
             model_formula: 'posterior = base_rate × promise_lift × activation_lift × trigger_lift × ayanamsha_robustness_modifier',
             cardinality: null,
             cardinality_note: 'Not a sample-fit statistic — this posterior has no underlying N of observed outcomes to report (never fabricated). The empirically-calibrated analog with a genuine n_observations is L5 query_calibration (mimamsa_multipliers).',
-            base_rate_source: 'brahma_event_ontology.base_rate_by_age, row-normalized to sum 1.0 (JL-009 closed 2026-07-07), looked up for the age band containing this anchor’s predicted date (peak_date, else window_start) relative to the native’s birth date. Falls back to the uniform age prior (0.20, 1-of-5-bands) when the ontology vector or a usable date is unavailable for this anchor — never a fabricated non-uniform value.',
+            base_rate_source: 'brahma_event_ontology.base_rate_by_age, row-normalized to sum 1.0 (JL-009 closed 2026-07-07), looked up for the age band containing this anchor\'s predicted date (peak_date, else window_start) relative to the native\'s birth date. Falls back to the uniform age prior (0.20, 1-of-5-bands) when the ontology vector or a usable date is unavailable for this anchor — never a fabricated non-uniform value.',
             base_rate_value: liftVector['base_rate'] ?? null,
             // Heuristic only (0.20 == the uniform fallback value, but a genuinely age-banded
             // lookup could also legitimately resolve to 0.20) — labeled as such, never
