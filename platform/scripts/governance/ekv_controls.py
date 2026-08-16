@@ -622,6 +622,32 @@ def _check_f138() -> ControlResult:
     return ControlResult("F-138", "WARN", f"period_echo={has_period_echo} chart_dashas={has_chart_dashas}")
 
 
+def _check_f122() -> ControlResult:
+    """F-122: kala_elect_get sections A–G declared + candidates setArray sync (static)."""
+    elect_ts = REPO_ROOT / "platform-mcp" / "src" / "tools" / "kala_views" / "elect.ts"
+    if not elect_ts.exists():
+        return ControlResult("F-122", "SKIP", "elect.ts not found")
+    text = elect_ts.read_text(encoding="utf-8", errors="replace")
+    # All seven JudgmentLedger array fields must appear in a declared section path.
+    required_paths = [
+        "ledgers[].convention_only_keys",
+        "ledgers[].neutral_annotations",
+        "candidates[].hora_ladder",
+        "ledgers[].supporting_factors",
+        "ledgers[].dosas_present",
+        "ledgers[].residual_dosas",
+        "ledgers[].pariharas_applied",
+    ]
+    missing = [p for p in required_paths if p not in text]
+    if missing:
+        return ControlResult("F-122", "FAIL", f"Missing TrimmableSection path(s) in elect.ts: {missing}")
+    # The candidates setArray must include the ledger sync guard.
+    has_sync = "survivingIds" in text and "ledgers.filter" in text
+    if not has_sync:
+        return ControlResult("F-122", "FAIL", "candidates setArray lattice_adjudication.ledgers sync not found in elect.ts")
+    return ControlResult("F-122", "PASS", "All 7 JudgmentLedger section paths declared + candidates setArray sync present")
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Control registry
 # ─────────────────────────────────────────────────────────────────────────────
@@ -655,6 +681,7 @@ ALL_CONTROLS: List[Tuple[str, bool, bool, bool, Callable]] = [
     ("F-109", False, False, False, _check_f109),
     ("F-137", False, False, False, _check_f137),
     ("F-138", False, False, False, _check_f138),
+    ("F-122", False, False, False, _check_f122),
 ]
 
 # The cheap subset: F-75/76/83/84/85/87 (SQL) + F-96 (lint self-test) + F-91 (static abbreviated)

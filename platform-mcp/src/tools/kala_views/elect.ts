@@ -570,6 +570,198 @@ async function buildRitualPairing(
   }
 }
 
+/** §5 coverage-guard export: named export so `elect_sections_coverage.test.ts` can verify
+ *  all seven JudgmentLedger array fields are covered by at least one declared section path
+ *  without duplicating the list inside the test file.
+ *
+ *  Sections are in density order (lowest-density first) so the trimmer eats bookkeeping
+ *  before actionable findings. A–G are the seven new ledger-level sections added by F-122
+ *  to close the budget-trim coverage gap (DIAGNOSIS §3). */
+export function buildElectSections(): TrimmableSection<KalaElectResponse>[] {
+  return [
+    kalaEvidenceTrimmableSection<KalaElectResponse>({
+      instrument: 'kala_elect_get',
+      hint: 'call again with a narrower date_range for full evidence',
+    }),
+    // ── A–G: lattice_adjudication.ledgers[] sub-arrays + candidates[].hora_ladder (F-122) ──
+    // All minKeep:0 — bookkeeping / non-operative fields that can be fully floored.
+    // Placed BEFORE candidates so the trimmer removes these before touching the
+    // confirmed finding slate. kala_lattice_query.ts is FROZEN-adjacent — changes live
+    // here, not there.
+    {
+      path: 'lattice_adjudication.ledgers[].convention_only_keys',
+      label: 'convention key dedup list (all ledgers, flatMap)',
+      minKeep: 0,
+      getArray: (c) => (c.lattice_adjudication?.ledgers ?? []).flatMap((l) => l.convention_only_keys),
+      setArray: (c, kept) => {
+        if (!c.lattice_adjudication) return
+        let remaining = kept.length
+        for (const ledger of c.lattice_adjudication.ledgers) {
+          const take = Math.max(0, Math.min(ledger.convention_only_keys.length, remaining))
+          ledger.convention_only_keys = ledger.convention_only_keys.slice(0, take)
+          remaining -= take
+        }
+      },
+      recover: { instrument: 'kala_elect_get', hint: 'call again with a narrower date_range or smaller limit' },
+    },
+    {
+      path: 'lattice_adjudication.ledgers[].neutral_annotations',
+      label: 'neutral annotation spans (all ledgers, flatMap)',
+      minKeep: 0,
+      getArray: (c) => (c.lattice_adjudication?.ledgers ?? []).flatMap((l) => l.neutral_annotations),
+      setArray: (c, kept) => {
+        if (!c.lattice_adjudication) return
+        let remaining = kept.length
+        for (const ledger of c.lattice_adjudication.ledgers) {
+          const take = Math.max(0, Math.min(ledger.neutral_annotations.length, remaining))
+          ledger.neutral_annotations = ledger.neutral_annotations.slice(0, take)
+          remaining -= take
+        }
+      },
+      recover: { instrument: 'kala_elect_get', hint: 'call again with a narrower date_range or smaller limit' },
+    },
+    {
+      path: 'candidates[].hora_ladder',
+      label: 'horā slot entries (all candidates, flatMap)',
+      minKeep: 0,
+      getArray: (c) => c.candidates.flatMap((cand) => cand.hora_ladder ?? []),
+      setArray: (c, kept) => {
+        let remaining = kept.length
+        for (const cand of c.candidates) {
+          const current = cand.hora_ladder ?? []
+          const take = Math.max(0, Math.min(current.length, remaining))
+          cand.hora_ladder = current.slice(0, take)
+          remaining -= take
+        }
+      },
+      recover: { instrument: 'kala_elect_get', hint: 'call again with a narrower date_range or smaller limit for the full horā schedule' },
+    },
+    {
+      path: 'lattice_adjudication.ledgers[].supporting_factors',
+      label: 'supporting factor spans (all ledgers, flatMap)',
+      minKeep: 0,
+      getArray: (c) => (c.lattice_adjudication?.ledgers ?? []).flatMap((l) => l.supporting_factors),
+      setArray: (c, kept) => {
+        if (!c.lattice_adjudication) return
+        let remaining = kept.length
+        for (const ledger of c.lattice_adjudication.ledgers) {
+          const take = Math.max(0, Math.min(ledger.supporting_factors.length, remaining))
+          ledger.supporting_factors = ledger.supporting_factors.slice(0, take)
+          remaining -= take
+        }
+      },
+      recover: { instrument: 'kala_elect_get', hint: 'call again with a narrower date_range or smaller limit' },
+    },
+    {
+      path: 'lattice_adjudication.ledgers[].dosas_present',
+      label: 'dosha factor spans (all ledgers, flatMap)',
+      minKeep: 0,
+      getArray: (c) => (c.lattice_adjudication?.ledgers ?? []).flatMap((l) => l.dosas_present),
+      setArray: (c, kept) => {
+        if (!c.lattice_adjudication) return
+        let remaining = kept.length
+        for (const ledger of c.lattice_adjudication.ledgers) {
+          const take = Math.max(0, Math.min(ledger.dosas_present.length, remaining))
+          ledger.dosas_present = ledger.dosas_present.slice(0, take)
+          remaining -= take
+        }
+      },
+      recover: { instrument: 'kala_elect_get', hint: 'call again with a narrower date_range or smaller limit' },
+    },
+    {
+      path: 'lattice_adjudication.ledgers[].residual_dosas',
+      label: 'residual dosha spans (all ledgers, flatMap)',
+      minKeep: 0,
+      getArray: (c) => (c.lattice_adjudication?.ledgers ?? []).flatMap((l) => l.residual_dosas),
+      setArray: (c, kept) => {
+        if (!c.lattice_adjudication) return
+        let remaining = kept.length
+        for (const ledger of c.lattice_adjudication.ledgers) {
+          const take = Math.max(0, Math.min(ledger.residual_dosas.length, remaining))
+          ledger.residual_dosas = ledger.residual_dosas.slice(0, take)
+          remaining -= take
+        }
+      },
+      recover: { instrument: 'kala_elect_get', hint: 'call again with a narrower date_range or smaller limit' },
+    },
+    {
+      // G — applied-remedy rows; kala_lattice_query.ts:178 (pariharas_applied: AppliedParihara[])
+      path: 'lattice_adjudication.ledgers[].pariharas_applied',
+      label: 'applied parihara rows (all ledgers, flatMap)',
+      minKeep: 0,
+      getArray: (c) => (c.lattice_adjudication?.ledgers ?? []).flatMap((l) => l.pariharas_applied),
+      setArray: (c, kept) => {
+        if (!c.lattice_adjudication) return
+        let remaining = kept.length
+        for (const ledger of c.lattice_adjudication.ledgers) {
+          const take = Math.max(0, Math.min(ledger.pariharas_applied.length, remaining))
+          ledger.pariharas_applied = ledger.pariharas_applied.slice(0, take)
+          remaining -= take
+        }
+      },
+      recover: { instrument: 'kala_elect_get', hint: 'call again with a narrower date_range or smaller limit' },
+    },
+    // ── Existing: convention_only_factors (per-candidate) ────────────────────────────────
+    // §N.6 part 2 — the LOW-density layer is the one a trim eats first. Every candidate's
+    // uncited-convention factor list is fully floorable to zero (it is served context, not a
+    // finding), and is declared BEFORE the candidates section so the trimmer's disposable
+    // tier absorbs the cut before any confirmed judgment ledger is touched.
+    {
+      path: 'candidates[].judgment_ledger.convention_only_factors',
+      label: 'uncited-convention factor spans (all candidates)',
+      minKeep: 0,
+      getArray: (c) => c.candidates.flatMap((cand) => cand.judgment_ledger?.convention_only_factors ?? []),
+      setArray: (c, kept) => {
+        // Distribute the surviving entries back in order, then truncate the rest. The
+        // per-candidate `convention_only_factor_count` is deliberately NOT rewritten — it
+        // remains the TRUE count, so a trimmed response still tells the honest number.
+        let remaining = kept.length
+        for (const cand of c.candidates) {
+          const ledger = cand.judgment_ledger
+          if (!ledger) continue
+          const take = Math.max(0, Math.min(ledger.convention_only_factors.length, remaining))
+          ledger.convention_only_factors = ledger.convention_only_factors.slice(0, take)
+          remaining -= take
+        }
+      },
+      // No dedicated lattice-query tool is registered yet (bg_muhurta_lattice serving is
+      // deliberately deferred — SHAD_DARSHANA_STATE.md, "needs real citation-backed content,
+      // a more careful individual session"). Point recovery at this response's own real
+      // source instead of a phantom instrument a caller could never resolve.
+      recover: { instrument: 'kala_elect_get', hint: 'call again with a narrower date_range or smaller limit for the full convention-row set per candidate' },
+    },
+    // ── candidates: hardFloor with lattice_adjudication.ledgers setArray sync (F-122) ──
+    {
+      path: 'candidates',
+      label: 'candidate windows (with judgment ledgers)',
+      minKeep: 1,
+      getArray: (c) => c.candidates,
+      setArray: (c, kept) => {
+        c.candidates = kept as KalaElectCandidate[]
+        // Sync lattice_adjudication.ledgers to only the surviving candidates. Without this,
+        // trimming candidates 4→1 leaves all 4 pre-trim ledgers in lattice_adjudication
+        // while candidates.length reports 1 — the core defect of F-122 (DIAGNOSIS §3).
+        if (c.lattice_adjudication) {
+          const survivingIds = new Set(
+            (kept as KalaElectCandidate[])
+              .map((cand) => cand.judgment_ledger?.candidate_id)
+              .filter(Boolean),
+          )
+          c.lattice_adjudication = {
+            ...c.lattice_adjudication,
+            ledgers: c.lattice_adjudication.ledgers.filter((l) => survivingIds.has(l.candidate_id)),
+          }
+        }
+      },
+      recover: { instrument: 'kala_elect_get', hint: 'call again with a smaller limit or narrower date_range' },
+      // §N.6 part 2: candidates now carry the confirmed doṣa→parihāra→residual ledger — the
+      // densest, most-actionable layer in this response. hardFloor keeps at least one alive
+      // even under the hard-cap fallback pass.
+      hardFloor: true,
+    },
+  ]
+}
+
 export async function handleKalaElectGet(
   input: KalaElectInput,
   principal: Principal,
@@ -824,49 +1016,7 @@ export async function handleKalaElectGet(
     ...(result.empty_reason ? { empty_reason: result.empty_reason } : {}),
   }
 
-  const sections: TrimmableSection<KalaElectResponse>[] = [
-    kalaEvidenceTrimmableSection<KalaElectResponse>({ instrument: 'kala_elect_get', hint: 'call again with a narrower date_range for full evidence' }),
-    // §N.6 part 2 — the LOW-density layer is the one a trim eats first. Every candidate's
-    // uncited-convention factor list is fully floorable to zero (it is served context, not a
-    // finding), and is declared BEFORE the candidates section so the trimmer's disposable
-    // tier absorbs the cut before any confirmed judgment ledger is touched.
-    {
-      path: 'candidates[].judgment_ledger.convention_only_factors',
-      label: 'uncited-convention factor spans (all candidates)',
-      minKeep: 0,
-      getArray: (c) => c.candidates.flatMap((cand) => cand.judgment_ledger?.convention_only_factors ?? []),
-      setArray: (c, kept) => {
-        // Distribute the surviving entries back in order, then truncate the rest. The
-        // per-candidate `convention_only_factor_count` is deliberately NOT rewritten — it
-        // remains the TRUE count, so a trimmed response still tells the honest number.
-        let remaining = kept.length
-        for (const cand of c.candidates) {
-          const ledger = cand.judgment_ledger
-          if (!ledger) continue
-          const take = Math.max(0, Math.min(ledger.convention_only_factors.length, remaining))
-          ledger.convention_only_factors = ledger.convention_only_factors.slice(0, take)
-          remaining -= take
-        }
-      },
-      // No dedicated lattice-query tool is registered yet (bg_muhurta_lattice serving is
-      // deliberately deferred — SHAD_DARSHANA_STATE.md, "needs real citation-backed content,
-      // a more careful individual session"). Point recovery at this response's own real
-      // source instead of a phantom instrument a caller could never resolve.
-      recover: { instrument: 'kala_elect_get', hint: 'call again with a narrower date_range or smaller limit for the full convention-row set per candidate' },
-    },
-    {
-      path: 'candidates',
-      label: 'candidate windows (with judgment ledgers)',
-      minKeep: 1,
-      getArray: (c) => c.candidates,
-      setArray: (c, kept) => { c.candidates = kept as KalaElectCandidate[] },
-      recover: { instrument: 'kala_elect_get', hint: 'call again with a smaller limit or narrower date_range' },
-      // §N.6 part 2: candidates now carry the confirmed doṣa→parihāra→residual ledger — the
-      // densest, most-actionable layer in this response. hardFloor keeps at least one alive
-      // even under the hard-cap fallback pass.
-      hardFloor: true,
-    },
-  ]
+  const sections = buildElectSections()
 
   const budgeted = finalizeMcpBudget(response as unknown as Record<string, unknown>, {
     maxKb: input.budget_kb ?? 40,
