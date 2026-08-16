@@ -980,6 +980,21 @@ def _fetch_dasha_runway_fresh(conn: Any, chart_id: str, aya: str, planet: str,
     return best
 
 
+import re as _re
+_CONDITIONAL_PREAMBLE_RE = _re.compile(r'^For\s[^:]{5,200}:\s*', _re.IGNORECASE)
+
+
+def _strip_conditional_preamble(text: str) -> tuple[str, bool]:
+    """Strip 'For <affliction clause>: ' preamble from prescription_text.
+    Returns (cleaned_text, preamble_was_stripped).
+    The preamble states a condition never tested against chart state (F-116)."""
+    m = _CONDITIONAL_PREAMBLE_RE.match(text)
+    if m:
+        remainder = text[m.end():]
+        return (remainder[:1].upper() + remainder[1:] if remainder else ""), True
+    return text, False
+
+
 def _fetch_remedies_for_graha(conn: Any, planet: str, limit: int = 5) -> list[dict]:
     """Fetch top remedies from brahma_remedy_corpus for this planet."""
     rows = conn.execute(
@@ -1333,6 +1348,8 @@ def _build_resonances_and_prescriptions(
                 "external_computation_required": "market gemstone/ritual-goods pricing lookup",
             })
 
+            _raw_pt = str(corpus_row.get("prescription_text") or "")
+            _label_human, _preamble_stripped = _strip_conditional_preamble(_raw_pt)
             prescriptions.append({
                 "prescription_id": str(uuid.uuid4()),
                 "chart_id": chart_id,
@@ -1344,7 +1361,7 @@ def _build_resonances_and_prescriptions(
                 "tradition": "parashari",
                 "remedy_category": str(corpus_row.get("remedy_type") or "mantra"),
                 "remedy_id_g27": str(corpus_row.get("remedy_id") or ""),
-                "remedy_label_human": str(corpus_row.get("prescription_text") or "")[:200],
+                "remedy_label_human": _label_human[:200],
                 "prescription_detail_jsonb": json.dumps({
                     "prescription_text": corpus_row.get("prescription_text"),
                     "mantra_text": corpus_row.get("mantra_text"),
@@ -1355,6 +1372,7 @@ def _build_resonances_and_prescriptions(
                     # only; None for every other category — never fabricated for non-gemstone
                     # remedies where the maraka rule doesn't apply).
                     "maraka_contraindication_verdict": maraka_verdict,
+                    "preamble_stripped": _preamble_stripped,  # True = conditional clause removed; False = none present
                 }),
                 "classical_strength_rating": str(corpus_row.get("confidence") or ""),
                 "classical_sources_jsonb": json.dumps({"source_id": str(corpus_row.get("source_canonical_id") or "BPHS"), "citation": str(corpus_row.get("classical_ref") or "")}),
