@@ -134,6 +134,8 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   // L3 Kāla — live compute service wrappers
   call_transit_search:    'marsys://tool/L3/call_transit_search',
   call_dasha_eligibility: 'marsys://tool/L3/call_dasha_eligibility',
+  // F-11: ṢAḌ-DARŚANA W3 item 37 — paddhati convention profile (per-chart config, migrations 533/534/537)
+  query_kala_paddhati_profile: 'marsys://tool/L3/query_kala_paddhati_profile',
 
   // L4 Phala
   query_remedy_program: 'marsys://tool/L4/query_remedy_program',
@@ -501,6 +503,8 @@ export const SURGICAL_TOOLS = [
   'read_chapter',
   'list_classical_texts',
   'find_verses_about',
+  // F-11: ṢAḌ-DARŚANA W3 item 37 — paddhati convention profile (L3 Kāla, per-chart)
+  'query_kala_paddhati_profile',
 ] as const
 
 export type SurgicalToolName = (typeof SURGICAL_TOOLS)[number]
@@ -600,6 +604,8 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
   // behind kala_elect_get); global scope, so no chart authorization applies.
   query_muhurta_lattice:       'query_muhurta_lattice',     // item 36 lattice rows
   query_parihara_graph:        'query_parihara_graph',      // items 36/41 parihāra + census
+  // F-11: ṢAḌ-DARŚANA W3 item 37 — paddhati profile (kala_sky_pattern.ts fetchPaddhatiProfile)
+  query_kala_paddhati_profile: 'query_kala_paddhati_profile',
 }
 
 /**
