@@ -168,6 +168,61 @@ def test_unknown_graha_raises():
         classify_dignity("Neptune", "Aries", 5.0)
 
 
+# ── §2b PAR-R-2 — exact-boundary goldens for every graha with an MT range ────
+#      (PRATINIDHI ruling PAR-R-2: half-open [from, to) confirmed as-built; the
+#      ruling REQUIRES the boundary decision be visible as test evidence for
+#      every MT-bearing graha, not just Jupiter — "a boundary decided but
+#      untested is an undetected boundary", §N.8.)
+
+def test_sun_mt_upper_boundary_is_own():
+    """Sun MT is 0-20 Leo: 20°00' is own (upper bound exclusive)."""
+    assert classify_dignity("Sun", "Leo", 20.0) == "own"
+
+
+def test_sun_mt_lower_boundary_is_mt():
+    assert classify_dignity("Sun", "Leo", 0.0) == "moolatrikona"
+
+
+def test_moon_taurus_is_always_exalted_mt_currently_unreachable():
+    """FLAGGED FINDING (not a PRATINIDHI-resolved boundary — see DIAGNOSIS.md):
+    Moon's exaltation sign (Taurus) and MT sign (Taurus) are the SAME sign, and
+    classify_dignity's exaltation check is sign-only (no degree gate), checked
+    BEFORE moolatrikona in priority order. Consequence: for Moon, "moolatrikona"
+    is currently unreachable at ANY degree in Taurus — exalted always wins.
+    Asserting actual current behavior at what would otherwise be the MT range
+    (4-30) rather than silently omitting Moon's boundary coverage or asserting
+    an unverified guess about the classically-correct resolution."""
+    assert classify_dignity("Moon", "Taurus", 4.0) == "exalted"
+    assert classify_dignity("Moon", "Taurus", 29.999) == "exalted"
+    assert classify_dignity("Moon", "Taurus", 3.999) == "exalted"
+
+
+def test_mars_mt_upper_boundary_is_own():
+    """Mars MT is 0-12 Aries: 12°00' is own."""
+    assert classify_dignity("Mars", "Aries", 12.0) == "own"
+
+
+def test_mercury_virgo_is_always_exalted_mt_currently_unreachable():
+    """FLAGGED FINDING (same class as Moon/Taurus above): Mercury's exaltation
+    sign (Virgo) and MT sign (Virgo) are also the same sign, and Virgo is
+    additionally one of Mercury's own signs — a rare triple overlap. Exaltation
+    (sign-only, no degree gate) wins over MT at every degree, making Mercury's
+    16-20 Virgo MT range currently unreachable too."""
+    assert classify_dignity("Mercury", "Virgo", 15.99) == "exalted"
+    assert classify_dignity("Mercury", "Virgo", 16.0) == "exalted"
+    assert classify_dignity("Mercury", "Virgo", 20.0) == "exalted"
+
+
+def test_venus_mt_upper_boundary_is_own():
+    """Venus MT is 0-15 Libra: 15°00' is own."""
+    assert classify_dignity("Venus", "Libra", 15.0) == "own"
+
+
+def test_saturn_mt_upper_boundary_is_own():
+    """Saturn MT is 0-20 Aquarius: 20°00' is own."""
+    assert classify_dignity("Saturn", "Aquarius", 20.0) == "own"
+
+
 # ── §3 Recurrence guard — §N.7 item 3 (no wrapper-local constant may shadow ──
 #      an L1-computed value, even when currently correct; a constant can
 #      drift from its source, a reference cannot).
