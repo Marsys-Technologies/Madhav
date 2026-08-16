@@ -784,6 +784,8 @@ export async function handleKalaStoryGet(
     budgetKbRequested: input.budget_kb,
   }) as unknown as KalaStoryResponse
 
+  budgeted.chapter_count = budgeted.chapters?.length ?? 0
+
   return { response: budgeted }
 }
 
