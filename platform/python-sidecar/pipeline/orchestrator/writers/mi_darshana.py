@@ -146,9 +146,9 @@ class MiDarshanaWriter(WriterBase):
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 "SELECT channel_id, domain, channel_propensity, prior_propensity, "
-                "       n_support, evidence_grade "
+                "       n_support, scored_count, evidence_grade "
                 "FROM mimamsa_manifestation_grammar WHERE chart_id = %s "
-                "AND evidence_grade = 'empirical' ORDER BY n_support DESC LIMIT 20",
+                "AND evidence_grade IN ('empirical', 'assignment_only') ORDER BY n_support DESC LIMIT 20",
                 (chart_id,),
             )
             gram_rows = cur.fetchall()
@@ -168,10 +168,19 @@ class MiDarshanaWriter(WriterBase):
                 _prior_prop_raw = r.get("prior_propensity")
                 prop = float(_prior_prop_raw) if _prior_prop_raw is not None else 0.5
             n = r.get("n_support") or 0
-            statement = (
-                f"For {dom} events, the '{ch}' channel fires with {prop:.0%} propensity "
-                f"(n={n}, empirical learning)."
-            )
+            grade = r.get("evidence_grade", "prior_only")
+            scored = r.get("scored_count") or 0
+            if grade == "empirical":
+                statement = (
+                    f"For {dom} events, the '{ch}' channel fires with {prop:.0%} propensity "
+                    f"(n={scored} outcome-scored predictions, empirical learning)."
+                )
+            else:  # assignment_only — honest, not a promoted 'empirical' claim (§N.7 item 6)
+                statement = (
+                    f"For {dom} events, the '{ch}' channel has been assigned to {n} predictions "
+                    f"with no outcomes scored yet — insufficient evidence for an empirical grade "
+                    f"(prior-based estimate: {prop:.0%})."
+                )
             insight_id = f"gram_{dom}_{ch[:20]}_{i}"
             rows.append((
                 chart_id, insight_id, "manifestation_grammar",
@@ -181,7 +190,7 @@ class MiDarshanaWriter(WriterBase):
                 None,   # confidence_band
                 n,
                 "not_assessed",
-                "empirical",
+                grade,
                 LEL_VERSION,
                 now,
                 json.dumps({"channel": ch, "domain": dom, "propensity": prop}),
