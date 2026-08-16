@@ -1099,6 +1099,7 @@ export const JUDGMENT_FLAG_CODES = [
   'sensitive_degree_firings_empty',
   'kp_cusp_chain_unavailable',
   'gochara_domain_not_covered',
+  'gochara_top_window_already_peaked',
   // ── D8 assess_domain (folds the former {claim, requires_acharya_validation} object shape) ──
   'domain_inference_requires_acharya_validation',
   // ── D10 pact_query chain-honesty halts ──

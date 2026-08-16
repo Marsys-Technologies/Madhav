@@ -250,11 +250,13 @@ export interface GocharaSweepWindow {
   peak_date: string | null
   valence: string | null
   is_adverse: boolean | null
+  is_past_peak: boolean | null   // null when peak_date is null (honest "can't tell")
 }
 
 export interface GocharaSweepResult {
   domain_covered: boolean
   upcoming_window_count: number
+  past_peak_window_count: number
   windows: GocharaSweepWindow[]
   valence_breakdown: Record<string, number>
   window_range: { start: string; end: string }
@@ -284,6 +286,7 @@ export async function fetchGocharaSweep(
   const out: GocharaSweepResult = {
     domain_covered: false,
     upcoming_window_count: 0,
+    past_peak_window_count: 0,
     windows: [],
     valence_breakdown: {},
     window_range: { start, end },
@@ -332,6 +335,9 @@ export async function fetchGocharaSweep(
       [chart_id, signal_domain, start, end],
     )
     out.upcoming_window_count = res.rows.length
+    const isPastPeak = (peakDate: string | null): boolean | null =>
+      peakDate === null ? null : peakDate < start
+    out.past_peak_window_count = res.rows.filter(r => isPastPeak(r.peak_date) === true).length
     for (const r of res.rows) {
       const v = r.valence ?? 'unknown'
       out.valence_breakdown[v] = (out.valence_breakdown[v] ?? 0) + 1
@@ -344,6 +350,7 @@ export async function fetchGocharaSweep(
       peak_date: r.peak_date,
       valence: r.valence,
       is_adverse: r.is_adverse,
+      is_past_peak: isPastPeak(r.peak_date),
     }))
   } catch {
     // non-fatal: leg degrades to honest not-computed upstream.

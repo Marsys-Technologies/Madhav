@@ -1193,6 +1193,7 @@ async function runAssessDomain(
           domain: t5SignalDomain,
           domain_covered: t5Gochara.domain_covered,
           upcoming_window_count: t5Gochara.upcoming_window_count,
+          past_peak_window_count: t5Gochara.past_peak_window_count,
           valence_breakdown: t5Gochara.valence_breakdown,
           window_range: t5Gochara.window_range,
           // F-119 (EKAVĀKYATĀ A-06): attach resolution_disclosure so callers
