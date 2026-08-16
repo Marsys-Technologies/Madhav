@@ -524,7 +524,7 @@ export function autoDetectTrimmableSections<T extends Record<string, unknown>>(
       setArray: setter,
       recover: {
         instrument: toolName,
-        hint: `call ${toolName} again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of "${path}"`,
+        hint: `call ${toolName} again with a narrower scope of its own declared parameters, to reach the rest of "${path}"`,
       },
     })
   }
