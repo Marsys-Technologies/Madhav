@@ -4,10 +4,14 @@ brahmagyan/dignity_oracle.py — B-01 Dignity Oracle
 Single shared dignity classifier for all consumers that need sign-level
 dignity classification with degree-gated moolatrikona support.
 
-Data source: pipeline/orchestrator/writers/bg_dignity_reference._DIGNITY_REFERENCE
-(the authoritative L0 reference — reproduced here as a read-only static dict
-built at import time, NOT re-imported from the writer module to avoid pulling
-in writer-layer dependencies into serving-layer code).
+Data source: brahmagyan.l0_dignity_reference.DIGNITY_REFERENCE — the single,
+dependency-free L0 reference (PAR-R-6, LEDGER_PRATINIDHI.md
+par/pratinidhi-ledger: extraction to a shared brahmagyan/l0_* module does not
+touch the FROZEN WriterBase contract, and matches the established sibling
+convention — l0_class_priors, l0_class_lifetime_counts, l0_dasha_systems,
+l0_doshas, l0_formula_constants, l0_ephemeris all already work this way).
+`pipeline/orchestrator/writers/bg_dignity_reference.py` (the L0 writer that
+seeds the DB table) imports the SAME module — one Python source, not two.
 
 Returns one of: "exalted" | "debilitated" | "moolatrikona" | "own" | "neutral"
 All lowercase — matching the live SQL vocabulary in chart_facts.fact_value_text.
@@ -25,90 +29,36 @@ moolatrikona is checked BEFORE own; degree gate is [from, to) half-open interval
 Jupiter at 0°-10° Sag = MT; at 15° Sag = own. Sun at 0°-20° Leo = MT; at 25° = own.
 
 Nodes (Rahu/Ketu) carry ONLY exalted/debilitated/neutral — §2.1 neutral-default.
+
+KNOWN GAP (flagged, not yet ruled on — see lanes/F-62/SPEC.md §7b): for Moon and
+Mercury, the exaltation sign coincides with the moolatrikona sign (Taurus, Virgo
+respectively), and this priority order checks exaltation by SIGN ONLY (no degree
+gate) before moolatrikona — so "moolatrikona" is currently unreachable for these
+two grahas at any degree. `l0_dignity_reference.DIGNITY_REFERENCE` already
+carries an `exaltation_degree` field this classifier does not yet consult;
+whether exaltation should itself be degree-gated is a classical-doctrine
+question of the same shape as PAR-R-2, reserved for a future PRATINIDHI ruling.
 """
 from __future__ import annotations
 
-# ── Static dignity data ────────────────────────────────────────────────────────
-# Reproduces bg_dignity_reference._DIGNITY_REFERENCE without importing the writer.
+from brahmagyan.l0_dignity_reference import DIGNITY_REFERENCE as _DIGNITY_REFERENCE
+
+# ── Static dignity data — derived from the shared L0 reference ────────────────
 # Keyed by graha name (Title-case canonical form).
 # "mt_sign": None means no moolatrikona tier for that graha.
 # "mt_from" / "mt_to": the [from, to) degree range within the MT sign.
 # "own": list of own sign names.
 
 _DATA: dict[str, dict] = {
-    "Sun": {
-        "exaltation": "Aries",
-        "debilitation": "Libra",
-        "mt_sign": "Leo",
-        "mt_from": 0,
-        "mt_to": 20,
-        "own": frozenset(["Leo"]),
-    },
-    "Moon": {
-        "exaltation": "Taurus",
-        "debilitation": "Scorpio",
-        "mt_sign": "Taurus",
-        "mt_from": 4,
-        "mt_to": 30,
-        "own": frozenset(["Cancer"]),
-    },
-    "Mars": {
-        "exaltation": "Capricorn",
-        "debilitation": "Cancer",
-        "mt_sign": "Aries",
-        "mt_from": 0,
-        "mt_to": 12,
-        "own": frozenset(["Aries", "Scorpio"]),
-    },
-    "Mercury": {
-        "exaltation": "Virgo",
-        "debilitation": "Pisces",
-        "mt_sign": "Virgo",
-        "mt_from": 16,
-        "mt_to": 20,
-        "own": frozenset(["Gemini", "Virgo"]),
-    },
-    "Jupiter": {
-        "exaltation": "Cancer",
-        "debilitation": "Capricorn",
-        "mt_sign": "Sagittarius",
-        "mt_from": 0,
-        "mt_to": 10,
-        "own": frozenset(["Sagittarius", "Pisces"]),
-    },
-    "Venus": {
-        "exaltation": "Pisces",
-        "debilitation": "Virgo",
-        "mt_sign": "Libra",
-        "mt_from": 0,
-        "mt_to": 15,
-        "own": frozenset(["Taurus", "Libra"]),
-    },
-    "Saturn": {
-        "exaltation": "Libra",
-        "debilitation": "Aries",
-        "mt_sign": "Aquarius",
-        "mt_from": 0,
-        "mt_to": 20,
-        "own": frozenset(["Capricorn", "Aquarius"]),
-    },
-    # Nodes: no moolatrikona or own tier (§2.1 neutral-default)
-    "Rahu": {
-        "exaltation": "Taurus",
-        "debilitation": "Scorpio",
-        "mt_sign": None,
-        "mt_from": None,
-        "mt_to": None,
-        "own": frozenset(),
-    },
-    "Ketu": {
-        "exaltation": "Scorpio",
-        "debilitation": "Taurus",
-        "mt_sign": None,
-        "mt_from": None,
-        "mt_to": None,
-        "own": frozenset(),
-    },
+    row["graha"]: {
+        "exaltation": row["exaltation_sign"],
+        "debilitation": row["debilitation_sign"],
+        "mt_sign": row["moolatrikona_sign"],
+        "mt_from": row["moolatrikona_from"],
+        "mt_to": row["moolatrikona_to"],
+        "own": frozenset(row["own_signs"]),
+    }
+    for row in _DIGNITY_REFERENCE
 }
 
 _NODES: frozenset[str] = frozenset(["Rahu", "Ketu"])
