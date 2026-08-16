@@ -8,14 +8,9 @@
       "justification": "Pre-existing local dignity lookup in l1_strength; B-01 stream will evaluate migration path."
     },
     {
-      "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
-      "line": 4852,
-      "justification": "4-way if/elif inline dignity chain — F-62 known defect; B-01 stream will migrate to brahmagyan.dignity_oracle."
-    },
-    {
       "file": "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
-      "line": 134,
-      "justification": "Local DIGNITY_TABLE dict in _compute_dignity — F-62 known defect; B-01 stream will migrate to brahmagyan.dignity_oracle."
+      "pattern": "\"Sun\": \\{\"exalt\": 0, \"debil\": 6, \"mt\": 4, \"own\": \\[4\\]\\}",
+      "justification": "F-62 (VERIFIER Stage R deficiency 3): the module-level DIGNITY_TABLE dict is now dead code for classification purposes -- _compute_dignity delegates to brahmagyan.dignity_oracle.classify_dignity() -- but the dict itself is kept as pure data for _build_saptavargaja_rows' own-sign lookup (own-sign membership needs no degree gate; see that function's inline comment). Pinned to a content pattern (the dict's opening Sun entry) rather than a line number: an exact-line allowlist entry silently breaks the moment any earlier line in the file changes (this is exactly what happened when F-62's own import line shifted the dict from line 134 to 135), flipping D-01b from PASS to FAIL for zero new content. A content pattern survives that class of drift."
     }
   ]
 }

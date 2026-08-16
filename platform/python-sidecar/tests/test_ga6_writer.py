@@ -257,13 +257,15 @@ class TestDignity:
 
     def test_friend_sign(self):
         m = _mod()
-        # Sun in Cancer (Moon's sign) — Moon is friend of Sun
-        assert m._compute_dignity("Sun", 3) == "Friend"
+        # Sun in Cancer (Moon's sign); B-01 oracle uses 5 canonical tiers only
+        # (exalted/debilitated/moolatrikona/own/neutral) — Friend tier removed.
+        assert m._compute_dignity("Sun", 3) == "Neutral"
 
     def test_enemy_sign(self):
         m = _mod()
-        # Sun in Taurus (Venus's sign) — Venus is enemy of Sun
-        assert m._compute_dignity("Sun", 1) == "Enemy"
+        # Sun in Taurus (Venus's sign); B-01 oracle uses 5 canonical tiers only
+        # (exalted/debilitated/moolatrikona/own/neutral) — Enemy tier removed.
+        assert m._compute_dignity("Sun", 1) == "Neutral"
 
 
 # ── 4. Vargottama ─────────────────────────────────────────────────────────────

@@ -64,6 +64,7 @@ from fractions import Fraction as F
 from typing import Any
 
 from brahmagyan.chart_reader_v4 import ChartReaderError, ChartReaderV4, SIGN_LORD
+from brahmagyan.dignity_oracle import classify_dignity as _oracle_classify_dignity
 from ga_writers.ga_condition_writer import (
     compute_panchadha_maitri,
     compute_tatkalika_relation,
@@ -73,6 +74,16 @@ from .bo_pratijna_karyatva import KaryatvaMap, KARYATVA_REGISTRY, get_karyatva
 
 ENGINE_VERSION = "bo_pratijna_v4_engine.0.1"
 RUBRIC_VERSION = "V4_RUBRIC_SPEC_v1_0"
+
+# 1-based sign number → sign name (Aries=1 … Pisces=12).
+# Kept as a local constant to avoid importing pyjhora_adapter (which requires
+# the jhora wheel) from this engine library module.  Drift-guarded by
+# test_bo_pratijna_v4_engine.py (SIGN_LORD keeps the same mapping honest).
+_SIGN_NUMBER_TO_NAME: dict[int, str] = {
+    1: "Aries", 2: "Taurus", 3: "Gemini", 4: "Cancer", 5: "Leo", 6: "Virgo",
+    7: "Libra", 8: "Scorpio", 9: "Sagittarius", 10: "Capricorn",
+    11: "Aquarius", 12: "Pisces",
+}
 
 # ── §2.1 — the shared dignity band (verbatim from V4_RUBRIC_SPEC_v1_0.md §2.1,
 #    itself adopted from ga_condition_writer.py's DIGNITY_SCORES / pañcadhā
@@ -268,9 +279,24 @@ def dignity_of(
         return DignityResult(graha, sign_number, "neutral", DIGNITY_BAND["neutral"],
                               "node — no exalt/debil match, neutral default (§2.1)")
 
-    if r["mooltrikona_sign"] is not None and sign_number == r["mooltrikona_sign"]:
-        return DignityResult(graha, sign_number, "moolatrikona", DIGNITY_BAND["moolatrikona"],
-                              f"sign={sign_number} matches mooltrikona_sign")
+    # MT + own check: delegate to the shared dignity oracle for a single
+    # authoritative classification.  The engine works with sign numbers and does
+    # not carry degree_in_sign for varga positions, so degree is omitted here
+    # (defaults to 0.0 inside classify_dignity).  This means the degree gate
+    # fires only for MT ranges that include 0° (Sun, Mars, Jupiter, Venus,
+    # Saturn); Moon's [4°,30°) and Mercury's [16°,20°) will not match at 0°
+    # and correctly fall through.  A future extension that threads degree_in_sign
+    # through the chart reader would tighten this.
+    # sign_number is 1-based (from reference_planets / chart_divisionals)
+    _sign_name = _SIGN_NUMBER_TO_NAME.get(sign_number)
+    if _sign_name is not None:
+        _oracle_state = _oracle_classify_dignity(graha, _sign_name, 0.0)
+        if _oracle_state == "moolatrikona":
+            return DignityResult(graha, sign_number, "moolatrikona", DIGNITY_BAND["moolatrikona"],
+                                  f"sign={sign_number} ({_sign_name}) matches oracle moolatrikona")
+        if _oracle_state == "own":
+            return DignityResult(graha, sign_number, "own", DIGNITY_BAND["own"],
+                                  f"sign={sign_number} ({_sign_name}) matches oracle own")
     if sign_number in r["own_signs"]:
         return DignityResult(graha, sign_number, "own", DIGNITY_BAND["own"],
                               f"sign={sign_number} in own_signs={r['own_signs']}")
