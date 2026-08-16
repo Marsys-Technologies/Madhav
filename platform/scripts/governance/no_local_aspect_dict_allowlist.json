@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "description": "Pre-existing local aspect-dict sites. Stream B (B-02) migrates each to brahmagyan.aspects oracle. Remove entries as B-02 PRs land.",
+  "entries": [
+    {
+      "file": "platform/python-sidecar/ga_writers/ga_strength_writer.py",
+      "line": 222,
+      "justification": "Pre-existing local aspect-strength dict; B-02 stream will migrate to brahmagyan.aspects oracle."
+    },
+    {
+      "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
+      "line": 544,
+      "justification": "Pre-existing local aspect dict in ga_structural_writer; B-02 stream will migrate."
+    },
+    {
+      "file": "platform/python-sidecar/ga_writers/ga_yoga_writer.py",
+      "line": 1499,
+      "justification": "NB_GRAHA_DRISHTI/NB_DEFAULT_DRISHTI — F-52 known defect; B-02 stream will migrate to brahmagyan.aspects oracle."
+    },
+    {
+      "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna_v4_engine.py",
+      "line": 180,
+      "justification": "Pre-B-02 reference implementation used as comparison baseline. B-02 stream will assess migration."
+    },
+    {
+      "file": "platform/python-sidecar/services/gochara_grammar/primitives.py",
+      "line": 189,
+      "justification": "SPECIAL_DRISHTI_DEG — F-52 known defect; B-02 stream will migrate to brahmagyan.aspects oracle."
+    }
+  ]
+}

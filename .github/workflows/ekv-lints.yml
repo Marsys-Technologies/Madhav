@@ -1,0 +1,206 @@
+name: EKV — Ekavākyatā Lint Gates (Stream D)
+
+# EKAVĀKYATĀ Stream D (DHARMA-LEAD) governance lints.
+#
+# All jobs run WARN-FIRST (continue-on-error: true) until the corresponding
+# Stream A / Stream B fix PRs land and the allowlist entries for those sites
+# are removed. At that point, flip continue-on-error to false for strict enforcement.
+#
+# Per EKAVAKYATA_EXECUTION_PLAN_v1_0.md §2(D):
+#   D-01a  no-local-aspect-dict (F-52; B-02 fixes)
+#   D-01b  no-local-dignity-table (F-62; B-01 fixes)
+#   D-01c  no-local-ayanamsha-map (F-59; A-15 fixes)
+#   D-01d  dualOutput-requires-toolName (F-43; A-09 fixes)
+#   D-01e  no-raw-internal-token-in-narrative (F-131/132; A-14 fixes)
+#   D-08   pointer-integrity failing tests (TDD red-light for A-09/A-14/A-15)
+#
+# Allowlist shrinks as fix PRs land; flip continue-on-error: false per lane once
+# the allowlist for that lane reaches zero entries.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches:
+      - main
+      - 'ekv/**'
+      - 'parishkara/integration'
+      - 'shad-darshana/integration'
+  merge_group:
+
+concurrency:
+  group: ekv-lints-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  # ── D-01a: no-local-aspect-dict ──────────────────────────────────────────────
+  ekv-d01a-no-local-aspect-dict:
+    name: D-01a — No Local Aspect Dict (WARN)
+    runs-on: ubuntu-latest
+    # WARN-FIRST: pre-existing sites allowlisted; B-02 stream removes them.
+    # Flip to false once no_local_aspect_dict_allowlist.json is empty.
+    continue-on-error: true
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: D-01a self-test (bundled fixtures)
+        run: python platform/scripts/governance/check_no_local_aspect_dict.py --self-test
+
+      - name: D-01a repo scan (allowlist-aware)
+        # Fails only on NEW violations not in no_local_aspect_dict_allowlist.json.
+        # Each allowlist entry carries a justification + B-02 disposition.
+        run: python platform/scripts/governance/check_no_local_aspect_dict.py
+
+  # ── D-01b: no-local-dignity-table ────────────────────────────────────────────
+  ekv-d01b-no-local-dignity-table:
+    name: D-01b — No Local Dignity Table (WARN)
+    runs-on: ubuntu-latest
+    # WARN-FIRST: pre-existing sites allowlisted; B-01 stream removes them.
+    # Flip to false once no_local_dignity_table_allowlist.json is empty.
+    continue-on-error: true
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: D-01b self-test (bundled fixtures)
+        run: python platform/scripts/governance/check_no_local_dignity_table.py --self-test
+
+      - name: D-01b repo scan (allowlist-aware)
+        # Fails only on NEW violations not in no_local_dignity_table_allowlist.json.
+        run: python platform/scripts/governance/check_no_local_dignity_table.py
+
+  # ── D-01c: no-local-ayanamsha-map ────────────────────────────────────────────
+  ekv-d01c-no-local-ayanamsha-map:
+    name: D-01c — No Local Ayanamsha Map (WARN)
+    runs-on: ubuntu-latest
+    # WARN-FIRST: 9 sites allowlisted; A-15 stream removes them.
+    # Flip to false once no_local_ayanamsha_map_allowlist.json is empty.
+    continue-on-error: true
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: D-01c self-test (bundled fixtures)
+        run: python platform/scripts/governance/check_no_local_ayanamsha_map.py --self-test
+
+      - name: D-01c repo scan (allowlist-aware)
+        # Fails only on NEW violations not in no_local_ayanamsha_map_allowlist.json.
+        run: python platform/scripts/governance/check_no_local_ayanamsha_map.py
+
+  # ── D-01d: dualOutput-requires-toolName ──────────────────────────────────────
+  ekv-d01d-dualoutput-requires-toolname:
+    name: D-01d — dualOutput Requires ToolName (WARN)
+    runs-on: ubuntu-latest
+    # WARN-FIRST: register_p1_aliases.ts has 1 def + 24 call-site violations;
+    # A-09 stream fixes all of them. Flip to false once dualoutput_toolname_allowlist.json
+    # is empty.
+    continue-on-error: true
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: D-01d self-test (bundled fixtures)
+        run: python platform/scripts/governance/check_dualoutput_requires_toolname.py --self-test
+
+      - name: D-01d repo scan (allowlist-aware)
+        # Fails only on NEW violations not in dualoutput_toolname_allowlist.json.
+        run: python platform/scripts/governance/check_dualoutput_requires_toolname.py
+
+  # ── D-01e: no-raw-internal-token-in-narrative ─────────────────────────────────
+  ekv-d01e-no-raw-token-in-narrative:
+    name: D-01e — No Raw Token in Narrative (WARN)
+    runs-on: ubuntu-latest
+    # WARN-FIRST: 2 sites in kala_views/now.ts allowlisted; A-14 stream removes them.
+    # Flip to false once no_raw_token_narrative_allowlist.json is empty.
+    continue-on-error: true
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: D-01e self-test (bundled fixtures)
+        run: python platform/scripts/governance/check_no_raw_token_in_narrative.py --self-test
+
+      - name: D-01e repo scan (allowlist-aware)
+        # Fails only on NEW violations not in no_raw_token_narrative_allowlist.json.
+        run: python platform/scripts/governance/check_no_raw_token_in_narrative.py
+
+  # ── D-08: pointer-integrity TDD red-light gate ────────────────────────────────
+  ekv-d08-pointer-integrity:
+    name: D-08 — Pointer Integrity Tests (TDD — Expected Fail Until A lands)
+    runs-on: ubuntu-latest
+    # These tests are INTENTIONALLY FAILING until A-09/A-14/A-15 land.
+    # continue-on-error: true keeps the overall workflow green while the tests
+    # serve as a live red-light gate visible in the PR check list.
+    # Flip to false + remove this comment once all 12 tests pass.
+    continue-on-error: true
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install pytest
+        run: pip install pytest --quiet
+
+      - name: D-08 pointer integrity tests (TDD red-light)
+        # 12 tests across F-43/F-59/F-131/F-132. Currently 12/12 failing (expected).
+        # Will go green test-by-test as A-09/A-14/A-15 PRs land.
+        # EKV-D08-TESTS-POSTED
+        run: |
+          python -m pytest \
+            platform/scripts/governance/__tests__/test_d08_pointer_integrity.py \
+            -v --tb=short

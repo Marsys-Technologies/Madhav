@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "description": "Pre-existing local dignity classification sites. Stream B (B-01) migrates each to brahmagyan.dignity_oracle. Remove entries as B-01 PRs land.",
+  "entries": [
+    {
+      "file": "platform/python-sidecar/brahmagyan/ganita/l1_strength.py",
+      "line": 65,
+      "justification": "Pre-existing local dignity lookup in l1_strength; B-01 stream will evaluate migration path."
+    },
+    {
+      "file": "platform/python-sidecar/ga_writers/ga_structural_writer.py",
+      "line": 4852,
+      "justification": "4-way if/elif inline dignity chain — F-62 known defect; B-01 stream will migrate to brahmagyan.dignity_oracle."
+    },
+    {
+      "file": "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
+      "line": 134,
+      "justification": "Local DIGNITY_TABLE dict in _compute_dignity — F-62 known defect; B-01 stream will migrate to brahmagyan.dignity_oracle."
+    }
+  ]
+}
