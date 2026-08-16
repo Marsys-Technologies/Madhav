@@ -50,30 +50,66 @@ describeIf('get_dashas (marsys://tool/L1/get_dashas) — current-dasha gate, liv
       expect(bytes, `current-dasha payload was ${bytes} bytes`).toBeLessThanOrEqual(1024)
     })
 
-    it(`[${chartId}] REGRESSION: omitting ayanamsha_id silently returns one row PER AYANAMSHA and busts the gate (pins the documented failure mode)`, async () => {
+    it(`[${chartId}] omitting ayanamsha_id now defaults to lahiri_chitrapaksha (server-side default closes the documented failure mode)`, async () => {
       const result = await getDashasCapability.handler({
         chart_id: chartId,
         system: 'vimshottari',
         level: 1,
         as_of_date: today,
-        // ayanamsha_id intentionally omitted
+        // ayanamsha_id intentionally omitted — must now default to lahiri_chitrapaksha
       }, undefined)
 
       expect(result.is_error).toBe(false)
       const content = result.content as Record<string, unknown>
       const rows = content['rows'] as Array<Record<string, unknown>>
 
-      // All 5 ayanamshas come back unfiltered — this is the exact silent-unfiltered defect
-      // the tool description now warns about; if this ever drops to 1, the description's
-      // warning (and this test) need to be revisited, not silently left stale.
-      expect(rows.length).toBeGreaterThan(1)
-      const distinctAyanamshas = new Set(rows.map(r => r['ayanamsha_id']))
-      expect(distinctAyanamshas.size).toBeGreaterThan(1)
+      // F-93: server-side default now applies — exactly one row, correct ayanamsha.
+      expect(rows.length).toBe(1)
+      expect(rows[0]['ayanamsha_id']).toBe('lahiri_chitrapaksha')
 
       const bytes = Buffer.byteLength(JSON.stringify(content), 'utf8')
-      expect(bytes, `unfiltered payload was ${bytes} bytes — expected to bust the 1KB gate`).toBeGreaterThan(1024)
+      expect(bytes, `defaulted payload was ${bytes} bytes`).toBeLessThanOrEqual(1024)
     })
   }
+
+  it(`[${NATIVE_CHART_ID}] omitting ayanamsha_id returns exact Lahiri MD dates (two_pass_verified live repro)`, async () => {
+    const result = await getDashasCapability.handler({
+      chart_id: NATIVE_CHART_ID,
+      system: 'vimshottari',
+      level: 1,
+      as_of_date: today,
+      // ayanamsha_id intentionally omitted — must default to lahiri_chitrapaksha
+    }, undefined)
+
+    expect(result.is_error).toBe(false)
+    const content = result.content as Record<string, unknown>
+    const rows = content['rows'] as Array<Record<string, unknown>>
+
+    expect(rows.length).toBe(1)
+    expect(rows[0]['ayanamsha_id']).toBe('lahiri_chitrapaksha')
+    // Exact Lahiri MD dates pinned from DIAGNOSIS live repro — NOT '2010-07-07'/'2027-07-07' (Krishnamurti).
+    expect(rows[0]['start_date']).toBe('2010-08-18')
+    expect(rows[0]['end_date']).toBe('2027-08-18')
+  })
+})
+
+// ── F-93: levels_available consistency — omit vs. explicit ayanamsha_id must agree ──────────
+// Guards the two SQL-building sites (:210 row-fetch and :545 sub-query) from drifting
+// out of sync in a future edit.
+describeIf('get_dashas — levels_available consistency (F-93 sub-query drift guard), live DB', () => {
+  it(`[${NATIVE_CHART_ID}] levels_available is identical whether ayanamsha_id is omitted or explicit`, async () => {
+    const [omitted, explicit] = await Promise.all([
+      getDashasCapability.handler({ chart_id: NATIVE_CHART_ID, system: 'vimshottari' }, undefined),
+      getDashasCapability.handler({ chart_id: NATIVE_CHART_ID, system: 'vimshottari', ayanamsha_id: 'lahiri_chitrapaksha' }, undefined),
+    ])
+
+    expect(omitted.is_error).toBe(false)
+    expect(explicit.is_error).toBe(false)
+    const omittedContent = omitted.content as Record<string, unknown>
+    const explicitContent = explicit.content as Record<string, unknown>
+
+    expect(omittedContent['levels_available']).toEqual(explicitContent['levels_available'])
+  })
 })
 
 // ── WP-1.3 (b): query_dasha_periods honors system_id (F-0354) ──────────────────

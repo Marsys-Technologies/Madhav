@@ -12,17 +12,12 @@
  * vimshottari / 3 levels / ±5y. Gate target: system=vimshottari, level=Maha ("1"),
  * as_of=today, ayanamsha_id=lahiri_chitrapaksha → ≤1KB in ONE call.
  *
- * IMPORTANT — `ayanamsha_id` is NOT defaulted server-side (unlike `system`/`level`/`window`):
- * omitting it returns one row per ayanamsha (5 rows, ~3.2KB for the current-dasha case — 3x
- * over the ≤1KB gate) because chart_dashas carries all 5 ayanamshas and this handler applies
- * no ayanamsha filter unless the caller supplies one. An endpoint LLM following only the
- * "Gate target" line above (without noticing this paragraph) will silently bust the gate.
- * ALWAYS pass `ayanamsha_id: "lahiri_chitrapaksha"` (the platform-mcp shim's own default,
- * matching chart_facts_query's default) when the gate/current-dasha shape is what's wanted.
- * Flagged (not fixed here — a silent default would change existing multi-ayanamsha callers'
- * results): a future wave should consider defaulting `ayanamsha_id` server-side the same way
- * `system` defaults to vimshottari, per the same E-5 "declared-but-silently-unfiltered is the
- * worst contract violation" reasoning. See R5_RUN_LEDGER W1 dasha_query verifier finding.
+ * F-93: `ayanamsha_id` now defaults server-side to `DEFAULT_AYANAMSHA` ('lahiri_chitrapaksha',
+ * `../../constants`) the same way `system`/`level`/`window` already default — omitting it no
+ * longer returns one row per ayanamsha. An explicit `ayanamsha_id` is still validated against
+ * `STORED_DASHA_AYANAMSHAS` (`invalid_ayanamsha_id` on a bad value). Pass `ayanamsha_id` only
+ * when a non-canonical ayanamsha is actually wanted. Closes the gap flagged at R5 W1 (below,
+ * historical) and the wrong-ayanamsha-reaches-the-model failure mode from DIAGNOSIS/F-93.
  */
 import type { CapabilityDescriptor } from '../../types'
 import type { DrillPointer, JudgmentFlagEntry } from '../../../envelope'
@@ -30,6 +25,7 @@ import { judgmentFlag } from '../../../envelope'
 import { query } from '@/lib/db/client'
 import { grahaCodeOf } from '../../../address_resolver'
 import { REAL_AYANAMSHAS } from '@/lib/vidhi/ayanamsha_variation'
+import { DEFAULT_AYANAMSHA } from '../../constants'
 
 // The 7 dasha systems actually written to chart_dashas.system_id (verified live, both charts:
 // native 482012f1 + Abhinandan 1c826d5a). NOTE: this replaces a stale doc claim (Narayana/Shoola
@@ -218,11 +214,11 @@ export const getDashasCapability: CapabilityDescriptor = {
     'or all_levels=true for every level), and window (default now±5y when no date filter is ' +
     'given at all — pass window_start/window_end, or as_of_date/date_contains/date_from to override). ' +
     'Use as_of_date to retrieve the dasha running on a specific date (e.g. today). ' +
-    'Spans all systems, levels and ayanamshas as a large, paginated result set — ' +
+    'Spans all systems and levels as a large, paginated result set — ' +
     'never served unwindowed; a bare chart_id call returns the default-faceted slice, not the dump. ' +
-    'NOTE: unlike system/level/window, ayanamsha_id has NO server-side default — omitting it ' +
-    'returns one row PER AYANAMSHA (5 rows). For the standard "current dasha" gate shape (one ' +
-    'row, <=1KB), ALWAYS pass ayanamsha_id="lahiri_chitrapaksha" explicitly.',
+    'F-93: like system/level/window, ayanamsha_id now DOES default server-side — omitting it ' +
+    'returns exactly one row (the project canonical ayanamsha, lahiri_chitrapaksha), not one ' +
+    'row per ayanamsha. Pass ayanamsha_id explicitly only to request a non-canonical ayanamsha.',
   input_schema: {
     chart_id:      { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id:  {
@@ -230,10 +226,9 @@ export const getDashasCapability: CapabilityDescriptor = {
       description:
         'Filter by a stored ayanamsha_id (krishnamurti | lahiri_chitrapaksha | raman | ' +
         'surya_siddhanta_classical | true_chitra). Unknown values are rejected. ' +
-        'Omit to get ALL 5 material ayanamshas ' +
-        '(one row per ayanamsha for the same period — NOT a single unfiltered answer). For the ' +
-        'standard "current dasha" gate shape (one row, <=1KB) ALWAYS pass ' +
-        'ayanamsha_id="lahiri_chitrapaksha" explicitly — this param has no server-side default.',
+        'F-93: defaults server-side to lahiri_chitrapaksha (the project canonical ayanamsha) ' +
+        'when omitted — a bare call returns exactly one row, not one row per ayanamsha. Pass ' +
+        'this explicitly only to request a different, non-canonical ayanamsha.',
     },
     system: {
       type: 'string',
@@ -320,13 +315,17 @@ export const getDashasCapability: CapabilityDescriptor = {
         }
       }
 
+      // F-93: validated above (rejected if present-but-invalid) — default to the project's
+      // canonical ayanamsha when the caller omits it, rather than silently returning all 5.
+      const ayanamshaId =
+        typeof requestedAyanamsha === 'string' && requestedAyanamsha !== ''
+          ? requestedAyanamsha
+          : DEFAULT_AYANAMSHA
       const params: unknown[] = [chartId, limit, offset]
       let sql = `SELECT * FROM chart_dashas WHERE chart_id = $1`
 
-      if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
-      }
+      sql += ` AND ayanamsha_id = $${params.length + 1}`
+      params.push(ayanamshaId)
 
       // ── system facet (default vimshottari; "all" or an unrecognized value disables the filter
       // rather than silently returning zero rows — an unrecognized system name is a caller error
@@ -644,10 +643,8 @@ export const getDashasCapability: CapabilityDescriptor = {
       try {
         const lvlParams: unknown[] = [chartId]
         let lvlSql = `SELECT MAX(level_n)::int AS max_level FROM chart_dashas WHERE chart_id = $1`
-        if (args.ayanamsha_id) {
-          lvlSql += ` AND ayanamsha_id = $${lvlParams.length + 1}`
-          lvlParams.push(args.ayanamsha_id as string)
-        }
+        lvlSql += ` AND ayanamsha_id = $${lvlParams.length + 1}`
+        lvlParams.push(ayanamshaId)
         if (systemApplied) {
           lvlSql += ` AND system_id = $${lvlParams.length + 1}`
           lvlParams.push(systemApplied)
@@ -672,6 +669,7 @@ export const getDashasCapability: CapabilityDescriptor = {
             // so a requested date/window is provably reflected back and never silently dropped.
             date_filter: dateFilterApplied,
             fields: fieldsApplied,
+            ayanamsha: ayanamshaId,
           },
           rows: projectedRows,
           total: projectedRows.length,

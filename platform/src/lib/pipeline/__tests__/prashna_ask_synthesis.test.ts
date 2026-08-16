@@ -95,6 +95,12 @@ describe('synthesizeReading — happy path', () => {
     expect(req.systemPrompt).toMatch(/acharya/i)
   })
 
+  it('the system prompt declares the canonical ayanamsha (F-93 defense-in-depth prompt guard)', async () => {
+    await synthesizeReading(baseInput())
+    const req = mockRunAdapter.mock.calls[0][0] as { systemPrompt: string }
+    expect(req.systemPrompt).toMatch(/canonical ayan[aā]ṁśa is.*lahiri_chitrapaksha/i)
+  })
+
   it('includes the gathered evidence in the user message', async () => {
     await synthesizeReading(baseInput())
     const req = mockRunAdapter.mock.calls[0][0] as { messages: Array<{ content: string }> }

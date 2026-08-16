@@ -523,12 +523,13 @@ function globalAlias(
 // system_id (F-0354) and requested windows (F-0471/0485) are honored uniformly — instead
 // of a divergent, vimshottari-only, windowless PyJHora sidecar surface for some names.
 const DASHA_FACET_SCHEMA: Record<string, z.ZodTypeAny> = {
-  // ayanamsha_id override: no server-side default (chart_dashas carries all 5) — omitting it
-  // returns one row PER ayanamsha. Pass "lahiri_chitrapaksha" for the single-row gate shape.
+  // F-93: ayanamsha_id now defaults server-side to lahiri_chitrapaksha (chart_dashas carries
+  // all 5) — omitting it returns exactly one row. Pass it explicitly only for a non-canonical
+  // ayanamsha.
   ayanamsha_id: z.string().optional().describe(
-    'Ayanamsha filter. NO server-side default — omitting it returns ALL 5 ayanamshas ' +
-    '(one row per ayanamsha). Pass "lahiri_chitrapaksha" explicitly for the standard ' +
-    'single-row current-dasha gate shape.'),
+    'Ayanamsha filter. Defaults server-side to "lahiri_chitrapaksha" (the project canonical ' +
+    'ayanamsha) when omitted — a bare call returns exactly one row, not one row per ayanamsha. ' +
+    'Pass this explicitly only to request a different, non-canonical ayanamsha.'),
   as_of_date:    z.string().optional().describe('ISO date — the dasha running on this date ("what dasha as of X"). Echoed in facets_applied.date_filter; a date before the chart birth date carries the structured as_of_date_precedes_chart_birth warning.'),
   date_contains: z.string().optional().describe('ISO date — alias of as_of_date.'),
   date_from:     z.string().optional().describe('ISO date — exclude periods ending before this date. Echoed in facets_applied.date_filter.'),
