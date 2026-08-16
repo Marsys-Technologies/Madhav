@@ -132,11 +132,18 @@ export const queryInsightsCapability: CapabilityDescriptor = {
 
       const calibration_summary = (calResult.rows[0] ?? {}) as Record<string, unknown>
 
+      const evidence_grade_counts: Record<string, number> = {}
+      for (const row of insightResult.rows as Array<Record<string, unknown>>) {
+        const g = String(row.evidence_grade ?? 'unknown')
+        evidence_grade_counts[g] = (evidence_grade_counts[g] ?? 0) + 1
+      }
+
       return {
         content: {
           chart_id,
           insight_units:       insightResult.rows,
           calibration_summary,
+          evidence_grade_counts,
           filters:             { insight_type, domain, min_rank, top_k, include_neg },
           total_returned:      insightResult.rows.length,
         },

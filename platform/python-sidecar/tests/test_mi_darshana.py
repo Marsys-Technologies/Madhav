@@ -109,14 +109,16 @@ def _pratijna_row(event_class_id, grade, status="conditional", domain="career",
     }
 
 
-def _grammar_row(channel_propensity, prior_propensity, channel_id="ch1", domain="career", n=10):
+def _grammar_row(channel_propensity, prior_propensity, channel_id="ch1", domain="career", n=10,
+                  evidence_grade="empirical"):
     return {
         "channel_id": channel_id,
         "domain": domain,
         "channel_propensity": channel_propensity,
         "prior_propensity": prior_propensity,
         "n_support": n,
-        "evidence_grade": "empirical",
+        "scored_count": 0,
+        "evidence_grade": evidence_grade,
     }
 
 
@@ -146,6 +148,7 @@ def _run_verdict(pratijna_rows, triangulation_rows=None):
 # Insert-tuple column offsets (mirror the INSERT column list in the writer).
 STATEMENT, RANK_CONSEQUENCE, CONFIDENCE_BAND = 6, 7, 8
 PROVENANCE_CHAIN = 14
+EVIDENCE_GRADE = 11  # mirror the INSERT column list in mi_darshana.py (unaffected by §2c)
 
 
 def _calibrated_row(observed, brier, n=5):
@@ -472,3 +475,20 @@ def test_msr_signal_evidence_still_preferred_when_present():
     evidence = prov["ranked_evidence"]
     assert len(evidence) == 1
     assert evidence[0]["signal_id"] == "sig-1", "MSR-signal evidence must win when it exists"
+
+
+# ── F-35 §3b — assignment_only grade pass-through ────────────────────────────
+
+def test_assignment_only_grade_passed_through_not_hardcoded_empirical():
+    """FAILS TODAY: mi_darshana.py:184 hardcodes 'empirical' regardless of the
+    source row's own evidence_grade. AFTER FIX: an 'assignment_only'-graded
+    grammar row must surface as 'assignment_only' in mimamsa_insight_units, not
+    be silently promoted to 'empirical'."""
+    conn, result = _run_grammar([
+        _grammar_row(channel_propensity=0.0, prior_propensity=0.4, evidence_grade="assignment_only")
+    ])
+
+    assert result.rows_inserted == 1
+    row = conn.inserted_rows[0]
+    assert row[EVIDENCE_GRADE] == "assignment_only"
+    assert "empirical learning" not in row[STATEMENT]

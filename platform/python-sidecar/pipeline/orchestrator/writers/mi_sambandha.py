@@ -75,11 +75,13 @@ class MiSambandhaWriter(WriterBase):
             key = ("prediction_set", domain, channel_id, domain)
 
             if key not in counts:
-                counts[key] = {"fire": 0, "opp": 0}
+                counts[key] = {"fire": 0, "opp": 0, "scored": 0}
 
             counts[key]["opp"] += 1
             verdict = row.get("composite_verdict") or ""
             ch_fired = row.get("manifestation_channel") or ""
+            if verdict in ("confirmed", "partial", "denied"):
+                counts[key]["scored"] += 1
             if verdict in ("confirmed", "partial") and ch_fired == channel_id:
                 counts[key]["fire"] += 1
 
@@ -89,11 +91,16 @@ class MiSambandhaWriter(WriterBase):
         for (origin_kind, origin_ref, channel_id, domain), cnts in counts.items():
             opp = cnts["opp"]
             fire = cnts["fire"]
+            scored = cnts["scored"]
             propensity = fire / opp if opp > 0 else None
             prior = _PRIOR_PROPENSITIES.get(domain, _PRIOR_PROPENSITIES["default"]).get(channel_id, 0.5)
             delta = round(propensity - prior, 4) if propensity is not None else None
             n = opp
-            grade = "empirical" if n >= 5 else "prior_only"
+            grade = (
+                "empirical" if scored >= 5
+                else "assignment_only" if opp >= 5
+                else "prior_only"
+            )
             conf_lo = max(0.0, (propensity or prior) - 0.1)
             conf_hi = min(1.0, (propensity or prior) + 0.1)
 
@@ -105,6 +112,7 @@ class MiSambandhaWriter(WriterBase):
                 domain,
                 fire,
                 opp,
+                scored,
                 round(propensity, 4) if propensity is not None else None,
                 round(prior, 4),
                 delta,
@@ -137,6 +145,7 @@ class MiSambandhaWriter(WriterBase):
                     domain,
                     0,
                     0,
+                    0,
                     None,
                     round(prior, 4),
                     None,
@@ -165,10 +174,10 @@ class MiSambandhaWriter(WriterBase):
         SQL = """
             INSERT INTO mimamsa_manifestation_grammar (
                 chart_id, origin_kind, origin_ref, channel_id, domain,
-                fire_count, opportunity_count, channel_propensity, prior_propensity,
+                fire_count, opportunity_count, scored_count, channel_propensity, prior_propensity,
                 propensity_delta, n_support, confidence_band, evidence_grade,
                 citation_ref, grammar_formula_version
-            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::numrange,%s,%s,%s)
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s::numrange,%s,%s,%s)
         """
         with conn.cursor() as cur:
             cur.executemany(SQL, rows)
