@@ -1416,7 +1416,7 @@ function readRemediesFamily(remediesPayload: unknown): ReadingFamilyEntry {
   return { family: 'remedies', label: 'Remedy priority (bo_upaya)', status: 'served', sentences, fact_ids: [] }
 }
 
-function readTimingWindowsFamily(activatingDasha: Record<string, unknown> | undefined): ReadingFamilyEntry {
+export function readTimingWindowsFamily(activatingDasha: Record<string, unknown> | undefined): ReadingFamilyEntry {
   const activations = Array.isArray(activatingDasha?.['activations']) ? activatingDasha!['activations'] as Record<string, unknown>[] : []
   if (activations.length === 0) {
     return { family: 'timing_windows', label: 'Activating dasha timing windows', status: 'empty_for_this_chart', sentences: [String(activatingDasha?.['partial_failure'] ?? 'No activating dasha windows returned for this call\'s date range.')], fact_ids: [] }
@@ -1424,12 +1424,12 @@ function readTimingWindowsFamily(activatingDasha: Record<string, unknown> | unde
   const first = activations[0]!
   return {
     family: 'timing_windows', label: 'Activating dasha timing windows', status: 'served',
-    sentences: [`${activations.length} activation window(s) in range; nearest: ${JSON.stringify(first).slice(0, 220)}.`],
+    sentences: [`${activations.length} activation window(s) in range; nearest: ${String(first['signature_class'] ?? 'window')} from ${String(first['activation_start'] ?? '?')} to ${String(first['activation_end'] ?? '?')}${first['activation_peak_date'] ? `, peak ${String(first['activation_peak_date'])}` : ''}.`],
     fact_ids: [],
   }
 }
 
-function readContradictionsFamily(contradictions: Record<string, unknown> | undefined): ReadingFamilyEntry {
+export function readContradictionsFamily(contradictions: Record<string, unknown> | undefined): ReadingFamilyEntry {
   const items = Array.isArray(contradictions?.['items']) ? contradictions!['items'] as Record<string, unknown>[] : []
   const totalCount = Number(contradictions?.['total_count'] ?? items.length)
   if (items.length === 0) {
@@ -1449,7 +1449,7 @@ function readContradictionsFamily(contradictions: Record<string, unknown> | unde
   const adjudication = first['adjudication'] ?? first['resolution_hint'] ?? first['adjudication_note']
   return {
     family: 'contradictions_with_adjudication', label: 'Domain contradictions + adjudication', status: 'served',
-    sentences: [`${totalCount} contradiction(s) tag this domain. Leading tension: ${String(first['tension_label'] ?? first['label'] ?? first['description'] ?? JSON.stringify(first).slice(0, 160))}${adjudication ? ` — adjudication: ${String(adjudication)}` : ' — no automated adjudication hint; needs acharya-level resolution.'}`],
+    sentences: [`${totalCount} contradiction(s) tag this domain. Leading tension: ${String(first['tension_label'] ?? first['label'] ?? first['description'] ?? `unresolved tension (id: ${String(first['contradiction_id'] ?? first['id'] ?? 'unknown')})`)}${adjudication ? ` — adjudication: ${String(adjudication)}` : ' — no automated adjudication hint; needs acharya-level resolution.'}`],
     fact_ids: [],
   }
 }
