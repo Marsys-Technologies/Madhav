@@ -37,6 +37,16 @@ const ACTIVE_CHAIN = [
   { level_n: 2, level_name: 'Antardasha', lord_graha: 'Venus', lord_sign: 'Libra', start_date: '2026-01-01', end_date: '2028-01-01', start_iso: null, end_iso: null },
 ]
 
+// Level 3/4 chain fixture — mirrors live-observed dates from DIAGNOSIS.md (F-121):
+// chart 482012f1-…, as_of=2026-08-16, sandhi_flag=true at level_n=4 for 2026-08-13..2026-08-25.
+const ACTIVE_CHAIN_WITH_SUKSHMA = [
+  { level_n: 1, level_name: 'Mahadasha', lord_graha: 'Jupiter', lord_sign: 'Cancer', start_date: '2020-01-01', end_date: '2036-01-01', start_iso: null, end_iso: null },
+  { level_n: 2, level_name: 'Antardasha', lord_graha: 'Venus', lord_sign: 'Libra', start_date: '2026-01-01', end_date: '2028-01-01', start_iso: null, end_iso: null },
+  { level_n: 3, level_name: 'Pratyantardasha', lord_graha: 'Sun', lord_sign: 'Leo', start_date: '2026-07-01', end_date: '2026-09-15', start_iso: null, end_iso: null },
+  // span=100d → 3% bandWidth=3d → period_start band Aug 10-16 includes as_of 2026-08-16
+  { level_n: 4, level_name: 'Sukshma', lord_graha: 'Moon', lord_sign: 'Cancer', start_date: '2026-08-13', end_date: '2026-11-21', start_iso: null, end_iso: null },
+]
+
 function mockRegistryFetch(opts: { reachable: boolean; chainReachable?: boolean; chain?: typeof ACTIVE_CHAIN | [] }) {
   return vi.fn(async (_url: string, init?: RequestInit) => {
     if (!opts.reachable) throw new Error('registry unreachable in test')
@@ -121,6 +131,9 @@ describe('kala_now_get W1 join — dasha_sandhi (item 1-lite)', () => {
     const result = await computeKalaNow(TEST_CHART_ID, { as_of: '2026-01-05' }, TEST_PRINCIPAL)
     expect(result.dasha_sandhi?.band_convention).toEqual(expect.stringContaining('3%'))
     expect(result.dasha_sandhi?.band_convention).toEqual(expect.stringContaining('lite'))
+    // F-121: band_convention now names the level scope (levels 1-4) and states level 5 is never computed
+    expect(result.dasha_sandhi?.band_convention).toEqual(expect.stringContaining('Sūkṣma'))
+    expect(result.dasha_sandhi?.band_convention).toEqual(expect.stringContaining('Prāṇa'))
   })
 
   it('coverage marks dasha_sandhi computed when the active chain resolves', async () => {
@@ -145,5 +158,27 @@ describe('kala_now_get W1 join — dasha_sandhi (item 1-lite)', () => {
     expect(result.dasha_sandhi).toBeNull()
     const byConcept = Object.fromEntries(result.coverage.map((c) => [c.concept, c]))
     expect(byConcept['dasha_sandhi']?.state).toBe('honest_empty')
+  })
+
+  it('requests max_level: 4 for fetchVimshottariMdAdBoundaries — regression guard against silent revert to 2', async () => {
+    const mockFn = mockRegistryFetch({ reachable: true })
+    vi.stubGlobal('fetch', mockFn)
+    await computeKalaNow(TEST_CHART_ID, { as_of: '2026-08-16' }, TEST_PRINCIPAL)
+    // computeKalaNow calls query_active_dashas twice: fetchActiveVimshottariChain (max_level:2) and
+    // fetchVimshottariMdAdBoundaries (max_level:4). Assert the boundary-fetch call uses max_level:4.
+    const qadBodies = mockFn.mock.calls
+      .map(([, init]) => JSON.parse(String(init?.body ?? '{}')) as { uri: string; args?: Record<string, unknown> })
+      .filter((b) => b.uri === 'marsys://tool/L3/query_active_dashas')
+    const maxLevels = qadBodies.map((b) => b.args?.max_level)
+    expect(maxLevels).toContain(4)
+  })
+
+  it('level-4 (Sūkṣma) band present with is_now_within_band: true when as_of falls inside active Sūkṣma period (F-121 regression guard)', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true, chain: ACTIVE_CHAIN_WITH_SUKSHMA as typeof ACTIVE_CHAIN }))
+    // as_of=2026-08-16 is inside Sukshma boundary 2026-08-13..2026-08-25 (DIAGNOSIS.md live observation)
+    const result = await computeKalaNow(TEST_CHART_ID, { as_of: '2026-08-16' }, TEST_PRINCIPAL)
+    const level4Bands = (result.dasha_sandhi?.bands ?? []).filter((b) => b.level_n === 4)
+    expect(level4Bands.length).toBeGreaterThan(0)
+    expect(level4Bands.some((b) => b.is_now_within_band === true)).toBe(true)
   })
 })

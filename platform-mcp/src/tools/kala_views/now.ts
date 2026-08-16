@@ -853,7 +853,11 @@ const SANDHI_BAND_CONVENTION =
   'KALA_SIX_VIEWS_DESIGN_v1_0.md §1.2 ("configurable orb, last/first ~3% of period span"). ' +
   'Simplification: uses the SAME period\'s span on both sides of each boundary rather than the ' +
   'full classical asymmetric last-outgoing/first-incoming convention (which needs the adjacent ' +
-  'period too) — that full two-period, all-level, both-direction calendar is item 1-full (W3).'
+  'period too) — that full two-period, all-level, both-direction calendar is item 1-full (W3). ' +
+  'Scope: bands levels 1–4 of the active Vimśottarī chain (Mahādaśā, Antardaśā, Pratyantardaśā, ' +
+  'Sūkṣmadaśā). Level 5 (Prāṇa-daśā) is NEVER computed for any chart by design ' +
+  '(ga_dashas_writer.py "CRITICAL OVERRIDE 1... ZERO level_n=5") — see sukshma_boundary_uncertainty ' +
+  'convention for the same reasoning applied to the Sūkṣma-boundary uncertainty field.'
 
 interface ActiveDashaBoundaryEntry {
   level_n: number
@@ -874,7 +878,7 @@ async function fetchVimshottariMdAdBoundaries(
 ): Promise<{ entries: ActiveDashaBoundaryEntry[]; ok: boolean }> {
   const resp = await callRegistryCapability(
     'marsys://tool/L3/query_active_dashas',
-    { chart_id: chartId, date: dateISO, ayanamsha_id: ayanamshaId, systems: 'vimshottari', max_level: 2 },
+    { chart_id: chartId, date: dateISO, ayanamsha_id: ayanamshaId, systems: 'vimshottari', max_level: 4 },
     principal,
   )
   if (!resp.ok || !resp.content) return { entries: [], ok: false }
