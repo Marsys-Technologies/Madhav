@@ -350,16 +350,43 @@ def _check_f86(db_url: str) -> ControlResult:
 
 
 def _check_f102(db_url: str) -> ControlResult:
-    """F-102: No asset_throughput rows where state='lit' but last_error IS NOT NULL."""
+    """F-102 / F-141 (PAR-R-9): No asset_throughput rows where state IN ('lit','mature')
+    but last_error IS NOT NULL/non-empty — a typed 'earned completion' state sitting
+    beside a value that denies it, the §N.8 defect class.
+
+    Widened 2026-08-16 (PAR-R-9, LEDGER_PRATINIDHI.md par/pratinidhi-ledger): this
+    control previously checked state='lit' only. PRATINIDHI's live census for F-141
+    found 5 real violating rows (1 per-chart on the canonical chart 482012f1 —
+    ka_kshetra, watchdog-authored prose; 4 global chart_id-IS-NULL service singletons
+    — bg_reference/bg_transit_rules/bg_transit_engine/bg_ghatana, raw exception
+    traces ~2 weeks old) and ruled NO DB WRITE — see F-141's DIAGNOSIS.md /
+    evidence/F-141_pre_write.json. All 5 are state='lit' today so this widening does
+    not change F-102's current PASS/FAIL verdict against live data, but 'mature' is
+    a real state in this column's vocabulary and the invariant applies to it too —
+    narrowing the check to 'lit' alone would have silently missed a 'mature' instance
+    of the identical defect.
+
+    IMPORTANT — this function existing does not mean the invariant is monitored:
+    ekv_controls.py is not referenced by any file under .github/workflows/ (verified
+    this session, 2026-08-16, `grep -rl ekv_controls .github/workflows/` — zero
+    hits). F-102 requires an explicit `--control F-102 --db-url <...>` invocation;
+    it is not part of the automated per-batch CHEAP_IDS subset (by design — it is
+    not cheap, it needs a real DB) and is not otherwise scheduled anywhere in CI.
+    This is the concrete mechanism behind PAR-R-9's finding that "nothing detects
+    this today": the detector function exists, but no automated pipeline calls it.
+    Wiring it into an actual scheduled/CI invocation is a SENTINEL/conductor-level
+    decision (CI workflow files are outside S6's `platform/scripts/governance/**`
+    lease) — flagged, not done here.
+    """
     sql = """
         SELECT count(*) FROM asset_throughput
-        WHERE state = 'lit' AND last_error IS NOT NULL AND last_error != ''
+        WHERE state IN ('lit', 'mature') AND last_error IS NOT NULL AND last_error != ''
     """
     try:
         bad = _sql_scalar(db_url, sql)
         if bad == 0:
-            return ControlResult("F-102", "PASS", "0 rows with state=lit + non-empty last_error", requires_db=True)
-        return ControlResult("F-102", "FAIL", f"{bad} rows have state='lit' with non-null/non-empty last_error (§N.8 instance)", requires_db=True)
+            return ControlResult("F-102", "PASS", "0 rows with state IN ('lit','mature') + non-empty last_error", requires_db=True)
+        return ControlResult("F-102", "FAIL", f"{bad} rows have state IN ('lit','mature') with non-null/non-empty last_error (§N.8 instance — see F-141)", requires_db=True)
     except ControlBrokenError as e:
         return ControlResult("F-102", "CONTROL-BROKEN", f"Detector could not execute: {e}", requires_db=True)
     except Exception as e:
