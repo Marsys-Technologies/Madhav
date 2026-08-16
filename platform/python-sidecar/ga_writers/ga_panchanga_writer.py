@@ -1057,7 +1057,9 @@ def _emit_special_yoga_combinations(pi: Any, chart_id: str, build_id: str,
         yogas = []
 
     for yoga_dict in yogas:
-        yname = yoga_dict.get("name", yoga_dict.get("yoga_name", "unknown"))
+        yname = yoga_dict.get("yoga")
+        if not yname:
+            continue
         active = True  # these are the ones active at the instant
         citation_id = yoga_dict.get("citation_id", "panchanga_engine/special_yogas")
         subj = f"YOGA_{yname.upper().replace(' ', '_')}"
