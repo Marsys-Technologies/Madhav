@@ -166,3 +166,45 @@ def test_unknown_graha_raises():
     """An unknown graha name raises KeyError."""
     with pytest.raises(KeyError):
         classify_dignity("Neptune", "Aries", 5.0)
+
+
+# ── §3 Recurrence guard — §N.7 item 3 (no wrapper-local constant may shadow ──
+#      an L1-computed value, even when currently correct; a constant can
+#      drift from its source, a reference cannot).
+#
+#      dignity_oracle._DATA is a deliberate static reproduction of
+#      bg_dignity_reference._DIGNITY_REFERENCE (the module docstring explains
+#      why it does not import the writer module directly — to avoid pulling
+#      writer-layer deps into serving-layer code). That tradeoff is only safe
+#      if the two are asserted equal in CI; this test is the recurrence guard
+#      that makes the next silent divergence fail closed instead of drifting.
+
+def test_data_matches_bg_dignity_reference_source_of_truth():
+    """dignity_oracle._DATA must stay byte-for-byte consistent with the
+    authoritative L0 reference (bg_dignity_reference._DIGNITY_REFERENCE).
+    A future edit to one without the other must fail this test, not ship
+    a silent divergence between the two dignity classifiers.
+    """
+    from brahmagyan.dignity_oracle import _DATA
+    from pipeline.orchestrator.writers.bg_dignity_reference import (
+        _DIGNITY_REFERENCE,
+    )
+
+    ref_by_graha = {row["graha"]: row for row in _DIGNITY_REFERENCE}
+
+    # Same graha set (excluding the two nodes, which bg_dignity_reference
+    # also carries — dignity_oracle intentionally keeps them for the
+    # nodes early-exit branch).
+    assert set(_DATA.keys()) == set(ref_by_graha.keys()), (
+        "dignity_oracle._DATA graha set has diverged from "
+        "bg_dignity_reference._DIGNITY_REFERENCE"
+    )
+
+    for graha, ref_row in ref_by_graha.items():
+        local = _DATA[graha]
+        assert local["exaltation"] == ref_row["exaltation_sign"], graha
+        assert local["debilitation"] == ref_row["debilitation_sign"], graha
+        assert local["mt_sign"] == ref_row["moolatrikona_sign"], graha
+        assert local["mt_from"] == ref_row["moolatrikona_from"], graha
+        assert local["mt_to"] == ref_row["moolatrikona_to"], graha
+        assert set(local["own"]) == set(ref_row["own_signs"]), graha
