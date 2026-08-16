@@ -32,7 +32,8 @@ describe('primitives_registry — isAllowedSurgicalTool', () => {
     //   query_parihara_graph — the L0 read path the contender-lattice engine consumes)
     // + 4 EKAVĀKYATĀ A-02 classical-text tools (read_chapter, list_classical_texts,
     //   find_verses_about, search_classical_texts)
-    expect(mcpToolNames).toHaveLength(60)
+    // + 1 ṢAḌ-DARŚANA W3 item-37 paddhati convention profile (query_kala_paddhati_profile — F-11)
+    expect(mcpToolNames).toHaveLength(61)
     for (const name of mcpToolNames) {
       expect(isAllowedSurgicalTool(name)).toBe(true)
     }

@@ -38,7 +38,7 @@ export interface TrimReportEntry {
   original_count: number
   kept_count: number
   reason: string
-  recover_via: { instrument: string; hint: string }
+  recover_via: { instrument: string | null; hint: string }
 }
 
 /**
@@ -289,7 +289,7 @@ export function applyResponseBudget<T>(
       original_count: before,
       kept_count: afterSections,
       reason: `still ${afterSections}B after flooring every section to 0 (ceiling ${maxBytes}B) — base content exceeds budget`,
-      recover_via: { instrument: 'response_format:legacy', hint: 'full untrimmed response' },
+      recover_via: { instrument: null, hint: 'no smaller recovery instrument available at this budget — retry with a larger budget_kb if the calling tool accepts one, or omit budget_kb for the default ceiling' },
     })
   }
 
@@ -306,7 +306,7 @@ export function applyResponseBudget<T>(
 
 // ── finalizeMcpBudget — the whole-response, self-verifying entry point ────────
 
-export type DrillPointerLike = { instrument: string; hint: string; [k: string]: unknown }
+export type DrillPointerLike = { instrument: string | null; hint: string; [k: string]: unknown }
 
 export interface FinalizeMcpBudgetOptions<T> {
   maxKb: number
@@ -406,7 +406,7 @@ export function finalizeMcpBudget<T extends Record<string, unknown>>(
         original_count: result.trim_report?.length ?? 0,
         kept_count: 1,
         reason: 'full trim_report omitted to fit budget',
-        recover_via: { instrument: 'response_format:legacy', hint: 'full untrimmed response' },
+        recover_via: { instrument: null, hint: 'no smaller recovery instrument available at this budget — retry with a larger budget_kb if the calling tool accepts one, or omit budget_kb for the default ceiling' },
       }]
     }
     if (estimateBytes(content) > maxBytes) {
@@ -524,7 +524,7 @@ export function autoDetectTrimmableSections<T extends Record<string, unknown>>(
       setArray: setter,
       recover: {
         instrument: toolName,
-        hint: `call ${toolName} again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of "${path}"`,
+        hint: `call ${toolName} again with a narrower scope of its own declared parameters, to reach the rest of "${path}"`,
       },
     })
   }

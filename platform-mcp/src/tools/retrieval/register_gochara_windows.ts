@@ -885,6 +885,7 @@ export interface GocharaCoverage {
     substeps_committed: number
     source: string
     note: string
+    materialized_through: string | null
   }
   /** C3 (SAMPŪRTI-γ): first-class "thin ≠ rich silence" facet.
    *  Derived from event_classes_covered — thin/moderate/rich signals whether the covered set
@@ -993,7 +994,7 @@ export async function computeGocharaCoverage(
          FROM build_substep_progress
         WHERE chart_id = $1 AND asset_id = $2`
 
-  const [classesResp, universeResp, substepResp] = await Promise.all([
+  const [classesResp, universeResp, substepResp, horizonResp] = await Promise.all([
     platformQuery(
       `SELECT DISTINCT rm.event_class AS event_class, eo.domain AS domain
          FROM gochara_resonance_map rm
@@ -1013,6 +1014,14 @@ export async function computeGocharaCoverage(
       [chartId, substepAssetId],
       principal
     ).then((r) => ({ rows: r.rows, ok: true as const })).catch((err) => ({ rows: [] as Record<string, unknown>[], ok: false as const, error: String(err) })),
+    platformQuery(
+      `SELECT MAX(window_end)::text AS materialized_through
+         FROM kala_gochara_windows
+        WHERE chart_id = $1` + AUTHORITATIVE_GENERATION_FILTER,
+      [chartId],
+      principal
+    ).then((r) => ({ rows: r.rows, ok: true as const }))
+     .catch((err) => ({ rows: [] as Record<string, unknown>[], ok: false as const, error: String(err) })),
   ])
 
   const targetedClasses = [...new Set(classesResp.rows.map((r) => r['event_class']).filter((v): v is string => typeof v === 'string'))].sort()
@@ -1080,6 +1089,7 @@ export async function computeGocharaCoverage(
           'No total-planned-substep denominator is reported here: that figure is not independently ' +
           'queryable post-build without re-deriving the writer\'s own planning logic, and this field ' +
           'will not fabricate one.',
+        materialized_through: horizonResp.ok ? (horizonResp.rows[0]?.['materialized_through'] as string | null ?? null) : null,
       },
     },
   }
@@ -1698,6 +1708,9 @@ export async function computeGocharaForecast(
   // C2: build era⊃month⊃day hierarchy from the enriched windows.
   const nested_hierarchy = buildNestedHierarchy(windowsWithDisclosure as unknown as ServedWindow[])
 
+  const materializedThrough = coverage.sweep_completeness.materialized_through
+  const partialTruncation = materializedThrough !== null && materializedThrough < dateRange.end
+
   const content: Record<string, unknown> = {
     windows: windowsWithDisclosure,
     nested_hierarchy,
@@ -1722,6 +1735,19 @@ export async function computeGocharaForecast(
               'a negative signal; check kala_gochara_windows build coverage before reading this as "nothing happens".'
             : `kala_gochara_windows unreachable this call: ${error ?? 'unknown error'}`)
         : null,
+      coverage_disclosure: {
+        requested_range: dateRange,
+        materialized_through: materializedThrough,
+        partial_truncation: partialTruncation,
+        truncation_note: partialTruncation
+          ? `Requested range extends to ${dateRange.end}; this chart's kala_gochara_windows ` +
+            `materialization (all event classes, all generations) currently reaches only through ` +
+            `${materializedThrough}. Windows beyond that date have not been swept -- this is a ` +
+            `coverage gap, not a signal that nothing happens after ${materializedThrough}. See ` +
+            `coverage.sweep_completeness / coverage.event_classes_targeted_not_swept for what has ` +
+            `and has not been swept for this chart.`
+          : null,
+      },
     },
   }
 
@@ -2028,6 +2054,9 @@ export async function computeGocharaElectionAvoidance(
   )
   const resolution_breakdown = computeResolutionBreakdown(electionAvoidanceDisclosures)
 
+  const materializedThrough = coverage.sweep_completeness.materialized_through
+  const partialTruncation = materializedThrough !== null && materializedThrough < dateRange.end
+
   const content: Record<string, unknown> = {
     windows: avoidWindows,
     facets,
@@ -2048,6 +2077,19 @@ export async function computeGocharaElectionAvoidance(
               'for this range)'
             : `kala_gochara_windows unreachable this call: ${error ?? 'unknown error'}`)
         : null,
+      coverage_disclosure: {
+        requested_range: dateRange,
+        materialized_through: materializedThrough,
+        partial_truncation: partialTruncation,
+        truncation_note: partialTruncation
+          ? `Requested range extends to ${dateRange.end}; this chart's kala_gochara_windows ` +
+            `materialization (all event classes, all generations) currently reaches only through ` +
+            `${materializedThrough}. Windows beyond that date have not been swept -- this is a ` +
+            `coverage gap, not a signal that nothing happens after ${materializedThrough}. See ` +
+            `coverage.sweep_completeness / coverage.event_classes_targeted_not_swept for what has ` +
+            `and has not been swept for this chart.`
+          : null,
+      },
     },
   }
 
