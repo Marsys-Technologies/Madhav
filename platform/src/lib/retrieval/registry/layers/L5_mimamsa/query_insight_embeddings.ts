@@ -115,7 +115,7 @@ export const queryInsightEmbeddingsCapability: CapabilityDescriptor = {
 
         const sql = `
           SELECT n.insight_id, (n.embedding <=> s.embedding) AS cosine_distance,
-                 u.insight_type, u.statement, u.rank_consequence
+                 u.insight_type, u.statement, u.rank_consequence, u.evidence_grade
           FROM mimamsa_insight_embeddings n
           JOIN mimamsa_insight_embeddings s
             ON s.chart_id = n.chart_id AND s.insight_id = $2
@@ -125,14 +125,16 @@ export const queryInsightEmbeddingsCapability: CapabilityDescriptor = {
           ORDER BY cosine_distance ASC
           LIMIT $3`
         const result = await query(sql, [chart_id, seedId, topK])
+        const rows = (result.rows as Array<Record<string, unknown>>).map(row =>
+          row['evidence_grade'] === 'empirical' ? row : { ...row, rank_consequence: null }
+        )
         return {
           content: {
             chart_id,
             mode,
             seed_insight_id: seedId,
-            rows: result.rows,
-            count: result.rows.length,
-            ...(result.rows.length === 0
+            rows, count: rows.length,
+            ...(rows.length === 0
               ? { empty_reason: `No neighbor rows found for seed_insight_id=${seedId} (seed may not exist, or the table is not yet populated for this chart's build).` }
               : {}),
             provenance: { tables: ['mimamsa_insight_embeddings', 'mimamsa_insight_units'], source: 'L5 Mīmāṃsā pgvector cosine-distance nearest-neighbor search between two already-computed embeddings; served chart-scoped.' },

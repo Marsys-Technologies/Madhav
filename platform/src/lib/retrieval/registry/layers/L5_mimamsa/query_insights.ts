@@ -15,6 +15,23 @@
 import type { CapabilityDescriptor } from '../../index'
 import { query } from '@/lib/db/client'
 
+const EMPIRICALLY_CALIBRATED = 'empirical'
+
+function suppressIfNotCalibrated(row: Record<string, unknown>): Record<string, unknown> {
+  if (row['evidence_grade'] === EMPIRICALLY_CALIBRATED) return row
+  // P3-b tier-suppression (F-69): evidence_grade is anything other than 'empirical' (structural,
+  // prior_only, missing) → no empirically-calibrated score exists for this insight. Mirrors
+  // ka_kshetra/stage8_spec.py:136. The stored mimamsa_insight_units row is never mutated.
+  const pc = row['provenance_chain'] as Record<string, unknown> | null
+  return {
+    ...row,
+    rank_consequence: null,
+    confidence_band: null,
+    provenance_chain: pc == null ? pc : { ...pc, grade: null },
+    tier_suppression_note: `rank_consequence/confidence_band/provenance_chain.grade suppressed at serve time: evidence_grade=${JSON.stringify(row['evidence_grade'])} — no empirically-calibrated score exists for this insight yet (P3-b tier-suppression; see services/ka_kshetra/stage8_spec.py for the precedent this mirrors). The stored value is unaffected.`,
+  }
+}
+
 export const queryInsightsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L5/query_insights',
   type:  'tool',
@@ -141,7 +158,7 @@ export const queryInsightsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
-          insight_units:       insightResult.rows,
+          insight_units:       insightResult.rows.map(suppressIfNotCalibrated),
           calibration_summary,
           evidence_grade_counts,
           filters:             { insight_type, domain, min_rank, top_k, include_neg },
