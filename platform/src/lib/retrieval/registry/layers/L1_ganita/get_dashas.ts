@@ -106,6 +106,96 @@ function projectRow(row: Record<string, unknown>, fields: readonly string[] | nu
   return out
 }
 
+// F-120: level names for narration chain
+const LEVEL_NAMES: Record<number, string> = {
+  1: 'Mahadasha',
+  2: 'Antardasha',
+  3: 'Pratyantardasha',
+  4: 'Sukshmadasha',
+  5: 'Prana',
+  6: 'Anu',
+}
+
+/**
+ * Build the dasha-period narration string from a pre-populated byLevel map.
+ * Exported for unit testing (no DB access required).
+ * F-120: extends to finest running level, labels only that level "current",
+ * and checks sandhi_flag at every level in the chain.
+ */
+export function buildDashaNarration(
+  byLevel: Record<number, Record<string, unknown>>,
+  birthDate: string | null
+): string {
+  const ageAtDate = (isoDate: string | null): string => {
+    if (!birthDate || !isoDate) return 'age unknown'
+    const b = new Date(birthDate)
+    const d = new Date(isoDate)
+    let years = d.getFullYear() - b.getFullYear()
+    const hasHadBirthdayThisYear =
+      d.getMonth() > b.getMonth() ||
+      (d.getMonth() === b.getMonth() && d.getDate() >= b.getDate())
+    if (!hasHadBirthdayThisYear) years -= 1
+    return `age ~${years}`
+  }
+
+  const levelNums = Object.keys(byLevel).map(Number).sort((a, b) => a - b)
+  if (levelNums.length === 0) return ''
+
+  const finestLevel = Math.max(...levelNums)
+  const finestRow = byLevel[finestLevel]
+  const finestName = LEVEL_NAMES[finestLevel] ?? `Level${finestLevel}`
+  const finestEnd = finestRow['end_date'] as string
+
+  // Opening sentence names the currently running period — placed FIRST so that
+  // "current" never appears after a coarser-level name in the string (test constraint).
+  const currentSentence =
+    `${finestRow['lord_graha']} ${finestName} is currently running (ends ${finestEnd}, ${ageAtDate(finestEnd)}).`
+
+  // Chain sentence: levels 1 through finestLevel in ascending order, no inline "current" label.
+  const chainParts: string[] = []
+  for (const lvl of levelNums) {
+    const row = byLevel[lvl]
+    const name = LEVEL_NAMES[lvl] ?? `Level${lvl}`
+    const endDate = row['end_date'] as string
+    chainParts.push(`${row['lord_graha']} ${name} (ends ${endDate}, ${ageAtDate(endDate)})`)
+  }
+  const chainSentence = `You are in ${chainParts.join(' -> ')}.`
+
+  // Natal sentences for sub-levels (AD and finer)
+  const natalSentences: string[] = []
+  for (const lvl of levelNums) {
+    if (lvl === 1) continue
+    const row = byLevel[lvl]
+    if (row['lord_natal_dignity_d1'] && row['lord_natal_house_d1']) {
+      const name = LEVEL_NAMES[lvl] ?? `Level${lvl}`
+      natalSentences.push(
+        `${row['lord_graha']}, your ${name} lord, is ${row['lord_natal_dignity_d1']} ` +
+        `in your ${row['lord_natal_house_d1']} house (${row['lord_natal_nakshatra'] ?? 'nakshatra n/a'}).`
+      )
+    }
+  }
+
+  // Sandhi sentences for every level whose flag is set (F-120: check all levels, not only MD)
+  const sandhiSentences: string[] = []
+  for (const lvl of levelNums) {
+    const row = byLevel[lvl]
+    if (row['sandhi_flag']) {
+      const name = LEVEL_NAMES[lvl] ?? `Level${lvl}`
+      const nextRow = byLevel[lvl + 1]
+      const blendClause = nextRow
+        ? ` — worth weighing against ${nextRow['lord_graha']}'s own placement above rather than reading as blanket alarm`
+        : ''
+      sandhiSentences.push(
+        `Note: the ${name} is in its sandhi (junction) window — classically a transitional caution period where both lords' effects blend${blendClause}.`
+      )
+    }
+  }
+
+  return [currentSentence, chainSentence, ...natalSentences, ...sandhiSentences]
+    .filter(Boolean)
+    .join(' ')
+}
+
 export const getDashasCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L1/get_dashas',
   type: 'tool',
@@ -457,71 +547,30 @@ export const getDashasCapability: CapabilityDescriptor = {
           const isCanonicalRow = (r: Record<string, unknown>) =>
             !String(r['citation_ref'] ?? '').includes('kp_sub')
 
+          // INVARIANT(F-120): no upper bound on lvl — collect all levels the caller supplies.
+          // If you add `lvl > N` here, the narration_F120 test suite will fail.
           const byLevel: Record<number, Record<string, unknown>> = {}
           for (const rawRow of enrichedRows) {
             const row = rawRow as Record<string, unknown>
             const lvl = row['level_n'] as number
-            if (lvl < 1 || lvl > 3) continue
+            if (lvl < 1) continue
             // Prefer the canonical (non-kp_sub) row per level; first-seen otherwise.
             if (byLevel[lvl] === undefined || isCanonicalRow(row)) {
               byLevel[lvl] = row
             }
           }
 
-          const ageAtDate = (isoDate: string | null): string => {
-            if (!birthDate || !isoDate) return 'age unknown'
-            const b = new Date(birthDate)
-            const d = new Date(isoDate)
-            let years = d.getFullYear() - b.getFullYear()
-            const hasHadBirthdayThisYear =
-              d.getMonth() > b.getMonth() ||
-              (d.getMonth() === b.getMonth() && d.getDate() >= b.getDate())
-            if (!hasHadBirthdayThisYear) years -= 1
-            return `age ~${years}`
-          }
+          if (byLevel[1] && byLevel[2] && byLevel[3]) {
+            narration = buildDashaNarration(byLevel, birthDate)
 
-          const md = byLevel[1]
-          const ad = byLevel[2]
-          const pd = byLevel[3]
-
-          if (md && ad && pd) {
-            const mdEnd = md['end_date'] as string
-            const adEnd = ad['end_date'] as string
-            const pdEnd = pd['end_date'] as string
-
-            const leadSentence =
-              `You are in ${md['lord_graha']} Mahadasha (ends ${mdEnd}, ${ageAtDate(mdEnd)}) -> ` +
-              `${ad['lord_graha']} Antardasha (ends ${adEnd}, ${ageAtDate(adEnd)}) -> ` +
-              `${pd['lord_graha']} Pratyantardasha (current, ends ${pdEnd}, ${ageAtDate(pdEnd)}).`
-
-            const natalSentences: string[] = []
-            if (ad['lord_natal_dignity_d1'] && ad['lord_natal_house_d1']) {
-              natalSentences.push(
-                `${ad['lord_graha']}, your Antardasha lord, is ${ad['lord_natal_dignity_d1']} ` +
-                `in your ${ad['lord_natal_house_d1']} house (${ad['lord_natal_nakshatra'] ?? 'nakshatra n/a'}).`
-              )
-            }
-            if (pd['lord_natal_dignity_d1'] && pd['lord_natal_house_d1']) {
-              natalSentences.push(
-                `${pd['lord_graha']}, your Pratyantardasha lord, is ${pd['lord_natal_dignity_d1']} ` +
-                `in your ${pd['lord_natal_house_d1']} house (${pd['lord_natal_nakshatra'] ?? 'nakshatra n/a'}).`
-              )
-            }
-
-            const sandhiSentence = md['sandhi_flag']
-              ? `Note: the Mahadasha is in its sandhi (junction) window — classically a transitional ` +
-                `caution period where both lords' effects blend — worth weighing against ${ad['lord_graha']}'s ` +
-                `own placement above rather than reading as blanket alarm.`
-              : null
-
-            narration = [leadSentence, ...natalSentences, sandhiSentence]
-              .filter(Boolean)
-              .join(' ')
-
+            const finest = Math.max(...Object.keys(byLevel).map(Number))
+            const finestRow = byLevel[finest]
+            const finestEnd = finestRow['end_date'] as string
+            const finestName = LEVEL_NAMES[finest] ?? `Level${finest}`
             drill_pointers.push({
               instrument: 'ganita_dashas_get',
-              hint: `The period after the current Pratyantardasha (ends ${pdEnd}) is not returned by ` +
-                `an as_of_date call — re-call with as_of_date just after ${pdEnd} (or window_start=${pdEnd}) ` +
+              hint: `The period after the current ${finestName} (ends ${finestEnd}) is not returned by ` +
+                `an as_of_date call — re-call with as_of_date just after ${finestEnd} (or window_start=${finestEnd}) ` +
                 `to see the next lord and its natal condition.`,
               pointer_type: 'dasha_of_promise',
             })
