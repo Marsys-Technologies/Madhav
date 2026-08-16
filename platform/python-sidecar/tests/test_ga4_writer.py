@@ -172,9 +172,12 @@ def _make_forensic_pi() -> Any:
     wm.choghadiya_slot = "Udveg"
     pi.window_membership = wm
 
-    # special_yogas_instant
+    # special_yogas_instant — fixture matches _yoga_dict() real producer shape
+    from datetime import datetime, timezone
+    _t = datetime(2026, 6, 10, 0, 0, 0, tzinfo=timezone.utc)
     pi.special_yogas_instant = [
-        {"name": "Sarvartha Siddhi Yoga", "yoga_name": "Sarvartha Siddhi Yoga"}
+        {"yoga": "Sarvartha Siddhi Yoga", "start_utc": _t, "end_utc": _t,
+         "strength": "strong", "stars": 5}
     ]
 
     # inauspicious_full, auspicious_full — empty for basic tests
@@ -744,3 +747,17 @@ class TestChandraBalaSigns:
         assert extracted == expected, (
             f"Sign name mismatch.\nExtracted: {sorted(extracted)}\nExpected: {sorted(expected)}"
         )
+
+
+# ── F-63 exit test: special-yoga combination_name key fix ─────────────────────
+
+def test_special_yoga_combination_name_resolves_real_name():
+    """F-63: _emit_special_yoga_combinations must emit the real yoga name, not 'unknown'."""
+    w = _writer()
+    pi = _make_forensic_pi()
+    rows = w._emit_special_yoga_combinations(
+        pi, CANONICAL_CHART_ID, BUILD_ID, "2026-06-10T00:00:00+00:00", "lahiri"
+    )
+    combo_name_rows = [r for r in rows if r["fact_key"] == "combination_name"]
+    assert len(combo_name_rows) == 1
+    assert combo_name_rows[0]["fact_value_text"] == "Sarvartha Siddhi Yoga"
