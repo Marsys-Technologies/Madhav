@@ -381,11 +381,13 @@ function citeEvidence(pc: ProvenanceChain | null): string | null {
 function buildRankedThemes(
   verdicts: Record<string, unknown>[],
   audience: 'native' | 'third_party',
-): { strengths: string[]; weaknesses: string[]; open_questions: string[]; verdict_quality_flags: string[] } {
+): { strengths: string[]; weaknesses: string[]; open_questions: string[]; verdict_quality_flags: string[]; weaknesses_empty_reason: string | null } {
   const strengths: string[] = []
   const weaknesses: string[] = []
-  const openQuestions: string[] = []
+  const openQuestionsRaw: Array<{sentence: string; grade: number | null}> = []
   const verdictQualityFlags: string[] = []
+  let conditionalCount = 0
+  let minConditionalGrade: number | null = null
 
   for (const row of verdicts) {
     const pc = getProvenanceChain(row)
@@ -419,7 +421,7 @@ function buildRankedThemes(
     if (status === 'no_evidence') {
       let sentence = `${name}: no evidence available for this event class — cannot assess.`
       if (citation) sentence += ` (${citation})`
-      openQuestions.push(sentence)
+      openQuestionsRaw.push({ sentence, grade: null })
       continue
     }
 
@@ -463,11 +465,35 @@ function buildRankedThemes(
     } else if (status === 'denied' && !zeroSupport) {
       weaknesses.push(sentence)
     } else {
-      openQuestions.push(sentence)
+      if (status === 'conditional') {
+        conditionalCount++
+        if (grade != null && (minConditionalGrade == null || grade < minConditionalGrade)) {
+          minConditionalGrade = grade
+        }
+      }
+      openQuestionsRaw.push({ sentence, grade: grade ?? null })
     }
   }
 
-  return { strengths, weaknesses, open_questions: openQuestions, verdict_quality_flags: verdictQualityFlags }
+  openQuestionsRaw.sort((a, b) => {
+    if (a.grade == null && b.grade == null) return 0
+    if (a.grade == null) return 1
+    if (b.grade == null) return -1
+    return a.grade - b.grade
+  })
+  const openQuestions = openQuestionsRaw.map(x => x.sentence)
+
+  let weaknesses_empty_reason: string | null = null
+  if (weaknesses.length === 0) {
+    if (conditionalCount > 0) {
+      const minStr = minConditionalGrade != null ? minConditionalGrade.toFixed(1) : 'ungraded'
+      weaknesses_empty_reason = `no event class for this chart scored below the denied ceiling (grade < 2.0/10); ${conditionalCount} class(es) sit in the conditional band (lowest: ${minStr}/10).`
+    } else {
+      weaknesses_empty_reason = `no event class for this chart scored below the denied ceiling (grade < 2.0/10).`
+    }
+  }
+
+  return { strengths, weaknesses, open_questions: openQuestions, verdict_quality_flags: verdictQualityFlags, weaknesses_empty_reason }
 }
 
 // MC-010 (P0-safety, ŚODHANA T1): verdict_summary[].statement is the RAW L5
@@ -537,6 +563,9 @@ function trimInsightRow(row: Record<string, unknown>): Record<string, unknown> {
     },
   }
 }
+
+// F-135: exported for unit testing only — not part of the public API.
+export { buildRankedThemes as _buildRankedThemesForTest }
 
 export function registerP1SynthesisTools(server: McpServer, principal: Principal): void {
 
