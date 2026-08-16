@@ -35,8 +35,14 @@ F-109 Wealth-domain dark-corpus BRIGHT >=80% (evidence file)
 F-137 graha_portrait / judgment_query use v3 envelope (MCP)
 F-138 kala_ahead_get period_echo cross-reference (MCP)
 
-CHEAP subset (fast, per-batch CI): F-75 F-76 F-83 F-84 F-85 F-87 F-96
+CHEAP subset (fast, per-batch CI): F-75 F-76 F-83 F-84 F-85 F-87 F-96 F-102
   + 3-tool live-probe (F-91 abbreviated: 3 calls, no DB needed).
+  F-102 added 2026-08-16 (F-141/PAR-R-9 follow-up): it is a single unindexed-scan
+  count(*) on asset_throughput, the same shape/cost class as F-83/F-84/F-85, and
+  was previously omitted from the per-batch cheap subset with no stated reason --
+  INTEGRATOR's own --cheap invocation was silently skipping it every batch,
+  independent of (and in addition to) the separate finding that no CI workflow
+  invokes ekv_controls.py at all (see _check_f102's own docstring).
 
 Exit codes
 ----------
@@ -642,7 +648,7 @@ ALL_CONTROLS: List[Tuple[str, bool, bool, bool, Callable]] = [
     ("F-99",  False, False, False, _check_f99),
     ("F-100", False, False, False, _check_f100),
     ("F-101", False, False, False, _check_f101),
-    ("F-102", False, True,  False, _check_f102),
+    ("F-102", True,  True,  False, _check_f102),
     ("F-103", False, False, False, _check_f103),
     ("F-105", False, False, False, _check_f105),
     ("F-106", False, False, False, _check_f106),
@@ -652,7 +658,7 @@ ALL_CONTROLS: List[Tuple[str, bool, bool, bool, Callable]] = [
 ]
 
 # The cheap subset: F-75/76/83/84/85/87 (SQL) + F-96 (lint self-test) + F-91 (static abbreviated)
-CHEAP_IDS = {"F-75", "F-76", "F-83", "F-84", "F-85", "F-87", "F-96", "F-91"}
+CHEAP_IDS = {"F-75", "F-76", "F-83", "F-84", "F-85", "F-87", "F-96", "F-91", "F-102"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
