@@ -921,7 +921,9 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       // level; shape="pivoted" pages by SUBJECT (one wide row per fact_subject), so the
       // raw-row fetch below needs enough headroom to cover `offset + limit` distinct
       // subjects before grouping — see rowCapParamIdx below.
-      const offset = Math.max(0, Math.min(Number(args['offset'] ?? 0), 100_000))
+      const offsetRequested = Number(args['offset'] ?? 0)
+      const offset = Math.max(0, Math.min(offsetRequested, 100_000))
+      const offsetClamped = offset !== offsetRequested
 
       // ── `about` facet resolution — delegates to the canonical address resolver
       // (@/lib/retrieval/address_resolver.ts) for anything requiring classical derivation
@@ -1138,6 +1140,8 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
           rows: servedRows,
           returned_count: servedRows.length,
           offset,
+          offset_requested: offsetRequested,
+          offset_clamped: offsetClamped,
           limit,
           // WP-1.3(f)/LCA-3-EXT disclosed pagination — see the count-query comment above.
           total,
@@ -1214,6 +1218,8 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
           facts: pivoted,
           returned_count: pivoted.length,
           offset,
+          offset_requested: offsetRequested,
+          offset_clamped: offsetClamped,
           limit,
           // WP-1.3(f)/LCA-3-EXT disclosed pagination — `total` is the true DISTINCT-subject
           // count over the whole matching set (e.g. 5,566 unfiltered), NOT this page's slice.
