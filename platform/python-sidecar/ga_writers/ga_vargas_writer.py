@@ -1738,7 +1738,16 @@ def _build_saptavargaja_rows(
         sign_idx = bdata["sign_idx"]
         dtab = DIGNITY_TABLE.get(body, {})
 
-        if varga_n == 1 and dtab.get("mt") is not None and sign_idx == dtab["mt"]:
+        # B-01 dignity oracle: Moolatrikona is degree-gated (only evaluated for
+        # varga_n==1, where degree_in_sign is the real natal degree — vargas
+        # >1 have no meaningful "degree within amsa" for a re-derived MT check,
+        # matching the pre-existing varga_n==1 guard above).
+        is_mt = (
+            varga_n == 1
+            and classify_dignity(body, SIGN_NAMES[sign_idx], bdata.get("degree_in_sign", 0.0))
+            == "moolatrikona"
+        )
+        if is_mt:
             saptavargaja_score = 45.0
             relation_label = "Moolatrikona"
         elif sign_idx in dtab.get("own", []):
