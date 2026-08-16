@@ -50,6 +50,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from dataclasses import dataclass, field as dc_field
@@ -59,22 +60,34 @@ from typing import Callable, Dict, List, Optional, Tuple
 SCRIPT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parent.parent.parent
 
+# Cross-layer import: brahmagyan.verification_vocab is THE settled source of truth
+# for verification_pass_status (CLAUDE.md §N.4). A hardcoded copy here was exactly
+# the eighth-disagreeing-definition anti-pattern the module's own docstring warns
+# about (morning-session fix, EKAVAKYATA post-close triage, F-85).
+sys.path.insert(0, str(REPO_ROOT / "platform" / "python-sidecar"))
+
+
+class ControlBrokenError(Exception):
+    """Raised when a detector could not execute at all (e.g. a referenced relation
+    does not exist) — distinct from a detector that ran and found a real defect.
+    Per CLAUDE.md §N.8: a signal without a working detector is null, not red."""
+
+
+_UNDEFINED_RELATION_RE = re.compile(r'relation\s+"[^"]+"\s+does not exist', re.IGNORECASE)
+
 NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 COMPARISON_CHART_ID = "1c826d5a-41cb-4450-b4dc-59d440e5f75a"
 
 # ── VALID chart_facts.verification_pass_status vocabulary (F-85) ────────────
-VALID_PASS_STATUSES = {
-    "classical_match",
-    "computed_verified",
-    "two_pass_verified",
-    "single",
-    "unverified_default",
-    "not_applicable",
-    "external_tool_verified",
-    "heuristic",
-    "partial_verified",
-    "structural_inference",
-}
+# NOT a local copy. brahmagyan.verification_vocab.ALL_STATUSES is THE settled
+# vocabulary (CLAUDE.md §N.4) — importing it means this control is self-maintaining:
+# a new status added there is legal here automatically, no drift possible.
+try:
+    from brahmagyan.verification_vocab import ALL_STATUSES as VALID_PASS_STATUSES
+    _VOCAB_IMPORT_ERROR = None
+except Exception as _e:  # pragma: no cover - reported as CONTROL-BROKEN, not a silent skip
+    VALID_PASS_STATUSES = frozenset()
+    _VOCAB_IMPORT_ERROR = _e
 
 # ── VALID mi_darshana.leakage_status honest tier (F-105 contrast) ───────────
 HONEST_LEAKAGE_TIER = "not_assessed"
@@ -109,12 +122,17 @@ def _get_db_conn(db_url: str):
 
 
 def _sql_query(db_url: str, sql: str, params=None) -> list:
-    """Run SQL and return list of rows, or raise."""
+    """Run SQL and return list of rows, or raise (ControlBrokenError for a missing
+    relation — the detector itself is broken, not the thing it was checking)."""
     conn = _get_db_conn(db_url)
     try:
         with conn.cursor() as cur:
             cur.execute(sql, params)
             return cur.fetchall()
+    except Exception as e:
+        if _UNDEFINED_RELATION_RE.search(str(e)):
+            raise ControlBrokenError(str(e)) from e
+        raise
     finally:
         conn.close()
 
@@ -147,6 +165,8 @@ def _check_f75(db_url: str) -> ControlResult:
         if gap_count == 0:
             return ControlResult("F-75", "PASS", f"0 segment gaps (contiguous)", cheap=True, requires_db=True)
         return ControlResult("F-75", "FAIL", f"{gap_count} decade-seam gaps found in kala_field", cheap=True, requires_db=True)
+    except ControlBrokenError as e:
+        return ControlResult("F-75", "CONTROL-BROKEN", f"Detector could not execute: {e}", cheap=True, requires_db=True)
     except Exception as e:
         return ControlResult("F-75", "FAIL", f"SQL error: {e}", cheap=True, requires_db=True)
 
@@ -164,6 +184,8 @@ def _check_f76(db_url: str) -> ControlResult:
         if n == 250 and n_classes == 25 and n_buckets == 10:
             return ControlResult("F-76", "PASS", f"250 rows, 25 classes, 10 buckets", cheap=True, requires_db=True)
         return ControlResult("F-76", "FAIL", f"Expected 250/25/10, got {n}/{n_classes}/{n_buckets}", cheap=True, requires_db=True)
+    except ControlBrokenError as e:
+        return ControlResult("F-76", "CONTROL-BROKEN", f"Detector could not execute: {e}", cheap=True, requires_db=True)
     except Exception as e:
         return ControlResult("F-76", "FAIL", f"SQL error: {e}", cheap=True, requires_db=True)
 
@@ -176,7 +198,7 @@ def _check_f83(db_url: str) -> ControlResult:
             SELECT DISTINCT chart_id FROM chart_facts
             UNION SELECT DISTINCT chart_id FROM kala_field
             UNION SELECT DISTINCT chart_id FROM bodha_msr_signals
-            UNION SELECT DISTINCT chart_id FROM mimamsa_insight_records
+            UNION SELECT DISTINCT chart_id FROM mimamsa_insight_units
         ) c
         LEFT JOIN charts ON charts.id = c.chart_id
         WHERE charts.id IS NULL
@@ -187,6 +209,8 @@ def _check_f83(db_url: str) -> ControlResult:
         if not orphans:
             return ControlResult("F-83", "PASS", "0 orphaned chart_id refs across sampled tables", cheap=True, requires_db=True)
         return ControlResult("F-83", "FAIL", f"{len(orphans)} orphaned chart_ids found: {orphans[:3]}", cheap=True, requires_db=True)
+    except ControlBrokenError as e:
+        return ControlResult("F-83", "CONTROL-BROKEN", f"Detector could not execute: {e}", cheap=True, requires_db=True)
     except Exception as e:
         return ControlResult("F-83", "FAIL", f"SQL error: {e}", cheap=True, requires_db=True)
 
@@ -204,6 +228,8 @@ def _check_f84(db_url: str) -> ControlResult:
         if not dupes:
             return ControlResult("F-84", "PASS", "0 duplicate (event_class, segment_index) rows", cheap=True, requires_db=True)
         return ControlResult("F-84", "FAIL", f"{len(dupes)} duplicate natural-key groups: {dupes[:3]}", cheap=True, requires_db=True)
+    except ControlBrokenError as e:
+        return ControlResult("F-84", "CONTROL-BROKEN", f"Detector could not execute: {e}", cheap=True, requires_db=True)
     except Exception as e:
         return ControlResult("F-84", "FAIL", f"SQL error: {e}", cheap=True, requires_db=True)
 
@@ -218,6 +244,8 @@ def _check_f85(db_url: str) -> ControlResult:
         if not unknown:
             return ControlResult("F-85", "PASS", f"All {len(live_values)} verification_pass_status values in vocabulary", cheap=True, requires_db=True)
         return ControlResult("F-85", "FAIL", f"Unknown status values: {unknown}", cheap=True, requires_db=True)
+    except ControlBrokenError as e:
+        return ControlResult("F-85", "CONTROL-BROKEN", f"Detector could not execute: {e}", cheap=True, requires_db=True)
     except Exception as e:
         return ControlResult("F-85", "FAIL", f"SQL error: {e}", cheap=True, requires_db=True)
 
@@ -235,6 +263,8 @@ def _check_f87(db_url: str) -> ControlResult:
         if not bad:
             return ControlResult("F-87", "PASS", "All (chart, event_class) rows span [0, 36525]", cheap=True, requires_db=True)
         return ControlResult("F-87", "FAIL", f"{len(bad)} (chart, event_class) groups have truncated range: {bad[:3]}", cheap=True, requires_db=True)
+    except ControlBrokenError as e:
+        return ControlResult("F-87", "CONTROL-BROKEN", f"Detector could not execute: {e}", cheap=True, requires_db=True)
     except Exception as e:
         return ControlResult("F-87", "FAIL", f"SQL error: {e}", cheap=True, requires_db=True)
 
@@ -268,6 +298,8 @@ def _check_f80(db_url: str) -> ControlResult:
         if not rows:
             return ControlResult("F-80", "PASS", "0 legacy identity columns found", requires_db=True)
         return ControlResult("F-80", "FAIL", f"{len(rows)} legacy identity columns: {rows[:3]}", requires_db=True)
+    except ControlBrokenError as e:
+        return ControlResult("F-80", "CONTROL-BROKEN", f"Detector could not execute: {e}", requires_db=True)
     except Exception as e:
         return ControlResult("F-80", "FAIL", f"SQL error: {e}", requires_db=True)
 
@@ -291,6 +323,8 @@ def _check_f82(db_url: str) -> ControlResult:
         if delta <= 15:
             return ControlResult("F-82", "PASS", f"applied={applied_count}, on_disk={on_disk}, delta={delta}", requires_db=True)
         return ControlResult("F-82", "WARN", f"applied={applied_count}, on_disk={on_disk}, delta={delta} (>15 — verify archival list)", requires_db=True)
+    except ControlBrokenError as e:
+        return ControlResult("F-82", "CONTROL-BROKEN", f"Detector could not execute: {e}", requires_db=True)
     except Exception as e:
         return ControlResult("F-82", "FAIL", f"SQL error: {e}", requires_db=True)
 
@@ -309,6 +343,8 @@ def _check_f86(db_url: str) -> ControlResult:
         if inversions == 0:
             return ControlResult("F-86", "PASS", "0 out-of-order applied_at timestamps", requires_db=True)
         return ControlResult("F-86", "FAIL", f"{inversions} applied_at inversions found", requires_db=True)
+    except ControlBrokenError as e:
+        return ControlResult("F-86", "CONTROL-BROKEN", f"Detector could not execute: {e}", requires_db=True)
     except Exception as e:
         return ControlResult("F-86", "FAIL", f"SQL error: {e}", requires_db=True)
 
@@ -324,6 +360,8 @@ def _check_f102(db_url: str) -> ControlResult:
         if bad == 0:
             return ControlResult("F-102", "PASS", "0 rows with state=lit + non-empty last_error", requires_db=True)
         return ControlResult("F-102", "FAIL", f"{bad} rows have state='lit' with non-null/non-empty last_error (§N.8 instance)", requires_db=True)
+    except ControlBrokenError as e:
+        return ControlResult("F-102", "CONTROL-BROKEN", f"Detector could not execute: {e}", requires_db=True)
     except Exception as e:
         return ControlResult("F-102", "FAIL", f"SQL error: {e}", requires_db=True)
 
@@ -648,7 +686,7 @@ def main(argv: List[str]) -> int:
     db_url = args.db_url or None
     results = run_controls(args.controls, db_url, args.cheap)
 
-    counts = {"PASS": 0, "FAIL": 0, "SKIP": 0, "WARN": 0}
+    counts = {"PASS": 0, "FAIL": 0, "SKIP": 0, "WARN": 0, "CONTROL-BROKEN": 0}
     for r in results:
         counts[r.status] = counts.get(r.status, 0) + 1
 
@@ -662,18 +700,25 @@ def main(argv: List[str]) -> int:
                  "cheap": r.cheap, "requires_db": r.requires_db, "requires_mcp": r.requires_mcp}
                 for r in results
             ],
+            # CONTROL-BROKEN is a null signal (CLAUDE.md §N.8), not a red one — it does
+            # NOT count against "pass" the way FAIL does, but it IS surfaced distinctly
+            # below (control_broken_count) so a caller can't mistake a broken detector
+            # for a clean regression baseline.
             "pass": counts["FAIL"] == 0,
+            "control_broken_count": counts["CONTROL-BROKEN"],
         }, indent=2))
     else:
         for r in results:
-            icon = {"PASS": "OK", "FAIL": "FAIL", "SKIP": "SKIP", "WARN": "WARN"}.get(r.status, r.status)
+            icon = {"PASS": "OK", "FAIL": "FAIL", "SKIP": "SKIP", "WARN": "WARN", "CONTROL-BROKEN": "BROKEN"}.get(r.status, r.status)
             cheap_tag = " [cheap]" if r.cheap else ""
-            print(f"{icon:4s}  {r.control_id}{cheap_tag}: {r.detail}")
+            print(f"{icon:7s}  {r.control_id}{cheap_tag}: {r.detail}")
         print()
-        print(f"ekv_controls: {counts['PASS']} PASS | {counts['FAIL']} FAIL | {counts['WARN']} WARN | {counts['SKIP']} SKIP")
+        print(f"ekv_controls: {counts['PASS']} PASS | {counts['FAIL']} FAIL | {counts['WARN']} WARN | {counts['SKIP']} SKIP | {counts['CONTROL-BROKEN']} CONTROL-BROKEN")
 
     if counts["FAIL"] > 0:
         return 1
+    if counts["CONTROL-BROKEN"] > 0:
+        return 3  # detector(s) could not run — null signal, needs a human before trusting "pass"
     if counts["SKIP"] > 0 and counts["PASS"] == 0:
         return 3  # all skipped, nothing to vouch for
     return 0
