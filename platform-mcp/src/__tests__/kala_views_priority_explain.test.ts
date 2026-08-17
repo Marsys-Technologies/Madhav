@@ -128,8 +128,17 @@ describe('kala_priority_get — PRIORITIZE facade over marsys://tool/L3/call_pri
     expect(obj['tri_plane']).toBeDefined()
     expect(Array.isArray(obj['coverage'])).toBe(true)
     expect(obj['freshness']).toBeDefined()
+    // This fixture only provides the wrapped registry capability. Its DB-proxy calibration
+    // authority is deliberately absent, so it must be represented as typed unknown—not the
+    // meaningful all-zero value reserved for a reachable authority with no fitted row.
     expect(obj['calibration_maturity']).toEqual({
-      n_events: 0, prospective_resolutions: 0, event_class_coverage: 0, weights_version: null, skill_score: null,
+      n_events: null,
+      prospective_resolutions: null,
+      event_class_coverage: null,
+      weights_version: null,
+      skill_score: null,
+      state: 'unavailable',
+      reason: 'calibration_maturity_authority_unavailable',
     })
     expect(obj['composed']).toBeDefined()
     // Raw passthrough — never fabricated, this is the underlying capability's own data.
@@ -141,9 +150,11 @@ describe('kala_priority_get — PRIORITIZE facade over marsys://tool/L3/call_pri
     const reading = obj['reading'] as { evidence: Array<{ strength?: string }> }
     for (const ev of reading.evidence) expect(ev.strength).toBeUndefined()
 
-    // Salience-vector gap is honestly disclosed, not silently omitted.
+    // The fixture has no DB-proxy salience response. The table is a live authority but
+    // unreadable in this call, so coverage is honest_empty rather than the retired W0
+    // `not_in_corpus` claim.
     const coverage = obj['coverage'] as Array<{ concept: string; state: string }>
-    expect(coverage.some(c => c.concept === 'salience_vector_five_axis' && c.state === 'not_in_corpus')).toBe(true)
+    expect(coverage.some(c => c.concept === 'salience_vector_five_axis' && c.state === 'honest_empty')).toBe(true)
   })
 
   it('honest-empty: zero ranked_signals produces a non-fabricated thesis and honest_empty coverage', async () => {
@@ -251,8 +262,16 @@ describe('kala_explain_get — EXPLAIN facade over marsys://tool/L-PACT/pact_que
     expect((triPlane.interpretation_ref as { no_lever?: boolean } | null)?.no_lever).toBe(true)
     expect(triPlane.intervention_ref.instrument).toBe('kala_upaya_get')
 
+    // See the PRIORITIZE facade fixture above: this test intentionally exercises a
+    // proxy-unavailable substrate, which must not be collapsed to empirical zero.
     expect(obj['calibration_maturity']).toEqual({
-      n_events: 0, prospective_resolutions: 0, event_class_coverage: 0, weights_version: null, skill_score: null,
+      n_events: null,
+      prospective_resolutions: null,
+      event_class_coverage: null,
+      weights_version: null,
+      skill_score: null,
+      state: 'unavailable',
+      reason: 'calibration_maturity_authority_unavailable',
     })
 
     // The CONFIRMATION stage's dignity fact_id is attributed to its own evidence row.
