@@ -538,6 +538,52 @@ def test_mitigation_map_anchor_id_filter():
     assert env["anchor_id_filter"] == "ANC-001"
 
 
+def test_mitigation_map_excludes_past_windows_when_date_range_is_requested():
+    """The SQL must reject a 1966-1968 row for a 2026-2028 outlook horizon."""
+    query_range = {"start": "2026-08-17", "end": "2028-02-08"}
+    in_horizon = {
+        **SAMPLE_MITIGATION_ROWS[0],
+        "mitigation_id": "IN-HORIZON",
+        "window_start": date(2025, 3, 29),
+        "window_end": date(2027, 9, 12),
+    }
+    conn = _make_mitigation_query_conn([in_horizon], 1)
+
+    result = mitigation_map(conn, NATIVE_CHART_ID, date_range=query_range)
+
+    assert [row["mitigation_id"] for row in result["mitigations"]] == ["IN-HORIZON"]
+    assert result["provenance_envelope"]["date_range_filter_applied"] is True
+    assert result["provenance_envelope"]["date_range"] == query_range
+
+    cur = conn.cursor.return_value.__enter__.return_value
+    select_sql, select_params = cur.execute.call_args_list[0].args
+    assert "window_start <= %s::date" in select_sql
+    assert "window_end >= %s::date" in select_sql
+    assert select_params == [NATIVE_CHART_ID, "2028-02-08", "2026-08-17", 100]
+
+    count_sql, count_params = cur.execute.call_args_list[1].args
+    assert "window_start <= %s::date" in count_sql
+    assert "window_end >= %s::date" in count_sql
+    assert count_params == [NATIVE_CHART_ID, "2028-02-08", "2026-08-17"]
+
+
+def test_mitigation_map_without_date_range_preserves_unfiltered_null_bound_rows():
+    """Standalone calls retain legacy behavior; only horizon requests exclude null bounds."""
+    conn = _make_mitigation_query_conn(SAMPLE_MITIGATION_ROWS, len(SAMPLE_MITIGATION_ROWS))
+
+    result = mitigation_map(conn, NATIVE_CHART_ID)
+
+    assert len(result["mitigations"]) == len(SAMPLE_MITIGATION_ROWS)
+    assert result["provenance_envelope"]["date_range_filter_applied"] is False
+    assert result["provenance_envelope"]["date_range"] is None
+
+    cur = conn.cursor.return_value.__enter__.return_value
+    select_sql, select_params = cur.execute.call_args_list[0].args
+    assert "window_start <= %s::date" not in select_sql
+    assert "window_end >= %s::date" not in select_sql
+    assert select_params == [NATIVE_CHART_ID, 100]
+
+
 def test_mitigation_map_empty_result():
     """mitigation_map: empty DB returns empty mitigations list + valid envelope."""
     conn = _make_mitigation_query_conn([], 0)

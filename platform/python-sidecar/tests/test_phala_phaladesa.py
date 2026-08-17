@@ -701,14 +701,18 @@ class TestGate1ClassOneRegressions:
         with patch.dict("sys.modules", {"psycopg2": psycopg2_mock,
                                          "psycopg2.extras": psycopg2_mock.extras}):
             with patch("brahmagyan.phala.mitigation.mitigation_map",
-                       return_value={"mitigations": [DEFAULT_MITIGATION_1]}):
+                       return_value={"mitigations": [DEFAULT_MITIGATION_1]}) as mitigation_map:
                 with patch.dict("os.environ", {"DATABASE_URL": "postgresql://test/db"}):
-                    _, prov = mod._fetch_mitigations(NATIVE_CHART_ID)
+                    query_range = {"start": "2026-08-17", "end": "2028-02-08"}
+                    _, prov = mod._fetch_mitigations(NATIVE_CHART_ID, query_range)
 
         assert "source" in prov, (
             "provenance_envelope must include 'source' key even when sub-system omits it"
         )
         assert prov["source"], "provenance_envelope.source must be non-empty"
+        mitigation_map.assert_called_once_with(
+            conn_mock, NATIVE_CHART_ID, date_range=query_range
+        )
 
     def test_fetch_anchors_uses_returned_prov_when_present(self):
         """
