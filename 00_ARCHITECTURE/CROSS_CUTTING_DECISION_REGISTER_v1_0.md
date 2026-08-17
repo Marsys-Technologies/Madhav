@@ -26,6 +26,7 @@ coordination lease that produced it.
 | CCD-003 | 2026-08-15 | Claude Code | ACTIVE | Round-trip acceptance successor: Claude Code consumed CCD-002 and wrote CCD-003; a fresh Codex session must cite both identifiers. |
 | CCD-004 | 2026-08-15 | Codex | ACTIVE | Close the onboarding verification: the canonical `.claude/skills` inventory is four active skills, not five; retain the MCP credential-rotation and validator-debt follow-ups as shared owner-visible work. |
 | CCD-005 | 2026-08-17 | Codex + Autonomous Executive Pratinidhi (Sol Ultra independent review) | ACTIVE | Establish the standing PARIŚEṢA Autonomous Executive Pratinidhi and reconcile the historical MACRO_PLAN canonical-record drift to the independently verified v2.1 source on origin/main. |
+| CCD-006 | 2026-08-17 | Codex / PARIŚEṢA Phase −1 | ACTIVE | Bootstrap the user-authorized PARIŚEṢA autonomous recovery under its exact runbook scope after the validated canonical-provenance handshake. |
 
 ## CCD-001 — Cross-tool onboarding and operating protocol
 
@@ -98,3 +99,26 @@ coordination lease that produced it.
   `18566190` in origin/main's lineage; `6982a24` is byte-equivalent context rather than its
   ancestor.
 - **Supersession:** none.
+
+## CCD-006 — PARIŚEṢA Phase −1 bootstrap authority
+
+- **Authority:** direct native owner instruction in
+  `PARISESA_CODEX_AUTONOMOUS_EXECUTION_PROMPT_V3_SOL_ULTRA.md`, SHA-256
+  `f2bc25ae0ff080434179271efeeada492fde33d72234cf0fe7bf85e1b9f0d6b9`; validated
+  Phase −1 continuation handshake under `PARISESA-PREFLIGHT-AUTHORITY-3`.
+- **Decision:** authorize the PARIŚEṢA recovery runbook's campaign-only bootstrap sequence,
+  including subsequent governed production/deployment/migration actions only when every later
+  runbook gate and the applicable coordination lease permits them. There is no monetary hard cap.
+- **Exact bootstrap may-touch:** the coordination lease row; this append-only CCD register entry;
+  required session provenance; temporary Phase −1 receipts and tracker canary.
+- **Bootstrap must-not-touch:** application code, database/data, migrations, deployment,
+  rebuilds, production writes, legacy-process control, and campaign takeover before every hard
+  preflight completes.
+- **Supersession:** solely for this campaign's one bootstrap operation, supersedes
+  `GOVERNANCE_INTEGRITY_PROTOCOL §P.4`'s lease-row-only restriction. No other governance rule
+  is superseded.
+- **Evidence:** PR #1317 merged through the required queue at
+  `origin/main@8ee2c7d6774a9599bc5aa0b7c423b8faf5b8b153`; the reconciled MACRO_PLAN
+  fingerprint is `8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e` and the
+  refreshed Phase −1 handshake validates it.
+- **Dissent:** none.
