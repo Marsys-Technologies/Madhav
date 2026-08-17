@@ -1532,6 +1532,8 @@ const queryRemediesForChartCapability: CapabilityDescriptor = {
 }
 
 // D-2: list_remedies_by_category — global
+const REMEDY_CATEGORY_PAGE_LIMIT = 10
+
 const listRemediesByCategoryCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L0/list_remedies_by_category',
   type: 'tool',
@@ -1556,6 +1558,16 @@ const listRemediesByCategoryCapability: CapabilityDescriptor = {
       required: true,
       enum: ['mantras', 'gemstones', 'charity', 'vrata', 'yantras', 'puja', 'tantric', 'ayurvedic', 'vastu', 'behavioral'],
     },
+    limit: {
+      type: 'number',
+      description: `Maximum remedies in one response (default and max ${REMEDY_CATEGORY_PAGE_LIMIT}). Use offset to continue.`,
+      default: REMEDY_CATEGORY_PAGE_LIMIT,
+    },
+    offset: {
+      type: 'number',
+      description: 'Zero-based offset for the next remedy page (default 0).',
+      default: 0,
+    },
   },
 
   required_inputs: ['category'],
@@ -1579,6 +1591,14 @@ const listRemediesByCategoryCapability: CapabilityDescriptor = {
     if (!category) {
       return { content: { error: 'category is required' }, is_error: true }
     }
+    const requestedLimit = Number(args['limit'] ?? REMEDY_CATEGORY_PAGE_LIMIT)
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(Math.floor(requestedLimit), 1), REMEDY_CATEGORY_PAGE_LIMIT)
+      : REMEDY_CATEGORY_PAGE_LIMIT
+    const requestedOffset = Number(args['offset'] ?? 0)
+    const offset = Number.isFinite(requestedOffset)
+      ? Math.max(Math.floor(requestedOffset), 0)
+      : 0
     try {
       // W4-loop-1 (E-5 group2): the corpus stores the category as remedy_type (singular:
       // 'gemstone', 'mantra', 'yantra', ...) — the hard `category = $1` predicate against a
@@ -1594,14 +1614,31 @@ const listRemediesByCategoryCapability: CapabilityDescriptor = {
         FROM brahma_remedy_corpus
         WHERE LOWER(remedy_type) = $1 OR LOWER(category) = $2 OR LOWER(category) = $1
         ORDER BY planet, remedy_id
+        LIMIT $3 OFFSET $4
       `
       // R6 0a-envauth (R-15/O-6): see query_remedies_for_chart's comment above —
       // swapped the DATABASE_URL-keyed raw pg.Pool for the shared query() helper.
-      const result = await query(sql, [catSingular, catLower])
+      const result = await query(sql, [catSingular, catLower, limit, offset])
+      const countResult = await query<{ total: number }>(
+        `SELECT COUNT(*)::int AS total
+         FROM brahma_remedy_corpus
+         WHERE LOWER(remedy_type) = $1 OR LOWER(category) = $2 OR LOWER(category) = $1`,
+        [catSingular, catLower],
+      )
+      const remedies = result.rows ?? []
+      const total = Number(countResult.rows?.[0]?.total ?? remedies.length)
+      const moreAvailable = offset + remedies.length < total
       return {
         content: {
-          category, remedies: result.rows, returned_count: result.rows.length,
-          ...(result.rows.length === 0
+          category, remedies, returned_count: remedies.length,
+          pagination: {
+            limit,
+            offset,
+            total,
+            more_available: moreAvailable,
+            next_offset: moreAvailable ? offset + remedies.length : null,
+          },
+          ...(remedies.length === 0
             ? { empty_reason: `No remedies found in category="${category}". Stored remedy_type vocabulary: mantra, gemstone, yantra, charity, puja, vrata, homa, japa, behavioral, ayurvedic.` }
             : {}),
         },
