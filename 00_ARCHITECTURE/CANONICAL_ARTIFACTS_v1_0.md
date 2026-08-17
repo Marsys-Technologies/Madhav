@@ -42,6 +42,11 @@ consumers:
   - Step 9 (CLAUDE.md rebuild) — CLAUDE.md's canonical-path table is replaced by a
     cite-CANONICAL_ARTIFACTS-by-reference rule
 changelog:
+  - 2026-08-17 (PARISESA preflight governance reconciliation): the historical
+    MACRO_PLAN record is reconciled from v2.0 / `2fef28fd…451c3` to v2.1 /
+    `8e98ad46…e6c6e`, after independent provenance and semantic review. This
+    preserves this superseded registry's audit value; CAPABILITY_MANIFEST remains
+    the tooling authority after the 2026-04-27 cutover.
   - v1.0 (2026-04-24, Step 7 of the Step 0→15 governance rebuild):
     Initial registry. §1 carries one row per CURRENT canonical artifact (19 rows including
     CANONICAL_ARTIFACTS self-entry). §2 carries the MP.1–MP.8 mirror-pair inventory
@@ -251,9 +256,9 @@ notes: "v2.1 SUPERSEDED 2026-04-24 at Step 5A. v2.2 absorbs MP v2.0 arc (§I poi
 ```yaml
 canonical_id: MACRO_PLAN
 path: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
-version: "2.0"
+version: "2.1"
 status: CURRENT
-fingerprint_sha256: 2fef28fdcfa54c425ce96c0dd82e8016a47d907545915139c39688f19ab451c3
+fingerprint_sha256: 8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e
 mirror_obligations:
   claude_side: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
   gemini_side: "compact MP summary in .geminirules (item #3) + .gemini/project_state.md"
@@ -261,9 +266,9 @@ mirror_obligations:
   authoritative_side: claude
   mirror_pair_id: MP.3
   asymmetries: "Gemini-side carries compact arc summary (M1–M10 names) + pointer to full MP v2.0; not a full duplicate."
-last_verified_session: STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION
-last_verified_on: 2026-04-24
-notes: "v1.0 SUPERSEDED 2026-04-23 at Step 5. v2.0 carries the 10-macro-phase arc M1–M10, Learning Layer, System Integrity Substrate (IS.1–IS.9 per ND.1), Ethical Framework, External Dependency Graph, per-phase schema, Meta-Governance, Multi-Agent Collaboration, Post-M10 Framing."
+last_verified_session: PARISESA_PHASE_MINUS_1_GOVERNANCE_RECONCILIATION
+last_verified_on: 2026-08-17
+notes: "Reconciled against origin/main@f003bf3af3b372eb5c1365ca4753a95aba4b7551 after independent two-key review. v2.1 is semantically earned: ee5bf081 AM-JIS→MARSYS-JIS naming propagation; 055165b L2→L2.5 correction; 43ff2f1 native-arbitrated LL.5 naming propagation with no protocol/I-O/gate change; 96f30bc required artifact frontmatter; 449d2c3 LEL count correction. CAPABILITY_MANIFEST is the post-cutover tooling authority; this record is reconciled for audit and session-provenance compatibility."
 ```
 
 #### PHASE_B_PLAN
