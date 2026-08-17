@@ -63,6 +63,24 @@ describe('assess_* Sāra response contract', () => {
     },
   )
 
+  it('emits only served MCP drill instruments for the composed assessment seams', async () => {
+    stubFetch({
+      chart_id: CHART_ID,
+      verdict: { clauses: [{ text: 'A deterministic shared-composer verdict.', fact_ids: [], grounded: false }] },
+    })
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    const { server, handlers } = makeCapturingServer()
+    registerRegistryBridgeTools(server, PRINCIPAL)
+
+    const result = await handlers.get('assess_wealth')!({ chart_id: CHART_ID })
+    const kernel = (result.structuredContent!.object as Record<string, unknown>).kernel as Record<string, unknown>
+    expect(kernel.pointers).toEqual([
+      { instrument: 'bodha_domain_reading_get', hint: 'marsys://tool/L2/query_domain_reading' },
+      { instrument: 'kala_windows_get', hint: 'marsys://tool/L3/query_temporal_activation' },
+      { instrument: 'bodha_graph_traverse_get', hint: 'mode:"contradictions" — marsys://tool/L2/traverse_chart_graph' },
+    ])
+  })
+
   it('preserves verdict, promise, and evidence from a normalized wrapped capability payload', async () => {
     const verdictText = 'Wealth indications are mixed and require the cited evidence.'
     const promise = {

@@ -2913,9 +2913,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       flags,
       promise: isRecord(normalized['promise']) ? normalized['promise'] as unknown as SaraKernel['promise'] : null,
       pointers: [
-        { instrument: 'get_domain_reading', hint: 'marsys://tool/L2/get_domain_reading' } as DrillPointerLike,
-        { instrument: 'query_temporal_activation', hint: 'marsys://tool/L3/query_temporal_activation' } as DrillPointerLike,
-        { instrument: 'query_contradictions', hint: 'marsys://tool/L2/query_contradictions' } as DrillPointerLike,
+        { instrument: 'bodha_domain_reading_get', hint: 'marsys://tool/L2/query_domain_reading' } as DrillPointerLike,
+        { instrument: 'kala_windows_get', hint: 'marsys://tool/L3/query_temporal_activation' } as DrillPointerLike,
+        { instrument: 'bodha_graph_traverse_get', hint: 'mode:"contradictions" — marsys://tool/L2/traverse_chart_graph' } as DrillPointerLike,
       ],
     }
 
@@ -2998,8 +2998,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
-      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
-      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via bodha_domain_reading_get for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via bodha_graph_traverse_get with mode:"contradictions".'),
       verbosity: VERBOSITY_ZOD,
       reading_depth: READING_DEPTH_ZOD,
       budget_kb: BUDGET_KB_ZOD,
@@ -3037,8 +3037,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
-      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
-      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via bodha_domain_reading_get for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via bodha_graph_traverse_get with mode:"contradictions".'),
       verbosity: VERBOSITY_ZOD,
       reading_depth: READING_DEPTH_ZOD,
       budget_kb: BUDGET_KB_ZOD,
@@ -3080,8 +3080,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
-      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
-      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via bodha_domain_reading_get for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via bodha_graph_traverse_get with mode:"contradictions".'),
       verbosity: VERBOSITY_ZOD,
       reading_depth: READING_DEPTH_ZOD,
       budget_kb: BUDGET_KB_ZOD,
@@ -3119,8 +3119,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
-      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
-      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via bodha_domain_reading_get for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via bodha_graph_traverse_get with mode:"contradictions".'),
       verbosity: VERBOSITY_ZOD,
       reading_depth: READING_DEPTH_ZOD,
       budget_kb: BUDGET_KB_ZOD,
