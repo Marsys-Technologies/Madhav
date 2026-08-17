@@ -78,6 +78,7 @@ describe('F04 ref_nakshatra_get — canonical structured catalog', () => {
   it('labels a classical-text fallback when no canonical catalog row matches', async () => {
     mockFetch
       .mockResolvedValueOnce(jsonResponse({ rows: [] }))
+      .mockResolvedValueOnce(jsonResponse({ rows: [{ total_matching: 0 }] }))
       .mockResolvedValueOnce(jsonResponse({
         ok: true,
         content: { search_mode: 'hybrid_vector_keyword', query_used: 'not-a-nakshatra nakshatra', citations: [], rows: [], total: 0 },
@@ -91,7 +92,27 @@ describe('F04 ref_nakshatra_get — canonical structured catalog', () => {
       structured_filter_applied: false,
       fallback_reason: expect.stringMatching(/No structured reference_nakshatra row/),
     })
+    expect(mockFetch).toHaveBeenCalledTimes(3)
+  })
+
+  it('returns an honest empty structured page rather than falling back when the catalog match is exhausted', async () => {
+    mockFetch
+      .mockResolvedValueOnce(jsonResponse({ rows: [] }))
+      .mockResolvedValueOnce(jsonResponse({ rows: [{ total_matching: 28 }] }))
+
+    const result = await handler({ limit: 30, offset: 28 })
+    const obj = result.structuredContent.object as { content: Record<string, unknown> }
+
+    expect(obj.content).toMatchObject({
+      source: 'reference_nakshatra',
+      structured_filter_applied: true,
+      structured_catalog_served: true,
+      rows: [],
+      total: 28,
+      pagination: { offset: 28, limit: 30, total: 28, more_available: false, next_offset: null },
+    })
     expect(mockFetch).toHaveBeenCalledTimes(2)
+    expect(JSON.parse((mockFetch.mock.calls[1]![1] as { body: string }).body).sql).toContain('COUNT(*)')
   })
 
   it('keeps the keyword-only classical text path unchanged', async () => {

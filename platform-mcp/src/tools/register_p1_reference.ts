@@ -477,8 +477,14 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
             params,
             principal,
           )
-          if (structured.rows.length > 0) {
-            const total = Number(structured.rows[0]!['total_matching'] ?? structured.rows.length)
+          const total = structured.rows.length > 0
+            ? Number(structured.rows[0]!['total_matching'] ?? structured.rows.length)
+            : Number((await platformQuery(
+              `SELECT COUNT(*)::int AS total_matching FROM reference_nakshatra n ${where}`,
+              params.slice(0, -2),
+              principal,
+            )).rows[0]?.['total_matching'] ?? 0)
+          if (total > 0) {
             const rows = structured.rows.map(({ total_matching: _total, ...row }) => row)
             const moreAvailable = pageOffset + rows.length < total
             return dualOutput(envelope({
