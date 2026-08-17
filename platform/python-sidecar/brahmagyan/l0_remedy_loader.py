@@ -222,14 +222,18 @@ def load_remedies(
     yaml_dir: Path,
     conn=None,
     dry_run: bool = False,
+    file_glob: str = '*.yaml',
+    manage_transaction: bool = True,
 ) -> dict[str, Any]:
     """
-    Load all YAML remedy files from yaml_dir into brahma_remedy_corpus.
-    Applies Phase 3 tantric gate.
+    Load selected YAML remedy files from yaml_dir into brahma_remedy_corpus.
+    Applies Phase 3 tantric gate.  Callers that provide an orchestrator-owned
+    connection must set ``manage_transaction=False`` so transaction ownership
+    remains with the orchestrator.
     Returns summary dict.
     """
     close_conn = False
-    if conn is None:
+    if conn is None and not dry_run:
         conn = _get_conn()
         close_conn = True
 
@@ -241,7 +245,7 @@ def load_remedies(
     category_counts: dict[str, int] = {}
 
     try:
-        for yaml_path in sorted(yaml_dir.glob('*.yaml')):
+        for yaml_path in sorted(yaml_dir.glob(file_glob)):
             files_processed += 1
             logger.info('[loader] processing %s', yaml_path.name)
 
@@ -265,7 +269,8 @@ def load_remedies(
                         reason = f'tantric source not in acceptable list: {source_text!r}'
                         if not dry_run:
                             insert_to_review_queue(conn, row, reason)
-                            conn.commit()
+                            if manage_transaction:
+                                conn.commit()
                         review_queued += 1
                         logger.info('[loader] TANTRIC GATE: queued for review: %s (%s)',
                                    row.get('remedy_id'), reason)
@@ -279,7 +284,8 @@ def load_remedies(
                         reason = f'tantric row missing source columns: {missing}'
                         if not dry_run:
                             insert_to_review_queue(conn, row, reason)
-                            conn.commit()
+                            if manage_transaction:
+                                conn.commit()
                         review_queued += 1
                         logger.info('[loader] TANTRIC GATE: queued for review: %s (%s)',
                                    row.get('remedy_id'), reason)
@@ -289,9 +295,12 @@ def load_remedies(
                 if not dry_run:
                     try:
                         insert_to_corpus(conn, row)
-                        conn.commit()
+                        if manage_transaction:
+                            conn.commit()
                         inserted += 1
                     except Exception as exc:
+                        if not manage_transaction:
+                            raise
                         conn.rollback()
                         errors += 1
                         logger.error('[loader] error inserting %s: %s',

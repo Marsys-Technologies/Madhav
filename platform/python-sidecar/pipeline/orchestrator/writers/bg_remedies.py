@@ -16,8 +16,10 @@ from __future__ import annotations
 
 import logging
 import time
+from pathlib import Path
 
 from pipeline.orchestrator.writers import register, WriterBase, ContextSpec, WriterResult
+from brahmagyan import l0_remedy_loader
 from brahmagyan.l0_remedy_corpus import seed_remedy_corpus, build_all_remedies
 
 logger = logging.getLogger(__name__)
@@ -29,18 +31,27 @@ class RemediesWriter(WriterBase):
 
     def run(self, ctx: ContextSpec) -> WriterResult:
         t0 = time.time()
+        remedy_corpus_dir = Path(__file__).resolve().parents[3] / 'brahmagyan' / 'remedy_corpus'
 
         if ctx.dry_run:
             all_remedies = build_all_remedies()
             live = sum(1 for r in all_remedies if r.get('scaffold_status') == 'live')
+            tantric_counts = l0_remedy_loader.load_remedies(
+                yaml_dir=remedy_corpus_dir,
+                dry_run=True,
+                file_glob='tantric.yaml',
+            )
+            tantric_inserted = tantric_counts['inserted']
+            tantric_queued = tantric_counts['review_queued']
             return WriterResult(
                 asset_id=self.asset_id,
-                rows_inserted=live,
+                rows_inserted=live + tantric_inserted,
                 rows_skipped=0,
                 duration_seconds=time.time() - t0,
                 notes=(
                     f"dry_run: would insert {len(all_remedies)} remedies "
-                    f"({live} live) into brahma_remedy_corpus"
+                    f"({live} live) into brahma_remedy_corpus; "
+                    f"tantric: {tantric_inserted} inserted / {tantric_queued} review_queued"
                 ),
             )
 
@@ -55,20 +66,31 @@ class RemediesWriter(WriterBase):
         skipped = counts.get('remedies_skipped', 0)
         live_count = counts.get('live_count', 0)
         total_built = counts.get('total_built', 0)
+        tantric_counts = l0_remedy_loader.load_remedies(
+            yaml_dir=remedy_corpus_dir,
+            conn=ctx.db_conn,
+            dry_run=False,
+            file_glob='tantric.yaml',
+            manage_transaction=False,
+        )
+        tantric_inserted = tantric_counts['inserted']
+        tantric_queued = tantric_counts['review_queued']
 
         logger.info(
-            "[bg_remedies] inserted=%d skipped=%d live=%d total_built=%d",
-            inserted, skipped, live_count, total_built,
+            "[bg_remedies] inserted=%d skipped=%d live=%d total_built=%d "
+            "tantric_inserted=%d tantric_queued=%d",
+            inserted, skipped, live_count, total_built, tantric_inserted, tantric_queued,
         )
 
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=inserted,
+            rows_inserted=inserted + tantric_inserted,
             rows_skipped=skipped,
             duration_seconds=time.time() - t0,
             notes=(
                 f"brahma_remedy_corpus: +{inserted} inserted / {skipped} skipped; "
                 f"live_count={live_count} / total_built={total_built}; "
-                f"buckets: 108 matrix + 102 dosha-linked + 54 legacy"
+                f"buckets: 108 matrix + 102 dosha-linked + 54 legacy; "
+                f"tantric: {tantric_inserted} inserted / {tantric_queued} review_queued"
             ),
         )
