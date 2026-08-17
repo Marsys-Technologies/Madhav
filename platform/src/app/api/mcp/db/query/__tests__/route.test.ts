@@ -106,6 +106,60 @@ describe('POST /api/mcp/db/query — reference_nakshatra catalog whitelist (F04)
     await expect(res.json()).resolves.toEqual({ rows: [{ nakshatra_id: 4, name_en: 'Rohini', total_matching: 1 }] })
     expect(mockQuery).toHaveBeenCalledTimes(1)
   })
+
+  it('accepts the production alternate-name predicate without mistaking UNNEST for a table', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ nakshatra_id: 4, name_en: 'Rohini', total_matching: 1 }] })
+    const res = await POST(makeReq({
+      sql: `SELECT n.nakshatra_id, n.name_en,
+                    (SELECT ARRAY_AGG(p.pada_lord ORDER BY p.pada_number)
+                     FROM reference_nakshatra_pada p
+                     WHERE p.nakshatra_id = n.nakshatra_id) AS pada_lords,
+                    COUNT(*) OVER()::int AS total_matching
+             FROM reference_nakshatra n
+             WHERE (
+               LOWER(REGEXP_REPLACE(n.name_en, '[ _-]', '', 'g')) = LOWER(REGEXP_REPLACE($1, '[ _-]', '', 'g'))
+               OR EXISTS (
+                 SELECT 1 FROM UNNEST(n.alt_names) AS alt_name
+                 WHERE LOWER(REGEXP_REPLACE(alt_name, '[ _-]', '', 'g')) = LOWER(REGEXP_REPLACE($1, '[ _-]', '', 'g'))
+               )
+             )
+             ORDER BY n.nakshatra_id
+             LIMIT $2 OFFSET $3`,
+      params: ['rohini', 1, 0],
+    }))
+
+    expect(res.status).toBe(200)
+    expect(mockQuery).toHaveBeenCalledTimes(1)
+  })
+
+  it('allows a CTE only when its query reaches an allowlisted base table', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [{ nakshatra_id: 4 }] })
+    const res = await POST(makeReq({
+      sql: `WITH matched AS (
+              SELECT nakshatra_id FROM reference_nakshatra WHERE nakshatra_id = $1
+            )
+            SELECT * FROM matched`,
+      params: [4],
+    }))
+
+    expect(res.status).toBe(200)
+    expect(mockQuery).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects a function-only CTE without an allowlisted base table', async () => {
+    const res = await POST(makeReq({
+      sql: `WITH values_from_function AS (
+              SELECT * FROM UNNEST(ARRAY[1]) AS value
+            )
+            SELECT * FROM values_from_function`,
+      params: [],
+    }))
+
+    expect(res.status).toBe(400)
+    const body = await res.json() as { error: { message: string } }
+    expect(body.error.message).toMatch(/allowlisted base table/)
+    expect(mockQuery).not.toHaveBeenCalled()
+  })
 })
 
 describe('POST /api/mcp/db/query — kala_gochara_authority whitelist (ADJUDICATION-6, migration 527)', () => {
