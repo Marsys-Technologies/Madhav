@@ -180,7 +180,7 @@ const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
 // already use) adds its last-resort bounded-depth long-string truncation fallback, which DOES
 // reach that shape — this is a strict superset of the prior behavior (array trimming still runs
 // first; string truncation only engages if arrays alone can't close the gap).
-function dualOutput(data: unknown, toolName = 'unknown_tool') {
+function dualOutput(data: unknown, toolName: string) {
   let finalData: unknown = data
   if (data && typeof data === 'object' && !Array.isArray(data)) {
     const obj = data as Record<string, unknown>
@@ -195,7 +195,7 @@ function dualOutput(data: unknown, toolName = 'unknown_tool') {
   return { structuredContent, content: [{ type: 'text' as const, text: json }] }
 }
 function errOut(tool: string, msg: string, extra?: Record<string, unknown>) {
-  return { ...dualOutput({ ok: false, error: msg, tool, ...extra }), isError: true as const }
+  return { ...dualOutput({ ok: false, error: msg, tool, ...extra }, tool), isError: true as const }
 }
 
 // ── EL-41 / B-1: per-requested-category receipt ─────────────────────────────────
@@ -598,7 +598,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           // verdict_summary computed just above).
           finalizeMcpBudget(inner, { maxKb: 25, sections: [signalsSection()] })
         }
-        return dualOutput(data)
+        return dualOutput(data, 'bodha_signals_get')
       } catch (err) { return errOut('bodha_signals_get', String(err), { chart_id }) }
     }
   )
@@ -649,7 +649,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           ...(limit != null ? { top_k_hubs: limit } : {}),
           ...rest,
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'bodha_graph_traverse_get')
       } catch (err) { return errOut('bodha_graph_traverse_get', String(err), { chart_id }) }
     }
   )
@@ -1147,7 +1147,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           layer, asset_type, catalog_status, scope, is_active, has_writer,
           limit: limit ?? 200, offset: offset ?? 0,
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'catalog_assets_list')
       } catch (err) { return errOut('catalog_assets_list', String(err)) }
     }
   )
@@ -1199,7 +1199,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           ...(min_salience != null ? { min_salience } : {}),
           ...(limit != null ? { top_k: limit } : {}),
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'kala_yoga_activation_get')
       } catch (err) { return errOut('kala_yoga_activation_get', String(err), { chart_id }) }
     }
   )
@@ -1241,7 +1241,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           ...(limit != null ? { top_k_hubs: limit } : {}),
           ...rest,
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'bodha_graph_subgraph_get')
       } catch (err) { return errOut('bodha_graph_subgraph_get', String(err), { chart_id }) }
     }
   )
@@ -1360,7 +1360,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async ({ query, chart_id, top_k, filter_layer }) => {
       try {
         const data = await callPlatformPrim('vector_search', { query, chart_id, top_k, filter_layer }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_vector_search')
       } catch (err) { return errOut('ref_vector_search', String(err)) }
     }
   )
@@ -1491,7 +1491,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           layer, asset_type, catalog_status, scope, is_active, has_writer,
           limit: limit ?? 200, offset: offset ?? 0,
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'catalog_assets_all')
       } catch (err) { return errOut('catalog_assets_all', String(err)) }
     }
   )
@@ -1514,7 +1514,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           asset_type, catalog_status, scope, is_active, has_writer,
           limit: limit ?? 100, offset: offset ?? 0,
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'catalog_assets_l0')
       } catch (err) { return errOut('catalog_assets_l0', String(err)) }
     }
   )
@@ -1550,7 +1550,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async (params) => {
       try {
         const data = await callPlatformPrim('query_remedies', params as Record<string, unknown>, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_remedies_get')
       } catch (err) { return errOut('ref_remedies_get', String(err)) }
     }
   )
@@ -1562,7 +1562,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async ({ affliction, top_k }) => {
       try {
         const data = await callPlatformPrim('query_remedies_for_chart', { affliction, top_k }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_remedies_chart_get')
       } catch (err) { return errOut('ref_remedies_chart_get', String(err)) }
     }
   )
@@ -1574,7 +1574,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async ({ category, limit, offset }) => {
       try {
         const data = await callPlatformPrim('list_remedies_by_category', { category, limit, offset }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_remedies_by_category_list')
       } catch (err) { return errOut('ref_remedies_by_category_list', String(err)) }
     }
   )
@@ -1586,7 +1586,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async ({ remedy_id }) => {
       try {
         const data = await callPlatformPrim('read_remedy', { remedy_id }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_remedy_get')
       } catch (err) { return errOut('ref_remedy_get', String(err)) }
     }
   )
@@ -1598,7 +1598,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async (params) => {
       try {
         const data = await callPlatformPrim('query_tantric_remedies', params as Record<string, unknown>, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_tantric_remedies_get')
       } catch (err) { return errOut('ref_tantric_remedies_get', String(err)) }
     }
   )
@@ -1610,7 +1610,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async ({ planet, limit, offset }) => {
       try {
         const data = await callPlatformPrim('query_remedies_by_planet', { planet, limit, offset }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_remedies_by_planet_get')
       } catch (err) { return errOut('ref_remedies_by_planet_get', String(err), { planet }) }
     }
   )
@@ -1622,7 +1622,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async (params) => {
       try {
         const data = await callPlatformPrim('query_mantras', params as Record<string, unknown>, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_mantras_get')
       } catch (err) { return errOut('ref_mantras_get', String(err)) }
     }
   )
@@ -1662,7 +1662,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           // No keyword requested — planet/category are genuinely honored natively by the
           // primitive; behave exactly as before, just mapping limit -> top_k honestly.
           const data = await callPlatformPrim('query_remedies', { ...rest, top_k: desiredLimit }, principal)
-          return dualOutput(data)
+          return dualOutput(data, 'ref_remedies_search')
         }
 
         const POOL_SIZE = Math.min(Math.max(desiredLimit * 10, 100), 500)
@@ -1696,7 +1696,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
               'planet/category to shrink the pool the keyword search actually covers, or raise ' +
               '`limit` to widen it (pool = limit × 10, capped at 500).',
           },
-        })
+        }, 'ref_remedies_search')
       } catch (err) { return errOut('ref_remedies_search', String(err)) }
     }
   )
@@ -1773,7 +1773,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           action_type,
           date_range: { start, end },
         })
-        return dualOutput(data)
+        return dualOutput(data, 'kala_muhurta_get')
       } catch (err) { return errOut('kala_muhurta_get', String(err), { chart_id }) }
     }
   )
@@ -1791,11 +1791,11 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         const data = await callSidecarPath('/api/compute/phala/outlook', {
           chart_id, horizon_months: horizon_months ?? 12,
         })
-        // RC-04 drill-crawl (2026-07-23): dualOutput(data) with no toolName arg was
-        // defaulting recover_via.instrument to the literal placeholder 'unknown_tool' in
+        // RC-04 drill-crawl (2026-07-23): a prior one-argument helper call
+        // defaulted recover_via.instrument to a literal placeholder in
         // this tool's trim_report/drill_pointers whenever a section was auto-trimmed
         // (live-reproduced: mitigations 100→10, auspicious_windows 30→15, both pointing
-        // callers at 'unknown_tool'). Passing the real tool name here matches the sibling
+        // callers at that placeholder. Passing the real tool name here matches the sibling
         // call sites in this file (e.g. mimamsa_lel_query below) that already do this.
         return dualOutput(data, 'phala_outlook_get')
       } catch (err) { return errOut('phala_outlook_get', String(err), { chart_id }) }
@@ -1836,7 +1836,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async (params) => {
       try {
         const data = await callPlatformPrim('record_outcome', params as Record<string, unknown>, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'mimamsa_outcome_record')
       } catch (err) { return errOut('mimamsa_outcome_record', String(err)) }
     }
   )
@@ -1852,7 +1852,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async ({ chart_id, domain, limit, offset }) => {
       try {
         const data = await callPlatformPrim('query_calibration', { chart_id, domain, limit, offset }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'mimamsa_calibration_get')
       } catch (err) { return errOut('mimamsa_calibration_get', String(err), { chart_id }) }
     }
   )
@@ -1866,7 +1866,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async (params) => {
       try {
         const data = await callSidecarPath('/api/pyhora/compute', params as Record<string, unknown>)
-        return dualOutput(data)
+        return dualOutput(data, 'ganita_natal_positions_compute')
       } catch (err) { return errOut('ganita_natal_positions_compute', String(err)) }
     }
   )
@@ -1963,7 +1963,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
             'Provide either chart_id (stored facts, preferred) or birth data (datetime_iso/latitude_deg/longitude_deg).')
         }
         const data = await callSidecarPath('/api/pyhora/compute', p)
-        return dualOutput(data)
+        return dualOutput(data, 'ganita_special_lagnas_get')
       } catch (err) { return errOut('ganita_special_lagnas_get', String(err), chartId ? { chart_id: chartId } : undefined) }
     }
   )

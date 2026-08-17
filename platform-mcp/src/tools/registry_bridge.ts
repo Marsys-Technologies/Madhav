@@ -80,6 +80,8 @@ import { runDossier, type DossierPage } from './dossier.js'
 // registration per tool, asserted by test" guarantee (brief §2) is unchanged — each tool's
 // server.tool() call is still reached from exactly one place, now inside register_all.ts.
 import { registerAllKalaViews } from './kala_views/register_all.js'
+import { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
+export { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
 
@@ -91,55 +93,11 @@ const PLATFORM_URL = (
 // Required by /api/retrieval/capability (F1 gate, M0.5).
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
-// ── Ayanamsha normalization (F-006/F-011/F-031) ───────────────────────────────
-// Signals are stored under 'lahiri_chitrapaksha'. Tools historically defaulted
-// to 'LAHIRI' causing a join mismatch → 0 rows. This map aliases all known
-// spellings to the canonical stored id so default + explicit calls both work.
-const AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri:               'lahiri_chitrapaksha',
-  lahiri_chitrapaksha:  'lahiri_chitrapaksha',
-  lahiri_chitra:        'lahiri_chitrapaksha',
-  true_chitra:          'lahiri_chitrapaksha',
-  true_citra:           'lahiri_chitrapaksha',
-  LAHIRI:               'lahiri_chitrapaksha',
-  Lahiri:               'lahiri_chitrapaksha',
-}
-const DEFAULT_AYANAMSHA = 'lahiri_chitrapaksha'
-
 function normalizeAyanamsha(id?: string): string {
-  if (!id) return DEFAULT_AYANAMSHA
-  return AYANAMSHA_ALIAS[id] ?? id
+  return resolveChartFactsAyanamsha(id)
 }
 
-// WP-1.3(f) / LCA-3 (ayanamsha reachability). chart_facts stores SIX distinct ayanamsha_id
-// values — five sidereal (lahiri_chitrapaksha, krishnamurti, raman, surya_siddhanta_classical,
-// true_chitra) plus INVARIANT (ayanamsha-independent facts). The shared `normalizeAyanamsha`
-// above COLLAPSES `true_chitra`/`true_citra` -> `lahiri_chitrapaksha` (AYANAMSHA_ALIAS), which
-// made true_chitra's own 27,112-row dataset UNREACHABLE via query_chart_facts (the tool
-// effectively served ≤5 of 6 ayanamshas, and the two Chitra-family names both bound to lahiri).
-// This resolver is SCOPED to query_chart_facts (it must not change the shared normalizer used
-// by the dasha/signals tools, which are a parallel lane): it maps convenience aliases to the
-// canonical id WITHOUT collapsing any two distinct stored ayanamshas together, so every one of
-// the 6 is reachable. Unknown ids pass through unchanged (the handler then returns an honest
-// empty result rather than silently querying lahiri).
-const CHART_FACTS_AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri:                    'lahiri_chitrapaksha',
-  lahiri_chitra:             'lahiri_chitrapaksha',
-  lahiri_chitrapaksha:       'lahiri_chitrapaksha',
-  kp:                        'krishnamurti',
-  krishnamurti:              'krishnamurti',
-  raman:                     'raman',
-  surya_siddhanta:           'surya_siddhanta_classical',
-  surya_siddhanta_classical: 'surya_siddhanta_classical',
-  true_chitra:               'true_chitra',
-  true_citra:                'true_chitra',
-  chitra:                    'true_chitra',
-  invariant:                 'INVARIANT',
-}
-export function resolveChartFactsAyanamsha(id?: string): string {
-  if (!id) return DEFAULT_AYANAMSHA
-  return CHART_FACTS_AYANAMSHA_ALIAS[id] ?? CHART_FACTS_AYANAMSHA_ALIAS[id.toLowerCase()] ?? id
-}
+// This shared resolver preserves every stored school, including true_chitra.
 
 // ── Platform primitive caller ─────────────────────────────────────────────────
 
@@ -2883,6 +2841,46 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
    * OBJECTS invisible to autoDetectTrimmableSections — they now land in the evidence layer
    * and are cleanly excluded when budget is tight rather than silently surviving trim passes.
    */
+  type AssessmentKernel = SaraKernel & {
+    /** Additive, tool-specific status: preserves the frozen string verdict contract. */
+    verdict_status: 'available' | 'unknown'
+    /** Present only when no deterministic upstream verdict was supplied. */
+    unknown_reason?: 'upstream_assessment_composition_absent' | 'upstream_assessment_error'
+  }
+
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    value !== null && typeof value === 'object' && !Array.isArray(value)
+
+  /**
+   * `callRegistryCapability` intentionally returns the capability handler's ToolResult
+   * wrapper (`{ content, is_error }`) after removing the HTTP envelope.  The assess_*
+   * call sites historically spread that wrapper into `response`, while this composer
+   * reads fields from `response` itself.  Normalize that one known wrapper exactly once
+   * here, at the shared composition boundary, retaining outer orientation fields and
+   * preserving direct/legacy payloads unchanged.
+   */
+  function normalizeAssessmentPayload(response: Record<string, unknown>): Record<string, unknown> {
+    if (response['is_error'] === false && isRecord(response['content'])) {
+      return { ...response, ...response['content'] }
+    }
+    return response
+  }
+
+  /** VerdictLayer is structured deterministic prose, not the string kernel stores. */
+  function assessmentVerdictText(value: unknown): string | null {
+    if (typeof value === 'string' && value.trim().length > 0) return value
+    if (!isRecord(value) || !Array.isArray(value['clauses'])) return null
+    const clauses = value['clauses']
+      .filter(isRecord)
+      .map(clause => clause['text'])
+      .filter((text): text is string => typeof text === 'string' && text.trim().length > 0)
+    return clauses.length > 0 ? clauses.join(' ') : null
+  }
+
+  function definedFields(fields: Record<string, unknown>): Record<string, unknown> {
+    return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined))
+  }
+
   function buildAssessResponse(
     response: Record<string, unknown>,
     toolName: keyof typeof MCP_RESPONSE_BUDGET_KB,
@@ -2890,15 +2888,34 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     effectiveVerbosity: Verbosity | undefined,
   ) {
     const effectiveBudgetKb = resolveMaxKb(toolName, budget_kb, effectiveVerbosity)
+    const normalized = normalizeAssessmentPayload(response)
+    const verdict = assessmentVerdictText(normalized['verdict'])
+    const upstreamErrored = normalized['is_error'] === true
+    const flags = Array.isArray(normalized['judgment_flags'])
+      ? [...normalized['judgment_flags'] as JudgmentFlagEntry[]]
+      : []
 
-    const kernel: SaraKernel = {
-      verdict: (response['verdict'] as string) ?? '',
-      flags: (response['judgment_flags'] as JudgmentFlagEntry[]) ?? [],
-      promise: null,
+    if (!verdict) {
+      flags.push(judgmentFlag(
+        'hollow_envelope_no_data_rows',
+        upstreamErrored
+          ? 'assessment capability returned an error wrapper; no deterministic verdict, promise, or evidence was invented.'
+          : 'assessment capability omitted deterministic composition data; no verdict, promise, or evidence was invented.',
+      ))
+    }
+
+    const kernel: AssessmentKernel = {
+      verdict: verdict ?? '',
+      verdict_status: verdict ? 'available' : 'unknown',
+      ...(verdict ? {} : {
+        unknown_reason: upstreamErrored ? 'upstream_assessment_error' as const : 'upstream_assessment_composition_absent' as const,
+      }),
+      flags,
+      promise: isRecord(normalized['promise']) ? normalized['promise'] as unknown as SaraKernel['promise'] : null,
       pointers: [
-        { instrument: 'get_domain_reading', hint: 'marsys://tool/L2/get_domain_reading' } as DrillPointerLike,
-        { instrument: 'query_temporal_activation', hint: 'marsys://tool/L3/query_temporal_activation' } as DrillPointerLike,
-        { instrument: 'query_contradictions', hint: 'marsys://tool/L2/query_contradictions' } as DrillPointerLike,
+        { instrument: 'bodha_domain_reading_get', hint: 'marsys://tool/L2/query_domain_reading' } as DrillPointerLike,
+        { instrument: 'kala_windows_get', hint: 'marsys://tool/L3/query_temporal_activation' } as DrillPointerLike,
+        { instrument: 'bodha_graph_traverse_get', hint: 'mode:"contradictions" — marsys://tool/L2/traverse_chart_graph' } as DrillPointerLike,
       ],
     }
 
@@ -2906,48 +2923,67 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     // Excludes verdict_skeleton and activating_dasha — the two large objects (F-56/F-111)
     // that were invisible to the auto-trimmer.
     const grounding: Record<string, unknown> = {
-      orientation_context: response['orientation_context'],
-      orientation_ok: response['orientation_ok'],
-      domain: response['domain'],
-      chart_id: response['chart_id'],
-      ayanamsha_id: response['ayanamsha_id'],
-      reading_checklist: response['reading_checklist'],
-      step_results: response['step_results'],
-      gochara_sweep: response['gochara_sweep'],
-      contradictions: response['contradictions'],
-      house_analysis: response['house_analysis'],
-      citations: response['citations'],
-      provenance: response['provenance'],
-      yoga_fact_ids: response['yoga_fact_ids'],
+      orientation_context: normalized['orientation_context'],
+      orientation_ok: normalized['orientation_ok'],
+      domain: normalized['domain'],
+      chart_id: normalized['chart_id'],
+      ayanamsha_id: normalized['ayanamsha_id'],
+      reading_checklist: normalized['reading_checklist'],
+      step_results: normalized['step_results'],
+      gochara_sweep: normalized['gochara_sweep'],
+      contradictions: normalized['contradictions'],
+      house_analysis: normalized['house_analysis'],
+      citations: normalized['citations'],
+      provenance: normalized['provenance'],
+      yoga_fact_ids: normalized['yoga_fact_ids'],
     }
     // assess_career/wealth: reading + completeness injected by attachDomainReading/Completeness
-    if (response['reading'] !== undefined) grounding['reading'] = response['reading']
-    if (response['completeness'] !== undefined) grounding['completeness'] = response['completeness']
+    if (normalized['reading'] !== undefined) grounding['reading'] = normalized['reading']
+    if (normalized['completeness'] !== undefined) grounding['completeness'] = normalized['completeness']
     // assess_wealth: leverage_index injected by attachLeverageIndex
-    if (response['leverage_index'] !== undefined) grounding['leverage_index'] = response['leverage_index']
+    if (normalized['leverage_index'] !== undefined) grounding['leverage_index'] = normalized['leverage_index']
 
     // Evidence: the two large objects (F-56/F-111) + remaining heavy data.
     // Excluded at the 40KB configured budget; available for deep_dive/exhaustive.
-    const evidence = {
-      verdict_skeleton: response['verdict_skeleton'],
-      activating_dasha: response['activating_dasha'],
-      karaka_analysis: response['karaka_analysis'],
-      varga_analysis: response['varga_analysis'],
-      sensitive_degree_firings: response['sensitive_degree_firings'],
-      kp_cusp_chain: response['kp_cusp_chain'],
-      ranking_basis: response['ranking_basis'],
-    }
+    const evidence = definedFields({
+      ...(isRecord(normalized['evidence']) ? normalized['evidence'] : {}),
+      verdict_skeleton: normalized['verdict_skeleton'],
+      activating_dasha: normalized['activating_dasha'],
+      karaka_analysis: normalized['karaka_analysis'],
+      varga_analysis: normalized['varga_analysis'],
+      sensitive_degree_firings: normalized['sensitive_degree_firings'],
+      kp_cusp_chain: normalized['kp_cusp_chain'],
+      ranking_basis: normalized['ranking_basis'],
+    })
 
     const counts: Record<string, number> = {
-      contradictions: Array.isArray(response['contradictions'])
-        ? (response['contradictions'] as unknown[]).length : 0,
-      yoga_fact_ids: Array.isArray(response['yoga_fact_ids'])
-        ? (response['yoga_fact_ids'] as unknown[]).length : 0,
-      reading_families: Array.isArray(response['reading'])
-        ? (response['reading'] as unknown[]).length : 0,
+      contradictions: Array.isArray(normalized['contradictions'])
+        ? (normalized['contradictions'] as unknown[]).length : 0,
+      yoga_fact_ids: Array.isArray(normalized['yoga_fact_ids'])
+        ? (normalized['yoga_fact_ids'] as unknown[]).length : 0,
+      reading_families: Array.isArray(normalized['reading'])
+        ? (normalized['reading'] as unknown[]).length : 0,
     }
 
-    return assembleSaraContent({ kernel, grounding, evidence, budget_kb: effectiveBudgetKb, counts })
+    const assembly = {
+      kernel,
+      grounding,
+      evidence: Object.keys(evidence).length > 0 ? evidence : undefined,
+      budget_kb: effectiveBudgetKb,
+      counts,
+    }
+    const assembled = assembleSaraContent(assembly)
+    // A caller may request a budget below the immutable <=2KB kernel ceiling. Do not
+    // silently pretend that such an irreducible response fit: keep the deterministic
+    // kernel intact and disclose the overage with the shared closed-vocabulary flag.
+    if (Buffer.byteLength(JSON.stringify(assembled), 'utf8') > effectiveBudgetKb * 1024) {
+      kernel.flags.push(judgmentFlag(
+        'budget_exceeded_after_trim',
+        'the irreducible assessment kernel exceeds the requested response budget; no deterministic verdict or provenance was removed to make it appear to fit.',
+      ))
+      return assembleSaraContent(assembly)
+    }
+    return assembled
   }
 
   // ── D8 APEX TOOLS ─────────────────────────────────────────────────────────
@@ -2962,8 +2998,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
-      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
-      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via bodha_domain_reading_get for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via bodha_graph_traverse_get with mode:"contradictions".'),
       verbosity: VERBOSITY_ZOD,
       reading_depth: READING_DEPTH_ZOD,
       budget_kb: BUDGET_KB_ZOD,
@@ -3001,8 +3037,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
-      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
-      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via bodha_domain_reading_get for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via bodha_graph_traverse_get with mode:"contradictions".'),
       verbosity: VERBOSITY_ZOD,
       reading_depth: READING_DEPTH_ZOD,
       budget_kb: BUDGET_KB_ZOD,
@@ -3044,8 +3080,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
-      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
-      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via bodha_domain_reading_get for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via bodha_graph_traverse_get with mode:"contradictions".'),
       verbosity: VERBOSITY_ZOD,
       reading_depth: READING_DEPTH_ZOD,
       budget_kb: BUDGET_KB_ZOD,
@@ -3083,8 +3119,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
-      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
-      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via bodha_domain_reading_get for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via bodha_graph_traverse_get with mode:"contradictions".'),
       verbosity: VERBOSITY_ZOD,
       reading_depth: READING_DEPTH_ZOD,
       budget_kb: BUDGET_KB_ZOD,

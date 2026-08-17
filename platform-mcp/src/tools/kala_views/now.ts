@@ -68,7 +68,7 @@ import { z } from 'zod'
 import type { Principal } from '../../types.js'
 import {
   makeKalaEnvelope,
-  noLelCalibrationMaturity,
+  fetchCalibrationMaturity,
   buildKalaFreshness,
   resolveFieldSnapshot,
   pointerTo,
@@ -84,10 +84,12 @@ import {
   type DrillPointerLike,
   type KalaCoverageEntry,
   type FieldSnapshotState,
+  type CalibrationMaturityResolution,
 } from '../../lib/kala_envelope.js'
 import { composeArgument } from '../../lib/argument_composer.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget } from '../../lib/response_budget.js'
 import { buildSukshmaBoundaryIntervals, type SukshmaBoundaryInterval } from '../../lib/kala_uncertainty.js'
+import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
 
 // ── Infrastructure (self-contained proxy helper — mirrors the established per-file
 // pattern in register_p1_aliases.ts / tools/retrieval/kala_temporal.ts / registry_bridge.ts;
@@ -96,14 +98,6 @@ import { buildSukshmaBoundaryIntervals, type SukshmaBoundaryInterval } from '../
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
-
-const AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri: 'lahiri_chitrapaksha', LAHIRI: 'lahiri_chitrapaksha', Lahiri: 'lahiri_chitrapaksha',
-  lahiri_chitrapaksha: 'lahiri_chitrapaksha', true_chitra: 'lahiri_chitrapaksha',
-}
-function normalizeAyanamsha(id?: string): string {
-  return id ? (AYANAMSHA_ALIAS[id] ?? id) : 'lahiri_chitrapaksha'
-}
 
 /**
  * Calls a registry capability via /api/retrieval/capability. NEVER throws — a transport
@@ -1019,6 +1013,24 @@ interface WindowFamily {
   [key: string]: unknown
 }
 
+const WINDOW_CLASS_GLOSS: Readonly<Record<string, string>> = {
+  CLASSIFY_RESIDUAL: 'residual pattern',
+  DIGNITY: 'planetary dignity',
+  DISPOSITOR_RELATIONAL: 'dispositor relationship',
+  DOSHA: 'affliction pattern',
+  SUBSYSTEM: 'supporting subsystem',
+  YOGA: 'yoga pattern',
+  dasha_ingress: 'daśā ingress',
+  dasha_transit_conjunction: 'daśā–transit conjunction',
+}
+
+function formatWindowClasses(classes: string[] | null | undefined): string {
+  if (!classes || classes.length === 0) return 'unlabeled'
+  return classes
+    .map((value) => WINDOW_CLASS_GLOSS[value] ?? value.replace(/[_-]+/g, ' ').toLowerCase())
+    .join(' + ')
+}
+
 interface DarshanaRow {
   effective_score: number | null
   net_label: string | null
@@ -1180,7 +1192,7 @@ function buildNowReading(params: {
   } else if (windowFamilies.length === 0) {
     thesisParts.push(`No temporal activation window is active for this chart as of ${asOfDate}.`)
   } else {
-    const label = (top?.signature_classes ?? []).join('/') || 'unlabeled'
+    const label = formatWindowClasses(top?.signature_classes)
     const orb = typeof top?.max_orb_strength === 'number' ? top.max_orb_strength.toFixed(2) : 'n/a'
     thesisParts.push(
       `${windowFamilies.length} temporal activation window(s) active as of ${asOfDate}; strongest: ` +
@@ -1197,7 +1209,7 @@ function buildNowReading(params: {
 
   const evidence: ArgumentEvidence[] = windowFamilies.slice(0, 3).map((f) => ({
     claim:
-      `${(f.signature_classes ?? []).join('/') || 'activation'} window ` +
+      `${formatWindowClasses(f.signature_classes)} window ` +
       `${f.window_start ?? '?'}..${f.window_end ?? '?'}` +
       (f.domains && f.domains.length > 0 ? ` touching ${f.domains.join(', ')}` : ''),
     fact_ids: f.member_signal_ids ?? [],
@@ -1468,7 +1480,7 @@ export interface KalaNowResult {
   tri_plane: TriPlanePointers
   coverage: KalaCoverageEntry[]
   freshness: ReturnType<typeof buildKalaFreshness>
-  calibration_maturity: ReturnType<typeof noLelCalibrationMaturity>
+  calibration_maturity: CalibrationMaturityResolution
   windows: WindowFamily[]
   darshana: DarshanaRow | null
   disha_shula: DishaShulaResult | null
@@ -1538,7 +1550,7 @@ export async function computeKalaNow(
   args: { ayanamsha_id?: string; as_of?: string; question_frame?: QuestionFrame | null },
   principal: Principal,
 ): Promise<KalaNowResult> {
-  const ayanamshaId = normalizeAyanamsha(args.ayanamsha_id)
+  const ayanamshaId = resolveChartFactsAyanamsha(args.ayanamsha_id)
   const asOfDate = args.as_of ?? new Date().toISOString().slice(0, 10)
 
   const [windowsResp, darshanaResp, natalRefSigns, panchangaResp, natalPanchangaResp, kotaChakraNow, sudarshanaVarshaNow, moortiNirnayaNow, vedhaGocharaNow, tithiPraveshaNow] = await Promise.all([
@@ -1933,16 +1945,16 @@ export async function computeKalaNow(
     // KALA_SUPREME_ELEVATION_v1_0.md §6: NOW elevation = "state_delta: what changed since the
     // last significant configuration (field diff against previous inflection point)."
     // SHAD_DARSHANA_CLOSE_v1_0.md §2 E6 disposition: VERIFIED-FIXED (lite); the state_delta
-    // sub-elevation is the W3 depth portion — requires kala_field_windows / kala_field_provenance
-    // rows per chart (P-G1 field-build must complete first). Not yet wired. G12 R26.
+    // sub-elevation is the W3 depth portion. No authoritative state-delta rows are currently
+    // available for this chart, so this facade discloses that gap rather than a build-status guess.
     honestEmptyCoverage(
       'state_delta',
       'E6 per-view elevation for NOW (KALA_SUPREME_ELEVATION_v1_0.md §6): the field diff ' +
       'against the previous inflection point (what changed since the last significant ' +
-      'configuration) is not yet computed. Requires ka_kshetra field provenance rows ' +
-      '(kala_field_windows / kala_field_provenance) for this chart — P-G1 field-build ' +
-      'must complete first. SHAD_DARSHANA_CLOSE_v1_0.md §2 E6 disposition: VERIFIED-FIXED ' +
-      '(lite); state_delta is the W3 depth remainder, not yet built.',
+      'configuration) has no authoritative state-delta result for this chart. The facade ' +
+      'therefore serves an honest empty rather than inferring a diff from other timing rows. ' +
+      'SHAD_DARSHANA_CLOSE_v1_0.md §2 E6 disposition: VERIFIED-FIXED (lite); state_delta is ' +
+      'the W3 depth remainder, not yet computed.',
     ),
   ]
 
@@ -1967,7 +1979,7 @@ export async function computeKalaNow(
     triPlane,
     coverage,
     freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: fieldSnapshot.field_content_hash }),
-    calibrationMaturity: noLelCalibrationMaturity(),
+    calibrationMaturity: await fetchCalibrationMaturity(chartId, principal),
   })
 
   const baseResult = {

@@ -284,11 +284,17 @@ describe('buildKalaUpayaResult — honest degradation (no live platform reachabl
     expect(isNoLever(noDiagnosis.tri_plane.intervention_ref)).toBe(true)
   })
 
-  it('serves an honest all-zero calibration_maturity (no LEL consulted at this build tier)', async () => {
+  it('serves a typed public-safe unavailable calibration_maturity when the authority is unreachable', async () => {
     const result = await buildKalaUpayaResult({ chart_id: CHART_ID, domain: 'career' }, PRINCIPAL)
     const response = result as KalaUpayaResponse
     expect(response.calibration_maturity).toEqual({
-      n_events: 0, prospective_resolutions: 0, event_class_coverage: 0, weights_version: null, skill_score: null,
+      n_events: null,
+      prospective_resolutions: null,
+      event_class_coverage: null,
+      weights_version: null,
+      skill_score: null,
+      state: 'unavailable',
+      reason: 'calibration_maturity_authority_unavailable',
     })
   })
 

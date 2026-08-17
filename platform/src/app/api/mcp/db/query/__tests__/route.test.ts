@@ -132,3 +132,32 @@ describe('POST /api/mcp/db/query — kala_field_snapshots whitelist (ṢAḌ-DAR
     expect(mockQuery).toHaveBeenCalledTimes(1)
   })
 })
+
+describe('POST /api/mcp/db/query — kala_field_skill calibration authority (V4 Bundle B)', () => {
+  beforeEach(() => {
+    mockQuery.mockReset()
+    process.env.MCP_INTERNAL_TOKEN = 'test-token'
+  })
+
+  it('accepts the chart-level aggregate query used by fetchCalibrationMaturity', async () => {
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ n_events: 12, n_prospective: 7, weights_version: 'weights-v4', skill_score: 0.81, event_class_coverage: 3 }],
+    })
+    const res = await POST(makeReq({
+      sql: `SELECT agg.n_events, agg.n_prospective, agg.weights_version, agg.skill_score,
+                    (SELECT COUNT(*)::int FROM kala_field_skill
+                     WHERE chart_id = $1 AND event_class IS NOT NULL) AS event_class_coverage
+             FROM kala_field_skill agg
+             WHERE agg.chart_id = $1 AND agg.event_class IS NULL
+             ORDER BY agg.released_at DESC
+             LIMIT 1`,
+      params: ['482012f1-710e-4a25-994a-93821f5871aa'],
+    }))
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toEqual({
+      rows: [{ n_events: 12, n_prospective: 7, weights_version: 'weights-v4', skill_score: 0.81, event_class_coverage: 3 }],
+    })
+    expect(mockQuery).toHaveBeenCalledTimes(1)
+  })
+})

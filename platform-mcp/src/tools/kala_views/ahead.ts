@@ -97,7 +97,6 @@ import { autofileAheadWindows, type AheadAutofileResult } from '../../lib/ahead_
 import {
   makeKalaEnvelope,
   fetchCalibrationMaturity,
-  noLelCalibrationMaturity,
   buildKalaFreshness,
   resolveFieldSnapshot,
   pointerTo,
@@ -113,6 +112,7 @@ import {
   type QuestionFrame,
   type TriPlanePointers,
   type DrillPointerLike,
+  type CalibrationMaturityResolution,
   type KalaCoverageEntry,
   type FieldSnapshotState,
 } from '../../lib/kala_envelope.js'
@@ -124,6 +124,7 @@ import { autoDetectTrimmableSections, finalizeMcpBudget } from '../../lib/respon
 // through this path too; nothing here re-implements adjudication or grading.
 import { fetchLatticeSubstrate } from '../../lib/kala_lattice_query.js'
 import { scoreMode1Opportunities } from '../../lib/kala_ritual_resonance.js'
+import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
 
 // ── Infrastructure (self-contained proxy helper — see now.ts's identical header note on
 // why this is duplicated rather than shared: avoids coupling this lane's facade to files
@@ -131,14 +132,6 @@ import { scoreMode1Opportunities } from '../../lib/kala_ritual_resonance.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
-
-const AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri: 'lahiri_chitrapaksha', LAHIRI: 'lahiri_chitrapaksha', Lahiri: 'lahiri_chitrapaksha',
-  lahiri_chitrapaksha: 'lahiri_chitrapaksha', true_chitra: 'lahiri_chitrapaksha',
-}
-function normalizeAyanamsha(id?: string): string {
-  return id ? (AYANAMSHA_ALIAS[id] ?? id) : 'lahiri_chitrapaksha'
-}
 
 async function callRegistryCapability(
   uri: string,
@@ -1595,7 +1588,7 @@ export interface KalaAheadResult {
   tri_plane: TriPlanePointers
   coverage: KalaCoverageEntry[]
   freshness: ReturnType<typeof buildKalaFreshness>
-  calibration_maturity: ReturnType<typeof noLelCalibrationMaturity>
+  calibration_maturity: CalibrationMaturityResolution
   windows: WindowFamily[]
   projections: ProjectionFamily[]
   gulika_kalam_ahead: GulikaKalamAheadWindow[]
@@ -1668,7 +1661,7 @@ export async function computeKalaAhead(
   },
   principal: Principal,
 ): Promise<KalaAheadResult> {
-  const ayanamshaId = normalizeAyanamsha(args.ayanamsha_id)
+  const ayanamshaId = resolveChartFactsAyanamsha(args.ayanamsha_id)
   const horizonYears = args.horizon_years ?? 5
   const maxItems = args.max_items ?? 20
   const today = new Date()

@@ -65,6 +65,7 @@ from typing import Any
 
 from brahmagyan.chart_reader_v4 import ChartReaderError, ChartReaderV4, SIGN_LORD
 from brahmagyan.dignity_oracle import classify_dignity as _oracle_classify_dignity
+from brahmagyan.aspects import NODAL_GRAHAS, get_graha_aspects
 from ga_writers.ga_condition_writer import (
     compute_panchadha_maitri,
     compute_tatkalika_relation,
@@ -189,13 +190,6 @@ def condition_band(condition: float) -> str:
 
 # ── §2.7 — classical graha-dṛṣṭi fractional aspect table ───────────────────
 
-_SPECIAL_FULL_ASPECTS: dict[str, set[int]] = {
-    "Mars": {4, 8},
-    "Jupiter": {5, 9},
-    "Saturn": {3, 10},
-}
-
-
 def house_distance(source_house: int, target_house: int) -> int:
     """Classical 'Nth house counted from source' distance (1 = same house/
     conjunction, 7 = opposition, ...), 1-indexed, wrapping at 12."""
@@ -210,7 +204,13 @@ def aspect_fraction(source_graha: str, source_house: int, target_house: int) -> 
     d = house_distance(source_house, target_house)
     if d == 1 or d == 7:
         return 1.00
-    if d in _SPECIAL_FULL_ASPECTS.get(source_graha, set()):
+    # The canonical oracle supplies the named graha aspects.  The V4 rubric
+    # intentionally retains its existing fractional treatment for nodal
+    # 5th/9th contacts; they are genuine Parashari aspects, but not a V4
+    # named full-contact tier.  This is a scoring-profile distinction, not a
+    # second aspect table.
+    normalized = source_graha.strip().casefold() if isinstance(source_graha, str) else ""
+    if d != 7 and normalized not in NODAL_GRAHAS and d in get_graha_aspects(source_graha):
         return 1.00
     if d in (4, 8):
         return 0.75

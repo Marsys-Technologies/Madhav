@@ -125,7 +125,9 @@ describe('F-44b: response_budget collapse fallback uses instrument: null, not re
         getArray: (c) => c['items'] as unknown[],
         setArray: (c, kept) => { c['items'] = kept },
         minKeep: 1,
-        recover: { instrument: 'some_tool', hint: 'use this tool to get items' },
+        // Test fixtures are scanned as literal response claims too: use a served tool,
+        // even though this test verifies the later collapse correctly replaces it with null.
+        recover: { instrument: 'bodha_signals_get', hint: 'use this tool to get items' },
         label: 'items',
       },
     ]

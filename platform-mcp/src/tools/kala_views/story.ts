@@ -95,6 +95,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
 import {
   makeKalaEnvelope,
+  fetchCalibrationMaturity,
   resolveFieldSnapshot,
   pointerTo,
   noLeverPointer,
@@ -102,7 +103,6 @@ import {
   honestEmptyCoverage,
   notInCorpusCoverage,
   buildKalaFreshness,
-  noLelCalibrationMaturity,
   kalaEvidenceTrimmableSection,
   type ArgumentReading,
   type ArgumentEvidence,
@@ -753,7 +753,7 @@ export async function handleKalaStoryGet(
     },
     coverage,
     freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: fieldSnapshot.field_content_hash }),
-    calibrationMaturity: noLelCalibrationMaturity(),
+    calibrationMaturity: await fetchCalibrationMaturity(input.chart_id, principal),
   })
 
   const response: KalaStoryResponse = {

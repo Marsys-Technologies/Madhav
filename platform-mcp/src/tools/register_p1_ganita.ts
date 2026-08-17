@@ -24,6 +24,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { describeProxyFailure } from './registry_bridge.js'
+import { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
 // R5 W0b-codegen (design §19): imports the GENERATED envelope module — the mirror that
 // used to live at '../lib/envelope.js' was hand-written and has been deleted. See
 // scripts/generate_envelope.ts for the generator; src/generated/envelope.ts is its output.
@@ -44,6 +45,10 @@ import { applyAutoBudgetToEnvelope } from '../lib/response_budget.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
+
+function normalizeAyanamsha(id?: string): string {
+  return resolveChartFactsAyanamsha(id)
+}
 
 async function callRegistryCapability(uri: string, args: Record<string, unknown>, principal: Principal): Promise<unknown> {
   const res = await fetch(`${PLATFORM_URL}/api/retrieval/capability`, {
@@ -210,16 +215,6 @@ function errorOutput(tool: string, message: string, extra?: Record<string, unkno
   return { ...dualOutput(data), isError: true as const }
 }
 
-// Ayanamsha alias normalization (F-006/F-011/F-031)
-const AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri: 'lahiri_chitrapaksha', LAHIRI: 'lahiri_chitrapaksha', Lahiri: 'lahiri_chitrapaksha',
-  lahiri_chitrapaksha: 'lahiri_chitrapaksha', true_chitra: 'lahiri_chitrapaksha',
-}
-function normalizeAyanamsha(id?: string): string {
-  if (!id) return 'lahiri_chitrapaksha'
-  return AYANAMSHA_ALIAS[id] ?? id
-}
-
 // Facet → L1 URI dispatch tables
 // R-17 fix: parivartana and graha_yuddha were both routed to get_yoga_dosha, which has no
 // backing category for either (its 6 categories are yoga_fires/yoga_label/dosha_fires/
@@ -354,16 +349,25 @@ function buildPanchaMahapurushaVerdict(
 ) {
   const firedYogaNames = new Set(
     yogaDoshaRows
-      .filter(r => r['fact_category'] === 'yoga_label')
+      // The label writer's canonical identity is the category/key pair. A
+      // same-category display/metadata row must not turn a yoga into a fired
+      // verdict merely because it carries matching text (C.7 pinning).
+      .filter(r => r['fact_category'] === 'yoga_label' && r['fact_key'] === 'yoga_name')
       .map(r => String(r['fact_value_text'] ?? '')),
   )
   const positionsAvailable = Object.keys(posByPlanet).length > 0
 
   const perYoga = PANCHA_MAHAPURUSHA.map(entry => {
     const pos = posByPlanet[entry.planet]
-    const formed = firedYogaNames.has(`${entry.yoga} Yoga`) || firedYogaNames.has(`${entry.karaka} Yoga`)
+    const matchingLabelNames = new Set([`${entry.yoga} Yoga`, `${entry.karaka} Yoga`])
+    const formed = [...matchingLabelNames].some(label => firedYogaNames.has(label))
     const sourceRow = yogaDoshaRows.find(
-      r => r['fact_category'] === 'yoga_label' && String(r['fact_value_text'] ?? '').startsWith(entry.yoga),
+      // The ga_structural writer's yoga catalog contract is
+      // `fact_category=yoga_label, fact_key=yoga_name`.  Do not let another
+      // yoga_label measurement with coincidentally matching display text donate
+      // citations to this verdict (C.7 fact-category pinning).
+      r => r['fact_category'] === 'yoga_label' && r['fact_key'] === 'yoga_name' &&
+        matchingLabelNames.has(String(r['fact_value_text'] ?? '')),
     )
     const citations = (sourceRow?.['fact_value_jsonb'] as { classical_citations?: { text_id: string; chapter?: number }[] } | undefined)
       ?.classical_citations
@@ -655,7 +659,13 @@ export function registerP1GanitaTools(server: McpServer, principal: Principal): 
           const natalDetail = natalRow?.['fact_value_jsonb'] as
             | { fires?: boolean; rahu_house?: number; ketu_house?: number }
             | undefined
-          const catalogRow = rows.find(r => r['fact_category'] === 'dosha_label' && r['fact_value_text'] === 'Kala Sarpa Dosha')
+          // `dosha_label` is a category, not the semantic identity of the
+          // catalog label.  ga_structural writes the named label under
+          // `fact_key=dosha_name`; pin it before reducing to one row (C.7).
+          const catalogRow = rows.find(
+            r => r['fact_category'] === 'dosha_label' && r['fact_key'] === 'dosha_name' &&
+              r['fact_value_text'] === 'Kala Sarpa Dosha',
+          )
 
           if (natalDetail && typeof natalDetail.fires === 'boolean') {
             const fires = natalDetail.fires === true

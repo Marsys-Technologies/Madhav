@@ -445,6 +445,25 @@ export interface CalibrationMaturity {
 }
 
 /**
+ * A maturity read that could not reach its authority. Zero is meaningful for a
+ * chart with no fitted rows, so it must never stand in for this state.
+ */
+export interface CalibrationMaturityUnavailable {
+  n_events: null
+  prospective_resolutions: null
+  event_class_coverage: null
+  weights_version: null
+  skill_score: null
+  state: 'unavailable'
+  reason: string
+}
+
+export type CalibrationMaturityResolution = CalibrationMaturity | CalibrationMaturityUnavailable
+
+export const CALIBRATION_MATURITY_AUTHORITY_UNAVAILABLE =
+  'calibration_maturity_authority_unavailable'
+
+/**
  * The Elevation §7 "LEL-absent" scenario, made concrete: "cohort priors only; weights =
  * classical structural priors... an honest calibration_maturity of zero." Every W0/W1
  * facade over a chart with no LEL entries should serve exactly this — never a null
@@ -460,10 +479,23 @@ export function noLelCalibrationMaturity(): CalibrationMaturity {
   }
 }
 
+function unavailableCalibrationMaturity(): CalibrationMaturityUnavailable {
+  return {
+    n_events: null,
+    prospective_resolutions: null,
+    event_class_coverage: null,
+    weights_version: null,
+    skill_score: null,
+    state: 'unavailable',
+    reason: CALIBRATION_MATURITY_AUTHORITY_UNAVAILABLE,
+  }
+}
+
 /**
  * F-140: reads the kala_field_skill chart-level aggregate row (event_class IS NULL)
- * to serve real calibration data instead of the honest-zero stub. Falls back to
- * noLelCalibrationMaturity() when no row exists (chart not yet fitted).
+ * to serve real calibration data instead of the honest-zero stub. It returns the
+ * honest zero only when no row exists (chart not yet fitted); an unreadable
+ * authority is a typed unknown, never fabricated zero maturity.
  *
  * Uses the same /api/mcp/db/query pattern as resolveFieldSnapshot above.
  * Reads platformUrl and internalToken from process.env internally (same as
@@ -472,7 +504,7 @@ export function noLelCalibrationMaturity(): CalibrationMaturity {
 export async function fetchCalibrationMaturity(
   chartId: string,
   principal: FieldSnapshotPrincipalLike,
-): Promise<CalibrationMaturity> {
+): Promise<CalibrationMaturityResolution> {
   const platformUrl = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
   const internalToken = process.env['MCP_INTERNAL_TOKEN'] ?? ''
   try {
@@ -491,13 +523,12 @@ export async function fetchCalibrationMaturity(
             agg.n_prospective,
             agg.weights_version,
             agg.skill_score,
-            COALESCE(cls.class_count, 0) AS event_class_coverage
+            (
+              SELECT COUNT(*)::int
+              FROM kala_field_skill
+              WHERE chart_id = $1 AND event_class IS NOT NULL
+            ) AS event_class_coverage
           FROM kala_field_skill agg
-          LEFT JOIN LATERAL (
-            SELECT COUNT(*)::int AS class_count
-            FROM kala_field_skill
-            WHERE chart_id = $1 AND event_class IS NOT NULL
-          ) cls ON true
           WHERE agg.chart_id = $1 AND agg.event_class IS NULL
           ORDER BY agg.released_at DESC
           LIMIT 1
@@ -506,7 +537,9 @@ export async function fetchCalibrationMaturity(
       }),
       signal: AbortSignal.timeout(8_000),
     })
-    if (!res.ok) return noLelCalibrationMaturity()
+    if (!res.ok) {
+      return unavailableCalibrationMaturity()
+    }
     const data = (await res.json()) as { rows?: Array<Record<string, unknown>> }
     const row = data.rows?.[0]
     if (!row) return noLelCalibrationMaturity()
@@ -518,7 +551,7 @@ export async function fetchCalibrationMaturity(
       skill_score: row['skill_score'] != null ? Number(row['skill_score']) : null,
     }
   } catch {
-    return noLelCalibrationMaturity()
+    return unavailableCalibrationMaturity()
   }
 }
 
@@ -536,7 +569,7 @@ export interface KalaEnvelope<TReading = ArgumentReading> {
   tri_plane: TriPlanePointers
   coverage: KalaCoverageEntry[]
   freshness: KalaFreshness
-  calibration_maturity: CalibrationMaturity
+  calibration_maturity: CalibrationMaturityResolution
 }
 
 export interface MakeKalaEnvelopeParams<TReading = ArgumentReading> {
@@ -548,7 +581,7 @@ export interface MakeKalaEnvelopeParams<TReading = ArgumentReading> {
   triPlane: TriPlanePointers
   coverage: KalaCoverageEntry[]
   freshness: KalaFreshness
-  calibrationMaturity: CalibrationMaturity
+  calibrationMaturity: CalibrationMaturityResolution
 }
 
 /** The single assembly point every one of the eight kala_* tool facades calls to produce
