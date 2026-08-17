@@ -93,6 +93,11 @@ const ALLOWED_TABLES = new Set([
   // for bg_transit_rules). Read-only L0 Brahmagyan reference table (migration 250); no
   // write path added.
   'bg_dignity_reference',
+  // F04: ref_nakshatra_get reads the canonical global catalog and its correlated
+  // pada-lord rows through this SELECT-only proxy. Both tables are reference data
+  // (migration 238), and the MCP handler has no write capability.
+  'reference_nakshatra',
+  'reference_nakshatra_pada',
   // ṢAḌ-DARŚANA W2 (E5 follow-up to PR #1033): resolveFieldSnapshot
   // (platform-mcp/src/lib/kala_envelope.ts) reads the chart's newest field-snapshot row
   // (`SELECT field_snapshot_id, field_content_hash ... ORDER BY built_at DESC, field_snapshot_id
