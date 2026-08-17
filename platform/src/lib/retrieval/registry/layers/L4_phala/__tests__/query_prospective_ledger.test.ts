@@ -145,7 +145,8 @@ describe('query_prospective_ledger — empty-window guard (EKV C-03)', () => {
     // Must not throw:
     const res = await queryProspectiveLedgerCapability.handler(
       { chart_id: NATIVE_CHART_ID }, undefined,
-    ) as { content: Record<string, unknown> }
+    ) as { content: Record<string, unknown>; is_error: boolean }
+    expect(res.is_error).toBe(false)
     const preds = res.content['predictions'] as Array<Record<string, unknown>>
     const served = preds.find((p) => p['prediction_id'] === 'empty-win')
     expect(served).toBeDefined()
@@ -153,5 +154,20 @@ describe('query_prospective_ledger — empty-window guard (EKV C-03)', () => {
     expect(served!['window_start']).toBeNull()
     expect(served!['window_end']).toBeNull()
     expect(served!['point_date']).toBeNull()
+  })
+
+  it('does not disclose a raw ledger/parser error when the read fails', async () => {
+    mockQuery.mockRejectedValueOnce(
+      new Error('invalid input syntax for type daterange: "empty"'),
+    )
+
+    const res = await queryProspectiveLedgerCapability.handler(
+      { chart_id: NATIVE_CHART_ID }, undefined,
+    ) as { content: Record<string, unknown>; is_error: boolean }
+
+    expect(res.is_error).toBe(true)
+    expect(res.content['error']).toBe('Standing prospective predictions are currently unavailable.')
+    expect(String(res.content['error'])).not.toContain('daterange')
+    expect(String(res.content['error'])).not.toContain('empty')
   })
 })
