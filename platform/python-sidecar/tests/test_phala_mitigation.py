@@ -567,6 +567,50 @@ def test_mitigation_map_excludes_past_windows_when_date_range_is_requested():
     assert count_params == [NATIVE_CHART_ID, "2028-02-08", "2026-08-17"]
 
 
+@pytest.mark.parametrize(
+    ("query_range", "error_match"),
+    [
+        ({"start": "2026-02-30", "end": "2028-02-08"}, "date_range.start"),
+        ({"start": "20260817", "end": "2028-02-08"}, "date_range.start"),
+        ({"start": "2026-08-17", "end": "2028-13-08"}, "date_range.end"),
+        (
+            {"start": "2028-02-08", "end": "2026-08-17"},
+            "date_range.start must be on or before date_range.end",
+        ),
+    ],
+)
+def test_mitigation_map_rejects_invalid_or_reversed_date_ranges(query_range, error_match):
+    with pytest.raises(ValueError, match=error_match):
+        mitigation_map(MagicMock(), NATIVE_CHART_ID, date_range=query_range)
+
+
+def test_mitigation_map_date_range_includes_rows_touching_either_boundary():
+    """Inclusive overlap retains rows ending at start or starting at end."""
+    query_range = {"start": "2026-08-17", "end": "2028-02-08"}
+    ends_at_start = {
+        **SAMPLE_MITIGATION_ROWS[0],
+        "mitigation_id": "ENDS-AT-START",
+        "window_start": date(2024, 1, 1),
+        "window_end": date(2026, 8, 17),
+    }
+    starts_at_end = {
+        **SAMPLE_MITIGATION_ROWS[1],
+        "mitigation_id": "STARTS-AT-END",
+        "window_start": date(2028, 2, 8),
+        "window_end": date(2029, 1, 1),
+    }
+    conn = _make_mitigation_query_conn([ends_at_start, starts_at_end], 2)
+
+    result = mitigation_map(conn, NATIVE_CHART_ID, date_range=query_range)
+
+    assert [row["mitigation_id"] for row in result["mitigations"]] == [
+        "ENDS-AT-START", "STARTS-AT-END",
+    ]
+    select_sql, _ = conn.cursor.return_value.__enter__.return_value.execute.call_args_list[0].args
+    assert "window_start <= %s::date" in select_sql
+    assert "window_end >= %s::date" in select_sql
+
+
 def test_mitigation_map_without_date_range_preserves_unfiltered_null_bound_rows():
     """Standalone calls retain legacy behavior; only horizon requests exclude null bounds."""
     conn = _make_mitigation_query_conn(SAMPLE_MITIGATION_ROWS, len(SAMPLE_MITIGATION_ROWS))

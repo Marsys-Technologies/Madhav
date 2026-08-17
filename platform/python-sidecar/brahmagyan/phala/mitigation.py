@@ -43,7 +43,7 @@ import json
 import os
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
 
 try:
@@ -769,10 +769,26 @@ def mitigation_map(
     range_start: Optional[str] = None
     range_end: Optional[str] = None
     if date_range is not None:
-        range_start = str(date_range.get("start") or "").strip()
-        range_end = str(date_range.get("end") or "").strip()
-        if not range_start or not range_end:
-            raise ValueError("date_range requires non-empty start and end values")
+        range_start = str(date_range.get("start") or "")
+        range_end = str(date_range.get("end") or "")
+        try:
+            start_date = date.fromisoformat(range_start)
+            if start_date.isoformat() != range_start:
+                raise ValueError
+        except ValueError as exc:
+            raise ValueError(
+                f"date_range.start must be a valid ISO date (YYYY-MM-DD): {range_start!r}"
+            ) from exc
+        try:
+            end_date = date.fromisoformat(range_end)
+            if end_date.isoformat() != range_end:
+                raise ValueError
+        except ValueError as exc:
+            raise ValueError(
+                f"date_range.end must be a valid ISO date (YYYY-MM-DD): {range_end!r}"
+            ) from exc
+        if start_date > end_date:
+            raise ValueError("date_range.start must be on or before date_range.end")
 
         # Standard inclusive overlap: a row must begin no later than the
         # horizon end and finish no earlier than the horizon start. PostgreSQL
