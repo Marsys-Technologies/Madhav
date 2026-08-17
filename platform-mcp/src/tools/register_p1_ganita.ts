@@ -349,7 +349,10 @@ function buildPanchaMahapurushaVerdict(
 ) {
   const firedYogaNames = new Set(
     yogaDoshaRows
-      .filter(r => r['fact_category'] === 'yoga_label')
+      // The label writer's canonical identity is the category/key pair. A
+      // same-category display/metadata row must not turn a yoga into a fired
+      // verdict merely because it carries matching text (C.7 pinning).
+      .filter(r => r['fact_category'] === 'yoga_label' && r['fact_key'] === 'yoga_name')
       .map(r => String(r['fact_value_text'] ?? '')),
   )
   const positionsAvailable = Object.keys(posByPlanet).length > 0

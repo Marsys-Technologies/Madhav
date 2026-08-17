@@ -202,6 +202,43 @@ describe('ganita_yogas_get — Y-12 pancha_mahapurusha truncation-fabrication fi
     expect(verdict['yogas_fired']).toBe(0)
   })
 
+  it('does not form Sasa from a wrong-key yoga_label decoy when no canonical yoga_name row exists', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+
+    // This is the remaining C.7 failure mode: the old formed-status set accepted every
+    // yoga_label row, so a same-category display_alias row could make Sasa look formed even
+    // though the ga_structural catalog never emitted the canonical yoga_name label.
+    stubFetch({
+      'marsys://tool/L1/get_yoga_dosha': {
+        chart_id: TEST_CHART_ID,
+        rows: [OTHER_ROW_1, OTHER_ROW_2, OTHER_ROW_3, WRONG_KEY_SASA_DECOY],
+        total: 4,
+        firings_pointer: { tool: 'ganita_yoga_firings_get', table: 'ga_yoga_firings', fired_count: 0, note: 'x' },
+        catalog_only_rows_in_page: 0,
+        dosha_label_gate: { applied: true, all: false, excluded_total: 0, note: 'x' },
+      },
+      'marsys://tool/L1/get_positions': { rows: SATURN_POSITION_ROWS },
+      'marsys://tool/L1/get_chart_header': {
+        chart_id_short: '00000000', name: 'Test', lagna_sign: 'Aries', lagna_deg: 0,
+        moon_sign: 'Aries', sun_sign: 'Aries', ayanamsha: 'lahiri_chitrapaksha', current_maha_antar: null,
+      },
+    }, captured)
+
+    const { registerP1GanitaTools } = await import('../tools/register_p1_ganita.js')
+    registerP1GanitaTools(server, PRINCIPAL)
+    const handler = handlers.get('ganita_yogas_get')!
+    const result = await handler({ chart_id: TEST_CHART_ID, response_format: 'v3' })
+    expect(result.isError).toBeFalsy()
+
+    const envelope = result.structuredContent?.object as Record<string, unknown>
+    const verdict = envelope['verdict'] as Record<string, unknown>
+    const pancha = verdict['pancha_mahapurusha'] as { per_yoga: { yoga: string; status: string }[] }
+    const sasaEntry = pancha.per_yoga.find(p => p.yoga.startsWith('Sasa'))
+    expect(sasaEntry?.status).toBe('not formed')
+    expect(captured.some(c => c.uri === 'marsys://tool/L1/get_yoga_dosha' && c.args['limit'] === 500)).toBe(true)
+  })
+
   it('uses only the dosha_name catalog row when reconciling Kala Sarpa against its D1 computation', async () => {
     const { server, handlers } = makeCapturingServer()
     const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
