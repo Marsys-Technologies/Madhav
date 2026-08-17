@@ -835,13 +835,13 @@ def _fetch_active_doshas_by_graha(conn: Any, chart_id: str, aya: str) -> dict[st
             [chart_id, aya, *constituent_ids],
         ).fetchall()
         for cr in crows:
-            subj = str((cr[0] if isinstance(cr, (tuple, list)) else cr.get("fact_subject")) or "").upper()
-            for graha in KNOWN_GRAHAS:
-                if subj == graha.upper():
-                    label = dosha_name or dosha_id
-                    out.setdefault(graha, [])
-                    if label not in out[graha]:
-                        out[graha].append(label)
+            subj_raw = str((cr[0] if isinstance(cr, (tuple, list)) else cr.get("fact_subject")) or "")
+            graha = to_title(subj_raw)
+            if graha in KNOWN_GRAHAS:
+                label = dosha_name or dosha_id
+                out.setdefault(graha, [])
+                if label not in out[graha]:
+                    out[graha].append(label)
     return out
 
 
