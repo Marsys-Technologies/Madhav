@@ -112,6 +112,11 @@ const ALLOWED_TABLES = new Set([
   // must lead with the highest-scoring insight_score row). Same writer, same chart scope.
   'kala_field_salience',
   'kala_insights',
+  // V4 Bundle B: every kala_* facade reads the chart-level aggregate maturity row
+  // (event_class IS NULL) plus its per-class coverage count from this migration-497 table.
+  // The query is server-authored, SELECT-only, and chart-scoped; the facade has already
+  // authorized the chart before it reaches this proxy. No write capability is added.
+  'kala_field_skill',
   // SM-γ C5 (SAMPŪRTI-γ lane C5, 2026-08-13): ahead_autofile.ts's SM_GAMMA_C5_ENABLED path
   // queries kala_field_windows to find the best-matching field window overlapping a served
   // AHEAD window (by chart_id + event_class + date range) and enrich authority_basis with the

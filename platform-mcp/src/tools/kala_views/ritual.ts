@@ -78,7 +78,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
 import {
   makeKalaEnvelope,
-  noLelCalibrationMaturity,
+  fetchCalibrationMaturity,
   buildKalaFreshness,
   resolveFieldSnapshot,
   computedCoverage,
@@ -569,7 +569,7 @@ export async function handleKalaRitualGet(
     triPlane: commonTriPlane(),
     coverage,
     freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: fieldSnapshot.field_content_hash }),
-    calibrationMaturity: noLelCalibrationMaturity(),
+    calibrationMaturity: await fetchCalibrationMaturity(params.chart_id, principal),
   })
 
   return {

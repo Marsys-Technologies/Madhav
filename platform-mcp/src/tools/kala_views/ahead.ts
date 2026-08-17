@@ -97,7 +97,6 @@ import { autofileAheadWindows, type AheadAutofileResult } from '../../lib/ahead_
 import {
   makeKalaEnvelope,
   fetchCalibrationMaturity,
-  noLelCalibrationMaturity,
   buildKalaFreshness,
   resolveFieldSnapshot,
   pointerTo,
@@ -113,6 +112,7 @@ import {
   type QuestionFrame,
   type TriPlanePointers,
   type DrillPointerLike,
+  type CalibrationMaturityResolution,
   type KalaCoverageEntry,
   type FieldSnapshotState,
 } from '../../lib/kala_envelope.js'
@@ -1588,7 +1588,7 @@ export interface KalaAheadResult {
   tri_plane: TriPlanePointers
   coverage: KalaCoverageEntry[]
   freshness: ReturnType<typeof buildKalaFreshness>
-  calibration_maturity: ReturnType<typeof noLelCalibrationMaturity>
+  calibration_maturity: CalibrationMaturityResolution
   windows: WindowFamily[]
   projections: ProjectionFamily[]
   gulika_kalam_ahead: GulikaKalamAheadWindow[]

@@ -10,9 +10,8 @@
  * signals by computed_salience × activation_strength, with a neutral-dignity down-rank) —
  * and re-serves it through the elevated `kala_envelope.ts` shape: argument-shaped reading
  * (`makeKalaEnvelope`/`composeArgument`), `question_frame`, `field_snapshot_id` stub,
- * tri-plane pointers, 3-state coverage, freshness, `calibration_maturity` (always the
- * honest `noLelCalibrationMaturity()` stub at W0 — no calibration plane exists yet
- * anywhere in this campaign, not just for LEL-absent charts).
+ * tri-plane pointers, 3-state coverage, freshness, and `calibration_maturity` read from
+ * the chart-level `kala_field_skill` authority (an honest zero only means no fitted row).
  *
  * HONESTY NOTE (§N.7 narration fidelity — do not over-claim the legacy scalar): the design
  * doc (KALA_SIX_VIEWS_DESIGN_v2_0.md §B) is explicit that today's `priority_score` is a
@@ -321,8 +320,8 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
     'AHEAD/ELECT, 3-state coverage (honestly flags that the W2 five-axis salience vector — ' +
     'informativeness/consequence/relevance/reliability/actionability — is not yet built; ' +
     'today\'s priority_score is the legacy single-scalar salience), freshness, and ' +
-    'calibration_maturity (always the honest zero stub at W0 — no calibration plane exists ' +
-    'yet). Neutral-dignity descriptor rows are down-ranked (not dropped), same as the ' +
+     'calibration_maturity (read from the chart-level calibration authority; an honest zero ' +
+     'means no fitted row). Neutral-dignity descriptor rows are down-ranked (not dropped), same as the ' +
     'underlying capability. [ṢAḌ-DARŚANA W0.4]',
     {
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),

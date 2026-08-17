@@ -73,12 +73,15 @@ const DIGNITY_BY_GRAHA: Record<string, Record<string, unknown>> = {
   Venus: { graha: 'Venus', exaltation_sign: 'Pisces', debilitation_sign: 'Virgo', own_signs: ['Taurus', 'Libra'] },
 }
 
-function mockRegistryFetch(opts: { reachable: boolean }) {
+function mockRegistryFetch(opts: { reachable: boolean; calibrationRow?: Record<string, unknown> }) {
   return vi.fn(async (url: string, init?: RequestInit) => {
     if (!opts.reachable) throw new Error('registry unreachable in test')
     const body = JSON.parse(String(init?.body ?? '{}')) as { uri?: string; args?: Record<string, unknown>; sql?: string; params?: unknown[] }
 
     if (String(url).includes('/api/mcp/db/query')) {
+      if (body.sql?.includes('FROM kala_field_skill')) {
+        return { ok: true, json: async () => ({ rows: opts.calibrationRow ? [opts.calibrationRow] : [] }), text: async () => '' } as Response
+      }
       const graha = String(body.params?.[0] ?? '')
       const row = Object.values(DIGNITY_BY_GRAHA).find((r) => String(r['graha']).toLowerCase() === graha.toLowerCase())
       return { ok: true, json: async () => ({ rows: row ? [row] : [] }), text: async () => '' } as Response
@@ -374,6 +377,27 @@ describe('kala_now_get — envelope contract (E3/E4/E5, item 43, §7 Living-LEL)
       event_class_coverage: 0,
       weights_version: null,
       skill_score: null,
+    })
+  })
+
+  it('serves the reachable chart-level calibration aggregate instead of replacing it with a zero stub', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({
+      reachable: true,
+      calibrationRow: {
+        n_events: 12,
+        n_prospective: 7,
+        event_class_coverage: 3,
+        weights_version: 'weights-v4',
+        skill_score: 0.81,
+      },
+    }))
+    const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
+    expect(result.calibration_maturity).toEqual({
+      n_events: 12,
+      prospective_resolutions: 7,
+      event_class_coverage: 3,
+      weights_version: 'weights-v4',
+      skill_score: 0.81,
     })
   })
 

@@ -553,7 +553,7 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
     'for intervention diagnosis; a live/complete chain points to kala_elect_get), 3-state ' +
     'coverage (the field-write provenance graph / classical-citation join / counterfactual ' +
     'mode, items 11 and E6, are NOT yet built — honestly flagged, not silently omitted), ' +
-    'freshness, and calibration_maturity (always the honest zero stub at W0). Pass `domain` ' +
+    'freshness, and calibration_maturity (read from the chart-level calibration authority). Pass `domain` ' +
     'or `bhava` exactly as judgment_query/pact_query accept — one is required. ' +
     '[ṢAḌ-DARŚANA W0.4]',
     {
