@@ -169,12 +169,7 @@ import {
   type KpRunningPeriod,
 } from '../../lib/kp_school_voice.js'
 import { callKalaRegistryCap, unwrapKalaPayload, kalaBudgetedDualOutput, kalaErrorOutput } from './shared.js'
-
-const AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri: 'lahiri_chitrapaksha', LAHIRI: 'lahiri_chitrapaksha', Lahiri: 'lahiri_chitrapaksha',
-  lahiri_chitrapaksha: 'lahiri_chitrapaksha', true_chitra: 'lahiri_chitrapaksha',
-}
-function resolveAyanamsha(id?: string): string { return id ? (AYANAMSHA_ALIAS[id] ?? id) : 'lahiri_chitrapaksha' }
+import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
 
 const TOOL_NAME = 'kala_explain_get'
 const CAPABILITY_URI = 'marsys://tool/L-PACT/pact_query'
@@ -588,7 +583,7 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
       }
 
       try {
-        const resolvedAyanamsha = resolveAyanamsha(ayanamsha_id as string | undefined)
+        const resolvedAyanamsha = resolveChartFactsAyanamsha(ayanamsha_id as string | undefined)
         const raw = await callKalaRegistryCap(
           CAPABILITY_URI,
           {

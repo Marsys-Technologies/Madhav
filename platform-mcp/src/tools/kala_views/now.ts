@@ -88,6 +88,7 @@ import {
 import { composeArgument } from '../../lib/argument_composer.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget } from '../../lib/response_budget.js'
 import { buildSukshmaBoundaryIntervals, type SukshmaBoundaryInterval } from '../../lib/kala_uncertainty.js'
+import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
 
 // ── Infrastructure (self-contained proxy helper — mirrors the established per-file
 // pattern in register_p1_aliases.ts / tools/retrieval/kala_temporal.ts / registry_bridge.ts;
@@ -96,14 +97,6 @@ import { buildSukshmaBoundaryIntervals, type SukshmaBoundaryInterval } from '../
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
-
-const AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri: 'lahiri_chitrapaksha', LAHIRI: 'lahiri_chitrapaksha', Lahiri: 'lahiri_chitrapaksha',
-  lahiri_chitrapaksha: 'lahiri_chitrapaksha', true_chitra: 'lahiri_chitrapaksha',
-}
-function normalizeAyanamsha(id?: string): string {
-  return id ? (AYANAMSHA_ALIAS[id] ?? id) : 'lahiri_chitrapaksha'
-}
 
 /**
  * Calls a registry capability via /api/retrieval/capability. NEVER throws — a transport
@@ -1019,6 +1012,24 @@ interface WindowFamily {
   [key: string]: unknown
 }
 
+const WINDOW_CLASS_GLOSS: Readonly<Record<string, string>> = {
+  CLASSIFY_RESIDUAL: 'residual pattern',
+  DIGNITY: 'planetary dignity',
+  DISPOSITOR_RELATIONAL: 'dispositor relationship',
+  DOSHA: 'affliction pattern',
+  SUBSYSTEM: 'supporting subsystem',
+  YOGA: 'yoga pattern',
+  dasha_ingress: 'daśā ingress',
+  dasha_transit_conjunction: 'daśā–transit conjunction',
+}
+
+function formatWindowClasses(classes: string[] | null | undefined): string {
+  if (!classes || classes.length === 0) return 'unlabeled'
+  return classes
+    .map((value) => WINDOW_CLASS_GLOSS[value] ?? value.replace(/[_-]+/g, ' ').toLowerCase())
+    .join(' + ')
+}
+
 interface DarshanaRow {
   effective_score: number | null
   net_label: string | null
@@ -1180,7 +1191,7 @@ function buildNowReading(params: {
   } else if (windowFamilies.length === 0) {
     thesisParts.push(`No temporal activation window is active for this chart as of ${asOfDate}.`)
   } else {
-    const label = (top?.signature_classes ?? []).join('/') || 'unlabeled'
+    const label = formatWindowClasses(top?.signature_classes)
     const orb = typeof top?.max_orb_strength === 'number' ? top.max_orb_strength.toFixed(2) : 'n/a'
     thesisParts.push(
       `${windowFamilies.length} temporal activation window(s) active as of ${asOfDate}; strongest: ` +
@@ -1197,7 +1208,7 @@ function buildNowReading(params: {
 
   const evidence: ArgumentEvidence[] = windowFamilies.slice(0, 3).map((f) => ({
     claim:
-      `${(f.signature_classes ?? []).join('/') || 'activation'} window ` +
+      `${formatWindowClasses(f.signature_classes)} window ` +
       `${f.window_start ?? '?'}..${f.window_end ?? '?'}` +
       (f.domains && f.domains.length > 0 ? ` touching ${f.domains.join(', ')}` : ''),
     fact_ids: f.member_signal_ids ?? [],
@@ -1538,7 +1549,7 @@ export async function computeKalaNow(
   args: { ayanamsha_id?: string; as_of?: string; question_frame?: QuestionFrame | null },
   principal: Principal,
 ): Promise<KalaNowResult> {
-  const ayanamshaId = normalizeAyanamsha(args.ayanamsha_id)
+  const ayanamshaId = resolveChartFactsAyanamsha(args.ayanamsha_id)
   const asOfDate = args.as_of ?? new Date().toISOString().slice(0, 10)
 
   const [windowsResp, darshanaResp, natalRefSigns, panchangaResp, natalPanchangaResp, kotaChakraNow, sudarshanaVarshaNow, moortiNirnayaNow, vedhaGocharaNow, tithiPraveshaNow] = await Promise.all([

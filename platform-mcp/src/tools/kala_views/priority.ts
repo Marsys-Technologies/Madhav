@@ -48,6 +48,7 @@ import {
 } from '../../lib/kala_envelope.js'
 import { composeArgument } from '../../lib/argument_composer.js'
 import { callKalaRegistryCap, unwrapKalaPayload, kalaBudgetedDualOutput, kalaErrorOutput, round3 } from './shared.js'
+import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
 
 // ── W2.7: kala_field_salience DB read (item 25) ──────────────────────────────
 // Reads the NEWEST field_snapshot's salience rows for a chart via the whitelisted
@@ -220,12 +221,6 @@ export function buildSalienceCoverage(salience: SalienceVectorResult | unknown[]
   )
 }
 
-const AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri: 'lahiri_chitrapaksha', LAHIRI: 'lahiri_chitrapaksha', Lahiri: 'lahiri_chitrapaksha',
-  lahiri_chitrapaksha: 'lahiri_chitrapaksha', true_chitra: 'lahiri_chitrapaksha',
-}
-function resolveAyanamsha(id?: string): string { return id ? (AYANAMSHA_ALIAS[id] ?? id) : 'lahiri_chitrapaksha' }
-
 const TOOL_NAME = 'kala_priority_get'
 const CAPABILITY_URI = 'marsys://tool/L3/call_priority_ranking'
 
@@ -352,7 +347,7 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
       }
 
       try {
-        const resolvedAyanamsha = resolveAyanamsha(ayanamsha_id as string | undefined)
+        const resolvedAyanamsha = resolveChartFactsAyanamsha(ayanamsha_id as string | undefined)
         // W2.7: fetch the live five-axis salience vector from kala_field_salience IN PARALLEL
         // with the priority ranking call — both are read-only, independent, and can race.
         const [raw, salienceResult] = await Promise.all([

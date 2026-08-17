@@ -16,6 +16,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { budgetMcpContent } from '../lib/response_budget.js'
+import { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
@@ -73,15 +74,6 @@ function errorOutput(tool: string, message: string, extra?: Record<string, unkno
   return { ...dualOutput(data), isError: true as const }
 }
 
-const AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri: 'lahiri_chitrapaksha', LAHIRI: 'lahiri_chitrapaksha', Lahiri: 'lahiri_chitrapaksha',
-  lahiri_chitrapaksha: 'lahiri_chitrapaksha', true_chitra: 'lahiri_chitrapaksha',
-}
-function normalizeAyanamsha(id?: string): string {
-  if (!id) return 'lahiri_chitrapaksha'
-  return AYANAMSHA_ALIAS[id] ?? id
-}
-
 export function registerP2DashaLordTools(server: McpServer, principal: Principal): void {
   server.tool(
     'ganita_dasha_lord_capability_get',
@@ -103,7 +95,7 @@ export function registerP2DashaLordTools(server: McpServer, principal: Principal
     async ({ chart_id, ayanamsha_id }) => {
       if (!chart_id) return errorOutput('ganita_dasha_lord_capability_get', 'chart_id is required')
       try {
-        const resolvedAyanamsha = normalizeAyanamsha(ayanamsha_id)
+        const resolvedAyanamsha = resolveChartFactsAyanamsha(ayanamsha_id)
         const data = await callRegistryCapability(
           'marsys://tool/L1/get_dasha_lord_capability',
           { chart_id, ayanamsha_id: resolvedAyanamsha },

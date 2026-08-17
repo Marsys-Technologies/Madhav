@@ -80,6 +80,8 @@ import { runDossier, type DossierPage } from './dossier.js'
 // registration per tool, asserted by test" guarantee (brief §2) is unchanged — each tool's
 // server.tool() call is still reached from exactly one place, now inside register_all.ts.
 import { registerAllKalaViews } from './kala_views/register_all.js'
+import { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
+export { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
 
@@ -91,55 +93,11 @@ const PLATFORM_URL = (
 // Required by /api/retrieval/capability (F1 gate, M0.5).
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
-// ── Ayanamsha normalization (F-006/F-011/F-031) ───────────────────────────────
-// Signals are stored under 'lahiri_chitrapaksha'. Tools historically defaulted
-// to 'LAHIRI' causing a join mismatch → 0 rows. This map aliases all known
-// spellings to the canonical stored id so default + explicit calls both work.
-const AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri:               'lahiri_chitrapaksha',
-  lahiri_chitrapaksha:  'lahiri_chitrapaksha',
-  lahiri_chitra:        'lahiri_chitrapaksha',
-  true_chitra:          'lahiri_chitrapaksha',
-  true_citra:           'lahiri_chitrapaksha',
-  LAHIRI:               'lahiri_chitrapaksha',
-  Lahiri:               'lahiri_chitrapaksha',
-}
-const DEFAULT_AYANAMSHA = 'lahiri_chitrapaksha'
-
 function normalizeAyanamsha(id?: string): string {
-  if (!id) return DEFAULT_AYANAMSHA
-  return AYANAMSHA_ALIAS[id] ?? id
+  return resolveChartFactsAyanamsha(id)
 }
 
-// WP-1.3(f) / LCA-3 (ayanamsha reachability). chart_facts stores SIX distinct ayanamsha_id
-// values — five sidereal (lahiri_chitrapaksha, krishnamurti, raman, surya_siddhanta_classical,
-// true_chitra) plus INVARIANT (ayanamsha-independent facts). The shared `normalizeAyanamsha`
-// above COLLAPSES `true_chitra`/`true_citra` -> `lahiri_chitrapaksha` (AYANAMSHA_ALIAS), which
-// made true_chitra's own 27,112-row dataset UNREACHABLE via query_chart_facts (the tool
-// effectively served ≤5 of 6 ayanamshas, and the two Chitra-family names both bound to lahiri).
-// This resolver is SCOPED to query_chart_facts (it must not change the shared normalizer used
-// by the dasha/signals tools, which are a parallel lane): it maps convenience aliases to the
-// canonical id WITHOUT collapsing any two distinct stored ayanamshas together, so every one of
-// the 6 is reachable. Unknown ids pass through unchanged (the handler then returns an honest
-// empty result rather than silently querying lahiri).
-const CHART_FACTS_AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri:                    'lahiri_chitrapaksha',
-  lahiri_chitra:             'lahiri_chitrapaksha',
-  lahiri_chitrapaksha:       'lahiri_chitrapaksha',
-  kp:                        'krishnamurti',
-  krishnamurti:              'krishnamurti',
-  raman:                     'raman',
-  surya_siddhanta:           'surya_siddhanta_classical',
-  surya_siddhanta_classical: 'surya_siddhanta_classical',
-  true_chitra:               'true_chitra',
-  true_citra:                'true_chitra',
-  chitra:                    'true_chitra',
-  invariant:                 'INVARIANT',
-}
-export function resolveChartFactsAyanamsha(id?: string): string {
-  if (!id) return DEFAULT_AYANAMSHA
-  return CHART_FACTS_AYANAMSHA_ALIAS[id] ?? CHART_FACTS_AYANAMSHA_ALIAS[id.toLowerCase()] ?? id
-}
+// This shared resolver preserves every stored school, including true_chitra.
 
 // ── Platform primitive caller ─────────────────────────────────────────────────
 

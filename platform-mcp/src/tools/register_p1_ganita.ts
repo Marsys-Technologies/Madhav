@@ -24,6 +24,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../types.js'
 import { describeProxyFailure } from './registry_bridge.js'
+import { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
 // R5 W0b-codegen (design §19): imports the GENERATED envelope module — the mirror that
 // used to live at '../lib/envelope.js' was hand-written and has been deleted. See
 // scripts/generate_envelope.ts for the generator; src/generated/envelope.ts is its output.
@@ -44,6 +45,10 @@ import { applyAutoBudgetToEnvelope } from '../lib/response_budget.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
+
+function normalizeAyanamsha(id?: string): string {
+  return resolveChartFactsAyanamsha(id)
+}
 
 async function callRegistryCapability(uri: string, args: Record<string, unknown>, principal: Principal): Promise<unknown> {
   const res = await fetch(`${PLATFORM_URL}/api/retrieval/capability`, {
@@ -208,16 +213,6 @@ function errorOutput(tool: string, message: string, extra?: Record<string, unkno
   }
   const data = { ok: false, error: { class: error_class, message: safe_message }, tool, ...extra }
   return { ...dualOutput(data), isError: true as const }
-}
-
-// Ayanamsha alias normalization (F-006/F-011/F-031)
-const AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri: 'lahiri_chitrapaksha', LAHIRI: 'lahiri_chitrapaksha', Lahiri: 'lahiri_chitrapaksha',
-  lahiri_chitrapaksha: 'lahiri_chitrapaksha', true_chitra: 'lahiri_chitrapaksha',
-}
-function normalizeAyanamsha(id?: string): string {
-  if (!id) return 'lahiri_chitrapaksha'
-  return AYANAMSHA_ALIAS[id] ?? id
 }
 
 // Facet → L1 URI dispatch tables

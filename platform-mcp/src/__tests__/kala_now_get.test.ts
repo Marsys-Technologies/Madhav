@@ -172,6 +172,14 @@ describe('kala_now_get — thin-facade re-presentation (no new computation)', ()
     const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
     expect(result.reading.evidence[0]?.fact_ids).toEqual(WINDOW_FAMILY.member_signal_ids)
   })
+
+  it('glosses window-class tokens before exposing them in the reading', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
+    const result = await computeKalaNow(TEST_CHART_ID, { as_of: AS_OF }, TEST_PRINCIPAL)
+    expect(result.reading.thesis).toContain('daśā–transit conjunction')
+    expect(result.reading.thesis).not.toContain('dasha_transit_conjunction')
+    expect(result.reading.evidence[0]?.claim).not.toContain('dasha_transit_conjunction')
+  })
 })
 
 describe('kala_now_get — honest-empty on unreachable registry', () => {
