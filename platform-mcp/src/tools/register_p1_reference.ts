@@ -9,7 +9,7 @@
  * ref_yogas_get             → marsys://tool/L0/query_yoga_catalog
  * ref_doshas_get            → marsys://tool/L0/query_dosha_catalog
  * ref_dignity_reference_get → marsys://tool/L0/query_classical_texts (topic=dignity)
- * ref_dasha_systems_get     → marsys://tool/L0/query_classical_texts (topic=dasha)
+ * ref_dasha_systems_get     → marsys://tool/L0/query_dasha_systems
  * ref_nakshatra_get         → marsys://tool/L0/query_classical_texts (topic=nakshatra)
  * ref_transit_rules_get     → bg_transit_rules table via platformQuery
  */
@@ -76,6 +76,26 @@ async function callRegistryCapability(uri: string, args: Record<string, unknown>
   const data = await res.json() as { ok: boolean; content?: unknown; error?: string }
   if (!data.ok) throw new Error(`[p1_reference] capability error: ${data.error ?? 'unknown'}`)
   return data.content
+}
+
+/**
+ * /api/retrieval/capability wraps a capability ToolResult one level below its
+ * own response. Keep that transport wrapper out of public reference receipts.
+ */
+function unwrapCapabilityPayload(data: unknown): Record<string, unknown> {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {}
+  const result = data as Record<string, unknown>
+  if (
+    'is_error' in result && result['content'] &&
+    typeof result['content'] === 'object' && !Array.isArray(result['content'])
+  ) {
+    return result['content'] as Record<string, unknown>
+  }
+  return result
+}
+
+function rowMatchesKeyword(row: Record<string, unknown>, keyword: string): boolean {
+  return JSON.stringify(row).toLowerCase().includes(keyword.toLowerCase())
 }
 
 // R6 0a-envauth (R-16/O-5): only sent x-mcp-internal-token (Layer 1). The target
@@ -384,24 +404,51 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
     },
     async ({ system, keyword, limit, offset }) => {
       try {
-        // CR-42/R-19/R-20 fix (D-1.6 S-1): no structured bg_dasha_systems catalog table
-        // exists (confirmed absent from the migration set), so this stays a classical-text
-        // search — but it used to send the actual `system` filter value only inside a
-        // `keyword` param that query_classical_texts' hybrid handler NEVER READS once
-        // `topic` is also present (freeText priority is query_text ?? query ?? topic, so
-        // the static 4-letter `topic: 'dasha'` value always won and `system`/`keyword` were
-        // silently discarded — confirmed live: system="vimshottari" -> query_used:"dasha").
-        // Fix: send the joined filter string via `query_text` (top priority) so `system`
-        // genuinely participates in the search, and disclose the degraded mode honestly.
-        const kw = [keyword, system, 'dasha system'].filter(Boolean).join(' ')
-        const data = await callRegistryCapability('marsys://tool/L0/query_classical_texts', {
-          query_text: kw, limit: limit ?? 30, offset: offset ?? 0,
+        const pageLimit = limit ?? 30
+        const pageOffset = offset ?? 0
+        const canonicalId = system?.trim().toLowerCase() || undefined
+        const data = await callRegistryCapability('marsys://tool/L0/query_dasha_systems', {
+          ...(canonicalId ? { canonical_id: canonicalId } : {}),
         }, principal)
-        const dataObj = (typeof data === 'object' && data !== null) ? data as Record<string, unknown> : { result: data }
+        const result = (data && typeof data === 'object' && !Array.isArray(data))
+          ? data as Record<string, unknown>
+          : {}
+        if (result['is_error'] === true) {
+          throw new Error('Dasha-system catalog authority is currently unavailable.')
+        }
+        const payload = unwrapCapabilityPayload(data)
+        const rows = Array.isArray(payload['rows'])
+          ? payload['rows'].filter((row): row is Record<string, unknown> => !!row && typeof row === 'object' && !Array.isArray(row))
+          : []
+        const normalizedKeyword = keyword?.trim().toLowerCase()
+        const filteredRows = normalizedKeyword
+          ? rows.filter((row) => rowMatchesKeyword(row, normalizedKeyword))
+          : rows
+        const total = filteredRows.length
+        const pageRows = filteredRows.slice(pageOffset, pageOffset + pageLimit)
         return dualOutput(envelope({
-          structured_filter_applied: false,
-          fallback_reason: 'No structured bg_dasha_systems catalog table exists — this is a classical-text hybrid search using the system/keyword filter as the search query, not a WHERE-clause match.',
-          ...dataObj,
+          source: 'brahma_dasha_systems',
+          structured_filter_applied: true,
+          structured_catalog_served: true,
+          rows: pageRows,
+          total,
+          pagination: {
+            offset: pageOffset,
+            limit: pageLimit,
+            total,
+            more_available: pageOffset + pageRows.length < total,
+            next_offset: pageOffset + pageRows.length < total ? pageOffset + pageRows.length : null,
+          },
+          filters: { canonical_id: canonicalId ?? null, keyword: normalizedKeyword ?? null },
+          ...(total === 0
+            ? { empty_reason: `No structured dasha-system rows matched (canonical_id=${canonicalId ?? 'any'}, keyword=${normalizedKeyword ?? 'any'}).` }
+            : {}),
+          disclaimer: payload['disclaimer'] ?? 'Classical dasha-system definitions only — not any chart\'s computed dasha periods.',
+          provenance: {
+            table: 'brahma_dasha_systems',
+            capability: 'marsys://tool/L0/query_dasha_systems',
+            upstream: payload['provenance'] ?? null,
+          },
         }, 'ref_dasha_systems_get'))
       } catch (err) {
         return errorOutput('ref_dasha_systems_get', String(err))
