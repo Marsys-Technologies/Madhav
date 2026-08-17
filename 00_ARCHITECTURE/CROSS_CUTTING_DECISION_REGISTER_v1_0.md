@@ -25,6 +25,7 @@ coordination lease that produced it.
 | CCD-002 | 2026-08-15 | Codex | ACTIVE | Round-trip acceptance marker: Codex wrote this bounded state change; a fresh Claude Code session must cite CCD-002 before appending its successor. |
 | CCD-003 | 2026-08-15 | Claude Code | ACTIVE | Round-trip acceptance successor: Claude Code consumed CCD-002 and wrote CCD-003; a fresh Codex session must cite both identifiers. |
 | CCD-004 | 2026-08-15 | Codex | ACTIVE | Close the onboarding verification: the canonical `.claude/skills` inventory is four active skills, not five; retain the MCP credential-rotation and validator-debt follow-ups as shared owner-visible work. |
+| CCD-005 | 2026-08-17 | Codex + Autonomous Executive Pratinidhi (Sol Ultra independent review) | ACTIVE | Establish the standing PARIŚEṢA Autonomous Executive Pratinidhi and reconcile the historical MACRO_PLAN canonical-record drift to the independently verified v2.1 source on origin/main. |
 
 ## CCD-001 — Cross-tool onboarding and operating protocol
 
@@ -66,4 +67,34 @@ coordination lease that produced it.
 - **DEBT — shared dual-tool follow-up:** repository-wide validation retains schema 43 and drift
   218 findings. They predate this onboarding, are shared debt under the dual-tool protocol, and
   are a candidate first owner-authorized Codex assignment.
+- **Supersession:** none.
+
+## CCD-005 — PARIŚEṢA Autonomous Executive Pratinidhi and macro-plan provenance reconciliation
+
+- **Authority:** direct native instruction, 2026-08-17; applies to the controlling PARIŚEṢA runbook.
+- **Standing mandate:** the conductor remains the sole orchestration authority. The Autonomous
+  Executive Pratinidhi is its independent executive, domain, governance, and recovery partner:
+  it challenges evidence, makes ordinary in-scope decisions, keeps verification elastic, records
+  material decisions/dissent/actions, and classifies surprises for bounded recovery. High-blast
+  governance, migration, security, production-data, and architecture actions require two-key
+  agreement between conductor and an appropriately escalated independent Pratinidhi reviewer.
+- **Model routing:** Terra High is the routine executive default; Luna/deterministic tooling
+  handles mechanical work; Sol High handles bounded difficult rulings; Sol XHigh terminal
+  red-team; Sol Ultra exceptional high-blast adjudication. Pools scale by measured bottleneck and
+  are retired when idle.
+- **Decision:** reconcile the historical `CANONICAL_ARTIFACTS_v1_0.md` MACRO_PLAN row from
+  v2.0 / `2fef28fdcfa54c425ce96c0dd82e8016a47d907545915139c39688f19ab451c3` to v2.1 /
+  `8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e`; do not alter the
+  macro-plan bytes. The registry is superseded for tooling by CAPABILITY_MANIFEST after the
+  2026-04-27 cutover, but remains a session-provenance and audit surface.
+- **Evidence:** origin/main at `f003bf3af3b372eb5c1365ca4753a95aba4b7551` contains the
+  v2.1 bytes. Independent Sol Ultra review approved the transition after reading `ee5bf081`,
+  `055165b`, `43ff2f1`, `96f30bc`, and `449d2c3`; the changes are governed naming, layer,
+  metadata, and factual-count corrections, not an unreviewed hash substitution.
+- **Coordination:** `PARISESA-PREFLIGHT-AUTHORITY-2` on origin/campaign-coordination;
+  documentation/governance only. No application code, migration, deployment, rebuild,
+  production data, or campaign takeover authority is granted by this decision.
+- **Dissent:** none. The Pratinidhi noted that the pre-cutover baseline commit is
+  `18566190` in origin/main's lineage; `6982a24` is byte-equivalent context rather than its
+  ancestor.
 - **Supersession:** none.
