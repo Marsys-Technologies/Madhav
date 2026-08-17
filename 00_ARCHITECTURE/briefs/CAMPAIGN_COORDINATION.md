@@ -3619,3 +3619,4 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
 **SŪTRADHĀRA (CONDUCTOR) — EKAVĀKYATĀ campaign closed**
 **2026-08-15T23:38Z**
 | PARISESA-TAKEOVER-PENDING-4 | PARIŚEṢA / Codex | **Phase 1 fenced reacquisition:** prior generations expired. Run ID `PARISESA-CODEX-20260817`; continuation epoch `4`; fencing generation `4`; owner task `01a00d47-fa78-7252-97d4-3f75d539e392`; heartbeat TTL `15m`; scope: audit/control-plane only. | 2026-08-17 17:10 IST | 2026-08-17 17:25 IST | **TAKEOVER-PENDING** |
+| PARISESA-TAKEOVER-PENDING-5 | PARIŚEṢA / Codex | **Phase 1 fenced reacquisition:** prior generations expired. Run ID `PARISESA-CODEX-20260817`; continuation epoch `5`; fencing generation `5`; owner task `01a00d47-fa78-7252-97d4-3f75d539e392`; heartbeat TTL `15m`; scope: audit/control-plane only. | 2026-08-17 18:06 IST | 2026-08-17 18:21 IST | **TAKEOVER-PENDING** |
