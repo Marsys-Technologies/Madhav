@@ -145,6 +145,16 @@ const FORBIDDEN_PATTERN =
 // relation and must not be mistaken for an unallowlisted table.
 const TABLE_REF_PATTERN = /\b(?:FROM|JOIN)\s+"?([a-zA-Z_][a-zA-Z0-9_]*)"?\b(?!\s*\()/gi
 
+function isCteName(sql: string, name: string): boolean {
+  // Identifiers captured from FROM/JOIN may be CTE references. Limit the
+  // exception to a WITH declaration (including a later comma-separated CTE),
+  // rather than accepting arbitrary "name AS (...)" text in the query.
+  return new RegExp(
+    `\\b(?:WITH\\s+(?:RECURSIVE\\s+)?|,)\\s*"?${name}"?\\s+AS\\s*\\(`,
+    'i'
+  ).test(sql)
+}
+
 function validateSql(sql: string): { ok: true } | { ok: false; reason: string } {
   const trimmed = sql.trim()
   if (!/^(WITH|SELECT)\b/i.test(trimmed)) {
@@ -162,12 +172,20 @@ function validateSql(sql: string): { ok: true } | { ok: false; reason: string } 
   if (referenced.size === 0) {
     return { ok: false, reason: 'Could not identify any referenced table (FROM/JOIN clause required).' }
   }
+  let hasAllowedBaseRelation = false
   for (const t of referenced) {
     // CTE names (declared in WITH ... AS (...)) are legitimate self-references
     // that will not appear in ALLOWED_TABLES; only reject real table names.
-    if (!ALLOWED_TABLES.has(t) && !trimmed.match(new RegExp(`\\b${t}\\s+AS\\s*\\(`, 'i'))) {
+    if (ALLOWED_TABLES.has(t)) {
+      hasAllowedBaseRelation = true
+      continue
+    }
+    if (!isCteName(trimmed, t)) {
       return { ok: false, reason: `Table '${t}' is not in the read-only whitelist for this route.` }
     }
+  }
+  if (!hasAllowedBaseRelation) {
+    return { ok: false, reason: 'Query must reference at least one allowlisted base table.' }
   }
   return { ok: true }
 }
