@@ -101,6 +101,7 @@ from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 from brahmagyan.verification_vocab import DIVERGENT_FLAGGED, UNVERIFIED_DEFAULT, assert_legal
 from brahmagyan.dignity_oracle import classify_dignity
+from brahmagyan.aspects import get_graha_aspects
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
 from pipeline.orchestrator.birth_params import resolve_birth_params
@@ -540,30 +541,6 @@ MAHAPURUSHA_STRENGTH_BONUS: dict[str, float] = {
     "SASA_MAHAPURUSHA": 0.20,
 }
 
-# Parashari aspect strengths per BPHS Ch.7
-# format: {source_house_offset: aspect_strength}
-PARASHARI_ASPECTS: dict[str, dict[int, float]] = {
-    # All grahas: 7th house full aspect
-    "all": {7: 1.0},
-    # Saturn: 3rd + 10th are FULL special aspects, same as 7th (BPHS Ch.7;
-    # V-5 fix — the special drishtis of Mars/Jupiter/Saturn are all
-    # full-strength overrides of the generic fractional drishti-bala table,
-    # not fractional themselves. The previous 0.25/0.75 values were an
-    # uncited partial-strength invention inconsistent with Mars (4th/8th=1.0
-    # below) and Jupiter (5th/9th=1.0 below), which this table already got
-    # right.
-    "Saturn": {3: 1.0, 7: 1.0, 10: 1.0},
-    # Jupiter: 5th (full) + 9th (full) in addition to 7th
-    "Jupiter": {5: 1.0, 7: 1.0, 9: 1.0},
-    # Mars: 4th (full) + 8th (full) in addition to 7th
-    "Mars": {4: 1.0, 7: 1.0, 8: 1.0},
-}
-
-# Node special aspects: 5th/7th/9th — full strength (many Parashari authorities)
-# Rahu and Ketu: retrograde, so aspects flow "backward" in some schools;
-# here we follow the majority rule: same offsets as stated (5th/7th/9th from sign).
-NODE_PARASHARI_ASPECTS: dict[int, float] = {5: 1.0, 7: 1.0, 9: 1.0}
-
 # effective_dignity v2 (design §10c): functional-class buckets over whatever
 # string `_get_functional_class_dynamic` returns — do not invent a new
 # classifier (B.10). Natural sets below are ONLY the documented fallback for
@@ -576,30 +553,23 @@ _NATURAL_MALEFICS = {"Saturn", "Mars", "Sun", "Rahu", "Ketu"}
 
 def _graha_aspects_house(aspector: str, source_h: int, target_h: int) -> float:
     """Return Parashari aspect strength from aspector in source_h onto target_h.
-    Returns 0.0 if no aspect. Uses canonical PARASHARI_ASPECTS (1-indexed offsets).
+    Returns 0.0 if no aspect. Uses the canonical oracle (1-indexed offsets).
     This is the ONE aspect-offset source in this file — all builders must call this.
 
-    PARASHARI_ASPECTS keys are INCLUSIVE house counts per classical convention
+    Canonical aspect-profile keys are INCLUSIVE house counts per classical convention
     (the source house counts as "1"; the opposition/7th-house aspect is the
     house you reach by counting 7 houses inclusively — i.e. 6 houses away by
     raw difference). A7 fix (CR-87 follow-up, Lane A-gamma / D-1.5a): the
     offset must be the inclusive count (raw_diff + 1), not the raw difference.
     The prior `% 12 or 12` formula returned the raw difference (e.g. house 1
-    -> house 7 gave offset=6), which doesn't match any PARASHARI_ASPECTS key
+    -> house 7 gave offset=6), which doesn't match any canonical profile key
     (all opposition entries are keyed "7"), so every 7th-house/opposition
     aspect silently returned 0.0 instead of 1.0. Example: Sun in H1 aspecting
-    H7 (opposition) — before: offset=6 -> PARASHARI_ASPECTS["all"].get(6) ->
-    0.0 (bug). After: offset=7 -> PARASHARI_ASPECTS["all"].get(7) -> 1.0.
+    H7 (opposition) — before: offset=6 -> universal profile .get(6) ->
+    0.0 (bug). After: offset=7 -> canonical universal profile .get(7) -> 1.0.
     """
     offset = ((target_h - source_h) % 12) + 1  # inclusive count, 1..12
-    if aspector in ("Rahu", "Ketu"):
-        return NODE_PARASHARI_ASPECTS.get(offset, 0.0)
-    table = PARASHARI_ASPECTS.get(aspector, {})
-    strength = table.get(offset, 0.0)
-    if strength == 0.0:
-        # All planets also cast 7th aspect; check "all" for special-aspect planets
-        strength = PARASHARI_ASPECTS["all"].get(offset, 0.0)
-    return strength
+    return get_graha_aspects(aspector).get(offset, 0.0)
 
 # Jaimini Rasi drishti rules (fixed sign aspects)
 # Fixed signs: Taurus, Leo, Scorpio, Aquarius → aspect all but adjacent movable signs
@@ -1131,13 +1101,7 @@ def _build_aspect_rows(
         g_house = g_data["house"]
         g_subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
 
-        # Determine aspect offsets for this graha
-        if g_name in ("Rahu", "Ketu"):
-            asp_offsets = NODE_PARASHARI_ASPECTS
-        elif g_name in PARASHARI_ASPECTS:
-            asp_offsets = PARASHARI_ASPECTS[g_name]
-        else:
-            asp_offsets = PARASHARI_ASPECTS["all"]
+        asp_offsets = get_graha_aspects(g_name)
 
         for offset, strength in asp_offsets.items():
             # offset is 1-based; target = ((source - 1) + (offset - 1)) % 12 + 1
@@ -4140,7 +4104,7 @@ def _build_special_state_rows(
         # Effective dignity modified by aspects (Y) — v2 (design §10c)
         # v2 replaces the 15° longitude-orb proximity test + fixed natural
         # benefic/malefic sets with the file's OWN Parashari aspect model
-        # (PARASHARI_ASPECTS / _graha_aspects_house, used by _build_aspect_rows)
+        # (canonical aspect oracle / _graha_aspects_house, used by _build_aspect_rows)
         # and the file's OWN dynamic functional-class calculator
         # (_get_functional_class_dynamic, used by _build_functional_class_rows).
         # Total replacement, not a blend — see LANE1 brief §1.2.
@@ -4649,12 +4613,7 @@ def _build_special_point_relationship_rows(
                 ))
 
             # ── Parashari aspect received ────────────────────────────────────
-            if g_name in ("Rahu", "Ketu"):
-                asp_offsets = NODE_PARASHARI_ASPECTS
-            elif g_name in PARASHARI_ASPECTS:
-                asp_offsets = PARASHARI_ASPECTS[g_name]
-            else:
-                asp_offsets = PARASHARI_ASPECTS["all"]
+            asp_offsets = get_graha_aspects(g_name)
 
             for offset, strength in asp_offsets.items():
                 target_house = ((g_house - 1 + offset - 1) % 12) + 1
@@ -4769,13 +4728,7 @@ def _build_house_lord_matrix_rows(
         house_a = lord_house_in_varga.get(lord_a, 0)
         if not house_a:
             continue
-        # Determine aspect offsets for lord_a
-        if lord_a in ("Rahu", "Ketu"):
-            asp_offsets = NODE_PARASHARI_ASPECTS
-        elif lord_a in PARASHARI_ASPECTS:
-            asp_offsets = PARASHARI_ASPECTS[lord_a]
-        else:
-            asp_offsets = PARASHARI_ASPECTS["all"]
+        asp_offsets = get_graha_aspects(lord_a)
 
         for offset, strength in asp_offsets.items():
             target_house = ((house_a - 1 + offset - 1) % 12) + 1
@@ -4904,12 +4857,7 @@ def _build_varga_relationship_rows(
             continue
         subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
 
-        if g_name in ("Rahu", "Ketu"):
-            asp_offsets = NODE_PARASHARI_ASPECTS
-        elif g_name in PARASHARI_ASPECTS:
-            asp_offsets = PARASHARI_ASPECTS[g_name]
-        else:
-            asp_offsets = PARASHARI_ASPECTS["all"]
+        asp_offsets = get_graha_aspects(g_name)
 
         for offset, strength in asp_offsets.items():
             target_house = ((house - 1 + offset - 1) % 12) + 1
@@ -5259,13 +5207,8 @@ def _build_karaka_web_rows(
             if sign_a and sign_a == sign_b:
                 relationship = "conjunction"
             else:
-                # Check Parashari aspect from A to B
-                if p_a in PARASHARI_ASPECTS:
-                    asp_offsets = PARASHARI_ASPECTS[p_a]
-                elif p_a in ("Rahu", "Ketu"):
-                    asp_offsets = NODE_PARASHARI_ASPECTS
-                else:
-                    asp_offsets = PARASHARI_ASPECTS["all"]
+                # Check Parashari aspect from A to B.
+                asp_offsets = get_graha_aspects(p_a)
                 for offset in asp_offsets:
                     target_house = ((house_a - 1 + offset - 1) % 12) + 1
                     if target_house == house_b:
@@ -6601,12 +6544,7 @@ def _build_combustion_retrograde_relationship_rows(
         if not house:
             continue
         subj = PLANET_TO_SUBJECT.get(name, name.upper())
-        if name in ("Rahu", "Ketu"):
-            asp_offsets = NODE_PARASHARI_ASPECTS
-        elif name in PARASHARI_ASPECTS:
-            asp_offsets = PARASHARI_ASPECTS[name]
-        else:
-            asp_offsets = PARASHARI_ASPECTS["all"]
+        asp_offsets = get_graha_aspects(name)
 
         for offset, strength in asp_offsets.items():
             target_house = ((house - 1 + offset - 1) % 12) + 1
@@ -6937,10 +6875,7 @@ def _build_virupa_drishti_rows(
             continue
         g_house_v = data["house"]
         g_subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
-        if g_name in ("Rahu", "Ketu"):
-            asp_table = NODE_PARASHARI_ASPECTS
-        else:
-            asp_table = {**PARASHARI_ASPECTS.get(g_name, {}), **PARASHARI_ASPECTS["all"]}
+        asp_table = get_graha_aspects(g_name)
         for offset, strength in asp_table.items():
             target_house = ((g_house_v - 1 + offset - 1) % 12) + 1
             rows.append(_base_row(

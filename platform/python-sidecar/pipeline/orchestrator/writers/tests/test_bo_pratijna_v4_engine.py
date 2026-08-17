@@ -324,6 +324,14 @@ def test_aspect_saturn_4th_falls_to_general_not_special():
     assert aspect_fraction("Saturn", 7, 10) == 0.75
 
 
+def test_aspect_nodal_specials_remain_v4_fractional_tiers():
+    """The shared oracle knows nodal 5th/9th aspects, while the V4 rubric
+    intentionally keeps those contacts in its existing general fractional
+    scoring tiers rather than promoting them to a named full-contact tier."""
+    assert aspect_fraction("Rahu", 1, 5) == 0.50
+    assert aspect_fraction("ketu", 1, 9) == 0.50
+
+
 def test_aspect_no_contact():
     assert aspect_fraction("Rahu", 2, 12) == 0.00
 
