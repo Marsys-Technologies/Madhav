@@ -139,9 +139,11 @@ const ALLOWED_TABLES = new Set([
 const FORBIDDEN_PATTERN =
   /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|GRANT|REVOKE|TRUNCATE|COPY|EXECUTE|CALL|VACUUM|MERGE)\b|;|--/i
 
-// Matches identifiers following FROM/JOIN (schema-unqualified; this DB has no
-// cross-schema tables in the whitelist so unqualified matching is sufficient).
-const TABLE_REF_PATTERN = /\b(?:FROM|JOIN)\s+"?([a-zA-Z_][a-zA-Z0-9_]*)"?/gi
+// Matches relation identifiers following FROM/JOIN (schema-unqualified; this DB
+// has no cross-schema tables in the whitelist so unqualified matching is
+// sufficient). A PostgreSQL table function such as `FROM UNNEST(...)` is not a
+// relation and must not be mistaken for an unallowlisted table.
+const TABLE_REF_PATTERN = /\b(?:FROM|JOIN)\s+"?([a-zA-Z_][a-zA-Z0-9_]*)"?\b(?!\s*\()/gi
 
 function validateSql(sql: string): { ok: true } | { ok: false; reason: string } {
   const trimmed = sql.trim()
