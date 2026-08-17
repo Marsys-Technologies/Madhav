@@ -27,6 +27,7 @@ coordination lease that produced it.
 | CCD-004 | 2026-08-15 | Codex | ACTIVE | Close the onboarding verification: the canonical `.claude/skills` inventory is four active skills, not five; retain the MCP credential-rotation and validator-debt follow-ups as shared owner-visible work. |
 | CCD-005 | 2026-08-17 | Codex + Autonomous Executive Pratinidhi (Sol Ultra independent review) | ACTIVE | Establish the standing PARIŚEṢA Autonomous Executive Pratinidhi and reconcile the historical MACRO_PLAN canonical-record drift to the independently verified v2.1 source on origin/main. |
 | CCD-006 | 2026-08-17 | Codex / PARIŚEṢA Phase −1 | ACTIVE | Bootstrap the user-authorized PARIŚEṢA autonomous recovery under its exact runbook scope after the validated canonical-provenance handshake. |
+| CCD-007 | 2026-08-17 | Codex | ACTIVE | Authorize PARIŚEṢA–RĀTRI V4 execution-first remediation under the operator-approved V4 prompt, while keeping V3 suspended and its state immutable. |
 
 ## CCD-001 — Cross-tool onboarding and operating protocol
 
@@ -122,3 +123,18 @@ coordination lease that produced it.
   fingerprint is `8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e` and the
   refreshed Phase −1 handshake validates it.
 - **Dissent:** none.
+
+## CCD-007 — PARIŚEṢA–RĀTRI V4 execution-first remediation authority
+
+- **Authority:** operator-approved `PARISESA_CODEX_EXECUTION_FIRST_PROMPT_V4_SOL_XHIGH.md`,
+  SHA-256 `de10ade728e0402608d7783f9bf6db9348653b6487b64cf98222f185b818ef65`,
+  2026-08-17.
+- **Scope:** V4 may perform local diagnosis, fresh-worktree implementation, focused tests,
+  independent review, run-owned branch/PR work, and—only with separately recorded proof—governed
+  merges, deploys, migrations, and bounded data repair. The live V4 tracker and append-only
+  receipts live under `/Users/Dev/shad_overnight/par-night/state/codex-v4/`.
+- **Prohibitions:** do not restart, revive, or mutate V3 supervisor/worker/lease/recovery state;
+  do not alter frozen orchestrator contracts, perform broad chart rebuilds, touch credentials or
+  infrastructure, delete broadly, or change the immutable 141-finding corpus.
+- **Supersession:** for V4 work mechanics only, supersedes the prior GIP P.3/P.4 lease-before-work
+  requirement. It does not supersede product, safety, migration, deployment, or evidence controls.
