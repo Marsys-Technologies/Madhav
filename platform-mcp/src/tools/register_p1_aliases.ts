@@ -27,6 +27,7 @@ import {
   READING_DEPTH_ZOD, guardDeepDiveNotLossy, DeepDiveLossyFormError, type ReadingDepth,
 } from './registry_bridge.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
+import { unwrapFailureReason, unwrapPrimitiveResult } from '../lib/primitive_unwrap.js'
 import { classifyScope } from './intent_scope_classifier.js'
 
 // ── Infrastructure helpers ────────────────────────────────────────────────────
@@ -180,19 +181,87 @@ const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
 // already use) adds its last-resort bounded-depth long-string truncation fallback, which DOES
 // reach that shape — this is a strict superset of the prior behavior (array trimming still runs
 // first; string truncation only engages if arrays alone can't close the gap).
-function dualOutput(data: unknown, toolName: string) {
-  let finalData: unknown = data
-  if (data && typeof data === 'object' && !Array.isArray(data)) {
-    const obj = data as Record<string, unknown>
-    const sections = autoDetectTrimmableSections(obj, toolName)
-    finalData = finalizeMcpBudget(obj, { maxKb: 40, sections })
-  }
+function formatDualOutput(finalData: unknown) {
   const structuredContent = { type: 'object' as const, object: finalData }
   const json = JSON.stringify(finalData)
   if (Buffer.byteLength(json, 'utf8') > DUAL_OUTPUT_TEXT_THRESHOLD_BYTES) {
     return { structuredContent, content: [{ type: 'text' as const, text: '[large payload — see structuredContent]' }] }
   }
   return { structuredContent, content: [{ type: 'text' as const, text: json }] }
+}
+
+function dualOutput(data: unknown, toolName: string) {
+  let finalData = data
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>
+    const sections = autoDetectTrimmableSections(obj, toolName)
+    finalData = finalizeMcpBudget(obj, { maxKb: 40, sections })
+  }
+  return formatDualOutput(finalData)
+}
+
+function calibrationContent(envelope: Record<string, unknown>): Record<string, unknown> | undefined {
+  const bundle = envelope['result']
+  if (!bundle || typeof bundle !== 'object' || Array.isArray(bundle)) return undefined
+  const results = (bundle as Record<string, unknown>)['results']
+  if (!Array.isArray(results)) return undefined
+  const first = results[0]
+  if (!first || typeof first !== 'object' || Array.isArray(first)) return undefined
+  const content = (first as Record<string, unknown>)['content']
+  return content && typeof content === 'object' && !Array.isArray(content)
+    ? content as Record<string, unknown>
+    : undefined
+}
+
+function prepareCalibrationEnvelope(data: unknown): Record<string, unknown> {
+  const outer = data && typeof data === 'object' && !Array.isArray(data)
+    ? data as Record<string, unknown>
+    : {}
+  const bundle = outer['result']
+  const unwrapped = unwrapPrimitiveResult(bundle)
+  if (unwrapped.failure || !unwrapped.payload) {
+    throw new Error(unwrapFailureReason('query_calibration', unwrapped.failure ?? 'payload_not_object'))
+  }
+
+  const bundleObject = bundle as Record<string, unknown>
+  const results = bundleObject['results'] as unknown[]
+  const first = results[0] as Record<string, unknown>
+  return {
+    ...outer,
+    result: {
+      ...bundleObject,
+      results: [{ ...first, content: unwrapped.payload }, ...results.slice(1)],
+    },
+  }
+}
+
+const CALIBRATION_QA_SECTION: TrimmableSection<Record<string, unknown>> = {
+  path: 'result.results[0].content.qa_results',
+  getArray: (envelope) => {
+    const qaResults = calibrationContent(envelope)?.['qa_results']
+    return Array.isArray(qaResults) ? qaResults : undefined
+  },
+  setArray: (envelope, kept) => {
+    const content = calibrationContent(envelope)
+    if (content) content['qa_results'] = kept
+  },
+  minKeep: 10,
+  hardFloor: true,
+  recover: {
+    instrument: 'mimamsa_calibration_get',
+    hint: 'Retry with budget_kb: 200 to recover the complete qa_results scorecard.',
+  },
+  label: 'calibration QA results',
+}
+
+function calibrationDualOutput(data: unknown, maxKb: number, budgetKbRequested?: number) {
+  const envelope = prepareCalibrationEnvelope(data)
+  const finalData = finalizeMcpBudget(envelope, {
+    maxKb,
+    sections: [CALIBRATION_QA_SECTION],
+    budgetKbRequested,
+  })
+  return formatDualOutput(finalData)
 }
 function errOut(tool: string, msg: string, extra?: Record<string, unknown>) {
   return { ...dualOutput({ ok: false, error: msg, tool, ...extra }, tool), isError: true as const }
@@ -1843,16 +1912,18 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
 
   server.tool(
     'mimamsa_calibration_get',
-    '[Phase-1 alias] Query calibration stats for a chart (same as query_calibration).',
+    '[Phase-1 alias] Query calibration stats for a chart (same as query_calibration). ' +
+    'The default 40KB presentation budget keeps the structured scorecard valid and trims ' +
+    'only qa_results when necessary; request budget_kb up to 200 for the complete QA detail.',
     {
       chart_id: z.string().uuid().describe('Chart UUID'),
-      domain:   z.string().optional(),
-      ...GlobalBase,
+      budget_kb: z.number().int().min(1).max(200).optional()
+        .describe('Presentation-only response budget in KB (default 40, max 200); never forwarded to query_calibration.'),
     },
-    async ({ chart_id, domain, limit, offset }) => {
+    async ({ chart_id, budget_kb }) => {
       try {
-        const data = await callPlatformPrim('query_calibration', { chart_id, domain, limit, offset }, principal)
-        return dualOutput(data, 'mimamsa_calibration_get')
+        const data = await callPlatformPrim('query_calibration', { chart_id }, principal)
+        return calibrationDualOutput(data, budget_kb ?? 40, budget_kb)
       } catch (err) { return errOut('mimamsa_calibration_get', String(err), { chart_id }) }
     }
   )
