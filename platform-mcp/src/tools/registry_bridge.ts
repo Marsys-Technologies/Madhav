@@ -2904,7 +2904,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       : toolName === 'assess_marriage'
         ? 'relationship'
         : null
-    if (missingSliceDomain && normalized['reading'] === undefined && normalized['domain_completeness'] === undefined) {
+    const hasAttachedReading = normalized['reading'] !== undefined && normalized['reading'] !== null &&
+      (!Array.isArray(normalized['reading']) || normalized['reading'].length > 0)
+    if (missingSliceDomain && !hasAttachedReading && normalized['domain_completeness'] === undefined) {
       flags.push(
         `domain_slice_not_configured: no precomputed ${missingSliceDomain} dossier slice is attached; ` +
         'this assessment is not a complete domain reading.',
