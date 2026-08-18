@@ -270,7 +270,7 @@ export const getDashasCapability: CapabilityDescriptor = {
     window_end:   { type: 'string', description: 'ISO date (YYYY-MM-DD). Window facet: only periods overlapping [window_start, window_end].' },
     date_contains: { type: 'string', description: 'ISO date (YYYY-MM-DD). Returns dashas active on this date.' },
     date_from:     { type: 'string', description: 'ISO date (YYYY-MM-DD). Filters to dashas whose end_date >= this date. Pass the birth date to exclude pre-birth rows.' },
-    as_of_date:    { type: 'string', description: 'ISO date (YYYY-MM-DD). Alias for date_contains — returns dashas active on this date ("what dasha am I running as of X"). Takes effect the same as date_contains; if both are passed, date_contains wins.' },
+    as_of_date:    { type: 'string', description: 'ISO date (YYYY-MM-DD). Alias for date_contains — returns dashas active on this date ("what dasha am I running as of X"). Takes effect the same as date_contains; if both are passed, date_contains wins. A date before the chart birth date is served with an explicit structured pre-birth warning.' },
     lord_graha:    { type: 'string', description: 'Filter by lord graha abbreviation (e.g. SU, MO, MA).' },
     fields: {
       type: 'string',
@@ -551,6 +551,39 @@ export const getDashasCapability: CapabilityDescriptor = {
         ))
       }
 
+      // F-33: a pre-birth as-of date can legitimately select a computed dasha period, but it
+      // is not a meaningful "current dasha" question for this chart. Keep the factual rows,
+      // and make that boundary machine-readable rather than leaving a negative age buried in
+      // optional narration. The birth-date lookup is metadata-only and must not break serving.
+      let chartBirthDate: string | null = null
+      let temporalContext: Record<string, unknown> | null = null
+      if (containsDate) {
+        try {
+          const birthRows = await query<{ birth_date: string; as_of_date_precedes_birth: boolean }>(
+            `SELECT birth_date::text AS birth_date,
+                    ($2::date < birth_date) AS as_of_date_precedes_birth
+             FROM charts WHERE id = $1`,
+            [chartId, containsDate]
+          )
+          chartBirthDate = birthRows.rows[0]?.birth_date ?? null
+          if (chartBirthDate && birthRows.rows[0]?.as_of_date_precedes_birth) {
+            temporalContext = {
+              as_of_date: containsDate,
+              birth_date: chartBirthDate,
+              as_of_date_status: 'pre_birth',
+            }
+            judgment_flags.push(judgmentFlag(
+              'as_of_date_precedes_chart_birth',
+              `as_of_date ${containsDate} precedes this chart's birth date ${chartBirthDate}; returned dasha rows are historical computation, not a native life-period reading.`,
+              'warning',
+            ))
+          }
+        } catch {
+          // Non-blocking metadata: absence must not turn an otherwise valid fact lookup into an error.
+          chartBirthDate = null
+        }
+      }
+
       // ── R5.3 B2 (Pratinidhi-R Q6-N-2 ruling): current-dasha narration ──
       // This tool is a flat_fact/leaf archetype that has never carried a narration field.
       // Built ONLY from rows already fetched in this call (no new computation, no new
@@ -564,12 +597,6 @@ export const getDashasCapability: CapabilityDescriptor = {
       const drill_pointers: DrillPointer[] = []
       if (containsDate && systemApplied === 'vimshottari') {
         try {
-          const birthRows = await query<{ birth_date: string }>(
-            `SELECT birth_date::text AS birth_date FROM charts WHERE id = $1`,
-            [chartId]
-          )
-          const birthDate = birthRows.rows[0]?.birth_date ?? null
-
           const isCanonicalRow = (r: Record<string, unknown>) =>
             !String(r['citation_ref'] ?? '').includes('kp_sub')
 
@@ -587,7 +614,7 @@ export const getDashasCapability: CapabilityDescriptor = {
           }
 
           if (byLevel[1] && byLevel[2] && byLevel[3]) {
-            narration = buildDashaNarration(byLevel, birthDate)
+            narration = buildDashaNarration(byLevel, chartBirthDate)
 
             const finest = Math.max(...Object.keys(byLevel).map(Number))
             const finestRow = byLevel[finest]
@@ -655,6 +682,7 @@ export const getDashasCapability: CapabilityDescriptor = {
           natal_condition_provenance: 'chart_facts:re-derived@serve (WP-1.8/R-43)',
           ...(narration ? { narration } : {}),
           ...(drill_pointers.length > 0 ? { drill_pointers } : {}),
+          ...(temporalContext ? { temporal_context: temporalContext } : {}),
         },
         is_error: false,
         ...(judgment_flags.length > 0 ? { judgment_flags } : {}),
