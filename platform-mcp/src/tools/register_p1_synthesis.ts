@@ -894,6 +894,27 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
       if (!(await remoteAuthorize(principal, chart_id, 'view'))) {
         return errorOutput('prashna_undertaking_get', 'AUTHZ_DENIED', { chart_id, domain })
       }
+
+      // The undertaking's election rows and activity-ontology rules use related but
+      // distinct authorities. `phala_muhurta.action_class` is the writer's concrete
+      // election vocabulary (for example `medical`); the activity ontology uses its
+      // own class IDs (for example `medical_procedure`). Keep the two mappings
+      // explicit rather than selecting all election windows and merely labelling the
+      // result with an inferred action class.
+      const _DOMAIN_TO_MUHURTA_ACTION: Record<string, string> = {
+        career:       'start_business',
+        financial:    'contract_signing',
+        wealth:       'contract_signing',
+        health:       'medical',
+        relationship: 'marriage',
+        spiritual:    'spiritual_initiation',
+        spirituality: 'spiritual_initiation',
+        transition:   'travel',
+      }
+      const muhurtaActionClass = _DOMAIN_TO_MUHURTA_ACTION[domain]
+      if (!muhurtaActionClass) {
+        return errorOutput('prashna_undertaking_get', 'INVALID_DOMAIN', { chart_id, domain })
+      }
       try {
         // 1. Prashna judgment (from ga_prashna_judgment)
         // R6 0b-deadtools (R-12): gj.verdict/gj.verdict_strength/gj.significator_positions/
@@ -917,7 +938,7 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           LIMIT 5
         `, [chart_id], principal)
 
-        // 2. Election windows (phala_muhurta for domain → action class mapping)
+        // 2. Election windows (phala_muhurta for the requested domain's action class)
         const muhurtaResult = await platformQuery(`
           SELECT pm.action_class, pm.window_start, pm.window_end,
                  pm.composite_quality, pm.window_quality_verdict,
@@ -926,9 +947,10 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           FROM phala_muhurta pm
           WHERE pm.chart_id = $1
             AND pm.composite_quality IS NOT NULL
+            AND pm.action_class = $2
           ORDER BY pm.composite_quality DESC NULLS LAST
-          LIMIT $2
-        `, [chart_id, top_windows], principal)
+          LIMIT $3
+        `, [chart_id, muhurtaActionClass, top_windows], principal)
 
         // 3. Fructification timing from phala_anchors (domain-filtered)
         const anchorResult = await platformQuery(`
