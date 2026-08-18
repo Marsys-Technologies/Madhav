@@ -381,6 +381,30 @@ function signalsSection(): TrimmableSection<Record<string, unknown>> {
   }
 }
 
+/**
+ * `verdict_summary` describes the signal rows on this response, not the upstream query's
+ * pre-budget candidate set. Keep it derived from the current array so an explicit trim
+ * cannot leave a stale served_count, tier census, or subject frequency alongside the rows.
+ */
+function rebuildSignalsVerdictSummary(inner: Record<string, unknown>): void {
+  const rows = Array.isArray(inner['signals']) ? inner['signals'] as Record<string, unknown>[] : []
+  const tierCounts: Record<string, number> = {}
+  const subjectCounts: Record<string, number> = {}
+  for (const row of rows) {
+    const tier = typeof row['signature_tier'] === 'string' ? row['signature_tier'] : 'unknown'
+    tierCounts[tier] = (tierCounts[tier] ?? 0) + 1
+    const facts = Array.isArray(row['constituent_facts_array']) ? row['constituent_facts_array'] as string[] : []
+    for (const fact of facts.slice(0, 1)) subjectCounts[fact] = (subjectCounts[fact] ?? 0) + 1
+  }
+  const topSubjects = Object.entries(subjectCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([fact]) => fact)
+  inner['verdict_summary'] = {
+    served_count: rows.length,
+    tier_distribution: tierCounts,
+    top_subjects_by_frequency: topSubjects,
+    note: 'Small verdict over THIS response\'s own served rows (§N.6 (iii)) — not a re-query.',
+  }
+}
+
 // ── Common Zod schemas ────────────────────────────────────────────────────────
 
 const ChartBase = {
@@ -642,30 +666,17 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         if (inner) {
           // Lane 5 (§N.6 (iii) layered envelope): a small verdict ahead of the (budgeted,
           // potentially large) row list — tier distribution + top subjects, computed from
-          // signals ALREADY fetched in this same response (zero new query, B.10). Built
-          // BEFORE the trimmer runs so the verdict reflects the untrimmed served set.
-          const rows = Array.isArray(inner['signals']) ? inner['signals'] as Record<string, unknown>[] : []
-          const tierCounts: Record<string, number> = {}
-          const subjectCounts: Record<string, number> = {}
-          for (const r of rows) {
-            const tier = typeof r['signature_tier'] === 'string' ? r['signature_tier'] as string : 'unknown'
-            tierCounts[tier] = (tierCounts[tier] ?? 0) + 1
-            const facts = Array.isArray(r['constituent_facts_array']) ? r['constituent_facts_array'] as string[] : []
-            for (const f of facts.slice(0, 1)) { subjectCounts[f] = (subjectCounts[f] ?? 0) + 1 }
-          }
-          const topSubjects = Object.entries(subjectCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k]) => k)
-          inner['verdict_summary'] = {
-            served_count: rows.length,
-            tier_distribution: tierCounts,
-            top_subjects_by_frequency: topSubjects,
-            note: 'Small verdict over THIS response\'s own served rows (§N.6 (iii)) — not a re-query.',
-          }
+          // signals ALREADY fetched in this same response (zero new query, B.10). Build
+          // it before trimming so its fixed overhead is budgeted, then rebuild it from the
+          // surviving rows immediately after the trim.
+          rebuildSignalsVerdictSummary(inner)
           // W3-L5 (budget unification, W-8): migrated off bare applyResponseBudget onto the
           // self-verifying finalizeMcpBudget entry point (this file's own dualOutput below
           // applies a second, file-wide auto-detect pass at 40KB as a backstop — the two are
           // not redundant: this narrower 25KB pre-trim on `inner` alone leaves headroom for
           // verdict_summary computed just above).
           finalizeMcpBudget(inner, { maxKb: 25, sections: [signalsSection()] })
+          rebuildSignalsVerdictSummary(inner)
         }
         return dualOutput(data, 'bodha_signals_get')
       } catch (err) { return errOut('bodha_signals_get', String(err), { chart_id }) }
