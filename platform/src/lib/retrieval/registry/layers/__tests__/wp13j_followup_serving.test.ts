@@ -129,6 +129,21 @@ describe('WP-1.3j — ph_pratikara mitigation serving-bug fix (F-L10-024)', () =
     expect(limitParam).toBeLessThanOrEqual(50)
     expect(String(main[0])).toContain('chart_id = $1')
   })
+
+  it('narrows both the page and total through the linked anchor domain', async () => {
+    vi.mocked(mockQuery).mockClear()
+    await cap.handler({ chart_id: CHART_A, domain: 'career', limit: 8 }, {})
+    const calls = vi.mocked(mockQuery).mock.calls
+    const main = calls.find(c => String(c[0]).includes('FROM phala_mitigation') && String(c[0]).includes('LIMIT $'))!
+    const count = calls.find(c => String(c[0]).includes('COUNT(*)') && String(c[0]).includes('FROM phala_mitigation'))!
+
+    for (const call of [main, count]) {
+      expect(String(call[0])).toContain('EXISTS (')
+      expect(String(call[0])).toContain('FROM phala_anchors')
+      expect(String(call[0])).toContain('a.domain = $')
+      expect(call[1] as unknown[]).toContain('career')
+    }
+  })
 })
 
 describe('WP-1.3j — ph_rectification serving-bug fix (F-L10-025)', () => {
