@@ -127,7 +127,7 @@ export function describeProxyFailure(tool: string, status: number, bodyText: str
       const chartId = parsed.denial?.chart_id ?? 'unknown'
       const required = parsed.denial?.permission_required ?? 'view'
       return `[registry_bridge] ENTITLEMENT_DENIED: '${tool}' — caller lacks ${required} access to chart ${chartId} ` +
-        `(distinct from an empty result — this chart exists but you are not granted). ${parsed.error?.message ?? ''}`.trim()
+        `(distinct from an empty result — this denial does not determine whether the chart exists). ${parsed.error?.message ?? ''}`.trim()
     }
   } catch {
     // Not JSON / not the denial shape — fall through to the generic message below.
