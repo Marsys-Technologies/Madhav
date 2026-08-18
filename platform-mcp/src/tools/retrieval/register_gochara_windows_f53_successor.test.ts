@@ -109,7 +109,9 @@ describe('F-53 successor — Gochara domain aliases preserve authority honesty',
       expect(mainQueries()).toBe(1)
       expect(mainParams[0]).toContain('relationship')
       expect(mainParams[0]).not.toContain('marriage')
-      expect((result['provenance_envelope'] as Record<string, unknown>)['domain_filter']).toBe('marriage')
+      const provenance = result['provenance_envelope'] as Record<string, unknown>
+      expect(provenance['domain_filter']).toBe('marriage')
+      expect(provenance['domain_filter_resolved']).toBe('relationship')
     },
   )
 
@@ -136,7 +138,10 @@ describe('F-53 successor — Gochara domain aliases preserve authority honesty',
       expect(mainQueries()).toBe(1)
       expect(mainParams[0]).toContain('marriage')
       expect(mainParams[0]).not.toContain('relationship')
-      expect((result['provenance_envelope'] as Record<string, unknown>)['backing_data_reachable']).toBe(false)
+      const provenance = result['provenance_envelope'] as Record<string, unknown>
+      expect(provenance['domain_filter']).toBe('marriage')
+      expect(provenance['domain_filter_resolved']).toBeNull()
+      expect(provenance['backing_data_reachable']).toBe(false)
     },
   )
 
@@ -162,6 +167,9 @@ describe('F-53 successor — Gochara domain aliases preserve authority honesty',
       },
     })
     expect((result['coverage'] as Record<string, unknown>)['event_classes_targeted_not_swept']).toEqual(['marriage'])
+    const provenance = result['provenance_envelope'] as Record<string, unknown>
+    expect(provenance['domain_filter']).toBe('marriage')
+    expect(provenance['domain_filter_resolved']).toBe('relationship')
     expect(mainQueries()).toBe(0)
   })
 
@@ -183,6 +191,9 @@ describe('F-53 successor — Gochara domain aliases preserve authority honesty',
       valid_domains: ['career', 'relationship'],
       reason: 'domain_not_in_gochara_ontology',
     })
+    const provenance = result['provenance_envelope'] as Record<string, unknown>
+    expect(provenance['domain_filter']).toBe('career_advancement')
+    expect(provenance['domain_filter_resolved']).toBeNull()
     expect(mainQueries()).toBe(0)
   })
 })

@@ -1139,21 +1139,32 @@ function resolveGocharaDomain(
   knownDomainsOk: boolean,
   eventClassDomains: Record<string, string>,
   eventClassDomainsOk: boolean,
-): { effectiveDomain: string | undefined; invalidDomain: InvalidGocharaDomain | null } {
-  if (!domain || !knownDomainsOk) return { effectiveDomain: domain, invalidDomain: null }
+): {
+  effectiveDomain: string | undefined
+  resolvedDomain: string | null
+  invalidDomain: InvalidGocharaDomain | null
+} {
+  if (!domain || !knownDomainsOk) {
+    return { effectiveDomain: domain, resolvedDomain: null, invalidDomain: null }
+  }
   const normalized = domain.trim().toLocaleLowerCase()
   const matched = knownDomains.find((known) => known.toLocaleLowerCase() === normalized)
-  if (matched) return { effectiveDomain: matched, invalidDomain: null }
-  if (!eventClassDomainsOk) return { effectiveDomain: domain, invalidDomain: null }
+  if (matched) return { effectiveDomain: matched, resolvedDomain: matched, invalidDomain: null }
+  if (!eventClassDomainsOk) {
+    return { effectiveDomain: domain, resolvedDomain: null, invalidDomain: null }
+  }
   const mappedDomain = GOCHARA_EVENT_CLASS_DOMAIN_ALIASES.has(normalized)
     ? eventClassDomains[normalized]
     : undefined
   const mappedCanonical = mappedDomain == null
     ? undefined
     : knownDomains.find((known) => known.toLocaleLowerCase() === mappedDomain.toLocaleLowerCase())
-  if (mappedCanonical) return { effectiveDomain: mappedCanonical, invalidDomain: null }
+  if (mappedCanonical) {
+    return { effectiveDomain: mappedCanonical, resolvedDomain: mappedCanonical, invalidDomain: null }
+  }
   return {
     effectiveDomain: undefined,
+    resolvedDomain: null,
     invalidDomain: {
       provided_domain: domain,
       valid_domains: knownDomains,
@@ -1417,7 +1428,7 @@ export async function computeGocharaActivation(
   const {
     coverage, ok: coverageOk, knownDomains, knownDomainsOk, eventClassDomains, eventClassDomainsOk,
   } = await computeGocharaCoverage(chartId, principal)
-  const { effectiveDomain, invalidDomain } = resolveGocharaDomain(
+  const { effectiveDomain, resolvedDomain, invalidDomain } = resolveGocharaDomain(
     domain, knownDomains, knownDomainsOk, eventClassDomains, eventClassDomainsOk,
   )
   const notCovered = notCoveredFor(effectiveDomain, coverage)
@@ -1431,6 +1442,7 @@ export async function computeGocharaActivation(
     as_of_date: asOfDate,
     event_class_filter: eventClass ?? null,
     domain_filter: domain ?? null,
+    domain_filter_resolved: resolvedDomain,
     resolution_filter: resolution ?? null,
     computed_at: new Date().toISOString(),
     density_contract: ACTIVATION_DENSITY_CONTRACT,
@@ -1710,7 +1722,7 @@ export async function computeGocharaForecast(
   const {
     coverage, ok: coverageOk, knownDomains, knownDomainsOk, eventClassDomains, eventClassDomainsOk,
   } = await computeGocharaCoverage(chartId, principal)
-  const { effectiveDomain, invalidDomain } = resolveGocharaDomain(
+  const { effectiveDomain, resolvedDomain, invalidDomain } = resolveGocharaDomain(
     domain, knownDomains, knownDomainsOk, eventClassDomains, eventClassDomainsOk,
   )
   const notCovered = notCoveredFor(effectiveDomain, coverage)
@@ -1724,6 +1736,7 @@ export async function computeGocharaForecast(
     event_class_filter: eventClass ?? null,
     valence_filter: valence ?? null,
     domain_filter: domain ?? null,
+    domain_filter_resolved: resolvedDomain,
     resolution_filter: resolution ?? null,
     computed_at: new Date().toISOString(),
     density_contract: FORECAST_DENSITY_CONTRACT,
@@ -1995,7 +2008,7 @@ export async function computeGocharaElectionAvoidance(
   const {
     coverage, ok: coverageOk, knownDomains, knownDomainsOk, eventClassDomains, eventClassDomainsOk,
   } = await computeGocharaCoverage(chartId, principal)
-  const { effectiveDomain, invalidDomain } = resolveGocharaDomain(
+  const { effectiveDomain, resolvedDomain, invalidDomain } = resolveGocharaDomain(
     domain, knownDomains, knownDomainsOk, eventClassDomains, eventClassDomainsOk,
   )
   const notCovered = notCoveredFor(effectiveDomain, coverage)
@@ -2008,6 +2021,7 @@ export async function computeGocharaElectionAvoidance(
     date_range: dateRange,
     event_class_filter: eventClass ?? null,
     domain_filter: domain ?? null,
+    domain_filter_resolved: resolvedDomain,
     resolution_filter: resolution ?? null,
     computed_at: new Date().toISOString(),
     dr16_properties: ['honest_clarity', 'probabilistic_never_fatalistic', 'falsifier_bearing', 'mitigation_paired', 'confidence_honest'],
