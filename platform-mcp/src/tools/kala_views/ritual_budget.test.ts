@@ -106,6 +106,25 @@ describe('F13 kala_ritual_get response budget', () => {
     expect(ledgerCandidateIds).toEqual(candidateIds)
     expect(paretoCandidateIds).not.toHaveLength(0)
     expect(paretoCandidateIds).toEqual(candidateIds)
+    const candidateEvidenceTrim = bounded.trim_report!.find(
+      (entry) => entry.path === 'pattern_search.candidate_evidence',
+    )
+    expect(bounded.trim_report).toHaveLength(1)
+    expect(candidateEvidenceTrim).toBeDefined()
+    expect(candidateEvidenceTrim!.original_count).toBe(24)
+    expect(candidateEvidenceTrim!.kept_count).toBe(candidateIds.length)
+    expect(candidateEvidenceTrim!.recover_via.instrument).toBe('kala_ritual_get')
+    expect(candidateEvidenceTrim!.recover_via.hint).toContain('sky_pattern_spec')
+    expect(candidateEvidenceTrim!.recover_via.hint).toContain('horizon')
+    expect(candidateEvidenceTrim!.recover_via.hint).toContain('candidate')
+    expect(candidateEvidenceTrim!.recover_via.hint).toContain('census')
+    const drillPointers = (bounded as typeof bounded & {
+      drill_pointers?: Array<{ instrument: string | null; hint: string }>
+    }).drill_pointers ?? []
+    const candidateCensusPointer = drillPointers.find(
+      (pointer) => pointer.instrument === 'kala_ritual_get' && pointer.hint === candidateEvidenceTrim!.recover_via.hint,
+    )
+    expect(candidateCensusPointer).toBeDefined()
     expect(bounded.pattern_search!.gap_report.census.census_disposition_counts).toEqual({ not_computed: 36, not_in_corpus: 36 })
   })
 

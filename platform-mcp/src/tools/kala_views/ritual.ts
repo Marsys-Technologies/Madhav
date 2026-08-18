@@ -93,7 +93,7 @@ import {
   type TriPlanePointers,
 } from '../../lib/kala_envelope.js'
 import { composeArgument } from '../../lib/argument_composer.js'
-import { finalizeMcpBudget, type TrimReportEntry, type TrimmableSection } from '../../lib/response_budget.js'
+import { estimateBytes, finalizeMcpBudget, type TrimReportEntry, type TrimmableSection } from '../../lib/response_budget.js'
 // Lane R's two new libs + the frozen engine's own fetcher. These three imports
 // ARE the allowlist DESIGN RULING R-2 narrowed the source-scan rail to.
 import {
@@ -230,6 +230,10 @@ interface Mode2CandidateEvidenceUnit {
   pareto_partition: 'frontier' | 'dominated'
 }
 
+const MODE2_CANDIDATE_EVIDENCE_PATH = 'pattern_search.candidate_evidence'
+const MODE2_RECOVERY_HINT =
+  'narrow sky_pattern_spec/horizon: candidate+census'
+
 /** Candidate rows are not meaningful without the ledger and Pareto membership that grade them.
  * Build one internal trimming unit per complete public referential unit; malformed/orphaned input
  * is never promoted into a retained unit. */
@@ -277,6 +281,52 @@ function setMode2CandidateEvidenceUnits(
     .map((unit) => unit.candidate.id)
 }
 
+/** The shared finalizer may collapse a many-section report to a generic summary at a tight
+ * ceiling.  For Mode 2, replace that summary with a smaller exact recovery receipt when the
+ * candidate evidence was actually shortened.  The byte comparison makes the replacement
+ * non-expanding, so the shared finalizer's measured envelope cannot be reopened. */
+function preserveMode2FallbackRecovery(
+  response: KalaRitualResponse,
+  originalCandidateCount: number,
+  appliedBudgetKb: number,
+): void {
+  const report = response.trim_report
+  const retainedCandidateCount = response.pattern_search?.candidates.length
+  if (
+    report?.length !== 1 ||
+    report[0]?.path !== '(trim_report)' ||
+    retainedCandidateCount === undefined ||
+    retainedCandidateCount >= originalCandidateCount
+  ) return
+
+  const exactEntry: TrimReportEntry = {
+    path: MODE2_CANDIDATE_EVIDENCE_PATH,
+    original_count: originalCandidateCount,
+    kept_count: retainedCandidateCount,
+    reason: 'candidate/census trimmed',
+    recover_via: { instrument: 'kala_ritual_get', hint: MODE2_RECOVERY_HINT },
+  }
+  const exactReport = [exactEntry]
+
+  const mutable = response as unknown as Record<string, unknown>
+  const previousPointers = Array.isArray(mutable['drill_pointers'])
+    ? mutable['drill_pointers'] as Array<{ instrument: string | null; hint: string }>
+    : []
+  const exactPointer = exactEntry.recover_via
+  const nextPointers = previousPointers.some(
+    (pointer) => pointer.instrument === exactPointer.instrument && pointer.hint === exactPointer.hint,
+  ) ? previousPointers : [...previousPointers, exactPointer]
+
+  const bytesBefore = estimateBytes(response)
+  response.trim_report = exactReport
+  mutable['drill_pointers'] = nextPointers
+  const bytesAfter = estimateBytes(response)
+  if (bytesAfter > bytesBefore || bytesAfter > appliedBudgetKb * 1024) {
+    response.trim_report = report
+    mutable['drill_pointers'] = previousPointers
+  }
+}
+
 /**
  * F13 response-size control.  The two heavyweight paths are deliberately declared
  * rather than handed to the shallow generic auto-detector: Mode 2's census is three
@@ -291,9 +341,10 @@ export function finalizeKalaRitualResponseBudget(
   response: KalaRitualResponse,
   requestedBudgetKb?: number | null,
 ): KalaRitualResponse {
+  const originalMode2CandidateCount = response.pattern_search?.candidates.length ?? 0
   const sections: TrimmableSection<KalaRitualResponse>[] = [
     {
-      path: 'pattern_search.candidate_evidence', label: 'candidate + adjudication evidence units', minKeep: 1, hardFloor: true,
+      path: MODE2_CANDIDATE_EVIDENCE_PATH, label: 'candidate + adjudication evidence units', minKeep: 1, hardFloor: true,
       getArray: getMode2CandidateEvidenceUnits,
       setArray: setMode2CandidateEvidenceUnits,
       recover: { instrument: 'kala_ritual_get', hint: 'call again with a narrower sky_pattern_spec or horizon for the complete candidate evidence' },
@@ -345,6 +396,7 @@ export function finalizeKalaRitualResponseBudget(
   const pattern = budgeted.pattern_search
   if (pattern?.adjudication) {
     setMode2CandidateEvidenceUnits(budgeted, getMode2CandidateEvidenceUnits(budgeted) ?? [])
+    preserveMode2FallbackRecovery(budgeted, originalMode2CandidateCount, requestedBudgetKb ?? 40)
   }
   return budgeted
 }
