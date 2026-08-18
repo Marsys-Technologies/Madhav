@@ -231,8 +231,16 @@ interface Mode2CandidateEvidenceUnit {
 }
 
 const MODE2_CANDIDATE_EVIDENCE_PATH = 'pattern_search.candidate_evidence'
-const MODE2_RECOVERY_HINT =
-  'narrow sky_pattern_spec/horizon: candidate+census'
+const MODE2_NOT_COMPUTED_PATH = 'pattern_search.gap_report.census.factors_not_computed'
+const MODE2_NOT_IN_CORPUS_PATH = 'pattern_search.gap_report.census.factors_not_in_corpus'
+const MODE2_CANDIDATE_RECOVERY_HINT = 'narrow sky_pattern_spec/horizon: candidate'
+const MODE2_CENSUS_RECOVERY_HINT = 'narrow sky_pattern_spec/horizon: census'
+
+interface Mode2SectionCounts {
+  candidate_evidence: number
+  factors_not_computed: number
+  factors_not_in_corpus: number
+}
 
 /** Candidate rows are not meaningful without the ledger and Pareto membership that grade them.
  * Build one internal trimming unit per complete public referential unit; malformed/orphaned input
@@ -281,47 +289,78 @@ function setMode2CandidateEvidenceUnits(
     .map((unit) => unit.candidate.id)
 }
 
+function getMode2SectionCounts(response: KalaRitualResponse): Mode2SectionCounts {
+  const pattern = response.pattern_search
+  return {
+    candidate_evidence: getMode2CandidateEvidenceUnits(response)?.length ?? 0,
+    factors_not_computed: pattern?.gap_report.census.factors_not_computed.length ?? 0,
+    factors_not_in_corpus: pattern?.gap_report.census.factors_not_in_corpus.length ?? 0,
+  }
+}
+
 /** The shared finalizer may collapse a many-section report to a generic summary at a tight
- * ceiling.  For Mode 2, replace that summary with a smaller exact recovery receipt when the
- * candidate evidence was actually shortened.  The byte comparison makes the replacement
- * non-expanding, so the shared finalizer's measured envelope cannot be reopened. */
+ * ceiling.  For Mode 2, rebuild compact exact receipts only for sections whose before/after
+ * counts prove they were shortened, then accept them only if the remeasured final envelope
+ * still fits the caller's applied ceiling. */
 function preserveMode2FallbackRecovery(
   response: KalaRitualResponse,
-  originalCandidateCount: number,
+  originalCounts: Mode2SectionCounts,
   appliedBudgetKb: number,
 ): void {
   const report = response.trim_report
-  const retainedCandidateCount = response.pattern_search?.candidates.length
-  if (
-    report?.length !== 1 ||
-    report[0]?.path !== '(trim_report)' ||
-    retainedCandidateCount === undefined ||
-    retainedCandidateCount >= originalCandidateCount
-  ) return
+  if (report?.length !== 1 || report[0]?.path !== '(trim_report)') return
 
-  const exactEntry: TrimReportEntry = {
-    path: MODE2_CANDIDATE_EVIDENCE_PATH,
-    original_count: originalCandidateCount,
-    kept_count: retainedCandidateCount,
-    reason: 'candidate/census trimmed',
-    recover_via: { instrument: 'kala_ritual_get', hint: MODE2_RECOVERY_HINT },
-  }
-  const exactReport = [exactEntry]
+  const retainedCounts = getMode2SectionCounts(response)
+  const candidates: Array<{
+    path: string
+    original: number
+    retained: number
+    hint: string
+  }> = [
+    {
+      path: MODE2_CANDIDATE_EVIDENCE_PATH,
+      original: originalCounts.candidate_evidence,
+      retained: retainedCounts.candidate_evidence,
+      hint: MODE2_CANDIDATE_RECOVERY_HINT,
+    },
+    {
+      path: MODE2_NOT_COMPUTED_PATH,
+      original: originalCounts.factors_not_computed,
+      retained: retainedCounts.factors_not_computed,
+      hint: MODE2_CENSUS_RECOVERY_HINT,
+    },
+    {
+      path: MODE2_NOT_IN_CORPUS_PATH,
+      original: originalCounts.factors_not_in_corpus,
+      retained: retainedCounts.factors_not_in_corpus,
+      hint: MODE2_CENSUS_RECOVERY_HINT,
+    },
+  ]
+  const exactReport: TrimReportEntry[] = candidates
+    .filter((candidate) => candidate.retained < candidate.original)
+    .map((candidate) => ({
+      path: candidate.path,
+      original_count: candidate.original,
+      kept_count: candidate.retained,
+      reason: 'trimmed',
+      recover_via: { instrument: 'kala_ritual_get', hint: candidate.hint },
+    }))
+  if (exactReport.length === 0) return
 
   const mutable = response as unknown as Record<string, unknown>
   const previousPointers = Array.isArray(mutable['drill_pointers'])
     ? mutable['drill_pointers'] as Array<{ instrument: string | null; hint: string }>
     : []
-  const exactPointer = exactEntry.recover_via
-  const nextPointers = previousPointers.some(
-    (pointer) => pointer.instrument === exactPointer.instrument && pointer.hint === exactPointer.hint,
-  ) ? previousPointers : [...previousPointers, exactPointer]
+  const nextPointers = [...previousPointers]
+  for (const entry of exactReport) {
+    if (!nextPointers.some(
+      (pointer) => pointer.instrument === entry.recover_via.instrument && pointer.hint === entry.recover_via.hint,
+    )) nextPointers.push(entry.recover_via)
+  }
 
-  const bytesBefore = estimateBytes(response)
   response.trim_report = exactReport
   mutable['drill_pointers'] = nextPointers
-  const bytesAfter = estimateBytes(response)
-  if (bytesAfter > bytesBefore || bytesAfter > appliedBudgetKb * 1024) {
+  if (estimateBytes(response) > appliedBudgetKb * 1024) {
     response.trim_report = report
     mutable['drill_pointers'] = previousPointers
   }
@@ -341,7 +380,7 @@ export function finalizeKalaRitualResponseBudget(
   response: KalaRitualResponse,
   requestedBudgetKb?: number | null,
 ): KalaRitualResponse {
-  const originalMode2CandidateCount = response.pattern_search?.candidates.length ?? 0
+  const originalMode2Counts = getMode2SectionCounts(response)
   const sections: TrimmableSection<KalaRitualResponse>[] = [
     {
       path: MODE2_CANDIDATE_EVIDENCE_PATH, label: 'candidate + adjudication evidence units', minKeep: 1, hardFloor: true,
@@ -350,13 +389,13 @@ export function finalizeKalaRitualResponseBudget(
       recover: { instrument: 'kala_ritual_get', hint: 'call again with a narrower sky_pattern_spec or horizon for the complete candidate evidence' },
     },
     {
-      path: 'pattern_search.gap_report.census.factors_not_computed', label: 'uncomputed census evidence', minKeep: 0,
+      path: MODE2_NOT_COMPUTED_PATH, label: 'uncomputed census evidence', minKeep: 0,
       getArray: (content) => content.pattern_search?.gap_report.census.factors_not_computed,
       setArray: (content, kept) => { if (content.pattern_search) content.pattern_search.gap_report.census.factors_not_computed = kept as SkyPatternSearchResult['gap_report']['census']['factors_not_computed'] },
       recover: { instrument: 'kala_ritual_get', hint: 'call again with a narrower sky_pattern_spec or horizon; census totals remain in this response' },
     },
     {
-      path: 'pattern_search.gap_report.census.factors_not_in_corpus', label: 'out-of-corpus census evidence', minKeep: 0,
+      path: MODE2_NOT_IN_CORPUS_PATH, label: 'out-of-corpus census evidence', minKeep: 0,
       getArray: (content) => content.pattern_search?.gap_report.census.factors_not_in_corpus,
       setArray: (content, kept) => { if (content.pattern_search) content.pattern_search.gap_report.census.factors_not_in_corpus = kept as SkyPatternSearchResult['gap_report']['census']['factors_not_in_corpus'] },
       recover: { instrument: 'kala_ritual_get', hint: 'call again with a narrower sky_pattern_spec or horizon; census totals remain in this response' },
@@ -396,7 +435,7 @@ export function finalizeKalaRitualResponseBudget(
   const pattern = budgeted.pattern_search
   if (pattern?.adjudication) {
     setMode2CandidateEvidenceUnits(budgeted, getMode2CandidateEvidenceUnits(budgeted) ?? [])
-    preserveMode2FallbackRecovery(budgeted, originalMode2CandidateCount, requestedBudgetKb ?? 40)
+    preserveMode2FallbackRecovery(budgeted, originalMode2Counts, requestedBudgetKb ?? 40)
   }
   return budgeted
 }
@@ -841,8 +880,9 @@ undertaking instead and the question is served in full.
 When to prefer: this is the entry point for "what auspicious combinations are coming" (Mode 1) \
 or "when does this specific combination occur" (Mode 2) questions. For "when should I do X" (an \
 undertaking), use kala_elect_get instead — always. Responses are bounded to 40 KB by default; \
-set budget_kb (1–200) for a tighter or larger ceiling. Any trim reports its exact sections and \
-retains the underlying candidate/census receipts.`
+set budget_kb (1–200) for a tighter or larger ceiling. When compact receipts fit, trim_report \
+names each shortened section; otherwise its generic fallback says the full report was omitted. \
+The underlying candidate/census scalar receipts remain available in either form.`
 
 // ── Registration ────────────────────────────────────────────────────────────────────
 

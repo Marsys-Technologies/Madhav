@@ -109,7 +109,17 @@ describe('F13 kala_ritual_get response budget', () => {
     const candidateEvidenceTrim = bounded.trim_report!.find(
       (entry) => entry.path === 'pattern_search.candidate_evidence',
     )
-    expect(bounded.trim_report).toHaveLength(1)
+    const notComputedTrim = bounded.trim_report!.find(
+      (entry) => entry.path === 'pattern_search.gap_report.census.factors_not_computed',
+    )
+    const notInCorpusTrim = bounded.trim_report!.find(
+      (entry) => entry.path === 'pattern_search.gap_report.census.factors_not_in_corpus',
+    )
+    expect(bounded.trim_report!.map((entry) => entry.path).sort()).toEqual([
+      'pattern_search.candidate_evidence',
+      'pattern_search.gap_report.census.factors_not_computed',
+      'pattern_search.gap_report.census.factors_not_in_corpus',
+    ])
     expect(candidateEvidenceTrim).toBeDefined()
     expect(candidateEvidenceTrim!.original_count).toBe(24)
     expect(candidateEvidenceTrim!.kept_count).toBe(candidateIds.length)
@@ -117,15 +127,51 @@ describe('F13 kala_ritual_get response budget', () => {
     expect(candidateEvidenceTrim!.recover_via.hint).toContain('sky_pattern_spec')
     expect(candidateEvidenceTrim!.recover_via.hint).toContain('horizon')
     expect(candidateEvidenceTrim!.recover_via.hint).toContain('candidate')
-    expect(candidateEvidenceTrim!.recover_via.hint).toContain('census')
+    expect(candidateEvidenceTrim!.recover_via.hint).not.toContain('census')
+    expect(notComputedTrim).toBeDefined()
+    expect(notComputedTrim!.original_count).toBe(36)
+    expect(notComputedTrim!.kept_count).toBe(0)
+    expect(bounded.pattern_search!.gap_report.census.factors_not_computed).toHaveLength(0)
+    expect(notComputedTrim!.recover_via.instrument).toBe('kala_ritual_get')
+    expect(notComputedTrim!.recover_via.hint).toContain('census')
+    expect(notComputedTrim!.recover_via.hint).not.toContain('candidate')
+    expect(notInCorpusTrim).toBeDefined()
+    expect(notInCorpusTrim!.original_count).toBe(36)
+    expect(notInCorpusTrim!.kept_count).toBe(0)
+    expect(bounded.pattern_search!.gap_report.census.factors_not_in_corpus).toHaveLength(0)
+    expect(notInCorpusTrim!.recover_via.instrument).toBe('kala_ritual_get')
+    expect(notInCorpusTrim!.recover_via.hint).toContain('census')
+    expect(notInCorpusTrim!.recover_via.hint).not.toContain('candidate')
     const drillPointers = (bounded as typeof bounded & {
       drill_pointers?: Array<{ instrument: string | null; hint: string }>
     }).drill_pointers ?? []
-    const candidateCensusPointer = drillPointers.find(
-      (pointer) => pointer.instrument === 'kala_ritual_get' && pointer.hint === candidateEvidenceTrim!.recover_via.hint,
-    )
-    expect(candidateCensusPointer).toBeDefined()
+    for (const entry of bounded.trim_report!) {
+      expect(drillPointers).toContainEqual(entry.recover_via)
+    }
     expect(bounded.pattern_search!.gap_report.census.census_disposition_counts).toEqual({ not_computed: 36, not_in_corpus: 36 })
+  })
+
+  it('does not report or point to untouched empty census siblings', () => {
+    const response = patternResponse()
+    response.pattern_search.gap_report.census.factors_not_computed = []
+    response.pattern_search.gap_report.census.factors_not_in_corpus = []
+    response.pattern_search.gap_report.census.census_disposition_counts = { not_computed: 0, not_in_corpus: 0 }
+
+    const bounded = finalizeKalaRitualResponseBudget(response as never)
+    expect(estimateBytes(bounded)).toBeLessThanOrEqual(40 * 1024)
+    expect(bounded.trim_report!.map((entry) => entry.path)).toEqual([
+      'pattern_search.candidate_evidence',
+    ])
+    expect(bounded.trim_report![0]!.original_count).toBe(24)
+    expect(bounded.trim_report![0]!.kept_count).toBe(bounded.pattern_search!.candidates.length)
+    expect(bounded.trim_report![0]!.reason).not.toContain('census')
+    expect(bounded.trim_report![0]!.recover_via.instrument).toBe('kala_ritual_get')
+    expect(bounded.trim_report![0]!.recover_via.hint).toContain('candidate')
+    expect(bounded.trim_report![0]!.recover_via.hint).not.toContain('census')
+    const drillPointers = (bounded as typeof bounded & {
+      drill_pointers?: Array<{ instrument: string | null; hint: string }>
+    }).drill_pointers ?? []
+    expect(drillPointers).toEqual([bounded.trim_report![0]!.recover_via])
   })
 
   it('bounds Mode 1 opportunities and large substrate arrays at the same default ceiling', () => {
