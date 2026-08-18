@@ -2895,6 +2895,22 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       ? [...normalized['judgment_flags'] as JudgmentFlagEntry[]]
       : []
 
+    // F-31: health and relationship have no precompiled D6/D9 dossier slice yet.
+    // They must say so at the same judgment-flag seam that carries other material
+    // response caveats. This is deliberately a disclosure only: it does not invent
+    // a reading, completeness accounting, or directive that the product has not built.
+    const missingSliceDomain = toolName === 'assess_health'
+      ? 'health'
+      : toolName === 'assess_marriage'
+        ? 'relationship'
+        : null
+    if (missingSliceDomain && normalized['reading'] === undefined && normalized['domain_completeness'] === undefined) {
+      flags.push(
+        `domain_slice_not_configured: no precomputed ${missingSliceDomain} dossier slice is attached; ` +
+        'this assessment is not a complete domain reading.',
+      )
+    }
+
     if (!verdict) {
       flags.push(judgmentFlag(
         'hollow_envelope_no_data_rows',

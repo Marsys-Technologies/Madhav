@@ -45,6 +45,28 @@ function stubFetch(assessmentPayload: Record<string, unknown>) {
 beforeEach(() => vi.unstubAllGlobals())
 
 describe('assess_* Sāra response contract', () => {
+  it.each([
+    ['assess_health', 'health'],
+    ['assess_marriage', 'relationship'],
+  ] as const)(
+    '%s discloses that its %s dossier slice is not configured instead of implying career/wealth parity',
+    async (tool, domain) => {
+      stubFetch({
+        chart_id: CHART_ID,
+        verdict: { clauses: [{ text: 'A deterministic partial-domain verdict.', fact_ids: [], grounded: false }] },
+      })
+      const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+      const { server, handlers } = makeCapturingServer()
+      registerRegistryBridgeTools(server, PRINCIPAL)
+
+      const result = await handlers.get(tool)!({ chart_id: CHART_ID })
+      const kernel = (result.structuredContent!.object as Record<string, unknown>).kernel as Record<string, unknown>
+      expect(kernel.flags).toContain(
+        `domain_slice_not_configured: no precomputed ${domain} dossier slice is attached; this assessment is not a complete domain reading.`,
+      )
+    },
+  )
+
   it.each(['assess_marriage', 'assess_health'] as const)(
     '%s reaches the same normalized shared composer',
     async (tool) => {
