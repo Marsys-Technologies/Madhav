@@ -926,7 +926,14 @@ const COVERAGE_UNIVERSE_SOURCE =
 export async function computeGocharaCoverage(
   chartId: string,
   principal: Principal
-): Promise<{ coverage: GocharaCoverage; ok: boolean; knownDomains: string[]; knownDomainsOk: boolean }> {
+): Promise<{
+  coverage: GocharaCoverage
+  ok: boolean
+  knownDomains: string[]
+  knownDomainsOk: boolean
+  eventClassDomains: Record<string, string>
+  eventClassDomainsOk: boolean
+}> {
   // MR-02 (PARIṢKĀRA): coverage source is authority-aware.
   // After migration 563 retires ka_gochara_sweep, v3-authority charts never had
   // substeps recorded under 'ka_gochara_sweep' — the v3 materializer (ka_gochara,
@@ -1046,6 +1053,15 @@ export async function computeGocharaCoverage(
   )
   const universeDomains = universeResp.rows.map((r) => r['domain']).filter((d): d is string => typeof d === 'string').sort()
   const domainsNotCovered = universeDomains.filter((d) => !coveredDomains.has(d))
+  const eventClassDomains = Object.fromEntries(
+    classesResp.rows.flatMap((row) => {
+      const eventClass = row['event_class']
+      const domain = row['domain']
+      return typeof eventClass === 'string' && typeof domain === 'string'
+        ? [[eventClass.toLocaleLowerCase(), domain]]
+        : []
+    })
+  )
 
   const ok = classesResp.ok && universeResp.ok && substepResp.ok
 
@@ -1070,6 +1086,10 @@ export async function computeGocharaCoverage(
     // ontology read must never be laundered into an "invalid domain" verdict.
     knownDomains: universeDomains,
     knownDomainsOk: universeResp.ok,
+    // Keep the event-class alias authority separate too. A failed resonance-map
+    // join cannot prove that an event-class-shaped domain label is invalid.
+    eventClassDomains,
+    eventClassDomainsOk: classesResp.ok,
     coverage: {
       event_classes_covered: eventClasses,
       event_classes_targeted_not_swept: targetedNotSwept,
@@ -1108,20 +1128,43 @@ type InvalidGocharaDomain = {
   reason: 'domain_not_in_gochara_ontology'
 }
 
+const GOCHARA_EVENT_CLASS_DOMAIN_ALIASES = new Set(['marriage'])
+
 /** Resolve a supplied domain only when the ontology vocabulary was reachable.
  * This separates an unsupported request from a valid-but-unswept domain, and
  * prevents an unknown filter from being served as a generic honest-empty scan. */
 function resolveGocharaDomain(
   domain: string | undefined,
   knownDomains: string[],
-  knownDomainsOk: boolean
-): { effectiveDomain: string | undefined; invalidDomain: InvalidGocharaDomain | null } {
-  if (!domain || !knownDomainsOk) return { effectiveDomain: domain, invalidDomain: null }
+  knownDomainsOk: boolean,
+  eventClassDomains: Record<string, string>,
+  eventClassDomainsOk: boolean,
+): {
+  effectiveDomain: string | undefined
+  resolvedDomain: string | null
+  invalidDomain: InvalidGocharaDomain | null
+} {
+  if (!domain || !knownDomainsOk) {
+    return { effectiveDomain: domain, resolvedDomain: null, invalidDomain: null }
+  }
   const normalized = domain.trim().toLocaleLowerCase()
   const matched = knownDomains.find((known) => known.toLocaleLowerCase() === normalized)
-  if (matched) return { effectiveDomain: matched, invalidDomain: null }
+  if (matched) return { effectiveDomain: matched, resolvedDomain: matched, invalidDomain: null }
+  if (!eventClassDomainsOk) {
+    return { effectiveDomain: domain, resolvedDomain: null, invalidDomain: null }
+  }
+  const mappedDomain = GOCHARA_EVENT_CLASS_DOMAIN_ALIASES.has(normalized)
+    ? eventClassDomains[normalized]
+    : undefined
+  const mappedCanonical = mappedDomain == null
+    ? undefined
+    : knownDomains.find((known) => known.toLocaleLowerCase() === mappedDomain.toLocaleLowerCase())
+  if (mappedCanonical) {
+    return { effectiveDomain: mappedCanonical, resolvedDomain: mappedCanonical, invalidDomain: null }
+  }
   return {
     effectiveDomain: undefined,
+    resolvedDomain: null,
     invalidDomain: {
       provided_domain: domain,
       valid_domains: knownDomains,
@@ -1382,8 +1425,12 @@ export async function computeGocharaActivation(
   domain?: string,
   resolution?: string
 ): Promise<Record<string, unknown>> {
-  const { coverage, ok: coverageOk, knownDomains, knownDomainsOk } = await computeGocharaCoverage(chartId, principal)
-  const { effectiveDomain, invalidDomain } = resolveGocharaDomain(domain, knownDomains, knownDomainsOk)
+  const {
+    coverage, ok: coverageOk, knownDomains, knownDomainsOk, eventClassDomains, eventClassDomainsOk,
+  } = await computeGocharaCoverage(chartId, principal)
+  const { effectiveDomain, resolvedDomain, invalidDomain } = resolveGocharaDomain(
+    domain, knownDomains, knownDomainsOk, eventClassDomains, eventClassDomainsOk,
+  )
   const notCovered = notCoveredFor(effectiveDomain, coverage)
 
   // W5.1: source_citation is generation-conditional. Build with SOURCE_CITATION_V1
@@ -1395,6 +1442,7 @@ export async function computeGocharaActivation(
     as_of_date: asOfDate,
     event_class_filter: eventClass ?? null,
     domain_filter: domain ?? null,
+    domain_filter_resolved: resolvedDomain,
     resolution_filter: resolution ?? null,
     computed_at: new Date().toISOString(),
     density_contract: ACTIVATION_DENSITY_CONTRACT,
@@ -1671,8 +1719,12 @@ export async function computeGocharaForecast(
   domain?: string,
   resolution?: string
 ): Promise<Record<string, unknown>> {
-  const { coverage, ok: coverageOk, knownDomains, knownDomainsOk } = await computeGocharaCoverage(chartId, principal)
-  const { effectiveDomain, invalidDomain } = resolveGocharaDomain(domain, knownDomains, knownDomainsOk)
+  const {
+    coverage, ok: coverageOk, knownDomains, knownDomainsOk, eventClassDomains, eventClassDomainsOk,
+  } = await computeGocharaCoverage(chartId, principal)
+  const { effectiveDomain, resolvedDomain, invalidDomain } = resolveGocharaDomain(
+    domain, knownDomains, knownDomainsOk, eventClassDomains, eventClassDomainsOk,
+  )
   const notCovered = notCoveredFor(effectiveDomain, coverage)
 
   // W5.1: source_citation is generation-conditional; default to v1 for not_covered path.
@@ -1684,6 +1736,7 @@ export async function computeGocharaForecast(
     event_class_filter: eventClass ?? null,
     valence_filter: valence ?? null,
     domain_filter: domain ?? null,
+    domain_filter_resolved: resolvedDomain,
     resolution_filter: resolution ?? null,
     computed_at: new Date().toISOString(),
     density_contract: FORECAST_DENSITY_CONTRACT,
@@ -1952,8 +2005,12 @@ export async function computeGocharaElectionAvoidance(
   domain?: string,
   resolution?: string
 ): Promise<Record<string, unknown>> {
-  const { coverage, ok: coverageOk, knownDomains, knownDomainsOk } = await computeGocharaCoverage(chartId, principal)
-  const { effectiveDomain, invalidDomain } = resolveGocharaDomain(domain, knownDomains, knownDomainsOk)
+  const {
+    coverage, ok: coverageOk, knownDomains, knownDomainsOk, eventClassDomains, eventClassDomainsOk,
+  } = await computeGocharaCoverage(chartId, principal)
+  const { effectiveDomain, resolvedDomain, invalidDomain } = resolveGocharaDomain(
+    domain, knownDomains, knownDomainsOk, eventClassDomains, eventClassDomainsOk,
+  )
   const notCovered = notCoveredFor(effectiveDomain, coverage)
 
   // W5.1: source_citation is generation-conditional; default to v1 for not_covered path.
@@ -1964,6 +2021,7 @@ export async function computeGocharaElectionAvoidance(
     date_range: dateRange,
     event_class_filter: eventClass ?? null,
     domain_filter: domain ?? null,
+    domain_filter_resolved: resolvedDomain,
     resolution_filter: resolution ?? null,
     computed_at: new Date().toISOString(),
     dr16_properties: ['honest_clarity', 'probabilistic_never_fatalistic', 'falsifier_bearing', 'mitigation_paired', 'confidence_honest'],
