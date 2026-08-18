@@ -470,7 +470,15 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
           ...salienceVectorPayload,
         }
 
-        return kalaBudgetedDualOutput(content, TOOL_NAME)
+        return kalaBudgetedDualOutput(content, TOOL_NAME, finalized => {
+          const served = Array.isArray(finalized.ranked_signals)
+            ? finalized.ranked_signals as Array<Record<string, unknown>>
+            : []
+          finalized.signal_count = served.length
+          finalized.neutral_dignity_downranked_count = served.filter(
+            row => row.neutral_dignity_downranked === true,
+          ).length
+        })
       } catch (err) {
         return kalaErrorOutput(TOOL_NAME, err instanceof Error ? err.message : String(err), { chart_id })
       }

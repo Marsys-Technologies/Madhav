@@ -188,6 +188,41 @@ describe('kala_priority_get — PRIORITIZE facade over marsys://tool/L3/call_pri
     expect(triPlane.prediction_ref.instrument).toBe('kala_ahead_get')
     expect(triPlane.intervention_ref.instrument).toBe('kala_elect_get')
   })
+
+  it('reconciles row-derived counts after the final response budget trims ranked signals', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+    const rankedSignals = Array.from({ length: 60 }, (_, index) => ({
+      signal_id: `sig_${index}`,
+      signal_headline_text: `Signal ${index}: ${'detail '.repeat(500)}`,
+      priority_score: 1 - index / 100,
+      neutral_dignity_downranked: index % 2 === 0,
+    }))
+    stubFetch({
+      'marsys://tool/L3/call_priority_ranking': {
+        chart_id: TEST_CHART_ID,
+        date_from: '2026-08-01',
+        date_to: '2026-09-01',
+        domain_filter: null,
+        ranked_signals: rankedSignals,
+        signal_count: rankedSignals.length,
+        neutral_dignity_downranked_count: rankedSignals.filter(row => row.neutral_dignity_downranked).length,
+      },
+    }, captured)
+
+    const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+    registerRegistryBridgeTools(server, PRINCIPAL)
+    const result = await handlers.get('kala_priority_get')!({ chart_id: TEST_CHART_ID })
+    const obj = extractObject(result)
+    const served = obj['ranked_signals'] as Array<{ neutral_dignity_downranked?: boolean }>
+
+    expect(served.length).toBeLessThan(rankedSignals.length)
+    expect(obj['signal_count']).toBe(served.length)
+    expect(obj['neutral_dignity_downranked_count']).toBe(
+      served.filter(row => row.neutral_dignity_downranked === true).length,
+    )
+    expect(Buffer.byteLength(JSON.stringify(obj), 'utf8')).toBeLessThanOrEqual(40 * 1024)
+  })
 })
 
 describe('kala_explain_get — EXPLAIN facade over marsys://tool/L-PACT/pact_query', () => {
