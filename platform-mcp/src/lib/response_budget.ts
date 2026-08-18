@@ -380,13 +380,20 @@ export function finalizeMcpBudget<T extends Record<string, unknown>>(
   mutable['budget_kb_applied'] = opts.maxKb
   if (opts.budgetKbRequested !== undefined) mutable['budget_kb_requested'] = opts.budgetKbRequested
   const existingPointers = (mutable[drillPointersField] as DrillPointerLike[] | undefined) ?? []
-  mutable['trim_report'] = result.trim_report
-  mutable[drillPointersField] = mergeTrimPointersIntoPointers(existingPointers, result.trim_report)
+  // A proxy envelope may already carry a truthful upstream trim report. Keep it when the
+  // outer finalizer records a further trim; otherwise the public receipt would erase the
+  // earlier, still-relevant loss.
+  const existingTrimReport = Array.isArray(mutable['trim_report'])
+    ? mutable['trim_report'] as TrimReportEntry[]
+    : []
+  const combinedTrimReport = [...existingTrimReport, ...(result.trim_report ?? [])]
+  mutable['trim_report'] = combinedTrimReport
+  mutable[drillPointersField] = mergeTrimPointersIntoPointers(existingPointers, combinedTrimReport)
 
   // Re-measure the WHOLE object now that trim_report + merged pointers are attached —
   // the step the original mechanism skipped.
   if (estimateBytes(content) > maxBytes) {
-    let report = [...(result.trim_report ?? [])]
+    let report = [...combinedTrimReport]
     // Drop the single largest-by-bytes entry at a time until under budget or only one
     // entry remains (never go to a fully-empty array here — see the null fallback below).
     while (report.length > 1 && estimateBytes(content) > maxBytes) {
@@ -403,7 +410,7 @@ export function finalizeMcpBudget<T extends Record<string, unknown>>(
       // Even a 1-entry trim_report doesn't fit — collapse to a minimal summary.
       mutable['trim_report'] = [{
         path: '(trim_report)',
-        original_count: result.trim_report?.length ?? 0,
+        original_count: combinedTrimReport.length,
         kept_count: 1,
         reason: 'full trim_report omitted to fit budget',
         recover_via: { instrument: null, hint: 'no smaller recovery instrument available at this budget — retry with a larger budget_kb if the calling tool accepts one, or omit budget_kb for the default ceiling' },
@@ -590,11 +597,26 @@ export function applyAutoBudgetToEnvelope(
   if (!content || typeof content !== 'object' || Array.isArray(content)) return
   const sections = autoDetectTrimmableSections(content as Record<string, unknown>, toolName)
   if (sections.length === 0) return
-  const result = applyResponseBudget(content as Record<string, unknown>, maxKb, sections)
-  if (result.trim_report) {
-    const existing = Array.isArray(envelopeObj['trim_report']) ? (envelopeObj['trim_report'] as TrimReportEntry[]) : []
-    envelopeObj['trim_report'] = [...existing, ...result.trim_report]
-  }
+  // The public contract lives on the outer envelope, not its `content` payload. Adapt the
+  // content-relative auto sections to that outer shape so finalization measures the actual
+  // served object and attaches its receipt/recovery pointers where callers consume them.
+  const outerSections: TrimmableSection<Record<string, unknown>>[] = sections.map((section) => ({
+    ...section,
+    path: `content.${section.path}`,
+    getArray: (envelope) => {
+      const nested = envelope['content']
+      return nested && typeof nested === 'object' && !Array.isArray(nested)
+        ? section.getArray(nested as Record<string, unknown>)
+        : undefined
+    },
+    setArray: (envelope, kept) => {
+      const nested = envelope['content']
+      if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+        section.setArray(nested as Record<string, unknown>, kept)
+      }
+    },
+  }))
+  finalizeMcpBudget(envelopeObj, { maxKb, sections: outerSections })
 }
 
 /**
