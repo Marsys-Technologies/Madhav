@@ -92,11 +92,20 @@ describe('F13 kala_ritual_get response budget', () => {
     expect(bounded.budget_kb_requested).toBeUndefined()
     expect(bounded.trim_report).not.toBeNull()
 
-    const candidateIds = new Set(bounded.pattern_search!.candidates.map((candidate) => candidate.id))
+    const candidateIds = bounded.pattern_search!.candidates.map((candidate) => candidate.id).sort()
+    const ledgerCandidateIds = bounded.pattern_search!.adjudication!.ledgers
+      .map((ledger) => ledger.candidate_id)
+      .sort()
+    const paretoCandidateIds = [
+      ...bounded.pattern_search!.adjudication!.pareto.frontier_candidate_ids,
+      ...bounded.pattern_search!.adjudication!.pareto.dominated_candidate_ids,
+    ].sort()
+
     expect(bounded.pattern_search!.candidates.length).toBeGreaterThan(0)
-    expect(bounded.pattern_search!.adjudication!.ledgers.every((ledger) => candidateIds.has(ledger.candidate_id))).toBe(true)
-    expect(bounded.pattern_search!.adjudication!.pareto.frontier_candidate_ids.every((id) => candidateIds.has(id))).toBe(true)
-    expect(bounded.pattern_search!.adjudication!.pareto.dominated_candidate_ids.every((id) => candidateIds.has(id))).toBe(true)
+    expect(ledgerCandidateIds).not.toHaveLength(0)
+    expect(ledgerCandidateIds).toEqual(candidateIds)
+    expect(paretoCandidateIds).not.toHaveLength(0)
+    expect(paretoCandidateIds).toEqual(candidateIds)
     expect(bounded.pattern_search!.gap_report.census.census_disposition_counts).toEqual({ not_computed: 36, not_in_corpus: 36 })
   })
 

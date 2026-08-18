@@ -222,6 +222,61 @@ export interface KalaRitualResponse extends KalaEnvelope {
 
 export type KalaRitualResult = KalaRitualWrongView | KalaRitualResponse | MortalityExclusionRefusal
 
+type Mode2Adjudication = NonNullable<SkyPatternSearchResult['adjudication']>
+
+interface Mode2CandidateEvidenceUnit {
+  candidate: SkyPatternSearchResult['candidates'][number]
+  ledger: Mode2Adjudication['ledgers'][number]
+  pareto_partition: 'frontier' | 'dominated'
+}
+
+/** Candidate rows are not meaningful without the ledger and Pareto membership that grade them.
+ * Build one internal trimming unit per complete public referential unit; malformed/orphaned input
+ * is never promoted into a retained unit. */
+function getMode2CandidateEvidenceUnits(
+  response: KalaRitualResponse,
+): Mode2CandidateEvidenceUnit[] | undefined {
+  const pattern = response.pattern_search
+  if (!pattern?.adjudication) return undefined
+
+  const ledgerByCandidateId = new Map(
+    pattern.adjudication.ledgers.map((ledger) => [ledger.candidate_id, ledger]),
+  )
+  const frontierIds = new Set(pattern.adjudication.pareto.frontier_candidate_ids)
+  const dominatedIds = new Set(pattern.adjudication.pareto.dominated_candidate_ids)
+
+  return pattern.candidates.flatMap((candidate) => {
+    const ledger = ledgerByCandidateId.get(candidate.id)
+    const inFrontier = frontierIds.has(candidate.id)
+    const inDominated = dominatedIds.has(candidate.id)
+    if (!ledger || inFrontier === inDominated) return []
+    return [{
+      candidate,
+      ledger,
+      pareto_partition: inFrontier ? 'frontier' as const : 'dominated' as const,
+    }]
+  })
+}
+
+/** Rebuild the unchanged public shape from retained referential units. */
+function setMode2CandidateEvidenceUnits(
+  response: KalaRitualResponse,
+  kept: unknown[],
+): void {
+  const pattern = response.pattern_search
+  if (!pattern?.adjudication) return
+  const units = kept as Mode2CandidateEvidenceUnit[]
+
+  pattern.candidates = units.map((unit) => unit.candidate)
+  pattern.adjudication.ledgers = units.map((unit) => unit.ledger)
+  pattern.adjudication.pareto.frontier_candidate_ids = units
+    .filter((unit) => unit.pareto_partition === 'frontier')
+    .map((unit) => unit.candidate.id)
+  pattern.adjudication.pareto.dominated_candidate_ids = units
+    .filter((unit) => unit.pareto_partition === 'dominated')
+    .map((unit) => unit.candidate.id)
+}
+
 /**
  * F13 response-size control.  The two heavyweight paths are deliberately declared
  * rather than handed to the shallow generic auto-detector: Mode 2's census is three
@@ -238,15 +293,9 @@ export function finalizeKalaRitualResponseBudget(
 ): KalaRitualResponse {
   const sections: TrimmableSection<KalaRitualResponse>[] = [
     {
-      path: 'pattern_search.candidates', label: 'pattern-search candidates', minKeep: 1, hardFloor: true,
-      getArray: (content) => content.pattern_search?.candidates,
-      setArray: (content, kept) => { if (content.pattern_search) content.pattern_search.candidates = kept as SkyPatternSearchResult['candidates'] },
-      recover: { instrument: 'kala_ritual_get', hint: 'call again with a narrower sky_pattern_spec or horizon for the complete candidate set' },
-    },
-    {
-      path: 'pattern_search.adjudication.ledgers', label: 'candidate adjudication ledgers', minKeep: 0,
-      getArray: (content) => content.pattern_search?.adjudication?.ledgers,
-      setArray: (content, kept) => { if (content.pattern_search?.adjudication) content.pattern_search.adjudication.ledgers = kept as NonNullable<SkyPatternSearchResult['adjudication']>['ledgers'] },
+      path: 'pattern_search.candidate_evidence', label: 'candidate + adjudication evidence units', minKeep: 1, hardFloor: true,
+      getArray: getMode2CandidateEvidenceUnits,
+      setArray: setMode2CandidateEvidenceUnits,
       recover: { instrument: 'kala_ritual_get', hint: 'call again with a narrower sky_pattern_spec or horizon for the complete candidate evidence' },
     },
     {
@@ -295,10 +344,7 @@ export function finalizeKalaRitualResponseBudget(
 
   const pattern = budgeted.pattern_search
   if (pattern?.adjudication) {
-    const visibleIds = new Set(pattern.candidates.map((candidate) => candidate.id))
-    pattern.adjudication.ledgers = pattern.adjudication.ledgers.filter((ledger) => visibleIds.has(ledger.candidate_id))
-    pattern.adjudication.pareto.frontier_candidate_ids = pattern.adjudication.pareto.frontier_candidate_ids.filter((id) => visibleIds.has(id))
-    pattern.adjudication.pareto.dominated_candidate_ids = pattern.adjudication.pareto.dominated_candidate_ids.filter((id) => visibleIds.has(id))
+    setMode2CandidateEvidenceUnits(budgeted, getMode2CandidateEvidenceUnits(budgeted) ?? [])
   }
   return budgeted
 }
