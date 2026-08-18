@@ -360,6 +360,10 @@ export const queryRemedyProgramCapability: CapabilityDescriptor = {
       type: 'string',
       description: 'Filter by intensity_tier (free-text tier label as stored on phala_mitigation).',
     },
+    domain: {
+      type: 'string',
+      description: 'Filter remedies by the domain of their linked phala_anchors row.',
+    },
     limit:  { type: 'number', description: `Max rows (default ${MITIGATION_MAX_LIMIT}, max ${MITIGATION_MAX_LIMIT}).` },
     offset: { type: 'number', description: 'Pagination offset (default 0).' },
   },
@@ -371,6 +375,7 @@ export const queryRemedyProgramCapability: CapabilityDescriptor = {
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
     const intensity_tier = args['intensity_tier'] as string | undefined
+    const domain = args['domain'] as string | undefined
     // WP-1.3j budget discipline (F-L10-024): phala_mitigation is NOT sparse — it holds
     // 600+ rows/chart. The prior handler returned the FULL unbounded set; now bounded.
     const limit  = Math.min(Math.max(Number(args['limit'] ?? MITIGATION_MAX_LIMIT), 1), MITIGATION_MAX_LIMIT)
@@ -382,6 +387,16 @@ export const queryRemedyProgramCapability: CapabilityDescriptor = {
       let p = 2
 
       if (intensity_tier) { conds.push(`intensity_tier = $${p++}`); params.push(intensity_tier) }
+      if (domain) {
+        conds.push(`EXISTS (
+          SELECT 1
+          FROM phala_anchors a
+          WHERE a.chart_id = phala_mitigation.chart_id
+            AND a.anchor_id = phala_mitigation.linked_anchor_id
+            AND a.domain = $${p++}
+        )`)
+        params.push(domain)
+      }
       const where = conds.join(' AND ')
 
       const sql = `
@@ -416,7 +431,7 @@ export const queryRemedyProgramCapability: CapabilityDescriptor = {
           total_matching,
           more_available: offset + result.rows.length < total_matching,
           anchor_id_refs: anchorRefs,
-          filters: { intensity_tier, limit, offset },
+          filters: { intensity_tier, domain, limit, offset },
         },
         is_error: false,
       }
