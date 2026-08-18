@@ -35,8 +35,12 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../types.js'
-import { computeDashaSandhiCalendar } from '../tools/kala_views/dasha_sandhi.js'
+import {
+  computeDashaSandhiCalendar,
+  registerDashaSandhiCalendar,
+} from '../tools/kala_views/dasha_sandhi.js'
 
 const TEST_CHART_ID = '00000000-0000-0000-0000-000000000001'
 const TEST_PRINCIPAL: Principal = { user_uid: 'test-uid', key_id: 'test-key', role: 'guest' }
@@ -97,6 +101,34 @@ function mockRegistryFetch(opts: {
 
 beforeEach(() => {
   vi.unstubAllGlobals()
+})
+
+describe('kala_dasha_sandhi_get — registration principal propagation', () => {
+  it('forwards the registry principal rather than a synthetic super-admin identity', async () => {
+    let handler: ((args: Record<string, unknown>) => Promise<unknown>) | undefined
+    const server = {
+      tool: vi.fn((_name, _description, _schema, registeredHandler) => {
+        handler = registeredHandler as (args: Record<string, unknown>) => Promise<unknown>
+      }),
+    } as unknown as McpServer
+    const principal: Principal = { user_uid: 'caller-under-test', key_id: 'caller-key', role: 'guest' }
+    let outboundHeaders: Headers | undefined
+
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+      outboundHeaders = new Headers(init?.headers)
+      return {
+        ok: true,
+        json: async () => ({ ok: true, content: { rows: [...MD_ROWS_L1], total: MD_ROWS_L1.length } }),
+        text: async () => '',
+      } as Response
+    }))
+
+    registerDashaSandhiCalendar(server, principal)
+    await handler!({ chart_id: TEST_CHART_ID, as_of: '2026-08-06' })
+
+    expect(outboundHeaders?.get('X-MCP-User')).toBe('caller-under-test')
+    expect(outboundHeaders?.get('X-MCP-Key-Id')).toBe('caller-key')
+  })
 })
 
 // ── Core contract: all levels returned ────────────────────────────────────────

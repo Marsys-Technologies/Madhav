@@ -61,5 +61,5 @@ export function registerAllKalaViews(server: McpServer, principal: Principal): v
   registerKalaExplainTool(server, principal)
   registerKalaElectTool(server, principal)
   registerKalaStoryTool(server, principal)
-  registerDashaSandhiCalendar(server)
+  registerDashaSandhiCalendar(server, principal)
 }
