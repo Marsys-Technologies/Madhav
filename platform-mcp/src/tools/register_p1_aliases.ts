@@ -87,7 +87,7 @@ export function describePrimFailure(tool: string, status: number, bodyText: stri
       const chartId = parsed.denial?.chart_id ?? 'unknown'
       const required = parsed.denial?.permission_required ?? 'view'
       return `[alias] ENTITLEMENT_DENIED: '${tool}' — caller lacks ${required} access to chart ${chartId} ` +
-        `(distinct from an empty result — this chart exists but you are not granted). ${parsed.error?.message ?? ''}`.trim()
+        `(distinct from an empty result — this denial does not determine whether the chart exists). ${parsed.error?.message ?? ''}`.trim()
     }
   } catch {
     // Not JSON / not the denial shape — fall through.
