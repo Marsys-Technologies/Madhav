@@ -63,26 +63,30 @@ export const getDignityCapability: CapabilityDescriptor = {
       const offset     = (args.offset as number) ?? 0
       const categories = (args.categories as string[]) ?? DIGNITY_CATEGORIES
 
-      const params: unknown[] = [chartId, categories, limit, offset]
-      let sql = `
+      const filterParams: unknown[] = [chartId, categories]
+      let where = `WHERE chart_id = $1 AND fact_category = ANY($2::text[])`
+      if (args.ayanamsha_id) {
+        where += ` AND ayanamsha_id = $${filterParams.length + 1}`
+        filterParams.push(args.ayanamsha_id as string)
+      }
+      if (args.varga) {
+        where += ` AND fact_key ILIKE $${filterParams.length + 1}`
+        filterParams.push(`%${args.varga as string}%`)
+      }
+      const pageSql = `
         SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
-        WHERE chart_id = $1 AND fact_category = ANY($2::text[])
+        ${where}
+        ORDER BY fact_category, ayanamsha_id, fact_key
+        LIMIT $${filterParams.length + 1} OFFSET $${filterParams.length + 2}
       `
-      if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
-      }
-      if (args.varga) {
-        sql += ` AND fact_key ILIKE $${params.length + 1}`
-        params.push(`%${args.varga as string}%`)
-      }
-      sql += ` ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $3 OFFSET $4`
+      const countSql = `SELECT COUNT(*)::text AS total FROM chart_facts ${where}`
 
-      const result = await query<Record<string, unknown>>(sql, params)
+      const result = await query<Record<string, unknown>>(pageSql, [...filterParams, limit, offset])
+      const countResult = await query<{ total: string }>(countSql, filterParams)
       return {
-        content: { chart_id: chartId, categories, rows: result.rows ?? [], total: result.rows?.length ?? 0 },
+        content: { chart_id: chartId, categories, rows: result.rows ?? [], total: Number(countResult.rows?.[0]?.total ?? 0) },
         is_error: false,
       }
     } catch (err) {
