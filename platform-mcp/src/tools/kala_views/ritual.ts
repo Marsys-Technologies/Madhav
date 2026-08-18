@@ -93,6 +93,7 @@ import {
   type TriPlanePointers,
 } from '../../lib/kala_envelope.js'
 import { composeArgument } from '../../lib/argument_composer.js'
+import { finalizeMcpBudget, type TrimReportEntry, type TrimmableSection } from '../../lib/response_budget.js'
 // Lane R's two new libs + the frozen engine's own fetcher. These three imports
 // ARE the allowlist DESIGN RULING R-2 narrowed the source-scan rail to.
 import {
@@ -137,7 +138,7 @@ const SkyPatternSpecShape = z
   })
   .describe('Elevation §8 Mode-2 sky_pattern_spec v0 (schema sketch) — accepted/echoed at W0, compiled/searched at W4.')
 
-const KalaRitualInputShape = {
+export const KalaRitualInputShape = {
   chart_id: z.string().uuid().describe('Chart UUID. Required — no default chart.'),
   // Mode 1 (OPPORTUNITY SCAN): "Given: horizon."
   horizon: z.string().optional().describe("Mode 1 (opportunity scan): the horizon to search, e.g. '90d', '24m'. Ignored if sky_pattern_spec or undertaking is also present."),
@@ -163,6 +164,7 @@ const KalaRitualInputShape = {
       "'upaya_ritual'. Closed vocabulary — the same eight classes the rule table's own CHECK admits.",
     ),
   limit: z.number().int().min(1).max(50).optional().describe('Mode 1 only: max ranked (window, rite) pairs. Default 10.'),
+  budget_kb: z.number().int().min(1).max(200).optional().describe('Response size ceiling in KB. Default 40.'),
 }
 
 export interface KalaRitualParams {
@@ -177,6 +179,8 @@ export interface KalaRitualParams {
   activity_class?: string | null
   /** Mode 1 (W4): max ranked (window, rite) pairs to return. */
   limit?: number | null
+  /** Caller-selected response ceiling. The static 40 KB default always applies when omitted. */
+  budget_kb?: number | null
 }
 
 export type KalaRitualMode = 'opportunity_scan' | 'pattern_search'
@@ -208,9 +212,96 @@ export interface KalaRitualResponse extends KalaEnvelope {
    *  operative convention so a caller can never read "one convention computed"
    *  as "the native's lineage convention". */
   paddhati_divergence: { state: string; reason: string } | null
+  /** Present only when the serialized result required a size reduction. */
+  budget_kb_applied?: number
+  /** Echoes a caller-selected ceiling when a trim occurred. */
+  budget_kb_requested?: number
+  /** Exact sections shortened by the shared response-budget mechanism. */
+  trim_report?: TrimReportEntry[] | null
 }
 
 export type KalaRitualResult = KalaRitualWrongView | KalaRitualResponse | MortalityExclusionRefusal
+
+/**
+ * F13 response-size control.  The two heavyweight paths are deliberately declared
+ * rather than handed to the shallow generic auto-detector: Mode 2's census is three
+ * levels deep, and Mode 1 carries the raw structural substrate beneath its result.
+ *
+ * Candidate rows remain useful only when their corresponding adjudication ledger and
+ * Pareto ids remain visible.  We therefore reconcile those references after the shared
+ * trimmer has shortened any declared arrays.  The full evaluated count and the census
+ * disposition totals are scalar receipts and never get rewritten as page counts.
+ */
+export function finalizeKalaRitualResponseBudget(
+  response: KalaRitualResponse,
+  requestedBudgetKb?: number | null,
+): KalaRitualResponse {
+  const sections: TrimmableSection<KalaRitualResponse>[] = [
+    {
+      path: 'pattern_search.candidates', label: 'pattern-search candidates', minKeep: 1, hardFloor: true,
+      getArray: (content) => content.pattern_search?.candidates,
+      setArray: (content, kept) => { if (content.pattern_search) content.pattern_search.candidates = kept as SkyPatternSearchResult['candidates'] },
+      recover: { instrument: 'kala_ritual_get', hint: 'call again with a narrower sky_pattern_spec or horizon for the complete candidate set' },
+    },
+    {
+      path: 'pattern_search.adjudication.ledgers', label: 'candidate adjudication ledgers', minKeep: 0,
+      getArray: (content) => content.pattern_search?.adjudication?.ledgers,
+      setArray: (content, kept) => { if (content.pattern_search?.adjudication) content.pattern_search.adjudication.ledgers = kept as NonNullable<SkyPatternSearchResult['adjudication']>['ledgers'] },
+      recover: { instrument: 'kala_ritual_get', hint: 'call again with a narrower sky_pattern_spec or horizon for the complete candidate evidence' },
+    },
+    {
+      path: 'pattern_search.gap_report.census.factors_not_computed', label: 'uncomputed census evidence', minKeep: 0,
+      getArray: (content) => content.pattern_search?.gap_report.census.factors_not_computed,
+      setArray: (content, kept) => { if (content.pattern_search) content.pattern_search.gap_report.census.factors_not_computed = kept as SkyPatternSearchResult['gap_report']['census']['factors_not_computed'] },
+      recover: { instrument: 'kala_ritual_get', hint: 'call again with a narrower sky_pattern_spec or horizon; census totals remain in this response' },
+    },
+    {
+      path: 'pattern_search.gap_report.census.factors_not_in_corpus', label: 'out-of-corpus census evidence', minKeep: 0,
+      getArray: (content) => content.pattern_search?.gap_report.census.factors_not_in_corpus,
+      setArray: (content, kept) => { if (content.pattern_search) content.pattern_search.gap_report.census.factors_not_in_corpus = kept as SkyPatternSearchResult['gap_report']['census']['factors_not_in_corpus'] },
+      recover: { instrument: 'kala_ritual_get', hint: 'call again with a narrower sky_pattern_spec or horizon; census totals remain in this response' },
+    },
+    {
+      path: 'opportunities.opportunities', label: 'ranked ritual opportunities', minKeep: 1, hardFloor: true,
+      getArray: (content) => content.opportunities?.opportunities,
+      setArray: (content, kept) => { if (content.opportunities) content.opportunities.opportunities = kept as Mode1Result['opportunities'] },
+      recover: { instrument: 'kala_ritual_get', hint: 'call again with a shorter horizon or lower limit for the complete opportunity rows' },
+    },
+    {
+      path: 'opportunities.activity_rules.rows', label: 'activity-rule evidence', minKeep: 0,
+      getArray: (content) => content.opportunities?.activity_rules.rows,
+      setArray: (content, kept) => { if (content.opportunities) content.opportunities.activity_rules.rows = kept as Mode1Result['activity_rules']['rows'] },
+      recover: { instrument: 'kala_ritual_get', hint: 'call again with a shorter horizon for complete activity-rule evidence' },
+    },
+    {
+      path: 'opportunities.structural.remedy_rows', label: 'remedy corpus substrate', minKeep: 0,
+      getArray: (content) => content.opportunities?.structural.remedy_rows,
+      setArray: (content, kept) => { if (content.opportunities) content.opportunities.structural.remedy_rows = kept as Mode1Result['structural']['remedy_rows'] },
+      recover: { instrument: 'kala_ritual_get', hint: 'call again with a shorter horizon for complete remedy-substrate evidence' },
+    },
+    {
+      path: 'opportunities.structural.resonance_rows', label: 'resonance substrate', minKeep: 0,
+      getArray: (content) => content.opportunities?.structural.resonance_rows,
+      setArray: (content, kept) => { if (content.opportunities) content.opportunities.structural.resonance_rows = kept as Mode1Result['structural']['resonance_rows'] },
+      recover: { instrument: 'kala_ritual_get', hint: 'call again with a shorter horizon for complete resonance-substrate evidence' },
+    },
+  ]
+
+  const budgeted = finalizeMcpBudget(response as unknown as Record<string, unknown>, {
+    maxKb: requestedBudgetKb ?? 40,
+    sections: sections as unknown as TrimmableSection<Record<string, unknown>>[],
+    budgetKbRequested: requestedBudgetKb ?? undefined,
+  }) as unknown as KalaRitualResponse
+
+  const pattern = budgeted.pattern_search
+  if (pattern?.adjudication) {
+    const visibleIds = new Set(pattern.candidates.map((candidate) => candidate.id))
+    pattern.adjudication.ledgers = pattern.adjudication.ledgers.filter((ledger) => visibleIds.has(ledger.candidate_id))
+    pattern.adjudication.pareto.frontier_candidate_ids = pattern.adjudication.pareto.frontier_candidate_ids.filter((id) => visibleIds.has(id))
+    pattern.adjudication.pareto.dominated_candidate_ids = pattern.adjudication.pareto.dominated_candidate_ids.filter((id) => visibleIds.has(id))
+  }
+  return budgeted
+}
 
 // ── The detector-order router (PURE, SYNCHRONOUS, unit-tested directly) ────────
 
@@ -651,7 +742,9 @@ undertaking instead and the question is served in full.
 
 When to prefer: this is the entry point for "what auspicious combinations are coming" (Mode 1) \
 or "when does this specific combination occur" (Mode 2) questions. For "when should I do X" (an \
-undertaking), use kala_elect_get instead — always.`
+undertaking), use kala_elect_get instead — always. Responses are bounded to 40 KB by default; \
+set budget_kb (1–200) for a tighter or larger ceiling. Any trim reports its exact sections and \
+retains the underlying candidate/census receipts.`
 
 // ── Registration ────────────────────────────────────────────────────────────────────
 
@@ -664,7 +757,7 @@ export function registerKalaRitualGet(server: McpServer, principal: Principal): 
     'kala_ritual_get',
     KALA_RITUAL_DESCRIPTION,
     KalaRitualInputShape,
-    async ({ chart_id, horizon, sky_pattern_spec, undertaking, question_frame, activity_class, limit }) => {
+    async ({ chart_id, horizon, sky_pattern_spec, undertaking, question_frame, activity_class, limit, budget_kb }) => {
       if (!chart_id) {
         return {
           content: [
@@ -685,11 +778,17 @@ export function registerKalaRitualGet(server: McpServer, principal: Principal): 
           question_frame: question_frame ?? null,
           activity_class: activity_class ?? null,
           limit: limit ?? null,
+          budget_kb: budget_kb ?? null,
         },
         principal,
       )
+      const bounded = 'wrong_view' in response && response.wrong_view === false
+        ? finalizeKalaRitualResponseBudget(response, budget_kb)
+        : response
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify(response, null, 2) }],
+        // The budget is measured against the serialized MCP content, so do not re-expand a
+        // fitted response with pretty-print whitespace after the shared trimmer returns it.
+        content: [{ type: 'text' as const, text: JSON.stringify(bounded) }],
       }
     },
   )
