@@ -926,7 +926,7 @@ const COVERAGE_UNIVERSE_SOURCE =
 export async function computeGocharaCoverage(
   chartId: string,
   principal: Principal
-): Promise<{ coverage: GocharaCoverage; ok: boolean }> {
+): Promise<{ coverage: GocharaCoverage; ok: boolean; knownDomains: string[]; knownDomainsOk: boolean }> {
   // MR-02 (PARIṢKĀRA): coverage source is authority-aware.
   // After migration 563 retires ka_gochara_sweep, v3-authority charts never had
   // substeps recorded under 'ka_gochara_sweep' — the v3 materializer (ka_gochara,
@@ -1065,6 +1065,11 @@ export async function computeGocharaCoverage(
 
   return {
     ok,
+    // Keep vocabulary authority separate from coverage authority.  A domain may be
+    // valid in the ontology yet uncovered for this chart; conversely, a failed
+    // ontology read must never be laundered into an "invalid domain" verdict.
+    knownDomains: universeDomains,
+    knownDomainsOk: universeResp.ok,
     coverage: {
       event_classes_covered: eventClasses,
       event_classes_targeted_not_swept: targetedNotSwept,
@@ -1096,6 +1101,34 @@ export async function computeGocharaCoverage(
 }
 
 const KALA_WINDOWS_CROSS_POINTER_INSTRUMENT = 'kala_windows_get'
+
+type InvalidGocharaDomain = {
+  provided_domain: string
+  valid_domains: string[]
+  reason: 'domain_not_in_gochara_ontology'
+}
+
+/** Resolve a supplied domain only when the ontology vocabulary was reachable.
+ * This separates an unsupported request from a valid-but-unswept domain, and
+ * prevents an unknown filter from being served as a generic honest-empty scan. */
+function resolveGocharaDomain(
+  domain: string | undefined,
+  knownDomains: string[],
+  knownDomainsOk: boolean
+): { effectiveDomain: string | undefined; invalidDomain: InvalidGocharaDomain | null } {
+  if (!domain || !knownDomainsOk) return { effectiveDomain: domain, invalidDomain: null }
+  const normalized = domain.trim().toLocaleLowerCase()
+  const matched = knownDomains.find((known) => known.toLocaleLowerCase() === normalized)
+  if (matched) return { effectiveDomain: matched, invalidDomain: null }
+  return {
+    effectiveDomain: undefined,
+    invalidDomain: {
+      provided_domain: domain,
+      valid_domains: knownDomains,
+      reason: 'domain_not_in_gochara_ontology',
+    },
+  }
+}
 
 /** W2 server-side refusal rule: when a caller's `domain` filter names a domain this sweep's
  *  event-class universe does not cover, return the refusal shape instead of running a scan that
@@ -1349,8 +1382,9 @@ export async function computeGocharaActivation(
   domain?: string,
   resolution?: string
 ): Promise<Record<string, unknown>> {
-  const { coverage, ok: coverageOk } = await computeGocharaCoverage(chartId, principal)
-  const notCovered = notCoveredFor(domain, coverage)
+  const { coverage, ok: coverageOk, knownDomains, knownDomainsOk } = await computeGocharaCoverage(chartId, principal)
+  const { effectiveDomain, invalidDomain } = resolveGocharaDomain(domain, knownDomains, knownDomainsOk)
+  const notCovered = notCoveredFor(effectiveDomain, coverage)
 
   // W5.1: source_citation is generation-conditional. Build with SOURCE_CITATION_V1
   // as default; updated after query when first row's generation is known.
@@ -1364,6 +1398,21 @@ export async function computeGocharaActivation(
     resolution_filter: resolution ?? null,
     computed_at: new Date().toISOString(),
     density_contract: ACTIVATION_DENSITY_CONTRACT,
+  }
+
+  if (invalidDomain) {
+    return {
+      windows: [],
+      invalid_domain: invalidDomain,
+      coverage,
+      drill_pointers: [],
+      provenance_envelope: {
+        ...baseEnvelope,
+        window_count: 0,
+        backing_data_reachable: coverageOk,
+        empty_reason: null,
+      },
+    }
   }
 
   if (notCovered) {
@@ -1389,8 +1438,8 @@ export async function computeGocharaActivation(
     params.push(eventClass)
     sql += ` AND event_class = $${params.length}`
   }
-  if (domain) {
-    params.push(domain)
+  if (effectiveDomain) {
+    params.push(effectiveDomain)
     sql += ` AND EXISTS (SELECT 1 FROM brahma_event_ontology eo WHERE eo.event_class_id = kala_gochara_windows.event_class AND eo.domain = $${params.length})`
   }
   if (resolution) {
@@ -1622,8 +1671,9 @@ export async function computeGocharaForecast(
   domain?: string,
   resolution?: string
 ): Promise<Record<string, unknown>> {
-  const { coverage, ok: coverageOk } = await computeGocharaCoverage(chartId, principal)
-  const notCovered = notCoveredFor(domain, coverage)
+  const { coverage, ok: coverageOk, knownDomains, knownDomainsOk } = await computeGocharaCoverage(chartId, principal)
+  const { effectiveDomain, invalidDomain } = resolveGocharaDomain(domain, knownDomains, knownDomainsOk)
+  const notCovered = notCoveredFor(effectiveDomain, coverage)
 
   // W5.1: source_citation is generation-conditional; default to v1 for not_covered path.
   const baseEnvelope = {
@@ -1637,6 +1687,22 @@ export async function computeGocharaForecast(
     resolution_filter: resolution ?? null,
     computed_at: new Date().toISOString(),
     density_contract: FORECAST_DENSITY_CONTRACT,
+  }
+
+  if (invalidDomain) {
+    return {
+      windows: [],
+      invalid_domain: invalidDomain,
+      coverage,
+      drill_pointers: [],
+      provenance_envelope: {
+        ...baseEnvelope,
+        window_count: 0,
+        shape_breakdown: {},
+        backing_data_reachable: coverageOk,
+        empty_reason: null,
+      },
+    }
   }
 
   if (notCovered) {
@@ -1667,8 +1733,8 @@ export async function computeGocharaForecast(
     params.push(valence)
     sql += ` AND valence = $${params.length}`
   }
-  if (domain) {
-    params.push(domain)
+  if (effectiveDomain) {
+    params.push(effectiveDomain)
     sql += ` AND EXISTS (SELECT 1 FROM brahma_event_ontology eo WHERE eo.event_class_id = kala_gochara_windows.event_class AND eo.domain = $${params.length})`
   }
   if (resolution) {
@@ -1886,8 +1952,9 @@ export async function computeGocharaElectionAvoidance(
   domain?: string,
   resolution?: string
 ): Promise<Record<string, unknown>> {
-  const { coverage, ok: coverageOk } = await computeGocharaCoverage(chartId, principal)
-  const notCovered = notCoveredFor(domain, coverage)
+  const { coverage, ok: coverageOk, knownDomains, knownDomainsOk } = await computeGocharaCoverage(chartId, principal)
+  const { effectiveDomain, invalidDomain } = resolveGocharaDomain(domain, knownDomains, knownDomainsOk)
+  const notCovered = notCoveredFor(effectiveDomain, coverage)
 
   // W5.1: source_citation is generation-conditional; default to v1 for not_covered path.
   const baseEnvelope = {
@@ -1901,6 +1968,21 @@ export async function computeGocharaElectionAvoidance(
     computed_at: new Date().toISOString(),
     dr16_properties: ['honest_clarity', 'probabilistic_never_fatalistic', 'falsifier_bearing', 'mitigation_paired', 'confidence_honest'],
     density_contract: ELECTION_AVOIDANCE_DENSITY_CONTRACT,
+  }
+
+  if (invalidDomain) {
+    return {
+      windows: [],
+      invalid_domain: invalidDomain,
+      coverage,
+      drill_pointers: [],
+      provenance_envelope: {
+        ...baseEnvelope,
+        window_count: 0,
+        backing_data_reachable: coverageOk,
+        empty_reason: null,
+      },
+    }
   }
 
   if (notCovered) {
@@ -1926,8 +2008,8 @@ export async function computeGocharaElectionAvoidance(
     params.push(eventClass)
     sql += ` AND event_class = $${params.length}`
   }
-  if (domain) {
-    params.push(domain)
+  if (effectiveDomain) {
+    params.push(effectiveDomain)
     sql += ` AND EXISTS (SELECT 1 FROM brahma_event_ontology eo WHERE eo.event_class_id = kala_gochara_windows.event_class AND eo.domain = $${params.length})`
   }
   if (resolution) {
