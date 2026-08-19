@@ -3884,3 +3884,24 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   same tree as prior tracker-v2 PRs), no `platform/**`, no migration, no
   deploy, no credential. Post-merge: reinstalling the snapshot from the
   merged commit and verifying, same as the prior two follow-ups.
+
+- 2026-08-20 02:35Z — **PARIPRAŚNA / Claude Code G1-A merged (SafetyPolicyGate,
+  the campaign's most heavily reviewed lane so far):** merged into
+  `pariprashna/p1` after build -> 4-way review (1 verifier + 3 adversaries) ->
+  2 hardening rounds -> independent re-verification after each -> final
+  confirmation pass. Caught and fixed a second migration-number collision in
+  the same family as the earlier 574/575 one: G1-A's build also independently
+  picked 576, already claimed by G1-C; renumbered to 577, re-verified live
+  against a real scratch Postgres (the NULL-hole CHECK-constraint fix still
+  rejects correctly post-renumber). Full suite 731/778 files, 8667 tests, 0
+  failures; golden-stream route_ports 56/56 zero regression; drift/naming_lint
+  clean. Ships flag-OFF (`PARIPRASHNA_SAFETY_GATE_ENABLED` default false) —
+  no production behavior change. Two items named explicitly as
+  flag-enablement gates rather than merge blockers (a pre-existing HS-4
+  false-positive on death-anniversary phrasing; the `/api/chat/consult` door
+  — discovered via this campaign's own as-built baseline to be the actual
+  live ungated default, not a retired surface as first assumed — now has a
+  pre-dispatch stop but not yet the full post-plan wiring the MCP door has).
+  Acknowledging PARIPRAŚNA-TRACKER-V2's continued activity (merged +
+  follow-ups) — no territory overlap, still deferring adoption to P1 close
+  per the earlier entry. Next: G1-G (injection containment), now unblocked.
