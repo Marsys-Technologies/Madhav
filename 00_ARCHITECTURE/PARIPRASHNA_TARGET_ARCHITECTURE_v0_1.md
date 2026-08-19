@@ -2,7 +2,7 @@
 artifact: PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md
 canonical_id: PARIPRASHNA_TARGET_ARCHITECTURE
 version: 0.11
-status: DRAFT — LIVING · re-baselined AS-BUILT 2026-08-18 (RG-1 discharged; see v0.11 banner)
+status: SUPERSEDED — superseded-by-decomposition 2026-08-19 (G0 close); frozen forensic/history record; never to be renamed
 verified_against_tree: >
   2026-08-18 (v0.11 re-baseline): full as-built census against git HEAD
   (dfbdfe620), the PB campaign close corpus (REPORT_PB-1/2/3,
@@ -37,19 +37,16 @@ governing_principle: >
 
 # Paripraśna — Target Architecture (Master Document)
 
-> ## ⏳ DECOMPOSITION PENDING — 2026-08-18 (NCD-2 ruled; G0 close outstanding)
+> ## ✓ SUPERSEDED BY DECOMPOSITION — 2026-08-19 (G0 close complete)
 >
 > The native ruled (NCD-2, 2026-08-18) that this document decomposes into a
-> five-artifact set. The successor set is AUTHORED and red-teamed
-> (`RED_TEAM_G0_v1_0.md`, PASS-WITH-FIXES): **`PARIPRASHNA_ARCHITECTURE_v1_0.md`**
-> (normative), **`PARIPRASHNA_ASBUILT_BASELINE_v1_0.md`**,
-> **`PARIPRASHNA_DECISION_REGISTER_v1_0.md`**,
+> five-artifact set. The successor set is AUTHORED, red-teamed
+> (`RED_TEAM_G0_v1_0.md`, PASS-WITH-FIXES), registered, and CURRENT:
+> **`PARIPRASHNA_ARCHITECTURE_v1_0.md`** (normative, status CURRENT),
+> **`PARIPRASHNA_ASBUILT_BASELINE_v1_0.md`**, **`PARIPRASHNA_DECISION_REGISTER_v1_0.md`**,
 > **`PARIPRASHNA_VERIFICATION_MATRIX_v1_0.md`** — all in `00_ARCHITECTURE/` —
-> plus the v0.12 package under `briefs/pariprashna_v012/`. **Until the G0-close
-> session flips statuses (registration + SESSION_LOG close, per
-> `briefs/pariprashna_v012/CLAUDECODE_BRIEF_G0_CLOSE_v1_0.md`), THIS file
-> remains the standing design of record.** At G0 close it flips to
-> `SUPERSEDED` (mechanism: superseded-by-decomposition) and becomes the frozen
+> plus the v0.12 package under `briefs/pariprashna_v012/`.
+> Superseded at G0 close 2026-08-19, session PB-3-Bot. This file is the frozen
 > forensic/history record — retained in place, never renamed (30+ inbound
 > referrers inventoried 2026-08-18, including production code comments).
 
@@ -4005,6 +4002,7 @@ before it is built:
 
 | Version | Date | Change |
 |---|---|---|
+| **superseded** | **2026-08-19** | **G0 CLOSE — SUPERSEDED BY DECOMPOSITION.** The G0-close session (PB-3-Bot, 2026-08-19) executed the mechanics ruled by NCD-2 (2026-08-18): the five-artifact successor set (`PARIPRASHNA_ARCHITECTURE_v1_0.md` + three LIVING companions + `briefs/pariprashna_v012/`) registered in `CAPABILITY_MANIFEST.json` and `PARIPRASHNA_ARCHITECTURE_v1_0.md` flipped to `CURRENT` (red-team record: `RED_TEAM_G0_v1_0.md`, PASS-WITH-FIXES). This file's status is now `SUPERSEDED — superseded-by-decomposition`. It is the frozen forensic/history record for the Paripraśna design arc: §16/§18/§20 remain the corpus of record for how this design was learned; §4–§14A are superseded by `PARIPRASHNA_ARCHITECTURE_v1_0.md` for normative content. Retained in place, never renamed (30+ inbound referrers inventoried 2026-08-18 per R-5 note in the master review). |
 | **0.11** | **2026-08-18** | **AS-BUILT RE-BASELINE + FABLE-5 ELEVATION (RG-1 discharge).** The 2026-07-27 SUPERSEDED-IN-PART banner is DISCHARGED — its predicted staleness corrected in place, marked `[GROUNDED 2026-08-18]`, against git HEAD `dfbdfe620`, the PB close corpus, and a live MCP census (**125 tools, `catalog-1+t152+r653c2a1a98c8`**).<br><br>**THE HEADLINE: the conversation layer was BUILT.** PB-1 DHĀRĀ (typed 15-event Zod SSE protocol, stream-first fork of consult, three-region renderer with freeze discipline, right dock, closed lexicon, server-side register lint), PB-2 SMṚTI (`message_parts` migration 467, durable summaries to the §11.3 spec, Redis ring-buffer resume with `Last-Event-ID` replay, the D-16 per-turn stamp), PB-3 SAMĪKṢĀ + PB-3.1 (the 9-state `brahma_mimamsa_prediction_ledger` with the stamp copied at confirm under the `trg_bmpl_freeze_confirmed` DB trigger, review tab, batch resolve, daily job, Brier at resolution) — live in production behind `PARIPRASHNA_ENABLED` (ON via env since PB-1), **proven end-to-end by C4-LOOP-LIVE-PROOF 2026-08-01 with a real concurrent user (T-9 RESOLVED FORWARD)**. NOT happened: PB-4 cutover, AC-15, arm-1 roles, the ruled-unbuilt calibration sink, PB-9-DETECTOR.<br><br>**NEW REGISTERS:** §1.2 resolved-by-events (OT-2 job handle · OT-7/OT-10 generated `full`/`compact`/`consult` profiles · OT-8 rebuilt-on-parts · OT-11 canonical ledger built · OT-12 fork-with-reorder · PARK L-5 ruled by DVA 55/79); §16.9 the as-built census — doors/deployment, §19.7 gate re-assessment, the **fidelity debt register FD-1..FD-12** (paragraph-only live wire; S-3 rewriter built-unwired; cosmetic model/length pickers + nonfunctional `length_tier`; `LogToSamiksha` unmounted; recall unwired; client-synthesized grounding; delta-boundary lint escape; assistant-only canonical store; capture flag held OFF per Ruling 80; log-only digest; two error classifiers; crude depth mapping), F-register dispositions (F-25b/c/d/q/t STAND; F-01..F-11, F-25e/f SUPERSEDED on the new surface; F-25g downgraded — the tier prompt-keying is excised, the live D-15 violation closed), and the engine-content deltas since 08-01 (PRATIJÑĀ v4.1 adopted verdicts, GOCHARA v3 under PARIṢKĀRA's honest re-close, KP sub-lord clock, fact-identity index, SAMPŪRTI W0).<br><br>**ELEVATION `[ELEVATION F5 v0.11]` — A-37..A-48, the beyond-acharya register:** live block fidelity with `prediction_card` as a wire event (one change unlocking three debts) · first-paint citations + server-derived grounding · every control honest or absent · depth derived from the scope tuple, served visibly · the remembering wave (recall + arrival line + contradiction surfacing) · **the window-opening ask — the single highest-leverage unbuilt feature** (every precondition shipped) · voice enforced not requested (remedial-imperative lint, pacing policy) · signal reader text prioritized by observed citation frequency · new engine layers surface at their earned tier only (T-8 extended) · pre-cutover hardening as a PB-4 entry condition · the sealed-reading export · dispute capture. **§19.5 forward sequence** (six waves: harden→cutover, fidelity, remember+ask, one-engine-in-fact, the walls, the unending audit). **PROPOSED rulings** on all remaining open forks (OT-1 confirm in-process · OT-3 confirm cron-in-webapp · OT-4 super-admin-only builds with guest request · OT-5 ratify shipped auth · OT-6 close as none, T-2's condition met). **NEW TENSIONS:** T-10 (as-built divergence must be classified: ruled / disclosed-lossy / silent debt — or lossiness ages into de-facto architecture) and T-11 (**a gate that promotes a surface must re-price every risk priced under the old exposure**). Authored by Claude (Cowork, Fable 5) in consultation with the native; per §21 rule 6 this version authorizes no code change. |
 | 0.10 | ~2026-07-27 | **Reconstructed at v0.11 — this row was never written, a §21 rule 2 violation disclosed rather than papered over.** The frontmatter reached `version: 0.10` (and the footer was left saying v0.6 — same drift class) with no changelog entry. Best reconstruction from the artifact itself: v0.10 = the ⚠ SUPERSEDED-IN-PART banner of 2026-07-27 and its staleness table, added after the Retrieval Plane Elevation + Residual Closure campaigns outran the registers. No design content is attributed to 0.10 beyond that banner. |
 | **0.9** | **2026-07-22** | **RC-13 (R-4 / W-17) — the code-level `session_pin` → `provenance_stamp` rename v0.8 deferred is now EXECUTED**, Resolver-ratified against the D-16 doctrine already on record (§11.4). GT-F28 closed (was NEEDS-RULING). §7.1's live storage diagram corrected at source: the `session_pins (build provenance)` / `priors_version in session pin →` line read `provenance_stamps (build provenance)` / `priors_version in provenance stamp →`. Internal-only, zero behavior/contract/UX change — pure identifier + served-JSON-field rename (`session_pin` → `provenance_stamp`) across `platform/src/lib/retrieval/session_pin.ts` (renamed `provenance_stamp.ts`) and its ~13 code-file consumer set (route handlers, MCP session/chart-selection/session tools, the codegen'd envelope mirror, capabilities resource doc). Does NOT execute the broader D-16 storage restructuring (immutable per-turn `conversation_messages.metadata_json`, per-turn drift detection, ledger-row copy-not-reference) — that remains separately scoped, unexecuted work; this residual closed naming only, per its own DONE bar. Full platform + platform-mcp suites green with zero test-count delta versus the pre-rename baseline. |

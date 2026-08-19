@@ -1,13 +1,14 @@
 ---
 artifact: PARIPRASHNA_ARCHITECTURE_v1_0
 canonical_id: PARIPRASHNA_ARCHITECTURE
-version: 1.0-RC
-status: DRAFT_PENDING_REDTEAM
+version: 1.0
+status: CURRENT
 status_note: >
-  Substance red-teamed 2026-08-18 (four-lens panel, RED_TEAM_G0_v1_0.md, PASS-WITH-FIXES,
-  all fixes applied to the source package) and confirmatory-verified as an assembled
-  artifact the same day. Flips to CURRENT at G0 close: native ratification +
-  CAPABILITY_MANIFEST/registry rows + SESSION_LOG close (see the G0-close brief).
+  Ratified at G0 close 2026-08-19 (session PB-3-Bot). Red-team record:
+  RED_TEAM_G0_v1_0.md (PASS-WITH-FIXES, four-lens panel, 2026-08-18); all fixes
+  applied to the source package and confirmatory-verified the same day. Registered
+  in CAPABILITY_MANIFEST.json; SESSION_LOG entry appended. PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md
+  flipped to SUPERSEDED concurrently (mechanism: superseded-by-decomposition).
 produced_during: PARIPRASHNA-V012-PHASE1 (Cowork, Fable 5, 2026-08-18; NCD-1..8 native-ruled same day)
 date: 2026-08-18
 authoritative_side: claude
@@ -25,6 +26,7 @@ companion_artifacts:
   - PARIPRASHNA_VERIFICATION_MATRIX_v1_0.md (PPR → test → rung → gate — LIVING)
   - briefs/pariprashna_v012/ (the Phase-1 review package: contracts, safety, calibration, NFR annexes + red-team record)
 changelog:
+  - "1.0 (2026-08-19): G0 close — status CURRENT; registered in CAPABILITY_MANIFEST; TA v0_1 flipped SUPERSEDED. No content change from 1.0-RC."
   - "1.0-RC (2026-08-18): first assembly, from the ruled v0.12 package + TA v0.11 normative content."
 ---
 

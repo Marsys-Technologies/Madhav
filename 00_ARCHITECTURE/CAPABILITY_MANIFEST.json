@@ -2,7 +2,7 @@
   "generated_at": "2026-08-19T00:00:00.000Z",
   "generator_version": "1.0",
   "entry_count": 120,
-  "fingerprint": "be38e13e89ebe483561bb667a0ca41b90dfca80cb5efa4dbbeb055e2534358bd",
+  "fingerprint": "1c392525ab859afb002d8c082885cacd24e55396b6003501d6f508de28079b89",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1652,15 +1652,15 @@
     {
       "canonical_id": "PARIPRASHNA_ARCHITECTURE",
       "path": "00_ARCHITECTURE/PARIPRASHNA_ARCHITECTURE_v1_0.md",
-      "version": "1.0-RC",
-      "status": "DRAFT_PENDING_REDTEAM",
+      "version": "1.0",
+      "status": "CURRENT",
       "layer": "governance",
       "expose_to_chat": false,
       "representations": [
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "14a70dffbd844a87a8833b62859f3d8e925a709dc74b93f70ee8816ea0ab1219",
+      "fingerprint": "e5d0ab3e2f4bc19d2809d4c64d33725333edcfad64b2d98d31e5852adedbae00",
       "native_id": "project"
     },
     {
