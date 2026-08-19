@@ -3847,3 +3847,21 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   `00_ARCHITECTURE/briefs/pariprashna_swarm/**` scope, same docs-and-tooling
   posture, no `platform/**`) on `pariprashna/tracker-v2-launchd-path-fix`,
   requesting the same merge window rather than a new lease.
+
+- 2026-08-20 00:56Z — **PARIPRAŚNA-TRACKER-V2 / Claude Code — hardening merge
+  window requested (docs-and-tooling only):** follow-up session fixing two
+  real defects surfaced after #1350/#1351 landed: the launchd jobs were
+  executing code from a `/tmp` git worktree (reboot/cleanup risk, and
+  mutable — a `git checkout` there would silently swap a running daemon's
+  code). Branch `pariprashna/tracker-v2-harden-install`, scope
+  `00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/**` only (same 8 files as
+  before, no new paths, no `platform/**`, no migration, no deploy, no
+  credential). Fix: `install.sh --install-from-ref` materialises an
+  immutable `git archive` snapshot at `$HOME/.pariprashna-tracker-code/`
+  (never a working tree, never touches an index); the deployed dashboard now
+  shows the running code's sha and flags "STALE CODE" amber if it's behind
+  `origin/main`. After merge: reinstalling the 3 launchd jobs against the
+  snapshot, verifying heartbeat/selftest/gh-gcloud-PATH survive the move,
+  then (only once confirmed healthy) removing the now-superseded
+  `/private/tmp/pariprashna-tracker-v2` worktree via `git worktree remove` +
+  `prune` — that worktree only, nothing else under `/private/tmp`.
