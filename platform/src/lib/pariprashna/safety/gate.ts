@@ -198,7 +198,7 @@ export async function classifyTurnSafety(args: ClassifyTurnSafetyArgs): Promise<
  *
  * One predicate, named once, used by both the pre-plan and the post-plan path
  * and mirrored by the DB CHECK constraint
- * `pariprashna_safety_decisions_seal_requires_review_chk` (migration 576).
+ * `pariprashna_safety_decisions_seal_requires_review_chk` (migration 577).
  * Keeping it in one place is the point: the hardening round found that the two
  * paths had DIFFERENT answers to this question, and only one of them was right.
  */

@@ -1,4 +1,4 @@
--- Migration 576: pariprashna safety gate — SAFETY DECISIONS, REVIEWS, RETRACTIONS
+-- Migration 577: pariprashna safety gate — SAFETY DECISIONS, REVIEWS, RETRACTIONS
 -- Paripraśna P1 FOUNDATION, lane G1-A (PPR-12 · PPR-26 · MP §3.5.C) · 2026-08-19
 --
 -- ── WHY THIS EXISTS ────────────────────────────────────────────────────────────
