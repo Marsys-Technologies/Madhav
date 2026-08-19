@@ -108,7 +108,10 @@ this is RELEASED or expired.*
 | 567 | PARIṢKĀRA | 567_parishkara_mr11_hierarchy.sql (parent_window_id + resolution on both windows tables) | CLAIMED — MR-11(b) lane, PR to parishkara/integration in flight |
 | 568 | PARIṢKĀRA | 568_parishkara_mr45_hierarchy_natkey.sql (add resolution to kala_gochara_windows[_v2] unique natural-key index — month/day self-collision fix, MR-45) | CLAIMED — builder dispatched |
 | 569 | SAMPŪRTI | 569_sampurti_r0_kshetra_dep_fix.sql (remove ka_gochara_sweep from ka_kshetra.depends_on — RB-1, R0 gate packet) | CLAIMED — gate packet PR opening now |
-| 570+ | — | next free; claim here before use | — |
+| 570–573 | (various) | applied to main since this table was last updated — this row was stale at "570+ next free" and caused a real collision (see 574/575 below) | HISTORICAL |
+| 574 | PARIPRAŚNA | 574_ncd8_spend_ceilings_channel_attribution.sql (G1-D, adds `channel` col + 2 indexes to llm_usage_events) | CLAIMED — pariprashna/p1, PR not yet opened |
+| 575 | PARIPRAŚNA | 575_pariprashna_chart_subject_consent.sql (G1-B, chart_subject_consent + 4 related tables) | CLAIMED — pariprashna/p1, PR not yet opened. Renumbered from a 574 collision with G1-D (both lanes independently claimed 574 from a stale "570+" reading here — renumber-on-collision applied per this table's own rule) |
+| 576+ | — | next free; claim here before use — **the "next free" number drifts fast under concurrent campaigns; re-verify live via `ls platform/migrations/ platform/supabase/migrations/` before trusting this table** | — |
 
 ## 3. TERRITORY MAP (edit-ownership during the concurrency window)
 
@@ -3815,3 +3818,20 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   plaintext-on-LAN in the tracker's own README. This lane does not collide
   with the P1 scoping entry immediately above (different directory tree,
   no `platform/**`, no infra).
+
+- 2026-08-19 17:48Z — **PARIPRAŚNA / Claude Code — acknowledging
+  PARIPRASHNA-TRACKER-V2, confirming no collision:** noticed the entry above
+  while re-checking this file before a routine merge. Confirmed independently:
+  its PR #1350 touches only `00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/**`
+  (new dir) + a 41-line §7 addendum to `PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`
+  — no file this session has touched or has open work on. Continuing this
+  session's own `SWARM_TRACKER.json`/`tracker.html` (§5-spec, at
+  `.../pariprashna_swarm/state/`) as the live record for P0/P1 lane work
+  already in flight, to avoid switching trackers mid-phase; will read
+  tracker-v2's output once #1350 merges and adopt it for P2+ if it's a clear
+  improvement, rather than run two systems in parallel indefinitely. Also
+  corrected the stale "570+ next free" migration-claims row above (§2) — it
+  caused a real 574/574 collision between this session's own G1-D and G1-B
+  lanes, resolved by renumbering G1-B to 575 (see §2). P1 wave 1 (G1-B,
+  G1-D, G1-F, G1-H) merged to `pariprashna/p1`; wave 2 (G1-A safety gate,
+  G1-C DB roles/RLS, G1-G injection containment) dispatching next.
