@@ -98,13 +98,15 @@
  *     and arming one must not silently arm the other. Defaults to `true`, so
  *     every pre-G1-G call site is byte-for-byte unchanged.
  *
- * WHY THE EXTRA RULES ARE SINGLE-SENTENCE AND NOT WINDOWED: the window exists
- * because a mortality CLAIM is a PAIR (term + date) that either half can carry
- * across a sentence boundary. An entitlement leak is not a pair — a chart id is
- * a single self-contained token, and one sentence either contains one or does
- * not. Running the window over a rule that has no pairing semantics would
- * redact a neighbouring sentence for no reason. Stated here rather than left
- * for a reader to infer from the loop.
+ * THE EXTRA RULES ARE WINDOWED TOO, and the first version of this file said the
+ * opposite — that a chart id is "a single self-contained token" with no pairing
+ * semantics, so a window would only over-redact. A review reproduced two
+ * counterexamples: a token split by a sentence terminator (the newline the
+ * streaming forced release lands on) leaked a COMPLETE foreign id across the
+ * seam, and the abbreviated-id rule turned out to be a genuine pair (a cue word
+ * plus a hex run) that splits across sentences as easily as term-plus-date. The
+ * window is now shared. See the extra-rule block below for the one place the
+ * two halves' window logic deliberately differs.
  */
 
 import { normalizeForClassification, spanHash } from './normalize'
@@ -407,24 +409,59 @@ export function scanMortalityPhrasing(
     }
 
     // ── THE EXTRA PATTERN CLASS (lane G1-G, PPR-13) ───────────────────────
-    // Runs over the SAME sentence array, only for sentences this span still
-    // owns (`i >= emitFrom`): a context sentence already left, and nothing here
-    // can un-send it. That is not a coverage gap — the carry only ever holds
-    // text that already passed this scan, so it cannot hold a leak.
+    // Runs over the SAME sentence array, and — like the mortality rules — over
+    // a sliding window of CROSS_SENTENCE_WINDOW consecutive sentences.
     //
-    // A sentence already marked by a mortality rule is still TESTED, because a
-    // firing is a fact worth recording even when something else was going to
-    // remove the sentence anyway; `caused_redaction` carries the distinction.
+    // The window was NOT here originally, on the reasoning that "an entitlement
+    // leak is not a pair, a chart id is one self-contained token". A review
+    // reproduced two counterexamples and the reasoning was simply wrong:
+    //
+    //   · A chart id SPLIT by a sentence terminator — most importantly the
+    //     newline the streaming scanner's forced release lands on — puts half
+    //     the token in the carried context and half in the new span. Scanned
+    //     apart, neither half is an id; scanned together, the token reassembles
+    //     and matches. This was a real leak of a COMPLETE foreign id across a
+    //     stream seam, and the window is what closes it.
+    //   · The abbreviated-id rule IS a pair (a chart cue word plus a hex run),
+    //     so "Consider the other chart. Its identifier is 1c826d5a." split the
+    //     pair across two sentences and passed clean.
+    //
+    // A window hit redacts every sentence in the window THIS SPAN OWNS. Context
+    // sentences are scanned so the pairing can be seen, and skipped for
+    // redaction because they already left — nothing can un-send them. That is
+    // the same asymmetry the mortality half lives with, and the same honest
+    // residual: the reader may have seen a fragment, never the whole token.
     const extraRules = options.extraRules ?? []
     const extraRuleFor = new Map<number, string>()
     const extraFiringsFor = new Map<number, string[]>()
-    for (let i = emitFrom; extraRules.length > 0 && i < sentences.length; i++) {
-      for (const r of extraRules) {
-        if (!r.test(sentences[i])) continue
-        const fired = extraFiringsFor.get(i) ?? []
-        fired.push(r.rule)
-        extraFiringsFor.set(i, fired)
-        if (!extraRuleFor.has(i)) extraRuleFor.set(i, r.rule)
+    const markExtra = (index: number, rule: string): void => {
+      if (index < emitFrom) return
+      const fired = extraFiringsFor.get(index) ?? []
+      if (!fired.includes(rule)) fired.push(rule)
+      extraFiringsFor.set(index, fired)
+      if (!extraRuleFor.has(index)) extraRuleFor.set(index, rule)
+    }
+    if (extraRules.length > 0) {
+      for (let i = 0; i < sentences.length; i++) {
+        for (const r of extraRules) if (r.test(sentences[i])) markExtra(i, r.rule)
+      }
+      for (let width = 2; width <= CROSS_SENTENCE_WINDOW; width++) {
+        for (let i = 0; i + width <= sentences.length; i++) {
+          // Unlike the mortality window this does NOT skip a window containing
+          // an already-marked sentence. A split token's two halves can each
+          // ALSO carry an independent reference, and the join is the only place
+          // the split one is visible at all — skipping would reintroduce the
+          // exact leak this window was added for.
+          const joined = sentences.slice(i, i + width).join('')
+          for (const r of extraRules) {
+            if (!r.test(joined)) continue
+            // Only mark when the JOIN is what fired: if a single sentence in
+            // the window already matched this rule on its own, the neighbours
+            // contributed nothing and must survive.
+            if (sentences.slice(i, i + width).some((s) => r.test(s))) continue
+            for (let k = 0; k < width; k++) markExtra(i + k, r.rule)
+          }
+        }
       }
     }
 

@@ -97,17 +97,50 @@ describe('adversarial — evasion attempts on the UUID rule', () => {
     expect(r.extra_hits.map((h) => h.rule)).toContain(ENTITLEMENT_RULE_FOREIGN_UUID)
   })
 
-  it('the KNOWN residual is exactly what the header says it is — no more', () => {
-    // A newline mid-UUID splits it into two sentences. The half carrying the cue
-    // word and the claim IS removed; a trailing fragment survives. Asserted so
-    // the residual cannot silently widen without this test noticing.
+  it('an id hard-wrapped across a NEWLINE is fully redacted, both halves', () => {
+    // A newline is a sentence terminator, so this splits the token across two
+    // sentences. The cross-sentence window rejoins them; before the window was
+    // shared with the extra rules, the trailing 24 hex characters survived.
     const wrapped = `The comparison chart ${THEIRS.slice(0, 24)}\n${THEIRS.slice(24)} differs.`
     const r = prewire(wrapped)
-    expect(r.clean).not.toContain('The comparison chart')
-    expect(r.clean).not.toContain(THEIRS)
-    expect(r.clean).not.toContain(THEIRS.slice(0, 24))
-    // …and the surviving fragment is only the tail, which is the stated width.
-    expect(r.clean.trim()).toBe(`${THEIRS.slice(24)} differs.`)
+    expect(r.clean.trim()).toBe('')
+    expect(r.clean).not.toContain(THEIRS.slice(24))
+  })
+
+  it('a split id with NO cue word anywhere is still caught by the rejoin', () => {
+    const r = prewire(`Also relevant: ${THEIRS.slice(0, 18)}\n${THEIRS.slice(18)} appears.`)
+    expect(r.clean.trim()).toBe('')
+  })
+
+  it('the abbreviated form split from its cue across sentences is caught', () => {
+    // The prefix rule IS a pair. "Consider the other chart. Its identifier is
+    // 1c826d5a." split the pair and passed clean until the window was shared.
+    const r = prewire('Consider the other chart. Its identifier is 1c826d5a and it matters.')
+    expect(r.clean.trim()).toBe('')
+  })
+
+  it('an ADJACENT word character no longer hides a UUID', () => {
+    // `\b` between two hex characters does not exist, so the original anchored
+    // pattern was defeated by a single prefix/suffix character.
+    for (const form of [`x${THEIRS}`, `${THEIRS}ff`, `ref-x${THEIRS}`, `[${THEIRS}]`]) {
+      expect(prewire(`See record ${form} for details.`).clean, form).toBe('')
+    }
+  })
+
+  it('catches an id written with en-dashes or fullwidth digits', () => {
+    const enDash = THEIRS.replace(/-/g, '–')
+    expect(prewire(`The other chart is ${enDash}.`).clean).toBe('')
+    const fullwidth = THEIRS.replace(/1/g, '１')
+    expect(prewire(`The other chart is ${fullwidth}.`).clean).toBe('')
+  })
+
+  it('catches the hyphen-stripped 32-hex form with no cue word', () => {
+    const stripped = THEIRS.replace(/-/g, '')
+    expect(prewire(`Cache key ${stripped} was used.`).clean).toBe('')
+    // …and the caller's own id in that form is still fine.
+    const mine = MINE.replace(/-/g, '')
+    const own = `Cache key ${mine} was used.`
+    expect(prewire(own).clean).toBe(own)
   })
 
   it('catches a UUID that is UNKNOWN to the system, not merely a known other chart', () => {
@@ -297,6 +330,31 @@ describe('adversarial — the STREAMING path, where a leak arrives in pieces', (
     out += s.push(`and the other chart ${THEIRS} shows otherwise`)
     out += s.flush()
     expect(out).not.toContain(THEIRS)
+  })
+
+  it('FORCED RELEASE: an id straddling the no-terminator cut does not leak', () => {
+    // The hard case a review reproduced. With no `.`/`!`/`?`/`\n` anywhere, the
+    // scanner passes MAX_HOLDBACK_CHARS and force-releases at a fixed character
+    // offset — mid-token by construction. The carried context and the new span
+    // used to be scanned as separate sentence arrays, so the two halves could
+    // never be rejoined and the COMPLETE id reached the reader.
+    for (const offset of [-8, 0, 8]) {
+      const s = new StreamingMortalityScanner(undefined, {
+        extraRules: RULES,
+        mortalityRulesEnabled: false,
+      })
+      const cut = 1200 + offset
+      const filler = 'saturn steady jupiter strong venus neutral mars exalted '
+      const head = filler.repeat(60).slice(0, cut)
+      const text = `${head}${THEIRS} and more prose without any terminator at all`
+
+      let out = ''
+      for (let i = 0; i < text.length; i += 64) out += s.push(text.slice(i, i + 64))
+      out += s.flush()
+
+      expect(out, `offset ${offset}`).not.toContain(THEIRS)
+      expect(s.extraHits.length, `offset ${offset}`).toBeGreaterThan(0)
+    }
   })
 
   it('does not double-emit clean prose while the entitlement rules are armed', () => {

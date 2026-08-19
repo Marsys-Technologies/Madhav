@@ -58,37 +58,74 @@
  *     capability) — not by this scan. Recorded so nobody reads a green run here
  *     as proof of something this never looked at.
  *
- * ── ONE KNOWN RESIDUAL, MEASURED RATHER THAN ROUNDED OFF ────────────────────
- * The redaction unit is a SENTENCE, and `splitSentences` treats a newline as a
- * sentence terminator. A UUID hard-wrapped across a line break therefore lands
- * in two different sentences and neither half is a complete UUID. What actually
- * happens in that case: the half carrying the chart-referential cue word IS
- * redacted by the prefix rule (so the claim goes), and the trailing fragment —
- * at most the UUID's final 12 hex characters, with no cue word and no claim
- * attached — survives. That is a partial identifier reaching the reader, not a
- * usable chart id, and it is the honest width of the residual.
+ * ── WHAT AN INDEPENDENT REVIEW FOUND, AND WHERE IT LEFT THINGS ──────────────
+ * Five real bypasses were reproduced against the first version of this module.
+ * Each is now closed and pinned by a test; they are listed because the SHAPE of
+ * the mistakes is more useful to the next person than the fixes:
  *
- * It is NOT closed by widening these rules to the cross-sentence window, which
- * is why that was not done: joining the two sentences leaves the newline INSIDE
- * the token, so the UUID pattern still does not match. Closing it properly
- * means normalizing whitespace across a sentence boundary, which would change
- * G1-A's splitter — out of scope for this lane and a deliberate hand-off rather
- * than an oversight. The whitespace-collapsed pass below closes the
- * SAME-sentence version of this evasion, which is the common one.
+ *   1. `\b` anchors on the UUID pattern. There is no word boundary between two
+ *      hex characters, so `x<id>` and `<id>ff` matched nothing at all — one
+ *      adjacent character disabled the module's only zero-false-positive rule.
+ *      Anchors removed: hex adjacency should raise suspicion, not grant
+ *      exemption.
+ *   2. Literal-surface-only scanning. An id written with en-dashes or fullwidth
+ *      digits read clean. Now scanned on the folded surface too, exactly as
+ *      G1-A's `sentenceHit` does — and on `.literal`, never `.normalized`,
+ *      because confusable folding rewrites digits into letters and would blind
+ *      this scan to the very tokens it hunts.
+ *   3. The hyphen-stripped 32-hex form had no rule at all.
+ *   4. A token split across a sentence boundary — including the newline the
+ *      streaming forced release lands on — was never rejoined, leaking a
+ *      COMPLETE foreign id across a stream seam. Closed by sharing G1-A's
+ *      cross-sentence window with these rules (the module used to argue that a
+ *      window was unnecessary here; that argument was wrong, see
+ *      `phrasing_scan.ts`).
+ *   5. `[0-9a-fA-F]{8,64}` matched any 8+ digit DECIMAL number, so "Julian day
+ *      24457355" near the word "chart" deleted the sentence and raised a
+ *      cross-tenant alarm. The prefix rule now requires a hex letter.
+ *
+ * The residual that remains is the honest one and it is not a regex problem: a
+ * chart referred to WITHOUT any identifier — by the subject's name, or as "the
+ * other reading" — is invisible to this scan. That is stated under "what this
+ * does not detect" above and is upstream retrieval's job, not this scan's.
  */
 
 import type { PreWireSentenceRule } from '@/lib/pariprashna/safety/phrasing_scan'
-
-/** Full RFC-4122-shaped UUID. Global: reused per call via a `lastIndex` reset. */
-const UUID_RE = /\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/g
+import { normalizeForClassification } from '@/lib/pariprashna/safety/normalize'
 
 /**
- * The same UUID, tolerating whitespace around its own hyphens — the shape a
- * wrapped or deliberately spaced-out id takes. See `findForeignChartReferences`
- * for why this is a separate pattern and not a collapsed copy of the sentence.
+ * Full RFC-4122-shaped UUID, tolerating whitespace around its own hyphens (the
+ * shape a wrapped or deliberately spaced-out id takes) — and DELIBERATELY
+ * UNANCHORED.
+ *
+ * The first version used `\b` at both ends, and a review reproduced the
+ * consequence: `\b` between two hex characters does not exist, so ONE adjacent
+ * word character made the whole id invisible. `See record x<id> here` and
+ * `<id>ff` both leaked with zero hits. An injected payload only had to ask for
+ * the id to be cited with a prefix.
+ *
+ * The anchors are gone rather than inverted, and that is the right direction:
+ * hex adjacency should make a token MORE suspicious, not exempt. A UUID-shaped
+ * run inside a longer hex blob is still a UUID-shaped run, and there is no
+ * legitimate Jyotish prose it appears in.
+ *
+ * There is deliberately no separate strict (unspaced) pattern: `\s*` matches
+ * empty, so this one sweep covers both and a second would only ever produce a
+ * duplicate finding for `seen` to collapse.
  */
 const SPACED_UUID_RE =
-  /\b[0-9a-fA-F]{8}\s*-\s*[0-9a-fA-F]{4}\s*-\s*[0-9a-fA-F]{4}\s*-\s*[0-9a-fA-F]{4}\s*-\s*[0-9a-fA-F]{12}\b/g
+  /[0-9a-fA-F]{8}\s*-\s*[0-9a-fA-F]{4}\s*-\s*[0-9a-fA-F]{4}\s*-\s*[0-9a-fA-F]{4}\s*-\s*[0-9a-fA-F]{12}/g
+
+/**
+ * A chart id with its hyphens removed — the form `canonical()` produces and the
+ * form a model echoing a DB key or a cache key emits. 32 hex characters in a
+ * row is not something Jyotish prose contains, so this needs no cue word.
+ *
+ * Bounded on both sides by "not another hex character" so a 33-hex run does not
+ * silently match its own first 32 and get compared against the wrong id — that
+ * whole run is the token, and `isAuthorizedReference` must judge it as one.
+ */
+const BARE_32_HEX_RE = /(?<![0-9a-fA-F])[0-9a-fA-F]{32}(?![0-9a-fA-F])/g
 
 /**
  * A chart-referential cue word followed within a short window by a hex run, and
@@ -110,8 +147,26 @@ const SPACED_UUID_RE =
  * nothing at all. 64 covers a hyphen-stripped UUID (32), a sha256 (64), and
  * every suffixed variant in between.
  */
-const CUE_THEN_HEX_RE = /\bchart(?:[_\s-]?id)?\b[^\n]{0,24}?\b([0-9a-fA-F]{8,64})\b/gi
-const HEX_THEN_CUE_RE = /\b([0-9a-fA-F]{8,64})\b[^\n]{0,24}?\bchart(?:[_\s-]?id)?\b/gi
+const CUE_THEN_HEX_RE = /\bchart(?:[_\s-]?id)?\b[^\n]{0,24}?(?<![0-9a-fA-F])([0-9a-fA-F]{8,64})(?![0-9a-fA-F])/gi
+const HEX_THEN_CUE_RE = /(?<![0-9a-fA-F])([0-9a-fA-F]{8,64})(?![0-9a-fA-F])[^\n]{0,24}?\bchart(?:[_\s-]?id)?\b/gi
+
+/**
+ * A prefix-rule token must contain at least one hex LETTER.
+ *
+ * Without this, `[0-9a-fA-F]{8,64}` matches any 8+ digit decimal number, and a
+ * review reproduced the consequence: "The chart uses Julian day 24457355 for
+ * the epoch", "This chart was built at 20240115", "Chart totals: 100000000
+ * divisional rows" were all silently deleted from the reading AND raised an
+ * error-level cross-tenant flag. That is a false positive that eats real
+ * astrological content and cries wolf at the same time — the worst combination.
+ *
+ * A real chart id is a random 128-bit value; the probability its abbreviated
+ * form is all-decimal is negligible, so this costs the detector essentially
+ * nothing and buys back every Julian day, epoch, year and row count in the
+ * corpus. The full-UUID rules do NOT apply it — their shape is already
+ * unambiguous, hyphens and all.
+ */
+const HAS_HEX_LETTER = /[a-fA-F]/
 
 export interface EntitlementScanConfig {
   /**
@@ -163,7 +218,22 @@ function isAuthorizedReference(token: string, authorized: AuthorizedSet): boolea
   return authorized.canonicalIds.some((id) => id.startsWith(c))
 }
 
-/** Every hex/UUID token in `sentence` that is not provably the caller's. */
+/**
+ * Every hex/UUID token in `sentence` that is not provably the caller's.
+ *
+ * Runs over TWO surfaces, exactly as G1-A's `sentenceHit` does and for the same
+ * reason: the literal text, and `normalizeForClassification(...).literal` — a
+ * NFKD-normalized, diacritic-stripped, punctuation-folded, whitespace-collapsed
+ * view. That second surface is what catches an id written with en-dashes or
+ * fullwidth digits, both of which a review reproduced as clean leaks against
+ * the literal-only version.
+ *
+ * `.literal` and NOT `.normalized`: the confusable folding that lets the safety
+ * classifier read `d1e` as `die` also rewrites digits into letters, which would
+ * turn a real chart id into a different, harmless-looking token and blind this
+ * scan to precisely what it exists to catch. Same trap G1-A documents at
+ * `sentenceHit`, same resolution.
+ */
 export function findForeignChartReferences(
   sentence: string,
   config: EntitlementScanConfig,
@@ -180,48 +250,50 @@ export function findForeignChartReferences(
     found.push({ rule, token })
   }
 
-  // Full UUIDs first, and record which spans they occupied — a UUID's own
-  // leading 8 hex digits would otherwise ALSO trip the prefix rule next to the
-  // word "chart", double-reporting one leak as two.
-  const uuidSpans: [number, number][] = []
-  UUID_RE.lastIndex = 0
-  for (let m = UUID_RE.exec(sentence); m !== null; m = UUID_RE.exec(sentence)) {
-    uuidSpans.push([m.index, m.index + m[0].length])
-    push(ENTITLEMENT_RULE_FOREIGN_UUID, m[0])
-  }
+  const surfaces = [sentence]
+  const folded = normalizeForClassification(sentence).literal
+  if (folded && folded !== sentence) surfaces.push(folded)
 
-  // …then the SPACED form, which catches an id pulled apart at its own hyphens
-  // ("1c826d5a-9f3b-4d21 -8e77-0a5c4b2e91d0" — a wrap, or deliberate spacing).
-  //
-  // Done as a segment-aware pattern rather than by scanning a
-  // whitespace-collapsed copy of the sentence, and the reason is a real bug the
-  // adversarial suite caught: collapsing glues the id to the word in front of
-  // it, and since `a`–`f` are hex letters, an ordinary English word ending in
-  // one ("used", "café") destroys the leading `\b` and the UUID stops matching
-  // altogether. Tolerating whitespace only WHERE THE HYPHENS ALREADY ARE keeps
-  // both anchors intact.
-  //
-  // Note this pattern SUBSUMES the strict one above (`\s*` matches empty), so
-  // an unspaced UUID is found twice and `seen` collapses it to one finding.
-  // The strict pass is kept rather than deleted because it is the form a
-  // reviewer checks correctness against — the spaced variant is a widening of
-  // it, and reading the widening alone makes it easy to miss that the base case
-  // is a plain RFC-4122 UUID. Redundant by one regex sweep, deliberately.
-  SPACED_UUID_RE.lastIndex = 0
-  for (let m = SPACED_UUID_RE.exec(sentence); m !== null; m = SPACED_UUID_RE.exec(sentence)) {
-    uuidSpans.push([m.index, m.index + m[0].length])
-    push(ENTITLEMENT_RULE_FOREIGN_UUID, m[0].replace(/\s+/g, ''))
-  }
-  const insideUuid = (start: number, end: number): boolean =>
-    uuidSpans.some(([s, e]) => start >= s && end <= e)
+  for (const surface of surfaces) {
+    // Full UUIDs first, and record which spans they occupied — a UUID's own
+    // leading 8 hex digits would otherwise ALSO trip the prefix rule next to
+    // the word "chart", double-reporting one leak as two.
+    const uuidSpans: [number, number][] = []
 
-  for (const re of [CUE_THEN_HEX_RE, HEX_THEN_CUE_RE]) {
-    re.lastIndex = 0
-    for (let m = re.exec(sentence); m !== null; m = re.exec(sentence)) {
-      const token = m[1]
-      const at = m[0].indexOf(token) + m.index
-      if (insideUuid(at, at + token.length)) continue
-      push(ENTITLEMENT_RULE_FOREIGN_PREFIX, token)
+    // The SPACED pattern SUBSUMES the strict one (`\s*` matches empty), so this
+    // one sweep covers both a plain RFC-4122 UUID and one pulled apart at its
+    // own hyphens ("1c826d5a-9f3b-4d21 -8e77-0a5c4b2e91d0" — a wrap, or
+    // deliberate spacing). Done as a segment-aware pattern rather than by
+    // scanning a whitespace-collapsed copy of the sentence, because collapsing
+    // glues the id to the word in front of it and — since a-f are hex letters —
+    // an ordinary English word ending in one ("used") would then swallow it.
+    SPACED_UUID_RE.lastIndex = 0
+    for (let m = SPACED_UUID_RE.exec(surface); m !== null; m = SPACED_UUID_RE.exec(surface)) {
+      uuidSpans.push([m.index, m.index + m[0].length])
+      push(ENTITLEMENT_RULE_FOREIGN_UUID, m[0].replace(/\s+/g, ''))
+    }
+
+    // The hyphen-stripped 32-hex form. No cue word required — 32 hex characters
+    // in a row is not a thing Jyotish prose contains.
+    BARE_32_HEX_RE.lastIndex = 0
+    for (let m = BARE_32_HEX_RE.exec(surface); m !== null; m = BARE_32_HEX_RE.exec(surface)) {
+      uuidSpans.push([m.index, m.index + m[0].length])
+      push(ENTITLEMENT_RULE_FOREIGN_UUID, m[0])
+    }
+
+    const insideUuid = (start: number, end: number): boolean =>
+      uuidSpans.some(([s, e]) => start >= s && end <= e)
+
+    for (const re of [CUE_THEN_HEX_RE, HEX_THEN_CUE_RE]) {
+      re.lastIndex = 0
+      for (let m = re.exec(surface); m !== null; m = re.exec(surface)) {
+        const token = m[1]
+        // An all-decimal run is a Julian day, a year, a row count — not an id.
+        if (!HAS_HEX_LETTER.test(token)) continue
+        const at = m[0].indexOf(token) + m.index
+        if (insideUuid(at, at + token.length)) continue
+        push(ENTITLEMENT_RULE_FOREIGN_PREFIX, token)
+      }
     }
   }
 

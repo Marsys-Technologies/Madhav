@@ -99,8 +99,15 @@ export const FOREIGN_DOOR_TAGS = [
  * or close (`</tag>`), any casing, tolerant of internal whitespace
  * (`< / untrusted_tool_result >`), which is the obvious first evasion.
  */
+// The attribute tail is BOUNDED and newline-free. An unbounded `[^>]*>` turns a
+// stray `<evidence …` with no closing bracket into a match that swallows every
+// character up to the next `>` ANYWHERE later in the payload — and since
+// `containRetrievedEvidence` neutralizes the whole joined bundle in one pass,
+// one such token in asset A could delete legitimate text out of asset B. That
+// is an attacker-triggerable evidence-suppression primitive, which is a
+// different and worse failure than the leak this function exists to stop.
 const CONTAINMENT_TAG_RE = new RegExp(
-  `<\\s*/?\\s*(?:${[...CONTAINMENT_TAGS, ...FOREIGN_DOOR_TAGS].join('|')})\\b[^>]*>`,
+  `<\\s*/?\\s*(?:${[...CONTAINMENT_TAGS, ...FOREIGN_DOOR_TAGS].join('|')})\\b[^>\\n]{0,120}>`,
   'gi',
 )
 
