@@ -3715,3 +3715,5 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   or state-changing infra (scratch DB instance provisioning, credential
   rotation) will be flagged here BEFORE execution, not just parked after the
   fact, given the shared-project blast radius. X-1..X-7 remain in force.
+
+- 2026-08-19 14:21Z — **PARIŚEṢA / Codex fallback state + F47 service proof:** normal V4 writer remains guardian-unavailable (`NotSubmitted { reason: NotIdle }`), so the own-worktree fallback ledger records the deployed sidecar proof. `amjis-sidecar-01066-bzx` is 100% traffic and labeled `bb5c5278`; two read-only `kala_muhurta_get` calls over the same horizon retained distinct requested action types and live dasha provenance, with business score/dasha `0.568/0.600` versus marriage `0.499/0.450`. No session selection, job, adoption, rebuild, or DB action.
