@@ -2,7 +2,7 @@
 artifact: CLAUDECODE_BRIEF_G0_CLOSE
 type: CLAUDECODE_BRIEF (governing scope for one execution session)
 version: 1.1
-status: READY — dispatch when the native chooses; docs/registration/git ONLY, zero code
+status: COMPLETE — G0 close executed 2026-08-19 (session PARIPRASHNA-G0-CLOSE-2026-08-19, PB-3-Bot); PR #1341 open for review
 changelog:
   - "1.1 (2026-08-19): NCD-9/10/11 were RULED by the native 2026-08-18 (after v1.0 of
     this brief was authored) — §0 corrected from 'OPEN, carry as open rows' to RULED;
