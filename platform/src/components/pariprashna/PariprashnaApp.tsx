@@ -17,17 +17,22 @@ import { DockControllerProvider } from './dock/DockController'
 import { useFixtureStream } from './state/useFixtureStream'
 import { useLiveStream } from './hooks/useLiveStream'
 import type { FixtureMode } from './fixtures'
-import type { ThreadState } from './state/types'
+import type { SubmitControls, ThreadState } from './state/types'
 
 /**
  * The transport-agnostic stream contract the surface consumes. Both
  * `useFixtureStream` (dev replay) and `useLiveStream` (real SSE) satisfy it:
- * `submit(text, mode)` — the fixture host plays `mode` as a canned fixture; the
- * live host maps `mode` onto a `reading_depth` and calls the real route.
+ * `submit(text, mode, controls?)` — the fixture host plays `mode` as a canned
+ * fixture and ignores `controls`; the live host reads `controls` (lane P2-C —
+ * `SubmitControls`, sent honestly by the composer's own picker state) to build
+ * the real request, no longer re-deriving `reading_depth` from `mode`. Callers
+ * with no real picker state (`EmptyState`'s example prompts, the dev fixture
+ * picker) omit `controls`; the live host applies the same 'auto'/'standard'
+ * defaults the request already had.
  */
 export interface PariprashnaStream {
   state: ThreadState
-  submit: (text: string, mode: FixtureMode) => string | void
+  submit: (text: string, mode: FixtureMode, controls?: SubmitControls) => string | void
   stop: (turnId: string) => void
 }
 
@@ -91,15 +96,25 @@ function PariprashnaAppFixture({ chartPin }: { chartPin: ChartPin }) {
   return <PariprashnaSurface chartPin={chartPin} stream={stream} showDevPicker />
 }
 
-/** Live host: real SSE via `/api/pariprashna`. Maps the composer's fixture
- *  `mode` onto a `reading_depth` (single → auto, everything else → deep_dive). */
+/**
+ * Live host: real SSE via `/api/pariprashna`. Lane P2-C: `reading_depth`,
+ * `model_id`, and `length_tier` now come from the composer's OWN picker state
+ * (`controls`) rather than being re-derived from the dev-fixture `mode`
+ * (which used to force `deep_dive` for every Depth selection except "Quick" —
+ * see the P2-C build report for how that mapping was discovered). `mode` is
+ * ignored here entirely; it exists only for the fixture host.
+ */
 function PariprashnaAppLive({ chartPin, chartId }: { chartPin: ChartPin; chartId: string }) {
   const live = useLiveStream(chartId)
   const stream = useMemo<PariprashnaStream>(
     () => ({
       state: live.state,
-      submit: (text: string, mode: FixtureMode) =>
-        live.submit(text, { reading_depth: mode === 'single' ? 'auto' : 'deep_dive' }),
+      submit: (text: string, _mode: FixtureMode, controls?: SubmitControls) =>
+        live.submit(text, {
+          reading_depth: controls?.readingDepth ?? 'auto',
+          model_id: controls?.modelId,
+          length_tier: controls?.lengthTier ?? 'standard',
+        }),
       stop: live.stop,
     }),
     [live],
@@ -126,8 +141,8 @@ function PariprashnaSurface({
   const streaming = !!activeTurn && !['settled', 'interrupted', 'errored'].includes(activeTurn.status)
 
   const handleSubmit = useCallback(
-    (text: string, mode: FixtureMode) => {
-      submit(text, mode)
+    (text: string, mode: FixtureMode, controls?: SubmitControls) => {
+      submit(text, mode, controls)
     },
     [submit],
   )
@@ -164,7 +179,12 @@ function PariprashnaSurface({
               <Transcript turns={state.turns} />
             )}
             {showDevPicker && <DevFixturePicker onPick={handleDevPick} disabled={streaming} />}
-            <Composer streaming={streaming} onSubmit={handleSubmit} onStop={handleStop} />
+            <Composer
+              streaming={streaming}
+              onSubmit={handleSubmit}
+              onStop={handleStop}
+              depthReceived={activeTurn?.readingDepthReceived}
+            />
           </div>
           <RightDock turns={state.turns} />
         </div>
