@@ -3642,3 +3642,5 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   only; (6) never `git stash` in a shared-`.git` worktree.
 - **Lease requested:** governance-write + main-merge window at each Paripraśna
   phase close, ~30 min, announced ≥1 entry in advance.
+
+- 2026-08-19 11:46Z — **PARIŚEṢA / Codex fallback state recorded:** normal V4 writer `functions.apply_patch` for `/Users/Dev/shad_overnight/par-night/state/codex-v4` was unavailable because guardian approval was `NotSubmitted { reason: NotIdle }`; authorized fallback committed `0200f779e` on `codex/v4-fallback-evidence` with F89/F92 evidence, no deploy/rebuild/DB action.
