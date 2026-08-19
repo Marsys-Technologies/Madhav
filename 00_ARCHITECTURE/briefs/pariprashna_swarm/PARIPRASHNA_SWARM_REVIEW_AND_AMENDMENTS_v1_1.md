@@ -234,5 +234,46 @@ probes (find IAM refusals NOW, not mid-P1). Gate: golden streams
 byte/semantically identical through the decomposed route on the deployed
 artifact; tracker live; every DD-3 command proven or parked.
 
+## §7 — Addendum (2026-08-19, post-P0 close): §5's tracker superseded going forward
+
+P0 (including P0-D, the tracker scaffold this §5 specified) closed before this
+addendum was written — `origin/campaign-coordination @ 3bdcc752a`, PR #1349
+merged as `9db457dcc`, all 5 P0 lanes (Step 0 + P0-B/C/D/E/F) closed, deploy
+verified live. §5's tracker was built and merged exactly as specified:
+`00_ARCHITECTURE/briefs/pariprashna_swarm/state/{SWARM_TRACKER.json,
+tracker.html, tracker_data.js, TRACKER.md}`. So the standing instruction this
+addendum's own kickoff brief carried — "P0-D reduces to wiring lane
+transitions into tracker_emit.py" — no longer applies verbatim: there was no
+still-open P0-D to redirect. What follows instead.
+
+**The Paripraśna Execution Observatory (tracker-v2)** —
+`00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/` (code, versioned) +
+`~/.pariprashna-tracker/` (runtime state, outside the repo) — was built as a
+**separate, standalone session**, retargeted at **P1 onward** rather than at
+P0: derived-not-narrated lane state (git/`gh`/`gcloud`/filesystem ground
+truth, never a self-report, per CLAUDE.md §N.8 applied to the instrument
+itself), an out-of-process daemon (`trackerd.py`) with a three-tier dead-man's
+switch (20s heartbeat · launchd watchdog restart on >90s staleness · client-
+side staleness computed independently of the backend), append-only per-writer
+event logs, a declarative `PLAN.yaml` carrying the real 53-lane inventory from
+`PARIPRASHNA_PHASED_SWARM_IMPLEMENTATION_PLAN_v1_0.md §2/§4` (not the
+approximate "30 lanes" this kickoff brief itself cited), and a falsifiable
+`--selftest` suite exercised against deliberately broken inputs before being
+trusted (README + session report carry the full acceptance evidence,
+including the observed-failing runs).
+
+**§5 of this file is superseded going forward.** The P1+ conductor does not
+build its own tracker: whatever spawns P1's lane agents wires one
+`tracker_emit.py` call per lane-state transition (`kind: "lane_state"`,
+`evidence_class: "CLAIMED"` for states with no artifact, e.g. `BUILDING`
+before a branch exists — the observatory itself derives `MERGED`/`CLOSED`
+independently from git/GitHub once a branch or PR exists, and flags an
+`anomaly` if a claim and the derived evidence disagree). §5's file paths
+(`state/SWARM_TRACKER.json` etc.) are retained in place as the historical P0
+record, not deleted, not updated further.
+
+*End addendum. §1–§6 above remain the historical record of the P0-era
+review — unedited except for this pointer.*
+
 *End SWARM_REVIEW_AND_AMENDMENTS v1.1 — this file binds execution; v1.0
 remains the narrative plan of record beneath it.*
