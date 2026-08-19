@@ -1,9 +1,35 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { TurnState } from '../state/types'
 // S-2's canonical closed vocabulary (PB-1/integrate — replaced the C-1 stand-in).
-import { renderSealCompleteLabel } from '@/lib/pariprashna/lexicon'
+import { renderSealCompleteLabel, EDGE_STATE_LABELS } from '@/lib/pariprashna/lexicon'
+
+/**
+ * §7.8 edge state: "Network drop mid-turn | RECONNECTING… (band stays;
+ * content untouched) → RESUMED — NOTHING LOST". The RESUMED confirmation is a
+ * brief, self-clearing display keyed off `reconnectHollowCaret` flipping
+ * true→false (P2-G) — no new `TurnStatus` value was added for it (a wider,
+ * higher-blast-radius change several other components switch on); this hook
+ * detects the transition already carried by existing reducer state.
+ */
+const RESUMED_DISPLAY_MS = 900
+
+function useShowResumedFlash(reconnectHollowCaret: boolean): boolean {
+  const [show, setShow] = useState(false)
+  const prev = useRef(reconnectHollowCaret)
+  useEffect(() => {
+    const was = prev.current
+    prev.current = reconnectHollowCaret
+    if (was && !reconnectHollowCaret) {
+      setShow(true)
+      const id = setTimeout(() => setShow(false), RESUMED_DISPLAY_MS)
+      return () => clearTimeout(id)
+    }
+    return undefined
+  }, [reconnectHollowCaret])
+  return show
+}
 
 function formatElapsed(totalSeconds: number): string {
   const s = Math.max(0, totalSeconds)
@@ -49,18 +75,35 @@ export interface WorkingBandProps {
 export function WorkingBand({ turn, expanded, onToggle }: WorkingBandProps) {
   const isActive = turn.status === 'thinking' || turn.status === 'streaming' || turn.status === 'submitted' || turn.status === 'reconnecting'
   const elapsed = useElapsedSeconds(turn.openedAtMs, isActive)
+  const showResumedFlash = useShowResumedFlash(turn.reconnectHollowCaret)
 
   let label: React.ReactNode
   if (turn.status === 'errored' && turn.error) {
+    // §7.5 canonical copy (P2-G) — turn.error.bandLabel is always produced by
+    // classifyPariprashnaError (lib/pariprashna/errors/classify.ts) now, so
+    // this is the exact §7.5 string, never a wrapper-local literal.
     label = turn.error.bandLabel
   } else if (turn.status === 'interrupted') {
-    label = 'Stopped — kept what arrived'
+    // §7.8 edge state: "User presses Stop → STOPPED — KEPT WHAT ARRIVED".
+    // Reads the closed lexicon directly (was a wrapper-local string literal
+    // that happened to still match — §N.7.3: a constant can drift from its
+    // source; a reference cannot).
+    label = EDGE_STATE_LABELS.user_stopped
   } else if (turn.status === 'settled' || turn.status === 'settling') {
     // S-2's sealed-band label: "Grounded in N sources · Ts" (N = chart factors
     // + classical sources; elapsed is the numeric client-clock seconds).
     label = <b>{renderSealCompleteLabel((turn.grounding?.factorCount ?? 0) + (turn.grounding?.classicalCount ?? 0), elapsed)}</b>
   } else if (turn.status === 'reconnecting') {
-    label = <>{currentLiveLabel(turn)}<span style={{ color: 'var(--pp-gold-tertiary)' }}> — reconnecting…</span></>
+    // §7.8 edge state: "Network drop mid-turn → RECONNECTING… (band stays;
+    // content untouched)". The flat closed-lexicon string, not a suffix on
+    // whatever phase was in progress (the prior behaviour here appended
+    // " — reconnecting…" onto the live phase label, which is not the §7.8
+    // string and, for several edge-state labels, would double up ellipses).
+    label = EDGE_STATE_LABELS.network_drop
+  } else if (showResumedFlash) {
+    // §7.8 edge state: "→ RESUMED — NOTHING LOST" — a brief confirmation
+    // shown once, immediately after `reconnectHollowCaret` clears.
+    label = EDGE_STATE_LABELS.network_resumed
   } else {
     label = <>{currentLiveLabel(turn)}<span style={{ color: 'var(--pp-gold-tertiary)' }}>…</span></>
   }

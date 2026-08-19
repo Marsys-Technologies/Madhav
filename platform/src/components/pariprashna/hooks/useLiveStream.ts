@@ -5,6 +5,7 @@ import { threadReducer, initialThreadState } from '../state/reducer'
 import type { ThreadAction } from '../state/reducer'
 import { decodeEvent } from '@/lib/pariprashna/protocol/events'
 import { makeS1LiveAdapter, type S1LiveAdapter } from '../state/s1LiveAdapter'
+import { classifyPariprashnaError } from '@/lib/pariprashna/errors/classify'
 
 let turnSeq = 0
 function nextTurnId(): string {
@@ -132,15 +133,13 @@ export function useLiveStream(chartId: string) {
       if (!cs.serverTurnId) {
         // Never even received turn.open — there is nothing server-side to
         // resume from (the server mints turn_id on its own first byte).
+        // Canonical §7.5 classifier (P2-G) — folded in place of a hand-built
+        // ClassifiedError literal (`bandLabel: 'Something went wrong'`,
+        // which was never the §7.5 network copy).
         dispatchTyped({
           type: 'error',
           turnId,
-          error: {
-            kind: 'network',
-            bandLabel: 'Something went wrong',
-            sentence: 'The connection was lost before the turn could start.',
-            actions: ['retry'],
-          },
+          error: classifyPariprashnaError('NETWORK_NO_TURN_OPEN'),
           eventId: `${turnId}-noturnopen`,
         })
         return
@@ -173,12 +172,7 @@ export function useLiveStream(chartId: string) {
             dispatchTyped({
               type: 'error',
               turnId,
-              error: {
-                kind: 'network',
-                bandLabel: 'Something went wrong',
-                sentence: 'Could not resume the connection after several attempts.',
-                actions: ['retry'],
-              },
+              error: classifyPariprashnaError('NETWORK_RESUME_EXHAUSTED'),
               eventId: `${turnId}-resume-exhausted`,
             })
             return
@@ -231,12 +225,7 @@ export function useLiveStream(chartId: string) {
             dispatchTyped({
               type: 'error',
               turnId,
-              error: {
-                kind: 'network',
-                bandLabel: 'Something went wrong',
-                sentence: `The request failed (${resp.status}).`,
-                actions: ['retry'],
-              },
+              error: classifyPariprashnaError('NETWORK_HTTPFAIL'),
               eventId: `${turnId}-httpfail`,
             })
             return
