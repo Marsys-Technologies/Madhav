@@ -57,12 +57,38 @@
  *     `args.chart_id` with the authenticated chart for every `per_chart`
  *     capability) — not by this scan. Recorded so nobody reads a green run here
  *     as proof of something this never looked at.
+ *
+ * ── ONE KNOWN RESIDUAL, MEASURED RATHER THAN ROUNDED OFF ────────────────────
+ * The redaction unit is a SENTENCE, and `splitSentences` treats a newline as a
+ * sentence terminator. A UUID hard-wrapped across a line break therefore lands
+ * in two different sentences and neither half is a complete UUID. What actually
+ * happens in that case: the half carrying the chart-referential cue word IS
+ * redacted by the prefix rule (so the claim goes), and the trailing fragment —
+ * at most the UUID's final 12 hex characters, with no cue word and no claim
+ * attached — survives. That is a partial identifier reaching the reader, not a
+ * usable chart id, and it is the honest width of the residual.
+ *
+ * It is NOT closed by widening these rules to the cross-sentence window, which
+ * is why that was not done: joining the two sentences leaves the newline INSIDE
+ * the token, so the UUID pattern still does not match. Closing it properly
+ * means normalizing whitespace across a sentence boundary, which would change
+ * G1-A's splitter — out of scope for this lane and a deliberate hand-off rather
+ * than an oversight. The whitespace-collapsed pass below closes the
+ * SAME-sentence version of this evasion, which is the common one.
  */
 
 import type { PreWireSentenceRule } from '@/lib/pariprashna/safety/phrasing_scan'
 
-/** Full RFC-4122-shaped UUID. Global+ignorecase: reused per call via `lastIndex` reset. */
+/** Full RFC-4122-shaped UUID. Global: reused per call via a `lastIndex` reset. */
 const UUID_RE = /\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b/g
+
+/**
+ * The same UUID, tolerating whitespace around its own hyphens — the shape a
+ * wrapped or deliberately spaced-out id takes. See `findForeignChartReferences`
+ * for why this is a separate pattern and not a collapsed copy of the sentence.
+ */
+const SPACED_UUID_RE =
+  /\b[0-9a-fA-F]{8}\s*-\s*[0-9a-fA-F]{4}\s*-\s*[0-9a-fA-F]{4}\s*-\s*[0-9a-fA-F]{4}\s*-\s*[0-9a-fA-F]{12}\b/g
 
 /**
  * A chart-referential cue word followed within a short window by a hex run, and
@@ -156,6 +182,22 @@ export function findForeignChartReferences(
   for (let m = UUID_RE.exec(sentence); m !== null; m = UUID_RE.exec(sentence)) {
     uuidSpans.push([m.index, m.index + m[0].length])
     push(ENTITLEMENT_RULE_FOREIGN_UUID, m[0])
+  }
+
+  // …then the SPACED form, which catches an id pulled apart at its own hyphens
+  // ("1c826d5a-9f3b-4d21 -8e77-0a5c4b2e91d0" — a wrap, or deliberate spacing).
+  //
+  // Done as a segment-aware pattern rather than by scanning a
+  // whitespace-collapsed copy of the sentence, and the reason is a real bug the
+  // adversarial suite caught: collapsing glues the id to the word in front of
+  // it, and since `a`–`f` are hex letters, an ordinary English word ending in
+  // one ("used", "café") destroys the leading `\b` and the UUID stops matching
+  // altogether. Tolerating whitespace only WHERE THE HYPHENS ALREADY ARE keeps
+  // both anchors intact.
+  SPACED_UUID_RE.lastIndex = 0
+  for (let m = SPACED_UUID_RE.exec(sentence); m !== null; m = SPACED_UUID_RE.exec(sentence)) {
+    uuidSpans.push([m.index, m.index + m[0].length])
+    push(ENTITLEMENT_RULE_FOREIGN_UUID, m[0].replace(/\s+/g, ''))
   }
   const insideUuid = (start: number, end: number): boolean =>
     uuidSpans.some(([s, e]) => start >= s && end <= e)

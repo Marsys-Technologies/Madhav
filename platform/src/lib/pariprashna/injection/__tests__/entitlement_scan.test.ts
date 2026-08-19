@@ -90,6 +90,26 @@ describe('adversarial — evasion attempts on the UUID rule', () => {
     }
   })
 
+  it('catches an id broken up by whitespace WITHIN one sentence', () => {
+    const spaced = `${THEIRS.slice(0, 18)} ${THEIRS.slice(18)}`
+    const r = prewire(`The other reading used ${spaced} as its source.`)
+    expect(r.clean).toBe('')
+    expect(r.extra_hits.map((h) => h.rule)).toContain(ENTITLEMENT_RULE_FOREIGN_UUID)
+  })
+
+  it('the KNOWN residual is exactly what the header says it is — no more', () => {
+    // A newline mid-UUID splits it into two sentences. The half carrying the cue
+    // word and the claim IS removed; a trailing fragment survives. Asserted so
+    // the residual cannot silently widen without this test noticing.
+    const wrapped = `The comparison chart ${THEIRS.slice(0, 24)}\n${THEIRS.slice(24)} differs.`
+    const r = prewire(wrapped)
+    expect(r.clean).not.toContain('The comparison chart')
+    expect(r.clean).not.toContain(THEIRS)
+    expect(r.clean).not.toContain(THEIRS.slice(0, 24))
+    // …and the surviving fragment is only the tail, which is the stated width.
+    expect(r.clean.trim()).toBe(`${THEIRS.slice(24)} differs.`)
+  })
+
   it('catches a UUID that is UNKNOWN to the system, not merely a known other chart', () => {
     // "Not provably mine" is the only honest verdict available to a scan that
     // cannot enumerate every chart, and it is the safe one to act on.
