@@ -159,16 +159,18 @@
       "name": "SafetyPolicyGate + HS-1..HS-6 (serializes before G1-G)"
     },
     "G1-C": {
-      "role_stage": "building",
-      "name": "5 DB roles + RLS (EXCLUDING amjis_app rotation) -- serializes before P1-I"
+      "role_stage": "merged",
+      "name": "5 DB roles + RLS (EXCLUDING amjis_app rotation) -- serializes before P1-I",
+      "verifier_verdict": "conductor-reviewed. RLS created but deliberately NOT enabled (arming script outside migration dirs, confirmed by conductor). arm-3 out-of-process ledger writer built from scratch (didn't exist). Real cross-context RLS denial proven (17 DB-integration tests). Full suite 714/760 files, 7987 tests, 0 failures. drift/naming_lint clean, no migration collision (576). SECURITY FINDING surfaced by this lane (pre-existing on main, NOT introduced by any pariprashna session, verified by conductor): a live-shaped plaintext amjis_app password committed at platform/python-sidecar/tests/l5/test_mi_bhara_circularity_guard_w2.py:295 -- flagged directly to the native, not silently fixed."
     },
     "G1-G": {
       "role_stage": "queued",
       "name": "Injection containment (serializes after G1-A, shares pre-wire scan file)"
     },
     "P1-E": {
-      "role_stage": "building",
-      "name": "Durability: DR runbook + RPO/RTO doc + export-schedule mechanism ONLY -- PITR enable + restore drill HELD"
+      "role_stage": "merged",
+      "name": "Durability: DR runbook + RPO/RTO doc + export-schedule mechanism ONLY -- PITR enable + restore drill HELD",
+      "verifier_verdict": "conductor-reviewed, cherry-picked clean, scripts syntax-checked, drift baseline held"
     },
     "P1-I": {
       "role_stage": "queued",
@@ -325,5 +327,15 @@
     "pr": "https://github.com/Marsys-Technologies/Madhav/pull/1350",
     "scope": "00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/** (new dir) + AMENDMENTS_v1_1.md \u00a77 addendum only",
     "collision_check": "No overlap with any file this session has touched or has open work on. Acknowledged in origin/campaign-coordination @ 51e41198d. Continuing this session's own SWARM_TRACKER.json for P0/P1 already in flight; will evaluate adopting tracker-v2 for P2+ once its PR merges."
-  }
+  },
+  "security_findings": [
+    {
+      "id": "SEC-1",
+      "severity": "HIGH",
+      "finding": "Plaintext DSN with a live-shaped amjis_app password committed at platform/python-sidecar/tests/l5/test_mi_bhara_circularity_guard_w2.py:295, connecting through what the test comment calls a 'live Cloud SQL proxy'. Confirmed present on origin/main (pre-existing, not introduced by this campaign).",
+      "found_by": "G1-C lane agent, independently verified by conductor via git show origin/main",
+      "action_taken": "None -- reported to the native directly. Not edited, not redacted, not rotated (rotation authority explicitly withheld by the native for a separate decision).",
+      "recommendation": "Rotate amjis_app's password (this finding strengthens the case for doing so soon, not just eventually) and consider whether git history scrubbing is warranted given how long this may have been exposed."
+    }
+  ]
 }
