@@ -84,8 +84,12 @@ def check_blind_window():
             **blind, "acknowledged": False,
             "detected_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         })
-        emit(WRITER_ID, "anomaly", {"event": "blind_window_detected", **blind},
-             evidence_class="DERIVED", provenance="trackerd.py check_blind_window at daemon start")
+        emit(WRITER_ID, "anomaly", {
+            "event": "blind_window_detected",
+            "message": f"{blind['duration_s']:.0f}s blind window ({blind['gap_start_ts']} -> "
+                       f"{blind['gap_end_ts']}), no intentional-stop marker found",
+            **blind,
+        }, evidence_class="DERIVED", provenance="trackerd.py check_blind_window at daemon start")
         print(f"BLIND WINDOW: {blind['duration_s']:.0f}s gap with no intentional-stop marker "
               f"({blind['gap_start_ts']} -> {blind['gap_end_ts']}). Recorded to "
               f"{BLIND_WINDOW_JSON} -- will not clear on its own.", file=sys.stderr)

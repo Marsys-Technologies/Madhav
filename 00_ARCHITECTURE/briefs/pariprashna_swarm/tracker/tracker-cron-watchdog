@@ -36,6 +36,28 @@ if [ "${STATUS}" = "ALIVE" ]; then
   exit 0
 fi
 
+# Item 2: peek the lock before deciding to intervene. If install.sh, tracker-stop, or
+# tracker-start already holds it, someone legitimate is already working on these labels --
+# defer rather than fight them, per the standing contract: a SINGLE non-blocking attempt,
+# no retry. cron's next tick (5 min later) re-evaluates from scratch.
+. "${SCRIPT_DIR}/_tracker_lock.sh"
+if ! tracker_lock_acquire_nonblocking "tracker-cron-watchdog:peek"; then
+  TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  echo "${TS} T4: deferred -- install/stop/start in progress (lock held)" >> "${RUNTIME_DIR}/logs/cron_watchdog.log"
+  TRACKER_CRON_SCRIPT_DIR="${SCRIPT_DIR}" python3 -c "
+import sys, os
+sys.path.insert(0, os.environ['TRACKER_CRON_SCRIPT_DIR'])
+from tracker_emit import emit
+emit('cron_watchdog', 'daemon', {'event': 'deferred_lock_held', 'tier': 'T4'},
+     evidence_class='DERIVED',
+     provenance='tracker-cron-watchdog: heartbeat dead but label_ops.lock is held -- deferring, not fighting')
+" >> "${RUNTIME_DIR}/logs/cron_watchdog.log" 2>&1
+  exit 0
+fi
+# This was only a peek -- the real critical section (the actual bootout/bootstrap calls) is
+# inside tracker-start below, which acquires its own hold on this same lock.
+tracker_lock_release
+
 TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "${TS} T4: heartbeat dead, no intentional-stop marker -- intervening" >> "${RUNTIME_DIR}/logs/cron_watchdog.log"
 

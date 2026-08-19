@@ -63,12 +63,13 @@ LA_DIR="${HOME}/Library/LaunchAgents"
 # running this script with HOME overridden (e.g. for an isolated test install) is fully
 # isolated from production. It is not: with LABEL_PREFIX left at its default, the
 # `launchctl bootout` below still targets the SAME global label the production jobs use,
-# and boots them out -- regardless of HOME. This is believed to be the exact mechanism
-# behind the 2026-08-19 23m37s production blind window (measured: last heartbeat
-# 20:35:52Z, launchd "removing service" for all three jobs logged at 20:36:22Z, no
-# reload until 20:59:13Z): an isolated-HOME install run booted out the real
-# trackerd/watchdog/serve jobs because the label was still the production default.
-# Refuse outright rather than let it happen again.
+# and boots them out -- regardless of HOME. This is a real, independently-verified hazard
+# (see the selftest below) -- process-forensic follow-up on the 2026-08-19 23m37s blind
+# window (README's "2026-08-19 incident" section) found the actual bootout there was 3 BARE
+# `launchctl bootout` calls with no bootstrap, matching the OLD undocumented "Stop all
+# three" one-liner exactly, not this HOME/label-collision shape (which would show
+# bootout+bootstrap pairs). So this guard is NOT confirmed as that incident's cause -- it
+# closes a distinct, real gap in this script regardless. Refuse outright either way.
 REAL_HOME="$(dscl . -read "/Users/$(id -un)" NFSHomeDirectory 2>/dev/null | awk '{print $2}')"
 if [ -z "${REAL_HOME}" ]; then REAL_HOME="${HOME}"; fi
 if [ "${HOME}" != "${REAL_HOME}" ] && [ "${LABEL_PREFIX}" = "${DEFAULT_LABEL_PREFIX}" ]; then
@@ -162,6 +163,39 @@ for job in trackerd watchdog serve; do
   echo "  ${LABEL_PREFIX}-${job}"
 done
 
+# Item 2: mutual exclusion with tracker-stop/tracker-start/tracker-cron-watchdog -- all four
+# scripts source the same lock helper and take the same lock around their own
+# bootout/bootstrap window, so a concurrent invocation serializes instead of interleaving.
+. "${SCRIPT_DIR}/_tracker_lock.sh"
+tracker_lock_acquire_blocking "install.sh" || exit 1
+trap 'tracker_lock_release' EXIT
+
+# Also write the intentional-stop marker (same file tracker-stop uses) around this script's
+# own bootout window, so T4's cron watcher stands down for a legitimate reinstall instead of
+# racing it. Only clear it afterward if THIS run is the one that created it -- if a marker
+# already existed (an operator deliberately stopped the tracker via tracker-stop and is now
+# separately redeploying code while still meaning to stay stopped), leave it in place; this
+# run's own bootout+bootstrap already covered its own window regardless.
+MARKER="${RUNTIME_DIR}/STOPPED_INTENTIONALLY.json"
+MARKER_PREEXISTED=false
+if [ -f "${MARKER}" ]; then
+  MARKER_PREEXISTED=true
+else
+  TRACKER_INSTALL_MARKER_PATH="${MARKER}" python3 -c "
+import json, datetime, os
+path = os.environ['TRACKER_INSTALL_MARKER_PATH']
+record = {
+    'ts': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+    'reason': 'install.sh reinstall in progress',
+    'invoking_user': os.environ.get('USER') or os.environ.get('LOGNAME') or 'unknown',
+}
+tmp = path + '.tmp'
+with open(tmp, 'w', encoding='utf-8') as f:
+    json.dump(record, f, indent=2, sort_keys=True)
+os.replace(tmp, path)
+"
+fi
+
 for job in trackerd watchdog serve; do
   # LABEL_PREFIX, not a hardcoded string -- see the guard above. HOME isolation does NOT
   # isolate this: the label is global to the launchd domain regardless of $HOME, so a
@@ -175,6 +209,12 @@ for job in trackerd watchdog serve; do
   launchctl bootstrap "gui/${UID_N}" "${plist}"
   echo "installed + bootstrapped: ${label} -> ${plist}"
 done
+
+if [ "${MARKER_PREEXISTED}" = false ]; then
+  rm -f "${MARKER}"
+fi
+tracker_lock_release
+trap - EXIT
 
 # T4 (item c): a DIFFERENT subsystem from the launchd jobs above -- cron, not launchd, so
 # the exact 2026-08-19 failure mode (a launchd-domain bootout removing all three jobs

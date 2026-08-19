@@ -373,6 +373,99 @@ def test_tracker_stop_start_marker_lifecycle():
                             f"stop_rc={stop_result.returncode} start_rc={start_result.returncode}")
 
 
+def test_lock_mutual_exclusion_cron_defers_during_install():
+    """Item 2: install.sh, tracker-stop, tracker-start, and tracker-cron-watchdog all move
+    the same launchd labels and must not interleave. This holds the real
+    _tracker_lock.sh lock (the same file all four scripts source) for a bounded window --
+    simulating install.sh mid-reinstall, including one real launchctl bootstrap call inside
+    the held window -- while a real tracker-cron-watchdog invocation runs concurrently
+    against a stale-heartbeat-no-marker scenario. Expected: exactly one bootstrap call
+    (the lock holder's) and a real 'deferred_lock_held' event from cron -- cron must never
+    also call bootout/bootstrap while the lock is held."""
+    import datetime
+    import json as json_mod
+    import subprocess
+    import tempfile
+    import threading
+    import time as time_mod
+    tracker_dir = os.path.dirname(os.path.abspath(__file__))
+    with tempfile.TemporaryDirectory() as tmp:
+        fake_home = os.path.join(tmp, "fake_home")
+        runtime_dir = os.path.join(fake_home, ".pariprashna-tracker")
+        os.makedirs(os.path.join(runtime_dir, "events"))
+        os.makedirs(os.path.join(runtime_dir, "logs"))
+        la_dir = os.path.join(fake_home, "Library", "LaunchAgents")
+        os.makedirs(la_dir)
+        for job in ("trackerd", "watchdog", "serve"):
+            with open(os.path.join(la_dir, f"com.marsys.pariprashna-{job}.plist"), "w", encoding="utf-8") as f:
+                f.write("<plist/>")
+        old_ts = (datetime.datetime.now(datetime.timezone.utc)
+                  - datetime.timedelta(seconds=400)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        with open(os.path.join(runtime_dir, "heartbeat.json"), "w", encoding="utf-8") as f:
+            json_mod.dump({"ts": old_ts}, f)
+
+        fake_bin = os.path.join(tmp, "bin")
+        os.makedirs(fake_bin)
+        call_log = os.path.join(tmp, "launchctl_calls.log")
+        with open(os.path.join(fake_bin, "launchctl"), "w", encoding="utf-8") as f:
+            f.write(f'#!/bin/sh\necho "$@" >> "{call_log}"\nexit 0\n')
+        os.chmod(os.path.join(fake_bin, "launchctl"), 0o755)
+
+        env = dict(os.environ)
+        env["HOME"] = fake_home
+        env["PATH"] = fake_bin + ":" + env.get("PATH", "/usr/bin:/bin")
+
+        holder_script = os.path.join(tmp, "hold_lock.sh")
+        with open(holder_script, "w", encoding="utf-8") as f:
+            f.write(
+                '#!/bin/sh\n'
+                f'RUNTIME_DIR="{runtime_dir}"\n'
+                f'. "{tracker_dir}/_tracker_lock.sh"\n'
+                'tracker_lock_acquire_blocking "install.sh-simulated" || exit 1\n'
+                'launchctl bootstrap gui/0 fake-simulated-install-bootstrap\n'
+                'sleep 5\n'
+                'tracker_lock_release\n'
+            )
+        os.chmod(holder_script, 0o755)
+
+        holder_proc = subprocess.Popen(["/bin/sh", holder_script], env=env)
+        time_mod.sleep(1.5)  # let the holder acquire the lock and do its one bootstrap first
+
+        cron_result = {}
+
+        def run_cron():
+            try:
+                r = subprocess.run(["/bin/sh", os.path.join(tracker_dir, "tracker-cron-watchdog")],
+                                    env=env, capture_output=True, text=True, timeout=8)
+                cron_result["returncode"] = r.returncode
+            except subprocess.TimeoutExpired:
+                cron_result["returncode"] = None
+
+        cron_thread = threading.Thread(target=run_cron)
+        cron_thread.start()
+        cron_thread.join(timeout=10)
+        holder_proc.wait(timeout=10)
+
+        bootstrap_calls = 0
+        if os.path.exists(call_log):
+            with open(call_log, encoding="utf-8") as f:
+                bootstrap_calls = sum(1 for line in f if "bootstrap" in line)
+
+        deferred_logged = False
+        events_path = os.path.join(runtime_dir, "events", "cron_watchdog.jsonl")
+        if os.path.exists(events_path):
+            with open(events_path, encoding="utf-8") as f:
+                for line in f:
+                    ev = json_mod.loads(line)
+                    if ev.get("payload", {}).get("event") == "deferred_lock_held":
+                        deferred_logged = True
+
+        ok = (bootstrap_calls == 1) and deferred_logged
+        return _result("lock mutual exclusion: concurrent install (holding lock) + cron-watchdog tick -> exactly one bootstrap, one deferral",
+                        ok, f"bootstrap_calls={bootstrap_calls} (want 1) deferred_logged={deferred_logged} "
+                            f"cron_returncode={cron_result.get('returncode')}")
+
+
 def test_cron_watchdog_out_of_band_logic():
     """Item (c), T4: tracker-cron-watchdog must skip (no bootout, no incident event) when
     an intentional-stop marker is present OR the heartbeat is already fresh, and must
@@ -448,12 +541,15 @@ def test_cron_watchdog_out_of_band_logic():
 
 def test_install_sh_refuses_non_default_home_with_production_label():
     """Item (a): install.sh must refuse to run with $HOME overridden while LABEL_PREFIX is
-    still the production default -- and must do so WITHOUT ever invoking launchctl. This is
-    believed to be the actual mechanism behind the 2026-08-19 23m37s blind window: HOME
+    still the production default -- and must do so WITHOUT ever invoking launchctl. HOME
     isolation looks like it isolates a test install, but launchctl labels are global to the
-    launchd domain regardless of HOME, so an unparameterized label bootouts production.
-    Verified by putting a fake `launchctl` first on PATH that writes a marker if invoked at
-    all -- the strongest form of "never called" this test can assert without root."""
+    launchd domain regardless of HOME, so an unparameterized label would bootout production.
+    (Process-forensic follow-up on the actual 2026-08-19 blind window found its real cause
+    was a different, unmarked-stop hazard -- see README's "2026-08-19 incident" -- so this
+    is a distinct, independently-real gap this guard closes, not a confirmed repro of that
+    specific incident.) Verified by putting a fake `launchctl` first on PATH that writes a
+    marker if invoked at all -- the strongest form of "never called" this test can assert
+    without root."""
     import subprocess
     import tempfile
     install_sh = os.path.join(os.path.dirname(os.path.abspath(__file__)), "install.sh")
@@ -516,6 +612,7 @@ def run_all():
         test_compute_blind_window_pure(),
         test_blind_window_integration(),
         test_tracker_stop_start_marker_lifecycle(),
+        test_lock_mutual_exclusion_cron_defers_during_install(),
         test_cron_watchdog_out_of_band_logic(),
     ]
     all_passed = all(t["passed"] for t in tests)

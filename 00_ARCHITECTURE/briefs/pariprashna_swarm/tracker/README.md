@@ -161,14 +161,52 @@ window** — its only entry is an unrelated resurrection from hours earlier. T2 
 have helped: whatever removed the jobs removed the watchdog too, and a watchdog that no
 longer exists cannot watch anything.
 
-The most likely mechanism, and the one items (a)-(d) below exist to close: `RUNTIME_DIR` is
-`$HOME`-scoped (`_common.py`), so overriding `$HOME` for an isolated test install looks like
-it isolates everything. It does not. `launchctl` labels live in the launchd GUI domain
-(`gui/<uid>/<label>`) and are **not** scoped by `$HOME` at all — before item (a), the label
-was the hardcoded string `com.marsys.pariprashna-<job>` regardless of which `$HOME` invoked
-`install.sh`. An isolated-`$HOME` test install would still `launchctl bootout` the
-production jobs, replace them with jobs pointed at the *test* runtime dir, and leave nothing
-watching the real one — exactly the shape of gap measured above.
+**Attribution (2026-08-20 follow-up), corrected from the first pass.** The macOS unified
+log resolves the exact `launchctl` process shape at both timestamps, not just the launchd
+side of it:
+
+- `20:36:22Z`: three **separate, bare `launchctl bootout` processes** (PIDs 68296-68298,
+  each `launchctl` alone with no accompanying `bootstrap`), preceded 12s earlier by a
+  `launchctl list` (PID 68033) — the shape of someone checking status, then stopping.
+- `20:59:13Z`: three **`bootout`+`bootstrap` PAIRS** (PIDs 6864-6872) — the shape of
+  `install.sh`'s own per-job loop (bootout immediately followed by bootstrap, for each job
+  in turn), confirming the recovery was a real `install.sh` run.
+
+This rules out the first-pass theory that `20:36:22Z` was a stalled or interrupted
+`install.sh` run: `install.sh`'s loop always pairs bootout with bootstrap per job, so a
+partial run would show *some* bootstraps interleaved, not three bare bootouts. What the
+`20:36:22Z` shape matches **exactly** is the old undocumented "Stop all three" one-liner this
+very `install.sh` used to print at the end of every run (see item (b) below) — a plain
+`for j in trackerd watchdog serve; do launchctl bootout ...; done`, no marker, no record of
+intent, no accompanying bootstrap.
+
+*Who ran it* could not be recovered: process parent/responsible-PID chains are not retained
+by the unified log for `launchctl` invocations, shell history on this machine carries no
+timestamps, `last` shows one continuous console login spanning the whole day (single-user
+Mac, uninformative), and an exhaustive search of every local Claude Code session transcript
+active in the window — the long-running main session covering the full incident window, all
+~40 of its subagents, every other project directory under `~/.claude/projects`, Codex
+session stores, and Claude Desktop's session stores — found no literal record of the command
+being issued. The nearest context: an ambient screen-activity summary
+(`.codex/memories/.../2026-08-19T20-20-00-*-10min-memory-summary.md`) shows a *different*
+Paripraśna-tracker hardening closeout (PR #1353) had just finished verifying the daemon
+healthy at `~20:23Z` (cycle 4 — a recent restart) before the user's visible focus moved to
+an unrelated repo; that session's own transcripts don't contain the bootout command either.
+Most likely: a cloud-hosted or otherwise locally-untranscribed session or terminal, in the
+same general timeframe as that closeout, ran the printed one-liner as a normal stop —
+without realizing (because nothing told it) that doing so left nothing watching the
+observatory for the next 23 minutes.
+
+**Whether it recurs does not depend on identifying who.** The one-liner was `install.sh`'s
+own documented, printed instruction for stopping the tracker — anyone who follows it,
+copies it from old scrollback, or has it in muscle memory from a prior session will produce
+this exact unmarked, ambiguous-looking gap again, human or agent, regardless of `$HOME`.
+That is a standing process hazard, not a one-off, and it is what item (b) exists to close:
+`install.sh` no longer prints the raw command at all (see below) — only `tracker-stop`,
+which cannot stop the jobs without also writing the record that makes the gap legible as
+intentional. Item (a)'s `$HOME`/label-prefix guard remains a real, independently-verified
+hazard in the code (confirmed by its own selftest) and is closed regardless of whether it
+was *this* incident's mechanism — it just is not the confirmed cause of *this* one.
 
 ## (a) Label-namespace isolation
 
@@ -224,6 +262,32 @@ mutating the real user crontab from an automated test (which could run in produc
 tested; this is the same class of honest scoping as the no-headless-browser gap below, not a
 silent gap.
 
+**Proven live (2026-08-20), not just in selftest.** T4 is the only tier that had never been
+exercised against the real system, and it exists precisely because every in-band tier (T1-T3)
+can be removed by a single command. Deployed this PR's code to production (`install.sh
+--install-from-ref`, `git archive`, never touched the shared checkout), confirmed the cron
+entry installed, then reproduced the actual incident: the raw `launchctl bootout` one-liner,
+no `tracker-stop`, no marker.
+
+- Last good heartbeat: `2026-08-19T22:06:17Z`. Bootout issued: `22:06:26Z`.
+- Confirmed down: `launchctl list | grep pariprashna` empty immediately after.
+- T4's `*/5` tick fired at `22:10:01Z` (the first tick after the heartbeat crossed 180s
+  stale) and logged the incident event immediately:
+  `{"ts":"2026-08-19T22:10:01Z","writer_id":"cron_watchdog","payload":{"event":"out_of_band_resurrection","tier":"T4"},...}`.
+- New process healthy (fresh heartbeat, `cycle: 1`, `selftest_last.all_passed: true`) at
+  `22:10:17Z`. **Measured restore time: 3m51s from bootout, 3m44s from T4's own detection to
+  full health.**
+- `BLIND_WINDOW.json` was written with the real measured gap (`gap_start_ts:
+  2026-08-19T22:06:17Z`, `gap_end_ts: 2026-08-19T22:10:02Z`, `duration_s: 225.6`,
+  `acknowledged: false`) and confirmed present in `state.json` (what `tracker.html`'s banner
+  reads).
+- Performed a second, clean, marker-covered restart (`tracker-stop` + `tracker-start`)
+  immediately after, specifically to test survival: `BLIND_WINDOW.json` came out **byte-for-
+  byte identical** across that restart — the record is not reset just because the daemon came
+  back up green.
+- Acknowledged via `tracker-ack-blind` afterward to leave production clean (this was a
+  deliberate test, not a real incident).
+
 **Closing the loop — the conductor, not another tier of the same kind.** T1-T4 keep the
 *observer* alive, but every one of them is itself something that can be down. `tracker-health-check` is a machine-checkable contract (exit 0 = observatory alive and safe to
 trust, exit 1 = halt condition, one status line either way) meant to be called by the
@@ -254,6 +318,46 @@ threshold, over-threshold-but-marked-intentional, the one that fires), and a rea
 run of `trackerd.py --check-blind-window-only` against a fabricated 300s-stale heartbeat in
 an isolated `$HOME` — asserting the persistent file and the anomaly event both actually land
 on disk, and that the same stale heartbeat with a marker present produces neither.
+
+## Mutual exclusion between install.sh / tracker-stop / tracker-start / T4
+
+Four scripts are now capable of moving the `com.marsys.pariprashna-*` launchd labels:
+`install.sh`, `tracker-stop`, `tracker-start`, and `tracker-cron-watchdog`. Without mutual
+exclusion, two running concurrently (a human re-running `install.sh` while T4's cron tick
+fires, say) can interleave `bootout`/`bootstrap` calls against the same labels in an
+undefined order. `_tracker_lock.sh`, sourced by all four, is a single advisory lock —
+atomic `mkdir` under `~/.pariprashna-tracker/label_ops.lock` (portable, no `flock(1)`
+dependency, which is not reliably present on macOS) — held only around each script's own
+actual `launchctl` calls, never around unrelated work (`tracker-start`'s up-to-90s health-
+wait, for instance, runs unlocked).
+
+- **`install.sh`, `tracker-stop`, `tracker-start`** acquire *blocking* (retry up to 30s,
+  then fail loudly rather than proceed unlocked).
+- **`tracker-cron-watchdog`** acquires *non-blocking, a single attempt, no retry* — per its
+  own standing contract: if the lock is held, something legitimate is already working on
+  these labels, so it logs a `deferred_lock_held` event and exits, rather than fighting it.
+  Cron's next tick (5 minutes later) re-evaluates from scratch. It only *peeks* the lock
+  (acquire-then-immediately-release) to detect in-progress work; the actual protected
+  mutation happens inside `tracker-start`, which it calls afterward and which takes its own
+  proper hold — this avoids a same-process reentrancy deadlock that a naive
+  "hold-through-the-whole-call" design would hit.
+- **`install.sh` also writes `STOPPED_INTENTIONALLY.json` itself**, around its own bootout
+  window, and clears it after — but only if *it* created it. If the marker already existed
+  (an operator deliberately stopped the tracker via `tracker-stop` and is now separately
+  redeploying code while still meaning to stay stopped), `install.sh` leaves it in place
+  rather than accidentally resuming an intentional stop. This means T4 stands down for a
+  legitimate reinstall via the *marker* (semantic intent) as well as the *lock* (mutual
+  exclusion against a narrow timing race) — belt and suspenders, not redundant: the lock
+  protects against T4's heartbeat check firing in the split second before the marker lands;
+  the marker protects the whole visible duration of the reinstall.
+
+Selftested by holding the real lock (the same file all four scripts source) in a background
+process — including one real `launchctl bootstrap` call inside the held window, standing in
+for `install.sh`'s own — while a concurrent `tracker-cron-watchdog` run is driven against a
+stale-heartbeat-no-marker scenario: asserts exactly one `bootstrap` call total (the holder's)
+and a real `deferred_lock_held` event from cron, never both intervening. Observed failing
+first by neutering cron's lock-peek check (produced 4 bootstrap calls — the holder's plus
+cron's own full 3-job re-bootstrap — and no deferral), then restored.
 
 ## The four-tier tap (dead-man's switch)
 

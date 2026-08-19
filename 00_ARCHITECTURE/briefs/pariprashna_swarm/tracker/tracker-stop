@@ -30,10 +30,18 @@ os.replace(tmp, path)
 print(f'wrote {path}: {record}')
 "
 
+# Item 2: mutual exclusion with install.sh/tracker-start/tracker-cron-watchdog.
+. "${SCRIPT_DIR}/_tracker_lock.sh"
+tracker_lock_acquire_blocking "tracker-stop" || exit 1
+trap 'tracker_lock_release' EXIT
+
 for job in trackerd watchdog serve; do
   label="${LABEL_PREFIX}-${job}"
   echo "booting out: ${label}"
   launchctl bootout "gui/${UID_N}/${label}" 2>/dev/null || true
 done
+
+tracker_lock_release
+trap - EXIT
 
 echo "stopped (marked intentional). resume with: ${SCRIPT_DIR}/tracker-start"

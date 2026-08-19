@@ -7,22 +7,35 @@
 # treat this exact, expected gap as an unexplained one.
 set -eu
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LABEL_PREFIX="${LABEL_PREFIX:-com.marsys.pariprashna}"
 RUNTIME_DIR="${HOME}/.pariprashna-tracker"
 LA_DIR="${HOME}/Library/LaunchAgents"
 UID_N="$(id -u)"
+
+# Item 2: mutual exclusion with install.sh/tracker-stop/tracker-cron-watchdog. Held only
+# around the actual bootout/bootstrap loop, not the health-wait below (which touches no
+# labels and would otherwise hold the lock for up to 90s for no reason).
+. "${SCRIPT_DIR}/_tracker_lock.sh"
+tracker_lock_acquire_blocking "tracker-start" || exit 1
+trap 'tracker_lock_release' EXIT
 
 for job in trackerd watchdog serve; do
   label="${LABEL_PREFIX}-${job}"
   plist="${LA_DIR}/${label}.plist"
   if [ ! -f "${plist}" ]; then
     echo "ERROR: ${plist} not found -- run install.sh first (tracker-start does not deploy code)." >&2
+    tracker_lock_release
+    trap - EXIT
     exit 1
   fi
   launchctl bootout "gui/${UID_N}/${label}" 2>/dev/null || true
   launchctl bootstrap "gui/${UID_N}" "${plist}"
   echo "bootstrapped: ${label}"
 done
+
+tracker_lock_release
+trap - EXIT
 
 echo "waiting up to 90s for a fresh heartbeat..."
 i=0
