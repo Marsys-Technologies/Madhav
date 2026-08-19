@@ -51,11 +51,12 @@ const INSERT_SQL = `
     error_code,
     provider_request_id,
     started_at,
-    finished_at
+    finished_at,
+    channel
   ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
     $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
-    $21, $22, $23, $24, $25
+    $21, $22, $23, $24, $25, $26
   )
   RETURNING *
 `
@@ -114,6 +115,10 @@ export async function persistObservation(
       response.provider_request_id ?? null,
       response.started_at.toISOString(),
       response.finished_at.toISOString(),
+      // NCD-8 (migration 574): the serving door, for per-(user, channel, model)
+      // cost attribution. `?? null` is the honest absence, not a default — an
+      // adapter that never declared a door must not have one invented for it.
+      request.channel ?? null,
     ]
 
     const result = await db.query<PersistedObservation>(INSERT_SQL, params)

@@ -168,6 +168,15 @@ export type FeatureFlag =
   // PB-1 wave IS this flag (route ships dark, flipped on deliberately post-
   // deploy). Env: MARSYS_FLAG_PARIPRASHNA_ENABLED.
   | 'PARIPRASHNA_ENABLED'
+  // P1 G1-D "Limits" — NCD-8 per-user rate limits + pre-dispatch spend ceilings
+  // ($2/turn, $40/day) on BOTH serving doors (the web `/api/pariprashna` door and
+  // the MCP `/api/mcp/prashna_ask` door), plus the request proxy's per-user RPM
+  // gate. Default OFF — this lane ships dark per the P1 pre-authorization
+  // ("features ship flag-OFF; the safety gate flips ON at close"), so merging it
+  // cannot change production behaviour until the flip is deliberate. When OFF,
+  // every gate short-circuits to "allowed" before any DB or pricing work runs.
+  // Env: MARSYS_FLAG_PARIPRASHNA_LIMITS_ENABLED.
+  | 'PARIPRASHNA_LIMITS_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -269,6 +278,9 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // via MARSYS_FLAG_PARIPRASHNA_ENABLED=true once the native is ready to
   // exercise the deployed route.
   PARIPRASHNA_ENABLED: false,
+  // P1 G1-D — NCD-8 limits. Default false: ships dark, flipped deliberately.
+  // Flip via MARSYS_FLAG_PARIPRASHNA_LIMITS_ENABLED=true.
+  PARIPRASHNA_LIMITS_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)

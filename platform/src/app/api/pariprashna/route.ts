@@ -55,7 +55,7 @@ import { openTurnBuffer, appendBufferedEvent } from '@/lib/pariprashna/protocol/
 import { beginTurnCapture, captureEvent, endTurnCapture } from '@/lib/pariprashna/protocol/stream_capture'
 
 import type { TurnIdentity } from '@/lib/pariprashna/pipeline/stage_context'
-import { admitRequest, bindTurnParams, authorizeTurn } from '@/lib/pariprashna/pipeline/safety_gate'
+import { admitRequest, admitWithinLimits, bindTurnParams, authorizeTurn } from '@/lib/pariprashna/pipeline/safety_gate'
 import { runPlanStage } from '@/lib/pariprashna/pipeline/plan_stage'
 import { runEvidenceStage } from '@/lib/pariprashna/pipeline/evidence_stage'
 import { assembleSynthesisContext, runSynthesisStage } from '@/lib/pariprashna/pipeline/synthesis_stage'
@@ -77,6 +77,14 @@ export async function POST(request: Request): Promise<Response> {
 
   // ── Bind request params (pure — no DB/LLM). ────────────────────────────────
   const params = await bindTurnParams(body, request)
+
+  // ── NCD-8 pre-dispatch limits (web door). ──────────────────────────────────
+  // Still PRE-STREAM, so a ceiling refusal is a real HTTP 429 with a branchable
+  // code rather than an in-stream error — and it lands before the planner, the
+  // first LLM call of the turn. Needs `params` because the ceiling is evaluated
+  // against the model this turn actually bound. Flag-OFF by default.
+  const withinLimits = await admitWithinLimits({ user, params })
+  if (!withinLimits.admitted) return withinLimits.response
 
   // Conversation identity is resolvable synchronously (generated for a first
   // turn) so `turn.open` can carry it before any DB round-trip.

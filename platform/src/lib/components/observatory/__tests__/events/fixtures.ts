@@ -81,6 +81,9 @@ export function makeDetail(
     feature_flag_state: {},
     client_ip_hash: null,
     created_at: new Date(2026, 4, 1, 10, 0, i, 600).toISOString(),
+    // NCD-8 / migration 574. null is the accurate value for a row whose call site
+    // declared no serving door — the state every pre-574 row is in.
+    channel: null,
   }
   return { ...base, ...overrides }
 }
