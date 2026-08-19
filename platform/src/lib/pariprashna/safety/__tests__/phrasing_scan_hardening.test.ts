@@ -83,7 +83,15 @@ describe('H-3 — the STREAMING wrapper propagates the failure and emits nothing
   // The wrapper's own contract, driven through its injectable scanner. The
   // underlying failure is real and proven above; this proves the wrapper
   // reacts to it correctly, which is the part the reader depends on.
-  const alwaysFails = (): MortalityScanResult => ({ clean: '', hits: [], scan_failed: true })
+  // `extra_hits: []` is lane G1-G's additive field on `MortalityScanResult` (the
+  // entitlement scan's channel). Added here to keep this double satisfying the
+  // widened type; it changes nothing this test asserts.
+  const alwaysFails = (): MortalityScanResult => ({
+    clean: '',
+    hits: [],
+    extra_hits: [],
+    scan_failed: true,
+  })
 
   it('scanFailed becomes true and push() returns nothing', () => {
     const s = new StreamingMortalityScanner(alwaysFails)
@@ -111,7 +119,9 @@ describe('H-3 — the STREAMING wrapper propagates the failure and emits nothing
     let calls = 0
     const failsOnce = (text: string): MortalityScanResult => {
       calls += 1
-      return calls === 1 ? { clean: '', hits: [], scan_failed: true } : { clean: text, hits: [], scan_failed: false }
+      return calls === 1
+        ? { clean: '', hits: [], extra_hits: [], scan_failed: true }
+        : { clean: text, hits: [], extra_hits: [], scan_failed: false }
     }
     const s = new StreamingMortalityScanner(failsOnce)
     s.push('First sentence. ')

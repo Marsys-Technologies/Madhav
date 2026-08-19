@@ -248,6 +248,27 @@ export type FeatureFlag =
   // correct, and a large behavioural change. Flip the pair together.
   // Env: MARSYS_FLAG_PARIPRASHNA_SAFETY_GATE_ENABLED.
   | 'PARIPRASHNA_SAFETY_GATE_ENABLED'
+  // P1 FOUNDATION lane G1-G — prompt-injection containment (PPR-13, TA §14A.1).
+  // Gates the WHOLE `src/lib/pariprashna/injection` surface, four controls:
+  //   · OFF (default) — the question, the conversation history, the retrieved
+  //     evidence and every agentic tool result reach the model exactly as they
+  //     do today; the plan is not re-closed; no tool-sequence monitor is built;
+  //     the answer-side entitlement scan contributes no rules to the pre-wire
+  //     pass. Byte-for-byte no change.
+  //   · ON — untrusted content is wrapped in `<untrusted_*>` containers whose
+  //     own delimiters are neutralized inside the payload, with a system-side
+  //     data-not-instruction clause; planner-supplied identity params
+  //     (chart_id and friends) carrying anything other than the AUTHENTICATED
+  //     chart are rejected from tool calls; a tool sequence that diverges from
+  //     the authorized plan is TRACE-FLAGGED (never blocked — TA §14A.1 rules
+  //     that explicitly); and any sentence naming a chart outside the caller's
+  //     entitlements is redacted before the wire.
+  // Independent of PARIPRASHNA_SAFETY_GATE_ENABLED on purpose: the two share
+  // the pre-wire pass but arm different pattern classes, and
+  // `scanMortalityPhrasing`'s `mortalityRulesEnabled` option is what keeps
+  // flipping one from silently arming the other.
+  // Env: MARSYS_FLAG_PARIPRASHNA_INJECTION_CONTAINMENT.
+  | 'PARIPRASHNA_INJECTION_CONTAINMENT'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -372,6 +393,13 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // together with SUBJECT_CONSENT_ENFORCEMENT (see the declaration comment —
   // NCD-4's interstitial cannot be earned without a proven subject_kind).
   PARIPRASHNA_SAFETY_GATE_ENABLED: false,
+  // P1 G1-G — prompt-injection containment. Default false: this lane ships
+  // flag-OFF per the P1 pre-authorization note, so merging it changes no
+  // production behavior. Two of its four controls change what the synthesis
+  // model reads (structural delimiters + the containment clause), which can
+  // move prose — flip it deliberately, with a reading compared before/after.
+  // Flip via MARSYS_FLAG_PARIPRASHNA_INJECTION_CONTAINMENT=true.
+  PARIPRASHNA_INJECTION_CONTAINMENT: false,
 }
 
 // Numeric config keys (read via configService.getValue)

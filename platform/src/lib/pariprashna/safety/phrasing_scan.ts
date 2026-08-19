@@ -72,6 +72,39 @@
  *   · Nothing retracts a term already sent. The residual remains "a reader may
  *     see a mortality term whose date is then withheld", never "a reader may
  *     see a complete mortality claim" within the stated window.
+ *
+ * ── LANE G1-G (PPR-13): A SECOND PATTERN CLASS IN THE SAME PASS ──────────────
+ * The roadmap's G1-G row says the answer-side entitlement scan is "folded into
+ * the existing pre-wire lint pass", and TA §14A.1 says the same thing in the
+ * other direction: "the register lint already walks the text; entitlement
+ * checking is a second pattern class in the same pass."
+ *
+ * That fold is additive and it is a COMPOSITION, not an edit of anything above.
+ * Nothing in the mortality rules — `MORTALITY_OUTPUT_TERMS`, `DATE_SHAPED`,
+ * `DURATION_TO_END`, `sentenceHit`, the sliding window, the carry mechanism,
+ * the constants, the splitter — is touched by G1-G. What G1-G adds is:
+ *
+ *   · `MortalityScanOptions.extraRules` — extra SENTENCE-LEVEL predicates that
+ *     share this function's sentence splitting, its redaction unit, its
+ *     hash-not-content reporting, and above all its FAIL-CLOSED catch. A rule
+ *     that throws takes the whole span down with it, which is the correct
+ *     direction for a cross-tenant confidentiality check.
+ *   · `MortalityScanResult.extra_hits` — a SEPARATE channel, so `hits` keeps
+ *     meaning exactly "mortality-phrasing hits" and no existing reader of it
+ *     starts silently counting something else.
+ *   · `MortalityScanOptions.mortalityRulesEnabled` — because the two pattern
+ *     classes are gated by two DIFFERENT feature flags
+ *     (`PARIPRASHNA_SAFETY_GATE_ENABLED` vs `PARIPRASHNA_INJECTION_CONTAINMENT`)
+ *     and arming one must not silently arm the other. Defaults to `true`, so
+ *     every pre-G1-G call site is byte-for-byte unchanged.
+ *
+ * WHY THE EXTRA RULES ARE SINGLE-SENTENCE AND NOT WINDOWED: the window exists
+ * because a mortality CLAIM is a PAIR (term + date) that either half can carry
+ * across a sentence boundary. An entitlement leak is not a pair — a chart id is
+ * a single self-contained token, and one sentence either contains one or does
+ * not. Running the window over a rule that has no pairing semantics would
+ * redact a neighbouring sentence for no reason. Stated here rather than left
+ * for a reader to infer from the loop.
  */
 
 import { normalizeForClassification, spanHash } from './normalize'
@@ -173,10 +206,48 @@ export interface MortalityPhrasingHit {
   redacted_length: number
 }
 
+/**
+ * An extra sentence-level predicate folded into this same pass (lane G1-G).
+ *
+ * The contract a rule must honour:
+ *   · `rule` is a STABLE ID, never free text and never derived from the
+ *     sentence — it is reported on the wire and in audit rows.
+ *   · `test` is pure and side-effect-free. It MAY throw; if it does, the whole
+ *     span fails closed and nothing from it reaches the reader. That is the
+ *     intended direction for a confidentiality check and the reason these rules
+ *     live inside this function's try/catch rather than beside it.
+ */
+export interface PreWireSentenceRule {
+  readonly rule: string
+  test(sentence: string): boolean
+}
+
+/** One firing of one `PreWireSentenceRule`. Same no-content discipline as above. */
+export interface PreWireExtraHit {
+  rule: string
+  /** sha256 of the sentence the rule fired on. NEVER the sentence itself. */
+  redacted_span_hash: string
+  redacted_length: number
+  /**
+   * False when the sentence was ALREADY being redacted by a mortality rule, so
+   * this hit is a detection record rather than the cause of a removal. Keeping
+   * the distinction means "how many sentences did the entitlement scan remove"
+   * and "how many sentences did it fire on" stay different questions with
+   * different answers, which is what an audit needs.
+   */
+  caused_redaction: boolean
+}
+
 export interface MortalityScanResult {
   /** The text with every offending SENTENCE removed. Safe to write. */
   clean: string
   hits: MortalityPhrasingHit[]
+  /**
+   * Firings of the caller-supplied `extraRules` (lane G1-G). A SEPARATE channel
+   * from `hits` on purpose: `hits` means "mortality phrasing" to every existing
+   * reader of it and must not quietly start meaning something wider.
+   */
+  extra_hits: PreWireExtraHit[]
   /**
    * True when the scan itself failed. FAIL CLOSED: `clean` is `''` in this
    * case, not the input. The caller must treat this as "nothing goes out",
@@ -236,6 +307,23 @@ export interface MortalityScanOptions {
    * prefix started is redacted before it is written.
    */
   contextPrefix?: string
+  /**
+   * Extra sentence-level rules folded into this pass (lane G1-G, PPR-13).
+   *
+   * Single-sentence only — see the module header for why the cross-sentence
+   * window is mortality-specific and is not extended to these.
+   */
+  extraRules?: readonly PreWireSentenceRule[]
+  /**
+   * Whether the MORTALITY rules run (lane G1-G). Defaults to `true`, so every
+   * call site that predates G1-G is byte-for-byte unchanged.
+   *
+   * It exists because the two pattern classes are armed by two different
+   * feature flags. A caller running with injection containment ON and the
+   * safety gate OFF must get the entitlement rules WITHOUT silently acquiring
+   * mortality redaction it never turned on.
+   */
+  mortalityRulesEnabled?: boolean
 }
 
 /**
@@ -254,7 +342,7 @@ export function scanMortalityPhrasing(
   options: MortalityScanOptions = {},
 ): MortalityScanResult {
   try {
-    if (!text) return { clean: text, hits: [], scan_failed: false }
+    if (!text) return { clean: text, hits: [], extra_hits: [], scan_failed: false }
     // HARDENING ROUND, H-3 — this line is why `scan_failed` is a real signal.
     //
     // Before it, `scan_failed: true` had NO reachable code path: the six
@@ -293,11 +381,12 @@ export function scanMortalityPhrasing(
     // that the span still owns — the pair is the claim, and keeping either half
     // keeps the claim.
     const ruleFor = new Map<number, MortalityPhrasingHit['rule']>()
-    for (let i = 0; i < sentences.length; i++) {
+    const mortalityRulesEnabled = options.mortalityRulesEnabled !== false
+    for (let i = 0; mortalityRulesEnabled && i < sentences.length; i++) {
       const rule = sentenceHit(sentences[i])
       if (rule) ruleFor.set(i, rule)
     }
-    for (let width = 2; width <= CROSS_SENTENCE_WINDOW; width++) {
+    for (let width = 2; mortalityRulesEnabled && width <= CROSS_SENTENCE_WINDOW; width++) {
       for (let i = 0; i + width <= sentences.length; i++) {
         // A window CONTAINING an already-redacted sentence is skipped, and this
         // is the line that keeps the rule from over-redacting. If one sentence
@@ -317,11 +406,45 @@ export function scanMortalityPhrasing(
       }
     }
 
+    // ── THE EXTRA PATTERN CLASS (lane G1-G, PPR-13) ───────────────────────
+    // Runs over the SAME sentence array, only for sentences this span still
+    // owns (`i >= emitFrom`): a context sentence already left, and nothing here
+    // can un-send it. That is not a coverage gap — the carry only ever holds
+    // text that already passed this scan, so it cannot hold a leak.
+    //
+    // A sentence already marked by a mortality rule is still TESTED, because a
+    // firing is a fact worth recording even when something else was going to
+    // remove the sentence anyway; `caused_redaction` carries the distinction.
+    const extraRules = options.extraRules ?? []
+    const extraRuleFor = new Map<number, string>()
+    const extraFiringsFor = new Map<number, string[]>()
+    for (let i = emitFrom; extraRules.length > 0 && i < sentences.length; i++) {
+      for (const r of extraRules) {
+        if (!r.test(sentences[i])) continue
+        const fired = extraFiringsFor.get(i) ?? []
+        fired.push(r.rule)
+        extraFiringsFor.set(i, fired)
+        if (!extraRuleFor.has(i)) extraRuleFor.set(i, r.rule)
+      }
+    }
+
     const hits: MortalityPhrasingHit[] = []
+    const extra_hits: PreWireExtraHit[] = []
     let clean = ''
     for (let i = emitFrom; i < sentences.length; i++) {
       const sentence = sentences[i]
       const rule = ruleFor.get(i)
+      const firedExtras = extraFiringsFor.get(i)
+      if (firedExtras) {
+        for (const fired of firedExtras) {
+          extra_hits.push({
+            rule: fired,
+            redacted_span_hash: spanHash(sentence),
+            redacted_length: sentence.length,
+            caused_redaction: !rule,
+          })
+        }
+      }
       if (rule) {
         hits.push({
           rule,
@@ -330,12 +453,15 @@ export function scanMortalityPhrasing(
         })
         continue
       }
+      if (extraRuleFor.has(i)) continue
       clean += sentence
     }
-    return { clean, hits, scan_failed: false }
+    return { clean, hits, extra_hits, scan_failed: false }
   } catch {
     // FAIL CLOSED — the inverse of lintReaderProse's contract, on purpose.
-    return { clean: '', hits: [], scan_failed: true }
+    // Covers a throwing `extraRules` entry too: an entitlement rule that cannot
+    // decide must withhold the span, never pass it.
+    return { clean: '', hits: [], extra_hits: [], scan_failed: true }
   }
 }
 
@@ -375,8 +501,12 @@ export class StreamingMortalityScanner {
    */
   private carry = ''
   readonly hits: MortalityPhrasingHit[] = []
+  /** Firings of the G1-G `extraRules`, accumulated across the whole block. */
+  readonly extraHits: PreWireExtraHit[] = []
   scanFailed = false
   private readonly scan: (text: string, options?: MortalityScanOptions) => MortalityScanResult
+  private readonly extraRules: readonly PreWireSentenceRule[]
+  private readonly mortalityRulesEnabled: boolean
 
   /**
    * @param scan the span scanner. Defaults to `scanMortalityPhrasing`; the
@@ -387,11 +517,22 @@ export class StreamingMortalityScanner {
    *   non-string past `this.buffer += delta`, which coerces. Injecting the
    *   collaborator tests the wrapper's own contract ("a failed span sets
    *   `scanFailed` AND emits nothing") without contorting the input to do it.
+   * @param options lane G1-G. `extraRules` folds an additional sentence-level
+   *   pattern class into the SAME streamed pass — same holdback, same carry,
+   *   same fail-closed path — and `mortalityRulesEnabled` lets a caller arm
+   *   that class WITHOUT arming G1-A's, since the two are gated on different
+   *   feature flags. Both default to today's behaviour exactly.
    */
   constructor(
     scan: (text: string, options?: MortalityScanOptions) => MortalityScanResult = scanMortalityPhrasing,
+    options: {
+      extraRules?: readonly PreWireSentenceRule[]
+      mortalityRulesEnabled?: boolean
+    } = {},
   ) {
     this.scan = scan
+    this.extraRules = options.extraRules ?? []
+    this.mortalityRulesEnabled = options.mortalityRulesEnabled !== false
   }
 
   /** Feed one delta. Returns the reader-safe text to emit right now. */
@@ -413,8 +554,16 @@ export class StreamingMortalityScanner {
   }
 
   private scanAndRecord(span: string): string {
-    const result = this.scan(span, { contextPrefix: this.carry })
+    const result = this.scan(span, {
+      contextPrefix: this.carry,
+      extraRules: this.extraRules,
+      mortalityRulesEnabled: this.mortalityRulesEnabled,
+    })
     this.hits.push(...result.hits)
+    // `?? []` rather than a bare spread: the injectable `scan` collaborator is a
+    // test seam, and an older/hand-rolled double that predates `extra_hits`
+    // must not crash the wrapper it is being used to exercise.
+    this.extraHits.push(...(result.extra_hits ?? []))
     // FAIL CLOSED, and say so. `scan_failed` means the span was never scanned,
     // so `result.clean` is `''` by that function's contract and nothing from
     // this span reaches the reader.

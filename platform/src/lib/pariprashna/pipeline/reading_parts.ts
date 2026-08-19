@@ -25,7 +25,10 @@
 import { extractCitations } from '@/lib/citations/citation_data_part'
 import { detectPredictionCandidates, type PredictionCandidate } from '@/lib/ppl/prediction_detector'
 import { lintReaderProse } from '@/lib/pariprashna/citations/register_leak_lint'
-import { scanMortalityPhrasing } from '@/lib/pariprashna/safety/phrasing_scan'
+import {
+  scanMortalityPhrasing,
+  type PreWireSentenceRule,
+} from '@/lib/pariprashna/safety/phrasing_scan'
 import type { MessagePartInput } from '@/lib/pariprashna/store/schema'
 import {
   textPartFromBlock,
@@ -67,6 +70,18 @@ export class ReadingPartsAssembler {
      * unchanged.
      */
     private readonly mortalityScanEnabled = false,
+    /**
+     * Lane G1-G. Extra pre-wire sentence rules — today, the answer-side
+     * entitlement scan — folded into the SAME commit-time pass. Default empty
+     * so every pre-existing caller (and the flag-OFF path) is byte-for-byte
+     * unchanged.
+     *
+     * Independent of `mortalityScanEnabled` on purpose: the two are armed by
+     * two different feature flags, and `scanMortalityPhrasing`'s
+     * `mortalityRulesEnabled` option is what keeps one from silently arming the
+     * other when only this one is populated.
+     */
+    private readonly preWireExtraRules: readonly PreWireSentenceRule[] = [],
   ) {
     this.passId = initialPassId
   }
@@ -102,8 +117,18 @@ export class ReadingPartsAssembler {
         // (clarification prose, a future non-streaming composer). It scrubs the
         // COMMITTED and PERSISTED text, which is the copy the reader can come
         // back to. Armed only when the gate is on; a pass-through otherwise.
-        if (this.mortalityScanEnabled) {
-          const scan = scanMortalityPhrasing(this.currentBlock.text)
+        //
+        // Lane G1-G folds the answer-side entitlement rules into this SAME
+        // commit-time scan rather than adding a second walk over the block. The
+        // reason it matters here specifically: this is the copy that gets
+        // PERSISTED, so a foreign chart id surviving to this point would live in
+        // `message_parts` for as long as the conversation does, long after the
+        // stream that carried it is gone.
+        if (this.mortalityScanEnabled || this.preWireExtraRules.length > 0) {
+          const scan = scanMortalityPhrasing(this.currentBlock.text, {
+            extraRules: this.preWireExtraRules,
+            mortalityRulesEnabled: this.mortalityScanEnabled,
+          })
           if (scan.hits.length > 0 || scan.scan_failed) {
             this.currentBlock.text = scan.clean
             this.em.flag({
@@ -112,6 +137,23 @@ export class ReadingPartsAssembler {
               detail: scan.scan_failed
                 ? 'the pre-wire mortality scan errored on commit; the block was withheld (fail-closed)'
                 : `${scan.hits.length} sentence(s) withheld from the committed block`,
+            })
+          }
+          const entitlementRedactions = scan.extra_hits.filter((h) => h.caused_redaction)
+          if (entitlementRedactions.length > 0) {
+            // `scan.clean` already has BOTH classes removed, so this assignment
+            // is idempotent with the one above and correct when only this class
+            // fired. Server log carries the rule ids and span hashes; the wire
+            // gets a count (gate 11 [integrity]).
+            this.currentBlock.text = scan.clean
+            console.error(
+              '[pariprashna/injection] PRE-WIRE entitlement leak redacted from a COMMITTED block:',
+              entitlementRedactions.map((h) => ({ rule: h.rule, span: h.redacted_span_hash })),
+            )
+            this.em.flag({
+              code: 'injection_entitlement_leak_redacted',
+              level: 'error',
+              detail: `${entitlementRedactions.length} sentence(s) referencing an unauthorized chart withheld from the committed block`,
             })
           }
         }

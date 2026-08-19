@@ -228,9 +228,26 @@ export async function POST(request: Request): Promise<Response> {
           queryPlan,
           context: synthesisContext,
           safetyDecision: postPlanSafety,
+          // ── INJECTION CONTAINMENT (lane G1-G · PPR-13 / PPR-11). ──────────
+          // `chartId` is the AUTHENTICATED chart — it came from the request
+          // body, was UUID-validated pre-stream, and was re-authorized against
+          // the caller by `authorizeTurn` above. It is deliberately the ONLY
+          // entitled id handed to the answer-side scan: this turn is scoped to
+          // one chart, so any OTHER chart named in the answer is out of scope
+          // for this reading even if the caller happens to own it elsewhere.
+          // Widening this to the caller's whole entitled set would weaken the
+          // scan to no benefit.
+          authorizedChartIds: [chartId],
+          removedCapabilities: planned.value.removedCapabilities,
         })
         if (synthesized.halted) return finish(synthesized.status)
         const { assembler, accumulatedText, synthesisStartedAt } = synthesized.value
+        // The tool-sequence anomaly reaches the RECEIPT as well as the wire
+        // (PPR-13: "trace-flagged"). `judgmentFlags` is the receipt's own
+        // channel and is read by the validation stage.
+        if (synthesized.value.toolSequenceMonitor?.anomalous) {
+          judgmentFlags.push('injection_tool_sequence_anomaly')
+        }
 
         // ── Validation: the B.11 citation gate (adapter-path parity). ────────
         const citationGate = runValidationStage({
