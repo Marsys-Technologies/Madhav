@@ -80,12 +80,12 @@ window.TRACKER = {
       "refuter_votes": []
     },
     "P0-C": {
-      "role_stage": "building",
+      "role_stage": "verifying",
       "name": "PORTS REFACTOR of route.ts (RF-1, gating lane -- verifier + 3 adversaries required before other lanes open)",
-      "worktree": null,
-      "branch": null,
-      "last_event_ts": "2026-08-19T14:19:59Z",
-      "verifier_verdict": null,
+      "worktree": "worktree-agent-a6279b3f3d579e906",
+      "branch": "pariprashna/p0-c-ports-refactor",
+      "last_event_ts": "2026-08-19T15:05:00Z",
+      "verifier_verdict": "1 verifier + 3 adversaries (behavioral/security/harness-integrity lenses) dispatched, in progress. Builder's own report: 9 modules, route.ts 1179->237 lines, 37/37 scenarios pass, 700 files/7796 tests 0 failures. Honest limits disclosed: 12-fixture corpus not directly executable (used 37 derived scenarios instead); deployed-stream capture half of RF-1 UNMET; one named ordering blind spot; 3 pre-existing bugs found+reported not fixed; residual 2-way collision on safety_gate.ts for P1.",
       "refuter_votes": []
     },
     "P0-D": {
