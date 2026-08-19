@@ -55,7 +55,13 @@ import { openTurnBuffer, appendBufferedEvent } from '@/lib/pariprashna/protocol/
 import { beginTurnCapture, captureEvent, endTurnCapture } from '@/lib/pariprashna/protocol/stream_capture'
 
 import type { TurnIdentity } from '@/lib/pariprashna/pipeline/stage_context'
-import { admitRequest, bindTurnParams, authorizeTurn } from '@/lib/pariprashna/pipeline/safety_gate'
+import {
+  admitRequest,
+  admitWithinLimits,
+  bindTurnParams,
+  authorizeTurn,
+  runSafetyPolicyGate,
+} from '@/lib/pariprashna/pipeline/safety_gate'
 import { runPlanStage } from '@/lib/pariprashna/pipeline/plan_stage'
 import { runEvidenceStage } from '@/lib/pariprashna/pipeline/evidence_stage'
 import { assembleSynthesisContext, runSynthesisStage } from '@/lib/pariprashna/pipeline/synthesis_stage'
@@ -77,6 +83,14 @@ export async function POST(request: Request): Promise<Response> {
 
   // ── Bind request params (pure — no DB/LLM). ────────────────────────────────
   const params = await bindTurnParams(body, request)
+
+  // ── NCD-8 pre-dispatch limits (web door). ──────────────────────────────────
+  // Still PRE-STREAM, so a ceiling refusal is a real HTTP 429 with a branchable
+  // code rather than an in-stream error — and it lands before the planner, the
+  // first LLM call of the turn. Needs `params` because the ceiling is evaluated
+  // against the model this turn actually bound. Flag-OFF by default.
+  const withinLimits = await admitWithinLimits({ user, params })
+  if (!withinLimits.admitted) return withinLimits.response
 
   // Conversation identity is resolvable synchronously (generated for a first
   // turn) so `turn.open` can carry it before any DB round-trip.
@@ -135,8 +149,19 @@ export async function POST(request: Request): Promise<Response> {
         const authorized = await authorizeTurn({ em, user, identity })
         if (authorized.halted) return finish(authorized.status)
 
+        // ── Safety (PPR-12, lane G1-A). AFTER consent (it needs subject_kind),
+        //    BEFORE the planner (a blocked class must never build a plan). ────
+        const safetyGate = await runSafetyPolicyGate({
+          em,
+          identity,
+          messages,
+          subjectKind: authorized.value.subjectKind,
+        })
+        if (safetyGate.halted) return finish(safetyGate.status)
+        const safetyDecision = safetyGate.value
+
         // ── Plan: query text → planner → budgets → floors → NO-LEAKAGE. ──────
-        const planned = await runPlanStage({ em, request, messages, identity, params })
+        const planned = await runPlanStage({ em, request, messages, identity, params, safetyDecision })
         if (planned.halted) return finish(planned.status)
         const {
           plan,
@@ -150,6 +175,27 @@ export async function POST(request: Request): Promise<Response> {
           plannerLatencyMs,
           judgmentFlags,
         } = planned.value
+        // The plan-time pass may have ESCALATED the decision (a plan revealing a
+        // health or longevity domain the question's wording hid). If it crossed
+        // into the seal path, no reading leaves this session — stop here, before
+        // retrieval and before synthesis. The plan is already built and that is
+        // accepted: the requirement HS-3/HS-4 enforce is that no INTERPRETATION
+        // goes out unreviewed, not that no plan was ever composed.
+        const postPlanSafety = planned.value.safetyDecision
+        if (
+          postPlanSafety.enforced &&
+          postPlanSafety.action !== safetyDecision.action &&
+          (postPlanSafety.action === 'seal_pending_signoff' || postPlanSafety.action === 'hard_stop')
+        ) {
+          const { SEAL_PENDING_ACKNOWLEDGMENT, HS2_FIXED_RESPONSE } = await import('@/lib/pariprashna/safety')
+          const text =
+            postPlanSafety.action === 'hard_stop' ? HS2_FIXED_RESPONSE : SEAL_PENDING_ACKNOWLEDGMENT
+          em.flag({ code: `safety_decision:${postPlanSafety.action}`, level: 'warn', detail: 'escalated at plan time' })
+          em.blockOpen({ block_id: 'safety-postplan-0', pass_id: 1, role: 'prose' })
+          em.blockDelta({ block_id: 'safety-postplan-0', delta: text })
+          em.blockCommit({ block_id: 'safety-postplan-0', text })
+          return finish('ok')
+        }
 
         // ── Evidence: retrieval pass 1 + completeness receipt. ───────────────
         const evidence = await runEvidenceStage({
@@ -171,6 +217,7 @@ export async function POST(request: Request): Promise<Response> {
           plan,
           orientation: evidence.orientation,
           conversationId,
+          safetyDecision: postPlanSafety,
         })
         const synthesized = await runSynthesisStage({
           em,
@@ -180,9 +227,27 @@ export async function POST(request: Request): Promise<Response> {
           params,
           queryPlan,
           context: synthesisContext,
+          safetyDecision: postPlanSafety,
+          // ── INJECTION CONTAINMENT (lane G1-G · PPR-13 / PPR-11). ──────────
+          // `chartId` is the AUTHENTICATED chart — it came from the request
+          // body, was UUID-validated pre-stream, and was re-authorized against
+          // the caller by `authorizeTurn` above. It is deliberately the ONLY
+          // entitled id handed to the answer-side scan: this turn is scoped to
+          // one chart, so any OTHER chart named in the answer is out of scope
+          // for this reading even if the caller happens to own it elsewhere.
+          // Widening this to the caller's whole entitled set would weaken the
+          // scan to no benefit.
+          authorizedChartIds: [chartId],
+          removedCapabilities: planned.value.removedCapabilities,
         })
         if (synthesized.halted) return finish(synthesized.status)
         const { assembler, accumulatedText, synthesisStartedAt } = synthesized.value
+        // The tool-sequence anomaly reaches the RECEIPT as well as the wire
+        // (PPR-13: "trace-flagged"). `judgmentFlags` is the receipt's own
+        // channel and is read by the validation stage.
+        if (synthesized.value.toolSequenceMonitor?.anomalous) {
+          judgmentFlags.push('injection_tool_sequence_anomaly')
+        }
 
         // ── Validation: the B.11 citation gate (adapter-path parity). ────────
         const citationGate = runValidationStage({
@@ -211,6 +276,7 @@ export async function POST(request: Request): Promise<Response> {
           validToolResults: evidence.validToolResults,
           citationGate,
           synthesisStartedAt,
+          safetyDecision: postPlanSafety,
         })
 
         // Completeness + aggregated judgment flags (grade/flag — always emitted).

@@ -45,6 +45,21 @@ import { lintReaderProse } from '@/lib/pariprashna/citations/register_leak_lint'
 import type { ChartOrientation } from '@/lib/retrieval/orientation'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
+import { StreamingMortalityScanner } from '@/lib/pariprashna/safety/phrasing_scan'
+import { PREWIRE_REDACTION_NOTICE } from '@/lib/pariprashna/safety/fixed_responses'
+import type { SafetyDecision } from '@/lib/pariprashna/safety'
+import { isInjectionContainmentEnabled } from '@/lib/pariprashna/injection/flag'
+import {
+  buildEntitlementScanRules,
+  containRetrievedEvidence,
+  containToolResult,
+  containUserQuestion,
+  containPriorTurn,
+  ENTITLEMENT_REDACTION_NOTICE,
+  INJECTION_CONTAINMENT_CLAUSE,
+  rejectIdentityParams,
+  ToolSequenceMonitor,
+} from '@/lib/pariprashna/injection'
 
 import { halt, proceed, resolveActivityLabel, type StageResult, type TurnParams } from './stage_context'
 import { PASS_ONE } from './evidence_stage'
@@ -86,16 +101,55 @@ export async function assembleSynthesisContext(args: {
   plan: PipelinePlan
   orientation: ChartOrientation | null
   conversationId: string
+  /** Lane G1-A. Omitted → no policy block (flag-OFF path and older callers). */
+  safetyDecision?: SafetyDecision
 }): Promise<SynthesisContext> {
   const { messages, bundle, plan, orientation, conversationId } = args
 
-  const trimmedConversationHistory: ModelMessage[] = await convertToModelMessages(
+  const injectionContained = isInjectionContainmentEnabled()
+
+  let trimmedConversationHistory: ModelMessage[] = await convertToModelMessages(
     messages.filter((m) => m.role === 'user' || m.role === 'assistant').slice(-5).slice(0, -1),
   )
-  const bundleSystemContent = (bundle.assets as Array<{ content: string }>)
+  // ── INJECTION CONTAINMENT (lane G1-G · PPR-13): prior turns are DATA. ──────
+  // `QUERY_INDEPENDENCE_GATE` already tells the model to treat history as
+  // "background noise" — TA §14A.1 calls that out by name as "a prompt
+  // heuristic, not a defense". This is the structural half: each prior turn's
+  // text goes inside a container whose own delimiters the payload cannot close.
+  // Only the TEXT parts are wrapped; tool-result and other structured parts are
+  // left untouched so nothing downstream that inspects part shapes changes.
+  if (injectionContained) {
+    trimmedConversationHistory = trimmedConversationHistory.map((m) => {
+      if (m.role !== 'user' && m.role !== 'assistant') return m
+      const role = m.role
+      if (typeof m.content === 'string') {
+        return { ...m, content: containPriorTurn(m.content, role) } as ModelMessage
+      }
+      if (!Array.isArray(m.content)) return m
+      return {
+        ...m,
+        content: m.content.map((part) =>
+          part && typeof part === 'object' && (part as { type?: string }).type === 'text'
+            ? { ...part, text: containPriorTurn((part as { text: string }).text, role) }
+            : part,
+        ),
+      } as ModelMessage
+    })
+  }
+
+  const rawBundleSystemContent = (bundle.assets as Array<{ content: string }>)
     .map((a) => a.content)
     .filter(Boolean)
     .join('\n\n')
+  // The retrieved evidence — asset file text read verbatim off storage by
+  // `bundle_hydrator`, i.e. the classical-corpus passages TA §14A.1's abuse case
+  // A2 is about. Wrapped whole rather than per-asset: the bundle is joined into
+  // one system block downstream, so one container is what the model actually
+  // sees, and per-asset containers would only multiply the surfaces a payload
+  // could try to close.
+  const bundleSystemContent = injectionContained
+    ? containRetrievedEvidence(rawBundleSystemContent)
+    : rawBundleSystemContent
   const currentMahaAntar =
     orientation?.chart_header?.current_maha_antar ?? orientation?.dasha_context?.current_maha_antar ?? null
   const systemContent = buildConsultSystemContent({
@@ -126,10 +180,40 @@ export async function assembleSynthesisContext(args: {
     console.error('[pariprashna] durable-summary splice failed (non-fatal):', err)
   }
   const { assembleSynthesisPrefix } = await import('@/lib/pariprashna/summaries/assemble')
-  const systemContentWithSummary = assembleSynthesisPrefix({
+  let systemContentWithSummary = assembleSynthesisPrefix({
     precedingBlock: systemContent ?? '',
     summaryText: conversationSummaryText,
   })
+
+  // ── INJECTION CONTAINMENT: the clause that makes the tags mean something. ──
+  // Appended AFTER the evidence and the summary splice and BEFORE the safety
+  // policy, so the ordering downstream-of-untrusted-content reads:
+  //     … evidence … → summary → injection clause → safety policy
+  // Both policy blocks therefore sit downstream of every untrusted container,
+  // which is the only structural leverage a prompt has and is used deliberately
+  // here for the same reason G1-A documents it for the safety policy. The
+  // safety policy stays LAST; this lane does not take its position.
+  if (injectionContained) {
+    systemContentWithSummary = [systemContentWithSummary, INJECTION_CONTAINMENT_CLAUSE]
+      .filter(Boolean)
+      .join('\n\n---\n\n')
+  }
+
+  // ── SAFETY: synthesis-time prompt policy (lane G1-A · HS-1 point (b)). ─────
+  // Appended LAST, after the evidence bundle and after the summary splice, so
+  // that content injected into retrieved evidence (abuse case A2) cannot appear
+  // downstream of the policy and claim to override it. Position is the only
+  // structural leverage a prompt has, and it is used deliberately.
+  //
+  // This is the MIDDLE of HS-1's three controls precisely because it depends on
+  // a model's cooperation. Plan-time exclusion and the pre-wire scan do not.
+  if (args.safetyDecision?.enforced) {
+    const { appendSafetyPromptPolicy } = await import('@/lib/pariprashna/safety')
+    systemContentWithSummary = appendSafetyPromptPolicy(
+      systemContentWithSummary,
+      args.safetyDecision.classes_detected,
+    )
+  }
 
   return { systemContentWithSummary, trimmedConversationHistory }
 }
@@ -139,6 +223,12 @@ export interface SynthesisStageOutput {
   accumulatedText: string
   synthesisStartedAt: number
   finalPassId: number
+  /**
+   * Lane G1-G. `null` when injection containment is flag-OFF — which is the
+   * honest value: no monitor was built, so nothing was measured. It is NOT
+   * "the sequence was checked and was clean" (§N.8).
+   */
+  toolSequenceMonitor: ToolSequenceMonitor | null
 }
 
 export async function runSynthesisStage(args: {
@@ -149,9 +239,23 @@ export async function runSynthesisStage(args: {
   params: TurnParams
   queryPlan: LegacyQueryPlan
   context: SynthesisContext
+  /** Lane G1-A. Enforced → the pre-wire mortality scan is armed. */
+  safetyDecision?: SafetyDecision
+  /**
+   * Lane G1-G. Every chart the CALLER is entitled to — at minimum this turn's
+   * authenticated `chart_id`. Drives the answer-side entitlement scan. Omitted
+   * → the scan contributes no rules (the flag-OFF path and older callers).
+   */
+  authorizedChartIds?: readonly string[]
+  /**
+   * Lane G1-G. Capabilities the plan stage deliberately removed. A call to one
+   * of these is the strongest tool-sequence anomaly available.
+   */
+  removedCapabilities?: readonly string[]
 }): Promise<StageResult<SynthesisStageOutput>> {
   const { em, request, queryText, params, queryPlan, context } = args
   const { systemContentWithSummary, trimmedConversationHistory } = context
+  const injectionContained = isInjectionContainmentEnabled()
 
   // ── Adapter + agentic loop wiring (SAME engine as consult). ────────────────
   const adapterId: StackId | undefined =
@@ -160,7 +264,13 @@ export async function runSynthesisStage(args: {
     em.error({ code: 'NO_ADAPTER', message: `No adapter for stack=${params.selectedStack}.`, retryable: false, phase: 'synthesize' })
     return halt('error')
   }
-  const adapterMessages = buildAdapterMessages(trimmedConversationHistory, queryText)
+  // The CURRENT question, contained (lane G1-G). `queryText` itself is
+  // untouched — persistence, the safety classifier and the receipt all read the
+  // plain text; only what the synthesis model reads is wrapped.
+  const adapterMessages = buildAdapterMessages(
+    trimmedConversationHistory,
+    injectionContained ? containUserQuestion(queryText) : queryText,
+  )
   let adapterChatReq: ChatRequest = buildAdapterChatRequest(adapterMessages, params.modelId, systemContentWithSummary)
   const adapter = getAdapter(adapterId)
   const useAgenticLoop = AGENTIC_PROVIDERS.has(adapterId)
@@ -182,10 +292,120 @@ export async function runSynthesisStage(args: {
 
   // Pass/seam state — derived PURELY from the engine's own control flow
   // (tool-use events after prose), never from text/prose heuristics.
-  const assembler = new ReadingPartsAssembler(em, PASS_ONE)
+  // ── The PRE-WIRE pass's rule set (G1-A mortality + G1-G entitlement). ──────
+  // ONE pass over the prose, TWO pattern classes, each armed by its own flag —
+  // the fold TA §14A.1 asks for ("the register lint already walks the text;
+  // entitlement checking is a second pattern class in the same pass"). An empty
+  // `authorizedChartIds` is legal and means every chart reference is foreign,
+  // which is the correct fail-closed reading of "entitlements unresolved".
+  const entitlementRules =
+    injectionContained
+      ? buildEntitlementScanRules({ authorizedChartIds: args.authorizedChartIds ?? [] })
+      : []
+  const mortalityRulesEnabled = args.safetyDecision?.enforced === true
+  const prewireArmed = mortalityRulesEnabled || entitlementRules.length > 0
+
+  const assembler = new ReadingPartsAssembler(em, PASS_ONE, mortalityRulesEnabled, entitlementRules)
   let proseSeenInPass = false
   let awaitingResume = false
   let lastToolInSeam = ''
+
+  // ── SAFETY: the PRE-WIRE mortality scan (lane G1-A · HS-1 point (c)). ──────
+  // The third and last of HS-1's three controls, and the only one that does not
+  // depend on either the planner or the model cooperating. It holds prose back
+  // to the last SENTENCE boundary (bounded — MAX_HOLDBACK_CHARS) so a
+  // "…around 2047." cannot be split across two deltas and slip out one half at
+  // a time — the residual the register-leak lint documents and accepts for
+  // internal identifiers, and which is not acceptable here.
+  //
+  // `null` when NEITHER pattern class is armed — with both flags off there is
+  // no hold-back, no behaviour change, and the stream is byte-for-byte what it
+  // is today. Note the honest consequence of G1-G's widening: arming injection
+  // containment ALONE now builds the scanner, so the sentence-level hold-back
+  // (and its latency shape — prose arriving sentence-wise rather than
+  // token-wise) applies on that flag too, not only on the safety gate. That is
+  // the price of scanning whole sentences, it is the same price G1-A documented,
+  // and it is stated here rather than discovered after the flip.
+  //
+  // Lane G1-G widens the SAME scanner rather than adding a second one: the
+  // holdback, the sentence splitting, the carried context across a stream seam
+  // and the fail-closed path are exactly what a cross-tenant check needs, and a
+  // parallel scanner would be a second copy of all four to keep in step.
+  const mortalityScanner = prewireArmed
+    ? new StreamingMortalityScanner(undefined, {
+        extraRules: entitlementRules,
+        mortalityRulesEnabled,
+      })
+    : null
+  let prewireHitsReported = 0
+  let entitlementHitsReported = 0
+  const reportEntitlementHits = (): void => {
+    if (!mortalityScanner) return
+    if (mortalityScanner.extraHits.length <= entitlementHitsReported) return
+    const fresh = mortalityScanner.extraHits.slice(entitlementHitsReported)
+    entitlementHitsReported = mortalityScanner.extraHits.length
+    // Loud on the server: reaching this line means generated prose named a chart
+    // this session is not entitled to read — a cross-tenant confidentiality
+    // event, not a phrasing nit. Rule ids only; the token itself is never logged
+    // (it is the identifier the redaction exists to protect) and its hash is on
+    // the hit for correlation.
+    console.error(
+      '[pariprashna/injection] PRE-WIRE entitlement leak redacted — generated prose referenced a chart outside the caller entitlements:',
+      fresh.map((h) => ({ rule: h.rule, span: h.redacted_span_hash, removed: h.caused_redaction })),
+    )
+    em.flag({
+      code: 'injection_entitlement_leak_redacted',
+      level: 'error',
+      detail: `${fresh.length} sentence(s) referencing an unauthorized chart withheld at the output stage`,
+    })
+  }
+  const reportPrewireHits = (): void => {
+    if (!mortalityScanner) return
+    reportEntitlementHits()
+    if (mortalityScanner.hits.length > prewireHitsReported) {
+      const n = mortalityScanner.hits.length - prewireHitsReported
+      prewireHitsReported = mortalityScanner.hits.length
+      // Loud on the server: reaching this line means the plan-time exclusion
+      // AND the prompt policy both failed to stop a mortality-date composition.
+      console.error(
+        '[pariprashna/safety] PRE-WIRE mortality phrasing redacted — both upstream HS-1 controls missed:',
+        mortalityScanner.hits.slice(-n).map((h) => h.rule),
+      )
+      em.flag({
+        code: 'safety_prewire_mortality_redacted',
+        level: 'error',
+        detail: `${n} sentence(s) withheld at the output stage`,
+      })
+    }
+  }
+  // The reader-facing notice is emitted ONCE, after the stream closes and the
+  // last block commits — never mid-stream, which would interleave a block into
+  // an already-open one and break the assembler's block state machine.
+  //
+  // The hold-back buffer must be drained before ANY block commit, or the tail
+  // of a block would be silently dropped. Called at every commit point.
+  const drainScannerInto = (): void => {
+    if (!mortalityScanner) return
+    const rest = mortalityScanner.flush()
+    reportPrewireHits()
+    if (rest) assembler.appendProse(assembler.ensureBlock('prose'), rest)
+  }
+
+  // ── INJECTION CONTAINMENT: the tool-sequence anomaly trace (G1-G · PPR-13). ─
+  // Watches the AGENTIC LOOP specifically. Retrieval pass 1 iterates
+  // `toolsAuthorized` and so cannot diverge from the plan by construction; the
+  // loop can, because `synthesis/mcp_tool_executor.ts` dispatches whatever tool
+  // name came back from the model without re-checking it against the authorized
+  // set. See `injection/tool_sequence.ts` for the full account.
+  //
+  // FLAG, NOT BLOCK — TA §14A.1 rules that in those words. This callback records
+  // and then dispatches unconditionally; it never refuses.
+  const toolSequenceMonitor = injectionContained
+    ? new ToolSequenceMonitor({
+        authorized: queryPlan.tools_authorized ?? [],
+        forbidden: args.removedCapabilities ?? [],
+      })
+    : null
 
   const baseLoopConfig: AgenticLoopConfig | undefined = LOOP_CONFIG_BY_PROVIDER[adapterId]
   const loopConfig: AgenticLoopConfig | undefined = baseLoopConfig
@@ -195,11 +415,53 @@ export async function runSynthesisStage(args: {
   try {
     const chatStream =
       useAgenticLoop && loopConfig
-        ? runAgenticLoop(adapter, adapterChatReq, (toolCall) => executeMCPTool(toolCall, { queryPlan }), loopConfig)
+        ? runAgenticLoop(
+            adapter,
+            adapterChatReq,
+            async (toolCall) => {
+              toolSequenceMonitor?.record(toolCall.name)
+              // The plan closure sanitizes `plan.tool_calls[].params`. It does
+              // NOT reach here: `toolCall.input` is chosen by the MODEL, after
+              // any injected content has entered its context, and
+              // `mcp_tool_executor` forwards it verbatim as tool params. The
+              // bridge overwrites `args.chart_id` only for `per_chart`
+              // capabilities, so for any other scope a foreign identity param
+              // would survive into the handler. Same rejection, same rule set,
+              // applied at the second door into the same function.
+              if (injectionContained) {
+                const rejected = rejectIdentityParams(
+                  toolCall.input as Record<string, unknown>,
+                  queryPlan.chart_id,
+                )
+                if (rejected.length > 0) {
+                  console.error(
+                    '[pariprashna/injection] REJECTED model-supplied identity params from an agentic tool call:',
+                    { tool: toolCall.name, keys: rejected },
+                  )
+                  em.flag({
+                    code: 'injection_tool_input_identity_param_rejected',
+                    level: 'error',
+                    detail: `${rejected.length} model-supplied identity parameter(s) rejected from a mid-turn tool call`,
+                  })
+                }
+              }
+              const output = await executeMCPTool(toolCall, { queryPlan })
+              // A tool result is untrusted content that re-enters the model's
+              // context as a `role: 'user'` turn (`synthesis/agentic_loop.ts`) —
+              // structurally indistinguishable from the reader speaking, for any
+              // provider that flattens tool results. Contained for exactly that
+              // reason, and containment happens HERE rather than inside
+              // `executeMCPTool` so the shared executor stays byte-identical for
+              // the consult door, which is not in this lane's scope.
+              return injectionContained ? containToolResult(toolCall.name, output) : output
+            },
+            loopConfig,
+          )
         : adapter.chat(adapterChatReq)
 
     for await (const event of chatStream) {
       if (request.signal.aborted) {
+        drainScannerInto()
         assembler.commitBlock()
         return halt('aborted')
       }
@@ -228,7 +490,13 @@ export async function runSynthesisStage(args: {
             detail: `${deltaLint.leakCount} internal identifier(s) scrubbed from streamed prose`,
           })
         }
-        assembler.appendProse(blk, cleanDelta)
+        // HS-1 point (c): the mortality scan runs AFTER the register lint (the
+        // lint's redactions cannot create a mortality phrase, only remove
+        // identifiers) and returns only sentence-complete, scanned text. When
+        // the gate is off, `mortalityScanner` is null and this is a pass-through.
+        const safeDelta = mortalityScanner ? mortalityScanner.push(cleanDelta) : cleanDelta
+        reportPrewireHits()
+        if (safeDelta) assembler.appendProse(blk, safeDelta)
         proseSeenInPass = true
       } else if (event.type === 'thinking_delta') {
         const blk = assembler.ensureBlock('thinking')
@@ -238,6 +506,7 @@ export async function runSynthesisStage(args: {
       } else if (event.type === 'tool_use_complete') {
         // Engine re-entered retrieval. If prose was already emitted this pass,
         // THIS is a pass boundary (real control-flow truth).
+        drainScannerInto()
         assembler.commitBlock()
         if (proseSeenInPass) {
           assembler.passId += 1
@@ -259,7 +528,59 @@ export async function runSynthesisStage(args: {
     console.error('[pariprashna] synthesis stream error:', adapterErr)
     em.flag({ code: 'synthesis_stream_error', level: 'error', detail: String(adapterErr) })
   }
+  drainScannerInto()
   assembler.commitBlock()
+  // A scan that FAILED (not "found nothing") is reported as its own flag. The
+  // scanner fails closed — `scanMortalityPhrasing` returns '' rather than the
+  // input — so a failure shows up as missing prose, and this flag is what says
+  // why rather than leaving it looking like the model went quiet.
+  //
+  // The wording is conditional (G1-G) because the same scanner can now be armed
+  // with ONLY the entitlement rules, and calling that failure "the mortality
+  // scan" would name the wrong control in the one message an operator reads
+  // during an incident. When mortality rules ARE armed the string is G1-A's,
+  // byte-for-byte.
+  if (mortalityScanner?.scanFailed) {
+    em.flag({
+      code: 'safety_prewire_scan_failed',
+      level: 'error',
+      detail: mortalityRulesEnabled
+        ? 'the pre-wire mortality scan errored; the affected span was withheld (fail-closed)'
+        : 'the pre-wire entitlement scan errored; the affected span was withheld (fail-closed)',
+    })
+  }
+  if (mortalityScanner && mortalityScanner.hits.length > 0) {
+    em.blockOpen({ block_id: 'safety-prewire-notice', pass_id: assembler.passId, role: 'prose' })
+    em.blockDelta({ block_id: 'safety-prewire-notice', delta: PREWIRE_REDACTION_NOTICE })
+    em.blockCommit({ block_id: 'safety-prewire-notice', text: PREWIRE_REDACTION_NOTICE })
+  }
+  // The G1-G counterpart notice. A separate block from the mortality one because
+  // they are separate withholdings with separate reasons — a turn can trip both,
+  // and collapsing them would tell the reader the wrong thing about one of them.
+  // Fires only when a redaction ACTUALLY happened (`caused_redaction`): a leak
+  // that a mortality rule was already removing is worth logging, but does not
+  // earn a second reader-facing notice about a sentence that was going anyway.
+  const entitlementRedactions = (mortalityScanner?.extraHits ?? []).filter((h) => h.caused_redaction)
+  if (entitlementRedactions.length > 0) {
+    em.blockOpen({ block_id: 'injection-entitlement-notice', pass_id: assembler.passId, role: 'prose' })
+    em.blockDelta({ block_id: 'injection-entitlement-notice', delta: ENTITLEMENT_REDACTION_NOTICE })
+    em.blockCommit({ block_id: 'injection-entitlement-notice', text: ENTITLEMENT_REDACTION_NOTICE })
+  }
+  // The tool-sequence trace flag (G1-G · PPR-13). Codes + counts only; the raw
+  // capability names stay in the server log, the same gate-11 discipline the
+  // NO-LEAKAGE and mortality-exclusion flags follow.
+  if (toolSequenceMonitor?.anomalous) {
+    const trace = toolSequenceMonitor.traceFlag()
+    console.warn(
+      '[pariprashna/injection] tool-sequence anomaly (trace only — never a block):',
+      toolSequenceMonitor.anomalies,
+    )
+    em.flag({
+      code: 'injection_tool_sequence_anomaly',
+      level: toolSequenceMonitor.severity(),
+      detail: `${trace.anomaly_count} tool-sequence anomal${trace.anomaly_count === 1 ? 'y' : 'ies'} in ${trace.total_calls} call(s): ${trace.codes.join(', ')}`,
+    })
+  }
   em.phase({ phase: 'synthesize', status: 'end', pass_id: assembler.passId, ms: Date.now() - synthesisStartedAt })
 
   return proceed({
@@ -267,5 +588,6 @@ export async function runSynthesisStage(args: {
     accumulatedText: assembler.accumulatedText,
     synthesisStartedAt,
     finalPassId: assembler.passId,
+    toolSequenceMonitor,
   })
 }

@@ -25,6 +25,10 @@
 import { extractCitations } from '@/lib/citations/citation_data_part'
 import { detectPredictionCandidates, type PredictionCandidate } from '@/lib/ppl/prediction_detector'
 import { lintReaderProse } from '@/lib/pariprashna/citations/register_leak_lint'
+import {
+  scanMortalityPhrasing,
+  type PreWireSentenceRule,
+} from '@/lib/pariprashna/safety/phrasing_scan'
 import type { MessagePartInput } from '@/lib/pariprashna/store/schema'
 import {
   textPartFromBlock,
@@ -59,6 +63,25 @@ export class ReadingPartsAssembler {
   constructor(
     private readonly em: PariprashnaEmitter,
     initialPassId: number,
+    /**
+     * Lane G1-A. When true, `commitBlock` runs the HS-1 mortality-phrasing scan
+     * over the whole block as the backstop to the streaming scanner. Default
+     * false so every pre-existing caller (and the flag-OFF path) is byte-for-byte
+     * unchanged.
+     */
+    private readonly mortalityScanEnabled = false,
+    /**
+     * Lane G1-G. Extra pre-wire sentence rules — today, the answer-side
+     * entitlement scan — folded into the SAME commit-time pass. Default empty
+     * so every pre-existing caller (and the flag-OFF path) is byte-for-byte
+     * unchanged.
+     *
+     * Independent of `mortalityScanEnabled` on purpose: the two are armed by
+     * two different feature flags, and `scanMortalityPhrasing`'s
+     * `mortalityRulesEnabled` option is what keeps one from silently arming the
+     * other when only this one is populated.
+     */
+    private readonly preWireExtraRules: readonly PreWireSentenceRule[] = [],
   ) {
     this.passId = initialPassId
   }
@@ -68,8 +91,37 @@ export class ReadingPartsAssembler {
     return this.accumulated
   }
 
+  /**
+   * Keep `accumulated` in step with a block whose text a pre-wire scan changed.
+   *
+   * `appendProse` writes each delta into BOTH the open block and `accumulated`,
+   * so a commit-time redaction that only rewrote `currentBlock.text` left a
+   * SECOND, unredacted copy behind — and `accumulated` is not a scratch buffer:
+   * it is what feeds the citation extractor, the prediction-candidate detector
+   * and persistence. A redaction that reaches the reader's copy but not the
+   * persisted one is not a redaction.
+   *
+   * The replacement is anchored to the block's own text rather than done
+   * globally, so an identical sentence elsewhere in the turn is untouched. The
+   * anchor is always the block's RAW text — see `commitBlock` for why the
+   * register-leak lint's own rewrite must never be the anchor and must never be
+   * the replacement.
+   */
+  private syncAccumulated(before: string, after: string): void {
+    if (before === after || !before) return
+    const at = this.accumulated.lastIndexOf(before)
+    if (at === -1) return
+    this.accumulated =
+      this.accumulated.slice(0, at) + after + this.accumulated.slice(at + before.length)
+  }
+
   commitBlock(): void {
     if (this.currentBlock) {
+      // The RAW deltas this block contributed. This — NOT the post-lint text —
+      // is the copy sitting in `accumulated`, because `appendProse` writes the
+      // delta into both places and nothing downstream of it rewrites
+      // `accumulated`. It is the only correct anchor for `syncAccumulated`.
+      const rawBlockText = this.currentBlock.text
       // Gate 11 [integrity] backstop: every prose block is scanned for internal
       // identifier leaks (SIG.* ids, asset-id prefixes, register acronyms
       // MSR/UCN/CGM/CDLM/LEL, table names) before it ever reaches the wire or
@@ -86,6 +138,102 @@ export class ReadingPartsAssembler {
             level: 'warn',
             detail: `${lint.leakCount} internal identifier(s) scrubbed from reader prose`,
           })
+        }
+        // HS-1 point (c) BACKSTOP (lane G1-A). The streaming scanner in
+        // `synthesis_stage.ts` is the first line and already works on whole
+        // sentences; this catches the case it structurally cannot — a whole
+        // block assembled by a path that did not go through the scanner
+        // (clarification prose, a future non-streaming composer). It scrubs the
+        // COMMITTED and PERSISTED text, which is the copy the reader can come
+        // back to. Armed only when the gate is on; a pass-through otherwise.
+        //
+        // Lane G1-G folds the answer-side entitlement rules into this SAME
+        // commit-time scan rather than adding a second walk over the block. The
+        // reason it matters here specifically: this is the copy that gets
+        // PERSISTED, so a foreign chart id surviving to this point would live in
+        // `message_parts` for as long as the conversation does, long after the
+        // stream that carried it is gone.
+        if (this.mortalityScanEnabled || this.preWireExtraRules.length > 0) {
+          const scanOptions = {
+            extraRules: this.preWireExtraRules,
+            mortalityRulesEnabled: this.mortalityScanEnabled,
+          }
+          // Captured AFTER the lint, so it is what the scans actually saw.
+          const textBeforeScans = this.currentBlock.text
+          const scan = scanMortalityPhrasing(this.currentBlock.text, scanOptions)
+          if (scan.hits.length > 0 || scan.scan_failed) {
+            this.currentBlock.text = scan.clean
+            this.em.flag({
+              code: 'safety_prewire_mortality_redacted',
+              level: 'error',
+              detail: scan.scan_failed
+                ? 'the pre-wire mortality scan errored on commit; the block was withheld (fail-closed)'
+                : `${scan.hits.length} sentence(s) withheld from the committed block`,
+            })
+          }
+          const entitlementRedactions = scan.extra_hits.filter((h) => h.caused_redaction)
+          if (entitlementRedactions.length > 0) {
+            // `scan.clean` already has BOTH classes removed, so this assignment
+            // is idempotent with the one above and correct when only this class
+            // fired. Server log carries the rule ids and span hashes; the wire
+            // gets a count (gate 11 [integrity]).
+            this.currentBlock.text = scan.clean
+            console.error(
+              '[pariprashna/injection] PRE-WIRE entitlement leak redacted from a COMMITTED block:',
+              entitlementRedactions.map((h) => ({ rule: h.rule, span: h.redacted_span_hash })),
+            )
+            this.em.flag({
+              code: 'injection_entitlement_leak_redacted',
+              level: 'error',
+              detail: `${entitlementRedactions.length} sentence(s) referencing an unauthorized chart withheld from the committed block`,
+            })
+          }
+          // Whatever the two pre-wire classes above removed, remove from the
+          // turn's accumulated text too — see `syncAccumulated`. Applies to the
+          // mortality branch as well as the entitlement one: the gap was there
+          // for both, and fixing it for only the newer one would leave the
+          // older, more safety-critical redaction the leakier of the two.
+          //
+          // ── WHY THIS SITS INSIDE THE FLAG GUARD, AND WHY THE ANCHOR IS THE
+          //    RAW TEXT (P0, independent re-verification) ────────────────────
+          // It used to sit outside, anchored on the text as it was BEFORE the
+          // register-leak lint. That made this lane's changes visible with both
+          // feature flags OFF: `lintReaderProse` is NOT gated by G1-A or G1-G —
+          // it is pre-existing citation/identifier-leak lint that always runs —
+          // so on any block containing a `SIG.MSR.NNN`-shaped token the lint's
+          // scrub propagated into `accumulated`, which it never did before this
+          // lane. `accumulated` feeds `detectTurnCitations` (persisted citation
+          // parts), `detectTurnPredictionCandidates` (the SAMĪKṢĀ ledger) and
+          // `runValidationStage` (the B.11 `citation_gate` grade), so a
+          // production turn with no flag flipped silently lost its citation
+          // parts. The lane's claim is "ships flag-OFF, zero production impact";
+          // this line was the one place that was false.
+          //
+          // Two consequences, both load-bearing:
+          //   · INSIDE the guard, so with both flags off nothing here runs and
+          //     `accumulated` is byte-identical to pre-G1-G behaviour.
+          //   · The anchor is `rawBlockText`, not the post-lint text, because
+          //     `accumulated` holds the raw deltas. Anchoring on the post-lint
+          //     text would silently no-op (`lastIndexOf` → -1) whenever the lint
+          //     had fired, leaving the foreign chart id in the copy that feeds
+          //     persistence — a redaction that reaches the reader but not the
+          //     ledger, which is the exact defect `syncAccumulated` exists for.
+          //
+          // When the lint DID rewrite the block the replacement cannot simply
+          // be borrowed from the scanned (linted) surface — that would carry the
+          // lint's scrub into `accumulated` as a side effect, i.e. re-introduce
+          // the same flag-OFF-style behaviour change one flag deeper. The
+          // pre-wire scan is therefore re-run on the raw surface so the RAW copy
+          // loses exactly the sentences the pre-wire classes removed, and
+          // nothing else.
+          if (this.currentBlock.text !== textBeforeScans) {
+            const replacement = scan.scan_failed
+              ? '' // fail closed: an unscannable block contributes nothing.
+              : rawBlockText === textBeforeScans
+                ? this.currentBlock.text
+                : scanMortalityPhrasing(rawBlockText, scanOptions).clean
+            this.syncAccumulated(rawBlockText, replacement)
+          }
         }
       }
       this.em.blockCommit({ block_id: this.currentBlock.id, text: this.currentBlock.text })

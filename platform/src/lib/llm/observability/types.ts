@@ -28,6 +28,21 @@ export type PipelineStage =
 
 export type CallStatus = 'success' | 'error' | 'timeout'
 
+/**
+ * The serving door a costed call was dispatched through — the `channel` column
+ * added to `llm_usage_events` by migration 574 (Paripraśna G1-D / NCD-8), so cost
+ * can be attributed per (user_id, channel, model).
+ *
+ * The SQL column is deliberately un-CHECK-constrained; this union is where the
+ * vocabulary is enforced. Declared here, next to the row shape it belongs to, and
+ * re-exported by `@/lib/limits/spend_ceiling` as `SpendChannel` so the ceiling and
+ * the ledger can never drift to two different vocabularies.
+ *
+ * A call site that does not declare a door writes NULL — an honest absence, never
+ * a default (CLAUDE.md §N.7 item 6).
+ */
+export type ServingChannel = 'web' | 'mcp' | 'other'
+
 export interface TokenUsage {
   input_tokens: number
   output_tokens: number
@@ -48,6 +63,12 @@ export interface ObservedLLMRequest {
   parent_prompt_id?: string
   user_id: string
   pipeline_stage: PipelineStage
+  /**
+   * Serving door this call came through (NCD-8 cost attribution). OPTIONAL: an
+   * adapter that has no notion of a door omits it and the row records NULL,
+   * which is the truth. See {@link ServingChannel}.
+   */
+  channel?: ServingChannel
 }
 
 export interface ObservedLLMResponse {

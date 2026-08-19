@@ -53,6 +53,11 @@ import type { QueryRequest } from '@/lib/adapters/types'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { consumeSystemPromptV2 } from '@/lib/synthesis/prompts/synthesis_prompt_v2'
+import { isInjectionContainmentEnabled } from '@/lib/pariprashna/injection/flag'
+import {
+  neutralizeDelimiters,
+  INJECTION_CONTAINMENT_CLAUSE,
+} from '@/lib/pariprashna/injection/delimit'
 
 export interface SynthesisEvidenceItem {
   tool_name: string
@@ -239,6 +244,12 @@ export function formatEvidenceBlock(evidence: SynthesisEvidenceItem[]): { block:
     return { block: '(no evidence was gathered for this request)', truncatedTools: [] }
   }
   const truncatedTools: string[] = []
+  // Lane G1-G: a tool result is untrusted content. Neutralize any delimiter it
+  // carries BEFORE it is placed inside an `<evidence>` container, or a row whose
+  // text contains `</evidence>` closes the container the payload is meant to sit
+  // in. Applied to the serialized payload only — never to the wrapper.
+  const guardPayload = (s: string): string =>
+    isInjectionContainmentEnabled() ? neutralizeDelimiters(s) : s
   const perItemBudgetChars = Math.max(
     MIN_EVIDENCE_ITEM_CHARS,
     Math.floor(TOTAL_EVIDENCE_BUDGET_CHARS / evidence.length),
@@ -248,7 +259,7 @@ export function formatEvidenceBlock(evidence: SynthesisEvidenceItem[]): { block:
       const results = Array.isArray(e.bundle.results) ? e.bundle.results : []
       const fullSerialized = JSON.stringify(results, null, 2) ?? '[]'
       if (fullSerialized.length <= perItemBudgetChars) {
-        return `<evidence tool="${e.tool_name}">\n${fullSerialized}\n</evidence>`
+        return `<evidence tool="${e.tool_name}">\n${guardPayload(fullSerialized)}\n</evidence>`
       }
       truncatedTools.push(e.tool_name)
 
@@ -275,7 +286,7 @@ export function formatEvidenceBlock(evidence: SynthesisEvidenceItem[]): { block:
         : `... [TRUNCATED — this tool's highest-bearing content alone exceeds the per-item budget and was ` +
           `character-truncated — the reading should not claim exhaustive coverage of this tool]`
 
-      return `<evidence tool="${e.tool_name}" truncated="true">\n${finalSerialized}\n${disclosure}\n</evidence>`
+      return `<evidence tool="${e.tool_name}" truncated="true">\n${guardPayload(finalSerialized)}\n${disclosure}\n</evidence>`
     })
     .join('\n\n')
   return { block, truncatedTools }
@@ -349,23 +360,54 @@ export async function synthesizeReading(
   }
 
   const systemPrompt =
-    consumeSystemPromptV2(buildChartContext(chartRow), [], 'acharya', false) + NO_LIVE_TOOLS_OVERRIDE
+    consumeSystemPromptV2(buildChartContext(chartRow), [], 'acharya', false) +
+    NO_LIVE_TOOLS_OVERRIDE +
+    // Lane G1-G: the clause that turns this door's existing attribution tags
+    // into containment. In the SYSTEM channel deliberately — a clause carried
+    // in the user message would sit inside the same envelope as the payload it
+    // is supposed to bind.
+    (isInjectionContainmentEnabled() ? `\n\n${INJECTION_CONTAINMENT_CLAUSE}` : '')
 
   const { block: evidenceBlock, truncatedTools } = formatEvidenceBlock(input.evidence)
   if (truncatedTools.length > 0) {
     judgmentFlags.push('synthesis_evidence_truncated')
   }
 
+  // ── INJECTION CONTAINMENT (lane G1-G · PPR-13 · TA §14A.1). ───────────────
+  // This is THE door §14A.1 is about — "a foreign, possibly compromised, MCP
+  // client passes free text that our engine feeds to our planner and our
+  // agentic loop, with tool access". It already delimits its prompt, but the
+  // tags were built for ATTRIBUTION, not containment: nothing told the model
+  // the tagged content was untrusted, and nothing stopped a payload from simply
+  // closing `</user_question>` and continuing outside it.
+  //
+  // G1-G supplies both missing halves and re-uses what is here rather than
+  // re-tagging: the delimiters get neutralized inside every untrusted payload,
+  // and the clause goes in the SYSTEM prompt — the one channel the question
+  // cannot reach. Flag-OFF (default) leaves this message byte-for-byte today's.
+  const containment = isInjectionContainmentEnabled()
+  const guard = (s: string): string => (containment ? neutralizeDelimiters(s) : s)
+
   const userMessage = [
-    `<user_question>${input.question}</user_question>`,
+    `<user_question>${guard(input.question)}</user_question>`,
     `<temporal_anchor>${formatTemporalAnchor(input)}</temporal_anchor>`,
-    `Query class: ${input.queryClass}. Intent summary: ${input.queryIntentSummary}.`,
+    // `queryIntentSummary` is planner-authored prose derived from the question,
+    // so it carries the question's own untrustedness one hop further.
+    `Query class: ${input.queryClass}. Intent summary: ${guard(input.queryIntentSummary)}.`,
     '',
+    // NOT `guard(evidenceBlock)`: the block's OWN `<evidence tool="…">`
+    // wrappers are ours and must survive. The neutralization is applied one
+    // level down, to each serialized payload inside them (see
+    // `formatEvidenceBlock`), which is where the untrusted bytes actually are.
     'Gathered evidence:',
     evidenceBlock,
     '',
     '<evidence_gaps>',
-    formatGapsBlock(input),
+    // The gap block interpolates raw planner tool_name strings
+    // (`input.unresolvedTools` — by definition names that resolved to NO
+    // registered capability, i.e. the ones most likely to be model-invented),
+    // so it is untrusted content sitting inside a container like any other.
+    guard(formatGapsBlock(input)),
     '</evidence_gaps>',
   ].join('\n')
 

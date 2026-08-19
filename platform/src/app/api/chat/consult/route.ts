@@ -7,7 +7,7 @@ import {
   createUIMessageStreamResponse,
 } from 'ai'
 import type { ModelMessage, UIMessage } from 'ai'
-import { stagePart, toolPart, costPart, observabilityPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart, correctionPart, outOfDomainPart, titlePart, clarificationPart } from '@/lib/streams/data_parts'
+import { stagePart, toolPart, costPart, observabilityPart, citationGatePart, citationPart, persistencePart, predictionCandidatePart, correctionPart, outOfDomainPart, titlePart, clarificationPart, judgmentFlagsPart } from '@/lib/streams/data_parts'
 import { parseMarkers } from '@/lib/consume/marker_parser'
 import { detectPredictionCandidates } from '@/lib/ppl/prediction_detector'
 import { extractCitations } from '@/lib/citations/citation_data_part'
@@ -420,6 +420,100 @@ export async function POST(request: Request) {
       console.error('[consume:v2] orientation build failed (non-fatal):', err)
       return null
     })
+
+  // ── PPR-12 SAFETY GATE (P1 lane G1-A) — THE DEFAULT PRODUCTION DOOR ────────
+  //
+  // Added by the G1-A round-3 hardening (M-4, correcting round 2's C-3 scope
+  // call). Round 2 wired the gate into `/api/pariprashna` and `/api/mcp/
+  // prashna_ask` and judged THIS route out of scope as a retiring legacy
+  // surface. That judgement was wrong, and the evidence is written down:
+  //
+  //   · `00_ARCHITECTURE/PARIPRASHNA_ASBUILT_BASELINE_v1_0.md` §1, dated
+  //     2026-08-18 — one day before this branch — states, as a
+  //     STATIC_VERIFIED row: "PB-4 cutover (default flip, consult retirement,
+  //     flag deletion): NEVER RUN; consult/consume still the un-gated default".
+  //     That is the opposite of retired: it is the door users actually hit.
+  //   · The same file's §1 records `/api/pariprashna` as living behind
+  //     `PARIPRASHNA_ENABLED`, whose default in code is `false`. The gated
+  //     doors are the OPTIONAL ones.
+  //   · `platform/AGENTS.md` carries no consult-retirement decision at all.
+  //   · `/api/chat/consume` 308-redirects here, so the deprecated alias leads
+  //     to this route too.
+  //   · Grepping this file for `safety|classifyTurnSafety|SafetyPolicy` before
+  //     this change returned zero hits.
+  //
+  // PLACEMENT — pre-dispatch, and specifically before `runPlanner` below, which
+  // is this route's FIRST LLM call (the agentic synthesis loop is the second).
+  // §3's rule is "a blocked class must never build a retrieval plan", so the
+  // gate has to precede the planner, not merely precede `runAgenticLoop`.
+  // Nothing is retrieved and nothing is planned to produce a withheld turn.
+  //
+  // WHAT IS ENFORCED: classification, the audit row (written on EVERY turn,
+  // including `proceed` — the denominator argument applies to this door too),
+  // the HS-2 hard stop and the HS-3/HS-4 seal.
+  //
+  // NOT ENFORCED HERE, and said plainly rather than faked: `subject_kind` is
+  // `null`, exactly as on the MCP door. This route has no consent-lane
+  // resolution — G1-B wired `resolveSubjectConsent` into the Paripraśna door's
+  // `authorizeTurn`, not into this one — and `null` is the honest value for
+  // "nobody checked". The gate treats it as NOT-proven-native_self and fails
+  // toward the stricter path (no NCD-4 interstitial; notification obligations
+  // recorded rather than skipped), so the gap costs safety nothing. Extending
+  // consent to this door is G1-B's work.
+  //
+  // The post-plan `reclassifyAfterPlan` pass and the capability-exclusion strip
+  // that `prashna_ask` also runs are NOT wired here in this round; this door's
+  // plan/capability path is a different shape and doing it half-way would be
+  // worse than doing it deliberately next. The pre-dispatch stop — the one that
+  // matters for HS-2 — is live.
+  //
+  // Flag-gated OFF by default: with `PARIPRASHNA_SAFETY_GATE_ENABLED` off,
+  // `classifyTurnSafety` returns `enforced:false`/`proceed` before running a
+  // pattern and before touching the database, so this block adds nothing to
+  // today's hot path.
+  const { classifyTurnSafety, HS2_FIXED_RESPONSE, SEAL_PENDING_ACKNOWLEDGMENT } =
+    await import('@/lib/pariprashna/safety')
+  const safetyDecision = await classifyTurnSafety({
+    turnId: crypto.randomUUID(),
+    chartId,
+    queryText,
+    subjectKind: null,
+  })
+
+  if (safetyDecision.enforced && safetyDecision.action !== 'proceed' && safetyDecision.action !== 'reframe') {
+    // A hard stop and a seal are ANSWERS, not faults. They stream as ordinary
+    // assistant text on the same UIMessage-stream surface a reading uses, so
+    // the client renders composed prose rather than an error banner — the same
+    // shape the clarification path below uses, for the same reason.
+    const text =
+      safetyDecision.action === 'hard_stop' ? HS2_FIXED_RESPONSE : SEAL_PENDING_ACKNOWLEDGMENT
+    console.warn('[consume:v2] safety gate withheld the reading:', safetyDecision.action)
+    const safetyStream = createUIMessageStream({
+      execute: ({ writer }) => {
+        const textId = 'text-0'
+        writer.write({ type: 'start', messageId: crypto.randomUUID() } as never)
+        writer.write({ type: 'text-start', id: textId } as never)
+        writer.write({ type: 'text-delta', id: textId, delta: text } as never)
+        writer.write({ type: 'text-end', id: textId } as never)
+        // Counts and the action only — NEVER the matched text and never the
+        // rule ids (gate 11 [integrity], the discipline both other doors keep).
+        writer.write({
+          type: 'data-judgment_flags',
+          data: judgmentFlagsPart({
+            flags: [
+              `safety_decision:${safetyDecision.action}`,
+              'safety_reading_withheld',
+              ...(safetyDecision.classes_detected.length > 0
+                ? [`safety_classes_detected:${safetyDecision.classes_detected.length}`]
+                : []),
+            ],
+          }),
+        } as never)
+        writer.write({ type: 'finish', finishReason: 'stop' } as never)
+      },
+    })
+    return createUIMessageStreamResponse({ stream: safetyStream })
+  }
 
   // ── Single-path LLM-first planner ─────────────────────────────────────────
   // No flag guard. No circuit breaker. No fallback. The planner produces

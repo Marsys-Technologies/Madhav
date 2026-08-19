@@ -87,6 +87,7 @@ import {
 import { filterLeakedCapabilities } from '@/lib/pipeline/no_leakage_filter'
 import { assertNoCalibrationLeak } from '@/lib/pariprashna/no_leakage/calibration_leak_guard'
 import { CostCapTracker, resolveCostCapsForEntitlement } from '@/lib/pipeline/cost_caps'
+import { enforceTurnLimits } from '@/lib/limits'
 import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
 import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
@@ -211,6 +212,148 @@ export async function POST(request: Request) {
     getEffectiveModel(DEFAULT_STACK_ID, 'planner_fast', 'fallback'),
   ])
 
+  // ── NCD-8 pre-dispatch limits (MCP door — the second of the two doors) ──────
+  //
+  // Ruling: PARIPRASHNA_DECISION_REGISTER_v1_0.md NCD-8, "Spend caps $2/turn ·
+  // $40/day, pre-dispatch, both doors" (RULED 2026-08-18); PPR-25 in
+  // PARIPRASHNA_ARCHITECTURE_v1_0.md.
+  //
+  // PLACEMENT IS THE WHOLE POINT. `callPipelinePlanner` immediately below is this
+  // route's FIRST LLM call, and it runs before the CostCapTracker is ever
+  // consulted — so a gate placed anywhere after it would be a post-hoc audit, not
+  // the pre-dispatch control the ruling requires. This is the last statement
+  // before the spend starts.
+  //
+  // It complements, and does not replace, the existing CostCapTracker: that tracks
+  // call-count and wall-clock WITHIN an accepted turn and has no USD dimension.
+  // This is the USD dimension, evaluated before the turn is accepted at all.
+  //
+  // The refusal is a real HTTP 429 with a branchable code, emitted BEFORE the
+  // NDJSON stream opens — never a 500, and never a stream the caller has to read
+  // to discover it was refused. Rate limiting keys on `keyId` (the resolved MCP
+  // credential), matching every other /api/mcp/* route; spend attributes to
+  // `userUid`, the principal actually billed.
+  //
+  // The synthesis model is resolved here rather than taken from the request: the
+  // ceiling must be evaluated against the model `synthesizeReading` will really
+  // use (it calls the same getEffectiveModel(DEFAULT_STACK_ID, 'synthesis',
+  // 'primary')), not against a client-supplied hint. Same discipline as the
+  // server-verified-role rule in this file's header.
+  const synthesisModelId = await getEffectiveModel(DEFAULT_STACK_ID, 'synthesis', 'primary')
+  const limits = await enforceTurnLimits({
+    userId: userUid,
+    channel: 'mcp',
+    modelId: synthesisModelId,
+    rateLimitPrincipalId: keyId,
+  })
+  if (!limits.allowed) {
+    return NextResponse.json(
+      buildErrorEnvelope({
+        trace_id: queryId,
+        error_class: 'rate_limit',
+        message: limits.message,
+        remediation:
+          limits.code === 'LIMIT_RATE_LIMIT_EXCEEDED'
+            ? 'Reduce request frequency and retry.'
+            : 'Wait for the daily ceiling to reset at 00:00 UTC, or use a less expensive model.',
+      }),
+      {
+        status: limits.status,
+        headers: limits.retry_after_seconds
+          ? { 'retry-after': String(limits.retry_after_seconds) }
+          : undefined,
+      },
+    )
+  }
+
+  // ── PPR-12 SAFETY GATE (P1 lane G1-A) — THE MCP DOOR ────────────────────────
+  //
+  // Added by the G1-A hardening round (C-3). The first build wired
+  // `classifyTurnSafety` into `/api/pariprashna` only, leaving this route — a
+  // real production door that runs the same planner, the same tools and the
+  // same `synthesizeReading` — with no safety classification at all. Grepping it
+  // for `safety|classifyTurnSafety|SafetyPolicy` returned nothing.
+  //
+  // That is not a defensible split. G1-D's NCD-8 limits gate, the closest
+  // precedent in this phase, explicitly covers "both doors" and sits twenty
+  // lines above this comment for exactly that reason. A mortality or
+  // suicide-adjacent question arriving over MCP is the same question, and the
+  // raw-MCP plane has LESS prose-side protection than the web one, not more.
+  //
+  // PLACEMENT, for the same reason the limits gate states its own: this is
+  // PRE-DISPATCH. `callPipelinePlanner` immediately below is this route's first
+  // LLM call, so a gate placed after it would be a post-hoc audit. §3's rule is
+  // "a blocked class must never build a retrieval plan" — this is the last
+  // statement before the plan is built.
+  //
+  // ── WHAT IS ENFORCED HERE, AND WHAT IS DELIBERATELY NOT ────────────────────
+  // ENFORCED: classification, the audit row (written on EVERY turn, including
+  // `proceed` — the denominator argument applies to this door too), the HS-2
+  // hard stop, the HS-3/HS-4 seal, and the capability exclusion applied to
+  // `toolsAuthorized` below.
+  //
+  // NOT ENFORCED HERE: `subject_kind` is passed as `null`. This route has no
+  // consent-lane resolution — G1-B wired `resolveSubjectConsent` into the web
+  // door's `authorizeTurn` and not into this one — and `null` is the honest
+  // value for "nobody checked", which the gate already treats as NOT-proven-
+  // native_self and fails toward the stricter path (no NCD-4 interstitial, and
+  // notification obligations recorded rather than skipped). Passing anything
+  // else would be inventing a consent finding. Resolving consent on this door
+  // is G1-B's to extend, not this round's to fake, and the strict-direction
+  // default means the gap costs safety nothing.
+  //
+  // Flag-gated OFF by default: with `PARIPRASHNA_SAFETY_GATE_ENABLED` off,
+  // `classifyTurnSafety` returns `enforced:false`/`proceed` before running a
+  // pattern and before touching the database, so this block adds nothing to
+  // today's hot path.
+  const { classifyTurnSafety, HS2_FIXED_RESPONSE, SEAL_PENDING_ACKNOWLEDGMENT, applyCapabilityExclusion } =
+    await import('@/lib/pariprashna/safety')
+  const safetyTurnId = crypto.randomUUID()
+  const safetyDecision = await classifyTurnSafety({
+    turnId: safetyTurnId,
+    chartId,
+    queryText: question,
+    subjectKind: null,
+  })
+
+  if (safetyDecision.enforced && safetyDecision.action !== 'proceed' && safetyDecision.action !== 'reframe') {
+    // HS-2 hard stop and the HS-3/HS-4 seal are ANSWERS, not faults: a real,
+    // composed, deliberate response. They close 200 with the fixed prose in the
+    // `reading` field, the same shape a successful call uses, so a caller
+    // renders them as a reading rather than as an error banner. `outcome` and
+    // the `safety_*` judgment flags are what a caller branches on.
+    //
+    // NOTHING was retrieved and NOTHING was planned to produce this — the
+    // planner has not run at the point this returns.
+    const text =
+      safetyDecision.action === 'hard_stop' ? HS2_FIXED_RESPONSE : SEAL_PENDING_ACKNOWLEDGMENT
+    return NextResponse.json({
+      ok: true,
+      trace_id: queryId,
+      chart_id: chartId,
+      outcome: 'safety_withheld',
+      reading: text,
+      completeness: {
+        status: 'withheld',
+        tools_dispatched: [],
+        unserved_tools: [],
+        unresolved_tools: [],
+        stripped_leaked_capabilities: [],
+        empty_result_tools: [],
+        cap_tripped: null,
+      },
+      // Counts and the action only — never the matched text and never the rule
+      // ids (gate 11 [integrity], the same discipline the web door follows).
+      judgment_flags: [
+        `safety_decision:${safetyDecision.action}`,
+        'safety_reading_withheld',
+        ...(safetyDecision.classes_detected.length > 0
+          ? [`safety_classes_detected:${safetyDecision.classes_detected.length}`]
+          : []),
+      ],
+    })
+  }
+
   const plannerOutcome = await callPipelinePlanner(
     question,
     [],
@@ -276,6 +419,69 @@ export async function POST(request: Request) {
   }
   ensureB11WholeChartReadFloor(plan, toolsAuthorized)
   ensureDashaContextFloor(plan, toolsAuthorized)
+
+  // ── PPR-12 PLAN-TIME ENFORCEMENT (G1-A hardening round, C-3) ────────────────
+  //
+  // The second of PPR-12's enforcement points, mirroring `plan_stage.ts` on the
+  // web door and placed for the same reason it is placed there: AFTER the
+  // floors have run, so a floor cannot smuggle a mortality or election
+  // capability back in after the exclusion has been applied. "The query never
+  // gets a capability that could compute a specific death date" is a statement
+  // about what the dispatch loop receives, and the dispatch loop receives what
+  // survives these lines.
+  //
+  // `reclassifyAfterPlan` is a monotone join — a plan revealing a longevity
+  // domain the question's wording hid escalates the turn; a plan revealing
+  // nothing leaves the decision exactly as it was. If it escalated into the
+  // seal path, no reading leaves this call.
+  const safetyJudgmentFlags: string[] = []
+  let postPlanSafety = safetyDecision
+  if (safetyDecision.enforced) {
+    const { reclassifyAfterPlan } = await import('@/lib/pariprashna/safety')
+    postPlanSafety = await reclassifyAfterPlan({
+      decision: safetyDecision,
+      queryText: question,
+      domains: plan.domains ?? [],
+      capabilities: toolsAuthorized,
+    })
+    if (postPlanSafety.action === 'seal_pending_signoff' || postPlanSafety.action === 'hard_stop') {
+      const text =
+        postPlanSafety.action === 'hard_stop' ? HS2_FIXED_RESPONSE : SEAL_PENDING_ACKNOWLEDGMENT
+      return NextResponse.json({
+        ok: true,
+        trace_id: queryId,
+        chart_id: chartId,
+        outcome: 'safety_withheld',
+        reading: text,
+        completeness: {
+          status: 'withheld',
+          tools_dispatched: [],
+          unserved_tools: [],
+          unresolved_tools: [],
+          stripped_leaked_capabilities: [],
+          empty_result_tools: [],
+          cap_tripped: null,
+        },
+        judgment_flags: [
+          `safety_decision:${postPlanSafety.action}`,
+          'safety_reading_withheld',
+          'safety_escalated_at_plan_time',
+        ],
+      })
+    }
+    const { kept, stripped } = applyCapabilityExclusion(
+      toolsAuthorized,
+      postPlanSafety.excluded_capabilities,
+    )
+    if (stripped.length > 0) {
+      // Raw capability names are server-log-only (gate 11 [integrity]); the
+      // wire flag carries a count and the reason, never the identifiers.
+      console.warn('[mcp:prashna_ask] safety stripped sensitive capabilities:', stripped)
+      safetyJudgmentFlags.push('safety_mortality_capabilities_excluded')
+      plan.tool_calls = plan.tool_calls.filter((tc) => kept.includes(tc.tool_name))
+      toolsAuthorized.splice(0, toolsAuthorized.length, ...kept)
+    }
+  }
 
   // ── NO-LEAKAGE enforcement (Part A) — BEFORE any tool actually dispatches ────
   const dispatchableTools = filterLeakedCapabilities(toolsAuthorized)
@@ -364,7 +570,9 @@ export async function POST(request: Request) {
   async function runDispatchLoop(controller: ReadableStreamDefaultController<Uint8Array>): Promise<void> {
       const toolResults: Array<{ tool_name: string; bundle: import('@/lib/retrieval/shared_types').ToolBundle }> = []
       const toolEventLog: ToolDispatchOutcome[] = []
-      const judgmentFlags: string[] = []
+      // Seeded with whatever the plan-time safety pass recorded, so a stripped
+      // capability is disclosed on the wire rather than silently absent.
+      const judgmentFlags: string[] = [...safetyJudgmentFlags]
       let costCapTripped: { reason: string; judgmentFlag: string } | null = null
       let unservedTools: string[] = []
       const unresolvedTools: string[] = []

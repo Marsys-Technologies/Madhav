@@ -168,6 +168,107 @@ export type FeatureFlag =
   // PB-1 wave IS this flag (route ships dark, flipped on deliberately post-
   // deploy). Env: MARSYS_FLAG_PARIPRASHNA_ENABLED.
   | 'PARIPRASHNA_ENABLED'
+  // P1 G1-D "Limits" — NCD-8 per-user rate limits + pre-dispatch spend ceilings
+  // ($2/turn, $40/day) on BOTH serving doors (the web `/api/pariprashna` door and
+  // the MCP `/api/mcp/prashna_ask` door), plus the request proxy's per-user RPM
+  // gate. Default OFF — this lane ships dark per the P1 pre-authorization
+  // ("features ship flag-OFF; the safety gate flips ON at close"), so merging it
+  // cannot change production behaviour until the flip is deliberate. When OFF,
+  // every gate short-circuits to "allowed" before any DB or pricing work runs.
+  // Env: MARSYS_FLAG_PARIPRASHNA_LIMITS_ENABLED.
+  | 'PARIPRASHNA_LIMITS_ENABLED'
+  // P1 FOUNDATION lane G1-B — subject consent (NCD-9, PPR-14, abuse case A9).
+  // Gates the WHOLE `src/lib/pariprashna/consent` surface:
+  //   · OFF (default) — `resolveSubjectConsent` returns allow/enforcement_disabled
+  //     BEFORE any DB access, so the serving path is byte-for-byte what it is
+  //     today; every mutating entry point (withdrawal sweep, dispute open,
+  //     subject export) throws ConsentFeatureDisabledError instead of running.
+  //   · ON — no L2+ interpretive output for a chart whose subject lacks a
+  //     consent row; `native_self` is strictly checked (subject IS the account
+  //     holder, not self-certified); under-18 subjects serve only to the
+  //     recorded guardian and never as a cohort; refusals land in the
+  //     excluded-subject register.
+  // Flip this ON only after consent rows exist for the charts in play —
+  // flipping it on an empty `chart_subject_consent` table refuses EVERY chart
+  // by design (that is the fail-closed direction, but it is a real outage).
+  // Env: MARSYS_FLAG_SUBJECT_CONSENT_ENFORCEMENT.
+  | 'SUBJECT_CONSENT_ENFORCEMENT'
+  // P1 FOUNDATION lane G1-C — NO-LEAKAGE arm-1 (NCD-5, PPR-21/PPR-22).
+  // Gates the SERVING-SIDE half of the role/RLS work:
+  //   · OFF (default) — `getServeReadPool()` returns the one existing shared pool
+  //     and `withChartContext()` sets no GUC, so every read path is byte-for-byte
+  //     what it is today. Migration 576's roles hold grants but have no members,
+  //     and its RLS policies are stored but not enabled, so the DB half is inert
+  //     too. Nothing in this lane is live until BOTH this flag flips AND an
+  //     operator runs `platform/scripts/pariprashna/g1c_arm_rls.sql`.
+  //   · ON — reads route through a `role_web_serve`-backed pool built from
+  //     SERVE_DATABASE_URL (or DB_SERVE_USER/DB_SERVE_PASSWORD), and
+  //     `withChartContext()` pins `app.chart_context` per transaction so the RLS
+  //     policies have a value to compare against. If those credentials are NOT
+  //     configured, `getServeReadPool()` THROWS rather than quietly falling back
+  //     to the legacy credential — a flag that claims role separation while
+  //     serving on `amjis_app` would be exactly the §N.8 defect class this lane
+  //     exists to close.
+  // Flipping this ON is a live traffic-affecting cutover. It is deliberately NOT
+  // paired with any credential rotation; see the cutover runbook
+  // 00_ARCHITECTURE/briefs/pariprashna_swarm/G1_C_ROLES_RLS_CUTOVER_RUNBOOK_v1_0.md.
+  // Env: MARSYS_FLAG_PARIPRASHNA_ROLE_SEPARATION.
+  | 'PARIPRASHNA_ROLE_SEPARATION'
+  // P1 FOUNDATION lane G1-C — NO-LEAKAGE arm-3 (PPR-31 arm 3).
+  // Gates the out-of-process ledger writer.
+  //   · OFF (default) — the SAMĪKṢĀ capture path INSERTs into
+  //     `brahma_mimamsa_prediction_ledger` in-process, exactly as it does today.
+  //   · ON — the serving process enqueues a write INTENT into
+  //     `pariprashna_ledger_outbox` (the only ledger-adjacent privilege
+  //     `role_web_serve` keeps) and the out-of-process worker
+  //     (`platform/scripts/pariprashna/ledger_writer_worker.ts`), the sole holder
+  //     of `role_ledger_write`, drains it and performs the real write.
+  // This flag MUST be flipped ON *before* PARIPRASHNA_ROLE_SEPARATION, not after:
+  // once the app serves on `role_web_serve` it has no ledger INSERT at all, so an
+  // in-process capture would start failing. The runbook sequences them.
+  // Env: MARSYS_FLAG_PARIPRASHNA_LEDGER_OUT_OF_PROCESS.
+  | 'PARIPRASHNA_LEDGER_OUT_OF_PROCESS'
+  // P1 FOUNDATION lane G1-A — the SafetyPolicyGate (PPR-12, MP §3.5.C hard
+  // stops HS-1..HS-6). Gates the WHOLE `src/lib/pariprashna/safety` surface:
+  //   · OFF (default) — `classifyTurnSafety` returns enforced:false / proceed
+  //     BEFORE running a single pattern and before touching the database; the
+  //     plan, prompt, and pre-wire controls are all no-ops; every governance
+  //     entry point (retraction, sample review) throws instead of running.
+  //   · ON — every query is classified before planning; suicide-adjacent
+  //     queries get a fixed response and NO plan; date-of-death is blocked at
+  //     plan-time, synthesis-time and pre-wire; health-crisis / mental-health /
+  //     mortality-window readings do not leave the session without two
+  //     independent adversarial passes AND a separate sign-off (NCD-4's
+  //     interstitial is the one relaxation, and only for a PROVEN native_self
+  //     subject on an HS-3 class).
+  // Operational note, because the coupling is real and fails CLOSED: NCD-4's
+  // interstitial requires a proven `native_self` subject_kind, which only
+  // exists when SUBJECT_CONSENT_ENFORCEMENT is also ON. Flipping this flag
+  // alone sends every health question on every chart down the full seal path —
+  // correct, and a large behavioural change. Flip the pair together.
+  // Env: MARSYS_FLAG_PARIPRASHNA_SAFETY_GATE_ENABLED.
+  | 'PARIPRASHNA_SAFETY_GATE_ENABLED'
+  // P1 FOUNDATION lane G1-G — prompt-injection containment (PPR-13, TA §14A.1).
+  // Gates the WHOLE `src/lib/pariprashna/injection` surface, four controls:
+  //   · OFF (default) — the question, the conversation history, the retrieved
+  //     evidence and every agentic tool result reach the model exactly as they
+  //     do today; the plan is not re-closed; no tool-sequence monitor is built;
+  //     the answer-side entitlement scan contributes no rules to the pre-wire
+  //     pass. Byte-for-byte no change.
+  //   · ON — untrusted content is wrapped in `<untrusted_*>` containers whose
+  //     own delimiters are neutralized inside the payload, with a system-side
+  //     data-not-instruction clause; planner-supplied identity params
+  //     (chart_id and friends) carrying anything other than the AUTHENTICATED
+  //     chart are rejected from tool calls; a tool sequence that diverges from
+  //     the authorized plan is TRACE-FLAGGED (never blocked — TA §14A.1 rules
+  //     that explicitly); and any sentence naming a chart outside the caller's
+  //     entitlements is redacted before the wire.
+  // Independent of PARIPRASHNA_SAFETY_GATE_ENABLED on purpose: the two share
+  // the pre-wire pass but arm different pattern classes, and
+  // `scanMortalityPhrasing`'s `mortalityRulesEnabled` option is what keeps
+  // flipping one from silently arming the other.
+  // Env: MARSYS_FLAG_PARIPRASHNA_INJECTION_CONTAINMENT.
+  | 'PARIPRASHNA_INJECTION_CONTAINMENT'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -269,6 +370,36 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // via MARSYS_FLAG_PARIPRASHNA_ENABLED=true once the native is ready to
   // exercise the deployed route.
   PARIPRASHNA_ENABLED: false,
+  // P1 G1-D — NCD-8 limits. Default false: ships dark, flipped deliberately.
+  // Flip via MARSYS_FLAG_PARIPRASHNA_LIMITS_ENABLED=true.
+  PARIPRASHNA_LIMITS_ENABLED: false,
+  // P1 G1-B — subject consent enforcement. Default false: this lane ships
+  // flag-OFF per the P1 pre-authorization note, so merging it changes no
+  // production behavior. Flip via MARSYS_FLAG_SUBJECT_CONSENT_ENFORCEMENT=true
+  // only after `chart_subject_consent` carries a row for every live chart.
+  SUBJECT_CONSENT_ENFORCEMENT: false,
+  // P1 G1-C — NO-LEAKAGE arm-1 role separation. Default false: ships dark. The
+  // flip is a live cutover of what credential the app serves on; it is gated on
+  // the runbook's pre-flight, not on this file.
+  // Flip via MARSYS_FLAG_PARIPRASHNA_ROLE_SEPARATION=true.
+  PARIPRASHNA_ROLE_SEPARATION: false,
+  // P1 G1-C — NO-LEAKAGE arm-3 out-of-process ledger writer. Default false: the
+  // in-process capture path is unchanged. Flip via
+  // MARSYS_FLAG_PARIPRASHNA_LEDGER_OUT_OF_PROCESS=true, BEFORE role separation.
+  PARIPRASHNA_LEDGER_OUT_OF_PROCESS: false,
+  // P1 G1-A — the SafetyPolicyGate. Default false: this lane ships flag-OFF per
+  // the P1 pre-authorization note, so merging it changes no production
+  // behavior. Flip via MARSYS_FLAG_PARIPRASHNA_SAFETY_GATE_ENABLED=true,
+  // together with SUBJECT_CONSENT_ENFORCEMENT (see the declaration comment —
+  // NCD-4's interstitial cannot be earned without a proven subject_kind).
+  PARIPRASHNA_SAFETY_GATE_ENABLED: false,
+  // P1 G1-G — prompt-injection containment. Default false: this lane ships
+  // flag-OFF per the P1 pre-authorization note, so merging it changes no
+  // production behavior. Two of its four controls change what the synthesis
+  // model reads (structural delimiters + the containment clause), which can
+  // move prose — flip it deliberately, with a reading compared before/after.
+  // Flip via MARSYS_FLAG_PARIPRASHNA_INJECTION_CONTAINMENT=true.
+  PARIPRASHNA_INJECTION_CONTAINMENT: false,
 }
 
 // Numeric config keys (read via configService.getValue)
