@@ -189,6 +189,14 @@ describe('adversarial — the ABBREVIATED id form the project itself uses in pro
     }
   })
 
+  it('catches an abbreviated id separated from its cue by a relative clause', () => {
+    // One clause was enough to push the id past the original 24-char window.
+    const r = prewire(
+      'The other chart, which belongs to a different native entirely, is 1c826d5a today.',
+    )
+    expect(r.clean).toBe('')
+  })
+
   it("does NOT fire on an ABBREVIATION of the caller's own id", () => {
     const own = `This is chart 482012f1, the one under reading.`
     expect(prewire(own).clean).toBe(own)
