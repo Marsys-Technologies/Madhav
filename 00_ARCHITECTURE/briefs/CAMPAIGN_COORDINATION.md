@@ -3775,3 +3775,22 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   (exact commands in `SWARM_TRACKER.json`). No migration authored. Full
   record: `00_ARCHITECTURE/briefs/pariprashna_swarm/state/SWARM_TRACKER.json`.
   Next: P1 FOUNDATION lane planning.
+
+- 2026-08-19 17:05Z — **PARIPRAŚNA / Claude Code P1 scoping — native decision
+  recorded:** P1 FOUNDATION's own "operator packet" (per
+  `PARIPRASHNA_PHASED_SWARM_IMPLEMENTATION_PLAN_v1_0.md` §2 PHASE I) calls for
+  enabling Cloud SQL PITR, creating a scratch instance, executing a restore
+  drill, and rotating `amjis_app` production credentials — the same 4 items
+  parked at P0 close. Native decision (session
+  `PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19`, explicit real-time
+  authorization, not autonomous): **proceed with P1's code/schema/doc lanes
+  (G1-A safety gate, G1-B consent schema, G1-C DB roles+RLS EXCLUDING the
+  amjis_app rotation step, G1-D rate limits, G1-F provider posture, G1-G
+  injection containment, G1-H CI detector, P1-I/J ground-truth+design
+  passes); HOLD PITR enable, scratch-instance creation, the restore drill,
+  and amjis_app rotation for explicit go-ahead when requested.** This
+  narrows G1-C's own stated scope (its spec pairs RLS migration with
+  amjis_app rotation "after cutover") and leaves G1-E's PITR/drill claims
+  open — both intentional, tracked as residuals, not silently dropped.
+  Migrations authored under this scope are additive-only per §N.4/RF-2;
+  none rotate a live credential or touch billing.
