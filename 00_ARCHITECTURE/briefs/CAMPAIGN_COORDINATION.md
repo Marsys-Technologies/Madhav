@@ -3660,3 +3660,5 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
 - 2026-08-19 12:42Z — **PARIŚEṢA / Codex F90 PR:** normal protected PR #1345 opened at exact `6b6179dd2` against `dddaaef2`; waiting for required contexts before any Ganga admission. No bypass, deploy, rebuild, or DB action.
 
 - 2026-08-19 12:51Z — **PARIŚEṢA / Codex F90 Ganga admission:** PR #1345 has all five required contexts SUCCESS and `mergeStateStatus=CLEAN` at exact `6b6179dd2`; normal auto-merge admission is authorized next, with fresh merge-group checks still required. No bypass, deploy, rebuild, or DB action.
+
+- 2026-08-19 12:53Z — **PARIŚEṢA / Codex F90 queue:** PR #1345 entered Ganga normally at position 1 after exact-head admission. Fresh synthetic merge-group contexts are pending; no bypass, deploy, rebuild, or DB action.
