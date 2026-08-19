@@ -3981,3 +3981,39 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   `SAMPURTI_SESSION_LOG.md` per `ROOT_FILE_POLICY §2` (a root-level file is
   not an exhaustively-listed exception there). This session did not attempt
   either — preservation only.
+
+- 2026-08-19 ~23:20Z — **PARIPRASHNA-CLOSEOUT / Claude Code — merge window
+  requested (docs-and-tooling only, items 1/2/3 of this session's four-item
+  brief):** PR #1355 (`pariprashna/tracker-v2-rate-bucket-ref-proof` →
+  `main`, rebased onto `origin/main @ d653236c2`, post P1-FOUNDATION) —
+  fixes to the tracker-v2 observatory built this same day: (a) the
+  GitHub-rate-limit cell read the wrong API bucket; (b) an operational proof
+  of the ref-freshness/staleness distinction; (c) closes the label-namespace
+  hazard behind a real 23m37s production blind window this session
+  root-caused (a bare, undocumented `launchctl bootout` stop with no
+  intentional-stop marker — `install.sh` no longer prints that one-liner,
+  only `tracker-stop`, which cannot stop the jobs without writing the
+  record); (d) a T4 out-of-band cron tier (proven live against production,
+  not just selftest: measured 3m51s restore time); (e) a "remembered
+  blindness" banner that survives a restart; (f) mutual exclusion between
+  the four scripts capable of moving the launchd labels; (g, this session's
+  item 1a) splits the code-provenance pill into CURRENT/AHEAD/BEHIND/
+  DIVERGED so an unmerged-but-ahead deploy (exactly this observatory's own
+  normal pre-merge-verification workflow) no longer reads the same amber as
+  genuinely stale code; (h, item 2a) `tracker-health-check` now checks five
+  conditions, not just heartbeat age; (i, items 2b/2c) DD-11 added to
+  `PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` §2 — the conductor calls
+  `tracker-health-check` at every lane transition, non-zero exit is a HALT
+  condition, **effective at the next phase boundary (P1 close), not
+  mid-phase**; (j, item 3) lane-count reconciliation note added to
+  `PARIPRASHNA_IMPLEMENTATION_ROADMAP_v1_0.md` and
+  `KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md` (PLAN.yaml normative for count/
+  identity/deps, roadmap normative for intent/PPR — no renumbering). Scope:
+  `00_ARCHITECTURE/briefs/pariprashna_swarm/**` only (tracker/ + these three
+  doc files) — no `platform/**`, no migration, no deploy, no credential. 20/20
+  selftests pass. No collision with the just-merged P1 FOUNDATION (#1356,
+  disjoint file tree) or with PARIŚEṢA (same disjoint tree this whole
+  tracker-v2 lineage has used all day). Requesting a short merge-queue
+  window; after merge, reinstalling production from `origin/main` so the
+  installed sha is the merged commit (closes the AHEAD state this PR itself
+  is currently running under) and verifying per this session's brief.
