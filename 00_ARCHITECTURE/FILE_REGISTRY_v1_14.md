@@ -90,3 +90,15 @@ See `FILE_REGISTRY_v1_13.md §9.2–§9.15` — unchanged.
 | `00_ARCHITECTURE/PARIPRASHNA_DECISION_REGISTER_v1_0.md` | 1.0 | LIVING | Append-only register of Paripraśna native-ruled architecture decisions (NCD-1..11). |
 | `00_ARCHITECTURE/PARIPRASHNA_VERIFICATION_MATRIX_v1_0.md` | 1.0 | CURRENT | Maps each Paripraśna acceptance criterion to its verifying gate/harness. |
 | `00_ARCHITECTURE/PARIPRASHNA_ASBUILT_BASELINE_v1_0.md` | 1.0 | CURRENT | As-built inventory of what exists in the codebase toward the Paripraśna architecture at G0 close, vs. what remains to be built in P0–P5. |
+
+## §9.20 — Paripraśna swarm-conductor planning set (P0 fresh-start registration)
+
+| Path | Version | Status | Role |
+|---|---|---|---|
+| `00_ARCHITECTURE/briefs/pariprashna_swarm/CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md` | 1.0 | CURRENT | Incident report + repair runbook for the prior Paripraśna conductor's unleased main merge; §7 rules X-1..X-7 bind every Paripraśna conductor session. |
+| `00_ARCHITECTURE/briefs/pariprashna_swarm/KICKOFF_PROMPT_SWARM_CONDUCTOR.md` | 1.0 | SUPERSEDED | v1.0 conductor dispatch prompt. Superseded by `KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md` after its dispatched session merged to main without a lease; retained for audit trail. |
+| `00_ARCHITECTURE/briefs/pariprashna_swarm/KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md` | 2.0 | CURRENT | Fresh-start conductor dispatch prompt — retires the v1.0 session properly (Step 0), carries its verified findings forward, states X-1..X-7 as binding preconditions. Dispatched as session `PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19`. |
+| `00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_IMPLEMENTATION_ROADMAP_v1_0.md` | 1.0 | PROPOSAL | Lane-level execution decomposition of gates G1–G9; authorizes no code by itself. |
+| `00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_PHASED_SWARM_IMPLEMENTATION_PLAN_v1_0.md` | 1.0 | PROPOSAL | Execution architecture (P0–P5 phase script) for building the ratified v1.0 Paripraśna architecture; authorizes no code by itself. |
+| `00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` | 1.1 | CURRENT-FOR-EXECUTION | Adversarial review of the v1.0 swarm plan — RF fixes, DD-1..DD-11, train protocol, scaling policy, tracker spec, P0 phase definition. Binds execution per the v2.0 kickoff prompt's mandatory-reading order. |
+| `00_ARCHITECTURE/briefs/pariprashna_swarm/RESUME_BRIEFS_BOTH_CAMPAIGNS.md` | 1.0 | READY | Resume-brief pair for the two concurrent autonomous campaigns (Paripraśna + Pariśeṣa/Codex) to hand to a fresh session of either. |

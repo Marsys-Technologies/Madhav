@@ -36604,3 +36604,108 @@ SWARM_TRACKER.json/tracker.html, design-plan grounding pass, DD-2/DD-3 infra pro
 deployed artifact, tag `pariprashna/p0-close`. CAMPAIGN_COORDINATION pariprashna_v012 row remains
 deferred until the ekv/b-01 workstream clears (NCD-11).
 
+## PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19 — Step 0: retire prior attempt, land planning set
+
+```yaml
+session_open:
+  session_id: PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19
+  cowork_thread_name: "Paripraśna conductor fresh-start — Step 0 retirement + planning-set landing"
+  agent_name: claude-sonnet-5
+  agent_version: claude-sonnet-5
+  tool: "Claude Code (VS Code extension)"
+  tool_profile: madhav-safe
+  worktree_path: /private/tmp/pariprashna-p0
+  step_number_or_macro_phase: PARIPRASHNA-P0-STEP-0
+  predecessor_session: PARIPRASHNA-G0-CLOSE-2026-08-19
+  coordination:
+    coordination_ref: origin/campaign-coordination @ 0f4408ac4 (fresh-start announcement, this session)
+    lease_id: null
+    lease_status_verified: true
+    work_order_surface: 00_ARCHITECTURE/briefs/pariprashna_swarm/KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: false
+    stale_surfaces_disregarded: ["STEP_LEDGER_v1_0.md (GOVERNANCE_CLOSED)"]
+  mandatory_reading_confirmation:
+    - {file: CLAUDECODE_BRIEF.md, fingerprint_sha256: dacee94f3e17e3ff416e8f1b51b8ade42da3475cdb9dd8850dd2b31a2d53bfa7, read_at: 2026-08-19T19:00:00+05:30}
+    - {file: CLAUDE.md, fingerprint_sha256: 4dcee1be96aa30916a09fe8cf84b1f5b4db41fdd8964a110e79ed624cc9f926f, read_at: 2026-08-19T19:00:00+05:30}
+    - {file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, fingerprint_sha256: 6af4b86a8dec430d0028a93acc3e92b21fcbfebf9f1667e10abc09df89a0048a, read_at: 2026-08-19T19:00:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md (origin/campaign-coordination @ 311ef3b05, pre-push), fingerprint_sha256: 9c38efbc4b428cb38f509673005dc6d28951d695d63d9576f8452ec94952de44, read_at: 2026-08-19T19:15:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/pariprashna_swarm/CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md, fingerprint_sha256: ef5080154517dea4e95c9851665eae6e6f3a228b62db17ca95673ad400bf4332, read_at: 2026-08-19T19:20:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md, fingerprint_sha256: 797ed5814005d8c9589ea73f0da1f6d0facb3a6dbd1dc438917f750ab266d87d, read_at: 2026-08-19T19:20:00+05:30}
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/briefs/pariprashna_swarm/**
+      - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+      - 00_ARCHITECTURE/FILE_REGISTRY_v1_14.md
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md (append-only, own campaign entries only)"
+      - git (worktrees, branches, PR)
+    must_not_touch:
+      - "platform/**"
+      - "platform-mcp/**"
+      - "migrations of any kind"
+      - "any credential/flag/deploy"
+      - "root CLAUDECODE_BRIEF.md (X-3)"
+      - "any file dirty from ANOTHER workstream (ekv/b-01-dignity-oracle-fix's own files)"
+      - "MACRO_PLAN/PROJECT_ARCHITECTURE/CLAUDE.md/GOVERNANCE_INTEGRITY_PROTOCOL"
+      - "the main checkout (X-4) — worktrees only"
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: false
+```
+
+```yaml
+session_close:
+  session_id: PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19
+  closed_at: 2026-08-19T19:35:00+05:30
+  tool: "Claude Code (VS Code extension)"
+  files_touched:
+    - {path: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md, mutation_type: modified, sha256_before: 9c38efbc4b428cb38f509673005dc6d28951d695d63d9576f8452ec94952de44, sha256_after: n/a, justification: "0a: fresh-start announcement row appended (own campaign entry only, append-only per file's write_rule)", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/pariprashna_swarm/CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md, mutation_type: created, sha256_before: null, sha256_after: ef5080154517dea4e95c9851665eae6e6f3a228b62db17ca95673ad400bf4332, justification: "0b: carried forward from origin/pariprashna/p0-ignition@183b2bfed, byte-identical", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/pariprashna_swarm/KICKOFF_PROMPT_SWARM_CONDUCTOR.md, mutation_type: created, sha256_before: null, sha256_after: b1a7b6a869e934cdc6ef1ca9f9dade7e4990f256c35c9decedb25b79e3ec1cad, justification: "0b: carried forward, frontmatter status flipped to SUPERSEDED pointing at v2.0 (content otherwise byte-identical to source)", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/pariprashna_swarm/KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md, mutation_type: created, sha256_before: null, sha256_after: 6c1db4de7fd6715b7dfcf124a419e109ae79b9d5efbb252c4f97917b61784165, justification: "0b: this session's own dispatch prompt, committed for audit trail + supersession pointer", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_IMPLEMENTATION_ROADMAP_v1_0.md, mutation_type: created, sha256_before: null, sha256_after: e2b77cb05aa3776c4c48470669e8f0e0ae699019392b8b89abb4fd2f4fee9216, justification: "0b: carried forward from origin/pariprashna/p0-ignition@183b2bfed, byte-identical", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_PHASED_SWARM_IMPLEMENTATION_PLAN_v1_0.md, mutation_type: created, sha256_before: null, sha256_after: a6646b1da2f0964b52ac9b0b5f6adfc2800fe9ab28e0507eb36db1d631d28ad8, justification: "0b: carried forward from origin/pariprashna/p0-ignition@183b2bfed, byte-identical", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md, mutation_type: created, sha256_before: null, sha256_after: 797ed5814005d8c9589ea73f0da1f6d0facb3a6dbd1dc438917f750ab266d87d, justification: "0b: carried forward from origin/pariprashna/p0-ignition@183b2bfed, byte-identical", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/pariprashna_swarm/RESUME_BRIEFS_BOTH_CAMPAIGNS.md, mutation_type: created, sha256_before: null, sha256_after: 7630ec88bd1c67dc7674705145e0e9bba254b38f472549b066713431e0fe1d69, justification: "0b: carried forward from origin/pariprashna/p0-ignition@183b2bfed, byte-identical", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json, mutation_type: modified, sha256_before: f7fb5b868547934504c1429ac2971e9e38d4083a28556dfd2dbca3cb5ebc3a5a, sha256_after: ec57f78662de5aaee0c5715e780c51da219ff6b62455c1d6a423cbf9f6b21774, justification: "0c: 7 new pariprashna_swarm entries registered (layer governance); entry_count 120→127; fingerprints are real content SHA256, individually verified against the files as committed", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/FILE_REGISTRY_v1_14.md, mutation_type: modified, sha256_before: 28b018ea2a28d14e61c56fe439a3502595f3a3f91f57740f89936548aa81aba3, sha256_after: 80b9ae10a3fc92993edcd832fb490331c990d72d9eac26c714c92b8a719272f3, justification: "0c: §9.20 added — same 7 docs registered in the same commit as CAPABILITY_MANIFEST, pre-empting the registry_disagreement gate the prior session hit late", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, mutation_type: modified, sha256_before: 6af4b86a8dec430d0028a93acc3e92b21fcbfebf9f1667e10abc09df89a0048a, sha256_after: n/a, justification: "version 6.62→6.63; changelog entry + §2 override last_session_id pointer updated to this session_id", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/SESSION_LOG.md, mutation_type: modified, sha256_before: n/a, sha256_after: n/a, justification: "this open/close entry", within_declared_scope: true}
+  registry_updates_made:
+    capability_manifest:
+      - {canonical_id: PARIPRASHNA_PARISESA_COLLISION_INCIDENT, change: "registered (layer: governance, status: CURRENT, version: 1.0)"}
+      - {canonical_id: PARIPRASHNA_SWARM_KICKOFF_V1, change: "registered (layer: governance, status: SUPERSEDED, version: 1.0, supplements_parent: PARIPRASHNA_SWARM_KICKOFF)"}
+      - {canonical_id: PARIPRASHNA_SWARM_KICKOFF, change: "registered (layer: governance, status: CURRENT, version: 2.0)"}
+      - {canonical_id: PARIPRASHNA_IMPLEMENTATION_ROADMAP, change: "registered (layer: governance, status: PROPOSAL, version: 1.0)"}
+      - {canonical_id: PARIPRASHNA_SWARM_IMPLEMENTATION_PLAN, change: "registered (layer: governance, status: PROPOSAL, version: 1.0)"}
+      - {canonical_id: PARIPRASHNA_SWARM_PLAN_AMENDMENTS, change: "registered (layer: governance, status: CURRENT-FOR-EXECUTION, version: 1.1)"}
+      - {canonical_id: RESUME_BRIEFS_BOTH_CAMPAIGNS, change: "registered (layer: governance, status: READY, version: 1.0)"}
+    native_directives: []
+  red_team_pass: {due: false, performed: false, verdict: n/a, artifact_path: n/a}
+  drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, divergences_found: 216, note: "verified == main T0 baseline (216) after FILE_REGISTRY + CAPABILITY_MANIFEST registered in the same commit — no registry_disagreement findings introduced, unlike the prior session's first pass"}
+  schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, violations_found: 42, note: "verified == main baseline (42); this entry uses a level-2 '## <session_id> — <description>' heading per the prior session's documented HIGH-exit regression"}
+  session_log_appended: true
+  cross_tool_sync:
+    campaign_coordination: "Fresh-start row appended at 0a (own campaign entry only, append-only); no other campaign's entries touched"
+  close_criteria_met: false
+  unblocks: ["opening the Step 0c docs-only PR from pariprashna/p0 in the announced lease window; PR merge unblocks Step 0d (retire pariprashna/g0-close + pariprashna/p0-ignition) and Step 0e (fresh SWARM_TRACKER.json)"]
+  handoff_notes: >
+    This closes only the Step 0 planning-set landing, not the full Paripraśna P0 campaign.
+    Not yet done: Step 0d (retire old refs/worktrees), Step 0e (fresh tracker), and all of
+    Step 1 P0 lane ignition (P0-B..P0-F). PR not yet opened/merged as of this entry — open it
+    next, re-checking origin/campaign-coordination immediately before merge per X-1.
+  known_residuals: []
+```
+
+### Next session objective
+
+Open the Step 0c docs-only PR from `pariprashna/p0` against `main` (re-check
+`origin/campaign-coordination` immediately before merge per X-1); once merged, execute Step 0d
+(delete `pariprashna/g0-close` + `pariprashna/p0-ignition` locally and remotely, prune their
+`/private/tmp` worktrees) and Step 0e (write `SWARM_TRACKER.json` + `tracker_data.js` +
+`tracker.html` + heartbeat, carrying forward the `prior_attempt` findings block per the v2.0
+kickoff prompt §0e); then begin Step 1 P0 lane ignition.
+
