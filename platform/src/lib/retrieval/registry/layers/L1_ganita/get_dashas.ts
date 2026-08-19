@@ -29,6 +29,7 @@ import type { DrillPointer, JudgmentFlagEntry } from '../../../envelope'
 import { judgmentFlag } from '../../../envelope'
 import { query } from '@/lib/db/client'
 import { grahaCodeOf } from '../../../address_resolver'
+import { REAL_AYANAMSHAS } from '@/lib/vidhi/ayanamsha_variation'
 
 // The 7 dasha systems actually written to chart_dashas.system_id (verified live, both charts:
 // native 482012f1 + Abhinandan 1c826d5a). NOTE: this replaces a stale doc claim (Narayana/Shoola
@@ -45,6 +46,11 @@ import { grahaCodeOf } from '../../../address_resolver'
 const KNOWN_SYSTEMS = [
   'vimshottari', 'vimshottari_kp', 'yogini', 'ashtottari', 'chara_karaka', 'kalachakra', 'mudda', 'naisargika',
 ] as const
+
+// chart_dashas stores only the five material ayanamshas. This is intentionally not
+// an alias map: public aliases are normalized at the MCP boundary, while this
+// primitive accepts only identifiers that can be persisted in this table.
+const STORED_DASHA_AYANAMSHAS = new Set<string>(REAL_AYANAMSHAS)
 
 // Case/spelling normalization for the `system` facet — accepts the actual system_id values,
 // common uppercase spellings, and the classical/alias names a caller might reach for.
@@ -222,7 +228,9 @@ export const getDashasCapability: CapabilityDescriptor = {
     ayanamsha_id:  {
       type: 'string',
       description:
-        'Filter by ayanamsha_id (e.g. lahiri_chitrapaksha). Omit to get ALL 5 ayanamshas ' +
+        'Filter by a stored ayanamsha_id (krishnamurti | lahiri_chitrapaksha | raman | ' +
+        'surya_siddhanta_classical | true_chitra). Unknown values are rejected. ' +
+        'Omit to get ALL 5 material ayanamshas ' +
         '(one row per ayanamsha for the same period — NOT a single unfiltered answer). For the ' +
         'standard "current dasha" gate shape (one row, <=1KB) ALWAYS pass ' +
         'ayanamsha_id="lahiri_chitrapaksha" explicitly — this param has no server-side default.',
@@ -293,6 +301,24 @@ export const getDashasCapability: CapabilityDescriptor = {
       const chartId = args.chart_id as string
       const limit   = Math.min((args.limit as number) ?? 200, 1000)
       const offset  = (args.offset as number) ?? 0
+
+      const requestedAyanamsha = args.ayanamsha_id
+      if (
+        requestedAyanamsha !== undefined &&
+        requestedAyanamsha !== null &&
+        requestedAyanamsha !== '' &&
+        (typeof requestedAyanamsha !== 'string' || !STORED_DASHA_AYANAMSHAS.has(requestedAyanamsha))
+      ) {
+        return {
+          content: {
+            chart_id: chartId,
+            code: 'invalid_ayanamsha_id',
+            error: 'get_dashas: ayanamsha_id is not one of the stored chart ayanamshas.',
+            recognized_ayanamsha_ids: [...REAL_AYANAMSHAS],
+          },
+          is_error: true,
+        }
+      }
 
       const params: unknown[] = [chartId, limit, offset]
       let sql = `SELECT * FROM chart_dashas WHERE chart_id = $1`
