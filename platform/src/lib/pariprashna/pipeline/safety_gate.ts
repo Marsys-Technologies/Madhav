@@ -23,13 +23,16 @@
  * asks whether the CALLER may touch this chart; `resolveSubjectConsent` asks
  * whether this SUBJECT's interpretive corpus may be served to anyone at all.
  *
- * PORT NOT YET IMPLEMENTED — `SafetyPolicyDecision` (PPR-12/PPR-13).
- * The route has never carried a safety classifier or an injection scan; this
- * file does not invent one. P1's safety-gate and injection-scan lanes own that
- * port, and this module is its declared home: a `classifyTurnSafety()` inserted
- * between `authorizeTurn` and the plan stage is the whole wiring change.
- * Until it exists there is NO safety decision to record — an honest absence,
- * never a green-looking default (§N.8).
+ *   · `runSafetyPolicyGate` — the `SafetyPolicyDecision` port (PPR-12, P1 lane
+ *     G1-A, flag-gated OFF by default). Runs AFTER `authorizeTurn` (it needs
+ *     the consent lane's `subject_kind` for the NCD-4 branch) and BEFORE
+ *     `runPlanStage` (§3: "a blocked class must never build a retrieval plan").
+ *     A hard stop here is NOT an `error` event — it is a real, composed,
+ *     deliberate answer, so the turn closes `ok` with a fixed prose block.
+ *
+ * PORT STILL NOT IMPLEMENTED — the injection scan (PPR-13). Lane G1-G owns it.
+ * This module does not invent one, and nothing here claims injection
+ * containment (§N.8: an honest absence, never a green-looking default).
  */
 
 import type { UIMessage } from 'ai'
@@ -202,6 +205,13 @@ export async function admitWithinLimits(args: {
 
 export interface AuthorizedTurn {
   isSuperAdmin: boolean
+  /**
+   * The consent lane's `subject_kind`, carried forward for the SafetyPolicyGate
+   * (lane G1-A). `null` when SUBJECT_CONSENT_ENFORCEMENT is OFF — i.e. when
+   * nobody checked. The safety gate treats `null` as NOT-PROVEN-native_self and
+   * fails toward the stricter path; it is never read as "probably the native".
+   */
+  subjectKind: 'native_self' | 'cohort' | 'test' | null
 }
 
 /**
@@ -290,5 +300,109 @@ export async function authorizeTurn(args: {
     }
   }
 
-  return proceed({ isSuperAdmin })
+  return proceed({ isSuperAdmin, subjectKind: consentDecision.subject_kind })
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// The SafetyPolicyDecision port (P1 lane G1-A · PPR-12 · MP §3.5.C)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Classify the turn, record the decision, and short-circuit the ones that must
+ * never reach the planner.
+ *
+ * THREE OUTCOMES:
+ *   · halted 'ok'  — HS-2 (fixed calm response, NO plan built) or the HS-3/HS-4
+ *     seal path (acknowledgment, review opened, no reading composed). Both are
+ *     ANSWERS, not faults, so the turn closes `ok` and the client renders prose
+ *     rather than an error banner.
+ *   · proceed with a `reframe`/`interstitial` decision — the turn runs, under
+ *     the capability exclusion + prompt policy + pre-wire scan the decision
+ *     carries, with the withhold/interstitial notice already emitted.
+ *   · proceed with `proceed` — nothing fired; the turn is unchanged.
+ *
+ * The decision is returned in every case, including flag-OFF, because the
+ * receipt lane (G3-A) reads `safety_decision` on EVERY turn.
+ */
+export async function runSafetyPolicyGate(args: {
+  em: PariprashnaEmitter
+  identity: TurnIdentity
+  messages: UIMessage[]
+  subjectKind: 'native_self' | 'cohort' | 'test' | null
+}): Promise<StageResult<import('@/lib/pariprashna/safety').SafetyDecision>> {
+  const { em, identity, messages, subjectKind } = args
+
+  // The same extraction the plan stage does, run here because the gate must see
+  // the question BEFORE the planner does.
+  const lastUserMessage = messages.filter((m) => m.role === 'user').at(-1)
+  const queryText = (lastUserMessage?.parts ?? [])
+    .filter((p) => p.type === 'text')
+    .map((p) => (p as { type: string; text?: string }).text ?? '')
+    .join(' ')
+    .trim()
+
+  const {
+    classifyTurnSafety,
+    HS2_FIXED_RESPONSE,
+    HS1_WITHHOLD_NOTICE,
+    HS4_AGGREGATE_FRAMING_NOTICE,
+    SEAL_PENDING_ACKNOWLEDGMENT,
+    NCD4_INTERSTITIAL_NOTICE,
+  } = await import('@/lib/pariprashna/safety')
+
+  const decision = await classifyTurnSafety({
+    turnId: identity.turnId,
+    chartId: identity.chartId,
+    queryText,
+    subjectKind,
+  })
+
+  if (!decision.enforced) return proceed(decision)
+
+  // The decision is reported on the wire as a COUNT + action, never as the
+  // matched text and never as the rule ids (gate 11 [integrity] — the same
+  // discipline the NO-LEAKAGE flag follows).
+  em.flag({
+    code: `safety_decision:${decision.action}`,
+    level: decision.action === 'proceed' ? 'info' : 'warn',
+    detail:
+      decision.classes_detected.length === 0
+        ? 'no safety class detected'
+        : `${decision.classes_detected.length} safety class(es) detected`,
+  })
+
+  const speak = (blockId: string, text: string): void => {
+    em.blockOpen({ block_id: blockId, pass_id: 1, role: 'prose' })
+    em.blockDelta({ block_id: blockId, delta: text })
+    em.blockCommit({ block_id: blockId, text })
+  }
+
+  if (decision.action === 'hard_stop') {
+    // HS-2. Nothing was retrieved, nothing was planned, no model was called —
+    // so there is nothing this response could have been steered into revealing.
+    speak('safety-hs2-0', HS2_FIXED_RESPONSE)
+    em.phase({ phase: 'plan', status: 'end' })
+    return halt('ok')
+  }
+
+  if (decision.action === 'seal_pending_signoff') {
+    speak('safety-seal-0', SEAL_PENDING_ACKNOWLEDGMENT)
+    em.phase({ phase: 'plan', status: 'end' })
+    return halt('ok')
+  }
+
+  if (decision.action === 'interstitial') {
+    // NCD-4: the deliberation pause, then the reading proceeds under the same
+    // reframe controls the decision carries.
+    speak('safety-ncd4-0', NCD4_INTERSTITIAL_NOTICE)
+  }
+
+  if (decision.classes_detected.includes('hs1_date_of_death')) {
+    speak('safety-hs1-0', HS1_WITHHOLD_NOTICE)
+  }
+  if (decision.classes_detected.includes('hs4_mortality_window')) {
+    speak('safety-hs4-0', HS4_AGGREGATE_FRAMING_NOTICE)
+  }
+
+  return proceed(decision)
 }

@@ -193,6 +193,26 @@ export type FeatureFlag =
   // by design (that is the fail-closed direction, but it is a real outage).
   // Env: MARSYS_FLAG_SUBJECT_CONSENT_ENFORCEMENT.
   | 'SUBJECT_CONSENT_ENFORCEMENT'
+  // P1 FOUNDATION lane G1-A — the SafetyPolicyGate (PPR-12, MP §3.5.C hard
+  // stops HS-1..HS-6). Gates the WHOLE `src/lib/pariprashna/safety` surface:
+  //   · OFF (default) — `classifyTurnSafety` returns enforced:false / proceed
+  //     BEFORE running a single pattern and before touching the database; the
+  //     plan, prompt, and pre-wire controls are all no-ops; every governance
+  //     entry point (retraction, sample review) throws instead of running.
+  //   · ON — every query is classified before planning; suicide-adjacent
+  //     queries get a fixed response and NO plan; date-of-death is blocked at
+  //     plan-time, synthesis-time and pre-wire; health-crisis / mental-health /
+  //     mortality-window readings do not leave the session without two
+  //     independent adversarial passes AND a separate sign-off (NCD-4's
+  //     interstitial is the one relaxation, and only for a PROVEN native_self
+  //     subject on an HS-3 class).
+  // Operational note, because the coupling is real and fails CLOSED: NCD-4's
+  // interstitial requires a proven `native_self` subject_kind, which only
+  // exists when SUBJECT_CONSENT_ENFORCEMENT is also ON. Flipping this flag
+  // alone sends every health question on every chart down the full seal path —
+  // correct, and a large behavioural change. Flip the pair together.
+  // Env: MARSYS_FLAG_PARIPRASHNA_SAFETY_GATE_ENABLED.
+  | 'PARIPRASHNA_SAFETY_GATE_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -302,6 +322,12 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // production behavior. Flip via MARSYS_FLAG_SUBJECT_CONSENT_ENFORCEMENT=true
   // only after `chart_subject_consent` carries a row for every live chart.
   SUBJECT_CONSENT_ENFORCEMENT: false,
+  // P1 G1-A — the SafetyPolicyGate. Default false: this lane ships flag-OFF per
+  // the P1 pre-authorization note, so merging it changes no production
+  // behavior. Flip via MARSYS_FLAG_PARIPRASHNA_SAFETY_GATE_ENABLED=true,
+  // together with SUBJECT_CONSENT_ENFORCEMENT (see the declaration comment —
+  // NCD-4's interstitial cannot be earned without a proven subject_kind).
+  PARIPRASHNA_SAFETY_GATE_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)

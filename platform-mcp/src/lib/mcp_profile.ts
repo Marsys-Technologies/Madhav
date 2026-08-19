@@ -35,6 +35,7 @@
  * prior to this file.
  */
 import { MCP_SURFACE_PROFILES, type McpProfileName } from '../generated/mcp_surface_profiles.generated.js'
+import { subtractSensitiveClass } from './sensitive_capability_class.js'
 
 export type { McpProfileName }
 
@@ -93,7 +94,29 @@ export function resolveMcpProfile(ctx: ProfileAuthContext): McpProfileName {
  */
 export function getAllowedToolNames(profile: McpProfileName): Set<string> | null {
   if (profile === 'full') return null
-  return new Set(MCP_SURFACE_PROFILES[profile].tool_names)
+  const allowed = new Set(MCP_SURFACE_PROFILES[profile].tool_names)
+  if (profile !== 'consult') return allowed
+
+  // ── P1 lane G1-A · PARIPRASHNA_ARCHITECTURE §2 · abuse case A6 ─────────────
+  // "Sensitive-class capabilities MUST be excluded from the `consult` profile."
+  // Applied at REQUEST time, over whatever the generated manifest says, rather
+  // than only in the builder: `mcp_surface_profiles.generated.ts` is a
+  // checked-in artifact regenerated deliberately, so a builder-only exclusion
+  // would leave the SHIPPED profile unchanged and the guarantee would rest on a
+  // regeneration nobody ran. Both are done — see the builder's own
+  // `excluded_sensitive_class` field — and this is the one that holds against a
+  // stale artifact.
+  //
+  // NOT applied to `full`/`compact`: those are scope-gated projections a caller
+  // explicitly asked for. `consult` is the SAFE DEFAULT a plain guest receives
+  // without asking, which is exactly the population the ruling protects.
+  const { allowed: gated, removed } = subtractSensitiveClass(allowed)
+  if (removed.length > 0) {
+    console.warn(
+      `[mcp_profile] consult profile: excluded ${removed.length} sensitive-class tool(s): ${removed.join(', ')}`,
+    )
+  }
+  return gated
 }
 
 export interface ProfileGateResult {

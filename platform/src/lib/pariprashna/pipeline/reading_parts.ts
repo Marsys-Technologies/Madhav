@@ -25,6 +25,7 @@
 import { extractCitations } from '@/lib/citations/citation_data_part'
 import { detectPredictionCandidates, type PredictionCandidate } from '@/lib/ppl/prediction_detector'
 import { lintReaderProse } from '@/lib/pariprashna/citations/register_leak_lint'
+import { scanMortalityPhrasing } from '@/lib/pariprashna/safety/phrasing_scan'
 import type { MessagePartInput } from '@/lib/pariprashna/store/schema'
 import {
   textPartFromBlock,
@@ -59,6 +60,13 @@ export class ReadingPartsAssembler {
   constructor(
     private readonly em: PariprashnaEmitter,
     initialPassId: number,
+    /**
+     * Lane G1-A. When true, `commitBlock` runs the HS-1 mortality-phrasing scan
+     * over the whole block as the backstop to the streaming scanner. Default
+     * false so every pre-existing caller (and the flag-OFF path) is byte-for-byte
+     * unchanged.
+     */
+    private readonly mortalityScanEnabled = false,
   ) {
     this.passId = initialPassId
   }
@@ -86,6 +94,26 @@ export class ReadingPartsAssembler {
             level: 'warn',
             detail: `${lint.leakCount} internal identifier(s) scrubbed from reader prose`,
           })
+        }
+        // HS-1 point (c) BACKSTOP (lane G1-A). The streaming scanner in
+        // `synthesis_stage.ts` is the first line and already works on whole
+        // sentences; this catches the case it structurally cannot — a whole
+        // block assembled by a path that did not go through the scanner
+        // (clarification prose, a future non-streaming composer). It scrubs the
+        // COMMITTED and PERSISTED text, which is the copy the reader can come
+        // back to. Armed only when the gate is on; a pass-through otherwise.
+        if (this.mortalityScanEnabled) {
+          const scan = scanMortalityPhrasing(this.currentBlock.text)
+          if (scan.hits.length > 0 || scan.scan_failed) {
+            this.currentBlock.text = scan.clean
+            this.em.flag({
+              code: 'safety_prewire_mortality_redacted',
+              level: 'error',
+              detail: scan.scan_failed
+                ? 'the pre-wire mortality scan errored on commit; the block was withheld (fail-closed)'
+                : `${scan.hits.length} sentence(s) withheld from the committed block`,
+            })
+          }
         }
       }
       this.em.blockCommit({ block_id: this.currentBlock.id, text: this.currentBlock.text })

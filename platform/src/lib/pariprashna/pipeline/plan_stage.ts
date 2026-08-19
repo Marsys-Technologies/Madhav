@@ -34,6 +34,7 @@ import { buildChartOrientation, type ChartOrientation } from '@/lib/retrieval/or
 import { loadManifest } from '@/lib/bundle/manifest_reader'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
+import type { SafetyDecision } from '@/lib/pariprashna/safety'
 
 import { halt, proceed, type StageResult, type TurnIdentity, type TurnParams } from './stage_context'
 
@@ -72,6 +73,13 @@ export interface PlanStageOutput {
   plannerLatencyMs: number
   /** Mutable across later stages, exactly as the single-closure route had it. */
   judgmentFlags: string[]
+  /**
+   * The safety decision AFTER the plan-time pass (lane G1-A). May carry a
+   * STRONGER action than the pre-plan decision — a plan that reveals a health
+   * or longevity domain the question's wording hid escalates the turn. Never
+   * weaker: `reclassifyAfterPlan` is a monotone join.
+   */
+  safetyDecision: SafetyDecision
 }
 
 export async function runPlanStage(args: {
@@ -80,6 +88,7 @@ export async function runPlanStage(args: {
   messages: UIMessage[]
   identity: TurnIdentity
   params: TurnParams
+  safetyDecision: SafetyDecision
 }): Promise<StageResult<PlanStageOutput>> {
   const { em, request, messages, identity, params } = args
   const { chartId, queryId } = identity
@@ -219,6 +228,42 @@ export async function runPlanStage(args: {
     toolsAuthorized.splice(0, toolsAuthorized.length, ...noLeakageFiltered)
   }
 
+  // ── SAFETY: plan-time enforcement (lane G1-A · HS-1 point (a) · PPR-12). ───
+  // Two acts, in this order and not the other:
+  //   1. RE-CLASSIFY against the produced plan. The pre-plan pass could only
+  //      read the question; the plan is where a longevity or health domain the
+  //      wording hid becomes visible. The merge is monotone — the decision can
+  //      only get stronger.
+  //   2. EXCLUDE the mortality capabilities the (possibly escalated) decision
+  //      names, AFTER the floors have run, so a floor cannot smuggle one back
+  //      in. "The query never gets a capability that could compute a specific
+  //      death date" is a statement about what the tool broker receives, and
+  //      the tool broker receives what is left after this line.
+  let safetyDecision = args.safetyDecision
+  if (safetyDecision.enforced) {
+    const { reclassifyAfterPlan, applyCapabilityExclusion } = await import('@/lib/pariprashna/safety')
+    safetyDecision = await reclassifyAfterPlan({
+      decision: safetyDecision,
+      queryText,
+      domains: plan.domains ?? [],
+      capabilities: toolsAuthorized,
+    })
+    const { kept, stripped } = applyCapabilityExclusion(toolsAuthorized, safetyDecision.excluded_capabilities)
+    if (stripped.length > 0) {
+      // Raw capability names are server-log-only (gate 11 [integrity]); the wire
+      // flag carries a count and the REASON, never the identifiers.
+      console.warn('[pariprashna/safety] HS-1/HS-4 stripped mortality capabilities:', stripped)
+      judgmentFlags.push('safety_mortality_capabilities_excluded')
+      em.flag({
+        code: 'safety_mortality_capabilities_excluded',
+        level: 'warn',
+        detail: `${stripped.length} longevity capabilit${stripped.length === 1 ? 'y' : 'ies'} excluded (no individualized mortality window)`,
+      })
+      plan.tool_calls = plan.tool_calls.filter((tc) => kept.includes(tc.tool_name))
+      toolsAuthorized.splice(0, toolsAuthorized.length, ...kept)
+    }
+  }
+
   // Legacy-shaped plan object the registry bridge + tools read (chart_id is the
   // CR-118 fast-fail fix — every per_chart tool scopes off this).
   const queryPlan: LegacyQueryPlan = {
@@ -254,5 +299,6 @@ export async function runPlanStage(args: {
     plannerModelId,
     plannerLatencyMs,
     judgmentFlags,
+    safetyDecision,
   })
 }

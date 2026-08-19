@@ -124,6 +124,8 @@ export async function runPersistenceStage(args: {
   validToolResults: ToolBundle[]
   citationGate: CitationGateOutcome
   synthesisStartedAt: number
+  /** Lane G1-A. Enforced → the turn's predictive output is sampled (HS-6). */
+  safetyDecision?: import('@/lib/pariprashna/safety').SafetyDecision
 }): Promise<void> {
   const {
     em,
@@ -360,6 +362,32 @@ export async function runPersistenceStage(args: {
               )
             } catch (err) {
               console.error('[pariprashna] samiksha detected-row capture failed', err)
+            }
+
+            // ── HS-6 (lane G1-A): sample this predictive reading into the
+            // §IS.8 red-team pool. Same placement and same discipline as the
+            // samiksha capture above — strictly after the turn is committed,
+            // strictly non-fatal. §IS.8 is a governance cadence with no runtime
+            // mechanism, so what this builds is the POOL a red-team session
+            // draws from; it makes the cadence's input auditable and does not
+            // claim to make the cadence run.
+            if (args.safetyDecision?.enforced) {
+              try {
+                const { recordPredictiveSample, defaultSafetyDb } = await import('@/lib/pariprashna/safety')
+                const sampled = await recordPredictiveSample(defaultSafetyDb(), {
+                  sampleId: crypto.randomUUID(),
+                  chartId,
+                  turnId: identity.turnId,
+                  predictionCandidateCount: predictionCandidatesFound.length,
+                  receiptHash: null,
+                  safetyClasses: args.safetyDecision.classes_detected,
+                })
+                if (!sampled) {
+                  console.warn('[pariprashna/safety] predictive sample NOT recorded for turn', identity.turnId)
+                }
+              } catch (err) {
+                console.error('[pariprashna/safety] predictive sampling failed (non-fatal)', err)
+              }
             }
           }
 
