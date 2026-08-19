@@ -1,0 +1,27 @@
+{
+  "record_type": "PARISESA_V4_RELEASE_TRAIN_READY",
+  "recorded_at": "2026-08-19T13:19:00Z",
+  "continuation_owner": "/root",
+  "base": "bc7390923709ae1fc3001d3f295fc1dee2afaebc",
+  "train": [
+    {
+      "finding_id": "F46",
+      "head": "3f4193ca1e0408b469c9e21567dc6a12e245dfa7",
+      "patch_id": "5fe0bad16dca5cf680f873061ca8e9f2eaea914c",
+      "review": "renewed PASS",
+      "verification": "16 focused tests plus typecheck PASS"
+    },
+    {
+      "finding_id": "F47",
+      "head": "05f0b4823",
+      "review": "PASS after one MED correction",
+      "verification": "42 focused tests plus py_compile PASS",
+      "ordering": "F47 follows F46 in normal queue; changed paths are disjoint"
+    }
+  ],
+  "next_safe_action": "Push immutable exact branches and open separate protected PRs; await fresh PR contexts before any normal Ganga admission.",
+  "normal_v4_state_writer": {
+    "status": "unavailable",
+    "reason": "guardian approval NotSubmitted { reason: NotIdle }; operator-authorized fallback ledger is active"
+  }
+}
