@@ -3,9 +3,9 @@
 window.TRACKER = {
   "schema_version": "1.1",
   "session_id": "PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19",
-  "phase": "P0",
-  "phase_status": "P0_COMPLETE",
-  "wave": "P0-IGNITION",
+  "phase": "P1",
+  "phase_status": "P1_FOUNDATION_WAVE1_DISPATCHED",
+  "wave": "P1-FOUNDATION",
   "heartbeat_ts": "2026-08-19T16:38:00Z",
   "concurrency": {
     "n": 4,
@@ -114,6 +114,67 @@ window.TRACKER = {
       "last_event_ts": "2026-08-19T14:28:00Z",
       "verifier_verdict": "DD-2 merged (2d759b00f), diff reviewed clean. DD-3: all 4 items IAM-permitted (owner role) but PARKED pending explicit human authorization -- PITR enable, scratch instance creation (billable), restore drill, and amjis_app credential rotation all carry real production/cost risk. Exact commands captured in P0-F agent report for when authorized.",
       "refuter_votes": []
+    },
+    "P1-J": {
+      "role_stage": "merged",
+      "name": "design-plan grounding pass",
+      "note": "Already satisfied by P0-E (doc at v0.5)."
+    },
+    "G1-F": {
+      "role_stage": "building",
+      "name": "Model-plane hygiene (provider posture doc)",
+      "worktree": null,
+      "branch": null,
+      "last_event_ts": "2026-08-19T17:08:00Z",
+      "verifier_verdict": null,
+      "refuter_votes": []
+    },
+    "G1-H": {
+      "role_stage": "building",
+      "name": "PB-9-DETECTOR (no-auto-promotion CI gate)",
+      "worktree": null,
+      "branch": null,
+      "last_event_ts": "2026-08-19T17:08:00Z",
+      "verifier_verdict": null,
+      "refuter_votes": []
+    },
+    "G1-D": {
+      "role_stage": "building",
+      "name": "Rate limits + pre-dispatch spend ceilings (middleware.ts)",
+      "worktree": null,
+      "branch": null,
+      "last_event_ts": "2026-08-19T17:08:00Z",
+      "verifier_verdict": null,
+      "refuter_votes": []
+    },
+    "G1-B": {
+      "role_stage": "building",
+      "name": "Consent & subjects schema (NCD-9) -- migration authored+locally-verified only, NOT applied to production by the agent",
+      "worktree": null,
+      "branch": null,
+      "last_event_ts": "2026-08-19T17:08:00Z",
+      "verifier_verdict": null,
+      "refuter_votes": []
+    },
+    "G1-A": {
+      "role_stage": "queued",
+      "name": "SafetyPolicyGate + HS-1..HS-6 (serializes before G1-G)"
+    },
+    "G1-C": {
+      "role_stage": "queued",
+      "name": "5 DB roles + RLS (EXCLUDING amjis_app rotation) -- serializes before P1-I"
+    },
+    "G1-G": {
+      "role_stage": "queued",
+      "name": "Injection containment (serializes after G1-A, shares pre-wire scan file)"
+    },
+    "P1-E": {
+      "role_stage": "queued",
+      "name": "Durability: DR runbook + RPO/RTO doc + export-schedule mechanism ONLY -- PITR enable + restore drill HELD"
+    },
+    "P1-I": {
+      "role_stage": "queued",
+      "name": "Ground-truth re-verification of Baseline UNVERIFIED rows (serializes after G1-C)"
     }
   },
   "trains": [],
@@ -236,5 +297,25 @@ window.TRACKER = {
       "every_dd3_command_proven_or_parked": "PASS (all 4 IAM-permitted, all 4 deliberately parked pending explicit human authorization due to cost/production risk)"
     },
     "closed_at": "2026-08-19T16:56:00Z"
+  },
+  "p1_scope_decision": {
+    "authorized": [
+      "G1-A",
+      "G1-B",
+      "G1-C (minus amjis_app rotation)",
+      "G1-D",
+      "G1-F",
+      "G1-G",
+      "G1-H",
+      "P1-I",
+      "P1-J"
+    ],
+    "held_pending_explicit_authorization": [
+      "PITR enable",
+      "scratch Cloud SQL instance creation",
+      "restore drill execution",
+      "amjis_app credential rotation"
+    ],
+    "recorded": "origin/campaign-coordination @ 3e8530248"
   }
 };
