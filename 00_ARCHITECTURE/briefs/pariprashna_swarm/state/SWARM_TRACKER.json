@@ -4,7 +4,7 @@
   "phase": "P0",
   "phase_status": "STEP_0_COMPLETE_ENTERING_IGNITION",
   "wave": "P0-IGNITION",
-  "heartbeat_ts": "2026-08-19T14:19:59Z",
+  "heartbeat_ts": "2026-08-19T16:38:00Z",
   "concurrency": {
     "n": 4,
     "cap": 10,
@@ -198,5 +198,12 @@
       "recommendation": "Add import 'server-only' to persistence_stage.ts and safety_gate.ts; consider an importer CI guard before P1 opens multiple lanes on these files.",
       "blocking": false
     }
-  ]
+  ],
+  "p0_merge_to_main": {
+    "status": "MERGED",
+    "pr": "https://github.com/Marsys-Technologies/Madhav/pull/1349",
+    "merge_commit": "9db457dccd07edbc4ca4056e7e522fa5f77897b5",
+    "merged_at": "2026-08-19T16:36:32Z",
+    "note": "Main CI running now; deploy.yml will auto-trigger on its success (--no-traffic stage + smoke + promote-if-success). This closes the P0 gate's deployed-artifact criterion once observed."
+  }
 }
