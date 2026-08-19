@@ -43,7 +43,15 @@ import { interstitialApplies, openReview } from './review_machine'
 import { persistNewReview } from './review_db'
 import { appendSafetyDecision } from './audit'
 import { capabilitiesExcludedFor } from './sensitive_capabilities'
-import type { SafetyAction, SafetyClass, SafetyDb, SafetyDecision } from './types'
+import {
+  SAFETY_CLASSES,
+  maxSeverity,
+  type SafetyAction,
+  type SafetyClass,
+  type SafetyDb,
+  type SafetyDecision,
+  type SafetySeverity,
+} from './types'
 
 export type SubjectKind = 'native_self' | 'cohort' | 'test' | null
 
@@ -185,6 +193,87 @@ export async function classifyTurnSafety(args: ClassifyTurnSafetyArgs): Promise<
   return finalize(decision, args, now, newId)
 }
 
+/**
+ * Does this action REQUIRE a review record to exist?
+ *
+ * One predicate, named once, used by both the pre-plan and the post-plan path
+ * and mirrored by the DB CHECK constraint
+ * `pariprashna_safety_decisions_seal_requires_review_chk` (migration 576).
+ * Keeping it in one place is the point: the hardening round found that the two
+ * paths had DIFFERENT answers to this question, and only one of them was right.
+ */
+export function actionRequiresReview(action: SafetyAction): boolean {
+  return action === 'seal_pending_signoff' || action === 'interstitial'
+}
+
+/**
+ * Open the review record an action requires, and put its id on the decision.
+ *
+ * ── WHY THIS IS ITS OWN FUNCTION (hardening round, C-6) ──────────────────────
+ * It used to be inline in `finalize`, which meant `reclassifyAfterPlan` — the
+ * OTHER path that can land on `seal_pending_signoff` — did not run it. A turn
+ * that classified clean before planning and escalated after it therefore
+ * produced: no review row, `review_id: null` on the decision, and a reader
+ * shown the acknowledgment that says "the review has been opened. Nothing has
+ * been discarded" — a false statement about a sealed reading that nothing was
+ * tracking. There is no FK on `review_id`, so nothing could detect it either.
+ *
+ * Both paths now call this, and the DB CHECK added alongside it makes the class
+ * of bug unrepresentable rather than merely fixed.
+ */
+async function openReviewForDecision(
+  decision: SafetyDecision,
+  db: SafetyDb,
+  now: Date,
+  newId: () => string,
+): Promise<SafetyDecision> {
+  if (!actionRequiresReview(decision.action)) return decision
+  // Already carries one (e.g. a post-plan escalation on a turn that had
+  // already sealed pre-plan) — never open a second review for one turn.
+  if (decision.review_id) return decision
+
+  const reviewId = newId()
+  const open = (interstitial: boolean): ReturnType<typeof openReview> =>
+    openReview({
+      reviewId,
+      chartId: decision.chart_id,
+      turnId: decision.turn_id,
+      classes: decision.classes_detected,
+      subjectKind: decision.subject_kind,
+      interstitial,
+      now,
+    })
+
+  let out = decision
+  let review: ReturnType<typeof openReview>
+  try {
+    review = open(decision.action === 'interstitial')
+  } catch (err) {
+    // `openReview` refuses an out-of-scope interstitial (NCD-4/NCD-10). Fall
+    // back to the SEAL path — the fail-closed direction, never to `proceed`.
+    //
+    // Note what changed here in the hardening round: the fallback used to also
+    // set `review_id: null`, which left a `seal_pending_signoff` decision with
+    // no review at all — the same defect C-6 is about, reached by a different
+    // route. It now RE-OPENS as a non-interstitial review, so the seal it fell
+    // back to is a seal something is actually tracking.
+    console.error('[pariprashna/safety] interstitial refused — re-opening as a seal review:', err)
+    out = { ...out, action: 'seal_pending_signoff', ncd4_interstitial_applies: false }
+    review = open(false)
+  }
+
+  const persisted = await persistNewReview(db, review)
+  // The review id goes on the decision whether or not the row landed: the id is
+  // what the acknowledgment quotes back, and a decision claiming
+  // `review_id: null` while the reader was told a review was opened would be
+  // the worse inconsistency. Persistence failure surfaces via `audit_written`
+  // and the server log.
+  if (!persisted) {
+    console.error('[pariprashna/safety] review row did not persist for turn', out.turn_id)
+  }
+  return { ...out, review_id: reviewId }
+}
+
 /** Open the review (when the action needs one), write the audit row, notify. */
 async function finalize(
   decision: SafetyDecision,
@@ -193,43 +282,29 @@ async function finalize(
   newId: () => string,
 ): Promise<SafetyDecision> {
   const db = args.db ?? (await import('./db')).defaultSafetyDb()
-  let out = decision
+  return recordDecision(await openReviewForDecision(decision, db, now, newId), db, now, newId)
+}
 
-  if (out.action === 'seal_pending_signoff' || out.action === 'interstitial') {
-    const reviewId = newId()
-    try {
-      const review = openReview({
-        reviewId,
-        chartId: out.chart_id,
-        turnId: out.turn_id,
-        classes: out.classes_detected,
-        subjectKind: out.subject_kind,
-        interstitial: out.action === 'interstitial',
-        now,
-      })
-      const persisted = await persistNewReview(db, review)
-      // The review id goes on the decision whether or not the row landed: the
-      // id is what the acknowledgment quotes back, and a decision claiming
-      // `review_id: null` while the reader was told a review was opened would
-      // be the worse inconsistency. Persistence failure surfaces via
-      // `audit_written` and the server log.
-      out = { ...out, review_id: reviewId }
-      if (!persisted) {
-        console.error('[pariprashna/safety] review row did not persist for turn', out.turn_id)
-      }
-    } catch (err) {
-      // openReview refuses an out-of-scope interstitial. Falling back to the
-      // SEAL path is the fail-closed direction — never to `proceed`.
-      console.error('[pariprashna/safety] review open refused — falling back to seal:', err)
-      out = { ...out, action: 'seal_pending_signoff', ncd4_interstitial_applies: false, review_id: null }
-    }
-  }
-
-  const written = await appendSafetyDecision(db, out)
-  out = { ...out, audit_written: written }
+/**
+ * Append the audit row and record any notification obligation.
+ *
+ * Shared by the pre-plan and post-plan paths so the two cannot diverge on what
+ * a decision's persistence consists of — which is exactly how C-6 happened.
+ */
+async function recordDecision(
+  decision: SafetyDecision,
+  db: SafetyDb,
+  now: Date,
+  newId: () => string,
+): Promise<SafetyDecision> {
+  const written = await appendSafetyDecision(db, decision)
+  const out = { ...decision, audit_written: written }
 
   const notify = notificationRequired({ subjectKind: out.subject_kind, classes: out.classes_detected })
   if (notify.required) {
+    // Idempotent per turn: the obligation table is `UNIQUE (turn_id)` with
+    // `ON CONFLICT DO NOTHING`, so a post-plan escalation that re-reaches this
+    // line does not double-record an obligation the pre-plan pass already took.
     await recordCohortNativeNotification(db, {
       notificationId: newId(),
       chartId: out.chart_id,
@@ -278,13 +353,32 @@ export async function reclassifyAfterPlan(args: {
     // is C1), so the post-plan pass re-derives from `queryText` where it needs
     // to. This placeholder is never read: `reclassifyWithPlan` returns the
     // PRIOR result's `normalized` field untouched, and the caller ignores it.
-    normalized: { normalized: '', squashed: '', literal: '' },
+    normalized: { normalized: '', squashed: '', normalizedAll: [], squashedAll: [], literal: '' },
   }
-  const merged = reclassifyWithPlan(prior, {
+  const rawMerged = reclassifyWithPlan(prior, {
     queryText: args.queryText,
     domains: args.domains,
     capabilities: args.capabilities,
   })
+
+  // ── THE MONOTONICITY FLOOR, ENFORCED AT RUNTIME (hardening round, C-4) ─────
+  //
+  // `reclassifyWithPlan`'s union and `strongerAction` below are two INDEPENDENT
+  // guards against de-escalation, and the hardening round's mutation testing
+  // found that either could be deleted alone with the whole suite still green:
+  // removing the classifier's carry-forward left `action` correct (because
+  // `strongerAction` covered it) while silently dropping `hs2_suicide_adjacent`
+  // from `classes_detected` and demoting `severity` from `hard_stop` to
+  // `review_required` — in the HASH-CHAINED audit row, undetectably.
+  //
+  // Tests that kill each guard independently now exist. This is the second
+  // half of that fix and the more important one: a guard whose only enforcement
+  // is a test can be regressed by anyone who changes the test. `mergeFloor`
+  // re-imposes the floor HERE, on the value that is about to be persisted, so
+  // the audit row cannot record a de-escalation regardless of what any upstream
+  // merge did. It is the §N.8 move — a real detector, on the actual claim,
+  // rather than a convention two other places happen to honor.
+  const merged = mergeFloor(prior, rawMerged)
 
   const sameClasses =
     merged.classes.length === args.decision.classes_detected.length &&
@@ -309,8 +403,48 @@ export async function reclassifyAfterPlan(args: {
     audit_written: false,
   }
   const db = args.db ?? (await import('./db')).defaultSafetyDb()
-  const written = await appendSafetyDecision(db, escalated)
-  return { ...escalated, audit_written: written }
+  // C-6: a post-plan escalation into the seal/interstitial path opens its
+  // review here, exactly as the pre-plan path does. This call is what makes the
+  // acknowledgment ("the review has been opened") true on this path, and what
+  // lets the DB CHECK requiring `review_id` on a sealed decision hold.
+  return recordDecision(await openReviewForDecision(escalated, db, now, newId), db, now, newId)
+}
+
+/**
+ * Re-impose the prior classification as a FLOOR on a merged one.
+ *
+ * Pure, total, and idempotent. Returns a result whose class set is a superset
+ * of `prior`'s and whose severity is `>=` prior's — carrying forward, verbatim,
+ * any detection the merge dropped. If the merge was already monotone (the
+ * normal case, and what `reclassifyWithPlan` is written to do) this returns it
+ * untouched, so the guard is invisible until something upstream breaks.
+ *
+ * A dropped detection is logged: silently repairing a de-escalation would make
+ * this the same kind of unearned green signal it exists to prevent.
+ */
+export function mergeFloor(
+  prior: ClassificationResult,
+  merged: ClassificationResult,
+): ClassificationResult {
+  const missing = prior.detections.filter(
+    (p) => !merged.detections.some((m) => m.rule === p.rule && m.cls === p.cls && m.detector === p.detector),
+  )
+  const severityFloored = maxSeverity(merged.severity, prior.severity)
+  if (missing.length === 0 && severityFloored === merged.severity) return merged
+
+  console.error(
+    '[pariprashna/safety] MONOTONICITY VIOLATION in the post-plan merge — ' +
+      `${missing.length} detection(s) dropped, severity ${merged.severity} < ${prior.severity}. ` +
+      'Carrying the prior classification forward; this is a bug in reclassifyWithPlan.',
+  )
+  const detections = [...merged.detections, ...missing]
+  return {
+    detections,
+    evasion_markers: merged.evasion_markers.length ? merged.evasion_markers : prior.evasion_markers,
+    classes: SAFETY_CLASSES.filter((c) => detections.some((d) => d.cls === c)),
+    severity: detections.reduce<SafetySeverity>((acc, d) => maxSeverity(acc, d.severity), severityFloored),
+    normalized: merged.normalized,
+  }
 }
 
 function strongerAction(a: SafetyAction, b: SafetyAction): SafetyAction {

@@ -75,6 +75,28 @@ const { mockSynthesizeReading, mockFetchChartHeaderResolution } = vi.hoisted(() 
 vi.mock('@/lib/pipeline/prashna_ask_synthesis', () => ({ synthesizeReading: mockSynthesizeReading }))
 vi.mock('@/lib/retrieval/chart_header', () => ({ fetchChartHeaderResolution: mockFetchChartHeaderResolution }))
 
+/**
+ * G1-A: the safety gate's one flag-read site, mocked with a mutable state box.
+ *
+ * `configService.setFlag` does NOT work for the safety module from this file:
+ * under this test's mock graph the dynamically-imported
+ * `@/lib/pariprashna/safety/*` chain resolves its own instance of
+ * `@/lib/config/index`, so the singleton the test mutates is not the singleton
+ * the gate reads. Verified directly while writing these tests —
+ * `configService.getFlag(...)` returned `true` in the test body while
+ * `isSafetyGateEnabled()` returned `false` inside the same `it`.
+ *
+ * Mocking the single flag-read site instead is the pattern the safety module's
+ * own unit tests already use (`safety/__tests__/gate.test.ts` does
+ * `vi.mock('../flag', …)`), and it is why `flag.ts` exists as a one-function
+ * module in the first place.
+ */
+const { safetyFlagState } = vi.hoisted(() => ({ safetyFlagState: { on: false } }))
+vi.mock('@/lib/pariprashna/safety/flag', () => ({
+  SAFETY_GATE_FLAG: 'PARIPRASHNA_SAFETY_GATE_ENABLED',
+  isSafetyGateEnabled: () => safetyFlagState.on,
+}))
+
 import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
 import { query as dbQuery } from '@/lib/db/client'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
@@ -655,5 +677,129 @@ describe('NCD-8 pre-dispatch spend ceilings (MCP door)', () => {
     expect(body.error.class).toBe('rate_limit')
     expect(body.error.message).toContain('$40.00')
     expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * ── PPR-12 SAFETY GATE — THE MCP DOOR (lane G1-A hardening round, C-3) ───────
+ *
+ * The finding: `runSafetyPolicyGate` was wired into `/api/pariprashna` and
+ * NOWHERE ELSE. This route — a real production door running the same planner,
+ * the same tools and the same `synthesizeReading` — had no safety
+ * classification at all, while G1-D's limits gate directly above covers "both
+ * doors" by explicit ruling (NCD-8).
+ *
+ * Two things are proven here that a unit test of the gate alone cannot:
+ *   • the hard stop happens BEFORE `callPipelinePlanner` — this route's first
+ *     LLM call — so PPR-12's "a blocked class must never build a retrieval
+ *     plan" is really enforced, not audited afterwards;
+ *   • the withholding is a composed ANSWER (200, `outcome: 'safety_withheld'`,
+ *     the fixed prose in `reading`), not a 500 and not an error envelope the
+ *     caller has to interpret.
+ */
+describe('PPR-12 safety gate (MCP door)', () => {
+  beforeEach(() => {
+    safetyFlagState.on = false
+    configService.setFlag('PARIPRASHNA_LIMITS_ENABLED', false)
+    __resetRpmCountersForTest()
+    ;(dbQuery as ReturnType<typeof vi.fn>).mockResolvedValue({ rows: [{ total: '0' }] })
+    ;(getEffectiveModel as ReturnType<typeof vi.fn>).mockResolvedValue('fake-model')
+  })
+
+  afterEach(() => {
+    safetyFlagState.on = false
+  })
+
+  it('flag OFF (the shipped default): a crisis question runs untouched', async () => {
+    // The lane ships dark. With the flag off the gate must not change this
+    // route's behaviour at all — asserted on the most severe input there is.
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const res = await POST(makeReq({ chart_id: CHART, question: 'I want to kill myself.' }))
+    expect(res.status).toBe(200)
+    expect(mockCallPipelinePlanner).toHaveBeenCalled()
+  })
+
+  it('HS-2 hard stop: refused BEFORE the planner, with the fixed prose', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'I want to kill myself.' }))
+
+    expect(res.status).toBe(200)
+    expect(res.status).not.toBe(500)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.outcome).toBe('safety_withheld')
+    expect(body.completeness.status).toBe('withheld')
+    expect(body.judgment_flags).toContain('safety_decision:hard_stop')
+    expect(body.judgment_flags).toContain('safety_reading_withheld')
+    // The fixed, non-generated response — served verbatim, never a model call.
+    expect(body.reading).toContain('not able to take this question into a chart reading')
+
+    // PRE-DISPATCH: nothing was planned and nothing was retrieved, so there is
+    // nothing this response could have been steered into revealing.
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+  })
+
+  it('the C-1 electional-muhurta phrasing is caught on this door too', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(
+      makeReq({ chart_id: CHART, question: 'Which day is best for jal samadhi?' }),
+    )
+
+    const body = await res.json()
+    expect(body.outcome).toBe('safety_withheld')
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+  })
+
+  it('HS-4 seals: no reading leaves this call, and synthesis never runs', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'When will I die?' }))
+
+    const body = await res.json()
+    expect(body.outcome).toBe('safety_withheld')
+    expect(body.judgment_flags).toContain('safety_decision:seal_pending_signoff')
+    expect(body.reading).toContain('does not go out unreviewed')
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+  })
+
+  it('a BENIGN question is completely unaffected with the flag ON', async () => {
+    // The floor. A safety gate that refuses ordinary work is not a safe gate.
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(
+      makeReq({ chart_id: CHART, question: 'What does my chart say about my career?' }),
+    )
+
+    expect(res.status).toBe(200)
+    const lines = await readNdjson(res)
+    const final = lines[lines.length - 1]
+    expect(final.event).toBe('final')
+    expect(final.outcome).toBe('plan')
+    expect(mockCallPipelinePlanner).toHaveBeenCalled()
+    expect(mockSynthesizeReading).toHaveBeenCalled()
+  })
+
+  it('PLAN-TIME: a longevity capability the wording hid escalates and seals', async () => {
+    // PPR-12's second enforcement point on this door. The QUESTION is clean;
+    // the PLAN reveals `ganita_ayurdaya_get`, which escalates the turn.
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['ganita_ayurdaya_get', 'chart_facts_query']))
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'Tell me about my constitution.' }))
+
+    const body = await res.json()
+    expect(body.outcome).toBe('safety_withheld')
+    expect(body.judgment_flags).toContain('safety_escalated_at_plan_time')
+    // The planner DID run — the escalation is only visible after it — but no
+    // tool dispatched and no reading was synthesized.
+    expect(mockCallPipelinePlanner).toHaveBeenCalled()
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
   })
 })

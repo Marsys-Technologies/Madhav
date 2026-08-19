@@ -116,6 +116,32 @@ async function appendReviewEvent(
   )
 }
 
+/**
+ * The reviews still awaiting a human, oldest first.
+ *
+ * The closest thing this lane has to a work queue, and the reason it exists is
+ * the hardening round's C-7 finding: an operator driving
+ * `/api/pariprashna/safety/review` needs a way to FIND a review without already
+ * knowing its `review_id`, or the lifecycle is only theoretically reachable.
+ *
+ * Non-terminal states only. `released`, `withheld` and `interstitial_shown` are
+ * done and are not work.
+ */
+export async function pendingReviews(db: SafetyDb, limit = 100): Promise<SafetyReviewRecord[]> {
+  const { rows } = await db.query<{ review_id: string }>(
+    `SELECT review_id FROM pariprashna_safety_reviews
+      WHERE state IN ('seal_pending','adversarial_pass_1_recorded','adversarial_passes_complete')
+      ORDER BY opened_at ASC LIMIT $1`,
+    [limit],
+  )
+  const out: SafetyReviewRecord[] = []
+  for (const r of rows) {
+    const full = await loadReview(db, r.review_id)
+    if (full) out.push(full)
+  }
+  return out
+}
+
 export async function loadReview(db: SafetyDb, reviewId: string): Promise<SafetyReviewRecord | null> {
   const { rows } = await db.query<{
     review_id: string
