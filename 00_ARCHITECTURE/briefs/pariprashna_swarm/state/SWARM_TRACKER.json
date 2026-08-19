@@ -155,11 +155,11 @@
       "refuter_votes": []
     },
     "G1-A": {
-      "role_stage": "verifying",
+      "role_stage": "building",
       "name": "SafetyPolicyGate + HS-1..HS-6 (serializes before G1-G)",
       "worktree": "worktree-agent-a7fb9dab527dd607a",
       "branch": "pariprashna/g1-a-safety-gate",
-      "verifier_verdict": "Builder report: 260 new tests, 2 rounds of self-adversarial testing (17 real misses found+fixed), honest disclosed residual (typo evasion not closeable without breaking muhurta questions), Hinglish/Devanagari coverage added. 1 verifier + 3 adversaries (evasion/bypass, DB-integrity/state-machine, harness-integrity) dispatched given the subject matter (suicide-adjacent content, health crisis, minors)."
+      "verifier_verdict": "Native decision (2026-08-20, explicit real-time authorization): dispatch a hardening round rather than merge-with-caveats or merge-as-is, given the subject matter. Hardening round dispatched addressing 7 CRITICAL + 6 HIGH findings compiled from all 4 reviews (see g1_a_review_findings for full detail). G1-G remains blocked pending this."
     },
     "G1-C": {
       "role_stage": "merged",
