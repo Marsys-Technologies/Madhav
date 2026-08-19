@@ -336,6 +336,22 @@ export async function runPlanStage(args: {
         detail: `${closure.rejected_param_count} planner-supplied identity parameter(s) rejected (identity comes from the authenticated call)`,
       })
     }
+    if (closure.depth_exceeded_count > 0) {
+      // A DIFFERENT fact from the line above: nothing was found in these
+      // subtrees, they were never inspected. They are removed rather than
+      // allowed (fail closed), and reported as what they are rather than
+      // folded into the identity-rejection count (§N.8).
+      console.warn(
+        '[pariprashna/injection] plan closure removed param subtrees past the depth cap:',
+        closure.findings.filter((f) => f.code === 'plan_param_depth_exceeded'),
+      )
+      judgmentFlags.push('injection_plan_param_depth_exceeded')
+      em.flag({
+        code: 'injection_plan_param_depth_exceeded',
+        level: 'warn',
+        detail: `${closure.depth_exceeded_count} tool parameter subtree(s) removed unexamined for nesting past the inspection depth cap`,
+      })
+    }
     if (closure.flagged_tool_count > 0) {
       console.warn(
         '[pariprashna/injection] plan closure flagged unregistered tool names:',

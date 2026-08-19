@@ -70,8 +70,11 @@ import { PipelinePlanSchema, type PipelinePlan } from '@/lib/pipeline/types'
  * Keys that carry CALLER OR SUBJECT IDENTITY. A planner-emitted value for any
  * of these is never authoritative — identity comes from the authenticated call.
  *
- * Compared case-insensitively with separators removed, so `chart_id`, `chartId`,
- * `chartID` and `Chart-Id` are one key, not four bypasses.
+ * Compared case-insensitively and separator-insensitively, so `chart_id`,
+ * `chartId`, `chartID` and `Chart-Id` are one key, not four bypasses — and, on a
+ * word boundary, so is any qualified spelling (`subject_chart_id`,
+ * `sourceChartId`). See `compactKey`/`delimitedKey` for why those are two
+ * different comparisons rather than one.
  */
 export const IDENTITY_PARAM_KEYS = [
   'chart_id',
@@ -85,13 +88,45 @@ export const IDENTITY_PARAM_KEYS = [
   'audience_tier',
 ] as const
 
-function normalizeKey(key: string): string {
-  return key.toLowerCase().replace(/[^a-z]/g, '')
+/**
+ * Two normal forms, because the two tests below need different things.
+ *
+ * `compactKey` removes every separator: `chart_id`, `chartId`, `chartID`,
+ * `Chart-Id` and `chartid` all become `chartid`. That is the right form for an
+ * EXACT comparison — it collapses spelling variants of the same key.
+ *
+ * `delimitedKey` keeps a separator at every word boundary, inserting one at a
+ * camelCase transition first: `sourceChartId` → `source_chart_id`. That is the
+ * right form for a SUFFIX comparison, and using `compactKey` for it was a real
+ * false positive an internal review found and an independent one confirmed:
+ * with `uid` in the declared set, `'fluid'.endsWith('uid')` is true, so ordinary
+ * words — `fluid`, `liquid`, `druid`, `squid`, `guid` — were silently stripped
+ * from tool call params whenever they appeared as a key name. (`abuser_id`
+ * against `user_id` is the same defect one key over.) Testing on a delimited
+ * boundary means a qualified identity key still matches and a word that merely
+ * ENDS in those letters does not.
+ *
+ * The one spelling this narrows away from is a fully-run-together QUALIFIED key
+ * (`subjectchartid`), which has no boundary to test and is not a spelling any
+ * producer here emits — `subject_chart_id` and `subjectChartId` both still
+ * match. Written down rather than left for the next reviewer to rediscover.
+ */
+function compactKey(key: string): string {
+  return key.toLowerCase().replace(/[^a-z0-9]/g, '')
 }
 
-const NORMALIZED_IDENTITY_KEYS: ReadonlySet<string> = new Set(
-  IDENTITY_PARAM_KEYS.map(normalizeKey),
+function delimitedKey(key: string): string {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+}
+
+const COMPACT_IDENTITY_KEYS: ReadonlySet<string> = new Set(
+  IDENTITY_PARAM_KEYS.map(compactKey),
 )
+const DELIMITED_IDENTITY_KEYS: readonly string[] = IDENTITY_PARAM_KEYS.map(delimitedKey)
 
 /**
  * True for an identity key, INCLUDING qualified spellings.
@@ -99,23 +134,49 @@ const NORMALIZED_IDENTITY_KEYS: ReadonlySet<string> = new Set(
  * Exact-set matching alone let `subject_chart_id` and `target_chart_id` through,
  * which is narrower than the docstring's claim of closure at the plan boundary.
  * A key that ENDS in a declared identity key carries the same authority claim
- * regardless of what qualifies it, so the suffix test is the honest one.
+ * regardless of what qualifies it, so the suffix test is the honest one — but it
+ * has to be a suffix on a WORD boundary, not on raw characters. See the two
+ * normal forms above for the words that were being eaten before it was.
  */
 function isIdentityKey(key: string): boolean {
-  const n = normalizeKey(key)
-  if (NORMALIZED_IDENTITY_KEYS.has(n)) return true
-  for (const known of NORMALIZED_IDENTITY_KEYS) {
-    if (n.length > known.length && n.endsWith(known)) return true
+  if (COMPACT_IDENTITY_KEYS.has(compactKey(key))) return true
+  const n = delimitedKey(key)
+  for (const known of DELIMITED_IDENTITY_KEYS) {
+    if (n === known || n.endsWith(`_${known}`)) return true
   }
   return false
 }
 
-/** How deep `rejectIdentityParams` walks. Params are shallow; this is a guard. */
-const MAX_PARAM_DEPTH = 4
+/**
+ * How deep `rejectIdentityParams` walks before it stops and FAILS CLOSED.
+ *
+ * A cap has to exist: `toolCall.input` is model-chosen and the walk must
+ * terminate on a self-referential object. What the cap must NOT do is what it
+ * did before — return `[]` at the boundary, i.e. silently allow whatever sits
+ * below it, which is a fail-OPEN gap in a control whose entire job is closing
+ * one. Past the cap the subtree is now REMOVED and the removal is reported.
+ *
+ * 6 rather than 4 because the cost of the cap is now borne by legitimate params
+ * (a deep-but-honest subtree is dropped), so the cap should sit well clear of
+ * anything a real tool schema uses. No capability in the manifest nests tool
+ * parameters anywhere near this deep; six levels is already far past
+ * `{filter: {range: {start: …}}}`-shaped input.
+ */
+const MAX_PARAM_DEPTH = 6
+
+/**
+ * Path marker for a subtree dropped because it sat past `MAX_PARAM_DEPTH`.
+ *
+ * A distinct marker rather than a bare key name so an audit can tell "an
+ * identity key was rejected here" from "this branch was never inspected and was
+ * therefore removed" — two different facts that must not read as one.
+ */
+export const PARAM_DEPTH_EXCEEDED_MARKER = '<beyond_max_depth>'
 
 /**
  * Strip every identity key whose value is not the authenticated chart, at any
- * nesting depth, mutating in place. Returns the rejected key paths.
+ * nesting depth — THROUGH ARRAYS AS WELL AS OBJECTS — mutating in place.
+ * Returns the rejected key paths.
  *
  * Exported because the plan is NOT the only place model-chosen params reach a
  * tool. In the agentic loop `toolCall.input` — chosen by the model, after
@@ -125,16 +186,47 @@ const MAX_PARAM_DEPTH = 4
  * scope a foreign identity param would survive into the handler. Closing the
  * plan and leaving that path open would have been a control that guards the
  * quieter half of its own attack surface.
+ *
+ * ── TWO FAIL-OPEN GAPS THAT USED TO CONTRADICT THE LINE ABOVE ───────────────
+ * "at any nesting depth" was a claim, not a description, and a re-verification
+ * reproduced both halves of the gap:
+ *
+ *   1. ARRAYS WERE NEVER WALKED. The guard bailed on `Array.isArray(params)`
+ *      before recursing, so `{filters: [{chart_id: <foreign>}]}` — an entirely
+ *      ordinary shape for a filter list — survived completely untouched. Arrays
+ *      are now walked element-wise at `depth + 1`, and an element's path reads
+ *      `filters[0].chart_id` so the report points at the actual location.
+ *   2. EXCEEDING THE DEPTH CAP RETURNED `[]`, i.e. "nothing to reject here" —
+ *      indistinguishable from a clean subtree, and a silent allow for whatever
+ *      sat below. It now removes the subtree and reports the removal, which is
+ *      the only reading of the cap consistent with what this function is for.
+ *      See `MAX_PARAM_DEPTH` for why the number moved with the semantics.
  */
 export function rejectIdentityParams(
   params: unknown,
   authenticatedChartId: string,
   depth = 0,
 ): string[] {
-  if (!params || typeof params !== 'object' || Array.isArray(params)) return []
-  if (depth > MAX_PARAM_DEPTH) return []
+  if (!params || typeof params !== 'object') return []
 
   const rejected: string[] = []
+
+  if (Array.isArray(params)) {
+    for (let i = 0; i < params.length; i++) {
+      const element = params[i]
+      if (!element || typeof element !== 'object') continue
+      if (depth + 1 > MAX_PARAM_DEPTH) {
+        params[i] = null
+        rejected.push(`[${i}].${PARAM_DEPTH_EXCEEDED_MARKER}`)
+        continue
+      }
+      for (const k of rejectIdentityParams(element, authenticatedChartId, depth + 1)) {
+        rejected.push(`[${i}]${k.startsWith('[') ? '' : '.'}${k}`)
+      }
+    }
+    return rejected
+  }
+
   const record = params as Record<string, unknown>
   for (const key of Object.keys(record)) {
     const value = record[key]
@@ -150,8 +242,15 @@ export function rejectIdentityParams(
       continue
     }
     if (value && typeof value === 'object') {
+      if (depth + 1 > MAX_PARAM_DEPTH) {
+        delete record[key]
+        rejected.push(`${key}.${PARAM_DEPTH_EXCEEDED_MARKER}`)
+        continue
+      }
       const nested = rejectIdentityParams(value, authenticatedChartId, depth + 1)
-      rejected.push(...nested.map((k) => `${key}.${k}`))
+      // An array child reports `[0].k`; gluing a `.` in front of that would read
+      // `filters.[0].k`, which is not a path anyone writes.
+      rejected.push(...nested.map((k) => `${key}${k.startsWith('[') ? '' : '.'}${k}`))
     }
   }
   return rejected
@@ -160,6 +259,7 @@ export function rejectIdentityParams(
 export interface PlanClosureFinding {
   code:
     | 'plan_identity_param_rejected'
+    | 'plan_param_depth_exceeded'
     | 'plan_unregistered_tool_flagged'
   /** The tool call the finding attaches to. Server-log-only, never the wire. */
   tool_name: string
@@ -172,6 +272,15 @@ export interface PlanClosureResult {
   findings: PlanClosureFinding[]
   /** Params actually removed from the plan (the reject arm). */
   rejected_param_count: number
+  /**
+   * Subtrees removed for sitting past `MAX_PARAM_DEPTH` — counted SEPARATELY
+   * from `rejected_param_count` because the two are different facts: one says
+   * "an identity key was found and removed", the other says "this branch was
+   * never inspected, so it was removed rather than allowed". Reporting the
+   * second as the first would be a status signal describing a check that did
+   * not run (§N.8).
+   */
+  depth_exceeded_count: number
   /** Tool names reported but NOT removed (the flag arm). */
   flagged_tool_count: number
 }
@@ -200,6 +309,7 @@ export function closePlanAgainstInjection(input: PlanClosureInput): PlanClosureR
   const { plan, authenticatedChartId, isRegisteredTool } = input
   const findings: PlanClosureFinding[] = []
   let rejected = 0
+  let depthExceeded = 0
   let flagged = 0
 
   for (const tc of plan.tool_calls ?? []) {
@@ -209,12 +319,22 @@ export function closePlanAgainstInjection(input: PlanClosureInput): PlanClosureR
     }
 
     for (const key of rejectIdentityParams(tc.params, authenticatedChartId)) {
+      if (key.endsWith(PARAM_DEPTH_EXCEEDED_MARKER)) {
+        findings.push({ code: 'plan_param_depth_exceeded', tool_name: tc.tool_name, param_key: key })
+        depthExceeded += 1
+        continue
+      }
       findings.push({ code: 'plan_identity_param_rejected', tool_name: tc.tool_name, param_key: key })
       rejected += 1
     }
   }
 
-  return { findings, rejected_param_count: rejected, flagged_tool_count: flagged }
+  return {
+    findings,
+    rejected_param_count: rejected,
+    depth_exceeded_count: depthExceeded,
+    flagged_tool_count: flagged,
+  }
 }
 
 /**
