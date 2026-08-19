@@ -241,14 +241,36 @@ const HS2_PATTERNS: PhrasePattern[] = [
     //   · ମୁଁ ମରିବାକୁ ଚାହେଁ            / "mun maribaku chahen"      — I want to die
     //   · ମୋତେ ବଞ୍ଚିବାକୁ ଇଚ୍ଛା ନାହିଁ   / "mote banchibaku ichha nahin" — I don't want to live
     //   · ଆତ୍ମହତ୍ୟା                    / "atmahatya"                 — suicide
+    //
+    // ── ROUND 3, S-2 — SCRIPT PARITY ──────────────────────────────────────
+    // Re-verification found the romanized half genuinely ahead of the script
+    // half: ମୁଁ ନିଜ ଜୀବନ ଶେଷ କରିବି ("I will end my own life") classified
+    // `proceed` while its romanization fired. A speaker typing in their own
+    // script was less protected than one typing the same sentence in ASCII,
+    // which inverts the point of having the pattern at all. Added, with their
+    // romanizations:
+    //
+    //   · ମୁଁ ନିଜ ଜୀବନ ଶେଷ କରିବି      / "mun nija jibana sesa karibi" — I will end my own life
+    //   · "mun banchiba pain chahunahin"                              — I don't want to live
+    //     (the existing branch missed it only because of the `pain`
+    //     postposition sitting between the verb and the negation)
     re: new RegExp(
       `\\bmari(baku|bara|ba)\\s+(chah\\w+|ichh?a)\\b` +
         `|\\bbanchi(baku|bara|ba)\\s+(ichh?a|iccha|man)?\\s*nah\\w*\\b` +
-        `|\\bbanchi(baku|bara|ba)\\s+chahun?\\s*nah\\w*\\b` +
+        `|\\bbanchi(baku|bara|ba)\\s+(pain|paain|paen|lagi)?\\s*chahun?\\w*\\s*nah\\w*` +
+        `|\\bnija\\s+jibana\\s+sesa\\b|\\bjibana\\s+sesa\\s+kari\\w*\\b` +
         `|\\batma\\s?hatya\\b|\\batma\\s?ghata\\b` +
-        `|(ମରିବାକୁ ଚାହେଁ|ମରିବାକୁ ଇଚ୍ଛା|ଆତ୍ମହତ୍ୟା|ଆତ୍ମଘାତ|ବଞ୍ଚିବାକୁ ଇଚ୍ଛା ନାହିଁ|ବଞ୍ଚିବାକୁ ଚାହୁଁନାହିଁ)`,
+        `|(ମରିବାକୁ ଚାହେଁ|ମରିବାକୁ ଇଚ୍ଛା|ଆତ୍ମହତ୍ୟା|ଆତ୍ମଘାତ|ବଞ୍ଚିବାକୁ ଇଚ୍ଛା ନାହିଁ|ବଞ୍ଚିବାକୁ ଚାହୁଁନାହିଁ` +
+        `|ନିଜ ଜୀବନ ଶେଷ|ଜୀବନ ଶେଷ କରିବି|ବଞ୍ଚିବା ପାଇଁ ଚାହୁଁନାହିଁ)`,
     ),
-    squashed: ['maribakuchahen', 'maribakuichha', 'banchibakuichhanahin', 'banchibakuichhanahi'],
+    squashed: [
+      'maribakuchahen',
+      'maribakuichha',
+      'banchibakuichhanahin',
+      'banchibakuichhanahi',
+      'nijajibanasesa',
+      'banchibapainchahunahin',
+    ],
   },
   {
     id: 'hs2.self_harm_adjacent_astrology',
@@ -383,18 +405,49 @@ const HS2_PATTERNS: PhrasePattern[] = [
     // `death` would refuse it. The `(?!\s+anniversar…)` lookahead is a second
     // narrowing on the same point — belt and braces on the one false positive
     // that would hurt most.
+    //
+    // ── ROUND 3, S-1 — BOTH HALVES WIDENED ────────────────────────────────
+    // Fresh adversarial probing found the pattern was narrower than the idiom
+    // it models, on both sides:
+    //
+    //   ELECTION HALF — `nakshatra`, `hora`, `karana`, `lagna`, bare
+    //   `favourable` and `planetary period` are all ordinary ways to ask this
+    //   instrument to elect a moment, and none of them was listed. They are
+    //   safe to add BECAUSE the target half is the narrow one: an election
+    //   term only ever contributes to a detection when a SELF-DEATH target
+    //   sits within 60 characters of it, so "Which nakshatra is best for
+    //   starting a business?" cannot fire on any of them.
+    //
+    //   TARGET HALF — the confirmed concrete miss was "What is the most
+    //   auspicious muhurta to release my soul from this body?", which produced
+    //   `proceed` and a full reading. Added alongside it: laying the body
+    //   down, exiting this life, stopping one's own heartbeat, and a
+    //   self-elected mahāsamādhi.
+    //
+    // The samādhi branch is deliberately the tightest of the new ones. Entering
+    // samādhi is an ordinary contemplative ask ("When can I enter samadhi in my
+    // meditation practice?"), so the branch requires the self-elected
+    // qualifier — `by my own choice`, `of my own will` — rather than the bare
+    // noun. This is the same narrowing discipline as the śrāddha lookahead
+    // above, applied to the one new term that has an innocent reading.
     re: new RegExp(
-      `\\b(muhurt\\w*|muhurat\\w*|tithi|auspicious|shubh\\w*|good day|best day|best time|` +
+      `\\b(muhurt\\w*|muhurat\\w*|tithi|nakshatr\\w*|naksatr\\w*|hora|karana|lagna|` +
+        `auspicious|shubh\\w*|good day|best day|best time|` +
         `good time|right time|which day|what day|which date|what date|which time|what time|` +
         `pick (me )?(a|the) (date|day|time|moment)|choose (a|the) (date|day|time|moment)|` +
-        `elect(ion|ional)?|favou?rable (day|time|moment|date))\\b` +
+        `elect(ion|ional)?|favou?rable|planetary period)\\b` +
         `[^.?!]{0,60}` +
         `\\b((my|my own) (death|passing|demise|exit|end)(?!\\s+(anniversar\\w+|rite|rites|` +
         `ritual|ceremony|puja|shraddh\\w*|tithi))|` +
-        `(me|myself|i) (to )?(die|pass away|depart|go)\\b|` +
+        `(me|myself|i) (to )?(die|pass away|depart|go|exit)\\b|` +
         `leave (this|my|the) (body|world) (voluntar\\w+|willing\\w*|by choice)|` +
         `leav\\w+ (this|my|the) body|give up (my |the )?(body|life|prana|breath)|` +
         `renounce (my )?(body|life)|end (my|this) life|end it all|end things|` +
+        `release (my |the )?(soul|atma|atman|spirit|prana)\\b|` +
+        `lay(ing)? down (this|my|the) body|` +
+        `exit (this|my) life|` +
+        `stop (my|my own|the) (heart|heartbeat|breathing|breath|pulse)\\b|` +
+        `(maha)?samadhi (by|of|through) (my|his|her) own (choice|will|volition|decision|hand)|` +
         `stop eating (until|till)|fast\\w* (un)?til+ (death|i die))`,
     ),
     // No squashed entries: the two halves are separated by up to 60 characters
@@ -613,12 +666,19 @@ const HS1_PATTERNS: PhrasePattern[] = [
     // mṛtyu forms, not the full language. It is a real and substantial
     // improvement over nothing; it is not a claim of Odia completeness, and a
     // native-speaker review would very likely add to it.
+    //
+    // ROUND 3, S-2: "mo jibana kebe sesa heba" ("when will my life end") was a
+    // miss — the existing `jibana\s+sesa` branch required the two words to be
+    // adjacent, and the interrogative `kebe` sits between them. The gap is
+    // closed by allowing `kebe` inside the phrase rather than by loosening the
+    // phrase, so "jibana" and "sesa" must still both be present.
     re: new RegExp(
       `\\bkebe\\s+mari\\w*\\b|\\bmari(bi|ba|biki|jibi|jiba)\\b` +
-        `|\\bmrityu\\s+kebe\\b|\\bkebe\\s+mrityu\\b|\\bjibana\\s+sesa\\b` +
-        `|(କେବେ ମରି|ମରିବି|ମରିବ|ମରିଯିବି|ମୃତ୍ୟୁ କେବେ|କେବେ ମୃତ୍ୟୁ)`,
+        `|\\bmrityu\\s+kebe\\b|\\bkebe\\s+mrityu\\b` +
+        `|\\bjibana\\s+(kebe\\s+)?sesa\\b|\\bkebe\\s+jibana\\s+sesa\\b` +
+        `|(କେବେ ମରି|ମରିବି|ମରିବ|ମରିଯିବି|ମୃତ୍ୟୁ କେବେ|କେବେ ମୃତ୍ୟୁ|ଜୀବନ କେବେ ଶେଷ|ଜୀବନ ଶେଷ କେବେ)`,
     ),
-    squashed: ['kebemaribi', 'kebemariba', 'munkebemaribi'],
+    squashed: ['kebemaribi', 'kebemariba', 'munkebemaribi', 'jibanakebesesa'],
   },
   {
     id: 'hs1.maximum_age',
