@@ -4,7 +4,7 @@ window.TRACKER = {
   "schema_version": "1.1",
   "session_id": "PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19",
   "phase": "P0",
-  "phase_status": "STEP_0_COMPLETE_ENTERING_IGNITION",
+  "phase_status": "P0_COMPLETE",
   "wave": "P0-IGNITION",
   "heartbeat_ts": "2026-08-19T16:38:00Z",
   "concurrency": {
@@ -199,6 +199,13 @@ window.TRACKER = {
       "severity": "LOW",
       "recommendation": "Add import 'server-only' to persistence_stage.ts and safety_gate.ts; consider an importer CI guard before P1 opens multiple lanes on these files.",
       "blocking": false
+    },
+    {
+      "id": "P0C-R8",
+      "finding": "RF-1's 'captured real streams' half of the golden-stream equality claim was never attempted -- would require an authenticated real chat session against the deployed artifact, captured and diffed against a pre-refactor baseline. Only local/CI equality (37 scenarios) plus a live boot+auth-gate confirmation exist.",
+      "severity": "LOW",
+      "recommendation": "If a P1 lane needs stronger deployed-artifact assurance, run PARIPRASHNA_STREAM_CAPTURE=1 against a real authenticated session and diff against the 496d087f9 baselines.",
+      "blocking": false
     }
   ],
   "p0_merge_to_main": {
@@ -207,5 +214,27 @@ window.TRACKER = {
     "merge_commit": "9db457dccd07edbc4ca4056e7e522fa5f77897b5",
     "merged_at": "2026-08-19T16:36:32Z",
     "note": "Main CI running now; deploy.yml will auto-trigger on its success (--no-traffic stage + smoke + promote-if-success). This closes the P0 gate's deployed-artifact criterion once observed."
+  },
+  "p0_deploy_verification": {
+    "status": "PASS",
+    "deploy_run": "https://github.com/Marsys-Technologies/Madhav/actions/runs/32277741066",
+    "revision": "amjis-web-01527-mrz",
+    "traffic": "100%",
+    "automated_smoke": [
+      "candidate revision boots and routes (HTTP 200 on /api/health)",
+      "auth guard enforced on the candidate revision (401 on unauthenticated sidecar health probe)",
+      "sidecar dependency reachable"
+    ],
+    "conductor_targeted_check": "POST /api/pariprashna (unauthenticated, no session cookie) against the LIVE production URL -> HTTP 401, matching safety_gate.ts's getServerUser() check exactly as verified by the P0-C reviews.",
+    "honest_scope_note": "This confirms the decomposed route is live, serving 100% production traffic, boots correctly, and its auth gate behaves as verified. It does NOT constitute the full RF-1 'captured real streams' golden-comparison (an authenticated end-to-end reading captured and diffed against a pre-refactor baseline) -- that requires a real authenticated session and was not attempted here. Filed as a residual, not blocking: the local/CI golden-stream harness (37/37) plus this live boot+auth confirmation together give strong, but not complete, deployed-artifact evidence."
+  },
+  "p0_gate": {
+    "status": "CLOSED",
+    "criteria": {
+      "golden_streams_semantically_identical": "PASS (local/CI, 37/37) + PARTIAL (deployed: boot+auth confirmed live; full authenticated captured-stream comparison not attempted -- residual P0C-R8)",
+      "tracker_live_with_fresh_heartbeat": "PASS",
+      "every_dd3_command_proven_or_parked": "PASS (all 4 IAM-permitted, all 4 deliberately parked pending explicit human authorization due to cost/production risk)"
+    },
+    "closed_at": "2026-08-19T16:56:00Z"
   }
 };
