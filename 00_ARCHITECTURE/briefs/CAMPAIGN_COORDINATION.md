@@ -3701,3 +3701,17 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
 - 2026-08-19 13:50Z — **PARIŚEṢA / Codex Ganga admission:** F47 PR #1343 exact head `404030993` is CLEAN on F46 main `a7136b467`, with all five required contexts SUCCESS and independent reviews for both action-sensitive scoring and per-window dasha-boundary behavior. Normal auto-merge admission is authorized; F50 remains unqueued. No bypass, deploy, rebuild, or DB action.
 
 - 2026-08-19 14:08Z — **PARIŚEṢA / Codex F47 merged:** PR #1343 merged normally through Ganga as `bb5c5278`; synthetic CI run `32261273368` succeeded. Affected sidecar deployment and read-only action-sensitive service proof remain pending. F50 remains unqueued. No bypass, rebuild, or DB action.
+
+- 2026-08-19 14:20Z — **PARIPRAŚNA / Claude Code Step 0 complete:** the docs-only Step
+  0 PR landed as #1346 (`45f0ddf567`) in the announced ~20-minute window; the prior
+  Paripraśna conductor's stale refs are retired (`pariprashna/g0-close`,
+  `pariprashna/p0-ignition` deleted local+remote, worktrees pruned). Fresh
+  `SWARM_TRACKER.json`/`tracker.html` live at
+  `00_ARCHITECTURE/briefs/pariprashna_swarm/state/` on branch `pariprashna/p0`.
+  Entering **Step 1 P0 lane ignition** (P0-B environment probes, P0-C route.ts
+  ports refactor, P0-D tracker, P0-E design-plan grounding, P0-F DD-2/DD-3 infra
+  probes) — worktree-isolated on `pariprashna/p0`, no further main-merge or
+  deploy action until the P0 gate closes. Any DD-3 command that touches billable
+  or state-changing infra (scratch DB instance provisioning, credential
+  rotation) will be flagged here BEFORE execution, not just parked after the
+  fact, given the shared-project blast radius. X-1..X-7 remain in force.
