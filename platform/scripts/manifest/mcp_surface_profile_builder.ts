@@ -56,6 +56,7 @@
  */
 import type { CapabilityDescriptor } from '../../src/lib/retrieval/registry/types'
 import { resolveType, buildMcpToolRegistration, type McpToolRegistration } from './projection_builders'
+import { SENSITIVE_CLASS_CAPABILITIES } from '../../src/lib/pariprashna/safety/sensitive_capabilities'
 
 export type McpProfileName = 'full' | 'compact' | 'consult'
 
@@ -98,6 +99,22 @@ export interface McpSurfaceProfile {
    * whoever owns that rule next.
    */
   excluded_not_llm_facing: string[]
+  /**
+   * P1 lane G1-A · PARIPRASHNA_ARCHITECTURE §2 · abuse case A6.
+   *
+   * "Sensitive-class capabilities MUST be excluded from the `consult` profile."
+   * Populated for `consult` ONLY; empty for `full`/`compact`, which are
+   * scope-gated projections a caller explicitly asked for. Reported (not merely
+   * filtered) so the exclusion is visible in the generated artifact and a
+   * census can assert it without re-deriving the list.
+   *
+   * NOTE this is the BUILD-time half. The request-time half lives in
+   * `platform-mcp/src/lib/mcp_profile.ts::getAllowedToolNames`, and it is the
+   * load-bearing one: the generated profile file is a checked-in artifact that
+   * is only regenerated deliberately, so a builder-only exclusion would leave
+   * the currently-shipped surface unchanged.
+   */
+  excluded_sensitive_class: string[]
 }
 
 interface RankableCapability {
@@ -184,6 +201,9 @@ function buildFullProfile(caps: CapabilityDescriptor[]): McpSurfaceProfile {
     overflow_tool_names: [],
     excluded_calibration_context_only: excludedCalibrationContextOnly,
     excluded_not_llm_facing: excludedNotLlmFacing,
+    // Empty by design: `full` is the expert surface a first-party/scoped caller
+    // explicitly asked for. The G1-A exclusion targets the safe-default profile.
+    excluded_sensitive_class: [],
   }
 }
 
@@ -202,15 +222,25 @@ function buildCompactProfile(caps: CapabilityDescriptor[]): McpSurfaceProfile {
     overflow_tool_names: overflow.map((r) => r.cap.name).sort(),
     excluded_calibration_context_only: excludedCalibrationContextOnly,
     excluded_not_llm_facing: excludedNotLlmFacing,
+    // Empty by design — see `buildFullProfile`. `compact` is scope-gated too.
+    excluded_sensitive_class: [],
   }
 }
 
 function buildConsultProfile(caps: CapabilityDescriptor[]): McpSurfaceProfile {
   const { eligible, excludedCalibrationContextOnly, excludedNotLlmFacing } = eligibleForTag(caps, 'mcp_consult')
-  const sorted = [...eligible].sort((a, b) => a.name.localeCompare(b.name))
+  // P1 lane G1-A · architecture §2 · abuse case A6: "Sensitive-class
+  // capabilities MUST be excluded from the `consult` profile." The list is
+  // IMPORTED from the safety lane rather than restated here — a constant can
+  // drift from its source, a reference cannot (§N.7 item 3).
+  const sensitive = new Set(SENSITIVE_CLASS_CAPABILITIES)
+  const excludedSensitive = eligible.filter((c) => sensitive.has(c.name)).map((c) => c.name).sort()
+  const afterSensitive = eligible.filter((c) => !sensitive.has(c.name))
+  const sorted = [...afterSensitive].sort((a, b) => a.name.localeCompare(b.name))
   const tools = sorted.map(buildMcpToolRegistration)
   return {
     profile: 'consult',
+    excluded_sensitive_class: excludedSensitive,
     // Not RC-1-capped: the mcp_consult tag set is already the small orienting set
     // (plan: "~5 orienting tools"); if the registry ever tags more than 20 as
     // mcp_consult, that is itself a finding to surface (via `total`), not a cap to

@@ -45,6 +45,9 @@ import { lintReaderProse } from '@/lib/pariprashna/citations/register_leak_lint'
 import type { ChartOrientation } from '@/lib/retrieval/orientation'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
+import { StreamingMortalityScanner } from '@/lib/pariprashna/safety/phrasing_scan'
+import { PREWIRE_REDACTION_NOTICE } from '@/lib/pariprashna/safety/fixed_responses'
+import type { SafetyDecision } from '@/lib/pariprashna/safety'
 
 import { halt, proceed, resolveActivityLabel, type StageResult, type TurnParams } from './stage_context'
 import { PASS_ONE } from './evidence_stage'
@@ -86,6 +89,8 @@ export async function assembleSynthesisContext(args: {
   plan: PipelinePlan
   orientation: ChartOrientation | null
   conversationId: string
+  /** Lane G1-A. Omitted → no policy block (flag-OFF path and older callers). */
+  safetyDecision?: SafetyDecision
 }): Promise<SynthesisContext> {
   const { messages, bundle, plan, orientation, conversationId } = args
 
@@ -126,10 +131,26 @@ export async function assembleSynthesisContext(args: {
     console.error('[pariprashna] durable-summary splice failed (non-fatal):', err)
   }
   const { assembleSynthesisPrefix } = await import('@/lib/pariprashna/summaries/assemble')
-  const systemContentWithSummary = assembleSynthesisPrefix({
+  let systemContentWithSummary = assembleSynthesisPrefix({
     precedingBlock: systemContent ?? '',
     summaryText: conversationSummaryText,
   })
+
+  // ── SAFETY: synthesis-time prompt policy (lane G1-A · HS-1 point (b)). ─────
+  // Appended LAST, after the evidence bundle and after the summary splice, so
+  // that content injected into retrieved evidence (abuse case A2) cannot appear
+  // downstream of the policy and claim to override it. Position is the only
+  // structural leverage a prompt has, and it is used deliberately.
+  //
+  // This is the MIDDLE of HS-1's three controls precisely because it depends on
+  // a model's cooperation. Plan-time exclusion and the pre-wire scan do not.
+  if (args.safetyDecision?.enforced) {
+    const { appendSafetyPromptPolicy } = await import('@/lib/pariprashna/safety')
+    systemContentWithSummary = appendSafetyPromptPolicy(
+      systemContentWithSummary,
+      args.safetyDecision.classes_detected,
+    )
+  }
 
   return { systemContentWithSummary, trimmedConversationHistory }
 }
@@ -149,6 +170,8 @@ export async function runSynthesisStage(args: {
   params: TurnParams
   queryPlan: LegacyQueryPlan
   context: SynthesisContext
+  /** Lane G1-A. Enforced → the pre-wire mortality scan is armed. */
+  safetyDecision?: SafetyDecision
 }): Promise<StageResult<SynthesisStageOutput>> {
   const { em, request, queryText, params, queryPlan, context } = args
   const { systemContentWithSummary, trimmedConversationHistory } = context
@@ -182,10 +205,53 @@ export async function runSynthesisStage(args: {
 
   // Pass/seam state — derived PURELY from the engine's own control flow
   // (tool-use events after prose), never from text/prose heuristics.
-  const assembler = new ReadingPartsAssembler(em, PASS_ONE)
+  const assembler = new ReadingPartsAssembler(em, PASS_ONE, args.safetyDecision?.enforced === true)
   let proseSeenInPass = false
   let awaitingResume = false
   let lastToolInSeam = ''
+
+  // ── SAFETY: the PRE-WIRE mortality scan (lane G1-A · HS-1 point (c)). ──────
+  // The third and last of HS-1's three controls, and the only one that does not
+  // depend on either the planner or the model cooperating. It holds prose back
+  // to the last SENTENCE boundary (bounded — MAX_HOLDBACK_CHARS) so a
+  // "…around 2047." cannot be split across two deltas and slip out one half at
+  // a time — the residual the register-leak lint documents and accepts for
+  // internal identifiers, and which is not acceptable here.
+  //
+  // `null` when the gate is flag-OFF: no hold-back, no behaviour change, the
+  // stream is byte-for-byte what it is today.
+  const mortalityScanner = args.safetyDecision?.enforced ? new StreamingMortalityScanner() : null
+  let prewireHitsReported = 0
+  const reportPrewireHits = (): void => {
+    if (!mortalityScanner) return
+    if (mortalityScanner.hits.length > prewireHitsReported) {
+      const n = mortalityScanner.hits.length - prewireHitsReported
+      prewireHitsReported = mortalityScanner.hits.length
+      // Loud on the server: reaching this line means the plan-time exclusion
+      // AND the prompt policy both failed to stop a mortality-date composition.
+      console.error(
+        '[pariprashna/safety] PRE-WIRE mortality phrasing redacted — both upstream HS-1 controls missed:',
+        mortalityScanner.hits.slice(-n).map((h) => h.rule),
+      )
+      em.flag({
+        code: 'safety_prewire_mortality_redacted',
+        level: 'error',
+        detail: `${n} sentence(s) withheld at the output stage`,
+      })
+    }
+  }
+  // The reader-facing notice is emitted ONCE, after the stream closes and the
+  // last block commits — never mid-stream, which would interleave a block into
+  // an already-open one and break the assembler's block state machine.
+  //
+  // The hold-back buffer must be drained before ANY block commit, or the tail
+  // of a block would be silently dropped. Called at every commit point.
+  const drainScannerInto = (): void => {
+    if (!mortalityScanner) return
+    const rest = mortalityScanner.flush()
+    reportPrewireHits()
+    if (rest) assembler.appendProse(assembler.ensureBlock('prose'), rest)
+  }
 
   const baseLoopConfig: AgenticLoopConfig | undefined = LOOP_CONFIG_BY_PROVIDER[adapterId]
   const loopConfig: AgenticLoopConfig | undefined = baseLoopConfig
@@ -200,6 +266,7 @@ export async function runSynthesisStage(args: {
 
     for await (const event of chatStream) {
       if (request.signal.aborted) {
+        drainScannerInto()
         assembler.commitBlock()
         return halt('aborted')
       }
@@ -228,7 +295,13 @@ export async function runSynthesisStage(args: {
             detail: `${deltaLint.leakCount} internal identifier(s) scrubbed from streamed prose`,
           })
         }
-        assembler.appendProse(blk, cleanDelta)
+        // HS-1 point (c): the mortality scan runs AFTER the register lint (the
+        // lint's redactions cannot create a mortality phrase, only remove
+        // identifiers) and returns only sentence-complete, scanned text. When
+        // the gate is off, `mortalityScanner` is null and this is a pass-through.
+        const safeDelta = mortalityScanner ? mortalityScanner.push(cleanDelta) : cleanDelta
+        reportPrewireHits()
+        if (safeDelta) assembler.appendProse(blk, safeDelta)
         proseSeenInPass = true
       } else if (event.type === 'thinking_delta') {
         const blk = assembler.ensureBlock('thinking')
@@ -238,6 +311,7 @@ export async function runSynthesisStage(args: {
       } else if (event.type === 'tool_use_complete') {
         // Engine re-entered retrieval. If prose was already emitted this pass,
         // THIS is a pass boundary (real control-flow truth).
+        drainScannerInto()
         assembler.commitBlock()
         if (proseSeenInPass) {
           assembler.passId += 1
@@ -259,7 +333,24 @@ export async function runSynthesisStage(args: {
     console.error('[pariprashna] synthesis stream error:', adapterErr)
     em.flag({ code: 'synthesis_stream_error', level: 'error', detail: String(adapterErr) })
   }
+  drainScannerInto()
   assembler.commitBlock()
+  // A scan that FAILED (not "found nothing") is reported as its own flag. The
+  // scanner fails closed — `scanMortalityPhrasing` returns '' rather than the
+  // input — so a failure shows up as missing prose, and this flag is what says
+  // why rather than leaving it looking like the model went quiet.
+  if (mortalityScanner?.scanFailed) {
+    em.flag({
+      code: 'safety_prewire_scan_failed',
+      level: 'error',
+      detail: 'the pre-wire mortality scan errored; the affected span was withheld (fail-closed)',
+    })
+  }
+  if (mortalityScanner && mortalityScanner.hits.length > 0) {
+    em.blockOpen({ block_id: 'safety-prewire-notice', pass_id: assembler.passId, role: 'prose' })
+    em.blockDelta({ block_id: 'safety-prewire-notice', delta: PREWIRE_REDACTION_NOTICE })
+    em.blockCommit({ block_id: 'safety-prewire-notice', text: PREWIRE_REDACTION_NOTICE })
+  }
   em.phase({ phase: 'synthesize', status: 'end', pass_id: assembler.passId, ms: Date.now() - synthesisStartedAt })
 
   return proceed({
