@@ -178,8 +178,9 @@ window.TRACKER = {
       "verifier_verdict": "conductor-reviewed, cherry-picked clean, scripts syntax-checked, drift baseline held"
     },
     "P1-I": {
-      "role_stage": "building",
-      "name": "Ground-truth re-verification of Baseline UNVERIFIED rows (serializes after G1-C)"
+      "role_stage": "merged",
+      "name": "Ground-truth re-verification of Baseline UNVERIFIED rows (serializes after G1-C)",
+      "verifier_verdict": "conductor-reviewed. Live re-verification: PITR still disabled, migration 576 confirmed inert on production (2 independent checks), flags at expected defaults, serving revisions confirmed (amjis-web-01529-hf8, amjis-mcp-00575-pgx, both 100%). Own bug caught+fixed by conductor: the doc edit made PARIPRASHNA_ASBUILT_BASELINE's declared manifest fingerprint stale (drift 216->217, exit 3->2, HIGH); rotated fingerprint, back to 216/exit=3."
     }
   },
   "trains": [],
