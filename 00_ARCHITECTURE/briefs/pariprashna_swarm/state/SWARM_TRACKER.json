@@ -96,12 +96,12 @@
       "refuter_votes": []
     },
     "P0-E": {
-      "role_stage": "building",
+      "role_stage": "merged",
       "name": "design-plan grounding pass (docs)",
-      "worktree": null,
-      "branch": null,
-      "last_event_ts": "2026-08-19T14:19:59Z",
-      "verifier_verdict": null,
+      "worktree": "worktree-agent-a3eb62b2d427955b5",
+      "branch": "worktree-agent-a3eb62b2d427955b5",
+      "last_event_ts": "2026-08-19T14:31:32Z",
+      "verifier_verdict": "conductor-reviewed, cherry-picked clean (9365f02ef), drift/schema baseline held (216/42)",
       "refuter_votes": []
     },
     "P0-F": {
