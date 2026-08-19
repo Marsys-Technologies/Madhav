@@ -144,13 +144,14 @@ export async function bindTurnParams(body: RequestBody, request: Request): Promi
     ? (body.reading_depth as ReadingDepth)
     : 'auto'
 
-  // TODO(PB-4): verbosity/length tier has NO live behavioral contract in the web
-  // synthesis path — the adapter dispatch builds systemContent from the bundle +
-  // synthesis_guidance only and never applies a ConsumeStyle/verbosity suffix
-  // (the `reading_depth:deep_dive` + `exhaustive` verbosity contract landed
-  // MCP-side, out of scope for this Next.js app). We accept + echo the tier on
-  // `turn.open` and stamp it into persistence metadata, but it does NOT yet
-  // change synthesis length. Wire the real length lever in wave PB-4.
+  // P2-C (PPR-09/16): verbosity/length tier now HAS a real, flag-gated
+  // behavioral contract — `synthesis_stage.assembleSynthesisContext` appends a
+  // fixed length-discipline instruction to the system prompt for `brief`/
+  // `exhaustive` when `PARIPRASHNA_HONEST_CONTROLS_ENABLED` is on (default
+  // off; `standard` is always a no-op, flag on or off). Superseded the prior
+  // TODO(PB-4), which was accurate at the time: the tier was accepted +
+  // echoed on `turn.open` and stamped into persistence metadata, but changed
+  // nothing about synthesis.
   const lengthTier: LengthTier = LengthTierSchema.safeParse(body.length_tier).success
     ? (body.length_tier as LengthTier)
     : 'standard'

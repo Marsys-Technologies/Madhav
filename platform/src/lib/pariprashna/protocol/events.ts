@@ -37,12 +37,13 @@ export const ReadingDepthSchema = z.enum(['auto', 'deep_dive'])
 export type ReadingDepth = z.infer<typeof ReadingDepthSchema>
 
 /**
- * Verbosity / length tier. NOTE: the web engine has no live verbosity contract
- * (the `reading_depth:deep_dive` + `exhaustive` verbosity contract landed
- * MCP-side in the samapana track-B work, which is out of scope for this Next.js
- * app). These values are accepted and echoed on `turn.open` for the client, but
- * only `standard`/`brief` currently bind to a live lever (the ConsumeStyle
- * `brief` suffix). See TODO(PB-4) in the route.
+ * Verbosity / length tier. `brief`/`exhaustive` bind to a real, flag-gated
+ * synthesis-prompt instruction (lane P2-C, PPR-09/16 —
+ * `synthesis_stage.assembleSynthesisContext`, gated on
+ * `PARIPRASHNA_HONEST_CONTROLS_ENABLED`, default off). `standard` is always a
+ * no-op — the same reading whether or not the flag is on. Prior to P2-C this
+ * schema's values were accepted and echoed on `turn.open` with no live effect
+ * at all (see the superseded TODO(PB-4) note, now removed from `safety_gate.ts`).
  */
 export const LengthTierSchema = z.enum(['brief', 'standard', 'exhaustive'])
 export type LengthTier = z.infer<typeof LengthTierSchema>
