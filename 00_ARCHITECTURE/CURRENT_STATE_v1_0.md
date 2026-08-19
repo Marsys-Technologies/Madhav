@@ -9081,7 +9081,7 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: CODEX-ONBOARDING-CLOSE-2026-08-15
+  last_session_id: PARIPRASHNA-G0-CLOSE-2026-08-19
 ```
 
 ---

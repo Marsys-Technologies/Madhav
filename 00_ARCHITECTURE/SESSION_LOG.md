@@ -36500,7 +36500,7 @@ the owner-authorized merge procedure and address CCD-004 follow-ups only under t
 
 ---
 
-### Session PARIPRASHNA-G0-CLOSE-2026-08-19
+## PARIPRASHNA-G0-CLOSE-2026-08-19 — architecture ratified, TA superseded, ND.2 logged
 
 ```yaml
 session_open:
@@ -36582,8 +36582,8 @@ session_close:
       - {canonical_id: PARIPRASHNA_VERIFICATION_MATRIX, change: "registered (layer: governance, status: LIVING, version: 1.0)"}
     native_directives: [{directive_id: ND.2, change: "appended — NCD-10 native-self interstitial; cohort full-seal unaffected; folds into next MP revision"}]
   red_team_pass: {due: false, performed: false, verdict: n/a, artifact_path: "RED_TEAM_G0_v1_0.md (PASS-WITH-FIXES, four-lens panel, 2026-08-18 — pre-session; governs this close)"}
-  drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, divergences_found: 224}
-  schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, violations_found: 42}
+  drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, divergences_found: 216, note: "224 at first push (8 new PARIPRASHNA_* canonical docs unregistered in FILE_REGISTRY_v1_14.md); fixed same session, re-verified at 216 == T0 baseline before merge"}
+  schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, violations_found: 42, note: "44 (transient HIGH exit=2) at first push — SESSION_LOG heading was `###` not `##` (parser didn't recognize the entry, so it inherited the prior entry's heading and mismatched its own session_id) and CURRENT_STATE's override last_session_id line wasn't rotated; both fixed same session, re-verified at 42 < 43 baseline before merge"}
   session_log_appended: true
   cross_tool_sync:
     campaign_coordination_deferred: "CAMPAIGN_COORDINATION.md dirty (MM — ekv/b-01-dignity-oracle-fix workstream staged+unstaged); pariprashna_v012 registration deferred per brief scope rule; logged in step-4 commit message and design-plan changelog"
@@ -36592,8 +36592,15 @@ session_close:
   unblocks: ["PR review + merge of pariprashna/g0-close; CAMPAIGN_COORDINATION pariprashna_v012 row once ekv/b-01 workstream clears"]
   handoff_notes: "PARIPRASHNA_ARCHITECTURE is the Paripraśna design of record (CURRENT in CAPABILITY_MANIFEST). Fresh session following CLAUDE.md §C → CURRENT_STATE v6.62 finds it in one hop. NCD-10 logged as ND.2 in NATIVE_DIRECTIVES. CAMPAIGN_COORDINATION registration deferred — open item."
   known_residuals:
-    - {finding_id: PARIPRASNA-G0-DRIFT-224, finding: "drift_detector repository-wide baseline elevated 218→224 (6 new findings from 4 new Pariprasna doc entries + CURRENT_STATE update)", severity: LOW, booking_reference: "within G0-close expected delta; all are governance docs correctly flagged as 'newly tracked'", policy_ref: "OHP §F known_residuals whitelist"}
-    - {finding_id: PARIPRASHNA-G0-SCHEMA-42, finding: "schema_validator baseline 42 violations (unchanged from CODEX-ONBOARDING baseline)", severity: LOW, booking_reference: "CCD-004 owner-authorized dual-tool debt carry-forward", policy_ref: "OHP §F known_residuals whitelist"}
     - {finding_id: PARIPRASHNA-G0-CAMPAIGN-COORD-DEFER, finding: "CAMPAIGN_COORDINATION.md pariprashna_v012 registration deferred (file dirty from ekv/b-01 workstream)", severity: LOW, booking_reference: "NCD-11 brief scope rule; file is MM in main working tree; safe to complete once ekv/b-01 lands", policy_ref: "CLAUDECODE_BRIEF_G0_CLOSE_v1_0.md §3 scope rule"}
 ```
+
+### Next session objective
+
+P0 ignition (PARIPRASHNA_PHASED_SWARM_IMPLEMENTATION_PLAN_v1_0.md + v1.1 amendments §6): cut
+branch `pariprashna/p0-ignition`, worktree-isolated lanes P0-A..P0-F (environment probes, the
+route.ts PORTS REFACTOR with the golden-stream equality harness gating everything else, the live
+SWARM_TRACKER.json/tracker.html, design-plan grounding pass, DD-2/DD-3 infra probes), gate on the
+deployed artifact, tag `pariprashna/p0-close`. CAMPAIGN_COORDINATION pariprashna_v012 row remains
+deferred until the ekv/b-01 workstream clears (NCD-11).
 
