@@ -157,11 +157,11 @@ window.TRACKER = {
       "refuter_votes": []
     },
     "G1-A": {
-      "role_stage": "verifying",
+      "role_stage": "building",
       "name": "SafetyPolicyGate + HS-1..HS-6 (serializes before G1-G)",
       "worktree": "worktree-agent-a7fb9dab527dd607a",
       "branch": "pariprashna/g1-a-hardened",
-      "verifier_verdict": "Hardening round complete: all 13 critical+high items reported fixed-and-verified (8567 tests, 0 failures, real Postgres verification for DB items). One process error disclosed (accidental git stash push, self-caught+recovered, conductor independently confirmed zero residual/harm via shared stash list). Dispatching a focused re-verification agent to re-run the exact original reproduction steps against the hardened code before merge, given the subject matter."
+      "verifier_verdict": "Re-verification: 8/13 items confirmed genuinely fixed (C-4/C-5/C-6/C-7/H-2/H-5 solid, mutation-tested). 3 must-fix remain (H-6 detector silently discarded by CI's own typecheck filter regex, C-2 leetspeak fix doesn't generalize/43.8% still bypass, H-4 leak beyond 200-char window + new cross-sentence non-streaming leak found). Significant new discovery: /api/chat/consult is NOT out of scope as round 2 judged -- it's the actual live ungated DEFAULT production route per PARIPRASHNA_ASBUILT_BASELINE_v1_0.md ('consult/consume still the un-gated default'). Native decision: dispatch a narrow round-3 targeting exactly these 4 must-fix items + 2 should-fix vocabulary gaps."
     },
     "G1-C": {
       "role_stage": "merged",
