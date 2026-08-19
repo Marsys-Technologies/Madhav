@@ -26,8 +26,6 @@
  * `prediction_candidate` kind (the C-2 corpus carries no such flag — asserted
  * explicitly below rather than left as an unstated hole).
  */
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { serializeCanonical } from '@/lib/pariprashna/store/serialize'
 import type { CanonicalMessage } from '@/lib/pariprashna/store/schema'
