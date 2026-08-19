@@ -171,16 +171,29 @@ def collect_github_prs():
     return _derived(by_branch, "gh pr list --repo Marsys-Technologies/Madhav --state open")
 
 
+def parse_rate_limit(data):
+    """Pure: gh api rate_limit's parsed JSON -> the cell this collector reports. `gh pr
+    list` (both open and merged polls, every cycle) is a GraphQL-backed command -- verified
+    empirically (2026-08-20): `resources.core.used` stayed 0 across a `gh pr list` call
+    while `resources.graphql.used` incremented by 2 in the same call. Reading `core` here
+    reports a bucket this tracker's own polling never spends from, so it always reads
+    5000/5000 regardless of load -- a decorative meter, not a budget one. `graphql` is the
+    bucket actually being spent; report that one."""
+    graphql = data.get("resources", {}).get("graphql", {})
+    return {"bucket": "graphql", "remaining": graphql.get("remaining"),
+            "limit": graphql.get("limit"), "reset": graphql.get("reset")}
+
+
 def collect_github_rate_limit():
     ok, out, err = run(["gh", "api", "rate_limit"], timeout=15)
     if not ok:
         return _unknown(f"gh api rate_limit failed: {err.strip()[:200]}")
     try:
         data = json.loads(out)
-        core = data.get("resources", {}).get("core", {})
         return _derived(
-            {"remaining": core.get("remaining"), "limit": core.get("limit"), "reset": core.get("reset")},
-            "gh api rate_limit",
+            parse_rate_limit(data),
+            "gh api rate_limit (graphql bucket -- the bucket gh pr list actually spends "
+            "from, verified empirically against resources.core staying flat)",
         )
     except json.JSONDecodeError as e:
         return _unknown(f"gh api rate_limit returned non-JSON: {e}")
@@ -269,14 +282,27 @@ def collect_code_provenance(mirror_gate):
     latest = latest.strip()
 
     is_current = (source_sha == latest)
-    ok2, _, _ = run_mirror(["merge-base", "--is-ancestor", source_sha, "main"])
-    is_ancestor_of_main = ok2
+    is_ancestor_of_main, _, _ = run_mirror(["merge-base", "--is-ancestor", source_sha, "main"])
+    # Item 1a: is_ancestor_of_main alone conflates "unmerged, ahead of main" with "behind
+    # main" -- both read as False and both used to render amber "STALE CODE". The real
+    # question is whether the installed sha already CONTAINS the latest commit that touched
+    # the tracker subtree on main, regardless of whether the installed sha itself has since
+    # been merged. See _common.classify_code_provenance for the resulting 4-way split.
+    contains_latest_tracker_commit, _, _ = run_mirror(["merge-base", "--is-ancestor", latest, source_sha])
+
+    behind_count = None
+    if is_ancestor_of_main and not contains_latest_tracker_commit:
+        ok3, out3, _ = run_mirror(["rev-list", "--count", f"{source_sha}..main", "--", TRACKER_SUBTREE_PATH])
+        if ok3 and out3.strip().isdigit():
+            behind_count = int(out3.strip())
 
     return _derived({
         "installed": installed,
         "latest_tracker_subtree_commit_on_main": latest,
         "is_current": is_current,
         "is_ancestor_of_origin_main": is_ancestor_of_main,
+        "contains_latest_tracker_commit": contains_latest_tracker_commit,
+        "behind_count": behind_count,
         "code_dir": CODE_DIR,
     }, f"INSTALLED_FROM.json ({INSTALLED_FROM_JSON}) vs. mirror log -1 main -- {TRACKER_SUBTREE_PATH}")
 

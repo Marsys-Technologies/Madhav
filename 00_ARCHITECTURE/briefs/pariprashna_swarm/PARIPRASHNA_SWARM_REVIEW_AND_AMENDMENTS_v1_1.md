@@ -140,6 +140,15 @@ flagged for the Decision Register at next docs close.
 | **DD-8** | Q-2 reading grading + docs seal (P4) | Gate-runner grades the three readings against the §J rubric, honestly labeled MACHINE-GRADED; the design-plan RATIFIED-AS-BUILT flip proceeds on it. |
 | **DD-9** | G0 PR merge | Pre-authorized: kickoff step 0 opens and merges the `pariprashna/g0-close` PR (doc-only diff) if not already merged, before anything else. |
 | **DD-10** | CAMPAIGN_COORDINATION dirty-file conflict | Never touch another workstream's dirty file: register the phase lease the moment the file is clean; until then log the deferral each phase (the G0 precedent). |
+| **DD-11** | Dead observatory during a lane transition (added 2026-08-20, PARIPRASHNA-CLOSEOUT session, item 2) | **The conductor calls `tracker-health-check` (`00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/tracker-health-check`) at every lane transition.** A non-zero exit is a HALT condition, same shape as every other DD-5-style halt: halt at the next lane boundary (not mid-lane), pin rollback, write resume state, restore the observatory (`tracker-start`, or file the incident if it won't come back clean), report — then resume. This is the tier that actually closes the loop the tracker-v2 observatory (§7) built: T1–T4 keep the *observer* alive, but every one of them is itself something that can be down; the subject (the conductor) checking the observer is the only watcher guaranteed to be running at the exact moment it matters. The 2026-08-19 23m37s blind window (tracker-v2 README, "The 2026-08-19 incident") would have been caught in seconds by this, had it existed then. |
+
+**Effective at the next phase boundary (P1 close), not mid-phase.** DD-11 is
+a new standing rule, not a hotfix to something broken right now — the P1
+conductor is mid-phase as this is written, and inserting a new mandatory
+per-lane-transition call into a running phase risks exactly the kind of
+disruption DD-11 exists to prevent (an interruption at an unplanned moment).
+Rules land at boundaries; behavior changes at boundaries. P1 finishes under
+the rules it started under; P2 opens under DD-11.
 
 **Result: zero human gates.** The only stops are halt conditions, and every
 halt ends with rollback pinned, state resumable, and a report — never a hang.

@@ -1747,7 +1747,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "6c1db4de7fd6715b7dfcf124a419e109ae79b9d5efbb252c4f97917b61784165",
+      "fingerprint": "d7b0c0da03f27c0da0337de1cd4a2801655125e22fc43d77e4ff32635ffddf14",
+      "last_verified_session": "PARIPRASHNA-CLOSEOUT-2026-08-19",
+      "last_verified_on": "2026-08-19",
       "native_id": "project"
     },
     {
@@ -1761,7 +1763,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "e2b77cb05aa3776c4c48470669e8f0e0ae699019392b8b89abb4fd2f4fee9216",
+      "fingerprint": "f1c45daffe402bdb196324c0963dcc1186be3ecd07548cf0bb431f3dafcbd0d8",
+      "last_verified_session": "PARIPRASHNA-CLOSEOUT-2026-08-19",
+      "last_verified_on": "2026-08-19",
       "native_id": "project"
     },
     {
@@ -1789,8 +1793,8 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "9820590e13dd329f2ea5dc997f825c034c44a775b39edfd40e419c363b57972e",
-      "last_verified_session": "PARIPRASHNA-TRACKER-V2-2026-08-19",
+      "fingerprint": "e087e23469d3f128bd4ec78674bd54b515f77fbe1bb1176bbf25ff6a63476c0c",
+      "last_verified_session": "PARIPRASHNA-CLOSEOUT-2026-08-19",
       "last_verified_on": "2026-08-19",
       "native_id": "project"
     },

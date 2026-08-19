@@ -51,10 +51,24 @@ launchd plists — it must still exist after `install.sh` exits, so point it at 
 permanent checkout, not a worktree you're about to remove.
 
 **Provenance is on the dashboard, not just in a file.** `tracker.html`'s header shows the
-running code's short sha. If that sha is not the latest commit that touched this `tracker/`
-subtree on `origin/main`, the pill turns amber and reads **"STALE CODE"** — an observatory
-that can't tell you it's running old code isn't trustworthy. In-place/dev runs (no
-`INSTALLED_FROM.json`) show `code UNKNOWN` honestly rather than a fake green.
+running code's short sha, classified into one of four states (`classify_code_provenance`,
+`_common.py`) rather than a single binary "stale" flag — the binary version conflated
+"unmerged, ahead of main" with "genuinely behind" (both read `is_current: false`), training
+readers to discount an amber that, when real, matters:
+
+- **CURRENT** (green) — the installed sha is merged and already has everything `origin/main`
+  has for this `tracker/` subtree.
+- **AHEAD** (neutral, not amber) — unmerged, but already has everything `origin/main` has for
+  `tracker/` — e.g. deployed pre-merge for live verification (this is this observatory's own
+  normal workflow: every `install.sh --install-from-ref <branch>` run before a PR merges).
+- **BEHIND** (amber) — merged, but `origin/main` has since gained `tracker/`-touching commits
+  this sha lacks. Genuinely stale — the pill also names the commit count.
+- **DIVERGED** (amber) — neither an ancestor of `origin/main` nor has everything it does for
+  `tracker/` — no clean ordering (e.g. after a rebase/force-push). A real anomaly.
+
+In-place/dev runs (no `INSTALLED_FROM.json`) show `code UNKNOWN` honestly rather than a fake
+green. Each of the four states has its own selftest, each observed failing first by
+neutering the classifier and confirming the wrong state was returned for AHEAD/BEHIND/DIVERGED.
 
 Dev/local testing only — **not** for a standing install:
 
@@ -110,17 +124,284 @@ detector).
   event fires. This is the one cell where being confidently wrong recreates the PR #1341
   incident (a stale lease/merge read treated as current).
 
-## The three-tier tap (dead-man's switch)
+### Operational proof (item 7, 2026-08-20): a real push, propagating and then not
+
+Ref freshness matters because, without it, two very different situations render
+identically: "the lane hasn't pushed yet" and "this tracker's refs are frozen." Selftest
+already proves the classification function's boundaries on synthetic ages
+(`test_ref_freshness_boundaries`); this is the operational version — a real branch pushed
+to the real remote, a real mirror, real elapsed wall-clock time, run against an isolated
+copy of this daemon (`HOME` override, so none of it touched the live
+`~/.pariprashna-tracker/` another campaign's monitoring depends on):
+
+1. Bootstrapped an isolated mirror, ran one cycle — baseline, no demo branches present.
+2. Pushed `pariprashna/zz-demo-ref-freshness-a` to `origin`. Ran one cycle
+   (`git fetch --prune`, 1585ms): the branch appeared in `git_lane_branches` immediately.
+3. Broke the mirror's own remote (`git remote set-url origin
+   https://invalid.example.invalid/...`, isolated to this one demo mirror clone — never
+   touches the shared checkout or the production mirror). Pushed
+   `pariprashna/zz-demo-ref-freshness-b`. Ran a cycle immediately: `mirror_fetch.ok=false`,
+   and — this is the finding worth stating precisely — **the entire `git_lane_branches`
+   cell went `evidence_class: UNKNOWN`, not "branch A only."** The code already refuses to
+   serve the mirror's still-physically-present on-disk refs once this cycle's fetch has
+   failed (see "Ref freshness" above). That is a *stronger* resolution of the ambiguity
+   than freezing at the last-good list would have been: a frozen A-only list could be
+   misread as "nothing new happened," where an honest UNKNOWN cannot be misread as anything
+   but "can't tell right now."
+4. Left the fetch broken and let real time pass, re-running a cycle at each point:
+   age=57.6s → `green`, age=124.0s → `amber`, age=250.4s → `red`. Branch B never appeared
+   at any point; `git_lane_branches` stayed `UNKNOWN` throughout, provenance = the actual
+   `Could not resolve host` error.
+5. Restored the remote URL. Next cycle: `mirror_fetch.ok=true`, both
+   `zz-demo-ref-freshness-a` and `-b` appeared together, ref age back to 2.4s (`green`).
+6. Cleanup: both demo branches deleted from `origin`, the isolated `HOME` runtime dir
+   removed. The production daemon's own `~/.pariprashna-tracker/heartbeat.json` was
+   confirmed untouched by any of the above (separate `HOME`, separate mirror, separate
+   pidfile).
+
+## The 2026-08-19 incident: a real 23m37s blind window
+
+Measured from the event log, not reconstructed after the fact: last heartbeat before the
+gap was cycle 94 at `2026-08-19T20:35:52Z`. The macOS unified log
+(`log show --predicate 'eventMessage CONTAINS "com.marsys.pariprashna"'`) shows all three
+launchd jobs — `trackerd`, `watchdog`, `serve` — explicitly `removing service`d in the same
+instant, `2026-08-19T20:36:22Z`: a deliberate `launchctl bootout`, not a crash and not a
+sleep/wake cycle (`pmset -g log` shows no sleep transition in the window). Nothing
+resurrected them until `2026-08-19T20:59:13Z`, when `backgroundtaskmanagementd` re-registers
+all three from the plists on disk — a full reinstall, not a self-heal. First new heartbeat:
+`cycle: 1` at `20:59:29Z` (the counter reset confirms a brand-new process, not a resumed
+one). **`watchdog.jsonl`, this tracker's own T2 event log, is silent across the entire
+window** — its only entry is an unrelated resurrection from hours earlier. T2 could not
+have helped: whatever removed the jobs removed the watchdog too, and a watchdog that no
+longer exists cannot watch anything.
+
+**Attribution (2026-08-20 follow-up), corrected from the first pass.** The macOS unified
+log resolves the exact `launchctl` process shape at both timestamps, not just the launchd
+side of it:
+
+- `20:36:22Z`: three **separate, bare `launchctl bootout` processes** (PIDs 68296-68298,
+  each `launchctl` alone with no accompanying `bootstrap`), preceded 12s earlier by a
+  `launchctl list` (PID 68033) — the shape of someone checking status, then stopping.
+- `20:59:13Z`: three **`bootout`+`bootstrap` PAIRS** (PIDs 6864-6872) — the shape of
+  `install.sh`'s own per-job loop (bootout immediately followed by bootstrap, for each job
+  in turn), confirming the recovery was a real `install.sh` run.
+
+This rules out the first-pass theory that `20:36:22Z` was a stalled or interrupted
+`install.sh` run: `install.sh`'s loop always pairs bootout with bootstrap per job, so a
+partial run would show *some* bootstraps interleaved, not three bare bootouts. What the
+`20:36:22Z` shape matches **exactly** is the old undocumented "Stop all three" one-liner this
+very `install.sh` used to print at the end of every run (see item (b) below) — a plain
+`for j in trackerd watchdog serve; do launchctl bootout ...; done`, no marker, no record of
+intent, no accompanying bootstrap.
+
+*Who ran it* could not be recovered: process parent/responsible-PID chains are not retained
+by the unified log for `launchctl` invocations, shell history on this machine carries no
+timestamps, `last` shows one continuous console login spanning the whole day (single-user
+Mac, uninformative), and an exhaustive search of every local Claude Code session transcript
+active in the window — the long-running main session covering the full incident window, all
+~40 of its subagents, every other project directory under `~/.claude/projects`, Codex
+session stores, and Claude Desktop's session stores — found no literal record of the command
+being issued. The nearest context: an ambient screen-activity summary
+(`.codex/memories/.../2026-08-19T20-20-00-*-10min-memory-summary.md`) shows a *different*
+Paripraśna-tracker hardening closeout (PR #1353) had just finished verifying the daemon
+healthy at `~20:23Z` (cycle 4 — a recent restart) before the user's visible focus moved to
+an unrelated repo; that session's own transcripts don't contain the bootout command either.
+Most likely: a cloud-hosted or otherwise locally-untranscribed session or terminal, in the
+same general timeframe as that closeout, ran the printed one-liner as a normal stop —
+without realizing (because nothing told it) that doing so left nothing watching the
+observatory for the next 23 minutes.
+
+**Whether it recurs does not depend on identifying who.** The one-liner was `install.sh`'s
+own documented, printed instruction for stopping the tracker — anyone who follows it,
+copies it from old scrollback, or has it in muscle memory from a prior session will produce
+this exact unmarked, ambiguous-looking gap again, human or agent, regardless of `$HOME`.
+That is a standing process hazard, not a one-off, and it is what item (b) exists to close:
+`install.sh` no longer prints the raw command at all (see below) — only `tracker-stop`,
+which cannot stop the jobs without also writing the record that makes the gap legible as
+intentional. Item (a)'s `$HOME`/label-prefix guard remains a real, independently-verified
+hazard in the code (confirmed by its own selftest) and is closed regardless of whether it
+was *this* incident's mechanism — it just is not the confirmed cause of *this* one.
+
+## (a) Label-namespace isolation
+
+`install.sh` now takes `--label-prefix <prefix>` (`LABEL_PREFIX`, default
+`com.marsys.pariprashna`, exported as `DEFAULT_LABEL_PREFIX`) and refuses to run at all —
+before ever calling `launchctl` — if it detects `$HOME` has been overridden (compared
+against the real passwd-db home via `dscl`) while `LABEL_PREFIX` is still the production
+default. The refusal prints every label it *would* have booted out and explains why, in a
+comment at the guard site and again at the label-assignment site in the bootstrap loop:
+**"HOME isolation does not isolate launchctl labels."** Every plist template's `Label` key
+was hardcoded before this change (`__LABEL__` placeholder now, substituted by `render()`);
+the loop's template *source* file is still keyed by the fixed job name
+(`com.marsys.pariprashna-<job>.plist.template`) regardless of `LABEL_PREFIX` — only the
+rendered output's path and internal `Label` vary. Selftested by actually invoking
+`install.sh` in a subprocess with `$HOME` overridden and a fake `launchctl` first on `PATH`
+that records every invocation: the test asserts a non-zero exit **and** that the fake
+`launchctl` was never called at all — not just that the right error text appeared.
+
+## (b) Intentional-stop marker
+
+`tracker-stop ["reason"]` replaces the old undocumented `launchctl bootout` one-liner: it
+writes `~/.pariprashna-tracker/STOPPED_INTENTIONALLY.json` (`ts`, `reason`,
+`invoking_user`) **before** booting the three jobs out — order matters, since the marker
+must exist for the *entire* duration the jobs are down, not just at the moment `tracker-stop`
+happens to return. `tracker-start` re-bootstraps the three jobs from the plists already on
+disk (it does not redeploy code — that is `install.sh`'s job), waits up to 90s for a fresh
+heartbeat, then clears the marker. The marker is cleared *after* the wait, not before
+triggering the restart: clearing it first would make item (d)'s startup check see no marker
+during the very restart the marker was supposed to cover. Selftested end-to-end (fake
+`launchctl`, isolated `$HOME`, no real launchd touched): asserts every `bootout` call the
+fake `launchctl` recorded happened while the marker file was already present on disk, and
+that the marker is gone after `tracker-start` completes.
+
+## (c) T4 — out-of-band tier, in a different subsystem
+
+T1-T3 below all ultimately depend on the launchd GUI domain being intact — the 2026-08-19
+incident removed all three jobs from that domain in one shot, so nothing left *inside* it
+could have noticed. `tracker-cron-watchdog` is installed by `install.sh` into `crontab`
+(**cron, not launchd** — a launchd-domain bootout cannot touch a crontab entry) on a 5-minute
+`*/5 * * * *` schedule, marker-scoped by `LABEL_PREFIX` in its comment tag so a test install's
+cron entry can never collide with production's. Every run: if `STOPPED_INTENTIONALLY.json` is
+present, exit immediately (T4 must never fight an intentional stop). Otherwise, if
+`heartbeat.json` is older than 180s, log an `out_of_band_resurrection` incident event
+*immediately* (not after the re-bootstrap's own health-wait completes — that can take up to
+90s, and the fact "T4 saw a dead observer and is intervening" is already true the moment
+that decision is made), fire a local `osascript` notification, then call `tracker-start`.
+Selftested by invoking the script directly (exactly how cron would) with a fake `launchctl`
+and three heartbeat scenarios — marker present, heartbeat fresh, heartbeat stale with no
+marker — asserting it is a no-op for the first two and both re-bootstraps and logs an
+incident for the third. **`crontab` installation itself is deliberately NOT selftested** —
+mutating the real user crontab from an automated test (which could run in production, since
+`--selftest` runs at every real daemon start) is a strictly worse risk than the thing being
+tested; this is the same class of honest scoping as the no-headless-browser gap below, not a
+silent gap.
+
+**Proven live (2026-08-20), not just in selftest.** T4 is the only tier that had never been
+exercised against the real system, and it exists precisely because every in-band tier (T1-T3)
+can be removed by a single command. Deployed this PR's code to production (`install.sh
+--install-from-ref`, `git archive`, never touched the shared checkout), confirmed the cron
+entry installed, then reproduced the actual incident: the raw `launchctl bootout` one-liner,
+no `tracker-stop`, no marker.
+
+- Last good heartbeat: `2026-08-19T22:06:17Z`. Bootout issued: `22:06:26Z`.
+- Confirmed down: `launchctl list | grep pariprashna` empty immediately after.
+- T4's `*/5` tick fired at `22:10:01Z` (the first tick after the heartbeat crossed 180s
+  stale) and logged the incident event immediately:
+  `{"ts":"2026-08-19T22:10:01Z","writer_id":"cron_watchdog","payload":{"event":"out_of_band_resurrection","tier":"T4"},...}`.
+- New process healthy (fresh heartbeat, `cycle: 1`, `selftest_last.all_passed: true`) at
+  `22:10:17Z`. **Measured restore time: 3m51s from bootout, 3m44s from T4's own detection to
+  full health.**
+- `BLIND_WINDOW.json` was written with the real measured gap (`gap_start_ts:
+  2026-08-19T22:06:17Z`, `gap_end_ts: 2026-08-19T22:10:02Z`, `duration_s: 225.6`,
+  `acknowledged: false`) and confirmed present in `state.json` (what `tracker.html`'s banner
+  reads).
+- Performed a second, clean, marker-covered restart (`tracker-stop` + `tracker-start`)
+  immediately after, specifically to test survival: `BLIND_WINDOW.json` came out **byte-for-
+  byte identical** across that restart — the record is not reset just because the daemon came
+  back up green.
+- Acknowledged via `tracker-ack-blind` afterward to leave production clean (this was a
+  deliberate test, not a real incident).
+
+**Closing the loop — the conductor, not another tier of the same kind.** T1-T4 keep the
+*observer* alive, but every one of them is itself something that can be down.
+`tracker-health-check` (item 2a) is a machine-checkable contract meant to be called by the
+Paripraśna conductor swarm at every lane transition and treated as a hard halt on failure —
+because the conductor, by construction, is the one thing guaranteed to be running at the
+exact moment a lane transition happens; the 2026-08-19 23m37s blind window would have been
+caught in seconds by it. Checks all five conditions that make the dashboard trustworthy, not
+just heartbeat age: **jobs loaded** (`launchctl list`, no lock), **heartbeat fresh** (<180s),
+**selftest passing** (as of its last run, carried in `heartbeat.json`), **refs fresh** (mirror
+fetched successfully within 180s), **no unacknowledged blind window**. Exits 0 (safe to
+proceed) only if all five hold; exits 1 with a one-line diagnosis naming which failed
+otherwise. Deliberately does **not** source `_tracker_lock.sh` — a conductor calling this at
+every lane transition must never be made to wait behind `install.sh`/`tracker-stop`/
+`tracker-start` holding the label lock, since this script never moves a label, only reads
+state. Measured under 0.7s against production. Selftested: all five failure conditions
+triggered independently (one at a time) plus the all-healthy case, asserting the lock
+directory is never created and total runtime stays under 1s; observed failing first by
+disabling the jobs-unloaded check specifically and confirming that scenario silently reported
+healthy. The binding rule that makes this call mandatory, not optional, is in
+`PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` (item 2b) — wiring the actual call into the
+conductor's own kickoff loop is outside this PR's `tracker/**` scope; that amendment is the
+contract the conductor's prompts adopt at its next phase boundary.
+
+## (d) Remembered blindness
+
+A restart must never launder an outage into green. On every real daemon start (not
+`--selftest`, not `--once`; a dedicated fast path, `--check-blind-window-only`, exists so
+this is testable without the heavy collect/project machinery), `trackerd.py` compares the
+previous `heartbeat.json`'s `ts` against now. If the gap exceeds 120s (`compute_blind_window`
+in `_common.py`, pure) **and** no `STOPPED_INTENTIONALLY.json` is present, it writes
+`~/.pariprashna-tracker/BLIND_WINDOW.json` (`gap_start_ts`, `gap_end_ts`, `duration_s`,
+`acknowledged: false`) and fires a real `anomaly` event — both persist across further
+restarts. `tracker.html` renders a **separate, distinctly-styled persistent banner**
+(magenta, not the amber/red of the live staleness banner above — a different axis: "was
+there a gap nobody explained," not "is the data I'm looking at right now fresh") reading
+e.g. `BLIND 00:23:37 (2026-08-19T20:35:52Z → 2026-08-19T20:59:29Z)`, and it does **not**
+clear itself when the daemon comes back up green. Only `tracker-ack-blind`, an explicit
+operator action, retires it (sets `acknowledged: true`, keeps the record). Selftested two
+ways: the pure `compute_blind_window` function's four cases (first-ever boot, under
+threshold, over-threshold-but-marked-intentional, the one that fires), and a real subprocess
+run of `trackerd.py --check-blind-window-only` against a fabricated 300s-stale heartbeat in
+an isolated `$HOME` — asserting the persistent file and the anomaly event both actually land
+on disk, and that the same stale heartbeat with a marker present produces neither.
+
+## Mutual exclusion between install.sh / tracker-stop / tracker-start / T4
+
+Four scripts are now capable of moving the `com.marsys.pariprashna-*` launchd labels:
+`install.sh`, `tracker-stop`, `tracker-start`, and `tracker-cron-watchdog`. Without mutual
+exclusion, two running concurrently (a human re-running `install.sh` while T4's cron tick
+fires, say) can interleave `bootout`/`bootstrap` calls against the same labels in an
+undefined order. `_tracker_lock.sh`, sourced by all four, is a single advisory lock —
+atomic `mkdir` under `~/.pariprashna-tracker/label_ops.lock` (portable, no `flock(1)`
+dependency, which is not reliably present on macOS) — held only around each script's own
+actual `launchctl` calls, never around unrelated work (`tracker-start`'s up-to-90s health-
+wait, for instance, runs unlocked).
+
+- **`install.sh`, `tracker-stop`, `tracker-start`** acquire *blocking* (retry up to 30s,
+  then fail loudly rather than proceed unlocked).
+- **`tracker-cron-watchdog`** acquires *non-blocking, a single attempt, no retry* — per its
+  own standing contract: if the lock is held, something legitimate is already working on
+  these labels, so it logs a `deferred_lock_held` event and exits, rather than fighting it.
+  Cron's next tick (5 minutes later) re-evaluates from scratch. It only *peeks* the lock
+  (acquire-then-immediately-release) to detect in-progress work; the actual protected
+  mutation happens inside `tracker-start`, which it calls afterward and which takes its own
+  proper hold — this avoids a same-process reentrancy deadlock that a naive
+  "hold-through-the-whole-call" design would hit.
+- **`install.sh` also writes `STOPPED_INTENTIONALLY.json` itself**, around its own bootout
+  window, and clears it after — but only if *it* created it. If the marker already existed
+  (an operator deliberately stopped the tracker via `tracker-stop` and is now separately
+  redeploying code while still meaning to stay stopped), `install.sh` leaves it in place
+  rather than accidentally resuming an intentional stop. This means T4 stands down for a
+  legitimate reinstall via the *marker* (semantic intent) as well as the *lock* (mutual
+  exclusion against a narrow timing race) — belt and suspenders, not redundant: the lock
+  protects against T4's heartbeat check firing in the split second before the marker lands;
+  the marker protects the whole visible duration of the reinstall.
+
+Selftested by holding the real lock (the same file all four scripts source) in a background
+process — including one real `launchctl bootstrap` call inside the held window, standing in
+for `install.sh`'s own — while a concurrent `tracker-cron-watchdog` run is driven against a
+stale-heartbeat-no-marker scenario: asserts exactly one `bootstrap` call total (the holder's)
+and a real `deferred_lock_held` event from cron, never both intervening. Observed failing
+first by neutering cron's lock-peek check (produced 4 bootstrap calls — the holder's plus
+cron's own full 3-job re-bootstrap — and no deferral), then restored.
+
+## The four-tier tap (dead-man's switch)
 
 1. **T1** — `trackerd.py` stamps `~/.pariprashna-tracker/heartbeat.json` every cycle
    (20s while lanes are changing, backs off to 60s after 10 idle cycles).
 2. **T2** — `com.marsys.pariprashna-watchdog` (launchd `StartInterval=60`) kills any stale
    pid and restarts `trackerd.py` if the heartbeat is >90s old, and emits a `daemon` /
    `resurrection` event with the observed gap — displayed on the dashboard, never swallowed.
+   **Cannot survive its own launchd domain being removed** — see the 2026-08-19 incident
+   above; that gap is what T4 exists to cover.
 3. **T3** — `tracker.html` computes staleness **client-side** from `TRACKER_DATA.generated_at`
    against the browser's own clock on a 5s timer, independent of whether the fetch of a
    fresh `tracker_data.js` succeeds. A completely dead backend still produces a loud, exact,
    red banner — the page's freshness claim never depends on the thing that might be gone.
+4. **T4** — `tracker-cron-watchdog`, installed into `crontab` (not launchd) by `install.sh`,
+   every 5 minutes. See "(c) T4" above for the full mechanism, including why it lives in a
+   different subsystem on purpose.
 
 ## LAN access (phone)
 
@@ -145,6 +426,12 @@ the local network. Do not port-forward or tunnel it.**
 
 ## Known, honestly-scoped gaps (not silently dropped — logged here, §N.6)
 
+- **T4's `crontab` installation step is not selftested** (see "(c) T4" above) — mutating the
+  real user crontab from a suite that runs at every real daemon start is a worse risk than
+  the thing being tested. `tracker-cron-watchdog`'s own conditional logic (skip on marker,
+  skip on fresh heartbeat, intervene + log on stale-with-no-marker) is selftested by
+  invoking the script directly with a fake `launchctl` and isolated `$HOME`; only the
+  `crontab -l | ... | crontab -` line in `install.sh` is unverified by automation.
 - **Lane-to-artifact mapping for P1–P5 is best-effort.** Those 47 lanes have not been
   built yet; their `expected_artifacts.paths` in `PLAN.yaml` are plausible guesses from the
   phased-swarm plan's prose, not confirmed file paths. Each lane's own brief should refine
@@ -168,3 +455,14 @@ the local network. Do not port-forward or tunnel it.**
   the swarm's agents. This is the one figure on the dashboard that structurally cannot be
   DERIVED without a billing API this tracker doesn't have access to — shown honestly as
   such (not styled as a DERIVED figure).
+- **`github_rate_limit` reads the `graphql` bucket, not `core` — fixed 2026-08-20.** This
+  collector's own poll (`gh pr list`, open and merged, every cycle) is GraphQL-backed, not
+  REST. Verified empirically before fixing: `gh api rate_limit` diffed immediately before
+  and after a live `gh pr list` call showed `resources.core.used` unchanged at 0 while
+  `resources.graphql.used` incremented by 2 in that one call. The prior version read
+  `resources.core`, which this tracker's own polling never spends from — it reported
+  5000/5000 every cycle regardless of load, a decorative meter dressed as a budget one. The
+  PR-poll itself was confirmed executing every cycle (unconditionally for open PRs; for
+  merged PRs whenever the mirror is healthy) — the defect was the bucket read, not a
+  skipped poll. `parse_rate_limit()` is a pure function with a fixture-based selftest
+  (`test_rate_limit_reads_graphql_not_core`) so a regression back to `core` fails loudly.

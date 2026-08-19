@@ -28,6 +28,11 @@ header{position:sticky; top:0; z-index:10; background:var(--obsidian-panel); bor
 .stale-banner{display:none; padding:10px 16px; font-weight:600; text-align:center; font-family:var(--font-mono)}
 .stale-banner.amber{display:block; background:var(--warning); color:#241a00}
 .stale-banner.red{display:block; background:var(--danger); color:#2a0000; font-size:16px}
+/* Item (d): a DIFFERENT axis from stale-banner above. stale-banner is "is the data I'm
+   looking at right now fresh" and clears itself the instant a fetch succeeds again --
+   exactly the property that would let a restart launder a past outage into green. This one
+   is sticky history: "was there a gap nobody explained," and it does not clear on its own. */
+.blind-banner{display:none; padding:10px 16px; font-weight:600; text-align:center; font-family:var(--font-mono); background:#3a0a3a; color:#f5d9f5; border-bottom:2px solid #7a2a7a}
 body.dimmed .card, body.dimmed table{opacity:.35; filter:grayscale(.6)}
 .hdr-row{display:flex; flex-wrap:wrap; gap:18px; align-items:center}
 .phase-rail{display:flex; gap:4px; flex-wrap:wrap}
@@ -73,6 +78,7 @@ footer{padding:20px; text-align:center; color:var(--text-tertiary); font-size:11
 </head>
 <body>
 <div id="staleBanner" class="stale-banner"></div>
+<div id="blindBanner" class="blind-banner"></div>
 <header>
   <div class="hdr-row">
     <strong style="font-family:var(--font-mono); color:var(--gold-light)">PARIPRAŚNA OBSERVATORY</strong>
@@ -83,7 +89,7 @@ footer{padding:20px; text-align:center; color:var(--text-tertiary); font-size:11
     <span class="pill" id="stallPill" style="display:none">STALLED</span>
     <span class="pill" id="selftestPill">selftest —</span>
     <span class="pill" id="resurrectPill">resurrections 0</span>
-    <span class="pill" id="rateLimitPill">gh rate —</span>
+    <span class="pill" id="rateLimitPill" title="graphql bucket -- gh pr list (this collector's own poll, every cycle) spends from graphql, not REST core; core stays flat at 5000/5000 regardless of load and would be a decorative meter">gh rate —</span>
     <span class="pill" id="codeShaPill" title="running code provenance">code —</span>
   </div>
 </header>
@@ -198,8 +204,25 @@ function updateStaleBanner() {
   }
 }
 
+function updateBlindBanner(blindWindow) {
+  // Item (d): sticky, independent of TRACKER_DATA's own freshness -- a restart that comes
+  // back green must not silently retire this. Only clears when the record itself is
+  // acknowledged (tracker-ack-blind), which is a DIFFERENT event than the daemon
+  // resuming.
+  const banner = document.getElementById("blindBanner");
+  if (!blindWindow || blindWindow.acknowledged) { banner.style.display = "none"; return; }
+  const start = blindWindow.gap_start_ts, end = blindWindow.gap_end_ts, dur = blindWindow.duration_s;
+  const h = String(Math.floor(dur / 3600)).padStart(2, "0");
+  const m = String(Math.floor((dur % 3600) / 60)).padStart(2, "0");
+  const s = String(Math.floor(dur % 60)).padStart(2, "0");
+  banner.style.display = "block";
+  banner.textContent = `BLIND ${h}:${m}:${s} (${start} → ${end}) — unexplained gap, no intentional-stop `
+    + `marker found. Not cleared by this restart being green. Acknowledge with: tracker-ack-blind`;
+}
+
 function render() {
   updateStaleBanner();
+  if (TRACKER_DATA) updateBlindBanner(TRACKER_DATA.blind_window);
   if (!TRACKER_DATA) { document.getElementById("footerInfo").textContent = "waiting for first tracker_data.js load…"; return; }
   const d = TRACKER_DATA;
 
@@ -242,16 +265,26 @@ function render() {
   document.getElementById("resurrectPill").textContent = "resurrections " + ((d.daemon_health && d.daemon_health.resurrection_count) || 0);
 
   const rl = d.github_rate_limit && d.github_rate_limit.value;
-  document.getElementById("rateLimitPill").textContent = rl ? `gh rate ${rl.remaining}/${rl.limit}` : "gh rate UNKNOWN";
+  document.getElementById("rateLimitPill").textContent = rl ? `gh rate (${rl.bucket}) ${rl.remaining}/${rl.limit}` : "gh rate UNKNOWN";
 
   const codeProv = d.code_provenance || {};
   const codePill = document.getElementById("codeShaPill");
+  // Item 1a: CURRENT/AHEAD are not amber -- an unmerged sha ahead of main (e.g. deployed
+  // pre-merge for live verification) is a DIFFERENT condition from actually being stale,
+  // and conflating them trains readers to discount an amber that, when it's BEHIND or
+  // DIVERGED, is real.
   if (codeProv.evidence_class !== "DERIVED") {
     codePill.className = "pill";
     codePill.textContent = "code UNKNOWN (" + (codeProv.provenance || "no INSTALLED_FROM.json") + ")";
-  } else if (codeProv.code_stale) {
+  } else if (codeProv.code_state === "BEHIND") {
     codePill.className = "pill amber";
-    codePill.textContent = `code ${esc(codeProv.code_sha_short)} — STALE CODE (latest: ${esc((codeProv.latest_tracker_subtree_commit_on_main || "").slice(0,10))})`;
+    codePill.textContent = `code ${esc(codeProv.code_sha_short)} — BEHIND (${codeProv.code_behind_count != null ? codeProv.code_behind_count : "?"} commits, latest: ${esc((codeProv.latest_tracker_subtree_commit_on_main || "").slice(0,10))})`;
+  } else if (codeProv.code_state === "DIVERGED") {
+    codePill.className = "pill amber";
+    codePill.textContent = `code ${esc(codeProv.code_sha_short)} — DIVERGED from main (latest: ${esc((codeProv.latest_tracker_subtree_commit_on_main || "").slice(0,10))})`;
+  } else if (codeProv.code_state === "AHEAD") {
+    codePill.className = "pill";
+    codePill.textContent = `code ${esc(codeProv.code_sha_short)} — AHEAD (unmerged, installed ${esc(codeProv.code_installed_at)})`;
   } else {
     codePill.className = "pill green";
     codePill.textContent = `code ${esc(codeProv.code_sha_short)} (current, installed ${esc(codeProv.code_installed_at)})`;
