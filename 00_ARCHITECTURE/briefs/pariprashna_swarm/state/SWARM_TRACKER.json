@@ -155,11 +155,11 @@
       "refuter_votes": []
     },
     "G1-A": {
-      "role_stage": "building",
+      "role_stage": "merged",
       "name": "SafetyPolicyGate + HS-1..HS-6 (serializes before G1-G)",
       "worktree": "worktree-agent-a7fb9dab527dd607a",
       "branch": "pariprashna/g1-a-hardened",
-      "verifier_verdict": "Round 3 complete: all 4 must-fix + 2 should-fix items closed with real reproduction evidence (728 files/8630 tests/0 failed, golden-stream 56/56 zero regression, tsc/eslint clean). 2 items honestly disclosed as deliberately out of round scope (pre-existing unrelated HS-4 false positive; consult door has pre-dispatch stop only, not the full post-plan wiring MCP door has). Final lighter confirmation pass dispatched before merge."
+      "verifier_verdict": "MERGED after the most rigorous process in this campaign: original build (2 rounds of self-adversarial testing) -> 1 verifier + 3 adversaries -> hardening round 1 (all 13 findings) -> independent re-verification (8/13 confirmed solid, 3 must-fix + 1 scope error found) -> hardening round 2/narrow (4 must-fix incl. rewiring the actual UNGATED DEFAULT production route /api/chat/consult, discovered via PARIPRASHNA_ASBUILT_BASELINE) -> final confirmation pass (all confirmed, including re-running the real CI grep filter to prove the H-6 detector fix survives it) -> conductor integration caught+fixed a second migration collision (576 vs G1-C's 576, renumbered to 577, re-verified against real Postgres). Full suite 731/778 files, 8667 tests, 0 failures. Golden-stream 56/56 zero regression. Ships flag-OFF (PARIPRASHNA_SAFETY_GATE_ENABLED default false). Two items explicitly named as flag-enablement gates (not merge blockers, per final reviewer's judgment, agreed): a pre-existing HS-4 false-positive on death-anniversary phrasing, and the consult door lacking post-plan reclassify/capability-exclusion wiring (has pre-dispatch stop only)."
     },
     "G1-C": {
       "role_stage": "merged",
@@ -425,5 +425,8 @@
         "round-2 fixes all individually load-bearing by mutation (matches the verifier's independent ablation)"
       ]
     }
+  ],
+  "p1_gate_dependencies_unblocked": [
+    "G1-G (shares pre-wire scan file with G1-A, now unblocked)"
   ]
 }
