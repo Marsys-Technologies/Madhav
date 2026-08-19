@@ -3678,3 +3678,5 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
 - 2026-08-19 13:38Z — **PARIŚEṢA / Codex F46 merged:** PR #1342 merged normally through Ganga as `a7136b467`; synthetic CI run `32258364020` succeeded. Affected MCP deployment and direct service proof remain pending. F47’s `bc739092` base is now obsolete and must be rebased/re-evidenced before any admission. No bypass, rebuild, or DB action.
 
 - 2026-08-19 13:40Z — **PARIŚEṢA / Codex F47 rebase:** PR #1343 is refreshed to `404030993` atop F46 main ancestry; it retains the independently reviewed action-sensitive scoring and per-window dasha-boundary correction, with focused Phala tests 42/42. Fresh protected PR contexts are required before any normal Ganga admission; no queue, bypass, deploy, rebuild, or DB action.
+
+- 2026-08-19 13:45Z — **PARIŚEṢA / Codex F50 reviewed:** exact current-main candidate `ba87bbe43` closes the additional domain-filtered false-chart-wide-#1 narration path; focused red→green 3/3 and independent review pass. It remains unqueued pending its exact baseline receipt and the active F47 release movement; no PR, deploy, rebuild, or DB action.
