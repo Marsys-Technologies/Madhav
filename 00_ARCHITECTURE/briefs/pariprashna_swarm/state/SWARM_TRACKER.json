@@ -155,8 +155,11 @@
       "refuter_votes": []
     },
     "G1-A": {
-      "role_stage": "building",
-      "name": "SafetyPolicyGate + HS-1..HS-6 (serializes before G1-G)"
+      "role_stage": "verifying",
+      "name": "SafetyPolicyGate + HS-1..HS-6 (serializes before G1-G)",
+      "worktree": "worktree-agent-a7fb9dab527dd607a",
+      "branch": "pariprashna/g1-a-safety-gate",
+      "verifier_verdict": "Builder report: 260 new tests, 2 rounds of self-adversarial testing (17 real misses found+fixed), honest disclosed residual (typo evasion not closeable without breaking muhurta questions), Hinglish/Devanagari coverage added. 1 verifier + 3 adversaries (evasion/bypass, DB-integrity/state-machine, harness-integrity) dispatched given the subject matter (suicide-adjacent content, health crisis, minors)."
     },
     "G1-C": {
       "role_stage": "merged",
@@ -173,7 +176,7 @@
       "verifier_verdict": "conductor-reviewed, cherry-picked clean, scripts syntax-checked, drift baseline held"
     },
     "P1-I": {
-      "role_stage": "queued",
+      "role_stage": "building",
       "name": "Ground-truth re-verification of Baseline UNVERIFIED rows (serializes after G1-C)"
     }
   },
