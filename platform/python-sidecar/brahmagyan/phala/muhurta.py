@@ -871,8 +871,9 @@ def generate_muhurta_windows(
     whichever panchanga_daily.auspicious carries for the date) are surfaced
     under factors.intraday_windows instead of only the coarse 48h block.
     """
-    # Pre-fetch dasha and signal quality (chart-level, constant across windows)
-    dasha_q = _dasha_quality_for_chart(chart_id, range_start, action_type)
+    # Signal quality is chart-level and constant across windows. Dasha quality is
+    # deliberately resolved per window below: a requested range may cross an
+    # MD/AD boundary, so a range-start score cannot be reused honestly.
     signal_q = _signal_activation_for_action(action_type, chart_id)
 
     # Attempt DB connection for panchanga lookups
@@ -916,6 +917,7 @@ def generate_muhurta_windows(
         panchanga_q = _panchanga_quality_for_action(
             tithi_name, vara_lord, moon_nakshatra, yoga, action_type
         )
+        dasha_q = _dasha_quality_for_chart(chart_id, current, action_type)
         transit_q = _transit_quality_for_window(current, action_type)
 
         # MC-027: gate panchanga_quality against the native's OWN tāra-bala
