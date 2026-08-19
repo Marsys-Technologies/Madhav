@@ -448,15 +448,20 @@ export const queryRemediesCapability: CapabilityDescriptor = {
       const topRow = orderedResRows[0]
       const secondaryGrahas = orderedResRows.slice(1, 4).map((r) => String(r['graha']))
       const leadSentence = topRow
-        ? (leverageActive
-            ? `Your highest-leverage remedy target is ${String(topRow['graha'])}` +
-              ` — leverage_index ${Number(levFor(topRow)?.leverage_index ?? 0).toFixed(3)}` +
-              ` (domain '${String(levFor(topRow)?.leverage_domain ?? leverageInfo?.resolvedDomain ?? 'general')}'),` +
-              ` resonance_score ${Number(topRow['resonance_score']).toFixed(3)}, priority class ${String(topRow['remedy_priority_class'])}` +
-              (secondaryGrahas.length ? ` — followed by ${secondaryGrahas.join(', ')}.` : '.')
-            : `Your Bodha remedy layer flags ${String(topRow['graha'])} as your #1 remedy-priority target` +
-              ` — resonance_score ${Number(topRow['resonance_score']).toFixed(3)}, priority class ${String(topRow['remedy_priority_class'])}` +
-              (secondaryGrahas.length ? ` — followed by ${secondaryGrahas.join(', ')}.` : '.'))
+        ? (graha
+            ? `${String(topRow['graha'])}'s remedy priority is ${String(topRow['remedy_priority_class'])}` +
+              (topRow['weakest_rank_in_chart'] != null
+                ? ` (rank ${String(topRow['weakest_rank_in_chart'])} of 9 chart-wide)` : '') +
+              ` — resonance_score ${Number(topRow['resonance_score']).toFixed(3)}.`
+            : (leverageActive
+                ? `Your highest-leverage remedy target is ${String(topRow['graha'])}` +
+                  ` — leverage_index ${Number(levFor(topRow)?.leverage_index ?? 0).toFixed(3)}` +
+                  ` (domain '${String(levFor(topRow)?.leverage_domain ?? leverageInfo?.resolvedDomain ?? 'general')}'),` +
+                  ` resonance_score ${Number(topRow['resonance_score']).toFixed(3)}, priority class ${String(topRow['remedy_priority_class'])}` +
+                  (secondaryGrahas.length ? ` — followed by ${secondaryGrahas.join(', ')}.` : '.')
+                : `Your Bodha remedy layer flags ${String(topRow['graha'])} as your #1 remedy-priority target` +
+                  ` — resonance_score ${Number(topRow['resonance_score']).toFixed(3)}, priority class ${String(topRow['remedy_priority_class'])}` +
+                  (secondaryGrahas.length ? ` — followed by ${secondaryGrahas.join(', ')}.` : '.')))
         : `No resonance rows found for chart ${chart_id}${graha ? ` (graha filter: ${graha})` : ''}.`
 
       // ── resonance_ranked_present: prose ranking of ALL resonance rows ─────
