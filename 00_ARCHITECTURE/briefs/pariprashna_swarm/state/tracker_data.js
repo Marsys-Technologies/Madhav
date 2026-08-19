@@ -121,30 +121,30 @@ window.TRACKER = {
       "note": "Already satisfied by P0-E (doc at v0.5)."
     },
     "G1-F": {
-      "role_stage": "building",
+      "role_stage": "merged",
       "name": "Model-plane hygiene (provider posture doc)",
       "worktree": null,
       "branch": null,
       "last_event_ts": "2026-08-19T17:08:00Z",
-      "verifier_verdict": null,
+      "verifier_verdict": "conductor-reviewed, cherry-picked clean, docs-only, drift baseline held",
       "refuter_votes": []
     },
     "G1-H": {
-      "role_stage": "building",
+      "role_stage": "merged",
       "name": "PB-9-DETECTOR (no-auto-promotion CI gate)",
       "worktree": null,
       "branch": null,
       "last_event_ts": "2026-08-19T17:08:00Z",
-      "verifier_verdict": null,
+      "verifier_verdict": "conductor-reviewed, committed (agent left uncommitted), 20/20 tests independently re-verified, drift/naming_lint clean",
       "refuter_votes": []
     },
     "G1-D": {
-      "role_stage": "building",
+      "role_stage": "merged",
       "name": "Rate limits + pre-dispatch spend ceilings (middleware.ts)",
       "worktree": null,
       "branch": null,
       "last_event_ts": "2026-08-19T17:08:00Z",
-      "verifier_verdict": null,
+      "verifier_verdict": "conductor-reviewed. Caught+self-corrected a near-miss (would have clobbered src/proxy.ts, the real app-wide session gate -- Next 16 renamed middleware.ts convention). Migration 574 (nullable channel column + 2 non-locking indexes on llm_usage_events) is additive-only, applies automatically via the existing deploy pipeline when this branch reaches main -- not applied manually. Flag-off by default (PARIPRASHNA_LIMITS_ENABLED). 69/69 lane tests + full suite 707/751 files, 7877 tests 0 failures, independently re-verified. drift/naming_lint clean.",
       "refuter_votes": []
     },
     "G1-B": {
