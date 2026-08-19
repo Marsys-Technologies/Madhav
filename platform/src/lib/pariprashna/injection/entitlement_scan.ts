@@ -132,8 +132,15 @@ const BARE_32_HEX_RE = /(?<![0-9a-fA-F])[0-9a-fA-F]{32}(?![0-9a-fA-F])/g
  * the mirror form (hex run followed by a cue). The window is intra-sentence by
  * construction — the caller only ever hands this one sentence.
  *
- * `[^\n]{0,24}?` is lazy and newline-free so "chart" on one line and a hex token
- * three lines later do not pair up.
+ * `[^\n]{0,80}?` is lazy and newline-free so "chart" on one line and a hex token
+ * three lines later do not pair up. 80 rather than the original 24 because a
+ * review reproduced the gap at 24 with an entirely natural sentence — "The
+ * other chart, which belongs to a different native entirely, is 1c826d5a
+ * today." — where one relative clause is enough to push the id out of range.
+ * Widening is cheap now that `HAS_HEX_LETTER` (below) gates the token: a false
+ * positive would have to be an 8+ character run of nothing but hex characters,
+ * including at least one of a–f, sitting near the word "chart" — which is an
+ * id, not prose.
  *
  * CASE-INSENSITIVE, and the reason is a real evasion the adversarial suite
  * found rather than a style choice: without `i`, `chartId` matches neither the
@@ -147,8 +154,8 @@ const BARE_32_HEX_RE = /(?<![0-9a-fA-F])[0-9a-fA-F]{32}(?![0-9a-fA-F])/g
  * nothing at all. 64 covers a hyphen-stripped UUID (32), a sha256 (64), and
  * every suffixed variant in between.
  */
-const CUE_THEN_HEX_RE = /\bchart(?:[_\s-]?id)?\b[^\n]{0,24}?(?<![0-9a-fA-F])([0-9a-fA-F]{8,64})(?![0-9a-fA-F])/gi
-const HEX_THEN_CUE_RE = /(?<![0-9a-fA-F])([0-9a-fA-F]{8,64})(?![0-9a-fA-F])[^\n]{0,24}?\bchart(?:[_\s-]?id)?\b/gi
+const CUE_THEN_HEX_RE = /\bchart(?:[_\s-]?id)?\b[^\n]{0,80}?(?<![0-9a-fA-F])([0-9a-fA-F]{8,64})(?![0-9a-fA-F])/gi
+const HEX_THEN_CUE_RE = /(?<![0-9a-fA-F])([0-9a-fA-F]{8,64})(?![0-9a-fA-F])[^\n]{0,80}?\bchart(?:[_\s-]?id)?\b/gi
 
 /**
  * A prefix-rule token must contain at least one hex LETTER.
