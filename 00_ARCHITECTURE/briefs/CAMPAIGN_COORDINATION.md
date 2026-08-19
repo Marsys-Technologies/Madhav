@@ -3664,3 +3664,5 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
 - 2026-08-19 12:53Z — **PARIŚEṢA / Codex F90 queue:** PR #1345 entered Ganga normally at position 1 after exact-head admission. Fresh synthetic merge-group contexts are pending; no bypass, deploy, rebuild, or DB action.
 
 - 2026-08-19 13:05Z — **PARIŚEṢA / Codex F90 merged:** PR #1345 merged normally as `bc739092` after synthetic Ganga Quality Gate, TAP CI, and EKV all succeeded. Affected MCP deployment reconciliation and a read-only service canary remain pending; no deploy, rebuild, or DB action was taken.
+
+- 2026-08-19 13:07Z — **PARIŚEṢA / Codex Velocity Reset adopted:** after F90 merge reconciliation, root adopted the operator-approved execution overlay via the authorized fallback state ledger (`38de956db`) because the normal state writer remains guardian-unavailable. Current main is `bc739092`; F46/PR #1342 and F47/PR #1343 are clean but stale-base candidates requiring requalification before any queue action. No deploy, rebuild, or DB action.
