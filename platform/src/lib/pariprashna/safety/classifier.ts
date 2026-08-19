@@ -60,6 +60,28 @@ interface PhrasePattern {
 }
 
 /**
+ * The named-undertaking guard (hardening round, C-1).
+ *
+ * Used ONLY by `hs2.plan_and_means_disclosure`, the one HS-2 pattern whose
+ * words carry no self-harm vocabulary of their own. "I have a plan and a date
+ * picked" is a suicide-risk disclosure when the object is unnamed and an
+ * ordinary muhūrta question when it is named — and naming a wedding, a shop
+ * opening or a gṛha-praveśa is overwhelmingly what this product's users are
+ * doing when they type that sentence.
+ *
+ * Same construction and same justification as `MUNDANE_REMAINDER_GUARD` below:
+ * a narrowing of the pattern to its actual meaning, not an exemption branch. An
+ * attacker who appends "for my business launch" is left with a sentence that
+ * contains no self-harm content for any control to act on.
+ */
+const BENIGN_UNDERTAKING_GUARD =
+  `(?![^.?!]{0,40}\\b(business|wedding|marriage|shaadi|engagement|launch|company|startup|` +
+  `shop|store|office|griha ?pravesh\\w*|house ?warming|housewarming|move|moving|relocat\\w+|` +
+  `trip|travel|journey|yatra|flight|surgery|operation|procedure|exam|interview|admission|` +
+  `registration|puja|pooja|havan|yagna|ceremony|event|project|investment|purchase|` +
+  `property|car|vehicle|loan|course|treatment|conception|pregnancy|baby|naming|namkaran)\\b)`
+
+/**
  * HS-2 — suicide-adjacent (MP §3.5.C, "disallowed under all audience tiers").
  *
  * Calibration note, stated because it is a real design choice and not an
@@ -182,6 +204,52 @@ const HS2_PATTERNS: PhrasePattern[] = [
     re: /(khud ?ku?shi|khudkhushi|atmahatya|atmaghat|apni jaan (dena|de|le)|jaan dena|jaan de ?d|आत्महत्या|ख़ुदकुशी|खुदकुशी|अपनी जान)/,
     squashed: ['khudkushi', 'khudkhushi', 'atmahatya', 'jaandena'],
   },
+
+  {
+    id: 'hs2.hindi_verb_forms',
+    cls: 'hs2_suicide_adjacent',
+    severity: 'hard_stop',
+    // HARDENING ROUND, H-1 — the Hindi/Hinglish VERB forms.
+    //
+    // The sibling above covers the NOUNS (ख़ुदकुशी, आत्महत्या — "suicide" as a
+    // thing). It says nothing about the two commonest ways a person actually
+    // discloses this in Hindi, which are verbs:
+    //   · मैं मरना चाहता हूँ  / "main marna chahta hoon"  — I want to die
+    //   · मैं जीना नहीं चाहता / "main jeena nahi chahta"  — I don't want to live
+    // Both went through the first build as `proceed`. Noun-only coverage of a
+    // language is coverage of the clinical register, not of how anyone speaks.
+    re: new RegExp(
+      `\\bmar(na|ne|ni)\\s+chah\\w+` +
+        `|\\b(ji|jee)(na|ne)\\s+(nahi+n?|nai)\\s+chah\\w+` +
+        `|\\b(nahi+n?|nai)\\s+(ji|jee)(na|ne)\\b` +
+        `|\\bab\\s+(ji|jee)(na|ne)\\s+(nahi+n?|nai)\\b` +
+        `|\\bzinda\\s+(nahi+n?|nai)\\s+rehna\\b|\\bnahi+n?\\s+rehna\\s+chah\\w+` +
+        `|(मरना चाह|मरने की इच्छा|जीना नहीं चाह|नहीं जीना|अब नहीं जीना|ज़िंदा नहीं रहना|जिंदा नहीं रहना)`,
+    ),
+    squashed: ['marnachahta', 'marnachahti', 'marnechahta', 'jeenanahichahta', 'jinanahichahta'],
+  },
+
+  {
+    id: 'hs2.odia_self_death',
+    cls: 'hs2_suicide_adjacent',
+    severity: 'hard_stop',
+    // HARDENING ROUND, H-1 — ODIA, HS-2 side. Same reasoning as the HS-1 Odia
+    // pattern above (the native's own state language, previously zero
+    // coverage), and the same honest scope note: the death/live verb stems and
+    // the ātmahatyā noun, not the whole language.
+    //
+    //   · ମୁଁ ମରିବାକୁ ଚାହେଁ            / "mun maribaku chahen"      — I want to die
+    //   · ମୋତେ ବଞ୍ଚିବାକୁ ଇଚ୍ଛା ନାହିଁ   / "mote banchibaku ichha nahin" — I don't want to live
+    //   · ଆତ୍ମହତ୍ୟା                    / "atmahatya"                 — suicide
+    re: new RegExp(
+      `\\bmari(baku|bara|ba)\\s+(chah\\w+|ichh?a)\\b` +
+        `|\\bbanchi(baku|bara|ba)\\s+(ichh?a|iccha|man)?\\s*nah\\w*\\b` +
+        `|\\bbanchi(baku|bara|ba)\\s+chahun?\\s*nah\\w*\\b` +
+        `|\\batma\\s?hatya\\b|\\batma\\s?ghata\\b` +
+        `|(ମରିବାକୁ ଚାହେଁ|ମରିବାକୁ ଇଚ୍ଛା|ଆତ୍ମହତ୍ୟା|ଆତ୍ମଘାତ|ବଞ୍ଚିବାକୁ ଇଚ୍ଛା ନାହିଁ|ବଞ୍ଚିବାକୁ ଚାହୁଁନାହିଁ)`,
+    ),
+    squashed: ['maribakuchahen', 'maribakuichha', 'banchibakuichhanahin', 'banchibakuichhanahi'],
+  },
   {
     id: 'hs2.self_harm_adjacent_astrology',
     cls: 'hs2_suicide_adjacent',
@@ -192,6 +260,182 @@ const HS2_PATTERNS: PhrasePattern[] = [
     // even with no first-person distress language anywhere in the question.
     re: /\b(ideation|self[-\s]?harm|self[-\s]?destructive|atmaghata|atmahatya)\b/,
     squashed: ['suicidalideation', 'selfharmyoga', 'atmaghata', 'atmahatya', 'selfdestructiveyoga'],
+  },
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // HARDENING ROUND, C-1 — METHOD, PRACTICE, ELECTION, AND PLAN DISCLOSURE.
+  //
+  // The first build's HS-2 set was built around how people describe the WISH
+  // ("I want to die", "no reason to live"). Three adversaries independently
+  // found that it says nothing at all about the MEANS, the PRACTICE, or the
+  // ELECTION — and that the last of those is the shape this particular
+  // instrument invites. "What is the most auspicious muhūrta to leave this
+  // body voluntarily?" is a question only an astrology product ever receives,
+  // and it went through as `proceed`, classes `[]`.
+  //
+  // These four patterns are written as STRUCTURE (method-verb × self-directed;
+  // election-term × self-death target), not as a fixed phrase list, so a
+  // paraphrase nobody anticipated still lands.
+  // ═════════════════════════════════════════════════════════════════════════
+
+  {
+    id: 'hs2.method_self_directed',
+    cls: 'hs2_suicide_adjacent',
+    severity: 'hard_stop',
+    // METHOD-VERB × SELF-DIRECTED. Four sub-shapes, because the means take
+    // four different grammatical forms and one alternation for all of them
+    // would be unreadable:
+    //  (a) transitive method verb + a reflexive pronoun;
+    //  (b) positional verb + a lethal-position object (the "in front of a
+    //      train" family, which has no reflexive pronoun in it at all);
+    //  (c) an incision verb + a self-owned body part;
+    //  (d) a consumption verb + a TOTALIZING quantifier + a medication noun.
+    //      The quantifier is load-bearing: "should I take my pills during this
+    //      dasha?" is an ordinary question, "swallow ALL my pills" is not.
+    re: new RegExp(
+      `\\b(hang|hanging|shoot|shooting|drown|drowning|suffocate|suffocating|asphyxiate|` +
+        `asphyxiating|poison|poisoning|starve|starving|electrocute|electrocuting|immolate|` +
+        `immolating|overdose|overdosing)\\s+(my\\s?self|myself|him\\s?self|her\\s?self|` +
+        `them\\s?selves|one\\s?self)\\b` +
+        `|\\b(overdose|od)\\s+(on|with)\\b` +
+        `|\\b(jump|jumping|leap|leaping|step|stepping|throw|throwing|lie|lying|lay|laying)\\s+` +
+        `(off|in ?front of|onto|under|before|from|out of)\\b[^.?!]{0,30}\\b(train|bridge|` +
+        `building|traffic|truck|lorry|bus|roof|terrace|balcony|cliff|ledge|window|track|rail|` +
+        `railway|metro|platform)\\b` +
+        `|\\b(slit|slitting|slash|slashing|cut|cutting)\\s+(my|his|her|their)\\s+` +
+        `(wrists?|throat|veins?|arteries)\\b` +
+        `|\\b(swallow|swallowing|take|taking|consume|consuming|down|downing)\\s+` +
+        `(all|the whole|a whole|every|an entire|the entire|a full)\\s+` +
+        `(of\\s+)?(my\\s+|the\\s+)?(pills?|bottle|tablets?|medication|meds|packet|strip|` +
+        `sleeping pills?|sedatives?|painkillers?)\\b`,
+    ),
+    squashed: [
+      'hangmyself',
+      'shootmyself',
+      'drownmyself',
+      'poisonmyself',
+      'suffocatemyself',
+      'asphyxiatemyself',
+      'overdosemyself',
+      'slitmywrists',
+      'cutmywrists',
+      'slitmythroat',
+      'jumpinfrontofatrain',
+      'stepinfrontofatrain',
+      'jumpoffabridge',
+      'jumpoffabuilding',
+      'swallowallmypills',
+      'takeallmypills',
+      'takethewholebottle',
+    ],
+  },
+
+  {
+    id: 'hs2.indic_self_death_practice',
+    cls: 'hs2_suicide_adjacent',
+    severity: 'hard_stop',
+    // These are REAL Indic self-death practices and they are live vocabulary
+    // for this instrument's actual user base — not contrived evasion strings.
+    // A Jyotiṣa product that catches "kill myself" and not `jal samādhi` has
+    // localized its safety gate to the wrong culture.
+    //
+    // NOTE the compounds. Bare `samadhi` is deliberately ABSENT: samādhi is an
+    // ordinary yogic/spiritual term and "Samādhi yoga" is a real chart
+    // combination, so matching it alone would refuse a large class of
+    // legitimate questions. Only the compounds that name the ACT are here.
+    re: new RegExp(
+      `\\b(jal\\s?samadhi|jala\\s?samadhi|agni\\s?samadhi|samadhi\\s?maran\\w*|` +
+        `prayopave[sz]\\w*|praya\\s?upave[sz]\\w*|santhara|santhaara|sallekhana|salekhana|` +
+        `icch?h?a\\s?-?\\s?mrityu|icch?h?a\\s?-?\\s?mrtyu|iccha\\s?-?\\s?maran\\w*|` +
+        `atma\\s?visarjan\\w*|atma\\s?arpan\\w*|deha\\s?-?\\s?tyaga|dehatyaga|` +
+        `self\\s?-?immolat\\w*|voluntary death|willing death|self\\s?-?willed death)\\b` +
+        `|(जल ?समाधि|अग्नि ?समाधि|प्रायोपवेश|संथारा|सल्लेखना|इच्छा ?मृत्यु|देहत्याग|आत्मविसर्जन)`,
+    ),
+    squashed: [
+      'jalsamadhi',
+      'jalasamadhi',
+      'agnisamadhi',
+      'samadhimaran',
+      'prayopavesa',
+      'prayopavesha',
+      'sallekhana',
+      'icchamrityu',
+      'ichhamrityu',
+      'dehatyaga',
+      'selfimmolation',
+      'voluntarydeath',
+      'santhara',
+    ],
+  },
+
+  {
+    id: 'hs2.election_for_self_death',
+    cls: 'hs2_suicide_adjacent',
+    severity: 'hard_stop',
+    // ELECTION-TERM × SELF-DEATH TARGET — the shape this product is uniquely
+    // exposed to. "Which day is best for…", "the most auspicious muhūrta
+    // to…", "pick me a date to…" are the instrument's own idiom, and asking it
+    // to ELECT a self-death is asking it to participate.
+    //
+    // The target half is pinned to a SELF-directed death, never a bare
+    // `death`/`die`. "Which tithi is auspicious for my father's death
+    // anniversary?" is an ordinary and frequent śrāddha question, and a bare
+    // `death` would refuse it. The `(?!\s+anniversar…)` lookahead is a second
+    // narrowing on the same point — belt and braces on the one false positive
+    // that would hurt most.
+    re: new RegExp(
+      `\\b(muhurt\\w*|muhurat\\w*|tithi|auspicious|shubh\\w*|good day|best day|best time|` +
+        `good time|right time|which day|what day|which date|what date|which time|what time|` +
+        `pick (me )?(a|the) (date|day|time|moment)|choose (a|the) (date|day|time|moment)|` +
+        `elect(ion|ional)?|favou?rable (day|time|moment|date))\\b` +
+        `[^.?!]{0,60}` +
+        `\\b((my|my own) (death|passing|demise|exit|end)(?!\\s+(anniversar\\w+|rite|rites|` +
+        `ritual|ceremony|puja|shraddh\\w*|tithi))|` +
+        `(me|myself|i) (to )?(die|pass away|depart|go)\\b|` +
+        `leave (this|my|the) (body|world) (voluntar\\w+|willing\\w*|by choice)|` +
+        `leav\\w+ (this|my|the) body|give up (my |the )?(body|life|prana|breath)|` +
+        `renounce (my )?(body|life)|end (my|this) life|end it all|end things|` +
+        `stop eating (until|till)|fast\\w* (un)?til+ (death|i die))`,
+    ),
+    // No squashed entries: the two halves are separated by up to 60 characters
+    // of arbitrary text, which the squashed surface (a single contiguous
+    // substring test with no word boundaries) cannot express. The evasion
+    // coverage for this shape comes from the OTHER patterns an evader's
+    // sentence still contains.
+    squashed: [],
+  },
+
+  {
+    id: 'hs2.plan_and_means_disclosure',
+    cls: 'hs2_suicide_adjacent',
+    severity: 'hard_stop',
+    // "I have a plan and a date picked." / "I have been planning how I would
+    // do it." These are the standard clinical risk-assessment signals (plan +
+    // means + timeline, with an ANAPHORIC "it" that has no antecedent), and
+    // both went through the first build as `proceed`.
+    //
+    // ── THE HONEST PART ──────────────────────────────────────────────────
+    // These two are the OVER-INCLUSIVE TAIL of an already-deliberately-
+    // over-inclusive class, and unlike every other pattern in this file they
+    // carry no self-harm vocabulary at all — the words alone are compatible
+    // with a wedding, a business launch, or a relocation. That is why they
+    // carry `BENIGN_UNDERTAKING_GUARD`: a NAMED undertaking in the same
+    // sentence resolves the anaphor, and a resolved anaphor is not this
+    // signal. That guard is a narrowing of the pattern to its meaning, the
+    // same move `MUNDANE_REMAINDER_GUARD` makes above — and note what an
+    // evader gains by triggering it: a sentence with no self-harm content
+    // left in it for any control to act on, which is not a bypass of anything.
+    re: new RegExp(
+      `\\b(i have|i've|ive|there is|theres)\\s+(a |the )?(plan|method|means|way)\\b` +
+        `[^.?!]{0,40}\\b(and|with)\\b[^.?!]{0,25}\\b(a |the )?(date|day|time)\\b` +
+        `[^.?!]{0,15}\\b(picked|chosen|set|decided|fixed|in mind|sorted)\\b` +
+        BENIGN_UNDERTAKING_GUARD +
+        `|\\b(been )?(planning|thinking about|thought about|figur\\w+ out|work\\w+ out|` +
+        `research\\w+|decid\\w+)\\s+(exactly )?how (i|he|she|they) (would|will|could|might|can)\\s+` +
+        `do it\\b` +
+        BENIGN_UNDERTAKING_GUARD,
+    ),
+    squashed: [],
   },
 ]
 
@@ -319,8 +563,62 @@ const HS1_PATTERNS: PhrasePattern[] = [
     // `marunga`/`marungi`/`marega` are the first-person and third-person future
     // of मरना (to die) — the `maran\w*` stem does not reach them, which the
     // round-2 probe caught.
-    re: /(kab\s+mar\w*|mar\w*\s+kab|marunga|marungi|marega|maregi|marne|marna\s+hai|maut\s+kab|kab\s+maut|मैं कब मर|कब मरूं|मृत्यु कब|कब मृत्यु|मौत कब|कब मौत)/,
+    //
+    // ── HARDENING ROUND, H-2: THE `mar\w*` WILDCARD WAS A DEMOGRAPHIC BUG ──
+    // This pattern used to read `kab\s+mar\w*|mar\w*\s+kab`, i.e. "kab" next to
+    // ANY word starting with `mar`. In the language this gate exists to serve,
+    // that is not a rare collision — it is three of the most common questions
+    // the product receives, all of which were being SEALED with no reading:
+    //   · "Meri marriage kab hogi?"      — marriage timing (`marriage kab`)
+    //   · "Shani kab margi hoga?"        — Saturn retrograde→direct (`kab margi`)
+    //   · "Margashirsha kab shuru hoga?" — a lunar month (`margashirsha kab`)
+    // A safety control that refuses to answer "when will I marry" for Hinglish
+    // speakers, and only for Hinglish speakers, is not a safety control; it is
+    // a defect that happens to fail in the strict direction.
+    //
+    // The wildcard is now an explicit list of the DEATH-VERB conjugations,
+    // word-bounded. `margi`, `marriage` and `margashirsha` are not among them
+    // and cannot be: none of `-unga -ungi -ega -egi -enge -oge -ogi -na -ne`
+    // completes any of those words. Coverage of the genuine asks is unchanged
+    // — proven by the Hinglish cases in the adversarial suite, which are
+    // asserted alongside the three false positives above.
+    re: new RegExp(
+      `\\bkab\\s+mar(unga|ungi|ega|egi|enge|oge|ogi|na|ne)\\b` +
+        `|\\bmar(unga|ungi|ega|egi|enge)\\s+kab\\b` +
+        `|\\bmar(unga|ungi|ega|egi|enge)\\b` +
+        `|\\bmarne\\b|\\bmarna\\s+hai\\b` +
+        `|\\bmaut\\s+kab\\b|\\bkab\\s+maut\\b` +
+        `|(मैं कब मर|कब मरूं|मृत्यु कब|कब मृत्यु|मौत कब|कब मौत)`,
+    ),
     squashed: ['kabmarunga', 'kabmarungi', 'kabmarega', 'kabmarna'],
+  },
+
+  {
+    id: 'hs1.odia_when_will_i_die',
+    cls: 'hs1_date_of_death',
+    severity: 'hard_stop',
+    // HARDENING ROUND, H-1 — ODIA.
+    //
+    // The native is in Bhubaneswar, Odisha. Odia is the state language and the
+    // first language of the cohort most likely to reach this instrument, and
+    // the first build's coverage of it was ZERO — English, Hindi and Hinglish
+    // only. "mun kebe maribi" is the plainest possible way to ask this
+    // question in the native's own state and it went through as `proceed`.
+    //
+    // Odia script, like Devanagari, cannot be matched with `\b` (JS word
+    // boundaries are ASCII-only) and vanishes from the squashed form, so the
+    // script alternation runs unbounded; the romanized half is word-bounded.
+    //
+    // SCOPE, STATED HONESTLY: this covers the death-verb (ମରିବା / mariba) and
+    // mṛtyu forms, not the full language. It is a real and substantial
+    // improvement over nothing; it is not a claim of Odia completeness, and a
+    // native-speaker review would very likely add to it.
+    re: new RegExp(
+      `\\bkebe\\s+mari\\w*\\b|\\bmari(bi|ba|biki|jibi|jiba)\\b` +
+        `|\\bmrityu\\s+kebe\\b|\\bkebe\\s+mrityu\\b|\\bjibana\\s+sesa\\b` +
+        `|(କେବେ ମରି|ମରିବି|ମରିବ|ମରିଯିବି|ମୃତ୍ୟୁ କେବେ|କେବେ ମୃତ୍ୟୁ)`,
+    ),
+    squashed: ['kebemaribi', 'kebemariba', 'munkebemaribi'],
   },
   {
     id: 'hs1.maximum_age',
@@ -573,7 +871,20 @@ const DURATION_LIMIT_TERMS =
  * a tier-A mortality term in the SAME query.
  */
 const TEMPORAL_SPECIFICITY_TERMS =
-  /\b(when|what date|which date|exact date|what year|which year|what month|which month|what day|which day|what age|which age|at what age|how old|exact|exactly|precise\w*|specific date|specifically when|pinpoint|to the (day|month|year)|timing of|time of|date for|the (year|date|day|month|age)|(resulting|final|specific|approximate|estimated) (year|age|date|month|day|time)|(terminal|end|final|cut ?off) ?point|conclude\w*|runs? out|how far)\b/
+  // `kab` (Hindi/Urdu) and `kebe` (Odia) are "when", and their absence here was
+  // a real gap the round-3 suite caught: "meri mrityu kab hogi" carried a
+  // tier-A mortality term (`mrityu`) and an explicit demand for a time, and
+  // landed on HS-4 rather than HS-1 purely because this lexicon was
+  // English-only. Adding them here rather than as another phrase pattern is
+  // the general fix — it upgrades EVERY mortality term in the tier-A lexicon,
+  // in either language, not just the one phrasing the test happened to name.
+  //
+  // Safe by construction, and this is the reason this lexicon is allowed to be
+  // broad: it NEVER fires alone. HS-1 needs a tier-A mortality term in the same
+  // query, so "meri marriage kab hogi" and "Shani kab margi hoga" — which have
+  // no mortality term at all — remain untouched. Word-bounded, so `kabhi`
+  // ("ever") does not match.
+  /\b(when|kab|kebe|what date|which date|exact date|what year|which year|what month|which month|what day|which day|what age|which age|at what age|how old|exact|exactly|precise\w*|specific date|specifically when|pinpoint|to the (day|month|year)|timing of|time of|date for|the (year|date|day|month|age)|(resulting|final|specific|approximate|estimated) (year|age|date|month|day|time)|(terminal|end|final|cut ?off) ?point|conclude\w*|runs? out|how far)\b/
 
 /** Displacement / hypothetical framing. RAISES; can never lower. */
 const EVASION_MARKERS: Array<{ id: string; re: RegExp }> = [
@@ -654,6 +965,22 @@ export interface ClassificationResult {
   normalized: NormalizedQueryText
 }
 
+/**
+ * The matched text from the FIRST normalized surface that matches, or null.
+ *
+ * `surfaces` is `NormalizedQueryText.normalizedAll` — the `1 → i` and `1 → l`
+ * readings of the same query (normalize.ts's header explains why there are
+ * two). A pattern needs only one of them, so this is an OR across surfaces and
+ * can only ever find MORE than a single-surface match could.
+ */
+function firstMatch(surfaces: readonly string[], re: RegExp): string | null {
+  for (const s of surfaces) {
+    const m = s.match(re)
+    if (m) return m[0]
+  }
+  return null
+}
+
 function pushDetection(
   out: SafetyDetection[],
   cls: SafetyClass,
@@ -678,23 +1005,32 @@ export function classifyQuery(input: ClassifierInput): ClassificationResult {
   const evasion: SafetyEvasionMarker[] = []
 
   // ── Family 1: phrase patterns. ────────────────────────────────────────────
+  //
+  // Every pattern runs against EVERY normalized surface (`normalizedAll` — the
+  // `1 → i` and `1 → l` readings; see normalize.ts's header). A pattern needs
+  // only ONE surface to match, which is exactly what makes the leet `1`
+  // ambiguity non-destructive: `ki11 myself` matches on the l-surface, `d1e`
+  // matches on the i-surface, and a query containing both is caught twice.
+  // `firstMatch` stops at the first surface that hits, so a query with no
+  // ambiguous glyph (the overwhelming majority) does exactly the work it did
+  // before — `normalizedAll` has one entry.
   for (const p of ALL_PHRASE_PATTERNS) {
     if (p.re) {
-      const m = norm.normalized.match(p.re)
-      if (m) pushDetection(detections, p.cls, p.severity, 'phrase', p.id, m[0], 'query')
+      const m = firstMatch(norm.normalizedAll, p.re)
+      if (m) pushDetection(detections, p.cls, p.severity, 'phrase', p.id, m, 'query')
     }
     for (const s of p.squashed ?? []) {
-      if (norm.squashed.includes(s)) {
+      if (norm.squashedAll.some((sq) => sq.includes(s))) {
         pushDetection(detections, p.cls, p.severity, 'phrase_squashed', `${p.id}:${s}`, s, 'query')
       }
     }
   }
 
   // ── Family 2: combination rules. ──────────────────────────────────────────
-  const mortalityA = norm.normalized.match(MORTALITY_TERMS_A)
-  const lifespanB = norm.normalized.match(LIFESPAN_TERMS_B)
-  const durationLimit = norm.normalized.match(DURATION_LIMIT_TERMS)
-  const temporal = norm.normalized.match(TEMPORAL_SPECIFICITY_TERMS)
+  const mortalityA = firstMatch(norm.normalizedAll, MORTALITY_TERMS_A)
+  const lifespanB = firstMatch(norm.normalizedAll, LIFESPAN_TERMS_B)
+  const durationLimit = firstMatch(norm.normalizedAll, DURATION_LIMIT_TERMS)
+  const temporal = firstMatch(norm.normalizedAll, TEMPORAL_SPECIFICITY_TERMS)
 
   if (mortalityA) {
     pushDetection(
@@ -703,7 +1039,7 @@ export function classifyQuery(input: ClassifierInput): ClassificationResult {
       'review_required',
       'combination',
       'mortality_term_present',
-      mortalityA[0],
+      mortalityA,
       'query',
     )
     if (temporal) {
@@ -716,7 +1052,7 @@ export function classifyQuery(input: ClassifierInput): ClassificationResult {
         'hard_stop',
         'combination',
         'mortality_term_x_temporal_specificity',
-        `${mortalityA[0]}|${temporal[0]}`,
+        `${mortalityA}|${temporal}`,
         'query',
       )
     }
@@ -730,7 +1066,7 @@ export function classifyQuery(input: ClassifierInput): ClassificationResult {
         'hard_stop',
         'combination',
         'mortality_term_x_duration_limit',
-        `${mortalityA[0]}|${durationLimit[0]}`,
+        `${mortalityA}|${durationLimit}`,
         'query',
       )
     }
@@ -745,7 +1081,7 @@ export function classifyQuery(input: ClassifierInput): ClassificationResult {
       'review_required',
       'combination',
       'lifespan_term_x_duration_limit',
-      `${lifespanB[0]}|${durationLimit[0]}`,
+      `${lifespanB}|${durationLimit}`,
       'query',
     )
     pushDetection(
@@ -754,7 +1090,7 @@ export function classifyQuery(input: ClassifierInput): ClassificationResult {
       'hard_stop',
       'combination',
       'lifespan_term_x_duration_limit_is_individualized',
-      `${lifespanB[0]}|${durationLimit[0]}`,
+      `${lifespanB}|${durationLimit}`,
       'query',
     )
   }
@@ -776,8 +1112,8 @@ export function classifyQuery(input: ClassifierInput): ClassificationResult {
 
   // ── Evasion markers. Recorded, and they RAISE. ────────────────────────────
   for (const e of EVASION_MARKERS) {
-    const m = norm.normalized.match(e.re)
-    if (m) evasion.push({ marker: e.id, matched_span_hash: spanHash(m[0]) })
+    const m = firstMatch(norm.normalizedAll, e.re)
+    if (m) evasion.push({ marker: e.id, matched_span_hash: spanHash(m) })
   }
 
   // ── Class implication: HS-1 implies HS-4 by construction. ─────────────────

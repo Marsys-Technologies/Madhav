@@ -266,6 +266,94 @@ export async function POST(request: Request) {
     )
   }
 
+  // ── PPR-12 SAFETY GATE (P1 lane G1-A) — THE MCP DOOR ────────────────────────
+  //
+  // Added by the G1-A hardening round (C-3). The first build wired
+  // `classifyTurnSafety` into `/api/pariprashna` only, leaving this route — a
+  // real production door that runs the same planner, the same tools and the
+  // same `synthesizeReading` — with no safety classification at all. Grepping it
+  // for `safety|classifyTurnSafety|SafetyPolicy` returned nothing.
+  //
+  // That is not a defensible split. G1-D's NCD-8 limits gate, the closest
+  // precedent in this phase, explicitly covers "both doors" and sits twenty
+  // lines above this comment for exactly that reason. A mortality or
+  // suicide-adjacent question arriving over MCP is the same question, and the
+  // raw-MCP plane has LESS prose-side protection than the web one, not more.
+  //
+  // PLACEMENT, for the same reason the limits gate states its own: this is
+  // PRE-DISPATCH. `callPipelinePlanner` immediately below is this route's first
+  // LLM call, so a gate placed after it would be a post-hoc audit. §3's rule is
+  // "a blocked class must never build a retrieval plan" — this is the last
+  // statement before the plan is built.
+  //
+  // ── WHAT IS ENFORCED HERE, AND WHAT IS DELIBERATELY NOT ────────────────────
+  // ENFORCED: classification, the audit row (written on EVERY turn, including
+  // `proceed` — the denominator argument applies to this door too), the HS-2
+  // hard stop, the HS-3/HS-4 seal, and the capability exclusion applied to
+  // `toolsAuthorized` below.
+  //
+  // NOT ENFORCED HERE: `subject_kind` is passed as `null`. This route has no
+  // consent-lane resolution — G1-B wired `resolveSubjectConsent` into the web
+  // door's `authorizeTurn` and not into this one — and `null` is the honest
+  // value for "nobody checked", which the gate already treats as NOT-proven-
+  // native_self and fails toward the stricter path (no NCD-4 interstitial, and
+  // notification obligations recorded rather than skipped). Passing anything
+  // else would be inventing a consent finding. Resolving consent on this door
+  // is G1-B's to extend, not this round's to fake, and the strict-direction
+  // default means the gap costs safety nothing.
+  //
+  // Flag-gated OFF by default: with `PARIPRASHNA_SAFETY_GATE_ENABLED` off,
+  // `classifyTurnSafety` returns `enforced:false`/`proceed` before running a
+  // pattern and before touching the database, so this block adds nothing to
+  // today's hot path.
+  const { classifyTurnSafety, HS2_FIXED_RESPONSE, SEAL_PENDING_ACKNOWLEDGMENT, applyCapabilityExclusion } =
+    await import('@/lib/pariprashna/safety')
+  const safetyTurnId = crypto.randomUUID()
+  const safetyDecision = await classifyTurnSafety({
+    turnId: safetyTurnId,
+    chartId,
+    queryText: question,
+    subjectKind: null,
+  })
+
+  if (safetyDecision.enforced && safetyDecision.action !== 'proceed' && safetyDecision.action !== 'reframe') {
+    // HS-2 hard stop and the HS-3/HS-4 seal are ANSWERS, not faults: a real,
+    // composed, deliberate response. They close 200 with the fixed prose in the
+    // `reading` field, the same shape a successful call uses, so a caller
+    // renders them as a reading rather than as an error banner. `outcome` and
+    // the `safety_*` judgment flags are what a caller branches on.
+    //
+    // NOTHING was retrieved and NOTHING was planned to produce this — the
+    // planner has not run at the point this returns.
+    const text =
+      safetyDecision.action === 'hard_stop' ? HS2_FIXED_RESPONSE : SEAL_PENDING_ACKNOWLEDGMENT
+    return NextResponse.json({
+      ok: true,
+      trace_id: queryId,
+      chart_id: chartId,
+      outcome: 'safety_withheld',
+      reading: text,
+      completeness: {
+        status: 'withheld',
+        tools_dispatched: [],
+        unserved_tools: [],
+        unresolved_tools: [],
+        stripped_leaked_capabilities: [],
+        empty_result_tools: [],
+        cap_tripped: null,
+      },
+      // Counts and the action only — never the matched text and never the rule
+      // ids (gate 11 [integrity], the same discipline the web door follows).
+      judgment_flags: [
+        `safety_decision:${safetyDecision.action}`,
+        'safety_reading_withheld',
+        ...(safetyDecision.classes_detected.length > 0
+          ? [`safety_classes_detected:${safetyDecision.classes_detected.length}`]
+          : []),
+      ],
+    })
+  }
+
   const plannerOutcome = await callPipelinePlanner(
     question,
     [],
@@ -331,6 +419,69 @@ export async function POST(request: Request) {
   }
   ensureB11WholeChartReadFloor(plan, toolsAuthorized)
   ensureDashaContextFloor(plan, toolsAuthorized)
+
+  // ── PPR-12 PLAN-TIME ENFORCEMENT (G1-A hardening round, C-3) ────────────────
+  //
+  // The second of PPR-12's enforcement points, mirroring `plan_stage.ts` on the
+  // web door and placed for the same reason it is placed there: AFTER the
+  // floors have run, so a floor cannot smuggle a mortality or election
+  // capability back in after the exclusion has been applied. "The query never
+  // gets a capability that could compute a specific death date" is a statement
+  // about what the dispatch loop receives, and the dispatch loop receives what
+  // survives these lines.
+  //
+  // `reclassifyAfterPlan` is a monotone join — a plan revealing a longevity
+  // domain the question's wording hid escalates the turn; a plan revealing
+  // nothing leaves the decision exactly as it was. If it escalated into the
+  // seal path, no reading leaves this call.
+  const safetyJudgmentFlags: string[] = []
+  let postPlanSafety = safetyDecision
+  if (safetyDecision.enforced) {
+    const { reclassifyAfterPlan } = await import('@/lib/pariprashna/safety')
+    postPlanSafety = await reclassifyAfterPlan({
+      decision: safetyDecision,
+      queryText: question,
+      domains: plan.domains ?? [],
+      capabilities: toolsAuthorized,
+    })
+    if (postPlanSafety.action === 'seal_pending_signoff' || postPlanSafety.action === 'hard_stop') {
+      const text =
+        postPlanSafety.action === 'hard_stop' ? HS2_FIXED_RESPONSE : SEAL_PENDING_ACKNOWLEDGMENT
+      return NextResponse.json({
+        ok: true,
+        trace_id: queryId,
+        chart_id: chartId,
+        outcome: 'safety_withheld',
+        reading: text,
+        completeness: {
+          status: 'withheld',
+          tools_dispatched: [],
+          unserved_tools: [],
+          unresolved_tools: [],
+          stripped_leaked_capabilities: [],
+          empty_result_tools: [],
+          cap_tripped: null,
+        },
+        judgment_flags: [
+          `safety_decision:${postPlanSafety.action}`,
+          'safety_reading_withheld',
+          'safety_escalated_at_plan_time',
+        ],
+      })
+    }
+    const { kept, stripped } = applyCapabilityExclusion(
+      toolsAuthorized,
+      postPlanSafety.excluded_capabilities,
+    )
+    if (stripped.length > 0) {
+      // Raw capability names are server-log-only (gate 11 [integrity]); the
+      // wire flag carries a count and the reason, never the identifiers.
+      console.warn('[mcp:prashna_ask] safety stripped sensitive capabilities:', stripped)
+      safetyJudgmentFlags.push('safety_mortality_capabilities_excluded')
+      plan.tool_calls = plan.tool_calls.filter((tc) => kept.includes(tc.tool_name))
+      toolsAuthorized.splice(0, toolsAuthorized.length, ...kept)
+    }
+  }
 
   // ── NO-LEAKAGE enforcement (Part A) — BEFORE any tool actually dispatches ────
   const dispatchableTools = filterLeakedCapabilities(toolsAuthorized)
@@ -419,7 +570,9 @@ export async function POST(request: Request) {
   async function runDispatchLoop(controller: ReadableStreamDefaultController<Uint8Array>): Promise<void> {
       const toolResults: Array<{ tool_name: string; bundle: import('@/lib/retrieval/shared_types').ToolBundle }> = []
       const toolEventLog: ToolDispatchOutcome[] = []
-      const judgmentFlags: string[] = []
+      // Seeded with whatever the plan-time safety pass recorded, so a stripped
+      // capability is disclosed on the wire rather than silently absent.
+      const judgmentFlags: string[] = [...safetyJudgmentFlags]
       let costCapTripped: { reason: string; judgmentFlag: string } | null = null
       let unservedTools: string[] = []
       const unresolvedTools: string[] = []

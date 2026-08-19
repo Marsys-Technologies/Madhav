@@ -24,6 +24,39 @@
  * detect two nominally different models that are the same weights behind
  * different names) and it says so rather than claiming more.
  *
+ * ── WHAT DRIVES THIS MACHINE, AND WHAT IS STILL NOT BUILT (§N.8) ─────────────
+ * Stated here, with the same prominence and the same specificity that
+ * `notification.ts` gives its undelivered queue and `predictive_sampling.ts`
+ * gives its unwired cadence — because the first build applied that discipline to
+ * both of those and NOT to this file, and then described this file in its commit
+ * message as "a real state machine". It is a real state machine. For one
+ * commit it was also a state machine with no driver at all, which the phrase
+ * concealed.
+ *
+ * BUILT: the transitions, their refusals, the persistence, and — since the
+ * hardening round — a real entry point that a human can invoke to run the whole
+ * lifecycle end to end: `POST /api/pariprashna/safety/review` with
+ * `record_pass` / `sign_off` / `withhold`, super-admin gated, plus a
+ * `GET ?pending=1` queue read (`pendingReviews`). The path
+ * seal_pending → pass 1 → pass 2 → released is genuinely runnable today.
+ *
+ * NOT BUILT, and NOT claimed:
+ *   · NO REVIEWER UI. The entry point is a JSON endpoint. There is no queue
+ *     screen, no reviewer assignment, and no rendering of the sealed reading
+ *     next to the form — an operator today reads the reading elsewhere and
+ *     posts a verdict here.
+ *   · NO NOTIFICATION THAT A REVIEW IS WAITING. Nothing tells a human a review
+ *     opened; they must poll the pending list. This is the same gap
+ *     `notification.ts` documents for HS-2 obligations, and it has the same
+ *     cause: there is no notification transport in this codebase.
+ *   · NO SLA, NO ESCALATION, NO TIMEOUT. A review left alone stays
+ *     `seal_pending` indefinitely. That is the fail-closed direction (the
+ *     reading stays sealed), but it is not a workflow.
+ *   · THE ADVERSARIAL PASSES ARE NOT AUTOMATED. `recordAdversarialPass` records
+ *     a verdict a reviewer reached elsewhere; nothing in this lane RUNS a
+ *     refutation model. "Two independent adversarial passes" is a process this
+ *     schema can hold the evidence of, not one this code performs.
+ *
  * ── NCD-4 ────────────────────────────────────────────────────────────────────
  * `interstitial_shown` is a distinct terminal state, reachable ONLY from
  * `openReview` and ONLY for a proven-`native_self` subject on an HS-3 class.
