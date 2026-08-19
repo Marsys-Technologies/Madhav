@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.62
+version: 6.63
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,29 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.63 (2026-08-19, PARIPRASHNA-CONDUCTOR-P0-FRESH, session Claude Code/VS Code):
+    **Paripraśna conductor fresh-start, Step 0 (retire prior attempt).** The prior Paripraśna
+    conductor session (dispatched under `KICKOFF_PROMPT_SWARM_CONDUCTOR.md` v1.0) made one
+    docs-only commit (`pariprashna/p0-ignition` @ `183b2bfed`, 7 files, no code) and was
+    retired after merging G0 to main without a cross-campaign lease — see
+    `CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md` §7 (rules X-1..X-7). This session
+    (`PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19`) restarts cleanly: (1) fresh-start
+    announcement pushed to `origin/campaign-coordination` (`0f4408ac4`), requesting a
+    docs-only main-merge window; (2) worktree `pariprashna/p0` cut from `origin/main` @
+    `a7136b467`; (3) the 6 p0-ignition planning docs carried forward (SWARM_TRACKER.json
+    intentionally NOT carried — a fresh tracker follows in Step 0e) plus a new
+    `KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md` recording this restart, and the v1.0 kickoff
+    prompt marked SUPERSEDED in place; (4) all 7 docs registered in both
+    `CAPABILITY_MANIFEST.json` (entry_count 120→127, layer governance) and
+    `FILE_REGISTRY_v1_14.md` §9.20 in the SAME commit as their addition, pre-empting the
+    registry-disagreement gate the prior session hit late; (5) `drift_detector.py` (216
+    findings, exit=3) and `schema_validator.py` (42 violations, exit=3) both re-verified at
+    the existing main baseline — no new findings introduced. Step 0d (retire old
+    `pariprashna/g0-close` + `pariprashna/p0-ignition` refs and worktrees) and Step 0e
+    (fresh SWARM_TRACKER) follow once this docs-only PR merges; P0 lane ignition (P0-B
+    environment, P0-C ports refactor, P0-D tracker, P0-E design-plan grounding, P0-F DD-2/
+    DD-3 infra probes) has not yet started. No code, deploy, DB, or migration action taken.
+    last_session_id: PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19.
   - v6.62 (2026-08-19, PARIPRASHNA-G0-CLOSE, session PB-3-Bot): **Paripraśna decomposition
     ratified and registered.** NCD-1..11 all RULED (2026-08-18, native); red-team
     RED_TEAM_G0_v1_0.md PASS-WITH-FIXES. G0 close mechanics executed: (1) Paripraśna v1.0-RC
@@ -9081,7 +9104,7 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: PARIPRASHNA-G0-CLOSE-2026-08-19
+  last_session_id: PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19
 ```
 
 ---

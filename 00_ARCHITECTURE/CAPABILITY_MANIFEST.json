@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-08-19T00:00:00.000Z",
+  "generated_at": "2026-08-19T13:56:23Z",
   "generator_version": "1.0",
-  "entry_count": 120,
-  "fingerprint": "1c392525ab859afb002d8c082885cacd24e55396b6003501d6f508de28079b89",
+  "entry_count": 127,
+  "fingerprint": "632e459ff2fc9bf54596df6c8e0b803c90b92fb55cdf5ea9a2807b9d690a824f",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1703,6 +1703,105 @@
       ],
       "interface_version": "1.0",
       "fingerprint": "bd3d7c0638c2108d70f0062de36d6a707f92e899e9bcbf84c7e72e0af60df07b",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_PARISESA_COLLISION_INCIDENT",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "ef5080154517dea4e95c9851665eae6e6f3a228b62db17ca95673ad400bf4332",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_SWARM_KICKOFF_V1",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/KICKOFF_PROMPT_SWARM_CONDUCTOR.md",
+      "version": "1.0",
+      "status": "SUPERSEDED",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "b1a7b6a869e934cdc6ef1ca9f9dade7e4990f256c35c9decedb25b79e3ec1cad",
+      "native_id": "project",
+      "supplements_parent": "PARIPRASHNA_SWARM_KICKOFF"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_SWARM_KICKOFF",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md",
+      "version": "2.0",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "6c1db4de7fd6715b7dfcf124a419e109ae79b9d5efbb252c4f97917b61784165",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_IMPLEMENTATION_ROADMAP",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_IMPLEMENTATION_ROADMAP_v1_0.md",
+      "version": "1.0",
+      "status": "PROPOSAL",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "e2b77cb05aa3776c4c48470669e8f0e0ae699019392b8b89abb4fd2f4fee9216",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_SWARM_IMPLEMENTATION_PLAN",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_PHASED_SWARM_IMPLEMENTATION_PLAN_v1_0.md",
+      "version": "1.0",
+      "status": "PROPOSAL",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "a6646b1da2f0964b52ac9b0b5f6adfc2800fe9ab28e0507eb36db1d631d28ad8",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_SWARM_PLAN_AMENDMENTS",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT-FOR-EXECUTION",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "797ed5814005d8c9589ea73f0da1f6d0facb3a6dbd1dc438917f750ab266d87d",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "RESUME_BRIEFS_BOTH_CAMPAIGNS",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/RESUME_BRIEFS_BOTH_CAMPAIGNS.md",
+      "version": "1.0",
+      "status": "READY",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "7630ec88bd1c67dc7674705145e0e9bba254b38f472549b066713431e0fe1d69",
       "native_id": "project"
     }
   ]
