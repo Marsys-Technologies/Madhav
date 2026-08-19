@@ -200,6 +200,13 @@ export function findForeignChartReferences(
   // one ("used", "café") destroys the leading `\b` and the UUID stops matching
   // altogether. Tolerating whitespace only WHERE THE HYPHENS ALREADY ARE keeps
   // both anchors intact.
+  //
+  // Note this pattern SUBSUMES the strict one above (`\s*` matches empty), so
+  // an unspaced UUID is found twice and `seen` collapses it to one finding.
+  // The strict pass is kept rather than deleted because it is the form a
+  // reviewer checks correctness against — the spaced variant is a widening of
+  // it, and reading the widening alone makes it easy to miss that the base case
+  // is a plain RFC-4122 UUID. Redundant by one regex sweep, deliberately.
   SPACED_UUID_RE.lastIndex = 0
   for (let m = SPACED_UUID_RE.exec(sentence); m !== null; m = SPACED_UUID_RE.exec(sentence)) {
     uuidSpans.push([m.index, m.index + m[0].length])
