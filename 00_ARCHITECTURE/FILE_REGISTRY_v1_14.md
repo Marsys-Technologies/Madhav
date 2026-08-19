@@ -81,3 +81,12 @@ See `FILE_REGISTRY_v1_13.md §9.2–§9.15` — unchanged.
 | Path | Version | Status | Role |
 |---|---|---|---|
 | `00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md` | 1.0 | LIVING | Append-only, tool-neutral register for cross-cutting decisions; read immediately after CURRENT_STATE by Claude Code and Codex. CCD-001 establishes the shared-brain onboarding convention. |
+
+## §9.19 — Paripraśna G0 governance registration
+
+| Path | Version | Status | Role |
+|---|---|---|---|
+| `00_ARCHITECTURE/PARIPRASHNA_ARCHITECTURE_v1_0.md` | 1.0 | CURRENT | Paripraśna target architecture, ratified at G0 close; supersedes `PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md`. |
+| `00_ARCHITECTURE/PARIPRASHNA_DECISION_REGISTER_v1_0.md` | 1.0 | LIVING | Append-only register of Paripraśna native-ruled architecture decisions (NCD-1..11). |
+| `00_ARCHITECTURE/PARIPRASHNA_VERIFICATION_MATRIX_v1_0.md` | 1.0 | CURRENT | Maps each Paripraśna acceptance criterion to its verifying gate/harness. |
+| `00_ARCHITECTURE/PARIPRASHNA_ASBUILT_BASELINE_v1_0.md` | 1.0 | CURRENT | As-built inventory of what exists in the codebase toward the Paripraśna architecture at G0 close, vs. what remains to be built in P0–P5. |
