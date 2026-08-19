@@ -3654,3 +3654,5 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
 - 2026-08-19 12:35Z — **PARIŚEṢA / Codex F89 merged:** PR #1344 merged normally through Ganga as `dddaaef2`; Ganga Quality Gate, TAP CI, and EKV all succeeded. MCP deployment revision reconciliation and the read-only malformed-keyword canary remain pending; no deploy, rebuild, or DB action was taken.
 
 - 2026-08-19 12:36Z — **PARIŚEṢA / Codex F89 service proof:** `amjis-mcp-00573-zmf` is 100% traffic and labeled `dddaaef2`; read-only malformed-keyword `ref_rules_search` now returns a typed generic internal error with no raw backend encoding marker. No write action.
+
+- 2026-08-19 12:40Z — **PARIŚEṢA / Codex F90 ready:** rebased exact head `6b6179dd2` is independently reviewed PASS; it removes raw sidecar bodies from both client errors and server logs. Focused 11/11 and typecheck pass; the package codegen halt is identical to parent at unchanged `getStrength` descriptor. Normal protected PR preparation follows; no deploy, rebuild, or DB action.
