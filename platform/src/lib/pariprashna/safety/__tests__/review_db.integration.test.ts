@@ -12,7 +12,7 @@
  *
  * Gated on `PARIPRASHNA_SAFETY_TEST_DATABASE_URL`; SKIPPED when unset, which is
  * the normal case in CI (no DB). Run locally against a throwaway Postgres with
- * migration 576 applied. The run history for this round is in the lane report.
+ * migration 577 applied. The run history for this round is in the lane report.
  *
  * WHAT THIS PROVES THAT THE UNIT TESTS DO NOT:
  *   · C-5 — `interstitial_shown` with a NULL `subject_kind` is REJECTED. The

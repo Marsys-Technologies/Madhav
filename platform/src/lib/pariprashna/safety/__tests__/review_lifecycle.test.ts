@@ -141,7 +141,7 @@ describe('C-6 — a POST-PLAN escalation into the seal path opens a review', () 
 })
 
 describe('C-6 — the invariant, asserted across every path that can seal', () => {
-  // The application-side mirror of migration 576's
+  // The application-side mirror of migration 577's
   // `pariprashna_safety_decisions_seal_requires_review_chk`. Both exist on
   // purpose: the CHECK makes the bug unrepresentable in the database, this
   // makes it fail in CI before anyone runs a migration.
