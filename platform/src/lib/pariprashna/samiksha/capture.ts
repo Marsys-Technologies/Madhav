@@ -73,6 +73,20 @@ import { enrichCandidate, type CitationRef } from './detector'
 import type { PredictionCandidate as RawCandidate } from '@/lib/ppl/prediction_detector'
 import { createLedgerRow, type LedgerExecutor } from './writer'
 import { LEDGER_TABLE, type LedgerRow } from './schema'
+import { configService } from '@/lib/config/index'
+import { enqueueLedgerIntent } from '@/lib/pariprashna/arm3/outbox'
+
+/**
+ * NO-LEAKAGE arm-3's flag (G1-C · PPR-31 arm 3). ONE read site, so "the
+ * in-process write path is unchanged while this is off" is enforced at one line
+ * and a test can prove it at that one line — the same discipline
+ * `consent/flag.ts` uses for G1-B.
+ */
+export const LEDGER_OUT_OF_PROCESS_FLAG = 'PARIPRASHNA_LEDGER_OUT_OF_PROCESS' as const
+
+export function isLedgerOutOfProcessEnabled(): boolean {
+  return configService.getFlag(LEDGER_OUT_OF_PROCESS_FLAG)
+}
 
 const defaultExecutor: LedgerExecutor = <T,>(sql: string, params?: unknown[]) =>
   sharedQuery(sql, params as unknown[]).then((r) => ({ rows: r.rows as T[], rowCount: r.rowCount }))
@@ -100,12 +114,23 @@ export interface CaptureDetectedInput {
 }
 
 export interface CaptureDetectedResult {
-  /** The `detected` rows written by this call. */
+  /** The `detected` rows written by this call. Empty when arm-3 is on — see `enqueued`. */
   created: LedgerRow[]
   /** Candidates whose part already had a ledger row (idempotent re-commit). */
   skippedExisting: number
   /** Candidates whose persisted part could not be located — no row written, honestly reported. */
   unpaired: number
+  /**
+   * NO-LEAKAGE arm-3 (G1-C · PPR-31): candidates handed to the out-of-process
+   * ledger writer via `pariprashna_ledger_outbox` instead of being INSERTed here.
+   * Always 0 while `PARIPRASHNA_LEDGER_OUT_OF_PROCESS` is OFF (the default).
+   *
+   * A SEPARATE counter, not folded into `created`, on purpose: an enqueued intent
+   * is not a ledger row. No row exists until the worker drains it, and reporting
+   * a queued intent as `created` would be a status claiming more than its
+   * detector measured (CLAUDE.md §N.8).
+   */
+  enqueued: number
 }
 
 interface PartRow {
@@ -122,8 +147,20 @@ export async function captureDetectedCandidates(
   input: CaptureDetectedInput,
   exec: LedgerExecutor = defaultExecutor,
 ): Promise<CaptureDetectedResult> {
-  const empty: CaptureDetectedResult = { created: [], skippedExisting: 0, unpaired: 0 }
+  const empty: CaptureDetectedResult = {
+    created: [],
+    skippedExisting: 0,
+    unpaired: 0,
+    enqueued: 0,
+  }
   if (input.candidates.length === 0) return empty
+
+  // NO-LEAKAGE arm-3 (G1-C · PPR-31 arm 3). OFF by default, in which case this is
+  // `false` before any other work happens and the path below is byte-for-byte the
+  // in-process write it has always been. ON, the same candidates are queued for
+  // the out-of-process writer instead — which is what makes the role cutover
+  // survivable, since `role_web_serve` has no ledger INSERT at all after it.
+  const viaOutbox = isLedgerOutOfProcessEnabled()
 
   // The persisted parts for this turn, in seq order.
   const { rows: parts } = await exec<PartRow>(
@@ -155,6 +192,7 @@ export async function captureDetectedCandidates(
   const created: LedgerRow[] = []
   let skippedExisting = 0
   let unpaired = 0
+  let enqueued = 0
 
   for (const raw of input.candidates) {
     const queue = byClaim.get(raw.text)
@@ -169,13 +207,43 @@ export async function captureDetectedCandidates(
     }
 
     const c = enrichCandidate(raw, { citations, nowDate: input.nowDate })
+    const window =
+      c.window_start && c.window_end ? { start: c.window_start, end: c.window_end } : null
+
+    if (viaOutbox) {
+      // arm-3: request the write, do not perform it. `confidence` is omitted here
+      // for exactly the reason the header gives — the human commits the band at
+      // confirm — and the outbox's `create_detected` payload schema does not even
+      // accept one, so the queue cannot become a channel for writing a band no
+      // human assented to.
+      await enqueueLedgerIntent(
+        {
+          op: 'create_detected',
+          payload: {
+            chart_id: input.chartId,
+            message_part_id: partId,
+            claim_text: c.claim_text,
+            domain: c.domain,
+            window,
+            direction: c.direction,
+            technique_refs: c.technique_refs,
+            grounding_fact_ids: c.grounding_fact_ids,
+            created_from_channel: 'pariprashna',
+          },
+        },
+        { query: exec },
+      )
+      enqueued += 1
+      continue
+    }
+
     const row = await createLedgerRow(
       {
         chart_id: input.chartId,
         message_part_id: partId,
         claim_text: c.claim_text,
         domain: c.domain,
-        window: c.window_start && c.window_end ? { start: c.window_start, end: c.window_end } : null,
+        window,
         // confidence intentionally omitted — the human commits the band at confirm (see header).
         direction: c.direction,
         technique_refs: c.technique_refs,
@@ -188,5 +256,5 @@ export async function captureDetectedCandidates(
     created.push(row)
   }
 
-  return { created, skippedExisting, unpaired }
+  return { created, skippedExisting, unpaired, enqueued }
 }

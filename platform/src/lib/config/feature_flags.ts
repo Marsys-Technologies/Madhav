@@ -193,6 +193,41 @@ export type FeatureFlag =
   // by design (that is the fail-closed direction, but it is a real outage).
   // Env: MARSYS_FLAG_SUBJECT_CONSENT_ENFORCEMENT.
   | 'SUBJECT_CONSENT_ENFORCEMENT'
+  // P1 FOUNDATION lane G1-C — NO-LEAKAGE arm-1 (NCD-5, PPR-21/PPR-22).
+  // Gates the SERVING-SIDE half of the role/RLS work:
+  //   · OFF (default) — `getServeReadPool()` returns the one existing shared pool
+  //     and `withChartContext()` sets no GUC, so every read path is byte-for-byte
+  //     what it is today. Migration 576's roles hold grants but have no members,
+  //     and its RLS policies are stored but not enabled, so the DB half is inert
+  //     too. Nothing in this lane is live until BOTH this flag flips AND an
+  //     operator runs `platform/scripts/pariprashna/g1c_arm_rls.sql`.
+  //   · ON — reads route through a `role_web_serve`-backed pool built from
+  //     SERVE_DATABASE_URL (or DB_SERVE_USER/DB_SERVE_PASSWORD), and
+  //     `withChartContext()` pins `app.chart_context` per transaction so the RLS
+  //     policies have a value to compare against. If those credentials are NOT
+  //     configured, `getServeReadPool()` THROWS rather than quietly falling back
+  //     to the legacy credential — a flag that claims role separation while
+  //     serving on `amjis_app` would be exactly the §N.8 defect class this lane
+  //     exists to close.
+  // Flipping this ON is a live traffic-affecting cutover. It is deliberately NOT
+  // paired with any credential rotation; see the cutover runbook
+  // 00_ARCHITECTURE/briefs/pariprashna_swarm/G1_C_ROLES_RLS_CUTOVER_RUNBOOK_v1_0.md.
+  // Env: MARSYS_FLAG_PARIPRASHNA_ROLE_SEPARATION.
+  | 'PARIPRASHNA_ROLE_SEPARATION'
+  // P1 FOUNDATION lane G1-C — NO-LEAKAGE arm-3 (PPR-31 arm 3).
+  // Gates the out-of-process ledger writer.
+  //   · OFF (default) — the SAMĪKṢĀ capture path INSERTs into
+  //     `brahma_mimamsa_prediction_ledger` in-process, exactly as it does today.
+  //   · ON — the serving process enqueues a write INTENT into
+  //     `pariprashna_ledger_outbox` (the only ledger-adjacent privilege
+  //     `role_web_serve` keeps) and the out-of-process worker
+  //     (`platform/scripts/pariprashna/ledger_writer_worker.ts`), the sole holder
+  //     of `role_ledger_write`, drains it and performs the real write.
+  // This flag MUST be flipped ON *before* PARIPRASHNA_ROLE_SEPARATION, not after:
+  // once the app serves on `role_web_serve` it has no ledger INSERT at all, so an
+  // in-process capture would start failing. The runbook sequences them.
+  // Env: MARSYS_FLAG_PARIPRASHNA_LEDGER_OUT_OF_PROCESS.
+  | 'PARIPRASHNA_LEDGER_OUT_OF_PROCESS'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -302,6 +337,15 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // production behavior. Flip via MARSYS_FLAG_SUBJECT_CONSENT_ENFORCEMENT=true
   // only after `chart_subject_consent` carries a row for every live chart.
   SUBJECT_CONSENT_ENFORCEMENT: false,
+  // P1 G1-C — NO-LEAKAGE arm-1 role separation. Default false: ships dark. The
+  // flip is a live cutover of what credential the app serves on; it is gated on
+  // the runbook's pre-flight, not on this file.
+  // Flip via MARSYS_FLAG_PARIPRASHNA_ROLE_SEPARATION=true.
+  PARIPRASHNA_ROLE_SEPARATION: false,
+  // P1 G1-C — NO-LEAKAGE arm-3 out-of-process ledger writer. Default false: the
+  // in-process capture path is unchanged. Flip via
+  // MARSYS_FLAG_PARIPRASHNA_LEDGER_OUT_OF_PROCESS=true, BEFORE role separation.
+  PARIPRASHNA_LEDGER_OUT_OF_PROCESS: false,
 }
 
 // Numeric config keys (read via configService.getValue)
