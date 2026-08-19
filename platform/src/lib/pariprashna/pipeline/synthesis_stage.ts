@@ -57,6 +57,7 @@ import {
   containPriorTurn,
   ENTITLEMENT_REDACTION_NOTICE,
   INJECTION_CONTAINMENT_CLAUSE,
+  rejectIdentityParams,
   ToolSequenceMonitor,
 } from '@/lib/pariprashna/injection'
 
@@ -419,6 +420,31 @@ export async function runSynthesisStage(args: {
             adapterChatReq,
             async (toolCall) => {
               toolSequenceMonitor?.record(toolCall.name)
+              // The plan closure sanitizes `plan.tool_calls[].params`. It does
+              // NOT reach here: `toolCall.input` is chosen by the MODEL, after
+              // any injected content has entered its context, and
+              // `mcp_tool_executor` forwards it verbatim as tool params. The
+              // bridge overwrites `args.chart_id` only for `per_chart`
+              // capabilities, so for any other scope a foreign identity param
+              // would survive into the handler. Same rejection, same rule set,
+              // applied at the second door into the same function.
+              if (injectionContained) {
+                const rejected = rejectIdentityParams(
+                  toolCall.input as Record<string, unknown>,
+                  queryPlan.chart_id,
+                )
+                if (rejected.length > 0) {
+                  console.error(
+                    '[pariprashna/injection] REJECTED model-supplied identity params from an agentic tool call:',
+                    { tool: toolCall.name, keys: rejected },
+                  )
+                  em.flag({
+                    code: 'injection_tool_input_identity_param_rejected',
+                    level: 'error',
+                    detail: `${rejected.length} model-supplied identity parameter(s) rejected from a mid-turn tool call`,
+                  })
+                }
+              }
               const output = await executeMCPTool(toolCall, { queryPlan })
               // A tool result is untrusted content that re-enters the model's
               // context as a `role: 'user'` turn (`synthesis/agentic_loop.ts`) —

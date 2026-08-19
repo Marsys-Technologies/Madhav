@@ -391,7 +391,9 @@ export async function synthesizeReading(
   const userMessage = [
     `<user_question>${guard(input.question)}</user_question>`,
     `<temporal_anchor>${formatTemporalAnchor(input)}</temporal_anchor>`,
-    `Query class: ${input.queryClass}. Intent summary: ${input.queryIntentSummary}.`,
+    // `queryIntentSummary` is planner-authored prose derived from the question,
+    // so it carries the question's own untrustedness one hop further.
+    `Query class: ${input.queryClass}. Intent summary: ${guard(input.queryIntentSummary)}.`,
     '',
     // NOT `guard(evidenceBlock)`: the block's OWN `<evidence tool="…">`
     // wrappers are ours and must survive. The neutralization is applied one
@@ -401,7 +403,11 @@ export async function synthesizeReading(
     evidenceBlock,
     '',
     '<evidence_gaps>',
-    formatGapsBlock(input),
+    // The gap block interpolates raw planner tool_name strings
+    // (`input.unresolvedTools` — by definition names that resolved to NO
+    // registered capability, i.e. the ones most likely to be model-invented),
+    // so it is untrusted content sitting inside a container like any other.
+    guard(formatGapsBlock(input)),
     '</evidence_gaps>',
   ].join('\n')
 

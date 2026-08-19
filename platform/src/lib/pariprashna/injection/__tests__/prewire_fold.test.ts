@@ -20,6 +20,7 @@ import { buildEntitlementScanRules } from '../entitlement_scan'
 const MINE = '482012f1-710e-4a25-994a-93821f5871aa'
 const THEIRS = '1c826d5a-9f3b-4d21-8e77-0a5c4b2e91d0'
 const RULES = buildEntitlementScanRules({ authorizedChartIds: [MINE] })
+type PreWireRules = ReturnType<typeof buildEntitlementScanRules> | []
 
 interface Recorded {
   flags: { code: string; level: string; detail?: string }[]
@@ -74,6 +75,39 @@ describe('the committed + persisted block is scanned', () => {
     const { rec, committed } = commitProse(text, false, RULES)
     expect(committed).toBe(text)
     expect(rec.flags).toEqual([])
+  })
+})
+
+describe('the redaction reaches BOTH persisted copies', () => {
+  // `appendProse` writes each delta into the block AND into `accumulated`, and
+  // `accumulated` is what feeds the citation extractor, the prediction detector
+  // and persistence. A commit-time redaction that rewrote only the block left a
+  // second, unredacted copy behind.
+  function assemble(text: string, mortality: boolean, rules: PreWireRules) {
+    const { em, rec } = fakeEmitter()
+    const a = new ReadingPartsAssembler(em, 1, mortality, rules)
+    a.appendProse(a.ensureBlock('prose'), text)
+    a.commitBlock()
+    return { rec, committed: rec.commits.at(-1)?.text ?? '', accumulated: a.accumulatedText }
+  }
+
+  it('strips a foreign chart reference from accumulatedText, not just the block', () => {
+    const r = assemble(`Saturn is steady. Chart ${THEIRS} differs. Mars is exalted.`, false, RULES)
+    expect(r.committed).not.toContain(THEIRS)
+    expect(r.accumulated).not.toContain(THEIRS)
+    expect(r.accumulated).toBe(r.committed)
+  })
+
+  it('does the same for the mortality branch — the gap was there for both', () => {
+    const r = assemble('Jupiter is strong. The native will meet death around 2047.', true, [])
+    expect(r.committed).not.toContain('2047')
+    expect(r.accumulated).not.toContain('2047')
+  })
+
+  it('leaves accumulatedText untouched when nothing was redacted', () => {
+    const text = 'Saturn is steady. Mars is exalted.'
+    const r = assemble(text, true, RULES)
+    expect(r.accumulated).toBe(text)
   })
 })
 

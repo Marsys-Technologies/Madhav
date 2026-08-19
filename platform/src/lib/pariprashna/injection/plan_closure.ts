@@ -93,6 +93,70 @@ const NORMALIZED_IDENTITY_KEYS: ReadonlySet<string> = new Set(
   IDENTITY_PARAM_KEYS.map(normalizeKey),
 )
 
+/**
+ * True for an identity key, INCLUDING qualified spellings.
+ *
+ * Exact-set matching alone let `subject_chart_id` and `target_chart_id` through,
+ * which is narrower than the docstring's claim of closure at the plan boundary.
+ * A key that ENDS in a declared identity key carries the same authority claim
+ * regardless of what qualifies it, so the suffix test is the honest one.
+ */
+function isIdentityKey(key: string): boolean {
+  const n = normalizeKey(key)
+  if (NORMALIZED_IDENTITY_KEYS.has(n)) return true
+  for (const known of NORMALIZED_IDENTITY_KEYS) {
+    if (n.length > known.length && n.endsWith(known)) return true
+  }
+  return false
+}
+
+/** How deep `rejectIdentityParams` walks. Params are shallow; this is a guard. */
+const MAX_PARAM_DEPTH = 4
+
+/**
+ * Strip every identity key whose value is not the authenticated chart, at any
+ * nesting depth, mutating in place. Returns the rejected key paths.
+ *
+ * Exported because the plan is NOT the only place model-chosen params reach a
+ * tool. In the agentic loop `toolCall.input` — chosen by the model, after
+ * injected content has entered its context — is forwarded verbatim as tool
+ * params (`synthesis/mcp_tool_executor.ts`), and `tool_name_bridge.ts`
+ * overwrites `args.chart_id` ONLY for `per_chart` capabilities. For any other
+ * scope a foreign identity param would survive into the handler. Closing the
+ * plan and leaving that path open would have been a control that guards the
+ * quieter half of its own attack surface.
+ */
+export function rejectIdentityParams(
+  params: unknown,
+  authenticatedChartId: string,
+  depth = 0,
+): string[] {
+  if (!params || typeof params !== 'object' || Array.isArray(params)) return []
+  if (depth > MAX_PARAM_DEPTH) return []
+
+  const rejected: string[] = []
+  const record = params as Record<string, unknown>
+  for (const key of Object.keys(record)) {
+    const value = record[key]
+    if (isIdentityKey(key)) {
+      // An identity key whose value IS the authenticated chart is redundant,
+      // not hostile — the bridge injects the same value anyway. Left in place
+      // so this control cannot be the thing that changes a legitimate call.
+      if (typeof value === 'string' && value.toLowerCase() === authenticatedChartId.toLowerCase()) {
+        continue
+      }
+      delete record[key]
+      rejected.push(key)
+      continue
+    }
+    if (value && typeof value === 'object') {
+      const nested = rejectIdentityParams(value, authenticatedChartId, depth + 1)
+      rejected.push(...nested.map((k) => `${key}.${k}`))
+    }
+  }
+  return rejected
+}
+
 export interface PlanClosureFinding {
   code:
     | 'plan_identity_param_rejected'
@@ -144,19 +208,7 @@ export function closePlanAgainstInjection(input: PlanClosureInput): PlanClosureR
       flagged += 1
     }
 
-    const params = tc.params as Record<string, unknown> | undefined
-    if (!params || typeof params !== 'object') continue
-
-    for (const key of Object.keys(params)) {
-      if (!NORMALIZED_IDENTITY_KEYS.has(normalizeKey(key))) continue
-      // An identity key whose value IS the authenticated chart is redundant, not
-      // hostile — the bridge injects the same value anyway. Left in place so
-      // this control cannot be the thing that changes a legitimate plan.
-      const value = params[key]
-      if (typeof value === 'string' && value.toLowerCase() === authenticatedChartId.toLowerCase()) {
-        continue
-      }
-      delete params[key]
+    for (const key of rejectIdentityParams(tc.params, authenticatedChartId)) {
       findings.push({ code: 'plan_identity_param_rejected', tool_name: tc.tool_name, param_key: key })
       rejected += 1
     }

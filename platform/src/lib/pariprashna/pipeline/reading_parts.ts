@@ -91,8 +91,30 @@ export class ReadingPartsAssembler {
     return this.accumulated
   }
 
+  /**
+   * Keep `accumulated` in step with a block whose text a pre-wire scan changed.
+   *
+   * `appendProse` writes each delta into BOTH the open block and `accumulated`,
+   * so a commit-time redaction that only rewrote `currentBlock.text` left a
+   * SECOND, unredacted copy behind — and `accumulated` is not a scratch buffer:
+   * it is what feeds the citation extractor, the prediction-candidate detector
+   * and persistence. A redaction that reaches the reader's copy but not the
+   * persisted one is not a redaction.
+   *
+   * The replacement is anchored to the block's own text rather than done
+   * globally, so an identical sentence elsewhere in the turn is untouched.
+   */
+  private syncAccumulated(before: string, after: string): void {
+    if (before === after || !before) return
+    const at = this.accumulated.lastIndexOf(before)
+    if (at === -1) return
+    this.accumulated =
+      this.accumulated.slice(0, at) + after + this.accumulated.slice(at + before.length)
+  }
+
   commitBlock(): void {
     if (this.currentBlock) {
+      const textBeforeScans = this.currentBlock.text
       // Gate 11 [integrity] backstop: every prose block is scanned for internal
       // identifier leaks (SIG.* ids, asset-id prefixes, register acronyms
       // MSR/UCN/CGM/CDLM/LEL, table names) before it ever reaches the wire or
@@ -157,6 +179,12 @@ export class ReadingPartsAssembler {
             })
           }
         }
+        // Whatever the two pre-wire classes above removed, remove from the
+        // turn's accumulated text too — see `syncAccumulated`. Applies to the
+        // mortality branch as well as the entitlement one: the gap was there
+        // for both, and fixing it for only the newer one would leave the older,
+        // more safety-critical redaction the leakier of the two.
+        this.syncAccumulated(textBeforeScans, this.currentBlock.text)
       }
       this.em.blockCommit({ block_id: this.currentBlock.id, text: this.currentBlock.text })
       this.committedBlocks.push({

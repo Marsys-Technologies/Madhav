@@ -62,6 +62,7 @@ import {
   containUserQuestion,
   INJECTION_CONTAINMENT_CLAUSE,
 } from '@/lib/pariprashna/injection/delimit'
+import { rejectIdentityParams } from '@/lib/pariprashna/injection/plan_closure'
 import {
   buildCacheCreatePayload,
   GEMINI_CACHE_MIN_TOKENS,
@@ -589,6 +590,21 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
               adapter,
               adapterChatReq,
               async (toolCall) => {
+                // `toolCall.input` is MODEL-chosen and reaches the tool as
+                // params verbatim; the bridge only overwrites `args.chart_id`
+                // for `per_chart` capabilities. Same rejection the plan gets.
+                if (injectionContained) {
+                  const rejected = rejectIdentityParams(
+                    toolCall.input as Record<string, unknown>,
+                    chartId,
+                  )
+                  if (rejected.length > 0) {
+                    console.error(
+                      '[consult/injection] REJECTED model-supplied identity params from an agentic tool call:',
+                      { tool: toolCall.name, keys: rejected },
+                    )
+                  }
+                }
                 const output = await executeMCPTool(toolCall, { queryPlan })
                 // A tool result re-enters the model's context as a `role: 'user'`
                 // turn (`synthesis/agentic_loop.ts`) — indistinguishable from the

@@ -10,7 +10,12 @@
 import { describe, it, expect } from 'vitest'
 
 import type { PipelinePlan } from '@/lib/pipeline/types'
-import { assertPlanSchemaIsClosed, closePlanAgainstInjection, IDENTITY_PARAM_KEYS } from '../plan_closure'
+import {
+  assertPlanSchemaIsClosed,
+  closePlanAgainstInjection,
+  rejectIdentityParams,
+  IDENTITY_PARAM_KEYS,
+} from '../plan_closure'
 
 const MINE = '482012f1-710e-4a25-994a-93821f5871aa'
 const THEIRS = '1c826d5a-9f3b-4d21-8e77-0a5c4b2e91d0'
@@ -91,6 +96,48 @@ describe('identity params — REJECTED, because no legitimate producer emits one
     const sharedRef = plan.tool_calls
     closePlanAgainstInjection({ plan, authenticatedChartId: MINE, isRegisteredTool: allRegistered })
     expect(sharedRef[0].params).toEqual({})
+  })
+})
+
+describe('rejectIdentityParams — the SECOND door into the same function', () => {
+  // `toolCall.input` is model-chosen, arrives after injected content may have
+  // entered the loop's context, and reaches the tool as params verbatim. The
+  // plan closure never sees it.
+  it('strips a foreign identity key from a model-supplied tool input', () => {
+    const input: Record<string, unknown> = { chart_id: THEIRS, planet: 'Saturn' }
+    expect(rejectIdentityParams(input, MINE)).toEqual(['chart_id'])
+    expect(input).toEqual({ planet: 'Saturn' })
+  })
+
+  it('reaches a NESTED identity key and reports its path', () => {
+    const input: Record<string, unknown> = { filter: { chart_id: THEIRS }, limit: 5 }
+    expect(rejectIdentityParams(input, MINE)).toEqual(['filter.chart_id'])
+    expect(input).toEqual({ filter: {}, limit: 5 })
+  })
+
+  it('catches QUALIFIED spellings exact-set matching missed', () => {
+    for (const key of ['subject_chart_id', 'target_chart_id', 'sourceChartId']) {
+      const input: Record<string, unknown> = { [key]: THEIRS }
+      expect(rejectIdentityParams(input, MINE), key).toEqual([key])
+    }
+  })
+
+  it('leaves the authenticated chart and ordinary params alone', () => {
+    const input: Record<string, unknown> = { chart_id: MINE, filter: { planet: 'Mars' } }
+    expect(rejectIdentityParams(input, MINE)).toEqual([])
+    expect(input).toEqual({ chart_id: MINE, filter: { planet: 'Mars' } })
+  })
+
+  it('is total — null, arrays and primitives do not throw', () => {
+    expect(rejectIdentityParams(null, MINE)).toEqual([])
+    expect(rejectIdentityParams([1, 2], MINE)).toEqual([])
+    expect(rejectIdentityParams('x', MINE)).toEqual([])
+  })
+
+  it('terminates on a self-referential params object', () => {
+    const input: Record<string, unknown> = { a: {} }
+    ;(input.a as Record<string, unknown>).self = input
+    expect(() => rejectIdentityParams(input, MINE)).not.toThrow()
   })
 })
 
