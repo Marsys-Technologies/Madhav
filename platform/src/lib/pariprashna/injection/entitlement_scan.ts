@@ -230,20 +230,32 @@ export function findForeignChartReferences(
  * anyone having to re-derive which fired from a count.
  */
 export function buildEntitlementScanRules(config: EntitlementScanConfig): PreWireSentenceRule[] {
+  // The two rules are asked about the SAME sentence back-to-back by the pre-wire
+  // pass, and in the streaming path that pass runs on every released span. A
+  // one-entry memo turns four regex sweeps per sentence into two, with no
+  // behavioural difference: `findForeignChartReferences` is pure, and the memo
+  // is keyed on the exact sentence text. One entry, not a Map, because the
+  // access pattern is strictly "same sentence twice, then move on" — an
+  // unbounded cache here would retain reader prose (C1 content) for the life of
+  // the turn, which is the opposite of what this module is for.
+  let lastSentence: string | null = null
+  let lastFindings: { rule: string; token: string }[] = []
+  const findingsFor = (sentence: string): { rule: string; token: string }[] => {
+    if (sentence !== lastSentence) {
+      lastFindings = findForeignChartReferences(sentence, config)
+      lastSentence = sentence
+    }
+    return lastFindings
+  }
+
   return [
     {
       rule: ENTITLEMENT_RULE_FOREIGN_UUID,
-      test: (sentence) =>
-        findForeignChartReferences(sentence, config).some(
-          (f) => f.rule === ENTITLEMENT_RULE_FOREIGN_UUID,
-        ),
+      test: (sentence) => findingsFor(sentence).some((f) => f.rule === ENTITLEMENT_RULE_FOREIGN_UUID),
     },
     {
       rule: ENTITLEMENT_RULE_FOREIGN_PREFIX,
-      test: (sentence) =>
-        findForeignChartReferences(sentence, config).some(
-          (f) => f.rule === ENTITLEMENT_RULE_FOREIGN_PREFIX,
-        ),
+      test: (sentence) => findingsFor(sentence).some((f) => f.rule === ENTITLEMENT_RULE_FOREIGN_PREFIX),
     },
   ]
 }
