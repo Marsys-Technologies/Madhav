@@ -1,0 +1,32 @@
+#!/bin/sh
+# Item (d): explicitly acknowledge a recorded blind window. This is a DIFFERENT event from
+# the daemon coming back up green -- BLIND_WINDOW.json survives restarts on purpose, and
+# only this script (an operator's own action) retires it. Read tracker.html's persistent
+# banner before running this: it names the exact gap being acknowledged.
+set -eu
+
+RUNTIME_DIR="${HOME}/.pariprashna-tracker"
+BLIND_JSON="${RUNTIME_DIR}/BLIND_WINDOW.json"
+
+if [ ! -f "${BLIND_JSON}" ]; then
+  echo "no blind window recorded; nothing to acknowledge."
+  exit 0
+fi
+
+TRACKER_ACK_BLIND_JSON="${BLIND_JSON}" python3 -c "
+import json, os
+path = os.environ['TRACKER_ACK_BLIND_JSON']
+with open(path, encoding='utf-8') as f:
+    d = json.load(f)
+already = d.get('acknowledged', False)
+d['acknowledged'] = True
+tmp = path + '.tmp'
+with open(tmp, 'w', encoding='utf-8') as f:
+    json.dump(d, f, indent=2, sort_keys=True)
+os.replace(tmp, path)
+if already:
+    print('already acknowledged:', d.get('gap_start_ts'), '->', d.get('gap_end_ts'))
+else:
+    print('acknowledged:', d.get('gap_start_ts'), '->', d.get('gap_end_ts'),
+          f\"({d.get('duration_s', 0):.0f}s)\")
+"

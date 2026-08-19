@@ -1,0 +1,39 @@
+#!/bin/sh
+# Item (b): replaces the old undocumented one-liner. Writes STOPPED_INTENTIONALLY.json
+# BEFORE booting the three launchd jobs out, so trackerd's own item-(d) startup check
+# (next time it starts) can tell "this gap was requested" from "this gap is an incident" --
+# the marker must exist before the gap begins, not be reconstructed after the fact.
+#
+# Usage: tracker-stop ["reason"]
+set -eu
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LABEL_PREFIX="${LABEL_PREFIX:-com.marsys.pariprashna}"
+RUNTIME_DIR="${HOME}/.pariprashna-tracker"
+UID_N="$(id -u)"
+REASON="${1:-no reason given}"
+
+mkdir -p "${RUNTIME_DIR}"
+
+TRACKER_STOP_REASON="${REASON}" TRACKER_STOP_RUNTIME_DIR="${RUNTIME_DIR}" python3 -c "
+import json, datetime, os
+path = os.path.join(os.environ['TRACKER_STOP_RUNTIME_DIR'], 'STOPPED_INTENTIONALLY.json')
+record = {
+    'ts': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+    'reason': os.environ['TRACKER_STOP_REASON'],
+    'invoking_user': os.environ.get('USER') or os.environ.get('LOGNAME') or 'unknown',
+}
+tmp = path + '.tmp'
+with open(tmp, 'w', encoding='utf-8') as f:
+    json.dump(record, f, indent=2, sort_keys=True)
+os.replace(tmp, path)
+print(f'wrote {path}: {record}')
+"
+
+for job in trackerd watchdog serve; do
+  label="${LABEL_PREFIX}-${job}"
+  echo "booting out: ${label}"
+  launchctl bootout "gui/${UID_N}/${label}" 2>/dev/null || true
+done
+
+echo "stopped (marked intentional). resume with: ${SCRIPT_DIR}/tracker-start"

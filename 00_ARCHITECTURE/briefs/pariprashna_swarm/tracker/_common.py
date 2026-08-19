@@ -55,6 +55,21 @@ WATCHDOG_STALE_THRESHOLD_S = 90
 # every cycle). Not read by the projector; collect.py owns it exclusively.
 MIRROR_FETCH_STATE_JSON = os.path.join(RUNTIME_DIR, "mirror_fetch_state.json")
 
+# Item (b): written by tracker-stop BEFORE it boots the three launchd jobs out, cleared by
+# tracker-start once the daemon is confirmed healthy again. Its presence at daemon-startup
+# time is what lets trackerd distinguish "this gap was requested" from "this gap is an
+# incident" -- see item (d) below. Never write this from trackerd.py itself; only
+# tracker-stop writes it, only tracker-start clears it.
+STOPPED_INTENTIONALLY_JSON = os.path.join(RUNTIME_DIR, "STOPPED_INTENTIONALLY.json")
+
+# Item (d): a restart must never launder an outage into green. If trackerd starts and finds
+# the previous heartbeat older than BLIND_GAP_THRESHOLD_S with no STOPPED_INTENTIONALLY.json
+# present, it records the gap here. This file OUTLIVES the restart that wrote it -- the
+# banner it drives stays up across further restarts until something explicitly acknowledges
+# it (tracker-ack-blind), not until the heartbeat merely turns green again.
+BLIND_WINDOW_JSON = os.path.join(RUNTIME_DIR, "BLIND_WINDOW.json")
+BLIND_GAP_THRESHOLD_S = 120
+
 
 def _class_for_thresholds(age_seconds, amber_max, red_max):
     if age_seconds <= amber_max:
@@ -68,6 +83,27 @@ def staleness_class(age_seconds):
     """Pure function: age (seconds, float/int) -> 'green' | 'amber' | 'red'.
     Mirrored byte-for-byte in tracker.html's JS stalenessClass()."""
     return _class_for_thresholds(age_seconds, STALE_AMBER_S, STALE_RED_S)
+
+
+def compute_blind_window(last_heartbeat_ts, now_ts, marker_present):
+    """Pure (item d): decide, at daemon start, whether this restart followed an
+    unexplained gap. `last_heartbeat_ts`/`now_ts` are timezone-aware datetimes (or
+    last_heartbeat_ts is None for a genuine first-ever boot -- nothing to have been blind
+    about). Returns None (no blind window to record) or a dict with gap_start_ts/
+    gap_end_ts/duration_s. A restart must never launder an outage into green: the caller is
+    responsible for writing this to a file that OUTLIVES the restart, not just this cycle."""
+    if last_heartbeat_ts is None:
+        return None
+    gap_s = (now_ts - last_heartbeat_ts).total_seconds()
+    if gap_s <= BLIND_GAP_THRESHOLD_S:
+        return None
+    if marker_present:
+        return None
+    return {
+        "gap_start_ts": last_heartbeat_ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "gap_end_ts": now_ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "duration_s": gap_s,
+    }
 
 
 def ref_freshness_class(age_seconds):

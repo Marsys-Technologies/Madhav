@@ -228,6 +228,259 @@ def test_gh_mirror_consistency_anomaly():
                     ok, f"anomalies_for_divergent_pr={len(fired)} false_positives_on_consistent_pr={len(false_positive)}")
 
 
+def test_compute_blind_window_pure():
+    """Item (d), pure-function part: compute_blind_window's four cases -- first-ever boot
+    (no prior heartbeat), under-threshold gap, over-threshold-but-marked-intentional, and
+    the one that actually fires: over-threshold with no marker."""
+    import datetime
+    from _common import BLIND_GAP_THRESHOLD_S, compute_blind_window
+    now = datetime.datetime(2026, 1, 1, tzinfo=datetime.timezone.utc)
+    under = now - datetime.timedelta(seconds=BLIND_GAP_THRESHOLD_S - 1)
+    over = now - datetime.timedelta(seconds=BLIND_GAP_THRESHOLD_S + 1)
+    cases = {
+        "first_boot_no_prior_heartbeat": compute_blind_window(None, now, False) is None,
+        "under_threshold_no_marker": compute_blind_window(under, now, False) is None,
+        "over_threshold_marker_present": compute_blind_window(over, now, True) is None,
+    }
+    fired = compute_blind_window(over, now, False)
+    cases["over_threshold_no_marker_fires"] = (
+        fired is not None and abs(fired["duration_s"] - (BLIND_GAP_THRESHOLD_S + 1)) < 0.01
+    )
+    failures = [name for name, ok in cases.items() if not ok]
+    return _result("compute_blind_window: first-boot/under-threshold/marker suppress, over-threshold-no-marker fires",
+                    not failures, "; ".join(failures) or f"{len(cases)}/{len(cases)} cases correct")
+
+
+def test_blind_window_integration():
+    """Item (d), integration part: a REAL subprocess run of trackerd.py's own startup
+    check (--check-blind-window-only), isolated HOME, never touches the live tracker. Two
+    scenarios: a stale heartbeat with no marker must write a persistent BLIND_WINDOW.json
+    (acknowledged: false) and append a real anomaly event; the same stale heartbeat WITH an
+    intentional-stop marker present must do neither."""
+    import datetime
+    import json as json_mod
+    import subprocess
+    import tempfile
+    trackerd_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trackerd.py")
+
+    def run_scenario(marker_present):
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_home = os.path.join(tmp, "fake_home")
+            runtime_dir = os.path.join(fake_home, ".pariprashna-tracker")
+            os.makedirs(os.path.join(runtime_dir, "events"))
+            os.makedirs(os.path.join(runtime_dir, "logs"))
+            old_ts = (datetime.datetime.now(datetime.timezone.utc)
+                      - datetime.timedelta(seconds=300)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            with open(os.path.join(runtime_dir, "heartbeat.json"), "w", encoding="utf-8") as f:
+                json_mod.dump({"ts": old_ts, "cycle": 1}, f)
+            if marker_present:
+                with open(os.path.join(runtime_dir, "STOPPED_INTENTIONALLY.json"), "w", encoding="utf-8") as f:
+                    json_mod.dump({"ts": old_ts, "reason": "selftest", "invoking_user": "selftest"}, f)
+            env = dict(os.environ)
+            env["HOME"] = fake_home
+            result = subprocess.run(["python3", trackerd_path, "--check-blind-window-only"],
+                                     env=env, capture_output=True, text=True, timeout=15)
+            blind_path = os.path.join(runtime_dir, "BLIND_WINDOW.json")
+            wrote_record = os.path.exists(blind_path)
+            record = None
+            if wrote_record:
+                with open(blind_path, encoding="utf-8") as f:
+                    record = json_mod.load(f)
+            events_path = os.path.join(runtime_dir, "events", "trackerd.jsonl")
+            anomaly_fired = False
+            if os.path.exists(events_path):
+                with open(events_path, encoding="utf-8") as f:
+                    for line in f:
+                        ev = json_mod.loads(line)
+                        if ev.get("kind") == "anomaly" and ev.get("payload", {}).get("event") == "blind_window_detected":
+                            anomaly_fired = True
+            return result.returncode, wrote_record, record, anomaly_fired
+
+    rc1, wrote1, record1, anomaly1 = run_scenario(marker_present=False)
+    unmarked_ok = (rc1 == 0 and wrote1 and record1 is not None and record1.get("acknowledged") is False
+                   and 295 <= record1.get("duration_s", 0) <= 310 and anomaly1)
+
+    rc2, wrote2, record2, anomaly2 = run_scenario(marker_present=True)
+    marked_ok = (rc2 == 0 and not wrote2 and not anomaly2)
+
+    ok = unmarked_ok and marked_ok
+    return _result("trackerd --check-blind-window-only (real subprocess): stale+no-marker persists a record and fires an anomaly; stale+marker does neither",
+                    ok, f"no_marker: rc={rc1} wrote={wrote1} record={record1} anomaly={anomaly1} | "
+                        f"with_marker: rc={rc2} wrote={wrote2} anomaly={anomaly2}")
+
+
+def test_tracker_stop_start_marker_lifecycle():
+    """Item (b): tracker-stop must write STOPPED_INTENTIONALLY.json BEFORE calling
+    launchctl bootout -- order matters, since item (d)'s check must see the marker for the
+    entire duration the jobs are down, not just at the moment tracker-stop happens to exit.
+    tracker-start must clear the marker after re-bootstrapping. Fake launchctl + fake HOME;
+    never touches real launchd."""
+    import datetime
+    import json as json_mod
+    import subprocess
+    import tempfile
+    tracker_dir = os.path.dirname(os.path.abspath(__file__))
+    with tempfile.TemporaryDirectory() as tmp:
+        fake_home = os.path.join(tmp, "fake_home")
+        os.makedirs(fake_home)
+        fake_bin = os.path.join(tmp, "bin")
+        os.makedirs(fake_bin)
+        runtime_dir = os.path.join(fake_home, ".pariprashna-tracker")
+        marker_path = os.path.join(runtime_dir, "STOPPED_INTENTIONALLY.json")
+        order_log = os.path.join(tmp, "launchctl_calls.log")
+
+        fake_launchctl = os.path.join(fake_bin, "launchctl")
+        with open(fake_launchctl, "w", encoding="utf-8") as f:
+            f.write(
+                '#!/bin/sh\n'
+                f'if [ -f "{marker_path}" ]; then STATE=present; else STATE=absent; fi\n'
+                f'echo "$@ marker=$STATE" >> "{order_log}"\n'
+                'exit 0\n'
+            )
+        os.chmod(fake_launchctl, 0o755)
+        env = dict(os.environ)
+        env["HOME"] = fake_home
+        env["PATH"] = fake_bin + ":" + env.get("PATH", "/usr/bin:/bin")
+
+        stop_result = subprocess.run(
+            ["/bin/sh", os.path.join(tracker_dir, "tracker-stop"), "selftest reason"],
+            env=env, capture_output=True, text=True, timeout=15)
+        marker_written = os.path.exists(marker_path)
+        bootout_lines = []
+        if os.path.exists(order_log):
+            with open(order_log, encoding="utf-8") as f:
+                bootout_lines = [line for line in f.read().splitlines() if "bootout" in line]
+        all_saw_marker_present = bool(bootout_lines) and all("marker=present" in line for line in bootout_lines)
+
+        la_dir = os.path.join(fake_home, "Library", "LaunchAgents")
+        os.makedirs(la_dir)
+        for job in ("trackerd", "watchdog", "serve"):
+            with open(os.path.join(la_dir, f"com.marsys.pariprashna-{job}.plist"), "w", encoding="utf-8") as f:
+                f.write("<plist/>")
+        os.makedirs(os.path.join(runtime_dir, "events"), exist_ok=True)
+        with open(os.path.join(runtime_dir, "heartbeat.json"), "w", encoding="utf-8") as f:
+            json_mod.dump({"ts": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}, f)
+
+        start_result = subprocess.run(["/bin/sh", os.path.join(tracker_dir, "tracker-start")],
+                                       env=env, capture_output=True, text=True, timeout=30)
+        marker_cleared = not os.path.exists(marker_path)
+
+        ok = (stop_result.returncode == 0 and marker_written and all_saw_marker_present
+              and start_result.returncode == 0 and marker_cleared)
+        return _result("tracker-stop writes marker before bootout; tracker-start clears it after re-bootstrap",
+                        ok, f"marker_written={marker_written} all_bootouts_saw_marker={all_saw_marker_present} "
+                            f"bootout_calls={len(bootout_lines)} marker_cleared={marker_cleared} "
+                            f"stop_rc={stop_result.returncode} start_rc={start_result.returncode}")
+
+
+def test_cron_watchdog_out_of_band_logic():
+    """Item (c), T4: tracker-cron-watchdog must skip (no bootout, no incident event) when
+    an intentional-stop marker is present OR the heartbeat is already fresh, and must
+    re-bootstrap + log a real incident event when the heartbeat is stale with no marker.
+    Calls the script directly, exactly how cron would invoke it -- never touches the real
+    crontab (crontab installation itself is intentionally NOT selftested; see README)."""
+    import datetime
+    import json as json_mod
+    import subprocess
+    import tempfile
+    tracker_dir = os.path.dirname(os.path.abspath(__file__))
+
+    def run_scenario(stale, marker_present):
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_home = os.path.join(tmp, "fake_home")
+            runtime_dir = os.path.join(fake_home, ".pariprashna-tracker")
+            os.makedirs(os.path.join(runtime_dir, "events"))
+            os.makedirs(os.path.join(runtime_dir, "logs"))
+            la_dir = os.path.join(fake_home, "Library", "LaunchAgents")
+            os.makedirs(la_dir)
+            for job in ("trackerd", "watchdog", "serve"):
+                with open(os.path.join(la_dir, f"com.marsys.pariprashna-{job}.plist"), "w", encoding="utf-8") as f:
+                    f.write("<plist/>")
+            age = 400 if stale else 10
+            ts = (datetime.datetime.now(datetime.timezone.utc)
+                  - datetime.timedelta(seconds=age)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            with open(os.path.join(runtime_dir, "heartbeat.json"), "w", encoding="utf-8") as f:
+                json_mod.dump({"ts": ts}, f)
+            if marker_present:
+                with open(os.path.join(runtime_dir, "STOPPED_INTENTIONALLY.json"), "w", encoding="utf-8") as f:
+                    json_mod.dump({"ts": ts, "reason": "selftest"}, f)
+
+            fake_bin = os.path.join(tmp, "bin")
+            os.makedirs(fake_bin)
+            call_log = os.path.join(tmp, "launchctl_calls.log")
+            with open(os.path.join(fake_bin, "launchctl"), "w", encoding="utf-8") as f:
+                f.write(f'#!/bin/sh\necho "$@" >> "{call_log}"\nexit 0\n')
+            os.chmod(os.path.join(fake_bin, "launchctl"), 0o755)
+
+            env = dict(os.environ)
+            env["HOME"] = fake_home
+            env["PATH"] = fake_bin + ":" + env.get("PATH", "/usr/bin:/bin")
+            try:
+                subprocess.run(["/bin/sh", os.path.join(tracker_dir, "tracker-cron-watchdog")],
+                                env=env, capture_output=True, text=True, timeout=8)
+            except subprocess.TimeoutExpired:
+                pass  # bootout/bootstrap already happened synchronously before tracker-start's wait loop
+            bootout_called = os.path.exists(call_log)
+            incident_logged = False
+            # cron_watchdog is its own writer_id -> its own events/cron_watchdog.jsonl file
+            # (one append-only file per writer, per the tracker's own event-log design).
+            events_path = os.path.join(runtime_dir, "events", "cron_watchdog.jsonl")
+            if os.path.exists(events_path):
+                with open(events_path, encoding="utf-8") as f:
+                    for line in f:
+                        ev = json_mod.loads(line)
+                        if ev.get("payload", {}).get("event") == "out_of_band_resurrection":
+                            incident_logged = True
+            return bootout_called, incident_logged
+
+    marker_bootout, marker_incident = run_scenario(stale=True, marker_present=True)
+    fresh_bootout, fresh_incident = run_scenario(stale=False, marker_present=False)
+    fires_bootout, fires_incident = run_scenario(stale=True, marker_present=False)
+
+    ok = (not marker_bootout and not marker_incident
+          and not fresh_bootout and not fresh_incident
+          and fires_bootout and fires_incident)
+    return _result("tracker-cron-watchdog (T4): skips on marker-present or fresh heartbeat, re-bootstraps + logs incident on stale+no-marker",
+                    ok, f"marker_present: bootout={marker_bootout} incident={marker_incident}; "
+                        f"fresh: bootout={fresh_bootout} incident={fresh_incident}; "
+                        f"stale_no_marker: bootout={fires_bootout} incident={fires_incident}")
+
+
+def test_install_sh_refuses_non_default_home_with_production_label():
+    """Item (a): install.sh must refuse to run with $HOME overridden while LABEL_PREFIX is
+    still the production default -- and must do so WITHOUT ever invoking launchctl. This is
+    believed to be the actual mechanism behind the 2026-08-19 23m37s blind window: HOME
+    isolation looks like it isolates a test install, but launchctl labels are global to the
+    launchd domain regardless of HOME, so an unparameterized label bootouts production.
+    Verified by putting a fake `launchctl` first on PATH that writes a marker if invoked at
+    all -- the strongest form of "never called" this test can assert without root."""
+    import subprocess
+    import tempfile
+    install_sh = os.path.join(os.path.dirname(os.path.abspath(__file__)), "install.sh")
+    with tempfile.TemporaryDirectory() as tmp:
+        fake_home = os.path.join(tmp, "fake_home")
+        os.makedirs(fake_home)
+        fake_bin = os.path.join(tmp, "bin")
+        os.makedirs(fake_bin)
+        marker = os.path.join(tmp, "launchctl_was_called")
+        fake_launchctl = os.path.join(fake_bin, "launchctl")
+        with open(fake_launchctl, "w", encoding="utf-8") as f:
+            f.write(f'#!/bin/sh\necho "CALLED $@" >> "{marker}"\nexit 0\n')
+        os.chmod(fake_launchctl, 0o755)
+        env = dict(os.environ)
+        env["HOME"] = fake_home
+        env["PATH"] = fake_bin + ":" + env.get("PATH", "/usr/bin:/bin")
+        result = subprocess.run(["/bin/sh", install_sh], env=env, capture_output=True,
+                                 text=True, timeout=20)
+    refused = result.returncode != 0
+    bootout_never_called = not os.path.exists(marker)
+    explains_why = "HOME isolation does not isolate launchctl labels" in result.stderr
+    ok = refused and bootout_never_called and explains_why
+    return _result("install.sh refuses non-default HOME + production label prefix, never calls launchctl",
+                    ok, f"returncode={result.returncode} bootout_called={not bootout_never_called} "
+                        f"explains_why={explains_why} stderr={result.stderr.strip()[:300]!r}")
+
+
 def test_rate_limit_reads_graphql_not_core():
     """Item 6: `gh pr list` (this collector's own poll, both open and merged, every cycle)
     is GraphQL-backed -- verified empirically 2026-08-20 by calling it and diffing `gh api
@@ -259,6 +512,11 @@ def run_all():
         test_mirror_fetch_failure_degrades_to_unknown(),
         test_gh_mirror_consistency_anomaly(),
         test_rate_limit_reads_graphql_not_core(),
+        test_install_sh_refuses_non_default_home_with_production_label(),
+        test_compute_blind_window_pure(),
+        test_blind_window_integration(),
+        test_tracker_stop_start_marker_lifecycle(),
+        test_cron_watchdog_out_of_band_logic(),
     ]
     all_passed = all(t["passed"] for t in tests)
     return {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "tests": tests, "all_passed": all_passed}

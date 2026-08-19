@@ -1,0 +1,30 @@
+#!/bin/sh
+# Item (c), the tier that actually closes the loop: T1-T4 above keep the OBSERVER alive.
+# This is the SUBJECT checking the observer -- the only tier guaranteed to be running at
+# the moment it matters, because the conductor is, by construction, active whenever a lane
+# transition is happening. Call this at every lane transition and treat exit 1 as a halt
+# condition: do not advance a lane while nothing is watching it.
+#
+# Contract: exit 0 = observatory alive, safe to proceed. exit 1 = dead observatory, halt.
+# Always prints one human-readable status line to stdout, on both paths.
+set -eu
+
+RUNTIME_DIR="${HOME}/.pariprashna-tracker"
+HEARTBEAT_JSON="${RUNTIME_DIR}/heartbeat.json"
+
+python3 -c "
+import json, datetime, sys
+try:
+    with open('${HEARTBEAT_JSON}', encoding='utf-8') as f:
+        d = json.load(f)
+    t = datetime.datetime.strptime(d['ts'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=datetime.timezone.utc)
+    age = (datetime.datetime.now(datetime.timezone.utc) - t).total_seconds()
+except Exception as e:
+    print(f'OBSERVATORY DEAD: cannot read heartbeat ({e})')
+    sys.exit(1)
+if age > 180:
+    print(f'OBSERVATORY DEAD: heartbeat is {age:.0f}s old (>180s)')
+    sys.exit(1)
+print(f'OBSERVATORY ALIVE: heartbeat is {age:.0f}s old')
+sys.exit(0)
+"

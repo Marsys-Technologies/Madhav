@@ -18,8 +18,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import (  # noqa: E402
-    COLLECTOR_SNAPSHOT_JSON, EVENTS_DIR, HEARTBEAT_JSON, PLAN_PATH, STATE_JSON, TRACKER_DATA_JS,
-    atomic_write_json, atomic_write_text, ensure_runtime_dirs, load_plan,
+    BLIND_WINDOW_JSON, COLLECTOR_SNAPSHOT_JSON, EVENTS_DIR, HEARTBEAT_JSON, PLAN_PATH, STATE_JSON,
+    TRACKER_DATA_JS, atomic_write_json, atomic_write_text, ensure_runtime_dirs, load_plan,
 )
 from tracker_emit import emit  # noqa: E402
 
@@ -409,6 +409,18 @@ def project(write_new_events=True):
         except (json.JSONDecodeError, FileNotFoundError):
             heartbeat = {}
 
+    # Item (d): sticky, survives-restarts record, distinct from the anomalies feed above
+    # (which is a rolling window). This one stays until tracker-ack-blind clears
+    # `acknowledged`, so the banner it drives cannot be laundered away by the mere act of
+    # the daemon coming back up green.
+    blind_window = None
+    if os.path.exists(BLIND_WINDOW_JSON):
+        try:
+            with open(BLIND_WINDOW_JSON, encoding="utf-8") as f:
+                blind_window = json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            blind_window = None
+
     state = {
         "schema_version": "2.0",
         "generated_at": generated_at,
@@ -421,6 +433,7 @@ def project(write_new_events=True):
             {"ts": a["ts"], "lane": a.get("lane"), "message": a["payload"].get("message")}
             for a in anomalies
         ],
+        "blind_window": blind_window,
         "budget": fold_budget(plan, events),
         "code_provenance": fold_code_provenance(snapshot),
         "ref_freshness": fold_ref_freshness(snapshot),

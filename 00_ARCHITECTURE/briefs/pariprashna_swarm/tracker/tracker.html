@@ -28,6 +28,11 @@ header{position:sticky; top:0; z-index:10; background:var(--obsidian-panel); bor
 .stale-banner{display:none; padding:10px 16px; font-weight:600; text-align:center; font-family:var(--font-mono)}
 .stale-banner.amber{display:block; background:var(--warning); color:#241a00}
 .stale-banner.red{display:block; background:var(--danger); color:#2a0000; font-size:16px}
+/* Item (d): a DIFFERENT axis from stale-banner above. stale-banner is "is the data I'm
+   looking at right now fresh" and clears itself the instant a fetch succeeds again --
+   exactly the property that would let a restart launder a past outage into green. This one
+   is sticky history: "was there a gap nobody explained," and it does not clear on its own. */
+.blind-banner{display:none; padding:10px 16px; font-weight:600; text-align:center; font-family:var(--font-mono); background:#3a0a3a; color:#f5d9f5; border-bottom:2px solid #7a2a7a}
 body.dimmed .card, body.dimmed table{opacity:.35; filter:grayscale(.6)}
 .hdr-row{display:flex; flex-wrap:wrap; gap:18px; align-items:center}
 .phase-rail{display:flex; gap:4px; flex-wrap:wrap}
@@ -73,6 +78,7 @@ footer{padding:20px; text-align:center; color:var(--text-tertiary); font-size:11
 </head>
 <body>
 <div id="staleBanner" class="stale-banner"></div>
+<div id="blindBanner" class="blind-banner"></div>
 <header>
   <div class="hdr-row">
     <strong style="font-family:var(--font-mono); color:var(--gold-light)">PARIPRAŚNA OBSERVATORY</strong>
@@ -198,8 +204,25 @@ function updateStaleBanner() {
   }
 }
 
+function updateBlindBanner(blindWindow) {
+  // Item (d): sticky, independent of TRACKER_DATA's own freshness -- a restart that comes
+  // back green must not silently retire this. Only clears when the record itself is
+  // acknowledged (tracker-ack-blind), which is a DIFFERENT event than the daemon
+  // resuming.
+  const banner = document.getElementById("blindBanner");
+  if (!blindWindow || blindWindow.acknowledged) { banner.style.display = "none"; return; }
+  const start = blindWindow.gap_start_ts, end = blindWindow.gap_end_ts, dur = blindWindow.duration_s;
+  const h = String(Math.floor(dur / 3600)).padStart(2, "0");
+  const m = String(Math.floor((dur % 3600) / 60)).padStart(2, "0");
+  const s = String(Math.floor(dur % 60)).padStart(2, "0");
+  banner.style.display = "block";
+  banner.textContent = `BLIND ${h}:${m}:${s} (${start} → ${end}) — unexplained gap, no intentional-stop `
+    + `marker found. Not cleared by this restart being green. Acknowledge with: tracker-ack-blind`;
+}
+
 function render() {
   updateStaleBanner();
+  if (TRACKER_DATA) updateBlindBanner(TRACKER_DATA.blind_window);
   if (!TRACKER_DATA) { document.getElementById("footerInfo").textContent = "waiting for first tracker_data.js load…"; return; }
   const d = TRACKER_DATA;
 

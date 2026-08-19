@@ -1,0 +1,59 @@
+#!/bin/sh
+# T4 (item c): OUT-OF-BAND tier, in a DIFFERENT subsystem from T1-T3. T2's watchdog is
+# itself a launchd job -- the 2026-08-19 incident booted ALL THREE launchd jobs out at
+# once, including the watchdog, so nothing left in the launchd domain could have noticed.
+# cron is a wholly separate subsystem: a launchd-domain bootout cannot touch a crontab
+# entry. Installed via `crontab`, not a launchd plist -- see install.sh's cron-install
+# step. Runs every 5 minutes (crontab), must be fast and must never fight an intentional
+# stop.
+set -eu
+
+LABEL_PREFIX="${LABEL_PREFIX:-com.marsys.pariprashna}"
+RUNTIME_DIR="${HOME}/.pariprashna-tracker"
+HEARTBEAT_JSON="${RUNTIME_DIR}/heartbeat.json"
+MARKER="${RUNTIME_DIR}/STOPPED_INTENTIONALLY.json"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+mkdir -p "${RUNTIME_DIR}/logs"
+
+if [ -f "${MARKER}" ]; then
+  exit 0
+fi
+
+STATUS="$(python3 -c "
+import json, datetime
+try:
+    with open('${HEARTBEAT_JSON}', encoding='utf-8') as f:
+        d = json.load(f)
+    t = datetime.datetime.strptime(d['ts'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=datetime.timezone.utc)
+    age = (datetime.datetime.now(datetime.timezone.utc) - t).total_seconds()
+    print('DEAD' if age > 180 else 'ALIVE')
+except Exception:
+    print('DEAD')
+")"
+
+if [ "${STATUS}" = "ALIVE" ]; then
+  exit 0
+fi
+
+TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+echo "${TS} T4: heartbeat dead, no intentional-stop marker -- intervening" >> "${RUNTIME_DIR}/logs/cron_watchdog.log"
+
+# Log the incident the moment the decision to intervene is made, NOT after tracker-start's
+# health-wait completes (that wait can run up to 90s, and the decision itself -- "T4 saw a
+# dead observer and is acting" -- is already true at this point regardless of whether the
+# re-bootstrap ultimately succeeds).
+TRACKER_CRON_SCRIPT_DIR="${SCRIPT_DIR}" python3 -c "
+import sys, os
+sys.path.insert(0, os.environ['TRACKER_CRON_SCRIPT_DIR'])
+from tracker_emit import emit
+emit('cron_watchdog', 'daemon', {'event': 'out_of_band_resurrection', 'tier': 'T4'},
+     evidence_class='DERIVED',
+     provenance='tracker-cron-watchdog: heartbeat.json age exceeded 180s, no intentional-stop marker')
+" >> "${RUNTIME_DIR}/logs/cron_watchdog.log" 2>&1
+
+osascript -e 'display notification "Paripraśna tracker was down; T4 (cron, out-of-band) is re-bootstrapping it." with title "Paripraśna Tracker — T4 resurrection"' >/dev/null 2>&1 || true
+
+LABEL_PREFIX="${LABEL_PREFIX}" "${SCRIPT_DIR}/tracker-start" >> "${RUNTIME_DIR}/logs/cron_watchdog.log" 2>&1 || true
+
+echo "${TS} T4 resurrection attempt complete" >> "${RUNTIME_DIR}/logs/cron_watchdog.log"

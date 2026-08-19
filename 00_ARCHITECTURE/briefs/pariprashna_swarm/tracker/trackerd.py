@@ -4,6 +4,7 @@ to any agent's turn boundary. Single instance enforced by a pidfile with a liven
 Adaptive cadence: 20s while things are changing, backs off to 60s after 10 idle cycles,
 snaps back to 20s the instant something changes. Stdlib only.
 """
+import datetime
 import json
 import os
 import shutil
@@ -12,8 +13,9 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import (  # noqa: E402
-    HEARTBEAT_INTERVAL_FRESH_S, HEARTBEAT_INTERVAL_IDLE_S, HEARTBEAT_JSON,
-    IDLE_CYCLES_BEFORE_BACKOFF, PIDFILE, RUNTIME_DIR, ensure_runtime_dirs, atomic_write_json,
+    BLIND_WINDOW_JSON, HEARTBEAT_INTERVAL_FRESH_S, HEARTBEAT_INTERVAL_IDLE_S, HEARTBEAT_JSON,
+    IDLE_CYCLES_BEFORE_BACKOFF, PIDFILE, RUNTIME_DIR, STOPPED_INTENTIONALLY_JSON,
+    compute_blind_window, ensure_runtime_dirs, atomic_write_json,
 )
 import collect  # noqa: E402
 import project  # noqa: E402
@@ -55,6 +57,44 @@ def acquire_pidfile():
             pass
     with open(PIDFILE, "w", encoding="utf-8") as f:
         f.write(str(os.getpid()))
+
+
+def check_blind_window():
+    """Item (d): on daemon start (real starts only -- never called from --selftest or
+    --once in a way that could stamp a spurious record over a real one), decide whether
+    this restart followed an unexplained gap and, if so, write a record that OUTLIVES this
+    restart. STOPPED_INTENTIONALLY.json is read here but NEVER written or deleted by
+    trackerd.py -- only tracker-stop writes it, only tracker-start clears it (see both)."""
+    ensure_runtime_dirs()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    last_heartbeat_ts = None
+    if os.path.exists(HEARTBEAT_JSON):
+        try:
+            with open(HEARTBEAT_JSON, encoding="utf-8") as f:
+                hb = json.load(f)
+            last_heartbeat_ts = datetime.datetime.strptime(
+                hb["ts"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+        except (json.JSONDecodeError, KeyError, ValueError, OSError):
+            last_heartbeat_ts = None
+    marker_present = os.path.exists(STOPPED_INTENTIONALLY_JSON)
+
+    blind = compute_blind_window(last_heartbeat_ts, now, marker_present)
+    if blind is not None:
+        atomic_write_json(BLIND_WINDOW_JSON, {
+            **blind, "acknowledged": False,
+            "detected_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        })
+        emit(WRITER_ID, "anomaly", {"event": "blind_window_detected", **blind},
+             evidence_class="DERIVED", provenance="trackerd.py check_blind_window at daemon start")
+        print(f"BLIND WINDOW: {blind['duration_s']:.0f}s gap with no intentional-stop marker "
+              f"({blind['gap_start_ts']} -> {blind['gap_end_ts']}). Recorded to "
+              f"{BLIND_WINDOW_JSON} -- will not clear on its own.", file=sys.stderr)
+    elif marker_present and last_heartbeat_ts is not None:
+        gap_s = (now - last_heartbeat_ts).total_seconds()
+        if gap_s > 1:
+            emit(WRITER_ID, "daemon", {"event": "resumed_from_intentional_stop", "gap_seconds": gap_s},
+                 evidence_class="DERIVED",
+                 provenance="trackerd.py check_blind_window: STOPPED_INTENTIONALLY.json present")
 
 
 def one_cycle():
@@ -121,8 +161,17 @@ def main():
         print(json.dumps(result, indent=2))
         sys.exit(0 if result.get("all_passed") else 1)
 
+    if "--check-blind-window-only" in sys.argv:
+        # Item (d) testability: exercises exactly the "on daemon start" check without the
+        # heavy collect/project machinery (network calls, mirror bootstrap) or entering the
+        # loop -- so selftest can drive this fast, in an isolated HOME, at every daemon
+        # start, not just manually.
+        check_blind_window()
+        sys.exit(0)
+
     deploy_static_dashboard()
     acquire_pidfile()
+    check_blind_window()  # item (d): must run before this process's own first heartbeat write
     idle_cycles = 0
     interval = HEARTBEAT_INTERVAL_FRESH_S
     cycle = 0

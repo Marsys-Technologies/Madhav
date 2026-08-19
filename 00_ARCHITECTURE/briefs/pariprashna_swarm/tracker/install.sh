@@ -31,11 +31,14 @@
 #     untouched by this script -- only the code directory and the launchd jobs change).
 set -eu
 
+DEFAULT_LABEL_PREFIX="com.marsys.pariprashna"
+
 MODE="inplace"
 INSTALL_FROM_REF=""
 PREFIX=""
 SRC_REPO=""
 RUNTIME_GIT_REPO=""
+LABEL_PREFIX="${DEFAULT_LABEL_PREFIX}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 while [ $# -gt 0 ]; do
@@ -44,6 +47,7 @@ while [ $# -gt 0 ]; do
     --prefix) PREFIX="$2"; shift 2 ;;
     --repo) SRC_REPO="$2"; shift 2 ;;
     --runtime-git-repo) RUNTIME_GIT_REPO="$2"; shift 2 ;;
+    --label-prefix) LABEL_PREFIX="$2"; shift 2 ;;
     *) echo "unknown argument: $1" >&2; exit 1 ;;
   esac
 done
@@ -52,6 +56,29 @@ RUNTIME_DIR="${HOME}/.pariprashna-tracker"
 PYTHON3="$(command -v python3)"
 UID_N="$(id -u)"
 LA_DIR="${HOME}/Library/LaunchAgents"
+
+# --- Label-namespace isolation guard -----------------------------------------------
+# launchctl labels live in the launchd GUI domain (gui/<uid>/<label>) and are NOT scoped
+# by $HOME in any way. RUNTIME_DIR above IS HOME-scoped, so it is easy to believe that
+# running this script with HOME overridden (e.g. for an isolated test install) is fully
+# isolated from production. It is not: with LABEL_PREFIX left at its default, the
+# `launchctl bootout` below still targets the SAME global label the production jobs use,
+# and boots them out -- regardless of HOME. This is believed to be the exact mechanism
+# behind the 2026-08-19 23m37s production blind window (measured: last heartbeat
+# 20:35:52Z, launchd "removing service" for all three jobs logged at 20:36:22Z, no
+# reload until 20:59:13Z): an isolated-HOME install run booted out the real
+# trackerd/watchdog/serve jobs because the label was still the production default.
+# Refuse outright rather than let it happen again.
+REAL_HOME="$(dscl . -read "/Users/$(id -un)" NFSHomeDirectory 2>/dev/null | awk '{print $2}')"
+if [ -z "${REAL_HOME}" ]; then REAL_HOME="${HOME}"; fi
+if [ "${HOME}" != "${REAL_HOME}" ] && [ "${LABEL_PREFIX}" = "${DEFAULT_LABEL_PREFIX}" ]; then
+  echo "REFUSING: \$HOME is overridden (HOME=${HOME}, real home=${REAL_HOME}) but" >&2
+  echo "LABEL_PREFIX is still the production default (${DEFAULT_LABEL_PREFIX})." >&2
+  echo "HOME isolation does not isolate launchctl labels -- this run would bootout the" >&2
+  echo "PRODUCTION trackerd/watchdog/serve jobs regardless of HOME. Pass" >&2
+  echo "--label-prefix <something-not-${DEFAULT_LABEL_PREFIX}> for an isolated test install." >&2
+  exit 1
+fi
 
 if [ "${MODE}" = "snapshot" ]; then
   : "${PREFIX:=${HOME}/.pariprashna-tracker-code}"
@@ -95,7 +122,9 @@ EOF
   if [ -d "${OLD_PREFIX}" ]; then
     rm -rf "${OLD_PREFIX}"
   fi
-  chmod +x "${PREFIX}"/*.py "${PREFIX}/install.sh" 2>/dev/null || true
+  chmod +x "${PREFIX}"/*.py "${PREFIX}/install.sh" \
+    "${PREFIX}/tracker-stop" "${PREFIX}/tracker-start" "${PREFIX}/tracker-ack-blind" \
+    "${PREFIX}/tracker-cron-watchdog" "${PREFIX}/tracker-health-check" 2>/dev/null || true
 
   TRACKER_DIR="${PREFIX}"
   echo "snapshot installed: ${TRACKER_DIR} (source ${SRC_SHA}, runtime git repo ${RUNTIME_GIT_REPO})"
@@ -118,26 +147,48 @@ mkdir -p "${LA_DIR}" "${RUNTIME_DIR}/logs" "${RUNTIME_DIR}/events"
 render() {
   template="$1"
   out="$2"
+  label_out="$3"
   sed -e "s#__PYTHON3__#${PYTHON3}#g" \
       -e "s#__TRACKER_DIR__#${TRACKER_DIR}#g" \
       -e "s#__RUNTIME_DIR__#${RUNTIME_DIR}#g" \
       -e "s#__PATH_ENV__#${PATH_ENV}#g" \
       -e "s#__TRACKER_GIT_REPO__#${RUNTIME_GIT_REPO}#g" \
+      -e "s#__LABEL__#${label_out}#g" \
       "${template}" > "${out}"
 }
 
+echo "about to bootout + bootstrap under label prefix '${LABEL_PREFIX}':"
 for job in trackerd watchdog serve; do
-  label="com.marsys.pariprashna-${job}"
+  echo "  ${LABEL_PREFIX}-${job}"
+done
+
+for job in trackerd watchdog serve; do
+  # LABEL_PREFIX, not a hardcoded string -- see the guard above. HOME isolation does NOT
+  # isolate this: the label is global to the launchd domain regardless of $HOME, so a
+  # mismatched prefix here is what bootouts the wrong (possibly production) jobs.
+  label="${LABEL_PREFIX}-${job}"
   plist="${LA_DIR}/${label}.plist"
-  render "${TRACKER_DIR}/launchd/${label}.plist.template" "${plist}"
+  # Template files are named by job (fixed, e.g. com.marsys.pariprashna-trackerd.plist.template)
+  # regardless of LABEL_PREFIX -- only the rendered output's Label key and file path vary.
+  render "${TRACKER_DIR}/launchd/${DEFAULT_LABEL_PREFIX}-${job}.plist.template" "${plist}" "${label}"
   launchctl bootout "gui/${UID_N}/${label}" 2>/dev/null || true
   launchctl bootstrap "gui/${UID_N}" "${plist}"
   echo "installed + bootstrapped: ${label} -> ${plist}"
 done
 
+# T4 (item c): a DIFFERENT subsystem from the launchd jobs above -- cron, not launchd, so
+# the exact 2026-08-19 failure mode (a launchd-domain bootout removing all three jobs
+# including the watchdog) cannot take this out too. Idempotent: the marker comment scopes
+# replacement to entries installed under THIS LABEL_PREFIX only, so a test install's cron
+# entry (if --label-prefix was used) never collides with production's.
+CRON_MARKER="# pariprashna-tracker-cron-watchdog:${LABEL_PREFIX}"
+CRON_LINE="*/5 * * * * LABEL_PREFIX=${LABEL_PREFIX} ${TRACKER_DIR}/tracker-cron-watchdog >>${RUNTIME_DIR}/logs/cron_watchdog.cron.log 2>&1 ${CRON_MARKER}"
+( crontab -l 2>/dev/null | grep -vF "${CRON_MARKER}" || true; echo "${CRON_LINE}" ) | crontab -
+echo "cron T4 installed (every 5 min): ${CRON_LINE}"
+
 echo
 echo "Code dir:    ${TRACKER_DIR}"
 echo "Runtime dir: ${RUNTIME_DIR}"
 echo "Git repo (runtime reads): ${RUNTIME_GIT_REPO}"
-echo "Stop all three:  for j in trackerd watchdog serve; do launchctl bootout gui/${UID_N}/com.marsys.pariprashna-\$j; done"
+echo "Stop all three (marks the outage intentional -- see tracker-stop): ${TRACKER_DIR}/tracker-stop"
 echo "Tail logs:       tail -f ${RUNTIME_DIR}/logs/*.log"
