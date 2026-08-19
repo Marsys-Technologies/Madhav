@@ -3865,3 +3865,22 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   then (only once confirmed healthy) removing the now-superseded
   `/private/tmp/pariprashna-tracker-v2` worktree via `git worktree remove` +
   `prune` — that worktree only, nothing else under `/private/tmp`.
+
+- 2026-08-20 01:10Z — **PARIPRAŚNA-TRACKER-V2 / Claude Code — merge window
+  requested (docs-and-tooling only):** fixes a real bug found after
+  #1350/#1351/#1353 landed and were running: the collector's every
+  `origin/*` read resolved against the shared checkout's remote-tracking
+  refs, which only advance when some unrelated process fetches there —
+  silently-stale-looking-fresh, undermining the branch/ahead-behind, STALE
+  CODE, and coordination-lease-holder cells. Fix gives the daemon a private
+  mirror it fetches on its own cadence (`~/.pariprashna-tracker/mirror.git`,
+  outside the repo); the shared checkout at
+  `/Users/Dev/Vibe-Coding/Apps/Madhav` is READ ONLY for `git worktree list`
+  (unchanged from before) and gets **no additional fetch/write traffic** —
+  confirmed not colliding with the concurrent PARIŚEṢA Closure Factory lease
+  (`PARISESA-V4-CLOSURE-FACTORY-20260819T193555Z`), which separately also
+  avoids that same checkout. Branch `pariprashna/tracker-v2-mirror-refs`,
+  scope `00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/**` only (7 files,
+  same tree as prior tracker-v2 PRs), no `platform/**`, no migration, no
+  deploy, no credential. Post-merge: reinstalling the snapshot from the
+  merged commit and verifying, same as the prior two follow-ups.
