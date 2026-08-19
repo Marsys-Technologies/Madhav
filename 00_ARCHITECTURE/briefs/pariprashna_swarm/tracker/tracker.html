@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Paripraśna Execution Observatory</title>
+<style>
+:root{
+  --obsidian-bg:#08070a; --obsidian-panel:#0a0908; --obsidian-panel-mid:#0e0d10;
+  --obsidian-border:#1f1c17; --obsidian-border-mid:#252119;
+  --gold-primary:#d4a648; --gold-light:#e8c878; --gold-glow:rgba(212,166,72,.15);
+  --text-primary:#e8e6df; --text-secondary:#948f7f; --text-tertiary:#5d5b54;
+  --success:#9bd49a; --danger:#e89a9a; --warning:#e8c47a; --info:#7aace8;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+  --radius: 8px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--obsidian-bg); color:var(--text-primary);
+  font-family:var(--font-sans); font-size:14px; line-height:1.5;
+  padding-bottom:60px;
+}
+a{color:var(--gold-light)}
+.mono{font-family:var(--font-mono)}
+.micro{font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-tertiary)}
+header{position:sticky; top:0; z-index:10; background:var(--obsidian-panel); border-bottom:1px solid var(--obsidian-border); padding:10px 16px}
+.stale-banner{display:none; padding:10px 16px; font-weight:600; text-align:center; font-family:var(--font-mono)}
+.stale-banner.amber{display:block; background:var(--warning); color:#241a00}
+.stale-banner.red{display:block; background:var(--danger); color:#2a0000; font-size:16px}
+body.dimmed .card, body.dimmed table{opacity:.35; filter:grayscale(.6)}
+.hdr-row{display:flex; flex-wrap:wrap; gap:18px; align-items:center}
+.phase-rail{display:flex; gap:4px; flex-wrap:wrap}
+.phase-chip{padding:4px 10px; border-radius:var(--radius); border:1px solid var(--obsidian-border-mid); font-family:var(--font-mono); font-size:12px}
+.phase-chip.CLOSED{background:rgba(155,212,154,.12); border-color:var(--success); color:var(--success)}
+.phase-chip.PLANNED{color:var(--text-tertiary)}
+.phase-chip.ACTIVE{background:var(--gold-glow); border-color:var(--gold-primary); color:var(--gold-light)}
+.pill{padding:3px 9px; border-radius:999px; font-family:var(--font-mono); font-size:11px; border:1px solid var(--obsidian-border-mid); display:inline-flex; align-items:center; gap:5px}
+.pill.green{color:var(--success); border-color:var(--success)}
+.pill.amber{color:var(--warning); border-color:var(--warning)}
+.pill.red{color:var(--danger); border-color:var(--danger)}
+.pill.stalled{background:rgba(232,196,122,.15); color:var(--warning); border-color:var(--warning); font-weight:700}
+main{padding:16px; max-width:1400px; margin:0 auto}
+.card{background:var(--obsidian-panel); border:1px solid var(--obsidian-border); border-radius:var(--radius); padding:14px; margin-bottom:16px}
+.card h2{margin:0 0 10px; font-size:13px; letter-spacing:.06em; text-transform:uppercase; color:var(--text-secondary); font-weight:600}
+.strip{display:flex; gap:24px; flex-wrap:wrap; font-family:var(--font-mono); font-size:12px}
+.strip div span{display:block; color:var(--text-tertiary); font-size:10px; text-transform:uppercase; letter-spacing:.06em}
+.critical-path{display:flex; align-items:center; gap:6px; flex-wrap:wrap; font-family:var(--font-mono); font-size:12px}
+.critical-path .node{padding:3px 8px; border:1px solid var(--obsidian-border-mid); border-radius:4px}
+.critical-path .node.blocking{border-color:var(--danger); color:var(--danger); background:rgba(232,154,154,.1)}
+table{width:100%; border-collapse:collapse; font-size:12.5px}
+th{text-align:left; padding:6px 8px; color:var(--text-tertiary); font-weight:600; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid var(--obsidian-border-mid); position:sticky; top:0; background:var(--obsidian-panel)}
+td{padding:6px 8px; border-bottom:1px solid var(--obsidian-border); font-family:var(--font-mono); vertical-align:top}
+.table-wrap{overflow-x:auto}
+.state-badge{padding:2px 7px; border-radius:4px; font-size:11px}
+.state-CLOSED,.state-MERGED,.state-GATED{background:rgba(155,212,154,.12); color:var(--success)}
+.state-BUILDING,.state-VERIFYING,.state-ADVERSARIAL,.state-QUEUED,.state-ADMISSIBLE{background:rgba(122,172,232,.12); color:var(--info)}
+.state-PLANNED{color:var(--text-tertiary)}
+.state-BLOCKED,.state-PARKED{background:rgba(232,196,122,.12); color:var(--warning)}
+.ev-DERIVED{color:var(--success)}
+.ev-CLAIMED{color:var(--warning); font-style:italic}
+.ev-UNKNOWN{color:var(--text-tertiary)}
+.anomaly-row{color:var(--danger)}
+.budget-bar{height:6px; background:var(--obsidian-border-mid); border-radius:3px; overflow:hidden; width:160px; display:inline-block; vertical-align:middle}
+.budget-bar > div{height:100%; background:var(--gold-primary)}
+.budget-bar.over > div{background:var(--danger)}
+.spark{display:inline-block; height:16px}
+.event-claim{color:var(--warning); font-style:italic}
+.event-derived{color:var(--text-secondary)}
+.event-anomaly{color:var(--danger); font-weight:600}
+footer{padding:20px; text-align:center; color:var(--text-tertiary); font-size:11px; font-family:var(--font-mono)}
+</style>
+</head>
+<body>
+<div id="staleBanner" class="stale-banner"></div>
+<header>
+  <div class="hdr-row">
+    <strong style="font-family:var(--font-mono); color:var(--gold-light)">PARIPRAŚNA OBSERVATORY</strong>
+    <div class="phase-rail" id="phaseRail"></div>
+    <span class="pill" id="freshPill">observer —</span>
+    <span class="pill" id="progressPill">subject —</span>
+    <span class="pill" id="stallPill" style="display:none">STALLED</span>
+    <span class="pill" id="selftestPill">selftest —</span>
+    <span class="pill" id="resurrectPill">resurrections 0</span>
+    <span class="pill" id="rateLimitPill">gh rate —</span>
+  </div>
+</header>
+<main>
+  <div class="card">
+    <h2>Shared surfaces</h2>
+    <div class="strip" id="sharedStrip"></div>
+  </div>
+
+  <div class="card">
+    <h2>Critical path</h2>
+    <div class="critical-path" id="criticalPath"></div>
+  </div>
+
+  <div class="card">
+    <h2>Lanes (all, sorted by age-in-state)</h2>
+    <div class="table-wrap">
+      <table id="laneTable">
+        <thead><tr>
+          <th>ID</th><th>Title</th><th>Phase</th><th>State</th><th>Branch</th>
+          <th>Age in state</th><th>Evidence</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Anomalies</h2>
+    <div id="anomaliesList" style="font-family:var(--font-mono); font-size:12.5px"></div>
+  </div>
+
+  <div class="card">
+    <h2>Budget (per phase, vs. DD-5 ceiling)</h2>
+    <div id="budgetList" class="mono" style="font-size:12.5px"></div>
+  </div>
+
+  <div class="card">
+    <h2>Event feed (last 50 — claims italic/amber, derived plain, anomalies bold/red)</h2>
+    <div id="eventFeed" style="font-family:var(--font-mono); font-size:12px; max-height:340px; overflow-y:auto"></div>
+  </div>
+</main>
+<footer id="footerInfo">loading…</footer>
+
+<script>
+// ---- Pure staleness function, mirrored byte-for-byte from _common.staleness_class (Python). ----
+const STALE_AMBER_S = 45, STALE_RED_S = 120;
+function stalenessClass(ageSeconds) {
+  if (ageSeconds <= STALE_AMBER_S) return "green";
+  if (ageSeconds <= STALE_RED_S) return "amber";
+  return "red";
+}
+
+let TRACKER_DATA = window.TRACKER_DATA || null;
+let scriptSeq = 0;
+
+function reloadDataScript() {
+  const old = document.getElementById("dataScript");
+  if (old) old.remove();
+  const s = document.createElement("script");
+  s.id = "dataScript";
+  s.src = "tracker_data.js?_=" + Date.now() + "_" + (scriptSeq++);
+  s.onload = () => { TRACKER_DATA = window.TRACKER_DATA; render(); };
+  s.onerror = () => { /* backend unreachable -- client-side staleness clock (below) still runs independently */ };
+  document.body.appendChild(s);
+}
+
+function esc(s) { return (s ?? "").toString().replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function fmtAge(sec) {
+  sec = Math.max(0, Math.round(sec));
+  if (sec < 60) return sec + "s";
+  if (sec < 3600) return Math.floor(sec / 60) + "m " + (sec % 60) + "s";
+  if (sec < 86400) return Math.floor(sec / 3600) + "h " + Math.floor((sec % 3600) / 60) + "m";
+  return Math.floor(sec / 86400) + "d " + Math.floor((sec % 86400) / 3600) + "h";
+}
+
+function updateStaleBanner() {
+  const banner = document.getElementById("staleBanner");
+  const freshPill = document.getElementById("freshPill");
+  if (!TRACKER_DATA || !TRACKER_DATA.generated_at) {
+    banner.className = "stale-banner red";
+    banner.textContent = "NO DATA — tracker_data.js never loaded";
+    banner.style.display = "block";
+    document.body.classList.add("dimmed");
+    freshPill.className = "pill red";
+    freshPill.textContent = "observer: no data";
+    return;
+  }
+  const genAt = new Date(TRACKER_DATA.generated_at).getTime();
+  const ageS = (Date.now() - genAt) / 1000;
+  const cls = stalenessClass(ageS);
+  freshPill.className = "pill " + cls;
+  freshPill.textContent = "observer " + Math.round(ageS) + "s (" + cls + ")";
+  if (cls === "green") { banner.style.display = "none"; document.body.classList.remove("dimmed"); }
+  else if (cls === "amber") {
+    banner.className = "stale-banner amber";
+    banner.textContent = "OBSERVER LAGGING — data is " + Math.round(ageS) + "s old";
+    document.body.classList.remove("dimmed");
+  } else {
+    banner.className = "stale-banner red";
+    banner.textContent = "STALE — data is " + Math.round(ageS) + "s old. Every number below is dimmed and must not be trusted.";
+    document.body.classList.add("dimmed");
+  }
+}
+
+function render() {
+  updateStaleBanner();
+  if (!TRACKER_DATA) { document.getElementById("footerInfo").textContent = "waiting for first tracker_data.js load…"; return; }
+  const d = TRACKER_DATA;
+
+  const rail = document.getElementById("phaseRail");
+  rail.innerHTML = d.phases.map(p => {
+    const cls = p.status === "CLOSED" ? "CLOSED" : (p.id === d.current_phase ? "ACTIVE" : "PLANNED");
+    return `<span class="phase-chip ${cls}" title="${esc(p.title)}">${esc(p.id)}</span>`;
+  }).join("");
+
+  const lastProgAge = (Date.now() - new Date(d.last_progress_at).getTime()) / 1000;
+  const progPill = document.getElementById("progressPill");
+  progPill.textContent = "subject " + fmtAge(lastProgAge) + " since last change";
+  progPill.className = "pill " + (lastProgAge > 1200 ? "amber" : "green");
+
+  const stallPill = document.getElementById("stallPill");
+  stallPill.style.display = d.stalled ? "inline-flex" : "none";
+
+  const st = document.getElementById("selftestPill");
+  const stLast = d.daemon_health && d.daemon_health.last_daemon_cycle_event;
+  if (d.selftest_last) {
+    st.textContent = "selftest " + (d.selftest_last.all_passed ? "PASS" : "FAIL") + " @ " + d.selftest_last.ts;
+    st.className = "pill " + (d.selftest_last.all_passed ? "green" : "red");
+  } else { st.textContent = "selftest —"; st.className = "pill"; }
+
+  document.getElementById("resurrectPill").textContent = "resurrections " + ((d.daemon_health && d.daemon_health.resurrection_count) || 0);
+
+  const rl = d.github_rate_limit && d.github_rate_limit.value;
+  document.getElementById("rateLimitPill").textContent = rl ? `gh rate ${rl.remaining}/${rl.limit}` : "gh rate UNKNOWN";
+
+  const ss = d.shared_surfaces || {};
+  const sVal = (k) => (ss[k] && ss[k].evidence_class === "DERIVED") ? ss[k].value : (ss[k] ? `UNKNOWN (${esc(ss[k].provenance)})` : "—");
+  document.getElementById("sharedStrip").innerHTML = `
+    <div><span>origin/main sha</span>${esc(typeof sVal("origin_main_sha") === "string" ? sVal("origin_main_sha").slice(0,10) : sVal("origin_main_sha"))}</div>
+    <div><span>coordination lease</span>${esc(sVal("coordination_lease_holder") || "none found")}</div>
+    <div><span>live Cloud Run revision</span>${(() => { const dep = ss.live_cloud_run_revision; if (!dep || dep.evidence_class !== "DERIVED") return "UNKNOWN"; const revs = dep.value.revisions || []; return revs[0] ? esc(revs[0].metadata?.name || "?") : "none"; })()}</div>
+    <div><span>next free migration #</span>${esc(sVal("next_free_migration_number"))}</div>
+  `;
+
+  const cp = d.critical_path || {};
+  document.getElementById("criticalPath").innerHTML = (cp.path || []).map(id =>
+    `<span class="node ${id === cp.blocking_lane ? "blocking" : ""}">${esc(id)}</span>`
+  ).join('<span style="color:var(--text-tertiary)">→</span>') || '<span class="micro">no lanes yet</span>';
+
+  const lanes = [...d.lanes].sort((a,b) => b.age_in_state_seconds - a.age_in_state_seconds);
+  document.querySelector("#laneTable tbody").innerHTML = lanes.map(l => `
+    <tr>
+      <td>${esc(l.id)}</td>
+      <td style="font-family:var(--font-sans)">${esc(l.title)}</td>
+      <td>${esc(l.phase)}</td>
+      <td><span class="state-badge state-${esc(l.state)}">${esc(l.state)}</span></td>
+      <td>${esc(l.branch || "—")}</td>
+      <td>${fmtAge(l.age_in_state_seconds)}</td>
+      <td class="ev-${esc(l.evidence_class)}">${esc(l.evidence_class)}</td>
+    </tr>`).join("");
+
+  const anomalies = d.anomalies || [];
+  document.getElementById("anomaliesList").innerHTML = anomalies.length
+    ? anomalies.slice().reverse().map(a => `<div class="anomaly-row">⚠ [${esc(a.ts)}] ${esc(a.lane)}: ${esc(a.message)}</div>`).join("")
+    : '<span class="micro">none</span>';
+
+  const budget = d.budget || {};
+  document.getElementById("budgetList").innerHTML = Object.entries(budget).map(([phase, b]) => {
+    const pct = b.ceiling_usd ? Math.min(100, (b.spent_usd / b.ceiling_usd) * 100) : 0;
+    const over = b.ceiling_usd && b.spent_usd > b.ceiling_usd;
+    return `<div style="margin-bottom:5px">${esc(phase)} <span class="budget-bar ${over ? "over" : ""}"><div style="width:${pct}%"></div></span> $${b.spent_usd} / $${b.ceiling_usd}</div>`;
+  }).join("");
+
+  const events = (d.event_feed_recent || []).slice().reverse();
+  document.getElementById("eventFeed").innerHTML = events.map(e => {
+    const cls = e.kind === "anomaly" ? "event-anomaly" : (e.evidence_class === "CLAIMED" ? "event-claim" : "event-derived");
+    return `<div class="${cls}">[${esc(e.ts)}] ${esc(e.writer_id)} · ${esc(e.lane || "-")} · ${esc(e.kind)} (${esc(e.evidence_class)})</div>`;
+  }).join("") || '<span class="micro">no events yet</span>';
+
+  document.getElementById("footerInfo").textContent =
+    `plan v${d.plan_version} · schema v${d.schema_version} · generated_at ${d.generated_at} · reloads every 5s`;
+}
+
+reloadDataScript();
+setInterval(reloadDataScript, 5000);
+setInterval(updateStaleBanner, 5000); // independent client-side clock -- ticks even if the backend is fully dead
+render();
+</script>
+</body>
+</html>
