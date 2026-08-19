@@ -8,7 +8,7 @@ window.TRACKER = {
   "wave": "P0-IGNITION",
   "heartbeat_ts": "2026-08-19T14:19:59Z",
   "concurrency": {
-    "n": 0,
+    "n": 4,
     "cap": 10,
     "hard_cap": 24
   },
@@ -71,20 +71,20 @@ window.TRACKER = {
   },
   "lanes": {
     "P0-B": {
-      "role_stage": "queued",
+      "role_stage": "building",
       "name": "environment (worktree farm, cloud-sql-proxy, template test-DB, migration allocator, flag registry)",
       "worktree": null,
       "branch": null,
-      "last_event_ts": null,
+      "last_event_ts": "2026-08-19T14:19:59Z",
       "verifier_verdict": null,
       "refuter_votes": []
     },
     "P0-C": {
-      "role_stage": "queued",
+      "role_stage": "building",
       "name": "PORTS REFACTOR of route.ts (RF-1, gating lane -- verifier + 3 adversaries required before other lanes open)",
       "worktree": null,
       "branch": null,
-      "last_event_ts": null,
+      "last_event_ts": "2026-08-19T14:19:59Z",
       "verifier_verdict": null,
       "refuter_votes": []
     },
@@ -98,20 +98,20 @@ window.TRACKER = {
       "refuter_votes": []
     },
     "P0-E": {
-      "role_stage": "queued",
+      "role_stage": "building",
       "name": "design-plan grounding pass (docs)",
       "worktree": null,
       "branch": null,
-      "last_event_ts": null,
+      "last_event_ts": "2026-08-19T14:19:59Z",
       "verifier_verdict": null,
       "refuter_votes": []
     },
     "P0-F": {
-      "role_stage": "queued",
+      "role_stage": "building",
       "name": "DD-2 anthropic delist + DD-3 infra automation probes",
       "worktree": null,
       "branch": null,
-      "last_event_ts": null,
+      "last_event_ts": "2026-08-19T14:19:59Z",
       "verifier_verdict": null,
       "refuter_votes": []
     }
