@@ -69,6 +69,47 @@ python3 trackerd.py --selftest
 ./install.sh
 ```
 
+## Ref freshness: the private mirror
+
+**Every `origin/*` git read comes from a mirror this daemon owns outright, fetched on its
+own cadence — never from a shared checkout whose remote-tracking refs only advance when
+some unrelated process happens to fetch there.** That was a real bug in the first version
+of this tracker: lane branches, ahead/behind, the "is this code current" check, and the
+coordination-lease cell all silently read whatever `origin/*` last resolved to in the
+shared checkout — plausible-looking, quietly stale, exactly the failure mode this tracker
+exists to catch (CLAUDE.md §N.8, one layer down: the detector itself needs a real
+detector).
+
+- **`~/.pariprashna-tracker/mirror.git`** — `git clone --mirror`, bootstrapped
+  automatically on first cycle if missing (~60s, ~130MB for this repo), then
+  `git fetch --prune` every cycle after (~1-2s, incremental). `collect.py`'s
+  `mirror_fetch()` owns this entirely; nothing in `install.sh` sets it up.
+- Ref names inside a mirror have **no** `refs/remotes/origin/` prefix — `git clone
+  --mirror` maps the remote's refs verbatim into the mirror's own `refs/heads/*` and
+  `refs/tags/*`. Read `main`, `pariprashna/p0`, `campaign-coordination`, never
+  `origin/main`.
+- **The shared checkout is still read** — read-only, `--no-optional-locks`, via
+  `TRACKER_GIT_REPO` — but for exactly one thing a bare mirror structurally cannot
+  provide: `git worktree list`. (Filesystem-based signals like `expected_artifacts` path
+  existence and migration numbering also still read the shared checkout's working tree —
+  that's a different kind of signal than ref freshness, not the bug this fixes.) These two
+  git sources are deliberately not consolidated: collapsing them back into one is how this
+  bug happens again.
+- **A failed fetch degrades every mirror-derived cell to `UNKNOWN`** with the fetch error
+  as provenance for that cycle — it never falls back to whatever the mirror's on-disk refs
+  still say from the last successful fetch, even though that data is still physically
+  there. Consecutive failures are counted across cycles (`~/.pariprashna-tracker/mirror_fetch_state.json`).
+- **Ref freshness is its own header pill** — a third liveness axis, independent of observer
+  freshness (is the tracker alive) and subject progress (is the swarm moving): the
+  observatory can be alive, the swarm can be moving, and the refs it's reasoning from can
+  still be stale, all independently. ≤60s green · 60–180s amber "REFS LAGGING" · >180s red.
+- **Free consistency check**: `gh` is network-live, the mirror can lag it by up to one
+  fetch cycle. Every cycle, the last 20 merged PRs (`gh pr list --state merged`) get their
+  merge commit checked against the mirror's `main` via `git merge-base --is-ancestor`. If
+  `gh` says merged but the mirror disagrees, that's a real divergence — an `anomaly`
+  event fires. This is the one cell where being confidently wrong recreates the PR #1341
+  incident (a stale lease/merge read treated as current).
+
 ## The three-tier tap (dead-man's switch)
 
 1. **T1** — `trackerd.py` stamps `~/.pariprashna-tracker/heartbeat.json` every cycle
@@ -90,14 +131,17 @@ the local network. Do not port-forward or tunnel it.**
 
 ## What's derived vs. claimed
 
-- **DERIVED** (counts toward any completion figure): git branch/worktree state, GitHub PR
-  state via `gh api`, filesystem artifact existence, Cloud Run revisions/traffic via
-  `gcloud`, migration numbering. Any signal that fails to collect is `UNKNOWN` with the
-  failure text as provenance — it never carries the previous cycle's value forward.
+- **DERIVED** (counts toward any completion figure): git branch/worktree state (mirror for
+  `origin/*` refs, shared checkout for `worktree list`), GitHub PR state via `gh api`,
+  filesystem artifact existence, Cloud Run revisions/traffic via `gcloud`, migration
+  numbering. Any signal that fails to collect is `UNKNOWN` with the failure text as
+  provenance — it never carries the previous cycle's value forward. A mirror-fetch failure
+  degrades every mirror-derived cell this same way, for the same reason.
 - **CLAIMED** (rendered distinctly, never counted): agent self-reports of lane state for
   states that leave no artifact (e.g. `BUILDING` before a branch exists). A claim that
   contradicts derived evidence (e.g. `MERGED` claimed for a branch that is not an ancestor
-  of `origin/main`) produces an `anomaly` event and never moves a completion count.
+  of the mirror's `main`) produces an `anomaly` event and never moves a completion count —
+  same for a `gh`-vs-mirror merge-commit divergence (see "Ref freshness" above).
 
 ## Known, honestly-scoped gaps (not silently dropped — logged here, §N.6)
 
@@ -110,12 +154,15 @@ the local network. Do not port-forward or tunnel it.**
   `_common.py`) but does **not** drive a real headless browser — no browser automation
   tooling is available to this stdlib-only, no-new-dependencies tracker. The DOM rendering
   path (`updateStaleBanner`) is exercised only by manual/visual check, not by `--selftest`.
-- **`gh pr list --state open` only** (as specified, for API-budget reasons) — a lane whose
-  PR already merged is detected via git ahead/behind against `origin/main`, not via GitHub
-  PR history; this is an approximation (a squash-merge can leave a branch's own commits
-  "ahead" of `origin/main` even though its content merged) and can occasionally
-  under-detect a just-merged lane for one cycle until the branch ref itself is deleted or
-  its ahead/behind resolves. Not silently perfect — flagged here.
+- **`gh pr list --state open` only** for the main lane-state derivation (as specified, for
+  API-budget reasons) — a lane whose PR already merged is detected via git ahead/behind
+  against the mirror's `main`, not via GitHub PR history; this is an approximation (a
+  squash-merge can leave a branch's own commits "ahead" even though its content merged)
+  and can occasionally under-detect a just-merged lane for one cycle until the branch ref
+  itself is deleted or its ahead/behind resolves. (The *separate* `gh pr list --state
+  merged --limit 20` consistency check exists specifically to catch the more serious
+  version of this same class of gap — see "Ref freshness" above — but is bounded to the 20
+  most recent merges for API budget, same reasoning.) Not silently perfect — flagged here.
 - **Budget spend tracking is CLAIMED-only.** No API meters real dollars spent; the budget
   bars fold `kind:"budget"` events, which are necessarily self-reported by whatever spawns
   the swarm's agents. This is the one figure on the dashboard that structurally cannot be
