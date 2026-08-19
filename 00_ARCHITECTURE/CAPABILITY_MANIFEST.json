@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-08-15T00:00:00.000Z",
+  "generated_at": "2026-08-19T00:00:00.000Z",
   "generator_version": "1.0",
-  "entry_count": 116,
-  "fingerprint": "8583fa8709dd2a4c4ab3231869d3bb7b5d18381bd0154c9a7c1131c3f61dce71",
+  "entry_count": 120,
+  "fingerprint": "be38e13e89ebe483561bb667a0ca41b90dfca80cb5efa4dbbeb055e2534358bd",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1648,6 +1648,62 @@
       "interface_version": "1.0",
       "fingerprint": "af5368cc9a708101aef051c717ec60a4652a7ceb7ed3768f9470edf04636a748",
       "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_ARCHITECTURE",
+      "path": "00_ARCHITECTURE/PARIPRASHNA_ARCHITECTURE_v1_0.md",
+      "version": "1.0-RC",
+      "status": "DRAFT_PENDING_REDTEAM",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "14a70dffbd844a87a8833b62859f3d8e925a709dc74b93f70ee8816ea0ab1219",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_ASBUILT_BASELINE",
+      "path": "00_ARCHITECTURE/PARIPRASHNA_ASBUILT_BASELINE_v1_0.md",
+      "version": "1.0",
+      "status": "LIVING",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "c913c6d668084ec19466fb7e4344a9ec98a01b9fa7abcd7b782088aac24174ae",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_DECISION_REGISTER",
+      "path": "00_ARCHITECTURE/PARIPRASHNA_DECISION_REGISTER_v1_0.md",
+      "version": "1.0",
+      "status": "LIVING",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "9b6994d95cf74b2fc0c53e8ff24b387a75b67034b43c44864c3769721b78dafd",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_VERIFICATION_MATRIX",
+      "path": "00_ARCHITECTURE/PARIPRASHNA_VERIFICATION_MATRIX_v1_0.md",
+      "version": "1.0",
+      "status": "LIVING",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "bd3d7c0638c2108d70f0062de36d6a707f92e899e9bcbf84c7e72e0af60df07b",
+      "native_id": "project"
     }
   ]
 }
