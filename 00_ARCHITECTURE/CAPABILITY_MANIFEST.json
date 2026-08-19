@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-08-19T13:56:23Z",
+  "generated_at": "2026-08-19T18:40:08Z",
   "generator_version": "1.0",
   "entry_count": 127,
-  "fingerprint": "632e459ff2fc9bf54596df6c8e0b803c90b92fb55cdf5ea9a2807b9d690a824f",
+  "fingerprint": "0c3a5be38a1627ce909c3106309a03dabb87829ffcc85f3896e8480cad1706b9",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1674,7 +1674,7 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "c913c6d668084ec19466fb7e4344a9ec98a01b9fa7abcd7b782088aac24174ae",
+      "fingerprint": "b1a6b87fa10885a85216372916eca98b3bad7fb518a1597fc6853038c28cff81",
       "native_id": "project"
     },
     {
