@@ -177,6 +177,22 @@ export type FeatureFlag =
   // every gate short-circuits to "allowed" before any DB or pricing work runs.
   // Env: MARSYS_FLAG_PARIPRASHNA_LIMITS_ENABLED.
   | 'PARIPRASHNA_LIMITS_ENABLED'
+  // P1 FOUNDATION lane G1-B — subject consent (NCD-9, PPR-14, abuse case A9).
+  // Gates the WHOLE `src/lib/pariprashna/consent` surface:
+  //   · OFF (default) — `resolveSubjectConsent` returns allow/enforcement_disabled
+  //     BEFORE any DB access, so the serving path is byte-for-byte what it is
+  //     today; every mutating entry point (withdrawal sweep, dispute open,
+  //     subject export) throws ConsentFeatureDisabledError instead of running.
+  //   · ON — no L2+ interpretive output for a chart whose subject lacks a
+  //     consent row; `native_self` is strictly checked (subject IS the account
+  //     holder, not self-certified); under-18 subjects serve only to the
+  //     recorded guardian and never as a cohort; refusals land in the
+  //     excluded-subject register.
+  // Flip this ON only after consent rows exist for the charts in play —
+  // flipping it on an empty `chart_subject_consent` table refuses EVERY chart
+  // by design (that is the fail-closed direction, but it is a real outage).
+  // Env: MARSYS_FLAG_SUBJECT_CONSENT_ENFORCEMENT.
+  | 'SUBJECT_CONSENT_ENFORCEMENT'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -281,6 +297,11 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // P1 G1-D — NCD-8 limits. Default false: ships dark, flipped deliberately.
   // Flip via MARSYS_FLAG_PARIPRASHNA_LIMITS_ENABLED=true.
   PARIPRASHNA_LIMITS_ENABLED: false,
+  // P1 G1-B — subject consent enforcement. Default false: this lane ships
+  // flag-OFF per the P1 pre-authorization note, so merging it changes no
+  // production behavior. Flip via MARSYS_FLAG_SUBJECT_CONSENT_ENFORCEMENT=true
+  // only after `chart_subject_consent` carries a row for every live chart.
+  SUBJECT_CONSENT_ENFORCEMENT: false,
 }
 
 // Numeric config keys (read via configService.getValue)

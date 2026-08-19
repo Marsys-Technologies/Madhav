@@ -14,8 +14,14 @@
  *     HTTP 429 with a branchable code — a designed failure state, not a 500 and
  *     not an in-stream error the client has to parse out of an SSE body.
  *   · `authorizeTurn` — in-stream chart resolution, per-chart authorization
- *     (PPR-11, fail-closed) and conversation resolution. Every fault here is an
- *     in-stream `error` EVENT, never an HTTP status — the stream is already open.
+ *     (PPR-11, fail-closed), SUBJECT-CONSENT resolution (PPR-14, P1 lane G1-B,
+ *     flag-gated OFF by default) and conversation resolution. Every fault here
+ *     is an in-stream `error` EVENT, never an HTTP status — the stream is
+ *     already open.
+ *
+ * Note the two are different questions and both must pass: `authorizeChartAccess`
+ * asks whether the CALLER may touch this chart; `resolveSubjectConsent` asks
+ * whether this SUBJECT's interpretive corpus may be served to anyone at all.
  *
  * PORT NOT YET IMPLEMENTED — `SafetyPolicyDecision` (PPR-12/PPR-13).
  * The route has never carried a safety classifier or an injection scan; this
@@ -230,6 +236,38 @@ export async function authorizeTurn(args: {
   })
   if (permission === 'deny') {
     em.error({ code: 'FORBIDDEN', message: 'Not authorized for this chart.', retryable: false, phase: 'plan' })
+    return halt('error')
+  }
+
+  // ── SUBJECT CONSENT (P1 G1-B · NCD-9 · PPR-14 · abuse case A9). ────────────
+  // `authorizeChartAccess` above answered "may this CALLER touch this chart?".
+  // This answers the question nothing used to ask: "may this SUBJECT's L2+
+  // interpretive corpus be served at all?" — no output for a chart whose
+  // subject lacks a consent row, `native_self` strictly checked rather than
+  // self-certified, under-18 subjects guardian-only and never a cohort.
+  //
+  // Ordering is deliberate: consent is resolved AFTER authorization, so an
+  // unauthorized caller learns nothing about the subject's consent state.
+  //
+  // Inert until SUBJECT_CONSENT_ENFORCEMENT is ON (default OFF) — with the flag
+  // off `resolveSubjectConsent` returns allow/`enforcement_disabled` without
+  // touching the database, so this block adds no query to today's hot path.
+  const { resolveSubjectConsent, defaultConsentDb } = await import('@/lib/pariprashna/consent')
+  const consentDecision = await resolveSubjectConsent({
+    chartId,
+    principalId: user.uid,
+    db: defaultConsentDb(),
+  })
+  if (consentDecision.outcome === 'refuse') {
+    // A designed refusal, explained — never a bare error and never a silent
+    // empty reading (§3.5.A.4: "the entitlement layer refuses, and the refusal
+    // is a designed state, not an error").
+    em.error({
+      code: `SUBJECT_CONSENT_REQUIRED:${consentDecision.reason}`,
+      message: consentDecision.message,
+      retryable: false,
+      phase: 'plan',
+    })
     return halt('error')
   }
 
