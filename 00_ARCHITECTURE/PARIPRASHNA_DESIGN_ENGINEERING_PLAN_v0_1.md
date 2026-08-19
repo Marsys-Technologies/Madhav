@@ -1,7 +1,7 @@
 ---
 artifact: PARIPRASHNA_DESIGN_ENGINEERING_PLAN
 canonical_id: PARIPRASHNA_DESIGN_ENGINEERING_PLAN
-version: 0.4
+version: 0.5
 status: DRAFT
 date: 2026-07-28
 author: Claude (Cowork design-engineering session)
@@ -12,6 +12,31 @@ relates_to:
   - 00_ARCHITECTURE/PARIPRASHNA_GROUNDING_AUDIT_REPORT_v1_0.md (the audit that proved the backend was sound)
   - 00_ARCHITECTURE/CHAT_V2_CLOSE_v1_0.md (the prior build this plan learns from)
 changelog:
+  - "0.5 (2026-08-19, P0-E design-plan grounding pass, session PB-3-Bot): corrected drift between this
+    plan's earlier sections and the real, shipped frontend, verified against
+    `platform/src/components/pariprashna/` and `platform/AGENTS.md`. Two classes of drift closed:
+    (1) **reference rail** — §3, §10.3, and the OD-4 entry already correctly documented the rail's
+    2026-07-27 removal (no `kuṇḍalī`/rail component exists anywhere under
+    `platform/src/components/pariprashna/` or `platform/src/components/consume/` — confirmed by
+    directory listing and grep); left as-is, no drift found there beyond what is fixed below.
+    (2) **the dock** — §5.8.0 (added 2026-07-27, rulings 2/6/7/8a–8c) correctly documents that the
+    grounding ledger and prediction card moved into a collapsible right dock, but §3.1's surface map,
+    §3.2's Prediction-card row, §4's J1/J2/J7/P9 journey prose, §5.1's region-③ diagram and contract,
+    §5.3's `settling` choreography, §6.8's component spec, §6.9's opening anatomy line, §5.6's
+    streaming-content-types table, and §8.1's component tree were never back-updated when the dock
+    rulings landed — they still described (or ambiguously implied) grounding/prediction-card content
+    mounting inline below the answer region, contradicting §5.8.0 itself and the real code
+    (`dock/RightDock.tsx`, `dock/DockController.tsx`, `dock/GroundingCard.tsx`, `dock/PredictionCard.tsx`,
+    and `answer/FrozenBlock.tsx`'s `case 'prediction_card': return null` with its own in-code comment
+    that the block renders in the dock, not inline). All listed sections corrected in place to match
+    the shipped component tree; `GroundingRegion.tsx`'s real, narrower role (an `aria-live` sr-only
+    settle announcement only — verified by reading the file) is now stated accurately in §5.1 and
+    §8.1 instead of the old full grounding-ledger description. No new design decisions introduced;
+    §5.8.0's rulings remain the authoritative source these sections are now brought into agreement
+    with. Locked UI decisions in `platform/AGENTS.md` (sidebar auto-collapse default, Trace button in
+    `ChatShell.headerActions`, fixed-size `Composer` textarea) are unrelated to the Paripraśna surface
+    described here (they govern the older `consume/` module) and are not touched or contradicted by
+    this pass."
   - "0.4 (2026-08-19, G0 close, session PB-3-Bot): forward-pointer annotation only — `relates_to` updated to reflect G0-close outcomes: PARIPRASHNA_ARCHITECTURE_v1_0.md added as the normative successor (status CURRENT); TA v0_1 annotated SUPERSEDED (2026-08-19, superseded-by-decomposition). No design content altered. CAMPAIGN_COORDINATION.md registration deferred — file is dirty from another workstream (MM); deferral recorded in session log."
   - "0.3 (2026-07-28, SAMĀPTI/B-DOCS-GOVERNANCE, DVA Ruling 4): governance pass — added the missing `artifact:` frontmatter key (schema requires it per `platform/scripts/governance/schemas/artifact_schemas.yaml`'s `architecture_governance` class; the drift_detector/schema_validator T0-baseline violation this closes). This changelog entry itself was also missing — the body already carried real 0.3-tagged content (§5.8.0 Native layout rulings, 2026-07-27, binding; §7.8 phase lexicon closed vocabulary) with no corresponding changelog line; backfilled here to close that gap. No design content altered. Filename `_v0_1` vs frontmatter `version: 0.3` is the established codebase convention (filename anchors the major.minor generation; frontmatter tracks amendments within it without a rename — same pattern as `L1_GANITA_CLOSURE_v2_0.md`, frontmatter 2.1), left as-is. `status: DRAFT` is not in `artifact_schemas.yaml`'s documented vocabulary (`DRAFT_PENDING_REDTEAM / CURRENT / LIVE / LIVING / CLOSED / SUPERSEDED`) but the validator is presence-only and does not enforce status values; left as-is rather than inventing a status transition (e.g. promoting to CURRENT) that is not this lane's call to make."
   - "0.2 (2026-07-28): Elevation pass (strategist + world-class UI designer, single session). The relationship arc designed, not just the turn: new P9 (The instrument remembers), §4.0 two trust arcs, J8 (the reading that returns), the arrival line. SIGNATURE INTERACTION chosen and sharpened: the prediction-card lifecycle with the kāla-rekhā time hairline (§6.9) — the one component no other conversational product can have. Typographic anatomy of a reading codified (§6.3.1: verdict/elaboration/verse/gloss/caveat roles as protocol). Settle choreography named the Seal with the closing-rule draw as the surface's one flourish (§5.3); motion constitution + sound decision SND-1 recorded (§5.7). Empty state elevated to an invocation with the ecliptic hairline (§5.3). Sealed-reading print/export added as Phase 2 §10.6; OD-2 resolved to (b). Reference-rail residue purged (§10.3 stubbed, OD-4 retired) honoring the 2026-07-27 native ruling. New AC-16 signature-integrity gate. All standing rulings preserved: D-14, D-15, D-19 controls (§5.8.1), rail removal. Elevations marked [ELEVATION v0.2] throughout."
@@ -161,7 +186,7 @@ Every animation confirms a state change the user caused or must notice. Duration
 ### P9 — The instrument remembers `[ELEVATION v0.2]`
 A chat product designs turns; an instrument designs a relationship. Every surface decision asks not "how does this read the first time?" but "what does this accrue into by the hundredth conversation?" Predictions return to be graded; contradictions demonstrably weight later readings; a reopened thread greets the reader with where the daśā and the open windows stand. The product's gravity is the loop — reading → window → outcome → sharper reading — and the UI's job is to make that loop *felt* on the reading surface, not merely stored in L5.
 *Rationale:* daily return is not sustained by novelty but by accrual; an instrument that visibly keeps its own ledger across months is the one thing that draws the native back after the hundredth conversation.
-**Do:** the arrival line (J2); window-close prompts; a prediction card whose eyebrow ages in place (§6.9); "this instrument's prior call on this domain resolved true" in a later grounding region. **Don't:** treat threads as disposable sessions; let a prediction window close silently; make Samīkṣā a form the native must remember to visit.
+**Do:** the arrival line (J2); window-close prompts; a prediction card whose eyebrow ages in place (§6.9); "this instrument's prior call on this domain resolved true" in a later turn's right-dock grounding ledger. **Don't:** treat threads as disposable sessions; let a prediction window close silently; make Samīkṣā a form the native must remember to visit.
 
 ---
 
@@ -176,21 +201,24 @@ MARSYS Dashboard
 ┌─────────────────────────────────────────────────────────────────────┐
 │ PARIPRAŚNA (app shell)                                              │
 │                                                                     │
-│  ┌──────────┐  ┌──────────────────────────────────────────────┐     │
-│  │ History  │  │  CONVERSATION (Phase 1) — stands alone       │     │
-│  │ sidebar  │  │                                              │     │
-│  │ (Ph 2)   │  │  Thread header · chart pin · model pill      │     │
-│  │          │  │  Arrival line (chrome, once per session)     │     │
-│  │ threads  │  │  ────────────────────────────────────────    │     │
-│  │ by chart │  │  Turn 1                                      │     │
-│  │          │  │   ├ working region                           │     │
-│  │ Samīkṣā  │  │   ├ answer region (± prediction card)        │     │
-│  │ tab (Ph2)│  │   └ grounding region                         │     │
-│  │  + badge │  │  Turn 2 …                                    │     │
-│  │          │  │  ────────────────────────────────────────    │     │
-│  │          │  │  Depth · Length · Model  +  Composer (pinned)│     │
-│  └──────────┘  └──────────────────────────────────────────────┘     │
+│  ┌──────────┐  ┌───────────────────────────────────┐  ┌──────────┐  │
+│  │ History  │  │  CONVERSATION (Phase 1)           │  │ Right    │  │
+│  │ sidebar  │  │                                    │  │ dock     │  │
+│  │ (Ph 2)   │  │  Thread header · chart pin · model │  │(built,   │  │
+│  │          │  │  Arrival line (chrome, once/sess.) │  │ Phase 1) │  │
+│  │ threads  │  │  ─────────────────────────────────│  │          │  │
+│  │ by chart │  │  Turn 1                            │  │ Grounding│  │
+│  │          │  │   ├ working region                 │  │ ledger + │  │
+│  │ Samīkṣā  │  │   └ answer region (prose + ⟦n⟧)   │  │ prediction│ │
+│  │ tab (Ph2)│  │  Turn 2 …                          │  │ card,    │  │
+│  │  + badge │  │  ─────────────────────────────────│  │ per turn,│  │
+│  │          │  │  Depth · Length · Model  +          │  │ newest   │  │
+│  │          │  │  Composer (pinned)                  │  │ first    │  │
+│  └──────────┘  └───────────────────────────────────┘  └──────────┘  │
 │                 (reference rail REMOVED — native ruling 2026-07-27) │
+│  Right dock: collapsible (312px open / 46px collapsed), remembered  │
+│  per user; hidden below 900px — a chip tap opens a bottom sheet     │
+│  instead (§5.8.0 rulings 2/6/7/8a–8c; `dock/RightDock.tsx`).        │
 │                                                                     │
 │  Overlays: citation card (popover/sheet) · settings (Ph 2) ·        │
 │            model picker (popover from composer)                     │
@@ -203,11 +231,12 @@ MARSYS Dashboard
 |---|---|---|---|
 | Thread header | Top of conversation column | 1 | Chart pin ("Abhisek Mohanty · Aries lagna · b. 1984") + model pill + thread title. The frame check that satisfies B.11 for retrieval-depth turns lives here conceptually — every turn is visibly *of a chart*. |
 | Arrival line `[ELEVATION v0.2]` | Beneath thread header (chrome, non-scrolling) | 1 | One quiet Inter line on thread open: current daśā year + open prediction windows ("Śani daśā, fourth year · one window open — mid-2027"). Once per session; derived from L1/Kāla truth, never model-composed (J2, P9). |
-| The three-region turn | Conversation column | 1 | §5. The atom of the product. |
+| The three-region turn | Conversation column (①/② inline) + right dock (③) | 1 | §5. The atom of the product. Regions ① working and ② answer render inline, in the conversation column; region ③ grounding renders in the right dock, not inline (§5.8.0 rulings 2/8b — corrected here in v0.5; see below). |
+| Right dock (grounding ledger) | Collapsible right panel, own column | 1 (built) | **Corrected in v0.5** — built in Phase 1, not deferred to Phase 2: `dock/RightDock.tsx` + `dock/DockController.tsx` + `dock/GroundingCard.tsx`. 312px open / 46px collapsed; collapse state remembered per user (`localStorage`); hidden below the 900px mobile breakpoint, where a chip tap opens a bottom sheet instead (`CitationCard` via `overlay/OverlayLayer`). One grounding ledger section per turn with grounding data, newest turn first; a citation chip (`⟦n⟧`) deep-links to its row via `openToCitation`, opening the dock if collapsed and scrolling/highlighting the row. §6.8 has the full component spec. |
 | Composer | Pinned to column bottom | 1 | Multiline, submit, model picker, stop control during streaming. |
-| Citation card | Popover (desktop) / bottom sheet (mobile) | 1 | Opens from a chip; never navigates away. |
-| Honest-gap ribbon | Inline in answer region | 1 | A block type, not an overlay. |
-| Prediction card | Inline in answer region when a turn emits a time-indexed claim | 1 (render) / 2 (lifecycle) | Rendered in Phase 1 as a settled block; its review lifecycle is Samīkṣā, Phase 2. |
+| Citation card | Popover (desktop) / bottom sheet (mobile) | 1 | Opens from a chip; never navigates away. Mobile sheet is also the fallback for a dock deep-link below the 900px breakpoint. |
+| Honest-gap ribbon | Inline in answer region | 1 | A block type, not an overlay — stays inline (the ribbon is prose-adjacent, distinct from the grounding ledger; not affected by the dock move). |
+| Prediction card | **Corrected in v0.5** — right dock, not inline | 1 (render) / 2 (lifecycle) | The turn still commits a `prediction_card` block (so the dock can discover it), but `answer/FrozenBlock.tsx` renders `null` for that block kind — the visible card mounts in `dock/PredictionCard.tsx` instead (§5.8.0 ruling 2). Its review lifecycle is Samīkṣā, Phase 2. |
 | History sidebar | Left rail, collapsible | 2 | Threads grouped by chart; search. |
 | Samīkṣā | Sidebar tab + badge; own panel | 2 | Prediction review queue, window-close prompts. |
 | ~~Reference rail~~ | — | — | **REMOVED (native ruling 2026-07-27).** The rail was the Vedic chart (kuṇḍalī, lagna, current daśā). The native does not want a chart panel — the reading speaks the chart in prose; there is no diagram to cross-reference. The conversation column stands alone. Any factor a citation needs is shown in the citation card, not a persistent rail. |
@@ -228,11 +257,12 @@ Everything in Phase 1 is a composition of turns. A turn's three regions have a f
 ┌─ TURN ────────────────────────────────────────────────┐
 │ ① WORKING REGION   mounts at turn open, never unmounts │
 │ ② ANSWER REGION    blocks append; one volatile tail    │
-│ ③ GROUNDING REGION mounts once, post-settle, below     │
+│ ③ GROUNDING (sr-only settle announcement, in-place;    │
+│   visible ledger docks right — §5.8.0 ruling 2/8b)     │
 └────────────────────────────────────────────────────────┘
 ```
 
-This ordering is a design commitment, not an implementation detail: the reader's eye learns that *status is above, prose is middle, warrant is below*, for every turn, forever.
+This ordering is a design commitment, not an implementation detail: the reader's eye learns that *status is above, prose is middle*, for every turn, forever. **[Corrected in v0.5]** The original third clause — *"warrant is below"* — described the pre-dock model and is no longer how the surface reads: the warrant (the grounding ledger) lives beside the transcript, in the right dock, not below the prose within the turn. What every turn still guarantees, unchanged, is that a settled turn's warrant is discoverable in one predictable place — now the dock's per-turn section — the moment it settles, via the inline ⟦n⟧ chips and the dock's own turn-ordering (newest first).
 
 ---
 
@@ -256,7 +286,7 @@ The journeys design *turns*. Two longer arcs sit above them, and every journey m
 3. Instantly (**submitted**, < 100 ms, optimistic): his question renders as a settled user block — ivory Inter, right-set — and beneath it the turn's **working region** mounts at its permanent height: a single stable band, gold eyebrow lettering: `CONSULTING THE CHART` with a live elapsed counter `· 4s`. A thin gold progress hairline breathes beneath the band (opacity oscillation, not movement).
 4. The engine plans a deep route (this is an interpretive query → dossier path). The working band's label updates *in place* — `CONSULTING THE CHART — DAŚĀ STRUCTURE · 9s` — text swap only, zero geometry change (**thinking**). A disclosure chevron sits at the band's right edge; he ignores it. (If he clicked: collapsed activity rows expand *in place below the band* — "Read 214 chart facts · Vimśottarī daśā spine · 2 classical passages consulted" — pushing only the unstarted answer region down, never anything settled.)
 5. First prose arrives (**streaming**). The answer region opens below the working band. Prose flows in Cormorant Garamond, committed paragraph by paragraph: each completed block freezes; only the tail block is volatile; the caret sits at the end of the last text node, always. A table of daśā windows arrives mid-answer: it renders *complete* (tables are commit-only block types, never streamed raggedly — §5.6), and the caret continues *after* it, in the next text block — never beneath or inside it.
-6. The final token lands (**settling**): the working band flips, in the same box, to `GROUNDED IN 14 CHART FACTORS · 3 CLASSICAL SOURCES · 41s` — same geometry, new content. The caret fades out (120 ms). The **grounding region** fades in below the answer (160 ms): citation chips `⟦1⟧–⟦6⟧` with source labels, a grade summary ("Core claim: well-grounded"), and — because this was a dossier route — the line *"Composed from complete house coverage."*
+6. The final token lands (**settling**): the working band flips, in the same box, to `GROUNDED IN 14 CHART FACTORS · 3 CLASSICAL SOURCES · 41s` — same geometry, new content. The caret fades out (120 ms). **[Corrected in v0.5]** The grounding ledger fades into the **right dock** (160 ms), not below the answer — citation chips `⟦1⟧–⟦6⟧` already sit inline in the prose he just read, and the dock now shows their full rows: source labels, a grade summary ("Core claim: well-grounded"), and — because this was a dossier route — the line *"Composed from complete house coverage."* (§5.8.0 rulings 2/8b).
 7. **Settled.** Nothing on this turn will ever move again. The composer, which dimmed to 60 % during streaming, returns to full presence with focus.
 
 *What must never happen in J1:* the question jumping when the working region mounts; the working band changing height when its label changes; a paragraph re-wrapping when a citation chip resolves; the caret rendering under the daśā table; raw tool names or `SIG.MSR.413` anywhere.
@@ -265,7 +295,7 @@ The journeys design *turns*. Two longer arcs sit above them, and every journey m
 
 *States: `settled` → `composing` → `submitted` → `thinking` → `streaming` → `settled`.*
 
-1. Later, he reopens the thread. It restores scrolled to the last settled turn, composer focused. Prior turns are fully settled — working bands showing their grounded summaries, grounding regions present. `[ELEVATION v0.2]` Beneath the thread header sits a single quiet **arrival line** — Inter 12.5, `--ink-dim`, one line, never more: *"Śani daśā, fourth year · one prediction window open — mid-2027."* It is the instrument saying *I know where we are* before a word is typed. It is chrome, not transcript (it does not scroll with prose), renders once per session, and is derived from L1/Kāla truth via the same capability surface as everything else — never composed by the model.
+1. Later, he reopens the thread. It restores scrolled to the last settled turn, composer focused. Prior turns are fully settled — working bands showing their grounded summaries, their grounding ledgers present in the right dock (§5.8.0 ruling 2 — not inline; **corrected in v0.5**). `[ELEVATION v0.2]` Beneath the thread header sits a single quiet **arrival line** — Inter 12.5, `--ink-dim`, one line, never more: *"Śani daśā, fourth year · one prediction window open — mid-2027."* It is the instrument saying *I know where we are* before a word is typed. It is chrome, not transcript (it does not scroll with prose), renders once per session, and is derived from L1/Kāla truth via the same capability surface as everything else — never composed by the model.
 2. He asks "And within that, when specifically should I not initiate anything new?" The new turn appends below. **Scroll discipline:** the viewport anchors so the new question sits in the upper third; as the answer streams, the view follows the tail *only if* he was already at the bottom. The moment he scrolls up to re-read turn 1, following stops; a quiet gold pill — `↓ Reading continues` — floats at the field's bottom edge. Tapping it resumes following. Streaming never fights his scroll.
 3. The follow-up is timing-specific → the planner routes a narrower retrieval; the working band reads `CONSULTING THE CHART — TRANSIT WINDOWS · 3s` and settles in 8 s with `GROUNDED IN 6 CHART FACTORS`. The smaller count is honest and visible (P5): shallow-when-appropriate is legitimate; *invisible* shallowness is not.
 
@@ -313,8 +343,8 @@ The journeys design *turns*. Two longer arcs sit above them, and every journey m
 
 1. Question: "Should I take the Dubai offer or the Singapore one?" The engine finds the chart genuinely non-discriminating between the two.
 2. The answer does not stall, over-hedge, or manufacture a difference. It reads what the chart *does* say (the period's character for relocation generally), then an honest-gap ribbon states the boundary: *"Between these two, the chart is silent — no factor consulted distinguishes them. The choice is yours on other grounds; the chart speaks to the timing either way."*
-3. The grounding region still renders with real counts — a gap answer is still a grounded answer; the grounding is *how we know it's silent* (P2, P5). The grade summary reads `Honest gap — silence verified across consulted factors.`
-4. Visual temperature: identical to any other settled turn. The ribbon is typographically distinct (unmissable) but chromatically neutral (calm). Both at once — that duality is the whole design of the component (§6.8).
+3. The right dock's grounding ledger still renders with real counts **[corrected in v0.5 — dock, not an inline region]** — a gap answer is still a grounded answer; the grounding is *how we know it's silent* (P2, P5). The grade summary reads `Honest gap — silence verified across consulted factors.`
+4. Visual temperature: identical to any other settled turn. The ribbon (inline, in the answer region) is typographically distinct (unmissable) but chromatically neutral (calm). Both at once — that duality is the whole design of the component (§6.8).
 
 ### J8 — The reading that returns `[ELEVATION v0.2]` *(the signature arc; Phase 1 renders, Phase 2 completes)*
 
@@ -323,7 +353,7 @@ The journeys design *turns*. Two longer arcs sit above them, and every journey m
 1. Months after J1, the mid-2027 window from that turn's prediction card enters its final weeks. In any thread of that chart, a one-line band appears above the composer — *"A reading's window closes this week — review when ready."* Dismissible, never modal, never nagging (P3, §10.2). On the card itself, the kāla-rekhā's today-dot (§6.9) has visibly crossed into the gold window segment — time made physical, without a single notification.
 2. The native opens the prompt. Samīkṣā does not present a form; it opens a **turn** the instrument frames: *"In July I read an occupational shift, self-initiated, most likely around mid-2027 ⟦→⟧. The window is closing — what happened?"* The back-reference chip deep-links to the original turn (§3.3), which is byte-identical to the day it settled (P1 — the transcript *is* the audit trail).
 3. He answers in prose, as always. The instrument grades the outcome against the framed claim, records it to L5, and the original prediction card's **eyebrow ages in place** — `TIME-INDEXED READING · RESOLVED — CONFIRMED` — the only retroactive change a settled turn ever receives, and it is eyebrow text only, geometry untouched (§6.9).
-4. The next reading that touches career carries a new line in its grounding region: *"This instrument's prior call on this domain resolved true."* The calibration loop closes **on the reading surface**, where it convinces — not in a buried stats panel.
+4. The next reading that touches career carries a new line in its right-dock grounding ledger: *"This instrument's prior call on this domain resolved true."* The calibration loop closes **on the reading surface**, where it convinces — not in a buried stats panel.
 
 *Why this is the signature:* every chat product answers; none is accountable months later for what it said. The prediction card with its lifecycle is the one component no competitor can copy, because no competitor has an L5 behind it. J8 is the arc that turns the instrument's central claim — calibrated, testable, correctable — from an architecture diagram into a felt experience.
 
@@ -351,8 +381,13 @@ The journeys design *turns*. Two longer arcs sit above them, and every journey m
 │   [frozen block]  paragraph …                          ── committed │
 │   [VOLATILE TAIL] current paragraph streaming ▊         ── the only │
 │                                                            movable  │
-│ ③ GROUNDING REGION (mounts once, at settle)                         │
+│ ③ GROUNDING — mounts once, at settle. VISUAL HOME: right dock,      │
+│   not inline (§5.8.0 rulings 2/8b — corrected here in v0.5; this    │
+│   region ships an sr-only settle announcement in the turn's own     │
+│   DOM position, and its visible content — chip rows, grade —        │
+│   renders in <RightDock>, one section per grounded turn):           │
 │ ┌─────────────────────────────────────────────────────────┐         │
+│ │ (in the right dock, not here)                            │         │
 │ │ Grounded in 14 chart factors · 3 classical sources      │         │
 │ │ ⟦1⟧ Saturn daśā · ⟦2⟧ 10th lord · ⟦3⟧ BPHS 34.12 · …    │         │
 │ │ Core claim: WELL-GROUNDED ● │ Composed: full coverage   │         │
@@ -363,8 +398,8 @@ The journeys design *turns*. Two longer arcs sit above them, and every journey m
 **Region contracts (the non-negotiables):**
 
 - **① Working region.** Mounts the instant the turn opens, at its final fixed height (40 px band). It **never unmounts** — at settle its content flips in the same box from status to summary (`CONSULTING… · 12s` → `GROUNDED IN 14 SOURCES · 12s`). Label changes are text-swaps at constant height. Expansion is user-initiated only, grows strictly downward, and only ever displaces the (not-yet-started or below-tail) content — never anything above it. Activity rows inside are append-only and individually stable once written (`activity.upsert` may update a row's *status glyph*, never its geometry).
-- **② Answer region.** A vertical list of **blocks**. A block is born volatile (the tail), receives deltas, then **commits** and freezes — its DOM subtree memoized, never re-rendered, removed from the aria-live region (§9). Exactly **zero or one** volatile block exists at any moment. The caret is an inline element owned by the tail block, positioned after its last text node; block types that cannot host a caret gracefully (tables, block-quotes of verses) are **commit-only**: they arrive whole via `block.open`+`block.commit`, and the caret lives in the following text block. **The caret can never orphan** because it is never positioned by layout guesswork — it is a DOM child of the text it trails.
-- **③ Grounding region.** Mounts exactly once, after `turn.commit`, below the final answer block, with a 160 ms fade (opacity only). It never mounts early, never reflows the answer, and once mounted is settled content (P1).
+- **② Answer region.** A vertical list of **blocks**. A block is born volatile (the tail), receives deltas, then **commits** and freezes — its DOM subtree memoized, never re-rendered, removed from the aria-live region (§9). Exactly **zero or one** volatile block exists at any moment. The caret is an inline element owned by the tail block, positioned after its last text node; block types that cannot host a caret gracefully (tables, block-quotes of verses) are **commit-only**: they arrive whole via `block.open`+`block.commit`, and the caret lives in the following text block. **The caret can never orphan** because it is never positioned by layout guesswork — it is a DOM child of the text it trails. A committed `prediction_card` block is discovered from `turn.blocks` by the dock but renders nothing in place here (`answer/FrozenBlock.tsx` returns `null` for that block kind) — see §6.9.
+- **③ Grounding region.** Mounts exactly once, after `turn.commit`, in the turn's own DOM position, with a 160 ms fade. **[Corrected in v0.5]** What mounts *here* is narrower than earlier drafts of this plan described: a single `role="status" aria-live="polite"` sr-only settle announcement for assistive tech (`GroundingRegion.tsx`) — "Reading complete. Grounded in N chart factors, M classical sources." The *visible* grounding ledger (chip rows, source labels, grade summary, composition note) renders in the **right dock** instead (`dock/RightDock.tsx`, one section per grounded turn, newest first), per native ruling 2026-07-27 (§5.8.0 rulings 2/8b): "region ③ (grounding) docks right instead of mounting inline." It never mounts early, never reflows the answer, and once mounted is settled content (P1). Full dock component spec: §6.8.
 
 ### 5.2 The state machine (per turn) and (per surface)
 
@@ -386,11 +421,11 @@ For each state: what the user sees · what must never happen.
 
 **`streaming`** — *Sees:* §5.1 answer-region contract; §5.5 scroll rules; composer dims to 60 %, submit becomes Stop (gold square-in-circle, hairline). *Never:* ANY layout mutation above the tail (M1); caret detachment (M2); markdown re-parse flicker (committed blocks are parse-final); style transmutation (text that later becomes a chip/bold/heading — the wire protocol commits only at safe boundaries, §8.4); mid-word tail flushes on slow streams (tail applies deltas on rAF, coalesced).
 
-**`settling`** — a named choreography: **the Seal** `[ELEVATION v0.2]`, 300–600 ms, strictly ordered: (1) tail commits & freezes; (2) caret fades 120 ms; (3) working band content flips in place (status → grounded summary); (4) grounding region fades in 160 ms; (5) the turn's **closing rule** — the centered 64 px hairline of §6.4 — draws in beneath the grounding region, scaleX 0→1 from center, 400 ms: the surface's one deliberate flourish, the visible moment the reading is sealed; (6) composer restores to full presence with focus. Under reduced motion, steps collapse to instant appearances in the same order. *Never:* reordered or overlapped steps producing simultaneous movement in two places (one thing settles at a time — the eye is escorted); a scroll jump when grounding mounts (if the tail was at viewport bottom, mount scrolls *the minimum* to reveal the grounding band's first line, 200 ms ease, and only if the user was following).
+**`settling`** — a named choreography: **the Seal** `[ELEVATION v0.2]`, 300–600 ms, strictly ordered: (1) tail commits & freezes; (2) caret fades 120 ms; (3) working band content flips in place (status → grounded summary); (4) **[corrected in v0.5]** the right dock's grounding ledger for this turn fades in 160 ms (not "below the answer" — the answer region never receives grounding content; §5.8.0 rulings 2/8b), while the turn's own sr-only settle announcement (§5.1 ③) fires in place; (5) the turn's **closing rule** — the centered 64 px hairline of §6.4 — draws in beneath the *answer region*, in the conversation column, scaleX 0→1 from center, 400 ms: the surface's one deliberate flourish, the visible moment the reading is sealed (it marks the end of the turn in the transcript, independent of the dock, which is a separate column); (6) composer restores to full presence with focus. Under reduced motion, steps collapse to instant appearances in the same order. *Never:* reordered or overlapped steps producing simultaneous movement in two places (one thing settles at a time — the eye is escorted); a scroll jump in the conversation column when the dock's ledger mounts (the dock is a separate scroll container — §5.5's follow discipline governs the transcript only).
 
 **`settled`** — *Sees:* the immutable turn. Hoverable chips, expandable band, expandable probability details — all disclosures overlay or grow downward into inter-turn space. *Never:* any re-render of settled DOM (verified by React profiler in dev harness); disclosure of one turn shifting another settled turn's content upward.
 
-**`honest-gap`** (a settled sub-state) — *Sees:* §4 J7 + §6.8 ribbon. *Never:* warning iconography; the gap buried mid-paragraph as prose only (it is always *also* a ribbon block — unmissable); an empty grounding region (silence is grounded too).
+**`honest-gap`** (a settled sub-state) — *Sees:* §4 J7 + §6.8 ribbon. *Never:* warning iconography; the gap buried mid-paragraph as prose only (it is always *also* a ribbon block — unmissable); an empty right-dock grounding ledger for the turn (silence is grounded too — **corrected in v0.5**, was "grounding region").
 
 **`errored`** — *Sees:* the working band flips to a calm terminal label per the classify-error taxonomy (§7.5): `THE MODEL IS OVERLOADED — NOTHING WAS LOST`. Below the band, one short Inter sentence and one action (Retry — re-runs the turn; the user block stays). Field temperature unchanged. *Never:* red; stack traces; the word "error" in display copy where a plainer word serves; a retry that duplicates the user block.
 
@@ -420,7 +455,7 @@ For each state: what the user sees · what must never happen.
 | Table | Commit-only | Server buffers full table before emitting; renders complete with committed column widths |
 | Verse / classical quote | Commit-only | Distinct styling (§6.5); Sanskrit + gloss |
 | Honest-gap ribbon | Commit-only | |
-| Prediction card | Commit-only | |
+| Prediction card | Commit-only | The block commits in `turn.blocks` (so the right dock can discover it) but renders nothing in the answer region — `answer/FrozenBlock.tsx` returns `null` for `kind: 'prediction_card'`. The visible card mounts in the right dock (`dock/PredictionCard.tsx`), not inline (§5.8.0 ruling 2 — **corrected in v0.5**, this table previously implied inline rendering by omission). |
 | Citation chip | Inline token within prose blocks | Sentinel rewritten server-side pre-wire; renders at final geometry: fixed-width numbered chip. Chip *cards* hydrate lazily; the chip itself never changes size (M6) |
 | Probability detail | Inline disclosure within prose | The framed phrase is prose; the expansion affordance is a fixed-geometry inline glyph |
 
@@ -574,14 +609,22 @@ Committed prose block: Body style, no borders, no background — the reading is 
 
 - **Chip:** inline `⟦n⟧` — 20×16 px fixed box, Inter 11.5 gold on `--tint`, 3 px radius, hairline border, baseline-aligned, `vertical-align` locked so it never alters line-height (P1). Rest: dim gold. Hover/focus: border → `--rule-strong`, fill → 0.10 alpha, 120 ms. Active (card open): solid `--gold-dim` fill, `#000` numeral.
 - **Card (popover ≤ 360 px / mobile sheet):** black field, `--rule-strong` border. Anatomy: eyebrow source class (`CHART FACTOR` / `CLASSICAL SOURCE` / `COMPUTED WINDOW`) · Inter 14 title ("Saturn's daśā, third pāda — active through 2027") · two lines of plain-language relevance · mono ref line (`BPHS 34.12` / entitled fact ref) · grade chip. One card at a time; Esc/scrim closes; focus returns to the chip.
-- **Grade chips:** `WELL-GROUNDED` (solid gold dot ●), `SUPPORTED` (half dot ◐), `CATALOG-ONLY — UNVERIFIED` (hollow dot ○), `HONEST GAP` (em-dash glyph —). Same geometry, Inter caps 10.5, hairline boxes; **shape + label differentiate, never color** (no red/amber — P3, a11y). Catalog-only rows additionally sit under an eyebrow divider `AWAITING CROSS-VERIFICATION` in the grounding region — flattening confirmed with unverified is a §N.6 violation the layout itself prevents.
+- **Grade chips:** `WELL-GROUNDED` (solid gold dot ●), `SUPPORTED` (half dot ◐), `CATALOG-ONLY — UNVERIFIED` (hollow dot ○), `HONEST GAP` (em-dash glyph —). Same geometry, Inter caps 10.5, hairline boxes; **shape + label differentiate, never color** (no red/amber — P3, a11y). Catalog-only rows additionally sit under an eyebrow divider `AWAITING CROSS-VERIFICATION` in the right dock's grounding ledger (§6.8) — flattening confirmed with unverified is a §N.6 violation the layout itself prevents.
 
-### 6.8 Component: grounding region & honest-gap ribbon
+### 6.8 Component: the right dock (grounding ledger) & honest-gap ribbon
 
-- **Grounding region:** `--rule` top hairline; line 1: Inter 13 `--ink` summary ("Grounded in 14 chart factors · 3 classical sources"); line 2: wrapped chip row with 6-word labels; line 3: grade summary + composition note (`Composed from complete house coverage` when dossier-gated — P5). Rest is compact; `View all ⌄` expands the full source list downward.
-- **Honest-gap ribbon:** own block: `--tint` fill, `--rule` full border, 4 px radius, 16 px padding. Eyebrow `THE CHART IS SILENT HERE` + one Cormorant 17/28 sentence naming precisely *what* it is silent on and *why that is a finding*. No icon (any glyph reads as warning). Unmissable by structure — the only bordered, tinted block a reading can contain — calm by chrome: same golds as everything else (T-5 + P3, resolved in one component).
+**[Rewritten in v0.5.]** Earlier drafts of this section described a "grounding region" that mounted inline below the answer. That model was superseded by native ruling 2026-07-27 (§5.8.0 rulings 2/6/7/8a–8c) and is not what shipped; the description below matches the built component tree (`platform/src/components/pariprashna/dock/`), verified by reading `RightDock.tsx`, `DockController.tsx`, and `GroundingCard.tsx` directly.
+
+- **The right dock (`dock/RightDock.tsx`):** a collapsible panel occupying its own column beside the conversation (not inside it) — 312 px open / 46 px collapsed, `--pp-panel` fill, `--rule` border, 14 px radius, 280 ms width transition. Header row: a `»`/`«` toggle button (mono, `--gold-tertiary`) plus, when open, the eyebrow `WINDOWS · GROUNDING` (Inter caps, 11 px, gold, 0.28em tracking). Open/collapsed state persists in `localStorage` (`pariprashna.dock.collapsed`) — remembered per user, as §3.2/§5.8.0 ruling 2 specify. Below 900 px width the dock is hidden entirely (`DockController`'s `MOBILE_BREAKPOINT_QUERY`); a citation chip tap there opens `CitationCard` as a bottom sheet instead (§9.2), via `mobileSheetCitation`/`openToCitation`.
+- **Ledger content:** one section per turn that has grounding data (a citation or a prediction card), **newest turn first**. Each section shows, in order: the turn's prediction card if any (`dock/PredictionCard.tsx`); an eyebrow line — `N CHART FACTORS` · `M CLASSICS` when classical sources are present; then one `GroundingCard` row per citation, sorted by chip number. No provenance (build id, priors, model stamp) anywhere in the dock, including its footer (§5.8.0 ruling 8c) — a static caption line only ("Fills as the reading verifies, pass by pass…").
+- **`GroundingCard` row (`dock/GroundingCard.tsx`):** chip number (mono, gold) · title (prose, 14 px) · one-line relevance note (9.5 px, dim gold) · a grade glyph + label at the row's right edge — `●` verified / `◐` supported / `○` catalog / `—` honest gap (same shape-not-color discipline as §6.7's grade chips — flattening confirmed with catalog-only is a §N.6 violation the layout itself still prevents, now enforced in the dock rather than inline). Clicking a row expands a mono audit-ref line beneath it (the citation's `ref`) — same disclosure affordance for every entitlement tier (P4).
+- **Citation deep-link:** a chip (`⟦n⟧`, inline in the answer prose, unchanged from earlier drafts — §6.7) calls `DockController.openToCitation(turnId, n)`, which opens the dock if collapsed, sets the active citation, and the dock scrolls/highlights that row (`scrollIntoView`). Below the mobile breakpoint the same call opens the bottom-sheet citation card instead.
+- **Settle announcement (stays inline, in the turn's own DOM position):** `GroundingRegion.tsx`, mounted inside `<Turn>` per §5.1 ③, is now narrower than the dock — it renders only an `aria-live="polite"` sr-only status line ("Reading complete. Grounded in N chart factors, M classical sources.") for assistive tech, since the dock's visible content is a separate, possibly-collapsed/possibly-hidden panel that a screen reader user should not have to locate to learn a turn settled.
+- **Honest-gap ribbon (unchanged by the dock move — stays inline, in the answer region):** own block: `--tint` fill, `--rule` full border, 4 px radius, 16 px padding. Eyebrow `THE CHART IS SILENT HERE` + one Cormorant 17/28 sentence naming precisely *what* it is silent on and *why that is a finding*. No icon (any glyph reads as warning). Unmissable by structure — the only bordered, tinted block a reading can contain — calm by chrome: same golds as everything else (T-5 + P3, resolved in one component). The ribbon is a distinct concept from the grounding ledger: the ribbon states the gap in the reading itself; the dock still shows the (honestly empty-of-that-claim) grounding that verified the silence.
 
 ### 6.9 Component: prediction card — the signature component `[ELEVATION v0.2]`
+
+**Home: the right dock, not the answer region** (`dock/PredictionCard.tsx` — §5.8.0 ruling 2; §6.8; **clarified in v0.5**, the anatomy below was already written compatibly with the dock but never said so explicitly). The turn still commits a `prediction_card` block so the dock can find it; `answer/FrozenBlock.tsx` renders nothing for that block kind in the conversation column.
 
 **This is the hero.** Chosen deliberately over the other candidates (grounding ledger, honest-gap ribbon, the recall opening) because it is the one object no other conversational product can have — an answer that remains accountable months later — and because it carries the whole relationship loop (P9, J8) inside a single settled block. Everything else on the surface is best-in-class discipline; this is the thing that is *ours*.
 
@@ -716,26 +759,34 @@ Everything here exists to make §5 physically true in React. The protocol serves
 
 ### 8.1 Component tree (1:1 with the design)
 
+**[Corrected in v0.5]** The tree below is now 1:1 with the shipped tree under `platform/src/components/pariprashna/` — verified by reading `PariprashnaApp.tsx`, `Turn.tsx`, `dock/RightDock.tsx`, and `answer/FrozenBlock.tsx` directly. The prior version of this tree nested `<GroundingRegion>` under `<Turn>` with the full grounding UI (`<GroundingSummary/>`, `<ChipRow/>`, `<GradeSummary/>`) and included `PredictionCard` among `<FrozenBlock>`'s renderable content types — neither is what shipped: the dock is a sibling of `<Transcript>` at the app root, not a per-turn child, and `<FrozenBlock>` renders `null` for `prediction_card`.
+
 ```
-<PariprashnaApp>
- ├─ <ThreadHeader chartPin modelPill title/>
- ├─ <Transcript>                        // owns scroll (§5.5); overflow-anchor:none
- │   └─ <Turn key={turnId}>             // one per turn; settled turns fully memoized
- │       ├─ <UserBlock/>                // settled at submit (optimistic, client-authoritative)
- │       ├─ <WorkingRegion>             // mounts at turn open, never unmounts
- │       │    ├─ <WorkingBand/>         // fixed 40px; label/counter/flip
- │       │    └─ <ActivityList>         // user-expanded; append-only
- │       │         └─ <ActivityRow/>    // status-glyph updates only
- │       ├─ <AnswerRegion>
- │       │    ├─ <FrozenBlock/>*        // memo(…, ()=>true) — NEVER re-renders
- │       │    │    (Paragraph|Heading|Table|Verse|GapRibbon|PredictionCard|List)
- │       │    └─ <VolatileTail>         // ≤1; rAF-buffered deltas; owns <Caret/>
- │       └─ <GroundingRegion>           // mounts once on turn.commit
- │            ├─ <GroundingSummary/> <ChipRow><CitationChip/>*</ChipRow>
- │            └─ <GradeSummary/> <SourceListDisclosure/>
- ├─ <Composer field modelPill submit|stop/>
- ├─ <FollowPill/>                       // "↓ Reading continues"
- └─ <OverlayLayer> <CitationCard/> <ModelPicker/> <AuditDrawer/> </OverlayLayer>
+<PariprashnaApp>                        // chooses fixture-replay vs. live-SSE host, then <PariprashnaSurface>
+ └─ <DockControllerProvider>             // shared open/collapsed + active-citation state (dock/DockController.tsx)
+     ├─ <ThreadHeader chartPin modelPill title/>
+     ├─ <Transcript>                        // owns scroll (§5.5); overflow-anchor:none
+     │   └─ <Turn key={turnId}>             // one per turn; settled turns fully memoized
+     │       ├─ <UserBlock/>                // settled at submit (optimistic, client-authoritative)
+     │       ├─ <WorkingRegion>             // mounts at turn open, never unmounts
+     │       │    ├─ <WorkingBand/>         // fixed 40px; label/counter/flip
+     │       │    └─ <ActivityList>         // user-expanded; append-only
+     │       │         └─ <ActivityRow/>    // status-glyph updates only
+     │       ├─ <AnswerRegion>
+     │       │    ├─ <FrozenBlock/>*        // memo(…, ()=>true) — NEVER re-renders
+     │       │    │    (Paragraph|Heading|Table|Verse|GapRibbon|Seam|List)
+     │       │    │    prediction_card commits to turn.blocks but FrozenBlock renders null for it —
+     │       │    │    the dock (below) discovers and renders it instead
+     │       │    └─ <VolatileTail>         // ≤1; rAF-buffered deltas; owns <Caret/>
+     │       └─ <GroundingRegion>           // mounts once on turn.commit — sr-only settle
+     │            └─ role=status aria-live  //   announcement ONLY; no visible chip/grade UI here
+     ├─ <Composer field modelPill submit|stop/>
+     ├─ <FollowPill/>                       // "↓ Reading continues"
+     ├─ <RightDock turns>                   // SIBLING of <Transcript>, not nested in <Turn> —
+     │   ├─ (per grounded turn, newest first)   the dock reads turn.citations/turn.blocks directly
+     │   │   ├─ <PredictionCard/>           //   off ThreadState.turns, single source of truth
+     │   │   └─ <GroundingCard/>*           //   (dock/RightDock.tsx, dock/GroundingCard.tsx)
+     └─ <OverlayLayer> <CitationCard/> <ModelPicker/> <AuditDrawer/> </OverlayLayer>
 ```
 
 ### 8.2 Freeze/memo discipline (P1 in code)
@@ -902,7 +953,7 @@ A build that fails any gate here does not ship, whatever its feature count. Gate
 - **AC-16 `[ELEVATION v0.2]` · Signature integrity:** on every time-indexed fixture the prediction card renders per §6.9 — kāla-rekhā geometry correct against the window dates, today-dot position derived from the real date, and a lifecycle eyebrow swap leaving the rest of the card's serialized DOM byte-identical; the arrival line renders once per session from L1/Kāla data (never model prose) and never scrolls with the transcript; the Seal fires in §5.3 order with the closing-rule draw as the only motion above 240 ms.
 
 ### 11.4 Depth & epistemics gates
-- **AC-12 · Depth routing:** the interpretive-question fixture set (the audit's 15–33% failures included) routes to the completeness-gated path; grounding regions show composition notes; a shallow route on an interpretive fixture = fail.
+- **AC-12 · Depth routing:** the interpretive-question fixture set (the audit's 15–33% failures included) routes to the completeness-gated path; the right dock's grounding ledgers (§6.8) show composition notes; a shallow route on an interpretive fixture = fail.
 - **AC-13 · Density:** no fixture response flattens confirmed and catalog-only findings into one undifferentiated list; verdict layer non-empty whenever grounding exists; honest empties carried as flags. (§N.6 conformance at the UI)
 
 ### 11.5 The calm rubric (subjective gate with structure)
@@ -925,7 +976,7 @@ A structured pass against §2: each principle gets a hunt ("find any violation o
 |---|---|---|---|---|
 | **OD-1** | Body face: Cormorant vs. sturdier serif | (a) Cormorant Medium 19/31 per §6.2 · (b) Cormorant display-only + Source Serif 4 body · (c) Cormorant with size bump to 20 px | **(a), tested in the flesh during AC-15 week** — the ceremonial register is worth defending, and Medium-at-19 is engineered to hold; but this is an eyes-on-device call only you can make | Two-token swap (`--font-body`, ramp row); fixtures rendered in both for side-by-side |
 | **OD-2** | Light mode, ever? | (a) Never — the instrument is jet, full stop · (b) A print/export light treatment only (PDF) · (c) Full light theme | **RESOLVED v0.2: (b), designed as §10.6 (the sealed reading)** — the screen instrument stays jet (the brand *is* the darkness); print earns the one ivory inversion | Tokens are CSS variables throughout; print stylesheet stubbed |
-| **OD-3** | Default density of the settled turn | (a) Grounding region compact (summary + 1 chip row) as specced · (b) Grounding fully expanded by default · (c) Working region also auto-expands on settle | **(a)** — epistemics visible, machinery collapsed (P2); (b) risks making every reading feel like an appendix | The disclosure states exist regardless; a per-user default is one setting |
+| **OD-3** | Default density of the settled turn | (a) Grounding compact (summary + 1 chip row) as specced · (b) Grounding fully expanded by default · (c) Working region also auto-expands on settle | **(a)** — epistemics visible, machinery collapsed (P2); (b) risks making every reading feel like an appendix. **[Note, v0.5]** "Grounding" here now means the right dock's per-turn ledger (§6.8), not an inline region; the resolution's substance (compact by default, expandable) is unchanged by the dock move — only the container did. | The disclosure states exist regardless; a per-user default is one setting |
 | ~~**OD-4**~~ | ~~Reference-rail depth (Phase 2)~~ | — | **RETIRED v0.2** — the rail was removed by native ruling 2026-07-27 (§3.2, §10.3); no depth question remains | Citation payloads still carry factor refs (they serve the citation card) |
 | **OD-5** | Guest visibility of the working region's expanded activity | (a) Same affordance, rows visible, drill-to-audit gated by entitlement (P4-pure) · (b) Rows visible but abstracted labels only for guests | **(a)** — the lexicon labels are already reader-safe by construction; tiering row *visibility* would be the first crack in D-15 | Lexicon is the only string source either way |
 | **OD-6** | Stop-button semantics | (a) Stop settles the turn as `interrupted` with partial prose kept (as specced) · (b) Stop offers keep/discard | **(a)** — settled content is sacred includes content the user chose to stop; a discard prompt is a decision imposed at a moment of impatience | Reducer treats stop as server-side `turn.close(interrupted)` either way |

@@ -1,0 +1,162 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Paripraśna Swarm Tracker</title>
+<meta http-equiv="refresh" content="30">
+<style>
+  :root {
+    --bg: #0b0d12; --panel: #12151c; --border: #232838; --text: #e6e9f0;
+    --muted: #7b8296; --accent: #5b8dff; --green: #3ddc97; --amber: #f5b942;
+    --red: #ff5c5c; --purple: #b98bff;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, "Segoe UI", sans-serif; }
+  header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+  header.stale { background: #3a1414; }
+  h1 { font-size: 15px; margin: 0; font-weight: 600; letter-spacing: 0.02em; }
+  #hb { font-size: 12px; color: var(--muted); }
+  #hb.stale { color: var(--red); font-weight: 700; }
+  main { padding: 20px; display: grid; gap: 20px; max-width: 1100px; margin: 0 auto; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 12px; }
+  .phase-strip { display: flex; gap: 8px; flex-wrap: wrap; }
+  .phase-chip { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); font-size: 12px; }
+  .phase-chip.active { border-color: var(--accent); color: var(--accent); }
+  .lane-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .lane { border: 1px solid var(--border); border-radius: 6px; padding: 10px; background: #0e1119; }
+  .lane .id { font-weight: 700; color: var(--accent); }
+  .lane .stage { display: inline-block; margin-top: 6px; padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+  .stage.queued { background: #232838; color: var(--muted); }
+  .stage.building, .stage.in_progress { background: #1c2a4a; color: var(--accent); }
+  .stage.verifying, .stage.refuting { background: #3a2f10; color: var(--amber); }
+  .stage.admissible, .stage.merged { background: #0f2f22; color: var(--green); }
+  .stage.parked { background: #3a1414; color: var(--red); }
+  .lane .name { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  .budget-bar { height: 10px; border-radius: 999px; background: #1a1e28; overflow: hidden; }
+  .budget-bar > div { height: 100%; background: var(--accent); }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; font-size: 13px; }
+  .kv dt { color: var(--muted); }
+  ul.findings { margin: 0; padding-left: 18px; font-size: 13px; }
+  ul.findings li { margin-bottom: 4px; }
+  .step0-row { display: flex; gap: 8px; align-items: center; padding: 4px 0; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .dot.DONE { background: var(--green); }
+  .dot.IN_PROGRESS { background: var(--amber); }
+  .dot.PENDING { background: var(--muted); }
+  .dot.PR_OPEN_CI_RUNNING { background: var(--purple); }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<header id="header">
+  <h1>PARIPRAŚNA SWARM TRACKER</h1>
+  <div id="hb">heartbeat: —</div>
+</header>
+<main>
+  <div class="panel">
+    <h2>Phase strip</h2>
+    <div class="phase-strip" id="phaseStrip"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Step 0 — retire prior attempt, land planning set</h2>
+    <div id="step0"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Lane board (P0 ignition)</h2>
+    <div class="lane-board" id="lanes"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Budget</h2>
+    <div class="kv" id="budgetKv"></div>
+    <div class="budget-bar" style="margin-top:8px"><div id="budgetFill" style="width:0%"></div></div>
+  </div>
+
+  <div class="panel">
+    <h2>Prior attempt — carried-forward findings (not re-probed)</h2>
+    <ul class="findings" id="findings"></ul>
+    <h2 style="margin-top:14px">Still owed by P0-B</h2>
+    <ul class="findings" id="owed"></ul>
+  </div>
+
+  <div class="panel">
+    <h2>Trains / Deploys</h2>
+    <div id="trains">No trains run yet.</div>
+    <div id="deploys" style="margin-top:8px">No deploys yet.</div>
+  </div>
+</main>
+
+<script src="tracker_data.js"></script>
+<script>
+  const T = window.TRACKER || {};
+  const el = id => document.getElementById(id);
+
+  // Phase strip
+  const phases = ["P0","P1","P2","P3","P4","P5"];
+  el("phaseStrip").innerHTML = phases.map(p =>
+    `<span class="phase-chip ${p === T.phase ? "active" : ""}">${p}${p === T.phase ? " — " + (T.phase_status || "") : ""}</span>`
+  ).join("");
+
+  // Step 0
+  const s0 = T.step_0 || {};
+  const steps = [
+    ["0a_lease_announcement", "0a Lease announcement"],
+    ["0b_worktree_and_docs", "0b Worktree + docs"],
+    ["0c_pr_land", "0c PR land"],
+    ["0d_retire_old_refs", "0d Retire old refs"],
+    ["0e_tracker", "0e Tracker"],
+  ];
+  el("step0").innerHTML = steps.map(([k, label]) => {
+    const s = s0[k] || {};
+    const status = s.status || "PENDING";
+    const extra = s.pr ? ` — <a href="${s.pr}" target="_blank">${s.pr}</a>` : (s.ref ? ` — ${s.ref}` : "");
+    return `<div class="step0-row"><span class="dot ${status}"></span><span>${label}: ${status}${extra}</span></div>`;
+  }).join("");
+
+  // Lanes
+  const lanes = T.lanes || {};
+  el("lanes").innerHTML = Object.entries(lanes).map(([id, l]) => `
+    <div class="lane">
+      <div class="id">${id}</div>
+      <div class="stage ${l.role_stage}">${l.role_stage}</div>
+      <div class="name">${l.name || ""}</div>
+    </div>
+  `).join("");
+
+  // Budget
+  const b = T.budget || {};
+  const pct = b.ceiling_usd ? Math.min(100, (100 * (b.spent_usd || 0) / b.ceiling_usd)) : 0;
+  el("budgetKv").innerHTML = `
+    <dt>Phase</dt><dd>${b.phase || "—"}</dd>
+    <dt>Spent</dt><dd>$${(b.spent_usd || 0).toFixed(2)}</dd>
+    <dt>Ceiling</dt><dd>$${b.ceiling_usd ?? "—"}</dd>
+  `;
+  el("budgetFill").style.width = pct + "%";
+
+  // Prior attempt
+  const pa = T.prior_attempt || {};
+  el("findings").innerHTML = (pa.verified_findings_carried_forward || []).map(f => `<li>${f}</li>`).join("");
+  el("owed").innerHTML = (pa.not_yet_probed_owed_by_p0_b || []).map(f => `<li>${f}</li>`).join("");
+
+  // Staleness banner: red if heartbeat older than 15 minutes
+  const hbEl = el("hb");
+  const headerEl = el("header");
+  if (T.heartbeat_ts && T.heartbeat_ts !== "PLACEHOLDER") {
+    const hbDate = new Date(T.heartbeat_ts);
+    const ageMin = (Date.now() - hbDate.getTime()) / 60000;
+    hbEl.textContent = `heartbeat: ${T.heartbeat_ts} (${ageMin.toFixed(1)}m ago)`;
+    if (ageMin > 15) {
+      hbEl.classList.add("stale");
+      headerEl.classList.add("stale");
+    }
+  } else {
+    hbEl.textContent = "heartbeat: not yet set";
+    hbEl.classList.add("stale");
+    headerEl.classList.add("stale");
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,963 @@
+{
+  "scenario": "adaptive-3-pass",
+  "derived_from": "adaptive-3-pass",
+  "http": {
+    "status": 200,
+    "headers": {
+      "cache-control": "no-cache, no-transform",
+      "connection": "keep-alive",
+      "content-type": "text/event-stream; charset=utf-8",
+      "x-accel-buffering": "no"
+    }
+  },
+  "events": [
+    {
+      "type": "turn.open",
+      "seq": 0,
+      "t": "<ms>",
+      "turn_id": "00000000-0000-4000-8000-000000000002",
+      "conversation_id": "00000000-0000-4000-8000-000000000001",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "model_id": "gemini-2.5-pro",
+      "reading_depth": "auto",
+      "length_tier": "standard"
+    },
+    {
+      "type": "phase",
+      "seq": 1,
+      "t": "<ms>",
+      "phase": "plan",
+      "status": "start"
+    },
+    {
+      "type": "phase",
+      "seq": 2,
+      "t": "<ms>",
+      "phase": "plan",
+      "status": "end",
+      "ms": "<ms>"
+    },
+    {
+      "type": "grade",
+      "seq": 3,
+      "t": "<ms>",
+      "subject": "query_class",
+      "grade": "holistic",
+      "detail": "2 planned tools"
+    },
+    {
+      "type": "phase",
+      "seq": 4,
+      "t": "<ms>",
+      "phase": "retrieve",
+      "status": "start",
+      "pass_id": 1
+    },
+    {
+      "type": "activity.upsert",
+      "seq": 5,
+      "t": "<ms>",
+      "key": "retrieve:msr_sql",
+      "label_key": "Reading the whole chart",
+      "pass_id": 1,
+      "status": "running"
+    },
+    {
+      "type": "activity.upsert",
+      "seq": 6,
+      "t": "<ms>",
+      "key": "retrieve:chart_facts_query",
+      "label_key": "Retrieved — chart data",
+      "pass_id": 1,
+      "status": "running"
+    },
+    {
+      "type": "activity.upsert",
+      "seq": 7,
+      "t": "<ms>",
+      "key": "retrieve:msr_sql",
+      "label_key": "Reading the whole chart",
+      "pass_id": 1,
+      "status": "done",
+      "count": 3,
+      "ms": "<ms>"
+    },
+    {
+      "type": "activity.upsert",
+      "seq": 8,
+      "t": "<ms>",
+      "key": "retrieve:chart_facts_query",
+      "label_key": "Retrieved — chart data",
+      "pass_id": 1,
+      "status": "done",
+      "count": 2,
+      "ms": "<ms>"
+    },
+    {
+      "type": "phase",
+      "seq": 9,
+      "t": "<ms>",
+      "phase": "retrieve",
+      "status": "end",
+      "pass_id": 1,
+      "ms": "<ms>"
+    },
+    {
+      "type": "phase",
+      "seq": 10,
+      "t": "<ms>",
+      "phase": "synthesize",
+      "status": "start",
+      "pass_id": 1
+    },
+    {
+      "type": "block.open",
+      "seq": 11,
+      "t": "<ms>",
+      "block_id": "blk-1-1",
+      "pass_id": 1,
+      "role": "prose"
+    },
+    {
+      "type": "block.delta",
+      "seq": 12,
+      "t": "<ms>",
+      "block_id": "blk-1-1",
+      "delta": "First pass reading. "
+    },
+    {
+      "type": "activity.upsert",
+      "seq": 13,
+      "t": "<ms>",
+      "key": "pass1:tool:t1",
+      "label_key": "Reading the whole chart",
+      "pass_id": 1,
+      "status": "running"
+    },
+    {
+      "type": "block.commit",
+      "seq": 14,
+      "t": "<ms>",
+      "block_id": "blk-1-1",
+      "text": "First pass reading. "
+    },
+    {
+      "type": "phase",
+      "seq": 15,
+      "t": "<ms>",
+      "phase": "retrieve",
+      "status": "start",
+      "pass_id": 2
+    },
+    {
+      "type": "seam.open",
+      "seq": 16,
+      "t": "<ms>",
+      "pass_id": 2,
+      "label_key": "pariprashna.pass.2"
+    },
+    {
+      "type": "activity.upsert",
+      "seq": 17,
+      "t": "<ms>",
+      "key": "pass2:tool:t1",
+      "label_key": "Reading the whole chart",
+      "pass_id": 2,
+      "status": "done"
+    },
+    {
+      "type": "seam.set",
+      "seq": 18,
+      "t": "<ms>",
+      "pass_id": 2,
+      "summary": "Consulted msr_sql"
+    },
+    {
+      "type": "phase",
+      "seq": 19,
+      "t": "<ms>",
+      "phase": "synthesize",
+      "status": "start",
+      "pass_id": 2
+    },
+    {
+      "type": "block.open",
+      "seq": 20,
+      "t": "<ms>",
+      "block_id": "blk-2-2",
+      "pass_id": 2,
+      "role": "prose"
+    },
+    {
+      "type": "block.delta",
+      "seq": 21,
+      "t": "<ms>",
+      "block_id": "blk-2-2",
+      "delta": "Second pass reading. "
+    },
+    {
+      "type": "activity.upsert",
+      "seq": 22,
+      "t": "<ms>",
+      "key": "pass2:tool:t2",
+      "label_key": "Retrieved — chart data",
+      "pass_id": 2,
+      "status": "running"
+    },
+    {
+      "type": "block.commit",
+      "seq": 23,
+      "t": "<ms>",
+      "block_id": "blk-2-2",
+      "text": "Second pass reading. "
+    },
+    {
+      "type": "phase",
+      "seq": 24,
+      "t": "<ms>",
+      "phase": "retrieve",
+      "status": "start",
+      "pass_id": 3
+    },
+    {
+      "type": "seam.open",
+      "seq": 25,
+      "t": "<ms>",
+      "pass_id": 3,
+      "label_key": "pariprashna.pass.3"
+    },
+    {
+      "type": "activity.upsert",
+      "seq": 26,
+      "t": "<ms>",
+      "key": "pass3:tool:t2",
+      "label_key": "Retrieved — chart data",
+      "pass_id": 3,
+      "status": "done"
+    },
+    {
+      "type": "seam.set",
+      "seq": 27,
+      "t": "<ms>",
+      "pass_id": 3,
+      "summary": "Consulted chart_facts_query"
+    },
+    {
+      "type": "phase",
+      "seq": 28,
+      "t": "<ms>",
+      "phase": "synthesize",
+      "status": "start",
+      "pass_id": 3
+    },
+    {
+      "type": "block.open",
+      "seq": 29,
+      "t": "<ms>",
+      "block_id": "blk-3-3",
+      "pass_id": 3,
+      "role": "prose"
+    },
+    {
+      "type": "block.delta",
+      "seq": 30,
+      "t": "<ms>",
+      "block_id": "blk-3-3",
+      "delta": "Third pass reading."
+    },
+    {
+      "type": "block.commit",
+      "seq": 31,
+      "t": "<ms>",
+      "block_id": "blk-3-3",
+      "text": "Third pass reading."
+    },
+    {
+      "type": "phase",
+      "seq": 32,
+      "t": "<ms>",
+      "phase": "synthesize",
+      "status": "end",
+      "pass_id": 3,
+      "ms": "<ms>"
+    },
+    {
+      "type": "grade",
+      "seq": 33,
+      "t": "<ms>",
+      "subject": "citation_gate",
+      "grade": "PASS",
+      "detail": "harness pass"
+    },
+    {
+      "type": "phase",
+      "seq": 34,
+      "t": "<ms>",
+      "phase": "finalize",
+      "status": "start"
+    },
+    {
+      "type": "turn.commit",
+      "seq": 35,
+      "t": "<ms>",
+      "turn_id": "00000000-0000-4000-8000-000000000002",
+      "conversation_id": "00000000-0000-4000-8000-000000000001",
+      "message_id": "00000000-0000-4000-8000-000000000005",
+      "status": "ok",
+      "assistant_chars": 60
+    },
+    {
+      "type": "phase",
+      "seq": 36,
+      "t": "<ms>",
+      "phase": "finalize",
+      "status": "end"
+    },
+    {
+      "type": "turn.close",
+      "seq": 37,
+      "t": "<ms>",
+      "turn_id": "00000000-0000-4000-8000-000000000002",
+      "status": "ok",
+      "ms": "<ms>"
+    }
+  ],
+  "side_effects": [
+    {
+      "fn": "openTurnBuffer",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "chartId": "482012f1-710e-4a25-994a-93821f5871aa",
+      "conversationId": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "fn": "beginTurnCapture",
+      "turnId": "00000000-0000-4000-8000-000000000002"
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "turn.open",
+      "seq": 0
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "turn.open",
+      "seq": 0
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 1
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 1
+    },
+    {
+      "fn": "insertConversationWithId",
+      "id": "00000000-0000-4000-8000-000000000001",
+      "chartId": "482012f1-710e-4a25-994a-93821f5871aa",
+      "module": "consume"
+    },
+    {
+      "fn": "callPipelinePlanner",
+      "queryText": "How does my career unfold?"
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 2
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 2
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "grade",
+      "seq": 3
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "grade",
+      "seq": 3
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 4
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 4
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "activity.upsert",
+      "seq": 5
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "activity.upsert",
+      "seq": 5
+    },
+    {
+      "fn": "executeWithCache",
+      "tool": "msr_sql"
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "activity.upsert",
+      "seq": 6
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "activity.upsert",
+      "seq": 6
+    },
+    {
+      "fn": "executeWithCache",
+      "tool": "chart_facts_query"
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "activity.upsert",
+      "seq": 7
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "activity.upsert",
+      "seq": 7
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "activity.upsert",
+      "seq": 8
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "activity.upsert",
+      "seq": 8
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 9
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 9
+    },
+    {
+      "fn": "buildConsultSystemContent",
+      "bundleSystemContent": "HARNESS-BUNDLE-ASSET",
+      "synthesisGuidance": "Answer as an acharya.",
+      "currentMahaAntar": "Ketu–Venus",
+      "nowContextDateShape": "string"
+    },
+    {
+      "fn": "getConversationSummaryForSplice",
+      "cid": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "fn": "assembleSynthesisPrefix",
+      "precedingBlock": "HARNESS-SYSTEM-CONTENT",
+      "summaryText": null
+    },
+    {
+      "fn": "getAdapter",
+      "id": "google"
+    },
+    {
+      "fn": "adapter.tools",
+      "maxIterations": 8,
+      "toolLoopMode": true
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 10
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 10
+    },
+    {
+      "fn": "runAgenticLoop",
+      "maxIterations": 8
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.open",
+      "seq": 11
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.open",
+      "seq": 11
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.delta",
+      "seq": 12
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.delta",
+      "seq": 12
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "activity.upsert",
+      "seq": 13
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "activity.upsert",
+      "seq": 13
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.commit",
+      "seq": 14
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.commit",
+      "seq": 14
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 15
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 15
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "seam.open",
+      "seq": 16
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "seam.open",
+      "seq": 16
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "activity.upsert",
+      "seq": 17
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "activity.upsert",
+      "seq": 17
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "seam.set",
+      "seq": 18
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "seam.set",
+      "seq": 18
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 19
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 19
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.open",
+      "seq": 20
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.open",
+      "seq": 20
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.delta",
+      "seq": 21
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.delta",
+      "seq": 21
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "activity.upsert",
+      "seq": 22
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "activity.upsert",
+      "seq": 22
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.commit",
+      "seq": 23
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.commit",
+      "seq": 23
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 24
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 24
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "seam.open",
+      "seq": 25
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "seam.open",
+      "seq": 25
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "activity.upsert",
+      "seq": 26
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "activity.upsert",
+      "seq": 26
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "seam.set",
+      "seq": 27
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "seam.set",
+      "seq": 27
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 28
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 28
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.open",
+      "seq": 29
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.open",
+      "seq": 29
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.delta",
+      "seq": 30
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.delta",
+      "seq": 30
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.commit",
+      "seq": 31
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "block.commit",
+      "seq": 31
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 32
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 32
+    },
+    {
+      "fn": "validateCitationsForStream",
+      "text": "First pass reading. Second pass reading. Third pass reading.",
+      "contextJsonLength": 713,
+      "queryClass": "holistic",
+      "override": false
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "grade",
+      "seq": 33
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "grade",
+      "seq": 33
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 34
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 34
+    },
+    {
+      "fn": "createPendingStreamWriter",
+      "queryId": "00000000-0000-4000-8000-000000000003",
+      "conversationId": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "fn": "getLastTurnStamp"
+    },
+    {
+      "fn": "computeTurnProvenanceStamp"
+    },
+    {
+      "fn": "writeContextAssemblyLog",
+      "entry": {
+        "query_id": "00000000-0000-4000-8000-000000000003",
+        "l1_tokens": 13,
+        "l2_5_signal_tokens": 12,
+        "l2_5_pattern_tokens": 0,
+        "l4_tokens": 0,
+        "vector_tokens": 0,
+        "cgm_tokens": 0,
+        "synthesis_model_id": "gemini-2.5-pro",
+        "model_max_context": 2000000,
+        "b3_compliant": true,
+        "citation_count": 2,
+        "verified_citations": 2
+      }
+    },
+    {
+      "fn": "writeConversationMessages",
+      "conversationId": "00000000-0000-4000-8000-000000000001",
+      "count": 1
+    },
+    {
+      "fn": "writeTurn",
+      "message": {
+        "id": "00000000-0000-4000-8000-000000000005",
+        "conversation_id": "00000000-0000-4000-8000-000000000001",
+        "role": "assistant",
+        "schema_version": 1,
+        "model_id": "gemini-2.5-pro",
+        "provider": "google",
+        "metadata": {
+          "custom": {
+            "model": "gemini-2.5-pro",
+            "queryId": "00000000-0000-4000-8000-000000000003",
+            "planning_model_id": "planner-primary",
+            "planning_latency_ms": "<ms>",
+            "disclosure_tier": "client",
+            "query_class": "holistic",
+            "stack": "gemini",
+            "style": "acharya",
+            "reading_depth": "auto",
+            "length_tier": "standard",
+            "pipeline": "pariprashna",
+            "conversationId": "00000000-0000-4000-8000-000000000001"
+          },
+          "provenance_stamp": {
+            "build_id": "build-current",
+            "priors_version": "v3",
+            "formula_versions": {
+              "salience_formula_ver": null
+            },
+            "ranking_config": {
+              "mode": "harness"
+            },
+            "now_context_date": "2026-08-19",
+            "computed_at": "<iso>"
+          }
+        }
+      },
+      "parts": [
+        {
+          "seq": 0,
+          "kind": "text",
+          "body": {
+            "text": "First pass reading. ",
+            "block_id": "blk-1-1"
+          },
+          "model_visible": true
+        },
+        {
+          "seq": 1,
+          "kind": "text",
+          "body": {
+            "text": "Second pass reading. ",
+            "block_id": "blk-2-2"
+          },
+          "model_visible": true
+        },
+        {
+          "seq": 2,
+          "kind": "text",
+          "body": {
+            "text": "Third pass reading.",
+            "block_id": "blk-3-3"
+          },
+          "model_visible": true
+        }
+      ]
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "turn.commit",
+      "seq": 35
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "turn.commit",
+      "seq": 35
+    },
+    {
+      "fn": "generateConversationTitle"
+    },
+    {
+      "fn": "pendingStreamWriter.clear"
+    },
+    {
+      "fn": "updateConversationTitle",
+      "cid": "00000000-0000-4000-8000-000000000001",
+      "t": "Harness Title"
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 36
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 36
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "turn.close",
+      "seq": 37
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "turn.close",
+      "seq": 37
+    },
+    {
+      "fn": "endTurnCapture",
+      "turnId": "00000000-0000-4000-8000-000000000002"
+    }
+  ]
+}

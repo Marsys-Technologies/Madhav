@@ -1,0 +1,120 @@
+{
+  "scenario": "branch-conversation-insert-fatal",
+  "derived_from": "route-branch",
+  "http": {
+    "status": 200,
+    "headers": {
+      "cache-control": "no-cache, no-transform",
+      "connection": "keep-alive",
+      "content-type": "text/event-stream; charset=utf-8",
+      "x-accel-buffering": "no"
+    }
+  },
+  "events": [
+    {
+      "type": "turn.open",
+      "seq": 0,
+      "t": "<ms>",
+      "turn_id": "00000000-0000-4000-8000-000000000002",
+      "conversation_id": "00000000-0000-4000-8000-000000000001",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "model_id": "gemini-2.5-pro",
+      "reading_depth": "auto",
+      "length_tier": "standard"
+    },
+    {
+      "type": "phase",
+      "seq": 1,
+      "t": "<ms>",
+      "phase": "plan",
+      "status": "start"
+    },
+    {
+      "type": "error",
+      "seq": 2,
+      "t": "<ms>",
+      "code": "CONVERSATION_INIT_FAILED",
+      "message": "Failed to initialize conversation.",
+      "retryable": true,
+      "phase": "plan"
+    },
+    {
+      "type": "turn.close",
+      "seq": 3,
+      "t": "<ms>",
+      "turn_id": "00000000-0000-4000-8000-000000000002",
+      "status": "error",
+      "ms": "<ms>"
+    }
+  ],
+  "side_effects": [
+    {
+      "fn": "openTurnBuffer",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "chartId": "482012f1-710e-4a25-994a-93821f5871aa",
+      "conversationId": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "fn": "beginTurnCapture",
+      "turnId": "00000000-0000-4000-8000-000000000002"
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "turn.open",
+      "seq": 0
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "turn.open",
+      "seq": 0
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 1
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "phase",
+      "seq": 1
+    },
+    {
+      "fn": "insertConversationWithId",
+      "id": "00000000-0000-4000-8000-000000000001",
+      "chartId": "482012f1-710e-4a25-994a-93821f5871aa",
+      "module": "consume"
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "error",
+      "seq": 2
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "error",
+      "seq": 2
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "turn.close",
+      "seq": 3
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000002",
+      "type": "turn.close",
+      "seq": 3
+    },
+    {
+      "fn": "endTurnCapture",
+      "turnId": "00000000-0000-4000-8000-000000000002"
+    }
+  ]
+}

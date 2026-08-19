@@ -1,0 +1,575 @@
+{
+  "scenario": "branch-existing-conversation",
+  "derived_from": "route-branch",
+  "http": {
+    "status": 200,
+    "headers": {
+      "cache-control": "no-cache, no-transform",
+      "connection": "keep-alive",
+      "content-type": "text/event-stream; charset=utf-8",
+      "x-accel-buffering": "no"
+    }
+  },
+  "events": [
+    {
+      "type": "turn.open",
+      "seq": 0,
+      "t": "<ms>",
+      "turn_id": "00000000-0000-4000-8000-000000000001",
+      "conversation_id": "11111111-2222-3333-4444-555555555555",
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "model_id": "gemini-2.5-pro",
+      "reading_depth": "auto",
+      "length_tier": "standard"
+    },
+    {
+      "type": "phase",
+      "seq": 1,
+      "t": "<ms>",
+      "phase": "plan",
+      "status": "start"
+    },
+    {
+      "type": "phase",
+      "seq": 2,
+      "t": "<ms>",
+      "phase": "plan",
+      "status": "end",
+      "ms": "<ms>"
+    },
+    {
+      "type": "grade",
+      "seq": 3,
+      "t": "<ms>",
+      "subject": "query_class",
+      "grade": "holistic",
+      "detail": "2 planned tools"
+    },
+    {
+      "type": "phase",
+      "seq": 4,
+      "t": "<ms>",
+      "phase": "retrieve",
+      "status": "start",
+      "pass_id": 1
+    },
+    {
+      "type": "activity.upsert",
+      "seq": 5,
+      "t": "<ms>",
+      "key": "retrieve:msr_sql",
+      "label_key": "Reading the whole chart",
+      "pass_id": 1,
+      "status": "running"
+    },
+    {
+      "type": "activity.upsert",
+      "seq": 6,
+      "t": "<ms>",
+      "key": "retrieve:chart_facts_query",
+      "label_key": "Retrieved — chart data",
+      "pass_id": 1,
+      "status": "running"
+    },
+    {
+      "type": "activity.upsert",
+      "seq": 7,
+      "t": "<ms>",
+      "key": "retrieve:msr_sql",
+      "label_key": "Reading the whole chart",
+      "pass_id": 1,
+      "status": "done",
+      "count": 3,
+      "ms": "<ms>"
+    },
+    {
+      "type": "activity.upsert",
+      "seq": 8,
+      "t": "<ms>",
+      "key": "retrieve:chart_facts_query",
+      "label_key": "Retrieved — chart data",
+      "pass_id": 1,
+      "status": "done",
+      "count": 2,
+      "ms": "<ms>"
+    },
+    {
+      "type": "phase",
+      "seq": 9,
+      "t": "<ms>",
+      "phase": "retrieve",
+      "status": "end",
+      "pass_id": 1,
+      "ms": "<ms>"
+    },
+    {
+      "type": "phase",
+      "seq": 10,
+      "t": "<ms>",
+      "phase": "synthesize",
+      "status": "start",
+      "pass_id": 1
+    },
+    {
+      "type": "block.open",
+      "seq": 11,
+      "t": "<ms>",
+      "block_id": "blk-1-1",
+      "pass_id": 1,
+      "role": "prose"
+    },
+    {
+      "type": "block.delta",
+      "seq": 12,
+      "t": "<ms>",
+      "block_id": "blk-1-1",
+      "delta": "Saturn occupies the tenth from the Ascendant with directional strength, and the current period lord aspects it from the fourth."
+    },
+    {
+      "type": "block.commit",
+      "seq": 13,
+      "t": "<ms>",
+      "block_id": "blk-1-1",
+      "text": "Saturn occupies the tenth from the Ascendant with directional strength, and the current period lord aspects it from the fourth."
+    },
+    {
+      "type": "phase",
+      "seq": 14,
+      "t": "<ms>",
+      "phase": "synthesize",
+      "status": "end",
+      "pass_id": 1,
+      "ms": "<ms>"
+    },
+    {
+      "type": "grade",
+      "seq": 15,
+      "t": "<ms>",
+      "subject": "citation_gate",
+      "grade": "PASS",
+      "detail": "harness pass"
+    },
+    {
+      "type": "phase",
+      "seq": 16,
+      "t": "<ms>",
+      "phase": "finalize",
+      "status": "start"
+    },
+    {
+      "type": "turn.commit",
+      "seq": 17,
+      "t": "<ms>",
+      "turn_id": "00000000-0000-4000-8000-000000000001",
+      "conversation_id": "11111111-2222-3333-4444-555555555555",
+      "message_id": "00000000-0000-4000-8000-000000000004",
+      "status": "ok",
+      "assistant_chars": 127
+    },
+    {
+      "type": "phase",
+      "seq": 18,
+      "t": "<ms>",
+      "phase": "finalize",
+      "status": "end"
+    },
+    {
+      "type": "turn.close",
+      "seq": 19,
+      "t": "<ms>",
+      "turn_id": "00000000-0000-4000-8000-000000000001",
+      "status": "ok",
+      "ms": "<ms>"
+    }
+  ],
+  "side_effects": [
+    {
+      "fn": "openTurnBuffer",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "chartId": "482012f1-710e-4a25-994a-93821f5871aa",
+      "conversationId": "11111111-2222-3333-4444-555555555555"
+    },
+    {
+      "fn": "beginTurnCapture",
+      "turnId": "00000000-0000-4000-8000-000000000001"
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "turn.open",
+      "seq": 0
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "turn.open",
+      "seq": 0
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "phase",
+      "seq": 1
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "phase",
+      "seq": 1
+    },
+    {
+      "fn": "callPipelinePlanner",
+      "queryText": "How does my career unfold?"
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "phase",
+      "seq": 2
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "phase",
+      "seq": 2
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "grade",
+      "seq": 3
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "grade",
+      "seq": 3
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "phase",
+      "seq": 4
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "phase",
+      "seq": 4
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "activity.upsert",
+      "seq": 5
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "activity.upsert",
+      "seq": 5
+    },
+    {
+      "fn": "executeWithCache",
+      "tool": "msr_sql"
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "activity.upsert",
+      "seq": 6
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "activity.upsert",
+      "seq": 6
+    },
+    {
+      "fn": "executeWithCache",
+      "tool": "chart_facts_query"
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "activity.upsert",
+      "seq": 7
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "activity.upsert",
+      "seq": 7
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "activity.upsert",
+      "seq": 8
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "activity.upsert",
+      "seq": 8
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "phase",
+      "seq": 9
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "phase",
+      "seq": 9
+    },
+    {
+      "fn": "buildConsultSystemContent",
+      "bundleSystemContent": "HARNESS-BUNDLE-ASSET",
+      "synthesisGuidance": "Answer as an acharya.",
+      "currentMahaAntar": "Ketu–Venus",
+      "nowContextDateShape": "string"
+    },
+    {
+      "fn": "getConversationSummaryForSplice",
+      "cid": "11111111-2222-3333-4444-555555555555"
+    },
+    {
+      "fn": "assembleSynthesisPrefix",
+      "precedingBlock": "HARNESS-SYSTEM-CONTENT",
+      "summaryText": null
+    },
+    {
+      "fn": "getAdapter",
+      "id": "google"
+    },
+    {
+      "fn": "adapter.tools",
+      "maxIterations": 8,
+      "toolLoopMode": true
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "phase",
+      "seq": 10
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "phase",
+      "seq": 10
+    },
+    {
+      "fn": "runAgenticLoop",
+      "maxIterations": 8
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "block.open",
+      "seq": 11
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "block.open",
+      "seq": 11
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "block.delta",
+      "seq": 12
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "block.delta",
+      "seq": 12
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "block.commit",
+      "seq": 13
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "block.commit",
+      "seq": 13
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "phase",
+      "seq": 14
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "phase",
+      "seq": 14
+    },
+    {
+      "fn": "validateCitationsForStream",
+      "text": "Saturn occupies the tenth from the Ascendant with directional strength, and the current period lord aspects it from the fourth.",
+      "contextJsonLength": 713,
+      "queryClass": "holistic",
+      "override": false
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "grade",
+      "seq": 15
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "grade",
+      "seq": 15
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "phase",
+      "seq": 16
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "phase",
+      "seq": 16
+    },
+    {
+      "fn": "createPendingStreamWriter",
+      "queryId": "00000000-0000-4000-8000-000000000002",
+      "conversationId": "11111111-2222-3333-4444-555555555555"
+    },
+    {
+      "fn": "getLastTurnStamp"
+    },
+    {
+      "fn": "computeTurnProvenanceStamp"
+    },
+    {
+      "fn": "writeContextAssemblyLog",
+      "entry": {
+        "query_id": "00000000-0000-4000-8000-000000000002",
+        "l1_tokens": 13,
+        "l2_5_signal_tokens": 12,
+        "l2_5_pattern_tokens": 0,
+        "l4_tokens": 0,
+        "vector_tokens": 0,
+        "cgm_tokens": 0,
+        "synthesis_model_id": "gemini-2.5-pro",
+        "model_max_context": 2000000,
+        "b3_compliant": true,
+        "citation_count": 2,
+        "verified_citations": 2
+      }
+    },
+    {
+      "fn": "writeConversationMessages",
+      "conversationId": "11111111-2222-3333-4444-555555555555",
+      "count": 1
+    },
+    {
+      "fn": "writeTurn",
+      "message": {
+        "id": "00000000-0000-4000-8000-000000000004",
+        "conversation_id": "11111111-2222-3333-4444-555555555555",
+        "role": "assistant",
+        "schema_version": 1,
+        "model_id": "gemini-2.5-pro",
+        "provider": "google",
+        "metadata": {
+          "custom": {
+            "model": "gemini-2.5-pro",
+            "queryId": "00000000-0000-4000-8000-000000000002",
+            "planning_model_id": "planner-primary",
+            "planning_latency_ms": "<ms>",
+            "disclosure_tier": "client",
+            "query_class": "holistic",
+            "stack": "gemini",
+            "style": "acharya",
+            "reading_depth": "auto",
+            "length_tier": "standard",
+            "pipeline": "pariprashna",
+            "conversationId": "11111111-2222-3333-4444-555555555555"
+          },
+          "provenance_stamp": {
+            "build_id": "build-current",
+            "priors_version": "v3",
+            "formula_versions": {
+              "salience_formula_ver": null
+            },
+            "ranking_config": {
+              "mode": "harness"
+            },
+            "now_context_date": "2026-08-19",
+            "computed_at": "<iso>"
+          }
+        }
+      },
+      "parts": [
+        {
+          "seq": 0,
+          "kind": "text",
+          "body": {
+            "text": "Saturn occupies the tenth from the Ascendant with directional strength, and the current period lord aspects it from the fourth.",
+            "block_id": "blk-1-1"
+          },
+          "model_visible": true
+        }
+      ]
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "turn.commit",
+      "seq": 17
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "turn.commit",
+      "seq": 17
+    },
+    {
+      "fn": "pendingStreamWriter.clear"
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "phase",
+      "seq": 18
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "phase",
+      "seq": 18
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "turn.close",
+      "seq": 19
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "turn.close",
+      "seq": 19
+    },
+    {
+      "fn": "endTurnCapture",
+      "turnId": "00000000-0000-4000-8000-000000000001"
+    }
+  ]
+}

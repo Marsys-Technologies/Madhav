@@ -42,7 +42,7 @@
     "marsys_flags|platform/src/app/api/admin/observatory/reconciliation/route.ts|OBSERVATORY_ENABLED",
     "marsys_flags|platform/src/app/api/chat/consult/route.ts|HISTORY_COMPRESSION_ENABLED",
     "marsys_flags|platform/src/app/api/chat/consult/route.ts|VALIDATOR_FAILURE_HALT",
-    "marsys_flags|platform/src/app/api/pariprashna/route.ts|CITATION_GATE_OVERRIDE",
+    "marsys_flags|platform/src/lib/pariprashna/pipeline/validation_stage.ts|CITATION_GATE_OVERRIDE",
     "marsys_flags|platform/src/app/clients/[id]/consult/[conversationId]/page.tsx|COST_VISIBILITY_FOR_USERS",
     "marsys_flags|platform/src/app/clients/[id]/consult/[conversationId]/page.tsx|PANEL_MODE_ENABLED",
     "marsys_flags|platform/src/app/clients/[id]/consult/page.tsx|COST_VISIBILITY_FOR_USERS",
@@ -395,8 +395,8 @@
       "severity": "error"
     },
     {
-      "file": "platform/src/app/api/pariprashna/route.ts",
-      "line": 808,
+      "file": "platform/src/lib/pariprashna/pipeline/validation_stage.ts",
+      "line": 46,
       "match": "CITATION_GATE_OVERRIDE",
       "message": "feature-flag-shaped identifier 'CITATION_GATE_OVERRIDE' lacks the MARSYS_FLAG_ prefix",
       "rule_id": "marsys_flags",
