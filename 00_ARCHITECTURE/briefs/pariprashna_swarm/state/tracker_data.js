@@ -71,12 +71,12 @@ window.TRACKER = {
   },
   "lanes": {
     "P0-B": {
-      "role_stage": "building",
+      "role_stage": "merged",
       "name": "environment (worktree farm, cloud-sql-proxy, template test-DB, migration allocator, flag registry)",
-      "worktree": null,
-      "branch": null,
-      "last_event_ts": "2026-08-19T14:19:59Z",
-      "verifier_verdict": null,
+      "worktree": "/private/tmp/pariprashna-p0-b-env",
+      "branch": "pariprashna/p0-b-env",
+      "last_event_ts": "2026-08-19T14:28:00Z",
+      "verifier_verdict": "conductor-reviewed, cherry-picked clean (13888e3d9)",
       "refuter_votes": []
     },
     "P0-C": {
@@ -107,12 +107,12 @@ window.TRACKER = {
       "refuter_votes": []
     },
     "P0-F": {
-      "role_stage": "building",
+      "role_stage": "admissible",
       "name": "DD-2 anthropic delist + DD-3 infra automation probes",
-      "worktree": null,
-      "branch": null,
-      "last_event_ts": "2026-08-19T14:19:59Z",
-      "verifier_verdict": null,
+      "worktree": "worktree-agent-ae31a8d8d360e94b8",
+      "branch": "pariprashna/p0-lane-f",
+      "last_event_ts": "2026-08-19T14:28:00Z",
+      "verifier_verdict": "DD-2 merged (2d759b00f), diff reviewed clean. DD-3: all 4 items IAM-permitted (owner role) but PARKED pending explicit human authorization -- PITR enable, scratch instance creation (billable), restore drill, and amjis_app credential rotation all carry real production/cost risk. Exact commands captured in P0-F agent report for when authorized.",
       "refuter_votes": []
     }
   },
@@ -127,5 +127,27 @@ window.TRACKER = {
         "every DD-3 command proven or explicitly parked"
       ]
     }
-  }
+  },
+  "dd3_pending_human_authorization": [
+    {
+      "item": "PITR enable on amjis-postgres",
+      "command": "gcloud sql instances patch amjis-postgres --project=madhav-astrology --enable-point-in-time-recovery --transaction-log-retention-days=7",
+      "risk": "state change + retention cost on real production DB"
+    },
+    {
+      "item": "Scratch Cloud SQL instance",
+      "command": "gcloud sql instances create <scratch-name> --project=madhav-astrology --database-version=POSTGRES_15 --tier=db-g1-small --region=asia-south1",
+      "risk": "new billable resource"
+    },
+    {
+      "item": "Restore drill",
+      "command": "gcloud sql instances clone amjis-postgres <clone-name> --point-in-time=<ts> (or backups restore onto scratch instance)",
+      "risk": "depends on scratch instance; touches restore mechanics"
+    },
+    {
+      "item": "amjis_app credential rotation",
+      "command": "gcloud sql users set-password amjis_app --instance=amjis-postgres --project=madhav-astrology --password=<NEW>",
+      "risk": "could break live serving app if amjis-db-password/amjis-pipeline-db-url Secret Manager secrets aren't synchronized in the same change"
+    }
+  ]
 };
