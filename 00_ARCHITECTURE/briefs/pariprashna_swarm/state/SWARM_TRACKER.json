@@ -1,10 +1,11 @@
 {
   "schema_version": "1.1",
   "session_id": "PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19",
-  "phase": "P0",
-  "phase_status": "STEP_0_COMPLETE_ENTERING_IGNITION",
-  "wave": "P0-IGNITION",
-  "heartbeat_ts": "2026-08-19T14:19:59Z",
+  "phase": "P2",
+  "phase_status": "P1_MERGED_AND_DEPLOYED_ENTERING_P2",
+  "wave": "P2-KICKOFF",
+  "heartbeat_ts": "2026-08-19T23:29:00Z",
+  "note_on_this_file": "This tracker JSON was only committed to main once (P0 ignition, PR #1349) and went stale through the rest of P0 and all of P1 -- lane-by-lane updates during those phases happened only in the conductor's local worktree state, never landed. This entry (P1 close) backfills phase/lane/deploy history from the authoritative narrative record, origin/campaign-coordination's 2026-08-19 entries, rather than replaying every intermediate state. Going forward this file should be updated and pushed at every phase boundary, not just accumulated locally.",
   "concurrency": {
     "n": 4,
     "cap": 10,
@@ -114,15 +115,64 @@
       "refuter_votes": []
     }
   },
+  "p1_lanes": {
+    "G1-A": { "name": "SafetyPolicyGate (suicide/health-crisis classification + reclassifyAfterPlan)", "role_stage": "merged", "verifier_verdict": "Merged after 2 hardening rounds triggered by native decision (critical/high gaps found pre-merge: type-enforced claim was actually just convention, fixed round 3 with a real compile-time exhaustiveness check outside any tests/ path; several detector claims overstated, corrected). Residuals explicitly gated on PARIPRASHNA_SAFETY_GATE_ENABLED ever flipping true, not on merge: HS-4 death-anniversary false positive; /api/chat/consult has only pre-dispatch stop, not full post-plan reclassifyAfterPlan wiring." },
+    "G1-B": { "name": "resolveSubjectConsent + chart_subject_consent tables", "role_stage": "merged", "verifier_verdict": "conductor-reviewed, cherry-picked; migration renamed 574->575 to resolve collision with G1-D, re-verified live against scratch Postgres." },
+    "G1-C": { "name": "5 new DB roles + 42 RLS policies (created not enabled) + arm-3 outbox", "role_stage": "merged", "verifier_verdict": "conductor-reviewed; migration renamed 576->577 to resolve collision with G1-A, NULL-hole CHECK constraint fix (IS NOT DISTINCT FROM) re-verified live post-renumber." },
+    "G1-D": { "name": "PARIPRASHNA_LIMITS_ENABLED spend ceilings + channel attribution (migration 574)", "role_stage": "merged", "verifier_verdict": "conductor-reviewed, cherry-picked clean." },
+    "G1-E": { "name": "durability / DR runbook", "role_stage": "merged", "verifier_verdict": "conductor-reviewed, cherry-picked clean." },
+    "G1-F": { "name": "model-plane hygiene / provider posture", "role_stage": "merged", "verifier_verdict": "conductor-reviewed, cherry-picked clean." },
+    "G1-G": { "name": "prompt-injection containment (delimit/entitlement_scan/plan_closure/tool_sequence)", "role_stage": "merged", "verifier_verdict": "P0-severity flag-off divergence bug found and fixed before merge: syncAccumulated originally sat outside the flag guard and anchored on pre-lint text, so the always-on lintReaderProse citation scrub silently started propagating into accumulatedText even with both new flags OFF -- a real production-behavior change with no flag flipped. Fixed with byte-identity proof against pre-lane behavior, re-verified by a second round after a scope-correction (found /api/chat/consult is still the un-gated default route, not retired as first assumed)." },
+    "G1-H": { "name": "PB-9 detector", "role_stage": "merged", "verifier_verdict": "conductor-reviewed, cherry-picked clean." },
+    "G1-I": { "name": "PARIPRASHNA_ASBUILT_BASELINE live-verification pass", "role_stage": "merged", "verifier_verdict": "Live-verified ground truth against production: PITR still disabled, migrations 576/577 inert, serving revisions confirmed. Corrected a wrong scope assumption in G1-G round 1 (/api/chat/consult is the un-gated default, not retired)." }
+  },
   "trains": [],
-  "deploys": [],
+  "deploys": [
+    {
+      "phase": "P0",
+      "pr": 1346,
+      "merge_commit": "45f0ddf56793a23bf5881701ee6c184f6868f20a",
+      "merged_at": "2026-08-19T14:19:13Z",
+      "deploy_verified": true,
+      "spot_check": "POST /api/pariprashna unauthenticated -> 401"
+    },
+    {
+      "phase": "P1",
+      "pr": 1356,
+      "title": "feat(pariprashna): P1 FOUNDATION -- safety gate, consent, roles/RLS, limits, injection containment",
+      "merge_commit": "d653236c2a56114c4dc366f960d68cbcf49a5d4e",
+      "merged_at": "2026-08-19T23:10:03Z",
+      "ci_note": "One CI failure (Earned-Signal Gate SS N.8 on classifier.ts:997 assess_health key, a false positive -- static CAPABILITY_CLASS_RULES lookup key, not a verdict field) resolved via justified earned_signal_allowlist.json entry, not a code change.",
+      "deploy_run": 32312726004,
+      "deploy_verified": true,
+      "revisions": {
+        "amjis-mcp": "amjis-mcp-00576-xhm",
+        "amjis-web": "amjis-web-01533-5n6"
+      },
+      "smoke": "PASS both services (mcp_end_to_end_smoke.sh, web boot/auth-guard/sidecar-dependency probes)",
+      "spot_check": "POST /api/pariprashna unauthenticated -> 401; GET /api/health -> {status:ok}; gcloud describe confirms 100% LATEST both services",
+      "migrations": ["574_ncd8_spend_ceilings_channel_attribution", "575_pariprashna_chart_subject_consent", "576_pariprashna_roles_rls_arm3", "577_pariprashna_safety_gate"],
+      "feature_flags_all_default_false": ["PARIPRASHNA_LIMITS_ENABLED", "SUBJECT_CONSENT_ENFORCEMENT", "PARIPRASHNA_ROLE_SEPARATION", "PARIPRASHNA_LEDGER_OUT_OF_PROCESS", "PARIPRASHNA_SAFETY_GATE_ENABLED", "PARIPRASHNA_INJECTION_CONTAINMENT"],
+      "coordination_ref": "origin/campaign-coordination @ 038f5fa32"
+    }
+  ],
   "gate_results": {
     "P0_gate": {
-      "status": "NOT_STARTED",
+      "status": "PASSED",
       "criteria": [
         "golden streams semantically identical through the decomposed route (deployed artifact)",
         "tracker live with a fresh heartbeat",
         "every DD-3 command proven or explicitly parked"
+      ]
+    },
+    "P1_gate": {
+      "status": "PASSED",
+      "tag": "pariprashna/p1-close",
+      "closed_at": "2026-08-19T23:30:00Z",
+      "held_back_not_dropped": [
+        "PITR-enable / scratch Cloud SQL / restore drill / amjis_app credential rotation -- held per native's explicit P1-scoping decision (\"skip infra\"), no new authorization requested",
+        "Pre-existing plaintext amjis_app DSN at platform/python-sidecar/tests/l5/test_mi_bhara_circularity_guard_w2.py:295 -- disclosed to native, not introduced this session, unrotated pending same authorization as above",
+        "G1-A: HS-4 death-anniversary false positive and /api/chat/consult missing full post-plan reclassifyAfterPlan wiring -- gated on PARIPRASHNA_SAFETY_GATE_ENABLED ever flipping true, not on this merge"
       ]
     }
   },
