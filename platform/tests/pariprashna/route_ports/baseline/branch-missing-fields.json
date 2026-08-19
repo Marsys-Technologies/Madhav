@@ -1,0 +1,23 @@
+{
+  "scenario": "branch-missing-fields",
+  "derived_from": "route-branch",
+  "http": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json"
+    }
+  },
+  "events": [
+    {
+      "non_stream_body": {
+        "error": {
+          "code": "DATA_INVALID_INPUT",
+          "message": "Invalid or missing input.",
+          "retry": false,
+          "detail": "chartId and messages are required"
+        }
+      }
+    }
+  ],
+  "side_effects": []
+}

@@ -1,0 +1,23 @@
+{
+  "scenario": "branch-flag-off",
+  "derived_from": "route-branch",
+  "http": {
+    "status": 404,
+    "headers": {
+      "content-type": "application/json"
+    }
+  },
+  "events": [
+    {
+      "non_stream_body": {
+        "error": {
+          "code": "DATA_NOT_FOUND",
+          "message": "The requested resource was not found.",
+          "retry": false,
+          "detail": "Paripraśna is not enabled."
+        }
+      }
+    }
+  ],
+  "side_effects": []
+}
