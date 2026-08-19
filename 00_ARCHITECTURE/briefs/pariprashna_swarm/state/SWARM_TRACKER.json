@@ -444,6 +444,17 @@
         "[LOW] separator-variant ids (underscore/dot/colon) and mid-token punctuation still leak with no cue word; docstring inaccuracy (claims 8-32 hex, regex is {8,64})"
       ],
       "full_suite": "990 passed, 61 skipped across src/lib/pariprashna and src/lib/pipelines, no files edited"
+    },
+    {
+      "source": "independent re-verifier (dispatched by conductor)",
+      "verdict": "NOT safe to merge as-is",
+      "P0_blocking": "reading_parts.ts:123 -- textBeforeScans captured BEFORE lintReaderProse runs, and syncAccumulated call sits OUTSIDE the feature-flag guard. Result: with BOTH new flags off, the citation-lint scrub now propagates into accumulatedText where it never did before -- a REAL PRODUCTION BEHAVIOR CHANGE TODAY with no flag flipped. Feeds detectTurnCitations->persisted citation parts, detectTurnPredictionCandidates->SAMIKSHA ledger, runValidationStage->B.11 citation_gate grade. Contradicts the flag-OFF-inert premise the whole campaign relies on for every lane.",
+      "P1": [
+        "3-way sentence split (CROSS_SENTENCE_WINDOW=2) delivers a COMPLETE foreign chart UUID with zero hits -- reproduced, undocumented",
+        "same class as before: >64-hex run near a cue word, and 33+-hex run with no cue word, both invisible (the fix moved the bound, didn't remove the defect class)"
+      ],
+      "P2": "rejectIdentityParams doesn't walk array elements ({filters:[{chart_id:FOREIGN}]} survives); depth>MAX_PARAM_DEPTH fails open (returns [] not reject); docstring 'any nesting depth' is false",
+      "confirmed_solid": "structural delimiting across all 3 doors incl. safety-sentinel-forgery neutralization; Zod plan closure; tool-sequence flag (not block, ruling-matched verbatim); G1-A equivalence + zero regression (667/667); full suite 8768/0 fail matches exactly"
     }
   ]
 }
