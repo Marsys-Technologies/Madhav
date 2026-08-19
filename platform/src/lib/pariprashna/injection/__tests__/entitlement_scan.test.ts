@@ -117,6 +117,20 @@ describe('adversarial — evasion attempts on the UUID rule', () => {
     expect(r.clean).toBe('')
   })
 
+  it('an EMPTY token is not authorized — the prefix test must not go vacuous', () => {
+    // `'anything'.startsWith('')` is true, so a bare `''` would otherwise be
+    // read as an abbreviation of every authorized id.
+    expect(findForeignChartReferences('', CONFIG)).toEqual([])
+    // …and the real check: the authorized set itself cannot be emptied into a
+    // blanket allow by a falsy entry.
+    const rules = buildEntitlementScanRules({ authorizedChartIds: ['', MINE] })
+    const r = scanMortalityPhrasing(`Chart ${THEIRS} differs.`, {
+      extraRules: rules,
+      mortalityRulesEnabled: false,
+    })
+    expect(r.clean).toBe('')
+  })
+
   it('a LONGER token that merely begins with the authorized id is NOT authorized', () => {
     const impostor = `${MINE.replace(/-/g, '')}ff`
     const found = findForeignChartReferences(`chart ${impostor} shows`, CONFIG)

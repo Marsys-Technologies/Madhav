@@ -150,6 +150,12 @@ function buildAuthorizedSet(config: EntitlementScanConfig): AuthorizedSet {
 /** True when `token` is (or abbreviates) an authorized chart id. */
 function isAuthorizedReference(token: string, authorized: AuthorizedSet): boolean {
   const c = canonical(token)
+  // An empty token would make the prefix test below vacuously TRUE for every
+  // authorized id (`'x'.startsWith('') === true`) and turn this function into
+  // "everything is authorized". The regexes cannot produce one, but this
+  // function is exported and the failure direction here is unsafe, so it is
+  // closed at the source rather than relied on from the caller.
+  if (!c) return false
   if (authorized.full.has(c)) return true
   // An abbreviation is a PREFIX of an authorized id. The reverse direction is
   // not accepted: a longer token that merely starts with an authorized id is a
