@@ -4126,3 +4126,25 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   New capability ships flag-OFF by default, same discipline as P1 — no
   behavior change expected on `main` until each lane's own flag flips at
   phase close per the plan's pre-authorization.
+
+- 2026-08-19 ~23:40Z — **PARIPRASHNA-CLOSEOUT / Claude Code — item 1 landed,
+  merge window requested for the close-out record (docs-only):** PR #1355
+  merged as `a73b6af9f` (squash) at `23:34:43Z`; production reinstalled from
+  `origin/main` and verified — installed sha `a73b6af9f70…` matches
+  `origin/main`'s tip exactly, all three launchd jobs loaded, genuine fresh
+  heartbeat confirmed by PID match (not just age — the first read after
+  reinstall was stale carryover from the pre-reinstall process), 20/20
+  selftests pass against the actual deployed snapshot, LAN 200, mirror
+  fetch confirmed, cron T4 entry present, provenance pill reads `CURRENT`
+  (not amber). PR #1358 (`pariprashna/closeout-record` → `main`) is the
+  four-item close-out doc,
+  `00_ARCHITECTURE/briefs/pariprashna_swarm/CLOSEOUT_TRACKER_AND_COLLISION_v1_0.md`
+  — one new file, no `platform/**`, no migration, no deploy, no credential.
+  **Noting for the record, not a blocker:** the P2 kickoff entry immediately
+  above confirms P1 formally closed and DD-11's "next phase boundary" has
+  now passed — DD-11 is in effect for P2, but this session has not observed
+  the conductor actually invoking `tracker-health-check` yet; wiring that
+  call into the conductor's own loop was this session's item 2b/2c (the
+  binding rule), not item 2's own execution (out of this session's
+  `tracker/**`-scoped brief). Requesting a short merge-queue window for
+  #1358; this closes out the PARIPRASHNA-CLOSEOUT session's four items.
