@@ -38,6 +38,16 @@ describe('F-50 graha-filtered remedy lead honesty', () => {
     expect(result.content.narration.lead).toMatch(/8.*chart-wide|rank.*8/i)
   })
 
+  it('does not present one domain-filtered row as the chart-wide #1 remedy target', async () => {
+    queryMock.mockImplementation(withResonances([SATURN_ROW]))
+    const result = await queryRemediesCapability.handler({ chart_id: CHART_ID, domain: 'career' }, undefined) as { content: { narration: { lead: string } }; is_error: boolean }
+
+    expect(result.is_error).toBe(false)
+    expect(result.content.narration.lead).not.toMatch(/#1 remedy-priority target/i)
+    expect(result.content.narration.lead).toMatch(/domain-filtered|career/i)
+    expect(result.content.narration.lead).toMatch(/8.*chart-wide|rank.*8/i)
+  })
+
   it('keeps chart-wide #1 framing for an unfiltered ranked result', async () => {
     queryMock.mockImplementation(withResonances([VENUS_ROW, SATURN_ROW]))
     const result = await queryRemediesCapability.handler({ chart_id: CHART_ID }, undefined) as { content: { narration: { lead: string } }; is_error: boolean }

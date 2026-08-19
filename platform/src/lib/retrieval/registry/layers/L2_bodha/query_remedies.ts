@@ -447,9 +447,16 @@ export const queryRemediesCapability: CapabilityDescriptor = {
       // ── U-a verdict-first lead ──────────────────────────────────────────────
       const topRow = orderedResRows[0]
       const secondaryGrahas = orderedResRows.slice(1, 4).map((r) => String(r['graha']))
+      const filteredScope = graha && domain
+        ? `graha-and-domain-filtered resonance result (graha '${graha}', domain '${domain}')`
+        : graha
+          ? `graha-filtered resonance result (graha '${graha}')`
+          : domain
+            ? `domain-filtered resonance result (domain '${domain}')`
+            : null
       const leadSentence = topRow
-        ? (graha
-            ? `${String(topRow['graha'])}'s remedy priority is ${String(topRow['remedy_priority_class'])}` +
+        ? (filteredScope
+            ? `${String(topRow['graha'])} leads this ${filteredScope}: priority class ${String(topRow['remedy_priority_class'])}` +
               (topRow['weakest_rank_in_chart'] != null
                 ? ` (rank ${String(topRow['weakest_rank_in_chart'])} of 9 chart-wide)` : '') +
               ` — resonance_score ${Number(topRow['resonance_score']).toFixed(3)}.`
