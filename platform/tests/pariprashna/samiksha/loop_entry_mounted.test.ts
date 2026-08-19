@@ -26,13 +26,19 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 
+import { readRouteSurface } from '../route_surface'
+
 const ROOT = path.resolve(__dirname, '../../..')
 const readSrc = (rel: string) => readFileSync(path.join(ROOT, rel), 'utf8')
 
-const PARIPRASHNA_ROUTE = 'src/app/api/pariprashna/route.ts'
-
 describe('PB-3.1 G1 — the prediction loop has a live entry point', () => {
-  const routeSrc = readSrc(PARIPRASHNA_ROUTE)
+  // P0-C / RF-1: the reading pipeline moved out of the 1,179-line route.ts into
+  // typed stage modules the shell composes. The guard's question is unchanged
+  // ("is the capture wired into the LIVE reading route?"); the surface it reads
+  // is now the shell plus every stage module the shell actually imports — see
+  // tests/pariprashna/route_surface.ts for why that keeps the detector honest
+  // rather than making it pass vacuously.
+  const routeSrc = readRouteSurface()
 
   it('the live Paripraśna reading route imports the SAMĪKṢĀ capture', () => {
     expect(routeSrc).toMatch(

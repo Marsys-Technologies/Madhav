@@ -34,6 +34,7 @@ import type { CanonicalMessage } from '@/lib/pariprashna/store/schema'
 import type { PariprashnaEvent } from '@/lib/pariprashna/protocol/events'
 import { loadBridgedCorpus, type BridgedFixture } from './c2_corpus_bridge'
 import { runReducerPath, runWriterPath } from './canonical_paths'
+import { readRouteSurface } from '../route_surface'
 
 const CORPUS: BridgedFixture[] = loadBridgedCorpus()
 
@@ -204,11 +205,11 @@ describe('kind-grouped ordering contract (route.ts is the authority)', () => {
   it('route.ts really does build parts grouped by kind — text, then citations, then predictions', () => {
     // Source-level guard so the drivers above cannot silently drift from the
     // production seam they claim to mirror (same technique as ring_buffer.test.ts).
-    const route = readFileSync(
-      join(__dirname, '..', '..', '..', 'src', 'app', 'api', 'pariprashna', 'route.ts'),
-      'utf8',
-    )
-    const textAt = route.indexOf('for (const b of committedBlocks)')
+    // P0-C / RF-1: the writeMessages seam moved into the pipeline's
+    // reading_parts/persistence stage modules — read the whole live route
+    // surface (tests/pariprashna/route_surface.ts), not just the shell.
+    const route = readRouteSurface()
+    const textAt = route.indexOf('for (const b of input.committedBlocks)')
     const citationAt = route.indexOf('citationPartFromDetection(')
     const predictionAt = route.indexOf('predictionCandidatePartFromDetection(')
     expect(textAt, 'route.ts must iterate committedBlocks for text parts').toBeGreaterThan(-1)
