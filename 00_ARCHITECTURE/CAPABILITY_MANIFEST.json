@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-08-19T13:56:23Z",
+  "generated_at": "2026-08-19T18:28:00Z",
   "generator_version": "1.0",
-  "entry_count": 127,
-  "fingerprint": "632e459ff2fc9bf54596df6c8e0b803c90b92fb55cdf5ea9a2807b9d690a824f",
+  "entry_count": 128,
+  "fingerprint": "8c1ab94c8acd2746eda9233dc37fac025d6a0fb3474ea023d6b23779ae10c79c",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1634,8 +1634,10 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "24239e8e3fb463245220139ace98a0b7168d3497bda3156945fb6dc40af98366",
-      "native_id": "project"
+      "fingerprint": "d27c741f0c70e6cda2edc7677ed29ca692e1666cf6cf078ef9013c9f983e3a4c",
+      "native_id": "project",
+      "last_verified_session": "PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z",
+      "last_verified_on": "2026-08-19"
     },
     {
       "canonical_id": "RETRIEVAL_TOOL_prashna_status",
@@ -1805,6 +1807,21 @@
       "interface_version": "1.0",
       "fingerprint": "7630ec88bd1c67dc7674705145e0e9bba254b38f472549b066713431e0fe1d69",
       "native_id": "project"
+    },
+    {
+      "canonical_id": "PARISESA_V4_CLOSURE_FACTORY_PLAN",
+      "path": "00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT-FOR-EXECUTION",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "24cbeea92c8617697bb10b8f57dcd281056e7c92d4f7ecc9550352410ddcf344",
+      "native_id": "project",
+      "adopted_by_session": "PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z"
     }
   ]
 }

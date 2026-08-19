@@ -102,3 +102,9 @@ See `FILE_REGISTRY_v1_13.md §9.2–§9.15` — unchanged.
 | `00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_PHASED_SWARM_IMPLEMENTATION_PLAN_v1_0.md` | 1.0 | PROPOSAL | Execution architecture (P0–P5 phase script) for building the ratified v1.0 Paripraśna architecture; authorizes no code by itself. |
 | `00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` | 1.1 | CURRENT-FOR-EXECUTION | Adversarial review of the v1.0 swarm plan — RF fixes, DD-1..DD-11, train protocol, scaling policy, tracker spec, P0 phase definition. Binds execution per the v2.0 kickoff prompt's mandatory-reading order. |
 | `00_ARCHITECTURE/briefs/pariprashna_swarm/RESUME_BRIEFS_BOTH_CAMPAIGNS.md` | 1.0 | READY | Resume-brief pair for the two concurrent autonomous campaigns (Paripraśna + Pariśeṣa/Codex) to hand to a fresh session of either. |
+
+## §9.21 — PARIŚEṢA V4 Closure Factory governance registration
+
+| Path | Version | Status | Role |
+|---|---|---|---|
+| `00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md` | 1.0 | CURRENT-FOR-EXECUTION | Owner-authorized Closure Factory plan adopted by the governance bridge only; its Phase D0 §28 is the Claude Code entrypoint after the superseding safe-handoff receipt. |

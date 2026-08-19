@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.63
+version: 6.64
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,18 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.64 (2026-08-19, PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE): Governance-only
+    Codex-to-Claude Code handoff recorded. The owner-authorized bridge adopted
+    00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md
+    byte-identically from the preserved staged artifact (SHA-256
+    24cbeea92c8617697bb10b8f57dcd281056e7c92d4f7ecc9550352410ddcf344),
+    appended CCD-008, recorded the blocked Codex drain and preservation manifest, and
+    will release its exact coordination lease after the reviewed governance commit is
+    merged. This is a governance-aside close: the active PARIPRASHNA P0 pointers and
+    work remain unchanged. No Phase 0, finding remediation, application code, database,
+    migration, deployment, scheduler, infrastructure, credential, or customer action
+    occurred. The next PARISESA action is only the Closure Factory plan section 28
+    entrypoint after the superseding safe-handoff receipt.
   - v6.63 (2026-08-19, PARIPRASHNA-CONDUCTOR-P0-FRESH, session Claude Code/VS Code):
     **Paripraśna conductor fresh-start, Step 0 (retire prior attempt).** The prior Paripraśna
     conductor session (dispatched under `KICKOFF_PROMPT_SWARM_CONDUCTOR.md` v1.0) made one
