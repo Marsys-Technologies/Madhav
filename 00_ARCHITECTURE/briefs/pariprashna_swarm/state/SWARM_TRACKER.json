@@ -341,5 +341,28 @@
       "action_taken": "None -- reported to the native directly. Not edited, not redacted, not rotated (rotation authority explicitly withheld by the native for a separate decision).",
       "recommendation": "Rotate amjis_app's password (this finding strengthens the case for doing so soon, not just eventually) and consider whether git history scrubbing is warranted given how long this may have been exposed."
     }
+  ],
+  "g1_a_review_findings": [
+    {
+      "source": "architecture/DB-integrity adversary",
+      "verdict": "NOT safe to merge as-is",
+      "blocking": [
+        "5b (new finding): reclassifyAfterPlan (post-plan escalation) never opens a review row (no finalize()/openReview call), but route.ts emits SEAL_PENDING_ACKNOWLEDGMENT telling the user 'the review has been opened' -- false statement + zero review record + no FK to catch it (review_id has no FK constraint at all)",
+        "2: interstitial_is_native_self_chk uses bare '=' so subject_kind IS NULL passes it (three-valued logic hole); NULL is TODAY'S DEFAULT since SUBJECT_CONSENT_ENFORCEMENT ships OFF -- fix: IS NOT DISTINCT FROM",
+        "4: the HS-3 review lifecycle (recordAdversarialPass/signOff/withhold/persistReviewTransition/loadReview/isReleasable) has ZERO production callers -- no cron, no admin UI, nothing ever advances a review out of seal_pending. Contradicts the 'real state machine' framing in the lane's own commit message."
+      ],
+      "non_blocking": [
+        "1a: HS-4-never-gets-interstitial rule is TypeScript-only, no DB CHECK backing it (commit message overclaims 'both facts are DB CHECK constraints')",
+        "1: 'released requires two independent passes' is app-only, not DB-enforced (pariprashna_safety_reviews excluded from append-only triggers)",
+        "TRUNCATE bypasses row-level append-only triggers (needs a FOR EACH STATEMENT trigger)",
+        "reviewer_context_id has no non-empty check, unlike the sibling table's pattern -- blank-context passes could double-count as independent passes",
+        "pariprashna_safety_notifications.decision_id not FK'd, written even when appendSafetyDecision failed"
+      ],
+      "confirmed_safe": [
+        "concurrency/CAS logic (real 2-session test)",
+        "no-reading-composed-at-all claim (traced end to end, genuinely more conservative than spec)",
+        "audit-row completeness for HS-2/HS-5 (real actionable content, real hash-chain verifier)"
+      ]
+    }
   ]
 }
