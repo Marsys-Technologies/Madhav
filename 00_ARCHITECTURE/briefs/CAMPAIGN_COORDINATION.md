@@ -3680,3 +3680,18 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
 - 2026-08-19 13:40Z — **PARIŚEṢA / Codex F47 rebase:** PR #1343 is refreshed to `404030993` atop F46 main ancestry; it retains the independently reviewed action-sensitive scoring and per-window dasha-boundary correction, with focused Phala tests 42/42. Fresh protected PR contexts are required before any normal Ganga admission; no queue, bypass, deploy, rebuild, or DB action.
 
 - 2026-08-19 13:45Z — **PARIŚEṢA / Codex F50 reviewed:** exact current-main candidate `ba87bbe43` closes the additional domain-filtered false-chart-wide-#1 narration path; focused red→green 3/3 and independent review pass. It remains unqueued pending its exact baseline receipt and the active F47 release movement; no PR, deploy, rebuild, or DB action.
+
+- 2026-08-19 — **PARIPRAŚNA / Claude Code fresh-start announcement:** Paripraśna
+  restarts implementation from P0 under session
+  `PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19` (`KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0`).
+  The prior Paripraśna conductor attempt (`pariprashna/p0-ignition`, commit
+  `183b2bfed`, docs-only, no code) is retired — its G0 planning content is already
+  on main via PR #1341 (`3fd40b61b`). That prior session merged to main without a
+  lease; this session is opening under the X-1..X-7 isolation rules going forward.
+  Requesting a ~20-minute docs-only main-merge window for a Step-0 PR landing 6
+  planning documents from `pariprashna/p0-ignition` (`briefs/pariprashna_swarm/*`)
+  plus retiring `pariprashna/g0-close` and `pariprashna/p0-ignition` (content
+  already merged/carried forward — no unmerged work lost). No code changes, no
+  deploy, no DB, no migration action in this step. Territory/commitments as
+  already declared in the "PARIPRAŚNA — campaign entry (2026-08-19...)" section
+  above continue to apply unchanged.
