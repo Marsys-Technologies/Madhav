@@ -3739,3 +3739,20 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
 - 2026-08-19 14:45Z — **PARIŚEṢA / Codex F42 Ganga queue:** PR #1348 entered normal merge queue position 2 behind F50 #1347. It will be revalidated against the post-F50 main base and then must pass its own synthetic merge-group contexts. No composition, bypass, deploy, rebuild, or DB action.
 
 - 2026-08-19 14:51Z — **PARIŚEṢA / Codex F50 merged, control caveat recorded:** PR #1347 landed through the normal protected queue as `877b75d12`. The next observed synthetic SHA `ab83d4fc` is demonstrably F42 #1348 (parent `877b75d12`), not F50; therefore F50 is NOT credited with a fresh F50 merge-group receipt. Post-merge main CI, affected Web deployment, and read-only service proof remain required before any closure claim. No bypass, rebuild, or DB action.
+
+- 2026-08-19 15:23Z — **PARIPRAŚNA / Claude Code P0 merge request:** PR #1349
+  (`pariprashna/p0` → `main`, rebased onto `ab83d4fc`) opened — P0 ignition:
+  RF-1 ports refactor of `platform/src/app/api/pariprashna/route.ts` into 9
+  typed-stage modules + thin shell (1 independent verifier + 3 adversaries
+  reviewed, all "safe to merge"; 2 real governance-gate coverage gaps found
+  and fixed pre-merge), P0-B environment scaffolding, P0-E design-plan
+  correction, P0-F DD-2 anthropic delist. Touches ONLY
+  `platform/src/app/api/pariprashna/**`, `platform/src/lib/pariprashna/**`,
+  `platform/tests/pariprashna/**`, two model-picker files (DD-2), and
+  `00_ARCHITECTURE/briefs/pariprashna_swarm/**` — no overlap with any
+  PARIŚEṢA-touched file. Once merged, this repo's existing deploy pipeline
+  will stage the new web revision at `--no-traffic`, smoke-test it, and only
+  promote `if: success()` — no manual traffic-shift action planned beyond
+  observing that automatic gate. Requesting the same ~20-30 min merge-queue
+  window; no DD-3 infra action, no manual `gcloud run services
+  update-traffic` call, no migration in this PR.
