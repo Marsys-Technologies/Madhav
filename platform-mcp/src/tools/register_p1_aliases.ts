@@ -120,6 +120,11 @@ async function callPlatformPrim(
   return res.json()
 }
 
+function sidecarFailure(method: 'GET' | 'POST', path: string, status: number, body: string): Error {
+  console.error(`[alias] sidecar ${method} failure (server-only): path=${path} status=${status} body=${body.slice(0, 200)}`)
+  return new Error('[alias] sidecar service unavailable')
+}
+
 async function callSidecarPath(path: string, body: Record<string, unknown>): Promise<unknown> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (SIDECAR_API_KEY) headers['X-API-Key'] = SIDECAR_API_KEY
@@ -129,7 +134,7 @@ async function callSidecarPath(path: string, body: Record<string, unknown>): Pro
   })
   if (!res.ok) {
     const txt = await res.text().catch(() => '')
-    throw new Error(`[alias] sidecar ${path} failed (${res.status}): ${txt.slice(0, 200)}`)
+    throw sidecarFailure('POST', path, res.status, txt)
   }
   return res.json()
 }
@@ -151,7 +156,7 @@ async function callSidecarGet(path: string): Promise<unknown> {
   })
   if (!res.ok) {
     const txt = await res.text().catch(() => '')
-    throw new Error(`[alias] sidecar GET ${path} failed (${res.status}): ${txt.slice(0, 200)}`)
+    throw sidecarFailure('GET', path, res.status, txt)
   }
   return res.json()
 }
