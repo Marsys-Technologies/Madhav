@@ -1,17 +1,19 @@
 ---
 artifact: PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md
 canonical_id: PARIPRASHNA_TARGET_ARCHITECTURE
-version: 0.10
-status: DRAFT — LIVING · ⚠ SUPERSEDED-IN-PART for MCP/retrieval/data-plane (see banner)
+version: 0.11
+status: SUPERSEDED — superseded-by-decomposition 2026-08-19 (G0 close); frozen forensic/history record; never to be renamed
 verified_against_tree: >
-  2026-07-19 for PG-1/PG-2 corrections. STALE for MCP/retrieval/data-plane as of
-  2026-07-27: the Retrieval Plane Elevation (W0–W6) + Residual Closure (RC-01–17)
-  campaigns, then a further arc (SARVA-SIDDHI → Elevation v2.1 → SATYA-ŚEṢA →
-  PŪRṆA-VIRĀMA → SHODHANA → SAMĀPANA → PARIŚODHANA), landed and deployed after
-  these registers froze. Several `[CORRECTED PG-1]` verdicts are now stale in the
-  OPPOSITE direction (say "unbuilt" of shipped things). Live MCP surface 79→88
-  /health (~111 tools/list). RG-1 (retrieval-grounding audit) re-baselines to
-  v0.11. Do not implement MCP/retrieval/data-plane from current registers.
+  2026-08-18 (v0.11 re-baseline): full as-built census against git HEAD
+  (dfbdfe620), the PB campaign close corpus (REPORT_PB-1/2/3,
+  PB_CAMPAIGN_CLOSE_v1_0, PURNATA_CLOSE_REPORT_v1_0 §9), and a LIVE MCP census
+  (mcp_server_info: 125 tools served, catalog-1+t152+r653c2a1a98c8). The
+  2026-07-27 SUPERSEDED-IN-PART warning is DISCHARGED: its predicted staleness
+  is corrected in place throughout, marked [GROUNDED 2026-08-18]; §16.9 is the
+  as-built census of record. Prior standing retained for provenance:
+  2026-07-19 for PG-1/PG-2 corrections; then stale for MCP/retrieval/data-plane
+  as of 2026-07-27 after the Retrieval Plane Elevation (W0–W6) + Residual
+  Closure campaigns and the ŚUDDHA-VĀCA→PŪRṆATĀ arc landed post-freeze.
 authored_by: Claude (Cowork) + Fable 5 sub-agents, in consultation with the native
 opened: 2026-07-19
 supersedes: none (new artifact)
@@ -35,7 +37,62 @@ governing_principle: >
 
 # Paripraśna — Target Architecture (Master Document)
 
-> ## ⚠ SUPERSEDED-IN-PART — 2026-07-27 (MCP / retrieval / data plane)
+> ## ✓ SUPERSEDED BY DECOMPOSITION — 2026-08-19 (G0 close complete)
+>
+> The native ruled (NCD-2, 2026-08-18) that this document decomposes into a
+> five-artifact set. The successor set is AUTHORED, red-teamed
+> (`RED_TEAM_G0_v1_0.md`, PASS-WITH-FIXES), registered, and CURRENT:
+> **`PARIPRASHNA_ARCHITECTURE_v1_0.md`** (normative, status CURRENT),
+> **`PARIPRASHNA_ASBUILT_BASELINE_v1_0.md`**, **`PARIPRASHNA_DECISION_REGISTER_v1_0.md`**,
+> **`PARIPRASHNA_VERIFICATION_MATRIX_v1_0.md`** — all in `00_ARCHITECTURE/` —
+> plus the v0.12 package under `briefs/pariprashna_v012/`.
+> Superseded at G0 close 2026-08-19, session PB-3-Bot. This file is the frozen
+> forensic/history record — retained in place, never renamed (30+ inbound
+> referrers inventoried 2026-08-18, including production code comments).
+
+> ## ✦ v0.11 AS-BUILT RE-BASELINE + ELEVATION — 2026-08-18
+>
+> **The largest fact about this document changed between v0.10 and v0.11: the
+> conversation layer it designs was BUILT.** The PB campaign (PB-1 DHĀRĀ →
+> PB-2 SMṚTI → PB-3 SAMĪKṢĀ → PB-3.1), executed inside the
+> SAMĀPTI/NIḤŚEṢA/PŪRṆATĀ arc, shipped the Paripraśna surface to production —
+> the typed SSE protocol, the three-region turn, the canonical `message_parts`
+> store, durable summaries, ring-buffer resume, the server-side register-leak
+> lint, and the full prediction lifecycle — behind `PARIPRASHNA_ENABLED`
+> (default-off in code, **ON in production** via Cloud Run env since
+> `amjis-web-01218-4ng`). On 2026-08-01, C4-LOOP-LIVE-PROOF drove a real
+> reading end-to-end against production with all six criteria live, observed
+> mid-proof by an uncoordinated real user (`PURNATA_CLOSE_REPORT_v1_0.md` §9).
+> **T-9 is resolved forward: served readings now exist.**
+>
+> What v0.11 does, per D-18/§21:
+> 1. **Grounds** every stale current-state claim in place, marked
+>    `[GROUNDED 2026-08-18]` — the RG-1 re-baseline the 07-27 banner called
+>    for. §16.9 is the new append-only as-built census; the honest **fidelity
+>    debt register** (what shipped thinner than designed) lives there too.
+> 2. **Moves resolved-by-events forks out of §2** (OT-2, OT-7, OT-8, OT-10,
+>    OT-11, OT-12 — each resolved by a governed campaign, cited) into §1.2.
+> 3. **Elevates** (marked `[ELEVATION F5 v0.11]`): A-37…A-48 in §1.1 and the
+>    §19.5 forward sequence — the beyond-acharya bar applied to what now
+>    exists: live block fidelity, the remembering wave, the window-opening
+>    ask, voice enforcement, honest-depth serving, pre-cutover hardening.
+> 4. **Leaves genuinely-open forks open**, with sharpened leans marked
+>    `[PROPOSED v0.11]` — the native rules; this pass recommends.
+>
+> **What has NOT happened, stated plainly:** PB-4 PŪRṆATĀ (the cutover —
+> default flip, consult/consume retirement, flag deletion) has never run;
+> AC-15 (the native's week-of-use gate) is therefore unreached; NO-LEAKAGE
+> arm-1 (DB roles) remains 0% built; the conversational-calibration sink is
+> ruled (DVA 55/79) but unbuilt; and the live wire renders every block as a
+> paragraph — the acharya-grade typography (verse, table, gap ribbon,
+> prediction card) is reachable only through fixtures. §16.9 and §19.5 carry
+> the full list with owners.
+
+> ## ⚠ SUPERSEDED-IN-PART — 2026-07-27 (MCP / retrieval / data plane) — **DISCHARGED by v0.11 (2026-08-18)**
+>
+> *This banner is retained verbatim as provenance. Every row below has been
+> resolved in place; the "do not implement" injunction is lifted — §16.9 is
+> the census that replaces it.*
 >
 > These registers were **inputs** to a build campaign that then shipped much of
 > the target state and did not update them. **Several `[CORRECTED PG-1]`
@@ -158,6 +215,12 @@ with the driving finding id; new forensic defects are appended in §16.7; the au
 report is `PARIPRASHNA_GROUNDING_AUDIT_REPORT_v1_0.md` and the current-state system
 description is `RETRIEVAL_SYSTEM_TRUTH_v1_0.md`).
 
+**Re-verified as of: 2026-08-18** (v0.11 re-baseline — full as-built sweep
+against git HEAD `dfbdfe620`, the PB campaign close corpus, and a live MCP
+census; corrections marked `[GROUNDED 2026-08-18]`; census of record §16.9.
+The DB-level items — role grants, PITR — were NOT re-probed live this pass
+and carry their last-verified dates explicitly.)
+
 ### §0.6 Standing relative to other governance artifacts
 
 This document does not override `CLAUDE.md`, `PROJECT_ARCHITECTURE_v2_2.md`,
@@ -203,44 +266,95 @@ Decisions ruled by the native. Each is binding until explicitly revisited.
 These are not native rulings but design conclusions carried forward as the
 working architecture. They are open to challenge but are the current baseline.
 
+> **[GROUNDED 2026-08-18 — v0.11]** The PB campaign built most of this table.
+> Rows carry an as-built tag where the state changed: **BUILT** (shipped as
+> designed, cite), **BUILT-Δ** (shipped with a named divergence — ruled or
+> debt, see §16.9), **BUILT-UNWIRED** (the module exists, nothing calls it),
+> **OPEN** (still unbuilt). Untagged rows are design-only and unaffected.
+> A-37…A-48 at the end of this table are the `[ELEVATION F5 v0.11]` additions.
+
 | # | Conclusion | Section |
 |---|---|---|
 | A-01 | ~~pnpm monorepo with `@marsys/contract`; the hand-mirrored envelope is deleted.~~ **DEMOTED by D-17 (2026-07-19).** The mirror was already deleted and codegen'd before this document was written; the monorepo's entire justification was obsolete. Now: **extend the existing shim generator** toward full coverage (strangler, per the mandate the repo already adopted); wire `codegen:check` into CI (currently unwired — drift undetected). Monorepo is optional convenience, P5' or never. | §8.5 |
 | A-21 | **Client-side block segmentation** with a stable-prefix parser; one markdown engine in the system. Server-side segmentation runs once post-stream, for persistence only. | §12.4 |
-| A-22 | **The register lint is defanged**: rewrite (id-shaped tokens only) / redact-with-flag / telemetry. **Never fail-the-turn.** The primary defenses are clean evidence context and the structured citation channel. | §13.5 |
+| A-22 | **The register lint is defanged**: rewrite (id-shaped tokens only) / redact-with-flag / telemetry. **Never fail-the-turn.** The primary defenses are clean evidence context and the structured citation channel. **[GROUNDED 2026-08-18 — BUILT as specified]** REWRITE / REDACT+FLAG / TELEMETRY verdicts, never fail-the-turn; internal failure degrades to pass-through + flag. | §13.5 |
 | A-23 | **Sentinel failure handling specified**: 64-byte / 400 ms hold-back with flush-as-plain-text, tolerant grammar with normalization logging, per-model hallucination counters feeding tier review. | §12.9.1 |
-| A-24 | **Transport resilience**: `Last-Event-ID` replay-from-seq over a ring buffer, snapshot fallback with disclosure, reconnect on `visibilitychange`, half-committed turns marked incomplete and excluded from prediction detection. | §12.9.2 |
+| A-24 | **Transport resilience**: `Last-Event-ID` replay-from-seq over a ring buffer, snapshot fallback with disclosure, reconnect on `visibilitychange`, half-committed turns marked incomplete and excluded from prediction detection. **[GROUNDED 2026-08-18 — BUILT]** Redis-primary ring buffer (500 events, TTL 600s/180s) with verbatim seq-preserving replay, `snapshot.apply` + disclosure flag on eviction, 8s-visibility-stall reconnect, 60s-grace interrupted finalization, hollow-caret reconnect UX. Disclosed Δ: the resume tail is 400ms poll-based (no pub/sub), and a snapshot resume degrades citation grades to catalog by design. | §12.9.2 |
 | A-25 | **Failure UX is a designed surface**, adopting the existing dead `classify-error.ts` rather than writing a new classifier. | §12.10 |
 | A-26 | **Mobile is first-class**: tap-first citations, bottom sheets, `visualViewport` handling, touch scroll-break, mobile fixtures in the harness. | §12.11 |
 | A-27 | **Accessibility is preserved and extended**, not added — the current `aria-live`-while-streaming pattern is correct and must survive the renderer rebuild. axe-core in the harness. | §12.12 |
 | A-28 | **Cross-conversation, per-chart memory**, with `prior_reading` as its own citation kind that can never satisfy an acharya-floor requirement. | §11.5 |
-| A-29 | **The instrument can ask**: clarification becomes a third planner outcome, triggered by scope-tuple confidence; drift and unresolved-window prompts. | §6.6 |
-| A-30 | **Calibration is gated on minimum-n, pooled across charts by default, reported as intervals**, behind an explicit collect-only phase. | §14.6 |
-| A-31 | **Compliance decay is designed for**: batch resolution, LEL-drafted outcomes, non-shameful lapsing, coverage reported alongside every score. | §14.7 |
+| A-29 | **The instrument can ask**: clarification becomes a third planner outcome, triggered by scope-tuple confidence; drift and unresolved-window prompts. **[GROUNDED 2026-08-18 — BUILT-Δ]** Clarification is LIVE: the planner's `clarification_needed` streams the question as a committed prose block and the turn finishes clean — no more bare 422. Drift is LIVE as the reader-facing `flag{chart_rebuilt}`. **The unresolved-window opening — the highest-leverage of the three — remains OPEN**, and its precondition now exists (a live ledger with queryable `window_closed` rows). Elevated to A-42. | §6.6 |
+| A-30 | **Calibration is gated on minimum-n, pooled across charts by default, reported as intervals**, behind an explicit collect-only phase. **[GROUNDED 2026-08-18 — honored]** The collect-only discipline held under pressure: PB-3's L-5 calibration write was PARKED rather than forced against a mismatched schema, then RULED (DVA 55: new `mimamsa_conversational_calibration` table; DVA 79: exact schema, COLLECT-ONLY confirmed, leak guard required) and remains deliberately unbuilt. Brier is computed and stored on the ledger row at resolution; nothing touches serving. | §14.6 |
+| A-31 | **Compliance decay is designed for**: batch resolution, LEL-drafted outcomes, non-shameful lapsing, coverage reported alongside every score. **[GROUNDED 2026-08-18 — BUILT-Δ]** Batch resolution shipped first-class (keyboard H/D/P/U roving-tabindex queue, one submit); coverage stats ship with the neutral W-2 framing (resolved and unverifiable both "attended to", honest-null before any close); the badge is gold-dim, never red. LEL-drafted outcomes remain OPEN. | §14.7 |
 | A-32 | **Disagreement is captured** as first-class rows; the engine re-retrieves rather than re-words, and never folds when the data supports it. | §14.8 |
 | A-33 | **Sycophancy-drift defenses**: synthesis stateless w.r.t. user reactions, identical-question diffing, optimism-bias tracking. | §14.9 |
 | A-34 | **Security, cost governance, durability**: injection containment, a middleware layer with rate limits and blocking spend caps, and a verified backup posture for the two irreplaceable tables. | §14A |
-| A-35 | **The `audience_tier` residue is excised**, including the load-bearing prompt-template lookup that today produces different prose per tier. | §13.7 |
+| A-35 | **The `audience_tier` residue is excised**, including the load-bearing prompt-template lookup that today produces different prose per tier. **[GROUNDED 2026-08-18 — substantially RESOLVED]** The load-bearing sites are gone (live-tree grep at HEAD 2026-08-18 — these files sit outside the PB close corpus, so cite the tree, not the reports): prompt-template keying excised (`lib/prompts/index.ts` header — "Templates are keyed by (query_class, strategy). `audience_tier` was excised"), the consult-route stamp removed (C-2 tier_excision / DG1 ruling, comment at `consult/route.ts:512`), no tier forwarded to MCP lookups. Residue is now type/comment-level across ~12 files plus the two JSON-schema `required` fields — cleanup, not a live D-15 violation. F-25g downgraded accordingly (§16.9). | §13.7 |
 | A-36 | **Emotional register is a design input**: pacing, calibrated framing, calm gaps, attributive remedy language. | §13.8, §13.9 |
 | A-02 | All 45 tool aliases are deleted; canonical naming is `layer_noun_verb`. `tool_name_bridge.ts` survives only for replaying persisted conversations. | §8.2 |
-| A-03 | Three registry projections: MCP-full, MCP-compact (~25–35 umbrellas + `marsys_drill`), Chat (planner-filtered per turn). **[CORRECTED PG-1 — `PG1-R1-0001`/`-0002`/`-0003`, `PG1-R1-0005`]** Confirmed UNBUILT (server registers all tools unconditionally; `marsys_drill` in doc prose only). Sizing baseline corrected: the "one registry" is **119** `marsys://tool/*` URIs, served as **139** MCP tool names (alias layer), documented internally as a stale **120**, and audited at BIND against **113** — which is `CAPABILITY_MANIFEST.json`, a governance-artifact catalog, **not** an MCP registry (category error). The MCP-compact umbrella count must derive from 119, never 113/120. | §8.3 |
+| A-03 | Three registry projections: MCP-full, MCP-compact (~25–35 umbrellas + `marsys_drill`), Chat (planner-filtered per turn). **[CORRECTED PG-1 — `PG1-R1-0001`/`-0002`/`-0003`, `PG1-R1-0005`]** Confirmed UNBUILT (server registers all tools unconditionally; `marsys_drill` in doc prose only). Sizing baseline corrected: the "one registry" is **119** `marsys://tool/*` URIs, served as **139** MCP tool names (alias layer), documented internally as a stale **120**, and audited at BIND against **113** — which is `CAPABILITY_MANIFEST.json`, a governance-artifact catalog, **not** an MCP registry (category error). The MCP-compact umbrella count must derive from 119, never 113/120. **[GROUNDED 2026-08-18 — BUILT-Δ]** Generated projections shipped as **`full` / `compact` / `consult` surface profiles** (`platform-mcp/src/generated/mcp_surface_profiles.generated.ts`, single generator + CI parity gate) — profile-scoped OAuth selects the surface; `marsys_drill` was NOT the shipped mechanism. Live census 2026-08-18: **125 tools served** on the full profile, `catalog_version = catalog-1+t152+r653c2a1a98c8` (`mcp_server_info` now reports the live registry count, retiring the stale-census defect class of F-25i). | §8.3 |
 | A-04 | A `mutation: true` capability class is introduced; sidecar-served tools are pulled into the registry. | §8.4 |
 | A-05 | `density_contract` becomes **mandatory** on every `CapabilityDescriptor`. | §8.6 |
-| A-06 | One planner **pipeline**, not three planners: scope → route → constrained LLM synthesis → vidhi validator emitting a `PlanReceipt`. CR-28 closes with one intent classifier. **[CORRECTED PG-1 — `PG1-R3-0001`/`-0005`/`-0006`]** Reality is **worse than "three planners": FOUR planner surfaces, two live-but-incompatible** (`PipelinePlan` on the web consult route vs `VidhiPlan` on MCP `plan_retrieval` — the identical question yields two non-interoperating plan objects), **two dead islands** (`retrieval/router/`, `lib/vidhi/compiler.ts`). **`PlanReceipt` is absent from code entirely** (docs-only, zero `.ts` hits) — its de-facto shipped analogue is the MCP `VidhiPlan` + `CompletenessReceipt`. The unification is **week-scale integration debt, not a contradiction** (§9.5, `PG1-R3-0007`): ~80% already exists as `VidhiPlan`; the real cost is a total `tool_name↔primitive_id` namespace map + wiring the web route through the vidhi compiler (coupled to the same route reorder C-2 priced). Do NOT treat A-06 as blocked. | §9, §9.5 |
-| A-07 | **One agentic loop, two doors.** Extracted as a channel-agnostic service; MCP gets `prashna_ask`. **[CORRECTED PG-1 — `PG1-R3-0002`]** HALF-BUILT: the loop IS a standalone module (`synthesis/agentic_loop.ts`) but its **only** live caller is the web dispatch (route-coupled), and **`prashna_ask` has ZERO source hits** across `platform/src` + `platform-mcp/src` (the apparent matches were the substring of the *unrelated* horary tool `prashna_undertaking_get`). So **"two doors" is really one door** (web); the channel-agnostic second door is unbuilt. §18/T-2's "D-05 safe only if `prashna_ask` ships" is currently unmet. | §6.3 |
-| A-08 | **Neutral/canonical message store**: `conversation_messages` + `message_parts` child rows. Replaces the AI-SDK `UIMessage` blob. **[CORRECTED PG-1 — `PG1-R3-0003`, `PG1-D1-0002`/`-0003`]** PARTIAL & mis-specified: `conversation_messages` exists but parts are a `parts_json` **blob column** (GIN-indexed), **not** normalized `message_parts` child rows, and `UIMessage` remains live across ~10 surfaces (not replaced). Critically, **every conversation table is empty (0 rows)** while the same DB holds 276,206 `chart_facts` — so the `parts_json` migration is a **green-field schema-hardening problem (add the version discriminator now, before the first row), NOT the "unverifiable salvage against a legacy corpus" F-25e frames.** There is no corpus to shape-infer. | §11.1 |
+| A-06 | One planner **pipeline**, not three planners: scope → route → constrained LLM synthesis → vidhi validator emitting a `PlanReceipt`. CR-28 closes with one intent classifier. **[CORRECTED PG-1 — `PG1-R3-0001`/`-0005`/`-0006`]** Reality is **worse than "three planners": FOUR planner surfaces, two live-but-incompatible** (`PipelinePlan` on the web consult route vs `VidhiPlan` on MCP `plan_retrieval` — the identical question yields two non-interoperating plan objects), **two dead islands** (`retrieval/router/`, `lib/vidhi/compiler.ts`). **`PlanReceipt` is absent from code entirely** (docs-only, zero `.ts` hits) — its de-facto shipped analogue is the MCP `VidhiPlan` + `CompletenessReceipt`. The unification is **week-scale integration debt, not a contradiction** (§9.5, `PG1-R3-0007`): ~80% already exists as `VidhiPlan`; the real cost is a total `tool_name↔primitive_id` namespace map + wiring the web route through the vidhi compiler (coupled to the same route reorder C-2 priced). Do NOT treat A-06 as blocked. **[GROUNDED 2026-08-18 — OPEN, materially advanced]** The unified plan type still does not exist. But the route reorder C-2 priced HAS happened (PB-1 forked `/api/pariprashna` with stream-first ordering), and **the acharya floor is now LIVE on Door 1**: `compileFloorForPlan` + `ensureB11WholeChartReadFloor` + `ensureDashaContextFloor` + budget arbitration run inside the production route — B.11 is enforced by compilation, not convention, exactly as §9.6 designs. The remaining unification is `PipelinePlan`↔`VidhiPlan` reconciliation (§19.5 wave 4). | §9, §9.5 |
+| A-07 | **One agentic loop, two doors.** Extracted as a channel-agnostic service; MCP gets `prashna_ask`. **[CORRECTED PG-1 — `PG1-R3-0002`]** HALF-BUILT: the loop IS a standalone module (`synthesis/agentic_loop.ts`) but its **only** live caller is the web dispatch (route-coupled), and **`prashna_ask` has ZERO source hits** across `platform/src` + `platform-mcp/src` (the apparent matches were the substring of the *unrelated* horary tool `prashna_undertaking_get`). So **"two doors" is really one door** (web); the channel-agnostic second door is unbuilt. §18/T-2's "D-05 safe only if `prashna_ask` ships" is currently unmet. **[GROUNDED 2026-08-18 — BUILT-Δ]** `prashna_ask` is **BUILT & DEPLOYED** (live on the 125-tool MCP surface, paired with `prashna_status`), so the second door exists and T-2's condition is met — **but as a single-pass plan→floor→one-synthesis job returning a job handle, NOT the extracted channel-agnostic agentic loop this row designs.** Register-lint/sentinel gates are not on that route. The loop-extraction half of A-07 remains OPEN (§19.5 wave 4). | §6.3 |
+| A-08 | **Neutral/canonical message store**: `conversation_messages` + `message_parts` child rows. Replaces the AI-SDK `UIMessage` blob. **[CORRECTED PG-1 — `PG1-R3-0003`, `PG1-D1-0002`/`-0003`]** PARTIAL & mis-specified: `conversation_messages` exists but parts are a `parts_json` **blob column** (GIN-indexed), **not** normalized `message_parts` child rows, and `UIMessage` remains live across ~10 surfaces (not replaced). Critically, **every conversation table is empty (0 rows)** while the same DB holds 276,206 `chart_facts` — so the `parts_json` migration is a **green-field schema-hardening problem (add the version discriminator now, before the first row), NOT the "unverifiable salvage against a legacy corpus" F-25e frames.** There is no corpus to shape-infer. **[GROUNDED 2026-08-18 — BUILT-Δ]** PB-2 SMṚTI built the child-row store as designed: `message_parts` (migration 467, closed kind enum `text | reasoning | tool_call | tool_result | citation | prediction_candidate | attachment`), `conversation_summaries` (468), `schema_version`/`model_id`/`provider` columns, transactional `writeTurn` with delete-then-insert parts (`lib/pariprashna/store/writer.ts`). The Δ, disclosed in `REPORT_PB-2.md` §3: **assistant turns only** — user/history messages still persist via the legacy `writeConversationMessages` path, and the route writes only three kinds (text, citation, prediction_candidate); tool_call/tool_result/reasoning are a named residual (`store/route_writer_adapter.ts`). | §11.1 |
 | A-09 | Model plane: registry-as-data + live health plane + explicit Tier A/B/C + OpenRouter meta-provider + CachePlanner + reasoning-token accounting. | §10 |
 | A-10 | ~~Session pin promoted from MCP-only to all conversations.~~ **RESTRUCTURED by D-16 (2026-07-19).** Now: a **per-turn provenance stamp** recorded on every assistant turn in both channels, copied immutably into ledger rows. Not session state. | §11.4 |
-| A-11 | **The AI SDK transport is replaced** by a typed SSE event protocol with a purpose-built client reducer. | §12.2 |
-| A-12 | Stream semantics are **block-level**, not token-level; blocks commit and freeze. Stream protocol and storage schema are the same algebra. | §12.3 |
-| A-13 | Three-region turn layout: permanent stable-height Working region, append-only Answer region, post-settle Grounding region. | §12.5 |
-| A-14 | **No virtualization.** Frozen-block memoization + `content-visibility` instead. **[CORRECTED PG-2 2026-07-19 — `PG2-X4-0006`, INVERTED from the PG-1 assumption + mislabel fixed]** PG-1's `PG1-Z1-A0001` left this "unaudited" and mislabelled it **A-13** (A-13 is the unrelated three-region layout row above; the memoization ruling is A-14, §12.7). X-4 audited it and found today's code is the **opposite** of A-14's target: `VirtualizedMessageList.tsx` IS live (imported by `AdaptiveMessageList.tsx`), while **both** replacement techniques A-14 mandates are absent — `content-visibility`/`contentVisibility` = zero hits in `platform/src`; `React.memo`/frozen-block memoization = zero hits in the message-list components (the only `memo` hit is a `useMemo` code comment, the only `frozen` hit an unrelated scroll-state comment). So the virtualizer A-14 says to *remove* is running, and neither replacement is built — a real target-vs-actual gap for the A-11/A-12/A-14 render work, not merely an unaudited assumption. (Same mislabel class as A-08's "A-26" slip, `PG1-D1-0001`.) | §12.7 |
-| A-15 | Citations: model emits sentinels; **server rewrites before the wire**; structured `citation.define` events; tier-projected rendering. | §12.9, §13.3 |
+| A-11 | **The AI SDK transport is replaced** by a typed SSE event protocol with a purpose-built client reducer. **[GROUNDED 2026-08-18 — BUILT]** 15-event Zod-discriminated protocol (`lib/pariprashna/protocol/events.ts`, "a malformed event can never reach the wire"), typed emitter with zero `as any` and a calibration-leak guard on every write, reducer with append-only laws and seen-set dedup (`components/pariprashna/state/reducer.ts`). | §12.2 |
+| A-12 | Stream semantics are **block-level**, not token-level; blocks commit and freeze. Stream protocol and storage schema are the same algebra. **[GROUNDED 2026-08-18 — BUILT-Δ]** Shipped, with the shipped vocabulary differing from the §12.3 sketch in named ways (pass seams added; `reasoning.open/close` became `role: prose|thinking` on `block.open`; `snapshot.apply` added) — full delta record in the §12.3 grounded note. | §12.3 |
+| A-13 | Three-region turn layout: permanent stable-height Working region, append-only Answer region, post-settle Grounding region. **[GROUNDED 2026-08-18 — BUILT-Δ]** Shipped; the visual grounding region moved to the collapsible **right dock** ("Windows · Grounding") by native ruling 2026-07-27 — the in-flow region ③ is now an `sr-only` settle announcement. A ruled delta, not debt. | §12.5 |
+| A-14 | **No virtualization.** Frozen-block memoization + `content-visibility` instead. **[CORRECTED PG-2 2026-07-19 — `PG2-X4-0006`, INVERTED from the PG-1 assumption + mislabel fixed]** PG-1's `PG1-Z1-A0001` left this "unaudited" and mislabelled it **A-13** (A-13 is the unrelated three-region layout row above; the memoization ruling is A-14, §12.7). X-4 audited it and found today's code is the **opposite** of A-14's target: `VirtualizedMessageList.tsx` IS live (imported by `AdaptiveMessageList.tsx`), while **both** replacement techniques A-14 mandates are absent — `content-visibility`/`contentVisibility` = zero hits in `platform/src`; `React.memo`/frozen-block memoization = zero hits in the message-list components (the only `memo` hit is a `useMemo` code comment, the only `frozen` hit an unrelated scroll-state comment). So the virtualizer A-14 says to *remove* is running, and neither replacement is built — a real target-vs-actual gap for the A-11/A-12/A-14 render work, not merely an unaudited assumption. (Same mislabel class as A-08's "A-26" slip, `PG1-D1-0001`.) **[GROUNDED 2026-08-18 — BUILT on the new surface]** The Paripraśna renderer implements A-14 exactly: `FrozenBlock` is memoized with an always-equal comparator ("no committed FrozenBlock may ever re-render"), no virtualizer exists on the new surface, and the reducer replaces only the targeted turn so a long thread streaming re-renders one `<Turn>`. The inverted legacy state persists only in the consult tree PB-4 retires. | §12.7 |
+| A-15 | Citations: model emits sentinels; **server rewrites before the wire**; structured `citation.define` events; tier-projected rendering. **[GROUNDED 2026-08-18 — BUILT-UNWIRED]** The S-3 streaming rewriter (64B/400ms hold-back, tolerant grammar, hallucination counter — exactly §12.9.1) exists at `lib/pariprashna/citations/rewriter.ts` and **is not on the live route**: the route's only import from `lib/pariprashna/citations/` is the leak lint. Live `citation.define` events arrive post-hoc from the persistence write-through, so chips depend on prose already carrying `⟦n⟧` tokens nothing currently rewrites mid-stream. Wiring it is A-38 (§19.5 wave 2). | §12.9, §13.3 |
 | ~~A-16~~ | ~~Three disclosure tiers — reader / practitioner / audit.~~ **STRUCK by D-15 (2026-07-19).** Replaced by: one reading, one register, audit detail as an **affordance** rather than a mode. | §13.4 |
-| A-17 | Register enforcement is a **pre-commit server-side gate**, not a prompt instruction. | §13.5 |
-| A-18 | Reader-facing vocabulary lives in the **capability registry** as a `register` block; missing labels fail CI. | §13.6 |
-| A-19 | NO-LEAKAGE is enforced four ways: DB role grants, registry flag, out-of-process ledger writer, CI canary. **[CORRECTED PG-1 — `PG1-D3-0004`, critical; `PG1-C1-0011`]** Arm 1 (DB role grants) is **0% built, not partial**: none of §7.4's five designed roles (`role_web_serve`, `role_orchestrator`, `role_ledger_write`, `role_jobs`, `role_sidecar`) exist in the live DB; a **single `amjis_app` credential** — the same one the web app serves every request with — holds full CRUD on `mimamsa_predictions` (384-row ledger with outcome data) and `mimamsa_calibration`, the exact two write surfaces `role_web_serve` is designed to be denied. Repo-wide grep for the five role names: zero hits. Treat NO-LEAKAGE arm-1 as entirely unbuilt before any production reliance (see F-25q, §7.4). | §14.6 |
-| A-20 | Verification centres on a **streaming replay harness** with a zero-shift budget for settled content. | §17 |
+| A-17 | Register enforcement is a **pre-commit server-side gate**, not a prompt instruction. **[GROUNDED 2026-08-18 — BUILT]** `lib/pariprashna/citations/register_leak_lint.ts` runs server-side pre-wire at two points (per-delta + whole-block commit backstop), with SIX hard pattern classes (signal ids, asset ids, table names, register acronyms with grammar-preserving subject swap, spelled-out register names, bare fact-id namespaces) plus near-miss telemetry — hardened by three real production leak classes caught and closed across PB-1/PB-2 hotfixes. The §13.5 streaming contradiction stands as predicted: a leak split across a delta boundary reaches the screen before the block-commit backstop scrubs it. | §13.5 |
+| A-18 | Reader-facing vocabulary lives in the **capability registry** as a `register` block; missing labels fail CI. **[GROUNDED 2026-08-18 — BUILT-Δ]** `lib/retrieval/register_block.ts` landed; `resolveReaderLabel` is the route's only legal activity-label source (fallback + console warn on a missing label, Gate 11 [integrity]); 33 capabilities carry backfilled `reader_label`s (PB-1). Coverage across the full 119-URI surface, and the CI fail-on-missing rule, remain OPEN (§19.5 wave 3). | §13.6 |
+| A-19 | NO-LEAKAGE is enforced four ways: DB role grants, registry flag, out-of-process ledger writer, CI canary. **[CORRECTED PG-1 — `PG1-D3-0004`, critical; `PG1-C1-0011`]** Arm 1 (DB role grants) is **0% built, not partial**: none of §7.4's five designed roles (`role_web_serve`, `role_orchestrator`, `role_ledger_write`, `role_jobs`, `role_sidecar`) exist in the live DB; a **single `amjis_app` credential** — the same one the web app serves every request with — holds full CRUD on `mimamsa_predictions` (384-row ledger with outcome data) and `mimamsa_calibration`, the exact two write surfaces `role_web_serve` is designed to be denied. Repo-wide grep for the five role names: zero hits. Treat NO-LEAKAGE arm-1 as entirely unbuilt before any production reliance (see F-25q, §7.4). **[GROUNDED 2026-08-18]** Arm-2 is now BUILT on both doors (runtime `filterLeakedCapabilities` per doctrine F-R7, surfaced as a count-only wire flag; plus the collect-only trio — serving-path manifest grep gate, `assertNoCalibrationLeak` on every emitter write, byte-identity probe — mutation-proven 6/6 in C4). **Arm-1 (the five DB roles) remains 0% built — the critical gap stands unchanged**, and is scheduled in §19.5 wave 5. | §14.6 |
+| A-20 | Verification centres on a **streaming replay harness** with a zero-shift budget for settled content. **[GROUNDED 2026-08-18 — BUILT-Δ]** PB-1 shipped a 12-fixture, 8-gate Playwright harness. The Δ is serious and disclosed: PB-2's golden byte-equality gate was a **confirmed false-confidence proxy** (one hand-authored fixture, a test-owned reducer reimplementation, no real-stream capture — `REPORT_PB-2.md` §3.1, re-confirmed as SAMĀPTI F-33). B-PB8-BYTEEQ (PR #927) built the real capture + replay-compare, but per DVA Ruling 80 the capture flag stays OFF until the Ruling-54 standing-posture follow-on closes. A green gate that cannot fail is the §17 anti-pattern; this row is not done until capture is standing. | §17 |
+
+**`[ELEVATION F5 v0.11]` — the beyond-acharya register.** The rows above
+describe an instrument that streams honestly. The rows below describe the gap
+between that and the commissioned bar: *a reading experience no other
+conversational product can offer, with zero internal vocabulary, at
+beyond-acharya depth.* Each is a design conclusion of this pass, open to
+challenge like every A-row, and scheduled in §19.5.
+
+| # | Conclusion | Section |
+|---|---|---|
+| **A-37** | **Live block fidelity — the wire must carry what the design promised.** Today every live block renders as a paragraph: `TableBlock`, `VerseBlock`, `GapRibbonBlock`, heading levels, prose roles (verdict/elaboration/caveat), and the inline `prediction_card` are reachable ONLY through fixtures, because `s1LiveAdapter` hardcodes `kind:'paragraph'` and the wire carries no block typing beyond `prose|thinking`. **A beyond-acharya reading is typographically structured** — a daśā table that arrives as a table, a BPHS verse set as a verse with its gloss, an honest gap as the calm ribbon T-5 mandates. Target: server-side commit-time block typing (the server owns the full block text at commit; classifying a committed block is deterministic and testable — this is NOT the §12.4 mid-stream segmentation trap, which stays client-safe), carried as `kind` + `role` on `block.commit`, rendered at final geometry. `prediction_card` becomes a first-class wire event carrying the structured candidate + part id — which is precisely the protocol change `capture.ts` names as the prerequisite for mounting the in-stream confirm affordance. One change unlocks three debts. | §12.3, §16.9 |
+| **A-38** | **Citations become first-paint chips on the live path.** Wire the built S-3 rewriter into the route so `⟦cite:…⟧` sentinels rewrite to `⟦n⟧` + `citation.define` DURING streaming; the grounding summary becomes server-derived (counts, grade rollup, "composed from complete house coverage" when the floor's completeness receipt says so) instead of client-synthesized from a citation tally. The client-side rollup remains as the degrade path for snapshot resumes. This is the difference between grounding as decoration and grounding as the product's spine arriving in real time. | §12.9, §13.3 |
+| **A-39** | **Every control is honest or absent.** The composer's Model and Length pickers currently ship selections that never leave the component; `length_tier` is accepted, echoed, persisted, and does nothing (`TODO(PB-4)`); three of four Depth choices collapse to `deep_dive`. **A control that does nothing is a trust defect in an instrument whose brand is honesty.** Target: plumb `model_id` and `length_tier` end-to-end (both already exist in `LiveSubmitOptions` and the route contract — this is wiring, not architecture), implement length shaping in synthesis, or remove the pill until it works. No third state. | §10.9, §16.9 |
+| **A-40** | **Depth is derived, not defaulted.** `reading_depth` should come from the DR-8 scope tuple (interpretive/domain questions → deep floor + higher iteration cap; pinpoint factual → standard), not from a picker default that silently runs 16-iteration deep dives on "what time is sunrise". The scope classifier exists; the route already forces `dasha_context_required` on deep_dive. Serve the depth received visibly: the settled band's "Grounded in N sources" plus the completeness receipt IS the depth signal (design plan G4) — never two identical presentations for a 3-fact answer and a 40-fact dossier. | §9.2, §13.4 |
+| **A-41** | **The remembering wave — the instrument that returns.** The built-but-unwired pgvector recall (`lib/pariprashna/recall/`) gets its caller: per-chart cross-thread recall surfacing prior conclusions as `prior_reading`-graded citations (already structurally barred from satisfying floors), with contradiction surfacing ("in March, under a prior build, I said X") made adjudicable by the D-16 stamp both readings carry. Plus the arrival line: one chrome line on thread open — current daśā year + open prediction windows — derived from L1/Kāla truth, never model-composed. P9's accrual bet, now cheap because every substrate row exists. | §11.5 |
+| **A-42** | **The window-opening ask.** Before planning, the engine checks the ledger for `window_closed` rows whose domain overlaps the question; if found, it opens with one sentence — *"Before I answer: in March I indicated X for April–June. What happened?"* — with the one-tap outcome affordance attached, then answers in the same turn regardless of reply. This converts the loop's worst weakness (outcome-recording decay, §14.7) into its most natural moment, at the exact instant the user is already thinking about the domain. Every precondition shipped in PB-3: the ledger, the lifecycle, the resolve action, the Brier recorder. This is the single highest-leverage unbuilt feature in the architecture. | §6.6, §14.7 |
+| **A-43** | **Voice is enforced, not requested.** Extend the shipped lint infrastructure from vocabulary to register: (a) a second-person-imperative detector on remedial-class blocks — "you should wear" flags; "the tradition prescribes" passes (§13.8, deterministically checkable, same defanged verdicts); (b) pacing as block policy for difficult findings — shorter committed blocks, uncertainty stated before severity, the calibrated phrase leading and the number one affordance away (§13.9, P6). The register eval (§17.5) scores difficult-topic answers for pacing and framing on the REAL persisted corpus that now exists. | §13.8, §13.9 |
+| **A-44** | **Signal reader text, prioritized by observed reality.** The §13.6 editorial problem (573 machine-register signals, no reader-facing column) is now prioritizable by fact: citations persist as parts, so the top-cited signals are a SQL query, not a guess. Generate-review-freeze `signal_reader_text` for the observed top ~50 first; the citation card falls back to classical source + grade until covered — never the internal text. | §13.6 |
+| **A-45** | **New engine layers surface at their earned tier only.** Since 2026-08-01 the engine beneath this surface gained a ruled, amended v4.1 promise layer (the marriage verdict: conditional / 0.450 MODERATE — the first production verdict set by a measured, classically-cited amendment), a v3 arc-solved transit engine whose calibration stamps are honestly `structural_prior` (PARIṢKĀRA), the KP sub-lord clock, and a unified fact-identity substrate. **The serving rule extends T-8 to every new layer: a verdict enters a reading with its tier named in reader language** — "held with moderate confidence, from the chart's structure" vs anything implying empirical validation that has not occurred. Beyond-acharya depth is these layers COMPOSED in prose; beyond-acharya honesty is never letting a structural prior wear a calibrated costume. | §14.6, T-8 |
+| **A-46** | **Pre-cutover hardening is a PB-4 entry condition.** Before the default flip: (a) middleware + per-user rate limit + per-turn/daily spend ceilings on `/api/pariprashna` and `prashna_ask` (still absent; `maxDuration=120` and the QoS queue are not caps); (b) the Cloud SQL PITR/restore posture verified and drilled (last verified state: PITR disabled, no restore drill — F-25t); (c) `ANTHROPIC_API_KEY` provisioned or the stack removed from the selectable list (it fails instantly today, masked by the Gemini default). **A flagged surface without caps is an experiment; a DEFAULT surface without caps is an incident.** | §14A, §19.5 |
+| **A-47** | **The reading returns as an artifact.** The sealed-reading export (design plan §10.6, OD-2(b)): a settled turn renders to a print-grade single-ivory-inversion document — the one thing a person shows their family after a consultation. Cheap (the turn is already an immutable parts row + grounding), high-signal, and the natural home of the D-16 stamp as a colophon ("read against the chart as built on …"). | design plan §10.6 |
+| **A-48** | **Close the loop on disagreement before it costs another signal.** §14.8 remains fully unbuilt and the feedback endpoint still silently discards every rating (F-25c stands at HEAD). The dispute affordance now has a natural home (the dock card / turn menu), a natural store (a first-class row keyed to message_part + D-16 stamp, beside the prediction ledger), and a natural review surface (Samīkṣā). Re-retrieve, never re-word; never fold when the data supports the claim. | §14.8 |
+
+---
+
+### §1.2 Resolved-by-events register (new v0.11)
+
+Forks from §2 that were resolved not by a ruling session against this document
+but **by governed campaigns whose gates the native's own protocols ran**. Each
+is recorded here with its mechanism and citation, per §21 rule 1; the §2 row
+is struck in place. A resolution recorded here has the same standing as a §1
+ruling — it was made under DVA/Pratinidhi authority inside a gated campaign —
+but is kept in its own register so the provenance (code-first, not
+document-first) stays visible.
+
+| Fork | Resolution | Resolved by | Date |
+|---|---|---|---|
+| **OT-2** (`prashna_ask` transport) | **Option (c) — job handle.** `prashna_ask` returns `{job_id, status:'pending'}` immediately; `prashna_status` polls to progress/result. MCP progress notifications are best-effort, not relied on. | Retrieval Plane Elevation campaign; live on the production MCP surface | ≤2026-07-27 |
+| **OT-7** (assent to generated projections) | **Resolved in code as generated surface profiles** — `full` / `compact` / `consult`, one generator, CI parity gate (`mcp_surface_profiles.generated.ts`). D-08's "one registry, many generated projections" reading won. | Retrieval Plane Elevation campaign | ≤2026-07-27 |
+| **OT-8** (fate of `ConsumeChatV2.tsx`) | **Option (a) — rebuilt on canonical parts.** PB-1 built the new renderer from scratch (`components/pariprashna/**`); the consult tree survives untouched only as the pre-cutover fallback and is deleted by PB-4 F-5 per the refreshed census. | PB-1 DHĀRĀ (`REPORT_PB-1.md`) | 2026-07-28 |
+| **OT-10** (who chooses the MCP path) | **Option (b) enforced by (c)** — connect-time surface profiles gated by OAuth scope. The `consult` profile exists as designed; `prashna_ask` requires the `full`/`compact` profile and is rejected for `consult`. | Retrieval Plane Elevation campaign | ≤2026-07-27 |
+| **OT-11** (canonical prediction ledger) | **Resolved forward: `brahma_mimamsa_prediction_ledger` was BUILT** (migration 470) as the canonical conversational ledger — 9-state lifecycle, confidence `numrange`, window `daterange`, five frozen D-16 stamp fields, DB freeze trigger. `mcp_predictions` retired with backup (migration 471). The build-time `mimamsa_predictions` and `brahma_prospective_ledger` remain distinct by the provenance axis §14.1 endorses; `LEDGER_MAP_PB-3.md` is the authority map per caller. | PB-3 SAMĪKṢĀ, MEMO_PB-3_0 (`REPORT_PB-3.md`) | 2026-07-29 |
+| **OT-12** (P0' scope: shim vs route reorder) | **Resolved by events as (b)-shaped: PB-1 built the FORK with the reorder** — `/api/pariprashna` opens the SSE stream and emits `turn.open` as the first bytes, before the planner; both 422 bail-outs became in-stream errors; the consult route stayed byte-identical (must_not_touch). The "3–4 week untouched-route shim" premise PG-1 struck was never attempted. | PB-1 DHĀRĀ (`REPORT_PB-1.md`; route header) | 2026-07-28 |
+| **PARK_PB-3_L-5** (calibration sink schema) | **Option B ruled**: a new, separate `mimamsa_conversational_calibration` table (DVA Ruling 55), exact schema + COLLECT-ONLY + mandatory leak guard fixed by DVA Ruling 79. **Implementation deliberately unbuilt** — a future session proceeds directly from the rulings. | DVA Rulings 55/79 (`PARK_PB-3_L-5`, `PB_CAMPAIGN_CLOSE` §4) | 2026-07-31 |
 
 ---
 
@@ -249,20 +363,24 @@ working architecture. They are open to challenge but are the current baseline.
 The genuine forks. Each blocks something specific; none should be answered by
 default.
 
+> **[GROUNDED 2026-08-18 — v0.11]** Six forks resolved by events — struck
+> below, recorded in §1.2. The remaining open forks carry sharpened leans
+> marked `[PROPOSED v0.11]`; they remain the native's to rule.
+
 | # | Fork | Blocks | Options | Lean |
 |---|---|---|---|---|
-| **OT-1** | **Where does the engine live?** | Deployment topology; `prashna_ask` timeout behaviour | (a) In-process with the Next.js web app; MCP edge calls its internal API. (b) Standalone engine service both call over HTTP. | (a) — the engine is TypeScript sharing the contract package, and process separation buys nothing until a second UI exists. Caveat: constrains long-running `prashna_ask` to Next.js execution limits. |
-| **OT-2** | **`prashna_ask` transport semantics.** | MCP edge design; whether a job table exists | (a) Non-streaming request/response — simple, but deep questions run minutes and clients time out. (b) MCP progress notifications — better UX, uneven client support. (c) Job handle: `prashna_ask` returns a ticket, `prashna_result` fetches. | (b) with (c) as fallback. Needs a ruling because it shapes the edge and possibly the schema. |
-| **OT-3** | **Jobs runner deployment shape.** | Ops surface; NO-LEAKAGE arm 3 | (a) Dedicated third deployable — clean role separation, one more thing to operate. (b) Cron-triggered routes inside the web app, with the **ledger writer** as the only separately-deployed worker. | (b). NO-LEAKAGE strictly requires only the ledger writer out-of-process; the rest is taste, and for a single-operator system every always-on subsystem is future 2 a.m. debugging. |
-| **OT-4** | **Guest build rights.** | Nirmāṇa authz model | (a) Guests may trigger a rebuild of their own chart. (b) Build execution is super-admin-only; guests are read-only on build state. | Undecided — this is a cost and failure-ownership question, not a technical one. Decides entitlement-scoped vs role-gated authz on orchestrator triggers. |
-| **OT-5** | **MCP OAuth issuer.** | Identity spine; entitlement resolution | (a) Self-issued OAuth 2.1 in the edge — full control of token lifecycle. (b) Delegate to Firebase, edge as resource server — one identity spine, entitlements resolve from one user table with no mapping layer. | (b) is architecturally cleaner if Firebase can act as an OIDC provider for MCP clients; (a) is the current direction. Decides whether an MCP identity *is* a portal user or merely maps to one. |
-| **OT-6** | **Does the MCP channel get *any* durable memory?** | §11.5; whether MCP is a second-class channel | (a) None — raw tools + `prashna_ask`, stateless beyond the session pin. (b) Journaling tools so an MCP session's *questions and retrievals* persist even though assistant text cannot. | Flagged by §18/T-2: D-05 is safe **only if** `prashna_ask` ships. If A-07 were rejected, D-05 should be revisited. |
-| **OT-7** | **Assent to "one registry, many generated projections."** | Every downstream registry decision | The native's D-08 sentence admits two readings: "same surface everywhere" vs "best surface per channel/tier". | Explicit ruling needed. §8.3 assumes the latter. |
-| **OT-8** | **Fate of `ConsumeChatV2.tsx` (2,304 lines).** | §12 execution | (a) Rebuild the UI shell on canonical parts. (b) Refactor in place. | Not yet assessed as a component. Given A-11/A-12 change the client's entire data model, (a) is likely, but this must be assessed before it is asserted. |
-| **OT-10** | **MCP profile selection — who decides whether a query gets the engine or the raw retrieval plane?** | The entire MCP surface design | See §6.5. (a) Both tools exposed, steer via tool descriptions. (b) **Two connection profiles selected at connect time** (consultation vs practitioner). (c) One connection, scope-gated. (d) `prashna_ask` only. | **(b) with (c) as the enforcement mechanism.** Owned by the MCP workstream (see §0.5); ruled there, recorded here. |
-| **OT-11** | **Which prediction ledger is canonical for the NO-LEAKAGE design?** *(raised PG-1 — `PG1-D3-0003`, F-25p; COSTED PG-2 — `PG2-X5-0001..0007`)* | §7.4 role design; NO-LEAKAGE arm 1; which table `role_ledger_write` gates | ~~Two disjoint ledgers exist: (a) `mimamsa_predictions` (L5 build-time, 384 rows, referenced by `mimamsa_calibration`/`phala_anchors`); (b) `mcp_predictions` (chat-side detector, 0 rows).~~ **[CORRECTED PG-2 2026-07-19 — `PG2-X5-0006`]** The landscape is **three** tables, not two: (a) `mimamsa_predictions` (L5 build-time, **384 rows**, referenced by `mimamsa_calibration`); (b) `mcp_predictions` (chat-detector interim relay, **0 rows**, migration 071, explicitly TODO-migrate); (c) `brahma_prospective_ledger` (D-4a §11 explicit-filing, **5 rows**). PG-1's "`phala_anchors` references `mimamsa_predictions`" is inexact (`PG2-X5-0003`): `phala_anchors` FKs point up to L3 kāla; the dependency runs the other way. `record_outcome` writes to **neither prediction ledger** — two same-sounding tools hit different tables (`record_outcome`→`phala_anchors`+`mimamsa_calibration`; `mimamsa_outcome_record`→`mcp_predictions`, `PG2-X5-0005`). | **Still OPEN — native's call, NO choice made (PC-8).** Now fully costed (`PG2-X5-0007`; full analysis `PG2_DIAGNOSTIC_REPORT_v1_0.md §7`). **NEITHER table satisfies §14.3 without a schema change** — none carries the `message_part_id` FK, `created_from_channel`, or 8-state lifecycle §14.3 mandates (`PG2-X5-0004`); §14.3's named `brahma_mimamsa_prediction_ledger` matches no live table. **Option A (merge into one canonical ledger):** unify incompatible types (`chart_id` text→uuid; `horizon` text→daterange; `confidence` text-enum→numeric for Brier), add the 3 missing §14.3 columns, reconcile 2 disjoint id namespaces, fold in `brahma_prospective_ledger`; rewrite `mi_bhavisya`/`mi_abhilekha`/`mi_pramana` + `ppl_writer` + `calibration_producer` + both `record_outcome` surfaces + count_sql; migration risk concentrated on the 384-row `mimamsa_predictions` (the sole calibration dependency). **Option B (keep all three + document):** no migration risk; ongoing cost is permanent reader confusion + §7.4 `role_ledger_write` still cannot name one physical table; needs a ledger-authority map + `record_outcome` tool disambiguation. The build-time-vs-conversational split is a **partially** principled provenance axis (§14.1 endorses it) tangled with 2–3 interim scaffolds. |
-| **OT-12** | **P0' scope — render bet only, or the full §19.7 gate?** *(raised PG-1 — `PG1-C2-0001`/`-0008`, critical; the PC-2 call D-17 defers to the native)* | The entire P0' sequencing and its timeline honesty | (a) Keep 3–4 weeks, **descope** P0' to the render bet only — `turn.open` ships *after* planning, dead-air row deferred (does not prove the bet P0' exists to prove). (b) Keep the full §19.7 gate, **budget ~6–9 weeks** with a bounded `consult/route.ts` + dispatch reorder, dropping "old route untouched". | Native's call. What is NOT honest is claiming the full gate in 3–4 weeks with an untouched route. See D-17 correction, §19.7. |
-| ~~OT-9~~ | ~~Sanskrit exposure policy at reader tier.~~ **CLOSED by D-15 (2026-07-19).** With no tiers, the question dissolves: Sanskrit is used where it *is* the substance (a yoga's name), glossed inline, **for everyone**. "Śaśa Yoga — Saturn strongly placed in its own sign in an angle." A layperson learns something; a practitioner reads past the gloss. One text serves both. | | |
+| **OT-1** | **Where does the engine live?** | Deployment topology; `prashna_ask` timeout behaviour | (a) In-process with the Next.js web app; MCP edge calls its internal API. (b) Standalone engine service both call over HTTP. | (a) — the engine is TypeScript sharing the contract package, and process separation buys nothing until a second UI exists. Caveat: constrains long-running `prashna_ask` to Next.js execution limits. **[PROPOSED v0.11]** Confirm (a) as the standing answer and close: events chose it — the live route runs in-process with `maxDuration=120`, and `prashna_ask` sidestepped the execution-limit caveat via the OT-2 job handle. Reopen only if a second UI or a genuine long-loop requirement appears. |
+| ~~**OT-2**~~ | ~~**`prashna_ask` transport semantics.**~~ **RESOLVED BY EVENTS — Option (c), job handle (`prashna_ask` → `{job_id}`, `prashna_status` polls). See §1.2.** | — | — | — |
+| **OT-3** | **Jobs runner deployment shape.** | Ops surface; NO-LEAKAGE arm 3 | (a) Dedicated third deployable — clean role separation, one more thing to operate. (b) Cron-triggered routes inside the web app, with the **ledger writer** as the only separately-deployed worker. | (b). NO-LEAKAGE strictly requires only the ledger writer out-of-process; the rest is taste, and for a single-operator system every always-on subsystem is future 2 a.m. debugging. **[PROPOSED v0.11]** Confirm (b) and close: events chose it — the consolidated daily job (window-close + closing-soon + digest in one pass, PB-3 L-4, secret fixed in PB-3.1 G2) runs as a scheduled task, not a third deployable. The out-of-process ledger writer remains the arm-3 obligation and lands with arm-1 in §19.5 wave 5. |
+| **OT-4** | **Guest build rights.** | Nirmāṇa authz model | (a) Guests may trigger a rebuild of their own chart. (b) Build execution is super-admin-only; guests are read-only on build state. | Undecided — this is a cost and failure-ownership question, not a technical one. Decides entitlement-scoped vs role-gated authz on orchestrator triggers. **[PROPOSED v0.11] (b) — build execution stays super-admin-only; guests read build state.** Rationale: a rebuild is expensive, destroys the prior build irrecoverably (§N.3, no archive — every open conversation silently drifts), and its failure modes land on the operator. A guest-triggered rebuild is an irreversible act performed by someone who does not own its consequences. Offer guests "request a rebuild" (a notification to the native), which preserves agency without transferring the trigger. Revisit only when a second operator-grade user exists. |
+| **OT-5** | **MCP OAuth issuer.** | Identity spine; entitlement resolution | (a) Self-issued OAuth 2.1 in the edge — full control of token lifecycle. (b) Delegate to Firebase, edge as resource server — one identity spine, entitlements resolve from one user table with no mapping layer. | (b) is architecturally cleaner if Firebase can act as an OIDC provider for MCP clients; (a) is the current direction. Decides whether an MCP identity *is* a portal user or merely maps to one. **[PROPOSED v0.11]** Keep MCP-workstream ownership; recommend ratifying the shipped direction rather than re-litigating — the live edge serves Bearer-key + OAuth-profile auth in production and the cost of an issuer migration now exceeds its elegance dividend for a single-operator identity population. Revisit at the D-09 moment (a real second human). |
+| **OT-6** | **Does the MCP channel get *any* durable memory?** | §11.5; whether MCP is a second-class channel | (a) None — raw tools + `prashna_ask`, stateless beyond the session pin. (b) Journaling tools so an MCP session's *questions and retrievals* persist even though assistant text cannot. | Flagged by §18/T-2: D-05 is safe **only if** `prashna_ask` ships. If A-07 were rejected, D-05 should be revisited. **[PROPOSED v0.11] (a) — close as "none," with T-2's condition now MET.** `prashna_ask` shipped (§1.2/OT-2), so D-05 stands on its own terms: the MCP channel has the instrument, not just the database. Journaling tools would add a durable-memory surface to the channel with the weakest containment story for marginal value; the one cross-channel durable memory that matters — the prediction ledger — already exists and is channel-agnostic by design. Reopen only on observed demand from real MCP sessions. |
+| ~~**OT-7**~~ | ~~**Assent to "one registry, many generated projections."**~~ **RESOLVED BY EVENTS — generated `full`/`compact`/`consult` surface profiles, one generator, CI parity gate. See §1.2.** | — | — | — |
+| ~~**OT-8**~~ | ~~**Fate of `ConsumeChatV2.tsx` (2,304 lines).**~~ **RESOLVED BY EVENTS — Option (a): PB-1 rebuilt on canonical parts; the consult tree is the pre-cutover fallback, deleted by PB-4 F-5. See §1.2.** | — | — | — |
+| ~~**OT-10**~~ | ~~**MCP profile selection — who decides whether a query gets the engine or the raw retrieval plane?**~~ **RESOLVED BY EVENTS — (b) enforced by (c): connect-time surface profiles, OAuth-scope-gated; `prashna_ask` rejected on the `consult` profile. See §1.2.** | — | — | — |
+| **OT-11** | **Which prediction ledger is canonical for the NO-LEAKAGE design?** *(raised PG-1 — `PG1-D3-0003`, F-25p; COSTED PG-2 — `PG2-X5-0001..0007`)* | §7.4 role design; NO-LEAKAGE arm 1; which table `role_ledger_write` gates | ~~Two disjoint ledgers exist: (a) `mimamsa_predictions` (L5 build-time, 384 rows, referenced by `mimamsa_calibration`/`phala_anchors`); (b) `mcp_predictions` (chat-side detector, 0 rows).~~ **[CORRECTED PG-2 2026-07-19 — `PG2-X5-0006`]** The landscape is **three** tables, not two: (a) `mimamsa_predictions` (L5 build-time, **384 rows**, referenced by `mimamsa_calibration`); (b) `mcp_predictions` (chat-detector interim relay, **0 rows**, migration 071, explicitly TODO-migrate); (c) `brahma_prospective_ledger` (D-4a §11 explicit-filing, **5 rows**). PG-1's "`phala_anchors` references `mimamsa_predictions`" is inexact (`PG2-X5-0003`): `phala_anchors` FKs point up to L3 kāla; the dependency runs the other way. `record_outcome` writes to **neither prediction ledger** — two same-sounding tools hit different tables (`record_outcome`→`phala_anchors`+`mimamsa_calibration`; `mimamsa_outcome_record`→`mcp_predictions`, `PG2-X5-0005`). | **Still OPEN — native's call, NO choice made (PC-8).** Now fully costed (`PG2-X5-0007`; full analysis `PG2_DIAGNOSTIC_REPORT_v1_0.md §7`). **NEITHER table satisfies §14.3 without a schema change** — none carries the `message_part_id` FK, `created_from_channel`, or 8-state lifecycle §14.3 mandates (`PG2-X5-0004`); §14.3's named `brahma_mimamsa_prediction_ledger` matches no live table. **Option A (merge into one canonical ledger):** unify incompatible types (`chart_id` text→uuid; `horizon` text→daterange; `confidence` text-enum→numeric for Brier), add the 3 missing §14.3 columns, reconcile 2 disjoint id namespaces, fold in `brahma_prospective_ledger`; rewrite `mi_bhavisya`/`mi_abhilekha`/`mi_pramana` + `ppl_writer` + `calibration_producer` + both `record_outcome` surfaces + count_sql; migration risk concentrated on the 384-row `mimamsa_predictions` (the sole calibration dependency). **Option B (keep all three + document):** no migration risk; ongoing cost is permanent reader confusion + §7.4 `role_ledger_write` still cannot name one physical table; needs a ledger-authority map + `record_outcome` tool disambiguation. The build-time-vs-conversational split is a **partially** principled provenance axis (§14.1 endorses it) tangled with 2–3 interim scaffolds. **[RESOLVED BY EVENTS 2026-07-29 — see §1.2.]** PB-3 built `brahma_mimamsa_prediction_ledger` (migration 470) as the canonical conversational ledger with everything §14.3 mandates (message-part FK, `created_from_channel`, the 9-state lifecycle, frozen D-16 stamp fields); `mcp_predictions` was retired with backup; `LEDGER_MAP_PB-3.md` is the per-caller authority map for the remaining principled split. The fork is closed. |
+| **OT-12** | **P0' scope — render bet only, or the full §19.7 gate?** *(raised PG-1 — `PG1-C2-0001`/`-0008`, critical; the PC-2 call D-17 defers to the native)* | The entire P0' sequencing and its timeline honesty | (a) Keep 3–4 weeks, **descope** P0' to the render bet only — `turn.open` ships *after* planning, dead-air row deferred (does not prove the bet P0' exists to prove). (b) Keep the full §19.7 gate, **budget ~6–9 weeks** with a bounded `consult/route.ts` + dispatch reorder, dropping "old route untouched". | Native's call. What is NOT honest is claiming the full gate in 3–4 weeks with an untouched route. See D-17 correction, §19.7. **[RESOLVED BY EVENTS 2026-07-28 — see §1.2.]** PB-1 built the (b)-shaped answer: a FORK of the consult route with the full reorder — stream-first `turn.open`, in-stream faults, consult byte-identical. OT-12's fork is moot; the §19.7 gate rows are now assessed against the shipped surface in §16.9. |
+| ~~OT-9~~ | ~~Sanskrit exposure policy at reader tier.~~ **CLOSED by D-15 (2026-07-19).** With no tiers, the question dissolves: Sanskrit is used where it *is* the substance (a yoga's name), glossed inline, **for everyone**. "Śaśa Yoga — Saturn strongly placed in its own sign in an angle." A layperson learns something; a practitioner reads past the gloss. One text serves both. | — | — | — |
 
 ---
 
@@ -629,6 +747,15 @@ Raw tools remain available alongside — power users and Claude-Code sessions
 want the drill surface. DR-5 is not reopened: the loop already exists
 in-product; this is a second door on it, not a new brain.
 
+> **[GROUNDED 2026-08-18 — v0.11]** `prashna_ask` SHIPPED (job-handle
+> semantics — OT-2, §1.2) and the foreign LLM is demoted to courier as this
+> section designs. One honest asymmetry remains: the shipped implementation
+> is a single-pass plan→floor→one-synthesis job, not the shared agentic loop,
+> and the register-lint/sentinel gates are NOT on its route — so §6.4's
+> stage-9 row is currently ✅ for Door 1 and only partially true for
+> `prashna_ask`. Re-basing it onto the extracted loop with the same gates is
+> §19.5 wave 4.
+
 ---
 
 ### §6.4 Query lifecycle — there are three paths, not two
@@ -871,6 +998,17 @@ they decline.
 > diagram and §7.4 NO-LEAKAGE design assume does not physically exist; §7.4 must
 > name which table `role_ledger_write` gates.
 
+> **[GROUNDED 2026-08-18 — v0.11]** The conversation-store half of this diagram
+> is no longer target-state: **`message_parts` (migration 467),
+> `conversation_summaries` (468), and `brahma_mimamsa_prediction_ledger` (470)
+> all EXIST and are populated by production traffic**; `mcp_predictions` was
+> retired with backup (471). The calibration-loop column is live through
+> `outcome_recorded` with Brier stored on the ledger row; the
+> `mimamsa_calibration` upsert at its foot is superseded by DVA Rulings 55/79
+> (a NEW `mimamsa_conversational_calibration` table, ruled, deliberately
+> unbuilt, collect-only). The identity block's `users/roles/entitlements` and
+> the five-role grant boundary remain target-state (F-25q stands).
+
 ### §7.2 Build-side invariants (inherited, unchanged)
 
 - **§N.2** — the orchestrator is FROZEN. New assets onboard by writing a
@@ -936,6 +1074,19 @@ only post-hoc calibration.** Four enforcement arms in §14.6.
 > enforced invariant to an application-level convention. Also: §7.4 must name **which**
 > physical ledger table `role_ledger_write` gates — two disjoint ledgers exist
 > (`mimamsa_predictions` populated vs `mcp_predictions` empty; F-25p).
+
+> **[GROUNDED 2026-08-18 — v0.11]** Arm-1 status unchanged: **the five roles
+> remain 0% built** and the single-credential exposure stands. Two things
+> changed around it: (1) the naming question is answered —
+> `role_ledger_write` gates **`brahma_mimamsa_prediction_ledger`** (OT-11
+> resolved, §1.2) plus the ruled-but-unbuilt
+> `mimamsa_conversational_calibration`; (2) the application-level arms
+> hardened materially — the runtime NO-LEAKAGE filter runs on both doors,
+> `assertNoCalibrationLeak` guards every emitter write, and the collect-only
+> canary/manifest/byte-identity trio is mutation-proven (C4, A6). That is
+> defense-in-depth at the layer above this one, not a substitute for it.
+> Arm-1 is scheduled with the out-of-process writer in §19.5 wave 5, and A-46
+> makes it part of the pre-cutover hardening conversation.
 
 ---
 
@@ -1439,6 +1590,17 @@ in as a synthetic turn pair. Four independent failures:
   without replaying 200 turns. This is the actual memory upgrade D-06 asks
   for.
 
+> **[GROUNDED 2026-08-18 — v0.11]** This target SHIPPED in PB-2 to its own
+> spec: `conversation_summaries` rows written every 6 new canonical messages
+> (2-message verbatim tail held back), a family worker via the ModelPlane
+> (`callType:'worker'`, never a hardcoded provider), independent
+> citation-survival enforcement, and the summary spliced into a FIXED prefix
+> slot (`[Conversation summary — earlier turns]` / `(none yet)`) for
+> prompt-cache stability. One disclosed asymmetry: summaries build from
+> assistant rows only, because user/history turns still persist on the legacy
+> writer (A-08 Δ). RAG recall shipped as a module and is NOT yet wired — see
+> §11.5.
+
 ### §11.4 The provenance stamp (D-16)
 
 **The construct formerly called the "session pin" cannot pin.** §N.3 mandates
@@ -1500,6 +1662,14 @@ collision-mitigation complexity, replacing it with an immutable per-turn field.
 conversation header (§12.5). If the chart was rebuilt mid-conversation, the UI
 says so — a drifted reading is a different reading.
 
+> **[GROUNDED 2026-08-18 — v0.11]** D-16 SHIPPED to its structural spec:
+> the stamp is computed per assistant turn, persisted DB-only (never
+> streamed — the one reader-facing exception is `flag{chart_rebuilt}` on
+> detected drift), and **copied — never referenced — into every ledger row at
+> confirmation time**, with a DB trigger (`trg_bmpl_freeze_confirmed`)
+> freezing the five stamp fields exactly as the "immutable historical claim"
+> rule demands. The code-level rename landed at v0.9 (RC-13).
+
 > **Known limitation, recorded not solved.** Because builds are not archived, a
 > past reading cannot be re-derived. The stamp records *that* it cannot, but
 > cannot restore it. Two cheap partial mitigations exist if this ever matters:
@@ -1537,6 +1707,15 @@ script `platform/scripts/backfill_conversation_embeddings.ts` already exists —
 - **Dedup and decay.** A hundred conversations produce redundant conclusions;
   recall must rank by recency, provenance freshness, and whether the
   underlying build still stands.
+
+> **[GROUNDED 2026-08-18 — v0.11]** Substantially BUILT, entirely UNWIRED:
+> `lib/pariprashna/recall/` implements pgvector cross-thread recall over
+> `conversation_message_embeddings` with similarity+freshness ranking, and the
+> `prior_reading` citation grade is structurally forbidden from marking a B.11
+> floor item served (`citations/floor_gate.ts`) — exactly the self-reference
+> firewall this section demands. **Zero production callers.** Wiring it — plus
+> contradiction surfacing and the arrival line — is A-41, §19.5 wave 3. The
+> remembering wave is now cheap because every substrate row exists.
 
 ### §11.6 What the MCP channel has
 
@@ -1647,6 +1826,27 @@ plan phase.
 **Persistence moves after `turn.close`** from the client's perspective: emit
 `turn.commit` with pre-allocated ids, close the visual turn, then do DB work.
 The client must never show "streaming" during bookkeeping.
+
+> **[GROUNDED 2026-08-18 — v0.11] The protocol SHIPPED (PB-1), and the shipped
+> vocabulary differs from this sketch in ways worth naming rather than
+> retrofitting.** The live contract is the 15-event Zod union in
+> `lib/pariprashna/protocol/events.ts` — the single source of truth; this
+> section remains the design rationale, that file the law. Deltas:
+> **(1)** pass seams were added (`seam.open`/`seam.set`) — a second transient
+> slot for multi-pass agentic turns this sketch never anticipated, derived
+> purely from the engine's own control flow; **(2)** `reasoning.open/delta/
+> close` shipped as `role: prose|thinking` on `block.open` — one lifecycle,
+> not two (see this §12.3 note, the vocabulary record of reference); **(3)** `snapshot.apply` was added for degraded resume;
+> **(4)** `citation.define` gained additive `reader_label` + `grade`;
+> **(5)** the stream-first ordering shipped exactly as designed —
+> `turn.open` + `phase{plan,start}` are the first bytes, before the planner,
+> with the ring buffer seeded before the first event. Every event is
+> schema-validated at emit (`serializeEvent` throws — a malformed event can
+> never reach the wire) and guarded by `assertNoCalibrationLeak`. **The one
+> place the shipped wire is thinner than this design: block TYPING.** The live
+> wire says which bytes belong to which block but not what the block IS —
+> tables, verses, gap ribbons, headings, prose roles and prediction cards are
+> client `BlockKind`s reachable only from fixtures. Closing that is A-37.
 
 ### §12.4 Progressive markdown — CLIENT-side segmentation (revised v0.5)
 
@@ -1867,6 +2067,21 @@ that should lose Tier A standing.
 | Well-formed, unresolvable id | `unverified` chip; per-model counter |
 | Zero sentinels in a prescriptive-class answer | Existing prescriptive-class ERROR (`citation_check.ts:91,129–135`) — **retained**, re-pointed at citation *parts* |
 
+> **[GROUNDED 2026-08-18 — v0.11]** §12.9.1 was BUILT faithfully — hold-back
+> buffer (64B/400ms), tolerant grammar with normalization logging, per-model
+> hallucination counter — as `lib/pariprashna/citations/rewriter.ts` +
+> `protocol_adapter.ts`. **And it is not on the live route**: the route's only
+> import from `lib/pariprashna/citations/` is the leak lint (it separately
+> imports `extractCitations` and the post-accumulation validator from the
+> older `lib/citations`/synthesis modules), so live `citation.define` events
+> arrive post-hoc from the persistence write-through after synthesis ends, and
+> chip rendering depends on `⟦n⟧` tokens nothing rewrites mid-stream. The
+> citation gate itself runs (post-accumulation `validateCitationsForStream` →
+> `grade{citation_gate}` + WARN/ERROR flags, `CITATION_GATE_OVERRIDE`
+> demotion available). Net: the failure taxonomy above is dormant code, not a
+> live guarantee. Wiring it is A-38, §19.5 wave 2 — first-paint chips are the
+> visible half of "grounding is the product."
+
 ### §12.9.2 Transport resilience — reconnection, backpressure, error recovery (new v0.5)
 
 v0.1–v0.4 designed the happy path and gave resume one sentence. Verified
@@ -1926,6 +2141,18 @@ imported** (F-25b). This is a working asset, not a gap.
 **The rule:** a failure message names *what failed*, *whether the reader can
 do anything*, and *what was preserved*. No stack traces, no "something went
 wrong."
+
+> **[GROUNDED 2026-08-18 — v0.11]** Shipped differently than prescribed:
+> `s1LiveAdapter` classifies error codes into rate_limit / model_overload /
+> timeout / network / auth bands with calm reader sentences, planner faults
+> stream as in-stream `error` events (no more bare 422), interrupted turns
+> keep everything that arrived, and reconnect shows "Connection dropped —
+> resuming… Nothing was lost." The specific instruction to adopt
+> `classify-error.ts` was NOT followed — it remains dead code at HEAD (F-25b
+> stands) while a parallel classifier lives in the adapter. Disposition:
+> fold or delete in PB-4's dead-code sweep; two classifiers is the drift
+> pattern this document exists to prevent. The §7.8 edge-state lexicon
+> completion (every failure a fixture with exact copy) is PB-4 Lane F-3.
 
 ### §12.11 Mobile (new v0.5)
 
@@ -2175,6 +2402,23 @@ If evidence is clean and citations leave prose, the lint should almost never
 fire. **Its firing rate is the signal that the primary layers are working** —
 which is a better use for it than turn control.
 
+> **[GROUNDED 2026-08-18 — v0.11]** The lint SHIPPED beyond this spec, and it
+> earned its keep the hard way: three real production leak classes escaped in
+> sequence during PB-1/PB-2 (raw tool names + `marsys://` URIs in activity
+> labels; register acronyms; then **bare fact-id namespace codes like
+> `KRK.C8.AMATYA` reaching a reader**) and each hardened the scanner — it now
+> carries SIX hard pattern classes plus near-miss telemetry, with a
+> grammar-preserving subject swap so redaction never breaks a sentence
+> ("The UCN concludes…" → "This concludes…"). It runs server-side pre-wire at
+> two points: per-delta, with the whole-block commit lint as backstop. The
+> streaming contradiction stated above is now an OBSERVED property, not a
+> prediction: a leak split across an SSE chunk boundary passes the delta lint
+> and reaches the screen until block-commit scrubs it — the disclosed residual
+> in the route itself. The clean-evidence PRIMARY layer also advanced: 33
+> capabilities carry `reader_label`s, `resolveReaderLabel` is the only legal
+> activity-string source, and the NO-LEAKAGE capability filter reports strips
+> as a count, never a name.
+
 ### §13.6 The vocabulary layer
 
 The glossary belongs in the **capability registry** (§8.7). The sentinel
@@ -2249,6 +2493,16 @@ tier behaviour D-15 outlaws, hiding in a lookup key. Collapsing to one template
 set is a prose-quality decision, not a mechanical deletion — the surviving
 template must be the *better* one, which per D-15 means the one that explains
 plainly.
+
+> **[GROUNDED 2026-08-18 — v0.11] The trap is sprung — the load-bearing sites
+> are excised.** Verified at HEAD: `lib/prompts/index.ts` header reads
+> "`audience_tier` was excised"; the consult-route stamp is gone
+> (C-2 tier_excision / DG1 ruling, `consult/route.ts:512` comment); no tier
+> header is forwarded to registry lookups. **The system no longer produces
+> different prose per tier — the live D-15 violation is closed.** Residue at
+> HEAD: type/comment-level vestiges across ~12 files and the two JSON-schema
+> `required` fields — mechanical cleanup for PB-4's sweep, no longer
+> load-bearing. F-25g is downgraded accordingly in §16.9.
 
 ### §13.8 Remedy register — the prescriptive line (new v0.5)
 
@@ -2395,6 +2649,27 @@ reconstructed.
   epistemic annotation — "technique X on this chart: n=7, Brier 0.18". That is
   L5 doing exactly what STRUCTURAL mode promised.
 
+> **[GROUNDED 2026-08-18 — v0.11] §14.2–§14.5 are BUILT and PROVEN LIVE.**
+> PB-3 shipped the whole lifecycle (26-column `brahma_mimamsa_prediction_
+> ledger`, 9 states, legal-transition matrix in code AND a DB freeze trigger;
+> two-stage detection with deterministic Stage-2 enrichment; both confirm
+> paths; the Samīkṣā tab with awaiting/open/resolve; the consolidated daily
+> job; `recordConversationalOutcome` computing Brier with `unverifiable`
+> triple-excluded — DB CHECK, DAL, and named predicate). PB-3 closed
+> SHIP-DEGRADED — **the loop was inert: no live entry, no live exit** — and
+> PB-3.1 (G1–G5) made it live piece by piece, until **C4-LOOP-LIVE-PROOF
+> (2026-08-01) proved all six criteria against production with no fixture
+> substitution**: a real reading produced real `detected` rows; the live
+> review tab rendered them; a UI resolution wrote `outcome_value = NULL` on
+> can't-tell under the CHECK constraint; the daily job transitioned a real
+> row; exactly one outcome map with a live caller; the calibration leak guard
+> mutation-proven 6/6 — with an uncoordinated real user on the review tab
+> mid-proof (`PURNATA_CLOSE_REPORT_v1_0.md` §9). The §14.5 loop-back into
+> serving remains correctly OFF per §14.6's collect-only phase and DVA
+> Rulings 55/79. Still open here: the in-stream confirm affordance
+> (`LogToSamiksha` — built, unmounted, blocked on the A-37 wire event), the
+> −14d digest's real transport (log-only stub), and LEL-drafted outcomes.
+
 ### §14.6 Minimum-n gating and the collect-only phase (new v0.5)
 
 **v0.1–v0.4's own illustrative annotation was "technique X on this chart: n=7,
@@ -2498,6 +2773,12 @@ than the instrument does.
   calibration-adjacent evidence and belongs in the same review flow.
 - **Restore or replace the feedback endpoint before it collects another
   signal it will throw away.**
+
+> **[GROUNDED 2026-08-18 — v0.11]** Still fully unbuilt, and the feedback
+> endpoint still discards every rating at HEAD (F-25c stands verbatim —
+> "returns empty/ok stubs"). Elevated to A-48 with a concrete home: the dock
+> card / turn menu affordance, a first-class dispute row keyed to
+> message_part + D-16 stamp, reviewed in Samīkṣā. §19.5 wave 3.
 
 ### §14.9 Sycophancy drift over a long relationship (new v0.5)
 
@@ -2623,6 +2904,23 @@ Required:
   layer data, near-zero on ledger and conversations" is a defensible posture —
   but it must be *stated*, so restore decisions are not improvised during an
   incident.
+
+> **[GROUNDED 2026-08-18 — v0.11] §14A is the least-moved section of the
+> document, and it matters more now than when it was written.** Verified at
+> HEAD: `src/middleware.ts` still does not exist; zero `rateLimit|429` hits
+> under the chat AND pariprashna API trees; nothing blocks a request or a
+> spend. What changed is the exposure: `prashna_ask` is now LIVE to foreign
+> MCP clients (profile-gated, cost-capped by its own budget arbitration, but
+> with no per-user rate or spend ceiling), the Paripraśna route runs
+> 16-iteration deep dives by default for most picker states, and PB-4 wants
+> to make this surface the DEFAULT. Two partial mitigations shipped
+> incidentally — `maxDuration = 120` and the shared QoS dispatch queue
+> (interactive priority class) — neither is a cap. Backup posture: last
+> verified state (F-25t, 2026-07-19) was PITR **disabled**, daily backups ×7,
+> **no restore drill ever executed**; nothing in the PB corpus re-verified
+> it since. **A-46 binds this section to the PB-4 gate: a flagged surface
+> without caps is an experiment; a default surface without caps is an
+> incident.**
 
 ---
 
@@ -2887,6 +3185,99 @@ row. Full detail: `PG2_DIAGNOSTIC_REPORT_v1_0.md`; current-state description
   spot-verified findings hold. Six correction-worthy hygiene defects were found, **none
   gate-voiding** — most notably the sealed report's stale **87** finding count (actually **98**)
   and **5** critical count (actually **6**), corrected in place in the sealed artifacts.
+
+### §16.9 The as-built census — 2026-08-18 (v0.11 re-baseline, RG-1 discharge)
+
+Append-only, per §21 rule 3. Sources: git HEAD `dfbdfe620` (full read of
+`components/pariprashna/**`, `lib/pariprashna/**`, `app/api/pariprashna/**`,
+the samiksha trees, `feature_flags.ts`); the PB close corpus (`REPORT_PB-1/2/3`,
+`PB_CAMPAIGN_CLOSE_v1_0`, `PURNATA_CLOSE_REPORT_v1_0` §9, `SAMAPTI_CLOSE_REPORT_v1_0`);
+a live `mcp_server_info` census. This section replaces the 2026-07-27 banner
+as the current-state instrument; per the banner's own meta-finding, treat it
+as dated the day after it is written and ground against HEAD before executing.
+
+#### §16.9.1 Doors and deployment
+
+| Fact | State 2026-08-18 |
+|---|---|
+| `/clients/[id]/pariprashna` + `/clients/[id]/samiksha` | LIVE in production, gated by `PARIPRASHNA_ENABLED` (default `false` in code, **ON via Cloud Run env** since `amjis-web-01218-4ng`, PB-1). Flag-off → redirect to consult. |
+| `/api/pariprashna` (POST) | LIVE. A FORK of consult (never an edit; consult byte-identical, must_not_touch). Stream-first: `turn.open` + `phase{plan,start}` are the first bytes; all faults in-stream. 1,179 lines. `maxDuration=120`. |
+| `/api/pariprashna/resume` (GET) | LIVE. Replay / snapshot / interrupted-finalize; source-grep-enforced isolation from writers. |
+| `/api/pariprashna/samiksha/confirm` | LIVE. Auth + chart-authz gated; NOT flag-gated (the one always-reachable family endpoint). |
+| `/clients/[id]/consult` + `/api/chat/consult` | STILL LIVE, un-gated — the production default surface until PB-4. Byte-identical through every PB wave (one disclosed neutered no-op: `recordCalibrationStamp`). |
+| MCP | 125 tools served on the `full` profile (`catalog-1+t152+r653c2a1a98c8`); `full`/`compact`/`consult` generated profiles; `prashna_ask`+`prashna_status` live, job-handle semantics, rejected on `consult`. |
+| **PB-4 PŪRṆATĀ (cutover)** | **NEVER RUN.** No default flip, no consult retirement, no flag deletion, no seven-smoke hold. Gate condition (a) — loop proven live — is MET since C4; standing ruling R-0/PB-4 decides at the gate. AC-15 (the native's week-of-use) is unreached until then. |
+| **C4-LOOP-LIVE-PROOF (2026-08-01)** | **COMPLETE, all six criteria live** against production, no fixture substitution; a real uncoordinated user interacted with the live review tab mid-proof. T-9 resolved forward. |
+
+#### §16.9.2 §19.7 gate rows, re-assessed against the SHIPPED surface
+
+| §19.7 assertion | As-built verdict |
+|---|---|
+| Settled content never moves | Architecture holds structurally (`FrozenBlock` always-equal memo; single volatile element; `overflow-anchor` off; owned rAF scroller). CI layout-shift assertions run in the PB-1 harness. |
+| Caret never orphans | Caret is an inline DOM sibling of streaming text inside `VolatileTail`, moved by text insertion; hollow variant on reconnect. |
+| No transmutation | Live chips render at final geometry — trivially, because nothing rewrites mid-stream (A-38 gap): the property currently holds by absence, not by the designed mechanism. |
+| Work visible immediately | MET — stream-first ordering shipped (the exact thing PG-1 proved a shim could not do). |
+| Reasoning has a lifecycle | MET differently — `role: thinking` blocks, zero `as any` in the emitter (typed builders). |
+| Survives bad networks | Ring buffer + `Last-Event-ID` replay + snapshot + visibility-stall reconnect; poll-based tail disclosed. |
+| Works on a phone | PARTIAL — bottom-sheet citations + 900px dock breakpoint shipped; the full §12.11 checklist (visualViewport composer, G-MOBILE battery) is PB-4 Lane F-4. |
+| Works with a screen reader | PARTIAL — one polite live region (the tail), sr-only settle announcement; full §12.12 discipline is PB-4 Lane F-4. |
+| **Feels like Claude Code** | **UNTESTED — this is AC-15, unreachable until PB-4 makes the surface the default. Never claimed (ruling W-4).** |
+
+#### §16.9.3 The fidelity debt register — where the build is thinner than the design
+
+Each row is disclosed lossiness or unwired capability, NOT a ruled design
+change (ruled deltas — the dock, the seams — are recorded in §1.1 tags). This
+register is the raw material of §19.5 waves 2–3.
+
+| # | Debt | Evidence | Owner |
+|---|---|---|---|
+| FD-1 | **Live wire renders paragraphs only.** `s1LiveAdapter` hardcodes `kind:'paragraph'`; TableBlock/VerseBlock/GapRibbonBlock/headings/roles/inline prediction_card have NO live producer — fixture-only. | `s1LiveAdapter.ts` (documented "honest lossiness") | A-37 |
+| FD-2 | **S-3 citation rewriter built, unwired.** The route's only import from `lib/pariprashna/citations/` is the leak lint; `citation.define` arrives post-hoc from the write-through. | route imports; `rewriter.ts` | A-38 |
+| FD-3 | **Composer Model + Length pickers are cosmetic**; `length_tier` accepted-echoed-persisted-nonfunctional (`TODO(PB-4)`); 3 of 4 Depth choices → `deep_dive` (16 iterations). | `Composer.tsx submit()`; route `TODO(PB-4)` | A-39/A-40 |
+| FD-4 | **`LogToSamiksha` (in-stream confirm) built, mounted nowhere** — blocked on a structured prediction wire event. | grep: zero importers; `capture.ts` prerequisite note | A-37/A-42 |
+| FD-5 | **pgvector recall built, zero callers.** | `lib/pariprashna/recall/` | A-41 |
+| FD-6 | **Grounding summary is client-synthesized** from the citation tally (honest labels, WELL-GROUNDED only if ≥1 confirmed AND zero weak; snapshot resume degrades all to catalog). Server-derived summary + completeness line unbuilt. | `s1LiveAdapter`, `groundingRollup.ts` | A-38 |
+| FD-7 | **Delta-boundary lint escape** — a leak split across an SSE chunk reaches the screen until block-commit scrubs it (the §13.5 contradiction, now observed). | route lint call sites | accepted residual + A-38 (clean evidence shrinks exposure) |
+| FD-8 | **Canonical store covers assistant turns only**; user/history on the legacy writer; tool_call/tool_result/reasoning parts unwritten; summaries therefore assistant-only. | `route_writer_adapter.ts` | P1' completion, §19.5 wave 4 |
+| FD-9 | **Byte-equality capture flag must stay OFF** (Ruling 80) until the Ruling-54 standing-posture follow-on closes; until then the golden gate has no standing real-stream corpus. | `PB_MEMO_INDEX` row 4; PR #927 | follow-on lane |
+| FD-10 | **Digest transport is a log-only stub; digest journal is file-based** (ephemeral on fresh runners). | `daily_job.ts`, `digest.ts` | §19.5 wave 3 |
+| FD-11 | **Two error classifiers** — the adapter's live bands + the dead `classify-error.ts`. Fold or delete. | F-25b + `s1LiveAdapter` | PB-4 sweep |
+| FD-12 | **`reading_depth` client mapping is crude** — composer mode, not scope tuple, decides depth. | `PariprashnaApp.tsx` | A-40 |
+
+#### §16.9.4 Defect dispositions at HEAD (F-register)
+
+| Defect | Disposition 2026-08-18 |
+|---|---|
+| F-01 (pipeline-before-stream) | **FIXED on the new surface** (stream-first fork); stands on consult until PB-4 retires it. |
+| F-02/F-03 (`as any` writer path) | **SUPERSEDED on the new surface** — typed emitter, zero casts; consult path unchanged. |
+| F-04–F-11 (render defects) | **SUPERSEDED by the PB-1 renderer** on the new surface; alive on consult until retirement. |
+| F-25b (dead error classifier) | **STANDS** — still zero importers (verified at HEAD). See FD-11. |
+| F-25c (feedback endpoint discards) | **STANDS** — verified at HEAD, stub verbatim. See A-48. |
+| F-25d (no rate limit / spend cap / middleware) | **STANDS** — verified at HEAD, now on BOTH chat trees. Bound to the PB-4 gate via A-46. |
+| F-25e (`parts_json` no version stamp) | **SUPERSEDED FORWARD** — `message_parts` child rows + `schema_version` shipped (migration 467); legacy blob remains only on the history path (FD-8). |
+| F-25f (snapshot-only resume) | **SUPERSEDED on the new surface** — replay-from-seq + snapshot + interrupted-finalize shipped. |
+| F-25g (`audience_tier` load-bearing) | **DOWNGRADED to cleanup** — prompt keying + route stamp excised (verified at HEAD); type/schema residue only. |
+| F-25q (NO-LEAKAGE arm-1 0%) | **STANDS — critical.** Unchanged. §19.5 wave 5. |
+| F-25t (PITR disabled, no restore drill) | **STANDS at last verification** (2026-07-19); not re-verified since. A-46 requires re-verification before cutover. |
+| T-9 (no served reading has ever existed) | **RESOLVED FORWARD** — see §18 T-9 correction. |
+
+#### §16.9.5 The engine beneath the surface — content deltas since 2026-08-01
+
+The conversation layer's serving code is unchanged since the arc closed; the
+readings it serves are not, because the engine advanced under it. Recorded
+here because §J-grade prose is a function of BOTH: **PRATIJÑĀ v4 → F1
+ADOPTION** (2026-08-09): the v4.1 promise engine live in production; the
+marriage verdict now *conditional / 0.450 MODERATE* — the first production
+verdict set by a measured, ruled, classically-cited amendment.
+**GOCHARA-UTKARṢA + PARIṢKĀRA** (2026-08-10/12): transit engine v1→v3
+(bounded λ, 10 fitted + 2 structural mechanisms, century materialization),
+re-closed for real under MR-29 after the campaign's own false self-close —
+calibration stamps honestly `structural_prior`, prospective ledger genuinely
+auto-seeding. **ṢAḌ-DARŚANA** (2026-08-07, PARKED-FINAL): KP sub-lord clock
+live. **ADHIṢṬHĀNA** (2026-08-08): one graha map, one domain vocabulary, the
+fact-identity index at 100% on all canonical charts. **SAMPŪRTI W0**
+(2026-08-10): KNOWN_DOMAINS 7→13, `kala_dasha_sandhi_get` registered, LEL
+resolver backfilled. A-45 states the serving rule these create.
 
 ---
 
@@ -3187,6 +3578,45 @@ scaffold.
 > created by the probe and kept as the first serving-path evidence:
 > `14d96091-…`, `3829624c-…`.)
 
+> **[GROUNDED 2026-08-18 — v0.11: T-9 RESOLVED FORWARD.] Served readings now
+> exist.** The `FORENSIC` relic was fixed, PB-1 shipped and flipped the new
+> surface, and real production readings flowed through every PB verification
+> wave, culminating in C4's fully live loop proof (2026-08-01) and PŪRṆATĀ's
+> Q-graded readings. The *reachability* half of T-9 is closed. The
+> *synthesis-quality* half — is the served prose actually §J acharya-grade,
+> sustained, in the native's hand? — remains governed by AC-15, which cannot
+> run until PB-4 makes the surface the default (ruling W-4: handed to the
+> native, never claimed). The deeper Q-1 tension (machinery-describing
+> interpretive proxies) was worked by the ŚUDDHA-VĀCA→PŪRṆATĀ narration arc;
+> its named remainders and the post-six-views narration audit are the #2
+> handoff item (`PURNATA_CLOSE_REPORT` §5). T-9 is not silently closed; it is
+> superseded by a narrower, better question with a designated gate.
+
+### T-10 — As-built divergence must be classified, or it compounds *(new v0.11)*
+
+The build produced three distinct kinds of difference from this document, and
+they must never be filed together: **ruled deltas** (the dock, the pass seams
+— a native or DVA decision, recorded, binding), **disclosed lossiness**
+(paragraph-only wire, client-synthesized grounding — named in code comments
+and reports, honest, but nobody RULED them), and **silent debt** (the two
+error classifiers). The trap: disclosed lossiness ages into de-facto
+architecture if no register owns it — six months from now "the live wire is
+paragraphs" reads as a decision nobody made. §16.9.3 is that register. The
+rule: every future divergence lands in one of the three bins at merge time,
+and only the first bin closes without further work.
+
+### T-11 — The cutover inverts the risk polarity of every open gap *(new v0.11)*
+
+Every §14A absence was tolerable while Paripraśna was a flagged parallel
+surface with one primary user: a runaway spend, a missed backup, an
+unthrottled client hits an experiment. PB-4 flips the polarity — the same
+gaps on the DEFAULT surface hit the product. This is why A-46 binds rate
+limits, spend ceilings, and a verified restore posture to the PB-4 entry
+condition rather than to a someday-hardening wave, and why the seven-smoke
+hold (W-1) is necessary but not sufficient: smokes prove the happy path;
+caps bound the unhappy one. The general form: **a gate that promotes a
+surface must re-price every risk that was priced under the old exposure.**
+
 ---
 
 ## §19 — Sequencing (RESTRUCTURED v0.5 — shim-first)
@@ -3194,6 +3624,17 @@ scaffold.
 > **v0.1–v0.4's P0–P7 was dependency-clean and execution-wrong.** It is
 > superseded. The original is preserved at §19.3 with the critique, because
 > the reasoning matters.
+
+> **[GROUNDED 2026-08-18 — v0.11]** The shim-first bet below was vindicated by
+> events, in substance if not in mechanism: the PB campaign executed the
+> spirit of P0'–P1' and most of P4' — the render bet was proven FIRST on a
+> production fork (not a shim; OT-12 resolved, §1.2), capture started early
+> and the loop is live (C4), the canonical store and summaries shipped, and
+> the collect-only discipline held. P2' (engine extraction + planner
+> unification) and P3's loop-extracted `prashna_ask` did NOT happen as
+> designed — the shipped `prashna_ask` is a single-pass job, and the unified
+> plan type remains unwritten. **§19.5 is the forward sequence from the
+> as-built position; P0'–P5' below are retained as the reasoning of record.**
 
 ### §19.1 Why the original order would have failed
 
@@ -3416,6 +3857,102 @@ surface and a decade-scale calibration clock already running.
   └──────────────────────────────────────────────────────────────┘
 ```
 
+### §19.5 The v0.11 forward sequence — from the as-built position `[ELEVATION F5 v0.11]`
+
+Six waves, ordered by what each unblocks. Waves 1–3 are the beyond-acharya
+product work; waves 4–6 are the substrate debts that were always real and are
+now the only ones left. Per D-11/§21 rule 6, this is a design of sequence, not
+an execution authorization — each wave gets its own brief.
+
+```
+ ┌──────────────────────────────────────────────────────────────────┐
+ │ WAVE 1 — PB-4 PŪRṆATĀ, gated on A-46 hardening                   │
+ │  · pre-cutover hardening FIRST (A-46): middleware + per-user     │
+ │    rate limit + per-turn/daily spend ceilings; PITR re-verified  │
+ │    + one executed restore drill; ANTHROPIC key provisioned or    │
+ │    the stack delisted                                            │
+ │  · then BRIEF_PB-4 as written: F-6 smoke → F-1..F-4 → default    │
+ │    flip → 7-green hold → retirement → deflag → Q-2 → §G gate     │
+ │  · AC-15 begins the day the default flips — the week-of-use      │
+ │    gate is the arc's real terminal                               │
+ │  UNBLOCKS: everything below runs against the DEFAULT surface.    │
+ └────────────────────────────┬─────────────────────────────────────┘
+                              ▼
+ ┌──────────────────────────────────────────────────────────────────┐
+ │ WAVE 2 — FIDELITY: the reading looks like the design (A-37..40)  │
+ │  · block typing on the wire (kind+role at commit); verse/table/  │
+ │    gap-ribbon/heading live; prediction_card as a wire event      │
+ │    → LogToSamiksha mounts (FD-1, FD-4)                           │
+ │  · S-3 rewriter wired; first-paint chips; server-derived         │
+ │    grounding summary + completeness line (FD-2, FD-6)            │
+ │  · every control honest: model_id + length_tier plumbed and      │
+ │    implemented, or removed (FD-3); depth from the scope tuple    │
+ │    (FD-12)                                                       │
+ │  GATE: a real daśā question renders a table AS a table, a verse  │
+ │  AS a verse, chips at first paint — on the live wire, no fixture.│
+ └────────────────────────────┬─────────────────────────────────────┘
+                              ▼
+ ┌──────────────────────────────────────────────────────────────────┐
+ │ WAVE 3 — THE INSTRUMENT REMEMBERS AND ASKS (A-41, A-42, A-48)    │
+ │  · recall wired (prior_reading grade, contradiction surfacing,   │
+ │    dedup/decay); the arrival line from L1/Kāla truth             │
+ │  · the window-opening ask (pre-plan ledger check → one sentence  │
+ │    + one-tap outcome) — the compliance-decay converter           │
+ │  · dispute capture + feedback endpoint restored (A-48)           │
+ │  · digest transport real; journal → DB (FD-10)                   │
+ │  · voice enforcement: remedial-imperative lint + pacing policy   │
+ │    (A-43); signal reader text, top-cited-first (A-44)            │
+ │  · register labels across the full capability surface + the CI   │
+ │    fail-on-missing rule (A-18 completion)                        │
+ │  GATE: a returning thread greets with where the daśā stands; a   │
+ │  closed window gets asked about in conversation; a remedy is     │
+ │  never imperative — all on the register eval's REAL corpus.      │
+ └────────────────────────────┬─────────────────────────────────────┘
+                              ▼
+ ┌──────────────────────────────────────────────────────────────────┐
+ │ WAVE 4 — ONE ENGINE IN FACT (the P2' debt)                       │
+ │  · unified plan type (PipelinePlan ↔ VidhiPlan reconciliation —  │
+ │    ~80% exists as VidhiPlan, §9.5)                               │
+ │  · loop extracted headless; prashna_ask re-based onto it —       │
+ │    the MCP door gets the SAME gates (register lint, sentinel     │
+ │    rewrite) the web door has (closes §6.4's stage-9 asymmetry)   │
+ │  · store completion: history/user turns canonical; tool_call/    │
+ │    tool_result/reasoning parts written (FD-8)                    │
+ └────────────────────────────┬─────────────────────────────────────┘
+                              ▼
+ ┌──────────────────────────────────────────────────────────────────┐
+ │ WAVE 5 — THE WALLS (arm-1 + the sink)                            │
+ │  · five DB roles + web app off amjis_app for reads (F-25q);      │
+ │    out-of-process ledger writer (arm-3)                          │
+ │  · mimamsa_conversational_calibration built EXACTLY per DVA      │
+ │    Rulings 55/79 (collect-only, leak-guarded)                    │
+ │  · PB-9-DETECTOR: the no-auto-promotion CI detector              │
+ │  · byte-equality standing capture posture (Ruling 54 close;      │
+ │    FD-9)                                                         │
+ └────────────────────────────┬─────────────────────────────────────┘
+                              ▼
+ ┌──────────────────────────────────────────────────────────────────┐
+ │ WAVE 6 — THE AUDIT THAT NEVER ENDS                               │
+ │  · post-six-views narration audit (PŪRṆATĀ handoff #2) against   │
+ │    the settled Kāla layer, by the arc's proven method            │
+ │  · sealed-reading export (A-47)                                  │
+ │  · §17.8 production observability (TTFT, gate rates, lint        │
+ │    firing rate, coverage) — wire the existing dead cost schema   │
+ │    (F-25o), don't design a new one                               │
+ │  · sycophancy-drift monitoring (A-33/§14.9) once real usage      │
+ │    accrues                                                       │
+ └──────────────────────────────────────────────────────────────────┘
+```
+
+Two orderings are deliberate. **Hardening precedes the flip** (T-11): the
+cutover re-prices every §14A gap, so A-46 is a gate condition, not a wave-6
+nicety. **Fidelity precedes remembering**: the arrival line and the
+window-ask spend their trust budget through the same surface the reading
+does — a paragraph-slab reading with a beautiful arrival line is jewelry on
+an unfinished garment. Wave 4 can run parallel to 2–3 where lanes do not
+touch; wave 5's arm-1 should land before any second real human gets an
+entitlement (D-09's moment).
+
 ### §19.6 Decide vs. design
 
 The native decides **values and boundaries**: naming, breaking changes, who
@@ -3454,12 +3991,20 @@ before it is built:
 | It works with a screen reader | axe-core pass; no re-announcement on block commit |
 | **It feels like Claude Code** | The native's judgment. **This is the real gate and it is not automatable.** |
 
+> **[GROUNDED 2026-08-18 — v0.11]** Assessed row-by-row against the shipped
+> surface in §16.9.2. The unsatisfiable-by-a-shim finding above became moot
+> when PB-1 built the fork with the reorder (OT-12, §1.2); the final,
+> non-automatable row is AC-15 and waits on the PB-4 default flip.
+
 ---
 
 ## §20 — Changelog
 
 | Version | Date | Change |
 |---|---|---|
+| **superseded** | **2026-08-19** | **G0 CLOSE — SUPERSEDED BY DECOMPOSITION.** The G0-close session (PB-3-Bot, 2026-08-19) executed the mechanics ruled by NCD-2 (2026-08-18): the five-artifact successor set (`PARIPRASHNA_ARCHITECTURE_v1_0.md` + three LIVING companions + `briefs/pariprashna_v012/`) registered in `CAPABILITY_MANIFEST.json` and `PARIPRASHNA_ARCHITECTURE_v1_0.md` flipped to `CURRENT` (red-team record: `RED_TEAM_G0_v1_0.md`, PASS-WITH-FIXES). This file's status is now `SUPERSEDED — superseded-by-decomposition`. It is the frozen forensic/history record for the Paripraśna design arc: §16/§18/§20 remain the corpus of record for how this design was learned; §4–§14A are superseded by `PARIPRASHNA_ARCHITECTURE_v1_0.md` for normative content. Retained in place, never renamed (30+ inbound referrers inventoried 2026-08-18 per R-5 note in the master review). |
+| **0.11** | **2026-08-18** | **AS-BUILT RE-BASELINE + FABLE-5 ELEVATION (RG-1 discharge).** The 2026-07-27 SUPERSEDED-IN-PART banner is DISCHARGED — its predicted staleness corrected in place, marked `[GROUNDED 2026-08-18]`, against git HEAD `dfbdfe620`, the PB close corpus, and a live MCP census (**125 tools, `catalog-1+t152+r653c2a1a98c8`**).<br><br>**THE HEADLINE: the conversation layer was BUILT.** PB-1 DHĀRĀ (typed 15-event Zod SSE protocol, stream-first fork of consult, three-region renderer with freeze discipline, right dock, closed lexicon, server-side register lint), PB-2 SMṚTI (`message_parts` migration 467, durable summaries to the §11.3 spec, Redis ring-buffer resume with `Last-Event-ID` replay, the D-16 per-turn stamp), PB-3 SAMĪKṢĀ + PB-3.1 (the 9-state `brahma_mimamsa_prediction_ledger` with the stamp copied at confirm under the `trg_bmpl_freeze_confirmed` DB trigger, review tab, batch resolve, daily job, Brier at resolution) — live in production behind `PARIPRASHNA_ENABLED` (ON via env since PB-1), **proven end-to-end by C4-LOOP-LIVE-PROOF 2026-08-01 with a real concurrent user (T-9 RESOLVED FORWARD)**. NOT happened: PB-4 cutover, AC-15, arm-1 roles, the ruled-unbuilt calibration sink, PB-9-DETECTOR.<br><br>**NEW REGISTERS:** §1.2 resolved-by-events (OT-2 job handle · OT-7/OT-10 generated `full`/`compact`/`consult` profiles · OT-8 rebuilt-on-parts · OT-11 canonical ledger built · OT-12 fork-with-reorder · PARK L-5 ruled by DVA 55/79); §16.9 the as-built census — doors/deployment, §19.7 gate re-assessment, the **fidelity debt register FD-1..FD-12** (paragraph-only live wire; S-3 rewriter built-unwired; cosmetic model/length pickers + nonfunctional `length_tier`; `LogToSamiksha` unmounted; recall unwired; client-synthesized grounding; delta-boundary lint escape; assistant-only canonical store; capture flag held OFF per Ruling 80; log-only digest; two error classifiers; crude depth mapping), F-register dispositions (F-25b/c/d/q/t STAND; F-01..F-11, F-25e/f SUPERSEDED on the new surface; F-25g downgraded — the tier prompt-keying is excised, the live D-15 violation closed), and the engine-content deltas since 08-01 (PRATIJÑĀ v4.1 adopted verdicts, GOCHARA v3 under PARIṢKĀRA's honest re-close, KP sub-lord clock, fact-identity index, SAMPŪRTI W0).<br><br>**ELEVATION `[ELEVATION F5 v0.11]` — A-37..A-48, the beyond-acharya register:** live block fidelity with `prediction_card` as a wire event (one change unlocking three debts) · first-paint citations + server-derived grounding · every control honest or absent · depth derived from the scope tuple, served visibly · the remembering wave (recall + arrival line + contradiction surfacing) · **the window-opening ask — the single highest-leverage unbuilt feature** (every precondition shipped) · voice enforced not requested (remedial-imperative lint, pacing policy) · signal reader text prioritized by observed citation frequency · new engine layers surface at their earned tier only (T-8 extended) · pre-cutover hardening as a PB-4 entry condition · the sealed-reading export · dispute capture. **§19.5 forward sequence** (six waves: harden→cutover, fidelity, remember+ask, one-engine-in-fact, the walls, the unending audit). **PROPOSED rulings** on all remaining open forks (OT-1 confirm in-process · OT-3 confirm cron-in-webapp · OT-4 super-admin-only builds with guest request · OT-5 ratify shipped auth · OT-6 close as none, T-2's condition met). **NEW TENSIONS:** T-10 (as-built divergence must be classified: ruled / disclosed-lossy / silent debt — or lossiness ages into de-facto architecture) and T-11 (**a gate that promotes a surface must re-price every risk priced under the old exposure**). Authored by Claude (Cowork, Fable 5) in consultation with the native; per §21 rule 6 this version authorizes no code change. |
+| 0.10 | ~2026-07-27 | **Reconstructed at v0.11 — this row was never written, a §21 rule 2 violation disclosed rather than papered over.** The frontmatter reached `version: 0.10` (and the footer was left saying v0.6 — same drift class) with no changelog entry. Best reconstruction from the artifact itself: v0.10 = the ⚠ SUPERSEDED-IN-PART banner of 2026-07-27 and its staleness table, added after the Retrieval Plane Elevation + Residual Closure campaigns outran the registers. No design content is attributed to 0.10 beyond that banner. |
 | **0.9** | **2026-07-22** | **RC-13 (R-4 / W-17) — the code-level `session_pin` → `provenance_stamp` rename v0.8 deferred is now EXECUTED**, Resolver-ratified against the D-16 doctrine already on record (§11.4). GT-F28 closed (was NEEDS-RULING). §7.1's live storage diagram corrected at source: the `session_pins (build provenance)` / `priors_version in session pin →` line read `provenance_stamps (build provenance)` / `priors_version in provenance stamp →`. Internal-only, zero behavior/contract/UX change — pure identifier + served-JSON-field rename (`session_pin` → `provenance_stamp`) across `platform/src/lib/retrieval/session_pin.ts` (renamed `provenance_stamp.ts`) and its ~13 code-file consumer set (route handlers, MCP session/chart-selection/session tools, the codegen'd envelope mirror, capabilities resource doc). Does NOT execute the broader D-16 storage restructuring (immutable per-turn `conversation_messages.metadata_json`, per-turn drift detection, ledger-row copy-not-reference) — that remains separately scoped, unexecuted work; this residual closed naming only, per its own DONE bar. Full platform + platform-mcp suites green with zero test-count delta versus the pre-rename baseline. |
 | **0.8** | **2026-07-22** | **W-19 (AMBIG-4-authorized docs task, retrieval campaign W6):** §6.1 diagram corrected at source — the `prashna_ask` box listed a stale `depth` param (struck by D-15, v0.2) and the AGENTIC LOOP box still said "session pin ... pinned for ALL conversations" (struck/restructured by D-16, v0.3). Diagram now reads `prashna_ask(chart_id, question, scope_tuple?, response_format)` and "provenance stamp (...) — per-turn, D-16", matching this document's own already-ratified D-15/D-16 rulings and the C-1 signature actually shipped. Docs-only fix, scoped to §6.1 per AMBIG-4's authorization — does NOT execute the broader code-level `session_pin` → `provenance_stamp` rename (W-17/GT-F28), which remains its own unratified item (see `briefs/retrieval_audit/GROUND_TRUTH_REGISTER.md` GT-F28, status NEEDS-RULING) carried to the campaign's §H residuals. |
 | **0.7** | **2026-07-19** | **PG-2 diagnostic-wave integration (Lane Z-2 synthesis).** The six-lane PG-2 wave (44 findings, all ACCEPT) closed the high-consequence items PG-1 left undiagnosed, in place with the original visible (`[CORRECTED PG-2]` + finding id), per §0.5/D-18. **F-25u RESOLVED BENIGN** (`PG2-X1-0001..0006`): the `chart_facts` "+402% divergence / unstable across probes" alarm is retracted — `chart_facts` stores one ~27,677-row fact set **per ayanamsha** (5 partitions) + 135 invariant rows = **138,519** per fully-built chart; 138,519+137,687=276,206 (two built charts); 27,554 is the stale v1.0/single-ayanamsha figure; zero dup fact_ids, zero natural keys span >1 build_id; "unstable" was an unfiltered-vs-chart-scoped category error. **T-9 RESOLVED** (`PG2-X2-0001`, critical): the chat engine does **NOT** work — `/api/chat/consult` 500s deterministically at `bundle_hydrator.ts:25` on the retired `FORENSIC` floor asset (deleted from the manifest in PR #187), before any stream opens; same class as LCA-2, one stage downstream; **one-line fix**. This resolves T-9's "wired but 0 rows" ambiguity into a definite, code-confirmed broken-at-a-named-line answer. **§16.8 (new):** A-14 memoization ruling mislabel-fixed + **INVERTED** (`PG2-X4-0006` — virtualizer IS live, both replacements absent); citation shape clarified (`PG2-X4-0003` — a `CitationPart` in `parts_json`; PG-1's "none found" was a DB-emptiness artifact); `chart_agnostic_gate` A-2 confirmed fail-closed (`PG2-X4-0002` — `400 CHART_REQUIRED`, no leak); two-vs-three prediction ledgers (`PG2-X5-0006`); F-25v Bearer 401 resolved (`PG2-X3-0001` — stale key, not broken auth); coverage now **133/139 (~96%)** (`PG2-X3-0010`). **OT-11 costed, not resolved** (`PG2-X5-0007`, PC-8 — no choice made): three ledgers not two, neither satisfies §14.3 without a schema change; Option A (merge) and Option B (document) fully priced. **A-31 compliance decay** confirmed absent (`PG2-X4-0007`); **A-03/04/06/09** reclassified unverifiable→confirmed-not-built (`PG2-X4-0008`). **PG-1's gate re-audited VALID** (`PG2-M1-0001..0012`) — GATE GREEN upheld; the sealed report's stale 87 finding count (→98) and 5 critical count (→6) corrected in place in the PG-1 sealed artifacts. Sibling artifacts authored this wave: `PG2_DIAGNOSTIC_REPORT_v1_0.md` (per-question resolutions + 44-finding severity table) and `RETRIEVAL_SYSTEM_TRUTH_v2_0.md` (supersedes v1.0; adds the first live serving-path datum). |
@@ -3493,5 +4038,8 @@ before it is built:
    begins only when the architecture is ratified and a `CLAUDECODE_BRIEF` is
    issued with explicit `may_touch` / `must_not_touch` scope.
 
-*End of PARIPRASHNA_TARGET_ARCHITECTURE v0.6 (2026-07-19) — DRAFT, LIVING. v0.6 =
-PG-1 grounding-audit integration (Lane Z-1); corrections in place per §0.5/D-18.*
+*End of PARIPRASHNA_TARGET_ARCHITECTURE v0.11 (2026-08-18) — DRAFT, LIVING.
+v0.11 = as-built re-baseline (RG-1 discharge) + Fable-5 elevation pass;
+corrections in place per §0.5/D-18; §16.9 is the as-built census of record;
+§19.5 the forward sequence. The surface exists — what remains is making it
+worthy of its name.*
