@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T13:45:00Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "finding_id": "F-50",
+  "candidate": {
+    "head": "ba87bbe43",
+    "base": "a7136b467af204767a6f9b403785b84967136a84",
+    "scope": [
+      "platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts",
+      "platform/src/lib/retrieval/registry/layers/L2_bodha/__tests__/query_remedies_graha_filter_lead.test.ts"
+    ]
+  },
+  "causal_red": "A domain-filtered resonance subset reached the unfiltered chart-wide '#1 remedy-priority target' narration.",
+  "repair": "Graha, domain, and combined scopes now disclose the actual subset and retain weakest_rank_in_chart where present; unfiltered and leverage-ranked behavior is unchanged.",
+  "verification": {
+    "focused": "3/3 PASS; domain regression was red before repair",
+    "diff_check": "PASS",
+    "independent_review": "PASS",
+    "typecheck": "environment baseline red only: missing json-schema, uuid, ajv-formats declarations outside candidate paths"
+  },
+  "disposition": "CODE-VERIFIED / REVIEW-PASSED / CONTROL-GUARDED / NO-PR",
+  "next_action": "create an exact-parent baseline receipt and normal PR only after the active F47 release movement is reconciled."
+}
