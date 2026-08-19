@@ -28,6 +28,50 @@
  * scan runs over whole sentences and no match can straddle the seam. The cost
  * is that prose arrives sentence-wise rather than token-wise while the gate is
  * armed. That is a deliberate trade, stated here rather than discovered later.
+ *
+ * ── THE SAME-SENTENCE ASSUMPTION, AND WHY IT IS GONE (round 3, M-3 / H-4) ────
+ * Both halves of this file used to require the mortality term and the date to
+ * sit in ONE sentence, and a period or a newline was a hard boundary. Two
+ * consequences, both reproduced:
+ *
+ *   (b) NON-STREAMING. `scanMortalityPhrasing('The native will meet death. It
+ *       falls in 2047.')` returned zero hits and the text unchanged. So did
+ *       `'The native will meet death\nin the year 2047'` — a newline is a
+ *       terminator here, so the model only has to wrap a line to walk past the
+ *       scan. This is the plain, non-streaming path.
+ *
+ *   (a) STREAMING. Each released span was scanned in ISOLATION, so a term in
+ *       one span and its date in the next were never seen together. The
+ *       round-2 fix for this was `FORCED_RELEASE_OVERLAP_CHARS` — hold back the
+ *       last 200 characters of a forced release — which closes the window it
+ *       covers and nothing beyond it. A sweep over alignments with the term and
+ *       the date more than 200 characters apart leaked the COMPLETE claim (term
+ *       AND date both reaching the reader) in the majority of alignments.
+ *
+ * Both are the same defect: the scan's unit of context was too small. The unit
+ * is now a SLIDING WINDOW of `CROSS_SENTENCE_WINDOW` consecutive sentences, and
+ * the streaming wrapper carries the tail of what it has already emitted
+ * (`MAX_CARRY_CONTEXT_CHARS`) into the next scan as CONTEXT — scanned, never
+ * re-emitted. A date arriving in a later chunk is therefore paired against a
+ * term the reader has already seen, and the sentence carrying the date is
+ * redacted before it is written.
+ *
+ * ── THE GUARANTEE, STATED AT ITS ACTUAL WIDTH ────────────────────────────────
+ * The old header said, unconditionally, "a date paired with a term now cannot
+ * be emitted". That was true only inside the 200-character window. What is true
+ * now, and all that is true:
+ *
+ *   · A term and a date within CROSS_SENTENCE_WINDOW consecutive sentences of
+ *     each other are BOTH redacted (non-streaming), or the later one is
+ *     withheld (streaming). Two sentences, not one — a third sentence between
+ *     them is out of scope and is a KNOWN residual, not a covered case.
+ *   · Across a stream seam, that window reaches back at most
+ *     MAX_CARRY_CONTEXT_CHARS of already-emitted prose. Beyond that distance a
+ *     pair is not detected. `phrasing_scan_round3.test.ts` sweeps the boundary
+ *     and fails if either constant shrinks.
+ *   · Nothing retracts a term already sent. The residual remains "a reader may
+ *     see a mortality term whose date is then withheld", never "a reader may
+ *     see a complete mortality claim" within the stated window.
  */
 
 import { normalizeForClassification, spanHash } from './normalize'
@@ -66,6 +110,41 @@ export const MAX_HOLDBACK_CHARS = 1200
  * stall.
  */
 export const FORCED_RELEASE_OVERLAP_CHARS = 200
+
+/**
+ * How many CONSECUTIVE sentences the term/date pairing may span (round 3, M-3).
+ *
+ * 2, and the number is a real trade rather than a placeholder. At 1 — the
+ * pre-round-3 behaviour — "The native will meet death. It falls in 2047." is
+ * two sentences and passes clean, which is the defect. Raising it further keeps
+ * buying coverage, but each increment also redacts more prose that merely
+ * happens to mention a date near a mortality word: at 2, a mortality term and
+ * an unrelated date must be ADJACENT to be caught together, which is already
+ * the shape a leaked claim takes; at 4 or 5 an entire paragraph of legitimate
+ * maraka analysis disappears because someone dated a dasha at the end of it.
+ *
+ * A pair separated by an intervening third sentence is therefore NOT detected.
+ * That is a stated residual, not an oversight — see the module header.
+ */
+export const CROSS_SENTENCE_WINDOW = 2
+
+/**
+ * How much already-emitted prose the streaming scanner carries forward as
+ * detection CONTEXT (round 3, M-3(a)).
+ *
+ * Equal to `MAX_HOLDBACK_CHARS` on purpose: the holdback bounds how far AHEAD
+ * the scanner can look before it must release, so matching it bounds how far
+ * BEHIND the scanner can look after it has. Together they mean a term/date pair
+ * within one holdback-length of unpunctuated prose is caught on whichever side
+ * of the release point it falls.
+ *
+ * The context is scanned and never re-emitted, so this costs one extra regex
+ * pass over at most 1200 characters per chunk — not one extra byte of latency,
+ * which is what made this the better fix than growing
+ * `FORCED_RELEASE_OVERLAP_CHARS` (that one delays the reader; this one does
+ * not).
+ */
+export const MAX_CARRY_CONTEXT_CHARS = MAX_HOLDBACK_CHARS
 
 /** Mortality-outcome vocabulary, as it appears in GENERATED prose. */
 const MORTALITY_OUTPUT_TERMS =
@@ -146,15 +225,34 @@ function sentenceHit(sentence: string): MortalityPhrasingHit['rule'] | null {
   return null
 }
 
+export interface MortalityScanOptions {
+  /**
+   * Prose the reader has ALREADY been shown, scanned as context and never
+   * re-emitted (round 3, M-3(a)).
+   *
+   * This is what lets a date arriving in a later stream chunk be paired with a
+   * term that left in an earlier one. Nothing in the prefix can be redacted —
+   * it is already gone — but a sentence in `text` that completes a claim the
+   * prefix started is redacted before it is written.
+   */
+  contextPrefix?: string
+}
+
 /**
  * Scan a completed prose span and remove any sentence pairing a mortality term
- * with a date shape or a duration-to-end phrase.
+ * with a date shape or a duration-to-end phrase — WITHIN ITSELF, or within a
+ * window of `CROSS_SENTENCE_WINDOW` consecutive sentences.
  *
  * Sentence-level redaction rather than token-level is deliberate: deleting
  * "2047" out of "you will die around 2047" leaves "you will die around", which
- * is worse prose AND still a mortality claim. The whole clause goes.
+ * is worse prose AND still a mortality claim. The whole clause goes. When a
+ * pair straddles two sentences BOTH sentences go, for the same reason: leaving
+ * the half that says "the native will meet death" behind is still the claim.
  */
-export function scanMortalityPhrasing(text: string): MortalityScanResult {
+export function scanMortalityPhrasing(
+  text: string,
+  options: MortalityScanOptions = {},
+): MortalityScanResult {
   try {
     if (!text) return { clean: text, hits: [], scan_failed: false }
     // HARDENING ROUND, H-3 — this line is why `scan_failed` is a real signal.
@@ -178,10 +276,52 @@ export function scanMortalityPhrasing(text: string): MortalityScanResult {
           'Failing closed — an unscannable span is never a scanned-clean span.',
       )
     }
+    // Context sentences are scanned alongside the span's own but can never be
+    // emitted or redacted — they left already. `emitFrom` is the index at which
+    // the span's own sentences begin.
+    const contextSentences =
+      typeof options.contextPrefix === 'string' && options.contextPrefix
+        ? splitSentences(options.contextPrefix)
+        : []
+    const own = splitSentences(text)
+    const sentences = [...contextSentences, ...own]
+    const emitFrom = contextSentences.length
+
+    // ── THE SLIDING WINDOW (round 3, M-3) ─────────────────────────────────
+    // Single-sentence hits first, then every window of CROSS_SENTENCE_WINDOW
+    // consecutive sentences. A window hit redacts EVERY sentence in the window
+    // that the span still owns — the pair is the claim, and keeping either half
+    // keeps the claim.
+    const ruleFor = new Map<number, MortalityPhrasingHit['rule']>()
+    for (let i = 0; i < sentences.length; i++) {
+      const rule = sentenceHit(sentences[i])
+      if (rule) ruleFor.set(i, rule)
+    }
+    for (let width = 2; width <= CROSS_SENTENCE_WINDOW; width++) {
+      for (let i = 0; i + width <= sentences.length; i++) {
+        // A window CONTAINING an already-redacted sentence is skipped, and this
+        // is the line that keeps the rule from over-redacting. If one sentence
+        // carries the whole claim, removing that sentence removes the claim;
+        // the neighbours contributed nothing and must survive — "Your chart
+        // indicates you will die around 2047. Saturn supports steady
+        // consolidation." must lose the first sentence and keep the second.
+        // The window rule exists only for pairs where NEITHER half is a claim
+        // on its own, which is exactly the leak it was added to close.
+        let alreadyRedacted = false
+        for (let k = 0; k < width; k++) if (ruleFor.has(i + k)) alreadyRedacted = true
+        if (alreadyRedacted) continue
+
+        const rule = sentenceHit(sentences.slice(i, i + width).join(''))
+        if (!rule) continue
+        for (let k = 0; k < width; k++) ruleFor.set(i + k, rule)
+      }
+    }
+
     const hits: MortalityPhrasingHit[] = []
     let clean = ''
-    for (const sentence of splitSentences(text)) {
-      const rule = sentenceHit(sentence)
+    for (let i = emitFrom; i < sentences.length; i++) {
+      const sentence = sentences[i]
+      const rule = ruleFor.get(i)
       if (rule) {
         hits.push({
           rule,
@@ -200,6 +340,22 @@ export function scanMortalityPhrasing(text: string): MortalityScanResult {
 }
 
 /**
+ * The tail of already-emitted prose that the next scan sees as context.
+ *
+ * The last `CROSS_SENTENCE_WINDOW - 1` sentences, so the streaming window and
+ * the non-streaming window are the SAME window — a term/date pair split across
+ * a stream seam is treated exactly as one split across a sentence boundary in a
+ * completed span. Hard-truncated to `MAX_CARRY_CONTEXT_CHARS` because in the
+ * forced-release path there is no sentence boundary to slice at and "the last
+ * sentence" would otherwise mean "everything emitted so far".
+ */
+function tailContext(emitted: string): string {
+  const sentences = splitSentences(emitted)
+  const ctx = sentences.slice(-(CROSS_SENTENCE_WINDOW - 1)).join('')
+  return ctx.length > MAX_CARRY_CONTEXT_CHARS ? ctx.slice(-MAX_CARRY_CONTEXT_CHARS) : ctx
+}
+
+/**
  * The streaming wrapper. Holds prose back to the last sentence boundary so a
  * match can never straddle a delta seam.
  *
@@ -209,9 +365,18 @@ export function scanMortalityPhrasing(text: string): MortalityScanResult {
  */
 export class StreamingMortalityScanner {
   private buffer = ''
+  /**
+   * The tail of what has already been EMITTED, carried into the next scan as
+   * context (round 3, M-3(a)). Bounded by `MAX_CARRY_CONTEXT_CHARS`.
+   *
+   * Only clean, emitted text goes in here. A sentence that was redacted never
+   * reached the reader, so it cannot complete a claim for the reader either,
+   * and carrying it would only manufacture redactions.
+   */
+  private carry = ''
   readonly hits: MortalityPhrasingHit[] = []
   scanFailed = false
-  private readonly scan: (text: string) => MortalityScanResult
+  private readonly scan: (text: string, options?: MortalityScanOptions) => MortalityScanResult
 
   /**
    * @param scan the span scanner. Defaults to `scanMortalityPhrasing`; the
@@ -223,7 +388,9 @@ export class StreamingMortalityScanner {
    *   collaborator tests the wrapper's own contract ("a failed span sets
    *   `scanFailed` AND emits nothing") without contorting the input to do it.
    */
-  constructor(scan: (text: string) => MortalityScanResult = scanMortalityPhrasing) {
+  constructor(
+    scan: (text: string, options?: MortalityScanOptions) => MortalityScanResult = scanMortalityPhrasing,
+  ) {
     this.scan = scan
   }
 
@@ -246,7 +413,7 @@ export class StreamingMortalityScanner {
   }
 
   private scanAndRecord(span: string): string {
-    const result = this.scan(span)
+    const result = this.scan(span, { contextPrefix: this.carry })
     this.hits.push(...result.hits)
     // FAIL CLOSED, and say so. `scan_failed` means the span was never scanned,
     // so `result.clean` is `''` by that function's contract and nothing from
@@ -255,6 +422,7 @@ export class StreamingMortalityScanner {
       this.scanFailed = true
       return ''
     }
+    this.carry = tailContext(this.carry + result.clean)
     return result.clean
   }
 
