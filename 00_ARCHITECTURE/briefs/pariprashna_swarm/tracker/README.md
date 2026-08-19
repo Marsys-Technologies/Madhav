@@ -110,6 +110,41 @@ detector).
   event fires. This is the one cell where being confidently wrong recreates the PR #1341
   incident (a stale lease/merge read treated as current).
 
+### Operational proof (item 7, 2026-08-20): a real push, propagating and then not
+
+Ref freshness matters because, without it, two very different situations render
+identically: "the lane hasn't pushed yet" and "this tracker's refs are frozen." Selftest
+already proves the classification function's boundaries on synthetic ages
+(`test_ref_freshness_boundaries`); this is the operational version — a real branch pushed
+to the real remote, a real mirror, real elapsed wall-clock time, run against an isolated
+copy of this daemon (`HOME` override, so none of it touched the live
+`~/.pariprashna-tracker/` another campaign's monitoring depends on):
+
+1. Bootstrapped an isolated mirror, ran one cycle — baseline, no demo branches present.
+2. Pushed `pariprashna/zz-demo-ref-freshness-a` to `origin`. Ran one cycle
+   (`git fetch --prune`, 1585ms): the branch appeared in `git_lane_branches` immediately.
+3. Broke the mirror's own remote (`git remote set-url origin
+   https://invalid.example.invalid/...`, isolated to this one demo mirror clone — never
+   touches the shared checkout or the production mirror). Pushed
+   `pariprashna/zz-demo-ref-freshness-b`. Ran a cycle immediately: `mirror_fetch.ok=false`,
+   and — this is the finding worth stating precisely — **the entire `git_lane_branches`
+   cell went `evidence_class: UNKNOWN`, not "branch A only."** The code already refuses to
+   serve the mirror's still-physically-present on-disk refs once this cycle's fetch has
+   failed (see "Ref freshness" above). That is a *stronger* resolution of the ambiguity
+   than freezing at the last-good list would have been: a frozen A-only list could be
+   misread as "nothing new happened," where an honest UNKNOWN cannot be misread as anything
+   but "can't tell right now."
+4. Left the fetch broken and let real time pass, re-running a cycle at each point:
+   age=57.6s → `green`, age=124.0s → `amber`, age=250.4s → `red`. Branch B never appeared
+   at any point; `git_lane_branches` stayed `UNKNOWN` throughout, provenance = the actual
+   `Could not resolve host` error.
+5. Restored the remote URL. Next cycle: `mirror_fetch.ok=true`, both
+   `zz-demo-ref-freshness-a` and `-b` appeared together, ref age back to 2.4s (`green`).
+6. Cleanup: both demo branches deleted from `origin`, the isolated `HOME` runtime dir
+   removed. The production daemon's own `~/.pariprashna-tracker/heartbeat.json` was
+   confirmed untouched by any of the above (separate `HOME`, separate mirror, separate
+   pidfile).
+
 ## The three-tier tap (dead-man's switch)
 
 1. **T1** — `trackerd.py` stamps `~/.pariprashna-tracker/heartbeat.json` every cycle
