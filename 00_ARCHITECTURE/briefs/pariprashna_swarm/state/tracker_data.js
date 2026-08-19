@@ -169,11 +169,12 @@ window.TRACKER = {
       "verifier_verdict": "conductor-reviewed. RLS created but deliberately NOT enabled (arming script outside migration dirs, confirmed by conductor). arm-3 out-of-process ledger writer built from scratch (didn't exist). Real cross-context RLS denial proven (17 DB-integration tests). Full suite 714/760 files, 7987 tests, 0 failures. drift/naming_lint clean, no migration collision (576). SECURITY FINDING surfaced by this lane (pre-existing on main, NOT introduced by any pariprashna session, verified by conductor): a live-shaped plaintext amjis_app password committed at platform/python-sidecar/tests/l5/test_mi_bhara_circularity_guard_w2.py:295 -- flagged directly to the native, not silently fixed."
     },
     "G1-G": {
-      "role_stage": "verifying",
+      "role_stage": "building",
       "name": "Injection containment (PPR-13) -- structural delimiting, Zod-closed plan schema, tool-sequence anomaly flag, answer-side entitlement scan folded into G1-A's pre-wire pass",
       "last_event_ts": "2026-08-20T02:40:00+05:30",
       "worktree": "worktree-agent-a2d727ba0bf385a8d",
-      "branch": "pariprashna/g1-g-injection-containment"
+      "branch": "pariprashna/g1-g-injection-containment",
+      "verifier_verdict": "Fix round dispatched: P0 flag-off divergence bug (reading_parts.ts), P1 cross-seam 3-way-split leak + hex-run length boundary defect class, P2 rejectIdentityParams array-walk/depth-cap + suffix-match false-positive."
     },
     "P1-E": {
       "role_stage": "merged",
