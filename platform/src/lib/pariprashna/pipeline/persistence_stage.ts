@@ -24,7 +24,11 @@
  * BEFORE the write-through runs, because it rides into
  * `conversation_messages.metadata_json`. The receipt stage owns computing it;
  * this stage owns writing it. Hoisting the call into the route shell would move
- * it ahead of the id mints and change the turn's observable ordering.
+ * it ahead of the id mints in SOURCE order. Note (P0-C verification, 2026-08-19):
+ * the golden-stream harness cannot currently observe this reordering either way
+ * (no scenario asserts on relative id-mint/stamp-compute timing) — keep the
+ * stated order because it is the intended contract, not because a test proves
+ * it, and land a scenario that pins it before relying on this comment alone.
  */
 
 import type { UIMessage } from 'ai'
