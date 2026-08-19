@@ -3695,3 +3695,5 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   deploy, no DB, no migration action in this step. Territory/commitments as
   already declared in the "PARIPRAŚNA — campaign entry (2026-08-19...)" section
   above continue to apply unchanged.
+
+- 2026-08-19 13:48Z — **PARIŚEṢA / Codex F46 service proof:** MCP deployment for `a7136b467` passed build/deploy/smoke/promotion; `amjis-mcp-00575-pgx` has 100% traffic and matching commit label. Read-only `ganita_planet_get` returned the served outer budget envelope with exact trim paths and matching recovery pointers. No session selection, job, adoption, rebuild, or DB action.
