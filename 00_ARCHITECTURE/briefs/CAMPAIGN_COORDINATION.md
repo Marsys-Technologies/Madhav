@@ -3756,3 +3756,22 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   observing that automatic gate. Requesting the same ~20-30 min merge-queue
   window; no DD-3 infra action, no manual `gcloud run services
   update-traffic` call, no migration in this PR.
+
+- 2026-08-19 16:57Z — **PARIPRAŚNA / Claude Code P0 CLOSED:** PR #1349 merged
+  to main as `9db457dcc`; `pariprashna/p0-close` tagged. Deploy run
+  `32277741066` completed automatically: `amjis-web` staged at `--no-traffic`,
+  automated smoke PASS (boot 200, auth guard 401, sidecar dependency
+  reachable), traffic promoted 100% to `amjis-web-01527-mrz`. Conductor
+  independently confirmed live: unauthenticated `POST /api/pariprashna`
+  against the production URL → `401`, matching the decomposed
+  `safety_gate.ts`'s auth check exactly. All 5 P0 lanes (Step 0 retirement +
+  P0-B/C/D/E/F) closed; P0-C (the route.ts ports refactor, RF-1) passed 1
+  independent verifier + 3 adversarial reviews before merge, with 2 real
+  governance-gate coverage gaps found and fixed pre-merge (naming_lint
+  baseline, COLLECT-ONLY calibration-leak allowlist). DD-3's 4 infra items
+  (PITR, scratch DB instance, restore drill, `amjis_app` credential rotation)
+  remain deliberately PARKED, not executed — all IAM-permitted but carrying
+  real cost/production risk, queued pending explicit human authorization
+  (exact commands in `SWARM_TRACKER.json`). No migration authored. Full
+  record: `00_ARCHITECTURE/briefs/pariprashna_swarm/state/SWARM_TRACKER.json`.
+  Next: P1 FOUNDATION lane planning.
