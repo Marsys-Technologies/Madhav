@@ -11,6 +11,10 @@
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
   <key>ThrottleInterval</key><integer>10</integer>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>__PATH_ENV__</string>
+  </dict>
   <key>StandardOutPath</key><string>__RUNTIME_DIR__/logs/trackerd.out.log</string>
   <key>StandardErrorPath</key><string>__RUNTIME_DIR__/logs/trackerd.err.log</string>
   <key>WorkingDirectory</key><string>__TRACKER_DIR__</string>

@@ -10,6 +10,14 @@ PYTHON3="$(command -v python3)"
 UID_N="$(id -u)"
 LA_DIR="${HOME}/Library/LaunchAgents"
 
+# launchd jobs do NOT inherit the interactive shell's PATH (no .zshrc/.zprofile), so `gh`
+# and `gcloud` are invisible to collect.py unless the plist sets PATH explicitly. Capture
+# the real PATH now (interactive shell, homebrew etc. all resolved) plus the standard
+# system dirs as a floor, so it works whether this is run interactively or not.
+GH_DIR="$(dirname "$(command -v gh 2>/dev/null || echo /opt/homebrew/bin/gh)")"
+GCLOUD_DIR="$(dirname "$(command -v gcloud 2>/dev/null || echo /opt/homebrew/bin/gcloud)")"
+PATH_ENV="${PATH}:${GH_DIR}:${GCLOUD_DIR}:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+
 mkdir -p "${LA_DIR}" "${RUNTIME_DIR}/logs" "${RUNTIME_DIR}/events"
 
 render() {
@@ -18,6 +26,7 @@ render() {
   sed -e "s#__PYTHON3__#${PYTHON3}#g" \
       -e "s#__TRACKER_DIR__#${TRACKER_DIR}#g" \
       -e "s#__RUNTIME_DIR__#${RUNTIME_DIR}#g" \
+      -e "s#__PATH_ENV__#${PATH_ENV}#g" \
       "${template}" > "${out}"
 }
 
