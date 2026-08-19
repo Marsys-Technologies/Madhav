@@ -10,12 +10,13 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import REPO_ROOT, atomic_write_json, run  # noqa: E402
+from _common import CODE_DIR, INSTALLED_FROM_JSON, REPO_ROOT, atomic_write_json, run  # noqa: E402
 
 GH_REPO = "Marsys-Technologies/Madhav"
 GCLOUD_PROJECT = "madhav-astrology"
 GCLOUD_REGION = "asia-south1"
 GCLOUD_SERVICE = "amjis-web"
+TRACKER_SUBTREE_PATH = "00_ARCHITECTURE/briefs/pariprashna_swarm/tracker"
 
 
 def _unknown(reason):
@@ -143,6 +144,44 @@ def collect_expected_artifacts(plan):
     return _derived(results, "filesystem existence/mtime + git merge-base --is-ancestor, per PLAN.yaml expected_artifacts")
 
 
+def collect_code_provenance():
+    """What code is this daemon actually running, and is it current? Reads
+    INSTALLED_FROM.json next to the running code (written by install.sh --install-from-ref
+    at snapshot-install time; absent in in-place/dev mode, which is honestly UNKNOWN rather
+    than faked). Freshness is checked against the tracker/ subtree's latest commit on
+    origin/main via REPO_ROOT (TRACKER_GIT_REPO) -- NOT against this code directory, which
+    in snapshot mode has no .git of its own to check."""
+    if not os.path.exists(INSTALLED_FROM_JSON):
+        return _unknown(f"no INSTALLED_FROM.json at {INSTALLED_FROM_JSON} (in-place/dev install, not a snapshot)")
+    try:
+        with open(INSTALLED_FROM_JSON, encoding="utf-8") as f:
+            installed = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        return _unknown(f"could not read INSTALLED_FROM.json: {e}")
+
+    source_sha = installed.get("source_sha")
+    if not source_sha:
+        return _unknown("INSTALLED_FROM.json has no source_sha")
+
+    ok, latest, err = run(["git", "--no-optional-locks", "log", "-1", "--format=%H",
+                            "origin/main", "--", TRACKER_SUBTREE_PATH])
+    if not ok or not latest.strip():
+        return _unknown(f"could not determine origin/main's latest tracker/ subtree commit: {err.strip()[:200]}")
+    latest = latest.strip()
+
+    is_current = (source_sha == latest)
+    ok2, _, _ = run(["git", "--no-optional-locks", "merge-base", "--is-ancestor", source_sha, "origin/main"])
+    is_ancestor_of_main = ok2
+
+    return _derived({
+        "installed": installed,
+        "latest_tracker_subtree_commit_on_main": latest,
+        "is_current": is_current,
+        "is_ancestor_of_origin_main": is_ancestor_of_main,
+        "code_dir": CODE_DIR,
+    }, f"INSTALLED_FROM.json ({INSTALLED_FROM_JSON}) vs. git log -1 origin/main -- {TRACKER_SUBTREE_PATH}")
+
+
 def collect_deploy():
     ok, out, err = run([
         "gcloud", "run", "revisions", "list",
@@ -225,6 +264,7 @@ def main():
         "github_prs": collect_github_prs(),
         "github_rate_limit": collect_github_rate_limit(),
         "expected_artifacts": collect_expected_artifacts(plan),
+        "code_provenance": collect_code_provenance(),
         "deploy": collect_deploy(),
         "shared_surfaces": collect_shared_surfaces(),
     }

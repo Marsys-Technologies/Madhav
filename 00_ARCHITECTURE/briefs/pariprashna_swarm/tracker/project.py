@@ -206,7 +206,7 @@ def fold(plan, snapshot, events, as_of_epoch):
             "depends_on": lane["depends_on"], "state": state,
             "evidence_class": evidence_class, "provenance": provenance,
             "age_in_state_seconds": max(0, as_of_epoch - transition_epoch),
-            "branch": next((b for b in (snapshot.get("git_lane_branches") or {}).get("value", {})
+            "branch": next((b for b in ((snapshot.get("git_lane_branches") or {}).get("value") or {})
                              if b.split("/")[-1].lower().startswith(lane_id.lower())), None),
         })
 
@@ -250,6 +250,35 @@ def fold_budget(plan, events):
             if phase in spent and isinstance(amount, (int, float)):
                 spent[phase] += amount
     return {ph: {"ceiling_usd": ceilings.get(ph), "spent_usd": round(spent.get(ph, 0.0), 2)} for ph in ceilings}
+
+
+def fold_code_provenance(snapshot):
+    """An observatory that cannot tell you it is running old code is not trustworthy.
+    Publishes what's ACTUALLY DEPLOYED (from INSTALLED_FROM.json, honestly UNKNOWN if the
+    running install isn't a snapshot at all) so tracker.html can show it and flag staleness
+    -- never silently trusted as current just because it's running."""
+    cp = snapshot.get("code_provenance") or {}
+    if cp.get("evidence_class") != "DERIVED":
+        return {
+            "evidence_class": cp.get("evidence_class", "UNKNOWN"),
+            "provenance": cp.get("provenance"),
+            "code_sha": None, "code_sha_short": None, "code_installed_at": None,
+            "code_source_ref": None, "code_is_current": None, "code_stale": None,
+            "code_is_ancestor_of_main": None,
+        }
+    v = cp["value"]
+    installed = v.get("installed", {})
+    sha = installed.get("source_sha")
+    return {
+        "evidence_class": "DERIVED", "provenance": cp.get("provenance"),
+        "code_sha": sha, "code_sha_short": (sha[:10] if sha else None),
+        "code_installed_at": installed.get("installed_at"),
+        "code_source_ref": installed.get("source_ref"),
+        "code_is_current": v.get("is_current"),
+        "code_stale": (v.get("is_current") is False),
+        "code_is_ancestor_of_main": v.get("is_ancestor_of_origin_main"),
+        "latest_tracker_subtree_commit_on_main": v.get("latest_tracker_subtree_commit_on_main"),
+    }
 
 
 def fold_daemon_health(events):
@@ -336,6 +365,7 @@ def project(write_new_events=True):
             for a in anomalies
         ],
         "budget": fold_budget(plan, events),
+        "code_provenance": fold_code_provenance(snapshot),
         "shared_surfaces": {k: v for k, v in (snapshot.get("shared_surfaces") or {}).items()},
         "github_rate_limit": snapshot.get("github_rate_limit"),
         "daemon_health": fold_daemon_health(events),
