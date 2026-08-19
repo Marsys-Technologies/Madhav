@@ -3725,3 +3725,5 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
 - 2026-08-19 14:31Z — **PARIŚEṢA / Codex F47 deployment reconciled:** aggregate deployment run `32263050773` completed SUCCESS. The already-proven affected sidecar remains `amjis-sidecar-01066-bzx`, 100% traffic, commit label `bb5c5278`; F47 is code-and-service verified in the authorized fallback ledger pending only normal tracker-writer restoration. No DB or rebuild action.
 
 - 2026-08-19 14:33Z — **PARIŚEṢA / Codex F42 requalified:** exact head `c1b97b2c` is a patch-identical, independently reviewed current-main successor of the unknown/invariant ayanāmśa query guard; focused 2/2 and package typecheck pass. It is disjoint from F50 and may enter a separate normal protected PR; no deploy, rebuild, or DB action.
+
+- 2026-08-19 14:34Z — **PARIŚEṢA / Codex F42 PR:** normal protected PR #1348 opened at immutable reviewed head `c1b97b2c` against `45f0ddf567`; it is separate from F50 #1347 and awaits its own required contexts. No auto-merge, bypass, deploy, rebuild, or DB action.
