@@ -4,7 +4,7 @@
   "phase": "P1",
   "phase_status": "P1_FOUNDATION_WAVE1_DISPATCHED",
   "wave": "P1-FOUNDATION",
-  "heartbeat_ts": "2026-08-19T16:38:00Z",
+  "heartbeat_ts": "2026-08-19T17:42:00Z",
   "concurrency": {
     "n": 4,
     "cap": 10,
@@ -146,12 +146,12 @@
       "refuter_votes": []
     },
     "G1-B": {
-      "role_stage": "building",
+      "role_stage": "merged",
       "name": "Consent & subjects schema (NCD-9) -- migration authored+locally-verified only, NOT applied to production by the agent",
       "worktree": null,
       "branch": null,
       "last_event_ts": "2026-08-19T17:08:00Z",
-      "verifier_verdict": null,
+      "verifier_verdict": "conductor-reviewed. Real migration-number collision found and fixed: both G1-D and G1-B independently picked 574 (shared platform/migrations+platform/supabase/migrations sequence). Renumbered G1-B's to 575, updated all 4 internal references, re-verified: 73 unit + 14 DB-integration tests re-run independently against a fresh local scratch Postgres after rename, all pass. Resolved a real merge conflict in feature_flags.ts (both lanes added a flag in the same enum/defaults block) -- both flags coexist correctly, safety_gate.ts auto-merged clean with correct ordering (authorizeChartAccess -> resolveSubjectConsent, per G1-B's own header doc). Full suite after all 4 wave-1 lanes: 711/756 files, 7950 tests, 0 failures. drift/naming_lint clean. Migration NOT applied to production by the agent or conductor -- will apply automatically via the deploy pipeline when this branch reaches main.",
       "refuter_votes": []
     },
     "G1-A": {
@@ -315,5 +315,9 @@
       "amjis_app credential rotation"
     ],
     "recorded": "origin/campaign-coordination @ 3e8530248"
+  },
+  "migration_ceiling": {
+    "value": 575,
+    "note": "574 = G1-D (llm_usage_events channel column), 575 = G1-B (chart_subject_consent + 4 related tables). Both additive-only, neither applied to production yet."
   }
 }
