@@ -35,9 +35,8 @@
  *       the detector is not vacuously passing).
  */
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'fs'
-import { join } from 'path'
 import { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
+import { readRouteSurface } from './route_surface'
 import { EDGE_STATE_LABELS } from '@/lib/pariprashna/lexicon'
 import type { TurnProvenanceStamp } from '@/lib/pariprashna/provenance/stamp'
 
@@ -45,9 +44,11 @@ import type { TurnProvenanceStamp } from '@/lib/pariprashna/provenance/stamp'
 // (A) Source-contract check — route.ts never threads the stamp into em.*(...)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const routeSrc = readFileSync(join(__dirname, '../../src/app/api/pariprashna/route.ts'), 'utf-8')
+// P0-C / RF-1: the pipeline moved into typed stage modules; the surface is the
+// route shell plus every stage module it composes (tests/pariprashna/route_surface.ts).
+const routeSrc = readRouteSurface()
 
-describe('source contract: route.ts never passes provenanceStamp into an em.* call', () => {
+describe('source contract: the live route surface never passes provenanceStamp into an em.* call', () => {
   it('computes the stamp exactly once and only threads it into persistence metadata', () => {
     // The stamp variable must exist (the write path this lane added).
     expect(routeSrc).toContain('computeTurnProvenanceStamp')
