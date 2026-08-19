@@ -3697,3 +3697,5 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   above continue to apply unchanged.
 
 - 2026-08-19 13:48Z — **PARIŚEṢA / Codex F46 service proof:** MCP deployment for `a7136b467` passed build/deploy/smoke/promotion; `amjis-mcp-00575-pgx` has 100% traffic and matching commit label. Read-only `ganita_planet_get` returned the served outer budget envelope with exact trim paths and matching recovery pointers. No session selection, job, adoption, rebuild, or DB action.
+
+- 2026-08-19 13:50Z — **PARIŚEṢA / Codex Ganga admission:** F47 PR #1343 exact head `404030993` is CLEAN on F46 main `a7136b467`, with all five required contexts SUCCESS and independent reviews for both action-sensitive scoring and per-window dasha-boundary behavior. Normal auto-merge admission is authorized; F50 remains unqueued. No bypass, deploy, rebuild, or DB action.
