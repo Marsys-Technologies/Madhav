@@ -36497,3 +36497,103 @@ session_close:
 
 Owner review of the Codex onboarding PR. Do not merge until the owner approves; then complete
 the owner-authorized merge procedure and address CCD-004 follow-ups only under their own scope.
+
+---
+
+### Session PARIPRASHNA-G0-CLOSE-2026-08-19
+
+```yaml
+session_open:
+  session_id: PARIPRASHNA-G0-CLOSE-2026-08-19
+  cowork_thread_name: "Paripraśna G0 close — docs, registration, git only"
+  agent_name: claude-sonnet-4-6
+  agent_version: claude-sonnet-4-6
+  tool: "Claude Code"
+  tool_profile: madhav-safe
+  worktree_path: /private/tmp/pariprashna-g0-close
+  step_number_or_macro_phase: PARIPRASHNA-G0
+  predecessor_session: CODEX-ONBOARDING-CLOSE-2026-08-15
+  coordination:
+    coordination_ref: n/a (doc-only session; no Campaign Coordination lease required)
+    lease_id: null
+    lease_status_verified: false
+    work_order_surface: 00_ARCHITECTURE/briefs/pariprashna_v012/CLAUDECODE_BRIEF_G0_CLOSE_v1_0.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: false
+    stale_surfaces_disregarded: ["STEP_LEDGER_v1_0.md (GOVERNANCE_CLOSED)", "CAMPAIGN_COORDINATION.md (MM — deferred per brief scope rule)"]
+  mandatory_reading_confirmation:
+    - {file: CLAUDECODE_BRIEF.md, fingerprint_sha256: dacee94f3e17e3ff416e8f1b51b8ade42da3475cdb9dd8850dd2b31a2d53bfa7, read_at: 2026-08-19T00:00:00+05:30}
+    - {file: CLAUDE.md, fingerprint_sha256: 4dcee1be96aa30916a09fe8cf84b1f5b4db41fdd8964a110e79ed624cc9f926f, read_at: 2026-08-19T00:00:00+05:30}
+    - {file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, fingerprint_sha256: 85e55e42ff0f9b049ce2d79953650f905cc024b5acdbfcae30ea8798d70953d0, read_at: 2026-08-19T00:00:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/pariprashna_v012/CLAUDECODE_BRIEF_G0_CLOSE_v1_0.md, fingerprint_sha256: 73b14c3e6047ca5f5fceb8f7d6eb1eb958bac66f79e32adfb57c2603453314c0, read_at: 2026-08-19T00:00:00+05:30}
+  canonical_artifact_fingerprint_check:
+    - {canonical_id: PARIPRASHNA_ARCHITECTURE, path: 00_ARCHITECTURE/PARIPRASHNA_ARCHITECTURE_v1_0.md, expected_fingerprint: null, note: "new file — being imported in step 1"}
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/PARIPRASHNA_ARCHITECTURE_v1_0.md
+      - 00_ARCHITECTURE/PARIPRASHNA_ASBUILT_BASELINE_v1_0.md
+      - 00_ARCHITECTURE/PARIPRASHNA_DECISION_REGISTER_v1_0.md
+      - 00_ARCHITECTURE/PARIPRASHNA_VERIFICATION_MATRIX_v1_0.md
+      - "00_ARCHITECTURE/PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md (status flip + changelog row ONLY)"
+      - "00_ARCHITECTURE/PARIPRASHNA_DESIGN_ENGINEERING_PLAN_v0_1.md (relates_to annotation ONLY)"
+      - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md (§2 banner + changelog)"
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - "00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md (append NCD-10 directive ONLY)"
+      - "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md (AFTER dirty state resolves — deferred)"
+      - 00_ARCHITECTURE/briefs/pariprashna_v012/**
+      - "CLAUDECODE_BRIEF.md (root — status flip at close)"
+      - git
+    must_not_touch:
+      - "platform/**"
+      - "platform-mcp/**"
+      - "migrations of any kind"
+      - "any credential/flag/deploy"
+      - "any file dirty from ANOTHER workstream"
+      - "MACRO_PLAN/PROJECT_ARCHITECTURE/CLAUDE.md/GOVERNANCE_INTEGRITY_PROTOCOL"
+      - "the sealed pg1/pg2/PB trees"
+  mirror_pair_freshness_check: []
+  native_directive_obligations:
+    - {directive_id: ND.2, action: "append NCD-10 ruling as ND.2 in NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md (Step 5a)"}
+  red_team_due: false
+```
+
+```yaml
+session_close:
+  session_id: PARIPRASHNA-G0-CLOSE-2026-08-19
+  closed_at: 2026-08-19T10:30:00+05:30
+  tool: "Claude Code"
+  files_touched:
+    - {path: 00_ARCHITECTURE/PARIPRASHNA_ARCHITECTURE_v1_0.md, mutation_type: created, sha256_before: null, sha256_after: e5d0ab3e2f4bc19d2809d4c64d33725333edcfad64b2d98d31e5852adedbae00, justification: "Step 1 import + Step 3 status flip (DRAFT_PENDING_REDTEAM → CURRENT; version 1.0-RC → 1.0)", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/PARIPRASHNA_ASBUILT_BASELINE_v1_0.md, mutation_type: created, sha256_before: null, sha256_after: c913c6d668084ec19466fb7e4344a9ec98a01b9fa7abcd7b782088aac24174ae, justification: "Step 1 import", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/PARIPRASHNA_DECISION_REGISTER_v1_0.md, mutation_type: created, sha256_before: null, sha256_after: 9b6994d95cf74b2fc0c53e8ff24b387a75b67034b43c44864c3769721b78dafd, justification: "Step 1 import", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/PARIPRASHNA_VERIFICATION_MATRIX_v1_0.md, mutation_type: created, sha256_before: null, sha256_after: bd3d7c0638c2108d70f0062de36d6a707f92e899e9bcbf84c7e72e0af60df07b, justification: "Step 1 import", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json, mutation_type: modified, sha256_before: 2d2012d1cc5fbb980ff1a85910f5b4f60de96798f25faccd53e9700fd97cfa75, sha256_after: f7fb5b868547934504c1429ac2971e9e38d4083a28556dfd2dbca3cb5ebc3a5a, justification: "Step 2: 4 new PARIPRASHNA_* entries registered; Step 3: PARIPRASHNA_ARCHITECTURE fingerprint updated + status CURRENT", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md, mutation_type: modified, sha256_before: a37e94b4d5d20056b4479c6b678724ba3eb1212d4f649f23e1feeb69efc53913, sha256_after: 41457ca6ed26a2aef4f083ed73ecf9b946bf1abb8556e44e7ea5dd33e551bde3, justification: "Step 3: status SUPERSEDED + banner + §20 changelog row", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/PARIPRASHNA_DESIGN_ENGINEERING_PLAN_v0_1.md, mutation_type: modified, sha256_before: 9cc8619fe16723c0cc3e70df244d09b79c37b772b8b515cb288a3516566b7416, sha256_after: 7ed61aabd8fa60385fa6f7d32a2b42d382b7f35c6f8f7f1a3112aca56005a26c, justification: "Step 4: relates_to forward-pointer annotation; version 0.3 → 0.4; CAMPAIGN_COORDINATION deferral logged", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, mutation_type: modified, sha256_before: 85e55e42ff0f9b049ce2d79953650f905cc024b5acdbfcae30ea8798d70953d0, sha256_after: 2356f35709b2325899c527179fa48929e2f70c8b16f3bba68f1531fbc7425b5d, justification: "Step 5: §2 G0-close banner + v6.62 changelog entry; last_session_id = PARIPRASHNA-G0-CLOSE-2026-08-19", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md, mutation_type: modified, sha256_before: 56c9fbdf6c931fd84e853b84e5cb0c20878e37433b90fad6579db79da4d1248f, sha256_after: 8789493e231293613e08ec2294d766f3e88ed2077828f541b0be6e30bee3ca3c, justification: "Step 5a: ND.2 appended (NCD-10 formalization route; native-self interstitial for health-crisis/mental-health readings); §2 matrix updated; frontmatter updated_at updated", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/SESSION_LOG.md, mutation_type: modified, sha256_before: 1b3069dc5db045c0be6dae62ec2559452460dfec43c0aee1825ad0776fdbe84c, sha256_after: n/a, justification: "This close entry", within_declared_scope: true}
+  registry_updates_made:
+    capability_manifest:
+      - {canonical_id: PARIPRASHNA_ARCHITECTURE, change: "registered (layer: governance, status: CURRENT, version: 1.0)"}
+      - {canonical_id: PARIPRASHNA_ASBUILT_BASELINE, change: "registered (layer: governance, status: LIVING, version: 1.0)"}
+      - {canonical_id: PARIPRASHNA_DECISION_REGISTER, change: "registered (layer: governance, status: LIVING, version: 1.0)"}
+      - {canonical_id: PARIPRASHNA_VERIFICATION_MATRIX, change: "registered (layer: governance, status: LIVING, version: 1.0)"}
+    native_directives: [{directive_id: ND.2, change: "appended — NCD-10 native-self interstitial; cohort full-seal unaffected; folds into next MP revision"}]
+  red_team_pass: {due: false, performed: false, verdict: n/a, artifact_path: "RED_TEAM_G0_v1_0.md (PASS-WITH-FIXES, four-lens panel, 2026-08-18 — pre-session; governs this close)"}
+  drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, divergences_found: 224}
+  schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, violations_found: 42}
+  session_log_appended: true
+  cross_tool_sync:
+    campaign_coordination_deferred: "CAMPAIGN_COORDINATION.md dirty (MM — ekv/b-01-dignity-oracle-fix workstream staged+unstaged); pariprashna_v012 registration deferred per brief scope rule; logged in step-4 commit message and design-plan changelog"
+    next_session_can_resume_from: ["00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/CAPABILITY_MANIFEST.json", "00_ARCHITECTURE/PARIPRASHNA_ARCHITECTURE_v1_0.md"]
+  close_criteria_met: true
+  unblocks: ["PR review + merge of pariprashna/g0-close; CAMPAIGN_COORDINATION pariprashna_v012 row once ekv/b-01 workstream clears"]
+  handoff_notes: "PARIPRASHNA_ARCHITECTURE is the Paripraśna design of record (CURRENT in CAPABILITY_MANIFEST). Fresh session following CLAUDE.md §C → CURRENT_STATE v6.62 finds it in one hop. NCD-10 logged as ND.2 in NATIVE_DIRECTIVES. CAMPAIGN_COORDINATION registration deferred — open item."
+  known_residuals:
+    - {finding_id: PARIPRASNA-G0-DRIFT-224, finding: "drift_detector repository-wide baseline elevated 218→224 (6 new findings from 4 new Pariprasna doc entries + CURRENT_STATE update)", severity: LOW, booking_reference: "within G0-close expected delta; all are governance docs correctly flagged as 'newly tracked'", policy_ref: "OHP §F known_residuals whitelist"}
+    - {finding_id: PARIPRASHNA-G0-SCHEMA-42, finding: "schema_validator baseline 42 violations (unchanged from CODEX-ONBOARDING baseline)", severity: LOW, booking_reference: "CCD-004 owner-authorized dual-tool debt carry-forward", policy_ref: "OHP §F known_residuals whitelist"}
+    - {finding_id: PARIPRASHNA-G0-CAMPAIGN-COORD-DEFER, finding: "CAMPAIGN_COORDINATION.md pariprashna_v012 registration deferred (file dirty from ekv/b-01 workstream)", severity: LOW, booking_reference: "NCD-11 brief scope rule; file is MM in main working tree; safe to complete once ekv/b-01 lands", policy_ref: "CLAUDECODE_BRIEF_G0_CLOSE_v1_0.md §3 scope rule"}
+```
+

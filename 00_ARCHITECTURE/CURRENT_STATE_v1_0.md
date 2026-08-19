@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.59
+version: 6.62
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,22 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.62 (2026-08-19, PARIPRASHNA-G0-CLOSE, session PB-3-Bot): **Paripraśna decomposition
+    ratified and registered.** NCD-1..11 all RULED (2026-08-18, native); red-team
+    RED_TEAM_G0_v1_0.md PASS-WITH-FIXES. G0 close mechanics executed: (1) Paripraśna v1.0-RC
+    doc set imported to branch `pariprashna/g0-close` (fingerprints verified); (2)
+    PARIPRASHNA_ARCHITECTURE_v1_0.md registered in CAPABILITY_MANIFEST.json (entry_count
+    116→120, + ASBUILT_BASELINE + DECISION_REGISTER + VERIFICATION_MATRIX as LIVING companions);
+    (3) PARIPRASHNA_ARCHITECTURE_v1_0 status DRAFT_PENDING_REDTEAM→CURRENT (version 1.0-RC→1.0);
+    PARIPRASHNA_TARGET_ARCHITECTURE_v0_1 status→SUPERSEDED (mechanism: superseded-by-decomposition;
+    banner updated; §20 changelog row appended; file NOT renamed — 30+ inbound referrers);
+    (4) PARIPRASHNA_DESIGN_ENGINEERING_PLAN relates_to annotated (normative successor added;
+    CAMPAIGN_COORDINATION.md registration DEFERRED — file MM from another workstream);
+    (5) SESSION_LOG open/close + CURRENT_STATE this entry; NCD-10 native directive appended to
+    NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md (step 5a). Gate plan adopted (PARIPRASHNA_ARCHITECTURE
+    §8 G1..G7 gates). PB-4 re-entry = G5/G7 (per NCD-6, ruling: start at G5 when PB-4 resumes).
+    Doc-only PR from branch `pariprashna/g0-close`.
+    last_session_id: PARIPRASHNA-G0-CLOSE-2026-08-19.
   - v6.61 (2026-08-15, CODEX_ONBOARDING_CLOSE): Closed the owner-approved Codex
     shared-brain onboarding under CCD-001 through CCD-004. The project now has a
     tool-neutral decision register, Codex loader/profile/skill/agent bridges, and shared

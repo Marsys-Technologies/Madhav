@@ -18,7 +18,7 @@ schema: >
   it governs), and consumption matrix (step → obligation → verification).
   §2 Step-Consumption Matrix is the inverse view — each step lists the
   directive IDs it must close.
-updated_at: 2026-04-24 (ND.1 global status flipped `open` → `addressed` at STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION close per its consumption-matrix close condition; all six per-step verifications Steps 2/3/4/5A/6/7 confirmed; pointer to DRIFT_REPORT_STEP_7_v1_0.md + SESSION_LOG STEP_7 entry recorded below). Prior update: 2026-04-23 (issued during STEP_1_MACRO_PLAN_CRITIQUE_AMENDMENT).
+updated_at: 2026-08-19 (ND.2 appended — NCD-10 formalization route; directive governs native-self health-crisis/mental-health readings; folds into next MP revision per §3.10.A(d); session PARIPRASHNA-G0-CLOSE-2026-08-19). Prior: 2026-04-24 (ND.1 global status flipped `open` → `addressed` at STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION close per its consumption-matrix close condition; all six per-step verifications Steps 2/3/4/5A/6/7 confirmed; pointer to DRIFT_REPORT_STEP_7_v1_0.md + SESSION_LOG STEP_7 entry recorded below). Prior: 2026-04-23 (issued during STEP_1_MACRO_PLAN_CRITIQUE_AMENDMENT).
 consumers:
   - Step 2 (revision spec)
   - Step 3 (rewrite)
@@ -114,6 +114,46 @@ Pointer to the closing SESSION_LOG entry + DRIFT_REPORT: see `SESSION_LOG.md` ST
 
 ---
 
+### ND.2 — Native-Self Interstitial for Health-Crisis / Mental-Health Readings
+
+- **Stable ID:** `ND.2`
+- **Issued on:** 2026-08-18
+- **Issued during:** PARIPRASHNA-V012-PHASE1 (Cowork, Fable 5) — NCD-4 + NCD-10 rulings
+- **Logged by:** PARIPRASHNA-G0-CLOSE-2026-08-19 (session PB-3-Bot, per NCD-10 binding)
+- **Status:** **`OPEN`** — folds into the next natural MP revision per §3.10.A(d)
+- **Severity:** Policy relaxation for the native's own chart only; no safety impact on any cohort subject
+
+**Native statement (verbatim, NCD-4 ruling 2026-08-18):**
+
+> "For the NATIVE'S OWN chart only: health-crisis and mental-health readings use a self-acknowledged interstitial in place of MP §3.5.C's seal + double-red-team + sign-off ceremony. Cohort subjects always receive the full HS-3 path. Folds into the next natural MP revision per §3.10.A(d)."
+
+**Background (NCD-4):** MP §3.5.C requires a seal + double-red-team + sign-off ceremony before any health-crisis or mental-health reading is served. The native ruled (NCD-4, 2026-08-18) that for their own chart — where the native is both subject and informed operator — a self-acknowledged interstitial (pop-up/gate acknowledging sensitivity before proceeding) satisfies the protective intent of §3.5.C without the full ceremony overhead. This relaxation does NOT extend to any cohort subject; cohort subjects always receive the complete HS-3 path.
+
+**NCD-10 formalization route:** The native chose ND directive (over §3.10.B MP amendment) so the relaxation is machine-readable, version-tracked, and folds cleanly into the next MP revision (§3.10.A(d)) rather than patch-amending the current MP in place.
+
+**Interpretation (for implementation clarity):**
+
+1. **Native-self scope only.** The interstitial substitution applies exclusively to readings for `chart_id = 482012f1-710e-4a25-994a-93821f5871aa` (Abhisek Mohanty, the native). Any other chart_id — including any future cohort subject — triggers the full §3.5.C ceremony path, no exception.
+2. **Interstitial content.** The interstitial must: (a) name the reading's sensitivity category (health-crisis / mental-health); (b) surface the disclosure tier that applies; (c) require explicit acknowledgment (not auto-dismissed) before the reading is served; (d) be logged (timestamp + acknowledgment token) in the same audit trail that would otherwise hold the ceremony record.
+3. **No ceremony-component omission for cohort.** The ceremony overhead NCD-4 relaxes (double-red-team + sign-off) is waived ONLY for the native's own chart. Any implementation that routes cohort-chart readings through the interstitial path instead of the ceremony path is a defect.
+4. **MP revision trigger.** When the MP next opens for a revision pass (§3.10.A(d) trigger), this directive's scope — specifically §3.5.C — is to be amended in place to carry the native-self / cohort-subject bifurcation as a named clause, at which point this ND.2 flips to `addressed`.
+
+**Scope (what surfaces this governs):**
+
+- `MACRO_PLAN_v2_0.md §3.5.C` (next revision: bifurcation clause)
+- Any Paripraśna gate-spec or implementation that serves health-crisis / mental-health readings (G2+)
+- `chart_subject_consent` schema (NCD-9, G1): the native's consent record must distinguish the interstitial path from the ceremony path so the audit trail is unambiguous
+
+**Consumption matrix:**
+
+| Surface / trigger | Obligation | Verification (close criterion) |
+|---|---|---|
+| Next MP revision (§3.10.A(d)) | §3.5.C amended to bifurcate native-self (interstitial) vs. cohort (full ceremony) | §3.5.C carries both clauses; cohort-path ceremony requirement unchanged and explicit |
+| G2+ health/mental-health serving (Paripraśna) | Interstitial gate wired for native chart; ceremony gate wired for all other chart_ids | Fixture: native chart → interstitial, cohort chart → ceremony |
+| Audit trail | Interstitial log record carries acknowledgment token + timestamp | Verification matrix row PPR-35 updated at relevant gate close |
+
+---
+
 ## §2 — Step-Consumption Matrix (inverse view)
 
 This is the rapid-lookup view for a session that opens a given step and needs to know which directives it is bound to.
@@ -127,8 +167,9 @@ This is the rapid-lookup view for a session that opens a given step and needs to
 | 6 — Governance Integrity Design | ND.1 | 1 |
 | 7 — Governance Integrity Implementation | ND.1 | 1 |
 | 0, 1, 5, 8, 9, 10, 11, 12, 13, 14, 15 | (none currently) | — |
+| Next MP revision (§3.10.A(d)) | ND.2 | 1 (§3.5.C bifurcation clause) |
 
-When a new directive (ND.2, ND.3, ...) is issued, it appends to §1 and amends this matrix.
+When a new directive (ND.3, ...) is issued, it appends to §1 and amends this matrix.
 
 ---
 
