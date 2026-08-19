@@ -2,7 +2,7 @@
   "schema_version": "1.1",
   "session_id": "PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19",
   "phase": "P1",
-  "phase_status": "P1_FOUNDATION_FINAL_LANE_G1G_DISPATCHED",
+  "phase_status": "P1_FOUNDATION_ALL_LANES_MERGED",
   "wave": "P1-FOUNDATION",
   "heartbeat_ts": "2026-08-19T17:42:00Z",
   "concurrency": {
@@ -167,12 +167,12 @@
       "verifier_verdict": "conductor-reviewed. RLS created but deliberately NOT enabled (arming script outside migration dirs, confirmed by conductor). arm-3 out-of-process ledger writer built from scratch (didn't exist). Real cross-context RLS denial proven (17 DB-integration tests). Full suite 714/760 files, 7987 tests, 0 failures. drift/naming_lint clean, no migration collision (576). SECURITY FINDING surfaced by this lane (pre-existing on main, NOT introduced by any pariprashna session, verified by conductor): a live-shaped plaintext amjis_app password committed at platform/python-sidecar/tests/l5/test_mi_bhara_circularity_guard_w2.py:295 -- flagged directly to the native, not silently fixed."
     },
     "G1-G": {
-      "role_stage": "building",
+      "role_stage": "merged",
       "name": "Injection containment (PPR-13) -- structural delimiting, Zod-closed plan schema, tool-sequence anomaly flag, answer-side entitlement scan folded into G1-A's pre-wire pass",
       "last_event_ts": "2026-08-20T02:40:00+05:30",
       "worktree": "worktree-agent-a2d727ba0bf385a8d",
       "branch": "pariprashna/g1-g-injection-containment",
-      "verifier_verdict": "Fix round dispatched: P0 flag-off divergence bug (reading_parts.ts), P1 cross-seam 3-way-split leak + hex-run length boundary defect class, P2 rejectIdentityParams array-walk/depth-cap + suffix-match false-positive."
+      "verifier_verdict": "MERGED after: build -> self-adversarial testing (4 bypasses found+fixed) -> internal security review (8 more found+fixed) -> conductor-dispatched independent re-verification found a P0-severity flag-OFF divergence bug (reading_parts.ts changed real production behavior with no flag flipped, silently degrading citation parts and B.11 grading) plus 5 more residuals -> fix round closed all 6 with reproduction-then-fix-then-mutation-proof discipline (19 mutation tests confirmed failing pre-fix). Conductor independently re-inspected the P0 fix's code placement directly. Full suite 738/785 files, 8788 tests, 0 failures. Golden-stream 56/56, G1-A suite 667/667 both zero regression. Ships flag-OFF (PARIPRASHNA_INJECTION_CONTAINMENT default false). Two residuals disclosed in code, not merge-blocking: door coverage non-uniform (controls 3/4 pariprashna-only); a chart referenced without any identifier (by name) is invisible to the entitlement scan (upstream retrieval-scoping's job, not this scan's)."
     },
     "P1-E": {
       "role_stage": "merged",
@@ -457,5 +457,6 @@
       "P2": "rejectIdentityParams doesn't walk array elements ({filters:[{chart_id:FOREIGN}]} survives); depth>MAX_PARAM_DEPTH fails open (returns [] not reject); docstring 'any nesting depth' is false",
       "confirmed_solid": "structural delimiting across all 3 doors incl. safety-sentinel-forgery neutralization; Zod plan closure; tool-sequence flag (not block, ruling-matched verbatim); G1-A equivalence + zero regression (667/667); full suite 8768/0 fail matches exactly"
     }
-  ]
+  ],
+  "p1_all_lanes_complete": true
 }
