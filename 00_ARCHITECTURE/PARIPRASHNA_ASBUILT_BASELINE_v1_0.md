@@ -1,9 +1,9 @@
 ---
 artifact: PARIPRASHNA_ASBUILT_BASELINE_v1_0
 canonical_id: PARIPRASHNA_ASBUILT_BASELINE
-version: 1.0
+version: 1.1
 status: LIVING — regenerated at every gate close; every row carries an evidence class + date
-produced_during: PARIPRASHNA-V012-PHASE1 (Cowork, Fable 5, 2026-08-18)
+produced_during: PARIPRASHNA-V012-PHASE1 (Cowork, Fable 5, 2026-08-18); P1-I addendum (Claude Code, 2026-08-19)
 date: 2026-08-18
 baseline_of: git HEAD dfbdfe620 (branch ekv/b-01-dignity-oracle-fix snapshot) + live MCP census 2026-08-18 + PB close corpus
 authoritative_side: claude
@@ -15,6 +15,13 @@ role: >
   normative; never aspirational.
 changelog:
   - "1.0 (2026-08-18): first generation, from the v0.11 §16.9 census + v0.12 evidence ledger."
+  - "1.1 (2026-08-19): P1-I lane — live re-verification of every UNVERIFIED row
+    (PITR, DB roles, flag env, serving revision) against the LIVE tip of
+    origin/pariprashna/p1 (33b9db230, G1-B/D/F/H/E/C merged) and the real
+    deployed environment. New §6 addendum carries the full re-check with
+    command + timestamp evidence; the affected §1/§3 cells are annotated
+    in place with a pointer rather than silently overwritten, since G1 has
+    not gate-closed and other lanes may be relying on the original rows."
 ---
 
 # Paripraśna — As-Built Baseline (2026-08-18)
@@ -28,7 +35,7 @@ worklist for the next gate.
 |---|---|
 | Portal surface + `/api/pariprashna` (+resume, +samiksha/confirm) live behind `PARIPRASHNA_ENABLED`; flag default `false` in code | STATIC_VERIFIED @ dfbdfe620 |
 | Flag ON in production via Cloud Run env (since `amjis-web-01218-4ng`) | DOCUMENT_ASSERTED (REPORT_PB-1) · 2026-07-28 |
-| Current Cloud Run env value / serving revision | **UNVERIFIED** |
+| Current Cloud Run env value / serving revision | RE-VERIFIED — see §6.4 · 2026-08-19 |
 | C4-LOOP-LIVE-PROOF: full prediction loop live, six criteria, real concurrent user | DOCUMENT_ASSERTED (PURNATA_CLOSE §9) · 2026-08-01 |
 | MCP: 125 tools on `full` profile; `catalog-1+t152+r653c2a1a98c8`; profiles full/compact/consult; `prashna_ask`+`prashna_status` job-handle, rejected on consult | LIVE_VERIFIED · 2026-08-18 |
 | `ganita_ayurdaya_get` served UNGATED on the MCP surface | LIVE_VERIFIED · 2026-08-18 |
@@ -55,9 +62,9 @@ resolution; `mcp_predictions` retired (471) · fail-closed chart authz
 | # | Gap | Class · date | Owner |
 |---|---|---|---|
 | GAP-1 | MP §3.5.B/C/D/F: NO safety gate, disclosure-class model, consent schema, or minor exclusion anywhere in the serving path (§3.5.E is the exception — seal/freeze/transitions live) | STATIC_VERIFIED · 2026-08-18 | G1 (PPR-12/14/24) |
-| GAP-2 | NO-LEAKAGE arm-1: five roles absent; single `amjis_app` credential; no RLS | STATIC_VERIFIED 2026-07-19 (F-25q); **UNVERIFIED today, presumed standing** | G1 (PPR-21/22) |
+| GAP-2 | NO-LEAKAGE arm-1: five roles now DEFINED (migration 576, `pariprashna/p1` branch tip) but INERT — NOLOGIN/no members, RLS policies stored but not enabled, `amjis_app` untouched — and migration 576 itself is NOT YET APPLIED to production (not merged to `main`, where `deploy.yml`'s migration runner triggers from). Production today is still exactly the pre-G1-C state: single `amjis_app` credential, no RLS. See §6.2. | RE-VERIFIED — see §6.2 · 2026-08-19 | G1 (PPR-21/22) |
 | GAP-3 | No middleware, no rate limit, no blocking spend cap on either chat tree | STATIC_VERIFIED · 2026-08-18 | G1 (PPR-25) |
-| GAP-4 | PITR disabled, no restore drill (last verified F-25t) | UNVERIFIED today · last 2026-07-19 | G1 (PPR-33) |
+| GAP-4 | PITR disabled, no restore drill (last verified F-25t) | RE-VERIFIED — still disabled (`False`) — see §6.1 · 2026-08-19 | G1 (PPR-33) |
 | GAP-5 | `ANTHROPIC_API_KEY` unprovisioned in production (anthropic stack fails instantly, masked by Gemini default) | DOCUMENT_ASSERTED (PURNATA §5.1a) · 2026-08-01 | G1 |
 | GAP-6 | Live wire renders paragraphs only (FD-1): table/verse/gap-ribbon/heading/roles/prediction_card have no live producer | STATIC_VERIFIED | G2 (PPR-07) |
 | GAP-7 | S-3 citation rewriter built, unwired; `citation.define` post-hoc; grounding summary client-synthesized (FD-2/FD-6) | STATIC_VERIFIED | G2 (PPR-08) |
@@ -88,4 +95,115 @@ STATIC row against the then-HEAD; move closed gaps to a dated CLOSED table
 (append-only); bump version minor. The Baseline never says MUST — if a row
 tempts normative language, the content belongs in the Architecture.
 
-*End PARIPRASHNA_ASBUILT_BASELINE v1.0 (2026-08-18).*
+## §6 — P1-I live re-verification addendum (2026-08-19)
+
+Lane P1-I ("Ground truth: re-verify every UNVERIFIED Baseline row live"),
+read-only audit, no code touched. Branch point: `origin/pariprashna/p1` @
+`33b9db230` (G1-B/D/F/H/E/C merged into the campaign branch; **not** merged
+to `main` as of this check — confirmed via
+`git merge-base --is-ancestor 33b9db230 origin/main` → NO, and `main` HEAD
+`c97871dd8` lacks `platform/supabase/migrations/576_pariprashna_roles_rls_arm3.sql`
+entirely). This section supersedes the four rows it covers; it does not
+alter or delete any other claim in this document.
+
+### §6.1 — PITR status
+
+Command (read-only `describe`, no state change):
+```
+gcloud sql instances describe amjis-postgres --project=madhav-astrology \
+  --format="value(settings.backupConfiguration.pointInTimeRecoveryEnabled)"
+```
+Run 2026-08-19T18:36:47Z. Result: **`False`**. Unchanged from the last
+P0-F check (F-25t, 2026-07-19) — GAP-4 stands exactly as described; no
+restore drill has been executed; RPO/RTO + DR runbook (G1-E work item)
+remains open on production regardless of what `pariprashna/p1` has built.
+
+### §6.2 — DB roles (NO-LEAKAGE arm-1, migration 576)
+
+Verified by static/branch inspection, not a live DB query (no DB write/query
+tooling was exercised against production for this check, per the read-only
+constraint). Two independent confirmations that migration 576 has **not**
+reached production:
+
+1. `platform/supabase/migrations/576_pariprashna_roles_rls_arm3.sql` exists
+   at the `pariprashna/p1` tip but is absent from `origin/main`
+   (`git show origin/main:platform/supabase/migrations/576_...sql` →
+   `fatal: path ... exists on disk, but not in 'origin/main'`).
+2. `.github/workflows/deploy.yml`'s push triggers are scoped to
+   `branches: [main]` only — the deploy/migration pipeline never runs
+   against `pariprashna/p1` directly. Since the migration isn't on `main`,
+   it cannot have been applied through the normal deploy path. (This does
+   not rule out an out-of-band manual `psql` apply, which cannot be
+   confirmed without production DB query access — noted honestly, not
+   assumed.)
+
+Independent of deployment status, the migration's own header (read in
+full) states it is **designed to be inert even once applied**: the five
+roles are created `NOLOGIN`/`NOBYPASSRLS` with no members, RLS policies
+are `CREATE`d but `ROW LEVEL SECURITY` is not `ENABLE`d on any table, and
+`amjis_app` is untouched — arming is a separate, deliberate operator act
+(`platform/scripts/pariprashna/g1c_arm_rls.sql`, outside the migrations
+directory, never auto-applied). So the G1-C claim ("created the roles,
+explicitly did not apply to production or arm RLS") is confirmed true on
+two independent grounds: the migration hasn't reached prod, and even if it
+had, it would not have changed serving behavior. Production today serves
+every read on the single `amjis_app` credential with no RLS, unchanged.
+
+### §6.3 — Flag env (code default vs. live override)
+
+Code defaults read from `platform/src/lib/config/feature_flags.ts`
+(`DEFAULT_FLAGS`) at the checked-out `pariprashna/p1` tip:
+
+| Flag | Code default | Live env override (amjis-web, read via `gcloud run services describe --format="json(spec.template.spec.containers[0].env)"`, 2026-08-19T18:38Z) |
+|---|---|---|
+| `PARIPRASHNA_ENABLED` | `false` | **`MARSYS_FLAG_PARIPRASHNA_ENABLED=true`** — set, overrides default to ON. Confirms the §1 "Flag ON in production" row still holds. |
+| `PARIPRASHNA_LIMITS_ENABLED` | `false` | not set — serves at code default (`false`, dark) |
+| `SUBJECT_CONSENT_ENFORCEMENT` | `false` | not set — serves at code default (`false`, dark) |
+| `PARIPRASHNA_ROLE_SEPARATION` | `false` | not set — serves at code default (`false`, dark) |
+| `PARIPRASHNA_LEDGER_OUT_OF_PROCESS` | `false` | not set — serves at code default (`false`, dark) |
+| `PARIPRASHNA_SAFETY_GATE_ENABLED` | **does not exist** on this branch — not in the `FeatureFlag` union or `DEFAULT_FLAGS` at all (grep confirmed zero hits) | n/a |
+
+Full env dump on `amjis-web` was fetched (54 vars total) and grepped for
+`MARSYS_FLAG`/`PARIPRASHNA`; the four other live-set flags in the dump
+(`HISTORY_COMPRESSION_ENABLED`, `BUILD_TRIGGER_ENABLED`,
+`VECTOR_SEARCH_ENABLED`, `OBSERVATORY_ENABLED`) are unrelated to this
+campaign and listed only for completeness. `amjis-mcp`'s env (17 vars) was
+also checked — zero `MARSYS_FLAG`/`PARIPRASHNA` vars present there at all,
+i.e. the MCP door has no flag override of any kind. This is a **`describe`
+read only**; no flag was changed.
+
+### §6.4 — Serving revision
+
+Commands (read-only `describe`):
+```
+gcloud run services describe amjis-web --project=madhav-astrology --region=asia-south1 \
+  --format="value(status.latestReadyRevisionName,status.traffic)"
+gcloud run services describe amjis-mcp --project=madhav-astrology --region=asia-south1 \
+  --format="value(status.latestReadyRevisionName,status.traffic)"
+```
+Run 2026-08-19T18:36:49Z. Results:
+
+| Service | Latest ready revision | Traffic |
+|---|---|---|
+| `amjis-web` | `amjis-web-01529-hf8` | 100% → `amjis-web-01529-hf8` (latestRevision) |
+| `amjis-mcp` | `amjis-mcp-00575-pgx` | 100% → `amjis-mcp-00575-pgx` (latestRevision) |
+
+Both well past the `amjis-web-01218-4ng` revision the original §1 row cited
+(REPORT_PB-1, 2026-07-28) — expected, given the volume of merges into
+`main` since. No `pariprashna/p1`-branch-specific code is live on these
+revisions beyond whatever has already merged to `main` (G1-C/roles work has
+not merged, per §6.2); the live `PARIPRASHNA_ENABLED=true` override governs
+whatever Paripraśna surface IS on `main` at `amjis-web-01529-hf8`.
+
+### §6.5 — What this addendum could not verify
+
+No live DB query access was exercised (no `mcp__postgres__query` or
+equivalent call made against production) — §6.2's roles/RLS conclusion
+rests on branch/deploy-pipeline inspection, not a direct
+`SELECT rolname FROM pg_roles` or `SELECT * FROM supabase_migrations...`
+against the real instance. If a tighter guarantee is needed than "the
+normal deploy path never touched it," that would require either explicit
+authorization to run a read-only `SELECT` against production, or the
+operator's own migration-tracking record.
+
+*End PARIPRASHNA_ASBUILT_BASELINE v1.1 (2026-08-18; P1-I addendum 2026-08-19).*
