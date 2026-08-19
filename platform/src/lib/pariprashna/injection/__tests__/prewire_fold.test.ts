@@ -16,6 +16,7 @@ import { describe, it, expect } from 'vitest'
 import { ReadingPartsAssembler } from '@/lib/pariprashna/pipeline/reading_parts'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
 import { buildEntitlementScanRules } from '../entitlement_scan'
+import { scanMortalityPhrasing } from '@/lib/pariprashna/safety/phrasing_scan'
 
 const MINE = '482012f1-710e-4a25-994a-93821f5871aa'
 const THEIRS = '1c826d5a-9f3b-4d21-8e77-0a5c4b2e91d0'
@@ -108,6 +109,49 @@ describe('the redaction reaches BOTH persisted copies', () => {
     const text = 'Saturn is steady. Mars is exalted.'
     const r = assemble(text, true, RULES)
     expect(r.accumulated).toBe(text)
+  })
+})
+
+describe('G1-A equivalence — sharing the window changed nothing for mortality', () => {
+  // The window used to belong to the mortality rules alone. G1-G now runs the
+  // extra rules through it too. This is the change most capable of disturbing
+  // G1-A, so it gets a direct equivalence proof over a corpus that exercises
+  // single-sentence hits, cross-sentence pairs, the over-redaction guard, and
+  // clean prose — rather than trust that the loops "look independent".
+  const CORPUS = [
+    'The native will die around 2047.',
+    'The native will meet death. It falls in 2047.',
+    'Your chart indicates you will die around 2047. Saturn supports steady consolidation.',
+    'Only a few years remain in this maraka period.',
+    'Jupiter is strong. Saturn is steady. Mars is exalted.',
+    'The native will meet death\nin the year 2047',
+    'Longevity is discussed in aggregate. Nothing here is a window. 2047 is a dasha boundary.',
+    '',
+    'A sentence with no terminator and a mortality word death',
+  ]
+
+  it('produces identical clean text and identical hits, with and without extra rules', () => {
+    for (const text of CORPUS) {
+      const before = scanMortalityPhrasing(text)
+      const after = scanMortalityPhrasing(text, { extraRules: RULES, mortalityRulesEnabled: true })
+      expect(after.clean, JSON.stringify(text)).toBe(before.clean)
+      expect(after.hits, JSON.stringify(text)).toEqual(before.hits)
+      expect(after.scan_failed, JSON.stringify(text)).toBe(before.scan_failed)
+    }
+  })
+
+  it('is identical under a carried stream context too', () => {
+    for (const text of CORPUS) {
+      const ctx = 'The native will meet death. '
+      const before = scanMortalityPhrasing(text, { contextPrefix: ctx })
+      const after = scanMortalityPhrasing(text, {
+        contextPrefix: ctx,
+        extraRules: RULES,
+        mortalityRulesEnabled: true,
+      })
+      expect(after.clean, JSON.stringify(text)).toBe(before.clean)
+      expect(after.hits, JSON.stringify(text)).toEqual(before.hits)
+    }
   })
 })
 
