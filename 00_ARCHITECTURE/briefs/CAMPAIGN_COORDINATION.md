@@ -3620,3 +3620,25 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
 **2026-08-15T23:38Z**
 | PARISESA-TAKEOVER-PENDING-4 | PARIŚEṢA / Codex | **Phase 1 fenced reacquisition:** prior generations expired. Run ID `PARISESA-CODEX-20260817`; continuation epoch `4`; fencing generation `4`; owner task `01a00d47-fa78-7252-97d4-3f75d539e392`; heartbeat TTL `15m`; scope: audit/control-plane only. | 2026-08-17 17:10 IST | 2026-08-17 17:25 IST | **TAKEOVER-PENDING** |
 | PARISESA-TAKEOVER-PENDING-5 | PARIŚEṢA / Codex | **Phase 1 fenced reacquisition:** prior generations expired. Run ID `PARISESA-CODEX-20260817`; continuation epoch `5`; fencing generation `5`; owner task `01a00d47-fa78-7252-97d4-3f75d539e392`; heartbeat TTL `15m`; scope: audit/control-plane only. | 2026-08-17 18:06 IST | 2026-08-17 18:21 IST | **TAKEOVER-PENDING** |
+
+### PARIPRAŚNA — campaign entry (2026-08-19, retroactive + forward)
+
+- **Campaign:** PARIPRAŚNA implementation (chat-engine build, phases P0–P5).
+  Branches `pariprashna/*`. Plan `00_ARCHITECTURE/briefs/pariprashna_swarm/`.
+- **RETROACTIVE DISCLOSURE:** PR #1341 (`3fd40b61b`, G0 close) merged to main
+  2026-08-19 **without a lease**, rewriting CURRENT_STATE (→v6.62), SESSION_LOG,
+  CAPABILITY_MANIFEST, FILE_REGISTRY and NATIVE_DIRECTIVES (ND.2). Cause: a
+  defective instruction in the G0 brief, not a protocol rejection. Campaigns
+  branched from main < `3fd40b61b` must rebase; CURRENT_STATE is at v6.62 — do
+  not re-use v6.60/v6.61.
+- **Territory claimed:** `platform/src/{app/api/pariprashna,app/clients/[id]/{pariprashna,samiksha},components/pariprashna,lib/pariprashna}/**`,
+  `00_ARCHITECTURE/PARIPRASHNA_*`, `00_ARCHITECTURE/briefs/pariprashna_*`.
+- **Shared surfaces — Paripraśna's commitments:** (1) no main merge or production
+  deploy without re-reading this file from `origin/campaign-coordination`
+  immediately prior; (2) governance-registry writes batched to ONE serialized
+  step per phase close, under an explicit lease row, never mid-phase;
+  (3) migration numbers reserved here before authoring; (4) deploys announced
+  here with the Cloud Run revision tag; (5) never the main checkout — worktrees
+  only; (6) never `git stash` in a shared-`.git` worktree.
+- **Lease requested:** governance-write + main-merge window at each Paripraśna
+  phase close, ~30 min, announced ≥1 entry in advance.
