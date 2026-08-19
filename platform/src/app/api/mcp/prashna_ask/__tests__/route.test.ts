@@ -23,14 +23,31 @@
  * are unchanged — still a single JSON response, asserted via `res.json()`.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 vi.mock('@/lib/retrieval/registry/catalog', () => ({}))
 vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
 vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: vi.fn() }))
 vi.mock('@/lib/mcp/auth', () => ({ resolveMcpPrincipalRole: vi.fn().mockResolvedValue('guest') }))
 vi.mock('@/lib/models/runtime_config', () => ({ getEffectiveModel: vi.fn().mockResolvedValue('fake-model') }))
-vi.mock('@/lib/models/registry', () => ({ DEFAULT_STACK_ID: 'anthropic' }))
+// NCD-8 (G1-D): the route's pre-dispatch spend gate resolves the turn's synthesis
+// model through the registry, so this mock now has to carry the pieces the gate
+// reads. `MODELS` holds one deliberately EXPENSIVE model so a ceiling breach can
+// be provoked, and `getModelMeta` mirrors it.
+vi.mock('@/lib/models/registry', () => {
+  const EXPENSIVE = {
+    id: 'expensive-model',
+    maxInputTokens: 200_000,
+    maxOutputTokens: 64_000,
+    costPer1MInput: 15,
+    costPer1MOutput: 75,
+  }
+  return {
+    DEFAULT_STACK_ID: 'anthropic',
+    MODELS: [EXPENSIVE],
+    getModelMeta: (id: string) => (id === EXPENSIVE.id ? EXPENSIVE : undefined),
+  }
+})
 
 const { mockCallPipelinePlanner, mockGetToolByName } = vi.hoisted(() => ({
   mockCallPipelinePlanner: vi.fn(),
@@ -59,6 +76,10 @@ vi.mock('@/lib/pipeline/prashna_ask_synthesis', () => ({ synthesizeReading: mock
 vi.mock('@/lib/retrieval/chart_header', () => ({ fetchChartHeaderResolution: mockFetchChartHeaderResolution }))
 
 import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
+import { query as dbQuery } from '@/lib/db/client'
+import { getEffectiveModel } from '@/lib/models/runtime_config'
+import { configService } from '@/lib/config/index'
+import { __resetRpmCountersForTest } from '@/lib/mcp/rate_limiter_core'
 import { POST } from '../route'
 
 const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
@@ -561,5 +582,78 @@ describe('POST /api/mcp/prashna_ask — synthesis wiring (W6.2 fix-cycle)', () =
     expect(body.ok).toBe(true)
     expect(body.chart_header).toBeNull()
     expect(body.judgment_flags).toContain('chart_header_unresolved')
+  })
+})
+
+/**
+ * NCD-8 pre-dispatch spend ceilings — the MCP door (lane G1-D).
+ *
+ * PARIPRASHNA_DECISION_REGISTER_v1_0.md NCD-8: "Spend caps $2/turn · $40/day,
+ * pre-dispatch, both doors" (RULED 2026-08-18). This is the second door; the web
+ * door's gate is asserted in `src/lib/limits/__tests__/both_doors_refusal.test.ts`.
+ *
+ * Two things are proven here that a unit test of the gate alone cannot:
+ *   • the refusal happens BEFORE `callPipelinePlanner` — this route's first LLM
+ *     call — so the ceiling really is pre-dispatch and not a post-hoc audit;
+ *   • the refusal is HTTP 429 with a `rate_limit` error class, not a 500 and not
+ *     an NDJSON stream the caller must read to discover it was refused.
+ */
+describe('NCD-8 pre-dispatch spend ceilings (MCP door)', () => {
+  beforeEach(() => {
+    configService.setFlag('PARIPRASHNA_LIMITS_ENABLED', false)
+    __resetRpmCountersForTest()
+    ;(dbQuery as ReturnType<typeof vi.fn>).mockResolvedValue({ rows: [{ total: '0' }] })
+    ;(getEffectiveModel as ReturnType<typeof vi.fn>).mockResolvedValue('expensive-model')
+    mockFetchChartHeaderResolution.mockResolvedValue({ header: null, flags: [] })
+  })
+
+  afterEach(() => {
+    configService.setFlag('PARIPRASHNA_LIMITS_ENABLED', false)
+  })
+
+  it('flag OFF (the shipped default): the turn runs untouched', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'test?' }))
+
+    expect(res.status).toBe(200)
+    expect(mockCallPipelinePlanner).toHaveBeenCalled()
+  })
+
+  it('refuses with 429 BEFORE the planner runs when the per-turn ceiling would be breached', async () => {
+    configService.setFlag('PARIPRASHNA_LIMITS_ENABLED', true)
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    // expensive-model: 128_000/1e6*15 + 64_000/1e6*75 = $6.72 > $2/turn.
+    const res = await POST(makeReq({ chart_id: CHART, question: 'test?' }))
+
+    expect(res.status).toBe(429)
+    expect(res.status).not.toBe(500)
+
+    const body = await res.json()
+    expect(body.ok).toBe(false)
+    expect(body.error.class).toBe('rate_limit')
+    expect(body.error.message).toContain('$2.00')
+    expect(body.error.remediation).toBeTruthy()
+
+    // PRE-DISPATCH: the expensive call never happened.
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+  })
+
+  it('refuses with 429 when the $40 daily ceiling would be breached', async () => {
+    configService.setFlag('PARIPRASHNA_LIMITS_ENABLED', true)
+    // An unpriced model cannot trip the per-turn ceiling, so this isolates the
+    // daily one: $40.01 already spent is past $40 on its own.
+    ;(getEffectiveModel as ReturnType<typeof vi.fn>).mockResolvedValue('unpriced-model')
+    ;(dbQuery as ReturnType<typeof vi.fn>).mockResolvedValue({ rows: [{ total: '40.01' }] })
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'test?' }))
+
+    expect(res.status).toBe(429)
+    const body = await res.json()
+    expect(body.error.class).toBe('rate_limit')
+    expect(body.error.message).toContain('$40.00')
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
   })
 })

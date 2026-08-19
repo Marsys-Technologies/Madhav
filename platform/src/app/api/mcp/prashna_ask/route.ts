@@ -87,6 +87,7 @@ import {
 import { filterLeakedCapabilities } from '@/lib/pipeline/no_leakage_filter'
 import { assertNoCalibrationLeak } from '@/lib/pariprashna/no_leakage/calibration_leak_guard'
 import { CostCapTracker, resolveCostCapsForEntitlement } from '@/lib/pipeline/cost_caps'
+import { enforceTurnLimits } from '@/lib/limits'
 import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
 import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
@@ -210,6 +211,60 @@ export async function POST(request: Request) {
     getEffectiveModel(DEFAULT_STACK_ID, 'planner_fast', 'primary'),
     getEffectiveModel(DEFAULT_STACK_ID, 'planner_fast', 'fallback'),
   ])
+
+  // ── NCD-8 pre-dispatch limits (MCP door — the second of the two doors) ──────
+  //
+  // Ruling: PARIPRASHNA_DECISION_REGISTER_v1_0.md NCD-8, "Spend caps $2/turn ·
+  // $40/day, pre-dispatch, both doors" (RULED 2026-08-18); PPR-25 in
+  // PARIPRASHNA_ARCHITECTURE_v1_0.md.
+  //
+  // PLACEMENT IS THE WHOLE POINT. `callPipelinePlanner` immediately below is this
+  // route's FIRST LLM call, and it runs before the CostCapTracker is ever
+  // consulted — so a gate placed anywhere after it would be a post-hoc audit, not
+  // the pre-dispatch control the ruling requires. This is the last statement
+  // before the spend starts.
+  //
+  // It complements, and does not replace, the existing CostCapTracker: that tracks
+  // call-count and wall-clock WITHIN an accepted turn and has no USD dimension.
+  // This is the USD dimension, evaluated before the turn is accepted at all.
+  //
+  // The refusal is a real HTTP 429 with a branchable code, emitted BEFORE the
+  // NDJSON stream opens — never a 500, and never a stream the caller has to read
+  // to discover it was refused. Rate limiting keys on `keyId` (the resolved MCP
+  // credential), matching every other /api/mcp/* route; spend attributes to
+  // `userUid`, the principal actually billed.
+  //
+  // The synthesis model is resolved here rather than taken from the request: the
+  // ceiling must be evaluated against the model `synthesizeReading` will really
+  // use (it calls the same getEffectiveModel(DEFAULT_STACK_ID, 'synthesis',
+  // 'primary')), not against a client-supplied hint. Same discipline as the
+  // server-verified-role rule in this file's header.
+  const synthesisModelId = await getEffectiveModel(DEFAULT_STACK_ID, 'synthesis', 'primary')
+  const limits = await enforceTurnLimits({
+    userId: userUid,
+    channel: 'mcp',
+    modelId: synthesisModelId,
+    rateLimitPrincipalId: keyId,
+  })
+  if (!limits.allowed) {
+    return NextResponse.json(
+      buildErrorEnvelope({
+        trace_id: queryId,
+        error_class: 'rate_limit',
+        message: limits.message,
+        remediation:
+          limits.code === 'LIMIT_RATE_LIMIT_EXCEEDED'
+            ? 'Reduce request frequency and retry.'
+            : 'Wait for the daily ceiling to reset at 00:00 UTC, or use a less expensive model.',
+      }),
+      {
+        status: limits.status,
+        headers: limits.retry_after_seconds
+          ? { 'retry-after': String(limits.retry_after_seconds) }
+          : undefined,
+      },
+    )
+  }
 
   const plannerOutcome = await callPipelinePlanner(
     question,

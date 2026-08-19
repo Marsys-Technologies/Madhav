@@ -8,6 +8,11 @@
  *     These are the ONLY checks that may answer with a real HTTP status: they
  *     run before the stream opens, so no header has been written yet.
  *   · `bindTurnParams` — pure parameter binding (no DB, no LLM).
+ *   · `admitWithinLimits` — the NCD-8 pre-dispatch gate for the WEB door (one of
+ *     the two doors the ruling names). Runs after `bindTurnParams` (it needs the
+ *     bound synthesis model) and BEFORE the stream opens, so a refusal is a real
+ *     HTTP 429 with a branchable code — a designed failure state, not a 500 and
+ *     not an in-stream error the client has to parse out of an SSE body.
  *   · `authorizeTurn` — in-stream chart resolution, per-chart authorization
  *     (PPR-11, fail-closed) and conversation resolution. Every fault here is an
  *     in-stream `error` EVENT, never an HTTP status — the stream is already open.
@@ -28,6 +33,7 @@ import { query } from '@/lib/db/client'
 import { res } from '@/lib/errors'
 import { getConversation, insertConversationWithId } from '@/lib/conversations'
 import { configService } from '@/lib/config/index'
+import { enforceTurnLimits } from '@/lib/limits'
 import {
   DEFAULT_MODEL_ID,
   DEFAULT_STACK_ID,
@@ -142,6 +148,49 @@ export async function bindTurnParams(body: RequestBody, request: Request): Promi
     lengthTier,
     lelContextEnabled: body.lel_context_enabled !== false,
     style: body.style ?? 'acharya',
+  }
+}
+
+/**
+ * NCD-8 pre-dispatch spend/rate gate for the WEB door.
+ *
+ * Ruling: `PARIPRASHNA_DECISION_REGISTER_v1_0.md` NCD-8 — "Spend caps $2/turn ·
+ * $40/day, pre-dispatch, both doors" (RULED 2026-08-18); requirement PPR-25 in
+ * `PARIPRASHNA_ARCHITECTURE_v1_0.md`.
+ *
+ * PRE-DISPATCH means before the first LLM call. On this door that first call is
+ * the planner, inside `runPlanStage` — so this gate sits upstream of the stream
+ * entirely. It is placed after `bindTurnParams` because the ceiling is evaluated
+ * against the model this turn has actually bound, not a guess.
+ *
+ * A refusal is a REAL HTTP 429 carrying `LIMIT_RATE_LIMIT_EXCEEDED` or
+ * `LIMIT_SPEND_CEILING_EXCEEDED` and a message stating the ceiling. Deliberately
+ * NOT an in-stream `error` event: at this point no header has been written, and a
+ * ceiling refusal is a normal, explainable outcome the client should be able to
+ * branch on from the status line alone.
+ *
+ * Flag-gated (`PARIPRASHNA_LIMITS_ENABLED`, default false) inside
+ * `enforceTurnLimits` — when off this returns `admitted: true` having done no DB
+ * or pricing work.
+ */
+export async function admitWithinLimits(args: {
+  user: { uid: string }
+  params: TurnParams
+}): Promise<{ admitted: false; response: Response } | { admitted: true }> {
+  const decision = await enforceTurnLimits({
+    userId: args.user.uid,
+    channel: 'web',
+    modelId: args.params.modelId,
+    outputTokens: args.params.modelMeta.maxOutputTokens,
+  })
+
+  if (decision.allowed) return { admitted: true }
+
+  return {
+    admitted: false,
+    response: decision.code === 'LIMIT_RATE_LIMIT_EXCEEDED'
+      ? res.rateLimited(decision.message, decision.retry_after_seconds)
+      : res.spendCeilingExceeded(decision.message),
   }
 }
 

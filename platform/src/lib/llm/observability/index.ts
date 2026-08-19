@@ -10,6 +10,7 @@ export type {
   PersistedObservation,
   PipelineStage,
   ProviderName,
+  ServingChannel,
   TokenUsage,
 } from './types'
 export { ZERO_USAGE } from './types'
