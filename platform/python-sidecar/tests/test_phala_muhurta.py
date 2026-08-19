@@ -186,6 +186,48 @@ class TestMuhurtaFinderValidation:
             )
 
 
+class TestF47ActionSensitiveDasha:
+    def test_live_dasha_quality_uses_canonical_action_significators(self):
+        """F-47: identical live lords must not yield one action-agnostic score.
+
+        The activity ontology distinguishes marriage (Venus/Jupiter) from a
+        business start (Mercury/Jupiter/Sun).  With Mercury MD and Saturn AD,
+        the business score must therefore be higher than marriage; this
+        assertion prevents the old fixed native-chart score from returning the
+        same value for every requested action.
+        """
+        mod = _get_muhurta_module()
+        at = datetime(2026, 8, 19, tzinfo=timezone.utc)
+        live_lords = {"md_lord": "Mercury", "ad_lord": "Saturn"}
+        ontology = {
+            "marriage": ["Venus", "Jupiter"],
+            "business": ["Mercury", "Jupiter", "Sun"],
+        }
+
+        with patch.object(mod, "_current_dasha_lords", return_value=live_lords), \
+             patch.object(mod, "_activity_significators_for_action", side_effect=lambda action: ontology[action]):
+            marriage = mod._dasha_quality_for_chart(NATIVE_CHART_ID, at, "marriage")
+            business = mod._dasha_quality_for_chart(NATIVE_CHART_ID, at, "business")
+
+        assert business > marriage
+
+    def test_weekday_overlay_uses_canonical_action_significators(self):
+        """F-47: the weekday component cannot be one action-agnostic table."""
+        mod = _get_muhurta_module()
+        # 2026-08-19 is Wednesday / Mercury's weekday.
+        at = datetime(2026, 8, 19, tzinfo=timezone.utc)
+        ontology = {
+            "marriage": ["Venus", "Jupiter"],
+            "business": ["Mercury", "Jupiter", "Sun"],
+        }
+
+        with patch.object(mod, "_activity_significators_for_action", side_effect=lambda action: ontology[action]):
+            marriage = mod._transit_quality_for_window(at, "marriage")
+            business = mod._transit_quality_for_window(at, "business")
+
+        assert business > marriage
+
+
 # ── §3 — muhurta_finder — response structure ─────────────────────────────────
 
 class TestMuhurtaFinderResponseStructure:
@@ -333,12 +375,14 @@ class TestGenerateMuhurtaWindows:
                 "md_lord": "Mercury", "md_start": "2010-08-17", "md_end": "2027-08-17",
                 "ad_lord": "Saturn",
             }),
+            patch.object(mod, "_activity_significators_for_action", return_value=None),
+            patch.object(mod, "_fetch_tara_bala_baseline", return_value={}),
         )
 
     def test_returns_at_least_one_window_for_90_day_range(self):
         mod = _get_muhurta_module()
-        p1, p2, p3, p4 = self._patched(mod)
-        with p1, p2, p3, p4:
+        p1, p2, p3, p4, p5, p6 = self._patched(mod)
+        with p1, p2, p3, p4, p5, p6:
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="general",
@@ -368,8 +412,8 @@ class TestGenerateMuhurtaWindows:
 
     def test_all_scores_in_range(self):
         mod = _get_muhurta_module()
-        p1, p2, p3, p4 = self._patched(mod)
-        with p1, p2, p3, p4:
+        p1, p2, p3, p4, p5, p6 = self._patched(mod)
+        with p1, p2, p3, p4, p5, p6:
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="education",
@@ -385,8 +429,8 @@ class TestGenerateMuhurtaWindows:
     def test_source_citation_non_null_on_all_windows(self):
         """B.3 mandate: source_citation is NON-NULL on every row."""
         mod = _get_muhurta_module()
-        p1, p2, p3, p4 = self._patched(mod)
-        with p1, p2, p3, p4:
+        p1, p2, p3, p4, p5, p6 = self._patched(mod)
+        with p1, p2, p3, p4, p5, p6:
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="general",
@@ -400,8 +444,8 @@ class TestGenerateMuhurtaWindows:
 
     def test_windows_sorted_by_score_desc(self):
         mod = _get_muhurta_module()
-        p1, p2, p3, p4 = self._patched(mod)
-        with p1, p2, p3, p4:
+        p1, p2, p3, p4, p5, p6 = self._patched(mod)
+        with p1, p2, p3, p4, p5, p6:
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="education",
@@ -421,8 +465,8 @@ class TestGenerateMuhurtaWindows:
     def test_min_score_filter_applied(self):
         mod = _get_muhurta_module()
         min_score = 0.60
-        p1, p2, p3, p4 = self._patched(mod)
-        with p1, p2, p3, p4:
+        p1, p2, p3, p4, p5, p6 = self._patched(mod)
+        with p1, p2, p3, p4, p5, p6:
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="general",
@@ -438,8 +482,8 @@ class TestGenerateMuhurtaWindows:
 
     def test_factors_structure_present(self):
         mod = _get_muhurta_module()
-        p1, p2, p3, p4 = self._patched(mod)
-        with p1, p2, p3, p4:
+        p1, p2, p3, p4, p5, p6 = self._patched(mod)
+        with p1, p2, p3, p4, p5, p6:
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="education",
@@ -460,8 +504,8 @@ class TestGenerateMuhurtaWindows:
     def test_limit_respected(self):
         mod = _get_muhurta_module()
         limit = 5
-        p1, p2, p3, p4 = self._patched(mod)
-        with p1, p2, p3, p4:
+        p1, p2, p3, p4, p5, p6 = self._patched(mod)
+        with p1, p2, p3, p4, p5, p6:
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="general",
@@ -645,7 +689,9 @@ class TestLiveDashaCitation:
              patch.object(mod, "_current_dasha_lords", return_value={
                  "md_lord": "Mercury", "md_start": "2010-08-17", "md_end": "2027-08-17",
                  "ad_lord": "Saturn",
-             }):
+             }), \
+             patch.object(mod, "_activity_significators_for_action", return_value=None), \
+             patch.object(mod, "_fetch_tara_bala_baseline", return_value={}):
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="general",
@@ -660,3 +706,30 @@ class TestLiveDashaCitation:
             assert w["factors"]["dasha_details"]["md_lord"] == "Mercury"
             assert w["factors"]["dasha_details"]["ad_lord"] == "Saturn"
             assert "chart_dashas" in w["source_citation"]
+
+    def test_generate_muhurta_windows_resolves_dasha_per_window_across_boundary(self):
+        """A later 48-hour window must not reuse the range-start dasha score."""
+        mod = _get_muhurta_module()
+        seen_dates: list[datetime] = []
+
+        def dasha_quality(_chart_id: str, at: datetime, _action_type: str) -> float:
+            seen_dates.append(at)
+            return 0.20 if at.date().isoformat() == "2026-06-04" else 0.80
+
+        with patch.object(mod, "_get_db_url", return_value="postgresql://fake/test"), \
+             patch.object(mod, "_fetch_panchanga_row", return_value=_fake_panchanga_row()), \
+             patch.object(mod, "_panchanga_coverage", return_value=("2026-06-01", "2027-06-01")), \
+             patch.object(mod, "_dasha_quality_for_chart", side_effect=dasha_quality), \
+             patch.object(mod, "_current_dasha_lords", return_value=None), \
+             patch.object(mod, "_fetch_tara_bala_baseline", return_value={}):
+            result = mod.generate_muhurta_windows(
+                chart_id=NATIVE_CHART_ID,
+                action_type="general",
+                range_start=datetime(2026, 6, 4, tzinfo=timezone.utc),
+                range_end=datetime(2026, 6, 9, tzinfo=timezone.utc),
+                min_score=0.0,
+                limit=45,
+            )
+
+        assert [at.date().isoformat() for at in seen_dates] == ["2026-06-04", "2026-06-06"]
+        assert {window["factors"]["dasha_quality"] for window in result["windows"]} == {0.2, 0.8}

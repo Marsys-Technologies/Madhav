@@ -66,9 +66,9 @@
     },
     {
       "file": "platform/python-sidecar/brahmagyan/phala/muhurta.py",
-      "line": 578,
-      "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. `tara_bala_natal_baseline` selected by fact_subject-keyed lookup across all subjects; not reduced to a single ambiguous row."
+      "line": null,
+      "pattern": "fact_subject, fact_value_text FROM chart_facts\\s+WHERE chart_id = %s AND ayanamsha_id = %s\\s+AND fact_category = 'tara_bala_natal_baseline'",
+      "justification": "PRE-EXISTING full-iteration lookup: `tara_bala_natal_baseline` rows are keyed by fact_subject and all subjects are preserved into the returned mapping, so no single ambiguous row is reduced. F47 inserts new action-sensitive scorer code earlier in this actively edited file and moved this unchanged query from line 578 to 639; use its exact stable SELECT shape rather than a brittle line number."
     },
     {
       "file": "platform/python-sidecar/ga_writers/ga_sade_sati_writer.py",

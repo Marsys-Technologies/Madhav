@@ -19,12 +19,13 @@ action_types: marriage | travel | business | medical | education | property | ge
 FORENSIC grounding:
     Native: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
     chart_id: 482012f1-710e-4a25-994a-93821f5871aa
-    Mercury MD (2026–2043) per FORENSIC v8.0 §5.1 DSH.V.023
-    A high-score muhurta for education aligns with Mercury+Pushya windows.
+    Current Vimshottari MD/AD are read from chart_dashas for each requested
+    window; activity significators are read from brahma_activity_ontology.
 
 Depends:
     - panchanga_daily (Phase 4C-3): for panchanga_quality sub-score
-    - chart_facts (BRAHMA G9/G10): for dasha_quality derivation
+    - chart_dashas (BRAHMA L1): for live dasha-quality derivation
+    - brahma_activity_ontology (BG): for canonical action significators
     - phala_muhurta (this migration): pre-computed cache rows
 
 Authors:  Silpī (PH-4-4 session)
@@ -44,6 +45,8 @@ import psycopg
 import psycopg.rows
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+
+from brahmagyan.graha_vocabulary import norm_graha, to_title
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +101,79 @@ def _get_db_url() -> str:
 # that live result. Falls back to "unknown"/no-citation-claim rather than ever
 # re-asserting the stale hardcoded string (B.10 — no fabricated computation).
 _DASHA_LORD_CACHE: dict[tuple[str, str, str], dict[str, Any] | None] = {}
+
+# The public PH-4-4 action names predate the canonical electional ontology.
+# Keep the compatibility translation here, then read the actual significators
+# from brahma_activity_ontology rather than maintaining a second karakatva map.
+_ACTION_TO_ACTIVITY_CLASS = {
+    "marriage": "marriage",
+    "travel": "travel_journey",
+    "business": "business_start",
+    "medical": "medical_procedure",
+    "education": "education_start",
+    "property": "property_purchase",
+}
+_ACTIVITY_SIGNIFICATOR_CACHE: dict[str, list[str]] = {}
+_CANONICAL_GRAHA_CODES = frozenset({
+    "SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN",
+})
+
+
+def _activity_significators_for_action(action_type: str) -> list[str] | None:
+    """Return canonical graha names for a served PH-4-4 action, if available.
+
+    The ontology is the authority for electional action significators.  A
+    missing action mapping, unavailable database, or malformed ontology row is
+    an honest unavailable result; callers retain a neutral dasha score rather
+    than inventing a local replacement table.
+    """
+    activity_class = _ACTION_TO_ACTIVITY_CLASS.get(action_type)
+    if not activity_class:
+        return None
+    if activity_class in _ACTIVITY_SIGNIFICATOR_CACHE:
+        return _ACTIVITY_SIGNIFICATOR_CACHE[activity_class]
+
+    resolved: list[str] | None = None
+    try:
+        db_url = _get_db_url()
+        with psycopg.connect(db_url, row_factory=psycopg.rows.dict_row) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT significators
+                    FROM brahma_activity_ontology
+                    WHERE activity_class_id = %s
+                    LIMIT 1
+                    """,
+                    [activity_class],
+                )
+                row = cur.fetchone()
+        raw = row.get("significators") if row else None
+        if isinstance(raw, str):
+            raw = json.loads(raw)
+        members = raw.get("strengthen_grahas") if isinstance(raw, dict) else None
+        if isinstance(members, list):
+            found: list[str] = []
+            for member in members:
+                # The canonical medical row expresses ``controlled Mars``.
+                # Extracting a recognized graha token preserves that authority
+                # qualifier while comparing its actual planetary significator.
+                for token in str(member).replace("-", " ").split():
+                    code = norm_graha(token)
+                    if code in _CANONICAL_GRAHA_CODES:
+                        title = to_title(code)
+                        if title not in found:
+                            found.append(title)
+            if found:
+                resolved = found
+    except Exception:
+        resolved = None
+
+    # Cache only a successful authority read.  An unavailable database is a
+    # per-call honest-neutral fallback, not a permanent process-lifetime fact.
+    if resolved:
+        _ACTIVITY_SIGNIFICATOR_CACHE[activity_class] = resolved
+    return resolved
 
 
 def _current_dasha_lords(
@@ -369,55 +445,29 @@ def _panchanga_quality_for_action(
     return float(max(0.0, min(1.0, raw)))
 
 
-def _dasha_quality_for_chart(chart_id: str, window_start: datetime) -> float:
+def _dasha_quality_for_chart(chart_id: str, window_start: datetime, action_type: str) -> float:
     """
-    Derive dasha quality from chart_facts (if available) or use native defaults.
-
-    For the native (Abhisek Mohanty), FORENSIC v8.0 §5.1 DSH.V.023 establishes:
-      Mercury MD: 2026-03-08 → 2043-03-08
-      Sub-periods vary; Mercury MD is inherently education/commerce-favorable.
-
-    Fallback: 0.55 (neutral moderate quality) when chart_facts unavailable.
+    Score current MD/AD alignment with the requested action's ontology-backed
+    significators.  The relationship is intentionally transparent: neutral
+    0.55 when either authority is unavailable, 0.45 when neither active lord
+    matches, +0.15 for a matching MD, and +0.10 for a matching AD.
     """
-    # Native chart defaults per FORENSIC v8.0 §5.1 DSH.V.023
-    if chart_id == NATIVE_CHART_ID:
-        # Mercury MD period (2026-2043): Mercury favors education, business, communication
-        year = window_start.year
-        if 2026 <= year <= 2043:
-            # Mercury is a benefic for this native (Virgo lagna — Mercury is lagna lord)
-            return 0.72
-        # Fallback for other periods
+    significators = _activity_significators_for_action(action_type)
+    live_dasha = _current_dasha_lords(chart_id, window_start)
+    if not significators or not live_dasha:
         return 0.55
 
-    # Non-native: attempt to read from chart_facts, fall back to neutral
-    try:
-        db_url = _get_db_url()
-        sql = """
-            SELECT value, confidence
-            FROM chart_facts
-            WHERE chart_id = %s
-              AND category = 'dasha'
-              AND key = 'current_md_lord'
-            LIMIT 1
-        """
-        with psycopg.connect(db_url, row_factory=psycopg.rows.dict_row) as conn:
-            with conn.cursor() as cur:
-                cur.execute(sql, [chart_id])
-                row = cur.fetchone()
-                if row:
-                    # Simple heuristic: Mercury/Jupiter MD = high quality for learning
-                    md_lord = str(row.get("value", ""))
-                    benefic_lords = {"Mercury", "Jupiter", "Venus"}
-                    if md_lord in benefic_lords:
-                        return 0.70
-                    return 0.50
-    except Exception:
-        pass
-
-    return 0.55
+    md_lord = to_title(str(live_dasha.get("md_lord") or ""))
+    ad_lord = to_title(str(live_dasha.get("ad_lord") or ""))
+    score = 0.45
+    if md_lord in significators:
+        score += 0.15
+    if ad_lord in significators:
+        score += 0.10
+    return float(min(1.0, score))
 
 
-def _transit_quality_for_window(window_start: datetime) -> float:
+def _transit_quality_for_window(window_start: datetime, action_type: str) -> float:
     """
     Approximate transit quality based on known planetary cycles.
 
@@ -456,11 +506,22 @@ def _transit_quality_for_window(window_start: datetime) -> float:
     else:
         phase_quality = 0.30  # dark moon (near new moon)
 
-    # Day-of-week overlay (some days have inherently stronger transits)
+    # Weekday overlay.  The action-specific path is derived from the same
+    # activity ontology as dasha alignment: a weekday ruled by one of the
+    # action's strengthened grahas gets the favourable value; a different
+    # weekday gets the conservative value.  ``general`` deliberately retains
+    # the prior numeric table because it has no action-class ontology row.
     weekday = window_start.weekday()  # 0=Mon, 6=Sun
-    # Thursday (3, Guruvara) and Friday (4, Shukravara) = Jupiter and Venus days
-    day_boost = {0: 0.60, 1: 0.55, 2: 0.65, 3: 0.75, 4: 0.70, 5: 0.50, 6: 0.50}
-    day_quality = day_boost.get(weekday, 0.55)
+    legacy_day_quality = {0: 0.60, 1: 0.55, 2: 0.65, 3: 0.75, 4: 0.70, 5: 0.50, 6: 0.50}
+    weekday_lords = {
+        0: "Moon", 1: "Mars", 2: "Mercury", 3: "Jupiter",
+        4: "Venus", 5: "Saturn", 6: "Sun",
+    }
+    significators = _activity_significators_for_action(action_type)
+    if significators:
+        day_quality = 0.80 if weekday_lords.get(weekday) in significators else 0.45
+    else:
+        day_quality = legacy_day_quality.get(weekday, 0.55)
 
     return float(max(0.0, min(1.0, 0.60 * phase_quality + 0.40 * day_quality)))
 
@@ -791,8 +852,8 @@ def generate_muhurta_windows(
     B.10 compliance:
         panchanga_quality — derived from panchanga_daily table (classical rules),
                             gated by the native's OWN tāra-bala baseline (MC-027)
-        dasha_quality     — from chart_facts or FORENSIC defaults
-        transit_quality   — simplified lunar-phase approximation
+        dasha_quality     — live chart_dashas aligned to activity-ontology significators
+        transit_quality   — simplified lunar-phase plus ontology-aligned weekday approximation
         signal_activation — from MSR v5.0 (native) or chart_facts
         NO Swiss Ephemeris recomputation inside this function.
 
@@ -810,8 +871,9 @@ def generate_muhurta_windows(
     whichever panchanga_daily.auspicious carries for the date) are surfaced
     under factors.intraday_windows instead of only the coarse 48h block.
     """
-    # Pre-fetch dasha and signal quality (chart-level, constant across windows)
-    dasha_q = _dasha_quality_for_chart(chart_id, range_start)
+    # Signal quality is chart-level and constant across windows. Dasha quality is
+    # deliberately resolved per window below: a requested range may cross an
+    # MD/AD boundary, so a range-start score cannot be reused honestly.
     signal_q = _signal_activation_for_action(action_type, chart_id)
 
     # Attempt DB connection for panchanga lookups
@@ -855,7 +917,8 @@ def generate_muhurta_windows(
         panchanga_q = _panchanga_quality_for_action(
             tithi_name, vara_lord, moon_nakshatra, yoga, action_type
         )
-        transit_q = _transit_quality_for_window(current)
+        dasha_q = _dasha_quality_for_chart(chart_id, current, action_type)
+        transit_q = _transit_quality_for_window(current, action_type)
 
         # MC-027: gate panchanga_quality against the native's OWN tāra-bala
         # baseline for this window's day Moon-nakshatra. A demotion, not a
