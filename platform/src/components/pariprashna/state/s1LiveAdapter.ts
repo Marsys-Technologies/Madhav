@@ -235,8 +235,14 @@ export function makeS1LiveAdapter(
         return [{ type: 'flag', turnId, flag: ev.code, eventId }]
 
       case 'grade':
-        // Not a reducer-state driver in C-1 (lastEventId-only); dropped to keep
-        // the WireEvent stream free of no-op noise.
+        // Lane P2-C: the one `grade` subject the reducer DOES act on — the
+        // honest depth-received disclosure (`plan_stage.ts`). Every other
+        // subject (e.g. `query_class`) is not a reducer-state driver in C-1
+        // (lastEventId-only) and is dropped to keep the WireEvent stream free
+        // of no-op noise.
+        if (ev.subject === 'reading_depth_received') {
+          return [{ type: 'reading_depth.received', turnId, depth: ev.grade, eventId }]
+        }
         return []
 
       case 'turn.commit': {

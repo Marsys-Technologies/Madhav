@@ -36,8 +36,28 @@ import { getEffectiveModel } from '@/lib/models/runtime_config'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
 import type { SafetyDecision } from '@/lib/pariprashna/safety'
 import { isInjectionContainmentEnabled } from '@/lib/pariprashna/injection/flag'
+import { isHonestControlsEnabled } from '@/lib/pariprashna/honest_controls/flag'
 
 import { halt, proceed, type StageResult, type TurnIdentity, type TurnParams } from './stage_context'
+
+/**
+ * Lane P2-C (PPR-09/16) — honest depth disclosure. Maps the CLASSIFIER's own
+ * `scope_tuple.depth` ('shallow' | 'standard' | 'deep', from
+ * `@/lib/vidhi/scope_classifier`) to the reader-facing label emitted as the
+ * `reading_depth_received` grade. Mirrors `compiled_floor_adapter.ts`'s
+ * private `DEPTH_MAP` (shallow→retrieval, standard→structure, deep→deepdive)
+ * one-for-one by design — that module's map is not exported and this lane's
+ * `may_touch` does not include `lib/pipeline/**`, so this is a second,
+ * intentionally-identical mapping rather than a shared import. If the
+ * classifier's depth enum changes, both sites need updating; a mismatch here
+ * would show the reader the wrong depth, which is exactly the defect this
+ * lane exists to remove, so keep this in lockstep with `DEPTH_MAP`.
+ */
+const READING_DEPTH_RECEIVED_LABEL: Readonly<Record<'shallow' | 'standard' | 'deep', string>> = {
+  shallow: 'quick',
+  standard: 'standard',
+  deep: 'deep_dive',
+}
 
 /** The legacy-shaped plan object the registry bridge + retrieval tools read. */
 export interface LegacyQueryPlan {
@@ -220,6 +240,24 @@ export async function runPlanStage(args: {
 
   em.phase({ phase: 'plan', status: 'end', ms: plannerLatencyMs })
   em.grade({ subject: 'query_class', grade: String(plan.query_class), detail: `${plan.tool_calls.length} planned tools` })
+
+  // ── HONEST DEPTH DISCLOSURE (lane P2-C · PPR-09/16). ────────────────────────
+  // What the reader is TOLD they got should be what the planner's own
+  // `scope_tuple` actually resolved to, not the composer's pre-planning guess
+  // (§N.7 item 6: an honest null beats an invented judgment). Derived, never
+  // re-stated: this reads `plan.scope_tuple.depth` directly rather than
+  // recomputing a depth signal, so it cannot drift from what actually drove
+  // the B.11/floor composition a few lines below. Omitted entirely — no grade
+  // emitted — when the planner produced no scope_tuple, which is the honest
+  // behavior (no invented depth for a turn the classifier didn't score).
+  if (isHonestControlsEnabled() && plan.scope_tuple) {
+    const receivedLabel = READING_DEPTH_RECEIVED_LABEL[plan.scope_tuple.depth]
+    em.grade({
+      subject: 'reading_depth_received',
+      grade: receivedLabel,
+      detail: `scope_tuple: intent=${plan.scope_tuple.intent} width=${plan.scope_tuple.width} depth=${plan.scope_tuple.depth}`,
+    })
+  }
 
   // ── Budget arbitration + floor composition (identical to consult). ─────────
   const arbitrated = arbitrateBudgets(
