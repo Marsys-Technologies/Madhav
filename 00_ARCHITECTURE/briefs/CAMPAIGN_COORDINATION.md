@@ -3656,3 +3656,5 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
 - 2026-08-19 12:36Z — **PARIŚEṢA / Codex F89 service proof:** `amjis-mcp-00573-zmf` is 100% traffic and labeled `dddaaef2`; read-only malformed-keyword `ref_rules_search` now returns a typed generic internal error with no raw backend encoding marker. No write action.
 
 - 2026-08-19 12:40Z — **PARIŚEṢA / Codex F90 ready:** rebased exact head `6b6179dd2` is independently reviewed PASS; it removes raw sidecar bodies from both client errors and server logs. Focused 11/11 and typecheck pass; the package codegen halt is identical to parent at unchanged `getStrength` descriptor. Normal protected PR preparation follows; no deploy, rebuild, or DB action.
+
+- 2026-08-19 12:42Z — **PARIŚEṢA / Codex F90 PR:** normal protected PR #1345 opened at exact `6b6179dd2` against `dddaaef2`; waiting for required contexts before any Ganga admission. No bypass, deploy, rebuild, or DB action.
