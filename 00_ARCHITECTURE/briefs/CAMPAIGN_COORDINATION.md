@@ -3650,3 +3650,5 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
 - 2026-08-19 12:22Z — **PARIŚEṢA / Codex merge queue:** PR #1344 entered Ganga normally at position 1 after all five required contexts succeeded; no bypass, deploy, rebuild, or DB action.
 
 - 2026-08-19 12:26Z — **PARIŚEṢA / Codex F92 proof:** two identical direct MCP `judgment_query` reads returned the same six timing activations with `timing_anchored=true`; active MCP revision `amjis-mcp-00572-p9r` is 100% traffic and labeled `b328e4aa` (ancestor of main). No write action.
+
+- 2026-08-19 12:35Z — **PARIŚEṢA / Codex F89 merged:** PR #1344 merged normally through Ganga as `dddaaef2`; Ganga Quality Gate, TAP CI, and EKV all succeeded. MCP deployment revision reconciliation and the read-only malformed-keyword canary remain pending; no deploy, rebuild, or DB action was taken.
