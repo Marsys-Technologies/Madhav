@@ -30,9 +30,16 @@
  *     A hard stop here is NOT an `error` event — it is a real, composed,
  *     deliberate answer, so the turn closes `ok` with a fixed prose block.
  *
- * PORT STILL NOT IMPLEMENTED — the injection scan (PPR-13). Lane G1-G owns it.
- * This module does not invent one, and nothing here claims injection
- * containment (§N.8: an honest absence, never a green-looking default).
+ * INJECTION CONTAINMENT (PPR-13) IS NOT IN THIS MODULE, and that is a placement
+ * decision rather than an absence. Lane G1-G built it as
+ * `@/lib/pariprashna/injection`, wired into the stages whose data it actually
+ * guards: the planner's inputs and the plan closure in `plan_stage.ts`, the
+ * prompt containers + tool-sequence trace + answer-side entitlement scan in
+ * `synthesis_stage.ts`, and the commit-time entitlement backstop in
+ * `reading_parts.ts`. Nothing about it lives here because nothing about it
+ * happens at admission time. It is flag-gated OFF by default
+ * (`PARIPRASHNA_INJECTION_CONTAINMENT`), so with the flag off this route's
+ * behaviour is unchanged and no claim of containment is being made (§N.8).
  */
 
 import type { UIMessage } from 'ai'

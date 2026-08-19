@@ -35,6 +35,7 @@ import { loadManifest } from '@/lib/bundle/manifest_reader'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
 import type { SafetyDecision } from '@/lib/pariprashna/safety'
+import { isInjectionContainmentEnabled } from '@/lib/pariprashna/injection/flag'
 
 import { halt, proceed, type StageResult, type TurnIdentity, type TurnParams } from './stage_context'
 
@@ -80,6 +81,16 @@ export interface PlanStageOutput {
    * weaker: `reclassifyAfterPlan` is a monotone join.
    */
   safetyDecision: SafetyDecision
+  /**
+   * Capabilities this stage DELIBERATELY removed from the plan — NO-LEAKAGE
+   * strips plus HS-1/HS-4 mortality exclusions (lane G1-G).
+   *
+   * Carried forward rather than discarded because "a capability that was
+   * considered and then taken away is later asked for anyway" is the single
+   * highest-signal tool-sequence anomaly there is, and the monitor in the
+   * synthesis stage cannot reconstruct this set on its own.
+   */
+  removedCapabilities: string[]
 }
 
 export async function runPlanStage(args: {
@@ -132,13 +143,39 @@ export async function runPlanStage(args: {
     getEffectiveModel(params.selectedStack, 'planner_fast', 'fallback', request),
   ])
 
+  // ── INJECTION CONTAINMENT: the planner's own inputs (lane G1-G · PPR-13). ──
+  // TA §14A.1 names this surface first and by line number: "`queryText` flows
+  // raw into `runPlanner`; prior turns raw into `plannerHistory`". The planner
+  // is the FIRST model to read the reader's text and the one whose output grants
+  // capability, so it is the first place the question stops being an instruction
+  // and starts being data.
+  //
+  // The wrap is applied to what the planner reads, NOT to `queryText` itself —
+  // `plan.query_text`, the synthesis call, persistence and the safety classifier
+  // all consume the plain text and must keep seeing exactly it.
+  //
+  // Flag-OFF (default): `containedQueryText === queryText` and
+  // `containedHistory === plannerHistory`, by identity, so the planner call is
+  // byte-for-byte today's.
+  const injectionContained = isInjectionContainmentEnabled()
+  let containedQueryText = queryText
+  let containedHistory = plannerHistory
+  if (injectionContained) {
+    const { containUserQuestion, containPriorTurn } = await import('@/lib/pariprashna/injection')
+    containedQueryText = containUserQuestion(queryText)
+    containedHistory = plannerHistory.map((m) => ({
+      role: m.role,
+      content: containPriorTurn(m.content, m.role),
+    }))
+  }
+
   // ── Planner. Faults → in-stream `error` event (never HTTP 4xx/5xx). ────────
   // The planner emits trace steps; a no-op trace sink keeps it decoupled from
   // the Paripraśna wire (trace observability is a separate surface).
   const plannerStartedAt = Date.now()
   const plannerOutcome = await runPlanner(
-    queryText,
-    plannerHistory,
+    containedQueryText,
+    containedHistory,
     plannerModelId,
     chartId,
     () => {
@@ -212,9 +249,11 @@ export async function runPlanStage(args: {
 
   // NO-LEAKAGE enforcement (doctrine F-R7) — surfaced as a `flag`.
   const judgmentFlags: string[] = []
+  const removedCapabilities: string[] = []
   const noLeakageFiltered = filterLeakedCapabilities(toolsAuthorized)
   if (noLeakageFiltered.length !== toolsAuthorized.length) {
     const stripped = toolsAuthorized.filter((t) => !noLeakageFiltered.includes(t))
+    removedCapabilities.push(...stripped)
     // Raw capability names are server-log-only (gate 11 [integrity]) — the wire
     // flag reports only a count, never the stripped identifiers.
     console.warn('[pariprashna] NO-LEAKAGE stripped capabilities:', stripped)
@@ -253,6 +292,7 @@ export async function runPlanStage(args: {
       // Raw capability names are server-log-only (gate 11 [integrity]); the wire
       // flag carries a count and the REASON, never the identifiers.
       console.warn('[pariprashna/safety] HS-1/HS-4 stripped mortality capabilities:', stripped)
+      removedCapabilities.push(...stripped)
       judgmentFlags.push('safety_mortality_capabilities_excluded')
       em.flag({
         code: 'safety_mortality_capabilities_excluded',
@@ -261,6 +301,52 @@ export async function runPlanStage(args: {
       })
       plan.tool_calls = plan.tool_calls.filter((tc) => kept.includes(tc.tool_name))
       toolsAuthorized.splice(0, toolsAuthorized.length, ...kept)
+    }
+  }
+
+  // ── INJECTION CONTAINMENT: plan closure (lane G1-G · PPR-13). ─────────────
+  // LAST, after every floor and every exclusion, for the same reason the safety
+  // capability exclusion runs last: what matters is what the TOOL BROKER
+  // receives, and the tool broker receives what is left after this line.
+  //
+  // Closes the plan's two open surfaces (see `injection/plan_closure.ts` for
+  // why the schema itself is NOT switched to `.strict()`): a planner-supplied
+  // identity param naming any chart other than the authenticated one is
+  // REJECTED from the tool call, and an unregistered tool name is FLAGGED.
+  if (injectionContained) {
+    const { closePlanAgainstInjection } = await import('@/lib/pariprashna/injection')
+    const { getToolByName } = await import('@/lib/retrieval/registry/tool_name_bridge')
+    const closure = closePlanAgainstInjection({
+      plan,
+      authenticatedChartId: chartId,
+      isRegisteredTool: (name) => getToolByName(name) !== undefined,
+    })
+    if (closure.rejected_param_count > 0) {
+      // Loud on the server WITH the key names; the wire gets a count only
+      // (gate 11 [integrity]) — a rejected `chart_id` value is precisely the
+      // identifier this lane exists to keep off the wire.
+      console.error(
+        '[pariprashna/injection] plan closure REJECTED identity params from tool calls:',
+        closure.findings.filter((f) => f.code === 'plan_identity_param_rejected'),
+      )
+      judgmentFlags.push('injection_plan_identity_param_rejected')
+      em.flag({
+        code: 'injection_plan_identity_param_rejected',
+        level: 'error',
+        detail: `${closure.rejected_param_count} planner-supplied identity parameter(s) rejected (identity comes from the authenticated call)`,
+      })
+    }
+    if (closure.flagged_tool_count > 0) {
+      console.warn(
+        '[pariprashna/injection] plan closure flagged unregistered tool names:',
+        closure.findings.filter((f) => f.code === 'plan_unregistered_tool_flagged'),
+      )
+      judgmentFlags.push('injection_plan_unregistered_tool')
+      em.flag({
+        code: 'injection_plan_unregistered_tool',
+        level: 'warn',
+        detail: `${closure.flagged_tool_count} planned tool name(s) resolve to no registered capability`,
+      })
     }
   }
 
@@ -300,5 +386,6 @@ export async function runPlanStage(args: {
     plannerLatencyMs,
     judgmentFlags,
     safetyDecision,
+    removedCapabilities,
   })
 }
