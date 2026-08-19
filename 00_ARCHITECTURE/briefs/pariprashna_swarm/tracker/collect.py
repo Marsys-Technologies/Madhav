@@ -282,14 +282,27 @@ def collect_code_provenance(mirror_gate):
     latest = latest.strip()
 
     is_current = (source_sha == latest)
-    ok2, _, _ = run_mirror(["merge-base", "--is-ancestor", source_sha, "main"])
-    is_ancestor_of_main = ok2
+    is_ancestor_of_main, _, _ = run_mirror(["merge-base", "--is-ancestor", source_sha, "main"])
+    # Item 1a: is_ancestor_of_main alone conflates "unmerged, ahead of main" with "behind
+    # main" -- both read as False and both used to render amber "STALE CODE". The real
+    # question is whether the installed sha already CONTAINS the latest commit that touched
+    # the tracker subtree on main, regardless of whether the installed sha itself has since
+    # been merged. See _common.classify_code_provenance for the resulting 4-way split.
+    contains_latest_tracker_commit, _, _ = run_mirror(["merge-base", "--is-ancestor", latest, source_sha])
+
+    behind_count = None
+    if is_ancestor_of_main and not contains_latest_tracker_commit:
+        ok3, out3, _ = run_mirror(["rev-list", "--count", f"{source_sha}..main", "--", TRACKER_SUBTREE_PATH])
+        if ok3 and out3.strip().isdigit():
+            behind_count = int(out3.strip())
 
     return _derived({
         "installed": installed,
         "latest_tracker_subtree_commit_on_main": latest,
         "is_current": is_current,
         "is_ancestor_of_origin_main": is_ancestor_of_main,
+        "contains_latest_tracker_commit": contains_latest_tracker_commit,
+        "behind_count": behind_count,
         "code_dir": CODE_DIR,
     }, f"INSTALLED_FROM.json ({INSTALLED_FROM_JSON}) vs. mirror log -1 main -- {TRACKER_SUBTREE_PATH}")
 

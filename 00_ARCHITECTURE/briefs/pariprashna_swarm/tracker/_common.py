@@ -85,6 +85,22 @@ def staleness_class(age_seconds):
     return _class_for_thresholds(age_seconds, STALE_AMBER_S, STALE_RED_S)
 
 
+def classify_code_provenance(is_ancestor_of_main, contains_latest_tracker_commit):
+    """Pure (item 1a): the deployed code's relationship to main's tracker-subtree history,
+    replacing the old binary is_current (which conflated "unmerged, ahead of main" with
+    "behind main" -- both read False and both rendered amber "STALE CODE"). Four states:
+      CURRENT  -- merged (is_ancestor_of_main) and has everything main has for tracker/.
+      AHEAD    -- unmerged, but has everything main has for tracker/ (plus its own new
+                  work) -- e.g. code deployed pre-merge for live verification. NOT amber.
+      BEHIND   -- merged, but main has tracker/ history this sha lacks. Amber.
+      DIVERGED -- neither an ancestor nor has everything main has -- no clean ordering
+                  (e.g. after a rebase/force-push). Amber.
+    """
+    if contains_latest_tracker_commit:
+        return "CURRENT" if is_ancestor_of_main else "AHEAD"
+    return "BEHIND" if is_ancestor_of_main else "DIVERGED"
+
+
 def compute_blind_window(last_heartbeat_ts, now_ts, marker_present):
     """Pure (item d): decide, at daemon start, whether this restart followed an
     unexplained gap. `last_heartbeat_ts`/`now_ts` are timezone-aware datetimes (or

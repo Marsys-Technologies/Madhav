@@ -269,12 +269,22 @@ function render() {
 
   const codeProv = d.code_provenance || {};
   const codePill = document.getElementById("codeShaPill");
+  // Item 1a: CURRENT/AHEAD are not amber -- an unmerged sha ahead of main (e.g. deployed
+  // pre-merge for live verification) is a DIFFERENT condition from actually being stale,
+  // and conflating them trains readers to discount an amber that, when it's BEHIND or
+  // DIVERGED, is real.
   if (codeProv.evidence_class !== "DERIVED") {
     codePill.className = "pill";
     codePill.textContent = "code UNKNOWN (" + (codeProv.provenance || "no INSTALLED_FROM.json") + ")";
-  } else if (codeProv.code_stale) {
+  } else if (codeProv.code_state === "BEHIND") {
     codePill.className = "pill amber";
-    codePill.textContent = `code ${esc(codeProv.code_sha_short)} — STALE CODE (latest: ${esc((codeProv.latest_tracker_subtree_commit_on_main || "").slice(0,10))})`;
+    codePill.textContent = `code ${esc(codeProv.code_sha_short)} — BEHIND (${codeProv.code_behind_count != null ? codeProv.code_behind_count : "?"} commits, latest: ${esc((codeProv.latest_tracker_subtree_commit_on_main || "").slice(0,10))})`;
+  } else if (codeProv.code_state === "DIVERGED") {
+    codePill.className = "pill amber";
+    codePill.textContent = `code ${esc(codeProv.code_sha_short)} — DIVERGED from main (latest: ${esc((codeProv.latest_tracker_subtree_commit_on_main || "").slice(0,10))})`;
+  } else if (codeProv.code_state === "AHEAD") {
+    codePill.className = "pill";
+    codePill.textContent = `code ${esc(codeProv.code_sha_short)} — AHEAD (unmerged, installed ${esc(codeProv.code_installed_at)})`;
   } else {
     codePill.className = "pill green";
     codePill.textContent = `code ${esc(codeProv.code_sha_short)} (current, installed ${esc(codeProv.code_installed_at)})`;

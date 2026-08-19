@@ -51,10 +51,24 @@ launchd plists — it must still exist after `install.sh` exits, so point it at 
 permanent checkout, not a worktree you're about to remove.
 
 **Provenance is on the dashboard, not just in a file.** `tracker.html`'s header shows the
-running code's short sha. If that sha is not the latest commit that touched this `tracker/`
-subtree on `origin/main`, the pill turns amber and reads **"STALE CODE"** — an observatory
-that can't tell you it's running old code isn't trustworthy. In-place/dev runs (no
-`INSTALLED_FROM.json`) show `code UNKNOWN` honestly rather than a fake green.
+running code's short sha, classified into one of four states (`classify_code_provenance`,
+`_common.py`) rather than a single binary "stale" flag — the binary version conflated
+"unmerged, ahead of main" with "genuinely behind" (both read `is_current: false`), training
+readers to discount an amber that, when real, matters:
+
+- **CURRENT** (green) — the installed sha is merged and already has everything `origin/main`
+  has for this `tracker/` subtree.
+- **AHEAD** (neutral, not amber) — unmerged, but already has everything `origin/main` has for
+  `tracker/` — e.g. deployed pre-merge for live verification (this is this observatory's own
+  normal workflow: every `install.sh --install-from-ref <branch>` run before a PR merges).
+- **BEHIND** (amber) — merged, but `origin/main` has since gained `tracker/`-touching commits
+  this sha lacks. Genuinely stale — the pill also names the commit count.
+- **DIVERGED** (amber) — neither an ancestor of `origin/main` nor has everything it does for
+  `tracker/` — no clean ordering (e.g. after a rebase/force-push). A real anomaly.
+
+In-place/dev runs (no `INSTALLED_FROM.json`) show `code UNKNOWN` honestly rather than a fake
+green. Each of the four states has its own selftest, each observed failing first by
+neutering the classifier and confirming the wrong state was returned for AHEAD/BEHIND/DIVERGED.
 
 Dev/local testing only — **not** for a standing install:
 
@@ -289,14 +303,27 @@ no `tracker-stop`, no marker.
   deliberate test, not a real incident).
 
 **Closing the loop — the conductor, not another tier of the same kind.** T1-T4 keep the
-*observer* alive, but every one of them is itself something that can be down. `tracker-health-check` is a machine-checkable contract (exit 0 = observatory alive and safe to
-trust, exit 1 = halt condition, one status line either way) meant to be called by the
+*observer* alive, but every one of them is itself something that can be down.
+`tracker-health-check` (item 2a) is a machine-checkable contract meant to be called by the
 Paripraśna conductor swarm at every lane transition and treated as a hard halt on failure —
 because the conductor, by construction, is the one thing guaranteed to be running at the
-exact moment a lane transition happens. Wiring that call into the conductor's own kickoff
-loop is outside this PR's scope (`00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/**` only,
-not the conductor's own governing prompts); `tracker-health-check` is the contract those
-prompts should call.
+exact moment a lane transition happens; the 2026-08-19 23m37s blind window would have been
+caught in seconds by it. Checks all five conditions that make the dashboard trustworthy, not
+just heartbeat age: **jobs loaded** (`launchctl list`, no lock), **heartbeat fresh** (<180s),
+**selftest passing** (as of its last run, carried in `heartbeat.json`), **refs fresh** (mirror
+fetched successfully within 180s), **no unacknowledged blind window**. Exits 0 (safe to
+proceed) only if all five hold; exits 1 with a one-line diagnosis naming which failed
+otherwise. Deliberately does **not** source `_tracker_lock.sh` — a conductor calling this at
+every lane transition must never be made to wait behind `install.sh`/`tracker-stop`/
+`tracker-start` holding the label lock, since this script never moves a label, only reads
+state. Measured under 0.7s against production. Selftested: all five failure conditions
+triggered independently (one at a time) plus the all-healthy case, asserting the lock
+directory is never created and total runtime stays under 1s; observed failing first by
+disabling the jobs-unloaded check specifically and confirming that scenario silently reported
+healthy. The binding rule that makes this call mandatory, not optional, is in
+`PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` (item 2b) — wiring the actual call into the
+conductor's own kickoff loop is outside this PR's `tracker/**` scope; that amendment is the
+contract the conductor's prompts adopt at its next phase boundary.
 
 ## (d) Remembered blindness
 

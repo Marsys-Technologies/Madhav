@@ -19,7 +19,8 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import (  # noqa: E402
     BLIND_WINDOW_JSON, COLLECTOR_SNAPSHOT_JSON, EVENTS_DIR, HEARTBEAT_JSON, PLAN_PATH, STATE_JSON,
-    TRACKER_DATA_JS, atomic_write_json, atomic_write_text, ensure_runtime_dirs, load_plan,
+    TRACKER_DATA_JS, atomic_write_json, atomic_write_text, classify_code_provenance,
+    ensure_runtime_dirs, load_plan,
 )
 from tracker_emit import emit  # noqa: E402
 
@@ -300,19 +301,26 @@ def fold_code_provenance(snapshot):
             "provenance": cp.get("provenance"),
             "code_sha": None, "code_sha_short": None, "code_installed_at": None,
             "code_source_ref": None, "code_is_current": None, "code_stale": None,
-            "code_is_ancestor_of_main": None,
+            "code_is_ancestor_of_main": None, "code_state": None, "code_behind_count": None,
         }
     v = cp["value"]
     installed = v.get("installed", {})
     sha = installed.get("source_sha")
+    # Item 1a: CURRENT/AHEAD/BEHIND/DIVERGED, not a binary is_current -- an unmerged sha
+    # that's ahead of main (e.g. deployed pre-merge for live verification, exactly this
+    # PR's own workflow) used to render the same amber "STALE CODE" as a genuinely stale
+    # one. Only BEHIND/DIVERGED are amber now.
+    state = classify_code_provenance(v.get("is_ancestor_of_origin_main"), v.get("contains_latest_tracker_commit"))
     return {
         "evidence_class": "DERIVED", "provenance": cp.get("provenance"),
         "code_sha": sha, "code_sha_short": (sha[:10] if sha else None),
         "code_installed_at": installed.get("installed_at"),
         "code_source_ref": installed.get("source_ref"),
         "code_is_current": v.get("is_current"),
-        "code_stale": (v.get("is_current") is False),
+        "code_stale": state in ("BEHIND", "DIVERGED"),
         "code_is_ancestor_of_main": v.get("is_ancestor_of_origin_main"),
+        "code_state": state,
+        "code_behind_count": v.get("behind_count"),
         "latest_tracker_subtree_commit_on_main": v.get("latest_tracker_subtree_commit_on_main"),
     }
 
