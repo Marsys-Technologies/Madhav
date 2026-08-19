@@ -4075,3 +4075,54 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   for a comparably novel risk category (infra/credentials, or
   comparably safety-critical content), consistent with how P1 itself was
   scoped.
+
+- 2026-08-19 23:35Z — **PARIPRASHNA / Claude Code (conductor) — P2 THE
+  READING MADE TRUE, kickoff.** Lease announcement, no merge yet. Per
+  `PARIPRASHNA_PHASED_SWARM_IMPLEMENTATION_PLAN_v1_0.md` §2 Phase II: P2's
+  operator packet is **none** ("this phase is code and fixtures") and its
+  pre-authorization block covers deploy-per-wave, flipping the
+  semantic-block/first-paint-citation flags at close, and corpus work
+  calling production models within the existing spend ceiling — no new
+  infra/credential/irreversible-action category beyond what P0/P1 already
+  covered, so proceeding under the standing full-autonomy directive without
+  a fresh check-in.
+
+  **Scope for this wave — the 8 presentation-truth lanes (P2-A..H), the
+  ones the plan's own §2 Phase II parallelization note says fan out
+  immediately as disjoint files:** P2-A semantic blocks on the wire
+  (`block.commit` `kind`/`role`, `prediction_card` as a first-class event)
+  · P2-B citations at first paint (wiring the already-built
+  `lib/pariprashna/citations/rewriter.ts` into the route, server-derived
+  grounding summary) · P2-C honest controls (`model_id`/`length_tier`
+  plumbed or removed) · P2-D durable persistence (outbox, semantic-hash
+  comparator replacing byte-equality) · P2-E observability (wiring the
+  existing dead `llm_usage_events` schema, not a new one) · P2-F mobile +
+  a11y · P2-G edge-state lexicon + second-error-classifier fold · P2-H
+  history sidebar/empty-state/Seal. Epistemic-truth lanes (P2-I..O) are
+  explicitly NOT started this wave — the plan's own serialization rule is
+  `A → I → {J,K,L,M}`; P2-I begins only once P2-A's wire change is
+  independently verified.
+
+  **File-scope declaration (`may_touch`):**
+  `platform/src/lib/pariprashna/**`,
+  `platform/src/components/pariprashna/**`,
+  `platform/src/app/api/pariprashna/**`, `platform/src/app/pariprashna/**`
+  (or wherever the live route mounts — builders confirm at BIND),
+  `platform/src/lib/config/feature_flags.ts` (additive flag entries only,
+  same pattern as P1's 6 flags), test files colocated with the above.
+  **`must_not_touch`:** anything under `00_ARCHITECTURE/briefs/**` outside
+  this session's own `pariprashna_swarm/state/`, any `platform/migrations/`
+  or `platform/supabase/migrations/` file (P2 does not open a schema train
+  per its own lane table — G3-A's receipt persistence and G2-D's outbox may
+  turn out to need one; if so a fresh lease entry will name it before any
+  migration file is written), governance-registry files
+  (`CAPABILITY_MANIFEST.json`, `FILE_REGISTRY_v1_14.md`) unless a lane's
+  own doc output requires registration, in which case same pre-empt-in-the-
+  same-commit discipline as P0/P1. No collision expected with the
+  concurrent PARIPRASHNA-CLOSEOUT tracker-v2 work (disjoint tree,
+  `.../pariprashna_swarm/tracker/`) or PARIŚEṢA/SAMPŪRTI (disjoint trees
+  entirely).
+
+  New capability ships flag-OFF by default, same discipline as P1 — no
+  behavior change expected on `main` until each lane's own flag flips at
+  phase close per the plan's pre-authorization.
