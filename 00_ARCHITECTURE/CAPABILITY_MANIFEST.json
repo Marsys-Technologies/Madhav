@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-19T18:28:00Z",
+  "generated_at": "2026-08-19T18:58:29Z",
   "generator_version": "1.0",
   "entry_count": 128,
   "fingerprint": "8c1ab94c8acd2746eda9233dc37fac025d6a0fb3474ea023d6b23779ae10c79c",
@@ -1634,7 +1634,7 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "d27c741f0c70e6cda2edc7677ed29ca692e1666cf6cf078ef9013c9f983e3a4c",
+      "fingerprint": "e1e1bdfdfbeed50286673d6bdae1d86048c3b9b263031f2f2aaf7903eca05e5a",
       "native_id": "project",
       "last_verified_session": "PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z",
       "last_verified_on": "2026-08-19"

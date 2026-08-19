@@ -57,17 +57,21 @@ consumers:
   - Every session-close checklist from Step 10 onward
 changelog:
   - v6.64 (2026-08-19, PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE): Governance-only
-    Codex-to-Claude Code handoff recorded. The owner-authorized bridge adopted
+    Codex-to-Claude Code handoff finalized after the owner’s post-release ordering
+    ruling. The bridge adopted
     00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md
     byte-identically from the preserved staged artifact (SHA-256
     24cbeea92c8617697bb10b8f57dcd281056e7c92d4f7ecc9550352410ddcf344),
     appended CCD-008, recorded the blocked Codex drain and preservation manifest, and
-    will release its exact coordination lease after the reviewed governance commit is
-    merged. This is a governance-aside close: the active PARIPRASHNA P0 pointers and
-    work remain unchanged. No Phase 0, finding remediation, application code, database,
+    recorded its exact coordination lease acquisition
+    (`a45a09066366d67a68df64d42ec2781a8acc075f`) and completed remote-verified
+    release (`1d5a378bd171bae15bd6b5b3c89437d22de18827`). The candidate was
+    reconciled onto `origin/main@c97871dd81cbe578bcb7b4541816f401c5852e4a`.
+    This is a governance-aside close: the active PARIPRASHNA P0 pointers and work
+    remain unchanged. No Phase 0, finding remediation, application code, database,
     migration, deployment, scheduler, infrastructure, credential, or customer action
     occurred. The next PARISESA action is only the Closure Factory plan section 28
-    entrypoint after the superseding safe-handoff receipt.
+    entrypoint after the protected merge and superseding safe-handoff receipt.
   - v6.63 (2026-08-19, PARIPRASHNA-CONDUCTOR-P0-FRESH, session Claude Code/VS Code):
     **Paripraśna conductor fresh-start, Step 0 (retire prior attempt).** The prior Paripraśna
     conductor session (dispatched under `KICKOFF_PROMPT_SWARM_CONDUCTOR.md` v1.0) made one
@@ -9116,7 +9120,7 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19
+  last_session_id: PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z
 ```
 
 ---

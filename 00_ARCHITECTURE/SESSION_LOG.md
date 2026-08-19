@@ -36709,3 +36709,131 @@ Open the Step 0c docs-only PR from `pariprashna/p0` against `main` (re-check
 `tracker.html` + heartbeat, carrying forward the `prior_attempt` findings block per the v2.0
 kickoff prompt §0e); then begin Step 1 P0 lane ignition.
 
+## PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z — post-release governance bridge finalization
+
+```yaml
+session_open:
+  session_id: PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z
+  cowork_thread_name: "PARIŚEṢA V4 — Governance Bridge Close"
+  agent_name: "Codex"
+  agent_version: "GPT-5"
+  tool: "Codex"
+  tool_profile: "madhav-parity"
+  worktree_path: "/private/tmp/parisesa-v4-bridge-close-20260819T181656Z"
+  coordination:
+    branch: "origin/campaign-coordination"
+    lease_id: "PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181916Z"
+    lease_acquisition_commit: "a45a09066366d67a68df64d42ec2781a8acc075f"
+    remote_verified_at_utc: "2026-08-19T18:20:00Z"
+    lease_status_verified: true
+    expires_at_utc: "2026-08-19T21:19:16Z"
+  cross_tool_state_read:
+    current_state: true
+    cross_cutting_decision_register: true
+    stale_auxiliary_state_not_authority: true
+  step_number_or_layer: "GOVERNANCE_BRIDGE_CLOSE"
+  predecessor_session: "PARISESA_V4_CODEX_STOP_RECEIPT_20260819T175939Z"
+  mandatory_reading_confirmation:
+    - {file: "CLAUDE.md", fingerprint_sha256: "4dcee1be96aa30916a09fe8cf84b1f5b4db41fdd8964a110e79ed624cc9f926f", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/CAPABILITY_MANIFEST.json", fingerprint_sha256: "60c4ed0d95d05f62ab53835983b02838884759c07b55d7792063f319c37124d8", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md", fingerprint_sha256: "61dd9355223378d517c09a59ddcfc7dddddfbdabfa64b0865f9cd55153223e5b", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/MACRO_PLAN_v2_0.md", fingerprint_sha256: "8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md", fingerprint_sha256: "a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md", fingerprint_sha256: "414807baef6ee57efc4dbf2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md", fingerprint_sha256: "45e9a8f549ee1a1bf7586875b12f906f288d547ea58498bac193e1af9a3e55d0", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", fingerprint_sha256: "f1e322eba8150bf6d241a1dad8cce7f293de6e46c53069c52cfed260afb47aa7", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md", fingerprint_sha256: "ca9b37a754ac61896215e22bd2d2199916d9783c74238ecf4dce3049b67674b3", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md", fingerprint_sha256: "24239e8e3fb463245220139ace98a0b7168d3497bda3156945fb6dc40af98366", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "/Users/Dev/shad_overnight/par-night/PROTOCOL.md", fingerprint_sha256: "00fcb2601c5d1d4c1912d8de915564a074d9e46938d0524e611e6cc89d2892f9", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "/Users/Dev/shad_overnight/par-night/state/codex-v4/PARISESA_V4_CODEX_STOP_RECEIPT_20260819T175939Z.md", fingerprint_sha256: "2c1401a5d86a7feefe4372cb3a44f2b5dc3ed877c35b827d2aa2a4d523b830e7", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "/Users/Dev/shad_overnight/par-night/state/codex-v4/PARISESA_V4_WORK_PRESERVATION_MANIFEST_20260819T175939Z.json", fingerprint_sha256: "bd0fbc1c47dcdc53f9e86364419b797dbae48b271e805e67279757c595f9b08d", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "/Users/Dev/shad_overnight/par-night/state/codex-v4/PARISESA_V4_CLOSURE_FACTORY_CLAUDE_CODE_PLAN_v1_0.md", fingerprint_sha256: "24cbeea92c8617697bb10b8f57dcd281056e7c92d4f7ecc9550352410ddcf344", read_at: "2026-08-19T18:22:00Z"}
+  canonical_artifact_fingerprint_check:
+    - {canonical_id: "CROSS_CUTTING_DECISION_REGISTER_v1_0", declared_fingerprint: "24239e8e3fb463245220139ace98a0b7168d3497bda3156945fb6dc40af98366", observed_fingerprint: "24239e8e3fb463245220139ace98a0b7168d3497bda3156945fb6dc40af98366", match: true}
+  declared_scope:
+    may_touch:
+      - "00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md"
+      - "00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_GOVERNANCE_BRIDGE_WORK_ORDER_v1_0.md"
+      - "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md"
+      - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+      - "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      - "00_ARCHITECTURE/SESSION_LOG.md"
+      - "/Users/Dev/shad_overnight/par-night/state/codex-v4/PARISESA_V4_SAFE_HANDOFF_RECEIPT_*.md"
+    must_not_touch:
+      - "platform/**"
+      - "platform-mcp/**"
+      - "platform/migrations/**"
+      - "database/**"
+      - "00_ARCHITECTURE/briefs/pariprashna_swarm/**"
+      - "/Users/Dev/Vibe-Coding/Apps/Madhav"
+      - "/Users/Dev/par-night/coord-wt"
+      - "/Users/Dev/par-night/wt/**"
+      - "/Users/Dev/par-night/codex-wt/**"
+      - "/Users/Dev/shad_overnight/par-night/results/**"
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: false
+  notes: "Governance-only bridge. No Phase 0, finding remediation, worker dispatch, application/data/deployment action, or preserved-worktree mutation is authorized."
+```
+
+The owner’s post-release ruling resolved the earlier ordering halt without a new
+lease or a schema change. The exact lease acquisition and release were remotely
+verified; the candidate was rebased onto `origin/main@c97871dd81cbe578bcb7b4541816f401c5852e4a`.
+No campaign implementation or external mutation was begun.
+
+```yaml
+session_close:
+  session_id: PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z
+  closed_at: 2026-08-19T19:00:45Z
+  tool: "Codex"
+  files_touched:
+    - {path: "00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md", mutation_type: created, sha256_before: null, sha256_after: "24cbeea92c8617697bb10b8f57dcd281056e7c92d4f7ecc9550352410ddcf344", justification: "Byte-identical owner-authorized adoption of the staged Closure Factory plan", within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_GOVERNANCE_BRIDGE_WORK_ORDER_v1_0.md", mutation_type: created, sha256_before: null, sha256_after: "fcde687dc80b67415f676e63bb9428cffabbb5bf8776b788fa6e7d61c1da27c7", justification: "Governance-only work-order outcome and source-pin record", within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md", mutation_type: modified, sha256_before: "24239e8e3fb463245220139ace98a0b7168d3497bda3156945fb6dc40af98366", sha256_after: "e1e1bdfdfbeed50286673d6bdae1d86048c3b9b263031f2f2aaf7903eca05e5a", justification: "CCD-008 records the exact remote release and the owner ruling", within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/CAPABILITY_MANIFEST.json", mutation_type: modified, sha256_before: "60c4ed0d95d05f62ab53835983b02838884759c07b55d7792063f319c37124d8", sha256_after: "e38a7dcd7de64d8d3917e8380fefaac33594551bc6d5d3f7b8a3ebfa34012a50", justification: "Closure Factory registration and CCD fingerprint synchronization", within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md", mutation_type: modified, sha256_before: "80b9ae10a3fc92993edcd832fb490331c990d72d9eac26c714c92b8a719272f3", sha256_after: "aa77dfb0b36afba69800d5413f7835e9745ddf72ae7053bc0effd1b53e81655c", justification: "§9.21 registers the canonical Closure Factory plan", within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", mutation_type: modified, sha256_before: "f1e322eba8150bf6d241a1dad8cce7f293de6e46c53069c52cfed260afb47aa7", sha256_after: n/a, justification: "v6.64 bridge provenance and final close pointer", within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/SESSION_LOG.md", mutation_type: modified, sha256_before: "e4c6a2089e5d653362f1fcd08e5577581c5085b76f09a15549c91d65a94f8fb2", sha256_after: n/a, justification: "Validated Governance Bridge session-open and session-close record", within_declared_scope: true}
+  registry_updates_made:
+    capability_manifest:
+      - {canonical_id: "PARISESA_V4_CLOSURE_FACTORY_PLAN", change: "registered as CURRENT-FOR-EXECUTION with the required byte-identical SHA-256"}
+      - {canonical_id: "CROSS_CUTTING_DECISION_REGISTER_v1_0", change: "fingerprint synchronized after CCD-008 provenance amendment"}
+    file_registry:
+      - {section: "§9.21", change: "Closure Factory plan registered in the same governance candidate"}
+    ccd:
+      - {id: "CCD-008", change: "records acquisition, completed remote release, and owner post-release ordering ruling"}
+  red_team_pass: {due: false, performed: false, verdict: n/a, artifact_path: null}
+  drift_detector_run: {script: "platform/scripts/governance/drift_detector.py", exit_code: 3, report_path: "/private/tmp/parisesa-v4-bridge-drift-postrelease-20260819T185829Z.md", divergences_found: 216, note: "Exact established baseline; no HIGH or CRITICAL finding introduced by the bridge candidate."}
+  schema_validator_run: {script: "platform/scripts/governance/schema_validator.py", exit_code: 3, report_path: "/private/tmp/parisesa-v4-bridge-schema-postrelease-20260819T185829Z.md", violations_found: 42, note: "Exact established baseline; no bridge-introduced schema violation."}
+  current_state_updated: true
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: ["CCD-008"]
+    work_order_outcome_recorded: true
+    work_order_surface: "00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_GOVERNANCE_BRIDGE_WORK_ORDER_v1_0.md"
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    lease_acquisition_commit: "a45a09066366d67a68df64d42ec2781a8acc075f"
+    lease_release_commit: "1d5a378bd171bae15bd6b5b3c89437d22de18827"
+    next_session_can_resume_from: ["00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md", "00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md"]
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_overrides:
+    - {override_id: "OVR-PARISESA-V4-BRIDGE-POST-RELEASE-20260819", issued_at: "2026-08-19", description: "Owner ruling supersedes only the prior requirement to release this exact bridge lease after merge; it authorizes evidence-only close finalization after the already verified release.", scope_effect: "No new lease, no schema change, no implementation, data, deployment, or preserved-worktree action."}
+  halts_encountered:
+    - {halt_id: "HLT-PARISESA-V4-BRIDGE-ORDERING-20260819", occurred_at: "2026-08-19T18:29:29Z", description: "The prior close order was circular: checklist validation required remote lease release while authorization had required release after merge.", resolution: "Owner post-release ordering ruling; existing release commit 1d5a378bd171bae15bd6b5b3c89437d22de18827 is authoritative."}
+  native_directive_per_step_verification: []
+  close_criteria_met: true
+  unblocks: ["Normal protected PR and merge-queue submission of this exact governance-only candidate.", "Claude Code §28 only after the merged commit and superseding receipt verify safe_to_open_claude_code: true."]
+  handoff_notes: "No Phase 0 or campaign implementation occurred. Preserved owner-uncertain dirty worktrees remain excluded under the predecessor preservation manifest."
+  known_residuals:
+    - {finding_id: "GOVERNANCE-DRIFT-BASELINE-216", finding: "216 established MEDIUM/LOW drift findings", severity: MEDIUM, booking_reference: "ONGOING_HYGIENE_POLICIES exit-code-3 baseline policy; /private/tmp/parisesa-v4-bridge-drift-postrelease-20260819T185829Z.md confirms unchanged count and no HIGH/CRITICAL."}
+    - {finding_id: "GOVERNANCE-SCHEMA-BASELINE-42", finding: "42 established MEDIUM/LOW schema violations", severity: MEDIUM, booking_reference: "ONGOING_HYGIENE_POLICIES exit-code-3 baseline policy; /private/tmp/parisesa-v4-bridge-schema-postrelease-20260819T185829Z.md confirms unchanged count."}
+```
+
+### Next session objective
+
+Verify the exact protected governance PR has merged, verify its resulting
+`origin/main` and the remotely released bridge lease, run the campaign-scoped process
+check, and issue the superseding safe-handoff receipt before any Claude Code §28 start.

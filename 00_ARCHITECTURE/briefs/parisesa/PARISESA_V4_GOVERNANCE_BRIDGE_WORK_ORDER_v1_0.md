@@ -1,11 +1,11 @@
 ---
 artifact: PARISESA_V4_GOVERNANCE_BRIDGE_WORK_ORDER
 version: "1.0"
-status: CLOSED_PENDING_MERGE
+status: CLOSE_VALIDATION_PENDING
 campaign: "PARIŚEṢA-RĀTRI V4"
 session_id: "PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z"
 lease_id: "PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181916Z"
-owner_authority: "OWNER AUTHORIZATION — PARIŚEṢA V4 GOVERNANCE BRIDGE CLOSE"
+owner_authority: "OWNER AUTHORIZATION — PARIŚEṢA V4 GOVERNANCE BRIDGE CLOSE; OWNER RULING — PARIŚEṢA V4 POST-RELEASE CLOSE FINALIZATION"
 ---
 
 # PARIŚEṢA V4 Governance Bridge Work Order
@@ -25,8 +25,10 @@ or otherwise modified by this bridge.
 
 ## Source pins
 
-- Main base: `origin/main@9f3c9cc5b019e9b2cc24ff82036d80e7544c94c4`.
+- Reconciled main base: `origin/main@c97871dd81cbe578bcb7b4541816f401c5852e4a`.
 - Coordination acquisition: `origin/campaign-coordination@a45a09066366d67a68df64d42ec2781a8acc075f`.
+- Coordination release (remote verified):
+  `origin/campaign-coordination@1d5a378bd171bae15bd6b5b3c89437d22de18827`.
 - Predecessor receipt SHA-256:
   `2c1401a5d86a7feefe4372cb3a44f2b5dc3ed877c35b827d2aa2a4d523b830e7`.
 - Preservation manifest SHA-256:
@@ -36,7 +38,9 @@ or otherwise modified by this bridge.
 
 ## Handoff condition
 
-The next Claude Code session may use the Closure Factory plan's §28 entrypoint only
-after this bridge commit is merged to current `origin/main`, the exact lease release
-is verified on `origin/campaign-coordination`, and the superseding safe-handoff
-receipt records the final campaign-scoped process check.
+The owner’s post-release ordering ruling authorizes this bridge to validate and
+record its close after the verified release, then submit the exact governance-only
+candidate through the normal protected PR and merge queue. The next Claude Code
+session may use the Closure Factory plan's §28 entrypoint only after that merge, the
+superseding safe-handoff receipt confirms current `origin/main`, and the final
+campaign-scoped process check remains clear.

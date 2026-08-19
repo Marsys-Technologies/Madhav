@@ -28,7 +28,7 @@ coordination lease that produced it.
 | CCD-005 | 2026-08-17 | Codex + Autonomous Executive Pratinidhi (Sol Ultra independent review) | ACTIVE | Establish the standing PARIŚEṢA Autonomous Executive Pratinidhi and reconcile the historical MACRO_PLAN canonical-record drift to the independently verified v2.1 source on origin/main. |
 | CCD-006 | 2026-08-17 | Codex / PARIŚEṢA Phase −1 | ACTIVE | Bootstrap the user-authorized PARIŚEṢA autonomous recovery under its exact runbook scope after the validated canonical-provenance handshake. |
 | CCD-007 | 2026-08-17 | Codex | ACTIVE | Authorize PARIŚEṢA–RĀTRI V4 execution-first remediation under the operator-approved V4 prompt, while keeping V3 suspended and its state immutable. |
-| CCD-008 | 2026-08-19 | Codex | ACTIVE | Record the owner-authorized PARIŚEṢA V4 Governance Bridge close: adopt the Closure Factory plan and hand off safely to Claude Code without beginning implementation. |
+| CCD-008 | 2026-08-19 | Codex | ACTIVE | Record the owner-authorized PARIŚEṢA V4 Governance Bridge close: adopt the Closure Factory plan and hand off safely to Claude Code without beginning implementation; the exact bridge lease was released before evidence-only close finalization under the owner’s 2026-08-19 ordering ruling. |
 
 ## CCD-001 — Cross-tool onboarding and operating protocol
 
@@ -156,7 +156,15 @@ coordination lease that produced it.
 - **Coordination:** lease
   `PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181916Z` on
   `origin/campaign-coordination`, acquisition commit
-  `a45a09066366d67a68df64d42ec2781a8acc075f`.
+  `a45a09066366d67a68df64d42ec2781a8acc075f`, released and remotely verified
+  at `1d5a378bd171bae15bd6b5b3c89437d22de18827`.
+- **Ordering ruling:** `OWNER RULING — PARIŚEṢA V4 POST-RELEASE CLOSE
+  FINALIZATION`, 2026-08-19, supersedes only the prior instruction that this
+  bridge lease be released after merge. For this already-released bridge it
+  authorizes evidence-only close finalization, checklist validation, and
+  SESSION_LOG synchronization before the normal protected documentation PR and
+  merge path. It does not alter the general SESSION_CLOSE schema or authorize
+  campaign implementation.
 - **Predecessor evidence:** blocked receipt
   `PARISESA_V4_CODEX_STOP_RECEIPT_20260819T175939Z.md` SHA-256
   `2c1401a5d86a7feefe4372cb3a44f2b5dc3ed877c35b827d2aa2a4d523b830e7`;
