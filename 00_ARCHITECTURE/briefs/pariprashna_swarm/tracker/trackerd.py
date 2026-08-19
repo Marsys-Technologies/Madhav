@@ -62,7 +62,12 @@ def one_cycle():
     signal_failures = []
     try:
         snapshot = collect.main()
-        for key in ("git_lane_branches", "git_worktrees", "github_prs", "github_rate_limit", "deploy"):
+        mf = snapshot.get("mirror_fetch") or {}
+        if not mf.get("ok"):
+            signal_failures.append({"signal": "mirror_fetch", "provenance": mf.get("error"),
+                                     "consecutive_failures": mf.get("consecutive_failures")})
+        for key in ("git_lane_branches", "git_worktrees", "github_prs", "github_rate_limit",
+                    "recent_merged_prs", "code_provenance", "deploy"):
             sig = snapshot.get(key) or {}
             if sig.get("evidence_class") == "UNKNOWN":
                 signal_failures.append({"signal": key, "provenance": sig.get("provenance")})

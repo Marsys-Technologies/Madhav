@@ -75,7 +75,7 @@ def derive_lane_state(lane, snapshot):
     if mc and mc.get("is_ancestor_of_main"):
         closed = lane.get("_phase_status") == "CLOSED"
         return ("CLOSED" if closed else "MERGED", "DERIVED",
-                f"git merge-base --is-ancestor {mc['sha']} origin/main")
+                f"git merge-base --is-ancestor {mc['sha']} main (mirror)")
 
     branches = (snapshot.get("git_lane_branches") or {}).get("value") or {}
     prs = (snapshot.get("github_prs") or {}).get("value") or {}
@@ -99,8 +99,8 @@ def derive_lane_state(lane, snapshot):
             return ("VERIFYING", "DERIVED", f"gh pr list: {pr['url']} checks pending")
         if ab and ab.get("ahead", 0) == 0 and ab.get("behind", 0) >= 0:
             return ("MERGED", "DERIVED",
-                    f"branch {candidate_branch} 0 commits ahead of origin/main (no open PR)")
-        return ("BUILDING", "DERIVED", f"branch {candidate_branch} exists, {ab} vs origin/main")
+                    f"branch {candidate_branch} 0 commits ahead of main (mirror; no open PR)")
+        return ("BUILDING", "DERIVED", f"branch {candidate_branch} exists, {ab} vs main (mirror)")
 
     for p in lane_ea.get("paths", []):
         if p.get("exists"):
@@ -142,6 +142,42 @@ def anomaly_already_recorded(events, lane_id, claim_epoch):
 
 
 CONTRADICTS = {"MERGED", "CLOSED"}
+
+
+def gh_mirror_anomaly_already_recorded(events, key):
+    for ev in events:
+        if ev.get("kind") == "anomaly" and ev.get("payload", {}).get("gh_mirror_divergence_key") == key:
+            return True
+    return False
+
+
+def gh_mirror_anomalies(snapshot, events):
+    """Item 4: a free consistency check now that two independent sources exist. gh is
+    network-live; the mirror could lag behind it. If gh reports a PR merged whose merge
+    commit is NOT an ancestor of the mirror's main, that is a genuine, real divergence --
+    exactly the false condition PR #1341 needed caught (a confidently-wrong lease/merge
+    cell)."""
+    rmp = snapshot.get("recent_merged_prs") or {}
+    if rmp.get("evidence_class") != "DERIVED":
+        return []
+    new_events = []
+    for pr in rmp.get("value") or []:
+        if pr.get("is_ancestor_of_mirror_main") is False:
+            key = f"{pr['number']}:{pr['merge_commit_sha']}"
+            if not gh_mirror_anomaly_already_recorded(events, key):
+                new_events.append(dict(
+                    writer_id=PROJECTOR_WRITER_ID, kind="anomaly", lane=None,
+                    evidence_class="DERIVED",
+                    provenance="projector.py gh-vs-mirror consistency check",
+                    payload={
+                        "message": f"PR #{pr['number']} ({pr.get('head_ref')}) reported MERGED by gh "
+                                   f"(merge commit {pr['merge_commit_sha'][:10]}) but that commit is NOT "
+                                   f"an ancestor of the mirror's main -- refs are lagging, or something is wrong.",
+                        "gh_mirror_divergence_key": key,
+                        "pr_number": pr["number"], "merge_commit_sha": pr["merge_commit_sha"],
+                    },
+                ))
+    return new_events
 
 
 def fold(plan, snapshot, events, as_of_epoch):
@@ -281,6 +317,26 @@ def fold_code_provenance(snapshot):
     }
 
 
+def fold_ref_freshness(snapshot):
+    """The THIRD liveness axis (CLAUDE.md-adjacent §N.8 applied to the instrument):
+    observer freshness (is the tracker alive), subject progress (is the swarm moving), and
+    THIS (are the refs the tracker reasons from actually current) are independent -- a
+    green observer over stale refs is exactly the silently-stale-looking-fresh failure
+    this axis exists to catch. Published directly from the collector's mirror_fetch result
+    (not folded from events -- it's already a per-cycle collector signal, same pattern as
+    github_rate_limit)."""
+    mf = snapshot.get("mirror_fetch") or {}
+    return {
+        "last_fetch_ok": mf.get("ok"),
+        "last_fetch_ts": mf.get("ts"),
+        "last_fetch_action": mf.get("action"),
+        "last_fetch_duration_ms": mf.get("duration_ms"),
+        "last_fetch_error": mf.get("error"),
+        "last_success_ts": mf.get("last_success_ts"),
+        "consecutive_failures": mf.get("consecutive_failures", 0),
+    }
+
+
 def fold_daemon_health(events):
     last_hb = None
     resurrections = 0
@@ -321,6 +377,7 @@ def project(write_new_events=True):
         as_of_epoch = max(event_epochs)
 
     out_lanes, new_events = fold(plan, snapshot, events, as_of_epoch)
+    new_events = new_events + gh_mirror_anomalies(snapshot, events)
 
     if write_new_events and new_events:
         for ne in new_events:
@@ -366,6 +423,7 @@ def project(write_new_events=True):
         ],
         "budget": fold_budget(plan, events),
         "code_provenance": fold_code_provenance(snapshot),
+        "ref_freshness": fold_ref_freshness(snapshot),
         "shared_surfaces": {k: v for k, v in (snapshot.get("shared_surfaces") or {}).items()},
         "github_rate_limit": snapshot.get("github_rate_limit"),
         "daemon_health": fold_daemon_health(events),

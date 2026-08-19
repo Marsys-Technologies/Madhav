@@ -16,6 +16,16 @@ SERVE_TOKEN_FILE = os.path.join(RUNTIME_DIR, "serve_token")
 CODE_DIR = os.path.dirname(os.path.abspath(__file__))
 INSTALLED_FROM_JSON = os.path.join(CODE_DIR, "INSTALLED_FROM.json")
 
+# The daemon's OWN private mirror clone -- see collect.py's mirror_fetch(). Every origin/*
+# ref read (lane branches, ahead/behind, main's tip, campaign-coordination, code
+# staleness) comes from here, fetched on the daemon's own cadence, so ref freshness is
+# something THIS process controls and can report on -- never a hope that some unrelated
+# process fetched the shared checkout recently. `git clone --mirror` maps the remote's
+# refs/heads/* and refs/tags/* verbatim into this bare repo's own refs (NOT
+# refs/remotes/origin/*) -- so "origin/main" there is just this mirror's own `main`.
+MIRROR_DIR = os.path.join(RUNTIME_DIR, "mirror.git")
+GIT_REMOTE_URL = "https://github.com/Marsys-Technologies/Madhav.git"
+
 # Repo root for the tracker's own read-only git operations (for-each-ref, campaign-
 # coordination reads, merge-base staleness checks). In SNAPSHOT installs (see install.sh
 # --install-from-ref) this code directory is an immutable `git archive` extraction with NO
@@ -31,21 +41,41 @@ PLAN_PATH = os.path.join(CODE_DIR, "PLAN.yaml")
 
 STALE_AMBER_S = 45
 STALE_RED_S = 120
+REF_AMBER_S = 60
+REF_RED_S = 180
 STALL_MINUTES = 20
 HEARTBEAT_INTERVAL_FRESH_S = 20
 HEARTBEAT_INTERVAL_IDLE_S = 60
 IDLE_CYCLES_BEFORE_BACKOFF = 10
 WATCHDOG_STALE_THRESHOLD_S = 90
 
+# Runtime state used ONLY to track consecutive mirror-fetch failures across daemon cycles
+# (a plain counter, not part of the event-log/pure-fold state -- it exists purely so the
+# next cycle knows whether the PREVIOUS one failed, without re-deriving it from a log scan
+# every cycle). Not read by the projector; collect.py owns it exclusively.
+MIRROR_FETCH_STATE_JSON = os.path.join(RUNTIME_DIR, "mirror_fetch_state.json")
+
+
+def _class_for_thresholds(age_seconds, amber_max, red_max):
+    if age_seconds <= amber_max:
+        return "green"
+    if age_seconds <= red_max:
+        return "amber"
+    return "red"
+
 
 def staleness_class(age_seconds):
     """Pure function: age (seconds, float/int) -> 'green' | 'amber' | 'red'.
     Mirrored byte-for-byte in tracker.html's JS stalenessClass()."""
-    if age_seconds <= STALE_AMBER_S:
-        return "green"
-    if age_seconds <= STALE_RED_S:
-        return "amber"
-    return "red"
+    return _class_for_thresholds(age_seconds, STALE_AMBER_S, STALE_RED_S)
+
+
+def ref_freshness_class(age_seconds):
+    """Pure function for the THIRD liveness axis (ref freshness -- distinct from observer
+    freshness and subject progress; the observatory can be alive, the swarm can be moving,
+    and the refs can still be stale, independently). Mirrored byte-for-byte in
+    tracker.html's JS refFreshnessClass()."""
+    return _class_for_thresholds(age_seconds, REF_AMBER_S, REF_RED_S)
 
 
 def load_plan():
@@ -83,3 +113,12 @@ def run(cmd, cwd=None, timeout=20):
 def ensure_runtime_dirs():
     os.makedirs(EVENTS_DIR, exist_ok=True)
     os.makedirs(LOGS_DIR, exist_ok=True)
+
+
+def run_mirror(args, timeout=20):
+    """Run a read-only git command against the daemon's OWN mirror (MIRROR_DIR) -- never
+    against REPO_ROOT (the shared checkout). Ref names inside the mirror have no
+    `refs/remotes/origin/` prefix: use `main`, `pariprashna/p0`, `campaign-coordination`,
+    never `origin/main` etc. Never raises; returns (ok, stdout, stderr) like run()."""
+    return run(["git", "--git-dir", MIRROR_DIR, "--no-optional-locks"] + args,
+                cwd=RUNTIME_DIR, timeout=timeout)

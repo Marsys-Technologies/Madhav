@@ -79,6 +79,7 @@ footer{padding:20px; text-align:center; color:var(--text-tertiary); font-size:11
     <div class="phase-rail" id="phaseRail"></div>
     <span class="pill" id="freshPill">observer —</span>
     <span class="pill" id="progressPill">subject —</span>
+    <span class="pill" id="refsPill" title="mirror ref freshness -- distinct from observer freshness and subject progress: the observatory can be alive, the swarm can be moving, and the refs can still be stale, independently">refs —</span>
     <span class="pill" id="stallPill" style="display:none">STALLED</span>
     <span class="pill" id="selftestPill">selftest —</span>
     <span class="pill" id="resurrectPill">resurrections 0</span>
@@ -133,6 +134,15 @@ const STALE_AMBER_S = 45, STALE_RED_S = 120;
 function stalenessClass(ageSeconds) {
   if (ageSeconds <= STALE_AMBER_S) return "green";
   if (ageSeconds <= STALE_RED_S) return "amber";
+  return "red";
+}
+
+// ---- Pure ref-freshness function, mirrored byte-for-byte from _common.ref_freshness_class
+// (Python). A THIRD, independent liveness axis -- see _common.py's docstring. ----
+const REF_AMBER_S = 60, REF_RED_S = 180;
+function refFreshnessClass(ageSeconds) {
+  if (ageSeconds <= REF_AMBER_S) return "green";
+  if (ageSeconds <= REF_RED_S) return "amber";
   return "red";
 }
 
@@ -203,6 +213,21 @@ function render() {
   const progPill = document.getElementById("progressPill");
   progPill.textContent = "subject " + fmtAge(lastProgAge) + " since last change";
   progPill.className = "pill " + (lastProgAge > 1200 ? "amber" : "green");
+
+  const rf = d.ref_freshness || {};
+  const refsPill = document.getElementById("refsPill");
+  if (!rf.last_success_ts) {
+    refsPill.className = "pill red";
+    refsPill.textContent = "refs UNKNOWN (never fetched)";
+  } else {
+    const refAge = (Date.now() - new Date(rf.last_success_ts).getTime()) / 1000;
+    const cls = refFreshnessClass(refAge);
+    const failN = rf.consecutive_failures || 0;
+    refsPill.className = "pill " + cls;
+    refsPill.textContent = "refs " + fmtAge(refAge)
+      + (cls === "amber" ? " — REFS LAGGING" : cls === "red" ? " — REFS STALE" : "")
+      + (failN > 0 ? ` (${failN} consecutive fetch failures)` : "");
+  }
 
   const stallPill = document.getElementById("stallPill");
   stallPill.style.display = d.stalled ? "inline-flex" : "none";
