@@ -169,9 +169,11 @@ window.TRACKER = {
       "verifier_verdict": "conductor-reviewed. RLS created but deliberately NOT enabled (arming script outside migration dirs, confirmed by conductor). arm-3 out-of-process ledger writer built from scratch (didn't exist). Real cross-context RLS denial proven (17 DB-integration tests). Full suite 714/760 files, 7987 tests, 0 failures. drift/naming_lint clean, no migration collision (576). SECURITY FINDING surfaced by this lane (pre-existing on main, NOT introduced by any pariprashna session, verified by conductor): a live-shaped plaintext amjis_app password committed at platform/python-sidecar/tests/l5/test_mi_bhara_circularity_guard_w2.py:295 -- flagged directly to the native, not silently fixed."
     },
     "G1-G": {
-      "role_stage": "building",
+      "role_stage": "verifying",
       "name": "Injection containment (PPR-13) -- structural delimiting, Zod-closed plan schema, tool-sequence anomaly flag, answer-side entitlement scan folded into G1-A's pre-wire pass",
-      "last_event_ts": "2026-08-20T02:40:00+05:30"
+      "last_event_ts": "2026-08-20T02:40:00+05:30",
+      "worktree": "worktree-agent-a2d727ba0bf385a8d",
+      "branch": "pariprashna/g1-g-injection-containment"
     },
     "P1-E": {
       "role_stage": "merged",
@@ -431,5 +433,19 @@ window.TRACKER = {
   ],
   "p1_gate_dependencies_unblocked": [
     "G1-G (shares pre-wire scan file with G1-A, now unblocked)"
+  ],
+  "g1_g_review_findings": [
+    {
+      "source": "G1-G builder's own internal review sub-agent (delayed notification, re-checking its own earlier findings)",
+      "confirmed_fixed": "7 of 9 original defects fully fixed (backslash-b adjacency, stream-seam forced release, toolCall.input bypass, en-dash/fullwidth/zero-width/uppercase/URL/backtick evasions, decimal false-positives avoided, accumulated-copy sync, delimiter over-consumption)",
+      "partial": "2 of 9 partial (bare-32-hex boundary logic, nested identity keys)",
+      "new_findings": [
+        "[MED] BARE_32_HEX_RE boundary guard is INVERTED: catches exactly 32 hex chars but 30/31/33/34/40/64-char hex runs with no cue word are invisible -- 'avoiding match-wrong-id was achieved by matching nothing', the worse failure direction",
+        "[MED] plan_closure.ts:134 never walks arrays, so {filters:[{chart_id: FOREIGN}]} survives untouched -- contradicts the 'any nesting depth' claim",
+        "[MED] plan_closure.ts:108 suffix test has no separator boundary -- verified silently strips 'fluid','liquid','druid','squid','guid' from tool calls (the 'uid' entry is the culprit)",
+        "[LOW] separator-variant ids (underscore/dot/colon) and mid-token punctuation still leak with no cue word; docstring inaccuracy (claims 8-32 hex, regex is {8,64})"
+      ],
+      "full_suite": "990 passed, 61 skipped across src/lib/pariprashna and src/lib/pipelines, no files edited"
+    }
   ]
 };
