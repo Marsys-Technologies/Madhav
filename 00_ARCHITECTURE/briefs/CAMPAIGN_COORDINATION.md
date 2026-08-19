@@ -4017,3 +4017,61 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   window; after merge, reinstalling production from `origin/main` so the
   installed sha is the merged commit (closes the AHEAD state this PR itself
   is currently running under) and verifying per this session's brief.
+
+- 2026-08-19 23:29Z — **PARIPRASHNA / Claude Code (conductor) — P1 FOUNDATION
+  (#1356) merged to `main` and deploy-verified live in production; P1 gate
+  closing.** PR #1356 (`pariprashna/p1` → `main`) merged via the Ganga
+  merge queue at `2026-08-19T23:10:03Z`, merge commit `d653236c2a5`. The one
+  CI failure hit on this PR (Earned-Signal Gate §N.8 flagging
+  `classifier.ts:997`'s `assess_health` — a static `CAPABILITY_CLASS_RULES`
+  lookup-table key, not a verdict/verified-status field) was resolved via a
+  justified `earned_signal_allowlist.json` entry (verified 0 new violations
+  locally before push), not a code change; CI went fully green on the next
+  run.
+
+  **Deploy verified live, both services, both smoke-gated and
+  traffic-promoted:** the auto-triggered `Deploy to Cloud Run` run
+  (`32312726004`, staged after the main-branch Ganga Quality Gate passed on
+  the merge commit) completed `success` for both jobs. `amjis-mcp`:
+  `mcp_end_to_end_smoke.sh` PASS (health 200; no-auth correctly 401;
+  bearer-auth 200; URL-token wiring check) → `gcloud run services
+  update-traffic --to-latest` → **100% LATEST on `amjis-mcp-00576-xhm`**.
+  `amjis-web`: smoke PASS (boot 200; auth-guard 401 on
+  `/api/sidecar/health` with no session cookie; sidecar dependency
+  reachable) → **100% LATEST on `amjis-web-01533-5n6`**. Independent live
+  spot-check performed outside the CI smoke script, same pattern as the P0
+  deploy verification: unauthenticated `POST /api/pariprashna` →
+  **401** (route present, gate intact, matches pre-merge behavior since
+  every P1 feature flag ships default-`false`); `GET /api/health` →
+  `{"status":"ok"}`; `gcloud run services describe` on both services
+  independently confirms `percent: 100` / `latestRevision: true` on the two
+  revisions above. No behavior change is expected or observed at 100%
+  traffic — all five P1 flags (`PARIPRASHNA_LIMITS_ENABLED`,
+  `SUBJECT_CONSENT_ENFORCEMENT`, `PARIPRASHNA_ROLE_SEPARATION`,
+  `PARIPRASHNA_LEDGER_OUT_OF_PROCESS`, `PARIPRASHNA_SAFETY_GATE_ENABLED`,
+  `PARIPRASHNA_INJECTION_CONTAINMENT`) default `false`; migrations 574–577
+  are additive/inert (new tables, nullable columns, non-locking indexes, RLS
+  policies created-not-enabled, roles created with zero members) per the
+  disclosure in this file's prior P1-merge-request entry.
+
+  **P1 FOUNDATION gate — held-back items, explicit, not silently dropped:**
+  (a) PITR-enable, scratch Cloud SQL instance, restore drill, and
+  `amjis_app` credential rotation — held per native's explicit P1-scoping
+  decision ("skip infra"), not attempted this phase, no new authorization
+  requested here. (b) the pre-existing plaintext `amjis_app` DSN at
+  `platform/python-sidecar/tests/l5/test_mi_bhara_circularity_guard_w2.py:295`
+  — disclosed to native, not on `main` via this session's own changes,
+  left unrotated/unredacted pending the same credential-rotation
+  authorization as (a). (c) two G1-A residuals scoped as flag-enablement
+  gates (must resolve before `PARIPRASHNA_SAFETY_GATE_ENABLED` ever flips
+  `true`, not before this merge): a pre-existing HS-4 false-positive on
+  death-anniversary phrasing, and `/api/chat/consult` having only the
+  pre-dispatch safety stop (not yet the full post-plan
+  `reclassifyAfterPlan`/capability-exclusion wiring the MCP door has).
+  Tagging `pariprashna/p1-close` on the merge commit next, mirroring the
+  `pariprashna/p0-close` precedent, with the same honest partial-closure
+  notes carried into the tag message. Proceeding to P2 THE READING MADE
+  TRUE per the standing full-autonomy directive; will re-surface here only
+  for a comparably novel risk category (infra/credentials, or
+  comparably safety-critical content), consistent with how P1 itself was
+  scoped.
