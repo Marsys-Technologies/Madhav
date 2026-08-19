@@ -30,11 +30,28 @@
  *
  * So the guarantee is now stated as what it actually is: the merge function's
  * BODY is monotone, and `LlmAssistPayload`'s field set is pinned by
- * `LLM_ASSIST_PAYLOAD_KEYS` with a test that fails the moment a field is added
- * to the interface without being added to that list and argued for. That is a
+ * `LLM_ASSIST_PAYLOAD_KEYS` plus the two compile-time assertions immediately
+ * below it — IN THIS FILE, which is a `src/` path — so adding a field to the
+ * interface is a `tsc` error the real CI pipeline sees and fails on. That is a
  * real detector on the real claim (§N.8) instead of a compile-time guarantee
  * the compiler was never actually providing. It is a weaker guarantee than the
  * old sentence described — and it is the one that is true.
+ *
+ * ── WHY THE DETECTOR LIVES HERE AND NOT IN A TEST (round 3, M-1/H-6) ─────────
+ * The round-2 fix put the exhaustive-keys assertion in
+ * `__tests__/coverage_hardening.test.ts` as a `Required<LlmAssistPayload>`
+ * object literal, and called it "a test that fails the moment a field is added
+ * to the interface". Re-verification falsified that sentence against THIS
+ * REPO'S ACTUAL PIPELINE:
+ *   · `vitest run` does not typecheck — 128/128 still passed with
+ *     `downgrade_to?: SafetySeverity` added to the interface;
+ *   · `tsc --noEmit` did produce exactly one error — but inside a `__tests__/`
+ *     path, and `.github/workflows/ci.yml`'s typecheck job pipes tsc output
+ *     through `grep "error TS" | grep -Ev "(tests/|__tests__/)"`, which deletes
+ *     that error. CI went green with a live downgrade field on the payload.
+ * A detector CI filters out is not a detector (§N.8). Both assertions are
+ * therefore in this file, whose path contains no `tests/` segment and so
+ * survives that grep verbatim.
  *
  * ── AND THE HONEST PART (§N.8) ───────────────────────────────────────────────
  * NO LLM DETECTOR IS WIRED. There is no model call in this file and none
@@ -68,20 +85,17 @@ export interface LlmAssistPayload {
 /**
  * The CANONICAL, EXHAUSTIVE field list of `LlmAssistPayload`.
  *
- * ── WHY A RUNTIME LIST GUARDS A COMPILE-TIME TYPE (hardening round, H-6) ─────
+ * ── WHY A LIST GUARDS AN INTERFACE (hardening round, H-6) ────────────────────
  * A reviewer added `downgrade_to?: SafetySeverity` to the interface above plus
  * a branch that honored it, and the build and the full suite stayed green —
  * because an interface is not a constraint on itself. This list is the
- * constraint. `assist_never_lowers.test.ts` asserts it matches the interface's
- * real keys, so the reviewer's exact attack now fails a test at the moment the
- * field is added, before any merge logic is written to use it.
+ * constraint.
  *
- * The `satisfies` clause below is the compile-time half: it makes the array's
+ * The `satisfies` clause below is one direction of it: it makes the array's
  * element type exactly `keyof LlmAssistPayload`, so a key REMOVED from the
  * interface (or misspelled here) is a type error. TypeScript cannot make the
  * reverse assertion — that the array is exhaustive — from an array literal, so
- * the ADDED-field direction is the runtime test's job. Both halves are needed
- * and neither is claimed to do the other's work.
+ * the ADDED-field direction is `ASSERT_NO_UNLISTED_PAYLOAD_KEY` below.
  *
  * ADDING A FIELD HERE IS THE REVIEW GATE. A new field must be argued to be
  * additive-only in its diff, exactly as `SHORT_SQUASHED_ALLOWLIST` in the
@@ -93,6 +107,50 @@ export const LLM_ASSIST_PAYLOAD_KEYS = [
   'rationale',
   'model_id',
 ] as const satisfies readonly (keyof LlmAssistPayload)[]
+
+/** Compile-time `never` assertion. A non-`never` argument is a type error. */
+type AssertNever<T extends never> = T
+
+/**
+ * THE ADDED-FIELD DETECTOR, in a `src/` path (round 3, M-1/H-6).
+ *
+ * `Exclude<keyof LlmAssistPayload, listed keys>` is `never` exactly when the
+ * interface has no field the list does not name. Add `downgrade_to?` to
+ * `LlmAssistPayload` and this line becomes:
+ *
+ *   error TS2344: Type '"downgrade_to"' does not satisfy the constraint 'never'
+ *
+ * reported at `src/lib/pariprashna/safety/llm_assist.ts` — a path containing no
+ * `tests/` segment, so `ci.yml`'s `grep -Ev "(tests/|__tests__/)"` cannot filter
+ * it and the typecheck job fails. That is the difference between this and the
+ * round-2 version of the same idea; see the module header.
+ *
+ * Exported rather than left as a bare local so no lint pass can "clean up" an
+ * unused declaration and silently delete the guard.
+ */
+export type ASSERT_NO_UNLISTED_PAYLOAD_KEY = AssertNever<
+  Exclude<keyof LlmAssistPayload, (typeof LLM_ASSIST_PAYLOAD_KEYS)[number]>
+>
+
+/**
+ * The same assertion in VALUE form, so a reader who does not read types sees it
+ * too, and so the failure mode is a second, differently-worded error.
+ *
+ * `Required<>` makes every optional field mandatory, so an added field —
+ * optional or not — makes this object literal incomplete (TS2739/TS2741). A
+ * field REMOVED from the interface makes the corresponding line here an excess
+ * property (TS2353). Both directions, both in `src/`.
+ *
+ * The values are placeholders and are never read by anything; this is a type
+ * probe, not a fixture. It is deliberately NOT a valid assist (`'none'`
+ * severity, empty class list) so that nothing is tempted to import it as one.
+ */
+export const LLM_ASSIST_PAYLOAD_SHAPE_PROBE: Required<LlmAssistPayload> = {
+  raised_classes: [],
+  raised_severity: 'none',
+  rationale: '',
+  model_id: '',
+}
 
 /**
  * Merge an assist into a deterministic result under the monotone-join rule.
