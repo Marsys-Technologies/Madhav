@@ -3931,3 +3931,53 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   automatically as part of its `--no-traffic` + smoke + promote-on-success
   flow — no manual `psql`/migration command planned, no manual traffic
   shift, no credential action.
+
+- 2026-08-19 ~23:10Z — **PARIPRASHNA-CLOSEOUT / Claude Code — SAMPŪRTI
+  stranded-main preserved, not re-landed (§6 anomaly flag, item 4):** found
+  local `main` at `2e56ba9d1`, diverged from `origin/main` by five unpushed
+  commits (confirmed via `git worktree list`: no worktree had `main` checked
+  out, so a pure ref update was safe). Per-commit diffstat re-verified before
+  touching anything:
+  - `47e3a6a54` — `CURRENT_STATE_v1_0.md` R42 CLOSE (v6.59→v6.60) +
+    `SESSION_LOG.md` +88 lines. Not on `origin/main`.
+  - `c64eee28c` — creates `SAMPURTI_SESSION_LOG.md` (+16 lines), a file
+    absent from `origin/main` entirely.
+  - `2e56ba9d1` — 34-line addition to `CAMPAIGN_COORDINATION.md`
+    (SESSION-PARIPURNA-COMPLETE marker), absent from this live branch.
+  - `993522c00` (`test_knot_set.py`, +298 lines) — checked byte-for-byte:
+    **identical** to `platform/python-sidecar/tests/l3/ka_kshetra/test_knot_set.py`
+    already on `origin/main` via a different commit, `1d6f3ad5a` (PR #1286,
+    same commit message). No unique content — a genuine duplicate.
+  - `2139b3015` (2-line "R42 FIELD-INTEGRATED" marker addition to this
+    file) — **refines the finding this session opened with**: its exact
+    bytes are not verbatim on `origin/main` or this live branch, so it is
+    not a clean duplicate the way `993522c00` is. But this file's own log
+    already documents the gap and its resolution, at what is now line 2273:
+    *"prior commit 2139b3015 went to local main only, never pushed"* — the
+    corrected marker (Δ1 R43, 2026-08-15T06:51Z) was posted here separately
+    and supersedes it in substance. So: **4 of 5 commits carry bytes not
+    verbatim on `origin/main`/this branch (not 3)** — but one of those four
+    (`2139b3015`) is already substantively superseded by other content
+    already live here, leaving `47e3a6a54`, `c64eee28c`, and `2e56ba9d1` as
+    the commits actually owing genuinely-unmerged content. Flagging the
+    correction rather than silently rounding back to "3."
+
+  **Preserved, not re-landed:** `sampurti/stranded-main-2026-08-15` branched
+  from local `main` at `2e56ba9d1` and pushed to `origin`
+  (`https://github.com/Marsys-Technologies/Madhav/tree/sampurti/stranded-main-2026-08-15`).
+  All five commits independently verified reachable from `origin`'s copy via
+  `git merge-base --is-ancestor` (not just a successful push) before local
+  `main` was touched. Local `main` is now force-updated to `origin/main`
+  (`9b4f63669`) — a pure ref update, safe because no worktree had `main`
+  checked out.
+
+  **Owed to SAMPŪRTI, not done here:** re-landing this content is SAMPŪRTI's
+  call, not mine — territory this session does not own (§3 TERRITORY MAP:
+  "governance surfaces (CURRENT_STATE / SESSION_LOG / census / CLAUDE.md)"
+  are SAMPŪRTI's). Whoever re-lands `47e3a6a54`/`c64eee28c`/`2e56ba9d1` from
+  `sampurti/stranded-main-2026-08-15` needs to: renumber the CURRENT_STATE
+  version bump to whatever the live version is at that time (v6.59→v6.60 is
+  now stale — `origin/main` has moved), and relocate
+  `SAMPURTI_SESSION_LOG.md` per `ROOT_FILE_POLICY §2` (a root-level file is
+  not an exhaustively-listed exception there). This session did not attempt
+  either — preservation only.
