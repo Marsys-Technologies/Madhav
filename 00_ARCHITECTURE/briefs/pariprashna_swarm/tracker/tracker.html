@@ -83,6 +83,7 @@ footer{padding:20px; text-align:center; color:var(--text-tertiary); font-size:11
     <span class="pill" id="selftestPill">selftest —</span>
     <span class="pill" id="resurrectPill">resurrections 0</span>
     <span class="pill" id="rateLimitPill">gh rate —</span>
+    <span class="pill" id="codeShaPill" title="running code provenance">code —</span>
   </div>
 </header>
 <main>
@@ -217,6 +218,19 @@ function render() {
 
   const rl = d.github_rate_limit && d.github_rate_limit.value;
   document.getElementById("rateLimitPill").textContent = rl ? `gh rate ${rl.remaining}/${rl.limit}` : "gh rate UNKNOWN";
+
+  const codeProv = d.code_provenance || {};
+  const codePill = document.getElementById("codeShaPill");
+  if (codeProv.evidence_class !== "DERIVED") {
+    codePill.className = "pill";
+    codePill.textContent = "code UNKNOWN (" + (codeProv.provenance || "no INSTALLED_FROM.json") + ")";
+  } else if (codeProv.code_stale) {
+    codePill.className = "pill amber";
+    codePill.textContent = `code ${esc(codeProv.code_sha_short)} — STALE CODE (latest: ${esc((codeProv.latest_tracker_subtree_commit_on_main || "").slice(0,10))})`;
+  } else {
+    codePill.className = "pill green";
+    codePill.textContent = `code ${esc(codeProv.code_sha_short)} (current, installed ${esc(codeProv.code_installed_at)})`;
+  }
 
   const ss = d.shared_surfaces || {};
   const sVal = (k) => (ss[k] && ss[k].evidence_class === "DERIVED") ? ss[k].value : (ss[k] ? `UNKNOWN (${esc(ss[k].provenance)})` : "—");

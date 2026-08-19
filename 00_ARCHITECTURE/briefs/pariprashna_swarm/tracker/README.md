@@ -7,29 +7,65 @@ going forward — see the note appended to `PARIPRASHNA_SWARM_REVIEW_AND_AMENDME
 
 ## Layout
 
-- **Code** (this directory, in the repo, versioned): `PLAN.yaml` (declarative plan — JSON,
-  which is valid YAML, so this stays stdlib-only), `_common.py`, `tracker_emit.py`,
-  `collect.py`, `project.py`, `trackerd.py`, `watchdog.py`, `serve.py`, `tracker.html`,
-  `selftest.py`, `launchd/*.template`, `install.sh`.
+- **Code source** (`00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/` in the repo,
+  versioned): `PLAN.yaml` (declarative plan — JSON, which is valid YAML, so this stays
+  stdlib-only), `_common.py`, `tracker_emit.py`, `collect.py`, `project.py`, `trackerd.py`,
+  `watchdog.py`, `serve.py`, `tracker.html`, `selftest.py`, `launchd/*.template`,
+  `install.sh`.
+- **Code execution surface** (`$HOME/.pariprashna-tracker-code/` — see "Deployment model"
+  below): an immutable copy of the above, materialised by `install.sh --install-from-ref`.
+  This, not the repo checkout, is what the launchd jobs actually run.
 - **Runtime state** (outside the repo, never appears in `git status`): `~/.pariprashna-tracker/`
   — `events/<writer_id>.jsonl` (append-only), `state.json`, `tracker_data.js`,
   `heartbeat.json`, `collector_snapshot.json`, `trackerd.pid`, `serve_token`, `logs/`.
 
 Python 3 standard library only. No pip installs, no npm, nothing that can perturb the
 build environment. The tracker only ever *reads* git (`--no-optional-locks`, `for-each-ref`
-/ `rev-list` / `worktree list` only) — it never touches an index, never checks anything
-out, never enters another worktree.
+/ `rev-list` / `worktree list` / `show` / `merge-base` / `log`) — it never touches an
+index, never checks anything out, never enters another worktree.
 
-## Running it
+## Deployment model: frozen snapshot, never the repo checkout
+
+**The repo checkout is never the execution surface.** A live `git checkout` in whatever
+directory the daemon happened to be running from would silently swap a running daemon's
+code out from under it mid-cycle, and a checkout under `/tmp` can vanish on reboot or
+periodic cleanup. Both are real incidents this tracker hit on its first install.
 
 ```sh
-# one-shot cycle (for testing):
+# One-time / update: materialise an immutable snapshot from a MERGED commit (never from a
+# working tree) and (re)install all three launchd jobs to point at it. No observability gap
+# longer than one collector cycle — the runtime dir (~/.pariprashna-tracker/, state.json,
+# the event log) is untouched by this; only the code directory and the jobs change.
+./install.sh --install-from-ref origin/main \
+             --prefix "$HOME/.pariprashna-tracker-code" \
+             --repo /path/to/any/local/checkout/with/origin/fetched \
+             --runtime-git-repo /path/to/a/PERMANENT/checkout
+```
+
+`--repo` only needs the ref reachable (`git archive` reads objects, never the working
+tree) — any checkout with `origin` fetched works, even a scratch one you delete right
+after. `--runtime-git-repo` is different: it's what the **deployed daemon** uses for its
+own ongoing read-only git operations (branch/PR derivation, campaign-coordination reads,
+the staleness check below) via the `TRACKER_GIT_REPO` environment variable baked into the
+launchd plists — it must still exist after `install.sh` exits, so point it at your main,
+permanent checkout, not a worktree you're about to remove.
+
+**Provenance is on the dashboard, not just in a file.** `tracker.html`'s header shows the
+running code's short sha. If that sha is not the latest commit that touched this `tracker/`
+subtree on `origin/main`, the pill turns amber and reads **"STALE CODE"** — an observatory
+that can't tell you it's running old code isn't trustworthy. In-place/dev runs (no
+`INSTALLED_FROM.json`) show `code UNKNOWN` honestly rather than a fake green.
+
+Dev/local testing only — **not** for a standing install:
+
+```sh
+# one-shot cycle:
 python3 trackerd.py --once
 
 # falsifiable self-test suite (freezes, breaks, verifies red, unfreezes):
 python3 trackerd.py --selftest
 
-# install as three launchd jobs (KeepAlive daemon + watchdog + LAN server):
+# in-place mode: points the jobs at THIS script's own directory (mutable, no provenance)
 ./install.sh
 ```
 
