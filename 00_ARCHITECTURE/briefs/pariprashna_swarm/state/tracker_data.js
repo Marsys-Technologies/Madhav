@@ -408,6 +408,24 @@ window.TRACKER = {
         "mergeLlmAssist (the monotone-join guarantee) has ZERO production callers currently and no structural barrier stopping a future lane from bypassing the envelope by hand",
         "platform-mcp consult-profile exclusion is unflagged (takes effect on merge) but currently removes 0 tools against the real profile -- no production behavior change in fact, but the test asserting it passes vacuously"
       ]
+    },
+    {
+      "source": "harness/detector-integrity adversary",
+      "verdict": "mixed -- classifier core mutation-resistant and well-tested, but 5 real gaps in supporting machinery",
+      "critical_bonus_finding": "Two independent 'never de-escalate' monotonicity guards (reclassifyWithPlan, strongerAction) can EACH be silently removed alone without any test failing (260/260 stays green). Demonstrated: removing one guard alone silently drops hs2_suicide_adjacent from the audit record's classes_detected and downgrades severity from hard_stop to review_required, in the hash-chained safety_decision row G3-A will later render as the receipt -- undetected by any current test.",
+      "other_gaps": [
+        "mergeLlmAssist's 'type-enforced, no downgrade field possible' claim is FALSE as stated -- verifier/adversary added a downgrade_to field + downgrade path, tsc clean, 260/260 still green. Guarantee is code discipline today, not structural.",
+        "scan_failed / scanFailed flag has NO reachable true-state in any test -- asserted false in a block titled 'FAILS CLOSED', 6 probed inputs (null/undefined/{}/[]/0/symbol) all short-circuit before reaching the catch block. SS N.8 violation: a flag whose true state has no demonstrated code path.",
+        "The 1200-char streaming holdback LEAKS a complete mortality claim deterministically, periodically (~29/1201 offsets, recurs every 1201 chars) for long unpunctuated prose -- reproduced and characterized, untested, narrows the lane's own 'closes the delta-seam residual' claim to 'closes it below 1200 chars'.",
+        "Squashed (spelling-evasion) surface ~92% untested (2 of 25 patterns depend on a test); domain/capability rule family 7/9 capability rows + 2/3 domain rows removable with suite green; load-time length-guard constants untested; invisible-char/diacritic normalization untested."
+      ],
+      "confirmed_sound": [
+        "24/28 single phrase-pattern kills caught with specific correct failing cases; all 4 survivors proven redundant (caught when killed together with their backup path) not dead",
+        "false-positive (widening) direction also tested and caught",
+        "'no exemption branch anywhere' claim CONFIRMED accurate on line-by-line read + grep for every suppression-shaped construct",
+        "per-character streaming test is a real stream simulation (instrumented, confirmed genuine holdback/release behavior), not a shortcut",
+        "round-2 fixes all individually load-bearing by mutation (matches the verifier's independent ablation)"
+      ]
     }
   ]
 };
