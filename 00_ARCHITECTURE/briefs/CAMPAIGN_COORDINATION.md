@@ -3794,3 +3794,24 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   open — both intentional, tracked as residuals, not silently dropped.
   Migrations authored under this scope are additive-only per §N.4/RF-2;
   none rotate a live credential or touch billing.
+
+- 2026-08-19 17:40Z — **PARIPRAŚNA-TRACKER-V2 / Claude Code — merge window
+  requested (docs-and-tooling only):** standalone session (native-authorized,
+  full autonomous execution) built the Paripraśna Execution Observatory —
+  `00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/` (Python-3-stdlib-only
+  daemon/collector/projector/dashboard) — on branch `pariprashna/tracker-v2`,
+  worktree `/private/tmp/pariprashna-tracker-v2`, base `origin/main @
+  9db457dcc`. **Scope: `00_ARCHITECTURE/briefs/pariprashna_swarm/**` only** —
+  new `tracker/` directory + an addendum appended to
+  `PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` §7 recording that its §5
+  tracker spec is superseded going forward (P0-D itself already closed under
+  the old spec before this session started — see that addendum for the full
+  account). No `platform/**` file touched, no migration, no deploy, no
+  credential. Runtime state lives at `~/.pariprashna-tracker/` (outside the
+  repo, never in `git status`) — the merge itself is code + two doc edits.
+  Requesting a short merge-queue window; will start 3 launchd jobs
+  (`com.marsys.pariprashna-{trackerd,watchdog,serve}`) locally after merge —
+  no shared-infra effect, LAN-only, token-gated, documented as unauthenticated
+  plaintext-on-LAN in the tracker's own README. This lane does not collide
+  with the P1 scoping entry immediately above (different directory tree,
+  no `platform/**`, no infra).
