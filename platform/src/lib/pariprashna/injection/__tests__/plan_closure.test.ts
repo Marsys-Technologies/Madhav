@@ -139,6 +139,96 @@ describe('rejectIdentityParams — the SECOND door into the same function', () =
     ;(input.a as Record<string, unknown>).self = input
     expect(() => rejectIdentityParams(input, MINE)).not.toThrow()
   })
+
+  // ── P2: TWO FAIL-OPEN GAPS THE DOCSTRING'S "ANY NESTING DEPTH" DENIED ────
+  it('walks ARRAYS — the shape that used to survive completely untouched', () => {
+    // The function bailed on `Array.isArray(params)` before recursing, so an
+    // ordinary filter list carried a foreign chart id straight through.
+    const input: Record<string, unknown> = { filters: [{ chart_id: THEIRS }], limit: 5 }
+    expect(rejectIdentityParams(input, MINE)).toEqual(['filters[0].chart_id'])
+    expect(input).toEqual({ filters: [{}], limit: 5 })
+  })
+
+  it('walks arrays at every position and nested inside each other', () => {
+    const input: Record<string, unknown> = {
+      groups: [{ ok: 1 }, { inner: { chart_id: THEIRS } }, [{ owner_id: THEIRS }]],
+    }
+    expect(rejectIdentityParams(input, MINE)).toEqual([
+      'groups[1].inner.chart_id',
+      'groups[2][0].owner_id',
+    ])
+    expect(JSON.stringify(input)).not.toContain(THEIRS)
+  })
+
+  it('a top-level array of objects is walked, not silently skipped', () => {
+    const input: unknown[] = [{ chart_id: THEIRS }]
+    expect(rejectIdentityParams(input, MINE)).toEqual(['[0].chart_id'])
+    expect(input).toEqual([{}])
+  })
+
+  it('an array VALUE on an identity key is rejected, not walked into', () => {
+    const input: Record<string, unknown> = { chart_ids: [THEIRS, MINE] }
+    expect(rejectIdentityParams(input, MINE)).toEqual(['chart_ids'])
+    expect(input).toEqual({})
+  })
+
+  it('FAILS CLOSED past the depth cap instead of silently allowing it', () => {
+    // Returning `[]` at the cap was indistinguishable from "this subtree is
+    // clean" and allowed whatever sat below. The subtree is now removed and the
+    // removal reported under its own marker, so an audit can tell "an identity
+    // key was found here" from "this branch was never inspected".
+    const deep = { a: { b: { c: { d: { e: { f: { g: { chart_id: THEIRS } } } } } } } }
+    const input: Record<string, unknown> = deep
+    const rejected = rejectIdentityParams(input, MINE)
+    expect(rejected).toEqual(['a.b.c.d.e.f.g.<beyond_max_depth>'])
+    expect(JSON.stringify(input)).not.toContain(THEIRS)
+  })
+
+  it('a legitimately deep-but-shallower subtree is still walked, not dropped', () => {
+    const input: Record<string, unknown> = { a: { b: { c: { d: { e: { chart_id: THEIRS } } } } } }
+    expect(rejectIdentityParams(input, MINE)).toEqual(['a.b.c.d.e.chart_id'])
+    expect(input).toEqual({ a: { b: { c: { d: { e: {} } } } } })
+  })
+
+  // ── P2: THE SUFFIX-MATCH FALSE POSITIVE ─────────────────────────────────
+  it('does NOT strip ordinary words that merely END in a declared key', () => {
+    // `uid` is a declared identity key and the old matcher removed separators
+    // before testing `endsWith`, so `'fluid'.endsWith('uid')` silently deleted
+    // the param. Found by an internal review, independently confirmed.
+    const input: Record<string, unknown> = {
+      fluid: 1,
+      liquid: 2,
+      druid: 3,
+      squid: 4,
+      guid: 5,
+      // The same defect one key over: `user_id` vs a word ending in those
+      // letters with no boundary between.
+      abuser_id: 6,
+    }
+    expect(rejectIdentityParams(input, MINE)).toEqual([])
+    expect(input).toEqual({ fluid: 1, liquid: 2, druid: 3, squid: 4, guid: 5, abuser_id: 6 })
+  })
+
+  it('still catches every spelling the suffix rule exists for', () => {
+    for (const key of [
+      'chart_id',
+      'chartId',
+      'chartID',
+      'Chart-Id',
+      'chartid',
+      'subject_chart_id',
+      'target_chart_id',
+      'sourceChartId',
+      'uid',
+      'user_uid',
+      'owner_id',
+      'audience_tier',
+    ]) {
+      const input: Record<string, unknown> = { [key]: THEIRS }
+      expect(rejectIdentityParams(input, MINE), key).toEqual([key])
+      expect(input, key).toEqual({})
+    }
+  })
 })
 
 describe('unregistered tool names — FLAGGED, deliberately not stripped', () => {

@@ -107,6 +107,19 @@
  * plus a hex run) that splits across sentences as easily as term-plus-date. The
  * window is now shared. See the extra-rule block below for the one place the
  * two halves' window logic deliberately differs.
+ *
+ * A second re-verification then found that sharing the window was necessary but
+ * not sufficient: a window of 2 closes a TWO-fragment split and nothing wider,
+ * and a foreign chart UUID broken at two of its own hyphens is THREE fragments.
+ * The extra rules therefore get a SECOND, separate mechanism — the token-
+ * continuity rejoin (`isTokenContinuous` / `tokenContinuityRuns`, applied only
+ * in the extra-rule block) — which is unbounded in fragment count but rejoins
+ * ONLY across boundaries where an identifier could actually continue.
+ * `CROSS_SENTENCE_WINDOW` itself is UNCHANGED at 2, and no mortality rule,
+ * constant or loop is touched by any of it; widening the shared window instead
+ * was considered and rejected, because the two semantics genuinely differ (a
+ * term/date PAIR vs. one token cut into N pieces) and a wider shared window
+ * would make G1-A eat whole paragraphs of legitimate maraka analysis.
  */
 
 import { normalizeForClassification, spanHash } from './normalize'
@@ -180,6 +193,53 @@ export const CROSS_SENTENCE_WINDOW = 2
  * not).
  */
 export const MAX_CARRY_CONTEXT_CHARS = MAX_HOLDBACK_CHARS
+
+/**
+ * How many consecutive TOKEN-CONTINUOUS fragments the extra-rule pass will
+ * rejoin (lane G1-G, P1-1). Extra rules only — G1-A's mortality window is
+ * untouched by this and stays at `CROSS_SENTENCE_WINDOW`.
+ *
+ * `CROSS_SENTENCE_WINDOW = 2` is the right number for a PAIR (a mortality term
+ * and its date; a chart cue word and its hex run): two is the shape a leaked
+ * claim takes, and widening it eats legitimate prose. It is the WRONG number
+ * for a SPLIT TOKEN, and a re-verification reproduced why — a foreign chart
+ * UUID broken at two of its own hyphens
+ *
+ *     The other record is 1c826d5a-9f3b ⏎ -4d21-8e77 ⏎ -0a5c4b2e91d0 ⏎ …
+ *
+ * is three terminator-separated fragments, streams out complete and reassembles
+ * trivially, and produces ZERO hits at a window of 2. Since an injected or
+ * malformed payload controls its own line breaks, that is inside the threat
+ * model rather than a contrived edge case.
+ *
+ * Bumping the SHARED window was rejected: the two semantics genuinely differ
+ * (term+date pairing vs. one token cut into N pieces), and a wider shared window
+ * would make G1-A redact whole paragraphs of legitimate maraka analysis — the
+ * exact trade `CROSS_SENTENCE_WINDOW`'s own note argues against. What the extra
+ * rules get instead is narrower AND unbounded in the direction that matters: a
+ * rejoin is attempted ONLY across boundaries where a token could actually
+ * continue (see `isTokenContinuous`), so ordinary prose — every sentence of
+ * which ends in a terminator, not a hex character — produces no continuity runs
+ * at all and pays nothing.
+ *
+ * 40 is a cap on adversarial cost, not on coverage of any realistic split: a
+ * UUID has five hyphen-delimited groups, so five fragments is its maximal
+ * natural fragmentation, and 40 covers a per-character split of one with room
+ * to spare.
+ */
+export const MAX_CONTINUITY_RUN_FRAGMENTS = 40
+
+/**
+ * How much text past the run's FIRST fragment a continuity rejoin may span.
+ *
+ * Measured from the end of the first fragment rather than over the whole join,
+ * because the first fragment carries the sentence's ordinary prose ("The other
+ * record is …") and could be arbitrarily long — capping the total would then
+ * silently skip the rejoin for a long sentence, which is the failure mode this
+ * whole mechanism exists to remove. A UUID with a line break between every
+ * character is ~72 characters, so 512 is generous.
+ */
+export const MAX_CONTINUITY_JOIN_CHARS = 512
 
 /** Mortality-outcome vocabulary, as it appears in GENERATED prose. */
 const MORTALITY_OUTPUT_TERMS =
@@ -282,6 +342,60 @@ export function splitSentences(text: string): string[] {
   return out
 }
 
+/**
+ * Characters an identifier token can be cut BETWEEN and still be one token:
+ * hex digits and the hyphen an RFC-4122 id is delimited by.
+ */
+const TOKEN_CONTINUATION_CHAR = /[0-9a-fA-F-]/
+
+/**
+ * True when `prev` and `next` are two halves of what may be ONE token (lane
+ * G1-G, P1-1).
+ *
+ * The test is deliberately narrow, and its narrowness is what makes the
+ * unbounded rejoin below affordable and false-positive-free:
+ *
+ *   · everything after `prev`'s last non-whitespace character must be
+ *     WHITESPACE. A sentence ending in `.`/`!`/`?` fails here, which is every
+ *     sentence of ordinary prose — the terminator itself proves the token
+ *     ended. Only the newline terminator (whitespace, and exactly what a hard
+ *     wrap or the streaming forced release lands on) survives this.
+ *   · that last non-whitespace character, and `next`'s first non-whitespace
+ *     character, must both be able to appear inside an identifier.
+ *
+ * So `…1c826d5a-9f3b⏎` followed by `-4d21-8e77⏎` is continuous, while
+ * `…Saturn is steady.` followed by anything is not.
+ */
+function isTokenContinuous(prev: string, next: string): boolean {
+  let i = prev.length - 1
+  while (i >= 0 && /\s/.test(prev[i])) i--
+  if (i < 0) return false
+  if (!TOKEN_CONTINUATION_CHAR.test(prev[i])) return false
+
+  let j = 0
+  while (j < next.length && /\s/.test(next[j])) j++
+  if (j >= next.length) return false
+  return TOKEN_CONTINUATION_CHAR.test(next[j])
+}
+
+/**
+ * The maximal runs of token-continuous fragments in `sentences`, as inclusive
+ * `[start, end]` index pairs with at least two members. Ordinary prose yields
+ * none, so the extra-rule rejoin below costs nothing on a normal reading.
+ */
+function tokenContinuityRuns(sentences: readonly string[]): [number, number][] {
+  const runs: [number, number][] = []
+  let start = 0
+  for (let i = 1; i <= sentences.length; i++) {
+    const continuous =
+      i < sentences.length && isTokenContinuous(sentences[i - 1], sentences[i])
+    if (continuous) continue
+    if (i - 1 > start) runs.push([start, i - 1])
+    start = i
+  }
+  return runs
+}
+
 function sentenceHit(sentence: string): MortalityPhrasingHit['rule'] | null {
   // `literal`, NOT `normalized`: the confusable folding that lets the classifier
   // read `d1e` as `die` also turns the year `2047` into `2oat`, which would make
@@ -312,8 +426,10 @@ export interface MortalityScanOptions {
   /**
    * Extra sentence-level rules folded into this pass (lane G1-G, PPR-13).
    *
-   * Single-sentence only — see the module header for why the cross-sentence
-   * window is mortality-specific and is not extended to these.
+   * Run over the same `CROSS_SENTENCE_WINDOW` sliding window as the mortality
+   * rules, AND over token-continuity runs (see the module header) — the second
+   * of which is theirs alone, because only they hunt a single token that can be
+   * cut into arbitrarily many pieces.
    */
   extraRules?: readonly PreWireSentenceRule[]
   /**
@@ -460,6 +576,51 @@ export function scanMortalityPhrasing(
             // contributed nothing and must survive.
             if (sentences.slice(i, i + width).some((s) => r.test(s))) continue
             for (let k = 0; k < width; k++) markExtra(i + k, r.rule)
+          }
+        }
+      }
+
+      // ── TOKEN-CONTINUITY REJOIN (lane G1-G, P1-1) ─────────────────────────
+      // The window above pairs a CUE with its hex run and is bounded at
+      // `CROSS_SENTENCE_WINDOW` because that is the right bound for a pair. It
+      // is the wrong bound for one token cut into N pieces: a foreign chart
+      // UUID broken at two of its own hyphens is THREE fragments and streamed
+      // out complete with zero hits.
+      //
+      // Rather than widen the shared window — which would change G1-A's
+      // behaviour for a reason that has nothing to do with mortality phrasing —
+      // the rejoin here is unbounded in fragment count but narrow in WHERE it
+      // may happen: only across boundaries `isTokenContinuous` accepts, i.e.
+      // where the separation is whitespace only and both sides are identifier
+      // characters. Ordinary prose has no such boundaries at all (its sentences
+      // end in `.`/`!`/`?`), so this pass finds nothing and costs nothing on a
+      // real reading.
+      //
+      // MINIMALITY: for each start the FIRST width that fires wins and the
+      // search stops, so a three-fragment id does not drag the following
+      // sentence in with it. A window whose members already fire on their own is
+      // skipped for the same reason the window pass skips one — that sentence is
+      // already being removed and its neighbours contributed nothing.
+      for (const [runStart, runEnd] of tokenContinuityRuns(sentences)) {
+        for (let s = runStart; s < runEnd; s++) {
+          if (extraRules.some((r) => r.test(sentences[s]))) continue
+          let joined = sentences[s]
+          const budget = joined.length + MAX_CONTINUITY_JOIN_CHARS
+          for (
+            let e = s + 1;
+            e <= runEnd && e - s < MAX_CONTINUITY_RUN_FRAGMENTS;
+            e++
+          ) {
+            joined += sentences[e]
+            if (joined.length > budget) break
+            const fired = extraRules.find((r) => r.test(joined))
+            if (!fired) continue
+            let coveredAlone = false
+            for (let k = s; k <= e && !coveredAlone; k++) {
+              if (extraRules.some((r) => r.test(sentences[k]))) coveredAlone = true
+            }
+            if (!coveredAlone) for (let k = s; k <= e; k++) markExtra(k, fired.rule)
+            break
           }
         }
       }

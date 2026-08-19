@@ -13,7 +13,7 @@
  */
 import { describe, it, expect } from 'vitest'
 
-import { ReadingPartsAssembler } from '@/lib/pariprashna/pipeline/reading_parts'
+import { ReadingPartsAssembler, detectTurnCitations } from '@/lib/pariprashna/pipeline/reading_parts'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
 import { buildEntitlementScanRules } from '../entitlement_scan'
 import { scanMortalityPhrasing } from '@/lib/pariprashna/safety/phrasing_scan'
@@ -109,6 +109,76 @@ describe('the redaction reaches BOTH persisted copies', () => {
     const text = 'Saturn is steady. Mars is exalted.'
     const r = assemble(text, true, RULES)
     expect(r.accumulated).toBe(text)
+  })
+
+  // ── P0: THE FLAG-OFF INERTNESS PROOF ────────────────────────────────────
+  // The test above passes for the wrong reason on its own — its prose has no
+  // register-leak-lint hits, so nothing downstream of the lint could differ
+  // whatever this lane did. That is exactly why it did not catch the defect:
+  // `lintReaderProse` is NOT gated by either of this lane's flags (it is
+  // pre-existing citation/identifier-leak lint that always runs), and the
+  // commit path used to anchor `syncAccumulated` on the text as it was BEFORE
+  // the lint, outside the feature-flag guard. On any block containing a
+  // `SIG.MSR.NNN`-shaped token the lint's scrub therefore propagated into
+  // `accumulatedText` with BOTH flags off — which it never did before this
+  // lane. Reproduced at a816de4d3:
+  //
+  //   in : "The tenth lord is strong (SIG.MSR.001). Jupiter aspects it (SIG.MSR.042)."
+  //   out: "The tenth lord is strong. Jupiter aspects it."   ← citations: [] (was 2)
+  //
+  // `accumulatedText` feeds `detectTurnCitations` (persisted citation parts),
+  // `detectTurnPredictionCandidates` (the SAMĪKṢĀ ledger) and
+  // `runValidationStage` (the B.11 `citation_gate` grade), so that is a real
+  // production behaviour change with zero flag involvement. Every assertion
+  // below uses LINT-TRIGGERING text on purpose.
+  const LINT_TRIGGERING =
+    'The tenth lord is strong (SIG.MSR.001). Jupiter aspects it (SIG.MSR.042).'
+
+  it('flags OFF: accumulatedText is byte-identical on LINT-TRIGGERING text', () => {
+    // Three-arg construction — exactly how every pre-G1-G caller builds it.
+    const { em } = fakeEmitter()
+    const a = new ReadingPartsAssembler(em, 1, false)
+    a.appendProse(a.ensureBlock('prose'), LINT_TRIGGERING)
+    a.commitBlock()
+    expect(a.accumulatedText).toBe(LINT_TRIGGERING)
+  })
+
+  it('flags OFF: the four-arg form with an EMPTY rule list is equally inert', () => {
+    const r = assemble(LINT_TRIGGERING, false, [])
+    expect(r.accumulated).toBe(LINT_TRIGGERING)
+    // …and the reader's copy still gets the pre-existing lint scrub, unchanged.
+    expect(r.committed).not.toContain('SIG.MSR.001')
+  })
+
+  it('flags OFF: the citation rows detected from accumulatedText are unchanged', () => {
+    const r = assemble(LINT_TRIGGERING, false, [])
+    expect(detectTurnCitations(r.accumulated).map((c) => c.signal_id)).toEqual([
+      'SIG.MSR.001',
+      'SIG.MSR.042',
+    ])
+  })
+
+  it('flags ON: the redaction still reaches accumulatedText THROUGH the lint', () => {
+    // The other half of the same fix. `accumulated` holds the RAW deltas, so
+    // anchoring the sync on the post-lint text would silently no-op whenever the
+    // lint had fired — leaving the foreign chart id in the copy that feeds
+    // persistence. This is the case that proves the anchor is the raw text.
+    const text = `Saturn is steady (SIG.MSR.001). Chart ${THEIRS} differs (SIG.MSR.042). Mars is exalted.`
+    const r = assemble(text, false, RULES)
+    expect(r.committed).not.toContain(THEIRS)
+    expect(r.accumulated).not.toContain(THEIRS)
+    // …and the lint's own scrub did NOT ride along into the accumulated copy:
+    // the surviving citations are still detectable there.
+    expect(detectTurnCitations(r.accumulated).map((c) => c.signal_id)).toEqual(['SIG.MSR.001'])
+    expect(r.committed).not.toContain('SIG.MSR.001')
+  })
+
+  it('flags ON, mortality branch: same, through the lint', () => {
+    const text = 'Jupiter is strong (SIG.MSR.001). The native will meet death around 2047 (SIG.MSR.042).'
+    const r = assemble(text, true, [])
+    expect(r.committed).not.toContain('2047')
+    expect(r.accumulated).not.toContain('2047')
+    expect(detectTurnCitations(r.accumulated).map((c) => c.signal_id)).toEqual(['SIG.MSR.001'])
   })
 })
 

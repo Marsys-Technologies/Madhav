@@ -102,7 +102,10 @@ export class ReadingPartsAssembler {
    * persisted one is not a redaction.
    *
    * The replacement is anchored to the block's own text rather than done
-   * globally, so an identical sentence elsewhere in the turn is untouched.
+   * globally, so an identical sentence elsewhere in the turn is untouched. The
+   * anchor is always the block's RAW text — see `commitBlock` for why the
+   * register-leak lint's own rewrite must never be the anchor and must never be
+   * the replacement.
    */
   private syncAccumulated(before: string, after: string): void {
     if (before === after || !before) return
@@ -114,7 +117,11 @@ export class ReadingPartsAssembler {
 
   commitBlock(): void {
     if (this.currentBlock) {
-      const textBeforeScans = this.currentBlock.text
+      // The RAW deltas this block contributed. This — NOT the post-lint text —
+      // is the copy sitting in `accumulated`, because `appendProse` writes the
+      // delta into both places and nothing downstream of it rewrites
+      // `accumulated`. It is the only correct anchor for `syncAccumulated`.
+      const rawBlockText = this.currentBlock.text
       // Gate 11 [integrity] backstop: every prose block is scanned for internal
       // identifier leaks (SIG.* ids, asset-id prefixes, register acronyms
       // MSR/UCN/CGM/CDLM/LEL, table names) before it ever reaches the wire or
@@ -147,10 +154,13 @@ export class ReadingPartsAssembler {
         // `message_parts` for as long as the conversation does, long after the
         // stream that carried it is gone.
         if (this.mortalityScanEnabled || this.preWireExtraRules.length > 0) {
-          const scan = scanMortalityPhrasing(this.currentBlock.text, {
+          const scanOptions = {
             extraRules: this.preWireExtraRules,
             mortalityRulesEnabled: this.mortalityScanEnabled,
-          })
+          }
+          // Captured AFTER the lint, so it is what the scans actually saw.
+          const textBeforeScans = this.currentBlock.text
+          const scan = scanMortalityPhrasing(this.currentBlock.text, scanOptions)
           if (scan.hits.length > 0 || scan.scan_failed) {
             this.currentBlock.text = scan.clean
             this.em.flag({
@@ -178,13 +188,53 @@ export class ReadingPartsAssembler {
               detail: `${entitlementRedactions.length} sentence(s) referencing an unauthorized chart withheld from the committed block`,
             })
           }
+          // Whatever the two pre-wire classes above removed, remove from the
+          // turn's accumulated text too — see `syncAccumulated`. Applies to the
+          // mortality branch as well as the entitlement one: the gap was there
+          // for both, and fixing it for only the newer one would leave the
+          // older, more safety-critical redaction the leakier of the two.
+          //
+          // ── WHY THIS SITS INSIDE THE FLAG GUARD, AND WHY THE ANCHOR IS THE
+          //    RAW TEXT (P0, independent re-verification) ────────────────────
+          // It used to sit outside, anchored on the text as it was BEFORE the
+          // register-leak lint. That made this lane's changes visible with both
+          // feature flags OFF: `lintReaderProse` is NOT gated by G1-A or G1-G —
+          // it is pre-existing citation/identifier-leak lint that always runs —
+          // so on any block containing a `SIG.MSR.NNN`-shaped token the lint's
+          // scrub propagated into `accumulated`, which it never did before this
+          // lane. `accumulated` feeds `detectTurnCitations` (persisted citation
+          // parts), `detectTurnPredictionCandidates` (the SAMĪKṢĀ ledger) and
+          // `runValidationStage` (the B.11 `citation_gate` grade), so a
+          // production turn with no flag flipped silently lost its citation
+          // parts. The lane's claim is "ships flag-OFF, zero production impact";
+          // this line was the one place that was false.
+          //
+          // Two consequences, both load-bearing:
+          //   · INSIDE the guard, so with both flags off nothing here runs and
+          //     `accumulated` is byte-identical to pre-G1-G behaviour.
+          //   · The anchor is `rawBlockText`, not the post-lint text, because
+          //     `accumulated` holds the raw deltas. Anchoring on the post-lint
+          //     text would silently no-op (`lastIndexOf` → -1) whenever the lint
+          //     had fired, leaving the foreign chart id in the copy that feeds
+          //     persistence — a redaction that reaches the reader but not the
+          //     ledger, which is the exact defect `syncAccumulated` exists for.
+          //
+          // When the lint DID rewrite the block the replacement cannot simply
+          // be borrowed from the scanned (linted) surface — that would carry the
+          // lint's scrub into `accumulated` as a side effect, i.e. re-introduce
+          // the same flag-OFF-style behaviour change one flag deeper. The
+          // pre-wire scan is therefore re-run on the raw surface so the RAW copy
+          // loses exactly the sentences the pre-wire classes removed, and
+          // nothing else.
+          if (this.currentBlock.text !== textBeforeScans) {
+            const replacement = scan.scan_failed
+              ? '' // fail closed: an unscannable block contributes nothing.
+              : rawBlockText === textBeforeScans
+                ? this.currentBlock.text
+                : scanMortalityPhrasing(rawBlockText, scanOptions).clean
+            this.syncAccumulated(rawBlockText, replacement)
+          }
         }
-        // Whatever the two pre-wire classes above removed, remove from the
-        // turn's accumulated text too — see `syncAccumulated`. Applies to the
-        // mortality branch as well as the entitlement one: the gap was there
-        // for both, and fixing it for only the newer one would leave the older,
-        // more safety-critical redaction the leakier of the two.
-        this.syncAccumulated(textBeforeScans, this.currentBlock.text)
       }
       this.em.blockCommit({ block_id: this.currentBlock.id, text: this.currentBlock.text })
       this.committedBlocks.push({

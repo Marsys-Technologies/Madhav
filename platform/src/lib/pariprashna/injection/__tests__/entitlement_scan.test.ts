@@ -112,6 +112,54 @@ describe('adversarial — evasion attempts on the UUID rule', () => {
     expect(r.clean.trim()).toBe('')
   })
 
+  it('an id split across THREE fragments is caught (P1-1, the 2-window gap)', () => {
+    // `CROSS_SENTENCE_WINDOW = 2` closes the two-fragment seam and nothing more.
+    // A UUID broken at two of its own hyphens is THREE terminator-separated
+    // fragments and streamed out complete with ZERO hits — and since an
+    // injected payload controls its own line breaks, that is inside the threat
+    // model. The token-continuity rejoin is what closes it.
+    const r = prewire(
+      `The other record is ${THEIRS.slice(0, 13)}\n${THEIRS.slice(13, 23)}\n${THEIRS.slice(23)}\nand that is all.`,
+    )
+    expect(r.clean.replace(/\s+/g, '')).not.toContain(THEIRS)
+    // …and the innocent fragment after the token survives: the rejoin marks the
+    // SMALLEST run that reassembles the id, not the whole continuity chain.
+    expect(r.clean).toContain('and that is all.')
+    expect(r.extra_hits.map((h) => h.rule)).toContain(ENTITLEMENT_RULE_FOREIGN_UUID)
+  })
+
+  it('an id split at EVERY hyphen — five fragments — is still caught', () => {
+    const groups = THEIRS.split('-')
+    const text = `Record: ${groups[0]}\n-${groups[1]}\n-${groups[2]}\n-${groups[3]}\n-${groups[4]}\nend.`
+    const r = prewire(text)
+    expect(r.clean.replace(/\s+/g, '')).not.toContain(THEIRS)
+  })
+
+  it('an id split INSIDE a hex group is caught too', () => {
+    // The break is not next to a hyphen, so tolerating whitespace only AROUND
+    // the hyphens left this one open. The UUID pattern now tolerates whitespace
+    // between any two of its hex characters — safe there, and only there,
+    // because the 8-4-4-4-12 hyphen structure is what makes the shape
+    // unambiguous.
+    const r = prewire(`The other record is ${THEIRS.slice(0, 11)}\n${THEIRS.slice(11)} and more.`)
+    expect(r.clean.replace(/\s+/g, '')).not.toContain(THEIRS)
+  })
+
+  it('one character per line — the maximal split — is caught', () => {
+    const r = prewire(`Record: ${THEIRS.split('').join('\n')}\nend.`)
+    expect(r.clean.replace(/\s+/g, '')).not.toContain(THEIRS)
+  })
+
+  it('the continuity rejoin does NOT fire on ordinary prose', () => {
+    // Every sentence of real prose ends in a terminator that is not whitespace,
+    // so no continuity boundary exists and this pass finds nothing. This is the
+    // assertion that keeps the unbounded fragment count affordable and safe.
+    const prose =
+      'Saturn is steady. Mars is exalted. Jupiter aspects the seventh.\n' +
+      'The tenth lord is strong.\nVenus is neutral. 2024 was a build year.'
+    expect(prewire(prose).clean).toBe(prose)
+  })
+
   it('the abbreviated form split from its cue across sentences is caught', () => {
     // The prefix rule IS a pair. "Consider the other chart. Its identifier is
     // 1c826d5a." split the pair and passed clean until the window was shared.
@@ -167,7 +215,66 @@ describe('adversarial — evasion attempts on the UUID rule', () => {
   it('a LONGER token that merely begins with the authorized id is NOT authorized', () => {
     const impostor = `${MINE.replace(/-/g, '')}ff`
     const found = findForeignChartReferences(`chart ${impostor} shows`, CONFIG)
-    expect(found.map((f) => f.rule)).toContain(ENTITLEMENT_RULE_FOREIGN_PREFIX)
+    // 34 characters, so the no-cue run rule owns it (>= 32) rather than the
+    // abbreviated-form rule (8–31). It is caught either way; the assertion pins
+    // WHICH rule so the two bands cannot silently start overlapping again.
+    expect(found).toHaveLength(1)
+    expect(found[0].rule).toBe(ENTITLEMENT_RULE_FOREIGN_UUID)
+    expect(found[0].token).toBe(impostor)
+    // …and the same impostor shape inside the abbreviated band still reports as
+    // the abbreviated rule, so the band split is proved in both directions.
+    const shortImpostor = `${MINE.replace(/-/g, '').slice(0, 8)}ff`
+    const shortFound = findForeignChartReferences(`chart ${shortImpostor} shows`, CONFIG)
+    expect(shortFound.map((f) => f.rule)).toContain(ENTITLEMENT_RULE_FOREIGN_PREFIX)
+  })
+
+  it('a hex run of ANY length is judged — no length is unmatchable (P1-2)', () => {
+    // Two holes were reproduced, in opposite directions: a >64-character run
+    // near a cue matched nothing (`{8,64}` plus strict lookarounds is
+    // unsatisfiable at every start offset inside a longer run), and a 33+
+    // character run with NO cue matched nothing (`{32}` exactly). Both were the
+    // same defect — a fixed-length quantifier pretending to judge a whole run.
+    const hex = 'abcdef0123456789'
+    const run = (n: number): string =>
+      Array.from({ length: n }, (_, i) => hex[i % 16]).join('')
+
+    for (const n of [30, 31, 32, 33, 34, 40, 64, 65, 80, 128]) {
+      const withCue = findForeignChartReferences(`The chart is ${run(n)} here.`, CONFIG)
+      expect(withCue.length, `cue, n=${n}`).toBeGreaterThan(0)
+    }
+    // Without a cue word the threshold is 32 BY DESIGN — below it a hex run is
+    // not distinguishable from arbitrary hex — but above it there is no ceiling.
+    for (const n of [32, 33, 34, 40, 64, 65, 80, 128]) {
+      const noCue = findForeignChartReferences(`The reference is ${run(n)} here.`, CONFIG)
+      expect(noCue.length, `no cue, n=${n}`).toBeGreaterThan(0)
+      expect(noCue[0].token, `no cue token, n=${n}`).toBe(run(n))
+    }
+    // The exact form the re-verification used.
+    const foreign32 = THEIRS.replace(/-/g, '')
+    expect(
+      findForeignChartReferences(`The reference key is ${foreign32}f.`, CONFIG),
+    ).toHaveLength(1)
+  })
+
+  it('the decimal false-positive guard survives the widened bands', () => {
+    // Widening the quantifier must not reopen the Julian-day/epoch/row-count
+    // false positives the hex-letter gate closed.
+    for (const prose of [
+      'The chart uses Julian day 24457355 for the epoch.',
+      'This chart was built at 20240115 in the pipeline.',
+      'Chart totals: 100000000 divisional rows were written.',
+      // 31 digits — the top of the abbreviated band, still gated by the
+      // hex-letter requirement.
+      'The chart counter reached 1234567890123456789012345678901 rows.',
+    ]) {
+      expect(prewire(prose).clean, prose).toBe(prose)
+    }
+    // At 32+ the no-cue run rule takes over and does NOT require a hex letter —
+    // the same choice the exactly-32 rule always made, carried up to the
+    // unbounded band. Asserted rather than left implicit: a 32-digit run is an
+    // identifier shape, not a Julian day, a year or a row count, and treating it
+    // as foreign is the fail-closed direction.
+    expect(prewire('The run id is 12345678901234567890123456789012 here.').clean).toBe('')
   })
 })
 
