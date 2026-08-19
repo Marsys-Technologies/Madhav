@@ -55,6 +55,13 @@ import {
   LOOP_CONFIG_BY_PROVIDER,
 } from '@/lib/synthesis/agentic_loop'
 import { executeMCPTool } from '@/lib/synthesis/mcp_tool_executor'
+import { isInjectionContainmentEnabled } from '@/lib/pariprashna/injection/flag'
+import {
+  containRetrievedEvidence,
+  containToolResult,
+  containUserQuestion,
+  INJECTION_CONTAINMENT_CLAUSE,
+} from '@/lib/pariprashna/injection/delimit'
 import {
   buildCacheCreatePayload,
   GEMINI_CACHE_MIN_TOKENS,
@@ -409,13 +416,34 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
       `legacy synthesis path was removed by 3.legacy_delete.`,
     )
   }
+  // ── INJECTION CONTAINMENT (lane G1-G · PPR-13). ───────────────────────────
+  // This is the DEFAULT production door, and it is where TA §14A.1's verified
+  // finding was measured: "`queryText` flows raw into `runPlanner`; prior turns
+  // raw into `plannerHistory`… the only thing resembling a defense is
+  // QUERY_INDEPENDENCE_GATE — a prompt heuristic, not a defense."
+  //
+  // The same three containers the Paripraśna door gets: the question, the
+  // retrieved evidence, and each agentic tool result, plus the system-side
+  // data-not-instruction clause appended below. Flag-OFF (default) every line
+  // here is an identity function and the assembled request is byte-for-byte
+  // today's — this function has exactly one production caller
+  // (`/api/chat/consult/route.ts`), so the blast radius of the flag is that one
+  // door and not a shared helper's whole caller set.
+  const injectionContained = isInjectionContainmentEnabled()
+
   // Bug A+B fix: use helper that appends current user turn and filters empty content parts.
-  const adapterMessages = buildAdapterMessages(trimmedConversationHistory, queryText)
+  const adapterMessages = buildAdapterMessages(
+    trimmedConversationHistory,
+    injectionContained ? containUserQuestion(queryText) : queryText,
+  )
   // Bug C fix: pass bundle assets + synthesis guidance as system context.
-  const bundleSystemContent = (bundle.assets as Array<{ content: string }>)
+  const rawBundleSystemContent = (bundle.assets as Array<{ content: string }>)
     .map(a => a.content)
     .filter(Boolean)
     .join('\n\n')
+  const bundleSystemContent = injectionContained
+    ? containRetrievedEvidence(rawBundleSystemContent)
+    : rawBundleSystemContent
   // RC-17 fix (web-door dasha-anchoring hallucination): the `data-orientation` SSE event
   // already carries the correctly-resolved `chart_header.current_maha_antar`, but that
   // block was delivered to the CLIENT only — never included in systemContent — so the
@@ -429,13 +457,20 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
   // period) when the dasha cannot be resolved. See RC-17_WEB_DASHA_HALLUCINATION_v1_0.md.
   const nowContextDate = new Date().toISOString().slice(0, 10)
   const currentMahaAntar = orientation?.chart_header?.current_maha_antar ?? orientation?.dasha_context?.current_maha_antar ?? null
-  const systemContent = buildConsultSystemContent({
+  const builtSystemContent = buildConsultSystemContent({
     bundleSystemContent,
     synthesisGuidance: plan.synthesis_guidance,
     dataReadinessNote,
     nowContextDate,
     currentMahaAntar,
   })
+  // The clause goes LAST — downstream of the evidence container, so a payload
+  // inside the evidence cannot appear after the rule that binds it. Position is
+  // the only structural leverage a prompt has.
+  const systemContent =
+    injectionContained && builtSystemContent
+      ? `${builtSystemContent}\n\n---\n\n${INJECTION_CONTAINMENT_CLAUSE}`
+      : builtSystemContent
   let adapterChatReq: ChatRequest = buildAdapterChatRequest(adapterMessages, modelId, systemContent)
   const adapter = getAdapter(adapterId)
   // R11E loop flags permanently true (WS-0 2026-06-04)
@@ -553,7 +588,13 @@ export async function runAdapterDispatch(ctx: RunAdapterDispatchCtx): Promise<Re
           ? runAgenticLoop(
               adapter,
               adapterChatReq,
-              (toolCall) => executeMCPTool(toolCall, { queryPlan }),
+              async (toolCall) => {
+                const output = await executeMCPTool(toolCall, { queryPlan })
+                // A tool result re-enters the model's context as a `role: 'user'`
+                // turn (`synthesis/agentic_loop.ts`) — indistinguishable from the
+                // reader speaking for any provider that flattens tool results.
+                return injectionContained ? containToolResult(toolCall.name, output) : output
+              },
               loopConfig,
             )
           : adapter.chat(adapterChatReq)
