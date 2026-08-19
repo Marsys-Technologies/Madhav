@@ -155,11 +155,11 @@
       "refuter_votes": []
     },
     "G1-A": {
-      "role_stage": "building",
+      "role_stage": "verifying",
       "name": "SafetyPolicyGate + HS-1..HS-6 (serializes before G1-G)",
       "worktree": "worktree-agent-a7fb9dab527dd607a",
-      "branch": "pariprashna/g1-a-safety-gate",
-      "verifier_verdict": "Native decision (2026-08-20, explicit real-time authorization): dispatch a hardening round rather than merge-with-caveats or merge-as-is, given the subject matter. Hardening round dispatched addressing 7 CRITICAL + 6 HIGH findings compiled from all 4 reviews (see g1_a_review_findings for full detail). G1-G remains blocked pending this."
+      "branch": "pariprashna/g1-a-hardened",
+      "verifier_verdict": "Hardening round complete: all 13 critical+high items reported fixed-and-verified (8567 tests, 0 failures, real Postgres verification for DB items). One process error disclosed (accidental git stash push, self-caught+recovered, conductor independently confirmed zero residual/harm via shared stash list). Dispatching a focused re-verification agent to re-run the exact original reproduction steps against the hardened code before merge, given the subject matter."
     },
     "G1-C": {
       "role_stage": "merged",
