@@ -97,7 +97,30 @@ CREATE TABLE IF NOT EXISTS pariprashna_safety_decisions (
     CHECK (jsonb_typeof(detections) = 'array'),
   -- A flag-OFF decision cannot claim to have classified anything.
   CONSTRAINT pariprashna_safety_decisions_unenforced_is_empty_chk
-    CHECK (enforced OR (cardinality(classes_detected) = 0 AND action = 'proceed'))
+    CHECK (enforced OR (cardinality(classes_detected) = 0 AND action = 'proceed')),
+
+  -- HARDENING ROUND, C-6: a SEALED READING MUST NAME ITS REVIEW.
+  --
+  -- The defect this closes: `reclassifyAfterPlan` (the PLAN-TIME escalation
+  -- path) wrote its decision straight to this table without ever calling
+  -- `openReview`. A turn that classified clean before planning and escalated
+  -- after it therefore produced a `seal_pending_signoff` row with
+  -- `review_id IS NULL` — no review record anywhere — while the reader was
+  -- shown the acknowledgment that states "the review has been opened. Nothing
+  -- has been discarded". There is no FK on `review_id`, so no query could find
+  -- these; the reading was sealed and untracked and the user was told
+  -- otherwise.
+  --
+  -- The application fix is in `gate.ts` (both paths now route through
+  -- `openReviewForDecision`). This constraint is the part that makes the bug
+  -- CLASS unrepresentable rather than merely fixed once: any future code path
+  -- that seals without opening a review fails its INSERT loudly instead of
+  -- writing a quiet lie into a hash-chained audit table.
+  --
+  -- Scoped to `enforced` rows because a flag-OFF row is `proceed` by the
+  -- constraint above and can never reach these two actions anyway.
+  CONSTRAINT pariprashna_safety_decisions_seal_requires_review_chk
+    CHECK (action NOT IN ('seal_pending_signoff','interstitial') OR review_id IS NOT NULL)
 );
 
 CREATE INDEX IF NOT EXISTS pariprashna_safety_decisions_chart_seq_idx
@@ -152,8 +175,27 @@ CREATE TABLE IF NOT EXISTS pariprashna_safety_reviews (
   CONSTRAINT pariprashna_safety_reviews_withheld_requires_reason_chk
     CHECK (state <> 'withheld' OR withheld_reason IS NOT NULL),
   -- NCD-4/NCD-10: the interstitial exists ONLY for a proven native_self subject.
+  --
+  -- HARDENING ROUND, C-5 — THE NULL HOLE THIS USED TO HAVE.
+  -- This constraint read `CHECK (state <> 'interstitial_shown' OR subject_kind
+  -- = 'native_self')`. With `subject_kind IS NULL` the second disjunct is NULL,
+  -- not FALSE, so the whole expression evaluates to NULL — and Postgres ACCEPTS
+  -- a row whose CHECK is NULL. Reproduced against a scratch Postgres 15: the
+  -- insert `('interstitial_shown', …, NULL)` succeeded.
+  --
+  -- That is not a theoretical hole. `subject_kind IS NULL` is TODAY'S DEFAULT:
+  -- the consent lane returns null whenever SUBJECT_CONSENT_ENFORCEMENT is off,
+  -- which it is. So the one row shape the constraint most needed to reject —
+  -- "we never established who this subject is, show them the relaxed path
+  -- anyway" — was the one shape it let through. The application layer
+  -- (`interstitialApplies`) does get this right and treats null as not-proof;
+  -- this constraint is supposed to be the reason that cannot be bypassed, and
+  -- it was not.
+  --
+  -- `IS NOT DISTINCT FROM` is NULL-safe: it yields FALSE (never NULL) for a
+  -- NULL left operand, so the disjunction is now three-valued-logic-proof.
   CONSTRAINT pariprashna_safety_reviews_interstitial_is_native_self_chk
-    CHECK (state <> 'interstitial_shown' OR subject_kind = 'native_self')
+    CHECK (state <> 'interstitial_shown' OR subject_kind IS NOT DISTINCT FROM 'native_self')
 );
 
 CREATE INDEX IF NOT EXISTS pariprashna_safety_reviews_state_idx
