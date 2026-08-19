@@ -78,12 +78,12 @@
       "refuter_votes": []
     },
     "P0-C": {
-      "role_stage": "verifying",
+      "role_stage": "merged",
       "name": "PORTS REFACTOR of route.ts (RF-1, gating lane -- verifier + 3 adversaries required before other lanes open)",
       "worktree": "worktree-agent-a6279b3f3d579e906",
       "branch": "pariprashna/p0-c-ports-refactor",
-      "last_event_ts": "2026-08-19T15:05:00Z",
-      "verifier_verdict": "1 verifier + 3 adversaries (behavioral/security/harness-integrity lenses) dispatched, in progress. Builder's own report: 9 modules, route.ts 1179->237 lines, 37/37 scenarios pass, 700 files/7796 tests 0 failures. Honest limits disclosed: 12-fixture corpus not directly executable (used 37 derived scenarios instead); deployed-stream capture half of RF-1 UNMET; one named ordering blind spot; 3 pre-existing bugs found+reported not fixed; residual 2-way collision on safety_gate.ts for P1.",
+      "last_event_ts": "2026-08-19T15:20:00Z",
+      "verifier_verdict": "SAFE TO MERGE. 1 verifier + 3 adversaries (behavioral/security/harness-integrity) all converged: no auth/tenant-isolation/NO-LEAKAGE regression, decomposition manually confirmed behaviorally faithful. Adversarial review found and the conductor fixed 2 real governance-gate coverage gaps before merge: (1) naming_lint baseline mis-pointed for the moved CITATION_GATE_OVERRIDE flag -- would have failed CI; (2) COLLECT-ONLY calibration-leak gate's SERVING_PATH_FILES allowlist didn't cover the 9 new pipeline modules -- demonstrated via red/green mutation, now fixed and re-verified. Non-blocking follow-ups filed as known residuals (see p0_c_known_residuals below), not fixed in this lane: harness doesn't record args at ~half its mocked I/O boundaries (3 proven false-PASS mutations: deleted auth DB round-trip/super_admin demotion, dropped retrieval params+scrambled QoS principal, collapsed orientation fallback); 3 misleading derived_from scenario names; 2 uncovered branches (NO_ADAPTER, chart-mismatch); a pre-existing swallowed citation-gate error reporting PASS (validation_stage.ts:64-66, NOT introduced by this refactor); a latent unreachable abort-path ordering fragility (no adapter has a finally block today). Full test suite 424/449 pass (25 pre-existing skips), naming_lint/drift_detector/schema_validator/tsc all clean.",
       "refuter_votes": []
     },
     "P0-D": {
@@ -146,6 +146,57 @@
       "item": "amjis_app credential rotation",
       "command": "gcloud sql users set-password amjis_app --instance=amjis-postgres --project=madhav-astrology --password=<NEW>",
       "risk": "could break live serving app if amjis-db-password/amjis-pipeline-db-url Secret Manager secrets aren't synchronized in the same change"
+    }
+  ],
+  "p0_c_known_residuals": [
+    {
+      "id": "P0C-R1",
+      "finding": "Golden-stream harness doesn't record args at ~half its mocked I/O boundaries (authorizeChartAccess, getConversation, db.query, getToolByName, dispatch_queue.submit, floor adapters, bundle/orientation/manifest loaders) -- 3 real regressions proven to pass green: deleted auth DB round-trip (silent super_admin demotion), dropped retrieval invocation params + scrambled QoS principal, collapsed orientation fallback chain.",
+      "severity": "MEDIUM",
+      "recommendation": "Add rec() to the listed mocks; add a super_admin scenario; give buildChartOrientation distinct chart_header/dasha_context stub values. Additive only, does not touch the refactor itself. Should land before a P1 lane starts relying on this harness for its own equality claims.",
+      "blocking": false
+    },
+    {
+      "id": "P0C-R2",
+      "finding": "3 of 37 scenarios' derived_from names are misleading (unclosed-sentinel, malformed-sentinel-variants, 3s-stall bind to a different phenomenon than the fixture of that name; sharpest: unclosed-sentinel's own note says the turn closes fine, contradicting the fixture it's named after).",
+      "severity": "LOW",
+      "recommendation": "Rename or annotate as unmappable so a future lane doesn't over-read coverage.",
+      "blocking": false
+    },
+    {
+      "id": "P0C-R3",
+      "finding": "2 branches built into the harness but never exercised by a scenario: NO_ADAPTER halt, existingConversation='chart-mismatch'.",
+      "severity": "LOW",
+      "recommendation": "Add 2 scenarios; cheap.",
+      "blocking": false
+    },
+    {
+      "id": "P0C-R4",
+      "finding": "PRE-EXISTING (not introduced by this lane): validation_stage.ts:64-66 swallows a thrown citation-gate error and reports the initialized 'PASS' default with no wire flag -- a live SS N.8 violation predating the refactor.",
+      "severity": "MEDIUM",
+      "recommendation": "File its own ticket before P1 citation/receipt work opens on this file.",
+      "blocking": false
+    },
+    {
+      "id": "P0C-R5",
+      "finding": "PRE-EXISTING (not introduced by this lane): citation markers are scrubbed by lintReaderProse before extractCitations ever sees the text, so citation.define wire events and canonical citation parts are structurally dead on this path. Same in the original 1179-line route.",
+      "severity": "LOW",
+      "recommendation": "Track alongside P0C-R4 for the same future citation/receipt lane.",
+      "blocking": false
+    },
+    {
+      "id": "P0C-R6",
+      "finding": "Latent, currently-unreachable: abort-path turn.close now fires after adapter generator cleanup instead of before (shell now calls finish() after the stage returns halt('aborted'), vs. original's inline return). Unobservable today because none of the 5 provider adapters have a finally block in their generators.",
+      "severity": "LOW",
+      "recommendation": "Note in P1 brief for whichever lane first adds adapter cleanup logic.",
+      "blocking": false
+    },
+    {
+      "id": "P0C-R7",
+      "finding": "Two newly-exported pipeline functions (runPersistenceStage, runEvidenceStage, etc.) have no auth of their own and no 'server-only' import guard -- structurally reachable by a future caller that skips safety_gate.ts, though none exists today.",
+      "severity": "LOW",
+      "recommendation": "Add import 'server-only' to persistence_stage.ts and safety_gate.ts; consider an importer CI guard before P1 opens multiple lanes on these files.",
+      "blocking": false
     }
   ]
 }
