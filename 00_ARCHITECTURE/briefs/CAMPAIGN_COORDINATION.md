@@ -3729,3 +3729,5 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
 - 2026-08-19 14:34Z — **PARIŚEṢA / Codex F42 PR:** normal protected PR #1348 opened at immutable reviewed head `c1b97b2c` against `45f0ddf567`; it is separate from F50 #1347 and awaits its own required contexts. No auto-merge, bypass, deploy, rebuild, or DB action.
 
 - 2026-08-19 14:37Z — **PARIŚEṢA / Codex F28 service proof:** reconciled that F28 had already merged as #1335 (`6d1c4f1b6`) and is ancestral to serving MCP revision `amjis-mcp-00575-pgx` (100% traffic, label `a7136b467`). Read-only calibration calls now return structured parseable QA content: default 40KB truthfully trims 168→84 with callable recovery; 200KB returns all 168 without truncation. No write action.
+
+- 2026-08-19 14:40Z — **PARIŚEṢA / Codex F50 Ganga admission:** PR #1347 exact head `9b3beb6dc` is still on base `45f0ddf567`, with all five active-ruleset required contexts SUCCESS. Only non-required Chromium remains active. Normal auto-merge admission is authorized next; fresh merge-group contexts remain mandatory. No bypass, deploy, rebuild, or DB action.
