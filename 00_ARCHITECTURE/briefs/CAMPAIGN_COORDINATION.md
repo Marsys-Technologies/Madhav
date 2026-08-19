@@ -3835,3 +3835,15 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   lanes, resolved by renumbering G1-B to 575 (see §2). P1 wave 1 (G1-B,
   G1-D, G1-F, G1-H) merged to `pariprashna/p1`; wave 2 (G1-A safety gate,
   G1-C DB roles/RLS, G1-G injection containment) dispatching next.
+
+- 2026-08-19 18:06Z — **PARIPRAŚNA-TRACKER-V2 / Claude Code — follow-up
+  merge, same window:** #1350 (tracker-v2) merged clean to `main` as
+  `9f3c9cc5b`. Installing its 3 launchd jobs locally surfaced a real bug
+  immediately: launchd does not inherit the interactive shell's PATH, so
+  `collect.py`'s `gh`/`gcloud` calls failed with `ENOENT` (degraded correctly
+  to `UNKNOWN`, but for the wrong reason — both are authenticated and
+  working, launchd just couldn't see them). One-file-class fix (`install.sh`
+  + the two launchd plist templates only, same
+  `00_ARCHITECTURE/briefs/pariprashna_swarm/**` scope, same docs-and-tooling
+  posture, no `platform/**`) on `pariprashna/tracker-v2-launchd-path-fix`,
+  requesting the same merge window rather than a new lease.
