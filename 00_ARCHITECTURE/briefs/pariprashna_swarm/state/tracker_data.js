@@ -4,7 +4,7 @@ window.TRACKER = {
   "schema_version": "1.1",
   "session_id": "PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19",
   "phase": "P1",
-  "phase_status": "P1_FOUNDATION_WAVE1_DISPATCHED",
+  "phase_status": "P1_FOUNDATION_WAVE2_DISPATCHED",
   "wave": "P1-FOUNDATION",
   "heartbeat_ts": "2026-08-19T17:42:00Z",
   "concurrency": {
@@ -157,11 +157,11 @@ window.TRACKER = {
       "refuter_votes": []
     },
     "G1-A": {
-      "role_stage": "queued",
+      "role_stage": "building",
       "name": "SafetyPolicyGate + HS-1..HS-6 (serializes before G1-G)"
     },
     "G1-C": {
-      "role_stage": "queued",
+      "role_stage": "building",
       "name": "5 DB roles + RLS (EXCLUDING amjis_app rotation) -- serializes before P1-I"
     },
     "G1-G": {
@@ -169,7 +169,7 @@ window.TRACKER = {
       "name": "Injection containment (serializes after G1-A, shares pre-wire scan file)"
     },
     "P1-E": {
-      "role_stage": "queued",
+      "role_stage": "building",
       "name": "Durability: DR runbook + RPO/RTO doc + export-schedule mechanism ONLY -- PITR enable + restore drill HELD"
     },
     "P1-I": {
@@ -321,5 +321,11 @@ window.TRACKER = {
   "migration_ceiling": {
     "value": 575,
     "note": "574 = G1-D (llm_usage_events channel column), 575 = G1-B (chart_subject_consent + 4 related tables). Both additive-only, neither applied to production yet."
+  },
+  "concurrent_session_discovered": {
+    "session": "PARIPRASHNA-TRACKER-V2",
+    "pr": "https://github.com/Marsys-Technologies/Madhav/pull/1350",
+    "scope": "00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/** (new dir) + AMENDMENTS_v1_1.md \u00a77 addendum only",
+    "collision_check": "No overlap with any file this session has touched or has open work on. Acknowledged in origin/campaign-coordination @ 51e41198d. Continuing this session's own SWARM_TRACKER.json for P0/P1 already in flight; will evaluate adopting tracker-v2 for P2+ once its PR merges."
   }
 };
