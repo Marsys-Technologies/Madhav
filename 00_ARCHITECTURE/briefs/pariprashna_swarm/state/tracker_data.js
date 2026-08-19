@@ -161,7 +161,7 @@ window.TRACKER = {
       "name": "SafetyPolicyGate + HS-1..HS-6 (serializes before G1-G)",
       "worktree": "worktree-agent-a7fb9dab527dd607a",
       "branch": "pariprashna/g1-a-hardened",
-      "verifier_verdict": "Re-verification: 8/13 items confirmed genuinely fixed (C-4/C-5/C-6/C-7/H-2/H-5 solid, mutation-tested). 3 must-fix remain (H-6 detector silently discarded by CI's own typecheck filter regex, C-2 leetspeak fix doesn't generalize/43.8% still bypass, H-4 leak beyond 200-char window + new cross-sentence non-streaming leak found). Significant new discovery: /api/chat/consult is NOT out of scope as round 2 judged -- it's the actual live ungated DEFAULT production route per PARIPRASHNA_ASBUILT_BASELINE_v1_0.md ('consult/consume still the un-gated default'). Native decision: dispatch a narrow round-3 targeting exactly these 4 must-fix items + 2 should-fix vocabulary gaps."
+      "verifier_verdict": "Round 3 complete: all 4 must-fix + 2 should-fix items closed with real reproduction evidence (728 files/8630 tests/0 failed, golden-stream 56/56 zero regression, tsc/eslint clean). 2 items honestly disclosed as deliberately out of round scope (pre-existing unrelated HS-4 false positive; consult door has pre-dispatch stop only, not the full post-plan wiring MCP door has). Final lighter confirmation pass dispatched before merge."
     },
     "G1-C": {
       "role_stage": "merged",
