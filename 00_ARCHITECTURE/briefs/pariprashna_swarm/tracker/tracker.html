@@ -83,7 +83,7 @@ footer{padding:20px; text-align:center; color:var(--text-tertiary); font-size:11
     <span class="pill" id="stallPill" style="display:none">STALLED</span>
     <span class="pill" id="selftestPill">selftest —</span>
     <span class="pill" id="resurrectPill">resurrections 0</span>
-    <span class="pill" id="rateLimitPill">gh rate —</span>
+    <span class="pill" id="rateLimitPill" title="graphql bucket -- gh pr list (this collector's own poll, every cycle) spends from graphql, not REST core; core stays flat at 5000/5000 regardless of load and would be a decorative meter">gh rate —</span>
     <span class="pill" id="codeShaPill" title="running code provenance">code —</span>
   </div>
 </header>
@@ -242,7 +242,7 @@ function render() {
   document.getElementById("resurrectPill").textContent = "resurrections " + ((d.daemon_health && d.daemon_health.resurrection_count) || 0);
 
   const rl = d.github_rate_limit && d.github_rate_limit.value;
-  document.getElementById("rateLimitPill").textContent = rl ? `gh rate ${rl.remaining}/${rl.limit}` : "gh rate UNKNOWN";
+  document.getElementById("rateLimitPill").textContent = rl ? `gh rate (${rl.bucket}) ${rl.remaining}/${rl.limit}` : "gh rate UNKNOWN";
 
   const codeProv = d.code_provenance || {};
   const codePill = document.getElementById("codeShaPill");

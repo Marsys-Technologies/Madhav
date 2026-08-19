@@ -228,6 +228,25 @@ def test_gh_mirror_consistency_anomaly():
                     ok, f"anomalies_for_divergent_pr={len(fired)} false_positives_on_consistent_pr={len(false_positive)}")
 
 
+def test_rate_limit_reads_graphql_not_core():
+    """Item 6: `gh pr list` (this collector's own poll, both open and merged, every cycle)
+    is GraphQL-backed -- verified empirically 2026-08-20 by calling it and diffing `gh api
+    rate_limit` before/after: resources.core.used stayed 0 while resources.graphql.used
+    incremented by 2 in the same call. A collector reading resources.core reports a bucket
+    this tracker never spends from -- it reads 5000/5000 forever regardless of load, a
+    decorative meter dressed as a budget one. Fixture mirrors that exact observed shape:
+    core flat and healthy-looking, graphql actually spent."""
+    fixture = {"resources": {
+        "core": {"limit": 5000, "used": 0, "remaining": 5000, "reset": 1787175697},
+        "graphql": {"limit": 5000, "used": 216, "remaining": 4784, "reset": 1787172405},
+    }}
+    got = collect.parse_rate_limit(fixture)
+    reads_core_instead = got["remaining"] == 5000  # the bug this test exists to catch
+    ok = got["bucket"] == "graphql" and got["remaining"] == 4784 and not reads_core_instead
+    return _result("github_rate_limit reads the graphql bucket (what gh pr list actually spends), not core",
+                    ok, f"got={got!r}")
+
+
 def run_all():
     import time
     tests = [
@@ -239,6 +258,7 @@ def run_all():
         test_gh_failure_yields_unknown_no_carry_forward(),
         test_mirror_fetch_failure_degrades_to_unknown(),
         test_gh_mirror_consistency_anomaly(),
+        test_rate_limit_reads_graphql_not_core(),
     ]
     all_passed = all(t["passed"] for t in tests)
     return {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "tests": tests, "all_passed": all_passed}

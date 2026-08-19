@@ -168,3 +168,14 @@ the local network. Do not port-forward or tunnel it.**
   the swarm's agents. This is the one figure on the dashboard that structurally cannot be
   DERIVED without a billing API this tracker doesn't have access to — shown honestly as
   such (not styled as a DERIVED figure).
+- **`github_rate_limit` reads the `graphql` bucket, not `core` — fixed 2026-08-20.** This
+  collector's own poll (`gh pr list`, open and merged, every cycle) is GraphQL-backed, not
+  REST. Verified empirically before fixing: `gh api rate_limit` diffed immediately before
+  and after a live `gh pr list` call showed `resources.core.used` unchanged at 0 while
+  `resources.graphql.used` incremented by 2 in that one call. The prior version read
+  `resources.core`, which this tracker's own polling never spends from — it reported
+  5000/5000 every cycle regardless of load, a decorative meter dressed as a budget one. The
+  PR-poll itself was confirmed executing every cycle (unconditionally for open PRs; for
+  merged PRs whenever the mirror is healthy) — the defect was the bucket read, not a
+  skipped poll. `parse_rate_limit()` is a pure function with a fixture-based selftest
+  (`test_rate_limit_reads_graphql_not_core`) so a regression back to `core` fails loudly.

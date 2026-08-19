@@ -171,16 +171,29 @@ def collect_github_prs():
     return _derived(by_branch, "gh pr list --repo Marsys-Technologies/Madhav --state open")
 
 
+def parse_rate_limit(data):
+    """Pure: gh api rate_limit's parsed JSON -> the cell this collector reports. `gh pr
+    list` (both open and merged polls, every cycle) is a GraphQL-backed command -- verified
+    empirically (2026-08-20): `resources.core.used` stayed 0 across a `gh pr list` call
+    while `resources.graphql.used` incremented by 2 in the same call. Reading `core` here
+    reports a bucket this tracker's own polling never spends from, so it always reads
+    5000/5000 regardless of load -- a decorative meter, not a budget one. `graphql` is the
+    bucket actually being spent; report that one."""
+    graphql = data.get("resources", {}).get("graphql", {})
+    return {"bucket": "graphql", "remaining": graphql.get("remaining"),
+            "limit": graphql.get("limit"), "reset": graphql.get("reset")}
+
+
 def collect_github_rate_limit():
     ok, out, err = run(["gh", "api", "rate_limit"], timeout=15)
     if not ok:
         return _unknown(f"gh api rate_limit failed: {err.strip()[:200]}")
     try:
         data = json.loads(out)
-        core = data.get("resources", {}).get("core", {})
         return _derived(
-            {"remaining": core.get("remaining"), "limit": core.get("limit"), "reset": core.get("reset")},
-            "gh api rate_limit",
+            parse_rate_limit(data),
+            "gh api rate_limit (graphql bucket -- the bucket gh pr list actually spends "
+            "from, verified empirically against resources.core staying flat)",
         )
     except json.JSONDecodeError as e:
         return _unknown(f"gh api rate_limit returned non-JSON: {e}")
