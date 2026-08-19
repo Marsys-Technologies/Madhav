@@ -55,6 +55,20 @@ function deriveHollowEnvelopeFlags(content: unknown): JudgmentFlagEntry[] {
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
+function unwrapCapabilityToolResult(data: unknown): unknown {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return data
+  const result = data as Record<string, unknown>
+  if (!('is_error' in result)) return data
+
+  if (result['is_error'] === true) {
+    const content = result['content']
+    throw new Error(typeof content === 'string'
+      ? content
+      : '[p1_reference] capability returned an in-band error')
+  }
+  return result['content']
+}
+
 async function callRegistryCapability(uri: string, args: Record<string, unknown>, principal: Principal): Promise<unknown> {
   const res = await fetch(`${PLATFORM_URL}/api/retrieval/capability`, {
     method: 'POST',
@@ -75,7 +89,7 @@ async function callRegistryCapability(uri: string, args: Record<string, unknown>
   }
   const data = await res.json() as { ok: boolean; content?: unknown; error?: string }
   if (!data.ok) throw new Error(`[p1_reference] capability error: ${data.error ?? 'unknown'}`)
-  return data.content
+  return unwrapCapabilityToolResult(data.content)
 }
 
 /**
