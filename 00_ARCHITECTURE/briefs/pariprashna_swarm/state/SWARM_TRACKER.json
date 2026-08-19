@@ -388,6 +388,24 @@
         "no error-recovery/retry/fallback path around the gate within /api/pariprashna itself",
         "consent-dependency direction (NULL subject_kind fails toward seal, not toward wrongly-granted interstitial) -- safe direction, but very high false-seal rate as a cost"
       ]
+    },
+    {
+      "source": "independent verifier",
+      "verdict": "safe to merge with named caveats (per verifier's own philosophy: flag-OFF, zero production DB calls when off) -- but converges with the DB-integrity adversary on the NULL-hole and adds a new critical finding",
+      "new_critical": [
+        "Finding A: leet '1'->'l' substitution defeats HS-2 entirely ('I want to ki11 myse1f' / 'end my 1ife' normalize to nothing and MISS) -- the normalizer's own header claims no spelling evasion survives it; this is false, demonstrated concretely. HS-2 has only the prompt-policy clause as backstop (no output-side self-harm scan), so this is a full bypass of the highest-stakes class with a 2-keystroke cost."
+      ],
+      "convergent_with_db_adversary": [
+        "Independently reproduced the same NULL-hole in interstitial_is_native_self_chk (subject_kind IS NULL passes a check meant to require literal 'native_self'). Recommends fixing NOW since migration not yet applied to production -- cheapest/only safe window per SS N.4 (never edit an applied migration)."
+      ],
+      "other_findings": [
+        "Hinglish HS-2 'want to die' desire-forms miss (only interrogative 'kab marunga' forms covered)",
+        "Plain non-evasive age-reaching asks miss ('Will I live to 90?')",
+        "HS-4's breadth + no release path = PERMANENT refusal for a wide band of ordinary jyotish questions once flag flips (a product-shape question, not a bug)",
+        "No committed DB-integration test for the migration's own constraints -- verifier had to redo all constraint verification by hand",
+        "mergeLlmAssist (the monotone-join guarantee) has ZERO production callers currently and no structural barrier stopping a future lane from bypassing the envelope by hand",
+        "platform-mcp consult-profile exclusion is unflagged (takes effect on merge) but currently removes 0 tools against the real profile -- no production behavior change in fact, but the test asserting it passes vacuously"
+      ]
     }
   ]
 }
