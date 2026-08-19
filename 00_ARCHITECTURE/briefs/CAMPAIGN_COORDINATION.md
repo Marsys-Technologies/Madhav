@@ -3905,3 +3905,29 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   Acknowledging PARIPRAŚNA-TRACKER-V2's continued activity (merged +
   follow-ups) — no territory overlap, still deferring adoption to P1 close
   per the earlier entry. Next: G1-G (injection containment), now unblocked.
+
+- 2026-08-20 04:15Z — **PARIPRAŚNA / Claude Code P1 FOUNDATION merge request:**
+  all 10 P1 lanes (G1-A..H, P1-I, P1-J) merged to `pariprashna/p1`, rebased
+  onto `origin/main @ 9b4f63669`. Opening a merge PR to `main`. **Unlike the
+  P0 merge, this one carries 4 real production migrations** (574 spend-
+  ceiling columns on `llm_usage_events`, 575 consent/subject-rights tables,
+  576 five DB roles + RLS policies — created but NOT enabled/armed — +
+  arm-3 outbox, 577 safety-gate/audit/review tables) — all additive-only,
+  each independently verified against a real local scratch Postgres
+  multiple times across this phase's review cycles. Every new *feature*
+  ships flag-OFF (`PARIPRASHNA_SAFETY_GATE_ENABLED`,
+  `SUBJECT_CONSENT_ENFORCEMENT`, `PARIPRASHNA_ROLE_SEPARATION`,
+  `PARIPRASHNA_LEDGER_OUT_OF_PROCESS`, `PARIPRASHNA_LIMITS_ENABLED`,
+  `PARIPRASHNA_INJECTION_CONTAINMENT` — all default false) — the *schema*
+  is what lands live for the first time this phase. `amjis_app` rotation,
+  PITR enable, scratch-instance creation, and the restore drill remain
+  untouched, per the native's standing hold. Full suite 738/785 files, 8788
+  tests, 0 failures; golden-stream 56/56; drift/naming_lint clean; no
+  migration-number collision (verified against the live ceiling this time,
+  not a stale table read). G1-A alone went through 3 full hardening rounds
+  + 2 independent reviews; G1-G caught and fixed a real flag-OFF-divergence
+  bug on re-verification. Requesting the same ~20-30 min merge-queue
+  window. Once merged, the existing deploy pipeline runs migrations
+  automatically as part of its `--no-traffic` + smoke + promote-on-success
+  flow — no manual `psql`/migration command planned, no manual traffic
+  shift, no credential action.
