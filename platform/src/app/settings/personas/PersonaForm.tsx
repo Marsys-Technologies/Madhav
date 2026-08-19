@@ -7,7 +7,10 @@ import { Label } from '@/components/ui/label'
 import type { Persona, PersonaCreate, PersonaUpdate } from '@/types/personas'
 
 const STYLE_OPTIONS = ['acharya', 'brief', 'client']
-const STACK_OPTIONS = ['anthropic', 'google', 'nim', 'deepseek']
+// DD-2 (PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md §2): anthropic delisted —
+// ANTHROPIC_API_KEY is unprovisioned in production; the stack fails silently.
+// Re-enlist by adding 'anthropic' back once a key is provisioned and qualified.
+const STACK_OPTIONS = ['google', 'nim', 'deepseek']
 
 interface PersonaFormProps {
   initial?: Persona
