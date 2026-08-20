@@ -149,6 +149,10 @@ describe('kala_now_get W1 join — dasha_sandhi (item 1-lite)', () => {
     // F-121: band_convention now names the level scope (levels 1-4) and states level 5 is never computed
     expect(result.dasha_sandhi?.band_convention).toEqual(expect.stringContaining('Sūkṣma'))
     expect(result.dasha_sandhi?.band_convention).toEqual(expect.stringContaining('Prāṇa'))
+    // GA-5 review finding on #1366: the ±1-day floor dominates at level 4 (short Sūkṣma
+    // spans) and must be disclosed, not just the 3% rule that the floor overrides there.
+    expect(result.dasha_sandhi?.band_convention).toEqual(expect.stringContaining('FLOOR'))
+    expect(result.dasha_sandhi?.band_convention).toEqual(expect.stringContaining('never zero'))
   })
 
   it('coverage marks dasha_sandhi computed when the active chain resolves', async () => {

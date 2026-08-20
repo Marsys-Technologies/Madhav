@@ -828,7 +828,7 @@ async function fetchSukshmaBoundaryUncertainty(
 // ── W1 item 1-lite (daśā-sandhi bands) — SHAD_DARSHANA_BRIEF_v2_0.md §3 W1: "sandhi bands
 // from existing period spans; full calendar W3". [J]-kind JOIN: pure interval arithmetic over
 // the SAME already-computed start_date/end_date bounds `query_active_dashas` already returns
-// for the active Vimśottarī Mahādaśā/Antardaśā chain (no new astrological computation, no new
+// for the active Vimśottarī daśā chain across all 4 bandable levels (no new astrological computation, no new
 // migration — §N.5/B.10). Self-contained fetch (not reusing `fetchActiveVimshottariChain`
 // above, which discards start_date/end_date for item 28's purposes) per this file's own
 // established anti-coupling convention (see file header): a second, independent call to the
@@ -859,7 +859,14 @@ const SANDHI_BAND_CONVENTION =
   'DB layer by chart_dashas\' cd_level_n_max4 CHECK (level_n BETWEEN 1 AND 4) constraint ' +
   '(migration 211_ga7_dashas_kp_sublevel.sql; see test_dasha_scope_cap_sentinel.py for the ' +
   'enforcement semantics) — see sukshma_boundary_uncertainty ' +
-  'convention for the same reasoning applied to the Sūkṣma-boundary uncertainty field.'
+  'convention for the same reasoning applied to the Sūkṣma-boundary uncertainty field. ' +
+  'FLOOR: band_width_days is max(1, round(3% × span)), never zero, even for a sub-33-day ' +
+  'span where 3% rounds below 1. At level 4 (Sūkṣmadaśā, typically ~10-13 days for this ' +
+  'chart) the floor is what actually sets the width, not the 3% rule — e.g. a 12-day ' +
+  'Sūkṣma period bands ±1 day per boundary (8.3% each side, ~50% of the period\'s own span ' +
+  'across both boundaries combined), proportionally far wider than the 3% figure above ' +
+  'describes. A caller reading is_now_within_band at level 4 should treat it as a coarse ' +
+  'lite-pass signal, not the narrow classical junction window the 3% figure implies.'
 
 interface ActiveDashaBoundaryEntry {
   level_n: number
@@ -960,7 +967,7 @@ function buildBoundaryBand(
 }
 
 /** Item 1-lite (SHAD_DARSHANA_BRIEF_v2_0.md item 1, wave W1): a band around every currently-
- *  active Vimśottarī Mahādaśā/Antardaśā period's start AND end boundary, computed purely from
+ *  active Vimśottarī daśā period's (levels 1-4) start AND end boundary, computed purely from
  *  the period's own already-computed span — see the doc-comment above for the full band-width
  *  convention and its documented lite simplification. */
 async function computeDashaSandhi(
