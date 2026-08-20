@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 824,
+  "event_count": 825,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1714,20 +1714,19 @@
       "terminal_status": "CONTROL_CLOSED"
     },
     "F-78": {
-      "branch": "parisesa/repair-F78-build",
       "confidence": "HIGH",
-      "disposition": "OPEN",
-      "event_sha256": "ccafb2290a5a282b3b1eaaccafc366ff0f4f7bf8654475883e58b1a0cd6f5634",
+      "disposition": "LANDED",
+      "event_sha256": "aac8531295831554f756fad607812f687005721613bff793865d7c952a23bf89",
       "event_type": "finding_status",
-      "evidence_summary": "Ratified spec re-implemented: built_event_classes() helper (writer.py) + migration 572 (checked no collision with concurrent F-93/F-67 migrations, verified 572-574 free on current main) + the reviser's fix (an autouse pytest fixture the original exit test needed but never got, the exact reason the prior swarm attempt's builder correctly failed rather than self-editing a reviewed test). 9/9 tests pass post-fix (6/9 confirmed genuinely failing pre-fix), full ka_kshetra suite 394/394 no regressions. Confirmed purely additive -- no existing INSERT/dedup call site touched, zero TS consumers of the affected columns.",
+      "evidence_summary": "PR #1392 merged to main under v3.0 full-autonomy authority after GA-5 (Opus-5 independently verified no logic defect, independently re-verified the migration number's freeness on live main across all open PRs; one real defect found and fixed pre-merge -- the PR body itself cited the finding's migration under a stale, now-reused number from before this session's two rounds of live renumbering, corrected via gh pr edit).",
       "finding_id": "F-78",
-      "next_action": "owner reviews and merges PR #1392 at morning checkpoint",
+      "next_action": "none, terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1392",
-      "prev_sha256": "d84bac04ec3f923873d06fd578ddf4582d448eea0e197a5ebff7ed68b2f0f457",
-      "seq": 759,
-      "source_batch": "rebase_f78",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "db43444d0500a51c1950f5bf0410fb0fa3c3895efac3b15f0d36b677b086d5ff",
+      "seq": 825,
+      "source_batch": "v3_ga2_decision_closures",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-79": {
       "confidence": "MEDIUM",
@@ -2026,10 +2025,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 12,
-  "findings_terminal_count": 96,
-  "journal_head_seq": 824,
-  "journal_head_sha256": "db43444d0500a51c1950f5bf0410fb0fa3c3895efac3b15f0d36b677b086d5ff",
+  "findings_morning_ship_ready_count": 11,
+  "findings_terminal_count": 97,
+  "journal_head_seq": 825,
+  "journal_head_sha256": "aac8531295831554f756fad607812f687005721613bff793865d7c952a23bf89",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
