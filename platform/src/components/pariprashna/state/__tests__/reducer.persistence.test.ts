@@ -38,7 +38,7 @@ describe('back-compat: turn.commit alone (no turn.persisted ever arrives)', () =
   it('a settled turn with persistStatus "ok" and no turn.persisted event is durably_persisted (no false banner)', () => {
     const state = applyAll(initialThreadState, [
       { type: 'CLIENT_SUBMIT_TURN', turnId: 'T1', userText: 'hi' },
-      { type: 'turn.commit', turnId: 'T1', grounding: { factorCount: 1, classicalCount: 0, elapsedLabel: '0:01', gradeSummaryLabel: 'x' }, eventId: 'e1', persistStatus: 'ok' },
+      { type: 'turn.commit', turnId: 'T1', grounding: { factorCount: 1, classicalCount: 0, elapsedLabel: '0:01', gradeSummaryLabel: 'x', source: 'client_estimate' }, eventId: 'e1', persistStatus: 'ok' },
       { type: 'turn.close', turnId: 'T1', eventId: 'e2' },
     ])
     const t = turnOf(state, 'T1')
@@ -52,7 +52,7 @@ describe('back-compat: turn.commit alone (no turn.persisted ever arrives)', () =
   it('a pre-P2-D fixture that never sets persistStatus at all stays "unknown" — never a fabricated durable claim', () => {
     const state = applyAll(initialThreadState, [
       { type: 'CLIENT_SUBMIT_TURN', turnId: 'T1', userText: 'hi' },
-      { type: 'turn.commit', turnId: 'T1', grounding: { factorCount: 1, classicalCount: 0, elapsedLabel: '0:01', gradeSummaryLabel: 'x' }, eventId: 'e1' },
+      { type: 'turn.commit', turnId: 'T1', grounding: { factorCount: 1, classicalCount: 0, elapsedLabel: '0:01', gradeSummaryLabel: 'x', source: 'client_estimate' }, eventId: 'e1' },
       { type: 'turn.close', turnId: 'T1', eventId: 'e2' },
     ])
     const t = turnOf(state, 'T1')
@@ -66,7 +66,7 @@ describe('back-compat: turn.commit alone (no turn.persisted ever arrives)', () =
   it('persistStatus "error" resolves to failed, not durable', () => {
     const state = applyAll(initialThreadState, [
       { type: 'CLIENT_SUBMIT_TURN', turnId: 'T1', userText: 'hi' },
-      { type: 'turn.commit', turnId: 'T1', grounding: { factorCount: 0, classicalCount: 0, elapsedLabel: '0:01', gradeSummaryLabel: 'x' }, eventId: 'e1', persistStatus: 'error' },
+      { type: 'turn.commit', turnId: 'T1', grounding: { factorCount: 0, classicalCount: 0, elapsedLabel: '0:01', gradeSummaryLabel: 'x', source: 'client_estimate' }, eventId: 'e1', persistStatus: 'error' },
       { type: 'turn.close', turnId: 'T1', eventId: 'e2' },
     ])
     const t = turnOf(state, 'T1')
@@ -84,7 +84,7 @@ describe('the real gap: outbox-mode turn.persisted refines/overrides the optimis
       // are the ONLY signal driving the transition — isolates the exact
       // mechanic PPR-10 asks for, independent of the commit-time seed tested
       // separately above.
-      { type: 'turn.commit', turnId: 'T1', grounding: { factorCount: 1, classicalCount: 0, elapsedLabel: '0:01', gradeSummaryLabel: 'x' }, eventId: 'e1' },
+      { type: 'turn.commit', turnId: 'T1', grounding: { factorCount: 1, classicalCount: 0, elapsedLabel: '0:01', gradeSummaryLabel: 'x', source: 'client_estimate' }, eventId: 'e1' },
       { type: 'turn.persisted', turnId: 'T1', status: 'pending', eventId: 'e2' },
       { type: 'turn.close', turnId: 'T1', eventId: 'e3' },
     ])
@@ -104,7 +104,7 @@ describe('the real gap: outbox-mode turn.persisted refines/overrides the optimis
   it('a later turn.persisted DOWNGRADES an optimistic durable guess (defensive latest-wins)', () => {
     let state = applyAll(initialThreadState, [
       { type: 'CLIENT_SUBMIT_TURN', turnId: 'T1', userText: 'hi' },
-      { type: 'turn.commit', turnId: 'T1', grounding: { factorCount: 1, classicalCount: 0, elapsedLabel: '0:01', gradeSummaryLabel: 'x' }, eventId: 'e1', persistStatus: 'ok' },
+      { type: 'turn.commit', turnId: 'T1', grounding: { factorCount: 1, classicalCount: 0, elapsedLabel: '0:01', gradeSummaryLabel: 'x', source: 'client_estimate' }, eventId: 'e1', persistStatus: 'ok' },
     ])
     expect(turnOf(state, 'T1').persistence).toBe('durable')
     state = applyAll(state, [{ type: 'turn.persisted', turnId: 'T1', status: 'failed', detail: 'disk full', eventId: 'e2' }])

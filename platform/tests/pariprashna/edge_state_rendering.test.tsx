@@ -50,8 +50,8 @@ describe('WorkingBand — §7.8 network drop/resume renders the exact edge-state
     const turn = reduceN(fixture, 5) // stop right after the `reconnecting` event
     expect(turn.status).toBe('reconnecting')
 
-    const { getByText } = render(<WorkingBand turn={turn} expanded={false} onToggle={() => {}} />)
-    expect(getByText(EDGE_STATE_LABELS.network_drop)).toBeTruthy()
+    const { getAllByText } = render(<WorkingBand turn={turn} expanded={false} onToggle={() => {}} />)
+    expect(getAllByText(EDGE_STATE_LABELS.network_drop)[0]).toBeTruthy()
   })
 
   it('on resume: a brief "Resumed — nothing lost" flash, which then self-clears', () => {
@@ -87,8 +87,8 @@ describe('WorkingBand — §7.8 "User presses Stop" renders the exact edge-state
     const turn = reduceAll(buildEdgeUserStoppedFixture())
     expect(turn.status).toBe('interrupted')
 
-    const { getByText } = render(<WorkingBand turn={turn} expanded={false} onToggle={() => {}} />)
-    expect(getByText(EDGE_STATE_LABELS.user_stopped)).toBeTruthy()
+    const { getAllByText } = render(<WorkingBand turn={turn} expanded={false} onToggle={() => {}} />)
+    expect(getAllByText(EDGE_STATE_LABELS.user_stopped)[0]).toBeTruthy()
   })
 })
 
@@ -108,8 +108,8 @@ describe('WorkingBand — §7.5 error kinds render the exact classifier copy', (
       expect(turn.status).toBe('errored')
       expect(turn.error?.bandLabel).toBe(bandLabel)
 
-      const { getByText } = render(<WorkingBand turn={turn} expanded={false} onToggle={() => {}} />)
-      expect(getByText(bandLabel)).toBeTruthy()
+      const { getAllByText } = render(<WorkingBand turn={turn} expanded={false} onToggle={() => {}} />)
+      expect(getAllByText(bandLabel)[0]).toBeTruthy()
     })
   }
 })

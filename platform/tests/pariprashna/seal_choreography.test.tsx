@@ -29,7 +29,7 @@ function baseTurn(status: TurnState['status']): TurnState {
     status,
     blocks: [{ id: 'b1', kind: 'paragraph', html: 'A settled paragraph.' }],
     citations: { 1: { n: 1, title: 'Daśā spine', sourceClass: 'chart_factor', relevance: 'career timing', ref: 'fact-42', grade: 'confirmed' } },
-    grounding: status === 'settled' || status === 'settling' ? { factorCount: 1, classicalCount: 0, elapsedLabel: '0:12', gradeSummaryLabel: 'Core claim: well-grounded' } : null,
+    grounding: status === 'settled' || status === 'settling' ? { factorCount: 1, classicalCount: 0, elapsedLabel: '0:12', gradeSummaryLabel: 'Core claim: well-grounded', source: 'client_estimate' } : null,
   }
 }
 

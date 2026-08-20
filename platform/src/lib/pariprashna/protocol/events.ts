@@ -70,6 +70,14 @@ const EnvelopeShape = {
  * default, so a v1 stream simply never carries the new fields, which decode
  * to "v1 behavior" (e.g. absent `kind` means "render as a plain paragraph",
  * exactly today's behavior).
+ *
+ * Single source of truth (P2-D, PPR-10 versioning clause, merged with P2-A's
+ * bump above): `turn.open.protocol_version` carries this value per-turn; bump
+ * it (never the meaning of an existing field — that is what a NEW version is
+ * for) when the wire contract changes in a way an old client/decoder could
+ * misread. See `MIN_SUPPORTED_PARIPRASHNA_PROTOCOL_VERSION` and
+ * `isCompatibleProtocolVersion` below for the declared-compatibility check
+ * this constant feeds.
  */
 export const PARIPRASHNA_PROTOCOL_VERSION = 2
 
@@ -556,19 +564,14 @@ export type PariprashnaEventType = (typeof PARIPRASHNA_EVENT_TYPES)[number]
 // ---------------------------------------------------------------------------
 
 /**
- * The wire-protocol version this build of the emitter/decoder speaks.
- * `turn.open.protocol_version` carries it per-turn; bump this constant (never
- * the meaning of an existing field — that is what a NEW version is for) when
- * the wire contract changes in a way an old client/decoder could misread.
- */
-export const PARIPRASHNA_PROTOCOL_VERSION = 1
-
-/**
  * The oldest protocol version this decoder still accepts. Below this, a
  * caller MUST refuse rather than silently misinterpret an old frame shape —
- * see `isCompatibleProtocolVersion`. Equal to `PARIPRASHNA_PROTOCOL_VERSION`
- * today (no prior version was ever emitted); a future version bump that keeps
- * this decoder reading v1 frames would lower the min instead of raising it.
+ * see `isCompatibleProtocolVersion`. Stays 1 (no prior version was ever
+ * emitted before v1) even as `PARIPRASHNA_PROTOCOL_VERSION` bumps to 2 for
+ * P2-A's additive `block.commit`/`prediction_card` vocabulary — a v1 frame
+ * (protocol_version absent or 1) is still fully valid, just narrower. A
+ * future version bump that drops v1 decoding entirely would raise this
+ * constant instead.
  */
 export const MIN_SUPPORTED_PARIPRASHNA_PROTOCOL_VERSION = 1
 

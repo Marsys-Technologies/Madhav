@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "$comment": "Allowlist for check_earned_signal.py (CLAUDE.md \u00a7N.8 Earned-Signal Principle; SAM\u0100PTI v2.0 \u00a77.5, lane B-N8-LINT). Same shape as fact_category_pin_allowlist.json (#840) with ONE addition: `max_occurrences`. An entry requires `file` (repo-relative POSIX, exact match) and `field` (the signal name, exact match), plus EITHER `line` (exact) OR `pattern` (regex, falling back to substring, against the snippet) OR neither \u2014 a file+field entry with neither is a deliberate group disposition, and MUST then carry `max_occurrences`, which freezes the group at its rollout size. Occurrence N+1 in a frozen group is reported as NEW and fails the build, so this backlog can be paid down but never grown. An entry with no `field` never matches anything (fails closed, not open). HONESTY NOTE, required by the lane's own charter: the entries below are CATEGORICAL dispositions from a sampled review, not 81 individual code reviews. Each says which category it is in and whether it was individually examined. `sample_lines`/`sample_snippet` are locators recorded at rollout, not match keys \u2014 they may drift and are not used for matching.",
   "generated_by": "check_earned_signal.py initial-rollout scan, 2026-07-31, base a7dfefcb",
-  "entry_count": 83,
+  "entry_count": 84,
   "violation_count_at_rollout": 169,
   "entries": [
     {
@@ -1063,6 +1063,18 @@
       ],
       "sample_snippet": "assess_health: 'hs3_health_crisis',",
       "justification": "INDIVIDUALLY REVIEWED false positive, Paripra\u015bna P1 lane G1-A. `assess_health` here is not a verdict/verified-status field \u2014 it is a KEY in `CAPABILITY_CLASS_RULES`, a static `Record<string, SafetyClass>` lookup table mapping MCP tool/capability names (assess_health is a real tool name) to the safety class that capability implies. It is structurally identical to its untouched neighbours in the same object literal (get_ayurdaya, ganita_ayurdaya_get, get_medical_indications, ...), none of which tripped the lint \u2014 only this key's name happens to match the health-related signal-name heuristic. No detector is needed because no verification claim is being made; this is configuration data, not a computed result. Adding a detector here would be inventing one for a claim the code never makes."
+    },
+    {
+      "file": "platform/src/lib/pariprashna/observability/turn_metrics.ts",
+      "field": "lintLeaksTotal",
+      "line": 59,
+      "pattern": null,
+      "max_occurrences": null,
+      "sample_lines": [
+        59
+      ],
+      "sample_snippet": "private lintLeaksTotal = 0",
+      "justification": "INDIVIDUALLY REVIEWED false positive, Paripra\u015bna P2 lane P2-E (observability, PPR-33/GAP-14). `lintLeaksTotal` is a private mutable accumulator field on `TurnMetricsCollector`, initialized to 0 as its starting value \u2014 not a verdict/verified-status literal that never changes. It is incremented at line 99 (`this.lintLeaksTotal += leakCount`) inside `recordRegisterLint(leakCount: number)`, whose only caller (`synthesis_stage.ts`) passes the REAL `deltaLint.leakCount` returned by `lintReaderProse` on every streamed delta \u2014 a genuine program input, not a constant. The accumulated value is read back at line 126 into the `leaks_total` field of the snapshot persisted to `llm_usage_events`. The linter's static pattern-matcher flags the `= 0` initializer without seeing the later `+=` mutation from real input; the class's own docstring and its colocated tests (`turn_metrics.test.ts`) demonstrate the accumulation with real, varying leak counts. No detector is needed beyond the accumulation itself \u2014 the field IS the detector's running total, not a claim standing in for one."
     }
   ]
 }

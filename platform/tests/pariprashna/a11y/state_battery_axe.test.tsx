@@ -137,7 +137,12 @@ describe('P2-F real-component axe battery — one state per §5.3 fixture', () =
     installMobileViewport()
     const turn = playFixtureToEnd('single')
     render(<Harness turns={[turn]} />)
-    const modelButton = screen.getByRole('button', { name: /Claude Opus/i })
+    // P2-C wired the model picker to the real `@/lib/models/registry` — the
+    // composer's default selection is 'auto' (label "Auto", rendered with a
+    // trailing "▾"), not a hardcoded model name. Anchored to the start only —
+    // the Depth/Length pickers' accessible names start with their own
+    // eyebrow ("Depth"/"Length"), never "Auto".
+    const modelButton = screen.getByRole('button', { name: /^Auto/i })
     await userEvent.click(modelButton)
     const listbox = await screen.findByRole('listbox')
     // It rendered as the sheet variant, not the anchored dropdown.
