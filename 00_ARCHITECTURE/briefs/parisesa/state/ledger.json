@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 743,
+  "event_count": 744,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -541,17 +541,19 @@
       "terminal_status": null
     },
     "F-125": {
+      "branch": "parisesa/repair-F125-orientation-export",
       "confidence": "HIGH",
-      "disposition": "OPEN",
-      "event_sha256": "76c04c30521e07d2635f00ccd2aa5e80acf3406077b8cf9392c4bc8b74d28349",
+      "disposition": "UNKNOWN",
+      "event_sha256": "c50c5765a6c3366386f6958773de6c2c8bd9f6c842b2725d6d9cea26058d25b8",
       "event_type": "finding_status",
-      "evidence_summary": "Corpus/ingested SPEC+REVIEW (F-125.spec_writer.json/reviewer.json/ratifier.json, all verdict COMPLETE at spec stage) diagnose: fetchOrientationContext is declared without 'export' in registry_bridge.ts:2061, making it structurally unreachable from kala_upaya_get (upaya.ts) and the bodha_* regAlias family (register_p1_aliases.ts) -- B.11 orientation gate missing on those tools. Checked origin/main directly: fetchOrientationContext at registry_bridge.ts:2061 is still not exported; grep for 'orientation' in kala_views/upaya.ts returns zero hits; register_p1_aliases.ts has no requiresOrientation flag or fetchOrientationContext import; the exit test file b11_gate_f125.test.ts does not exist anywhere in the repo. The spec was fully designed and ratified but never built/merged.",
+      "evidence_summary": "Ratified spec (sections 2a/2b/2c) implemented against current main after re-verifying the diagnosis still held (fetchOrientationContext still unexported, line shifted 2061->2019 from intervening edits). 8/8 new tests passing, all 6 regression assertions independently confirmed to genuinely fail pre-fix (not vacuous, verified via git stash). One deliberate documented deviation from literal spec: skipped the orientation merge on mortality-exclusion refusal to preserve gate G16's stronger 'refusal makes zero network calls before any await' invariant -- the literal spec text would have silently broken that. Full suite before/after diffed byte-identical on pre-existing failures (93 lines both), zero new regressions.",
       "finding_id": "F-125",
-      "next_action": "Execute the already-ratified SPEC (F-125.spec_writer.json sections 2a/2b/2c): export fetchOrientationContext, wire it into kala_upaya_get and the 4 named bodha_* regAlias tools, add the b11_gate_f125.test.ts exit test.",
-      "prev_sha256": "94b63fecee4815177f0b92d9c837939deb21a6455deae0377308b2aa307cad0d",
-      "seq": 617,
-      "source_batch": "triage_batch3.json",
-      "status": "OPEN",
+      "next_action": "owner reviews and merges PR #1387 at morning checkpoint",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1387",
+      "prev_sha256": "b4bec6eb921a4ab279a7861c3f707ccac7d2a9a6c2e0f80f3210c91eebae4bab",
+      "seq": 744,
+      "source_batch": "rebase_f125",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-126": {
@@ -2028,10 +2030,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 11,
+  "findings_morning_ship_ready_count": 12,
   "findings_terminal_count": 77,
-  "journal_head_seq": 743,
-  "journal_head_sha256": "b4bec6eb921a4ab279a7861c3f707ccac7d2a9a6c2e0f80f3210c91eebae4bab",
+  "journal_head_seq": 744,
+  "journal_head_sha256": "c50c5765a6c3366386f6958773de6c2c8bd9f6c842b2725d6d9cea26058d25b8",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
