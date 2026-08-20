@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 759,
+  "event_count": 760,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1942,17 +1942,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-93": {
+      "branch": "parisesa/repair-F93-rebase",
       "confidence": "HIGH",
       "disposition": "STRANDED",
-      "event_sha256": "13174e1f7807fb5d1ffc1b49ed4a66c96bc91f9ced3d0249a5d602b608772ed7",
+      "event_sha256": "1dbfe0ed419cd8199963fd351e464a69855a7a45ca49f9c164956386a88d62e9",
       "event_type": "finding_status",
-      "evidence_summary": "Cited commit 491dd518b confirmed present ONLY on branch par/night-F-93 (not merged, not an ancestor of origin/main) -- a genuine sibling-namespace stranded attempt, matches corpus's own 'nonmerged branch evidence only' note.",
+      "evidence_summary": "Real complete work on origin/par/night-F-93: ayanamsha_id had no server-side default in get_dashas.ts, could let a non-canonical-ayanamsha row reach synthesis undisambiguated. Rebase hit a genuine content conflict -- main independently grew its own invalid_ayanamsha_id validation guard since the branch point -- resolved by combining both (keep main's rejection of unrecognized ids, layer F-93's default-for-omitted behavior on top) rather than picking one side. Updated 4 stale docstrings that still claimed no default existed. Cross-lane check found PR #1369 (F-33) also touches get_dashas.ts in a disjoint region -- flagged for a post-merge sanity check, no code conflict. 23/23 + 16/16 (live DB integration) + 200 adjacent tests pass, tsc clean.",
       "finding_id": "F-93",
-      "next_action": "after review queue permits, rebase par/night-F-93 content into a fresh-main candidate with independent review (do not merge the sibling branch directly per isolation rules)",
-      "prev_sha256": "41a372781c0a8b914402dae692bb18e38b77356852737b581e677f0b262432fb",
-      "seq": 100,
-      "source_batch": "batch4.json",
-      "status": "STRANDED",
+      "next_action": "owner reviews and merges PR #1393 at morning checkpoint; sanity-check interaction with PR #1369 (F-33) post-merge",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1393",
+      "prev_sha256": "ccafb2290a5a282b3b1eaaccafc366ff0f4f7bf8654475883e58b1a0cd6f5634",
+      "seq": 760,
+      "source_batch": "rebase_f93",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-94": {
@@ -2040,10 +2042,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 17,
+  "findings_morning_ship_ready_count": 18,
   "findings_terminal_count": 77,
-  "journal_head_seq": 759,
-  "journal_head_sha256": "ccafb2290a5a282b3b1eaaccafc366ff0f4f7bf8654475883e58b1a0cd6f5634",
+  "journal_head_seq": 760,
+  "journal_head_sha256": "1dbfe0ed419cd8199963fd351e464a69855a7a45ca49f9c164956386a88d62e9",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
