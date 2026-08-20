@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 788,
+  "event_count": 791,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -326,17 +326,18 @@
     },
     "F-112": {
       "confidence": "HIGH",
-      "disposition": "UNKNOWN",
-      "event_sha256": "a3da92fdb3c99cdf55a9356f6906cea9a64ba64e9aaf1c951debb0ed8042e484",
+      "disposition": "LANDED",
+      "event_sha256": "e8a9c349964332c0b5936f6ef524bc775b88b3b47d0a93ccf890391801604611",
       "event_type": "finding_status",
-      "evidence_summary": "Opus review (ESC-001) found this was MIS-PARKED: the corpus row already says service_closed with a clear reopen-only-on-regression next_action -- the conductor should not have demoted it. What the conductor actually found investigating it is a SEPARATE, real SN.7 defect: assess_career's docstring promises response tightens to roughly half size, but domain_completeness sits in the immune-fields list and never shrinks. Splitting: F-112 itself reverts to its corpus-documented closed state; the docstring defect is filed as its own new item below (F-112-DOCSTRING).",
+      "evidence_summary": "CLOSEOUT BOOKKEEPING CORRECTION (Step 6, not a repair): seq-643's ESC-001 correction event already stated in prose that 'F-112 itself reverts to its corpus-documented closed state' and 'F-112 itself needs no action (reopen only on regression)', but its own structured status/terminal_status fields were left at DECISION_PARKED/null -- never actually applied, a real ledger bookkeeping bug independently caught this session per the Step 6 instruction to verify rather than accept. This event applies the correction the prior session's own prose already intended: F-112 reverts to its corpus-documented service_closed state (the underlying mechanism -- domain_completeness's immunity from response-budget trimming -- was independently confirmed intentional-by-design at seq 513/596, and the accompanying docstring inaccuracy was correctly split out as its own separate, real defect, F-112-DOCSTRING, which is legitimate and independently verified in this same Step 6 pass).",
       "finding_id": "F-112",
-      "next_action": "F-112 itself needs no action (reopen only on regression); see F-112-DOCSTRING for the real new defect found",
-      "prev_sha256": "f3ad4bd1ebac369fc8017ec51604a0fb4370576fd6e7ece873c85ef6c1916d75",
-      "seq": 643,
-      "source_batch": "esc001_review",
-      "status": "DECISION_PARKED",
-      "terminal_status": null
+      "next_action": "none -- reopen only on regression",
+      "prev_sha256": "d415603c8466be957b49a6afe88ed698f98944eb48bf85797858237750503db7",
+      "seq": 789,
+      "session": "PARISESA-V4-CLOSEOUT-20260820T173721Z",
+      "source_batch": "closeout_step6_bookkeeping",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-112-DOCSTRING": {
       "branch": "parisesa/repair-F112-docstring-fix",
@@ -1691,20 +1692,6 @@
       "status": "CONTROL_CLOSED",
       "terminal_status": "CONTROL_CLOSED"
     },
-    "F-75-batch": {
-      "confidence": "HIGH",
-      "disposition": "OBSOLETE_MARKER",
-      "event_sha256": "788dfe335b0e4beada505f477172903fcdb867e43f0163b7d7ef27b1879dab19",
-      "event_type": "finding_status",
-      "evidence_summary": "Obsolete bookkeeping marker -- all 6 underlying findings individually resolved. Safe to delete from the ledger; retained here only for journal audit-trail completeness.",
-      "finding_id": "F-75-batch",
-      "next_action": "none -- delete this row in a future cleanup pass",
-      "prev_sha256": "7b74f7bf24030ef4c2782c2b438bb8873ebd9122fd563562791091169e98a175",
-      "seq": 778,
-      "source_batch": "closure_sweep",
-      "status": "OBSOLETE_MARKER",
-      "terminal_status": null
-    },
     "F-76": {
       "confidence": "HIGH",
       "disposition": "LANDED",
@@ -2047,9 +2034,9 @@
     }
   },
   "findings_morning_ship_ready_count": 21,
-  "findings_terminal_count": 84,
-  "journal_head_seq": 788,
-  "journal_head_sha256": "d415603c8466be957b49a6afe88ed698f98944eb48bf85797858237750503db7",
+  "findings_terminal_count": 85,
+  "journal_head_seq": 791,
+  "journal_head_sha256": "6af9eb1fcef134d64bbdcd4fd7496c30dd336006023c2e7328ea3966252cef7d",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
