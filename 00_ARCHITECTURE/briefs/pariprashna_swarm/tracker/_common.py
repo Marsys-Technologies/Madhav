@@ -12,6 +12,8 @@ HEARTBEAT_JSON = os.path.join(RUNTIME_DIR, "heartbeat.json")
 COLLECTOR_SNAPSHOT_JSON = os.path.join(RUNTIME_DIR, "collector_snapshot.json")
 PIDFILE = os.path.join(RUNTIME_DIR, "trackerd.pid")
 SERVE_TOKEN_FILE = os.path.join(RUNTIME_DIR, "serve_token")
+# Where the current dashboard URLs are always recorded (see serve.py.stable_hostname).
+URL_FILE = os.path.join(RUNTIME_DIR, "URL.txt")
 
 CODE_DIR = os.path.dirname(os.path.abspath(__file__))
 INSTALLED_FROM_JSON = os.path.join(CODE_DIR, "INSTALLED_FROM.json")

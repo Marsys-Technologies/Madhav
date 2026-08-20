@@ -457,6 +457,25 @@ frozen-board scenario.
 
 ## LAN access (phone)
 
+**Use the stable name, not the IP.** `serve.py` prints both at every start and records them
+in `~/.pariprashna-tracker/URL.txt`; `tracker-health-check` echoes them too, so the current
+address is always answerable from the machine instead of from memory of some past boot:
+
+- `http://<LocalHostName>.local:8934/<token>/` — **preferred.** Bonjour/mDNS, follows this
+  Mac across networks. (Native on macOS/iOS; Android mDNS support is patchy — use the IP
+  form there.)
+- `http://<current-LAN-IP>:8934/<token>/` — works today, **breaks whenever the Mac's LAN IP
+  changes.**
+
+That last failure mode is not hypothetical: on 2026-08-20 this machine moved from
+192.168.1.9 to 192.168.101.13 and the IP URL previously handed to the operator simply
+stopped connecting. A browser renders a never-completing TCP connect as an indefinitely
+blank page, which is indistinguishable from the tracker having died — and was reported as
+exactly that, while the daemon was healthy the whole time. An observability tool whose own
+address silently expires fails at its one job.
+
+
+
 `serve.py` binds `0.0.0.0:8934` and serves `~/.pariprashna-tracker/` under a random path
 token generated at first run and persisted to `~/.pariprashna-tracker/serve_token`
 (printed to `logs/serve.out.log` at every start). **This is unauthenticated plaintext on

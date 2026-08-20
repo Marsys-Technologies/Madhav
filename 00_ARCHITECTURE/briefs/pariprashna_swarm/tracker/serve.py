@@ -9,10 +9,11 @@ import http.server
 import os
 import secrets
 import socket
+import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from _common import RUNTIME_DIR, SERVE_TOKEN_FILE, ensure_runtime_dirs  # noqa: E402
+from _common import RUNTIME_DIR, SERVE_TOKEN_FILE, URL_FILE, ensure_runtime_dirs  # noqa: E402
 import shutil  # noqa: E402
 
 
@@ -37,6 +38,25 @@ def get_or_create_token():
     with open(SERVE_TOKEN_FILE, "w", encoding="utf-8") as f:
         f.write(tok)
     return tok
+
+
+def stable_hostname():
+    """A name that survives the Mac changing networks. The raw LAN IP does NOT: on
+    2026-08-20 this machine moved from 192.168.1.9 to 192.168.101.13 and the IP-based URL
+    that had been handed to the operator simply stopped connecting (TCP SYN_SENT), which in
+    a browser is an indefinitely-blank page -- indistinguishable from the tracker itself
+    having died, and reported as exactly that. An observability tool whose address silently
+    expires is failing at its one job.
+
+    macOS publishes <LocalHostName>.local over Bonjour/mDNS, which follows the machine
+    across networks. Returns None if it cannot be determined."""
+    try:
+        r = subprocess.run(["scutil", "--get", "LocalHostName"],
+                           capture_output=True, text=True, timeout=5)
+        name = (r.stdout or "").strip()
+        return f"{name}.local" if r.returncode == 0 and name else None
+    except Exception:  # noqa: BLE001 -- never let URL cosmetics stop the server booting
+        return None
 
 
 def lan_ip():
@@ -82,8 +102,23 @@ def main():
     _ensure_dashboard_deployed()
     token = get_or_create_token()
     ip = lan_ip()
-    url = f"http://{ip}:{PORT}/{token}/"
-    print(f"Paripraśna tracker LAN URL: {url}", file=sys.stderr)
+    host = stable_hostname()
+    ip_url = f"http://{ip}:{PORT}/{token}/"
+    stable_url = f"http://{host}:{PORT}/{token}/" if host else None
+
+    # Persist both, so the current address is always answerable from a file instead of from
+    # memory of what was printed at some past boot -- and so a blank page can be told apart
+    # from a moved one without having to ask anybody.
+    ensure_runtime_dirs()
+    with open(URL_FILE, "w", encoding="utf-8") as f:
+        f.write(f"# Paripraśna tracker — written at every serve.py start\n")
+        f.write(f"# PREFER the stable name: it follows this Mac across networks.\n")
+        f.write(f"stable_url: {stable_url or '(unavailable — mDNS name not resolvable)'}\n")
+        f.write(f"ip_url:     {ip_url}   # breaks whenever this Mac's LAN IP changes\n")
+    if stable_url:
+        print(f"Paripraśna tracker URL (stable, survives IP changes): {stable_url}", file=sys.stderr)
+    print(f"Paripraśna tracker URL (current IP, breaks on network change): {ip_url}", file=sys.stderr)
+    print(f"Both recorded in {URL_FILE}", file=sys.stderr)
     print("UNAUTHENTICATED PLAINTEXT on the local network. Do not port-forward or tunnel this.", file=sys.stderr)
     handler = make_handler(token)
     httpd = http.server.ThreadingHTTPServer(("0.0.0.0", PORT), handler)
