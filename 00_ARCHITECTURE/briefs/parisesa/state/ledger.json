@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 828,
+  "event_count": 829,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -763,17 +763,17 @@
     },
     "F-139": {
       "confidence": "HIGH",
-      "disposition": "EXTERNAL_HOLD",
-      "event_sha256": "23f0bc9f00c74981655dc75246235e3a8a6563a54c9b87ef7d16985b9b12c73c",
+      "disposition": "LANDED",
+      "event_sha256": "d072b77ffc0b1d63a7f06d395d1648d00a8d71693e19723426281a4f559c7de5",
       "event_type": "finding_status",
-      "evidence_summary": "Reclassified from DECISION_PARKED to EXTERNAL_HOLD (bookkeeping correction matching the finding's own existing next_action): external corpus lookup needed before sub-commit isolation can even be attempted -- nothing autonomous can supply the missing corpus.",
+      "evidence_summary": "Original claim (recovered from /Users/Dev/shad_overnight corpus): kala_now_get/kala_explain_get's state_delta honest_empty reason claimed 'Requires ka_kshetra field provenance rows... P-G1 field-build must complete first' when those rows already existed in quantity in production -- a narration-fidelity defect (the honest-null was correct, its stated REASON was false). VERIFIED on current origin/main: now.ts's state_delta honestEmptyCoverage text no longer makes this claim at all -- it now reads 'no authoritative state-delta result for this chart... not yet computed' (SHAD_DARSHANA_CLOSE_v1_0.md section 2 E6 disposition VERIFIED-FIXED (lite)), correctly describing the real remaining gap (the computation itself, not the field-build) without pointing a reader at an already-complete prerequisite. explain.ts no longer references state_delta at all. The stale/false reason text has already been corrected by a prior session's work.",
       "finding_id": "F-139",
-      "next_action": "external corpus lookup needed before sub-commit isolation can be attempted.",
-      "prev_sha256": "8bb65b78a3c7909f34eb29480e4f7592290ce6a7dd0b29a24d527ceeac5ca435",
-      "seq": 821,
-      "source_batch": "v3_ga2_decision_closures",
-      "status": "EXTERNAL_HOLD",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "prev_sha256": "fc6076fc87a72ccb756761e11a689275998950a5f5595f76c44335b0f379cbc1",
+      "seq": 829,
+      "source_batch": "v3_ga2_decision_closures_corrected",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-14": {
       "confidence": "HIGH",
@@ -2026,9 +2026,9 @@
     }
   },
   "findings_morning_ship_ready_count": 11,
-  "findings_terminal_count": 99,
-  "journal_head_seq": 828,
-  "journal_head_sha256": "fc6076fc87a72ccb756761e11a689275998950a5f5595f76c44335b0f379cbc1",
+  "findings_terminal_count": 100,
+  "journal_head_seq": 829,
+  "journal_head_sha256": "d072b77ffc0b1d63a7f06d395d1648d00a8d71693e19723426281a4f559c7de5",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
