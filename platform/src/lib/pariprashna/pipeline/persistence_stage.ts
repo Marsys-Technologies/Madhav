@@ -55,6 +55,13 @@ import type { ServerGroundingSummary } from '@/lib/pariprashna/protocol/events'
 import type { ToolBundle } from '@/lib/retrieval/shared_types'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
+import type { WebCompletenessReceipt } from '@/lib/pipeline/completeness_wiring'
+import {
+  assembleAcharyaReadingReceipt,
+  validateAcharyaReadingReceipt,
+  withAcharyaReadingReceipt,
+  isReceiptEmissionEnabled,
+} from '@/lib/pariprashna/receipt'
 
 import type { TurnIdentity, TurnParams } from './stage_context'
 import {
@@ -153,6 +160,21 @@ export async function runPersistenceStage(args: {
    * tally, visibly labeled as an estimate (never silently substituted).
    */
   groundingSummary?: ServerGroundingSummary
+  /**
+   * Lane G3-A (PPR-01). This turn's own WebCompletenessReceipt
+   * (`evidence.completenessReceipt` in route.ts) — the real source for the
+   * receipt's `coverage` and `honest_gaps` fields. Omitted/null → those
+   * fields assemble as `status: 'unavailable'` with an honest reason, never
+   * a fabricated coverage number.
+   */
+  completenessReceipt?: WebCompletenessReceipt | null
+  /**
+   * Lane G3-A. `TurnCitationStream.hallucinationCount` from the synthesis
+   * stage — the real source for the receipt's `evidence_grades.
+   * hallucination_count`. Omitted → 0, matching `citationHallucinationCount`'s
+   * own honest-zero-when-flag-off convention in `synthesis_stage.ts`.
+   */
+  citationHallucinationCount?: number
 }): Promise<void> {
   const {
     em,
@@ -173,6 +195,8 @@ export async function runPersistenceStage(args: {
     citationRewriteEnabled = false,
     resolvedCitations = [],
     groundingSummary,
+    completenessReceipt = null,
+    citationHallucinationCount = 0,
   } = args
   const { turnId, queryId, conversationId, chartId, isFirstTurn } = identity
 
@@ -374,6 +398,54 @@ export async function runPersistenceStage(args: {
               preResolvedCitations: citationRewriteEnabled ? citationsFound : undefined,
             })
 
+          // ── G3-A (PPR-01): AcharyaReadingReceipt v1. ────────────────────
+          // Assembled from data this closure ALREADY computed above
+          // (citationsFound, canonicalParts's inputs) or already holds in
+          // scope (plan, provenanceStamp, args.safetyDecision,
+          // validToolResults, completenessReceipt) — no new DB read, no
+          // re-derivation of any value another stage already computed.
+          // Validated before persistence; a receipt that fails its own
+          // structural contract is logged and OMITTED (never persisted
+          // malformed) — the reading itself is never put at risk over a
+          // receipt fault, same discipline every other best-effort splice
+          // in this file follows.
+          // Deliberately untouched (not defaulted to `{}`) when the flag is
+          // off or the block below never runs — `canonicalMessage.metadata`
+          // must stay byte-identical to `writeArgs.lastAssistantMetadata`,
+          // `undefined` included, for the flag-OFF path.
+          let metadataWithReceipt = writeArgs.lastAssistantMetadata
+          if (isReceiptEmissionEnabled()) {
+            try {
+              const receipt = assembleAcharyaReadingReceipt({
+                turnId,
+                conversationId,
+                chartId,
+                plan: { domains: plan.domains },
+                committedBlocks,
+                accumulatedText,
+                citationsFound,
+                citationRewriteEnabled,
+                resolvedCitations,
+                citationHallucinationCount,
+                completenessReceipt,
+                safetyDecision: args.safetyDecision,
+                validToolResults,
+                provenanceStamp,
+              })
+              const validation = validateAcharyaReadingReceipt(receipt)
+              if (!validation.ok) {
+                console.error(
+                  '[pariprashna/receipt] validator REJECTED assembled receipt — not persisted:',
+                  validation.violations,
+                )
+              } else {
+                metadataWithReceipt = withAcharyaReadingReceipt(metadataWithReceipt ?? {}, receipt)
+              }
+            } catch (err) {
+              console.error('[pariprashna/receipt] assembly failed (non-fatal, receipt omitted this turn):', err)
+            }
+          }
+
           const canonicalMessage: CanonicalMessage = {
             id: assistantMessageId,
             conversation_id: conversationId,
@@ -381,7 +453,7 @@ export async function runPersistenceStage(args: {
             schema_version: CANONICAL_SCHEMA_VERSION,
             model_id: params.modelId,
             provider: params.modelMeta.provider,
-            metadata: writeArgs.lastAssistantMetadata,
+            metadata: metadataWithReceipt,
           }
 
           let canonicalOk = true
