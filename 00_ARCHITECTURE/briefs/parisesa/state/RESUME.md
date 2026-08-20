@@ -1,55 +1,64 @@
-# PARISESA-V4 RESUME
+# PARISESA-V4 RESUME (authoritative — journal-derived)
 
 **Session:** PARISESA-V4-CONDUCTOR-20260820T005119Z
-**Journal head:** seq 12
-**Phase:** P-1 MOSTLY_COMPLETE → G0 → Phase 0 (Truth Cut) not yet started
+**Journal head:** seq 192 on `parisesa/campaign-state` (commit will follow this write)
+**Phase:** Phase 0 SELF-RATIFIED COMPLETE → Phase 1 tracker-spine (partially done, no
+dashboard HTML yet) → Phase 2 (PROOF-LANDED wave) starting next
 
-## What this session verified (independently, not inherited)
-- origin/main pinned at `43d8c8a05` (fresh fetch)
-- 4 rescue/preservation branches + 7 stash-rescue branches confirmed present on origin
-- primary checkout (`/Users/Dev/Vibe-Coding/Apps/Madhav`) confirmed detached at `c5e60723f`
-- overnight enablement (settings.local.json, watchdog.sh, cron `*/5 * * * *`, tmux
-  session `parisesa` running this very conductor under `--dangerously-skip-permissions`)
-  all confirmed live
-- SAFE handoff receipt checksum `bffbaaa2...acc30` independently re-verified on disk — matches
-- Coordination lease/session-open entry pushed: commit `a8e5c03f7` on `campaign-coordination`
-- Tracker spine itself (this journal/ledger) pushed for the first time — the prior lineage
-  (`PARISESA-V4-CONDUCTOR-20260820T000018Z`) never got this far despite its RESUME.md claiming
-  P-1 complete; treated as a crash, not trusted blindly (its branch/file claims were
-  independently re-verified above before being journaled)
+## Milestone: Phase 0 truth-cut complete and adversarially ratified
+All 141/141 findings reconciled against current `origin/main` (`43d8c8a05`), not the
+stale `closure-matrix.json` snapshot (which was pinned to `c17f013cb8` and had only 3
+truth-reconciled rows). 3-subagent Opus-5 default-REFUTED ratification panel ran against
+all 35 first-pass terminal claims: 30 survived majority non-refutation, 5 were demoted
+(F-102, F-105, F-79, F-81, F-99 — each rested on unfalsifiable or under-verified
+evidence), 3 survived but flagged low-confidence for the morning report (F-103, F-108,
+F-97).
 
-## Open verification debt (not blockers, no merge/deploy/data action pending on them)
-- Local `main` fast-forward to `c5e60723f` (P-1.7) — inherited claim only, not re-verified
-- `coord-edit` worktree fast-forward (P-1.8) — inherited claim only, not re-verified
-- EKAVĀKYATĀ formal `state:PARKED` tag (P-1.4) — no such tag found anywhere; EKAVĀKYATĀ is
-  independently known dormant/CLOSED-PARTIAL from the separate SAMAPTI arc, so this is a
-  paperwork gap, not a live-campaign risk. Flag for morning report; do not manufacture a
-  park action just to close the checkbox.
-- Mandatory reading list (16 items) has NOT been read exhaustively this session — only the
-  items load-bearing for P-1/G0 decisions were pulled (CAMPAIGN_COORDINATION.md,
-  SAFE_HANDOFF_RECEIPT). Read the rest (CCD register, GOVERNANCE_INTEGRITY_PROTOCOL §P,
-  CROSS_CAMPAIGN_COLLISION_FORENSICS X-1..X-7, PROTOCOL.md, Closure Factory plan v1.1/v2.1
-  full text) before Phase 0 findings are journaled as self-ratified truth-cut rows — Phase 0's
-  reconciliation quality depends on actually having read the plan's §14.2 procedure, not just
-  this session's summary of it from the kickoff prompt.
+**Final distribution (141 total):** 30 terminal (21 SERVICE_CLOSED, 6
+HISTORICAL_STALE_CLOSED, 3 CONTROL_CLOSED), 42 LANDED, 24 STRANDED, 40 UNKNOWN, 4 OPEN,
+1 BLOCKED_NO_IMPL.
+
+**Wave assignment for the 111 non-terminal findings:**
+- **PROOF_LANDED (42):** already landed on origin/main, needs a proof pass (re-verify
+  live service/deployment still serves the fix) before it can close terminal.
+- **REBASE (24):** real implementation exists on a stranded branch (mostly
+  `par/night-F-*` and some `codex/v4-f*`), needs rebase onto current origin/main,
+  re-review, re-test, PR-open-and-frozen.
+- **TRIAGE_NEEDED (45):** UNKNOWN/OPEN/BLOCKED_NO_IMPL — needs individual
+  investigation before it can even be assigned a wave; some of these may turn out to
+  need a fresh build, some may be DECISION_PARKED (architecture calls), some may
+  resolve to LANDED or STRANDED on closer look.
+- Full id lists: journal events `wave_assignment` at seq ~189-191, or ledger.json's
+  `findings` map (`status` field: LANDED/STRANDED/UNKNOWN/OPEN/BLOCKED_NO_IMPL).
+
+## IMPORTANT correction to the kickoff prompt's parallelism numbers
+The plan's own §10 WIP limits (found via mandatory-reading fork, not in the kickoff
+prompt) are **more conservative** than what the kickoff prompt described: **1 proof-only
+train, 2 active code trains, 1 contract/spec train, 1 merge-queue item, 1
+deployment-under-proof, 0 concurrent protected-data writers** — not "up to 4/6/8
+parallel." Adopted per the same reasoning as PROVISIONAL_RULING PR-001 (the plan is
+higher-authority than the kickoff prompt's summary of it). Repair waves from here run
+serialized at these limits, not fanned out widely.
 
 ## NEXT ATOMIC ACTION
-Read the remaining mandatory documents (CCD register, GOVERNANCE_INTEGRITY_PROTOCOL §P,
-X-1..X-7 collision forensics, PROTOCOL.md, Closure Factory plan v2.1 full text — the plan
-supersedes v1.1 on conflict) to ground Phase 0's actual reconciliation procedure, THEN emit
-G0 SESSION_OPEN and begin Phase 0 truth-cut on a first small batch of findings (not all 141
-at once) via parallel read-only subagents, journaling each as it resolves.
+Start Wave PROOF_LANDED: take findings one at a time (WIP=1 proof-only train), re-verify
+each is still genuinely served/true against current state, terminalize if confirmed.
+First candidate: F-04 (or any from the PROOF_LANDED list). After a few PROOF_LANDED
+items establish the pattern, open a second concurrent lane for Wave REBASE (WIP=2 code
+trains total, so 1 proof + up to 2 rebase, or adjust down if proof is still running).
 
-## Auth status (inherited, re-check before first push/PR of this session if any push fails)
-- git push: confirmed working this session (coordination + state branch pushes both succeeded)
-- gh / gcloud / psql: not re-verified this session; prior session claimed gh+gcloud ACTIVE,
-  psql PARKED-BY-AUTH (no DATABASE_URL) — re-verify before first use, do not assume
+## Open items carried from earlier (unchanged, still not blockers)
+- Local-main fast-forward (P-1.7) and coord-edit worktree fast-forward (P-1.8) — never
+  independently re-verified this lineage.
+- EKAVĀKYATĀ formal park-tag — never found; campaign is dormant regardless.
+- CCD-009 / PR #1362 open, frozen, awaiting morning ratification.
+- Full 16-item mandatory-reading list still not exhaustively read — only the
+  load-bearing subset (Closure Factory plan v1.0 full text, PROTOCOL.md,
+  GOVERNANCE_INTEGRITY_PROTOCOL §P, CCD register, X-1..X-7 collision forensics) has
+  been read via the two mandatory-reading forks this session.
 
 ## Campaign state
-- `parisesa/campaign-state` branch: now pushed to origin for the first time (this session)
-- origin/main: `43d8c8a05`
-- PARIPRAŚNA: P2 ACTIVE, just requested a merge window for the presentation-truth wave —
-  corpus STRANGER, zero namespace overlap, do not touch
-- PARIŚEṢA / Codex (the pre-V4 lineage of this same campaign): last activity 2026-08-19,
-  its takeover-lease rows in campaign-coordination are DEAD BY EXPIRY; no live Codex process
-  detected this session (not exhaustively checked — `ps aux | grep codex` not yet run)
+- `parisesa/campaign-state`: journal head seq 192, pushed.
+- origin/main: `43d8c8a05` (re-pin before next merge-queue-adjacent action per X-1).
+- PARIPRAŚNA: still the only other live campaign observed; no collision this session.
+- CCD-009 (PR #1362): open, frozen, not merged.
