@@ -1,73 +1,46 @@
-# PARISESA-V4 RESUME (authoritative — journal-derived, re-verified after ESC-001)
+# PARISESA-V4 RESUME (authoritative — journal-derived)
 
 **Session:** PARISESA-V4-CONDUCTOR-20260820T005119Z
-**Journal head:** seq 661
-**Phase:** Phase 2 (repair waves), post-independent-Opus-review correction pass
+**Journal head:** seq 672 (round 5 dispatched, not yet folded)
+**Phase:** Phase 2 repair waves, round 5 IN FLIGHT
 
-## ⚠️ READ THIS FIRST IF YOU (owner or a resuming session) ARE ABOUT TO REVIEW/MERGE MANUALLY
-The watchdog cron (`*/5 * * * * .../watchdog.sh`) is still armed against the `parisesa`
-tmux pane. It fires `claude --continue` if `heartbeat.json` goes >20min stale, which can
-spawn an autonomous continuation while you're mid-review — this already happened once
-tonight (see PF-002) and produced a real, if ultimately benign, concurrent-write event.
-**Before you start manually merging PRs or editing tracker state by hand: `touch
-/Users/Dev/par-night/parisesa-v4-conductor/STOP.flag`** to disarm it. Remove the flag
-file to re-arm if you want autonomous work to resume after.
+## Lesson from this session (repeat pattern, now fixed): a status message that says
+"continuing" without an actual dispatch in the same turn does not make progress --
+verified twice tonight (journal head sat idle ~90+ min both times while heartbeat
+went stale). Always dispatch AND wait AND fold before ending a turn.
 
-## Environment note from the concurrent thread (still true, keep using this)
-`Agent(subagent_type: "fork")` fails with "Fork is not available inside a forked worker"
-in some dispatch contexts this session. Use `subagent_type: "general-purpose"` (or omit
-it) with fully self-contained prompts instead when that happens.
+## IN-FLIGHT (round 5, 5 agents: 3 code trains WIP3, 2 proof trains WIP2 per PR-002)
+- F-68 rebase/quarantine-review -- phase0/rebase_f68.json
+- F-123 fresh build (dead pointer) -- phase0/rebase_f123.json
+- F-14+F-124 reconciliation (two overlapping ratified branches) -- phase0/rebase_f14_f124.json
+- Proof train A (14: F-01,F-05,F-100,F-101,F-102,F-103,F-108,F-11,F-111,F-115,F-119,
+  F-127,F-128,F-131) -- phase0/proof_batch_f.json
+- Proof train B (14: F-133,F-137,F-138,F-139,F-16,F-18,F-19,F-20,F-22,F-24,F-28,F-29,
+  F-30,F-34) -- phase0/proof_batch_g.json
 
-## What changed this update: an owner-requested high-effort Opus review (ESC-001) found
-real defects in what this session had been reporting as done. Corrected, not hidden:
+## Confirmed working this session: DB access via gcloud (owner-provided path)
+`gcloud secrets versions access latest --secret=amjis-pipeline-db-url` + existing
+cloud-sql-proxy on 127.0.0.1:5433. Read-only only (amjis_app user). Closed 5 more
+findings this way (F-76,F-80,F-82,F-85,F-86). F-75/F-84 timed out (twice, up to 5min)
+-- likely DB contention from a concurrently-running EKAVAKYATA SENTINEL process
+(pid 30415, live since before this session started -- see PF-003). Retry later.
 
-- **PR #1368 (F-122) and PR #1366 (F-121) are NOT safe to merge as-is** — pulled from
-  the ship-ready queue, marked NEEDS_REVISION, with the specific defects and fixes
-  needed recorded in the ledger. #1368 has a genuine correctness bug (aliased ledger
-  objects silently empty a surviving candidate's confirmed data under trim pressure).
-  #1366 has a hollow test, a stretched fixture, and a narration-fidelity violation.
-- **PR #1362 (CCD-009) was blocked by a real governance violation**, not a nuisance —
-  fixed (missing summary-table row added, manifest fingerprint rotated, drift_detector
-  now clean at 216/exit=3/0-HIGH). CI re-running.
-- **PR #1370 (F-26) and #1371 (F-25) bodies corrected** — #1370 had a false
-  "merge authority: CCD-009" claim (removed); #1371 was mis-labeled "authorization
-  bypass" (corrected to "audit-attribution defect" — real fix, zero regression risk,
-  genuinely safe to merge, just described wrong).
-- **16 terminal findings demoted back to LANDED** — the review found the truth-cut
-  ratification panel was ~80% pure ancestry-only checks replicated 3x, not independent
-  verification; these 16 (list in ledger, source_batch=esc001_review) rested on nothing
-  stronger than that. Terminal count corrected 41 → **25**, all now either
-  live-canary-verified or content-matched to a named sub-commit.
-- **F-112 was mis-parked** — split into F-112 (reverted to its actual corpus-documented
-  closed state) and a new F-112-DOCSTRING (a real narration-accuracy bug the
-  investigation actually found).
-- **6 of the 11 DECISION_PARKED findings are one action, not six** — F-75/76/80/82/85/86
-  all just need read-only DB access + running an already-written detector set.
+## PF-003: EKAVAKYATA is NOT dormant, contra this session's earlier P-1.4 note.
+Live SENTINEL process + 3 more unidentified claude processes found on this machine.
+Read-only by SENTINEL's own design, no corrective action taken, but treat
+coordination-log dormancy claims as unverified going forward -- check live processes.
 
-## Genuinely ready for your review right now
-- **MORNING_SHIP_READY (3):** #1371 (F-25, safe as-is), #1370 (F-26, safe as-is),
-  #1369 (F-33, safe as-is, minor non-blocking follow-ups noted in ledger).
-- **NEEDS_REVISION (2, do not merge without the fixes):** #1368 (F-122), #1366 (F-121).
-- **Governance:** #1362 (CCD-009) — fixed, CI re-running, should go green.
+## Current tally before this round (re-verify fresh, don't trust this number blind)
+30/141 terminal, 3 PRs ready (#1369,#1370,#1371), 1 governance PR ready (#1362,
+CI green), 2 PRs need real fixes before merge (#1366,#1368 -- see ESC-001 findings
+in ledger, do not merge on green CI alone, the defects aren't test-covered).
 
-## Priority items the review surfaced that weren't on anyone's radar
-- **F-68, F-123** — STRANDED, high-confidence, currently-reproducing live defects with
-  candidate branches already located (`origin/par/night-F-68`; F-123's defect is
-  confirmed on the *deployed* service). Worth prioritizing over some DECISION_PARKED items.
-- **F-48** (BLOCKED_NO_IMPL) — needs an owner ruling on which authority governs PH-4-4
-  scoring; arguably belongs in your decision queue ahead of the DB-access batch.
-- 8 ledger records still carry a stale contradictory `disposition` field alongside the
-  correct `status` (F-23,F-25,F-26,F-33,F-42,F-50,F-121,F-122) — cosmetic, not a
-  trust issue, but worth a cleanup pass.
-
-## NEXT ATOMIC ACTION
-Re-verify the 16 demoted-to-LANDED findings (content-match or live canary, same standard
-applied all night) and continue the remaining wave (12 STRANDED not yet rebased, 12 OPEN
-needing fresh builds, F-68/F-123 prioritized). Re-fetch live state before dispatching —
-do not trust this file's numbers without re-reading ledger.json fresh (see PF-002).
+## NEXT ATOMIC ACTION (once round 5 lands)
+Fold all 5 outputs, commit+push, then continue with remaining STRANDED (F-06,F-27,
+F-35,F-38,F-61,F-67,F-79,F-91,F-93,F-107,F-123[handled],F-130,F-134,F-135,F-68[handled],
+F-69,F-124[handled],F-14[handled]) and OPEN (F-57,F-60,F-73,F-78,F-110,F-112-DOCSTRING,
+F-113,F-114,F-118,F-125,F-126,F-129) findings.
 
 ## Campaign state
-- `parisesa/campaign-state`: journal head seq 661.
-- origin/main: `43d8c8a05` (re-pin before next merge-queue-adjacent action).
-- Open frozen PRs: #1362 (CCD-009, fixed), #1366 (F-121, NEEDS_REVISION), #1368
-  (F-122, NEEDS_REVISION), #1369 (F-33, ready), #1370 (F-26, ready), #1371 (F-25, ready).
+- origin/main: `43d8c8a05` (re-pin before merge-queue-adjacent action).
+- Watchdog still armed, no STOP.flag -- set one before manual merge review.
