@@ -12,7 +12,7 @@ export interface FrozenBlockProps {
   citations: Record<number, Citation>
 }
 
-function FrozenBlockImpl({ turnId, block, citations }: FrozenBlockProps) {
+function renderBlockContent({ turnId, block, citations }: FrozenBlockProps) {
   switch (block.kind) {
     case 'paragraph':
     case 'list':
@@ -40,6 +40,23 @@ function FrozenBlockImpl({ turnId, block, citations }: FrozenBlockProps) {
     default:
       return null
   }
+}
+
+function FrozenBlockImpl(props: FrozenBlockProps) {
+  const content = renderBlockContent(props)
+  if (content === null) return null
+  // `data-committed="true"` (§9.3 structural test hook): the aria-live
+  // discipline gate asserts no committed block is a descendant of the
+  // streaming tail's `[aria-live="polite"]` region — a committed block
+  // staying inside the live region would cause a screen reader to
+  // re-announce settled prose forever. Tagging every committed block here
+  // (rather than per-block-kind) means the assertion holds regardless of
+  // which block type settles.
+  return (
+    <div data-committed="true" data-block-kind={props.block.kind}>
+      {content}
+    </div>
+  )
 }
 
 /**
