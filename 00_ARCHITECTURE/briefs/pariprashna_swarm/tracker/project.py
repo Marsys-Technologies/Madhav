@@ -67,25 +67,91 @@ def load_all_events():
     return events
 
 
+def lane_identifiers(lane):
+    """Every identifier this lane answers to: its own id plus its gate id (the swarm names
+    branches and PRs by GATE -- `pariprashna/g1-a-safety-gate`, "(G3-E/G3-G)" -- while this
+    plan's lane ids are P<phase>-<letter>. Matching only on the lane id is why 46 of 53
+    lanes read PLANNED for 17.5h while two whole phases shipped)."""
+    ids = [lane["id"].upper()]
+    if lane.get("gate"):
+        ids.append(lane["gate"].upper())
+    return ids
+
+
+def find_lane_branch(lane, snapshot):
+    """Single source of truth for lane->branch matching, used BOTH for state derivation and
+    for the table's Branch column. These used to be two different rules -- the display
+    column matched on a bare prefix and so showed e.g. P1-C -> `p1-close-tracker` and
+    P2-F -> `p2-final`, branches those lanes have nothing to do with, while the state logic
+    (correctly) matched neither. Two rules for one question is how a page shows a lane
+    attached to a branch it isn't deriving anything from."""
+    branches = (snapshot.get("git_lane_branches") or {}).get("value") or {}
+    for name in sorted(branches):
+        short = name.split("/")[-1].lower()
+        for ident in lane_identifiers(lane):
+            i = ident.lower()
+            if short == i or short.startswith(i + "-"):
+                return name
+    return None
+
+
+_CONDUCTOR_STAGE_TO_STATE = {
+    "queued": "PLANNED", "building": "BUILDING", "verifying": "VERIFYING",
+    "refuting": "ADVERSARIAL", "admissible": "ADMISSIBLE", "merged": "MERGED",
+    "parked": "PARKED", "blocked": "BLOCKED", "closed": "CLOSED",
+}
+
+
+def conductor_claim_for_lane(lane, snapshot):
+    """The conductor's own SWARM_TRACKER.json entry for this lane, if any. Returns
+    (state, provenance) or (None, None). Always rendered CLAIMED by the caller: this is the
+    subject describing itself, and derived evidence always wins over it."""
+    cs = snapshot.get("conductor_state") or {}
+    if cs.get("evidence_class") != "DERIVED":
+        return (None, None)
+    stages = (cs.get("value") or {}).get("lane_stages") or {}
+    for ident in lane_identifiers(lane):
+        stage = stages.get(ident)
+        if stage:
+            mapped = _CONDUCTOR_STAGE_TO_STATE.get(str(stage).lower())
+            if mapped:
+                return (mapped, f"conductor SWARM_TRACKER.json: {ident} role_stage="
+                                f"{stage!r} (self-report, not derived)")
+    return (None, None)
+
+
 def derive_lane_state(lane, snapshot):
-    """Returns (state, evidence_class, provenance) or (None, None, None) if no derived
-    evidence exists (caller falls back to claims)."""
+    """Returns (state, evidence_class, provenance) or (None, None, None) if NO derived
+    evidence exists at all (caller then falls back to the conductor's claim, and failing
+    that to UNOBSERVABLE -- never to a fabricated PLANNED)."""
+    # (1) PRIMARY, and the fix for this tracker's central defect: a merged PR that declares
+    # it implements this lane. A merge is a fact. This is the only source that actually
+    # tracks the swarm's real progress -- see collect.extract_lane_identifiers.
+    merged = (snapshot.get("recent_merged_prs") or {}).get("value") or []
+    idents = set(lane_identifiers(lane))
+    for pr in merged:
+        implements = {i.upper() for i in (pr.get("implements") or [])}
+        if not (idents & implements):
+            continue
+        if not pr.get("is_ancestor_of_mirror_main"):
+            # gh says merged but the mirror hasn't got it yet -- do not claim MERGED off a
+            # commit this tracker cannot actually see. The ref-lag anomaly covers it.
+            continue
+        matched = sorted(idents & implements)
+        return ("MERGED", "DERIVED",
+                f"PR #{pr['number']} implements {', '.join(matched)}; merge commit "
+                f"{pr['merge_commit_sha'][:10]} is an ancestor of main (mirror)")
+
     ea = (snapshot.get("expected_artifacts") or {}).get("value") or {}
     lane_ea = ea.get(lane["id"]) or {}
     mc = lane_ea.get("merge_commit")
     if mc and mc.get("is_ancestor_of_main"):
-        closed = lane.get("_phase_status") == "CLOSED"
-        return ("CLOSED" if closed else "MERGED", "DERIVED",
+        return ("MERGED", "DERIVED",
                 f"git merge-base --is-ancestor {mc['sha']} main (mirror)")
 
-    branches = (snapshot.get("git_lane_branches") or {}).get("value") or {}
     prs = (snapshot.get("github_prs") or {}).get("value") or {}
-    candidate_branch = None
-    for name in branches:
-        short = name.split("/")[-1].lower()
-        if short == lane["id"].lower() or short.startswith(lane["id"].lower() + "-"):
-            candidate_branch = name
-            break
+    candidate_branch = find_lane_branch(lane, snapshot)
+    branches = (snapshot.get("git_lane_branches") or {}).get("value") or {}
     if candidate_branch:
         info = branches[candidate_branch]
         ab = info.get("ahead_behind_main")
@@ -183,10 +249,8 @@ def gh_mirror_anomalies(snapshot, events):
 
 def fold(plan, snapshot, events, as_of_epoch):
     lanes_by_id = {}
-    phase_status = {p["id"]: p["status"] for p in plan["phases"]}
     for lane in plan["lanes"]:
         lane = dict(lane)
-        lane["_phase_status"] = phase_status.get(lane["phase"], "PLANNED")
         lanes_by_id[lane["id"]] = lane
 
     new_events_to_write = []
@@ -195,12 +259,26 @@ def fold(plan, snapshot, events, as_of_epoch):
         derived_state, derived_ec, derived_prov = derive_lane_state(lane, snapshot)
         claim = latest_claim(events, lane_id)
 
+        conductor_state, conductor_prov = conductor_claim_for_lane(lane, snapshot)
+
         if derived_state:
             state, evidence_class, provenance = derived_state, derived_ec, derived_prov
         elif claim:
             state, evidence_class, provenance = claim["payload"].get("state", "CLAIMED"), "CLAIMED", claim.get("provenance")
+        elif conductor_state:
+            state, evidence_class, provenance = conductor_state, "CLAIMED", conductor_prov
         else:
-            state, evidence_class, provenance = "PLANNED", "DERIVED", "PLAN.yaml default (no evidence yet)"
+            # The honesty floor. This used to read PLANNED/"DERIVED" -- a fabricated status
+            # dressed as evidence. 46 of 53 lanes have no observable artifact of any kind,
+            # so PLANNED was a confident assertion the tracker had no basis for, and it is
+            # precisely what let the board sit frozen through two shipped phases while
+            # every liveness light stayed green. UNOBSERVABLE says the true thing: nothing
+            # this tracker can see reports on this lane yet.
+            state, evidence_class, provenance = (
+                "UNOBSERVABLE", "UNKNOWN",
+                "no merged-PR evidence, no branch, no artifact, no conductor entry for "
+                f"{'/'.join(lane_identifiers(lane))}",
+            )
 
         if claim and derived_state and claim["payload"].get("state") in CONTRADICTS:
             claimed_state = claim["payload"].get("state")
@@ -243,8 +321,10 @@ def fold(plan, snapshot, events, as_of_epoch):
             "depends_on": lane["depends_on"], "state": state,
             "evidence_class": evidence_class, "provenance": provenance,
             "age_in_state_seconds": max(0, as_of_epoch - transition_epoch),
-            "branch": next((b for b in ((snapshot.get("git_lane_branches") or {}).get("value") or {})
-                             if b.split("/")[-1].lower().startswith(lane_id.lower())), None),
+            # Same matcher as derive_lane_state -- see find_lane_branch's docstring for
+            # why two different rules here was itself a bug.
+            "branch": find_lane_branch(lane, snapshot),
+            "gate": lane.get("gate"),
         })
 
     out_lanes.sort(key=lambda entry: -entry["age_in_state_seconds"])
@@ -275,6 +355,115 @@ def critical_path(plan, out_lanes):
     path = max(all_paths, key=len) if all_paths else []
     blocking = next((lid for lid in path if by_id.get(lid, {}).get("state") not in ("MERGED", "CLOSED")), None)
     return path, blocking
+
+
+DONE_STATES = {"MERGED", "CLOSED", "GATED"}
+ACTIVE_STATES = {"BUILDING", "VERIFYING", "ADVERSARIAL", "QUEUED", "ADMISSIBLE", "SCOUTED"}
+
+
+def fold_phase_status(plan, out_lanes, snapshot):
+    """DERIVE each phase's status from its lanes' evidence, plus the conductor's gate
+    results. Never a hand-typed constant again: PLAN.yaml used to carry `"status":
+    "PLANNED"` string literals that the dashboard's phase rail rendered as if they were
+    live state, so P1 and P2 both showed PLANNED for 17.5h after they had shipped -- P0
+    showed CLOSED only because someone typed CLOSED."""
+    by_phase = {}
+    for lane in out_lanes:
+        by_phase.setdefault(lane["phase"], []).append(lane)
+    cs = (snapshot.get("conductor_state") or {})
+    gates = ((cs.get("value") or {}).get("gate_results") or {}) if cs.get("evidence_class") == "DERIVED" else {}
+
+    out = []
+    for ph in plan["phases"]:
+        lanes = by_phase.get(ph["id"], [])
+        observable = [l for l in lanes if l["state"] != "UNOBSERVABLE"]
+        done = [l for l in lanes if l["state"] in DONE_STATES]
+        active = [l for l in lanes if l["state"] in ACTIVE_STATES]
+        gate_id = ph.get("gate_id")
+        gate_status = gates.get(gate_id) if gate_id else None
+
+        if lanes and done and len(done) == len(lanes):
+            status, why = "CLOSED", f"all {len(lanes)} lanes have merge evidence"
+        elif gate_status == "PASSED" and done:
+            status, why = ("CLOSED",
+                           f"conductor reports {gate_id} PASSED and {len(done)}/{len(lanes)} lanes merged")
+        elif active or done:
+            status, why = ("ACTIVE",
+                           f"{len(done)}/{len(lanes)} lanes merged, {len(active)} in flight")
+        elif not observable:
+            status, why = ("UNOBSERVABLE",
+                           f"no evidence for any of this phase's {len(lanes)} lanes")
+        else:
+            status, why = "PLANNED", "no lane has started"
+        entry = dict(ph)
+        entry["status"] = status
+        entry["status_provenance"] = why
+        entry["lanes_total"] = len(lanes)
+        entry["lanes_done"] = len(done)
+        out.append(entry)
+    return out
+
+
+def board_world_divergence(out_lanes, snapshot, events, as_of_epoch):
+    """The detector whose absence let this tracker sit frozen through two shipped phases
+    while every liveness light stayed green.
+
+    Observer freshness, ref freshness and subject progress all answer "is the OBSERVER
+    working?". None of them answers "does what the board says match what the world did?".
+    So: if merged PRs that this plan recognises have landed on main, but the board shows no
+    lane for them as done, that is a contradiction between the tracker's own two eyes --
+    and it is reported as an anomaly, not left for a human to notice 17 hours later."""
+    merged = (snapshot.get("recent_merged_prs") or {}).get("value") or []
+    if not merged:
+        return {"checked": False, "reason": "no merged-PR evidence this cycle"}, []
+
+    known = set()
+    for lane in out_lanes:
+        known.add(lane["id"].upper())
+        if lane.get("gate"):
+            known.add(lane["gate"].upper())
+    done_idents = set()
+    for lane in out_lanes:
+        if lane["state"] in DONE_STATES:
+            done_idents.add(lane["id"].upper())
+            if lane.get("gate"):
+                done_idents.add(lane["gate"].upper())
+
+    unreflected = []
+    for pr in merged:
+        if not pr.get("is_ancestor_of_mirror_main"):
+            continue
+        implements = {i.upper() for i in (pr.get("implements") or [])}
+        recognised = implements & known
+        if recognised and not (recognised & done_idents):
+            unreflected.append({"pr": pr["number"], "identifiers": sorted(recognised),
+                                "title": pr.get("title", "")[:120]})
+
+    summary = {
+        "checked": True,
+        "merged_prs_examined": len(merged),
+        "unreflected_count": len(unreflected),
+        "unreflected": unreflected[:10],
+    }
+    new_events = []
+    for u in unreflected:
+        key = f"pr{u['pr']}:{'+'.join(u['identifiers'])}"
+        if any(e.get("kind") == "anomaly" and e.get("payload", {}).get("board_divergence_key") == key
+               for e in events):
+            continue
+        new_events.append(dict(
+            writer_id=PROJECTOR_WRITER_ID, kind="anomaly", lane=None,
+            evidence_class="DERIVED",
+            provenance="projector.py board-vs-world divergence check",
+            payload={
+                "message": f"PR #{u['pr']} merged to main implementing "
+                           f"{', '.join(u['identifiers'])}, but no lane on this board shows "
+                           f"it as done -- the board is behind the world.",
+                "board_divergence_key": key, "pr_number": u["pr"],
+                "identifiers": u["identifiers"],
+            },
+        ))
+    return summary, new_events
 
 
 def fold_budget(plan, events):
@@ -386,6 +575,8 @@ def project(write_new_events=True):
 
     out_lanes, new_events = fold(plan, snapshot, events, as_of_epoch)
     new_events = new_events + gh_mirror_anomalies(snapshot, events)
+    divergence, divergence_events = board_world_divergence(out_lanes, snapshot, events, as_of_epoch)
+    new_events = new_events + divergence_events
 
     if write_new_events and new_events:
         for ne in new_events:
@@ -407,7 +598,8 @@ def project(write_new_events=True):
     import datetime
     generated_at = datetime.datetime.fromtimestamp(as_of_epoch, tz=datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    current_phase = next((p for p in plan["phases"] if p["status"] != "CLOSED"), plan["phases"][-1])
+    derived_phases = fold_phase_status(plan, out_lanes, snapshot)
+    current_phase = next((p for p in derived_phases if p["status"] not in ("CLOSED",)), derived_phases[-1])
 
     heartbeat = {}
     if os.path.exists(HEARTBEAT_JSON):
@@ -434,7 +626,7 @@ def project(write_new_events=True):
         "generated_at": generated_at,
         "plan_version": plan["plan_version"],
         "current_phase": current_phase["id"],
-        "phases": plan["phases"],
+        "phases": derived_phases,
         "lanes": out_lanes,
         "critical_path": {"path": path, "blocking_lane": blocking_lane},
         "anomalies": [
@@ -445,6 +637,8 @@ def project(write_new_events=True):
         "budget": fold_budget(plan, events),
         "code_provenance": fold_code_provenance(snapshot),
         "ref_freshness": fold_ref_freshness(snapshot),
+        "board_world_divergence": divergence,
+        "conductor_state": snapshot.get("conductor_state"),
         "shared_surfaces": {k: v for k, v in (snapshot.get("shared_surfaces") or {}).items()},
         "github_rate_limit": snapshot.get("github_rate_limit"),
         "daemon_health": fold_daemon_health(events),

@@ -386,6 +386,58 @@ and a real `deferred_lock_held` event from cron, never both intervening. Observe
 first by neutering cron's lock-peek check (produced 4 bootstrap calls — the holder's plus
 cron's own full 3-job re-bootstrap — and no deferral), then restored.
 
+## Where lane and phase state actually comes from
+
+**The board is derived from what the swarm emits, never from anything hand-typed here.**
+That was not true until 2026-08-20, and the failure it caused is the reason this section
+exists: `PLAN.yaml` carried `"status": "PLANNED"` string literals, 46 of 53 lanes had no
+evidence source at all, and lane ids (`P1-A`) were matched against branches the swarm
+names by gate (`pariprashna/g1-a-safety-gate`). The result was a board that sat frozen
+through two entire shipped phases — P1 (10 lanes) and P2 (15 lanes) — while `generated_at`
+ticked every 36 seconds and every liveness light stayed green.
+
+Sources, in precedence order:
+
+1. **Merged PRs (DERIVED — the primary source).** A merge is a fact. `collect.extract_lane_identifiers`
+   reads each merged PR's **title** plus the identifiers its body marks in **bold**, which
+   is the swarm's own consistent convention: a body bolds the lanes it implements and
+   mentions others in plain prose. Validated against every real phase PR (#1349/#1356/
+   #1360/#1363/#1364/#1365), reproducing the published lane totals exactly (P1 = 10,
+   P2 = 15). Scanning plain body prose instead is *actively wrong*, not just noisy —
+   #1363 says "gating for G3-B/C/D/E/F/G" about lanes it does not implement.
+   A lane is MERGED only if the PR's merge commit is an ancestor of the **mirror's** main:
+   never claim a merge off a commit this tracker cannot see.
+2. **The conductor's own `state/SWARM_TRACKER.json` (CLAIMED).** The conductor never
+   adopted this observatory's `tracker_emit.py` hook (DD-11 is "IN FORCE — NOT YET WIRED"),
+   but it does keep that file current on main. It is the subject describing itself, so it
+   is rendered CLAIMED, never counted as evidence, and always loses to (1).
+3. **`UNOBSERVABLE` (the honesty floor).** No merged PR, no branch, no artifact, no
+   conductor entry ⇒ `UNOBSERVABLE`/`UNKNOWN`. Never `PLANNED` — `PLANNED` is a claim this
+   tracker has no basis for, and asserting it as `DERIVED` is exactly the §N.8 defect the
+   instrument exists to catch.
+
+**Phase status is computed** from those lane states plus the conductor's gate results
+(`fold_phase_status`), and carries its own `status_provenance` string. `PLAN.yaml` no
+longer contains a phase `status` field at all.
+
+**Lane↔gate mapping.** Lanes carry a `gate` field (`P2-I` → `G3-A`) because the swarm
+works in gate ids. Only unambiguous 1:1 mappings are assigned; where one gate covers
+several lanes (G5 → P3-E/F, G7 → P4-A..D) no gate is set, since an ambiguous mapping would
+attribute one PR to lanes it never touched.
+
+## The fourth liveness axis: board vs. world
+
+Observer freshness, ref freshness and subject progress all answer *"is the observer
+working?"*. None answers *"does the board match what the world did?"* — which is why the
+frozen board survived three separate rounds of being certified healthy.
+
+`board_world_divergence` closes that: every cycle it checks whether any merged PR
+implementing a lane this plan recognises has landed on main without that lane showing as
+done. If so it raises an `anomaly` and the header pill turns red — **BOARD BEHIND WORLD**.
+Its selftest asserts it fires on a frozen board and stays silent on a correct one, and it
+was observed failing as a no-op (its literal state before this change) against the real
+frozen-board scenario.
+
 ## The four-tier tap (dead-man's switch)
 
 1. **T1** — `trackerd.py` stamps `~/.pariprashna-tracker/heartbeat.json` every cycle
