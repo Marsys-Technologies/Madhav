@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 823,
+  "event_count": 824,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -819,18 +819,19 @@
       "terminal_status": null
     },
     "F-15": {
-      "confidence": "MEDIUM",
-      "disposition": "UNKNOWN",
-      "event_sha256": "d0f4a3df80d7c3cb8a94d2c165369a95c8d8d11329aa98f923de31f8e366586a",
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "db43444d0500a51c1950f5bf0410fb0fa3c3895efac3b15f0d36b677b086d5ff",
       "event_type": "finding_status",
-      "evidence_summary": "RECOVERED real content-matched evidence (independent of mis-cited cfb6444c8) but correctly NOT promoted to terminal: the real fix (ratified COMPLETE, ba1b445de) was reconciled with F-124 into open PR #1382 (this session), not yet merged. Confirmed the defect (DOMAIN_READING_FAMILIES missing 'relationship' key) is still live/unfixed on current main.",
+      "evidence_summary": "F-15's own prior evidence stated it would close automatically when PR #1382 merges (the F-14/F-124 reconciled fix, DOMAIN_READING_FAMILIES missing 'relationship' key). PR #1382 merged tonight (commit 951990f7886b6d569045998ef1824e2d4f54c0ea) after passing GA-5 (2 real defects found and fixed pre-merge: budget-droppable disclosure layer, fabricated query-failure cause -- see the GA-5 batch journal entries). Closing per the finding's own stated gate condition.",
       "finding_id": "F-15",
-      "next_action": "will close automatically when PR #1382 merges (already tracked as F-14/F-124's MORNING_SHIP_READY item)",
-      "prev_sha256": "eba814d5e55170ac8f9c56da956545df950ead611eb61a9eb2323db7222f2706",
-      "seq": 772,
-      "source_batch": "investigate_citation_demoted",
-      "status": "LANDED",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1382",
+      "prev_sha256": "60c56195ae964e6b8caa7e90e9e7e03ab866450b6082cd38a71f4b8ddd7534a0",
+      "seq": 824,
+      "source_batch": "v3_ga2_decision_closures",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-16": {
       "confidence": "HIGH",
@@ -2026,9 +2027,9 @@
     }
   },
   "findings_morning_ship_ready_count": 12,
-  "findings_terminal_count": 95,
-  "journal_head_seq": 823,
-  "journal_head_sha256": "60c56195ae964e6b8caa7e90e9e7e03ab866450b6082cd38a71f4b8ddd7534a0",
+  "findings_terminal_count": 96,
+  "journal_head_seq": 824,
+  "journal_head_sha256": "db43444d0500a51c1950f5bf0410fb0fa3c3895efac3b15f0d36b677b086d5ff",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
