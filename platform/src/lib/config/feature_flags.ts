@@ -269,6 +269,27 @@ export type FeatureFlag =
   // flipping one from silently arming the other.
   // Env: MARSYS_FLAG_PARIPRASHNA_INJECTION_CONTAINMENT.
   | 'PARIPRASHNA_INJECTION_CONTAINMENT'
+  // P2-B G2-B "Citations at first paint" (PPR-08, FD-2/FD-6). Gates wiring
+  // the already-built S-3 rewriter (`lib/pariprashna/citations/rewriter.ts`)
+  // into the live synthesis stream:
+  //   · OFF (default) — the synthesis stream runs exactly as it does today:
+  //     each delta goes through the bare `lintReaderProse` register-leak
+  //     scrub with no resolver, citation sentinels are redacted like any
+  //     other internal-id-shaped token, no `citation.define` event fires
+  //     during streaming, and persistence still re-derives citations by
+  //     regex-scanning the accumulated text (the pre-existing P0C-R5 dead
+  //     path — unchanged, not newly introduced, when this flag is off).
+  //     `turn.commit` carries no `grounding_summary` field.
+  //   · ON — a `TurnCitationStream` (per turn) resolves sentinels against
+  //     this turn's own retrieved evidence, emits `⟦n⟧`-style inline markers
+  //     + `citation.define`/`flag` wire events DURING streaming (not just at
+  //     final commit), persistence builds canonical citation parts from the
+  //     turn's own resolution ledger instead of re-scanning scrubbed prose,
+  //     and `turn.commit` carries a server-derived `grounding_summary`
+  //     (counts, grade rollup, completeness line) that the client prefers
+  //     over its own citation-tally estimate.
+  // Env: MARSYS_FLAG_PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED.
+  | 'PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -400,6 +421,10 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // move prose — flip it deliberately, with a reading compared before/after.
   // Flip via MARSYS_FLAG_PARIPRASHNA_INJECTION_CONTAINMENT=true.
   PARIPRASHNA_INJECTION_CONTAINMENT: false,
+  // P2-B G2-B — citations at first paint. Default false: ships flag-OFF, the
+  // synthesis stream is byte-for-byte what it is today (see the declaration
+  // comment). Flip via MARSYS_FLAG_PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED=true.
+  PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)

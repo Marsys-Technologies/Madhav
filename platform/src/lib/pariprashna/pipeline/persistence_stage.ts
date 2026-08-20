@@ -48,12 +48,19 @@ import { writeTurn } from '@/lib/pariprashna/store/writer'
 import { CANONICAL_SCHEMA_VERSION, type CanonicalMessage } from '@/lib/pariprashna/store/schema'
 import { withProvenanceStamp } from '@/lib/pariprashna/provenance/stamp'
 import { captureDetectedCandidates } from '@/lib/pariprashna/samiksha/capture'
+import type { ResolvedTurnCitation } from '@/lib/pariprashna/citations/stream_wiring'
+import type { ServerGroundingSummary } from '@/lib/pariprashna/protocol/events'
 import type { ToolBundle } from '@/lib/retrieval/shared_types'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
 
 import type { TurnIdentity, TurnParams } from './stage_context'
-import { buildCanonicalParts, detectTurnCitations, type OpenBlock } from './reading_parts'
+import {
+  buildCanonicalParts,
+  detectTurnCitations,
+  type DetectedCitationRow,
+  type OpenBlock,
+} from './reading_parts'
 import { computeTurnReceiptProvenance } from './receipt_stage'
 import type { CitationGateOutcome } from './validation_stage'
 
@@ -126,6 +133,24 @@ export async function runPersistenceStage(args: {
   synthesisStartedAt: number
   /** Lane G1-A. Enforced → the turn's predictive output is sampled (HS-6). */
   safetyDecision?: import('@/lib/pariprashna/safety').SafetyDecision
+  /**
+   * Lane G2-B (P0C-R5 fix). Whether the live citation rewriter ran this turn
+   * (`synthesis_stage.ts`'s `citationRewriteEnabled`). Drives which citation
+   * source persistence trusts: TRUE → the rewriter's own resolution ledger
+   * (`resolvedCitations`, never a re-scan of already-scrubbed
+   * `accumulatedText`); FALSE/omitted → the pre-existing
+   * `detectTurnCitations(accumulatedText)` regex path, unchanged.
+   */
+  citationRewriteEnabled?: boolean
+  /** Lane G2-B. The rewriter's resolution ledger — see `citationRewriteEnabled`. */
+  resolvedCitations?: readonly ResolvedTurnCitation[]
+  /**
+   * Lane G2-B. Server-derived grounding summary for this turn
+   * (`citations/grounding_summary.ts`). Attached to the `turn.commit` wire
+   * event when present; absent → the client falls back to its own citation
+   * tally, visibly labeled as an estimate (never silently substituted).
+   */
+  groundingSummary?: ServerGroundingSummary
 }): Promise<void> {
   const {
     em,
@@ -143,6 +168,9 @@ export async function runPersistenceStage(args: {
     validToolResults,
     citationGate,
     synthesisStartedAt,
+    citationRewriteEnabled = false,
+    resolvedCitations = [],
+    groundingSummary,
   } = args
   const { turnId, queryId, conversationId, chartId, isFirstTurn } = identity
 
@@ -197,6 +225,10 @@ export async function runPersistenceStage(args: {
             message_id: d.message_id,
             status: d.status,
             assistant_chars: accumulatedText.length,
+            // Lane G2-B. Additive/optional — absent when the flag is off or no
+            // summary was built, in which case the client's own citation
+            // tally is the (visibly labeled) degrade path.
+            ...(groundingSummary ? { grounding_summary: groundingSummary } : {}),
           })
           break
         }
@@ -306,15 +338,39 @@ export async function runPersistenceStage(args: {
           // (tests/pariprashna/reducer/canonical_serialization_golden.test.ts)
           // exercises independently against a client-reducer simulation.
           //
-          // Snippets are resolved ONLY when the prose actually cited something:
-          // an empty citation set must not cost a DB round-trip.
-          const citationsFound = detectTurnCitations(accumulatedText)
-          const snippets =
-            citationsFound.length > 0
-              ? await fetchMsrSnippets(citationsFound.map((c) => c.signal_id))
-              : new Map<string, string>()
+          // Lane G2-B (P0C-R5 fix): when the live rewriter ran this turn, its
+          // OWN resolution ledger is the citation source of truth —
+          // `accumulatedText` at this point contains resolved `[n]` markers,
+          // not raw `SIG.MSR.NNN` tokens (the register-leak lint already
+          // rewrote/redacted every such token before it reached
+          // `accumulatedText`), so re-scanning it here would silently find
+          // nothing regardless of what the reader actually saw. Snippets are
+          // already known from the resolver's prefetch — no second DB round
+          // trip. Flag-off path is UNCHANGED: detect from prose, fetch
+          // snippets only when something was actually detected.
+          let citationsFound: DetectedCitationRow[]
+          let snippets: Map<string, string>
+          if (citationRewriteEnabled) {
+            citationsFound = resolvedCitations.map((c) => ({
+              index: c.index,
+              signal_id: c.signal_id,
+              layer: c.layer,
+            }))
+            snippets = new Map(resolvedCitations.map((c) => [c.signal_id, c.snippet]))
+          } else {
+            citationsFound = detectTurnCitations(accumulatedText)
+            snippets =
+              citationsFound.length > 0
+                ? await fetchMsrSnippets(citationsFound.map((c) => c.signal_id))
+                : new Map<string, string>()
+          }
           const { parts: canonicalParts, predictionCandidates: predictionCandidatesFound } =
-            buildCanonicalParts({ committedBlocks, accumulatedText, snippets })
+            buildCanonicalParts({
+              committedBlocks,
+              accumulatedText,
+              snippets,
+              preResolvedCitations: citationRewriteEnabled ? citationsFound : undefined,
+            })
 
           const canonicalMessage: CanonicalMessage = {
             id: assistantMessageId,

@@ -50,9 +50,9 @@ import type {
   GroundingSummary,
   WireEvent,
 } from './types'
-import type { PariprashnaEvent } from '@/lib/pariprashna/protocol/events'
+import type { PariprashnaEvent, GroundingSummaryGradeCounts } from '@/lib/pariprashna/protocol/events'
 import { RETRIEVAL_FACET_NAMES, type RetrievalFacetKey } from '@/lib/pariprashna/lexicon'
-import { emptyGradeTally, rollUpGradeSummaryLabel, tallyGrade } from './groundingRollup'
+import { emptyGradeTally, rollUpGradeSummaryLabel, tallyGrade, type GradeTally } from './groundingRollup'
 
 /** S-3 citation grade enum → C-1 reader Grade. */
 function mapGrade(grade: string | undefined): Grade {
@@ -74,6 +74,28 @@ function mapGrade(grade: string | undefined): Grade {
     default:
       return 'catalog'
   }
+}
+
+/**
+ * G2-B: fold the server's AGGREGATE `grade_counts` (S-3's CitationGrade enum
+ * — primary/supporting/contextual/unverified/prior_reading) into the client's
+ * `GradeTally` shape, reusing the SAME `mapGrade` this file already applies
+ * per-citation — one mapping definition, never two that could drift apart.
+ */
+function gradeCountsToTally(counts: GroundingSummaryGradeCounts): GradeTally {
+  const tally = emptyGradeTally()
+  const grades: (keyof GroundingSummaryGradeCounts)[] = [
+    'primary',
+    'supporting',
+    'contextual',
+    'unverified',
+    'prior_reading',
+  ]
+  for (const g of grades) {
+    const n = counts[g]
+    for (let i = 0; i < n; i++) tallyGrade(tally, mapGrade(g))
+  }
+  return tally
 }
 
 /** S-1 phase name → a reader band label (fallback to a generic verb). */
@@ -242,14 +264,33 @@ export function makeS1LiveAdapter(
       case 'turn.commit': {
         const elapsedSeconds = Math.max(0, Math.floor((Date.now() - openedAtMs) / 1000))
         const factorCount = citationsSeen - classicalSeen
-        const grounding: GroundingSummary = {
-          factorCount: Math.max(0, factorCount),
-          classicalCount: classicalSeen,
-          elapsedLabel: `0:${String(elapsedSeconds).padStart(2, '0')}`,
-          // HONEST rollup from the real per-citation grade distribution — never a
-          // confident verdict on the strength of a bare count (B.1/B.10, §6.7).
-          gradeSummaryLabel: rollUpGradeSummaryLabel(gradeTally),
-        }
+        const elapsedLabel = `0:${String(elapsedSeconds).padStart(2, '0')}`
+        // G2-B: prefer the SERVER-derived rollup when the wire carried one —
+        // it is computed from the server's own resolution ledger + the
+        // turn's floor/completeness receipt, neither of which the client can
+        // see. Absent → fall back to the citation-tally estimate this
+        // adapter has always computed, but now HONESTLY LABELED as an
+        // estimate (`source: 'client_estimate'`) rather than rendered
+        // indistinguishably from a server-derived summary (§N.7 item 6).
+        const grounding: GroundingSummary = ev.grounding_summary
+          ? {
+              factorCount: Math.max(0, factorCount),
+              classicalCount: classicalSeen,
+              elapsedLabel,
+              gradeSummaryLabel: rollUpGradeSummaryLabel(gradeCountsToTally(ev.grounding_summary.grade_counts)),
+              source: 'server',
+              completenessLine: ev.grounding_summary.completeness_line ?? undefined,
+            }
+          : {
+              factorCount: Math.max(0, factorCount),
+              classicalCount: classicalSeen,
+              elapsedLabel,
+              // HONEST rollup from the real per-citation grade distribution —
+              // never a confident verdict on the strength of a bare count
+              // (B.1/B.10, §6.7).
+              gradeSummaryLabel: rollUpGradeSummaryLabel(gradeTally),
+              source: 'client_estimate',
+            }
         return [{ type: 'turn.commit', turnId, grounding, eventId }]
       }
 

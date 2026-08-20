@@ -224,6 +224,49 @@ export const GradeEventSchema = z.object({
 export type GradeEvent = z.infer<typeof GradeEventSchema>
 
 /**
+ * `grounding_summary` — G2-B (PPR-08/FD-2/FD-6) SERVER-DERIVED citation
+ * rollup for a turn, carried as an OPTIONAL, ADDITIVE field on `turn.commit`
+ * (same non-breaking-extension convention `citation.define`'s `reader_label`
+ * + `grade` fields used for the S-3 reconciliation — see that schema's
+ * comment). Computed from the ACTUAL `citation.define` events the S-3
+ * rewriter resolved this turn (never re-derived from prose) plus the turn's
+ * own floor/completeness receipt — never a second, independently-computed
+ * coverage number (`pipeline/citations/grounding_summary.ts` is the single
+ * builder).
+ *
+ * PRESENCE IS THE SIGNAL: when this field is absent, the client has no
+ * server-derived rollup for the turn and must fall back to its own
+ * client-side citation tally — and must label that fallback as an estimate
+ * (`state/groundingRollup.ts` / `state/s1LiveAdapter.ts`, GroundingSummary.
+ * source). Never invent this field's shape from something else; an honest
+ * absence is the correct signal for "no server rollup" (§N.7 item 6).
+ */
+export const GroundingSummaryGradeCountsSchema = z.object({
+  primary: z.number().int().nonnegative(),
+  supporting: z.number().int().nonnegative(),
+  contextual: z.number().int().nonnegative(),
+  unverified: z.number().int().nonnegative(),
+  prior_reading: z.number().int().nonnegative(),
+})
+export type GroundingSummaryGradeCounts = z.infer<typeof GroundingSummaryGradeCountsSchema>
+
+export const ServerGroundingSummarySchema = z.object({
+  citation_count: z.number().int().nonnegative(),
+  hallucination_count: z.number().int().nonnegative(),
+  grade_counts: GroundingSummaryGradeCountsSchema,
+  /** Read straight off the turn's WebCompletenessReceipt.coverage — null when no receipt was built. */
+  completeness: z
+    .object({
+      served: z.number().int().nonnegative(),
+      floor_item_total: z.number().int().nonnegative(),
+    })
+    .nullable(),
+  /** Human-readable one-line rollup, e.g. "4/6 floor items served". Null when no receipt exists. */
+  completeness_line: z.string().nullable(),
+})
+export type ServerGroundingSummary = z.infer<typeof ServerGroundingSummarySchema>
+
+/**
  * `turn.commit` — the assistant message has been persisted; carries the
  * durable message id + persistence status.
  */
@@ -235,6 +278,7 @@ export const TurnCommitEventSchema = z.object({
   message_id: z.string(),
   status: z.enum(['ok', 'error']),
   assistant_chars: z.number().int().nonnegative(),
+  grounding_summary: ServerGroundingSummarySchema.optional(),
 })
 export type TurnCommitEvent = z.infer<typeof TurnCommitEventSchema>
 

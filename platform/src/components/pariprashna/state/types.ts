@@ -95,6 +95,20 @@ export interface GroundingSummary {
   elapsedLabel: string
   compositionNote?: string // "Composed from complete house coverage" (dossier route)
   gradeSummaryLabel: string // "Core claim: WELL-GROUNDED" | "Honest gap — silence verified…"
+  /**
+   * G2-B (PPR-08/FD-2/FD-6). "server" when `gradeSummaryLabel` (and
+   * `completenessLine`, when present) were derived from the wire's
+   * server-computed `turn.commit.grounding_summary` (the server's own
+   * citation-resolution ledger + floor/completeness receipt — never
+   * re-derived client-side). "client_estimate" is the DISCLOSED degrade path:
+   * the server sent no summary this turn (flag off, or none built), so this
+   * turn's rollup is the client's own citation-tally guess and must be
+   * labeled as such wherever it is shown — never rendered indistinguishably
+   * from a server-derived summary (§N.7 item 6).
+   */
+  source: 'server' | 'client_estimate'
+  /** Server-derived only (`source === 'server'`) — e.g. "4/6 floor items served". */
+  completenessLine?: string
 }
 
 export type ClassifiedErrorKind =
