@@ -245,6 +245,13 @@ export async function POST(request: Request): Promise<Response> {
           // resolver (when the flag is on) prefetches labels against exactly
           // what THIS turn retrieved, never a wider or unrelated source.
           validToolResults: evidence.validToolResults,
+          // P2-close item 6 (lane P2-E's own follow-up, filed in
+          // synthesis_observation.ts's header comment). `turnId`/`conversationId`
+          // already live in `identity`; `user.uid` is the authenticated caller.
+          // Wiring this activates the honest-skip-when-absent write this
+          // module has carried since P2-E — see its header for why identity
+          // was left optional rather than fabricated.
+          observability: { turnId, conversationId, userId: user.uid },
         })
         if (synthesized.halted) return finish(synthesized.status)
         const { assembler, accumulatedText, synthesisStartedAt } = synthesized.value
