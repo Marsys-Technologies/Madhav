@@ -32,7 +32,10 @@ const EXPECTED_SYSTEMS = [
   'narayana', 'vimshottari', 'vimshottari_kp', 'yogini',
 ] as const
 
-const LEVEL_NAME: Record<number, string> = { 1: 'Mahadasha', 2: 'Antardasha', 3: 'Pratyantardasha' }
+// F-121: level 4 (Sūkṣma) added — mirrors get_dashas.ts's LEVEL_NAMES map (same L1_ganita
+// convention). Without this entry, a max_level:4 caller (e.g. kala_now_get's dasha_sandhi
+// join) received a bare "L4" fallback instead of the classical name.
+const LEVEL_NAME: Record<number, string> = { 1: 'Mahadasha', 2: 'Antardasha', 3: 'Pratyantardasha', 4: 'Sukshmadasha' }
 const MAX_LEVEL_DEFAULT = 3
 
 interface DashaRow {
