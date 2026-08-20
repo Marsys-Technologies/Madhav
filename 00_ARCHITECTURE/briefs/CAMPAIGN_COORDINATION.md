@@ -5148,3 +5148,52 @@ clear review, and a compound temporal/duration+anniversary phrase should
 still correctly hard-stop.
 
 Worktree: `/private/tmp/pariprashna-hs4-fix`, branch `pariprashna/hs4-fix`.
+
+## 2026-08-20 — HS-4 fix merged, deployed, live-verified via probe harness
+
+Follow-up to the "HS-4 death-anniversary false positive: fixed, PR #1376
+open" entry immediately above.
+
+**Merge + deploy:** PR #1376 merged to `main` at `429942e4c`. Post-merge
+`CI — Ganga Quality Gate` passed. `Deploy to Cloud Run` ran path-scoped —
+only `Build & Deploy Web` executed (MCP/pipeline-job/sidecar jobs correctly
+skipped, since only `platform/src/lib/pariprashna/safety/classifier.ts` +
+its test file changed). Post-deploy smoke passed (candidate boot, auth-guard
+enforcement, sidecar-dependency reachability), traffic promoted 100% to
+`amjis-web-01552-cb7`, independently confirmed live via
+`gcloud run services describe amjis-web --format='value(status.traffic)'`.
+
+Also checked, not touched: `Gochara Serving Outage Smoke Probe (MR-35)`
+failed on the prior commit (`7dca61043`, pre-dating this merge) — confirmed
+via job log to be a pre-existing missing `MARSYS_MCP_URL` repo secret on an
+unrelated Kāla/Gochara scheduled probe, not caused by or related to this
+Pariprashna/classifier.ts change. Left alone; out of this fix's scope.
+
+**Live verification via the probe harness (`platform/scripts/probe/ask.sh`,
+against the deployed `amjis-web-01552-cb7` revision, synthetic chart):**
+
+1. Original false-positive phrase — *"My father's death anniversary is
+   coming up next month — what does that period look like astrologically for
+   the family?"* → turn completed `status=ok`, NOT held. Response was a
+   normal domain-clarifying question ("I want to make sure I read the right
+   part of the chart...") — the HS-4 safety hold no longer fires. Turn file:
+   `probe/out/3c6e9610-6abc-4895-8d06-2f8534501a7c.json`.
+
+2. Regression-guard phrase (the adversary's exact repro case from attempt 1's
+   rejected fix) — *"How many years until my death anniversary — this year
+   or a future one?"* → turn completed `status=ok`, correctly HELD. Response
+   was the standard HS safety-seal hold ("This question falls in a domain
+   where a reading does not go out unreviewed... Health-crisis,
+   mental-health, and longevity questions are held for two independent
+   adversarial reviews..."). Confirms the hard-stop combination rule
+   (`mortality_term_x_temporal_specificity`) still correctly fires on a
+   genuine compound mortality ask, even when "death anniversary" phrasing is
+   also present — the corrected fix did not regress this. Turn file:
+   `probe/out/8e2312bf-1c34-4e74-985c-b6768f768e8d.json`.
+
+Both cases behave exactly as designed. HS-4 fix arc (2 attempts, adversarial
+regression caught and corrected, merged, deployed, live-verified) is closed.
+
+Continuing the broader P2 gate battery next (crash-kill-test, planted-
+contradiction fixture, systematic block-kind coverage across more query
+shapes) per the standing autonomy directive.
