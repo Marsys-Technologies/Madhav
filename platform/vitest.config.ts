@@ -61,6 +61,9 @@ const SHARED_EXCLUDE = [
       'tests/e2e/portal/**',
       // D-S5 Playwright e2e spec — runs via playwright test, not vitest.
       'tests/e2e/new-client-flow.spec.ts',
+      // P2-close item 5 — Playwright e2e spec (real app, SMOKE_SESSION_COOKIE-
+      // gated), runs via `playwright test`, not vitest.
+      'tests/e2e/pariprashna/**',
       // PB-1 Paripraśna acceptance gates — Playwright specs, run via
       // `pnpm pariprashna:gates` (tests/pariprashna/playwright.config.ts), NOT
       // vitest. The reducer golden + citation/lexicon/dedup *.test.ts under
