@@ -4751,3 +4751,76 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   re-run green) runs next, against the deployed artifact — not claimed
   satisfied by any individual lane's merge. Opening the PR next; requesting
   a merge-queue window.
+
+- 2026-08-20 04:59Z — **PARIPRASHNA / Claude Code (conductor) — PR #1365
+  merged + deploy-verified live; all 15 P2 lanes now on `main` and
+  deployed, flags off. Announcing a scoped production flag flip before
+  executing it (lease-style announcement, not a request — this is a config
+  change via `gcloud run services update-env-vars`, not a merge, but the
+  same "announce before doing" discipline applies given real-traffic
+  impact).**
+
+  Per native decision this session ("flip flags + run gate battery now"),
+  proceeding to flip flags and run P2's own phase gate battery. **Scoped
+  deliberately narrower than "every P2/P1 flag"** — read the native's
+  authorization as covering the 7 P2 flags with no known blocker, not as
+  blanket authorization to flip everything mentioned as context in the
+  decision question:
+
+  **Flipping now (7 P2 flags, all independently verified clean this
+  session, no known blocker):** `PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED`,
+  `PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED`,
+  `PARIPRASHNA_HONEST_CONTROLS_ENABLED`,
+  `PARIPRASHNA_RECEIPT_EMISSION_ENABLED`,
+  `PARIPRASHNA_INTERPRETATION_SETS_ENABLED`,
+  `PARIPRASHNA_TYPED_CONFIDENCE_ENABLED`,
+  `PARIPRASHNA_VOICE_ENFORCEMENT_ENABLED`.
+
+  **Explicitly NOT flipping, with reasons:**
+  - `PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED` — no
+    `pariprashna_persistence_outbox` migration exists (correctly deferred
+    by P2-D, confirmed still absent just now). Flipping this flag today
+    would not error — the code gracefully degrades to direct-write mode
+    when the table is missing — but it WOULD be misleading: the flag would
+    read "on" while delivering zero actual durability improvement over
+    today. Holding until the migration lands via its own schema-train
+    lease.
+  - Every **P1** flag (`PARIPRASHNA_LIMITS_ENABLED`,
+    `SUBJECT_CONSENT_ENFORCEMENT`, `PARIPRASHNA_SAFETY_GATE_ENABLED`,
+    `PARIPRASHNA_ROLE_SEPARATION`, `PARIPRASHNA_LEDGER_OUT_OF_PROCESS`,
+    `PARIPRASHNA_INJECTION_CONTAINMENT`) — out of tonight's explicit scope.
+    Two concrete reasons found on inspection just now, not just caution:
+    (1) `PARIPRASHNA_LIMITS_ENABLED`'s spend ceiling reads
+    `SUM(computed_cost_usd)` from `llm_usage_events`, and confirmed via
+    `grep` that `route.ts` still never passes the `observability` identity
+    param `persistence_stage.ts` needs to actually write those rows (P2-E's
+    own disclosed residual, never picked up by any later lane) — flipping
+    this flag today would silently re-enable a spend ceiling that still
+    reads real zero cost, the exact P1-era defect P2-E found. (2)
+    `PARIPRASHNA_SAFETY_GATE_ENABLED` carries two disclosed residuals from
+    its own hardening round (HS-4 death-anniversary false positive;
+    `/api/chat/consult` missing the full post-plan `reclassifyAfterPlan`
+    wiring the MCP door has) that were explicitly scoped as "flag-
+    enablement gates, not merge blockers" at the time — meaning P1's own
+    plan always intended these resolved before this specific flag flips,
+    and this is exactly that gate. Flipping the P1 safety flag deserves its
+    own dedicated round (mirroring the native's own earlier decision to
+    require a full hardening pass before G1-A merged at all, given its
+    subject matter), not a bundled flip alongside 7 unrelated P2 flags.
+    `PARIPRASHNA_ROLE_SEPARATION`/`_LEDGER_OUT_OF_PROCESS` additionally
+    need the RLS roles/grants actually ARMED (migration 576/577 confirmed
+    inert on production as of P1 close per the live-verified Baseline) —
+    a distinct operational procedure (`G1_C_ROLES_RLS_CUTOVER_RUNBOOK_v1_0.md`),
+    not a flag flip alone.
+
+  **Gate-battery consequence of this scoping**: "P1's safety assertions
+  re-run green on the new artifact" (one of P2's own stated gate criteria)
+  will be verified via the existing test suite + the MCP safety/review
+  endpoint's own code paths, NOT via a live flip of the production safety
+  gate — an honest substitution given the safety flag stays off tonight,
+  disclosed here rather than silently narrowed.
+
+  Executing the 7-flag flip next via `gcloud run services update-env-vars`
+  (config-only, no rebuild, fast to revert); will verify each flag's real
+  behavioral effect on the live deployed route before calling this phase
+  gate-tested.
