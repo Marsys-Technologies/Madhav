@@ -1,40 +1,47 @@
 # PARISESA-V4 RESUME (authoritative — journal-derived)
 
 **Session:** PARISESA-V4-CONDUCTOR-20260820T005119Z
-**Journal head:** seq 245 (round 4 dispatched — 10 agents, first wave under PR-002 scaling)
-**Phase:** Phase 2 (repair waves) — round 4 IN FLIGHT, largest round yet
+**Journal head:** seq 245 (round 4 dispatched at scaled WIP, not yet folded)
+**Phase:** Phase 2 (repair waves) — round 4 IN FLIGHT, scaled per PR-002
 
-## Pattern note (unchanged): dispatch AND wait AND fold before ending a turn.
+## IMPORTANT environment note discovered this round
+`Agent(subagent_type: "fork")` failed with "Fork is not available inside a forked
+worker" for 8 of 9 dispatches this round — meaning this execution context is itself
+running as a forked worker, not a true top-level session (despite the tmux/watchdog
+setup implying otherwise). Worked around by using `subagent_type: "general-purpose"`
+instead, with fully self-contained prompts (no reliance on inherited context). If a
+future session hits the same error, use general-purpose, not fork, for dispatch.
 
-## IN-FLIGHT WORK (round 4, 10 parallel agents under PR-002 dynamic scaling)
-- 2 proof trains (WIP 2/2): batch D (F-04,F-09,F-116,F-120,F-17,F-41,F-49,F-64,F-92) at
-  `phase0/proof_batch_d.json`; batch E (F-08,F-10,F-12,F-132,F-21,F-44,F-52,F-63,F-71)
-  at `phase0/proof_batch_e.json`
-- 3 code trains (WIP 3/3): F-25 (dangling commit recovery) at `phase0/rebase_f25.json`;
-  F-42 at `phase0/rebase_f42.json` (DONE: already merged via PR #1348, no PR needed);
-  F-50 (sibling-duplicate judgment call) at `phase0/rebase_f50.json`
-- 4 parallel TRIAGE batches (new lane, 14/14/14/13 findings) at
+## IN-FLIGHT WORK (round 4, scaled per PROVISIONAL_RULING PR-002)
+- Citation-integrity audit (new, one-time lane) — `phase0/citation_audit.json`
+- Proof train A (9 findings: F-04,F-09,F-116,F-120,F-17,F-41,F-49,F-63,F-71) —
+  `phase0/proof_batch_d.json`
+- Proof train B (9 findings: F-08,F-10,F-12,F-132,F-21,F-44,F-52,F-64,F-92) —
+  `phase0/proof_batch_e.json`
+- Code train F-25 (dangling commit recovery) — `phase0/rebase_f25.json`
+- Code train F-42 (rebase, check PR #1348 status first) — `phase0/rebase_f42.json`
+- Code train F-50 (sibling duplicate, pick/merge approach) — `phase0/rebase_f50.json`
+- Triage batch 0-3 (55 UNKNOWN findings, 14/14/14/13 split) —
   `phase0/triage_batch{0,1,2,3}.json`
-- 1 citation-integrity audit (new lane) at `phase0/citation_audit.json`
 
-## NEXT ATOMIC ACTION (once round 4 lands)
-1. Fold all remaining round-4 outputs (F-42 already done: ALREADY_LANDED_NO_PR_NEEDED).
+## Round 1-3 results already folded (terminal 35, morning_ship_ready 4)
+Open frozen PRs: #1362 (CCD-009), #1366 (F-121), #1368 (F-122), #1369 (F-33),
+#1370 (F-26).
+
+## IF-001/IF-002 (standing integrity caveat, unresolved until citation_audit lands)
+13 findings touched by mis-cited evidence across 3 root causes. The audit running
+this round should reveal the FULL scope across all 141 rows, not just what's been
+caught by chance so far.
+
+## NEXT ATOMIC ACTION (once round 4 lands — 9 files)
+1. Fold all 9 outputs into the journal (citation_audit findings may require
+   re-opening/re-checking additional findings beyond what's already flagged).
 2. Commit + push.
-3. Triage outputs feed directly into round 5's proof/rebase candidate lists — read
-   triage_batch*.json classifications before picking round 5's targets.
-4. Citation audit output should be cross-checked against any newly-terminal findings
-   before the morning report treats them as settled.
-
-## Standing integrity flags (unresolved, for morning report)
-IF-001 (cfb6444c8 mis-citation, ~10 findings), IF-002 (F-65/F-109 citation swap,
-suggests systemic corpus evidence-linking defect, not isolated errors).
-
-## Velocity levers adopted this session (PR-002, journaled, flagged for AM ratification)
-Proof trains 1->2, code trains 2->3, parallel TRIAGE lane opened, bigger proof batches,
-citation-integrity audit run once instead of rediscovered per-finding.
+3. Round 5: continue with whatever the citation audit + triage reclassified into
+   LANDED/STRANDED — feed fresh batches into proof/rebase trains. Keep 2 proof + 3
+   code trains as the running WIP baseline going forward per PR-002.
 
 ## Campaign state
 - `parisesa/campaign-state`: journal head seq 245 (round 4 pending fold).
 - origin/main: `43d8c8a05`.
-- Open frozen PRs: #1362 (CCD-009), #1366 (F-121), #1368 (F-122), #1369 (F-33),
-  #1370 (F-26).
+- Open frozen PRs: #1362, #1366, #1368, #1369, #1370.
