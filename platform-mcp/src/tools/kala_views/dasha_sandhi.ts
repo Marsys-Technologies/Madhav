@@ -328,7 +328,7 @@ export async function computeDashaSandhiCalendar(
  * the ACTIVE periods only) lives in tools/kala_views/now.ts as the
  * `dasha_sandhi` field on `kala_now_get`.
  */
-export function registerDashaSandhiCalendar(server: McpServer): void {
+export function registerDashaSandhiCalendar(server: McpServer, principal: Principal): void {
   server.tool(
     'kala_dasha_sandhi_get',
     'Daśā-sandhi (period-junction) calendar for a chart, at ALL dasha levels ' +
@@ -356,9 +356,6 @@ export function registerDashaSandhiCalendar(server: McpServer): void {
         .describe('Years after as_of to include. Default 5; max 50.'),
     },
     async (args) => {
-      // Tool context does not provide a Principal in the MCP SDK handler signature;
-      // we pass a minimal placeholder matching the pattern used across this codebase.
-      const principal: Principal = { user_uid: 'system', key_id: 'system', role: 'super_admin' }
       try {
         const result = await computeDashaSandhiCalendar(
           args.chart_id as string,
