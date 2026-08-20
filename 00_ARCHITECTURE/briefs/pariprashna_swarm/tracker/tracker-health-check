@@ -90,6 +90,21 @@ if os.path.exists(blind_path):
     except (json.JSONDecodeError, OSError) as e:
         fail(f'blind window record unreadable ({e})')
 
+# A healthy result should say WHERE the dashboard is. When this Mac changes networks the
+# IP-based URL stops connecting and the browser shows an indefinitely blank page -- which
+# reads exactly like a dead tracker (that is how the 2026-08-20 'it crashed' report arose,
+# with the daemon perfectly healthy throughout). Printing the address makes the two
+# distinguishable without having to ask anyone.
+url_path = os.path.join(runtime_dir, 'URL.txt')
+url_lines = ''
+if os.path.exists(url_path):
+    try:
+        with open(url_path, encoding='utf-8') as f:
+            url_lines = ''.join('  ' + l for l in f if l.startswith(('stable_url', 'ip_url')))
+    except OSError:
+        url_lines = ''
 print(f'OBSERVATORY HEALTHY: heartbeat {age:.0f}s old, jobs loaded, selftest pass, refs fresh, no unacknowledged blind window')
+if url_lines:
+    print(url_lines, end='')
 sys.exit(0)
 "

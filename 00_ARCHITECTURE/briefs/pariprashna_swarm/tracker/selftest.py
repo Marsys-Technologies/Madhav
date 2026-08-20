@@ -912,6 +912,67 @@ def test_board_world_divergence_detector():
                     f"unreflected={ok_summary['unreflected_count']} anomalies={len(ok_events)}")
 
 
+def test_watchdog_respects_intentional_stop_and_never_spawns():
+    """Two real defects found 2026-08-20, both in T2 (watchdog.py):
+
+    (a) It ignored STOPPED_INTENTIONALLY.json. T4 has always honoured that marker; T2 did
+        not, so `tracker-stop` was silently fought and undone within 90s -- the tracker
+        could not be stopped on purpose at all.
+    (b) It restarted trackerd via subprocess.Popen(start_new_session=True), producing an
+        orphan (PPID 1) that launchd does not manage but which holds trackerd's flock. Once
+        that existed, launchd's own KeepAlive copy could never start: it hit the lock and
+        exited(1) forever (581 logged attempts on the real machine) while `launchctl list`
+        showed the job permanently failing.
+
+    Drives the real script in a subprocess with an isolated HOME and a fake `launchctl`
+    first on PATH that records every invocation, so both claims are checked against
+    behaviour rather than source reading."""
+    import subprocess, tempfile, datetime, json as json_mod
+    wd = os.path.join(os.path.dirname(os.path.abspath(__file__)), "watchdog.py")
+
+    def run(marker_present):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = os.path.join(tmp, "home"); rt = os.path.join(home, ".pariprashna-tracker")
+            os.makedirs(os.path.join(rt, "events")); os.makedirs(os.path.join(rt, "logs"))
+            binp = os.path.join(tmp, "bin"); os.makedirs(binp)
+            rec = os.path.join(tmp, "calls.log")
+            with open(os.path.join(binp, "launchctl"), "w") as f:
+                f.write("#!/bin/sh\necho \"$@\" >> %s\nexit 0\n" % rec)
+            os.chmod(os.path.join(binp, "launchctl"), 0o755)
+            stale = (datetime.datetime.now(datetime.timezone.utc)
+                     - datetime.timedelta(seconds=600)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            with open(os.path.join(rt, "heartbeat.json"), "w") as f:
+                json_mod.dump({"ts": stale, "cycle": 1}, f)
+            if marker_present:
+                with open(os.path.join(rt, "STOPPED_INTENTIONALLY.json"), "w") as f:
+                    json_mod.dump({"ts": stale, "reason": "selftest", "invoking_user": "selftest"}, f)
+            env = dict(os.environ); env["HOME"] = home
+            env["PATH"] = binp + os.pathsep + env.get("PATH", "")
+            proc = subprocess.run(["python3", wd], env=env, capture_output=True, text=True, timeout=20)
+            calls = open(rec).read() if os.path.exists(rec) else ""
+            # A privately-spawned trackerd announces itself: acquire_pidfile() writes
+            # trackerd.pid into this isolated runtime dir almost immediately. Checking for
+            # it makes the "never spawns" half independently detectable -- without it, the
+            # old Popen code made no launchctl calls either and so could sneak past a
+            # launchctl-only assertion.
+            import time as _t; _t.sleep(1.5)
+            spawned = os.path.exists(os.path.join(rt, "trackerd.pid"))
+            return proc.returncode, calls, spawned
+
+    rc_marked, calls_marked, spawned_marked = run(marker_present=True)
+    rc_stale, calls_stale, spawned_stale = run(marker_present=False)
+
+    stands_down = (rc_marked == 0 and calls_marked.strip() == "" and not spawned_marked)
+    uses_kickstart = (rc_stale == 0 and "kickstart" in calls_stale and "-k" in calls_stale
+                      and not spawned_stale)
+    ok = stands_down and uses_kickstart
+    return _result("watchdog (T2): stands down on an intentional-stop marker; restarts via "
+                    "launchctl kickstart, never a private spawn",
+                    ok, f"marker_present: rc={rc_marked} launchctl={calls_marked.strip()!r} "
+                        f"spawned={spawned_marked} | stale_no_marker: rc={rc_stale} "
+                        f"launchctl={calls_stale.strip()!r} spawned={spawned_stale}")
+
+
 def run_all():
     import time
     tests = [
@@ -940,6 +1001,7 @@ def run_all():
         test_unobservable_floor_never_fabricates_planned(),
         test_merged_pr_evidence_drives_lane_and_phase(),
         test_board_world_divergence_detector(),
+        test_watchdog_respects_intentional_stop_and_never_spawns(),
     ]
     all_passed = all(t["passed"] for t in tests)
     return {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "tests": tests, "all_passed": all_passed}
