@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 825,
+  "event_count": 827,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -60,17 +60,17 @@
     },
     "F-05": {
       "confidence": "HIGH",
-      "disposition": "EXTERNAL_HOLD",
-      "event_sha256": "317ca47fd14a1a060721e79c5eb76bcd1de012708d00b9c31cebbd028bd0ed94",
+      "disposition": "LANDED",
+      "event_sha256": "04267f747af75e319c27f21cb7d6d1095add7b273ed81b7fe3c29d1b2d9fc05a",
       "event_type": "finding_status",
-      "evidence_summary": "Reclassified from DECISION_PARKED to EXTERNAL_HOLD (bookkeeping correction, not a new judgment call -- the finding's own prior next_action already stated this verbatim): the original finding-claim text is not recoverable anywhere in this worktree or the campaign's own journal/ledger/phase0 batches/closure-matrix. This is a genuine 'nothing autonomous can supply' category per the v3.0 register's own GA-4 closure-sweep vocabulary (EXTERNAL_HOLD: for the categories nothing autonomous can supply, like a real external corpus lookup), not an open policy decision anyone is waiting on.",
+      "evidence_summary": "Original claim (recovered from /Users/Dev/shad_overnight/par-night/state/codex/corpus_ledger.json): ref_tantric_remedies_get could never return non-empty results because tantric.yaml was dead code never wired into the production seeding pipeline. VERIFIED LIVE this session: platform/python-sidecar/pipeline/orchestrator/writers/bg_remedies.py genuinely calls l0_remedy_loader.load_remedies(file_glob='tantric.yaml', ...); a dedicated regression test (tests/test_f05_tantric_wiring.py) exists on current origin/main; and a live production DB query (Cloud SQL Auth Proxy) confirms brahma_remedy_corpus currently holds 4 real rows with category='tantric'. The defect is genuinely fixed and deployed -- this was a real, already-resolved finding, not a corpus-missing EXTERNAL_HOLD as this session incorrectly classified it earlier tonight (see the self-correction journal entry).",
       "finding_id": "F-05",
-      "next_action": "requires the original par-night finding-generation corpus (not present in this worktree or any reachable branch) before investigation can even begin.",
-      "prev_sha256": "618ed7024df143598996818e70f272de14a19da218a3336ad976518ca1a09077",
-      "seq": 819,
-      "source_batch": "v3_ga2_decision_closures",
-      "status": "EXTERNAL_HOLD",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "prev_sha256": "7bc004867a3ee8eb2790b92ea9876c9809cfd954728370459a1c3e8c93439378",
+      "seq": 827,
+      "source_batch": "v3_ga2_decision_closures_corrected",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-06": {
       "confidence": "HIGH",
@@ -2026,9 +2026,9 @@
     }
   },
   "findings_morning_ship_ready_count": 11,
-  "findings_terminal_count": 97,
-  "journal_head_seq": 825,
-  "journal_head_sha256": "aac8531295831554f756fad607812f687005721613bff793865d7c952a23bf89",
+  "findings_terminal_count": 98,
+  "journal_head_seq": 827,
+  "journal_head_sha256": "04267f747af75e319c27f21cb7d6d1095add7b273ed81b7fe3c29d1b2d9fc05a",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
