@@ -116,6 +116,7 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
             NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
             NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
+            NEXT_PUBLIC_PARIPRASHNA_LIVE=1
 
       # Build the orchestrator job image (no push) so a broken Dockerfile.pipeline
       # — e.g. a missing COPY for ga_writers/ — is caught at PR time. Context is the
@@ -361,6 +362,7 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
             NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
             NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
+            NEXT_PUBLIC_PARIPRASHNA_LIVE=1
 
       # ── A-S8: Deploy no-traffic, smoke, then promote ──────────────────────────
       - name: Deploy web to Cloud Run (no traffic)
