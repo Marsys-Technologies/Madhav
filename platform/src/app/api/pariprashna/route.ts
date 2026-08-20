@@ -68,6 +68,7 @@ import { assembleSynthesisContext, runSynthesisStage } from '@/lib/pariprashna/p
 import { runValidationStage } from '@/lib/pariprashna/pipeline/validation_stage'
 import { emitCompletenessReceipt } from '@/lib/pariprashna/pipeline/receipt_stage'
 import { runPersistenceStage } from '@/lib/pariprashna/pipeline/persistence_stage'
+import { buildGroundingSummary } from '@/lib/pariprashna/citations/grounding_summary'
 
 export const maxDuration = 120
 
@@ -240,9 +241,27 @@ export async function POST(request: Request): Promise<Response> {
           // scan to no benefit.
           authorizedChartIds: [chartId],
           removedCapabilities: planned.value.removedCapabilities,
+          // Lane G2-B. This turn's own retrieval scope — the citation
+          // resolver (when the flag is on) prefetches labels against exactly
+          // what THIS turn retrieved, never a wider or unrelated source.
+          validToolResults: evidence.validToolResults,
         })
         if (synthesized.halted) return finish(synthesized.status)
         const { assembler, accumulatedText, synthesisStartedAt } = synthesized.value
+        // Lane G2-B. Server-derived grounding summary — counts + grade rollup
+        // from what the rewriter actually resolved this turn, completeness
+        // line read straight off the SAME completeness receipt
+        // `emitCompletenessReceipt` reports below (never a second,
+        // independently-computed coverage number). `null` (no summary) when
+        // the flag was off this turn — the honest absence the client's
+        // adapter reads as "fall back to your own estimate, and label it".
+        const groundingSummary = synthesized.value.citationRewriteEnabled
+          ? buildGroundingSummary({
+              resolvedCitations: synthesized.value.resolvedCitations,
+              hallucinationCount: synthesized.value.citationHallucinationCount,
+              completenessReceipt: evidence.completenessReceipt,
+            })
+          : undefined
         // The tool-sequence anomaly reaches the RECEIPT as well as the wire
         // (PPR-13: "trace-flagged"). `judgmentFlags` is the receipt's own
         // channel and is read by the validation stage.
@@ -278,6 +297,9 @@ export async function POST(request: Request): Promise<Response> {
           citationGate,
           synthesisStartedAt,
           safetyDecision: postPlanSafety,
+          citationRewriteEnabled: synthesized.value.citationRewriteEnabled,
+          resolvedCitations: synthesized.value.resolvedCitations,
+          groundingSummary,
         })
 
         // Completeness + aggregated judgment flags (grade/flag — always emitted).

@@ -327,11 +327,24 @@ export interface CanonicalPartsInput {
   accumulatedText: string
   /** signal_id → snippet, resolved by the persistence stage's MSR reader. */
   snippets: Map<string, string>
+  /**
+   * Lane G2-B (P0C-R5 fix). When the live citation rewriter ran this turn
+   * (`synthesis_stage.ts`'s `citationRewriteEnabled`), `accumulatedText`
+   * contains resolved `[n]` markers, not raw `SIG.MSR.NNN` tokens — the
+   * register-leak lint has already scrubbed/rewritten every such token before
+   * it ever reached `accumulatedText`, so `detectTurnCitations` structurally
+   * finds nothing on that path (the dead path this fix closes). Supplying the
+   * rewriter's OWN resolution ledger here bypasses the re-scan entirely: the
+   * canonical citation parts are built from what was actually resolved on the
+   * wire, never re-derived from already-scrubbed prose. Omitted → falls back
+   * to `detectTurnCitations(accumulatedText)`, the pre-existing behavior.
+   */
+  preResolvedCitations?: readonly DetectedCitationRow[]
 }
 
 export interface CanonicalPartsOutput {
   parts: MessagePartInput[]
-  citations: DetectedCitationRow[]
+  citations: readonly DetectedCitationRow[]
   predictionCandidates: DetectedPredictionRow[]
 }
 
@@ -367,7 +380,7 @@ export function buildCanonicalParts(input: CanonicalPartsInput): CanonicalPartsO
     }
   }
 
-  const citations = detectTurnCitations(input.accumulatedText)
+  const citations = input.preResolvedCitations ?? detectTurnCitations(input.accumulatedText)
   for (const c of citations) {
     parts.push(
       citationPartFromDetection(
