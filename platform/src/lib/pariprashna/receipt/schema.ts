@@ -32,6 +32,7 @@
 import { z } from 'zod'
 
 import { GroundingSummaryGradeCountsSchema } from '@/lib/pariprashna/protocol/events'
+import { TypedConfidenceEntrySchema } from '@/lib/pariprashna/confidence/types'
 
 // ---------------------------------------------------------------------------
 // coverage — from the turn's own WebCompletenessReceipt (pipeline/
@@ -228,6 +229,54 @@ export const ReceiptProvenanceSchema = z.object({
 export type ReceiptProvenance = z.infer<typeof ReceiptProvenanceSchema>
 
 // ---------------------------------------------------------------------------
+// confidence_typing — lane G3-C (PPR-03). Types every citation this turn
+// into one of the five PPR-03 confidence types (see
+// `confidence/types.ts`), from real per-type sources: an L1-layer citation
+// → deterministic_fact; a real L5 calibration tool consulted AND the
+// activation gate open → empirically_calibrated; a real classical-text tool
+// consulted → classical_prior; an L2.5-layer citation → structural_prior;
+// otherwise → unresolved (never a fabricated default — §N.7 item 6).
+// unavailable when `PARIPRASHNA_TYPED_CONFIDENCE_ENABLED` was off this turn
+// (own flag, layered on top of `PARIPRASHNA_RECEIPT_EMISSION_ENABLED` —
+// same "unavailable, never omitted" convention `evidence_grades` already
+// uses for its own flag). `activation_gate` and `precision_flags` are
+// carried alongside `entries` so a caller can see WHY no entry was typed
+// `empirically_calibrated` even when calibration was consulted, and which
+// numeric confidence values (if any) this turn's calibration-bearing tool
+// results served with more precision than their sample supports (T-8).
+// ---------------------------------------------------------------------------
+
+export const ReceiptActivationGateSchema = z.object({
+  gate_open: z.boolean(),
+  sample_size: z.number().int().nonnegative().nullable(),
+  min_sample_size_required: z.number().int().positive(),
+  threshold_is_placeholder: z.boolean(),
+  gate_note: z.string(),
+})
+export type ReceiptActivationGate = z.infer<typeof ReceiptActivationGateSchema>
+
+export const ReceiptPrecisionFlagSchema = z.object({
+  /** Which calibration-bearing tool this served value came from (e.g. `query_insights`). */
+  tool_name: z.string(),
+  overstated: z.boolean(),
+  max_supported_decimal_places: z.number().int().nonnegative(),
+  served_decimal_places: z.number().int().nonnegative(),
+  sample_size: z.number().int().nonnegative().nullable(),
+  band_label: z.string(),
+  demoted_value: z.number(),
+})
+export type ReceiptPrecisionFlag = z.infer<typeof ReceiptPrecisionFlagSchema>
+
+export const ReceiptConfidenceTypingSchema = z.object({
+  status: z.enum(['measured', 'unavailable']),
+  entries: z.array(TypedConfidenceEntrySchema).nullable(),
+  activation_gate: ReceiptActivationGateSchema.nullable(),
+  precision_flags: z.array(ReceiptPrecisionFlagSchema).nullable(),
+  unavailable_reason: z.string().nullable(),
+})
+export type ReceiptConfidenceTyping = z.infer<typeof ReceiptConfidenceTypingSchema>
+
+// ---------------------------------------------------------------------------
 // The receipt.
 // ---------------------------------------------------------------------------
 
@@ -249,6 +298,8 @@ export const AcharyaReadingReceiptSchema = z.object({
   calibration_disclosure: ReceiptCalibrationDisclosureSchema,
   prose_binding: ReceiptProseBindingSchema,
   provenance: ReceiptProvenanceSchema,
+  /** Lane G3-C (PPR-03) — see the `confidence_typing` section comment above. */
+  confidence_typing: ReceiptConfidenceTypingSchema,
   /** sha256 hex of the canonical JSON of every field above (this field excluded). */
   receipt_hash: z.string(),
 })

@@ -62,6 +62,7 @@ import {
   withAcharyaReadingReceipt,
   isReceiptEmissionEnabled,
 } from '@/lib/pariprashna/receipt'
+import { isTypedConfidenceEnabled } from '@/lib/pariprashna/confidence/flag'
 
 import type { TurnIdentity, TurnParams } from './stage_context'
 import {
@@ -431,6 +432,8 @@ export async function runPersistenceStage(args: {
                 safetyDecision: args.safetyDecision,
                 validToolResults,
                 provenanceStamp,
+                // Lane G3-C (PPR-03) — own flag, additive to G3-A's 11 fields.
+                typedConfidenceEnabled: isTypedConfidenceEnabled(),
               })
               const validation = validateAcharyaReadingReceipt(receipt)
               if (!validation.ok) {

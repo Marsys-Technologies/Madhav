@@ -354,6 +354,23 @@ export type FeatureFlag =
   // that fails validation is logged and OMITTED, never persisted malformed.
   // Flip via MARSYS_FLAG_PARIPRASHNA_RECEIPT_EMISSION_ENABLED=true.
   | 'PARIPRASHNA_RECEIPT_EMISSION_ENABLED'
+  // G3-C — PPR-03 typed confidence. Default false: ships dark. Off,
+  // `assembleAcharyaReadingReceipt` writes its new `confidence_typing` field
+  // as `{ status: 'unavailable', ... }` and every other receipt field is
+  // byte-for-byte what G3-A already computed — this flag adds nothing to the
+  // 11 pre-existing fields' logic. On, each citation this turn is typed into
+  // one of the five PPR-03 confidence types (deterministic_fact /
+  // structural_prior / classical_prior / empirically_calibrated /
+  // unresolved) from a real per-type source (see
+  // `pariprashna/confidence/type_claim.ts`), `empirically_calibrated` is
+  // gated on a real sample-size activation gate
+  // (`pariprashna/confidence/activation_gate.ts` — proven closed under
+  // today's real L5 STRUCTURAL-mode data), and any numeric confidence value
+  // this turn served from a calibration-bearing tool is scanned for
+  // overstated precision (T-8,
+  // `pariprashna/confidence/precision_scan.ts`). Flip via
+  // MARSYS_FLAG_PARIPRASHNA_TYPED_CONFIDENCE_ENABLED=true.
+  | 'PARIPRASHNA_TYPED_CONFIDENCE_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -504,6 +521,7 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // G3-A — AcharyaReadingReceipt v1 (PPR-01). Default false — see the union
   // declaration above for the full flip contract.
   PARIPRASHNA_RECEIPT_EMISSION_ENABLED: false,
+  PARIPRASHNA_TYPED_CONFIDENCE_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)
