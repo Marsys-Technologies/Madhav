@@ -61,13 +61,25 @@ export function suppressIfNotCalibrated(row: Record<string, unknown>): Record<st
   const statement = typeof rawStatement === 'string'
     ? redactEmbeddedNumericEvidence(rawStatement)
     : rawStatement
+  // GA-5 review finding on #1386 round 3 (2nd finding, same round): mi_darshana.py writes
+  // the SAME suppressed float into more than one provenance_chain key depending on
+  // insight_type -- manifestation_grammar duplicates it as both provenance_chain.grade AND
+  // provenance_chain.propensity (mi_darshana.py's json.dumps({'channel':.., 'domain':.., 
+  // 'propensity': prop})). Nulling only .grade left .propensity serving the exact number
+  // .grade was just nulled for -- confirmed live: all 10 manifestation_grammar rows on the
+  // canonical chart currently carry this key (latent today, all currently empirical). Null
+  // BOTH known duplicate keys explicitly -- not a blanket "null every number in
+  // provenance_chain", which would incorrectly strip unrelated numeric fields other insight
+  // types legitimately carry (e.g. verdict_object's ranked_evidence[].salience, an evidence-
+  // weighting score, not a suppressed confidence value).
+  const suppressedProvenanceChain = pc == null ? pc : { ...pc, grade: null, propensity: null }
   return {
     ...row,
     statement,
     rank_consequence: null,
     confidence_band: null,
-    provenance_chain: pc == null ? pc : { ...pc, grade: null },
-    tier_suppression_note: `rank_consequence/confidence_band/provenance_chain.grade/statement's embedded numeric evidence (grade/sensitivity/outcome-rate citations) suppressed at serve time: evidence_grade=${JSON.stringify(row['evidence_grade'])} — no empirically-calibrated score exists for this insight yet (P3-b tier-suppression; see services/ka_kshetra/stage8_spec.py for the precedent this mirrors). The stored value is unaffected.`,
+    provenance_chain: suppressedProvenanceChain,
+    tier_suppression_note: `rank_consequence/confidence_band/provenance_chain.grade+propensity/statement's embedded numeric evidence (grade/sensitivity/outcome-rate/prior-estimate citations) suppressed at serve time: evidence_grade=${JSON.stringify(row['evidence_grade'])} — no empirically-calibrated score exists for this insight yet (P3-b tier-suppression; see services/ka_kshetra/stage8_spec.py for the precedent this mirrors). The stored value is unaffected.`,
   }
 }
 

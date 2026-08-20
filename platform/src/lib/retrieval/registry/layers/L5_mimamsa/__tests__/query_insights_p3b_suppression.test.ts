@@ -149,4 +149,30 @@ describe('query_insights — P3-b tier-suppression (F-69)', () => {
     expect(String(unit.statement)).not.toMatch(/prior-based estimate: [\d.]+%/i)
     expect(String(unit.statement)).toContain('insufficient evidence for an empirical grade')
   })
+
+  // GA-5 review finding on #1386 round 3 (2nd finding): mi_darshana.py duplicates the same
+  // suppressed float into provenance_chain.propensity (manifestation_grammar rows), not just
+  // provenance_chain.grade -- nulling only .grade left the identical number readable via
+  // .propensity in the same served row. Live-confirmed all 10 manifestation_grammar rows on
+  // the canonical chart currently carry this key.
+  it('evidence_grade=assignment_only, manifestation_grammar template → provenance_chain.propensity is ALSO nulled, not just .grade', async () => {
+    queryMock.mockResolvedValueOnce({
+      rows: [row({
+        insight_type: 'manifestation_grammar', evidence_grade: 'assignment_only',
+        statement: 'Channel propensity for this configuration: insufficient evidence for an empirical grade (prior-based estimate: 42%).',
+        provenance_chain: { channel: 'career_c1', domain: 'career', propensity: 0.42, grade: 4.2 },
+      })],
+    })
+    queryMock.mockResolvedValueOnce({ rows: [{}] })
+    const result = await queryInsightsCapability.handler({ chart_id: NATIVE_CHART_ID }, undefined) as {
+      content: { insight_units: Array<Record<string, unknown>> }
+    }
+    const unit = result.content.insight_units[0]
+    const pc = unit.provenance_chain as Record<string, unknown>
+    expect(pc.grade).toBeNull()
+    expect(pc.propensity).toBeNull()
+    // non-numeric-suppression-relevant keys survive
+    expect(pc.channel).toBe('career_c1')
+    expect(pc.domain).toBe('career')
+  })
 })
