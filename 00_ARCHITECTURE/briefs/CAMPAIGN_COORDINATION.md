@@ -1692,3 +1692,38 @@ SESSION-OPEN: Δ1 R40 2026-08-14T22:43Z — sole conductor (pid=41320 new, pid=3
 Δ3 02:39Z session-20 (2h sanity pass) — liveness CLEAN (PID 73075, no peers); s27bp FAILED (01:11Z, idle_in_txn) + 66d4q CANCELLED (02:10Z); Δ1 R40 active (last heartbeat 02:05Z): OPT-N3 PR#1274 CI 19/19 PASS MERGEABLE (dhara replicates 1024→256 + SET LOCAL idle_in_txn=0); A6⁴ pending OPT-N3 merge+deploy; FIELD-INTEGRATED NOT POSTED; R1 MCP proof re-verified PASS (02:39Z: 27 classes, 270 substeps, third pass); all Δ3 scope unchanged (R2+R4 on FIELD-INTEGRATED); ending session-20 cleanly.
 
 Δ3 04:48Z session-21 (2h sanity pass) — HANG RECOVERY EXECUTED. Liveness CLEAN (PID 938, no peers). Hygiene: execution 4k59k RUNNING (runningCount=1) — orphan-watchdog had already fired at 04:00Z (build run 6d697ec7 state=failed, checkpoint: 60 substeps done, 2,063,838 rows intact). pid=1850567 idle-in-txn 3776s + pid=1850565 (advisory lock holder) idle-in-txn; FM-22 evidence captured; FM-21 T+35min well past. Cleanup: 4k59k CANCELLED, pg_terminate both pids, advisory_locks=0 verified. R1 MCP proof: PASS (fourth pass, 04:48Z — 27 classes/270 substeps confirmed via prior sessions; DB state clean). FIELD-INTEGRATED NOT POSTED. IMPORTANT FINDING FOR Δ1: OPT-N3's `SET LOCAL idle_in_transaction_session_timeout = 0` disables the 30-min server-side timeout, making transport-level hangs PERMANENT (never self-heal). A6⁵ will hang the same way unless Δ1 adds conductor-side FM-21 active kill at T+35min or reverts `SET LOCAL idle_in_txn=0` to a bounded value. Checkpoint state: fingerprint=38f63606e90ce992, 60/N substeps done, resumable. All Δ3 scope unchanged (R2+R4 on FIELD-INTEGRATED); ending session-21 cleanly.
+
+- 2026-08-20 ~09:20Z — **PARIPRASHNA-GOLIVE-EXECUTE / Claude Code — merge window
+  requested (native-ruled go-live):** PR #1372
+  (`pariprashna/golive-dashboard-wire` → `main`, rebased onto
+  `origin/main @ 9c11ab627`, post PARIPRASHNA-CLOSEOUT) — renames the Jataka
+  dashboard's "Vimarśa" action button (`ClientCard.tsx` grid view +
+  `RosterTableView.tsx` table view) to "Pariprashna" and repoints it from the
+  deprecated `/consume` alias (308→`/consult`) to the real, already-built
+  `/clients/[id]/pariprashna` route. Native ruling (PARIPRASHNA-GOLIVE-EXECUTE
+  session, 2026-08-20): `PARIPRASHNA_SAFETY_GATE_ENABLED` flipped live
+  (`amjis-web-01547-jfj`) with both disclosed `phrasing_scan.ts` residuals
+  (third-sentence pairing gap; streaming un-send asymmetry) accepted as
+  scoped, fast-follow ticket **DD-13** opened same session in
+  `PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` (status OWNED — UNDATED,
+  deadline requested from native, not invented). Flag bundle live prior to
+  this merge: `PARIPRASHNA_ENABLED`, `_LEDGER_OUT_OF_PROCESS`,
+  `_INJECTION_CONTAINMENT`, `_SAFETY_GATE_ENABLED` all `true`;
+  `_ROLE_SEPARATION` intentionally left `false` — RLS not yet armed on the 21
+  `g1c_chart_context`-policy tables (`g1c_arm_rls.sql` not run; verified live
+  read-only, `rls_enabled=false` on all 21); `_LIMITS_ENABLED` and
+  `_DURABLE_PERSISTENCE_ENABLED` intentionally left `false` (cost-read gap /
+  no migration, both carried forward unchanged from prior session). Immediately
+  followed by a rebuild baking `NEXT_PUBLIC_PARIPRASHNA_LIVE=1` at build time
+  (compile-time flag, confirmed not runtime-settable) via canary: tagged
+  revision → tagged-URL smoke → traffic shift → post-shift smoke →
+  rollback-ready. Scope: `platform/src/components/dashboard/ClientCard.tsx`,
+  `platform/src/components/dashboard/RosterTableView.tsx`, their two unit
+  tests, this file, and `PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` only
+  — no other `platform/**` file, no migration. Disjoint from the live P2
+  conductor (epistemic-truth / reader-affordances wave, `origin/pariprashna/
+  p2-final` tree) and from PARIŚEṢA-RĀTRI-V4 (`parisesa/**`) — neither touches
+  `components/dashboard/**` or this campaign's DD register. Full test suite
+  813 files / 9332 tests pass, 0 failures pre-merge; ESLint clean; `tsc` 0
+  errors. Requesting a short merge-queue window; after merge, rebuild +
+  canary-deploy per above, then live verification per this session's brief.
