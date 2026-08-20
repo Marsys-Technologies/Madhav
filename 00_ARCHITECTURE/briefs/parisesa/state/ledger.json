@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 827,
+  "event_count": 828,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1216,17 +1216,17 @@
     },
     "F-43": {
       "confidence": "HIGH",
-      "disposition": "EXTERNAL_HOLD",
-      "event_sha256": "6b7ed8f5c0f8dc77d0bcb3bc0fe0fb1a2a6636a67139b7b056201025a7edbc6f",
+      "disposition": "LANDED",
+      "event_sha256": "fc6076fc87a72ccb756761e11a689275998950a5f5595f76c44335b0f379cbc1",
       "event_type": "finding_status",
-      "evidence_summary": "Reclassified from DECISION_PARKED to EXTERNAL_HOLD (bookkeeping correction matching the finding's own existing next_action): external corpus lookup needed before sub-commit isolation can even be attempted -- nothing autonomous can supply the missing corpus.",
+      "evidence_summary": "Original claim (recovered from /Users/Dev/shad_overnight corpus): a bare dualOutput(data) call site (no toolName arg) in register_p1_aliases.ts caused ~19+ tool registrations to serve 'unknown_tool' as their recover_via/drill_pointers instrument the moment auto-detected budget trimming triggered. VERIFIED on current origin/main: dualOutput's own signature now REQUIRES toolName (function dualOutput(data: unknown, toolName: string) -- non-optional TypeScript parameter, so a bare call would be a compile error, not just a latent runtime bug). All 44 call sites in the file (including the two multi-line calls whose second arg isn't on the same line as the opening call, checked individually) pass a real, correct tool name string -- catalog_assets_list, ref_tantric_remedies_get, ref_remedies_search, kala_projections_get, and every other name F-43's own claim listed. The defect class is structurally eliminated, not just patched at the named call sites.",
       "finding_id": "F-43",
-      "next_action": "external corpus lookup needed before sub-commit isolation can be attempted.",
-      "prev_sha256": "23f0bc9f00c74981655dc75246235e3a8a6563a54c9b87ef7d16985b9b12c73c",
-      "seq": 822,
-      "source_batch": "v3_ga2_decision_closures",
-      "status": "EXTERNAL_HOLD",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "prev_sha256": "04267f747af75e319c27f21cb7d6d1095add7b273ed81b7fe3c29d1b2d9fc05a",
+      "seq": 828,
+      "source_batch": "v3_ga2_decision_closures_corrected",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-44": {
       "confidence": "HIGH",
@@ -2026,9 +2026,9 @@
     }
   },
   "findings_morning_ship_ready_count": 11,
-  "findings_terminal_count": 98,
-  "journal_head_seq": 827,
-  "journal_head_sha256": "04267f747af75e319c27f21cb7d6d1095add7b273ed81b7fe3c29d1b2d9fc05a",
+  "findings_terminal_count": 99,
+  "journal_head_seq": 828,
+  "journal_head_sha256": "fc6076fc87a72ccb756761e11a689275998950a5f5595f76c44335b0f379cbc1",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
