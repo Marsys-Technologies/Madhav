@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 700,
+  "event_count": 704,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -509,31 +509,35 @@
       "terminal_status": null
     },
     "F-123": {
-      "confidence": "MEDIUM",
-      "disposition": "STRANDED",
-      "event_sha256": "b214c9031a61619f9e15b14050bdbf8a36133e49dd8e2c50cd29ad67eeb833a5",
+      "branch": "parisesa/repair-F123-dead-pointer",
+      "confidence": "HIGH",
+      "disposition": "OPEN",
+      "event_sha256": "fbc775aa7d362e2b124824c62e7d0ec6847ee021bc8994740dcc3e14a76e4a7f",
       "event_type": "finding_status",
-      "evidence_summary": "No commits cited; corpus's own deployment_status explicitly says the current deployed service reproduces the dead pointer defect \u2014 confirmed still open, no fix built.",
+      "evidence_summary": "PR #1379 opened and frozen -- fresh build for the dead-pointer defect confirmed reproducing on the deployed service (see phase0/rebase_f123.json for full detail).",
       "finding_id": "F-123",
-      "next_action": "author fresh pointer-contract repair across now/ahead/priority per corpus's own next_executable_action, independent review before PR",
-      "prev_sha256": "3c4f606448c4304afa278b3a6c25c7c0461cd23a3dd84bd8316b725c271f344b",
-      "seq": 68,
-      "source_batch": "batch2.json",
-      "status": "STRANDED",
+      "next_action": "owner reviews and merges PR #1379 at morning checkpoint",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1379",
+      "prev_sha256": "aeccec306e94369e358667026eca1266a427ec61847d669ecdf744da2aa88fa9",
+      "seq": 704,
+      "source_batch": "rebase_f123",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-124": {
+      "branch": "parisesa/repair-F14-F124-domain-depth",
       "confidence": "HIGH",
       "disposition": "STRANDED",
-      "event_sha256": "3e3843d228b2ace57a1b6259e706fd49ba06c70d9d27017842c56d2863e95797",
+      "event_sha256": "495df80d09a2e6c9ebbae6514984eeb8f8ad7ad225d733e42af44171c9801b03",
       "event_type": "finding_status",
-      "evidence_summary": "CL-14 assess_career vs assess_marriage/assess_health depth asymmetry. Confirmed still live on current main: registry_bridge.ts's DOMAIN_READING_FAMILIES-family maps and attachDomainCompleteness/attachDomainReading call sites exist only for 'career' (line 3084/3086) and 'wealth' (3166/3168) -- 'marriage' and 'health' handlers still lack them, matching F-124's exact claim. A real, independently-ratified fix exists on branch par/night-F-124 (commit 5f8871bcd8195f1b3014a6d0b45b9a50ad250c52, 'F-124: assess_wealth completeness wiring -- domain reading parity for health/relationship') -- confirmed present on the remote branch (git log origin/par/night-F-124), confirmed NOT an ancestor of origin/main. Diff shows AssessedDomain union + RELATIONSHIP_READING_FAMILIES/HEALTH_READING_FAMILIES + the missing attachDomainCompleteness('relationship'/'health', ...) call sites, exactly matching the gap. Companion lane to F-14 (same underlying defect, different branch/commit).",
+      "evidence_summary": "Reconciled with F-14 (see F-14's record for full detail). F-124's exclusive correct per-domain varga-family labels (Shashtamsha for health, Navamsha for relationship) and AssessedDomain exhaustiveness guard kept as the structural base; F-124's own buildAssessResponse module-scope-export refactor deliberately NOT ported (current main evolved past both fork points, hoisting would need pulling more helpers for no behavioral gain -- fixed the actual bug, wrong key name, in place instead, lower risk). PR #1382 covers both F-14 and F-124.",
       "finding_id": "F-124",
-      "next_action": "rebase par/night-F-124 (5f8871bcd) onto current origin/main, re-verify against F-14's overlapping branch to avoid duplicate work, then land",
-      "prev_sha256": "ee212b1e16ba9a2a2748dbb2aea45c453e8f909277e89a3bdc1c9197330e4649",
-      "seq": 603,
-      "source_batch": "triage_batch2.json",
-      "status": "STRANDED",
+      "next_action": "owner reviews and merges PR #1382 at morning checkpoint",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1382",
+      "prev_sha256": "2fa2eb9f4783f1bda860e1467513ef832043c46f17e03196a6b9f776dd1d53cd",
+      "seq": 702,
+      "source_batch": "rebase_f14_f124",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-125": {
@@ -761,17 +765,19 @@
       "terminal_status": null
     },
     "F-14": {
+      "branch": "parisesa/repair-F14-F124-domain-depth",
       "confidence": "HIGH",
       "disposition": "STRANDED",
-      "event_sha256": "c6a935748d52adc6eea0f79f2fac7e49c0a1a6c36625e415de87802036e873b5",
+      "event_sha256": "2fa2eb9f4783f1bda860e1467513ef832043c46f17e03196a6b9f776dd1d53cd",
       "event_type": "finding_status",
-      "evidence_summary": "Same underlying defect family as F-124 (CL-14, D6/D9 slice contract for assess_health specifically). Corpus's cfb6444c8 citation is bogus (unrelated commit, same IF-001 pattern). Confirmed still live on main: DOMAIN_READING_FAMILIES has only wealth/career keys, buildAssessResponse:2925 still checks the wrong key response['completeness'] instead of response['domain_completeness'], assess_health handler (~3071) still has no attach call sites. A real, independently-ratified fix exists on branch par/night-F-14 (commit 5f8a129b490f9943f45d3596ccb0f0e1b46afba0, 'F-14: assess_* domain-family wiring + buildAssessResponse key-mismatch fix') touching registry_bridge.ts + response_budget.ts + a new parity test; confirmed present on remote branch, confirmed NOT merged into origin/main. Verifier notes state this unified spec covers F-15/F-124/F-31/F-112 as well -- overlaps significantly with F-124's branch, so these two branches likely need reconciling (pick one, not both) before landing.",
+      "evidence_summary": "Reconciled with F-124 (both touched the exact same DOMAIN_READING_FAMILIES/attachDomainCompleteness lines). F-124's map/label/type-safety structure kept as base, F-14's exclusive honest-null domain_completeness_empty_reason disclosure layered in (ported to current, since-evolved buildAssessResponse). tsc clean, full vitest before/after diffed byte-identical on pre-existing failures (zero regressions), +6 new passing tests. PR #1382 covers both F-14 and F-124 -- neither should be re-attempted separately.",
       "finding_id": "F-14",
-      "next_action": "reconcile par/night-F-14 (5f8a129b4) against par/night-F-124 (5f8871bcd) -- they fix overlapping/duplicate ground -- pick the more complete one, rebase onto origin/main, land",
-      "prev_sha256": "d241d7ce4946fbc4f7388980d6cd45834c58f0a79997524c50ef3686af4e17ea",
-      "seq": 605,
-      "source_batch": "triage_batch2.json",
-      "status": "STRANDED",
+      "next_action": "owner reviews and merges PR #1382 at morning checkpoint",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1382",
+      "prev_sha256": "39e4532005d3a6f9c9a6a7e1fff06cec1e6e41bd3c4f07d3e930e36c8929c352",
+      "seq": 701,
+      "source_batch": "rebase_f14_f124",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-140": {
@@ -1551,17 +1557,19 @@
       "terminal_status": null
     },
     "F-68": {
+      "branch": "parisesa/repair-F68-tier-honesty",
       "confidence": "HIGH",
       "disposition": "STRANDED",
-      "event_sha256": "f4bdc3dddd3e087b28dce93f0ac753c5211ac26ef531a50b6c3b5419fed377bd",
+      "event_sha256": "aeccec306e94369e358667026eca1266a427ec61847d669ecdf744da2aa88fa9",
       "event_type": "finding_status",
-      "evidence_summary": "No commits cited in corpus (empty list) \u2014 corpus's own evidence says the tier-honesty leak is CURRENTLY STILL PRESENT on cfb6444c. A candidate fix commit ca1032135 exists but is explicitly non-ancestor/quarantined. A sibling attempt branch origin/par/night-F-68 exists on origin, unreviewed by this pass.",
+      "evidence_summary": "PR #1378 opened and frozen -- tier-honesty leak fix, quarantined candidate reviewed and either recovered or rebuilt (see phase0/rebase_f68.json for full detail).",
       "finding_id": "F-68",
-      "next_action": "Review origin/par/night-F-68 and the quarantined ca1032135 candidate for reusable fix content before building fresh; defect is live on main today.",
-      "prev_sha256": "c4faa07c795f88ce111934f0b99aecde5cd1f0ad0eca13d6c9c0247daf195869",
-      "seq": 79,
-      "source_batch": "batch3.json",
-      "status": "STRANDED",
+      "next_action": "owner reviews and merges PR #1378 at morning checkpoint",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1378",
+      "prev_sha256": "495df80d09a2e6c9ebbae6514984eeb8f8ad7ad225d733e42af44171c9801b03",
+      "seq": 703,
+      "source_batch": "rebase_f68",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-69": {
@@ -2013,10 +2021,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 3,
+  "findings_morning_ship_ready_count": 7,
   "findings_terminal_count": 55,
-  "journal_head_seq": 700,
-  "journal_head_sha256": "39e4532005d3a6f9c9a6a7e1fff06cec1e6e41bd3c4f07d3e930e36c8929c352",
+  "journal_head_seq": 704,
+  "journal_head_sha256": "fbc775aa7d362e2b124824c62e7d0ec6847ee021bc8994740dcc3e14a76e4a7f",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
