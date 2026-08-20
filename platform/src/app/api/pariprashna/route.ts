@@ -300,6 +300,13 @@ export async function POST(request: Request): Promise<Response> {
           citationRewriteEnabled: synthesized.value.citationRewriteEnabled,
           resolvedCitations: synthesized.value.resolvedCitations,
           groundingSummary,
+          // Lane G3-A (PPR-01). Real, already-computed sources for the
+          // AcharyaReadingReceipt's `coverage`/`honest_gaps` and
+          // `evidence_grades.hallucination_count` fields — see
+          // persistence_stage.ts's own doc comment on these params. No-op
+          // when PARIPRASHNA_RECEIPT_EMISSION_ENABLED is off (the default).
+          completenessReceipt: evidence.completenessReceipt,
+          citationHallucinationCount: synthesized.value.citationHallucinationCount,
         })
 
         // Completeness + aggregated judgment flags (grade/flag — always emitted).

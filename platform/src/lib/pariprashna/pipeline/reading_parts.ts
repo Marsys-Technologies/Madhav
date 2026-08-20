@@ -29,7 +29,7 @@ import {
   scanMortalityPhrasing,
   type PreWireSentenceRule,
 } from '@/lib/pariprashna/safety/phrasing_scan'
-import { classifyCommittedBlock } from '@/lib/pariprashna/semantics/block_classifier'
+import { classifyCommittedBlock, type BlockClassification } from '@/lib/pariprashna/semantics/block_classifier'
 import type { MessagePartInput } from '@/lib/pariprashna/store/schema'
 import {
   textPartFromBlock,
@@ -44,6 +44,19 @@ export interface OpenBlock {
   id: string
   role: BlockRole
   text: string
+  /**
+   * Lane G3-A (PPR-01) `prose_binding` reuse: the G2-A semantic
+   * classification (`kind`/`role` only — never the full `BlockClassification`
+   * with its `content`/`table`/`gapText`, which the wire event already owns)
+   * for a COMMITTED prose block, set ONLY when `semanticBlocksEnabled` is on
+   * and the block was reader-visible prose. Never re-run: this is the SAME
+   * `classifyCommittedBlock` result `commitBlock()` already computed for the
+   * wire event, carried onto the committed record rather than discarded, so
+   * a later consumer (the receipt assembler) can bind to it without a second
+   * classification pass. `undefined` for every pre-existing caller and for
+   * every 'thinking' block — byte-for-byte unchanged shape otherwise.
+   */
+  semantic?: Pick<BlockClassification, 'kind' | 'role'>
 }
 
 /** The score floor a detected prediction candidate must reach to be persisted. */
@@ -277,10 +290,12 @@ export class ReadingPartsAssembler {
       // classified as if it were). Computed from `this.currentBlock.text`
       // AFTER the lint/pre-wire scans above, so classification runs on the
       // exact text that reaches the wire, never on a since-redacted copy.
+      let committedSemantic: Pick<BlockClassification, 'kind' | 'role'> | undefined
       if (this.semanticBlocksEnabled && this.currentBlock.role === 'prose') {
         const isFirstProseInPass = this.passId !== this.lastProsePassSeen
         this.lastProsePassSeen = this.passId
         const classification = classifyCommittedBlock(this.currentBlock.text, { isFirstProseInPass })
+        committedSemantic = { kind: classification.kind, role: classification.role }
         this.em.blockCommit({
           block_id: this.currentBlock.id,
           text: this.currentBlock.text,
@@ -297,6 +312,7 @@ export class ReadingPartsAssembler {
         id: this.currentBlock.id,
         role: this.currentBlock.role,
         text: this.currentBlock.text,
+        ...(committedSemantic ? { semantic: committedSemantic } : {}),
       })
       this.currentBlock = null
     }

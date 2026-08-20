@@ -341,6 +341,19 @@ export type FeatureFlag =
   // back to direct mode with a disclosed `outbox_unavailable` detail. Flip
   // via MARSYS_FLAG_PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED=true.
   | 'PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED'
+  // G3-A — AcharyaReadingReceipt v1 assembly + persistence (PPR-01). Default
+  // false: ships dark. Off, `persistence_stage.ts` writes exactly what it
+  // wrote before this lane — no new metadata_json key, no new DB read. On,
+  // every persisted assistant turn assembles a receipt (coverage, facts
+  // consumed by reference, derivation chains, cross-domain, evidence grades,
+  // honest gaps, safety decision, calibration disclosure, prose binding,
+  // provenance, receipt hash) from ALREADY-COMPUTED pipeline outputs, runs it
+  // through the §N.8 structural validator, and — only if valid — attaches it
+  // as `conversation_messages.metadata_json.acharya_reading_receipt` (same
+  // additive-jsonb convention as `provenance_stamp`; no migration). A receipt
+  // that fails validation is logged and OMITTED, never persisted malformed.
+  // Flip via MARSYS_FLAG_PARIPRASHNA_RECEIPT_EMISSION_ENABLED=true.
+  | 'PARIPRASHNA_RECEIPT_EMISSION_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -488,6 +501,9 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // P2-D — Durable persistence (PPR-10, FD-9). Default false — see the union
   // declaration above for the full flip contract.
   PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED: false,
+  // G3-A — AcharyaReadingReceipt v1 (PPR-01). Default false — see the union
+  // declaration above for the full flip contract.
+  PARIPRASHNA_RECEIPT_EMISSION_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)
