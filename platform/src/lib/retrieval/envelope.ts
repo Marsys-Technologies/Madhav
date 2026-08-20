@@ -1111,6 +1111,8 @@ export const JUDGMENT_FLAG_CODES = [
   'partial_portrait_section_errors',
   'no_parivartana_or_catalog_matches_for_graha',
   'no_mahadasha_periods_for_graha',
+  // ── get_dashas temporal-boundary disclosure (F-33) ──
+  'as_of_date_precedes_chart_birth',
   // ── response_budget.ts finalizeMcpBudget hard-cap ──
   'budget_exceeded_after_trim',
   // ── provenance-stamp drift (distinct subsystem, provenance_stamp.ts) — included so a

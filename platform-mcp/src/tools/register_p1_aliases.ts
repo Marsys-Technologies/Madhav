@@ -514,7 +514,7 @@ const DASHA_FACET_SCHEMA: Record<string, z.ZodTypeAny> = {
     'Ayanamsha filter. NO server-side default — omitting it returns ALL 5 ayanamshas ' +
     '(one row per ayanamsha). Pass "lahiri_chitrapaksha" explicitly for the standard ' +
     'single-row current-dasha gate shape.'),
-  as_of_date:    z.string().optional().describe('ISO date — the dasha running on this date ("what dasha as of X"). Echoed in facets_applied.date_filter.'),
+  as_of_date:    z.string().optional().describe('ISO date — the dasha running on this date ("what dasha as of X"). Echoed in facets_applied.date_filter; a date before the chart birth date carries the structured as_of_date_precedes_chart_birth warning.'),
   date_contains: z.string().optional().describe('ISO date — alias of as_of_date.'),
   date_from:     z.string().optional().describe('ISO date — exclude periods ending before this date. Echoed in facets_applied.date_filter.'),
   system:        z.string().optional().describe('Dasha system facet (default: vimshottari; "all" for every system).'),
