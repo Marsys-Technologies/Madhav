@@ -4498,3 +4498,36 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   Opening the PR next; requesting a merge-queue window. Will continue to
   G3-B/C/D/E (pipelined behind this lane per the plan's own `A → I →
   {J,K,L,M}` rule) once this merges and deploy-verifies.
+
+- 2026-08-20 02:25Z — **PARIPRASHNA / Claude Code (conductor) — P2-I merged
+  + deploy-verified; dispatching G3-B/C/D + F.** PR #1363 merged via Ganga
+  merge queue at `2026-08-20T02:06:09Z`, merge commit `bd3fc00fc1a`, 0 CI
+  failures. Deploy run `32323955353`: smoke PASS → 100% LATEST on
+  `amjis-web-01540-zgl`. Independent spot-check: `GET /api/health` →
+  `{"status":"ok"}`; unauthenticated `POST /api/pariprashna` → 401
+  (unchanged, `PARIPRASHNA_RECEIPT_EMISSION_ENABLED` stays default false).
+  `tracker-health-check`: `OBSERVATORY HEALTHY`.
+
+  **Dispatching next per the roadmap's own dependency table**
+  (`PARIPRASHNA_IMPLEMENTATION_ROADMAP_v1_0.md` lines 101-107): G3-B (three
+  interpretations + falsifier, PPR-02), G3-C (typed confidence, PPR-03),
+  and G3-D (voice enforcement, PPR-04) in parallel — all three depend only
+  on lanes already merged (G3-A just landed; G3-D depends on G2-A, merged
+  in the presentation-truth wave). Also starting G3-F (the quality corpus)
+  now per the plan's explicit "authored in parallel from the start" note,
+  since it depends only on G3-A. **Holding G3-E** (reader affordances)
+  until G3-B lands — it depends on G3-B's falsifier/candidate-set output
+  specifically, not just G3-A. **Holding G3-G** (model qualification)
+  until G3-F lands — same reasoning, direct dependency not satisfied yet.
+  Given G3-B/C/D/F each touches new files under a lane-specific subpath of
+  `lib/pariprashna/**`/`components/pariprashna/**` (interpretation sets,
+  confidence typing, voice/register lint extension, corpus fixtures) with
+  the usual shared-file fan-in expected at merge (`feature_flags.ts`,
+  `synthesis_stage.ts`, `receipt/assemble.ts` since some of these lanes'
+  outputs plausibly belong IN the receipt) — conductor will do the same
+  fan-in integration + independent re-verification as the presentation-
+  truth wave. G3-B and G3-C, given they touch synthesis-stage structured-
+  output claims (interpretation sets, confidence typing) in the same
+  §N.7/§N.8 territory G3-A just needed hardening in, will get the same
+  verifier+adversary review before merging if their builder reports
+  surface anything non-trivial.
