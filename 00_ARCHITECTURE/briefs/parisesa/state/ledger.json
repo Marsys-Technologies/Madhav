@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 830,
+  "event_count": 831,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -648,16 +648,16 @@
     },
     "F-131": {
       "confidence": "HIGH",
-      "disposition": "EXTERNAL_HOLD",
-      "event_sha256": "8bb65b78a3c7909f34eb29480e4f7592290ce6a7dd0b29a24d527ceeac5ca435",
+      "disposition": "DIAGNOSED_UNFIXED",
+      "event_sha256": "b58d729db7edb6fa937c9774bb6041a0f2ebce843a3793f4f03c80b90c19641d",
       "event_type": "finding_status",
-      "evidence_summary": "Reclassified from DECISION_PARKED to EXTERNAL_HOLD (bookkeeping correction matching the finding's own existing next_action): external corpus lookup needed before sub-commit isolation can even be attempted -- nothing autonomous can supply the missing corpus.",
+      "evidence_summary": "Corrected from this session's own earlier (wrong) EXTERNAL_HOLD reclassification -- the corpus data was recoverable (see self-correction entry) and this finding is genuinely diagnosable, just not a quick fix. Original claim: kala_priority_ranking_get serves raw bodha_msr_signals.signal_headline_text template strings verbatim (e.g. 'SAT: arudha pada: sign = Aquarius [ga_sensitive]'), and worse, an internal computation-abstention marker ('floored: no_canonical_per_varga_method' -- the writer had no verifiable classical D14 cheshta-bala formula and honestly floored per B.10) gets salience-scored and served as if it were a real priority signal. INVESTIGATED THIS SESSION: platform/python-sidecar/brahmagyan/signal_register_glossary.py already exists with a complete, well-cited acharya-grade label mapping AND an INTERNAL_MARKER_PATTERNS list specifically naming this exact defect in its own docstring -- but it is NEVER IMPORTED anywhere (grepped the full python-sidecar tree; zero non-test references), including not in bo_laksana.py's _build_headline_text, which the module's own docstring names as the intended call site. Same 'authored but never wired' pattern as F-05 was before its fix. Correctly fixing this requires either (a) wiring the Python glossary into the write path (bo_laksana.py) and then rebuilding the chart's bodha_msr_signals data to pick it up, or (b) a serve-time TS translation+filter at the actual raw-data source (platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts's callPriorityRankingCapability, which serves `ranked_signals: result.rows` completely unfiltered/untranslated straight from SQL) -- ported from the same glossary data, avoiding a data rebuild. Genuinely substantial (porting/wiring an entire label glossary across many signal_type families, not a mechanical patch) -- correctly left parked rather than rushed under the remaining session time budget, per this campaign's own floors-aspirational/no-rushed-correctness doctrine. This diagnostic work hands off a concrete implementation path, not just the original bug report.",
       "finding_id": "F-131",
-      "next_action": "external corpus lookup needed before sub-commit isolation can be attempted.",
-      "prev_sha256": "317ca47fd14a1a060721e79c5eb76bcd1de012708d00b9c31cebbd028bd0ed94",
-      "seq": 820,
-      "source_batch": "v3_ga2_decision_closures",
-      "status": "EXTERNAL_HOLD",
+      "next_action": "wire signal_register_glossary.py's INTERNAL_MARKER_PATTERNS + FACT_CATEGORY_DISPLAY_LABEL into either bo_laksana.py's write path (needs a follow-up chart data rebuild) or call_service_wrappers.ts's callPriorityRankingCapability serve path (immediate, no rebuild needed) -- author+review+implement, real design work, not attempted this session.",
+      "prev_sha256": "c8827231577d77c39ba8d1a9124e7e69746f7b316806da2ab5fd121b70e10bb4",
+      "seq": 831,
+      "source_batch": "v3_ga2_decision_closures_corrected",
+      "status": "DECISION_PARKED",
       "terminal_status": null
     },
     "F-132": {
@@ -2027,8 +2027,8 @@
   },
   "findings_morning_ship_ready_count": 11,
   "findings_terminal_count": 101,
-  "journal_head_seq": 830,
-  "journal_head_sha256": "c8827231577d77c39ba8d1a9124e7e69746f7b316806da2ab5fd121b70e10bb4",
+  "journal_head_seq": 831,
+  "journal_head_sha256": "b58d729db7edb6fa937c9774bb6041a0f2ebce843a3793f4f03c80b90c19641d",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
