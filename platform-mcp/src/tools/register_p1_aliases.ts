@@ -25,6 +25,7 @@ import type { Principal } from '../types.js'
 import {
   describeProxyFailure, resolveChartFactsAyanamsha,
   READING_DEPTH_ZOD, guardDeepDiveNotLossy, DeepDiveLossyFormError, type ReadingDepth,
+  fetchOrientationContext,
 } from './registry_bridge.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
 import { unwrapFailureReason, unwrapPrimitiveResult } from '../lib/primitive_unwrap.js'
@@ -451,7 +452,11 @@ function regAlias(
   uri: string,
   extraSchema: Record<string, z.ZodTypeAny> = {},
   principal: Principal,
-  opts?: { paramAliases?: Record<string, string> },
+  // F-125: `requiresOrientation` closes the B.11 orientation gate for the interpretive
+  // members of this alias family (bodha_domain_reading_get, bodha_remedies_get,
+  // bodha_remedies_search, bodha_quality_get — spec §2c/§4). The remaining regAlias
+  // registrations are RS-4-exempt factual lookups and leave this flag absent/false.
+  opts?: { paramAliases?: Record<string, string>; requiresOrientation?: boolean },
 ) {
   server.tool(
     name, `[Phase-1 alias] ${desc}. Delegates to the same handler as the legacy tool name.`,
@@ -473,7 +478,17 @@ function regAlias(
           chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...resolvedRest,
         }, principal)
-        return dualOutput(data, name)
+        let finalData = data
+        if (opts?.requiresOrientation) {
+          const { orientation_context, orientation_ok } = await fetchOrientationContext(
+            chart_id as string, ayanamsha_id as string | undefined, principal,
+          )
+          finalData =
+            data && typeof data === 'object' && !Array.isArray(data)
+              ? { ...(data as Record<string, unknown>), orientation_context, orientation_ok }
+              : { data, orientation_context, orientation_ok }
+        }
+        return dualOutput(finalData, name)
       } catch (err) { return errOut(name, String(err), { chart_id }) }
     }
   )
@@ -614,7 +629,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           '(default 25, max 100). The stored lens holds hundreds–thousands of rows; serving it ' +
           'unbounded blew this response past 900KB. See per-lens ranked_signals_total for the ' +
           'true family size; response_format=full raises the cap to 200/lens.'),
-    }, principal)
+    }, principal, { requiresOrientation: true })
 
   // get_signals → bodha_signals_get
   // R5.2 A3 (battery X-3 finding): top_k=200 (the max this schema allows) measured 234,278
@@ -1105,7 +1120,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       tradition: z.string().optional(),
       fields: z.enum(['compact', 'all']).optional().describe(
         "'compact' (default) narrates + drops always-null/redundant columns; 'all' returns full raw rows."),
-    }, principal, { paramAliases: { planet: 'graha' } })
+    }, principal, { paramAliases: { planet: 'graha' }, requiresOrientation: true })
 
   // Also: bodha_remedies_search as secondary alias
   regAlias(server, 'bodha_remedies_search',
@@ -1119,12 +1134,12 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       tradition: z.string().optional(),
       fields: z.enum(['compact', 'all']).optional().describe(
         "'compact' (default) narrates + drops always-null/redundant columns; 'all' returns full raw rows."),
-    }, principal, { paramAliases: { planet: 'graha' } })
+    }, principal, { paramAliases: { planet: 'graha' }, requiresOrientation: true })
 
   // get_chart_quality → bodha_quality_get
   regAlias(server, 'bodha_quality_get',
     'L2 chart quality scorecard (same as get_chart_quality)',
-    'marsys://tool/L2/query_quality_scorecard', {}, principal)
+    'marsys://tool/L2/query_quality_scorecard', {}, principal, { requiresOrientation: true })
 
   // R5.2 A2 (punch #5, orphaned C2 item 4): query_predictive_anchors's capability URI had
   // no public MCP tool wired to it — phala_anchors_get is a same-named but functionally

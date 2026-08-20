@@ -2016,12 +2016,20 @@ export function assessOrientationPayload(payload: unknown, chart_id: string): Or
   return { ok: true, reason: null }
 }
 
-async function fetchOrientationContext(
+// F-125: the B.11 orientation gate this function implements was structurally unreachable
+// from outside this file (`fetchOrientationContext` was module-private) — every per_chart
+// domain tool THIS file registers called it directly, but `kala_upaya_get` (kala_views/
+// upaya.ts) and the interpretive `bodha_*` regAlias family (register_p1_aliases.ts) live in
+// other files and had no way to reach it at all. Exported so those tools can wire the same
+// B.11 gate. See F-125.spec_writer.json §2a; ratified diagnosis at F-125.ratifier.json.
+export type OrientationEnvelope = { orientation_context: unknown; orientation_ok: boolean }
+
+export async function fetchOrientationContext(
   chart_id: string,
   ayanamsha_id: string | undefined,
   principal: Principal,
   verbosity?: Verbosity,
-): Promise<{ orientation_context: unknown; orientation_ok: boolean }> {
+): Promise<OrientationEnvelope> {
   try {
     const { top_k_signals, response_format } = resolveOrientationFetchParams(verbosity)
     const ucdData = await callRegistryCapability(
