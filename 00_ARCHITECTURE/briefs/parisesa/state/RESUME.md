@@ -1,47 +1,40 @@
 # PARISESA-V4 RESUME (authoritative — journal-derived)
 
 **Session:** PARISESA-V4-CONDUCTOR-20260820T005119Z
-**Journal head:** seq 227 (round 3 dispatched, not yet folded)
-**Phase:** Phase 2 (repair waves) — round 3 IN FLIGHT
+**Journal head:** seq 245 (round 4 dispatched — 10 agents, first wave under PR-002 scaling)
+**Phase:** Phase 2 (repair waves) — round 4 IN FLIGHT, largest round yet
 
-## Pattern note (unchanged guidance): dispatch AND wait AND fold in the same
-turn sequence before ending, or state goes stale between messages.
+## Pattern note (unchanged): dispatch AND wait AND fold before ending a turn.
 
-## IN-FLIGHT WORK (round 3)
-- Proof-only train (WIP 1/1): F-52,F-54,F-56,F-60,F-62,F-63,F-64,F-65,F-71,F-72,F-81,
-  F-89,F-92,F-96 — output at `phase0/proof_batch_c.json`
-- Code train 1/2: F-26 rebase — output at `phase0/rebase_f26.json`
-- Code train 2/2: F-33 dangling-commit recovery — output at `phase0/rebase_f33.json`
+## IN-FLIGHT WORK (round 4, 10 parallel agents under PR-002 dynamic scaling)
+- 2 proof trains (WIP 2/2): batch D (F-04,F-09,F-116,F-120,F-17,F-41,F-49,F-64,F-92) at
+  `phase0/proof_batch_d.json`; batch E (F-08,F-10,F-12,F-132,F-21,F-44,F-52,F-63,F-71)
+  at `phase0/proof_batch_e.json`
+- 3 code trains (WIP 3/3): F-25 (dangling commit recovery) at `phase0/rebase_f25.json`;
+  F-42 at `phase0/rebase_f42.json` (DONE: already merged via PR #1348, no PR needed);
+  F-50 (sibling-duplicate judgment call) at `phase0/rebase_f50.json`
+- 4 parallel TRIAGE batches (new lane, 14/14/14/13 findings) at
+  `phase0/triage_batch{0,1,2,3}.json`
+- 1 citation-integrity audit (new lane) at `phase0/citation_audit.json`
 
-## IMPORTANT — IF-001 integrity flag (logged seq ~211-226, round 2)
-Commit cfb6444c8 was found mis-cited as evidence across ~10 findings. F-11 and F-29
-had ALREADY PASSED the ratification panel and were reported to the owner as confirmed
-terminal before this was caught — the panel checks commit ancestry, not content
-relevance. Both demoted to UNKNOWN. Round 3's proof train was told to apply the same
-skepticism to F-60 (same commit cited again). **This is a standing methodology caveat
-for the morning report, not resolved by the demotions alone** — every terminal finding
-whose sole evidence is a bare commit-ancestry citation (not a specific test/PR/deploy
-match) deserves a second look before the morning report calls anything "settled."
-
-## Round 1+2 results already folded (terminal 30, morning_ship_ready 2)
-MORNING_SHIP_READY: F-121 (PR #1366), F-122 (PR #1368). Governance PR #1362 (CCD-009)
-also open/frozen (not a finding-fix, separate).
-
-## NEXT ATOMIC ACTION (once round 3 lands)
-1. Fold `proof_batch_c.json`, `rebase_f26.json`, `rebase_f33.json`.
+## NEXT ATOMIC ACTION (once round 4 lands)
+1. Fold all remaining round-4 outputs (F-42 already done: ALREADY_LANDED_NO_PR_NEEDED).
 2. Commit + push.
-3. Round 4: continue proof train on remaining LANDED findings, 2 more STRANDED for
-   rebase (check ledger.json `findings` map, `status` field, for current lists —
-   they shift every round as items get corrected).
-4. TRIAGE_NEEDED findings (UNKNOWN status, currently the largest bucket at 53+) are
-   the next major wave once PROOF_LANDED/REBASE are exhausted or thin.
+3. Triage outputs feed directly into round 5's proof/rebase candidate lists — read
+   triage_batch*.json classifications before picking round 5's targets.
+4. Citation audit output should be cross-checked against any newly-terminal findings
+   before the morning report treats them as settled.
 
-## Unchanged from before (still not blockers)
-- P-1.7/P-1.8 verification debt, EKAVĀKYATĀ park-tag gap.
-- CCD-009 / PR #1362 open, frozen.
-- Full 16-item mandatory-reading list still not exhaustive.
+## Standing integrity flags (unresolved, for morning report)
+IF-001 (cfb6444c8 mis-citation, ~10 findings), IF-002 (F-65/F-109 citation swap,
+suggests systemic corpus evidence-linking defect, not isolated errors).
+
+## Velocity levers adopted this session (PR-002, journaled, flagged for AM ratification)
+Proof trains 1->2, code trains 2->3, parallel TRIAGE lane opened, bigger proof batches,
+citation-integrity audit run once instead of rediscovered per-finding.
 
 ## Campaign state
-- `parisesa/campaign-state`: journal head seq 227 (round 3 pending fold).
+- `parisesa/campaign-state`: journal head seq 245 (round 4 pending fold).
 - origin/main: `43d8c8a05`.
-- Open frozen PRs: #1362 (CCD-009), #1366 (F-121), #1368 (F-122).
+- Open frozen PRs: #1362 (CCD-009), #1366 (F-121), #1368 (F-122), #1369 (F-33),
+  #1370 (F-26).
