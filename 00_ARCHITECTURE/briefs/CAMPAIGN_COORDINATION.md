@@ -5692,3 +5692,48 @@ register, no model change made pending that review.
 
 Worktrees used this arc: `/private/tmp/pariprashna-dd16-dd17` (PR #1396),
 `/private/tmp/pariprashna-dd17-supersede` (PR #1397, this entry).
+
+## 2026-08-21 — PARIPRASHNA-P2-CLOSE-EXECUTE / Claude Code — leased window: 7 must-fix lanes + close-out
+
+Executing the native's P2-close ruling on the pre-close audit (7 must-fix
+items in dependency order, 3 carry-as-filed entries, 3 close-as-delivered
+lanes, DD-11→ADVISORY + DD-12 close + a new binding entry, then tag).
+
+**Lease scope, in the order items will land (separate small PRs per item,
+each independently verified before the next starts):**
+1. `platform/src/lib/pariprashna/interpretation/worker.ts` (DD-20 fix:
+   real schema enforcement + loud shape-validation in `callOnce`)
+2. Citation sentinel wiring — likely
+   `platform/src/lib/synthesis/prompts/pariprashna_synthesis_prompt_v1.ts`
+   + whichever real prompt-assembly call site needs to import
+   `PARIPRASHNA_CITATION_APPENDIX` (to be confirmed on inspection)
+3. Receipt wire event — new event type in
+   `platform/src/lib/pariprashna/protocol/events.ts` + emission from
+   `persistence_stage.ts`/`receipt/assemble.ts` + client-side wiring in
+   `platform/src/components/pariprashna/state/types.ts` and its reducer
+4. Semantic block promotion for markdown tables — likely
+   `platform/src/lib/pariprashna/citations/register_leak_lint.ts`-adjacent
+   block-classification code (to be confirmed)
+5. `platform/src/components/pariprashna/dock/DockController.tsx` +
+   `PariprashnaApp.tsx` (mobile dock-collapse fix) +
+   `platform/tests/pariprashna/gates/g-mobile.spec.ts` (extend the gate)
+6. `platform/src/app/api/pariprashna/route.ts` (observability arg)
+7. `platform/src/lib/pariprashna/voice/voice_lint.ts` (regex anchor fix)
+8. Final: `PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` §2 (DD-11
+   ADVISORY, DD-12 close, new binding entry, N/O/H's Seal carried) +
+   `CAPABILITY_MANIFEST.json` fingerprint + `pariprashna/p2-close` tag +
+   Baseline regeneration.
+
+**Checked immediately before opening:** no open PR touches any of the above
+files; no coordination-log entry indicates any is mid-edit elsewhere.
+Disjoint from the live P2/P3 conductor and PARIŚEṢA-RĀTRI-V4.
+
+Each of items 1–7 verified with real probe-harness/DB/browser evidence
+before the next begins, per the native's own new standing rule (filed as
+part of item 8): no lane closes without an observed-delivery artifact.
+Native's own instruction: if 1–3 prove substantially larger than scoped,
+stop and report rather than push through.
+
+Worktree: `/private/tmp/pariprashna-p2-close`, branch
+`pariprashna/p2-close-fixes` (may split into per-item branches if that
+proves cleaner for independent PR review — will note here if so).
