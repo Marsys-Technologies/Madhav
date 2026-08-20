@@ -117,3 +117,6 @@ python-sidecar/venv/
 /Yajna_*
 /Yajna_Vidhi_Design_Philosophy_*
 .lane-scratch/
+
+# Paripraśna probe harness — generated turn transcripts (may embed a real reading)
+platform/scripts/probe/out/
