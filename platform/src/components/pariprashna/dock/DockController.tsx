@@ -20,7 +20,12 @@ interface DockControllerValue {
 const DockContext = createContext<DockControllerValue | null>(null)
 
 const STORAGE_KEY = 'pariprashna.dock.collapsed'
-const MOBILE_BREAKPOINT_QUERY = '(max-width: 900px)' // matches the approved mockup's `@media(max-width:900px){.dock{display:none}}`
+// matches the approved mockup's `@media(max-width:900px){.dock{display:none}}`.
+// P2-close item 5: RightDock.tsx's own `max-[900px]:hidden` Tailwind class is
+// the actual enforcement of that rule (this constant alone never hid
+// anything — it only ever gated chip-tap routing below). The two MUST stay
+// in sync; see RightDock.tsx's own comment for the full account.
+const MOBILE_BREAKPOINT_QUERY = '(max-width: 900px)'
 
 function readRememberedCollapsed(): boolean | null {
   if (typeof window === 'undefined') return null

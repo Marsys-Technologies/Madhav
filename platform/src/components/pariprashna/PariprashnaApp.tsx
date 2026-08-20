@@ -243,6 +243,7 @@ function PariprashnaSurface({
         <div className="flex-1 flex gap-3.5 p-4 items-stretch min-h-0" style={{ maxWidth: 1220, width: '100%', margin: '0 auto' }}>
           <Sidebar threads={threads} onSelect={handleSidebarSelect} onRename={handleSidebarRename} />
           <div
+            data-testid="pp-main-column"
             className="flex-1 min-w-0 flex flex-col rounded-[14px] overflow-hidden relative"
             style={{ background: 'var(--pp-surface)', border: '1px solid var(--pp-rule)', minHeight: '70vh' }}
           >

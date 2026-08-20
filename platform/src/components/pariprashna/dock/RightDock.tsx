@@ -37,7 +37,17 @@ export function RightDock({ turns }: { turns: TurnState[] }) {
   return (
     <div
       data-testid="pp-right-dock"
-      className="flex-none flex flex-col overflow-hidden rounded-[14px] transition-[width]"
+      // P2-close item 5. DockController.tsx's own doc comment has always
+      // said "below the mobile breakpoint the dock itself is hidden" and
+      // its own MOBILE_BREAKPOINT_QUERY constant (`(max-width: 900px)`) was
+      // consulted for chip-tap routing (openToCitation → bottom sheet) — but
+      // nothing ever actually hid THIS element. It rendered unconditionally,
+      // crushing the main reading column to ~2px on a real phone viewport.
+      // `max-[900px]:hidden` must stay in sync with DockController.tsx's
+      // MOBILE_BREAKPOINT_QUERY pixel value — the two encode the SAME design
+      // decision (dock hidden, chip-tap opens a sheet instead) and drifting
+      // apart would silently reopen this exact bug at a different width.
+      className="flex-none flex flex-col overflow-hidden rounded-[14px] transition-[width] max-[900px]:hidden"
       style={{
         width: open ? 312 : 46,
         background: 'var(--pp-panel)',
