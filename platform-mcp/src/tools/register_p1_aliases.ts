@@ -702,6 +702,58 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     }
   )
 
+  // query_pratijna → bodha_pratijna_get
+  // F-67: the capability is fully descriptor'd (mcp_surface_profiles.generated.ts) and
+  // bridge-aliased (tool_name_bridge.ts: both `query_pratijna` and its `bodha_pratijna_get`
+  // alias map to marsys://tool/L2/query_pratijna) but no server.tool() registration for
+  // either name existed anywhere in platform-mcp/src — a pure omission (exhaustive grep,
+  // zero hits). This block is the missing registration, modeled on the bodha_signals_get
+  // block immediately above (same chart-scoped callRegistryCap pattern). Param names
+  // (chart_id, ayanamsha_id, status, event_class_id, limit, offset) match the handler at
+  // platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts verbatim.
+  // GA-5 review finding on #1391: the description below previously copied a STALE v3
+  // string verbatim from generated/mcp_surface_profiles.generated.ts (which has no CI
+  // --check/diff gate, so it drifted silently), not the live capability's own description
+  // at query_pratijna.ts. That reintroduced a claim a prior lane (PRATIJÑĀ v4 Lane B4,
+  // 2026-08-09) deliberately removed -- supporting_signal_ids/contradicting_signal_ids are
+  // ALWAYS NULL under the v4 engine (it never reads bodha_msr_signals) -- and omitted the
+  // real 'no_evidence' status value entirely. Sourced from queryPratijnaCapability's own
+  // description text instead of the stale generated copy.
+  server.tool(
+    'bodha_pratijna_get',
+    'Retrieve the chart pratijna (promise / denial) ledger from bodha_pratijna — one adjudicated ' +
+    'row per event_class: status (promised | denied | conditional | no_evidence), grade, ' +
+    'varga_confirmation, and a derivation (bo_pratijna v4.1: a factor ledger of classical ' +
+    'significators, weights, and denial checks — the row\'s real evidence). Filters: ' +
+    'ayanamsha_id, status, event_class_id. Bounded (LIMIT <=50) with a disclosed total + offset ' +
+    'pagination. supporting_signal_ids / contradicting_signal_ids are always NULL under the v4 ' +
+    'engine (it does not use MSR-signal matching); no_evidence rows mean "no karyatva registry ' +
+    'entry for this event class" -- their grade is NULL (not scored), served honestly, not ' +
+    'gated or fabricated.',
+    {
+      ...ChartBase,
+      status: z.string().optional().describe("Filter to one status: 'promised' | 'denied' | 'conditional' | 'no_evidence'."),
+      event_class_id: z.string().optional().describe('Filter to one event_class_id.'),
+      limit: z.number().int().min(1).max(50).optional(),
+      offset: z.number().int().min(0).optional(),
+    },
+    async (params) => {
+      const { chart_id, ayanamsha_id, status, event_class_id, limit, offset } = params as Record<string, unknown>
+      if (!chart_id) return errOut('bodha_pratijna_get', 'chart_id is required')
+      try {
+        const data = await callRegistryCap('marsys://tool/L2/query_pratijna', {
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
+          status, event_class_id,
+          limit: (limit as number) ?? 50, offset: (offset as number) ?? 0,
+        }, principal) as Record<string, unknown>
+        // CL-11 guard: pass the real tool name explicitly — do NOT call bare dualOutput(data),
+        // which defaults toolName to the 'unknown_tool' placeholder. A brand-new registration
+        // must not reintroduce that class of bug.
+        return dualOutput(data, 'bodha_pratijna_get')
+      } catch (err) { return errOut('bodha_pratijna_get', String(err), { chart_id }) }
+    }
+  )
+
   // traverse_graph → bodha_graph_traverse_get
   // R-18 fix: this was previously registered via the generic regAlias() helper, which forwards
   // its extraSchema keys verbatim to the primitive. The primitive (traverse_chart_graph.ts) does
