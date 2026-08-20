@@ -96,6 +96,12 @@ import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
 // already lives in this same platform-mcp package as a plain exported function; call it
 // directly instead of round-tripping through the registry/HTTP capability system.
 import { computeGocharaForecast } from '../retrieval/register_gochara_windows.js'
+// GA-5 review finding on #1390: computeGocharaForecast is called IN-PROCESS, bypassing
+// registerGocharaForecastTool's own remoteAuthorize(principal, chart_id) entitlement gate
+// (that gate lives in the tool wrapper, not inside computeGocharaForecast itself) --
+// unlike the registry/HTTP path this replaces, which enforced per-call authorizeChartAccess
+// for every request. Re-gate explicitly at this call site.
+import { remoteAuthorize } from '../../lib/authz.js'
 
 // ── Infrastructure (self-contained proxy helper — mirrors the established per-file
 // pattern in register_p1_aliases.ts / tools/retrieval/kala_temporal.ts / registry_bridge.ts;
@@ -1390,6 +1396,10 @@ async function fetchGocharaForecastWindows(
 
   let result: Record<string, unknown>
   try {
+    // GA-5 review finding on #1390: computeGocharaForecast itself performs no entitlement
+    // check -- gate here, matching what registerGocharaForecastTool's own handler does
+    // before calling the same function.
+    if (!(await remoteAuthorize(principal, chartId))) return []
     result = await computeGocharaForecast(
       chartId,
       { start: startDate, end: endDate },

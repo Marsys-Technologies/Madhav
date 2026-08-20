@@ -29,6 +29,15 @@ const mockComputeGocharaForecast = vi.hoisted(() => vi.fn())
 vi.mock('../tools/retrieval/register_gochara_windows.js', () => ({
   computeGocharaForecast: mockComputeGocharaForecast,
 }))
+// GA-5 review finding on #1390: fetchA5GocharaWindows/fetchGocharaForecastWindows now gate
+// on remoteAuthorize(principal, chart_id) before calling computeGocharaForecast (an
+// entitlement check that used to be enforced by the registry/HTTP path this PR replaced).
+// Default to authorized=true so existing fixtures exercise the SAME behavior they did
+// before this gate was added; a dedicated denied-case test below covers the gate itself.
+const mockRemoteAuthorize = vi.hoisted(() => vi.fn().mockResolvedValue(true))
+vi.mock('../lib/authz.js', () => ({
+  remoteAuthorize: mockRemoteAuthorize,
+}))
 
 type ToolHandler = (args: Record<string, unknown>) => Promise<{
   structuredContent?: { type: 'object'; object: unknown }
@@ -253,6 +262,26 @@ describe('C4 A5 gochara_agreement — flag ON, windows dissent', () => {
     const a5 = obj['a5_gochara_agreement'] as Record<string, unknown>
     // PACT denied (chain_incomplete) but gochara has gain windows → dissent
     expect(a5['agreement']).toBe('dissents')
+  })
+
+  // GA-5 review finding on #1390: fetchA5GocharaWindows calls computeGocharaForecast
+  // in-process, bypassing the entitlement gate that registerGocharaForecastTool's own
+  // handler enforces before calling the same function. Proves the gate is real: a denied
+  // authorization must produce insufficient_data (windows never fetched), not silently
+  // fall through to the mocked forecast data.
+  it('remoteAuthorize denies → insufficient_data, computeGocharaForecast never called (entitlement gate is real, not decorative)', async () => {
+    process.env['SM_GAMMA_C4_ENABLED'] = 'true'
+    mockRemoteAuthorize.mockResolvedValueOnce(false)
+    stubFetchForExplain(PACT_CHAIN_COMPLETE, GOCHARA_GAIN_WINDOWS)
+    const { server, handlers } = makeCapturingServer()
+    const { registerKalaExplainTool } = await import('../tools/kala_views/explain.js')
+    registerKalaExplainTool(server, PRINCIPAL)
+    const handler = handlers.get('kala_explain_get')!
+    const result = await handler({ chart_id: TEST_CHART_ID, domain: 'marriage' })
+    const obj = extractObject(result)
+    const a5 = obj['a5_gochara_agreement'] as Record<string, unknown>
+    expect(a5['agreement']).toBe('insufficient_data')
+    expect(mockComputeGocharaForecast).not.toHaveBeenCalled()
   })
 })
 

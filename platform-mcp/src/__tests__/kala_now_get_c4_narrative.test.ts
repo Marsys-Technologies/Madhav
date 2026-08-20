@@ -28,6 +28,15 @@ const mockComputeGocharaForecast = vi.hoisted(() => vi.fn())
 vi.mock('../tools/retrieval/register_gochara_windows.js', () => ({
   computeGocharaForecast: mockComputeGocharaForecast,
 }))
+// GA-5 review finding on #1390: fetchA5GocharaWindows/fetchGocharaForecastWindows now gate
+// on remoteAuthorize(principal, chart_id) before calling computeGocharaForecast (an
+// entitlement check that used to be enforced by the registry/HTTP path this PR replaced).
+// Default to authorized=true so existing fixtures exercise the SAME behavior they did
+// before this gate was added; a dedicated denied-case test below covers the gate itself.
+const mockRemoteAuthorize = vi.hoisted(() => vi.fn().mockResolvedValue(true))
+vi.mock('../lib/authz.js', () => ({
+  remoteAuthorize: mockRemoteAuthorize,
+}))
 
 import { computeKalaNow } from '../tools/kala_views/now.js'
 
