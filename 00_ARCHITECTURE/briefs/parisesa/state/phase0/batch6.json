@@ -1,0 +1,138 @@
+[
+  {
+    "finding_id": "F-07",
+    "disposition": "LANDED",
+    "terminal_status": "HISTORICAL_STALE_CLOSED",
+    "evidence_summary": "Commit c3124c2bea9 (CL-01 dispatch/registration wiring gap fix) confirmed as an ancestor of current origin/main via git merge-base. No sibling-branch stranded duplicate found.",
+    "next_action": "retain evidence, reopen only on current regression",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-15",
+    "disposition": "LANDED",
+    "terminal_status": "CONTROL_CLOSED",
+    "evidence_summary": "Commit cfb6444c8f0 (CL-14 uneven cross-tool wiring fix) confirmed ancestor of origin/main. par/night-F-15 branch exists but its only unmerged commit is titled 'F-14:...' — unrelated to F-15, not stranded F-15 work.",
+    "next_action": "retain evidence, reopen only on current regression",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-23",
+    "disposition": "LANDED",
+    "terminal_status": null,
+    "evidence_summary": "Commit 3fd40b61baa (CL-23 corpus/data-coverage gap) confirmed ancestor of origin/main; corpus row honestly discloses this is a genuinely thin corpus (mantra census counts), not a code bug — code-level fix is live but the underlying data-coverage gap itself is not closed.",
+    "next_action": "obtain classical content authority for bounded corpus expansion, then review/seed/import and repeat coverage census (data-handoff item, not a code repair — do not close without the data step)",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-31",
+    "disposition": "LANDED",
+    "terminal_status": null,
+    "evidence_summary": "PR #1338 (codex/v4-f31-assessment-disclosure) confirmed MERGED, merge commit 434eb8e67ce2 confirmed ancestor of current origin/main. Deployment cited (Cloud Run workflow_run 32190606681 SUCCESS) but the corpus row itself says the conditional F31 branch was NOT exercised in the canary observed — the fix is deployed but not yet proven against the actual triggering condition.",
+    "next_action": "do not close from the observed undefined/absent-reading path; verify the emitted missing-slice flag once an approved read-only fixture or a real ordinary reading:null/[] response is available",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-39",
+    "disposition": "LANDED",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence_summary": "Re-verified (corpus already flagged this as current-truth reconciled): PR #1332 (codex/v4-f39-entitlement-narration) confirmed MERGED, merge commit 3bd5f630c9da confirmed ancestor of current origin/main. Holds up.",
+    "next_action": "retain deployed service proof, reopen only on regression",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-47",
+    "disposition": "LANDED",
+    "terminal_status": null,
+    "evidence_summary": "Corpus row said 'rebase required' as of 2026-08-19 08:21 citing PR #1343. Re-checked: PR #1343 (codex/v4-f47-muhurta-sensitivity) is now MERGED, merge commit bb5c5278b5ad confirmed ancestor of current origin/main — the rebase-required blocker the corpus recorded has since resolved itself via normal merge.",
+    "next_action": "none — corpus row is stale on this point, finding is landed; update disposition to service-closed-equivalent pending independent terminal-status confirmation",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-55",
+    "disposition": "LANDED",
+    "terminal_status": "HISTORICAL_STALE_CLOSED",
+    "evidence_summary": "Both cited commits (9b09835033e5, cfb6444c8f0) confirmed ancestors of origin/main. Corpus cites a passing focused vitest run (9/9) as corroborating evidence.",
+    "next_action": "retain direct-MCP four-domain receipt, reopen only on current regression",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-63",
+    "disposition": "LANDED",
+    "terminal_status": null,
+    "evidence_summary": "Commit f003bf3af confirmed ancestor of origin/main; corpus cites a passing ga4-writer test. However a par/night-F-63 branch exists with a DIFFERENT unmerged commit ('fix special-yoga combination_name key mismatch, always unknown') not reflected in the corpus row's cited commit — possible earlier/alternate attempt at the same defect class, not yet reconciled against what actually landed. Needs a direct diff between the two before this can be called fully closed.",
+    "next_action": "obtain governed special-yoga data rebuild design per corpus's own next_action, AND diff par/night-F-63 against the landed f003bf3af fix to confirm no distinct residual defect remains",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-71",
+    "disposition": "LANDED",
+    "terminal_status": null,
+    "evidence_summary": "Both cited commits (20266702a, 44d5ff5a7) confirmed ancestors of origin/main; corpus cites a passing test_b04_mi_honesty run (9/9). Corpus itself gates full closure on a broader governed rebuild depending on F-62/F-141.",
+    "next_action": "governed mi_bhara rebuild only after F-62/F-141 cone and plan-purity conditions clear (cross-finding dependency, not independently closeable)",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-79",
+    "disposition": "LANDED",
+    "terminal_status": "CONTROL_CLOSED",
+    "evidence_summary": "Of 3 cited commits, fab56d63b confirmed ancestor of origin/main; the other two (159470029, 54c809bc5) exist as objects but are not ancestors of current origin/main by direct SHA (may have landed via a different commit / squash — not independently re-verified by content diff). A separate sibling branch (par/s6-f79-migration-456-archive) holds unmerged archival work that appears adjacent/complementary, not conflicting.",
+    "next_action": "retain filename-blind raw-hash + SQL-identity renumber guard; independently content-verify the two non-ancestor commits' effect is actually present on main (not just trust the third commit alone)",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-87",
+    "disposition": "UNKNOWN",
+    "terminal_status": null,
+    "evidence_summary": "Corpus row is a CL-00 positive-control/informational item with zero evidence (no commits/prs/runs) and an explicit pending data action ('approved_readonly_current_database_execution_of_EKV_F87_all_chart_event_class_horizon_query'). No git or sibling-branch evidence found under this finding_id.",
+    "next_action": "the data query this row is waiting on has apparently never run — needs the actual read-only DB query executed and recorded before any disposition can be assigned",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-95",
+    "disposition": "UNKNOWN",
+    "terminal_status": null,
+    "evidence_summary": "Corpus row has zero commits/PRs, only a read-only schema_validator run cited. It's explicitly a governance-metadata reconciliation item still requiring a written, independently-reviewed plan before any mutation — i.e. still at the planning stage, not implemented.",
+    "next_action": "author and independently review the bounded governance metadata reconciliation plan (per corpus's own next_action) before any governance file mutation",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-103",
+    "disposition": "LANDED",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence_summary": "CL-00 positive control; corpus cites a specific canary observation (phala_predictive_anchors_get on canonical chart, posterior provenance intact) dated 2026-08-19 — no commits (none needed, it's a verification-only control), evidence is a direct service observation, not code.",
+    "next_action": "retain evidence, reopen only on current posterior-provenance regression",
+    "confidence": "MEDIUM — service observation not independently re-run this session, only the corpus's own record was checked"
+  },
+  {
+    "finding_id": "F-111",
+    "disposition": "UNKNOWN",
+    "terminal_status": null,
+    "evidence_summary": "FLAG: corpus row claims disposition 'historical-stale-code-fixed-service-closed' but the evidence object is entirely empty (no commits, no PRs, no runs, no canaries) — this is exactly the earned-signal-violation pattern (§N.8/CL-09) the corpus itself is supposed to be hunting for elsewhere. A closed claim with zero backing evidence is not verified; do not carry the 'closed' label forward without a real detector behind it.",
+    "next_action": "re-derive real evidence (commit/test/service proof) for this finding from scratch, or explicitly downgrade its disposition to reflect the actual absence of evidence",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-119",
+    "disposition": "UNKNOWN",
+    "terminal_status": null,
+    "evidence_summary": "Same pattern as F-111: disposition claims 'historical-stale-code-fixed-service-closed' with a fully empty evidence object.",
+    "next_action": "re-derive real evidence or downgrade disposition",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-127",
+    "disposition": "UNKNOWN",
+    "terminal_status": null,
+    "evidence_summary": "Same pattern again: disposition claims 'historical-stale-service-closed' with empty evidence AND last_meaningful_update is null (never actually updated). Weakest-evidenced row in this batch.",
+    "next_action": "re-derive real evidence or downgrade disposition; treat as effectively unclassified despite its label",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-135",
+    "disposition": "STRANDED",
+    "terminal_status": null,
+    "evidence_summary": "Corpus row itself is honest that this is unclassified (next_action literally 'authoritative_current_truth_classification', empty evidence). Found real prior work: origin/par/night-F-135 branch has one unmerged commit 'F-135: weaknesses_empty_reason + open_questions grade sort in buildRankedThemes' not present on origin/main.",
+    "next_action": "rebase par/night-F-135 onto current origin/main in a fresh parisesa/* worktree, independently review, and run the full §13.2 classification — this is real candidate repair-wave work, not yet started",
+    "confidence": "MEDIUM"
+  }
+]

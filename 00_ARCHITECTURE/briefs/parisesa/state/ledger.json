@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 123,
+  "event_count": 174,
   "findings": {
     "F-01": {
       "confidence": "MEDIUM",
@@ -86,6 +86,34 @@
       "status": "STRANDED",
       "terminal_status": null
     },
+    "F-07": {
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "6f857a9aa89d82ebd59fab15a30700d80c5a855cfd6853715c37300854d1bf46",
+      "event_type": "finding_status",
+      "evidence_summary": "Commit c3124c2bea9 (CL-01 dispatch/registration wiring gap fix) confirmed as an ancestor of current origin/main via git merge-base. No sibling-branch stranded duplicate found.",
+      "finding_id": "F-07",
+      "next_action": "retain evidence, reopen only on current regression",
+      "prev_sha256": "ec6137a05a73591227e58d6910c3506dfbc1e911206273bfd2462f71f4dc5543",
+      "seq": 158,
+      "source_batch": "batch6.json",
+      "status": "HISTORICAL_STALE_CLOSED",
+      "terminal_status": "HISTORICAL_STALE_CLOSED"
+    },
+    "F-08": {
+      "confidence": "MEDIUM",
+      "disposition": "LANDED",
+      "event_sha256": "12f75a2d3801a7a98f65fcf742d76234de7c65af4d4164d7d62e4a3a1a71501b",
+      "event_type": "finding_status",
+      "evidence_summary": "Fix commit 3d15ea03b3 (param no-op reject) verified ancestor of current origin/main. A separate unmerged branch codex/v4-f08-mitigation-domain also exists \u2014 not examined, likely an earlier/duplicate draft superseded by the landed commit.",
+      "finding_id": "F-08",
+      "next_action": "No deployment/service-level proof in the corpus for this row; verify live service reflects the fix, then close SERVICE_CLOSED.",
+      "prev_sha256": "bbfa179290f33d87d29abe94469a7c529ee2df34ff57a0ec1943f2ee3446df1c",
+      "seq": 141,
+      "source_batch": "batch7.json",
+      "status": "LANDED",
+      "terminal_status": null
+    },
     "F-09": {
       "confidence": "LOW",
       "disposition": "LANDED",
@@ -155,6 +183,34 @@
       "source_batch": "batch5.json",
       "status": "CONTROL_CLOSED",
       "terminal_status": "CONTROL_CLOSED"
+    },
+    "F-103": {
+      "confidence": "MEDIUM \u2014 service observation not independently re-run this session, only the corpus's own record was checked",
+      "disposition": "LANDED",
+      "event_sha256": "e933a73e9a5ef07b3dad4711253f0ab02ecdaa86d63b05c847189c6334e3d72d",
+      "event_type": "finding_status",
+      "evidence_summary": "CL-00 positive control; corpus cites a specific canary observation (phala_predictive_anchors_get on canonical chart, posterior provenance intact) dated 2026-08-19 \u2014 no commits (none needed, it's a verification-only control), evidence is a direct service observation, not code.",
+      "finding_id": "F-103",
+      "next_action": "retain evidence, reopen only on current posterior-provenance regression",
+      "prev_sha256": "1e3c3599801a17d3faa44bc0ec4d6b07ce33996b6d2365e5e0346e1df97473ee",
+      "seq": 170,
+      "source_batch": "batch6.json",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
+    },
+    "F-104": {
+      "confidence": "LOW",
+      "disposition": "UNKNOWN",
+      "event_sha256": "094e41b8816697ef771e05b5559484aedf4de43daff2fed61a06dc6fab938214",
+      "event_type": "finding_status",
+      "evidence_summary": "CL-09 earned-signal violation, zero code evidence, genuinely needs a governed mi_darshana rebuild plus a data canary per its own corpus row.",
+      "finding_id": "F-104",
+      "next_action": "DB/rebuild-touching \u2014 PARKED-BY-AUTH tonight (no DATABASE_URL). Needs the rebuild design+authorization step before any data canary regardless.",
+      "prev_sha256": "1de11d27d37111e62f75a0f6129eec2a3d350838583526a2bc7749d34859451d",
+      "seq": 153,
+      "source_batch": "batch7.json",
+      "status": "UNKNOWN",
+      "terminal_status": null
     },
     "F-105": {
       "confidence": "MEDIUM",
@@ -254,6 +310,34 @@
       "status": "UNKNOWN",
       "terminal_status": null
     },
+    "F-111": {
+      "confidence": "LOW",
+      "disposition": "UNKNOWN",
+      "event_sha256": "9ae418b70b0b9ca4910e4295c4fc021e8022475c64e56cd98234e1416ce9aef3",
+      "event_type": "finding_status",
+      "evidence_summary": "FLAG: corpus row claims disposition 'historical-stale-code-fixed-service-closed' but the evidence object is entirely empty (no commits, no PRs, no runs, no canaries) \u2014 this is exactly the earned-signal-violation pattern (\u00a7N.8/CL-09) the corpus itself is supposed to be hunting for elsewhere. A closed claim with zero backing evidence is not verified; do not carry the 'closed' label forward without a real detector behind it.",
+      "finding_id": "F-111",
+      "next_action": "re-derive real evidence (commit/test/service proof) for this finding from scratch, or explicitly downgrade its disposition to reflect the actual absence of evidence",
+      "prev_sha256": "e933a73e9a5ef07b3dad4711253f0ab02ecdaa86d63b05c847189c6334e3d72d",
+      "seq": 171,
+      "source_batch": "batch6.json",
+      "status": "UNKNOWN",
+      "terminal_status": null
+    },
+    "F-112": {
+      "confidence": "LOW",
+      "disposition": "UNKNOWN",
+      "event_sha256": "dff17741f95aadcaaca8fe24e661d46937de3e29f773bd6ad6feaa487593f7cf",
+      "event_type": "finding_status",
+      "evidence_summary": "RED FLAG: corpus claims disposition 'historical-stale-code-fixed-service-closed' but cites ZERO evidence entries (no commits/prs/runs/deployments/canaries at all) \u2014 this is exactly the earned-signal violation this campaign's own doctrine (CLAUDE.md SS N.8) warns against: a claimed-closed status with no detector behind it is null, not green.",
+      "finding_id": "F-112",
+      "next_action": "Do NOT accept the closed label as-is. Needs real re-verification (find the actual fix commit/deployment for this response-budget/trim defect, CL-05) before any terminal status is assigned.",
+      "prev_sha256": "094e41b8816697ef771e05b5559484aedf4de43daff2fed61a06dc6fab938214",
+      "seq": 154,
+      "source_batch": "batch7.json",
+      "status": "UNKNOWN",
+      "terminal_status": null
+    },
     "F-113": {
       "confidence": "HIGH",
       "disposition": "OPEN",
@@ -338,6 +422,20 @@
       "status": "UNKNOWN",
       "terminal_status": null
     },
+    "F-119": {
+      "confidence": "LOW",
+      "disposition": "UNKNOWN",
+      "event_sha256": "c9834b56c535f06542a4f71730806a51b82fda3d9507c54616b7cee04a49d097",
+      "event_type": "finding_status",
+      "evidence_summary": "Same pattern as F-111: disposition claims 'historical-stale-code-fixed-service-closed' with a fully empty evidence object.",
+      "finding_id": "F-119",
+      "next_action": "re-derive real evidence or downgrade disposition",
+      "prev_sha256": "9ae418b70b0b9ca4910e4295c4fc021e8022475c64e56cd98234e1416ce9aef3",
+      "seq": 172,
+      "source_batch": "batch6.json",
+      "status": "UNKNOWN",
+      "terminal_status": null
+    },
     "F-12": {
       "confidence": "HIGH",
       "disposition": "LANDED",
@@ -350,6 +448,20 @@
       "seq": 72,
       "source_batch": "batch3.json",
       "status": "LANDED",
+      "terminal_status": null
+    },
+    "F-120": {
+      "confidence": "HIGH",
+      "disposition": "STRANDED",
+      "event_sha256": "4f02aefa1ae5a508702503ccd1d6f6603d5c9454d052ba685a77d631391ade71",
+      "event_type": "finding_status",
+      "evidence_summary": "Real, substantial, unmerged implementation found: branch origin/par/night-F-120, commit 03eec1421 'extend dasha narration to finest running level + sandhi at all levels', 150+/52- across get_dashas.ts plus a new dedicated test file. Never merged to origin/main. Corpus's own next_action incorrectly assumed no implementation exists ('after G0, create a fresh L1 Dasha narration repair').",
+      "finding_id": "F-120",
+      "next_action": "Wave REBASE candidate, not Wave FRESH: rebase par/night-F-120 onto current origin/main, re-review, re-test, open PR (frozen).",
+      "prev_sha256": "dff17741f95aadcaaca8fe24e661d46937de3e29f773bd6ad6feaa487593f7cf",
+      "seq": 155,
+      "source_batch": "batch7.json",
+      "status": "STRANDED",
       "terminal_status": null
     },
     "F-121": {
@@ -434,6 +546,34 @@
       "seq": 122,
       "source_batch": "batch5.json",
       "status": "UNKNOWN",
+      "terminal_status": null
+    },
+    "F-127": {
+      "confidence": "LOW",
+      "disposition": "UNKNOWN",
+      "event_sha256": "e528d45c40effa6cb2200d50fe424d679430b937ac4276f5ce6ac0e175dd8be2",
+      "event_type": "finding_status",
+      "evidence_summary": "Same pattern again: disposition claims 'historical-stale-service-closed' with empty evidence AND last_meaningful_update is null (never actually updated). Weakest-evidenced row in this batch.",
+      "finding_id": "F-127",
+      "next_action": "re-derive real evidence or downgrade disposition; treat as effectively unclassified despite its label",
+      "prev_sha256": "c9834b56c535f06542a4f71730806a51b82fda3d9507c54616b7cee04a49d097",
+      "seq": 173,
+      "source_batch": "batch6.json",
+      "status": "UNKNOWN",
+      "terminal_status": null
+    },
+    "F-128": {
+      "confidence": "MEDIUM",
+      "disposition": "LANDED",
+      "event_sha256": "621b4b235460a1ac3be98a041949bc36820c3e4553fee174e23ea399c52d81b3",
+      "event_type": "finding_status",
+      "evidence_summary": "Cites the identical fix commit as F-16 (693a7bdc20, response-envelope double-wrap CL-21) \u2014 verified ancestor of origin/main. Likely F-16 and F-128 are two corpus rows for the same underlying defect fixed by one commit; flag for the dedup pass rather than treating as two independent findings needing separate closure evidence.",
+      "finding_id": "F-128",
+      "next_action": "Confirm with F-16's reconciler (same batch) whether these should be merged/cross-referenced in the ledger; otherwise treat identically to F-16.",
+      "prev_sha256": "4f02aefa1ae5a508702503ccd1d6f6603d5c9454d052ba685a77d631391ade71",
+      "seq": 156,
+      "source_batch": "batch7.json",
+      "status": "LANDED",
       "terminal_status": null
     },
     "F-129": {
@@ -534,6 +674,34 @@
       "status": "STRANDED",
       "terminal_status": null
     },
+    "F-135": {
+      "confidence": "MEDIUM",
+      "disposition": "STRANDED",
+      "event_sha256": "58d47bb20a629a55a0d6d37a09df0bdeafbdcb08ee6913b575ebfd138c698b99",
+      "event_type": "finding_status",
+      "evidence_summary": "Corpus row itself is honest that this is unclassified (next_action literally 'authoritative_current_truth_classification', empty evidence). Found real prior work: origin/par/night-F-135 branch has one unmerged commit 'F-135: weaknesses_empty_reason + open_questions grade sort in buildRankedThemes' not present on origin/main.",
+      "finding_id": "F-135",
+      "next_action": "rebase par/night-F-135 onto current origin/main in a fresh parisesa/* worktree, independently review, and run the full \u00a713.2 classification \u2014 this is real candidate repair-wave work, not yet started",
+      "prev_sha256": "e528d45c40effa6cb2200d50fe424d679430b937ac4276f5ce6ac0e175dd8be2",
+      "seq": 174,
+      "source_batch": "batch6.json",
+      "status": "STRANDED",
+      "terminal_status": null
+    },
+    "F-136": {
+      "confidence": "LOW",
+      "disposition": "UNKNOWN",
+      "event_sha256": "ec6137a05a73591227e58d6910c3506dfbc1e911206273bfd2462f71f4dc5543",
+      "event_type": "finding_status",
+      "evidence_summary": "CL-23 corpus/data-coverage gap ('honestly served, genuinely thin'). Zero commits/evidence. Corpus's own next_action is literally 'authoritative_current_truth_classification' \u2014 i.e. this row was explicitly left for Phase 0 (this reconciliation) to classify, and there isn't enough here to do more than confirm the gap is real.",
+      "finding_id": "F-136",
+      "next_action": "Needs an owner ruling on whether 'honestly thin coverage, already disclosed as such' qualifies as NOT_APPLICABLE_CLOSED, or whether it requires actual data backfill (DB-touching, PARKED-BY-AUTH tonight either way).",
+      "prev_sha256": "621b4b235460a1ac3be98a041949bc36820c3e4553fee174e23ea399c52d81b3",
+      "seq": 157,
+      "source_batch": "batch7.json",
+      "status": "UNKNOWN",
+      "terminal_status": null
+    },
     "F-137": {
       "confidence": "HIGH",
       "disposition": "UNKNOWN",
@@ -615,6 +783,34 @@
       "prev_sha256": "4cdf19375bfcb7cd7437a7eb4b9aca5bff6876318bd48db772fe21fc4ea5ae5b",
       "seq": 106,
       "source_batch": "batch4.json",
+      "status": "LANDED",
+      "terminal_status": null
+    },
+    "F-15": {
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "ac04debe1866063f1ecafdafaa8101467ee8182ddec81221569cf8602b02be80",
+      "event_type": "finding_status",
+      "evidence_summary": "Commit cfb6444c8f0 (CL-14 uneven cross-tool wiring fix) confirmed ancestor of origin/main. par/night-F-15 branch exists but its only unmerged commit is titled 'F-14:...' \u2014 unrelated to F-15, not stranded F-15 work.",
+      "finding_id": "F-15",
+      "next_action": "retain evidence, reopen only on current regression",
+      "prev_sha256": "6f857a9aa89d82ebd59fab15a30700d80c5a855cfd6853715c37300854d1bf46",
+      "seq": 159,
+      "source_batch": "batch6.json",
+      "status": "CONTROL_CLOSED",
+      "terminal_status": "CONTROL_CLOSED"
+    },
+    "F-16": {
+      "confidence": "MEDIUM",
+      "disposition": "LANDED",
+      "event_sha256": "e23d2ade4da30979cad513a761536ee976009716de58f5afc068732b396dfaeb",
+      "event_type": "finding_status",
+      "evidence_summary": "Fix commit 693a7bdc20 (response-envelope double-wrap, CL-21) verified ancestor of origin/main. Same exact commit is also cited for F-128 below.",
+      "finding_id": "F-16",
+      "next_action": "Verify live service; no deployment evidence cited in corpus.",
+      "prev_sha256": "12f75a2d3801a7a98f65fcf742d76234de7c65af4d4164d7d62e4a3a1a71501b",
+      "seq": 142,
+      "source_batch": "batch7.json",
       "status": "LANDED",
       "terminal_status": null
     },
@@ -702,6 +898,34 @@
       "status": "SERVICE_CLOSED",
       "terminal_status": "SERVICE_CLOSED"
     },
+    "F-23": {
+      "confidence": "MEDIUM",
+      "disposition": "LANDED",
+      "event_sha256": "72d85712a5720eef6348b82e700950ed29eaab3bd9ee01cf1ce8b34cf20ade6d",
+      "event_type": "finding_status",
+      "evidence_summary": "Commit 3fd40b61baa (CL-23 corpus/data-coverage gap) confirmed ancestor of origin/main; corpus row honestly discloses this is a genuinely thin corpus (mantra census counts), not a code bug \u2014 code-level fix is live but the underlying data-coverage gap itself is not closed.",
+      "finding_id": "F-23",
+      "next_action": "obtain classical content authority for bounded corpus expansion, then review/seed/import and repeat coverage census (data-handoff item, not a code repair \u2014 do not close without the data step)",
+      "prev_sha256": "ac04debe1866063f1ecafdafaa8101467ee8182ddec81221569cf8602b02be80",
+      "seq": 160,
+      "source_batch": "batch6.json",
+      "status": "LANDED",
+      "terminal_status": null
+    },
+    "F-24": {
+      "confidence": "MEDIUM",
+      "disposition": "LANDED",
+      "event_sha256": "8f80954fc9c51ed22217f0ae650c2a87357f41e3318ab10c12e674cc0e3b1f69",
+      "event_type": "finding_status",
+      "evidence_summary": "Fix commit cfb6444c8 verified ancestor of origin/main (this same commit is also cited as evidence for F-32 and F-48, suggesting a shared multi-finding batch commit).",
+      "finding_id": "F-24",
+      "next_action": "Verify live service; no deployment evidence cited.",
+      "prev_sha256": "e23d2ade4da30979cad513a761536ee976009716de58f5afc068732b396dfaeb",
+      "seq": 143,
+      "source_batch": "batch7.json",
+      "status": "LANDED",
+      "terminal_status": null
+    },
     "F-25": {
       "confidence": "HIGH",
       "disposition": "STRANDED",
@@ -785,6 +1009,34 @@
       "source_batch": "batch5.json",
       "status": "UNKNOWN",
       "terminal_status": null
+    },
+    "F-31": {
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "8ebe680578534ab361f0a6d976c99b2351ebb4c382c2a3c3a2b39d4c8c918d0f",
+      "event_type": "finding_status",
+      "evidence_summary": "PR #1338 (codex/v4-f31-assessment-disclosure) confirmed MERGED, merge commit 434eb8e67ce2 confirmed ancestor of current origin/main. Deployment cited (Cloud Run workflow_run 32190606681 SUCCESS) but the corpus row itself says the conditional F31 branch was NOT exercised in the canary observed \u2014 the fix is deployed but not yet proven against the actual triggering condition.",
+      "finding_id": "F-31",
+      "next_action": "do not close from the observed undefined/absent-reading path; verify the emitted missing-slice flag once an approved read-only fixture or a real ordinary reading:null/[] response is available",
+      "prev_sha256": "72d85712a5720eef6348b82e700950ed29eaab3bd9ee01cf1ce8b34cf20ade6d",
+      "seq": 161,
+      "source_batch": "batch6.json",
+      "status": "LANDED",
+      "terminal_status": null
+    },
+    "F-32": {
+      "confidence": "MEDIUM",
+      "disposition": "LANDED",
+      "event_sha256": "435dc98b5b0dc74c32cb80eea0de50de2950a7b7c52db7f5fda214bc638b69ee",
+      "event_type": "finding_status",
+      "evidence_summary": "CL-00 control/informational (no defect asserted), commit cfb6444c8 verified ancestor of origin/main; next_action in corpus is a direct-MCP confirmation canary, which is a verification step not a code gate.",
+      "finding_id": "F-32",
+      "next_action": "Run the approved non-secret direct-MCP canary to confirm currency, then this is CONTROL_CLOSED with no further code action.",
+      "prev_sha256": "8f80954fc9c51ed22217f0ae650c2a87357f41e3318ab10c12e674cc0e3b1f69",
+      "seq": 144,
+      "source_batch": "batch7.json",
+      "status": "CONTROL_CLOSED",
+      "terminal_status": "CONTROL_CLOSED"
     },
     "F-33": {
       "confidence": "HIGH",
@@ -870,6 +1122,34 @@
       "status": "STRANDED",
       "terminal_status": null
     },
+    "F-39": {
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "07e0a2a9115aad2fa486a1cc277f7a79c15c1a1685ba98616fa8ed4abaeb689d",
+      "event_type": "finding_status",
+      "evidence_summary": "Re-verified (corpus already flagged this as current-truth reconciled): PR #1332 (codex/v4-f39-entitlement-narration) confirmed MERGED, merge commit 3bd5f630c9da confirmed ancestor of current origin/main. Holds up.",
+      "finding_id": "F-39",
+      "next_action": "retain deployed service proof, reopen only on regression",
+      "prev_sha256": "8ebe680578534ab361f0a6d976c99b2351ebb4c382c2a3c3a2b39d4c8c918d0f",
+      "seq": 162,
+      "source_batch": "batch6.json",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
+    },
+    "F-40": {
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "bfa61db52dbfcad681bdd16eb2d0ac136c13b517b4469337cfa57a7e59506357",
+      "event_type": "finding_status",
+      "evidence_summary": "Deep-verified: fix commit a21946fec not a direct ancestor (squash-merged), but content-diffed \u2014 current origin/main's register_gochara_windows.ts retains and substantially extends the domain-rejection/coverage logic. Corpus already carries real Cloud Run deployment success (workflow 32172278214) plus 3 canary hashes. Strongest-evidenced row in this batch.",
+      "finding_id": "F-40",
+      "next_action": "None \u2014 genuinely terminal. Reopen only on regression.",
+      "prev_sha256": "435dc98b5b0dc74c32cb80eea0de50de2950a7b7c52db7f5fda214bc638b69ee",
+      "seq": 145,
+      "source_batch": "batch7.json",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
+    },
     "F-41": {
       "confidence": "MEDIUM",
       "disposition": "LANDED",
@@ -954,6 +1234,34 @@
       "status": "SERVICE_CLOSED",
       "terminal_status": "SERVICE_CLOSED"
     },
+    "F-47": {
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "91bec890d8a8d63ea5f23b750730598ff85f76145fc018873fbc8ca53c6b22ac",
+      "event_type": "finding_status",
+      "evidence_summary": "Corpus row said 'rebase required' as of 2026-08-19 08:21 citing PR #1343. Re-checked: PR #1343 (codex/v4-f47-muhurta-sensitivity) is now MERGED, merge commit bb5c5278b5ad confirmed ancestor of current origin/main \u2014 the rebase-required blocker the corpus recorded has since resolved itself via normal merge.",
+      "finding_id": "F-47",
+      "next_action": "none \u2014 corpus row is stale on this point, finding is landed; update disposition to service-closed-equivalent pending independent terminal-status confirmation",
+      "prev_sha256": "07e0a2a9115aad2fa486a1cc277f7a79c15c1a1685ba98616fa8ed4abaeb689d",
+      "seq": 163,
+      "source_batch": "batch6.json",
+      "status": "LANDED",
+      "terminal_status": null
+    },
+    "F-48": {
+      "confidence": "HIGH",
+      "disposition": "BLOCKED_NO_IMPL",
+      "event_sha256": "1d2c72540148ef14f975811f72bc5b9917a10733c6f421d6027f6a9ef5cefcb0",
+      "event_type": "finding_status",
+      "evidence_summary": "Deep-verified: origin/main's muhurta.py still contains the declared 'seasonal approximation' the finding is about \u2014 genuinely not fixed. A local-only partial commit (fe129c82d, not on any pushed ref, not an origin/main ancestor) exists but the corpus itself says not to merely relabel/reweight the heuristic. This is correctly blocked on an architecture/classical-semantics authority decision, not stranded work waiting for a rebase.",
+      "finding_id": "F-48",
+      "next_action": "Needs an owner/architecture ruling on which of the two named authority sources (heuristic vs bg_ephemeris/Swiss Ephemeris) governs PH-4-4 scoring before any candidate fix can be built \u2014 DECISION_PARKED candidate, not a code train.",
+      "prev_sha256": "bfa61db52dbfcad681bdd16eb2d0ac136c13b517b4469337cfa57a7e59506357",
+      "seq": 146,
+      "source_batch": "batch7.json",
+      "status": "BLOCKED_NO_IMPL",
+      "terminal_status": null
+    },
     "F-49": {
       "confidence": "MEDIUM",
       "disposition": "LANDED",
@@ -1035,6 +1343,34 @@
       "prev_sha256": "2547f8ad7fa28f74b7c619518c993810c2da9ea159e657393f00936b1472bde9",
       "seq": 113,
       "source_batch": "batch5.json",
+      "status": "LANDED",
+      "terminal_status": null
+    },
+    "F-55": {
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "e02f744840ab43f99340d32ae2113c0345bbb7e4dca3b8f086a3761c3343e94a",
+      "event_type": "finding_status",
+      "evidence_summary": "Both cited commits (9b09835033e5, cfb6444c8f0) confirmed ancestors of origin/main. Corpus cites a passing focused vitest run (9/9) as corroborating evidence.",
+      "finding_id": "F-55",
+      "next_action": "retain direct-MCP four-domain receipt, reopen only on current regression",
+      "prev_sha256": "91bec890d8a8d63ea5f23b750730598ff85f76145fc018873fbc8ca53c6b22ac",
+      "seq": 164,
+      "source_batch": "batch6.json",
+      "status": "HISTORICAL_STALE_CLOSED",
+      "terminal_status": "HISTORICAL_STALE_CLOSED"
+    },
+    "F-56": {
+      "confidence": "MEDIUM",
+      "disposition": "LANDED",
+      "event_sha256": "78404bea28ac97033824fb808e28ef17ee03af91985530a6123ddab803022c59",
+      "event_type": "finding_status",
+      "evidence_summary": "Fix commit 6a0f8c9d2 verified ancestor of origin/main; corpus cites a passing 21-test focused battery.",
+      "finding_id": "F-56",
+      "next_action": "Corpus's own next_action (direct MCP measurement of all 4 assess tools) not yet run \u2014 do that, then likely SERVICE_CLOSED.",
+      "prev_sha256": "1d2c72540148ef14f975811f72bc5b9917a10733c6f421d6027f6a9ef5cefcb0",
+      "seq": 147,
+      "source_batch": "batch7.json",
       "status": "LANDED",
       "terminal_status": null
     },
@@ -1122,6 +1458,34 @@
       "status": "LANDED",
       "terminal_status": null
     },
+    "F-63": {
+      "confidence": "MEDIUM",
+      "disposition": "LANDED",
+      "event_sha256": "cf8b416e5fcc412de9b37d37908ba98b177f63cc7793d6da2367c5fb0dfa4265",
+      "event_type": "finding_status",
+      "evidence_summary": "Commit f003bf3af confirmed ancestor of origin/main; corpus cites a passing ga4-writer test. However a par/night-F-63 branch exists with a DIFFERENT unmerged commit ('fix special-yoga combination_name key mismatch, always unknown') not reflected in the corpus row's cited commit \u2014 possible earlier/alternate attempt at the same defect class, not yet reconciled against what actually landed. Needs a direct diff between the two before this can be called fully closed.",
+      "finding_id": "F-63",
+      "next_action": "obtain governed special-yoga data rebuild design per corpus's own next_action, AND diff par/night-F-63 against the landed f003bf3af fix to confirm no distinct residual defect remains",
+      "prev_sha256": "e02f744840ab43f99340d32ae2113c0345bbb7e4dca3b8f086a3761c3343e94a",
+      "seq": 165,
+      "source_batch": "batch6.json",
+      "status": "LANDED",
+      "terminal_status": null
+    },
+    "F-64": {
+      "confidence": "MEDIUM",
+      "disposition": "LANDED",
+      "event_sha256": "2d331cacddb685a505ec6d28cd3b4619ab1f1cbc7b04c71c8e4c1d6964353f78",
+      "event_type": "finding_status",
+      "evidence_summary": "Fix commit 967f08da3 verified ancestor of origin/main; corpus cites a passing 23-test shared aspect/yoga suite.",
+      "finding_id": "F-64",
+      "next_action": "No deployment/service evidence cited; verify then close.",
+      "prev_sha256": "78404bea28ac97033824fb808e28ef17ee03af91985530a6123ddab803022c59",
+      "seq": 148,
+      "source_batch": "batch7.json",
+      "status": "LANDED",
+      "terminal_status": null
+    },
     "F-65": {
       "confidence": "MEDIUM",
       "disposition": "LANDED",
@@ -1206,6 +1570,34 @@
       "status": "SERVICE_CLOSED",
       "terminal_status": "SERVICE_CLOSED"
     },
+    "F-71": {
+      "confidence": "MEDIUM",
+      "disposition": "LANDED",
+      "event_sha256": "c484d2b312057661e554cd517d1af976be3077e1c9718c0383c0fe1c2ad1947d",
+      "event_type": "finding_status",
+      "evidence_summary": "Both cited commits (20266702a, 44d5ff5a7) confirmed ancestors of origin/main; corpus cites a passing test_b04_mi_honesty run (9/9). Corpus itself gates full closure on a broader governed rebuild depending on F-62/F-141.",
+      "finding_id": "F-71",
+      "next_action": "governed mi_bhara rebuild only after F-62/F-141 cone and plan-purity conditions clear (cross-finding dependency, not independently closeable)",
+      "prev_sha256": "cf8b416e5fcc412de9b37d37908ba98b177f63cc7793d6da2367c5fb0dfa4265",
+      "seq": 166,
+      "source_batch": "batch6.json",
+      "status": "LANDED",
+      "terminal_status": null
+    },
+    "F-72": {
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "ed4d7d42f788d5b8f83ed1c76527164cc3ea2b5c7716dd10769ea74d5113a577",
+      "event_type": "finding_status",
+      "evidence_summary": "CORRECTION to stale corpus row: corpus lists F-72 as 'MCP-handoff-required' with EMPTY evidence, but this is wrong \u2014 found via the F-120 branch's ancestry that F-72 (dignity oracle module + moolatrikona degree gate) merged as PR #1296 (state MERGED, 2026-08-16T08:48:55Z), commit 7459f8837, independently confirmed as an ancestor of current origin/main.",
+      "finding_id": "F-72",
+      "next_action": "Corpus row needs correcting from 'MCP-handoff-required/no evidence' to LANDED with PR #1296 + commit 7459f8837 as evidence. Then verify live service, likely SERVICE_CLOSED.",
+      "prev_sha256": "2d331cacddb685a505ec6d28cd3b4619ab1f1cbc7b04c71c8e4c1d6964353f78",
+      "seq": 149,
+      "source_batch": "batch7.json",
+      "status": "LANDED",
+      "terminal_status": null
+    },
     "F-73": {
       "confidence": "MEDIUM",
       "disposition": "OPEN",
@@ -1287,6 +1679,34 @@
       "prev_sha256": "83c0e4a71c259f2321a35ff4cca81b0a47935e92bd703e0be58a6818df99e18e",
       "seq": 116,
       "source_batch": "batch5.json",
+      "status": "UNKNOWN",
+      "terminal_status": null
+    },
+    "F-79": {
+      "confidence": "MEDIUM",
+      "disposition": "LANDED",
+      "event_sha256": "06a1add7b9a1be72d166d89e1670fb6843716cd84e870fea042b80fc66ebb59b",
+      "event_type": "finding_status",
+      "evidence_summary": "Of 3 cited commits, fab56d63b confirmed ancestor of origin/main; the other two (159470029, 54c809bc5) exist as objects but are not ancestors of current origin/main by direct SHA (may have landed via a different commit / squash \u2014 not independently re-verified by content diff). A separate sibling branch (par/s6-f79-migration-456-archive) holds unmerged archival work that appears adjacent/complementary, not conflicting.",
+      "finding_id": "F-79",
+      "next_action": "retain filename-blind raw-hash + SQL-identity renumber guard; independently content-verify the two non-ancestor commits' effect is actually present on main (not just trust the third commit alone)",
+      "prev_sha256": "c484d2b312057661e554cd517d1af976be3077e1c9718c0383c0fe1c2ad1947d",
+      "seq": 167,
+      "source_batch": "batch6.json",
+      "status": "CONTROL_CLOSED",
+      "terminal_status": "CONTROL_CLOSED"
+    },
+    "F-80": {
+      "confidence": "MEDIUM",
+      "disposition": "UNKNOWN",
+      "event_sha256": "dd2c51981d4acbdc7c7b2142ef7e9b26607b285012a9dbfd135863d6e8d31d0b",
+      "event_type": "finding_status",
+      "evidence_summary": "CL-00 control/informational, DB-touching. Corpus cites a passing 31-test chart_agnostic_gate suite and an honest fail-open SKIP from ekv_controls.py --control F-80 without --db-url.",
+      "finding_id": "F-80",
+      "next_action": "Needs `ekv_controls.py --control F-80 --json --db-url=...` run for real \u2014 PARKED-BY-AUTH tonight (no DATABASE_URL set this session).",
+      "prev_sha256": "ed4d7d42f788d5b8f83ed1c76527164cc3ea2b5c7716dd10769ea74d5113a577",
+      "seq": 150,
+      "source_batch": "batch7.json",
       "status": "UNKNOWN",
       "terminal_status": null
     },
@@ -1374,6 +1794,34 @@
       "status": "UNKNOWN",
       "terminal_status": null
     },
+    "F-87": {
+      "confidence": "LOW",
+      "disposition": "UNKNOWN",
+      "event_sha256": "d25d0f66fe26aa6f29c433ae395fa993e2f5ff293090b519ad1eeb2fc034032e",
+      "event_type": "finding_status",
+      "evidence_summary": "Corpus row is a CL-00 positive-control/informational item with zero evidence (no commits/prs/runs) and an explicit pending data action ('approved_readonly_current_database_execution_of_EKV_F87_all_chart_event_class_horizon_query'). No git or sibling-branch evidence found under this finding_id.",
+      "finding_id": "F-87",
+      "next_action": "the data query this row is waiting on has apparently never run \u2014 needs the actual read-only DB query executed and recorded before any disposition can be assigned",
+      "prev_sha256": "06a1add7b9a1be72d166d89e1670fb6843716cd84e870fea042b80fc66ebb59b",
+      "seq": 168,
+      "source_batch": "batch6.json",
+      "status": "UNKNOWN",
+      "terminal_status": null
+    },
+    "F-88": {
+      "confidence": "LOW",
+      "disposition": "UNKNOWN",
+      "event_sha256": "94dfd55c73f67209c11d2dcdce586450cd5140edc1dc2482fd38a8fb15a2362e",
+      "event_type": "finding_status",
+      "evidence_summary": "CL-00 control/informational, zero evidence in corpus, zero commits anywhere in git history for this ID.",
+      "finding_id": "F-88",
+      "next_action": "Corpus's own next_action (a non-secret direct-MCP session_recall + chart-scoped omitted-chart probe) is read-only and does not require DB/deploy access \u2014 genuinely runnable tonight, just not yet run.",
+      "prev_sha256": "dd2c51981d4acbdc7c7b2142ef7e9b26607b285012a9dbfd135863d6e8d31d0b",
+      "seq": 151,
+      "source_batch": "batch7.json",
+      "status": "UNKNOWN",
+      "terminal_status": null
+    },
     "F-89": {
       "confidence": "HIGH",
       "disposition": "LANDED",
@@ -1458,6 +1906,34 @@
       "status": "UNKNOWN",
       "terminal_status": null
     },
+    "F-95": {
+      "confidence": "MEDIUM",
+      "disposition": "UNKNOWN",
+      "event_sha256": "1e3c3599801a17d3faa44bc0ec4d6b07ce33996b6d2365e5e0346e1df97473ee",
+      "event_type": "finding_status",
+      "evidence_summary": "Corpus row has zero commits/PRs, only a read-only schema_validator run cited. It's explicitly a governance-metadata reconciliation item still requiring a written, independently-reviewed plan before any mutation \u2014 i.e. still at the planning stage, not implemented.",
+      "finding_id": "F-95",
+      "next_action": "author and independently review the bounded governance metadata reconciliation plan (per corpus's own next_action) before any governance file mutation",
+      "prev_sha256": "d25d0f66fe26aa6f29c433ae395fa993e2f5ff293090b519ad1eeb2fc034032e",
+      "seq": 169,
+      "source_batch": "batch6.json",
+      "status": "UNKNOWN",
+      "terminal_status": null
+    },
+    "F-96": {
+      "confidence": "MEDIUM",
+      "disposition": "LANDED",
+      "event_sha256": "1de11d27d37111e62f75a0f6129eec2a3d350838583526a2bc7749d34859451d",
+      "event_type": "finding_status",
+      "evidence_summary": "CL-00 control, already has a self-test/repo-scan evidence entry (2026-08-18T17:25:08Z) \u2014 but that is now ~2 days stale relative to tonight (2026-08-20).",
+      "finding_id": "F-96",
+      "next_action": "Re-run the self-test/repo-scan to confirm the control still holds against current origin/main before accepting CONTROL_CLOSED.",
+      "prev_sha256": "94dfd55c73f67209c11d2dcdce586450cd5140edc1dc2482fd38a8fb15a2362e",
+      "seq": 152,
+      "source_batch": "batch7.json",
+      "status": "LANDED",
+      "terminal_status": null
+    },
     "F-97": {
       "confidence": "MEDIUM",
       "disposition": "LANDED",
@@ -1502,9 +1978,9 @@
     }
   },
   "findings_morning_ship_ready_count": 0,
-  "findings_terminal_count": 27,
-  "journal_head_seq": 123,
-  "journal_head_sha256": "6079d2996aa0d91a3746a82cc580639fb77f81a3abe249034509eff9cfee39d7",
+  "findings_terminal_count": 35,
+  "journal_head_seq": 174,
+  "journal_head_sha256": "58d47bb20a629a55a0d6d37a09df0bdeafbdcb08ee6913b575ebfd138c698b99",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
