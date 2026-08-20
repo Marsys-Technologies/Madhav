@@ -5596,3 +5596,70 @@ never applied) → `replayPendingPersistence` against the REAL new table via a d
 connection (same cloud-sql-proxy pattern as `platform/scripts/probe/ask.ts`), independent of
 the app's own DB pool, RLS unarmed so no role-cutover dependency. Flag stays off throughout;
 this proves the recovery mechanism works, it does not activate it.
+
+## 2026-08-20 — DD-17 diagnostic result: tier was NOT the cause; a real schema-binding defect found instead
+
+Native correction mid-task, after PR #1396 merged/deployed: the native's broader
+model-tier policy (gemini-3.1-pro-preview for deep-reasoning call sites,
+gemini-3.7-flash for light ones) supersedes DD-17's original tier-upgrade
+ruling. The post-deploy probe was reinterpreted as a DIAGNOSTIC on the tier
+hypothesis, not DD-17 closure evidence, per explicit instruction.
+
+**Result, real production turn post-upgrade-deploy** (`amjis-web-01557-bh2`,
+turn `b9d55fd0-cfed-43da-910b-b092fbcdb798`, assistant message
+`cc0b3459-06b3-4481-9e3c-f9aaa3e744cd`, same repro question as the pre-upgrade
+baseline): **3/3 detected significant judgments still waived**, every one
+still `waiver_reason: "model produced no entry for this judgment_id"` —
+byte-identical failure mode to the pre-upgrade 16/16 baseline. **Branch (b):
+tier was NOT the cause.**
+
+**Root cause, found by direct diagnostic** (`dd17_raw_diagnostic.ts`,
+worktree-local, not committed — replicates `worker.ts`'s exact system
+prompt + response schema + a real judgment against the real deployed
+`gemini-2.5-flash` model, logging the RAW response before any parsing): the
+model's actual answer is genuinely excellent and exactly on-task — 3
+substantively distinct candidate interpretations, a selected/strongest
+reading, a real rationale, and a real falsifier, all present and
+well-reasoned. **But it is wrapped in a completely different JSON shape**
+than the schema requires: top-level `{"judgments": [...]}` (not `{"sets":
+[...]}`), each item using `candidate_readings`/`reading_id`/`reading`
+(not `candidates`/`reading`/`rationale`), `strongest_reading` (not
+`selected_index`/`selected_rationale`), no `status` field at all — and the
+whole response wrapped in a ` ```json ` markdown fence, which native
+Gemini structured-output mode (`responseMimeType: 'application/json'`)
+does not produce. This is direct evidence the schema constraint set via
+`adapter_gemini.ts`'s `responseFormat: { type: 'json', schema:
+req.responseSchema }` (its own code comment: "AI SDK wires
+`responseMimeType`... and `responseSchema` into `generationConfig` for
+us") is **not actually reaching/being enforced by the model** for this
+call, despite the wiring looking correct on the TypeScript side.
+`worker.ts`'s own extraction (`parsed.sets ?? []`) then silently treats
+this valid-but-wrong-shaped JSON exactly the same as an empty response —
+the model's real, complete, high-quality answer is discarded and reported
+as "no entry," which is a misleading label for what actually happened.
+
+Answers the native's four named investigative questions: the response
+schema **is** satisfiable — the model demonstrably CAN produce the right
+content when asked. The prompt largely elicits the required semantic
+content but **not the literal required structure** — schema enforcement is
+not taking effect. This is **not** a parse failure (`JSON.parse` succeeds
+on valid JSON) but a shape-mismatch that the code has no path to detect or
+distinguish from a genuinely empty response — in that sense the waiver path
+does silently "default open" on this specific failure mode, treating a
+real answer in the wrong envelope the same as no answer at all.
+
+**DD-17 register status: SUPERSEDED** (not closed) — the tier ruling is
+superseded by the native's broader model-tier policy; this diagnostic's
+result is recorded as evidence that a further tier change alone (including
+the planned 3.1-Pro migration for deep-reasoning sites) would **not** fix
+this specific call site's waiver rate, since the defect is upstream of
+model capability. **DD-20 filed** (new entry, same register) for the
+schema-binding defect itself, OWNED — UNDATED — a real, distinct fix
+candidate, not attempted in this diagnostic pass.
+
+Full register amendment + DD-20 filing land in a small follow-up PR,
+worktree `/private/tmp/pariprashna-dd17-supersede`, branch
+`pariprashna/dd17-supersede-diagnostic`. No model change made — the
+gemini-2.5-flash upgrade from PR #1396 stays as the interim state; no
+further tier change made pending the native's own call-site classification
+review (delivered separately, not committed to the register).
