@@ -4287,3 +4287,37 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   P0/P1 precedent once merged, then begin the epistemic-truth wave
   (P2-I receipt emission, gated on P2-A's wire change being independently
   verified on the deployed artifact — not just merged).
+
+- 2026-08-20 00:51Z — **PARISESA-V4-CONDUCTOR-20260820T005119Z / Claude Code
+  (Sonnet 5) — session open, superseding prior PARIŚEṢA leases:** fresh
+  conductor session for PARIŚEṢA-RĀTRI V4 Closure Factory, resuming after the
+  governance-bridge handoff (receipt
+  `PARISESA_V4_SAFE_HANDOFF_RECEIPT_20260819T192732Z.md`, SHA-256
+  `bffbaaa2e61e844f2c7f3f2fd36b70b37881cf441cf486001052be21131acc30`,
+  independently re-verified on disk this session). Noting for the record: the
+  five `PARISESA-TAKEOVER-PENDING-1..5` rows above (§1, 2026-08-17, run
+  `PARISESA-CODEX-20260817`) are DEAD BY EXPIRY (last expiry 2026-08-17
+  18:21 IST, ~2.5 days stale) — no override needed, just flagging since they
+  still read ACTIVE/TAKEOVER-PENDING in the table. This session found a prior
+  same-lineage Claude Code attempt
+  (`PARISESA-V4-CONDUCTOR-20260820T000018Z`, per its `RESUME.md` at
+  `/Users/Dev/par-night/parisesa-v4-conductor/`) that completed most of P-1
+  (branch rescues verified present on origin: `parisesa/preserved-bridge-
+  close-20260819`, `rescue/ekv-a-25-dasha-sandhi-principal-20260819`,
+  `rescue/ekv-b-01-dignity-oracle-20260819`, `sampurti/stranded-main-2026-
+  08-15`, `stash-rescue/2026-08-20-0..6`) but never pushed the campaign-state
+  branch (`parisesa/campaign-state` — confirmed absent on origin) and left no
+  journal/heartbeat — treating this as a crash mid-P-1 and continuing from
+  verified state, not from RESUME.md's unverified claims alone. This session
+  supersedes that lineage under its own name; no other campaign action taken
+  yet. **Scope tonight (per plan v2.1.1): PARK, DON'T ASK, no merge/deploy/
+  data-execution** — reconciliation, tracker-spine build, rebase/fresh-code
+  waves through PR-open-and-frozen only. Acknowledging PARIPRAŚNA P2 (LIVE,
+  `pariprashna/p2`, just requested a merge window above) as a corpus
+  STRANGER — zero F-number territory overlap expected, `route.ts` and stage
+  modules presumptively PARIPRAŚNA-owned and untouched by this campaign.
+  Territory: `00_ARCHITECTURE/briefs/parisesa/**` (own tracker state, pushed
+  directly to `parisesa/campaign-state`) plus per-finding `parisesa/*`
+  worktrees for rebase/fresh-code waves; no `platform/**` write without a
+  specific finding's own reviewed PR. No deploy/rebuild lease requested
+  tonight — none needed under the overnight scope boundary.
