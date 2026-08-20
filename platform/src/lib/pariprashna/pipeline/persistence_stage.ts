@@ -44,7 +44,7 @@ import {
 } from '@/lib/pipelines/shared/onfinish_writethrough'
 import { computeCostUsd, getModelPricingSync } from '@/lib/llm/pricing'
 import { writeContextAssemblyLog } from '@/lib/db/monitoring-write'
-import { writeTurn } from '@/lib/pariprashna/store/writer'
+import { writeTurnDurable } from '@/lib/pariprashna/store/durable_writer'
 import { CANONICAL_SCHEMA_VERSION, type CanonicalMessage } from '@/lib/pariprashna/store/schema'
 import { withProvenanceStamp } from '@/lib/pariprashna/provenance/stamp'
 import { captureDetectedCandidates } from '@/lib/pariprashna/samiksha/capture'
@@ -386,7 +386,45 @@ export async function runPersistenceStage(args: {
 
           let canonicalOk = true
           try {
-            await writeTurn(canonicalMessage, canonicalParts)
+            // P2-D (PPR-10, FD-9): durability-envelope wrapper around the
+            // SAME writeTurn call this always made. Flag-off (default) is
+            // byte-for-byte the pre-P2-D behavior — see durable_writer.ts's
+            // header for the full mode breakdown.
+            const durableOutcome = await writeTurnDurable({
+              message: canonicalMessage,
+              parts: canonicalParts,
+              // Adapter, not a bare re-export: `query`'s own generic is
+              // constrained to `T extends QueryResultRow` (pg's row shape);
+              // `OutboxDb.query`'s is unconstrained (`T = Record<string,
+              // unknown>`) so the port stays usable by a fake in tests that
+              // never touches pg. The row cast is honest — both sides agree
+              // rows are plain JSON-shaped objects, `pg`'s constraint is
+              // narrower than the data actually requires.
+              outboxDb: {
+                query: async <T = Record<string, unknown>>(sql: string, params?: unknown[]) => {
+                  const result = await query<Record<string, unknown>>(sql, params)
+                  return { rows: result.rows as unknown as T[], rowCount: result.rowCount }
+                },
+              },
+              chartId,
+              turnId,
+            })
+            // Only emit turn.persisted once the outbox path actually ran —
+            // direct mode's durability is already fully expressed by
+            // turn.commit's own status (see reducer.ts's back-compat note);
+            // emitting a redundant event there would be noise, not signal.
+            // Emitted BEFORE the result check below so an honest 'pending'
+            // (write-ahead recorded, canonical write not yet confirmed)
+            // reaches the client even when this function goes on to throw.
+            if (durableOutcome.durable.mode === 'outbox' || durableOutcome.durable.detail) {
+              em.turnPersisted({
+                turn_id: turnId,
+                status: durableOutcome.durable.status,
+                mode: durableOutcome.durable.mode,
+                detail: durableOutcome.durable.detail,
+              })
+            }
+            if (!durableOutcome.result) throw durableOutcome.error ?? new Error('writeTurnDurable: no result and no error')
           } catch (err) {
             console.error('[pariprashna] canonical writeTurn failed', err)
             canonicalOk = false

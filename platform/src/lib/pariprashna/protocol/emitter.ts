@@ -31,6 +31,7 @@ import {
   type FlagEvent,
   type GradeEvent,
   type TurnCommitEvent,
+  type TurnPersistedEvent,
   type TurnCloseEvent,
   type ErrorEvent,
   type SnapshotApplyEvent,
@@ -154,6 +155,14 @@ export class PariprashnaEmitter {
     // violation the harness caught). An explicit `body.protocol_version`
     // still wins over the computed default, matching every other builder's
     // "caller can always override" contract.
+    //
+    // P2-D independently hit the same golden-stream break chasing the same
+    // "no auto-stamp with the flag off" requirement, and its own fix (never
+    // auto-stamp, full caller-opt-in) is already satisfied by this gate:
+    // with `PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED` off (the default) there is
+    // no stamp either way, so both lanes' byte-identity requirement holds.
+    // `protocolVersionOf` (events.ts) reads an absent field as version 1, the
+    // correct "old-version messages still parse" contract either way.
     this.write({
       type: 'turn.open',
       ...this.envelope(),
@@ -204,6 +213,11 @@ export class PariprashnaEmitter {
 
   turnCommit(body: Body<TurnCommitEvent, 'turn.commit'>): void {
     this.write({ type: 'turn.commit', ...this.envelope(), ...body })
+  }
+
+  /** P2-D (PPR-10/FD-9): the settled_visual/durably_persisted split — see events.ts. */
+  turnPersisted(body: Body<TurnPersistedEvent, 'turn.persisted'>): void {
+    this.write({ type: 'turn.persisted', ...this.envelope(), ...body })
   }
 
   turnClose(body: Body<TurnCloseEvent, 'turn.close'>): void {

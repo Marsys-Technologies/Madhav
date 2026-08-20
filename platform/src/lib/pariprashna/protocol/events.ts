@@ -80,6 +80,21 @@ export const PARIPRASHNA_PROTOCOL_VERSION = 2
 /**
  * `turn.open` — ALWAYS the first event on the stream, written BEFORE the
  * planner runs. Establishes turn identity + the bound request params.
+ *
+ * `protocol_version` (P2-D, PPR-10 versioning clause) declares which wire
+ * contract the REST of this turn's stream follows. OPTIONAL, not defaulted at
+ * the schema level and not added to `EnvelopeShape` (every other event would
+ * inherit it) — two deliberate choices:
+ *   1. Adding it here only, on the one event that is always first, keeps
+ *      version negotiation a per-TURN decision instead of a per-EVENT one,
+ *      matching how a real client actually needs it (decide once, at open).
+ *   2. Leaving it `.optional()` rather than `.default()` keeps its inferred TS
+ *      type `number | undefined` instead of a required `number` — so every
+ *      EXISTING `em.turnOpen(...)` call site (route.ts, tests, fixtures) that
+ *      predates this field keeps compiling unchanged. A pre-versioning frame
+ *      (this field absent) is read as version 1 by `protocolVersionOf` below —
+ *      "old-version messages still parse" is a property of that helper, not
+ *      of a schema-level default silently rewriting history.
  */
 export const TurnOpenEventSchema = z.object({
   type: z.literal('turn.open'),
@@ -346,6 +361,45 @@ export const TurnCommitEventSchema = z.object({
 })
 export type TurnCommitEvent = z.infer<typeof TurnCommitEventSchema>
 
+/**
+ * `turn.persisted` — P2-D (PPR-10, FD-9). Distinguishes SETTLED_VISUAL
+ * (`turn.close` fired, prose rendered — the reader SEES a finished answer)
+ * from DURABLY_PERSISTED (the assistant turn is safely, irrecoverably stored).
+ * In the pre-P2-D synchronous write path these were never actually
+ * distinguishable on the wire — `turn.commit.status` already meant "the write
+ * committed" by the time it was emitted — but nothing told the CLIENT that, so
+ * the reducer had no honest way to represent the gap when one exists (the
+ * outbox/write-ahead path this event exists for, gated behind
+ * `PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED`, genuinely reopens it: a
+ * write-ahead entry can be recorded before the canonical write lands).
+ *
+ * ALWAYS follows `turn.commit` for the same turn_id when emitted; MAY be
+ * emitted more than once for the same turn (pending → durable, or a retried
+ * failure), so the client applies it as the latest-wins status, not an
+ * append. `status: 'pending'` is an HONEST intermediate state (§N.7 item 6 —
+ * a null/pending beats a fabricated 'durable') — it means "the write-ahead
+ * entry exists but the canonical write has not yet been confirmed", never
+ * "probably fine".
+ *
+ * Additive + OPTIONAL for every consumer: a pre-P2-D client that has never
+ * heard of this event type simply never receives it (this event is only
+ * emitted by the new durable-persistence code path), and a pre-P2-D emitter
+ * never sends it — so this is a strict wire addition, not a breaking change.
+ */
+export const TurnPersistedEventSchema = z.object({
+  type: z.literal('turn.persisted'),
+  ...EnvelopeShape,
+  turn_id: z.string(),
+  status: z.enum(['pending', 'durable', 'failed']),
+  /** Which persistence mode produced this status — for honest disclosure, not
+   *  narration: 'direct' = today's synchronous write (durable the instant it
+   *  is emitted); 'outbox' = the write-ahead path. */
+  mode: z.enum(['direct', 'outbox']),
+  attempt: z.number().int().nonnegative().optional(),
+  detail: z.string().optional(),
+})
+export type TurnPersistedEvent = z.infer<typeof TurnPersistedEventSchema>
+
 /** `turn.close` — the LAST event on the stream. */
 export const TurnCloseEventSchema = z.object({
   type: z.literal('turn.close'),
@@ -467,6 +521,7 @@ export const PariprashnaEventSchema = z.discriminatedUnion('type', [
   FlagEventSchema,
   GradeEventSchema,
   TurnCommitEventSchema,
+  TurnPersistedEventSchema,
   TurnCloseEventSchema,
   ErrorEventSchema,
   SnapshotApplyEventSchema,
@@ -488,12 +543,60 @@ export const PARIPRASHNA_EVENT_TYPES = [
   'flag',
   'grade',
   'turn.commit',
+  'turn.persisted',
   'turn.close',
   'error',
   'snapshot.apply',
   'prediction_card',
 ] as const
 export type PariprashnaEventType = (typeof PARIPRASHNA_EVENT_TYPES)[number]
+
+// ---------------------------------------------------------------------------
+// Schema versioning + declared compatibility (P2-D, PPR-10)
+// ---------------------------------------------------------------------------
+
+/**
+ * The wire-protocol version this build of the emitter/decoder speaks.
+ * `turn.open.protocol_version` carries it per-turn; bump this constant (never
+ * the meaning of an existing field — that is what a NEW version is for) when
+ * the wire contract changes in a way an old client/decoder could misread.
+ */
+export const PARIPRASHNA_PROTOCOL_VERSION = 1
+
+/**
+ * The oldest protocol version this decoder still accepts. Below this, a
+ * caller MUST refuse rather than silently misinterpret an old frame shape —
+ * see `isCompatibleProtocolVersion`. Equal to `PARIPRASHNA_PROTOCOL_VERSION`
+ * today (no prior version was ever emitted); a future version bump that keeps
+ * this decoder reading v1 frames would lower the min instead of raising it.
+ */
+export const MIN_SUPPORTED_PARIPRASHNA_PROTOCOL_VERSION = 1
+
+/**
+ * The effective protocol version of a `turn.open` event: the declared value,
+ * or 1 when absent (every frame emitted before this field existed IS a v1
+ * frame — this is the "old-version messages still parse" contract, applied at
+ * the read site rather than baked into the schema as a default that would
+ * silently rewrite what an old frame claims to be).
+ */
+export function protocolVersionOf(event: Pick<TurnOpenEvent, 'protocol_version'>): number {
+  return event.protocol_version ?? 1
+}
+
+/**
+ * Declared compatibility: true iff `v` falls within
+ * [MIN_SUPPORTED_PARIPRASHNA_PROTOCOL_VERSION, PARIPRASHNA_PROTOCOL_VERSION].
+ * A caller that receives a `turn.open` whose version fails this check has a
+ * real, actionable signal — "this stream declares a contract I do not speak"
+ * — rather than silently misreading frames it cannot fully understand.
+ */
+export function isCompatibleProtocolVersion(v: number): boolean {
+  return (
+    Number.isInteger(v) &&
+    v >= MIN_SUPPORTED_PARIPRASHNA_PROTOCOL_VERSION &&
+    v <= PARIPRASHNA_PROTOCOL_VERSION
+  )
+}
 
 // ---------------------------------------------------------------------------
 // Serialize / decode (isomorphic)

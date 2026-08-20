@@ -48,7 +48,45 @@ export function makeInitialTurnState(id: string, userText: string): TurnState {
     lastEventId: null,
     seenEventIds: new Set<string>(),
     reconnectHollowCaret: false,
+    persistence: 'unknown',
   }
+}
+
+/**
+ * P2-D (PPR-10, FD-9) — SETTLED_VISUAL: the reader sees a finished answer.
+ * Deliberately a pure function of `status`, not a stored field — it is
+ * fully derivable and a second source of truth would risk drifting from the
+ * status transitions the reducer already owns.
+ */
+export function isSettledVisual(turn: Pick<TurnState, 'status'>): boolean {
+  return turn.status === 'settled'
+}
+
+/**
+ * P2-D (PPR-10, FD-9) — DURABLY_PERSISTED: the assistant turn is confirmed
+ * safely stored. See `PersistenceStatus`'s doc comment (state/types.ts) for
+ * the full back-compat contract.
+ */
+export function isDurablyPersisted(turn: Pick<TurnState, 'persistence'>): boolean {
+  return turn.persistence === 'durable'
+}
+
+/**
+ * P2-D — true exactly when the UI owes the reader a visible incomplete-turn
+ * notice: the answer LOOKS done but is confirmed NOT (yet, or ever) durable.
+ * Never true while still streaming/thinking — an in-flight turn's
+ * incompleteness is already communicated by the working band, not this.
+ *
+ * `persistence === 'unknown'` is deliberately EXCLUDED (not treated as
+ * incomplete) — it means no signal has arrived at all, which today is
+ * exactly what a pre-P2-D fixture/stream produces (nothing ever emits
+ * `turn.persisted`, and `turn.commit` carried no `persistStatus`). Reporting
+ * "incomplete" on silence would be an invented judgment (§N.7 item 6) and
+ * would surface a false banner on every demo/legacy reading — the honest
+ * response to "no signal" is no claim either way, not an alarm.
+ */
+export function isIncompleteTurn(turn: Pick<TurnState, 'status' | 'persistence'>): boolean {
+  return isSettledVisual(turn) && turn.persistence !== 'unknown' && !isDurablyPersisted(turn)
 }
 
 /** Client-only action: submit a new user turn (optimistic, §5.3 `submitted`). */
@@ -264,7 +302,27 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
     case 'turn.commit': {
       return updateTurn(state, action.turnId, (t) => {
         if (isDuplicateEvent(t, action.eventId)) return t
-        return { ...t, status: 'settling', grounding: action.grounding, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
+        // P2-D back-compat seed (see PersistenceStatus's doc comment): only
+        // seeds from 'unknown' — never regresses a value a real
+        // turn.persisted event already refined, which matters if a
+        // reconnect/replay ever re-delivers turn.commit after turn.persisted
+        // (defensive; today's ordering never does this).
+        const persistence: TurnState['persistence'] =
+          t.persistence !== 'unknown' ? t.persistence : action.persistStatus === 'error' ? 'failed' : action.persistStatus === 'ok' ? 'durable' : 'unknown'
+        return { ...t, status: 'settling', grounding: action.grounding, persistence, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
+      })
+    }
+
+    case 'turn.persisted': {
+      // P2-D (PPR-10, FD-9). Latest-wins, not append-only — a turn may
+      // legitimately go pending -> durable, or pending -> failed -> (retried)
+      // -> durable, and each new signal is the most current truth. Not gated
+      // by the seen-event dedup alone: a SECOND turn.persisted for the same
+      // turn is a real state transition, not a duplicate, so only an EXACT
+      // eventId repeat (a genuine redelivery) is dropped.
+      return updateTurn(state, action.turnId, (t) => {
+        if (isDuplicateEvent(t, action.eventId)) return t
+        return { ...t, persistence: action.status, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
       })
     }
 

@@ -333,6 +333,14 @@ export type FeatureFlag =
   //     over its own citation-tally estimate.
   // Env: MARSYS_FLAG_PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED.
   | 'PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED'
+  // P2-D — Durable persistence (PPR-10, FD-9). Default false: ships dark.
+  // The direct (pre-P2-D) write path stays the sole active path off-flag;
+  // flipping this arms the write-ahead outbox — which additionally requires
+  // the `pariprashna_persistence_outbox` migration to have landed (see
+  // store/durable_outbox.ts's header) or the write path silently degrades
+  // back to direct mode with a disclosed `outbox_unavailable` detail. Flip
+  // via MARSYS_FLAG_PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED=true.
+  | 'PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -477,6 +485,9 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // synthesis stream is byte-for-byte what it is today (see the declaration
   // comment). Flip via MARSYS_FLAG_PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED=true.
   PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED: false,
+  // P2-D — Durable persistence (PPR-10, FD-9). Default false — see the union
+  // declaration above for the full flip contract.
+  PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)
