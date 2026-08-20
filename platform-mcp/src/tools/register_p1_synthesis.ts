@@ -873,7 +873,10 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
 
         const discLimit = depth === 'complete' ? 20 : 5
         const discResult = await platformQuery(`
-          SELECT discovery_id, affected_domains_array AS domains, surface_reading AS statement,
+          SELECT discovery_id, discovery_class, discovery_subsystem,
+                 affected_domains_array AS domains,
+                 hypothesis_text, depth_reading, why_an_acharya_misses_it,
+                 surface_reading,
                  composite_discovery_rank AS salience_score
           FROM bodha_discoveries
           WHERE chart_id = $1
