@@ -43,6 +43,7 @@ export function makeInitialTurnState(id: string, userText: string): TurnState {
     citations: {},
     grounding: null,
     error: null,
+    pendingPredictionCandidates: [],
     lastEventId: null,
     seenEventIds: new Set<string>(),
     reconnectHollowCaret: false,
@@ -307,6 +308,21 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
           blocks: action.text ? [{ id: `snapshot-${action.turnId}`, kind: 'paragraph' as const, html: action.text }] : t.blocks,
           citations,
           reconnectHollowCaret: false,
+          lastEventId: action.eventId,
+          seenEventIds: addSeen(t, action.eventId),
+        }
+      })
+    }
+
+    case 'prediction_card': {
+      return updateTurn(state, action.turnId, (t) => {
+        if (isDuplicateEvent(t, action.eventId)) return t
+        return {
+          ...t,
+          pendingPredictionCandidates: [
+            ...t.pendingPredictionCandidates,
+            { partId: action.partId, conversationId: action.conversationId, candidate: action.candidate },
+          ],
           lastEventId: action.eventId,
           seenEventIds: addSeen(t, action.eventId),
         }

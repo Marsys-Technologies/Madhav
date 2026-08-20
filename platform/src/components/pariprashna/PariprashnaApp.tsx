@@ -85,7 +85,8 @@ export function PariprashnaApp({ chartPin, chartId }: { chartPin: ChartPin; char
   return <PariprashnaAppFixture chartPin={chartPin} />
 }
 
-/** Fixture-replay host (default): canned event streams, no backend. */
+/** Fixture-replay host (default): canned event streams, no backend — no real
+ *  chart id, so `chartId` is left undefined (see `AnswerRegion`'s guard). */
 function PariprashnaAppFixture({ chartPin }: { chartPin: ChartPin }) {
   const stream = useFixtureStream()
   return <PariprashnaSurface chartPin={chartPin} stream={stream} showDevPicker />
@@ -104,7 +105,7 @@ function PariprashnaAppLive({ chartPin, chartId }: { chartPin: ChartPin; chartId
     }),
     [live],
   )
-  return <PariprashnaSurface chartPin={chartPin} stream={stream} showDevPicker={false} />
+  return <PariprashnaSurface chartPin={chartPin} stream={stream} showDevPicker={false} chartId={chartId} />
 }
 
 /**
@@ -116,10 +117,14 @@ function PariprashnaSurface({
   chartPin,
   stream,
   showDevPicker,
+  chartId,
 }: {
   chartPin: ChartPin
   stream: PariprashnaStream
   showDevPicker: boolean
+  /** Real chart id (live host only) — threaded down to `AnswerRegion` so it
+   *  can mount `LogToSamiksha` with a genuine chart scope (lane P2-A / G2-A). */
+  chartId?: string
 }) {
   const { state, submit, stop } = stream
   const activeTurn = state.turns[state.turns.length - 1]
@@ -161,7 +166,7 @@ function PariprashnaSurface({
             {state.turns.length === 0 ? (
               <EmptyState examplePrompts={EXAMPLE_PROMPTS} onPick={(text) => handleSubmit(text, 'adaptive')} />
             ) : (
-              <Transcript turns={state.turns} />
+              <Transcript turns={state.turns} chartId={chartId} />
             )}
             {showDevPicker && <DevFixturePicker onPick={handleDevPick} disabled={streaming} />}
             <Composer streaming={streaming} onSubmit={handleSubmit} onStop={handleStop} />

@@ -18,6 +18,8 @@
  * for the honest list of fields synthesized where S-1's wire is minimal.
  */
 
+import type { StructuredPredictionCandidate } from '@/lib/pariprashna/samiksha/detector'
+
 // ── Roles / grades / block kinds ────────────────────────────────────────────
 
 export type ReadingRole = 'verdict' | 'elaboration' | 'verse' | 'caveat'
@@ -122,6 +124,22 @@ export type TurnStatus =
   | 'interrupted'
   | 'errored'
 
+/**
+ * A detected, ALREADY-PERSISTED prediction candidate awaiting the reader's
+ * one-tap confirm (lane P2-A / G2-A · FD-4). `partId` is the REAL
+ * `message_parts.id` the server minted at commit — never a client-guessed
+ * id — so `LogToSamiksha`'s POST to `/api/pariprashna/samiksha/confirm` has
+ * a genuine FK to attach to. Arrives via the wire's `prediction_card` event,
+ * strictly AFTER the turn's parts are persisted (see
+ * `pipeline/persistence_stage.ts`), so it can land any time after that point
+ * in the stream — still well before `turn.close`.
+ */
+export interface PendingPredictionCandidate {
+  partId: string
+  conversationId: string
+  candidate: StructuredPredictionCandidate
+}
+
 export interface ActiveSeam {
   blockId: string
   passIndex: number
@@ -156,6 +174,11 @@ export interface TurnState {
   citations: Record<number, Citation>
   grounding: GroundingSummary | null
   error: ClassifiedError | null
+  /** Detected prediction candidates awaiting the reader's confirm — see
+   *  `PendingPredictionCandidate`. Append-only; a candidate is never removed
+   *  from this list post-arrival (`LogToSamiksha` tracks its own
+   *  confirmed/dismissed UI state internally). */
+  pendingPredictionCandidates: PendingPredictionCandidate[]
   /** Most-recently-applied event id (debug/telemetry only — NOT the dedup key). */
   lastEventId: string | null
   /**
@@ -249,6 +272,19 @@ export type WireEvent =
       text: string
       citations: Citation[]
       turnStatus: 'open' | 'closed' | 'interrupted'
+      eventId: string
+    }
+  /**
+   * PB-1... lane P2-A / G2-A ADDITIVE: a detected, already-persisted
+   * prediction candidate. See `PendingPredictionCandidate` for the field
+   * meanings — this is its wire-transport shape.
+   */
+  | {
+      type: 'prediction_card'
+      turnId: string
+      partId: string
+      conversationId: string
+      candidate: StructuredPredictionCandidate
       eventId: string
     }
 

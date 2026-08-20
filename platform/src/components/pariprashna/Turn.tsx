@@ -17,7 +17,7 @@ import { GroundingRegion } from './GroundingRegion'
  * updated, with no custom comparator needed: a 200-turn thread streaming
  * its 201st re-renders exactly one `<Turn>`, not 201.
  */
-function TurnImpl({ turn }: { turn: TurnState }) {
+function TurnImpl({ turn, chartId }: { turn: TurnState; chartId?: string }) {
   return (
     <div className="pp-turn my-3.5 pb-7">
       <UserBlock text={turn.userText} />
@@ -37,7 +37,7 @@ function TurnImpl({ turn }: { turn: TurnState }) {
             Connection dropped — resuming from where it left off. Nothing was lost.
           </div>
         )}
-        <AnswerRegion turn={turn} />
+        <AnswerRegion turn={turn} chartId={chartId} />
         {turn.status === 'interrupted' && (
           <p className="pp-caveat mt-2" style={{ borderTop: '1px solid var(--pp-rule)', paddingTop: 10 }}>
             The connection was lost partway. What arrived is above; nothing was altered.
