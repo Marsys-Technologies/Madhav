@@ -124,4 +124,35 @@ describe('get_strength — F-60: total_available is the true pre-cap row count, 
     expect(res.content['requested_limit']).toBeUndefined()
     expect(res.content['limit']).toBe(100)
   })
+
+  // GA-5 review finding on #1388: total_available is computed BEFORE the all:false
+  // counterfactual-row collapse -- live-measured on the canonical chart to overstate the
+  // true servable maximum by ~2.3x under the default (all:false). total_available_basis
+  // must say so explicitly rather than let total_available be read as unconditionally true.
+  it('total_available_basis discloses the PRE-COLLAPSE caveat when all:false (the default)', async () => {
+    const handler = await getCapabilityHandler()
+    const res = await handler({ chart_id: CHART_ID, limit: 100, offset: 0 })
+    expect(res.content['all']).toBe(false)
+    const basis = String(res.content['total_available_basis'])
+    expect(basis).toContain('PRE-COLLAPSE')
+    expect(basis).toMatch(/smaller than total_available/i)
+  })
+
+  it('total_available_basis reports an exact count when all:true (no collapse applies)', async () => {
+    const handler = await getCapabilityHandler()
+    const res = await handler({ chart_id: CHART_ID, limit: 100, offset: 0, all: true })
+    expect(res.content['all']).toBe(true)
+    const basis = String(res.content['total_available_basis'])
+    expect(basis).toMatch(/^exact:/)
+    expect(basis).not.toContain('PRE-COLLAPSE')
+  })
+
+  it('note_limit_cap no longer instructs the caller to page via total_available as if it were the servable max', async () => {
+    const handler = await getCapabilityHandler()
+    const res = await handler({ chart_id: CHART_ID, limit: 5000, offset: 0 })
+    const note = String(res.content['note_limit_cap'])
+    // must not repeat the old, misleading "total_available above reports the true row
+    // count matching the filter; use offset to page through the remainder" instruction
+    expect(note).not.toMatch(/reports the true row count/i)
+  })
 })

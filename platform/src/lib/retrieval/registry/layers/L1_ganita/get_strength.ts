@@ -243,15 +243,32 @@ export const getStrengthCapability: CapabilityDescriptor = {
           // "how many rows exist" was reading a page-length; `total_available` is the field
           // that actually answers that question.
           total: servedRows.length,
+          // GA-5 review finding on #1388: total_available is a real COUNT(*) against the
+          // SAME filter as the page query -- but it is computed BEFORE the all:false
+          // counterfactual-row collapse below (that collapse needs each graha's resolved
+          // active house, an app-level computation this SQL-level count cannot see without
+          // re-deriving that logic here too, risking drift from the real collapse). Live-
+          // measured on the canonical chart: total_available=520, but the all:false default
+          // path can never serve more than 223 rows once counterfactual rows are dropped --
+          // total_available overstates the servable maximum by ~2.3x under the default. The
+          // basis is now disclosed explicitly rather than presented as unconditionally true.
           total_available: totalAvailable,
+          total_available_basis: all
+            ? 'exact: matches every row this call can serve (all:true — no counterfactual-row collapse applies).'
+            : 'PRE-COLLAPSE: raw filter match only, computed before this call\'s own all:false ' +
+              'counterfactual-row collapse (see the all/counterfactual_rows_dropped/note fields below). ' +
+              'The true maximum row count this call can ever serve is total_available minus the ' +
+              'counterfactual graha_in_house_composite_strength rows for every graha with a resolved ' +
+              'active house -- smaller than total_available, not equal to it. Pass all:true for an ' +
+              'exact total_available.',
           limit, offset,
           ...(limitCapped ? {
             limit_capped: true,
             requested_limit: requestedLimit,
             note_limit_cap: `The requested limit (${requestedLimit}) exceeds this tool's hard cap of ` +
               '2000 and was reduced to 2000 for this call — disclosed explicitly rather than silently ' +
-              'truncated. `total_available` above reports the true row count matching the filter; use ' +
-              '`offset` to page through the remainder.',
+              "truncated. See total_available_basis above before using total_available to page — " +
+              "it does not equal the servable maximum when all:false (the default).",
           } : {}),
           ...(frameContext ? { frame_context: frameContext } : {}),
           ...(!all ? {
