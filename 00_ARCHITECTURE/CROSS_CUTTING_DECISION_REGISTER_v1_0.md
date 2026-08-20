@@ -186,10 +186,15 @@ coordination lease that produced it.
   execution authority to a Claude-Code-driven Phase 0/repair wave, and that the plan's own §13.5
   Gate A calls for an owner approval pause between Phase 0 and any repair wave.
 - **Decision:** this session proceeds into Phase 0 truth-cut reconciliation and bounded repair
-  waves (code/test/review/PR-open only) under the real-time owner authorization above, using the
-  Closure Factory plan's own self-ratification mechanism for the truth cut in lieu of a live
-  Gate A sign-off (mechanical invariants pass + 3-subagent default-REFUTED panel majority
-  non-refutation).
+  waves (code/test/review/PR-open only) under the real-time owner authorization above. The
+  Closure Factory plan itself specifies no self-ratification mechanism for skipping a live Gate
+  A sign-off (its §13.5 reserves that pause for the owner) -- this session instead applies, as
+  its OWN compensating construct in lieu of Gate A (not something the plan grants or contains),
+  a self-devised truth-cut check: mechanical invariants pass + 3-subagent default-REFUTED panel
+  majority non-refutation. This distinction is recorded here precisely so a future reader does
+  not mistake this session's own substitute check for a plan-granted exemption -- GA-5 review of
+  PR #1362 (this CCD's own PR) flagged the original wording as attributing to the plan an
+  authority it does not contain; corrected before merge, not after.
 - **Exact scope:** Phase 0 reconciliation (read-only), Phase 1 tracker-spine build, Phases 2-5
   repair waves through independent review and PR-open-and-frozen only, on the 141-finding corpus
   at `/Users/Dev/shad_overnight/par-night/state/codex-v4/closure-matrix.json` (immutable per
