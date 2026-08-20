@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 174,
+  "event_count": 188,
   "findings": {
     "F-01": {
       "confidence": "MEDIUM",
@@ -171,18 +171,18 @@
       "terminal_status": null
     },
     "F-102": {
-      "confidence": "MEDIUM",
-      "disposition": "LANDED",
-      "event_sha256": "7e0e32d0d59062cd692b3ca140885b5f24652b6c42a1158eda01a3e9054c446f",
+      "confidence": "LOW",
+      "disposition": "UNKNOWN",
+      "event_sha256": "db4c0fd48d87802aa0df32d383ff2e2ead0ffa814c1e32096f6ea8a5b84db6ca",
       "event_type": "finding_status",
-      "evidence_summary": "No commit needed \u2014 disposition is 'control-source-verified' via focused tests logged 2026-08-18T17:41:06Z, evidence_class CURRENT_CONTROL_SOURCE_AND_FOCUSED_TEST_PROOF. This reads as a genuine control-verification finding (nothing to merge), matches \u00a79's CONTROL_CLOSED terminal category.",
+      "evidence_summary": "DEMOTED by ratification panel (3/3 refuted): rests on unfalsifiable 'focused tests logged 2026-08-18' never re-run.",
       "finding_id": "F-102",
-      "next_action": "retain_control_and_reopen_only_on_current_regression_or_orchestrator_state_recovery_design.",
-      "prev_sha256": "66c15a3aa4570f9f8cd342f907c2d4061ae7a74d56ad4ee50432125a29a40f41",
-      "seq": 119,
-      "source_batch": "batch5.json",
-      "status": "CONTROL_CLOSED",
-      "terminal_status": "CONTROL_CLOSED"
+      "next_action": "re-run cited focused tests live",
+      "prev_sha256": "86f53107af9219b54e5a70fed29b9effae347f600991e9106cfd2e6756715113",
+      "seq": 184,
+      "source_batch": "ratification_demotion",
+      "status": "UNKNOWN",
+      "terminal_status": null
     },
     "F-103": {
       "confidence": "MEDIUM \u2014 service observation not independently re-run this session, only the corpus's own record was checked",
@@ -215,16 +215,16 @@
     "F-105": {
       "confidence": "MEDIUM",
       "disposition": "LANDED",
-      "event_sha256": "adcec5256d4e72f73e119125bcd2f843aaeea317733ff9c668e4695052b27486",
+      "event_sha256": "8d3cc43d6b58b5a509cffc2c086b5cc8ad3ba43f10e915ffdf84beb36115412f",
       "event_type": "finding_status",
-      "evidence_summary": "Positive control: mi_adhilepa honestly emits leakage_status=not_assessed rather than a fabricated 'clean' \u2014 this is itself the correct, earned-signal-compliant behavior the finding wanted verified. Cited regression run not independently re-executed this session.",
+      "evidence_summary": "DEMOTED by ratification panel (2/3 refuted) though real code+test independently confirmed by panel1; regression not re-run by majority.",
       "finding_id": "F-105",
-      "next_action": "Re-run the focused mi_adhilepa regression once against current main; otherwise close.",
-      "prev_sha256": "d65a313b0fa3aae5abd73d6e505253eb739e2ff1e5ac4080ae69db1144ad1b68",
-      "seq": 30,
-      "source_batch": "batch0.json",
-      "status": "CONTROL_CLOSED",
-      "terminal_status": "CONTROL_CLOSED"
+      "next_action": "re-run test_mi_adhilepa_leakage.py live to restore terminal",
+      "prev_sha256": "db4c0fd48d87802aa0df32d383ff2e2ead0ffa814c1e32096f6ea8a5b84db6ca",
+      "seq": 185,
+      "source_batch": "ratification_demotion",
+      "status": "LANDED",
+      "terminal_status": null
     },
     "F-106": {
       "confidence": "LOW",
@@ -1683,18 +1683,18 @@
       "terminal_status": null
     },
     "F-79": {
-      "confidence": "MEDIUM",
-      "disposition": "LANDED",
-      "event_sha256": "06a1add7b9a1be72d166d89e1670fb6843716cd84e870fea042b80fc66ebb59b",
+      "confidence": "LOW",
+      "disposition": "STRANDED",
+      "event_sha256": "be8260382d4789ec3b2bccd4b8353eda787dccfbc866786174dc27c21f1b82f4",
       "event_type": "finding_status",
-      "evidence_summary": "Of 3 cited commits, fab56d63b confirmed ancestor of origin/main; the other two (159470029, 54c809bc5) exist as objects but are not ancestors of current origin/main by direct SHA (may have landed via a different commit / squash \u2014 not independently re-verified by content diff). A separate sibling branch (par/s6-f79-migration-456-archive) holds unmerged archival work that appears adjacent/complementary, not conflicting.",
+      "evidence_summary": "DEMOTED by ratification panel (3/3 refuted): only 1 of 3 cited commits verifies as ancestor of origin/main.",
       "finding_id": "F-79",
-      "next_action": "retain filename-blind raw-hash + SQL-identity renumber guard; independently content-verify the two non-ancestor commits' effect is actually present on main (not just trust the third commit alone)",
-      "prev_sha256": "c484d2b312057661e554cd517d1af976be3077e1c9718c0383c0fe1c2ad1947d",
-      "seq": 167,
-      "source_batch": "batch6.json",
-      "status": "CONTROL_CLOSED",
-      "terminal_status": "CONTROL_CLOSED"
+      "next_action": "resolve whether the other 2 commits are dead references or unmerged work",
+      "prev_sha256": "8d3cc43d6b58b5a509cffc2c086b5cc8ad3ba43f10e915ffdf84beb36115412f",
+      "seq": 186,
+      "source_batch": "ratification_demotion",
+      "status": "STRANDED",
+      "terminal_status": null
     },
     "F-80": {
       "confidence": "MEDIUM",
@@ -1713,16 +1713,16 @@
     "F-81": {
       "confidence": "MEDIUM",
       "disposition": "LANDED",
-      "event_sha256": "39911c1cc7fee1ad4eb777c487cf9fb4c7656041468625150948e4a85064d939",
+      "event_sha256": "d096354758e2e25dff299dbd2a8e861496ff45c2da34ad1e15f056d946a3a785",
       "event_type": "finding_status",
-      "evidence_summary": "This is a verification-only control finding (manifest-vs-asset-registry namespace boundary), not a code-fix finding. Cited evidence describes the current manifest state (116 entries, zero collisions) but was not independently re-run this session (drift_detector not re-executed).",
+      "evidence_summary": "DEMOTED by ratification panel (3/3 refuted): manifest-state claim never independently re-run (drift_detector not re-executed).",
       "finding_id": "F-81",
-      "next_action": "Re-run drift_detector's asset_registry-vs-manifest reconciliation check once against current main before fully ratifying terminal; low risk either way.",
-      "prev_sha256": "007728ee81a0f6f2817caeb9bcb10036911f06930faa74093233b0fcb42d1795",
-      "seq": 27,
-      "source_batch": "batch0.json",
-      "status": "NOT_APPLICABLE_CLOSED",
-      "terminal_status": "NOT_APPLICABLE_CLOSED"
+      "next_action": "re-run drift_detector live to restore terminal",
+      "prev_sha256": "be8260382d4789ec3b2bccd4b8353eda787dccfbc866786174dc27c21f1b82f4",
+      "seq": 187,
+      "source_batch": "ratification_demotion",
+      "status": "LANDED",
+      "terminal_status": null
     },
     "F-82": {
       "confidence": "LOW",
@@ -1964,23 +1964,23 @@
     },
     "F-99": {
       "confidence": "LOW",
-      "disposition": "LANDED",
-      "event_sha256": "7ac33d269e558409febd36a2e2a0c501082d1e364598f28c1ec4495329aa31c7",
+      "disposition": "UNKNOWN",
+      "event_sha256": "0463a127fc1cf8f85a8ea30ede731f3fca4169d90bca47ef4464910d7a9123a4",
       "event_type": "finding_status",
-      "evidence_summary": "No commit hash cited to check against git \u2014 this finding's evidence is a live-service catalog observation (catalog-1+t152+r653c2a1a98c8), not a commit. Cannot independently re-verify from git alone this pass; taking the corpus's own claim at face value with LOW-not-MEDIUM confidence as a result.",
+      "evidence_summary": "DEMOTED by ratification panel (3/3 refuted): no commit hash checkable; original reconciler rated own confidence LOW, took corpus claim at face value.",
       "finding_id": "F-99",
-      "next_action": "re-run the cited direct-MCP catalog check live to confirm the served catalog/revision is still current before trusting as durably closed",
-      "prev_sha256": "7de1b2c5e9ba4d9f82678daae3019a4480af9d4c04cb4abfe2253d05b4f0015c",
-      "seq": 65,
-      "source_batch": "batch2.json",
-      "status": "SERVICE_CLOSED",
-      "terminal_status": "SERVICE_CLOSED"
+      "next_action": "live catalog re-check needed",
+      "prev_sha256": "d096354758e2e25dff299dbd2a8e861496ff45c2da34ad1e15f056d946a3a785",
+      "seq": 188,
+      "source_batch": "ratification_demotion",
+      "status": "UNKNOWN",
+      "terminal_status": null
     }
   },
   "findings_morning_ship_ready_count": 0,
-  "findings_terminal_count": 35,
-  "journal_head_seq": 174,
-  "journal_head_sha256": "58d47bb20a629a55a0d6d37a09df0bdeafbdcb08ee6913b575ebfd138c698b99",
+  "findings_terminal_count": 30,
+  "journal_head_seq": 188,
+  "journal_head_sha256": "0463a127fc1cf8f85a8ea30ede731f3fca4169d90bca47ef4464910d7a9123a4",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
@@ -2082,6 +2082,15 @@
       "prev_sha256": "d50468f02077f2bb2efabd2835510f41cbee62115bb2dd7acc7c28bd89d3e646",
       "seq": 12,
       "status": "MOSTLY_COMPLETE"
+    },
+    "Phase-0": {
+      "detail": "Mechanical invariants pass (141 unique rows, F-01..F-141 complete, no gaps/dupes). 3-subagent Opus-5 default-REFUTED panel ran against all 35 terminal claims: 30/35 confirmed (majority non-refutation), 5/35 demoted for insufficient/unfalsifiable evidence (F-102, F-105, F-79, F-81, F-99), 3/35 confirmed but flagged low-confidence (F-103, F-108, F-97). Final terminal count 30/141. Per the plan's own self-ratification mechanism (Delegated Authority Register), this satisfies Gate A in lieu of a live owner sign-off, per PROVISIONAL_RULING PR-001. Proceeding to repair-wave classification (PROOF-LANDED / REBASE / FRESH) for the remaining 111 non-terminal findings.",
+      "event_sha256": "86f53107af9219b54e5a70fed29b9effae347f600991e9106cfd2e6756715113",
+      "event_type": "phase_transition",
+      "phase": "Phase-0",
+      "prev_sha256": "4294ec7b3e8ce3aa079a3d8a7560456a0dc4142fa6cda7bcbf422778be1c6cdb",
+      "seq": 183,
+      "status": "SELF_RATIFIED_COMPLETE"
     }
   }
 }
