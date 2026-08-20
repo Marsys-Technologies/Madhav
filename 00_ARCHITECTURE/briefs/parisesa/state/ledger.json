@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 704,
+  "event_count": 707,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -625,17 +625,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-130": {
-      "confidence": "MEDIUM",
+      "branch": "parisesa/repair-F130-rebase",
+      "confidence": "HIGH",
       "disposition": "STRANDED",
-      "event_sha256": "10892b0d1f9f68e88e86bbb26cc3af5e216e9a495369d9f648265c21ca81501d",
+      "event_sha256": "d4ee39e1308a5b651c943ac93e4a463a4721dbfdf44235ce1ace88d7749cb224",
       "event_type": "finding_status",
-      "evidence_summary": "Branch origin/par/night-F-130 exists; corpus disposition 'historical-stale-service-closed' but next_action itself says 'authoritative_current_truth_classification' -- i.e. the corpus flags this row as not yet truth-cut-ratified.",
+      "evidence_summary": "Corpus's 'historical-stale-service-closed' claim was unearned (own next_action was an unratified placeholder). Real narration-fidelity leak confirmed still live on main: readTimingWindowsFamily/readContradictionsFamily (registry_bridge.ts) still interpolate raw JSON.stringify() into served prose. Fix replaces with real fields (signature_class/activation window/peak) + contradiction_id-keyed fallback. Clean rebase, 2/2 target tests + tsc clean, cross-checked field names against independent live usage in ahead.ts.",
       "finding_id": "F-130",
-      "next_action": "inspect par/night-F-130 diff against current origin/main; determine if branch content is already superseded by other landed work before deciding LANDED vs STRANDED",
-      "prev_sha256": "714eed696eb2544c02761702920d233cb00859ca498723888a4bf36d2a492920",
-      "seq": 51,
-      "source_batch": "batch1.json",
-      "status": "STRANDED",
+      "next_action": "owner reviews and merges PR #1383 at morning checkpoint",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1383",
+      "prev_sha256": "fbc775aa7d362e2b124824c62e7d0ec6847ee021bc8994740dcc3e14a76e4a7f",
+      "seq": 705,
+      "source_batch": "rebase_f130",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-131": {
@@ -681,31 +683,35 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-134": {
-      "confidence": "LOW",
+      "branch": "parisesa/repair-F134-rebase",
+      "confidence": "HIGH",
       "disposition": "STRANDED",
-      "event_sha256": "6079d2996aa0d91a3746a82cc580639fb77f81a3abe249034509eff9cfee39d7",
+      "event_sha256": "b71e6efb9dce0482dfed10439c97a697e594df42bacb3c510e52bfa6c8db8f0b",
       "event_type": "finding_status",
-      "evidence_summary": "No commits/PRs in matrix, BUT `origin/par/night-F-134` branch exists on origin \u2014 an untriaged sibling attempt this pass did not have budget to open and inspect content for.",
+      "evidence_summary": "fetchGocharaSweep ranked windows by overlap+intensity but never checked peak_date vs as_of_date, so already-peaked windows served identically to genuinely-future ones. Fix adds is_past_peak (honest null when unknown) + past_peak_window_count + a new info-severity judgment_flag, flag-in-place not filter-out (correctly justified against B.10/N.6). Independently re-verified a real correctness risk (Postgres DATE-as-string vs Date-object type coercion) rather than trusting the prior record -- confirmed closed via explicit setTypeParser registration. Clean rebase, 1/1 new test + 3/3 sibling regression + tsc clean (pre-existing unrelated errors confirmed identical on bare main).",
       "finding_id": "F-134",
-      "next_action": "Inspect origin/par/night-F-134's diff against origin/main before doing fresh work \u2014 may already contain a usable implementation.",
-      "prev_sha256": "471b1e4085b51f310732562dcb435356ccf3bd394f8905c102f5e1e89710e424",
-      "seq": 123,
-      "source_batch": "batch5.json",
-      "status": "STRANDED",
+      "next_action": "owner reviews and merges PR #1384 at morning checkpoint",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1384",
+      "prev_sha256": "d4ee39e1308a5b651c943ac93e4a463a4721dbfdf44235ce1ace88d7749cb224",
+      "seq": 706,
+      "source_batch": "rebase_f134",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-135": {
-      "confidence": "MEDIUM",
+      "branch": "parisesa/repair-F135-rebase",
+      "confidence": "HIGH",
       "disposition": "STRANDED",
-      "event_sha256": "58d47bb20a629a55a0d6d37a09df0bdeafbdcb08ee6913b575ebfd138c698b99",
+      "event_sha256": "4fc5599674066eee9482c7048da805e2e9e53008dda36143fdd04d28bd3d36bc",
       "event_type": "finding_status",
-      "evidence_summary": "Corpus row itself is honest that this is unclassified (next_action literally 'authoritative_current_truth_classification', empty evidence). Found real prior work: origin/par/night-F-135 branch has one unmerged commit 'F-135: weaknesses_empty_reason + open_questions grade sort in buildRankedThemes' not present on origin/main.",
+      "evidence_summary": "buildRankedThemes returned empty weaknesses[] with no signal for WHY -- silent-gap defect (chart with 0 denied but many conditional classes read as 'nothing wrong' vs honest 'nothing confirmed'). Fix adds weaknesses_empty_reason (null when non-empty; else states conditional-band count + lowest grade), sorts open_questions by grade. Traced new logic to already-validated provenance paths (no new L1/L5 re-derivation, holds SS N.5/N.7). Confirmed exit test exercises the real parseStatement fallback path, not a mock. Clean rebase, 6/6 target + 17/17 related tests + tsc clean; 25 pre-existing unrelated failures verified identical on a clean main baseline.",
       "finding_id": "F-135",
-      "next_action": "rebase par/night-F-135 onto current origin/main in a fresh parisesa/* worktree, independently review, and run the full \u00a713.2 classification \u2014 this is real candidate repair-wave work, not yet started",
-      "prev_sha256": "e528d45c40effa6cb2200d50fe424d679430b937ac4276f5ce6ac0e175dd8be2",
-      "seq": 174,
-      "source_batch": "batch6.json",
-      "status": "STRANDED",
+      "next_action": "owner reviews and merges PR #1385 at morning checkpoint",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1385",
+      "prev_sha256": "b71e6efb9dce0482dfed10439c97a697e594df42bacb3c510e52bfa6c8db8f0b",
+      "seq": 707,
+      "source_batch": "rebase_f135",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-136": {
@@ -2021,10 +2027,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 7,
+  "findings_morning_ship_ready_count": 10,
   "findings_terminal_count": 55,
-  "journal_head_seq": 704,
-  "journal_head_sha256": "fbc775aa7d362e2b124824c62e7d0ec6847ee021bc8994740dcc3e14a76e4a7f",
+  "journal_head_seq": 707,
+  "journal_head_sha256": "4fc5599674066eee9482c7048da805e2e9e53008dda36143fdd04d28bd3d36bc",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
