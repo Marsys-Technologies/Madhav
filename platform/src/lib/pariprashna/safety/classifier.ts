@@ -773,7 +773,20 @@ const HS4_PATTERNS: PhrasePattern[] = [
     // participates in), not an exemption branch an attacker can trigger. "When
     // am I dying?" still matches; "dying to know when I die" still matches on
     // `die`.
-    re: /\b(mortality|marak\w*|maran\w*|mrityu|mrtyu|mrutyu|death|deaths|dying(?!\s+(?:to|for)\b)|demise|deceased|fatal|fatality|terminal illness)\b/,
+    //
+    // `death`/`deaths` carry the SAME narrowing for "death anniversary" —
+    // confirmed live in production (2026-08-20) as a real false positive:
+    // "My father's death anniversary is coming up next month — what does
+    // that period look like astrologically for the family?" held under the
+    // full HS review gate despite being an ordinary, frequent śrāddha
+    // question about a PAST, KNOWN event, nothing about the native's own
+    // mortality. HS-2's election pattern already carries this exact carve-out
+    // (see `hs2.election_for_self_death`'s own comment, same file) — this was
+    // the one place it was never mirrored. Same discipline: the lookahead
+    // narrows what "death"/"deaths" can mean in THIS occurrence, it is not an
+    // exemption an attacker can widen — "death anniversary, but really, when
+    // will I die" still fires HS-4/HS-1 on its own separate `die` match.
+    re: /\b(mortality|marak\w*|maran\w*|mrityu|mrtyu|mrutyu|death(?!\s+anniversar\w*)|deaths(?!\s+anniversar\w*)|dying(?!\s+(?:to|for)\b)|demise|deceased|fatal|fatality|terminal illness)\b/,
     squashed: ['mortality', 'marakasthana', 'deathindicator', 'deathyoga', 'terminalillness'],
   },
   {
@@ -906,8 +919,44 @@ for (const p of ALL_PHRASE_PATTERNS) {
  * `(my|his|her|their) life (ends|…)` is here rather than in tier B because the
  * END of a life is not the ambiguous sense of the word "life".
  */
+// UNCHANGED (no anniversary lookahead here) — deliberately. This lexicon is
+// not a standalone detector; it is the shared trigger `mortalityA` feeds into
+// THREE downstream signals below ("Family 2: combination rules"): a bare
+// review-level push (`mortality_term_present`) and two hard-stop combination
+// pushes (`mortality_term_x_temporal_specificity`,
+// `mortality_term_x_duration_limit`). An earlier version of this fix
+// (2026-08-20) added the same `(?!\s+anniversar\w*)` lookahead used on
+// `hs4.mortality_terms` below — an independent adversarial review caught,
+// with a real reverted-vs-shipped comparison, that doing so nulled `mortalityA`
+// entirely for any sentence whose only mortality word was an
+// anniversary-adjacent `death`, which SILENTLY DROPPED the two hard-stop
+// combination pushes too whenever a genuine temporal/duration mortality ask
+// (`how many years until...`, `what year will my life end`) was phrased
+// alongside a "death anniversary" mention — a query that was correctly
+// hard-stop BEFORE that fix went completely undetected AFTER it. That is a
+// materially worse failure mode than the false positive being fixed. See
+// `MORTALITY_TERMS_A_STANDALONE_REVIEW` immediately below for where the
+// anniversary narrowing actually belongs: gating ONLY the bare review-level
+// push, never the hard-stop combination pushes.
 const MORTALITY_TERMS_A =
   /\b(death|dying(?!\s+(?:to|for)\b)|die|dies|died|dead|demise|deceased|passing away|passed away|pass away|passes away|perish\w*|expire[sd]?|mortality|mortal|marak\w*|maran\w*|mrityu|mrtyu|mrutyu|ayurdaya|ayurdaaya|ayush|alpayu|madhyayu|purnayu|dirghayu|longevity|life ?span|life expectancy|end of life|final days|last days|last breath|final breath|funeral|cremation|obituary|leave this world|leave the body)\b|\b(my|his|her|their|the) (life|lifetime) (ends|ending|will end|is over|finishes|runs out)\b|\b(end|ending|conclusion|close|terminal point|end ?point|final point) of (my|his|her|their|the) (life|lifetime|days|life ?span)\b/
+
+/**
+ * Same lexicon as `MORTALITY_TERMS_A`, EXCEPT `death`/`dying` carry the
+ * anniversary/idiom narrowing — used ONLY to gate the bare
+ * `mortality_term_present` review push (see "Family 2: combination rules"
+ * below), never the hard-stop temporal/duration combination pushes, which
+ * stay keyed on the unnarrowed `MORTALITY_TERMS_A` on purpose (see that
+ * constant's own comment for why). This is what actually closes the
+ * "my father's death anniversary" false positive: when `death` is the ONLY
+ * mortality word present AND it is immediately followed by "anniversary",
+ * this narrower match is null, so the bare review-only push is suppressed —
+ * but `MORTALITY_TERMS_A` above still matches, so if a genuine
+ * temporal/duration ask is ALSO present in the same sentence, the hard-stop
+ * combination rules still fire correctly.
+ */
+const MORTALITY_TERMS_A_STANDALONE_REVIEW =
+  /\b(death(?!\s+anniversar\w*)|dying(?!\s+(?:to|for)\b)|die|dies|died|dead|demise|deceased|passing away|passed away|pass away|passes away|perish\w*|expire[sd]?|mortality|mortal|marak\w*|maran\w*|mrityu|mrtyu|mrutyu|ayurdaya|ayurdaaya|ayush|alpayu|madhyayu|purnayu|dirghayu|longevity|life ?span|life expectancy|end of life|final days|last days|last breath|final breath|funeral|cremation|obituary|leave this world|leave the body)\b|\b(my|his|her|their|the) (life|lifetime) (ends|ending|will end|is over|finishes|runs out)\b|\b(end|ending|conclusion|close|terminal point|end ?point|final point) of (my|his|her|their|the) (life|lifetime|days|life ?span)\b/
 
 /**
  * Tier-B lifespan lexicon: AMBIGUOUS on its own ("what does my life look
@@ -1088,20 +1137,27 @@ export function classifyQuery(input: ClassifierInput): ClassificationResult {
 
   // ── Family 2: combination rules. ──────────────────────────────────────────
   const mortalityA = firstMatch(norm.normalizedAll, MORTALITY_TERMS_A)
+  // Anniversary-narrowed variant, used ONLY to gate the bare
+  // `mortality_term_present` review push a few lines down — see
+  // `MORTALITY_TERMS_A_STANDALONE_REVIEW`'s own comment for why the hard-stop
+  // pushes below deliberately keep using the unnarrowed `mortalityA`.
+  const mortalityAStandaloneReview = firstMatch(norm.normalizedAll, MORTALITY_TERMS_A_STANDALONE_REVIEW)
   const lifespanB = firstMatch(norm.normalizedAll, LIFESPAN_TERMS_B)
   const durationLimit = firstMatch(norm.normalizedAll, DURATION_LIMIT_TERMS)
   const temporal = firstMatch(norm.normalizedAll, TEMPORAL_SPECIFICITY_TERMS)
 
   if (mortalityA) {
-    pushDetection(
-      detections,
-      'hs4_mortality_window',
-      'review_required',
-      'combination',
-      'mortality_term_present',
-      mortalityA,
-      'query',
-    )
+    if (mortalityAStandaloneReview) {
+      pushDetection(
+        detections,
+        'hs4_mortality_window',
+        'review_required',
+        'combination',
+        'mortality_term_present',
+        mortalityAStandaloneReview,
+        'query',
+      )
+    }
     if (temporal) {
       // A mortality term plus a demand for a specific time IS a date-of-death
       // request, however it was phrased. This is the rule that catches the

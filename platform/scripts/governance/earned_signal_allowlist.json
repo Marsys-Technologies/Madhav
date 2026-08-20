@@ -1055,14 +1055,14 @@
     {
       "file": "platform/src/lib/pariprashna/safety/classifier.ts",
       "field": "assess_health",
-      "line": 997,
+      "line": 1046,
       "pattern": null,
       "max_occurrences": null,
       "sample_lines": [
-        997
+        1046
       ],
       "sample_snippet": "assess_health: 'hs3_health_crisis',",
-      "justification": "INDIVIDUALLY REVIEWED false positive, Paripra\u015bna P1 lane G1-A. `assess_health` here is not a verdict/verified-status field \u2014 it is a KEY in `CAPABILITY_CLASS_RULES`, a static `Record<string, SafetyClass>` lookup table mapping MCP tool/capability names (assess_health is a real tool name) to the safety class that capability implies. It is structurally identical to its untouched neighbours in the same object literal (get_ayurdaya, ganita_ayurdaya_get, get_medical_indications, ...), none of which tripped the lint \u2014 only this key's name happens to match the health-related signal-name heuristic. No detector is needed because no verification claim is being made; this is configuration data, not a computed result. Adding a detector here would be inventing one for a claim the code never makes."
+      "justification": "INDIVIDUALLY REVIEWED false positive, Paripra\u015bna P1 lane G1-A. `assess_health` here is not a verdict/verified-status field \u2014 it is a KEY in `CAPABILITY_CLASS_RULES`, a static `Record<string, SafetyClass>` lookup table mapping MCP tool/capability names (assess_health is a real tool name) to the safety class that capability implies. It is structurally identical to its untouched neighbours in the same object literal (get_ayurdaya, ganita_ayurdaya_get, get_medical_indications, ...), none of which tripped the lint \u2014 only this key's name happens to match the health-related signal-name heuristic. No detector is needed because no verification claim is being made; this is configuration data, not a computed result. Adding a detector here would be inventing one for a claim the code never makes. Line corrected 997\u21921018 on 2026-08-20 (HS-4 death-anniversary false-positive fix, attempt 1, added comments earlier in the same file, shifting this line). Line corrected again 1018\u21921046 on 2026-08-20 (same-day attempt 2: an adversarial review of attempt 1 found a regression \u2014 narrowing the shared `MORTALITY_TERMS_A` lexicon broke downstream hard-stop combination rules \u2014 so attempt 1 was superseded by a corrected fix that reverts `MORTALITY_TERMS_A` and instead introduces a separate `MORTALITY_TERMS_A_STANDALONE_REVIEW` constant, adding further lines above this point in the same file. Same reviewed entry both times, no new review needed \u2014 this key's own content and neighbours are unchanged)."
     },
     {
       "file": "platform/src/lib/pariprashna/observability/turn_metrics.ts",
