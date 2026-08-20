@@ -30,6 +30,7 @@ import {
   type FlagEvent,
   type GradeEvent,
   type TurnCommitEvent,
+  type TurnPersistedEvent,
   type TurnCloseEvent,
   type ErrorEvent,
   type SnapshotApplyEvent,
@@ -139,6 +140,16 @@ export class PariprashnaEmitter {
   }
 
   turnOpen(body: Body<TurnOpenEvent, 'turn.open'>): void {
+    // P2-D: `protocol_version` is caller-opt-in, NOT auto-stamped here.
+    // Every pre-existing call site (route.ts) never sets it and therefore
+    // emits byte-identical frames to before this field existed — the P0-C
+    // golden-stream harness (tests/pariprashna/route_ports/
+    // route_golden_stream.test.ts) asserts EXACT baseline equality on the
+    // live route's real output, so a default injected here would be a wire
+    // change disguised as an additive one. `protocolVersionOf` (events.ts)
+    // already reads an absent field as version 1, which is the correct
+    // "old-version messages still parse" contract without needing every
+    // frame to carry the field explicitly.
     this.write({ type: 'turn.open', ...this.envelope(), ...body })
   }
 
@@ -184,6 +195,11 @@ export class PariprashnaEmitter {
 
   turnCommit(body: Body<TurnCommitEvent, 'turn.commit'>): void {
     this.write({ type: 'turn.commit', ...this.envelope(), ...body })
+  }
+
+  /** P2-D (PPR-10/FD-9): the settled_visual/durably_persisted split — see events.ts. */
+  turnPersisted(body: Body<TurnPersistedEvent, 'turn.persisted'>): void {
+    this.write({ type: 'turn.persisted', ...this.envelope(), ...body })
   }
 
   turnClose(body: Body<TurnCloseEvent, 'turn.close'>): void {
