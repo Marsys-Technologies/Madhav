@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 829,
+  "event_count": 830,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -792,17 +792,17 @@
     },
     "F-140": {
       "confidence": "HIGH",
-      "disposition": "EXTERNAL_HOLD",
-      "event_sha256": "60c56195ae964e6b8caa7e90e9e7e03ab866450b6082cd38a71f4b8ddd7534a0",
+      "disposition": "LANDED",
+      "event_sha256": "c8827231577d77c39ba8d1a9124e7e69746f7b316806da2ab5fd121b70e10bb4",
       "event_type": "finding_status",
-      "evidence_summary": "Reclassified from DECISION_PARKED to EXTERNAL_HOLD (bookkeeping correction matching the finding's own existing next_action): needs the original finding-generation process/corpus, not present in this worktree -- a genuine corpus data gap, not an open policy question.",
+      "evidence_summary": "Original claim (recovered from /Users/Dev/shad_overnight corpus): all eight kala_* view facades served calibration_maturity as a hardcoded {n_events:0, weights_version:null, ...} over real, present, non-null kala_field_skill rows -- a \u00a7N.8 earned-signal inversion. VERIFIED on current origin/main: fetchCalibrationMaturity (platform-mcp/src/lib/kala_envelope.ts, consumed by all the named facades -- ahead/elect/explain/now/priority/ritual/story/upaya) genuinely queries kala_field_skill's chart-wide rollup row (WHERE event_class IS NULL) and returns n_events/weights_version/skill_score read directly from it, not hardcoded literals. Live DB query confirms the exact row F-140's own reproducer named still exists with the same values (n_events=7, weights_version='v0_classical', released_at 2026-08-09) and the current code path would genuinely surface them. A dedicated kala_calibration_maturity_v4.test.ts exists on main, consistent with this having already been rebuilt.",
       "finding_id": "F-140",
-      "next_action": "flag as corpus data gap; needs the original finding-generation process/corpus this worktree does not have.",
-      "prev_sha256": "6b7ed8f5c0f8dc77d0bcb3bc0fe0fb1a2a6636a67139b7b056201025a7edbc6f",
-      "seq": 823,
-      "source_batch": "v3_ga2_decision_closures",
-      "status": "EXTERNAL_HOLD",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "prev_sha256": "d072b77ffc0b1d63a7f06d395d1648d00a8d71693e19723426281a4f559c7de5",
+      "seq": 830,
+      "source_batch": "v3_ga2_decision_closures_corrected",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-141": {
       "confidence": "HIGH",
@@ -2026,9 +2026,9 @@
     }
   },
   "findings_morning_ship_ready_count": 11,
-  "findings_terminal_count": 100,
-  "journal_head_seq": 829,
-  "journal_head_sha256": "d072b77ffc0b1d63a7f06d395d1648d00a8d71693e19723426281a4f559c7de5",
+  "findings_terminal_count": 101,
+  "journal_head_seq": 830,
+  "journal_head_sha256": "c8827231577d77c39ba8d1a9124e7e69746f7b316806da2ab5fd121b70e10bb4",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
