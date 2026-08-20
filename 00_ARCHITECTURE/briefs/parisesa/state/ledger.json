@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 776,
+  "event_count": 779,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1693,16 +1693,16 @@
     },
     "F-75-batch": {
       "confidence": "HIGH",
-      "disposition": "UNKNOWN",
-      "event_sha256": "8b9959dbe2d5254c073d42de976aa7cc389a9936753c057df1d7854e1c192456",
+      "disposition": "OBSOLETE_MARKER",
+      "event_sha256": "788dfe335b0e4beada505f477172903fcdb867e43f0163b7d7ef27b1879dab19",
       "event_type": "finding_status",
-      "evidence_summary": "Per Opus review (ESC-001): F-75/F-76/F-80/F-82/F-85/F-86 are one mechanical action, not six separate decisions -- all reduce to 'grant read-only DB access, run the already-existing ekv_controls.py detector set, record receipts.' Collapsing into a single morning task marker; individual finding records unchanged.",
+      "evidence_summary": "Obsolete bookkeeping marker -- all 6 underlying findings individually resolved. Safe to delete from the ledger; retained here only for journal audit-trail completeness.",
       "finding_id": "F-75-batch",
-      "next_action": "grant read-only DB access, run all 6 detectors in one pass, record receipts for F-75/76/80/82/85/86",
-      "prev_sha256": "19b6ccfd56bab6252839788d02aea603cb1ccd5b8cdb8f432ab03da1295f1080",
-      "seq": 661,
-      "source_batch": "esc001_review",
-      "status": "DECISION_PARKED",
+      "next_action": "none -- delete this row in a future cleanup pass",
+      "prev_sha256": "7b74f7bf24030ef4c2782c2b438bb8873ebd9122fd563562791091169e98a175",
+      "seq": 778,
+      "source_batch": "closure_sweep",
+      "status": "OBSOLETE_MARKER",
       "terminal_status": null
     },
     "F-76": {
@@ -2048,8 +2048,8 @@
   },
   "findings_morning_ship_ready_count": 21,
   "findings_terminal_count": 84,
-  "journal_head_seq": 776,
-  "journal_head_sha256": "1cd8b2d1f4291a63d6f7d4cae6beceadd1f6eeb13a415edf2d7906763b8f77d3",
+  "journal_head_seq": 779,
+  "journal_head_sha256": "e1746735cced3b51306f9ac7cc8c722d06e7d555ca065b48372f9f50c7d98efa",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
@@ -2169,6 +2169,15 @@
       "prev_sha256": "41c478a1ef3135150d6035714382218f902e0ad9f44762e3c3fb8798b7ac8023",
       "seq": 192,
       "status": "WIP_LIMITS_ADOPTED"
+    },
+    "Phase-2-repair-waves": {
+      "detail": "Automatable repair-wave backlog exhausted after 10 dispatch rounds + 1 final defect-fix wave. 84/141 terminal (independently re-verified, not inherited), 21 PRs frozen and MORNING_SHIP_READY, 25 DECISION_PARKED, 7 DATA_PARKED, 2 EXTERNAL_HOLD, 1 BLOCKED_NO_IMPL, 3 LANDED (correctly blocked on other items in this same set). Zero merges/deploys/data-writes for the full session. Morning report written: MORNING_REPORT_20260820.md. This is the natural stopping point per the campaign's own CLOSING THE NIGHT criteria -- every remaining non-terminal finding genuinely needs owner input, external data, or a production-adjacent action this session cannot supply alone.",
+      "event_sha256": "e1746735cced3b51306f9ac7cc8c722d06e7d555ca065b48372f9f50c7d98efa",
+      "event_type": "phase_transition",
+      "phase": "Phase-2-repair-waves",
+      "prev_sha256": "788dfe335b0e4beada505f477172903fcdb867e43f0163b7d7ef27b1879dab19",
+      "seq": 779,
+      "status": "NATURAL_COMPLETION"
     }
   }
 }
