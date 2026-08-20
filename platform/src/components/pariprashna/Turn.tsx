@@ -44,6 +44,7 @@ function TurnImpl({ turn }: { turn: TurnState }) {
           </p>
         )}
         <GroundingRegion turn={turn} />
+        {turn.status === 'settled' && <div aria-hidden className="pp-closing-rule" />}
       </div>
     </div>
   )

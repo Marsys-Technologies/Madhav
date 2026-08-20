@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { PickerPopover, type PickerRow } from './PickerPopover'
 import type { DepthOption, LengthOption } from '../state/types'
 import type { FixtureMode } from '../fixtures'
@@ -36,6 +36,8 @@ export interface ComposerProps {
   streaming: boolean
   onSubmit: (text: string, mode: FixtureMode) => void
   onStop: () => void
+  /** §5.3 `empty`: "focus is already in the composer." Only relevant on mount. */
+  autoFocus?: boolean
 }
 
 /** Maps the composer's Depth choice to which fixture the stub plays (see the build report for why). */
@@ -44,13 +46,22 @@ function depthToFixtureMode(depth: DepthOption): FixtureMode {
   return 'adaptive'
 }
 
-export function Composer({ streaming, onSubmit, onStop }: ComposerProps) {
+export function Composer({ streaming, onSubmit, onStop, autoFocus }: ComposerProps) {
   const [text, setText] = useState('')
   const [model, setModel] = useState('Claude Opus')
   const [depth, setDepth] = useState<DepthOption>('Auto')
   const [length, setLength] = useState<LengthOption>('Auto')
   const [openPicker, setOpenPicker] = useState<'model' | 'depth' | 'length' | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+
+  // Mount-only: the design plan is explicit that `autoFocus` re-triggering on
+  // every re-render (e.g. after each submit) would steal focus mid-typing —
+  // this only ever runs once, matching the plain `<textarea autofocus>`
+  // semantics the empty state's copy describes.
+  useEffect(() => {
+    if (autoFocus) textareaRef.current?.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const footNote =
     depth === 'Auto' && length === 'Auto'
