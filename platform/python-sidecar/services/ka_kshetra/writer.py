@@ -94,7 +94,7 @@ import math
 import os
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
-from typing import Any, Optional
+from typing import Any, Iterable, Mapping, Optional
 
 from pipeline.orchestrator.writers import SubStep, WriterBase, WriterResult, register
 
@@ -199,6 +199,29 @@ _CANONICAL_MD_LORDS = frozenset({'Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter',
 
 #: §6.3's own days-per-year constant for the reference-age conversion.
 _DAYS_PER_JULIAN_YEAR = 365.2425
+
+
+def built_event_classes(
+    event_classes: Iterable[str], skipped_classes: Iterable[Mapping[str, str]],
+) -> list[str]:
+    """F-78 disclosure helper: the CLASSES-ACTUALLY-BUILT set, not the attempted set.
+
+    `kala_field_snapshots.event_classes` is the discovery-time ATTEMPTED list —
+    every class `_discover_event_classes` found a `bodha_pratijna` row for,
+    regardless of whether stage 4/5 produced any `kala_field` rows for it (see
+    that function's own docstring: "regardless of status"). `skipped_classes`
+    records, honestly (LAW ZERO), every class from that attempted list the
+    build could NOT produce rows for, and why. Neither column alone tells a
+    caller which classes actually got `kala_field` rows written for this
+    snapshot — that is this function's one job:
+    `set(event_classes) - {skipped event_class values}`, sorted for
+    determinism. A caller reading `kala_field_snapshots.event_classes` and
+    treating it as "classes this snapshot covers" is the exact conflation
+    F-78 named — call this function instead of subtracting the two columns
+    ad hoc.
+    """
+    skipped_ids = {s['event_class'] for s in skipped_classes}
+    return sorted(set(event_classes) - skipped_ids)
 
 
 @dataclass
