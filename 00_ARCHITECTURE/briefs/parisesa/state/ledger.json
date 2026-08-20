@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 835,
+  "event_count": 836,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -601,20 +601,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-129": {
-      "branch": "parisesa/repair-F129-build",
       "confidence": "HIGH",
-      "disposition": "OPEN",
-      "event_sha256": "dc84f576d27d47984a9905d890744b3ec6a30029906bf926fd2e506eb640dd5d",
+      "disposition": "FIXED",
+      "event_sha256": "c597ca08fba8a230d7174ddce04000cab0ac0f2e378411717715901b35943d49",
       "event_type": "finding_status",
-      "evidence_summary": "Ratified spec implemented after re-verifying every cited line against current main (zero drift). synth_chart_brief_get's top_discoveries query replaced 'surface_reading AS statement' with honest-named fields (hypothesis_text, depth_reading, why_an_acharya_misses_it, etc), matching the sibling query_discoveries.ts pattern exactly (no new inference logic, holds SS N.5). Regression test verified genuinely red pre-fix / green post-fix. Independent review checked for spec-vs-invariant conflicts (F-125 precedent) -- none found; existing generic budget-trim already covers the field, no new hardFloor needed. Caught and corrected one spec inaccuracy: wrong test runner specified (jest vs actual vitest). Full suite before/after byte-identical failure set, zero new failures.",
+      "evidence_summary": "PR #1389 merged (de817361d6827c81232b905b0ba2ce6fe51ba8cb): synth_chart_brief_get's top_discoveries.statement re-pointed from raw surface_reading diagnostic label to chart-specific hypothesis_text, mirroring the already-correct sibling bodha_discoveries_get/query_discoveries.ts pattern. GA-5 independent review + adversarial pre-merge review passed.",
       "finding_id": "F-129",
-      "next_action": "owner reviews and merges PR #1389 at morning checkpoint",
+      "next_action": "none - terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1389",
-      "prev_sha256": "ac94ea0289c0bb680c41055531b6c589ceca2c162f55874653039e20a92dd19b",
-      "seq": 746,
-      "source_batch": "rebase_f129",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "a6251a176c543d597eeb73f88447b2a39a270e675f07150db0e9745643c8379e",
+      "seq": 836,
+      "source_batch": "PARISESA-V4-GA5-MERGE-WAVE",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-13": {
       "confidence": "HIGH",
@@ -2023,10 +2022,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 9,
-  "findings_terminal_count": 104,
-  "journal_head_seq": 835,
-  "journal_head_sha256": "a6251a176c543d597eeb73f88447b2a39a270e675f07150db0e9745643c8379e",
+  "findings_morning_ship_ready_count": 8,
+  "findings_terminal_count": 105,
+  "journal_head_seq": 836,
+  "journal_head_sha256": "c597ca08fba8a230d7174ddce04000cab0ac0f2e378411717715901b35943d49",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
