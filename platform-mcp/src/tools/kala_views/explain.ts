@@ -170,6 +170,18 @@ import {
 } from '../../lib/kp_school_voice.js'
 import { callKalaRegistryCap, unwrapKalaPayload, kalaBudgetedDualOutput, kalaErrorOutput } from './shared.js'
 import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
+// F-73: marsys://tool/L4/gochara_forecast_get was never backed by a registered
+// capability (no layers/*/index.ts entry exists for it) — every call 404'd silently,
+// forcing A5's gochara agreement to 'insufficient_data' unconditionally. The real logic
+// already lives in this same platform-mcp package as a plain exported function; call it
+// directly instead of round-tripping through the registry/HTTP capability system.
+import { computeGocharaForecast } from '../retrieval/register_gochara_windows.js'
+// GA-5 review finding on #1390: computeGocharaForecast is called IN-PROCESS, bypassing
+// registerGocharaForecastTool's own remoteAuthorize(principal, chart_id) entitlement gate
+// (that gate lives in the tool wrapper, not inside computeGocharaForecast itself) --
+// unlike the registry/HTTP path this replaces, which enforced per-call authorizeChartAccess
+// for every request. Re-gate explicitly at this call site.
+import { remoteAuthorize } from '../../lib/authz.js'
 
 const TOOL_NAME = 'kala_explain_get'
 const CAPABILITY_URI = 'marsys://tool/L-PACT/pact_query'
@@ -446,8 +458,12 @@ function dominantValenceFromWindows(
   return null
 }
 
-/** Fetches gochara windows for a domain/bhava, using a ±180-day window around today.
- *  Returns empty array (never throws) on any failure — A5 then reports `insufficient_data`. */
+/** Fetches gochara windows for a domain/bhava, using a ±180-day window around today, via a
+ *  direct in-process call to `computeGocharaForecast` (F-73: NOT via the registry — see the
+ *  import comment above). Returns empty array (never throws) on any failure — A5 then
+ *  reports `insufficient_data`. `bhava` is accepted for signature parity with callers but not
+ *  forwarded — `computeGocharaForecast` has no bhava parameter; domain is its narrowing
+ *  primitive (matches pre-existing behavior: bhava was likewise unused in the fetch here). */
 async function fetchA5GocharaWindows(
   chartId: string,
   domain: string | undefined,
@@ -459,22 +475,24 @@ async function fetchA5GocharaWindows(
   endParsed.setUTCDate(endParsed.getUTCDate() + 180)
   const endDate = endParsed.toISOString().slice(0, 10)
 
-  const args: Record<string, unknown> = {
-    chart_id: chartId,
-    date_range: { start: today, end: endDate },
-    limit: 20,
+  try {
+    // GA-5 review finding on #1390: computeGocharaForecast itself performs no entitlement
+    // check -- gate here, matching what registerGocharaForecastTool's own handler does
+    // before calling the same function.
+    if (!(await remoteAuthorize(principal, chartId))) return []
+    const result = await computeGocharaForecast(
+      chartId,
+      { start: today, end: endDate },
+      undefined,
+      undefined,
+      20,
+      principal,
+      domain ?? undefined,
+    )
+    return (result['windows'] as Array<Record<string, unknown>> | undefined) ?? []
+  } catch {
+    return []
   }
-  // If we have a domain, pass it as a filter hint; otherwise leave unfiltered.
-  if (domain) args['domain'] = domain
-
-  const raw = await callKalaRegistryCap(
-    'marsys://tool/L4/gochara_forecast_get',
-    args,
-    principal,
-  )
-  const payload = unwrapKalaPayload(raw)
-  const windows = (payload['windows'] as Array<Record<string, unknown>> | undefined) ?? []
-  return windows
 }
 
 /** Builds the A5 gochara-agreement facet from the PACT verdict and gochara windows.

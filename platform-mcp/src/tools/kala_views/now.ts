@@ -90,6 +90,18 @@ import { composeArgument } from '../../lib/argument_composer.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget } from '../../lib/response_budget.js'
 import { buildSukshmaBoundaryIntervals, type SukshmaBoundaryInterval } from '../../lib/kala_uncertainty.js'
 import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
+// F-73: marsys://tool/L4/gochara_forecast_get was never backed by a registered
+// capability (no layers/*/index.ts entry exists for it) — every call 404'd silently,
+// forcing field_gochara_alignment to 'insufficient_data' unconditionally. The real logic
+// already lives in this same platform-mcp package as a plain exported function; call it
+// directly instead of round-tripping through the registry/HTTP capability system.
+import { computeGocharaForecast } from '../retrieval/register_gochara_windows.js'
+// GA-5 review finding on #1390: computeGocharaForecast is called IN-PROCESS, bypassing
+// registerGocharaForecastTool's own remoteAuthorize(principal, chart_id) entitlement gate
+// (that gate lives in the tool wrapper, not inside computeGocharaForecast itself) --
+// unlike the registry/HTTP path this replaces, which enforced per-call authorizeChartAccess
+// for every request. Re-gate explicitly at this call site.
+import { remoteAuthorize } from '../../lib/authz.js'
 
 // ── Infrastructure (self-contained proxy helper — mirrors the established per-file
 // pattern in register_p1_aliases.ts / tools/retrieval/kala_temporal.ts / registry_bridge.ts;
@@ -1378,8 +1390,9 @@ function isAligned(houseFromLagna: number | null, dominantValence: string | null
   return false
 }
 
-/** Fetches current-date gochara forecast windows for the given chart via callRegistryCapability.
- *  Returns an empty array (never throws) on any failure — the narrative block uses
+/** Fetches current-date gochara forecast windows for the given chart via a direct in-process
+ *  call to `computeGocharaForecast` (F-73: NOT via the registry — see the import comment
+ *  above). Returns an empty array (never throws) on any failure — the narrative block uses
  *  `field_gochara_alignment = 'insufficient_data'` in that case. */
 async function fetchGocharaForecastWindows(
   chartId: string,
@@ -1394,17 +1407,24 @@ async function fetchGocharaForecastWindows(
   endParsed.setUTCDate(endParsed.getUTCDate() + 90)
   const endDate = endParsed.toISOString().slice(0, 10)
 
-  const resp = await callRegistryCapability(
-    'marsys://tool/L4/gochara_forecast_get',
-    {
-      chart_id: chartId,
-      date_range: { start: startDate, end: endDate },
-      limit: 20,
-    },
-    principal,
-  )
-  if (!resp.ok || !resp.content) return []
-  const rawWindows = (resp.content['windows'] as Array<Record<string, unknown>> | undefined) ?? []
+  let result: Record<string, unknown>
+  try {
+    // GA-5 review finding on #1390: computeGocharaForecast itself performs no entitlement
+    // check -- gate here, matching what registerGocharaForecastTool's own handler does
+    // before calling the same function.
+    if (!(await remoteAuthorize(principal, chartId))) return []
+    result = await computeGocharaForecast(
+      chartId,
+      { start: startDate, end: endDate },
+      undefined,
+      undefined,
+      20,
+      principal,
+    )
+  } catch {
+    return []
+  }
+  const rawWindows = (result['windows'] as Array<Record<string, unknown>> | undefined) ?? []
   return rawWindows
     .filter((w) => typeof w['event_class'] === 'string')
     .map((w) => ({

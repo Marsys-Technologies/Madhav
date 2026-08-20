@@ -17,6 +17,27 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { Principal } from '../types.js'
+
+// F-73: `fetchGocharaForecastWindows` (now.ts) calls `computeGocharaForecast` directly
+// (in-process, same package) instead of round-tripping through the registry/HTTP capability
+// system — the `marsys://tool/L4/gochara_forecast_get` URI it used to call was never backed
+// by a registered capability, so every call 404'd and `field_gochara_alignment` was
+// permanently `insufficient_data`. Mock the real call site instead of intercepting an HTTP
+// call that no longer happens.
+const mockComputeGocharaForecast = vi.hoisted(() => vi.fn())
+vi.mock('../tools/retrieval/register_gochara_windows.js', () => ({
+  computeGocharaForecast: mockComputeGocharaForecast,
+}))
+// GA-5 review finding on #1390: fetchA5GocharaWindows/fetchGocharaForecastWindows now gate
+// on remoteAuthorize(principal, chart_id) before calling computeGocharaForecast (an
+// entitlement check that used to be enforced by the registry/HTTP path this PR replaced).
+// Default to authorized=true so existing fixtures exercise the SAME behavior they did
+// before this gate was added; a dedicated denied-case test below covers the gate itself.
+const mockRemoteAuthorize = vi.hoisted(() => vi.fn().mockResolvedValue(true))
+vi.mock('../lib/authz.js', () => ({
+  remoteAuthorize: mockRemoteAuthorize,
+}))
+
 import { computeKalaNow } from '../tools/kala_views/now.js'
 
 const TEST_CHART_ID = '00000000-0000-0000-0000-000000000002'
@@ -98,6 +119,16 @@ function makeMockFetch(opts: {
   gocharaWindows?: Record<string, unknown>[]
   moonTransitUnavailable?: boolean
 }) {
+  // F-73: gochara windows now come from a direct call to `computeGocharaForecast`
+  // (module-mocked above), not from `fetch` — configure that mock here so every existing
+  // call site (`vi.stubGlobal('fetch', makeMockFetch({...}))`) keeps working unchanged.
+  mockComputeGocharaForecast.mockReset()
+  if (!opts.reachable) {
+    mockComputeGocharaForecast.mockRejectedValue(new Error('registry unreachable in test'))
+  } else {
+    mockComputeGocharaForecast.mockResolvedValue({ windows: opts.gocharaWindows ?? [GOCHARA_WINDOW_GAIN] })
+  }
+
   return vi.fn(async (url: string, init?: RequestInit) => {
     if (!opts.reachable) throw new Error('registry unreachable in test')
     const body = JSON.parse(String(init?.body ?? '{}')) as {
@@ -156,10 +187,10 @@ function makeMockFetch(opts: {
       inner = { field_snapshot_id: 'snap-001', field_content_hash: 'hash-001' }
     } else if (body.uri === 'marsys://tool/L5/get_field_snapshot') {
       inner = { field_snapshot_id: 'snap-001', field_content_hash: 'hash-001' }
-    } else if (body.uri === 'marsys://tool/L4/gochara_forecast_get' ||
-               body.uri === 'gochara_forecast_get') {
-      inner = { windows: opts.gocharaWindows ?? [GOCHARA_WINDOW_GAIN] }
     }
+    // F-73: gochara windows no longer come through fetch — see mockComputeGocharaForecast
+    // above. (marsys://tool/L4/gochara_forecast_get was never a real registered capability;
+    // this branch used to paper over that with a fetch-level mock the real code never hit.)
 
     return {
       ok: true,
