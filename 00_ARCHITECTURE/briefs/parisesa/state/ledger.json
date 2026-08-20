@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 742,
+  "event_count": 743,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1578,17 +1578,19 @@
       "terminal_status": null
     },
     "F-69": {
+      "branch": "parisesa/repair-F69-rebase",
       "confidence": "HIGH",
       "disposition": "STRANDED",
-      "event_sha256": "31c63b6d0f9372674390ad29f7b2cd60aa5d206cbf0a4d8aa9290268fdaadc51",
+      "event_sha256": "b4bec6eb921a4ab279a7861c3f707ccac7d2a9a6c2e0f80f3210c91eebae4bab",
       "event_type": "finding_status",
-      "evidence_summary": "Original claim: mimamsa_insight_get serves full numeric rank_consequence/confidence_band/provenance_chain.grade for insight rows whose evidence_grade is permanently 'structural'/'prior_only' (no calibration-tier suppression). Verified against current origin/main source (query_insights.ts) \u2014 the defect is genuinely still present: rows are returned unfiltered/unsuppressed regardless of evidence_grade, only an evidence_grade_counts tally is computed. A candidate fix exists as commit c872d8372 'F-69: suppress numeric rank/confidence/grade under non-calibrated evidence_grade in mimamsa_insight_get' on branch origin/par/night-F-69 (confirmed via `git branch -a --contains` and `git for-each-ref`), but that branch is NOT merged into origin/main. Matches the corpus row's own note verbatim ('nonancestor c872d8372 ... quarantined pending fresh-main design/test/review').",
+      "evidence_summary": "Rebase of ratified commit c872d8372 onto current main (dc78e82df) -- zero conflicts, git's 3-way merge correctly interleaved with F-35's since-landed evidence_grade_counts block. Independently re-verified 3 semantic correctness points beyond the clean merge: evidence_grade_counts computed from pre-suppression rows (correct), F-35's new 'assignment_only' tier correctly falls into F-69's non-calibrated suppression (not an oversight), embeddings fix scoping to mode=nearest remains complete. 3/3 targeted + 120/120 layer suite pass, tsc/eslint clean.",
       "finding_id": "F-69",
-      "next_action": "Pull the c872d8372 diff from origin/par/night-F-69, re-review/re-test against current main (branch has likely drifted since Aug 17), and land it via a fresh PR rather than a raw cherry-pick.",
-      "prev_sha256": "c3facf698e305805ba6c47247e5080d188838a5ea0df4869b9f0586513866583",
-      "seq": 589,
-      "source_batch": "triage_batch1.json",
-      "status": "STRANDED",
+      "next_action": "owner reviews and merges PR #1386 at morning checkpoint",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1386",
+      "prev_sha256": "dce747a2c2512bd2324bf01d294e3c81b75dda430b1d9e1c0cad3e48e0dbb946",
+      "seq": 743,
+      "source_batch": "rebase_f69",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-70": {
@@ -2026,10 +2028,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 10,
+  "findings_morning_ship_ready_count": 11,
   "findings_terminal_count": 77,
-  "journal_head_seq": 742,
-  "journal_head_sha256": "dce747a2c2512bd2324bf01d294e3c81b75dda430b1d9e1c0cad3e48e0dbb946",
+  "journal_head_seq": 743,
+  "journal_head_sha256": "b4bec6eb921a4ab279a7861c3f707ccac7d2a9a6c2e0f80f3210c91eebae4bab",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
