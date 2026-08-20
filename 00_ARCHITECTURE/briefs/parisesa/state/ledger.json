@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 745,
+  "event_count": 746,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -599,17 +599,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-129": {
-      "confidence": "MEDIUM",
+      "branch": "parisesa/repair-F129-build",
+      "confidence": "HIGH",
       "disposition": "OPEN",
-      "event_sha256": "40ed53b86276be6e41072d00b208b4153f1359897597129f41058def14783c41",
+      "event_sha256": "dc84f576d27d47984a9905d890744b3ec6a30029906bf926fd2e506eb640dd5d",
       "event_type": "finding_status",
-      "evidence_summary": "No commits/PRs/runs. results/ingested has ratifier/reviewer/spec_writer artifacts (F-129.*.json) \u2014 the swarm pipeline reached spec+review stage but a builder never produced a landed commit.",
+      "evidence_summary": "Ratified spec implemented after re-verifying every cited line against current main (zero drift). synth_chart_brief_get's top_discoveries query replaced 'surface_reading AS statement' with honest-named fields (hypothesis_text, depth_reading, why_an_acharya_misses_it, etc), matching the sibling query_discoveries.ts pattern exactly (no new inference logic, holds SS N.5). Regression test verified genuinely red pre-fix / green post-fix. Independent review checked for spec-vs-invariant conflicts (F-125 precedent) -- none found; existing generic budget-trim already covers the field, no new hardFloor needed. Caught and corrected one spec inaccuracy: wrong test runner specified (jest vs actual vitest). Full suite before/after byte-identical failure set, zero new failures.",
       "finding_id": "F-129",
-      "next_action": "Read the F-129 spec_writer artifact; if it's a ready spec, dispatch a fresh builder wave rather than re-authoring from scratch.",
-      "prev_sha256": "d0dd0265b10c725090d6c86279b231f7b2904db9786b30cd7ff406e819903a7a",
-      "seq": 33,
-      "source_batch": "batch0.json",
-      "status": "OPEN",
+      "next_action": "owner reviews and merges PR #1389 at morning checkpoint",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1389",
+      "prev_sha256": "ac94ea0289c0bb680c41055531b6c589ceca2c162f55874653039e20a92dd19b",
+      "seq": 746,
+      "source_batch": "rebase_f129",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-13": {
@@ -2032,10 +2034,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 13,
+  "findings_morning_ship_ready_count": 14,
   "findings_terminal_count": 77,
-  "journal_head_seq": 745,
-  "journal_head_sha256": "ac94ea0289c0bb680c41055531b6c589ceca2c162f55874653039e20a92dd19b",
+  "journal_head_seq": 746,
+  "journal_head_sha256": "dc84f576d27d47984a9905d890744b3ec6a30029906bf926fd2e506eb640dd5d",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
