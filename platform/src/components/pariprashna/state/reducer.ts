@@ -49,6 +49,7 @@ export function makeInitialTurnState(id: string, userText: string): TurnState {
     seenEventIds: new Set<string>(),
     reconnectHollowCaret: false,
     persistence: 'unknown',
+    receipt: null,
     interpretationSets: null,
   }
 }
@@ -297,6 +298,25 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
       return updateTurn(state, action.turnId, (t) => {
         if (isDuplicateEvent(t, action.eventId)) return t
         return { ...t, readingDepthReceived: action.depth, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
+      })
+    }
+
+    case 'receipt.define': {
+      return updateTurn(state, action.turnId, (t) => {
+        if (isDuplicateEvent(t, action.eventId)) return t
+        return {
+          ...t,
+          receipt: action.receipt,
+          // G3-E's existing consumer (InterpretationSetsSection.tsx) reads
+          // this projection specifically — see this field's own doc comment
+          // in types.ts for why both fields are set from the same object.
+          // `?? null`: the receipt schema's own field is `.optional()`
+          // (undefined-shaped), TurnState's is `| null` — an honest absence
+          // either way, just two different schemas' own conventions for it.
+          interpretationSets: action.receipt.interpretation_sets ?? null,
+          lastEventId: action.eventId,
+          seenEventIds: addSeen(t, action.eventId),
+        }
       })
     }
 

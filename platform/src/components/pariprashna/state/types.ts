@@ -20,6 +20,7 @@
 
 import type { StructuredPredictionCandidate } from '@/lib/pariprashna/samiksha/detector'
 import type { ReceiptInterpretationSets } from '@/lib/pariprashna/interpretation/schema'
+import type { AcharyaReadingReceipt } from '@/lib/pariprashna/receipt/schema'
 
 // ── Roles / grades / block kinds ────────────────────────────────────────────
 
@@ -249,22 +250,29 @@ export interface TurnState {
   /** P2-D (PPR-10, FD-9) — see `PersistenceStatus`'s doc comment. */
   persistence: PersistenceStatus
   /**
+   * P2-close item 3. The full `AcharyaReadingReceipt` this turn's
+   * `receipt.define` event carried — the same validated object persisted to
+   * `conversation_messages.metadata_json`, now also reachable client-side.
+   * `null` until that event arrives (or permanently, on a flag-OFF deploy).
+   * `interpretationSets` below is a convenience projection of this same
+   * object's `interpretation_sets` field for G3-E's existing consumer; a
+   * future consumer needing the whole receipt (P3-D receipt-hash parity)
+   * reads this field directly rather than reconstructing it.
+   */
+  receipt: AcharyaReadingReceipt | null
+  /**
    * Lane G3-E (PPR-05) — the reader-facing "Read it another way" / "What
    * would change my mind" affordances (`dock/InterpretationSetsSection.tsx`)
-   * render from this field when populated. UNLIKE every other field here,
-   * there is today NO live SSE producer for it: `interpretation_sets`
-   * (G3-B, PPR-02) is assembled server-side at PERSISTENCE time
+   * render from this field when populated. `interpretation_sets` (G3-B,
+   * PPR-02) is assembled server-side at PERSISTENCE time
    * (`pipeline/persistence_stage.ts`), strictly AFTER `turn.commit` already
-   * went out over the wire, and is stored on the assistant message's
-   * metadata as part of the G3-A `AcharyaReadingReceipt` — there is no wire
-   * event carrying it yet. This field therefore stays `null` (an honest
-   * "not available this turn" default — the same bootstrapping convention
-   * `readingDepthReceived` used before ITS OWN wire event existed) until a
-   * future lane adds the fetch path that reads the persisted receipt back
-   * and threads it through. This lane's scope is presentation over
-   * already-assembled data, not that fetch/wire plumbing; fixtures and
-   * tests populate this field directly to exercise the presentation layer
-   * ahead of that wiring.
+   * went out over the wire — so this field stays `null` until the LATER
+   * `receipt.define` event arrives (P2-close item 3), same bootstrapping
+   * convention `readingDepthReceived` used before its own wire event
+   * existed. Populated by the reducer's `receipt.define` case from
+   * `receipt.interpretation_sets`, the same object the server persisted to
+   * `conversation_messages.metadata_json` — one validated object, not two
+   * independently-assembled copies.
    */
   interpretationSets: ReceiptInterpretationSets | null
 }
@@ -333,6 +341,7 @@ export type WireEvent =
    * here rather than through `mapGrade`, which has no case for it.
    */
   | { type: 'reading_depth.received'; turnId: string; depth: string; eventId: string }
+  | { type: 'receipt.define'; turnId: string; receipt: AcharyaReadingReceipt; eventId: string }
   | {
       type: 'turn.commit'
       turnId: string
