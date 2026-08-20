@@ -81,6 +81,7 @@ describe('JUDGMENT_FLAG_CODES — closed, registry-checked vocabulary', () => {
     'cursor_filter_mismatch',
     'hollow_envelope_no_data_rows',
     'hollow_envelope_shape_not_evaluated',
+    'as_of_date_precedes_chart_birth',
   ]
 
   it.each(CODES_USED_BY_REAL_EMITTERS)('emitter code "%s" is a member of the closed vocabulary', (code) => {
