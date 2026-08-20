@@ -984,16 +984,17 @@
       "field": "verdict",
       "line": null,
       "pattern": null,
-      "max_occurrences": 5,
+      "max_occurrences": 6,
       "sample_lines": [
-        146,
-        174,
-        202,
-        214,
-        234
+        186,
+        232,
+        265,
+        277,
+        373,
+        389
       ],
       "sample_snippet": "verdict: 'telemetry',",
-      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI."
+      "justification": "CATEGORY D \u2014 rollout baseline, NOT INDIVIDUALLY REVIEWED. Surfaced by the initial scan of this lint at base a7dfefcb; carried as frozen debt rather than either hidden or used to block the lint's own merge. Saying 'not reviewed' plainly is the \u00a7N.8-honest disposition \u2014 a fabricated per-entry justification would be the same defect class this lint exists to catch. Frozen at the rollout count: a new occurrence of this field in this file fails CI. Lines corrected 146/174/202/214/234\u2192186/232/265/277/373/389 and max_occurrences 5\u21926 on 2026-08-20 (citation-leak-fix: register_leak_lint.ts's single subjectSafe REDACT `.replace()` callback was split into a dedicated run-aware `applySubjectSafeRun` function so a LIST of register mentions collapses to one demonstrative instead of one per item \u2014 see that file's own \u201cLIST-COLLAPSE FIX\u201d header comment. The refactor mechanically relocated the pre-existing bare-citation-marker branch's `verdict: 'redact'` literal into its own source line inside the new function, adding ONE net new occurrence of the same already-reviewed literal-verdict debt class, not a new kind of unreviewed signal)."
     },
     {
       "file": "platform/src/lib/pipeline/planner_context_builder.ts",

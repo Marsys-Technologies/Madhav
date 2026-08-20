@@ -159,6 +159,40 @@ const LENGTH_TIER_GUIDANCE: Partial<Record<LengthTier, string>> = {
     'well-grounded point to save space.',
 }
 
+/**
+ * citation-leak-fix (2026-08-20) — narration-hygiene guidance, unconditional
+ * (no feature flag; same discipline as the temporal anchor and RC-17 fixes:
+ * a known production defect gets fixed outright, not gated behind an
+ * experiment). Root cause of the live-reproduced "in this, this, and this
+ * artifacts" leak (chart 482012f1-…, two independent repro turns): the model
+ * closed a synthesis with a generic self-sourcing disclaimer naming several
+ * internal registers in a list ("...provided in the MSR, CGM, and CDLM
+ * artifacts"), which `register_leak_lint.ts`'s backstop correctly redacted —
+ * each register mention scrubbed, per its own design — but which read as
+ * broken, nonsensical prose once scrubbed. `register_leak_lint.ts` now
+ * collapses such a list to ONE grammatical demonstrative rather than one per
+ * item (see its own header comment), but the deeper, doctrine-aligned fix is
+ * here: stop the model from writing that kind of sentence at all. Per
+ * CLAUDE.md §N.7 item 6 ("an honest null beats an invented judgment"), a
+ * vague closing "based on the data provided" gesture is not a citation — it
+ * names no fact, resolves to nothing a reader can verify — and per §B.11 it
+ * bypasses the citation/derivation-ledger discipline entirely. This clause is
+ * additive (appended, never replaces the id-shaped leak backstop above, which
+ * stays armed as defense-in-depth for whatever the model writes anyway).
+ */
+const NARRATION_NO_SOURCING_FILLER_CLAUSE =
+  'NARRATION HYGIENE: Never close a reading with a generic disclaimer that ' +
+  'gestures at your own sourcing in the abstract (for example "this ' +
+  'interpretation is based on the synthesis of the detailed chart data ' +
+  'provided in these/various artifacts/reports/documents"). Every claim you ' +
+  'make must already be grounded in the specific chart facts, placements, or ' +
+  'signals you named in the body of your answer — never in an unnamed or ' +
+  'vaguely-gestured-at source. If a closing statement adds nothing beyond ' +
+  'that vague gesture, omit it. Do not name or reference your own internal ' +
+  'data sources, registers, or artifacts by name anywhere in your response — ' +
+  'the reader has no visibility into them and such a reference is never ' +
+  'meaningful to them.'
+
 export async function assembleSynthesisContext(args: {
   messages: UIMessage[]
   bundle: { assets: unknown }
@@ -263,6 +297,15 @@ export async function assembleSynthesisContext(args: {
       systemContentWithSummary = [systemContentWithSummary, lengthGuidance].filter(Boolean).join('\n\n---\n\n')
     }
   }
+
+  // ── NARRATION HYGIENE (citation-leak-fix) — unconditional, see the constant's
+  // own doc comment above for the full root-cause account. Appended in the
+  // same additive-splice position/convention as the length guidance directly
+  // above it — a fixed structural instruction, not interleaved with the
+  // untrusted evidence bundle.
+  systemContentWithSummary = [systemContentWithSummary, NARRATION_NO_SOURCING_FILLER_CLAUSE]
+    .filter(Boolean)
+    .join('\n\n---\n\n')
 
   // ── INJECTION CONTAINMENT: the clause that makes the tags mean something. ──
   // Appended AFTER the evidence and the summary splice and BEFORE the safety
