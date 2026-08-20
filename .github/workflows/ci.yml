@@ -975,6 +975,9 @@ jobs:
       - name: kala_life_arc_get include_lel_events no-op disclosure regression (platform-mcp) — F-26
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/register_p1_synthesis_life_arc_lel_noop.test.ts
+      - name: synth_chart_brief_get top_discoveries honest-fields regression (platform-mcp) — F-129
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/f129_top_discoveries_honest_fields.test.ts
       - name: vidhi registry codegen drift check (platform) — GT-56
         run: npm run codegen:vidhi:check
       - name: vidhi registry codegen parity test (platform-mcp) — GT-56
