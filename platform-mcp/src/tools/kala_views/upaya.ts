@@ -34,6 +34,10 @@
 import { z } from 'zod'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
+// F-125: the B.11 orientation gate — see the export-site note in registry_bridge.ts. This
+// is a per_chart interpretive-synthesis surface (PACT-chain diagnosis + prescription), not
+// an RS-4-exempt factual lookup, so it is in scope for the gate (spec §2b).
+import { fetchOrientationContext } from '../registry_bridge.js'
 import {
   makeKalaEnvelope,
   fetchCalibrationMaturity,
@@ -520,8 +524,32 @@ export function registerKalaUpayaGet(server: McpServer, principal: Principal): v
         },
         principal,
       )
+      // F-125: B.11 orientation gate. `kala_upaya_get` issues a PACT-chain verdict +
+      // prescription — interpretive synthesis per A4 of the F-125 diagnosis, not an
+      // RS-4-exempt factual lookup — so it must carry the same `orientation_context`/
+      // `orientation_ok` floor the `assess_*` family and every registry_bridge.ts domain
+      // tool already carry.
+      //
+      // Skipped on a mortality-exclusion refusal: gate G16 (ADJUDICATION-13, absolute) is
+      // that an excluded request triggers NO network call of any kind, before ANY await —
+      // upaya.test.ts's G16 firing-proof asserts exactly zero substrate calls on refusal.
+      // A B.11 orientation pre-fetch is itself a substrate call, so extending the gate to a
+      // refusal would violate that stronger, already-tested invariant. A refusal carries no
+      // diagnosis/candidate/window of any kind (by design); it has nothing for a holistic
+      // orientation context to attach to.
+      if (isMortalityRefusal(response)) {
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(response, null, 2) }],
+        }
+      }
+      const { orientation_context, orientation_ok } = await fetchOrientationContext(
+        chart_id, undefined, principal,
+      )
       return {
-        content: [{ type: 'text' as const, text: JSON.stringify(response, null, 2) }],
+        content: [{
+          type: 'text' as const,
+          text: JSON.stringify({ ...response, orientation_context, orientation_ok }, null, 2),
+        }],
       }
     },
   )
