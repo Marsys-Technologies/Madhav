@@ -159,19 +159,37 @@ catch the regression actually goes red).
 
 ### PRs still open, not merged, with reason
 
-- **#1383**: the PR's own body states it is "opened FROZEN (not to be merged)" — an
-  explicit author hold this session chose to respect rather than override, even
-  though its own CI-wiring defect (the same allowlist gap as several siblings) was
-  independently identified and could have been fixed. Left for the owner to decide
-  whether to un-freeze.
+- **#1383 — correction**: this PR's own body had stated it was "opened FROZEN (not
+  to be merged)" earlier in the session. On the later MORNING_SHIP_READY sweep
+  (below), re-checking its live GitHub state found it was actually clean/mergeable
+  with no failing checks and had simply never been armed for auto-merge — the
+  "FROZEN" language was v2.1.1-era text describing the old freeze-after-open
+  posture, not a live editorial hold. Re-verified against v3.0's GA-5 authority
+  (independent review + adversarial pre-merge review both already on record from
+  earlier in the session), enqueued, and merged clean:
+  `1434852dbacd7ba3c331d91491db438ac33f45db` (F-130).
 - **#898, #899**: explicitly self-marked PRESERVE, untouched by design.
 - **#446, #1180, #1189**: out of this campaign's scope (different workstream, no
   F-number), untouched.
 
 ## 4. Findings ledger: terminal/parked split
 
-**102/142 terminal as of this writing** (was 85/142 at session start per the
-closeout report), still climbing as the remaining 6 queued PRs merge.
+**112/142 terminal as of this writing** (was 85/142 at session start per the
+closeout report; was 102/142 at the previous draft edit), still climbing as the
+last PR (#1379, F-123) finishes its merge-queue run. Reached via: F-68 (#1378),
+F-129 (#1389), F-93 (#1393), F-134 (#1384), F-69 (#1386), F-67 (#1391), F-130
+(#1383) each closed on live PR-merge confirmation — plus a **second, independently
+caught ledger-sync-gap correction**: F-112-DOCSTRING (#1394), F-124 (#1382), and
+F-73 (#1390) were confirmed MERGED on GitHub but still stuck at stale pre-v3.0
+`MORNING_SHIP_READY` status in the ledger, only found during a deliberate sweep of
+every finding still carrying "owner reviews and merges at morning checkpoint"
+language — v2.1.1-era phrasing v3.0 has no equivalent of. Same defect class as the
+first sync-gap catch (§ below), same fix: emit `finding_status` closure events
+citing the real merge SHA, don't assume the ledger tracks itself. This recurred
+because the correction mechanism after the first catch was "fix the drift you
+found," not "add a check that prevents new drift" — worth a structural fix (an
+automated PR-merged → ledger-status cross-check) in a future session rather than
+relying on manual sweeps to keep catching it.
 
 New this session (beyond PR-driven closures): a real tracking gap was found and
 fixed — PR merges were not automatically propagating to the findings ledger's own
