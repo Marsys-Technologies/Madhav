@@ -32,6 +32,7 @@ import {
   type GradeEvent,
   type TurnCommitEvent,
   type TurnPersistedEvent,
+  type ReceiptDefineEvent,
   type TurnCloseEvent,
   type ErrorEvent,
   type SnapshotApplyEvent,
@@ -218,6 +219,11 @@ export class PariprashnaEmitter {
   /** P2-D (PPR-10/FD-9): the settled_visual/durably_persisted split — see events.ts. */
   turnPersisted(body: Body<TurnPersistedEvent, 'turn.persisted'>): void {
     this.write({ type: 'turn.persisted', ...this.envelope(), ...body })
+  }
+
+  /** P2-close item 3: the AcharyaReadingReceipt, finally on the wire — see events.ts's own doc comment on ReceiptDefineEventSchema for the full account. */
+  receiptDefine(body: Body<ReceiptDefineEvent, 'receipt.define'>): void {
+    this.write({ type: 'receipt.define', ...this.envelope(), ...body })
   }
 
   turnClose(body: Body<TurnCloseEvent, 'turn.close'>): void {

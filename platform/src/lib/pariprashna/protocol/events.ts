@@ -18,7 +18,8 @@
  * Event vocabulary (locked with sibling lane C-2 — this authored fresh; C-2
  * had not yet drafted the module):
  *   turn.open · phase · activity.upsert · block.open|delta|commit ·
- *   seam.open|set · citation.define · flag · grade · turn.commit · turn.close · error
+ *   seam.open|set · citation.define · flag · grade · turn.commit ·
+ *   turn.persisted · receipt.define · turn.close · error
  */
 
 import { z } from 'zod'
@@ -408,6 +409,41 @@ export const TurnPersistedEventSchema = z.object({
 })
 export type TurnPersistedEvent = z.infer<typeof TurnPersistedEventSchema>
 
+/**
+ * `receipt.define` — P2-close item 3 (root of lanes I/M). The
+ * `AcharyaReadingReceipt` (G3-A, `pariprashna/receipt/schema.ts`) has always
+ * been computed and validated server-side, but until this event was never
+ * carried onto the wire — it landed only in `conversation_messages.
+ * metadata_json`, persisted but never seen by the reader (the client's own
+ * `interpretationSets` field carried a comment conceding exactly this: "no
+ * wire event carrying it yet"). This closes that gap.
+ *
+ * The `receipt` payload is typed `z.unknown()`, NOT `AcharyaReadingReceiptSchema`
+ * — deliberately, for two reasons, not just to dodge a circular import
+ * (`receipt/schema.ts` already imports `GroundingSummaryGradeCountsSchema`
+ * FROM this file, so importing its schema back here would cycle): the wire
+ * protocol's own job is framing (envelope + discriminant), not re-validating
+ * a payload the SERVER already validated once via
+ * `validateAcharyaReadingReceipt` (`persistence_stage.ts`) before this event
+ * is ever emitted — a second full structural re-validation here would be
+ * redundant, not safer. Consumers that need the real
+ * `AcharyaReadingReceipt` shape import the type (not the schema) directly
+ * from `receipt/schema.ts` and cast at the one point they read `.receipt`,
+ * with a comment explaining why that's trusted rather than re-validated.
+ *
+ * Additive + OPTIONAL for every consumer, same discipline as `turn.persisted`
+ * above: a pre-item-3 client that has never heard of this event type simply
+ * never receives it (only emitted by the new code path), and a pre-item-3
+ * emitter never sends it — a strict wire addition, not a breaking change.
+ */
+export const ReceiptDefineEventSchema = z.object({
+  type: z.literal('receipt.define'),
+  ...EnvelopeShape,
+  turn_id: z.string(),
+  receipt: z.unknown(),
+})
+export type ReceiptDefineEvent = z.infer<typeof ReceiptDefineEventSchema>
+
 /** `turn.close` — the LAST event on the stream. */
 export const TurnCloseEventSchema = z.object({
   type: z.literal('turn.close'),
@@ -530,6 +566,7 @@ export const PariprashnaEventSchema = z.discriminatedUnion('type', [
   GradeEventSchema,
   TurnCommitEventSchema,
   TurnPersistedEventSchema,
+  ReceiptDefineEventSchema,
   TurnCloseEventSchema,
   ErrorEventSchema,
   SnapshotApplyEventSchema,
@@ -552,6 +589,7 @@ export const PARIPRASHNA_EVENT_TYPES = [
   'grade',
   'turn.commit',
   'turn.persisted',
+  'receipt.define',
   'turn.close',
   'error',
   'snapshot.apply',

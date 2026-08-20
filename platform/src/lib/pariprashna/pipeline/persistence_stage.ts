@@ -497,6 +497,14 @@ export async function runPersistenceStage(args: {
                 )
               } else {
                 metadataWithReceipt = withAcharyaReadingReceipt(metadataWithReceipt ?? {}, receipt)
+                // P2-close item 3 (root of lanes I/M): the receipt, finally
+                // on the wire, not just in conversation_messages.metadata_json.
+                // Emitted only here — after the SAME validation gate the
+                // persisted copy already passed — so a receipt that failed
+                // validation is never sent to the reader either; the two
+                // copies (wire + persisted) are the same validated object,
+                // never two independently-assembled ones that could drift.
+                em.receiptDefine({ turn_id: turnId, receipt })
               }
             } catch (err) {
               console.error('[pariprashna/receipt] assembly failed (non-fatal, receipt omitted this turn):', err)

@@ -56,6 +56,7 @@ import type {
   WireEvent,
 } from './types'
 import type { PariprashnaEvent, GroundingSummaryGradeCounts } from '@/lib/pariprashna/protocol/events'
+import type { AcharyaReadingReceipt } from '@/lib/pariprashna/receipt/schema'
 import { RETRIEVAL_FACET_NAMES, type RetrievalFacetKey } from '@/lib/pariprashna/lexicon'
 import { classifyPariprashnaError } from '@/lib/pariprashna/errors/classify'
 import { emptyGradeTally, rollUpGradeSummaryLabel, tallyGrade, type GradeTally } from './groundingRollup'
@@ -312,6 +313,16 @@ export function makeS1LiveAdapter(
 
       case 'turn.persisted':
         return [{ type: 'turn.persisted', turnId, status: ev.status, detail: ev.detail, eventId }]
+
+      case 'receipt.define':
+        // `ev.receipt` is `unknown` on the wire type (events.ts's own
+        // ReceiptDefineEventSchema doc comment explains why: the server
+        // already ran validateAcharyaReadingReceipt before ever emitting
+        // this event, so a second structural re-validation at the wire
+        // layer would be redundant, not safer). Cast here, at the one point
+        // client code reads it, rather than smearing the assumption across
+        // the wire-protocol module.
+        return [{ type: 'receipt.define', turnId, receipt: ev.receipt as AcharyaReadingReceipt, eventId }]
 
       case 'turn.close':
         return [{ type: 'turn.close', turnId, eventId }]
