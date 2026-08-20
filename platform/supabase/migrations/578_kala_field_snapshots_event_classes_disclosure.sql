@@ -1,4 +1,4 @@
--- migration 572: F-78 disclosure — kala_field_snapshots.event_classes is the
+-- migration 578: F-78 disclosure — kala_field_snapshots.event_classes is the
 -- ATTEMPTED set, not the BUILT set (PARIŚEṢA S3/CL-13, DIAGNOSIS.md F-78).
 --
 -- Comment-only, additive, non-destructive. Mirrors the existing

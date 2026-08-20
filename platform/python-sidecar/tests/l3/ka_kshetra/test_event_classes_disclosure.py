@@ -105,7 +105,7 @@ class TestColumnIsDocumented:
     MIGRATION_PATH = (
         Path(__file__).resolve().parents[4]
         / 'supabase' / 'migrations'
-        / '572_kala_field_snapshots_event_classes_disclosure.sql'
+        / '578_kala_field_snapshots_event_classes_disclosure.sql'
     )
 
     def test_migration_file_exists(self):
