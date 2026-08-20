@@ -1754,3 +1754,112 @@ SESSION-OPEN: Δ1 R40 2026-08-14T22:43Z — sole conductor (pid=41320 new, pid=3
   deploy. Disjoint from the live P2 conductor and PARIŚEṢA-RĀTRI-V4, same as
   the prior entry. This closes the PARIPRASHNA-GOLIVE task per the native's
   explicit close-out instruction — no further action expected after merge.
+
+- 2026-08-20 ~14:30Z — **PARIPRASHNA-CITATION-LEAK-FIX / Claude Code —
+  merged and deployed, live-reverified:** PR #1377
+  (`pariprashna/citation-leak-fix` → `main`, based on `origin/main @
+  429942e4c`, post HS-4 death-anniversary fix) fixed a citation/trust-
+  integrity leak live-reproduced twice this session against the real
+  native's canonical chart (`482012f1-710e-4a25-994a-93821f5871aa`): a
+  Paripraśna synthesis turn closed with the literal, user-visible sentence
+  *"...provided in this, this, and this artifacts."*
+
+  ROOT CAUSE: `register_leak_lint.ts`'s pre-existing register-name backstop
+  (correctly hides internal registers — MSR/UCN/CGM/CDLM/LEL/RM and their
+  spelled-out forms — from readers) substituted EACH register mention in a
+  LIST independently with its own "this"/"This" demonstrative. The names
+  were never actually leaking unredacted; only the substitution's grammar
+  broke when the model named several registers in one sentence (e.g.
+  "...provided in the MSR, CGM, and CDLM artifacts."). Confirmed via the
+  saved SSE event logs of both repro turns: 0 `citation.define` events and
+  an empty `facts_consumed`/`derivation_chains[].fact_refs` on both, and the
+  live flag read confirms `PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED`
+  (default OFF) is NOT in the currently-live flag bundle — so the leak fires
+  on the flag-OFF direct-`lintReaderProse`-call path; the flag-ON path
+  (`rewriter.ts`) calls the SAME function, so the fix covers both without
+  special-casing either (verified via import trace, not assumed).
+
+  FIX (two-pronged, matching this codebase's own defense-in-depth doctrine):
+  (1) `register_leak_lint.ts` — consecutive subjectSafe matches
+  (register_acronym / register_full_name) joined ONLY by list-connective
+  text (",", "and", "&", whitespace — nothing else) now collapse into ONE
+  demonstrative ("this"/"these"/"This"/"These") instead of one per item; a
+  lone match is a run of length 1 and is byte-for-byte the pre-fix
+  behavior. Deliberately does NOT collapse on "or" — "the MSR, the CGM, or
+  the CDLM" is a disjunction (one of three), not a co-occurring list, and
+  collapsing it would assert something the sentence didn't say (confirmed
+  via an 11-case adversarial probe, folded into the permanent test suite).
+  (2) `synthesis_stage.ts` (Paripraśna-only, NOT the shared consult route's
+  prompt builder) — new unconditional `NARRATION_NO_SOURCING_FILLER_CLAUSE`
+  telling the model to never write vague "based on the data provided in
+  these artifacts" closing disclaimers or name its own internal sources,
+  per CLAUDE.md §N.7 item 6 ("an honest null beats an invented judgment").
+
+  DISCLOSED, OUT-OF-SCOPE FINDING from this investigation (not fixed):
+  `platform/src/lib/synthesis/prompts/pariprashna_synthesis_prompt_v1.ts`
+  (the `⟦cite:...⟧` sentinel-format prompt appendix, `PARIPRASHNA_CITATION_APPENDIX`)
+  has ZERO production callers — even with the first-paint-citations flag on,
+  no live prompt ever teaches the model the sentinel syntax, so
+  `rewriter.ts` could never resolve a real sentinel today. Left untouched:
+  wiring it up is a separate, larger change to the live synthesis prompt
+  and not what caused the reported leak. Flagged here for whichever session
+  next touches the citation-resolution surface.
+
+  TESTS/GOVERNANCE: new `register_leak_lint.test.ts` (17 tests — exact
+  production repro text, byte-for-byte single-mention regression, bare-
+  marker carve-out, REWRITE-verdict unaffected, 6 adversarial edge cases).
+  Full suite 814 files / 9353 tests pass, 0 failures; `tsc --noEmit` clean;
+  ESLint clean. `naming_lint.py` 0 new (53 pre-existing baseline);
+  `drift_detector.py` 215 findings/exit=3, unchanged from baseline;
+  `check_earned_signal.py` 0 new (141 pre-existing, allowlisted) —
+  `earned_signal_allowlist.json`'s register_leak_lint.ts/`verdict` entry
+  corrected `max_occurrences` 5→6 + `sample_lines`, per the file's own
+  existing correction-comment convention (classifier.ts precedent), because
+  the refactor mechanically relocated one pre-existing literal into a new
+  source line, not a new kind of finding.
+
+  MERGE + DEPLOY: merged via merge queue at 2026-08-20T14:22:45Z, SHA
+  `340b358cf269f58aed6a526249eddd25b01bc109`. `Deploy to Cloud Run` ran
+  path-scoped correctly — `Build & Deploy Web` succeeded; `Build & Deploy
+  Pipeline Job Image` / `MCP` / `Sidecar` all `skipped` (platform/src-only
+  change, as expected). Traffic confirmed 100% on the new revision
+  `amjis-web-01553-7ld` via `gcloud run services describe`.
+
+  LIVE RE-VERIFICATION (both original repro questions, same canonical
+  chart, via the standing probe harness): (1) the Mercury/6th-house career
+  question — clean, no leak, no odd artifact, substantive ~4.8k-char
+  reading ending "**The verdict is clear:** Mercury is your greatest
+  professional asset...". (2) the Mercury-Mahadasha/Saturn-Antardasha
+  timing question — the SAME question whose saved pre-fix output contained
+  the exact leak text — now returns a clean, substantive reading with NO
+  "this, this, and this" pattern anywhere and no bare register acronym
+  visible; the closing "*This interpretation is based on the synthesis of
+  the detailed chart data provided in this, this, and this artifacts.*"
+  disclaimer sentence that appeared in the pre-fix version is GONE entirely
+  — the post-fix reading ends instead with a substantive "A Note on Timing"
+  paragraph discussing FORENSIC-source dasha-date methodology. One
+  unrelated, minor, NON-security cosmetic artifact was observed mid-answer
+  in this same turn ("...**Consolidation of Authority:** The This
+  describes this specific sub-period...") — a stray leftover article
+  before a demonstrative. This does NOT reproduce the target defect (no
+  repeated "this, this" pattern, no leaked identifier) and could not be
+  conclusively root-caused from client-visible output alone (the pre-
+  redaction model text is never persisted or logged with content, only a
+  scrub COUNT, by the existing gate-11 privacy discipline) — every
+  constructed hypothesis for how the CURRENT `register_leak_lint.ts` logic
+  could produce that exact leftover was traced through by hand and ruled
+  out (see PR #1377's own commit message for the traced hypotheses), and
+  the byte-for-byte single-mention regression test independently confirms
+  a lone match cannot leave its own article behind. Disclosed honestly as
+  an open, unresolved residual rather than silently fixed or ignored;
+  flagged for a follow-up session with server-log access to pin down.
+
+  Scope this entry covers: `platform/src/lib/pariprashna/citations/
+  register_leak_lint.ts`, `platform/src/lib/pariprashna/pipeline/
+  synthesis_stage.ts`, `platform/src/lib/pariprashna/citations/__tests__/
+  register_leak_lint.test.ts`, and `platform/scripts/governance/
+  earned_signal_allowlist.json` only — no other `platform/**` file, no
+  migration. Disjoint from the live P2 conductor and PARIŚEṢA-RĀTRI-V4 —
+  neither touches `citations/register_leak_lint.ts` or
+  `pipeline/synthesis_stage.ts` per a fresh read of this file before
+  opening the PR and again immediately before this append.
