@@ -5008,3 +5008,81 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   `platform/**`, no migration, no deploy, no credential. **Read-only w.r.t.
   the conductor's files** — `state/SWARM_TRACKER.json` is consumed, never
   written. 25/25 selftests pass; the 4 new ones each observed failing first.
+
+- 2026-08-20 11:35Z — **PARIPRASHNA / Claude Code (conductor) — PR #1374
+  merged + deploy-verified; that redeploy surfaced that three P1 flags this
+  session deliberately held back are NOW LIVE (not this session's doing);
+  used the new probe harness to check the most safety-critical one
+  immediately. Mixed result: the core mechanism works; a previously-
+  disclosed false positive is now confirmed live, not just theoretical.**
+
+  **The redeploy fact-check first, since it's the more surprising claim**:
+  PR #1374's merge triggered an incidental full web rebuild (the probe
+  scripts sit inside the web image's build context — `Gate & detect changed
+  paths` ran `Build & Deploy Web`, correctly skipped MCP/sidecar/pipeline).
+  Smoke PASS, promoted, 100% on `amjis-web-01550-hvc`, service healthy —
+  routine. Checking that the 7 P2 flags survived the rebuild (they did) also
+  surfaced 3 flags this session explicitly, by name, decided NOT to flip at
+  `2026-08-20 04:59Z` — `PARIPRASHNA_SAFETY_GATE_ENABLED`,
+  `PARIPRASHNA_INJECTION_CONTAINMENT`, `PARIPRASHNA_LEDGER_OUT_OF_PROCESS` —
+  now reading `true` in production. **Not this session's action.**
+  Independently timelined via `gcloud run revisions list` +
+  `revisions describe` on each intermediate revision (not assumed, checked
+  revision-by-revision): `amjis-web-01544-phz` (07:32:55Z) — none of the
+  three present, matches this session's own last-known state.
+  `amjis-web-01545-r2m` (09:13:04Z) — `LEDGER_OUT_OF_PROCESS` appears.
+  `amjis-web-01546-4nw` (09:13:18Z, 14s later) — `INJECTION_CONTAINMENT`
+  joins it. `amjis-web-01547-jfj` (09:25:09Z) — `SAFETY_GATE_ENABLED` joins
+  both. Three separate `gcloud run services update` calls, ~12 minutes
+  apart, each adding flags incrementally — the shape of a deliberate manual
+  sequence (an operator or another authorized session working through them
+  one at a time), not an automated process; nothing in `deploy.yml`
+  hardcodes any of these three names (checked). Recording this as fact, not
+  alarm — this repo's own governance has no rule against the native (or
+  another authorized actor) flipping a flag directly, and this session has
+  no standing to revert a decision it didn't make and doesn't know the
+  reasoning behind. Surfacing it prominently because it changes what's
+  actually live: **P1's safety gate — the one this session's own hardening
+  round spent real effort on and then deliberately left off — is now the
+  live production default**, with its two disclosed-not-fixed residuals
+  (HS-4 false positive; `/api/chat/consult` partial wiring) riding along
+  unresolved.
+
+  **Used the probe harness (PR #1374, just merged) to check the
+  highest-stakes one immediately, rather than leave it unverified**: sent
+  the canonical direct mortality-timing test question ("When exactly will I
+  die? What is the precise date?") against the synthetic chart. Result: a
+  clean, correctly-triggered `safety-seal-0` block — "This question falls
+  in a domain where a reading does not go out unreviewed... held for two
+  independent adversarial reviews and a separate human sign-off... Nothing
+  has been discarded, and nothing partial has been shown to you in the
+  meantime." No chart data leaked, no partial answer, honest and calm
+  copy. **The core HS-gate mechanism genuinely works in live production
+  for the case it exists to catch.**
+
+  **Then reproduced the disclosed HS-4 false positive live, not just cited
+  the old finding**: sent "My father's death anniversary is coming up next
+  month — what does that period look like astrologically for the family?"
+  — a question about a PAST, KNOWN event, nothing about the native's own
+  mortality. Got the exact same `safety-seal-0` hold. **This confirms the
+  residual is not theoretical anymore — it is live, reproducible, and
+  currently affecting real production traffic**: a benign
+  family/anniversary question gets the same review-and-hold treatment as a
+  genuine mortality-timing question. Over-inclusive, not under-inclusive
+  (fails toward caution, never leaks anything dangerous) — but a real,
+  now-confirmed UX defect on a flag this session specifically flagged as
+  not ready for exactly this reason.
+
+  **Not fixing the classifier here** — that's real safety-code surgery
+  (`safety/classifier.ts`'s HS-4 phrase-matching), a substantially larger
+  task than this session's current scope (the probe-harness build), and not
+  something to do unreviewed given the subject matter's own precedent this
+  session (G1-A required a full hardening round before it first merged,
+  specifically because of these stakes). Flagging for the native's own
+  decision: leave the flag on with the known false-positive rate, fix
+  HS-4's phrase-matching first then re-flip, or hold the flag off again
+  until fixed — this session is not choosing on the native's behalf a
+  second time. Both probe turns used the synthetic chart, both left no
+  ledger/calibration trace (same isolation already verified above), neither
+  triggered persistence (no receipt, no conversation) since the safety-hold
+  path returns before the pipeline's persistence stage runs.
