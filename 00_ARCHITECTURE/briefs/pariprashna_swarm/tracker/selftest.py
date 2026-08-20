@@ -807,6 +807,111 @@ def test_pidfile_flock_prevents_two_instances():
         )
 
 
+def _plan_stub(lanes, phases=None):
+    return {"plan_version": "test",
+            "phases": phases or [{"id": "PX", "title": "T", "gate_id": None}],
+            "budgets_usd": {}, "lanes": lanes}
+
+
+def test_pr_identifier_extraction_matches_real_prs():
+    """The rule that decides which lanes a merged PR implements, pinned to the exact real
+    PRs it was derived from. The two negative cases matter most: #1363's body says "gating
+    for G3-B/C/D/E/F/G" about lanes it does NOT implement, and #1365's says "P2-A..H" while
+    implementing only G3-E/G3-G. A body-prose scan would mark 6 and 8 lanes wrongly done."""
+    cases = [
+        # (title, body, expected)
+        ("feat: P2 reader affordances (G3-E/G3-G)",
+         "- **G3-E** reader affordances\n- **G3-G** model qualification\ncloses P2-A..H and P2-I..O",
+         ["G3-E", "G3-G"]),
+        ("feat(pariprashna): P2-I receipt emission + validator (G3-A, PPR-01)",
+         "First lane of P2 epistemic-truth wave -- gating for G3-B/C/D/E/F/G. Implements ...",
+         ["G3-A", "P2-I"]),
+        ("feat: P2 presentation-truth wave", "- **P2-A** blocks\n- **P2-B** citations", ["P2-A", "P2-B"]),
+    ]
+    failures = []
+    for title, body, expected in cases:
+        got = collect.extract_lane_identifiers(title, body)
+        if got != sorted(expected):
+            failures.append(f"{title[:38]!r}: expected {sorted(expected)}, got {got}")
+    return _result("merged-PR identifier extraction (title + **bold**), incl. the two real "
+                    "prose-mention false positives it must reject",
+                    not failures, "; ".join(failures) or f"{len(cases)}/{len(cases)} cases exact")
+
+
+def test_unobservable_floor_never_fabricates_planned():
+    """A lane with no merged PR, no branch, no artifact and no conductor entry must read
+    UNOBSERVABLE/UNKNOWN. It used to read PLANNED/DERIVED -- a status the tracker had no
+    basis for, asserted as evidence. That fabrication is what let 46 of 53 lanes sit
+    frozen through two shipped phases with every liveness light green."""
+    plan = _plan_stub([{"id": "PX-A", "title": "unobservable lane", "phase": "PX",
+                        "depends_on": [], "expected_artifacts": {"paths": []}}])
+    snapshot = {"collected_at": "2026-01-01T00:00:00Z",
+                "git_lane_branches": {"evidence_class": "DERIVED", "value": {}},
+                "github_prs": {"evidence_class": "DERIVED", "value": {}},
+                "recent_merged_prs": {"evidence_class": "DERIVED", "value": []},
+                "expected_artifacts": {"evidence_class": "DERIVED", "value": {}},
+                "conductor_state": {"evidence_class": "UNKNOWN", "value": None},
+                "shared_surfaces": {}}
+    out, _ = project.fold(plan, snapshot, [], as_of_epoch=1000.0)
+    lane = out[0]
+    ok = lane["state"] == "UNOBSERVABLE" and lane["evidence_class"] == "UNKNOWN"
+    return _result("no-evidence lane reads UNOBSERVABLE/UNKNOWN, never a fabricated PLANNED",
+                    ok, f"state={lane['state']} evidence_class={lane['evidence_class']}")
+
+
+def test_merged_pr_evidence_drives_lane_and_phase():
+    """End-to-end on the real shape: a merged PR implementing a lane's GATE id (the swarm
+    names PRs by gate, this plan names lanes P<n>-<L>) must mark the lane MERGED with
+    DERIVED provenance, and the phase must derive to CLOSED -- not be read from a
+    hand-typed PLAN.yaml constant."""
+    plan = _plan_stub(
+        [{"id": "PX-A", "title": "a", "phase": "PX", "gate": "G9-A", "depends_on": [],
+          "expected_artifacts": {"paths": []}}],
+        phases=[{"id": "PX", "title": "T", "gate_id": "PX_gate"}])
+    snapshot = {"collected_at": "2026-01-01T00:00:00Z",
+                "git_lane_branches": {"evidence_class": "DERIVED", "value": {}},
+                "github_prs": {"evidence_class": "DERIVED", "value": {}},
+                "recent_merged_prs": {"evidence_class": "DERIVED", "value": [
+                    {"number": 4242, "merge_commit_sha": "abc123def456", "merged_at": "x",
+                     "head_ref": "h", "is_ancestor_of_mirror_main": True,
+                     "title": "t", "implements": ["G9-A"]}]},
+                "expected_artifacts": {"evidence_class": "DERIVED", "value": {}},
+                "conductor_state": {"evidence_class": "UNKNOWN", "value": None},
+                "shared_surfaces": {}}
+    out, _ = project.fold(plan, snapshot, [], as_of_epoch=1000.0)
+    lane = out[0]
+    phases = project.fold_phase_status(plan, out, snapshot)
+    lane_ok = (lane["state"] == "MERGED" and lane["evidence_class"] == "DERIVED"
+               and "#4242" in lane["provenance"])
+    phase_ok = phases[0]["status"] == "CLOSED"
+    return _result("merged PR naming a lane's GATE id -> lane MERGED (DERIVED) and phase "
+                    "status DERIVED to CLOSED",
+                    lane_ok and phase_ok,
+                    f"lane={lane['state']}/{lane['evidence_class']} phase={phases[0]['status']} "
+                    f"prov={lane['provenance'][:60]!r}")
+
+
+def test_board_world_divergence_detector():
+    """The detector whose absence is why the frozen board survived three rounds of me
+    certifying it healthy. A merged PR implementing a known lane, while that lane shows
+    anything other than done, must raise an anomaly."""
+    lanes_frozen = [{"id": "PX-A", "phase": "PX", "gate": "G9-A", "state": "UNOBSERVABLE"}]
+    lanes_correct = [{"id": "PX-A", "phase": "PX", "gate": "G9-A", "state": "MERGED"}]
+    snapshot = {"recent_merged_prs": {"evidence_class": "DERIVED", "value": [
+        {"number": 4242, "merge_commit_sha": "abc", "is_ancestor_of_mirror_main": True,
+         "title": "ships G9-A", "implements": ["G9-A"]}]}}
+    frozen_summary, frozen_events = project.board_world_divergence(lanes_frozen, snapshot, [], 1000.0)
+    ok_summary, ok_events = project.board_world_divergence(lanes_correct, snapshot, [], 1000.0)
+    fires = frozen_summary["unreflected_count"] == 1 and len(frozen_events) == 1
+    quiet = ok_summary["unreflected_count"] == 0 and not ok_events
+    return _result("board-vs-world divergence: fires when a merged PR's lane isn't shown "
+                    "done, silent when the board is correct",
+                    fires and quiet,
+                    f"frozen_board: unreflected={frozen_summary['unreflected_count']} "
+                    f"anomalies={len(frozen_events)} | correct_board: "
+                    f"unreflected={ok_summary['unreflected_count']} anomalies={len(ok_events)}")
+
+
 def run_all():
     import time
     tests = [
@@ -831,6 +936,10 @@ def run_all():
         test_lock_mutual_exclusion_cron_defers_during_install(),
         test_cron_watchdog_out_of_band_logic(),
         test_pidfile_flock_prevents_two_instances(),
+        test_pr_identifier_extraction_matches_real_prs(),
+        test_unobservable_floor_never_fabricates_planned(),
+        test_merged_pr_evidence_drives_lane_and_phase(),
+        test_board_world_divergence_detector(),
     ]
     all_passed = all(t["passed"] for t in tests)
     return {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "tests": tests, "all_passed": all_passed}

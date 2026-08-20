@@ -62,6 +62,10 @@ td{padding:6px 8px; border-bottom:1px solid var(--obsidian-border); font-family:
 .state-BUILDING,.state-VERIFYING,.state-ADVERSARIAL,.state-QUEUED,.state-ADMISSIBLE{background:rgba(122,172,232,.12); color:var(--info)}
 .state-PLANNED{color:var(--text-tertiary)}
 .state-BLOCKED,.state-PARKED{background:rgba(232,196,122,.12); color:var(--warning)}
+.state-UNOBSERVABLE{color:var(--text-tertiary); border:1px dashed var(--obsidian-border-lite); font-style:italic}
+.phase-chip.ACTIVE{background:var(--gold-glow); border-color:var(--gold-primary); color:var(--gold-light)}
+.phase-chip.UNOBSERVABLE{color:var(--text-tertiary); border-style:dashed}
+.pill.divergent{background:rgba(232,154,154,.18); color:var(--danger); border-color:var(--danger); font-weight:700}
 .ev-DERIVED{color:var(--success)}
 .ev-CLAIMED{color:var(--warning); font-style:italic}
 .ev-UNKNOWN{color:var(--text-tertiary)}
@@ -91,6 +95,7 @@ footer{padding:20px; text-align:center; color:var(--text-tertiary); font-size:11
     <span class="pill" id="resurrectPill">resurrections 0</span>
     <span class="pill" id="rateLimitPill" title="graphql bucket -- gh pr list (this collector's own poll, every cycle) spends from graphql, not REST core; core stays flat at 5000/5000 regardless of load and would be a decorative meter">gh rate —</span>
     <span class="pill" id="codeShaPill" title="running code provenance">code —</span>
+    <span class="pill" id="divergencePill" title="board-vs-world: merged PRs whose lanes this board does not show as done. The axis that was missing when the board sat frozen through two shipped phases while every other light stayed green.">board —</span>
   </div>
 </header>
 <main>
@@ -228,8 +233,12 @@ function render() {
 
   const rail = document.getElementById("phaseRail");
   rail.innerHTML = d.phases.map(p => {
-    const cls = p.status === "CLOSED" ? "CLOSED" : (p.id === d.current_phase ? "ACTIVE" : "PLANNED");
-    return `<span class="phase-chip ${cls}" title="${esc(p.title)}">${esc(p.id)}</span>`;
+    const cls = p.status === "CLOSED" ? "CLOSED"
+              : p.status === "ACTIVE" ? "ACTIVE"
+              : p.status === "UNOBSERVABLE" ? "UNOBSERVABLE"
+              : (p.id === d.current_phase ? "ACTIVE" : "PLANNED");
+    const done = (p.lanes_total ? ` ${p.lanes_done}/${p.lanes_total}` : "");
+    return `<span class="phase-chip ${cls}" title="${esc(p.title)} — ${esc(p.status)}: ${esc(p.status_provenance || "")}">${esc(p.id)}${done}</span>`;
   }).join("");
 
   const lastProgAge = (Date.now() - new Date(d.last_progress_at).getTime()) / 1000;
@@ -266,6 +275,19 @@ function render() {
 
   const rl = d.github_rate_limit && d.github_rate_limit.value;
   document.getElementById("rateLimitPill").textContent = rl ? `gh rate (${rl.bucket}) ${rl.remaining}/${rl.limit}` : "gh rate UNKNOWN";
+
+  const bw = d.board_world_divergence || {};
+  const divPill = document.getElementById("divergencePill");
+  if (!bw.checked) {
+    divPill.className = "pill";
+    divPill.textContent = "board — (" + esc(bw.reason || "not checked") + ")";
+  } else if ((bw.unreflected_count || 0) > 0) {
+    divPill.className = "pill divergent";
+    divPill.textContent = `BOARD BEHIND WORLD — ${bw.unreflected_count} merged PR(s) not reflected`;
+  } else {
+    divPill.className = "pill green";
+    divPill.textContent = `board matches world (${bw.merged_prs_examined} merged PRs checked)`;
+  }
 
   const codeProv = d.code_provenance || {};
   const codePill = document.getElementById("codeShaPill");

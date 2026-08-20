@@ -18,6 +18,7 @@ Two separate git sources, deliberately not consolidated:
 """
 import json
 import os
+import re
 import sys
 import time
 
@@ -199,16 +200,48 @@ def collect_github_rate_limit():
         return _unknown(f"gh api rate_limit returned non-JSON: {e}")
 
 
+_ID_RE = re.compile(r"\b((?:[PG]\d)-[A-Z])\b")
+_BOLD_ID_RE = re.compile(r"\*\*\s*((?:[PG]\d)-[A-Z])\b")
+
+
+def extract_lane_identifiers(title, body):
+    """Which lanes/gates does a PR actually IMPLEMENT? Pure function.
+
+    Rule, validated against every real Paripraśna phase PR (#1349/#1356/#1360/#1363/
+    #1364/#1365): the union of (a) identifiers in the TITLE and (b) identifiers the body
+    marks in **bold**. That is the swarm's own consistent convention -- a body bolds the
+    lanes it implements and mentions other lanes in plain prose.
+
+    Scanning the body's plain prose instead would be actively wrong, not merely noisy:
+    #1363's body says "gating for G3-B/C/D/E/F/G" about lanes it explicitly does NOT
+    implement, and #1365's says "P2-A..H" while describing only G3-E/G3-G. This rule
+    excludes both, and reproduces the published lane totals exactly (P1 = 10 lanes,
+    P2 = 15 lanes).
+
+    Deliberately NO range/slash expansion ("P2-A..H", "G3-B/C/D/F"): the bold convention
+    already covers those cases on real data, and speculative expansion could only ADD
+    false attributions. A PR that follows neither convention yields no identifiers, so its
+    lanes stay UNOBSERVABLE -- honest silence, never a fabricated MERGED.
+    """
+    return sorted(set(_ID_RE.findall(title or "")) | set(_BOLD_ID_RE.findall(body or "")))
+
+
 def collect_recent_merged_prs(mirror_gate):
-    """Free consistency check (item 4): gh is network-live, the mirror could lag. If gh
-    says a PR merged but its merge commit isn't an ancestor of the mirror's main, that's a
-    genuine, real ref-lag signal -- project.py turns it into an anomaly."""
+    """Two jobs from one gh call:
+
+    1. Ref-lag consistency check: gh is network-live, the mirror could lag. A PR gh calls
+       merged whose merge commit is not an ancestor of the mirror's main is a real
+       divergence -- project.py raises an anomaly.
+    2. Lane completion evidence: which lanes each merged PR implements (see
+       extract_lane_identifiers). This is the tracker's PRIMARY derived source of lane
+       progress -- a merge is a fact, unlike a hand-authored plan status.
+    """
     if mirror_gate:
         return mirror_gate
     ok, out, err = run([
-        "gh", "pr", "list", "--repo", GH_REPO, "--state", "merged", "--limit", "20",
-        "--json", "number,mergeCommit,mergedAt,headRefName",
-    ], timeout=30)
+        "gh", "pr", "list", "--repo", GH_REPO, "--state", "merged", "--limit", "60",
+        "--json", "number,mergeCommit,mergedAt,headRefName,title,body",
+    ], timeout=45)
     if not ok:
         return _unknown(f"gh pr list --state merged failed: {err.strip()[:200]}")
     try:
@@ -221,12 +254,66 @@ def collect_recent_merged_prs(mirror_gate):
         if not mc:
             continue
         anc_ok, _, _ = run_mirror(["merge-base", "--is-ancestor", mc, "main"])
+        # Bodies are large and this snapshot is rewritten every cycle -- keep the extracted
+        # identifiers and the title, never the full body.
         results.append({
             "number": pr["number"], "merge_commit_sha": mc, "merged_at": pr.get("mergedAt"),
             "head_ref": pr.get("headRefName"), "is_ancestor_of_mirror_main": anc_ok,
+            "title": (pr.get("title") or "")[:200],
+            "implements": extract_lane_identifiers(pr.get("title"), pr.get("body")),
         })
     return _derived(results, "gh pr list --state merged --limit 20, cross-checked via "
                               "git merge-base --is-ancestor against the mirror's main")
+
+
+CONDUCTOR_STATE_PATH = "00_ARCHITECTURE/briefs/pariprashna_swarm/state/SWARM_TRACKER.json"
+
+
+def collect_conductor_state(mirror_gate):
+    """The conductor's OWN state file, read from the mirror's main.
+
+    Why this exists: the Paripraśna conductor never adopted this observatory's
+    tracker_emit.py hook (DD-11 is "IN FORCE -- NOT YET WIRED"). It does, however, keep
+    updating the original P0-D state file at the path above, committed to main -- so it is
+    a live, machine-readable, continuously-maintained statement of where the swarm thinks
+    it is. Ignoring it while rendering a hand-typed constant instead was strictly worse.
+
+    This is a CLAIM, not derived evidence: it is the subject describing itself, exactly the
+    thing this tracker's §1 doctrine says to render distinctly and never count toward a
+    completion figure. project.py labels every lane state sourced from here as CLAIMED and
+    lets merged-PR evidence override it. Keyed by gate id for P1 (G1-A...) and by lane id
+    for P0 (P0-B...), so both namespaces are normalised into one map here.
+    """
+    if mirror_gate:
+        return mirror_gate
+    ok, out, err = run_mirror(["show", f"main:{CONDUCTOR_STATE_PATH}"], timeout=25)
+    if not ok:
+        return _unknown(f"mirror show {CONDUCTOR_STATE_PATH} failed: {err.strip()[:200]}")
+    try:
+        doc = json.loads(out)
+    except json.JSONDecodeError as e:
+        return _unknown(f"conductor SWARM_TRACKER.json is not valid JSON: {e}")
+
+    stages = {}
+    for key in ("lanes", "p1_lanes", "p2_lanes", "p3_lanes", "p4_lanes", "p5_lanes"):
+        block = doc.get(key)
+        if isinstance(block, dict):
+            for ident, entry in block.items():
+                if isinstance(entry, dict) and entry.get("role_stage"):
+                    stages[ident.strip().upper()] = entry["role_stage"]
+
+    gates = {}
+    for gate_id, entry in (doc.get("gate_results") or {}).items():
+        if isinstance(entry, dict) and entry.get("status"):
+            gates[gate_id] = entry["status"]
+
+    return _derived({
+        "phase": doc.get("phase"),
+        "phase_status": doc.get("phase_status"),
+        "heartbeat_ts": doc.get("heartbeat_ts"),
+        "lane_stages": stages,
+        "gate_results": gates,
+    }, f"mirror show main:{CONDUCTOR_STATE_PATH} (conductor self-report -- CLAIMED, not derived)")
 
 
 def collect_expected_artifacts(plan, mirror_gate):
@@ -403,6 +490,7 @@ def main():
         "recent_merged_prs": collect_recent_merged_prs(mirror_gate),
         "expected_artifacts": collect_expected_artifacts(plan, mirror_gate),
         "code_provenance": collect_code_provenance(mirror_gate),
+        "conductor_state": collect_conductor_state(mirror_gate),
         "deploy": collect_deploy(),
         "shared_surfaces": collect_shared_surfaces(mirror_gate),
     }
