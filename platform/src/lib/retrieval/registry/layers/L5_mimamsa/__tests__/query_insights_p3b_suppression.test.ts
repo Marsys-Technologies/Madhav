@@ -128,4 +128,25 @@ describe('query_insights — P3-b tier-suppression (F-69)', () => {
     expect(String(unit.statement)).not.toMatch(/outcome rate is [\d.]+%/i)
     expect(String(unit.statement)).toContain('across 12 events matching this pattern.')
   })
+
+  // GA-5 review finding on #1386 round 3: manifestation_grammar's non-empirical branch
+  // (mi_darshana.py line 179) embeds "(prior-based estimate: N%)" -- latent on the canonical
+  // chart today (all 7 manifestation_grammar rows are currently evidence_grade=empirical)
+  // but the branch is reachable and would leak identically to the other 3 shapes.
+  it('evidence_grade=assignment_only, manifestation_grammar template → the embedded prior-based estimate is ALSO redacted', async () => {
+    queryMock.mockResolvedValueOnce({
+      rows: [row({
+        insight_type: 'manifestation_grammar', evidence_grade: 'assignment_only',
+        statement: 'Channel propensity for this configuration: insufficient evidence for an empirical grade (prior-based estimate: 42%).',
+      })],
+    })
+    queryMock.mockResolvedValueOnce({ rows: [{}] })
+    const result = await queryInsightsCapability.handler({ chart_id: NATIVE_CHART_ID }, undefined) as {
+      content: { insight_units: Array<Record<string, unknown>> }
+    }
+    const unit = result.content.insight_units[0]
+    expect(String(unit.statement)).not.toMatch(/42%/)
+    expect(String(unit.statement)).not.toMatch(/prior-based estimate: [\d.]+%/i)
+    expect(String(unit.statement)).toContain('insufficient evidence for an empirical grade')
+  })
 })

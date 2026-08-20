@@ -17,21 +17,30 @@ import { query } from '@/lib/db/client'
 
 export const EMPIRICALLY_CALIBRATED = 'empirical'
 
-// GA-5 review finding on #1386 (round 2): mi_darshana.py embeds a suppressed numeric
-// value in `statement` across (at least) FOUR distinct templates, not just one --
+// GA-5 review finding on #1386 (rounds 2-3): mi_darshana.py embeds a suppressed numeric
+// value in `statement` across (at least) FIVE distinct templates, not just one --
 // verdict_object: "(grade N.N/10)"; load_bearing: "(sensitivity=N.NN)"; calibrated_outlook:
-// "observed outcome rate is N.N%". Live-measured on the canonical chart: fixing only the
-// grade shape (round 1) left 6 of 84 non-empirical rows (load_bearing + calibrated_outlook)
-// leaking the same way, WHILE round 1's own tier_suppression_note claimed a suppression
-// that hadn't happened for those rows -- an unearned status claim (§N.8). Redacting by
-// SHAPE (not by re-deriving the row's own value, which risks drifting from how mi_darshana
-// actually formats it) catches all four known citation shapes regardless of which template
-// produced them. `g` flag added -- a statement could in principle carry more than one
-// citation.
+// "observed outcome rate is N.N%"; manifestation_grammar's non-empirical branch:
+// "(prior-based estimate: N%)" (line 179 -- found round 3, LATENT on the canonical chart
+// today since its 7 rows are all currently evidence_grade=empirical, but the branch is
+// reachable and will fire on other charts). Redacting by SHAPE (not by re-deriving the
+// row's own value, which risks drifting from how mi_darshana actually formats it) catches
+// every known citation shape regardless of which template produced it. `g` flag added --
+// a statement could in principle carry more than one citation.
+//
+// STRUCTURAL RESIDUAL, NOT closed by this list (disclosed, not fixed -- round 3 finding):
+// emergent_law statements (mi_darshana.py line ~219) are free text copied from
+// mimamsa_discoveries, an unbounded shape no fixed regex list can be proven exhaustive
+// against. Closing that durably needs either a write-path fix (mi_darshana.py never embeds
+// a numeric confidence citation in free-text discoveries) or a serve-time numeric-residue
+// assertion (fail loud if ANY bare confidence-shaped number survives a suppressed row's
+// statement) -- both larger changes than this fix's own scope. Tracked, not chased into a
+// round 4.
 const EMBEDDED_NUMERIC_EVIDENCE_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
   { pattern: /\(grade\s+[\d.]+\/10\)/gi, replacement: '(grade suppressed — see tier_suppression_note)' },
   { pattern: /\(sensitivity=[\d.]+\)/gi, replacement: '(sensitivity suppressed — see tier_suppression_note)' },
   { pattern: /observed outcome rate is [\d.]+%/gi, replacement: 'observed outcome rate is [suppressed — see tier_suppression_note]' },
+  { pattern: /\(prior-based estimate: [\d.]+%\)/gi, replacement: '(prior-based estimate suppressed — see tier_suppression_note)' },
 ]
 
 export function redactEmbeddedNumericEvidence(statement: string): string {
