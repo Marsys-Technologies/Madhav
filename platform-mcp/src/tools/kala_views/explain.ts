@@ -559,6 +559,15 @@ async function buildA5GocharaAgreement(
   }
 }
 
+/** F-123 regression hook: the exact required-argument gate `kala_explain_get` enforces
+ *  ("either `domain` or `bhava` is required"), extracted so a caller-side pointer builder
+ *  (`explainPointerTo` in `kala_envelope.ts`) and its regression test can check, without
+ *  duplicating this logic, whether a given args payload would actually clear this tool's own
+ *  guard — rather than re-deriving an independent copy that could drift from it. */
+export function explainRequiresDomainOrBhava(domain: unknown, bhava: unknown): boolean {
+  return !domain && bhava === undefined
+}
+
 export function registerKalaExplainTool(server: McpServer, principal: Principal): void {
   server.tool(
     TOOL_NAME,
@@ -596,7 +605,7 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
       if (!chart_id || typeof chart_id !== 'string') {
         return kalaErrorOutput(TOOL_NAME, 'chart_id is required')
       }
-      if (!domain && bhava === undefined) {
+      if (explainRequiresDomainOrBhava(domain, bhava)) {
         return kalaErrorOutput(TOOL_NAME, 'either `domain` or `bhava` is required')
       }
 

@@ -72,6 +72,7 @@ import {
   buildKalaFreshness,
   resolveFieldSnapshot,
   pointerTo,
+  explainPointerTo,
   isNoLever,
   computedCoverage,
   honestEmptyCoverage,
@@ -1794,6 +1795,14 @@ export async function computeKalaNow(
   const reading = buildNowReading({ asOfDate, windowFamilies, darshana, windowsOk, darshanaOk })
   const composed = composeArgument(reading)
 
+  // F-123 (CL-11 dead pointer): kala_explain_get hard-errors without `domain` or `bhava`.
+  // The bare pointerTo(...) below used to advertise a follow-up call that would dead-end the
+  // instant a caller made it exactly as advertised. Derive the strongest active window's
+  // first domain (honest best-effort — never fabricated) so the pointer, when a domain IS
+  // derivable, carries the argument that makes it actually resolvable.
+  const primaryDomain: string | null =
+    windowFamilies[0]?.domains?.[0] ?? windowFamilies.flatMap((f) => f.domains ?? []).find(Boolean) ?? null
+
   const triPlane: TriPlanePointers = {
     // ND-1 (ṢAḌ-DARŚANA W1 verify-reopen, 2026-07-30). This slot was a bare `null`, justified
     // as "NOW IS the interpretation plane". That was wrong on the facts: NOW reports a
@@ -1802,9 +1811,9 @@ export async function computeKalaNow(
     // already the interpretation_ref target of the sibling `kala_ahead_get`. A bare null here
     // was a dead end on a plane that genuinely HAS a lever, which is precisely what item 43's
     // no-dead-end contract exists to prevent (Elevation §11).
-    interpretation_ref: pointerTo(
-      'kala_explain_get',
+    interpretation_ref: explainPointerTo(
       'Why this NOW state reads as it does — the drivers and classical grounds behind the active windows and confluence',
+      primaryDomain ? { domain: primaryDomain } : null,
     ),
     prediction_ref: pointerTo(
       'kala_ahead_get',

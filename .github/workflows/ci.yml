@@ -981,6 +981,9 @@ jobs:
       - name: bodha_pratijna_get MCP tool registration regression (platform-mcp) — F-67
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/f67_bodha_pratijna_get_registration.test.ts
+      - name: F-123 kala_explain_get dead-pointer regression (real now.ts/ahead.ts/priority.ts sites) (platform-mcp)
+        working-directory: platform-mcp
+        run: npx vitest run src/tools/kala_views/f123_dead_pointer_regression.test.ts
       - name: vidhi registry codegen drift check (platform) — GT-56
         run: npm run codegen:vidhi:check
       - name: vidhi registry codegen parity test (platform-mcp) — GT-56
