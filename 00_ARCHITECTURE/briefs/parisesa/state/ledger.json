@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 746,
+  "event_count": 747,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1642,17 +1642,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-73": {
-      "confidence": "MEDIUM",
+      "branch": "parisesa/repair-F73-build",
+      "confidence": "HIGH",
       "disposition": "OPEN",
-      "event_sha256": "007728ee81a0f6f2817caeb9bcb10036911f06930faa74093233b0fcb42d1795",
+      "event_sha256": "9ddefbc1344aedbff070f7e50467640657d0b6410f524e4e59ab614bc41a0518",
       "event_type": "finding_status",
-      "evidence_summary": "No commits cited; original disposition 'current-defect' (phantom registry URI collapses to empty) is unresolved. Found reviser/ratifier/reviewer JSON artifacts in results/ingested/F-73.*.json suggesting the swarm pipeline reached review stage on a spec but no code commit was ever produced/landed.",
+      "evidence_summary": "Ratified spec (found on par/coordination branch, not campaign-state) implemented: now.ts and explain.ts called computeGocharaForecast via a phantom marsys://tool/L4/gochara_forecast_get registry URI that was never actually registered anywhere -- fixed by calling the in-process function directly, bypassing the non-existent registry entry. Caught that both existing test files mocked the phantom URI at the fetch layer, meaning production never actually exercised the real path -- a false-confidence gap that let this defect ship undetected; adapted both to module-mock the real function instead. Deliberately preserved an undocumented 'never throws' contract both call sites' doc-comments promise, by wrapping the fix in try/catch (computeGocharaForecast can throw on DB failure, unlike the fetch-based path it replaces). Explicitly cross-checked for line-range conflicts against F-38 and F-123 (both touch the same files) -- confirmed disjoint. 23/23 adapted tests pass, verified genuinely red pre-fix, full suite before/after byte-identical on 80 pre-existing unrelated failures.",
       "finding_id": "F-73",
-      "next_action": "Read the F-73 ingested artifacts to check for a ready-to-build spec before dispatching a fresh builder.",
-      "prev_sha256": "1ae6e71a54276e4cd17ddbd0bd69d813af68804459171d6c4aae12069950c2ce",
-      "seq": 26,
-      "source_batch": "batch0.json",
-      "status": "OPEN",
+      "next_action": "owner reviews and merges PR #1390 at morning checkpoint",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1390",
+      "prev_sha256": "dc84f576d27d47984a9905d890744b3ec6a30029906bf926fd2e506eb640dd5d",
+      "seq": 747,
+      "source_batch": "rebase_f73",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-74": {
@@ -2034,10 +2036,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 14,
+  "findings_morning_ship_ready_count": 15,
   "findings_terminal_count": 77,
-  "journal_head_seq": 746,
-  "journal_head_sha256": "dc84f576d27d47984a9905d890744b3ec6a30029906bf926fd2e506eb640dd5d",
+  "journal_head_seq": 747,
+  "journal_head_sha256": "9ddefbc1344aedbff070f7e50467640657d0b6410f524e4e59ab614bc41a0518",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
