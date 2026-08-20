@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 762,
+  "event_count": 763,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -339,17 +339,19 @@
       "terminal_status": null
     },
     "F-112-DOCSTRING": {
+      "branch": "parisesa/repair-F112-docstring-fix",
       "confidence": "HIGH",
-      "disposition": "UNKNOWN",
-      "event_sha256": "b783f65546fcc6ee447bc67cf71730b5b2c4db629077973ddb745294d020b530",
+      "disposition": "OPEN",
+      "event_sha256": "1e614b5a4abdf3bc877f4cea29dd6be13e26bc942311be853f829aedfb502f2a",
       "event_type": "finding_status",
-      "evidence_summary": "NEW finding split out of F-112 by the Opus review (ESC-001): assess_career's docstring claims responses are tightened to roughly half normal size, but domain_completeness is in the immune-fields list and never actually shrinks -- a narration-fidelity (SN.7) mismatch between documented and actual behavior.",
+      "evidence_summary": "VERBOSITY_ZOD's docstring claimed 'concise' tightens responses to roughly half size, but domain_completeness/reading are deliberately immune (IMMUNE_HONESTY_FIELDS, multiply-reinforced per the response_budget.ts frozen contract + SATYA-SESA W7 extension) -- this is intentional design protecting the densest layer from a generic trim, not an oversight. Correctly chose to fix the docstring rather than weaken the immunity (which would reintroduce a previously-fixed D-1.5a-class regression). Pure .describe() string edit, no logic touched. Independent code-reviewer subagent confirmed no issues. Full suite before/after identical on pre-existing unrelated failures.",
       "finding_id": "F-112-DOCSTRING",
-      "next_action": "fix the docstring to accurately describe domain_completeness's immune status, or remove it from the immune list if shrinking was actually intended",
-      "prev_sha256": "a3da92fdb3c99cdf55a9356f6906cea9a64ba64e9aaf1c951debb0ed8042e484",
-      "seq": 644,
-      "source_batch": "esc001_review",
-      "status": "OPEN",
+      "next_action": "owner reviews and merges PR #1394 at morning checkpoint",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1394",
+      "prev_sha256": "f4a701eb2dbb335e36cc231c8f3e2763b6cdb3fe5effcaa2bfa84e58a7546e06",
+      "seq": 763,
+      "source_batch": "rebase_f112_docstring",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-113": {
@@ -2042,10 +2044,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 18,
+  "findings_morning_ship_ready_count": 19,
   "findings_terminal_count": 79,
-  "journal_head_seq": 762,
-  "journal_head_sha256": "f4a701eb2dbb335e36cc231c8f3e2763b6cdb3fe5effcaa2bfa84e58a7546e06",
+  "journal_head_seq": 763,
+  "journal_head_sha256": "1e614b5a4abdf3bc877f4cea29dd6be13e26bc942311be853f829aedfb502f2a",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
