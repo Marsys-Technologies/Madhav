@@ -49,6 +49,7 @@ export function makeInitialTurnState(id: string, userText: string): TurnState {
     seenEventIds: new Set<string>(),
     reconnectHollowCaret: false,
     persistence: 'unknown',
+    interpretationSets: null,
   }
 }
 

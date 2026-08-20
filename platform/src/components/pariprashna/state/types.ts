@@ -19,6 +19,7 @@
  */
 
 import type { StructuredPredictionCandidate } from '@/lib/pariprashna/samiksha/detector'
+import type { ReceiptInterpretationSets } from '@/lib/pariprashna/interpretation/schema'
 
 // ── Roles / grades / block kinds ────────────────────────────────────────────
 
@@ -247,6 +248,25 @@ export interface TurnState {
   reconnectHollowCaret: boolean
   /** P2-D (PPR-10, FD-9) — see `PersistenceStatus`'s doc comment. */
   persistence: PersistenceStatus
+  /**
+   * Lane G3-E (PPR-05) — the reader-facing "Read it another way" / "What
+   * would change my mind" affordances (`dock/InterpretationSetsSection.tsx`)
+   * render from this field when populated. UNLIKE every other field here,
+   * there is today NO live SSE producer for it: `interpretation_sets`
+   * (G3-B, PPR-02) is assembled server-side at PERSISTENCE time
+   * (`pipeline/persistence_stage.ts`), strictly AFTER `turn.commit` already
+   * went out over the wire, and is stored on the assistant message's
+   * metadata as part of the G3-A `AcharyaReadingReceipt` — there is no wire
+   * event carrying it yet. This field therefore stays `null` (an honest
+   * "not available this turn" default — the same bootstrapping convention
+   * `readingDepthReceived` used before ITS OWN wire event existed) until a
+   * future lane adds the fetch path that reads the persisted receipt back
+   * and threads it through. This lane's scope is presentation over
+   * already-assembled data, not that fetch/wire plumbing; fixtures and
+   * tests populate this field directly to exercise the presentation layer
+   * ahead of that wiring.
+   */
+  interpretationSets: ReceiptInterpretationSets | null
 }
 
 export type SurfaceStatus = 'empty' | 'idle' | 'composing'
