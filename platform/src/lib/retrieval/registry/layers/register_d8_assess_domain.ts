@@ -1233,6 +1233,22 @@ async function runAssessDomain(
         },
         judgment_flags: [
           judgmentFlag('domain_inference_requires_acharya_validation', judgment_flag_note, 'warning'),
+          // GA-5 review finding on #1384: register_d9_judgment.ts already flags this exact
+          // condition (gochara_top_window_already_peaked) from the same fetchGocharaSweep data;
+          // this file threaded past_peak_window_count/is_past_peak through without ever
+          // emitting the flag -- live-confirmed on assess_wealth (top-ranked window
+          // 'major_gain', peak 2025-04-26, already peaked, shipped silently). Mirrored here.
+          ...(t5Gochara.windows[0]?.is_past_peak === true
+            ? [judgmentFlag(
+                'gochara_top_window_already_peaked',
+                `the top-ranked (highest |intensity|) window in gochara_sweep.top_windows ` +
+                `('${t5Gochara.windows[0].event_class}', peak_date=${t5Gochara.windows[0].peak_date}) ` +
+                `already peaked before as_of_date=${today} — served for context (it is still ` +
+                `inside the query's date-overlap horizon), but its intensity ranking should not be ` +
+                `read as a forward-looking signal. See top_windows[].is_past_peak for the full set.`,
+                'info',
+              )]
+            : []),
           ...(bearingYogaFirings.length === 0
             ? [judgmentFlag(
                 'bearing_yogas_empty',

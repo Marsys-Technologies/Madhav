@@ -255,6 +255,11 @@ export interface GocharaSweepWindow {
 
 export interface GocharaSweepResult {
   domain_covered: boolean
+  // GA-5 review finding on #1384: this counts every window matching the overlap query,
+  // INCLUDING already-peaked ones -- it is a raw match count, not "still upcoming" in the
+  // literal sense the name suggests. past_peak_window_count below is a SUBSET of this
+  // number, not a disjoint sibling count -- see the served `note` field for the same
+  // disclosure in the response itself.
   upcoming_window_count: number
   past_peak_window_count: number
   windows: GocharaSweepWindow[]
@@ -293,7 +298,11 @@ export async function fetchGocharaSweep(
     available: false,
     note: 'Forward gochara (transit) sweep over the kala_gochara_windows signed-intensity ' +
       'field, domain-scoped (MC-033). Compact top-by-magnitude summary + valence tally; ' +
-      'drill gochara_forecast_get for the full window set with signed intensities.',
+      'drill gochara_forecast_get for the full window set with signed intensities. ' +
+      'upcoming_window_count is every window matching this overlap query -- past_peak_window_count ' +
+      'is a SUBSET of it (windows whose peak already fell before as_of_date), not a separate ' +
+      'count; a window can be counted in both fields at once. Check each windows[] entry\'s ' +
+      'own is_past_peak before treating it as still-actionable timing.',
   }
   try {
     // Coverage probe: does this chart carry ANY gochara windows in the domain at all?
