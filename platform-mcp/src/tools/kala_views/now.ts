@@ -855,8 +855,10 @@ const SANDHI_BAND_CONVENTION =
   'full classical asymmetric last-outgoing/first-incoming convention (which needs the adjacent ' +
   'period too) — that full two-period, all-level, both-direction calendar is item 1-full (W3). ' +
   'Scope: bands levels 1–4 of the active Vimśottarī chain (Mahādaśā, Antardaśā, Pratyantardaśā, ' +
-  'Sūkṣmadaśā). Level 5 (Prāṇa-daśā) is NEVER computed for any chart by design ' +
-  '(ga_dashas_writer.py "CRITICAL OVERRIDE 1... ZERO level_n=5") — see sukshma_boundary_uncertainty ' +
+  'Sūkṣmadaśā). Level 5 (Prāṇa-daśā) is NEVER computed for any chart by design, enforced at the ' +
+  'DB layer by chart_dashas\' cd_level_n_max4 CHECK (level_n BETWEEN 1 AND 4) constraint ' +
+  '(migration 211_ga7_dashas_kp_sublevel.sql; see test_dasha_scope_cap_sentinel.py for the ' +
+  'enforcement semantics) — see sukshma_boundary_uncertainty ' +
   'convention for the same reasoning applied to the Sūkṣma-boundary uncertainty field.'
 
 interface ActiveDashaBoundaryEntry {

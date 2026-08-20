@@ -37,20 +37,27 @@ const ACTIVE_CHAIN = [
   { level_n: 2, level_name: 'Antardasha', lord_graha: 'Venus', lord_sign: 'Libra', start_date: '2026-01-01', end_date: '2028-01-01', start_iso: null, end_iso: null },
 ]
 
-// Level 3/4 chain fixture — mirrors live-observed dates from DIAGNOSIS.md (F-121):
-// chart 482012f1-…, as_of=2026-08-16, sandhi_flag=true at level_n=4 for 2026-08-13..2026-08-25.
+// Level 3/4 chain fixture — the level_n=4 (Sūkṣma) entry uses the REAL live-observed span
+// from DIAGNOSIS.md (F-121): chart 482012f1-…, level_n=4 period 2026-08-13..2026-08-25 (12
+// days). span=12d → 3% bandWidth=round(0.36)=0, floored to the code's own `Math.max(1, …)`
+// minimum of 1d → period_start band is 2026-08-12..2026-08-14 inclusive. as_of is chosen at
+// 2026-08-14 (inside that honestly-computed band) rather than the originally-observed
+// 2026-08-16, which this file's own lite own-span math does NOT band (2026-08-16 is
+// 3 days past the 1-day-wide start band) — see the F-121 Opus review finding: the prior
+// fixture stretched end_date to 2026-11-21 (100d) purely to inflate the band wide enough to
+// cover 2026-08-16, which was an engineered pass, not an honest one.
 const ACTIVE_CHAIN_WITH_SUKSHMA = [
   { level_n: 1, level_name: 'Mahadasha', lord_graha: 'Jupiter', lord_sign: 'Cancer', start_date: '2020-01-01', end_date: '2036-01-01', start_iso: null, end_iso: null },
   { level_n: 2, level_name: 'Antardasha', lord_graha: 'Venus', lord_sign: 'Libra', start_date: '2026-01-01', end_date: '2028-01-01', start_iso: null, end_iso: null },
   { level_n: 3, level_name: 'Pratyantardasha', lord_graha: 'Sun', lord_sign: 'Leo', start_date: '2026-07-01', end_date: '2026-09-15', start_iso: null, end_iso: null },
-  // span=100d → 3% bandWidth=3d → period_start band Aug 10-16 includes as_of 2026-08-16
-  { level_n: 4, level_name: 'Sukshma', lord_graha: 'Moon', lord_sign: 'Cancer', start_date: '2026-08-13', end_date: '2026-11-21', start_iso: null, end_iso: null },
+  // Real observed span: 2026-08-13..2026-08-25 (12 days) — 3% bandWidth floors to 1 day.
+  { level_n: 4, level_name: 'Sukshma', lord_graha: 'Moon', lord_sign: 'Cancer', start_date: '2026-08-13', end_date: '2026-08-25', start_iso: null, end_iso: null },
 ]
 
 function mockRegistryFetch(opts: { reachable: boolean; chainReachable?: boolean; chain?: typeof ACTIVE_CHAIN | [] }) {
   return vi.fn(async (_url: string, init?: RequestInit) => {
     if (!opts.reachable) throw new Error('registry unreachable in test')
-    const body = JSON.parse(String(init?.body ?? '{}')) as { uri: string }
+    const body = JSON.parse(String(init?.body ?? '{}')) as { uri: string; args?: Record<string, unknown> }
     let inner: Record<string, unknown> = {}
     if (body.uri === 'marsys://tool/L3/query_temporal_activation') {
       inner = { window_families: [], forward_windows: [] }
@@ -62,7 +69,15 @@ function mockRegistryFetch(opts: { reachable: boolean; chainReachable?: boolean;
       inner = { rows: [] }
     } else if (body.uri === 'marsys://tool/L3/query_active_dashas') {
       if (opts.chainReachable === false) throw new Error('active-dasha registry unreachable in test')
-      inner = { systems: [{ system_id: 'vimshottari', active_chain: opts.chain ?? ACTIVE_CHAIN }] }
+      // Honor the requested max_level the way the real capability does (query_active_dashas.ts
+      // filters server-side by level_n <= max_level) — a mock that ignores this can't catch a
+      // caller silently reverting to a lower max_level (F-121 Opus review finding: the prior
+      // mock only branched on body.uri and would return the full fixture chain regardless of
+      // what max_level was actually requested).
+      const requestedMaxLevel = typeof body.args?.['max_level'] === 'number' ? (body.args['max_level'] as number) : 3
+      const fullChain = opts.chain ?? ACTIVE_CHAIN
+      const filteredChain = fullChain.filter((entry) => entry.level_n <= requestedMaxLevel)
+      inner = { systems: [{ system_id: 'vimshottari', active_chain: filteredChain }] }
     } else if (body.uri === 'marsys://tool/L1/get_dignity') {
       inner = { rows: [] }
     } else if (body.uri === 'marsys://tool/L0/query_planet_transit') {
@@ -173,12 +188,24 @@ describe('kala_now_get W1 join — dasha_sandhi (item 1-lite)', () => {
     expect(maxLevels).toContain(4)
   })
 
-  it('level-4 (Sūkṣma) band present with is_now_within_band: true when as_of falls inside active Sūkṣma period (F-121 regression guard)', async () => {
+  it('level-4 (Sūkṣma) band present with is_now_within_band: true when as_of falls inside the honestly-computed band (F-121 regression guard)', async () => {
     vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true, chain: ACTIVE_CHAIN_WITH_SUKSHMA as typeof ACTIVE_CHAIN }))
-    // as_of=2026-08-16 is inside Sukshma boundary 2026-08-13..2026-08-25 (DIAGNOSIS.md live observation)
-    const result = await computeKalaNow(TEST_CHART_ID, { as_of: '2026-08-16' }, TEST_PRINCIPAL)
+    // Real observed level_n=4 span: 2026-08-13..2026-08-25 (12 days, DIAGNOSIS.md). Under this
+    // file's own lite band convention (± round(3% × own span), floored at 1 day), the
+    // period_start band is 2026-08-12..2026-08-14 inclusive — as_of=2026-08-14 lands honestly
+    // inside it (unlike the originally-observed 2026-08-16, which this convention does NOT
+    // band for a real 12-day period; the prior fixture stretched the span to 100 days
+    // specifically to make 2026-08-16 pass, which this test no longer does — see the
+    // ACTIVE_CHAIN_WITH_SUKSHMA comment above).
+    const result = await computeKalaNow(TEST_CHART_ID, { as_of: '2026-08-14' }, TEST_PRINCIPAL)
     const level4Bands = (result.dasha_sandhi?.bands ?? []).filter((b) => b.level_n === 4)
     expect(level4Bands.length).toBeGreaterThan(0)
     expect(level4Bands.some((b) => b.is_now_within_band === true)).toBe(true)
+    // Because mockRegistryFetch now filters its returned chain by the ACTUAL requested
+    // max_level (F-121 fix), this assertion is a genuine regression guard: if
+    // fetchVimshottariMdAdBoundaries's max_level:4 were silently reverted to 2, the mock would
+    // filter the level-3/4 fixture rows out entirely and level4Bands would be empty, failing
+    // the assertion above — unlike the pre-fix mock, which returned the full fixture chain
+    // regardless of what max_level was actually sent.
   })
 })
