@@ -369,9 +369,32 @@ export type FeatureFlag =
   // requesting >=3 distinct candidate interpretations, a selected reading +
   // rationale, and a falsifier — or an explicit, reason-carrying WAIVER when
   // the model genuinely cannot produce 3 distinct candidates. Never
-  // fabricated client-side. Flip via
+  // fabricated client-side. Also depends on
+  // PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED (G2-A) — 4 of the 5 significant-
+  // judgment categories classify from `OpenBlock.semantic`, which only
+  // exists when semantic blocks are on; when semantic blocks are off, the
+  // interpretation_sets field honestly reports `status: 'unavailable'`
+  // (`reason: 'semantic_blocks_disabled'`) rather than a populated-looking
+  // `detected_count: 0` (G3BC hardening, defect 1). Flip via
   // MARSYS_FLAG_PARIPRASHNA_INTERPRETATION_SETS_ENABLED=true.
   | 'PARIPRASHNA_INTERPRETATION_SETS_ENABLED'
+  // G3-C — PPR-03 typed confidence. Default false: ships dark. Off,
+  // `assembleAcharyaReadingReceipt` writes its new `confidence_typing` field
+  // as `{ status: 'unavailable', ... }` and every other receipt field is
+  // byte-for-byte what G3-A already computed — this flag adds nothing to the
+  // 11 pre-existing fields' logic. On, each citation this turn is typed into
+  // one of the five PPR-03 confidence types (deterministic_fact /
+  // structural_prior / classical_prior / empirically_calibrated /
+  // unresolved) from a real per-type source (see
+  // `pariprashna/confidence/type_claim.ts`), `empirically_calibrated` is
+  // gated on a real sample-size activation gate
+  // (`pariprashna/confidence/activation_gate.ts` — proven closed under
+  // today's real L5 STRUCTURAL-mode data), and any numeric confidence value
+  // this turn served from a calibration-bearing tool is scanned for
+  // overstated precision (T-8,
+  // `pariprashna/confidence/precision_scan.ts`). Flip via
+  // MARSYS_FLAG_PARIPRASHNA_TYPED_CONFIDENCE_ENABLED=true.
+  | 'PARIPRASHNA_TYPED_CONFIDENCE_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -525,6 +548,9 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // G3-B — interpretation_sets (PPR-02). Default false — see the union
   // declaration above for the full flip contract.
   PARIPRASHNA_INTERPRETATION_SETS_ENABLED: false,
+  // G3-C — typed confidence (PPR-03). Default false — see the union
+  // declaration above for the full flip contract.
+  PARIPRASHNA_TYPED_CONFIDENCE_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)

@@ -262,6 +262,38 @@ export function validateAcharyaReadingReceipt(receipt: AcharyaReadingReceipt): R
     }
   }
 
+  // ── V8: confidence_typing coherence (lane G3-C, PPR-03). ───────────────────
+  // Renumbered from the lane's own original "V6/V6b" (both G3-B and G3-C were
+  // independently numbered V6 in isolation) to V8/V8b to sit after G3-B's
+  // V6/V7 in the merged sequence — comment/label only, no logic change.
+  checkStatusCoherence(
+    'confidence_typing',
+    receipt.confidence_typing.status,
+    {
+      entries: receipt.confidence_typing.entries,
+      activation_gate: receipt.confidence_typing.activation_gate,
+      precision_flags: receipt.confidence_typing.precision_flags,
+    },
+    receipt.confidence_typing.unavailable_reason,
+    violations,
+  )
+  // V8b — THE PPR-03 enforcement as code: `empirically_calibrated` MUST NOT
+  // be assigned to any entry unless this turn's own activation gate reports
+  // open. A receipt that violates this did not come from the real
+  // `typeClaimConfidence` typing chain (which can only assign that type when
+  // `calibrationGate.gate_open` is true) — see `type_claim.ts`.
+  if (receipt.confidence_typing.status === 'measured') {
+    const gateOpen = receipt.confidence_typing.activation_gate?.gate_open === true
+    const hasEmpiricallyCalibrated = (receipt.confidence_typing.entries ?? []).some(
+      (e) => e.confidence_type === 'empirically_calibrated',
+    )
+    if (hasEmpiricallyCalibrated && !gateOpen) {
+      violations.push(
+        'confidence_typing: an entry is typed empirically_calibrated but activation_gate.gate_open is not true (PPR-03 violation)',
+      )
+    }
+  }
+
   return { ok: violations.length === 0, violations }
 }
 

@@ -37,8 +37,18 @@ import {
   type ReceiptCalibrationDisclosure,
   type ReceiptProseBinding,
   type ReceiptProvenance,
+  type ReceiptConfidenceTyping,
+  type ReceiptPrecisionFlag,
 } from './schema'
 import { computeReceiptHash } from './hash'
+import {
+  typeClaimConfidence,
+  wasClassicalSourceConsulted,
+  evaluateEmpiricalCalibrationGate,
+  extractCalibrationSampleSize,
+  scanPrecision,
+  countDecimalPlaces,
+} from '@/lib/pariprashna/confidence'
 
 /**
  * Every registered L5 Mīmāṃsā capability whose handler actually reads
@@ -117,6 +127,12 @@ export interface AssembleAcharyaReadingReceiptArgs {
    * field while still getting a well-formed (not absent) receipt field.
    */
   interpretationSets?: ReceiptInterpretationSets
+  /**
+   * Lane G3-C (PPR-03). Own flag, layered on top of receipt emission itself
+   * — defaults to `false` (unavailable) when omitted, so every pre-existing
+   * caller/test of this function is unaffected. See `confidence/flag.ts`.
+   */
+  typedConfidenceEnabled?: boolean
 }
 
 const CITATION_GRADES: readonly CitationGrade[] = [
@@ -309,6 +325,116 @@ function buildProvenance(stamp: TurnProvenanceStamp): ReceiptProvenance {
 }
 
 /**
+ * Lane G3-C (PPR-03) — `confidence_typing`.
+ *
+ * Types every citation this turn detected (`citationsFound` — the SAME
+ * source `facts_consumed` already reads, never re-scanned a second way) via
+ * `typeClaimConfidence`, computes the real `empirically_calibrated`
+ * activation gate from this turn's own calibration-bearing tool results, and
+ * runs the T-8 precision scan over any numeric `confidence` those same tool
+ * results served.
+ *
+ * The sample-size extraction is BEST-EFFORT and DEFENSIVE, grounded in a
+ * verified real serialization path: `registry/tool_name_bridge.ts`'s
+ * `toToolBundleResults` JSON.stringifies a capability handler's plain
+ * `content` object (no `results`/`content` sub-key) into a SINGLE
+ * `ToolBundleResult.content` string — exactly the shape
+ * `query_calibration.ts`/`query_insights.ts` return (`{ ...,
+ * verdict_distribution, calibration_summary, ... }`, no `results` key of
+ * their own). `JSON.parse` here can only fail on a genuine shape drift or a
+ * differently-wired tool; on failure this returns null/skips rather than
+ * guessing — the gate then honestly stays closed (see `activation_gate.ts`).
+ */
+function extractCalibrationSummaryFromToolBundle(tb: ToolBundle): unknown[] {
+  const parsed: unknown[] = []
+  for (const r of tb.results) {
+    try {
+      parsed.push(JSON.parse(r.content))
+    } catch {
+      // Non-JSON content (e.g. a plain-text snippet from a non-calibration
+      // tool that happens to share the name) — honestly skip, never guess.
+    }
+  }
+  return parsed
+}
+
+function buildConfidenceTyping(args: {
+  enabled: boolean
+  citationsFound: readonly DetectedCitationRow[]
+  validToolResults: readonly ToolBundle[]
+}): ReceiptConfidenceTyping {
+  if (!args.enabled) {
+    return {
+      status: 'unavailable',
+      entries: null,
+      activation_gate: null,
+      precision_flags: null,
+      unavailable_reason: 'PARIPRASHNA_TYPED_CONFIDENCE_ENABLED was off this turn',
+    }
+  }
+
+  const calibrationBundles = args.validToolResults.filter((tb) =>
+    CALIBRATION_BEARING_TOOL_NAMES.includes(tb.tool_name),
+  )
+  const calibrationConsulted = calibrationBundles.length > 0
+  const toolNames = args.validToolResults.map((tb) => tb.tool_name)
+  const classicalConsulted = wasClassicalSourceConsulted(toolNames)
+
+  let sampleSize: number | null = null
+  const precisionFlags: ReceiptPrecisionFlag[] = []
+  for (const tb of calibrationBundles) {
+    const payloads = extractCalibrationSummaryFromToolBundle(tb)
+    let tbSampleSize: number | null = null
+    for (const payload of payloads) {
+      const extracted = extractCalibrationSampleSize(payload)
+      if (extracted !== null) {
+        tbSampleSize = (tbSampleSize ?? 0) + extracted
+        sampleSize = (sampleSize ?? 0) + extracted
+      }
+    }
+    for (const r of tb.results) {
+      if (typeof r.confidence !== 'number') continue
+      const scan = scanPrecision({
+        value: r.confidence,
+        servedDecimalPlaces: countDecimalPlaces(r.confidence),
+        sampleSize: tbSampleSize,
+      })
+      if (scan.overstated) {
+        precisionFlags.push({
+          tool_name: tb.tool_name,
+          overstated: scan.overstated,
+          max_supported_decimal_places: scan.max_supported_decimal_places,
+          served_decimal_places: scan.served_decimal_places,
+          sample_size: scan.sample_size,
+          band_label: scan.band_label,
+          demoted_value: scan.demoted_value,
+        })
+      }
+    }
+  }
+
+  const gate = evaluateEmpiricalCalibrationGate({ sampleSize })
+
+  const entries = args.citationsFound.map((c) =>
+    typeClaimConfidence({
+      ref: c.signal_id,
+      layer: c.layer,
+      calibrationConsulted,
+      calibrationGate: gate,
+      classicalConsulted,
+    }),
+  )
+
+  return {
+    status: 'measured',
+    entries,
+    activation_gate: gate,
+    precision_flags: precisionFlags,
+    unavailable_reason: null,
+  }
+}
+
+/**
  * Per-block `fact_refs` for `derivation_chains`.
  *
  * Flag-off: the pre-existing regex scan over the block's OWN committed text
@@ -396,6 +522,11 @@ export function assembleAcharyaReadingReceipt(
     }),
     provenance: buildProvenance(args.provenanceStamp),
     interpretation_sets: args.interpretationSets ?? buildInterpretationSetsDefault(),
+    confidence_typing: buildConfidenceTyping({
+      enabled: args.typedConfidenceEnabled ?? false,
+      citationsFound: args.citationsFound,
+      validToolResults: args.validToolResults,
+    }),
   }
 
   return {

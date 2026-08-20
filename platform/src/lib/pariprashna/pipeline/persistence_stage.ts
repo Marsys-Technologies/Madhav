@@ -68,6 +68,7 @@ import {
   isInterpretationSetsEnabled,
   type ReceiptInterpretationSets,
 } from '@/lib/pariprashna/interpretation'
+import { isTypedConfidenceEnabled } from '@/lib/pariprashna/confidence/flag'
 
 import type { TurnIdentity, TurnParams } from './stage_context'
 import {
@@ -480,6 +481,8 @@ export async function runPersistenceStage(args: {
                 validToolResults,
                 provenanceStamp,
                 interpretationSets,
+                // Lane G3-C (PPR-03) — own flag, additive to G3-A's 11 fields.
+                typedConfidenceEnabled: isTypedConfidenceEnabled(),
               })
               const validation = validateAcharyaReadingReceipt(receipt)
               if (!validation.ok) {
