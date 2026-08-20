@@ -8,13 +8,27 @@
  * `responseSchema`, `interaction.finalText` parsed as JSON and Zod-shape
  * checked, with ONE repair-retry on invalid output — the same discipline
  * `lib/pipeline/pipeline_planner.ts`'s `tryBuildPlan`/repair-retry uses for
- * the plan JSON. `callType: 'worker'` is the SAME CallType this lane's own
- * `summaries/worker.ts` (PB-2/M-3) already established for "title
- * generation, history summarization, any call where minimal latency and
- * minimal cost dominate" (the registry's own docstring) — this is exactly
- * that kind of call, reused rather than a new CallType (adding one would
- * require populating `STACK_ROUTING` for every stack in
- * `lib/models/registry.ts`, outside this lane's `may_touch`).
+ * the plan JSON.
+ *
+ * MODEL RESOLUTION (DD-17, PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md
+ * §2, 2026-08-20): this call originally reused `getEffectiveModel(stack,
+ * 'worker', 'primary')` — the SAME `CallType` `summaries/worker.ts` (PB-2/
+ * M-3) uses for title generation/history summarization, resolving on the
+ * gemini stack to `gemini-2.5-flash-lite`. A gate-battery pass found this
+ * call site's `interpretation_sets` waiver rate at 100% (16/16 detected
+ * significant judgments across every real production receipt) with the
+ * failure pinned to one specific point: the call succeeds and returns valid
+ * JSON, but the `sets` array comes back empty/non-matching — evidence the
+ * `worker` tier is a capability mismatch for a task materially harder than
+ * its established use case (>=3 genuinely distinct interpretive candidates
+ * plus a real falsifier per judgment). DD-17 ruled: upgrade THIS call site
+ * to the `mid` tier. This is intentionally NOT done by changing
+ * `STACK_ROUTING['gemini']['worker']` (which would also silently change
+ * `summaries/worker.ts`'s title/summarization model) and NOT by adding a
+ * new shared `CallType` (would require populating `STACK_ROUTING` for
+ * every stack, outside DD-17's narrow scope) — `INTERPRETATION_SETS_MODEL_ID`
+ * below is resolved and validated against the registry directly, local to
+ * this one call site, no other call site's behavior changes.
  *
  * NEVER fabricates candidates client-side: every candidate/rationale/
  * falsifier a reader can eventually see came out of the model's own JSON
@@ -29,8 +43,7 @@ import type { JSONSchema7 } from 'json-schema'
 
 import { runAdapter } from '@/lib/adapters/run_adapter'
 import type { QueryRequest } from '@/lib/adapters/types'
-import { getEffectiveModel } from '@/lib/models/runtime_config'
-import { DEFAULT_STACK_ID } from '@/lib/models/registry'
+import { getModelMeta } from '@/lib/models/registry'
 
 import type { SignificantJudgment } from './detect'
 import { MIN_INTERPRETATION_CANDIDATES, type InterpretationSetEntry } from './schema'
@@ -319,8 +332,29 @@ export type InterpretationLlmCaller = (
   judgments: readonly SignificantJudgment[],
 ) => Promise<Map<string, LlmSetRaw>>
 
+/** DD-17: the `mid`-tier gemini model, this call site only — see the module
+ *  header for why this bypasses `getEffectiveModel`'s shared routing table. */
+export const INTERPRETATION_SETS_MODEL_ID = 'gemini-2.5-flash'
+
+/** Exported for the DD-17 resolution test — not otherwise called outside this module. */
+export function resolveInterpretationSetsModelId(): string {
+  // Validated against the live registry rather than trusted as a bare
+  // literal (§N.8) — fail loudly if the model is ever removed from
+  // `MODELS`, never silently fall back to a different (unvalidated) tier,
+  // which would defeat the point of DD-17's ruling.
+  const meta = getModelMeta(INTERPRETATION_SETS_MODEL_ID)
+  if (!meta) {
+    throw new Error(
+      `DD-17 model resolution failed: '${INTERPRETATION_SETS_MODEL_ID}' is not in the model ` +
+        'registry (lib/models/registry.ts MODELS). This call site\'s model id must be updated, ' +
+        'not silently substituted.',
+    )
+  }
+  return meta.id
+}
+
 async function defaultCaller(judgments: readonly SignificantJudgment[]): Promise<Map<string, LlmSetRaw>> {
-  const modelId = await getEffectiveModel(DEFAULT_STACK_ID, 'worker', 'primary')
+  const modelId = resolveInterpretationSetsModelId()
   try {
     return await callOnce(judgments, modelId)
   } catch (err) {

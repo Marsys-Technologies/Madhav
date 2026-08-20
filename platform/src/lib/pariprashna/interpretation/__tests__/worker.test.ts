@@ -15,7 +15,13 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 
-import { generateInterpretationSets, type InterpretationLlmCaller } from '../worker'
+import {
+  generateInterpretationSets,
+  resolveInterpretationSetsModelId,
+  INTERPRETATION_SETS_MODEL_ID,
+  type InterpretationLlmCaller,
+} from '../worker'
+import { getModelMeta } from '@/lib/models/registry'
 import type { SignificantJudgment } from '../detect'
 
 function judgment(overrides: Partial<SignificantJudgment> = {}): SignificantJudgment {
@@ -274,5 +280,22 @@ describe('generateInterpretationSets — no significant judgments', () => {
     const entries = await generateInterpretationSets([], caller)
     expect(entries).toEqual([])
     expect(caller).not.toHaveBeenCalled()
+  })
+})
+
+describe('resolveInterpretationSetsModelId — DD-17', () => {
+  it('resolves to the mid-tier gemini model, not the worker tier', () => {
+    expect(resolveInterpretationSetsModelId()).toBe('gemini-2.5-flash')
+    expect(INTERPRETATION_SETS_MODEL_ID).toBe('gemini-2.5-flash')
+  })
+
+  it('the resolved model exists in the registry as tier=mid', () => {
+    const meta = getModelMeta(resolveInterpretationSetsModelId())
+    expect(meta).toBeDefined()
+    expect(meta?.tier).toBe('mid')
+  })
+
+  it('is NOT the worker-tier model (regression guard for the DD-17 downgrade)', () => {
+    expect(resolveInterpretationSetsModelId()).not.toBe('gemini-2.5-flash-lite')
   })
 })
