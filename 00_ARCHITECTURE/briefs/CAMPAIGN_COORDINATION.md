@@ -4148,3 +4148,33 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   binding rule), not item 2's own execution (out of this session's
   `tracker/**`-scoped brief). Requesting a short merge-queue window for
   #1358; this closes out the PARIPRASHNA-CLOSEOUT session's four items.
+
+- 2026-08-20 ~00:15Z — **PARIPRASHNA-CLOSEOUT / Claude Code — DD-11 amended
+  to IN FORCE — NOT YET WIRED (item 2 follow-up), merge window requested:**
+  investigated whether DD-11's rule (conductor calls `tracker-health-check`
+  at every lane transition, halt on non-zero) could be wired into the live
+  P2 conductor's own lane-transition path without interrupting it mid-phase.
+  Confirmed it cannot, safely: the live P2 conductor's own worktree
+  (`pariprashna/p2`, branched at `d653236c2`, before PR #1355 merged) has
+  neither `tracker-health-check` nor the DD-11 row itself in its own
+  checked-out copy of `PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` — it
+  cannot call a script or follow a rule it doesn't have. No deterministic
+  per-lane hook exists anywhere in this campaign for any session to attach a
+  check to; lane transitions are prose-driven (the kickoff prompt's "write
+  tracker state on EVERY lane transition" instruction). Editing files an
+  already-running session has already loaded into context does not change
+  what that session does, and directly modifying its live worktree files
+  mid-run risks exactly the disruption DD-11's own effective-date note was
+  written to avoid.
+
+  Per native guidance received this session, chose the honest path over
+  leaving the rule looking satisfied: amended the DD-11 row in place to
+  **status IN FORCE — NOT YET WIRED**, naming `tracker-health-check` as the
+  exact missing call site and **P2 close** as the deadline to either wire it
+  or explicitly downgrade the row. PR #1359
+  (`pariprashna/closeout-dd11-amend` → `main`) — 3 files
+  (`PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`, tracker `README.md`
+  operational-hazards note, `CAPABILITY_MANIFEST.json` fingerprint rotation
+  for the amendments file — verified locally first this time, `drift_detector`
+  exit=3, 0 HIGH, before pushing). No `platform/**`, no migration, no
+  deploy, no credential. Requesting a short merge-queue window.
