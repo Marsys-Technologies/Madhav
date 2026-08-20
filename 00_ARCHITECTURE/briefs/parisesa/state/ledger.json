@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 736,
+  "event_count": 742,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -73,17 +73,17 @@
       "terminal_status": null
     },
     "F-06": {
-      "confidence": "MEDIUM",
+      "confidence": "HIGH",
       "disposition": "STRANDED",
-      "event_sha256": "d76a6ab58488ca164fda3e1b0fc31b4acad0a72097e0b8c760450519076e79fc",
+      "event_sha256": "5343954d70457adc37d24233c8f7654ca8cc8601a58929bbfe05b1a059614617",
       "event_type": "finding_status",
-      "evidence_summary": "Matrix cites commits ef20663bf/0ae544858 as a held scope-honesty repair; neither is an ancestor of current origin/main. Repair exists but is deliberately held pending RATE-07 architecture authority \u2014 not a stale-evidence problem, matches matrix's own framing.",
+      "evidence_summary": "Repair exists but is deliberately held pending RATE-07 trusted-edge/shared-fleet-rate-limit architecture authority -- an owner architecture decision, not a repo-only repair-wave task. Re-attempting rebase without that authority would be premature.",
       "finding_id": "F-06",
-      "next_action": "Obtain narrow RATE-07 trusted-edge/shared-fleet-rate-limit architecture authority, then rebase/reverify the held repair separately from unrelated entitlement drift.",
-      "prev_sha256": "58503b3eef5f5e88a30ff34c0b4053a4e6fbeded737079d1aa3c8bb4fdf2371e",
-      "seq": 107,
-      "source_batch": "batch5.json",
-      "status": "STRANDED",
+      "next_action": "owner ruling on RATE-07 architecture authority needed before any rebase attempt",
+      "prev_sha256": "e5215dfbb4e8276eec3b2fddd41f9a8ad552e084e367416d5ab1ca12c940519c",
+      "seq": 737,
+      "source_batch": "round7_triage",
+      "status": "DECISION_PARKED",
       "terminal_status": null
     },
     "F-07": {
@@ -241,17 +241,17 @@
       "terminal_status": "CONTROL_CLOSED"
     },
     "F-107": {
-      "confidence": "MEDIUM",
+      "confidence": "HIGH",
       "disposition": "STRANDED",
-      "event_sha256": "d45e0ceaa36033a6374f8f2565b6950a97ab71bbe8270518c839cc1d34f5ee22",
+      "event_sha256": "dcb76b69babe2ea626acd4c6b9c064d56b258bf5cb00dda515a5f7b78aa2a97a",
       "event_type": "finding_status",
-      "evidence_summary": "Cited commit 3fd40b61b IS an ancestor of origin/main, but per the corpus's own deployment_status note ('current_defect_reproduced') that commit is unrelated background lineage, not a fix \u2014 the defect is confirmed still live on the current deployed service. No fix exists yet.",
+      "evidence_summary": "Needs a divisional-mechanism precode contract authored and independently reviewed per the corpus's own next_executable_action -- design work, not an existing fix to rebase.",
       "finding_id": "F-107",
-      "next_action": "author + independently review the divisional mechanism precode contract per corpus's own next_executable_action before any writer repair",
-      "prev_sha256": "7ac33d269e558409febd36a2e2a0c501082d1e364598f28c1ec4495329aa31c7",
-      "seq": 66,
-      "source_batch": "batch2.json",
-      "status": "STRANDED",
+      "next_action": "author + independently review the divisional mechanism precode contract",
+      "prev_sha256": "fb90db60300ee3b417114d8a47c3fad8d10d5dc8e9d684aec136dc93258f7169",
+      "seq": 741,
+      "source_batch": "round7_triage",
+      "status": "DECISION_PARKED",
       "terminal_status": null
     },
     "F-108": {
@@ -1142,17 +1142,17 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-38": {
-      "confidence": "MEDIUM",
+      "confidence": "HIGH",
       "disposition": "STRANDED",
-      "event_sha256": "29ce3c51f52987e8b534994080a6448ea5d45139ac612441f898f9ec92a8d5c3",
+      "event_sha256": "975b0d31163484f267b702bbcb700cbf6d3ff42a06790d2d23053b4089cc8869",
       "event_type": "finding_status",
-      "evidence_summary": "Matrix marks this one of 3 'current-truth reconciled' rows. Re-verified: cited commit 3d36a9300 is NOT an ancestor of origin/main, consistent with matrix's own 'held pending Pratinidhi baseline-aware ruling before normal PR' framing \u2014 correctly not yet merged, not stale evidence.",
+      "evidence_summary": "Held pending a narrow Pratinidhi baseline-aware ruling per the matrix's own next_action -- an owner/governance decision, not a repo-only repair task.",
       "finding_id": "F-38",
-      "next_action": "separate_baseline_repair_or_narrow_Pratinidhi_baseline_aware_check_ruling_before_normal_PR (matrix's own next_action, confirmed still accurate).",
-      "prev_sha256": "aac6c91d593877be4958503190b5383811e367510a15641c27ce63bde4fabb36",
-      "seq": 111,
-      "source_batch": "batch5.json",
-      "status": "STRANDED",
+      "next_action": "owner/Pratinidhi ruling on baseline-aware check needed before any repair",
+      "prev_sha256": "5886d2d6320cc69a0155453bafae1127bed4cc01e3a10fe3d2628870a683110f",
+      "seq": 739,
+      "source_batch": "round7_triage",
+      "status": "DECISION_PARKED",
       "terminal_status": null
     },
     "F-39": {
@@ -1464,17 +1464,17 @@
       "terminal_status": null
     },
     "F-61": {
-      "confidence": "MEDIUM",
+      "confidence": "HIGH",
       "disposition": "STRANDED",
-      "event_sha256": "f45a57212505fd39ebe0beca7bec70da8de5c228681d0407e38bfb2958824396",
+      "event_sha256": "fb90db60300ee3b417114d8a47c3fad8d10d5dc8e9d684aec136dc93258f7169",
       "event_type": "finding_status",
-      "evidence_summary": "Only the shared cfb6444c8 baseline commit is landed; the finding's own fix (an aggregate-calculation/writer-rebuild contract) is explicitly not yet authored per corpus's own next_action. No branch found with F-61-specific work beyond that baseline.",
+      "evidence_summary": "The finding's own fix is an aggregate-calculation/GA6-to-GA8 writer-rebuild CONTRACT that has never been authored -- this is design work requiring independent review before any implementation, not a rebase of existing content (no branch exists).",
       "finding_id": "F-61",
-      "next_action": "author_current_main_aggregate_calculation_and_GA6_to_GA8_rebuild_contract_then_independent_review (unchanged)",
-      "prev_sha256": "f2fe7fa3d5e59cb149df20d3f647838cc3bb8e2ce30cabbbd4a0e1c93b6ff5a5",
-      "seq": 96,
-      "source_batch": "batch4.json",
-      "status": "STRANDED",
+      "next_action": "author the aggregate-calculation/writer-rebuild contract, then independent review, then implement",
+      "prev_sha256": "975b0d31163484f267b702bbcb700cbf6d3ff42a06790d2d23053b4089cc8869",
+      "seq": 740,
+      "source_batch": "round7_triage",
+      "status": "DECISION_PARKED",
       "terminal_status": null
     },
     "F-62": {
@@ -1548,17 +1548,17 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-67": {
-      "confidence": "LOW",
+      "confidence": "HIGH",
       "disposition": "STRANDED",
-      "event_sha256": "e135a57e25bc97b1d1cdbd90e2faf3ab17ec317336085c1e6bddbca084e67539",
+      "event_sha256": "dce747a2c2512bd2324bf01d294e3c81b75dda430b1d9e1c0cad3e48e0dbb946",
       "event_type": "finding_status",
-      "evidence_summary": "No commits cited in corpus. Sibling branch origin/par/s1-f67-register-pratijna exists and may contain a candidate implementation \u2014 content not reviewed this pass.",
+      "evidence_summary": "Sibling branch origin/par/s1-f67-register-pratijna has NO usable content -- confirmed via three-dot diff (empty, zero unique commits); its tip is fully-contained-in-main F-72 work, not F-67 work. However a fully-worked, independently ratified SPEC exists in the SHAD corpus (results/ingested/F-67.{reviewer,ratifier,reviser}.json, verdict COMPLETE): add one server.tool('bodha_pratijna_get',...) registration block to register_p1_aliases.ts, modeled on the existing bodha_signals_get block, routing through the already-correct tool_name_bridge.ts alias. Pure omission fix, reviewer/ratifier assessed cross-lane regression risk as nil. Confirmed still live+unfixed (zero grep hits for bodha_pratijna_get registration anywhere on main).",
       "finding_id": "F-67",
-      "next_action": "review par/s1-f67-register-pratijna for a reusable candidate before building fresh; corpus's own next_action calls for a narrow public MCP registration candidate",
-      "prev_sha256": "dbbef0c23b3c525bd17fff499131647e51a2336297e583109aa36cc73e1712ca",
-      "seq": 61,
-      "source_batch": "batch2.json",
-      "status": "STRANDED",
+      "next_action": "Wave FRESH build (not rebase): implement the ratified spec verbatim against current main (spec's line numbers are stale, must re-locate insertion point), add end-to-end test, open PR",
+      "prev_sha256": "dcb76b69babe2ea626acd4c6b9c064d56b258bf5cb00dda515a5f7b78aa2a97a",
+      "seq": 742,
+      "source_batch": "rebase_f67",
+      "status": "OPEN",
       "terminal_status": null
     },
     "F-68": {
@@ -1900,17 +1900,17 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-91": {
-      "confidence": "MEDIUM",
+      "confidence": "HIGH",
       "disposition": "STRANDED",
-      "event_sha256": "7de1b2c5e9ba4d9f82678daae3019a4480af9d4c04cb4abfe2253d05b4f0015c",
+      "event_sha256": "5886d2d6320cc69a0155453bafae1127bed4cc01e3a10fe3d2628870a683110f",
       "event_type": "finding_status",
-      "evidence_summary": "Cited commit 0ae544858 confirmed NOT an ancestor of origin/main, consistent with corpus's own 'no profile-corrected deployment' note. Corpus flags a hard dependency on F-06/RATE07 resolving first.",
+      "evidence_summary": "Corpus's own hard dependency: blocked on F-06/RATE-07 resolving first. Same architecture gate.",
       "finding_id": "F-91",
-      "next_action": "check F-06/RATE07 status (in a different batch) before attempting F-91 independently \u2014 do not resolve out of order",
-      "prev_sha256": "10f1a09c61724eb65728e93f8f33ac7d14ea79a0d8f5ecf8aee6f9d49d943142",
-      "seq": 64,
-      "source_batch": "batch2.json",
-      "status": "STRANDED",
+      "next_action": "wait on F-06/RATE-07 owner ruling",
+      "prev_sha256": "5343954d70457adc37d24233c8f7654ca8cc8601a58929bbfe05b1a059614617",
+      "seq": 738,
+      "source_batch": "round7_triage",
+      "status": "DECISION_PARKED",
       "terminal_status": null
     },
     "F-92": {
@@ -2028,8 +2028,8 @@
   },
   "findings_morning_ship_ready_count": 10,
   "findings_terminal_count": 77,
-  "journal_head_seq": 736,
-  "journal_head_sha256": "e5215dfbb4e8276eec3b2fddd41f9a8ad552e084e367416d5ab1ca12c940519c",
+  "journal_head_seq": 742,
+  "journal_head_sha256": "dce747a2c2512bd2324bf01d294e3c81b75dda430b1d9e1c0cad3e48e0dbb946",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
