@@ -5310,3 +5310,26 @@ deploy-verify → live-reverify discipline used for HS-4.
 Worktree: `/private/tmp/pariprashna-hs4-fix` (now on a `main-view` branch
 tracking `origin/main` for read access; the merged `pariprashna/hs4-fix`
 branch's own work is done and folded into `main`).
+
+- 2026-08-20 14:55Z — **PARIPRAŚNA-TRACKER-V2 / Claude Code — merge window
+  requested (docs-and-tooling only):** operator reported the observatory
+  "crashed, showing nothing". It had not — the daemon was healthy throughout
+  (cycle 127, fresh heartbeat, zero signal failures). Three real defects, none
+  of them liveness: (1) the machine changed networks (LAN IP 192.168.1.9 →
+  192.168.101.13) so the IP-based dashboard URL stopped connecting, and a
+  browser renders a never-completing TCP connect as a blank page —
+  indistinguishable from a dead tracker; (2) T2 `watchdog.py` ignored
+  `STOPPED_INTENTIONALLY.json` (T4 always honoured it), so `tracker-stop` was
+  silently undone within 90s and the tracker could not be stopped on purpose;
+  (3) `watchdog.py` restarted trackerd via `subprocess.Popen`, creating a
+  PPID-1 orphan that holds the flock added in #1367 — launchd's own KeepAlive
+  copy could then never start, exiting(1) in a loop (581 logged attempts)
+  while an unsupervised orphan did the work. Fixes: `serve.py` publishes a
+  Bonjour `<LocalHostName>.local` URL that survives network changes and
+  records both URLs to `~/.pariprashna-tracker/URL.txt` (echoed by
+  `tracker-health-check`); T2 now honours the intentional-stop marker; and
+  restarts go through `launchctl kickstart -k` so the running daemon is
+  launchd-managed. Branch `pariprashna/tracker-v2-url-and-supervision`, scope
+  `00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/**` only — no
+  `platform/**`, no migration, no deploy, no credential. 26/26 selftests pass;
+  the new one observed failing against the reverted pre-fix code.
