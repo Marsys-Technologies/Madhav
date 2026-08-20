@@ -4531,3 +4531,108 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   §N.7/§N.8 territory G3-A just needed hardening in, will get the same
   verifier+adversary review before merging if their builder reports
   surface anything non-trivial.
+
+- 2026-08-20 03:35Z — **PARIPRASHNA / Claude Code (conductor) — G3-B/C/D/F
+  merge request, `pariprashna/p2-epistemic` → `main` (PR #1364).** All four
+  builders reported real, well-grounded work (full account of each lane's
+  own report already in this session's history). Two received conductor-
+  level review (clean merge + independent re-verification); two received
+  the full verifier+adversary+hardening cycle.
+
+  **G3-D (voice enforcement) + G3-F (quality corpus):** conductor-reviewed.
+  Both merged clean (G3-D had two genuinely-additive constructor-param
+  conflicts, resolved; G3-F was pure new files, zero conflicts). Full
+  independent re-verification: `tsc --noEmit` clean, full pariprashna suite
+  green, `drift_detector`/`naming_lint`/`check_earned_signal` all clean.
+  G3-D's own report disclosed an honest self-correction mid-build (first
+  investigation pass accidentally read the shared checkout instead of its
+  own worktree, caught and redone). G3-F verified its own "sensitive"
+  fixture actually triggers the real safety classifier before committing
+  it, and correctly left 3 of 13 scoring dimensions as honest
+  `not_yet_measurable` stubs (falsifier_quality/typed_confidence_honesty —
+  need G3-B/C; reader_comprehension — needs a judge-model decision, out of
+  scope) rather than fabricating scores.
+
+  **G3-B (interpretation_sets) + G3-C (typed confidence): full
+  verifier+adversary+hardening cycle, same rigor as G3-A.** The independent
+  verifier read both SAFE TO MERGE with only minor residuals. **The
+  independent adversary, running real code against both lanes' actual
+  logic (not speculation), found 5 concrete defects the verifier missed** —
+  a stark divergence worth naming for the record, not smoothed over:
+  1. **G3-B, most severe**: `interpretation_sets` detection silently went
+     BLIND (zero entries, zero waiver — not even an honest gap) whenever
+     `PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED` was off while
+     `PARIPRASHNA_RECEIPT_EMISSION_ENABLED` was on — a fully plausible
+     independent-flag misconfiguration, undeclared as a dependency. A
+     textbook domain-verdict sentence produced `detected_count: 0`, which
+     reads as "genuinely nothing significant this turn" rather than "the
+     detector was structurally blind."
+  2. **G3-C, most severe**: the T-8 precision scan was DEAD CODE against
+     real production data — it read a top-level `ToolBundleResult.confidence`
+     field that neither calibration-bearing tool (`query_calibration`,
+     `query_insights`) has ever populated (both serve their real numbers
+     inside a JSON-stringified `content` field). `precision_flags` would
+     have been `[]` in production regardless of how overstated any served
+     precision actually was — the exact §N.8 "clean-looking flag, zero live
+     code path" defect class.
+  3. G3-C's `empirically_calibrated` gate summed sample sizes ACROSS
+     unrelated calibration-tool calls in the same turn, letting two
+     individually-too-small strata combine to falsely clear the activation
+     threshold.
+  4. G3-C's `classical_prior`/calibration typing is turn-scoped (a tool
+     consulted anywhere that turn, not verified for the specific claim) —
+     disclosed in code comments but not in the receipt's own emitted output,
+     so a downstream reader had no way to know the scope from the receipt
+     alone.
+  5. G3-B's falsifier/candidate-distinctness checks were enforcement-by-
+     prompt-language only — a vacuous falsifier ("maybe") or 3 reworded-
+     but-identical candidates both passed as `status: 'generated'` with
+     zero structural check.
+
+  A targeted hardening round fixed all 5 (plus the same turn-scoped-
+  disclosure fix applied to G3-B's `rules_in_tension` category, which had
+  the identical class-4 gap) with real red→green evidence per fix — the
+  full account is in the hardening agent's own report, already surfaced
+  this session. The conductor then independently spot-checked the two most
+  severe fixes directly in the merged code (not the report): confirmed
+  `interpretation/assemble.ts` now returns `status: 'unavailable'`/
+  `reason: 'semantic_blocks_disabled'` when semantic blocks are off, and
+  confirmed `receipt/assemble.ts` now calls the real
+  `extractCalibrationPrecisionCandidates(payload)` parser instead of the
+  dead `.confidence` field — both present and their dedicated tests
+  passing (145/145 in the interpretation/confidence/receipt suites alone).
+
+  **One cross-lane fan-in bug found and fixed by the conductor** (not
+  either builder, not either reviewer): G3-F's receipt test fixture
+  (`corpus/__tests__/test_helpers.ts`, authored before G3-C existed in its
+  dependency base) was missing the new required `confidence_typing` field
+  — a real `tsc` failure on merge, fixed with the honest
+  `status: 'unavailable'` default. Also allowlisted one new
+  Earned-Signal-Gate (§N.8) false positive from G3-B's `CATEGORY_PRIORITY`
+  truncation-order table (`domain_verdict: 0`) — same class as the two
+  prior allowlisted false positives (P1's `classifier.ts:997`, P2-E's
+  `turn_metrics.ts:59`): a signal-shaped key in a static config object, not
+  a verdict field.
+
+  **Verification (conductor, on the fully-merged branch)**: `tsc --noEmit`
+  clean; full pariprashna suite **1907 passed, 0 failed**; golden-stream
+  harness flag-off byte-identity intact; `drift_detector` 215/exit=3
+  (unchanged baseline, 0 new HIGH/CRITICAL); `naming_lint`/
+  `check_earned_signal` both 0 new. No migration, no scope violation beyond
+  the declared `may_touch` + the one governance-allowlist file. All 4 new
+  flags (`PARIPRASHNA_INTERPRETATION_SETS_ENABLED`,
+  `PARIPRASHNA_TYPED_CONFIDENCE_ENABLED`,
+  `PARIPRASHNA_VOICE_ENFORCEMENT_ENABLED`, and G3-F needs none — offline
+  eval tooling) default `false`.
+
+  **Residuals carried forward, disclosed, not blocking**: G3-B's remedial-
+  lexicon has a known false-negative risk (misses direct gemstone/remedy
+  names not using generic terms — fails safe, undercounts, never
+  fabricates); the falsifier/distinctness checks added in hardening are a
+  structural floor-raise, not a complete quality guarantee (disclosed as
+  such in code); G3-C's `engine_tier.ts` capping logic is built, tested,
+  and barrel-exported but genuinely unwired into the live assembler.
+
+  Opening the PR next; requesting a merge-queue window. `tracker-health-
+  check` will be run again at this lane-transition boundary before
+  deploy-verification, per DD-11.
