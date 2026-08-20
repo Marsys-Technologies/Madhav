@@ -95,9 +95,14 @@ export const CORPUS_FIXTURES: readonly CorpusFixture[] = [
     fixtureId: 'cross-domain-001-mercury-career-vs-6l',
     fixtureVersion: 1,
     queryClass: 'cross_domain_contradiction',
+    // "and disease" deliberately dropped (DD-18, PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md
+    // §2) — the original wording collided with the HS-3 health-crisis safety gate's
+    // DOMAIN_CLASS_RULES before contradiction-surfacing logic ever ran, live-reproduced then
+    // live-confirmed clean with this exact wording. The planted tension (career instrument vs.
+    // 6th-house obstacle rulership) is unchanged.
     queryText:
       'Mercury is described as this chart’s primary career instrument, but it also rules the 6th ' +
-      'house of obstacles and disease — is Mercury a blessing or a liability for my career?',
+      'house of obstacles — is Mercury a blessing or a liability for my career?',
     chartId: CANONICAL_CHART_ID,
     groundingNote:
       'UCN_v4_0 §IX.2 "Contradiction 2: The Career Instrument Also Activates Obstacles" — ' +
