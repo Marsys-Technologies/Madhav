@@ -15,6 +15,7 @@ export function CitationChip({ n, grade, turnId }: { n: number; grade?: Grade; t
     <button
       type="button"
       className="pp-chip"
+      data-testid="pp-citation-chip"
       data-grade={grade === 'catalog' ? 'catalog' : undefined}
       onClick={(e) => {
         e.stopPropagation()

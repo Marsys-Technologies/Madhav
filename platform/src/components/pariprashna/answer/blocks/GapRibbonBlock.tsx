@@ -5,7 +5,11 @@
  */
 export function GapRibbonBlock({ text }: { text: string }) {
   return (
-    <div className="pp-gap-ribbon my-3">
+    // §9.3: "role='note', announced within reading order — not role='alert'
+    // (P3 aurally: no alarm tone semantics)." An honest gap is calm content,
+    // not an interruption — `role="note"` reads it in document order like
+    // any other block, never with `role="alert"`'s assertive-interrupt tone.
+    <div className="pp-gap-ribbon my-3" role="note">
       <div
         style={{ fontSize: '9px', letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--pp-gold-dim)', marginBottom: '8px' }}
       >

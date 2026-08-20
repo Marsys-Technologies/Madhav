@@ -14,6 +14,7 @@ export function TableBlock({ table }: { table: TableBlockContent }) {
             {table.headers.map((h, i) => (
               <th
                 key={i}
+                scope="col"
                 className="text-left py-2 px-2"
                 style={{
                   borderBottom: '1px solid var(--pp-rule)',

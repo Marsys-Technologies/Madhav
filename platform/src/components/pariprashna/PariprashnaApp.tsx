@@ -20,6 +20,7 @@ import { DockControllerProvider } from './dock/DockController'
 import { useFixtureStream } from './state/useFixtureStream'
 import { useLiveStream } from './hooks/useLiveStream'
 import { FIXTURE_ARRIVAL_LINE } from './fixtures/arrival'
+import { useVisualViewport } from './hooks/useVisualViewport'
 import type { FixtureMode } from './fixtures'
 import type { SubmitControls, ThreadState } from './state/types'
 
@@ -197,6 +198,17 @@ function PariprashnaSurface({
   // (P4-F). See `ArrivalLine.tsx`'s header note.
   const arrival: ArrivalLineData | null = isFixtureHost && state.turns.length > 0 ? FIXTURE_ARRIVAL_LINE : null
 
+  // §9.2: composer pinned via `visualViewport`, never a `100vh` guess. The
+  // shell is sized to (and, on viewports where the API is supported, pinned
+  // to) the VISIBLE area — so when a mobile keyboard opens and shrinks the
+  // visual viewport, the shell shrinks with it and the composer (its last
+  // flex child) stays above the keyboard instead of being pushed underneath
+  // it. `100dvh` is the fallback for engines without `visualViewport` (SSR
+  // hydration, legacy browsers) — a dynamic-viewport unit, never the static
+  // `100vh` that caused this defect.
+  const vv = useVisualViewport()
+  const shellHeight = vv.supported && vv.height != null ? `${vv.height}px` : '100dvh'
+
   const handleSubmit = useCallback(
     (text: string, mode: FixtureMode, controls?: SubmitControls) => {
       submit(text, mode, controls)
@@ -223,7 +235,11 @@ function PariprashnaSurface({
 
   return (
     <DockControllerProvider defaultOpen={true}>
-      <div className="pp-root flex flex-col" style={{ minHeight: '100vh' }}>
+      <div
+        className="pp-root flex flex-col"
+        data-vh-source={vv.supported ? 'visual-viewport' : 'fallback'}
+        style={{ position: 'fixed', inset: 0, height: shellHeight }}
+      >
         <div className="flex-1 flex gap-3.5 p-4 items-stretch min-h-0" style={{ maxWidth: 1220, width: '100%', margin: '0 auto' }}>
           <Sidebar threads={threads} onSelect={handleSidebarSelect} onRename={handleSidebarRename} />
           <div

@@ -19,7 +19,7 @@ import { GroundingRegion } from './GroundingRegion'
  */
 function TurnImpl({ turn, chartId }: { turn: TurnState; chartId?: string }) {
   return (
-    <div className="pp-turn my-3.5 pb-7">
+    <div className="pp-turn my-3.5 pb-7" data-testid="pp-turn" data-turn-status={turn.status}>
       <UserBlock text={turn.userText} />
       <div className="my-3.5">
         <WorkingRegion turn={turn} />
