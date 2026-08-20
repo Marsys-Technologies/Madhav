@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 838,
+  "event_count": 841,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -340,20 +340,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-112-DOCSTRING": {
-      "branch": "parisesa/repair-F112-docstring-fix",
       "confidence": "HIGH",
-      "disposition": "OPEN",
-      "event_sha256": "1e614b5a4abdf3bc877f4cea29dd6be13e26bc942311be853f829aedfb502f2a",
+      "disposition": "FIXED",
+      "event_sha256": "cb44d3f77cb5153dbac458c50766c320bd68d8cf87af73b3e7d313d906b63524",
       "event_type": "finding_status",
-      "evidence_summary": "VERBOSITY_ZOD's docstring claimed 'concise' tightens responses to roughly half size, but domain_completeness/reading are deliberately immune (IMMUNE_HONESTY_FIELDS, multiply-reinforced per the response_budget.ts frozen contract + SATYA-SESA W7 extension) -- this is intentional design protecting the densest layer from a generic trim, not an oversight. Correctly chose to fix the docstring rather than weaken the immunity (which would reintroduce a previously-fixed D-1.5a-class regression). Pure .describe() string edit, no logic touched. Independent code-reviewer subagent confirmed no issues. Full suite before/after identical on pre-existing unrelated failures.",
+      "evidence_summary": "Ledger-sync-gap correction: PR #1394 merged (5223326b91de2b06c66fecead6bdd3870d85d1e8) \u2014 corrected VERBOSITY_ZOD docstring's misleading 'roughly half' claim. Ledger had this stuck at stale pre-v3.0 MORNING_SHIP_READY status despite the PR being merged; found and fixed during the F-68/F-129/F-93 wave's broader MORNING_SHIP_READY sweep.",
       "finding_id": "F-112-DOCSTRING",
-      "next_action": "owner reviews and merges PR #1394 at morning checkpoint",
+      "next_action": "none - terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1394",
-      "prev_sha256": "f4a701eb2dbb335e36cc231c8f3e2763b6cdb3fe5effcaa2bfa84e58a7546e06",
-      "seq": 763,
-      "source_batch": "rebase_f112_docstring",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "1f7a31cbf3cc349115ef87b9f4b4f468940c56f892b63a3c6d265cd415f7b35b",
+      "seq": 839,
+      "source_batch": "PARISESA-V4-GA5-LEDGER-SYNC-CORRECTION",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-113": {
       "confidence": "HIGH",
@@ -528,20 +527,19 @@
       "terminal_status": null
     },
     "F-124": {
-      "branch": "parisesa/repair-F14-F124-domain-depth",
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "495df80d09a2e6c9ebbae6514984eeb8f8ad7ad225d733e42af44171c9801b03",
+      "disposition": "FIXED",
+      "event_sha256": "d64b1cdb0bbf84c71e3bbc76fa6b550529ea56543993789873af5cbd224aa3b8",
       "event_type": "finding_status",
-      "evidence_summary": "Reconciled with F-14 (see F-14's record for full detail). F-124's exclusive correct per-domain varga-family labels (Shashtamsha for health, Navamsha for relationship) and AssessedDomain exhaustiveness guard kept as the structural base; F-124's own buildAssessResponse module-scope-export refactor deliberately NOT ported (current main evolved past both fork points, hoisting would need pulling more helpers for no behavioral gain -- fixed the actual bug, wrong key name, in place instead, lower risk). PR #1382 covers both F-14 and F-124.",
+      "evidence_summary": "Ledger-sync-gap correction: PR #1382 merged (951990f7886b6d569045998ef1824e2d4f54c0ea) \u2014 assess_career vs assess_marriage/assess_health depth asymmetry reconciled (F-14+F-124); registry_bridge.ts attachDomainCompleteness re-derives real gate_reason, domain_completeness_empty_reason pushed into kernel.flags unconditionally. Ledger had this stuck at stale pre-v3.0 MORNING_SHIP_READY status despite the PR being merged; found and fixed during the F-68/F-129/F-93 wave's broader MORNING_SHIP_READY sweep.",
       "finding_id": "F-124",
-      "next_action": "owner reviews and merges PR #1382 at morning checkpoint",
+      "next_action": "none - terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1382",
-      "prev_sha256": "2fa2eb9f4783f1bda860e1467513ef832043c46f17e03196a6b9f776dd1d53cd",
-      "seq": 702,
-      "source_batch": "rebase_f14_f124",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "cb44d3f77cb5153dbac458c50766c320bd68d8cf87af73b3e7d313d906b63524",
+      "seq": 840,
+      "source_batch": "PARISESA-V4-GA5-LEDGER-SYNC-CORRECTION",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-125": {
       "confidence": "HIGH",
@@ -1638,20 +1636,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-73": {
-      "branch": "parisesa/repair-F73-build",
       "confidence": "HIGH",
-      "disposition": "OPEN",
-      "event_sha256": "9ddefbc1344aedbff070f7e50467640657d0b6410f524e4e59ab614bc41a0518",
+      "disposition": "FIXED",
+      "event_sha256": "8c622c455b2d04d016ee119b38a2a24f336b97d245cc2a752dc04eb36ee90b8d",
       "event_type": "finding_status",
-      "evidence_summary": "Ratified spec (found on par/coordination branch, not campaign-state) implemented: now.ts and explain.ts called computeGocharaForecast via a phantom marsys://tool/L4/gochara_forecast_get registry URI that was never actually registered anywhere -- fixed by calling the in-process function directly, bypassing the non-existent registry entry. Caught that both existing test files mocked the phantom URI at the fetch layer, meaning production never actually exercised the real path -- a false-confidence gap that let this defect ship undetected; adapted both to module-mock the real function instead. Deliberately preserved an undocumented 'never throws' contract both call sites' doc-comments promise, by wrapping the fix in try/catch (computeGocharaForecast can throw on DB failure, unlike the fetch-based path it replaces). Explicitly cross-checked for line-range conflicts against F-38 and F-123 (both touch the same files) -- confirmed disjoint. 23/23 adapted tests pass, verified genuinely red pre-fix, full suite before/after byte-identical on 80 pre-existing unrelated failures.",
+      "evidence_summary": "Ledger-sync-gap correction: PR #1390 merged (c192d56d770b8874cea2984ef550d74626406144) \u2014 F-73 phantom gochara registry URI collapses to empty; real production security fix (remoteAuthorize entitlement gate added before computeGocharaForecast in kala_views/explain.ts + now.ts). Ledger had this stuck at stale pre-v3.0 MORNING_SHIP_READY status despite the PR being merged; found and fixed during the F-68/F-129/F-93 wave's broader MORNING_SHIP_READY sweep.",
       "finding_id": "F-73",
-      "next_action": "owner reviews and merges PR #1390 at morning checkpoint",
+      "next_action": "none - terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1390",
-      "prev_sha256": "dc84f576d27d47984a9905d890744b3ec6a30029906bf926fd2e506eb640dd5d",
-      "seq": 747,
-      "source_batch": "rebase_f73",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "d64b1cdb0bbf84c71e3bbc76fa6b550529ea56543993789873af5cbd224aa3b8",
+      "seq": 841,
+      "source_batch": "PARISESA-V4-GA5-LEDGER-SYNC-CORRECTION",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-74": {
       "confidence": "HIGH",
@@ -2020,10 +2017,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 6,
-  "findings_terminal_count": 107,
-  "journal_head_seq": 838,
-  "journal_head_sha256": "1f7a31cbf3cc349115ef87b9f4b4f468940c56f892b63a3c6d265cd415f7b35b",
+  "findings_morning_ship_ready_count": 3,
+  "findings_terminal_count": 110,
+  "journal_head_seq": 841,
+  "journal_head_sha256": "8c622c455b2d04d016ee119b38a2a24f336b97d245cc2a752dc04eb36ee90b8d",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",

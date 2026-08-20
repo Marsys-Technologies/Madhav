@@ -1,7 +1,7 @@
 {
   "campaign_id": "PARISESA-V4",
   "claude_session_id": "a12a4293-6b4c-4586-b489-f03fd676a5f3",
-  "journal_head_seq": 838,
+  "journal_head_seq": 841,
   "note": "heartbeat timestamp intentionally omitted from this script (no wall-clock in this env); watchdog uses file mtime. claude_session_id (added v5 preflight hardening) lets the watchdog pin `claude --resume <uuid>` instead of a bare `--continue`, which cwd alone cannot disambiguate when a project directory holds more than one conversation.",
   "session": "PARISESA-V4-CONDUCTOR-20260820T191407Z"
 }
