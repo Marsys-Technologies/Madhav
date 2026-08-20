@@ -795,12 +795,44 @@ export function attachDomainCompleteness(response: Record<string, unknown>, doma
   if (!completeness) {
     // F-14: honest disclosure, not a silent no-op (B.10 / §N.7 item 6 — an honest null beats
     // a silently absent field). No precompiled concept-slice bundle exists yet for this domain
-    // (currently: health/relationship) — say so explicitly rather than leaving the caller unable
-    // to distinguish "nothing to report" from "this domain was never wired."
-    response['domain_completeness_empty_reason'] =
+    // — say so explicitly rather than leaving the caller unable to distinguish "nothing to
+    // report" from "this domain was never wired."
+    //
+    // GA-5 review finding on #1382: the old message asserted a specific cause ("a data-
+    // infrastructure gap ... not a query failure") unconditionally, even though
+    // assembleDomainCompleteness's null return conflates THREE distinct causes -- a thrown
+    // exception, a real query failure (gate_reason='bad_cursor'), and a genuine missing-slice
+    // gap (gate_reason='slice_not_precomputed') -- and the caught-exception path IS a real
+    // query failure by definition, directly contradicting the claim. runDossier is re-called
+    // here (same call assembleDomainCompleteness already made, cheap/pure) solely to recover
+    // its own real gate_reason/error instead of discarding it for a hand-written guess.
+    // Default/common case: preserve the exact original phrasing verbatim (existing tests
+    // pin this substring) -- it IS accurate for the genuine-gap case, which is the common one.
+    let emptyReasonMsg =
       `No precompiled ${domain} concept-slice bundle exists yet — domain_completeness/` +
       `completeness_directive are honestly omitted rather than fabricated (B.10). This is a data-` +
       `infrastructure gap (bundle generation), not a query failure; tracked separately from this fix.`
+    try {
+      const diag = runDossier({ domain, chart_id, budget_kb: 64 })
+      if (!diag.ok && diag.gate_reason !== 'slice_not_precomputed') {
+        // A REAL query failure, not the common genuine-gap case -- the old message's blanket
+        // "not a query failure" claim was false here; report runDossier's own gate_reason/
+        // error instead of a hand-written guess.
+        emptyReasonMsg =
+          `No domain_completeness/completeness_directive block was assembled for domain='${domain}' — ` +
+          `honestly omitted rather than fabricated (B.10). This IS a query failure: ` +
+          `gate_reason=${JSON.stringify(diag.gate_reason)}` +
+          (diag.error ? `, error=${diag.error.class}: ${diag.error.message}` : '') + '.'
+      }
+    } catch (e) {
+      // assembleDomainCompleteness's own try/catch already told us runDossier threw; recover
+      // the actual message instead of asserting "not a query failure" over a real one.
+      emptyReasonMsg =
+        `No domain_completeness/completeness_directive block was assembled for domain='${domain}' — ` +
+        `honestly omitted rather than fabricated (B.10). This IS a query failure: the dossier query ` +
+        `threw: ${String(e instanceof Error ? e.message : e)}.`
+    }
+    response['domain_completeness_empty_reason'] = emptyReasonMsg
     return
   }
   response['domain_completeness'] = completeness
@@ -2960,6 +2992,18 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         `domain_slice_not_configured: no precomputed ${missingSliceDomain} dossier slice is attached; ` +
         'this assessment is not a complete domain reading.',
       )
+    }
+
+    // GA-5 review finding on #1382: domain_completeness_empty_reason previously landed only
+    // in `grounding`, which response_budget.ts's assembleSaraContent drops ALL-OR-NOTHING
+    // under budget pressure (live-confirmed: assess_health at verbosity:'concise' already
+    // omits grounding entirely today, with zero attached reading families). Once this PR
+    // always attaches a `reading`, the missingSliceDomain flag above becomes permanently
+    // unreachable too (gated on !hasAttachedReading) -- so a low-budget caller could receive
+    // NEITHER disclosure. Mirror the same text into `flags` (kernel-layer, budget-protected)
+    // whenever the empty_reason exists, independent of hasAttachedReading.
+    if (typeof normalized['domain_completeness_empty_reason'] === 'string') {
+      flags.push(normalized['domain_completeness_empty_reason'] as string)
     }
 
     if (!verdict) {

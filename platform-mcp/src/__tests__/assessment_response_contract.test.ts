@@ -81,6 +81,16 @@ describe('assess_* Sāra response contract', () => {
       // still honest, no longer a total blackout.
       expect(Array.isArray(grounding.reading)).toBe(true)
       expect((grounding.reading as unknown[]).length).toBeGreaterThan(0)
+
+      // GA-5 review finding on #1382: domain_completeness_empty_reason previously landed
+      // ONLY in `grounding`, which response_budget.ts's assembleSaraContent drops ALL-OR-
+      // NOTHING under budget pressure -- and the sibling domain_slice_not_configured kernel
+      // flag (asserted above in the prior test) is gated on !hasAttachedReading, permanently
+      // unreachable once `reading` is always attached (as this test's own fixture proves it
+      // is). A low-budget caller could receive NEITHER disclosure. The same text must also
+      // land in kernel.flags, which response_budget.ts never drops.
+      const kernel = object.kernel as Record<string, unknown>
+      expect(kernel.flags).toContain(grounding.domain_completeness_empty_reason)
     },
   )
 
