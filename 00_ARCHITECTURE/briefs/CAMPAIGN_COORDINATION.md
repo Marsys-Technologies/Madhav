@@ -4876,3 +4876,28 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   closed or tag `pariprashna/p2-close` until one of those happens — the
   flags being live and error-free is real, valuable progress, but it is
   not the same claim as "the gate battery passed."
+
+- 2026-08-20 07:05Z — **PARIPRASHNA-TRACKER-V2 / Claude Code — merge window
+  requested (docs-and-tooling only), fixing the exact hazard flagged at
+  `2026-08-20T04:10Z` (PR #1364 deploy note, "flagging live tracker/heartbeat
+  corruption, not fixed, out of scope"):** independently diagnosed the same
+  root cause that entry's read-only pass found — `heartbeat.json` writer not
+  atomic under concurrent writers — traced it further to a real TOCTOU race
+  in `trackerd.py`'s `acquire_pidfile()` (plain read-check-then-write, no
+  actual locking). Confirmed live: two `trackerd.py` processes running
+  simultaneously on this machine, one crashed with `FileNotFoundError` on a
+  shared tmp-file rename. Immediate remediation already applied to the
+  running system: killed the orphaned process, ran `tracker-start` (not a
+  raw `launchctl` call) to clear a stale `STOPPED_INTENTIONALLY.json` that
+  had been silently disabling T4's cron watchdog for ~6h. Source fix:
+  `acquire_pidfile()` now holds an exclusive `flock()` for the process's
+  lifetime (kernel-atomic, structurally race-proof, not just less likely);
+  `atomic_write_json`/`atomic_write_text` tmp filenames now include the
+  writing pid as defense in depth. Branch
+  `pariprashna/tracker-v2-pidfile-race`, scope
+  `00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/{_common.py,trackerd.py,selftest.py}`
+  only — no `platform/**`, no migration, no deploy, no credential. **Note:**
+  the *second*, distinct bug that same entry flagged (a `project.project()`
+  parse failure — "Invalid control character" — while reading some
+  unidentified upstream file) is NOT addressed by this PR; left open for a
+  follow-up, not silently dropped.
