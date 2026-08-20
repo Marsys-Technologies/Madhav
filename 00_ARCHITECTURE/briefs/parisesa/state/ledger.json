@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 817,
+  "event_count": 823,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -59,17 +59,17 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-05": {
-      "confidence": "LOW",
-      "disposition": "UNKNOWN",
-      "event_sha256": "fa818f459132245d119a178a133bb0328b4e1a5de2dae53bb5dfbf2fbc0b42d8",
+      "confidence": "HIGH",
+      "disposition": "EXTERNAL_HOLD",
+      "event_sha256": "317ca47fd14a1a060721e79c5eb76bcd1de012708d00b9c31cebbd028bd0ed94",
       "event_type": "finding_status",
-      "evidence_summary": "Original finding-claim text genuinely not recoverable anywhere in this worktree (checked journal, ledger, all phase0 batches, closure-matrix.json, RESUME.md) -- cannot verify or reclassify without the source finding description. Not resolvable by more automated searching.",
+      "evidence_summary": "Reclassified from DECISION_PARKED to EXTERNAL_HOLD (bookkeeping correction, not a new judgment call -- the finding's own prior next_action already stated this verbatim): the original finding-claim text is not recoverable anywhere in this worktree or the campaign's own journal/ledger/phase0 batches/closure-matrix. This is a genuine 'nothing autonomous can supply' category per the v3.0 register's own GA-4 closure-sweep vocabulary (EXTERNAL_HOLD: for the categories nothing autonomous can supply, like a real external corpus lookup), not an open policy decision anyone is waiting on.",
       "finding_id": "F-05",
-      "next_action": "external corpus lookup needed (the original par-night finding-generation corpus, not present in this worktree) before this can be investigated further",
-      "prev_sha256": "1e614b5a4abdf3bc877f4cea29dd6be13e26bc942311be853f829aedfb502f2a",
-      "seq": 764,
-      "source_batch": "backlog_exhaustion_triage",
-      "status": "DECISION_PARKED",
+      "next_action": "requires the original par-night finding-generation corpus (not present in this worktree or any reachable branch) before investigation can even begin.",
+      "prev_sha256": "618ed7024df143598996818e70f272de14a19da218a3336ad976518ca1a09077",
+      "seq": 819,
+      "source_batch": "v3_ga2_decision_closures",
+      "status": "EXTERNAL_HOLD",
       "terminal_status": null
     },
     "F-06": {
@@ -647,17 +647,17 @@
       "terminal_status": null
     },
     "F-131": {
-      "confidence": "LOW",
-      "disposition": "UNKNOWN",
-      "event_sha256": "7777ce0895029838c2c7c356e255fbb42bbb25f98915ef742f41a3cc8c64f0fc",
+      "confidence": "HIGH",
+      "disposition": "EXTERNAL_HOLD",
+      "event_sha256": "8bb65b78a3c7909f34eb29480e4f7592290ce6a7dd0b29a24d527ceeac5ca435",
       "event_type": "finding_status",
-      "evidence_summary": "Same unrecoverable-claim-text situation as F-05, part of the F-43/F-59/F-131/F-139 967f08da3-squash cluster.",
+      "evidence_summary": "Reclassified from DECISION_PARKED to EXTERNAL_HOLD (bookkeeping correction matching the finding's own existing next_action): external corpus lookup needed before sub-commit isolation can even be attempted -- nothing autonomous can supply the missing corpus.",
       "finding_id": "F-131",
-      "next_action": "external corpus lookup needed before sub-commit isolation can be attempted",
-      "prev_sha256": "fa818f459132245d119a178a133bb0328b4e1a5de2dae53bb5dfbf2fbc0b42d8",
-      "seq": 765,
-      "source_batch": "backlog_exhaustion_triage",
-      "status": "DECISION_PARKED",
+      "next_action": "external corpus lookup needed before sub-commit isolation can be attempted.",
+      "prev_sha256": "317ca47fd14a1a060721e79c5eb76bcd1de012708d00b9c31cebbd028bd0ed94",
+      "seq": 820,
+      "source_batch": "v3_ga2_decision_closures",
+      "status": "EXTERNAL_HOLD",
       "terminal_status": null
     },
     "F-132": {
@@ -720,18 +720,18 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-136": {
-      "confidence": "MEDIUM",
-      "disposition": "DECISION_PARKED",
-      "event_sha256": "eb670705b0694eacedb4f640b77d1f9c33d511045e377e13d7613b73d08dfb4e",
+      "confidence": "HIGH",
+      "disposition": "CONTROL_CONFIRMED",
+      "event_sha256": "618ed7024df143598996818e70f272de14a19da218a3336ad976518ca1a09077",
       "event_type": "finding_status",
-      "evidence_summary": "Original claim (corpus_ledger.json): gochara_activation_get and gochara_forecast_get return zero genuine day/month-resolution rows for this chart's near-term window (all rows era-scale, is_timing_window=false) -- but the claim itself states this is 'honestly disclosed each time via context_only_note (compliant with the PK-R-1 native ruling -- not a fabrication defect)'. Confirmed PK-R-1 is a real adjudicator ruling (00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md references 'MR-28's five adjudications issued (PK-R-1/2/3 + two...'). Confirmed on origin/main that the earned-signal is_timing_window mechanism (migration 567, R8.9/R8.10) is live in register_gochara_windows.ts with context_only_note disclosure. Also parked explicitly by S6 (be1ea2f22, not on main, scheduling-only note) as lowest-priority CL-23/TIER4. Corpus's own row shows code_status 'unknown' / never diagnosed live this campaign, consistent with it being an accepted honest-thinness state rather than an undiagnosed code bug.",
+      "evidence_summary": "GA-2 decide-and-act closure under v3.0 (was DECISION_PARKED with no code fix indicated by the finding's own text). This is a CONTROL finding, not a defect: gochara_activation_get/gochara_forecast_get honestly disclose zero day/month-resolution rows for this chart's near-term window via context_only_note, compliant with the native's own PK-R-1 adjudication ruling (confirmed real: CAMPAIGN_COORDINATION.md references it). Confirmed live on origin/main: the earned-signal is_timing_window mechanism (migration 567, R8.9/R8.10) is genuinely wired in register_gochara_windows.ts with the disclosure. Already independently parked as lowest-priority by a separate prior-session ruling (S6, CL-23/TIER4). No further action changes this chart's actual served behavior -- closing as NOT_APPLICABLE (working as designed, honestly disclosed) rather than leaving it in a DECISION_PARKED state that implies an outstanding decision nobody is actually waiting to make.",
       "finding_id": "F-136",
-      "next_action": "No code fix indicated by the finding's own text -- this is honestly-served genuine data thinness for this specific chart/window, already ruled acceptable (PK-R-1). If disputed, re-open only with a live gochara_activation_get/gochara_forecast_get call showing a fabricated (not honestly-disclosed) timing claim.",
-      "prev_sha256": "76c04c30521e07d2635f00ccd2aa5e80acf3406077b8cf9392c4bc8b74d28349",
-      "seq": 618,
-      "source_batch": "triage_batch3.json",
-      "status": "DECISION_PARKED",
-      "terminal_status": null
+      "next_action": "none, terminal. Re-open only if a live gochara_activation_get/gochara_forecast_get call is found to fabricate (not honestly disclose) a timing claim.",
+      "prev_sha256": "71775ef92b3e1895d5e5554c87eb6f2f6cd0ed747241112bb7406445a368fb8b",
+      "seq": 818,
+      "source_batch": "v3_ga2_decision_closures",
+      "status": "NOT_APPLICABLE_CLOSED",
+      "terminal_status": "NOT_APPLICABLE_CLOSED"
     },
     "F-137": {
       "confidence": "HIGH",
@@ -762,17 +762,17 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-139": {
-      "confidence": "LOW",
-      "disposition": "UNKNOWN",
-      "event_sha256": "814b629b0ed654ccfcbc98412a7a01f71595ffb29daf2513452ece0cd16abb73",
+      "confidence": "HIGH",
+      "disposition": "EXTERNAL_HOLD",
+      "event_sha256": "23f0bc9f00c74981655dc75246235e3a8a6563a54c9b87ef7d16985b9b12c73c",
       "event_type": "finding_status",
-      "evidence_summary": "Same unrecoverable-claim-text situation, same cluster.",
+      "evidence_summary": "Reclassified from DECISION_PARKED to EXTERNAL_HOLD (bookkeeping correction matching the finding's own existing next_action): external corpus lookup needed before sub-commit isolation can even be attempted -- nothing autonomous can supply the missing corpus.",
       "finding_id": "F-139",
-      "next_action": "external corpus lookup needed before sub-commit isolation can be attempted",
-      "prev_sha256": "7777ce0895029838c2c7c356e255fbb42bbb25f98915ef742f41a3cc8c64f0fc",
-      "seq": 766,
-      "source_batch": "backlog_exhaustion_triage",
-      "status": "DECISION_PARKED",
+      "next_action": "external corpus lookup needed before sub-commit isolation can be attempted.",
+      "prev_sha256": "8bb65b78a3c7909f34eb29480e4f7592290ce6a7dd0b29a24d527ceeac5ca435",
+      "seq": 821,
+      "source_batch": "v3_ga2_decision_closures",
+      "status": "EXTERNAL_HOLD",
       "terminal_status": null
     },
     "F-14": {
@@ -792,16 +792,16 @@
     },
     "F-140": {
       "confidence": "HIGH",
-      "disposition": "UNKNOWN",
-      "event_sha256": "6b4064cf5b164f70d48413b0cc1b76304eeb82c2173268a8a26de857a6f85094",
+      "disposition": "EXTERNAL_HOLD",
+      "event_sha256": "60c56195ae964e6b8caa7e90e9e7e03ab866450b6082cd38a71f4b8ddd7534a0",
       "event_type": "finding_status",
-      "evidence_summary": "Confirmed genuine corpus data gap: defect_control_classification.kind=UNCLASSIFIED at the source itself, zero evidence anywhere. Cannot self-resolve without the original finding description -- this is a corpus authoring gap, not a repo investigation task.",
+      "evidence_summary": "Reclassified from DECISION_PARKED to EXTERNAL_HOLD (bookkeeping correction matching the finding's own existing next_action): needs the original finding-generation process/corpus, not present in this worktree -- a genuine corpus data gap, not an open policy question.",
       "finding_id": "F-140",
-      "next_action": "flag as corpus data gap for the morning report; needs the original finding-generation process to supply a description, not more searching",
-      "prev_sha256": "582c34828fd83b421c766b86329171bdd5dd42b31e7fa61dd28a1963178a8d76",
-      "seq": 768,
-      "source_batch": "backlog_exhaustion_triage",
-      "status": "DECISION_PARKED",
+      "next_action": "flag as corpus data gap; needs the original finding-generation process/corpus this worktree does not have.",
+      "prev_sha256": "6b7ed8f5c0f8dc77d0bcb3bc0fe0fb1a2a6636a67139b7b056201025a7edbc6f",
+      "seq": 823,
+      "source_batch": "v3_ga2_decision_closures",
+      "status": "EXTERNAL_HOLD",
       "terminal_status": null
     },
     "F-141": {
@@ -1214,17 +1214,17 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-43": {
-      "confidence": "LOW",
-      "disposition": "UNKNOWN",
-      "event_sha256": "582c34828fd83b421c766b86329171bdd5dd42b31e7fa61dd28a1963178a8d76",
+      "confidence": "HIGH",
+      "disposition": "EXTERNAL_HOLD",
+      "event_sha256": "6b7ed8f5c0f8dc77d0bcb3bc0fe0fb1a2a6636a67139b7b056201025a7edbc6f",
       "event_type": "finding_status",
-      "evidence_summary": "Same unrecoverable-claim-text situation, same cluster.",
+      "evidence_summary": "Reclassified from DECISION_PARKED to EXTERNAL_HOLD (bookkeeping correction matching the finding's own existing next_action): external corpus lookup needed before sub-commit isolation can even be attempted -- nothing autonomous can supply the missing corpus.",
       "finding_id": "F-43",
-      "next_action": "external corpus lookup needed before sub-commit isolation can be attempted",
-      "prev_sha256": "814b629b0ed654ccfcbc98412a7a01f71595ffb29daf2513452ece0cd16abb73",
-      "seq": 767,
-      "source_batch": "backlog_exhaustion_triage",
-      "status": "DECISION_PARKED",
+      "next_action": "external corpus lookup needed before sub-commit isolation can be attempted.",
+      "prev_sha256": "23f0bc9f00c74981655dc75246235e3a8a6563a54c9b87ef7d16985b9b12c73c",
+      "seq": 822,
+      "source_batch": "v3_ga2_decision_closures",
+      "status": "EXTERNAL_HOLD",
       "terminal_status": null
     },
     "F-44": {
@@ -2026,9 +2026,9 @@
     }
   },
   "findings_morning_ship_ready_count": 12,
-  "findings_terminal_count": 94,
-  "journal_head_seq": 817,
-  "journal_head_sha256": "71775ef92b3e1895d5e5554c87eb6f2f6cd0ed747241112bb7406445a368fb8b",
+  "findings_terminal_count": 95,
+  "journal_head_seq": 823,
+  "journal_head_sha256": "60c56195ae964e6b8caa7e90e9e7e03ab866450b6082cd38a71f4b8ddd7534a0",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
