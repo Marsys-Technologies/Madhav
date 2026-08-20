@@ -622,6 +622,162 @@ def _check_f138() -> ControlResult:
     return ControlResult("F-138", "WARN", f"period_echo={has_period_echo} chart_dashas={has_chart_dashas}")
 
 
+def _find_top_level_object_spans(text: str) -> List[Tuple[int, int]]:
+    """Returns (start, end) char-offset spans for each top-level `{...}` object literal in
+    `text` (end is one past the matching closing `}`). Comment- and string-aware: skips
+    over `//` line comments, `/* */` block comments, and `'...'`/`"..."` string contents
+    before counting braces, so a brace-like character can never appear inside one of those
+    (this repo's TS convention never puts a literal `{`/`}` in a TrimmableSection's `path`/
+    `label`/`hint` string values, so this scan does not need a full tokenizer) and an
+    apostrophe inside a `//` comment (e.g. "caller's own real source" — a real string
+    elsewhere in this exact function) can never be mistaken for a string delimiter that
+    would desync the brace count.
+    """
+    spans: List[Tuple[int, int]] = []
+    depth = 0
+    start: Optional[int] = None
+    i = 0
+    n = len(text)
+    while i < n:
+        ch = text[i]
+        if ch == "/" and i + 1 < n and text[i + 1] == "/":
+            j = text.find("\n", i)
+            i = n if j == -1 else j + 1
+            continue
+        if ch == "/" and i + 1 < n and text[i + 1] == "*":
+            j = text.find("*/", i + 2)
+            i = n if j == -1 else j + 2
+            continue
+        if ch in ("'", '"'):
+            quote = ch
+            j = i + 1
+            while j < n and text[j] != quote:
+                if text[j] == "\\":
+                    j += 1
+                j += 1
+            i = j + 1
+            continue
+        if ch == "{":
+            if depth == 0:
+                start = i
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0 and start is not None:
+                spans.append((start, i + 1))
+                start = None
+        i += 1
+    return spans
+
+
+def _check_f122() -> ControlResult:
+    """F-122: kala_elect_get sections A-G declared + candidates setArray sync (static).
+
+    Structural check (F-122 follow-up, independent-review fix; tightened a second time
+    after an independent Opus review of THIS control's own first structural-check attempt
+    -- see below).
+
+    v1 (original): a plain substring grep over the WHOLE FILE TEXT (docstring, comments,
+    code -- undifferentiated). It would still PASS even if the real TrimmableSection
+    entries were deleted from `buildElectSections()`, as long as a required string happened
+    to survive anywhere else in the file -- e.g. this very module's own header comment
+    listing the seven paths, or the "G -- applied-remedy rows" style inline comments
+    elsewhere in elect.ts, both of which contain the exact required substrings independent
+    of any real section object.
+
+    v2 (first "structural" fix, itself found insufficient by review): confined matching to
+    `buildElectSections()`'s own body, then required each `path: '...'` match to be
+    followed by `getArray:`/`setArray:` within a FIXED 800-character lookahead window.
+    Measured directly against this file's own real section spacing, consecutive `path:`
+    declarations in `buildElectSections()` sit 648-786 characters apart -- smaller than the
+    800-char window -- so the window reliably bled into the NEXT section's `getArray:`/
+    `setArray:` text. A real regression (a section's `getArray`/`setArray` deleted, `path`/
+    `label`/`minKeep`/`recover` left in place) was verified to still false-PASS under v2 for
+    6 of the 7 required paths -- the exact "signal without a real detector is null, not
+    green" defect class (SATYA-DIPA / N.8), reproduced one level INSIDE the very control
+    meant to close it.
+
+    v3 (this version): `_find_top_level_object_spans` above properly brace-matches each
+    TrimmableSection object literal (comment/string-aware, so it can't be fooled by an
+    apostrophe in a comment or a brace-like character in a string), and every check below
+    is confined to the SPECIFIC object literal a `path: '...'` match falls inside -- never
+    a fixed-size character window that can bleed into a sibling section.
+    """
+    elect_ts = REPO_ROOT / "platform-mcp" / "src" / "tools" / "kala_views" / "elect.ts"
+    if not elect_ts.exists():
+        return ControlResult("F-122", "SKIP", "elect.ts not found")
+    text = elect_ts.read_text(encoding="utf-8", errors="replace")
+
+    # Confine every check below to buildElectSections()'s own body -- a mention anywhere
+    # else in the file (docstring, unrelated inline comment) must not satisfy this control.
+    fn_match = re.search(
+        r"export function buildElectSections\s*\([^)]*\)[^{]*\{(.*?)\n\}\n",
+        text,
+        re.DOTALL,
+    )
+    if not fn_match:
+        return ControlResult("F-122", "FAIL", "buildElectSections() not found in elect.ts")
+    body = fn_match.group(1)
+
+    object_spans = _find_top_level_object_spans(body)
+    if not object_spans:
+        return ControlResult("F-122", "FAIL", "no top-level object literals found inside buildElectSections()")
+    objects = [body[s:e] for s, e in object_spans]
+
+    def object_for_path(path: str) -> Optional[str]:
+        needle = f"path: '{path}'"
+        for obj in objects:
+            if needle in obj:
+                return obj
+        return None
+
+    # All seven JudgmentLedger array fields must each appear as a real declared section --
+    # a genuine `path: '<path>'` key INSIDE an object literal that also declares
+    # `getArray:` and `setArray:` somewhere in that SAME object (not a sibling one).
+    required_paths = [
+        "lattice_adjudication.ledgers[].convention_only_keys",
+        "lattice_adjudication.ledgers[].neutral_annotations",
+        "candidates[].hora_ladder",
+        "lattice_adjudication.ledgers[].supporting_factors",
+        "lattice_adjudication.ledgers[].dosas_present",
+        "lattice_adjudication.ledgers[].residual_dosas",
+        "lattice_adjudication.ledgers[].pariharas_applied",
+    ]
+
+    missing = []
+    for path in required_paths:
+        obj = object_for_path(path)
+        if obj is None:
+            missing.append(path)
+            continue
+        if "getArray:" not in obj or "setArray:" not in obj:
+            missing.append(f"{path} (no getArray/setArray within its own section object)")
+    if missing:
+        return ControlResult(
+            "F-122", "FAIL", f"Missing/incomplete TrimmableSection path(s) in buildElectSections(): {missing}"
+        )
+
+    # The `candidates` section's own setArray must include the ledger sync guard: filtering
+    # lattice_adjudication.ledgers down to the surviving candidate ids. Confined to the
+    # `candidates` section's own object literal (found the same brace-matched way), not a
+    # fixed-size window that could reach into a neighboring section.
+    cand_obj = object_for_path("candidates")
+    if cand_obj is None:
+        return ControlResult("F-122", "FAIL", "candidates section not found in buildElectSections()")
+    has_sync = "survivingIds" in cand_obj and "ledgers.filter" in cand_obj
+    if not has_sync:
+        return ControlResult(
+            "F-122", "FAIL", "candidates setArray lattice_adjudication.ledgers sync not found in its section body"
+        )
+
+    return ControlResult(
+        "F-122",
+        "PASS",
+        "All 7 JudgmentLedger section paths structurally declared (own object literal, brace-matched) in "
+        "buildElectSections() + candidates setArray sync present",
+    )
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Control registry
 # ─────────────────────────────────────────────────────────────────────────────
@@ -655,6 +811,7 @@ ALL_CONTROLS: List[Tuple[str, bool, bool, bool, Callable]] = [
     ("F-109", False, False, False, _check_f109),
     ("F-137", False, False, False, _check_f137),
     ("F-138", False, False, False, _check_f138),
+    ("F-122", False, False, False, _check_f122),
 ]
 
 # The cheap subset: F-75/76/83/84/85/87 (SQL) + F-96 (lint self-test) + F-91 (static abbreviated)

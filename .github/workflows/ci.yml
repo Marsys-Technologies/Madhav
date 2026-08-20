@@ -950,6 +950,19 @@ jobs:
       - name: kala_elect_get hora_ladder coverage-honesty regression (platform-mcp)
         working-directory: platform-mcp
         run: npx vitest run src/tools/kala_views/elect.test.ts
+      - name: kala_elect_get F-122 budget-trim section-coverage regression (platform-mcp)
+        # F-122 follow-up (independent-review fix): none of these three test files was on
+        # this allowlist before, so the PR's own "N/N passing" claim for the first two was
+        # local-only -- never actually re-run by CI. Adds all three: the exit-repro test
+        # (budget_kb:32, sections A-G + candidates setArray sync must close the gap --
+        # raised from the PR's original budget_kb:20; see that test file's own doc-comment
+        # for why), the §5 recurrence guard (all 7 JudgmentLedger array fields covered by a
+        # declared section path, and the candidates setArray genuinely syncs
+        # lattice_adjudication.ledgers), and the new judgment_ledger aliasing regression
+        # (a surviving candidate's own judgment_ledger must not be emptied by a trim of the
+        # lattice_adjudication.ledgers[] bookkeeping copy).
+        working-directory: platform-mcp
+        run: npx vitest run src/tools/kala_views/__tests__/elect_budget_trim_f122.test.ts src/tools/kala_views/__tests__/elect_sections_coverage.test.ts src/tools/kala_views/__tests__/elect_ledger_alias_f122.test.ts
       - name: kala_now_get kala_darshana_confluence coverage-honesty regression (platform-mcp)
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/kala_now_get.test.ts
