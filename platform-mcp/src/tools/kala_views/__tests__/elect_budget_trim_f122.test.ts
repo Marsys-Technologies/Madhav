@@ -5,7 +5,6 @@
  * - 4 candidate windows, each with 15 hora slots
  * - substrate producing large JudgmentLedger arrays (50 convention keys + 10 dosas + 20 neutral
  *   annotations per ledger, across all 4 ledgers = ~76KB of ledger data alone)
- * - budget_kb: 20
  *
  * Before fix (sections A–G absent, candidates setArray doesn't sync ledgers):
  *   - budget_exceeded_after_trim fires (trimmer can't cut undeclared fields)
@@ -15,7 +14,25 @@
  * After fix:
  *   - All new sections trim the undeclared arrays to 0
  *   - candidates setArray syncs lattice_adjudication.ledgers to surviving candidate IDs
- *   - Response fits within 20KB ceiling
+ *   - Response fits within the ceiling below
+ *
+ * `budget_kb` RETUNED 20 -> 32 (independent-review follow-up, real correctness fix — see
+ * `elect_ledger_alias_f122.test.ts` for the dedicated regression test on the underlying
+ * bug). The original `budget_kb: 20` figure only fit because `candidates[i]
+ * .judgment_ledger` and `lattice_adjudication.ledgers[j]` were the SAME aliased object at
+ * the time this test was written: trimming the "bookkeeping" `lattice_adjudication
+ * .ledgers[]` sections (A/B/D/E/F/G) also emptied the one surviving candidate's OWN
+ * protected ledger fields as an unintended side effect, so the total served bytes were
+ * roughly HALF what they should honestly be. Now that each candidate's `judgment_ledger`
+ * is an independent copy (correctly protected from the bookkeeping-tier trim, per this
+ * file's own "densest, most-actionable layer" / hardFloor doctrine), the one surviving
+ * candidate's full doṣa/residual/neutral content has an honest irreducible floor around
+ * ~24-25KB for this fixture's row counts — `budget_kb` is raised to comfortably clear
+ * that floor rather than silently shrinking the fixture to make a stale number keep
+ * working. This test's job was always "sections A-G declared + candidates setArray syncs
+ * ledgers + the response fits under its budget" — never "fits in exactly 20KB" — so
+ * raising the ceiling to match the now-correct (and larger, because now-honest) served
+ * size preserves the test's real intent.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -162,14 +179,15 @@ describe('F-122: kala_elect_get budget trim section coverage gap', () => {
     mockFetchLatticeSubstrate.mockResolvedValue(makeLargeSubstrate())
   })
 
-  it('honours budget_kb: 20 with sections A–G + setArray sync — FAILS before fix, PASSES after', async () => {
+  it('honours budget_kb: 32 with sections A–G + setArray sync — FAILS before fix, PASSES after', async () => {
     mockHandleMuhurtaFinder.mockResolvedValue({
       structuredContent: { object: make4WindowResult() },
       content: [{ type: 'text', text: '{}' }],
     })
 
     const { handleKalaElectGet } = await import('../elect.js')
-    // Repro params verbatim from DIAGNOSIS §1
+    // Repro params verbatim from DIAGNOSIS §1, except budget_kb — see the module doc-comment
+    // above ("`budget_kb` RETUNED 20 -> 32") for why.
     const out = await handleKalaElectGet(
       {
         chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
@@ -177,7 +195,7 @@ describe('F-122: kala_elect_get budget trim section coverage gap', () => {
         date_range: { start: '2026-08-15', end: '2026-11-12' },
         limit: 4,
         native_janma_nakshatra: 'Purva Bhadrapada',
-        budget_kb: 20,
+        budget_kb: 32,
       },
       PRINCIPAL,
     )
@@ -194,7 +212,7 @@ describe('F-122: kala_elect_get budget trim section coverage gap', () => {
 
     // Budget actually honoured
     const sizeKb = Buffer.byteLength(JSON.stringify(result), 'utf8') / 1024
-    expect(sizeKb).toBeLessThanOrEqual(20)
+    expect(sizeKb).toBeLessThanOrEqual(32)
 
     // hardFloor still respected (was correct before; must stay correct)
     expect(result.candidates.length).toBeGreaterThanOrEqual(1)
@@ -204,5 +222,17 @@ describe('F-122: kala_elect_get budget trim section coverage gap', () => {
 
     // hora_ladder trimmed (was 15 on a budget-exceeded response — DIAGNOSIS §1.B)
     expect(result.candidates[0]?.hora_ladder?.length ?? 0).toBeLessThan(15)
+
+    // Independent-review follow-up: the one surviving candidate's OWN judgment_ledger is
+    // genuinely un-emptied by the lattice_adjudication.ledgers[] bookkeeping trim above —
+    // the dedicated regression for the aliasing bug lives in
+    // elect_ledger_alias_f122.test.ts, but this exit test's own surviving candidate is a
+    // second, real-world-shaped witness: 10 dosas_present / 10 residual_dosas (no muhūrta
+    // parihāra rules in this fixture) / 20 neutral_annotations, none of it zeroed.
+    const survivorLedger = result.candidates[0]?.judgment_ledger
+    expect(survivorLedger).not.toBeNull()
+    expect(survivorLedger?.dosas_present.length).toBe(10)
+    expect(survivorLedger?.residual_dosas.length).toBe(10)
+    expect(survivorLedger?.neutral_annotations.length).toBe(20)
   })
 })

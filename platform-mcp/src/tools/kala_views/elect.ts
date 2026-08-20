@@ -574,9 +574,19 @@ async function buildRitualPairing(
  *  all seven JudgmentLedger array fields are covered by at least one declared section path
  *  without duplicating the list inside the test file.
  *
- *  Sections are in density order (lowest-density first) so the trimmer eats bookkeeping
- *  before actionable findings. A–G are the seven new ledger-level sections added by F-122
- *  to close the budget-trim coverage gap (DIAGNOSIS §3). */
+ *  Correction (F-122 follow-up, independent review): this docstring used to claim
+ *  "sections are in density order (lowest-density first) so the trimmer eats bookkeeping
+ *  before actionable findings" — describing the ARRAY ORDER below as what governs trim
+ *  order. It does not. `response_budget.ts::applyResponseBudget` re-ranks every pass: it
+ *  splits sections into two TIERS by `hardFloor` (non-hardFloor first, hardFloor last),
+ *  and WITHIN each tier sorts by each section's OWN CURRENT SERIALIZED BYTE SIZE,
+ *  biggest-first — not by declaration order. The real invariant this file's declaration
+ *  order is enforcing is the TIER split: A–G and the `convention_only_factors` section are
+ *  all `minKeep: 0` / no `hardFloor`, so they are ALWAYS in the tier the trimmer exhausts
+ *  before it ever reaches `candidates` (the sole `hardFloor: true` section, tier 2) — but
+ *  which of A–G gets cut first, and how much, is decided by size at trim time, not by
+ *  which of these seven is listed first. A–G are the seven new ledger-level sections added
+ *  by F-122 to close the budget-trim coverage gap (DIAGNOSIS §3). */
 export function buildElectSections(): TrimmableSection<KalaElectResponse>[] {
   return [
     kalaEvidenceTrimmableSection<KalaElectResponse>({
@@ -750,6 +760,36 @@ export function buildElectSections(): TrimmableSection<KalaElectResponse>[] {
           c.lattice_adjudication = {
             ...c.lattice_adjudication,
             ledgers: c.lattice_adjudication.ledgers.filter((l) => survivingIds.has(l.candidate_id)),
+            // F-122 follow-up (independent review): `pareto.frontier_candidate_ids` /
+            // `dominated_candidate_ids` are candidate-id arrays computed once, over the
+            // FULL pre-trim candidate set. Left unsynced, a trimmed response could
+            // advertise a frontier_candidate_id with no corresponding candidate/ledger in
+            // the response it ships with — a dangling reference. Filtered to the same
+            // survivingIds set the ledgers sync above uses, so every id in either array
+            // resolves to a candidate genuinely present in this response.
+            pareto: {
+              ...c.lattice_adjudication.pareto,
+              frontier_candidate_ids: c.lattice_adjudication.pareto.frontier_candidate_ids.filter((id) =>
+                survivingIds.has(id),
+              ),
+              dominated_candidate_ids: c.lattice_adjudication.pareto.dominated_candidate_ids.filter((id) =>
+                survivingIds.has(id),
+              ),
+            },
+            // `gap_report` and `density` are deliberately LEFT UNSYNCED, not overlooked.
+            // Both are whole-horizon aggregate statistics computed ONCE over the full
+            // pre-trim candidate/ledger set (gap_report.statement's "N of M candidate
+            // window(s) survive Pareto adjudication" prose and census_disposition_counts;
+            // density's cited/convention row counts) — they describe what the ENGINE
+            // COMPUTED for this horizon, not a per-candidate-id claim about what THIS
+            // SERVED RESPONSE still carries after a budget trim. Neither field holds a
+            // candidate_id that could dangle the way frontier/dominated_candidate_ids
+            // could (that's what `id`-array syncing above is for) — trimming is a
+            // presentation-layer concern and does not change what was computed, so
+            // rewriting these counts post-trim would make them describe the RESPONSE
+            // rather than the COMPUTATION, which is the opposite of what a gap report is
+            // for. If a future field here ever gains a candidate_id reference, it needs
+            // its own sync line the same way pareto got one.
           }
         }
       },
@@ -760,6 +800,31 @@ export function buildElectSections(): TrimmableSection<KalaElectResponse>[] {
       hardFloor: true,
     },
   ]
+}
+
+/**
+ * Deep-copies the array-valued (and nested-object-valued) fields of a JudgmentLedger.
+ * Used exactly once, at `ledgerById` construction below, to give each candidate's
+ * `judgment_ledger` an identity independent of the same-shaped object living inside
+ * `lattice_adjudication.ledgers[]` — see the long comment at the `ledgerById` call site
+ * for why this independence is load-bearing (F-122 follow-up aliasing fix). Scalar fields
+ * (`candidate_id`, `net_standing`, `convention_only_factor_count`, `convention_only_note`,
+ * `adjudication_note`) are immutable primitives and are fine to share via the `...ledger`
+ * spread — only the array fields (and the objects inside `LedgerFactor[]` /
+ * `AppliedParihara[]`) need their own copies, since those are exactly what the
+ * budget-trim sections reassign in place.
+ */
+function cloneJudgmentLedgerForCandidate(ledger: JudgmentLedger): JudgmentLedger {
+  return {
+    ...ledger,
+    dosas_present: ledger.dosas_present.map((f) => ({ ...f })),
+    pariharas_applied: ledger.pariharas_applied.map((p) => ({ ...p })),
+    residual_dosas: ledger.residual_dosas.map((f) => ({ ...f })),
+    supporting_factors: ledger.supporting_factors.map((f) => ({ ...f })),
+    neutral_annotations: ledger.neutral_annotations.map((f) => ({ ...f })),
+    convention_only_factors: ledger.convention_only_factors.map((f) => ({ ...f })),
+    convention_only_keys: [...ledger.convention_only_keys],
+  }
 }
 
 export async function handleKalaElectGet(
@@ -848,7 +913,22 @@ export async function handleKalaElectGet(
     adjudication = null
     latticeSubstrate = null
   }
-  const ledgerById = new Map((adjudication?.ledgers ?? []).map((l) => [l.candidate_id, l]))
+  // Independent-review fix (F-122 follow-up, real correctness bug): `adjudicateCandidates`
+  // returns ONE JudgmentLedger object per candidate. Before this fix, that same object was
+  // referenced from TWO places in the response — `lattice_adjudication.ledgers[j]` (the
+  // engine's own slate-level array) and `candidates[i].judgment_ledger` (this facade's
+  // per-candidate projection, built from `ledgerById.get(...)` below) — i.e. aliased, not
+  // copied. The budget-trim sections A/B/D/E/F/G below (declared `minKeep: 0`, deliberately
+  // NOT hardFloor, meant to be eaten before the `candidates` section is ever touched) mutate
+  // ledger objects reached THROUGH `lattice_adjudication.ledgers[]`. With the alias, that
+  // silently emptied the SURVIVING candidate's own `judgment_ledger.dosas_present` /
+  // `.residual_dosas` / `.pariharas_applied` too — exactly the "densest, most-actionable
+  // layer" the `candidates` section's `hardFloor: true` exists to protect. Cloning each
+  // ledger here breaks the alias: `candidates[i].judgment_ledger` becomes an independent
+  // copy the bookkeeping-tier sections cannot reach through `lattice_adjudication.ledgers[]`.
+  const ledgerById = new Map(
+    (adjudication?.ledgers ?? []).map((l) => [l.candidate_id, cloneJudgmentLedgerForCandidate(l)]),
+  )
 
   // ── Item 38's closing half: pair each act-time candidate with its preparatory rite ──
   // A pairing failure must never fail the whole election — ELECT's act-time answer stands
