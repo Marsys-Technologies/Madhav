@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 744,
+  "event_count": 745,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1452,17 +1452,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-60": {
+      "branch": "parisesa/repair-F60-total-count-fix",
       "confidence": "HIGH",
       "disposition": "OPEN",
-      "event_sha256": "b058b3c76ca6d3c13629ed4656ca35af3266807795d05f6dbbe21f7436100275",
+      "event_sha256": "ac94ea0289c0bb680c41055531b6c589ceca2c162f55874653039e20a92dd19b",
       "event_type": "finding_status",
-      "evidence_summary": "Corpus's cited commit (cfb6444c8) is the known IF-001 mis-citation. Also found a second, distinct mis-citation: commit cd7653855 ('fix(a-12): INV-2 determinism -- stable ORDER BY + sort tiebreaker (F-92/F-60)', #1306, confirmed ancestor of origin/main) claims F-60 in its title but its actual diff only touches query_temporal_activation.ts (kala_activation LIMIT tiebreaker) and register_d9_judgment.ts (judgment_query sort tiebreaker) -- neither is ganita_strength_get/shadbala. Checked the real target directly on origin/main: platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts line 111 still has a silent `Math.min((args.limit as number) ?? 500, 2000)` cap, and line 214 still reports `total: servedRows.length` (a false post-filter page-length total, not the true row count) -- exactly the remaining defect the corpus row itself describes ('silent 2000 cap and false post-filter page-length total remain'). This is a genuinely fresh, independently-confirmed OPEN defect, not resting on any mis-cited commit.",
+      "evidence_summary": "Real defect confirmed and fixed: get_strength.ts silently capped limit to 2000 and reported total=servedRows.length (post-cap/post-offset page length masquerading as true count). Fix adds a genuine pre-LIMIT/OFFSET COUNT(*) as total_available, plus limit_capped/requested_limit/note_limit_cap disclosure when the cap is hit. Additive-only: grepped all callers, confirmed none read `total` as a true count, existing field semantics unchanged. 4/4 new tests fail pre-fix / pass post-fix, 2/2 + 14/14 regression suites pass, tsc/eslint clean.",
       "finding_id": "F-60",
-      "next_action": "Fix get_strength.ts: surface the true un-capped/pre-filter row count as `total` (or a distinct `total_available` field) instead of `servedRows.length`, and disclose the 2000-row cap explicitly when hit rather than silently truncating.",
-      "prev_sha256": "6a40160d48363837653a96fc0acfdad1861b62d2f2053d31c251390fc8b8b6f0",
-      "seq": 622,
-      "source_batch": "triage_batch3.json",
-      "status": "OPEN",
+      "next_action": "owner reviews and merges PR #1388 at morning checkpoint",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1388",
+      "prev_sha256": "c50c5765a6c3366386f6958773de6c2c8bd9f6c842b2725d6d9cea26058d25b8",
+      "seq": 745,
+      "source_batch": "rebase_f60",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-61": {
@@ -2030,10 +2032,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 12,
+  "findings_morning_ship_ready_count": 13,
   "findings_terminal_count": 77,
-  "journal_head_seq": 744,
-  "journal_head_sha256": "c50c5765a6c3366386f6958773de6c2c8bd9f6c842b2725d6d9cea26058d25b8",
+  "journal_head_seq": 745,
+  "journal_head_sha256": "ac94ea0289c0bb680c41055531b6c589ceca2c162f55874653039e20a92dd19b",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
