@@ -254,12 +254,55 @@ function buildProvenance(stamp: TurnProvenanceStamp): ReceiptProvenance {
   }
 }
 
-function buildDerivationChains(committedBlocks: readonly OpenBlock[]) {
+/**
+ * Per-block `fact_refs` for `derivation_chains`.
+ *
+ * Flag-off: the pre-existing regex scan over the block's OWN committed text
+ * (`extractCitations`) — unchanged.
+ *
+ * Flag-on (G2-B live rewriter, PPR-08): `b.text` on this path already
+ * contains the rewriter's resolved `[n]` inline markers, not raw
+ * `SIG.MSR.NNN` tokens (`reading_parts.ts`'s own `preResolvedCitations` doc:
+ * the register-leak lint has already scrubbed/rewritten every such token
+ * before it reached committed block text) — `extractCitations(b.text)`
+ * structurally finds nothing on this path, the exact silent-empty defect
+ * `buildFactsConsumed` already avoids by reading `citationsFound` (itself
+ * sourced from `resolvedCitations` on this path — see persistence_stage.ts)
+ * instead of re-scanning text.
+ *
+ * `ResolvedTurnCitation` (citations/stream_wiring.ts) carries no block
+ * association of its own to filter/group by. What DOES exist, and is real
+ * rather than guessed: the rewriter always renders the DEFAULT `[n]` inline
+ * marker into the committing block's own text (`citations/rewriter.ts`'s
+ * `renderMarker` option, never overridden — `synthesis_stage.ts` constructs
+ * `TurnCitationStream` with no `renderMarker` in production). A block
+ * genuinely "contains" a resolved citation iff its own committed text
+ * contains that citation's own `[n]` marker — the same reader-visible
+ * association the reader's own eyes make. Bracket-delimited exact-substring
+ * match (`[${index}]`) cannot false-positive across different indices
+ * (`[1]` is not a substring of `[10]` or vice versa).
+ */
+function factRefsForBlock(
+  blockText: string,
+  args: { citationRewriteEnabled: boolean; resolvedCitations: readonly ResolvedTurnCitation[] },
+): string[] {
+  if (!args.citationRewriteEnabled) {
+    return extractCitations(blockText).map((c) => c.signal_id)
+  }
+  return args.resolvedCitations
+    .filter((c) => blockText.includes(`[${c.index}]`))
+    .map((c) => c.signal_id)
+}
+
+function buildDerivationChains(
+  committedBlocks: readonly OpenBlock[],
+  args: { citationRewriteEnabled: boolean; resolvedCitations: readonly ResolvedTurnCitation[] },
+) {
   return committedBlocks.map((b) => ({
     block_id: b.id,
     pass_id: parsePassId(b.id),
     role: b.role,
-    fact_refs: extractCitations(b.text).map((c) => c.signal_id),
+    fact_refs: factRefsForBlock(b.text, args),
   }))
 }
 
@@ -280,7 +323,10 @@ export function assembleAcharyaReadingReceipt(
     generated_at: now.toISOString(),
     coverage: buildCoverage(args.completenessReceipt),
     facts_consumed: buildFactsConsumed(args.citationsFound),
-    derivation_chains: buildDerivationChains(args.committedBlocks),
+    derivation_chains: buildDerivationChains(args.committedBlocks, {
+      citationRewriteEnabled: args.citationRewriteEnabled,
+      resolvedCitations: args.resolvedCitations,
+    }),
     cross_domain: buildCrossDomain(args.plan.domains),
     evidence_grades: buildEvidenceGrades({
       citationRewriteEnabled: args.citationRewriteEnabled,

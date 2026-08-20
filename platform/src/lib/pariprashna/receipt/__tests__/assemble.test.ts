@@ -141,6 +141,59 @@ describe('assembleAcharyaReadingReceipt — per-field real-source tracing', () =
     ])
   })
 
+  it('derivation_chains — defect 2 RED→GREEN: when citationRewriteEnabled, block text carries resolved `[n]` markers (not raw SIG.MSR.NNN tokens); fact_refs is populated from resolvedCitations per-block, not silently empty', () => {
+    // Realistic G2-B rewrite-flag-on fixture: block text as the rewriter
+    // actually leaves it — resolved inline markers `[1]`/`[2]`, never the
+    // raw `SIG.MSR.NNN` sentinel (the register-leak lint already scrubbed
+    // it). A regex scan for `SIG.MSR.NNN` over THIS text structurally finds
+    // nothing — that was the defect.
+    const committedBlocks: OpenBlock[] = [
+      { id: 'blk-1-1', role: 'prose', text: 'The native shows strong resolve [1] and career drive [2].' },
+      { id: 'blk-2-1', role: 'prose', text: 'A second pass references the same finding [1] again.' },
+      { id: 'blk-3-1', role: 'thinking', text: 'internal reasoning, no markers' },
+    ]
+    const resolvedCitations: ResolvedTurnCitation[] = [
+      { index: 1, signal_id: 'SIG.MSR.007', layer: 'L2.5', snippet: 'a', grade: 'primary' },
+      { index: 2, signal_id: 'SIG.MSR.011', layer: 'L2.5', snippet: 'b', grade: 'supporting' },
+    ]
+
+    // Prove the RED half directly: the old mechanism (extractCitations over
+    // block text) finds nothing on this exact fixture, which is exactly why
+    // the silent-empty defect existed.
+    const rawScanFindsNothing = committedBlocks.every(
+      (b) => !/SIG\.MSR\.\d+/.test(b.text),
+    )
+    expect(rawScanFindsNothing).toBe(true)
+
+    const receipt = assembleAcharyaReadingReceipt(
+      baseArgs({ committedBlocks, citationRewriteEnabled: true, resolvedCitations }),
+    )
+
+    // GREEN: fact_refs is correctly populated per block from the resolver's
+    // own ledger, not silently empty.
+    expect(receipt.derivation_chains).toEqual([
+      { block_id: 'blk-1-1', pass_id: 1, role: 'prose', fact_refs: ['SIG.MSR.007', 'SIG.MSR.011'] },
+      { block_id: 'blk-2-1', pass_id: 2, role: 'prose', fact_refs: ['SIG.MSR.007'] },
+      { block_id: 'blk-3-1', pass_id: 3, role: 'thinking', fact_refs: [] },
+    ])
+  })
+
+  it('derivation_chains flag-on does not false-positive across adjacent citation indices (e.g. [1] is not a substring match inside [10])', () => {
+    const committedBlocks: OpenBlock[] = [
+      { id: 'blk-1-1', role: 'prose', text: 'Only the tenth finding applies here [10].' },
+    ]
+    const resolvedCitations: ResolvedTurnCitation[] = [
+      { index: 1, signal_id: 'SIG.MSR.001', layer: 'L2.5', snippet: 'a', grade: 'primary' },
+      { index: 10, signal_id: 'SIG.MSR.010', layer: 'L2.5', snippet: 'b', grade: 'primary' },
+    ]
+    const receipt = assembleAcharyaReadingReceipt(
+      baseArgs({ committedBlocks, citationRewriteEnabled: true, resolvedCitations }),
+    )
+    expect(receipt.derivation_chains).toEqual([
+      { block_id: 'blk-1-1', pass_id: 1, role: 'prose', fact_refs: ['SIG.MSR.010'] },
+    ])
+  })
+
   it('cross_domain traces to plan.domains verbatim', () => {
     const receipt = assembleAcharyaReadingReceipt(baseArgs({ plan: { domains: ['marriage', 'wealth'] } }))
     expect(receipt.cross_domain).toEqual({ status: 'measured', domains: ['marriage', 'wealth'], unavailable_reason: null })
