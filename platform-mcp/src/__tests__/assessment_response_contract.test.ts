@@ -45,6 +45,17 @@ function stubFetch(assessmentPayload: Record<string, unknown>) {
 beforeEach(() => vi.unstubAllGlobals())
 
 describe('assess_* Sāra response contract', () => {
+  // F-14/F-124 (reconciled, PARISESA-V4 REBASE — see 00_ARCHITECTURE/briefs/parisesa/state/
+  // phase0/rebase_f14_f124.json): before this fix, assess_health/assess_marriage never called
+  // attachDomainCompleteness/attachDomainReading at all, so `reading` was always genuinely
+  // absent and this suite's `domain_slice_not_configured` kernel flag was the only disclosure
+  // available. Now both handlers DO call the attach functions, so `reading` is populated (an
+  // honest per-family digest — `domain_block_not_served` entries when, as in this stub, no
+  // varga_analysis exists) and `domain_completeness_empty_reason` carries the "no precompiled
+  // slice" disclosure directly in `grounding` — a strictly more informative signal than the
+  // old flag, which only said "reading is missing" with no per-family detail. The
+  // `domain_slice_not_configured` flag correctly stops firing once `reading` is genuinely
+  // non-empty; these two cases now assert the new (superseding) disclosure path instead.
   it.each([
     ['assess_health', 'health'],
     ['assess_marriage', 'relationship'],
@@ -60,10 +71,16 @@ describe('assess_* Sāra response contract', () => {
       registerRegistryBridgeTools(server, PRINCIPAL)
 
       const result = await handlers.get(tool)!({ chart_id: CHART_ID })
-      const kernel = (result.structuredContent!.object as Record<string, unknown>).kernel as Record<string, unknown>
-      expect(kernel.flags).toContain(
-        `domain_slice_not_configured: no precomputed ${domain} dossier slice is attached; this assessment is not a complete domain reading.`,
+      const object = result.structuredContent!.object as Record<string, unknown>
+      const grounding = object.grounding as Record<string, unknown>
+      expect(String(grounding.domain_completeness_empty_reason)).toMatch(
+        new RegExp(`No precompiled ${domain} concept-slice bundle exists yet`),
       )
+      expect(grounding.domain_completeness).toBeUndefined()
+      // The disclosure moved from a bare kernel flag to a structured, per-family digest —
+      // still honest, no longer a total blackout.
+      expect(Array.isArray(grounding.reading)).toBe(true)
+      expect((grounding.reading as unknown[]).length).toBeGreaterThan(0)
     },
   )
 

@@ -792,7 +792,17 @@ export function assembleDomainCompleteness(domain: string, chart_id: string): Re
  *  mutating it in place. No-op when no slice is precompiled for (domain, chart). */
 export function attachDomainCompleteness(response: Record<string, unknown>, domain: string, chart_id: string): void {
   const completeness = assembleDomainCompleteness(domain, chart_id)
-  if (!completeness) return
+  if (!completeness) {
+    // F-14: honest disclosure, not a silent no-op (B.10 / §N.7 item 6 — an honest null beats
+    // a silently absent field). No precompiled concept-slice bundle exists yet for this domain
+    // (currently: health/relationship) — say so explicitly rather than leaving the caller unable
+    // to distinguish "nothing to report" from "this domain was never wired."
+    response['domain_completeness_empty_reason'] =
+      `No precompiled ${domain} concept-slice bundle exists yet — domain_completeness/` +
+      `completeness_directive are honestly omitted rather than fabricated (B.10). This is a data-` +
+      `infrastructure gap (bundle generation), not a query failure; tracked separately from this fix.`
+    return
+  }
   response['domain_completeness'] = completeness
   const pct = (completeness['pct'] as number | undefined) ?? 0
   const sliceSize = (completeness['slice_size'] as number | undefined) ?? 0
@@ -989,16 +999,43 @@ const CAREER_READING_FAMILIES = [
   'timing_windows', 'remedies', 'contradictions_with_adjudication',
 ] as const
 
-const DOMAIN_READING_FAMILIES: Record<string, readonly string[]> = {
+const RELATIONSHIP_READING_FAMILIES = [
+  'per_varga_ashtakavarga', 'divisional_D9', 'argala_house_7',
+  'full_dispositor_closure', 'all_chart_mechanisms_and_chains', 'special_lagnas',
+  'cross_ayanamsha_agreement', 'timing_windows', 'remedies', 'contradictions_with_adjudication',
+] as const
+
+const HEALTH_READING_FAMILIES = [
+  'per_varga_ashtakavarga', 'divisional_D6', 'argala_house_1', 'argala_house_6', 'argala_house_8',
+  'full_dispositor_closure', 'all_chart_mechanisms_and_chains', 'special_lagnas',
+  'cross_ayanamsha_agreement', 'timing_windows', 'remedies', 'contradictions_with_adjudication',
+] as const
+
+// F-14/F-124 (reconciled, PARISESA-V4 REBASE): assess_marriage/assess_health parity with
+// assess_wealth/assess_career. Compile-time exhaustiveness guard: adding a new key to
+// AssessedDomain without adding the corresponding entry to DOMAIN_READING_FAMILIES will cause
+// tsc --noEmit to error. Update both in lockstep when a new assess_* domain is introduced.
+// Exported (with DOMAIN_READING_VARGAS below) so the reconciled unit-level exit test can assert
+// directly against the wiring rather than only through an MCP round-trip.
+export type AssessedDomain = 'wealth' | 'career' | 'health' | 'relationship'
+export const DOMAIN_READING_FAMILIES: Record<AssessedDomain, readonly string[]> = {
   wealth: WEALTH_READING_FAMILIES,
   career: CAREER_READING_FAMILIES,
+  relationship: RELATIONSHIP_READING_FAMILIES,
+  health: HEALTH_READING_FAMILIES,
 }
-// The domain's classical-wealth/career vargas — same pairing register_d8_assess_domain.ts's
+// The domain's classical vargas — same pairing register_d8_assess_domain.ts's
 // DOMAIN_DIRECT_VARGAS uses, read back here from `data.varga_analysis` (already fetched).
-const DOMAIN_READING_VARGAS: Record<string, [string, string]> = { wealth: ['D2', 'D11'], career: ['D10', 'D9'] }
-const DOMAIN_READING_HOUSES: Record<string, number[]> = { wealth: [2, 11], career: [10] }
-const DOMAIN_READING_KARAKA_CODE: Record<string, string> = { wealth: 'JUP', career: 'SAT' }
-const DOMAIN_READING_KARAKA_LABEL: Record<string, string> = { wealth: 'Jupiter', career: 'Saturn' }
+// Type widened from the original [string, string] 2-tuple to readonly string[] so single-varga
+// domains (health: D6, relationship: D9) are structurally valid without a fabricated second
+// entry — buildDomainReading below guards every vargas[1] access accordingly.
+export const DOMAIN_READING_VARGAS: Record<string, readonly string[]> = {
+  wealth: ['D2', 'D11'], career: ['D10', 'D9'],
+  relationship: ['D9'], health: ['D6'],
+}
+const DOMAIN_READING_HOUSES: Record<string, number[]> = { wealth: [2, 11], career: [10], relationship: [7], health: [1, 6, 8] }
+const DOMAIN_READING_KARAKA_CODE: Record<string, string> = { wealth: 'JUP', career: 'SAT', relationship: 'VEN', health: 'SUN' }
+const DOMAIN_READING_KARAKA_LABEL: Record<string, string> = { wealth: 'Jupiter', career: 'Saturn', relationship: 'Venus', health: 'Sun' }
 
 function titleCaseUnderscored(s: string): string {
   return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -1460,7 +1497,7 @@ function readContradictionsFamily(contradictions: Record<string, unknown> | unde
 export async function buildDomainReading(
   domain: string, chart_id: string, ayanamsha_id: string, data: Record<string, unknown>, principal: Principal,
 ): Promise<{ reading: ReadingFamilyEntry[]; families_served: number; families_total: number }> {
-  const families = DOMAIN_READING_FAMILIES[domain]
+  const families = (DOMAIN_READING_FAMILIES as Record<string, readonly string[] | undefined>)[domain]
   if (!families) return { reading: [], families_served: 0, families_total: 0 }
 
   // Bug fix (PŪRṆA-VIRĀMA close-out, live-probe-discovered): the L-DOMAIN/assess_wealth and
@@ -1477,7 +1514,7 @@ export async function buildDomainReading(
   // back to `data` itself keeps those flat-fixture unit tests valid while fixing the real shape.
   const sourceData = (data['content'] as Record<string, unknown> | undefined) ?? data
   const vargaAnalysis = sourceData['varga_analysis'] as Record<string, unknown> | undefined
-  const vargas = DOMAIN_READING_VARGAS[domain] ?? ['D1', 'D1']
+  const vargas = DOMAIN_READING_VARGAS[domain] ?? ['D1']
   const houses = DOMAIN_READING_HOUSES[domain] ?? []
 
   const supplements = await fetchReadingSupplements(domain, chart_id, ayanamsha_id, principal)
@@ -1485,9 +1522,21 @@ export async function buildDomainReading(
   const byFamily = new Map<string, ReadingFamilyEntry>()
   const add = (entry: ReadingFamilyEntry): void => { byFamily.set(entry.family, entry) }
 
-  add(readAshtakavargaFamily(vargaAnalysis, vargas))
-  add(readVargaFamily(vargaAnalysis, vargas[0], domain === 'wealth' ? 'Horā — liquid wealth' : 'Dasamsa — career/status'))
-  add(readVargaFamily(vargaAnalysis, vargas[1], domain === 'wealth' ? 'Rudrāṃśa — gains/income' : 'Navamsa — dharma/marriage cross-check'))
+  // F-124: health/relationship carry a single primary varga (D6 / D9) rather than wealth/
+  // career's pair — vargas[1] is guarded rather than fabricated (the old unconditional
+  // vargas[1] access, plus the old domain==='wealth'?...:'<career label>' ternary, would have
+  // mislabeled health's D6 family as "Dasamsa — career/status" had the maps merely been
+  // widened without also fixing this call site).
+  add(readAshtakavargaFamily(vargaAnalysis, [vargas[0] ?? 'D1', vargas[1] ?? vargas[0] ?? 'D1']))
+  add(readVargaFamily(vargaAnalysis, vargas[0] ?? 'D1',
+    domain === 'wealth'         ? 'Horā — liquid wealth'
+    : domain === 'health'       ? 'Ṣaṣṭhāṃśa — health/vitality'
+    : domain === 'relationship' ? 'Navāṃśa — relationship/dharma'
+    : 'Daśāṃśa — career/status'))
+  if (vargas[1] != null) {
+    add(readVargaFamily(vargaAnalysis, vargas[1],
+      domain === 'wealth' ? 'Rudrāṃśa — gains/income' : 'Navāṃśa — dharma/marriage cross-check'))
+  }
   if (domain === 'wealth') add(readInduLagnaFamily(vargaAnalysis))
   if (domain === 'career') add(readKarakamshaFamily(supplements.karakamsa))
   for (const h of houses) add(readArgalaFamily(domain, supplements.argala, h))
@@ -2955,9 +3004,16 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       provenance: normalized['provenance'],
       yoga_fact_ids: normalized['yoga_fact_ids'],
     }
-    // assess_career/wealth: reading + completeness injected by attachDomainReading/Completeness
+    // assess_career/wealth/marriage/health: reading injected by attachDomainReading
     if (normalized['reading'] !== undefined) grounding['reading'] = normalized['reading']
-    if (normalized['completeness'] !== undefined) grounding['completeness'] = normalized['completeness']
+    // F-14/F-124 (reconciled, PARISESA-V4 REBASE): key-mismatch fix — attachDomainCompleteness
+    // writes response['domain_completeness'] / response['completeness_directive'] (or, when no
+    // precompiled slice exists, response['domain_completeness_empty_reason']); the prior
+    // allow-list checked response['completeness'], a key nothing ever set, silently dropping
+    // all three fields from the Sāra envelope for every assess_* tool including wealth/career.
+    if (normalized['domain_completeness'] !== undefined) grounding['domain_completeness'] = normalized['domain_completeness']
+    if (normalized['completeness_directive'] !== undefined) grounding['completeness_directive'] = normalized['completeness_directive']
+    if (normalized['domain_completeness_empty_reason'] !== undefined) grounding['domain_completeness_empty_reason'] = normalized['domain_completeness_empty_reason']
     // assess_wealth: leverage_index injected by attachLeverageIndex
     if (normalized['leverage_index'] !== undefined) grounding['leverage_index'] = normalized['leverage_index']
 
@@ -3041,6 +3097,10 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ),
         ])
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        // F-14/F-124 (reconciled, PARISESA-V4 REBASE): domain reading parity with
+        // assess_career/assess_wealth — assess_marriage never called either attach function.
+        attachDomainCompleteness(response, 'relationship', chart_id)
+        await attachDomainReading(response, 'relationship', chart_id, normalizeAyanamsha(ayanamsha_id), principal)
         return dualOutputBudgeted(buildAssessResponse(response, 'assess_marriage', budget_kb, effectiveVerbosity))
       } catch (err) {
         return errorOutput('assess_marriage', String(err), { chart_id })
@@ -3123,6 +3183,10 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
           ),
         ])
         const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        // F-14/F-124 (reconciled, PARISESA-V4 REBASE): domain reading parity with
+        // assess_career/assess_wealth — assess_health never called either attach function.
+        attachDomainCompleteness(response, 'health', chart_id)
+        await attachDomainReading(response, 'health', chart_id, normalizeAyanamsha(ayanamsha_id), principal)
         return dualOutputBudgeted(buildAssessResponse(response, 'assess_health', budget_kb, effectiveVerbosity))
       } catch (err) {
         return errorOutput('assess_health', String(err), { chart_id })
