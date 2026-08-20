@@ -51,6 +51,30 @@ describe('lintVoiceProse — second-person-imperative detector (positive cases)'
     const flag = result.flags.find((f) => f.code === 'voice_imperative_detected')
     expect(flag?.detail).toContain('2 second-person-imperative')
   })
+
+  // P2-close item 7 — both strings below are verbatim from a real remedial
+  // probe turn against production ("What remedy should I do for my weak
+  // Moon?"), reproduced live to confirm the regex-anchor bug before fixing it.
+  it('flags a bulleted bold-label imperative ("* **Frequency:** Chant...")', () => {
+    const result = lintVoiceProse(
+      '* **Frequency:** Chant this mantra 108 times every evening.',
+      NOT_DIFFICULT,
+    )
+    expect(result.flags.some((f) => f.code === 'voice_imperative_detected')).toBe(true)
+  })
+
+  it('flags a bulleted bold-label imperative ("* **Fasting:** Observe...")', () => {
+    const result = lintVoiceProse(
+      '* **Fasting:** Observe a simple partial fast on Mondays.',
+      NOT_DIFFICULT,
+    )
+    expect(result.flags.some((f) => f.code === 'voice_imperative_detected')).toBe(true)
+  })
+
+  it('flags a plain (non-bold) labeled imperative ("What to do: Wear...")', () => {
+    const result = lintVoiceProse('What to do: Wear a natural pearl on Monday.', NOT_DIFFICULT)
+    expect(result.flags.some((f) => f.code === 'voice_imperative_detected')).toBe(true)
+  })
 })
 
 describe('lintVoiceProse — second-person-imperative detector (negative / attributive cases)', () => {
@@ -94,6 +118,14 @@ describe('lintVoiceProse — second-person-imperative detector (negative / attri
 
   it('passes an imperative-shaped sentence referencing a prior reading, not a remedy', () => {
     const result = lintVoiceProse("You must remember your last reading mentioned Saturn's transit.", NOT_DIFFICULT)
+    expect(result.flags.some((f) => f.code === 'voice_imperative_detected')).toBe(false)
+  })
+
+  it('passes a bulleted bold-label sentence with a gerund, not a bare imperative (label-prefix sibling)', () => {
+    const result = lintVoiceProse(
+      '* **Note:** Wearing a ruby is traditionally regarded as helpful for the Sun.',
+      NOT_DIFFICULT,
+    )
     expect(result.flags.some((f) => f.code === 'voice_imperative_detected')).toBe(false)
   })
 

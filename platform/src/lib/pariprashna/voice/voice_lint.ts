@@ -98,12 +98,28 @@ const YOU_MODAL_IMPERATIVE = new RegExp(
   'i',
 )
 
+/**
+ * P2-close item 7 (lane L). Remedy prose is routinely a bulleted/labeled list
+ * — "* **Frequency:** Chant this mantra 108 times..." or "**What to do:**
+ * Obtain a..." — where the imperative verb is the first WORD of the clause
+ * but not the first character of the sentence Playwright/splitSentences sees;
+ * a bullet marker and/or a bold markdown label sit in front of it. Verified
+ * live: a real remedial probe turn ("What remedy should I do for my weak
+ * Moon?") returned "* **Frequency:** Chant this mantra 108 times..." and "*
+ * **Fasting:** Observe a simple partial fast..." — both bare imperatives that
+ * the un-anchored-for-labels pattern below missed entirely (0 flags) before
+ * this fix. Optional, bounded (no runaway backtracking): a bullet/number
+ * marker, then a short label ending in a colon (markdown-bold or plain).
+ */
+const IMPERATIVE_LABEL_PREFIX = '(?:[-*•]\\s+)?(?:\\d+[.)]\\s+)?(?:\\*{0,2}[^*\\n:]{1,40}:\\*{0,2}\\s*)?'
+
 /** A bare imperative sentence opening with a remedy verb ("Wear a pearl...",
- *  "Chant the Gayatri mantra..."). Sentence-initial only — a remedy verb
- *  appearing mid-sentence in a non-imperative construction ("...prescribes
- *  wearing a ruby...") does not match this pattern; it is a gerund/infinitive
- *  object, not a sentence-initial imperative verb. */
-const BARE_IMPERATIVE_START = new RegExp(`^(?:${capitalizeAlternation(REMEDY_VERBS)})\\b`)
+ *  "Chant the Gayatri mantra..."), optionally after a list/label prefix (see
+ *  IMPERATIVE_LABEL_PREFIX above). A remedy verb appearing mid-sentence in a
+ *  non-imperative construction ("...prescribes wearing a ruby...") does not
+ *  match this pattern; it is a gerund/infinitive object, not a sentence- or
+ *  clause-initial imperative verb. */
+const BARE_IMPERATIVE_START = new RegExp(`^${IMPERATIVE_LABEL_PREFIX}(?:${capitalizeAlternation(REMEDY_VERBS)})\\b`)
 
 function capitalizeAlternation(alt: string): string {
   return alt
