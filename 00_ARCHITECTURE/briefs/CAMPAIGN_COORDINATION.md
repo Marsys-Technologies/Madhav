@@ -5562,3 +5562,37 @@ fix included in this same PR).
 Governance clean before commit: `naming_lint.py` 0 new (53 pre-existing),
 `check_earned_signal.py` 0 new (141 pre-existing, allowlisted), corpus test
 suite 91/91 pass against the fixture edit.
+
+## 2026-08-20 — PARIPRASHNA-DD16-DD17-EXECUTE / Claude Code — leased window: outbox migration + interpretation-sets tier upgrade
+
+Executing the native's rulings on DD-16 and DD-17 (`PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`
+§2), plus filing a new DD-19 for the usage-logging gap DD-17's own investigation surfaced.
+Own worktree (`/private/tmp/pariprashna-dd16-dd17`, branch `pariprashna/dd16-dd17-closeout`,
+based on fresh `origin/main` post-#1395 merge, commit `00ae4014d`).
+
+**Lease scope:**
+- New migration file `platform/supabase/migrations/578_pariprashna_persistence_outbox.sql`
+  (additive only: `pariprashna_persistence_outbox` table + 2 indexes + create-not-enable
+  RLS policy, exact schema per `durable_outbox.ts`'s own module header — no other schema
+  change, no GRANT statements beyond what that header specifies, `MARSYS_FLAG_PARIPRASHNA_
+  DURABLE_PERSISTENCE_ENABLED` stays OFF throughout).
+- `platform/src/lib/pariprashna/interpretation/worker.ts` — ONE call-site model-tier change
+  (`getEffectiveModel(..., 'worker', ...)` → the `mid` tier resolution for this call only;
+  no other call site touched).
+- `PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` §2 — closing DD-16 and DD-17 with real
+  test evidence, filing DD-19 (usage-logging gap, OWNED — UNDATED, no invented deadline).
+- `00_ARCHITECTURE/CAPABILITY_MANIFEST.json` — fingerprint rotation for the register file,
+  same mechanical follow-up as the #1395 PR needed.
+
+**Checked immediately before opening:** PR #1362 (parisesa/CCD-009) is open and touches
+`CAPABILITY_MANIFEST.json`, but a different entry (`CROSS_CUTTING_DECISION_REGISTER`, not
+`PARIPRASHNA_SWARM_PLAN_AMENDMENTS`) — no real collision, noted for transparency. No other
+open PR or coordination-log entry indicates any of the above files are mid-edit elsewhere.
+Disjoint from the live P2/P3 conductor and PARIŚEṢA-RĀTRI-V4.
+
+Migration number 578 confirmed free (577 is current highest). Test plan for the outbox
+recovery replay: exercise `writeAheadTurn` → simulate a crashed write (entry left `pending`,
+never applied) → `replayPendingPersistence` against the REAL new table via a direct `pg`
+connection (same cloud-sql-proxy pattern as `platform/scripts/probe/ask.ts`), independent of
+the app's own DB pool, RLS unarmed so no role-cutover dependency. Flag stays off throughout;
+this proves the recovery mechanism works, it does not activate it.
