@@ -381,11 +381,18 @@ function citeEvidence(pc: ProvenanceChain | null): string | null {
 function buildRankedThemes(
   verdicts: Record<string, unknown>[],
   audience: 'native' | 'third_party',
-): { strengths: string[]; weaknesses: string[]; open_questions: string[]; verdict_quality_flags: string[] } {
+): { strengths: string[]; weaknesses: string[]; open_questions: string[]; verdict_quality_flags: string[]; weaknesses_empty_reason: string | null } {
   const strengths: string[] = []
   const weaknesses: string[] = []
-  const openQuestions: string[] = []
+  const openQuestionsRaw: Array<{sentence: string; grade: number | null}> = []
   const verdictQualityFlags: string[] = []
+  let conditionalCount = 0
+  let minConditionalGrade: number | null = null
+  // GA-5 review finding on #1385: weaknesses_empty_reason must be derived from what was
+  // ACTUALLY observed per-row, not a hardcoded claim about a grade threshold nothing here
+  // evaluates. Track the real causes a 'denied' row can be excluded from weaknesses.
+  let deniedSuppressedByZeroSupportCount = 0
+  let noEvidenceCount = 0
 
   for (const row of verdicts) {
     const pc = getProvenanceChain(row)
@@ -417,9 +424,10 @@ function buildRankedThemes(
     // grade/status sentence construction — they have no grade to display, and the
     // zero-support masking path would replace their already-honest label.
     if (status === 'no_evidence') {
+      noEvidenceCount++
       let sentence = `${name}: no evidence available for this event class — cannot assess.`
       if (citation) sentence += ` (${citation})`
-      openQuestions.push(sentence)
+      openQuestionsRaw.push({ sentence, grade: null })
       continue
     }
 
@@ -428,6 +436,10 @@ function buildRankedThemes(
     // a ✓ mark) — never present n_support=0 grades with unqualified confidence.
     const nSupport = typeof row['n_support'] === 'number' ? row['n_support'] as number : null
     const zeroSupport = nSupport === 0
+    // GA-5 review finding on #1385: capture status BEFORE it gets overwritten below, so
+    // weaknesses_empty_reason can honestly report a denied-but-suppressed row instead of
+    // silently losing it (it never reaches the 'denied' bucket once status is overwritten).
+    if (zeroSupport && status === 'denied') deniedSuppressedByZeroSupportCount++
     if (zeroSupport && status !== 'no_evidence') {
       verdictQualityFlags.push(
         `${name}: grade ${gradeStr} carries n_support=0 (zero backing evidence rows) — ` +
@@ -463,11 +475,54 @@ function buildRankedThemes(
     } else if (status === 'denied' && !zeroSupport) {
       weaknesses.push(sentence)
     } else {
-      openQuestions.push(sentence)
+      if (status === 'conditional') {
+        conditionalCount++
+        if (grade != null && (minConditionalGrade == null || grade < minConditionalGrade)) {
+          minConditionalGrade = grade
+        }
+      }
+      openQuestionsRaw.push({ sentence, grade: grade ?? null })
     }
   }
 
-  return { strengths, weaknesses, open_questions: openQuestions, verdict_quality_flags: verdictQualityFlags }
+  openQuestionsRaw.sort((a, b) => {
+    if (a.grade == null && b.grade == null) return 0
+    if (a.grade == null) return 1
+    if (b.grade == null) return -1
+    return a.grade - b.grade
+  })
+  const openQuestions = openQuestionsRaw.map(x => x.sentence)
+
+  // GA-5 review finding on #1385: the prior version of this reason hardcoded a claim
+  // ('no event class scored below the denied ceiling, grade < 2.0/10') that nothing in
+  // this function evaluates -- weakness membership is a STATUS test ('denied'), not a
+  // grade-threshold test, and a real observed row (denied, grade 5.0/10, n_support=0) can
+  // falsify that exact sentence. Reason is now built ONLY from causes actually observed
+  // this call, per §N.7 item 6 (an honest null/per-cause statement, never a plausible-
+  // sounding invented one).
+  let weaknesses_empty_reason: string | null = null
+  if (weaknesses.length === 0) {
+    const reasonParts: string[] = []
+    if (deniedSuppressedByZeroSupportCount > 0) {
+      reasonParts.push(
+        `${deniedSuppressedByZeroSupportCount} event class(es) carry a 'denied' verdict but with ` +
+        `zero supporting evidence rows (n_support=0) — excluded from weaknesses as unverified, ` +
+        `not absent (see verdict_quality_flags for the individual class names)`
+      )
+    }
+    if (conditionalCount > 0) {
+      const minStr = minConditionalGrade != null ? minConditionalGrade.toFixed(1) : 'ungraded'
+      reasonParts.push(`${conditionalCount} class(es) sit in the conditional band (lowest: ${minStr}/10)`)
+    }
+    if (noEvidenceCount > 0) {
+      reasonParts.push(`${noEvidenceCount} class(es) have no evidence available (listed in open_questions instead)`)
+    }
+    weaknesses_empty_reason = reasonParts.length > 0
+      ? `no event class for this chart currently carries an unsuppressed 'denied' verdict: ${reasonParts.join('; ')}.`
+      : `no event class for this chart carries a 'denied' verdict.`
+  }
+
+  return { strengths, weaknesses, open_questions: openQuestions, verdict_quality_flags: verdictQualityFlags, weaknesses_empty_reason }
 }
 
 // MC-010 (P0-safety, ŚODHANA T1): verdict_summary[].statement is the RAW L5
@@ -537,6 +592,9 @@ function trimInsightRow(row: Record<string, unknown>): Record<string, unknown> {
     },
   }
 }
+
+// F-135: exported for unit testing only — not part of the public API.
+export { buildRankedThemes as _buildRankedThemesForTest }
 
 export function registerP1SynthesisTools(server: McpServer, principal: Principal): void {
 
