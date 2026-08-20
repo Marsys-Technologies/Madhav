@@ -84,6 +84,17 @@ export function baseReceipt(overrides: Partial<AcharyaReadingReceipt> = {}): Ach
       now_context_date: '2026-08-20',
       computed_at: '2026-08-20T00:00:00.000Z',
     },
+    // Lane G3-C (PPR-03) — always assembled, degrading to `unavailable`
+    // (never omitted) when PARIPRASHNA_TYPED_CONFIDENCE_ENABLED is off, same
+    // "unavailable, never omitted" convention as `evidence_grades`. Corpus
+    // fixtures predate G3-C; default to the honest off-state here.
+    confidence_typing: {
+      status: 'unavailable',
+      entries: null,
+      activation_gate: null,
+      precision_flags: null,
+      unavailable_reason: 'typed confidence disabled',
+    },
     receipt_hash: 'testhash',
   }
   return { ...receipt, ...overrides }
