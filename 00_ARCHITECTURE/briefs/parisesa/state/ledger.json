@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 758,
+  "event_count": 759,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1730,17 +1730,19 @@
       "terminal_status": "CONTROL_CLOSED"
     },
     "F-78": {
+      "branch": "parisesa/repair-F78-build",
       "confidence": "HIGH",
       "disposition": "OPEN",
-      "event_sha256": "4fabd0e6487d8b079ce2475e6676fac75071d9dd62b5ec876165a60b8d5f22cb",
+      "event_sha256": "ccafb2290a5a282b3b1eaaccafc366ff0f4f7bf8654475883e58b1a0cd6f5634",
       "event_type": "finding_status",
-      "evidence_summary": "CL-13 kala_field_snapshots.event_classes conflates attempted with built (ka_kshetra, dormant asset). Corpus cites zero commits. Ingested artifacts show a genuine build attempt that FAILED: builder.json status=FAILED, lane_commits={} (no commit was ever created), files_touched=[]. The branch par/night-F-78 exists locally/remotely but its HEAD is just an unrelated ancestor commit (51096a655, batch-1 F-79/F-141 work) with zero F-78-specific work on it -- confirms no F-78 commit exists anywhere. Verifier's own notes say 'Fix code IS present' but that refers to the builder's local, uncommitted working state, which never made it into any commit. Independently confirmed the underlying defect is still live on current main: writer.py:1760 still does 'list(self._event_classes)' unconditionally into the INSERT with no filtering against self._skipped (populated at 1962-1970); no built_event_classes function exists anywhere in writer.py; no migration 572 exists in platform/supabase/migrations.",
+      "evidence_summary": "Ratified spec re-implemented: built_event_classes() helper (writer.py) + migration 572 (checked no collision with concurrent F-93/F-67 migrations, verified 572-574 free on current main) + the reviser's fix (an autouse pytest fixture the original exit test needed but never got, the exact reason the prior swarm attempt's builder correctly failed rather than self-editing a reviewed test). 9/9 tests pass post-fix (6/9 confirmed genuinely failing pre-fix), full ka_kshetra suite 394/394 no regressions. Confirmed purely additive -- no existing INSERT/dedup call site touched, zero TS consumers of the affected columns.",
       "finding_id": "F-78",
-      "next_action": "re-implement from scratch per the (uncommitted, but ratified/reviewed) spec: writer.py built_event_classes() helper + migration 572 COMMENT ON COLUMN + fix the SAMPURTI-G1-stale test harness (missing stage0/1/3 monkeypatch in the exit test's _run_full_build)",
-      "prev_sha256": "a08c16a1492a5a5933dbfd1cb47f18df3b404751f0f8cbc534afac531ae8208b",
-      "seq": 610,
-      "source_batch": "triage_batch2.json",
-      "status": "OPEN",
+      "next_action": "owner reviews and merges PR #1392 at morning checkpoint",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1392",
+      "prev_sha256": "d84bac04ec3f923873d06fd578ddf4582d448eea0e197a5ebff7ed68b2f0f457",
+      "seq": 759,
+      "source_batch": "rebase_f78",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-79": {
@@ -2038,10 +2040,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 16,
+  "findings_morning_ship_ready_count": 17,
   "findings_terminal_count": 77,
-  "journal_head_seq": 758,
-  "journal_head_sha256": "d84bac04ec3f923873d06fd578ddf4582d448eea0e197a5ebff7ed68b2f0f457",
+  "journal_head_seq": 759,
+  "journal_head_sha256": "ccafb2290a5a282b3b1eaaccafc366ff0f4f7bf8654475883e58b1a0cd6f5634",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
