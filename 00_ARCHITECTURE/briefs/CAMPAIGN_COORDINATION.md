@@ -5531,3 +5531,34 @@ this session has already deferred comparable calls (the 3 P1 safety flags,
 the durable-persistence flag) rather than resolving them on the native's
 behalf. Two real, independently-fixable defects (HS-4, citation leak) were
 found via this gate battery and are now closed end-to-end.
+
+## 2026-08-20 — PARIPRASHNA-P2-GATE-BATTERY / Claude Code — register close-out lease + PR
+
+Formally filing the P2 gate-battery findings (HS-4, block-kind rendering,
+crash-kill/outbox, receipt/waiver audit, contradiction fixture) into the
+Delegated Decision register (`PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`
+§2, same DD-N series as DD-11/DD-13), per native instruction. Own worktree
+(`/private/tmp/pariprashna-register-closeout`, branch
+`pariprashna/register-closeout`, based on fresh `origin/main`). Lease scope:
+`00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`
+(append-in-place, DD-14 through DD-18, plus a one-clause disambiguation added
+to DD-13's own cell) and `platform/src/lib/pariprashna/corpus/fixtures.ts`
+(one-line query-text fix, DD-18's fixture-collision closure) only. Checked
+immediately before opening: no open PR touches either file, no coordination-
+log entry indicates either is mid-edit elsewhere. Disjoint from the live P2/
+P3 conductor and PARIŚEṢA-RĀTRI-V4 — neither owns these two files per this
+same check.
+
+Summary of what's being filed (full detail in the PR + register itself):
+DD-14 (HS-4, CLOSED, explicitly NOT counted against DD-13's deadline — DD-13
+remains open at full scope); DD-15 (block-kind rendering, cross-reference
+only, linked to RC-10's namespace-gap measurement, no new decision opened);
+DD-16 (crash-kill/outbox, OWNED — UNDATED, migration scope/risk reported,
+migration not opened, native to rule); DD-17 (receipt/waiver audit, OWNED —
+UNDATED, model-tier cost estimate reported separately per native instruction,
+no tier change made); DD-18 (contradiction fixture, CLOSED, one-line wording
+fix included in this same PR).
+
+Governance clean before commit: `naming_lint.py` 0 new (53 pre-existing),
+`check_earned_signal.py` 0 new (141 pre-existing, allowlisted), corpus test
+suite 91/91 pass against the fixture edit.
