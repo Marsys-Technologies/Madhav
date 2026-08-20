@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 707,
+  "event_count": 721,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -229,16 +229,16 @@
     "F-106": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "b810ec34dda04f8a5c19656e83067bf30226989e133324733683c317a3042ff3",
+      "event_sha256": "aa344a31a3018e74d249497b4394eb5363146cb4efb4b7e92e2fd774a73441a8",
       "event_type": "finding_status",
-      "evidence_summary": "CL-00 control (bodha_quality_get DEFECT-001 live re-derivation). bundles.jsonl seq 247 confirms current quality-scorecard handler re-derives DEFECT-001 live rather than trusting stale stored counts, and corpus row carries an actual canary receipt (2026-08-19T01:41:15Z direct bodha_quality_get on canonical chart: live orphan count and served scorecard count both equal 49). Fully closed, live-proven.",
+      "evidence_summary": "Live re-ran mcp__marsys-jis-direct__bodha_quality_get(chart=482012f1) just now (2026-08-20T14:52:56Z). Response confirms scorecard.unresolved_constituent_facts_count=49 and defect_001/defect_001_alert both live-derived to orphan_refs=49/71967 (0.1%), with defect_001_alert explicitly stating 'The served scorecard.unresolved_constituent_facts_count field above is overwritten with this same live-derived count ... it no longer disagrees with defect_001.' This is a fresh, independent re-run of the exact control the finding claims fixed (GA.1-class scorecard/defect_001 count disagreement), not a rep",
       "finding_id": "F-106",
-      "next_action": "none -- retain evidence, reopen only on regression",
-      "prev_sha256": "80d5566b0b42fb985994ea179c1edefb1ad9c4c51c48e91ef1c12f271684bf7d",
-      "seq": 573,
-      "source_batch": "triage_batch0.json",
-      "status": "LANDED",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "prev_sha256": "4fc5599674066eee9482c7048da805e2e9e53008dda36143fdd04d28bd3d36bc",
+      "seq": 708,
+      "source_batch": "proof_batch_i",
+      "status": "CONTROL_CLOSED",
+      "terminal_status": "CONTROL_CLOSED"
     },
     "F-107": {
       "confidence": "MEDIUM",
@@ -901,14 +901,14 @@
     "F-21": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "dbf194cada482227a680459c2922cfafdb0f0fa1444c1d4b262ad08140ff57f0",
+      "event_sha256": "027fdafa78859f4084635ce0fa99b7f7ef2ff87852998619fb6e012409209b72",
       "event_type": "finding_status",
-      "evidence_summary": "F-52 (gating dependency) does not promote to terminal this pass either -- see F-52 below -- so F-21 correctly stays blocked and cannot inherit a terminal promotion.",
+      "evidence_summary": "F-21's gating dependency F-52 (nodal-scoring fingerprint-invalidation defect) remains not-terminal in ledger.json as of this pass (status LANDED, terminal_status null, confidence HIGH -- 'no fingerprint-invalidation packet exists anywhere in the repo or its history; the underlying nodal-scoring defect remains only partially addressed'). No new evidence changes this. F-21 correctly cannot promote to terminal while its blocker is open; re-checked ledger.json directly rather than re-running F-52's own investigation (out of scope for this batch).",
       "finding_id": "F-21",
-      "next_action": "see evidence",
-      "prev_sha256": "c4048b5e4012b0433a4cce477ad0093c03d7e412c97a7c30d7b542434d70843c",
-      "seq": 567,
-      "source_batch": "proof_batch_e.json",
+      "next_action": "wait on F-52",
+      "prev_sha256": "aa344a31a3018e74d249497b4394eb5363146cb4efb4b7e92e2fd774a73441a8",
+      "seq": 709,
+      "source_batch": "proof_batch_i",
       "status": "LANDED",
       "terminal_status": null
     },
@@ -1130,16 +1130,16 @@
     "F-37": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "c3facf698e305805ba6c47247e5080d188838a5ea0df4869b9f0586513866583",
+      "event_sha256": "f0b2aba01b756e1dafaea0d62e28120687e912552a7a04647e3b719e8bf0895a",
       "event_type": "finding_status",
-      "evidence_summary": "Original claim: ref_yogas_get (query_yoga_catalog) reports `total` as rows.length of the current page rather than the true matching-row count. Real evidence found (not cfb6444c8): commit 22c4f50b7 'F-37: fix query_yoga_catalog total \u2014 parallel COUNT(*) instead of rows.length', folded into f003bf3af 'batch-4 (night): F-116 preamble-strip + F-35 scored-count + F-63 yoga-key + F-120 dasha-narration + F-37 catalog-total (#1316)', which IS on origin/main. Current source (platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:58-70) runs a separate `SELECT COUNT(*)` query for total_matching, independent of rows.length, plus more_available.",
+      "evidence_summary": "git merge-base --is-ancestor confirms squash commit f003bf3af (#1316, containing the named 'F-37: fix query_yoga_catalog total' sub-commit 22c4f50b7) is an ancestor of origin/main. Read current source directly: git show origin/main:platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:58-70 shows a separate `SELECT COUNT(*)::text AS total FROM brahma_yoga_catalog ...` (countSql) run in parallel with the page query, with total_matching computed from countResult, independent of rows.length -- exact content match to the claim, verified in current deployed source, not just",
       "finding_id": "F-37",
-      "next_action": "None \u2014 retain as closed. No further action.",
-      "prev_sha256": "a52f0d049a34b5db99baa144557bdfb0411177aadc567ab45e15f8fad6e2eb3c",
-      "seq": 588,
-      "source_batch": "triage_batch1.json",
-      "status": "LANDED",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "prev_sha256": "027fdafa78859f4084635ce0fa99b7f7ef2ff87852998619fb6e012409209b72",
+      "seq": 710,
+      "source_batch": "proof_batch_i",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-38": {
       "confidence": "MEDIUM",
@@ -1213,17 +1213,17 @@
       "terminal_status": null
     },
     "F-43": {
-      "confidence": "MEDIUM",
+      "confidence": "LOW",
       "disposition": "LANDED",
-      "event_sha256": "a9076f78d498fec4d5eccc19569a903b5a68cf79d0ca0a26eab85e2c861df94a",
+      "event_sha256": "0d1db5cb17050a5d4ff366eb396aef760eeaebc821de78d3082b04ffc46f0fb5",
       "event_type": "finding_status",
-      "evidence_summary": "DEMOTED per Opus review (ESC-001): closed on 'same commit 967f08da3 as F-59/F-131/F-139, confirmed ancestor' with NO sub-commit isolation -- the technique that worked for F-17/F-64/F-132/F-70 (locating the named sub-commit inside this squash) was never applied here. Squash being legitimate proves it contains real fixes, not that it fixes THIS specific claim.",
+      "evidence_summary": "Attempted the required sub-commit isolation within squash 967f08da3 (#1319, 11 named sub-commits: D-08 pointer integrity gate / assessment composition payload normalization / kala calibration-maturity routing / ganita fact-category-reduction pinning / yoga verdict-label pinning / graha aspect-authority centralization / migrated aspect-allowlist retirement / assessment drill-pointer seam closure + 2 test/governance commits). Could not perform the isolation because F-43's own original claim text is not recoverable anywhere in this worktree -- checked ledger.json, journal.ndjson (all F-43 rows), ",
       "finding_id": "F-43",
-      "next_action": "locate the specific named sub-commit within 967f08da3 matching F-43's exact claim before restoring terminal",
-      "prev_sha256": "402078a3e21e66afbb55bd9eaa783498e017764827ec602c1ec67098d00d4c73",
-      "seq": 649,
-      "source_batch": "esc001_review",
-      "status": "LANDED",
+      "next_action": "original finding-claim text not recoverable in this worktree",
+      "prev_sha256": "f0b2aba01b756e1dafaea0d62e28120687e912552a7a04647e3b719e8bf0895a",
+      "seq": 711,
+      "source_batch": "proof_batch_i",
+      "status": "UNKNOWN",
       "terminal_status": null
     },
     "F-44": {
@@ -1241,18 +1241,18 @@
       "terminal_status": null
     },
     "F-45": {
-      "confidence": "MEDIUM-HIGH",
+      "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "f34724f9adcfc5aabb940e559fbcf9ac471d4efefa33de9f3a1f121edeb923ae",
+      "event_sha256": "4dc095ef200cd6f1b2c20cbe1f9b1d24416ccab2cc699ca546b47137fcb36618",
       "event_type": "finding_status",
-      "evidence_summary": "DEMOTED per Opus review (ESC-001): corpus's canary claims were never independently re-run this session despite stronger primary evidence (merged PR) than the F-43 cluster -- flagged needs-proof-pass, not full re-triage.",
+      "evidence_summary": "PR #1339 / commit 5143438 ('fix(mcp): reconcile post-budget signal counts') confirmed ancestor of origin/main. Read the diff: kalaBudgetedDualOutput gained a reconcileAfterBudget callback that recomputes signal_count/neutral_dignity_downranked_count from the actually-served array AFTER response-budget trimming, not before. Ran the live canary myself: mcp__marsys-jis-direct__kala_priority_get(chart=482012f1, top_k=100, 2026-01-01..2026-12-31) returned trim_report showing ranked_signals trimmed from original_count=100 to kept_count=50, and the served signal_count field =50 -- exactly matching th",
       "finding_id": "F-45",
-      "next_action": "re-run the corpus's cited direct-MCP canaries live before restoring terminal",
-      "prev_sha256": "a9076f78d498fec4d5eccc19569a903b5a68cf79d0ca0a26eab85e2c861df94a",
-      "seq": 650,
-      "source_batch": "esc001_review",
-      "status": "LANDED",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "prev_sha256": "0d1db5cb17050a5d4ff366eb396aef760eeaebc821de78d3082b04ffc46f0fb5",
+      "seq": 712,
+      "source_batch": "proof_batch_i",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-46": {
       "confidence": "HIGH",
@@ -1327,16 +1327,16 @@
     "F-51": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "1422d6a5afa5f7a49694636ef661c4a0955e31d95652adf70d1d186616c4fbbf",
+      "event_sha256": "c34308c1d5de68c23abc560d7048bc57558293d2ff37960268b7f714a2ab8114",
       "event_type": "finding_status",
-      "evidence_summary": "CL-05 response-budget/trim defects, judgment_query marriage timing hooks. Corpus row itself cites zero commits (empty evidence.commits array) despite claiming 'historical-stale/code-fixed'. Independently found the real fix: commit 55a476fbd ('ekv(a-01): F-51 -- hardFloor:true on timing_hooks.current + mahadasha_windows_by_graha', #1289), confirmed on origin/main via merge-base. Current source (registry_bridge.ts:3650, 3681, 4424) has explicit '// F-51: answer-bearing timing -- PASS 2 must not zero this while catalog rows survive' comments on hardFloor:true declarations, matching the corpus's exact claim about ancestral timing-hook hard floors.",
+      "evidence_summary": "git merge-base --is-ancestor confirms 55a476fbd (#1289, 'F-51 -- hardFloor:true on timing_hooks.current + mahadasha_windows_by_graha') is an ancestor of origin/main. Read current source: git show origin/main:platform-mcp/src/tools/registry_bridge.ts shows lines 3650 and 3681 both carrying `hardFloor: true, // F-51: answer-bearing timing -- PASS 2 must not zero this while catalog rows survive` -- exact content match to the finding's specific claim about the timing-hook hard floors, confirmed in currently-deployed source.",
       "finding_id": "F-51",
-      "next_action": "retain as landed; only reopen on a regression removing hardFloor from timing_hooks.current/mahadasha_windows_by_graha",
-      "prev_sha256": "413d1c8fdaad48268c6d1c69fc50695c00e165ce259dd3027957ad44b1aece7a",
-      "seq": 608,
-      "source_batch": "triage_batch2.json",
-      "status": "LANDED",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "prev_sha256": "4dc095ef200cd6f1b2c20cbe1f9b1d24416ccab2cc699ca546b47137fcb36618",
+      "seq": 713,
+      "source_batch": "proof_batch_i",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-52": {
       "confidence": "HIGH",
@@ -1423,18 +1423,18 @@
       "terminal_status": null
     },
     "F-58": {
-      "confidence": "MEDIUM",
+      "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "abbf7a2951964bd9204055b426bf03448cd67e2d2eb2bddf670d7abd222f199b",
+      "event_sha256": "7790d12fd4cc6dda48f079df3ad42d316bc8ebc0552d5047ce2edbc0f9b90c6d",
       "event_type": "finding_status",
-      "evidence_summary": "DEMOTED per Opus review (ESC-001): same ancestry-only pattern, no content-match or live verification.",
+      "evidence_summary": "Isolated the specific sub-fix within squash 2d8540a11 (#1097 SHABDA-SHUDDHI): commit message names 'Fix 4 (query_domain_reading.ts): VALID_DOMAINS gate was inverted -- blocked 6 canonical domains (progeny/family/residence/travel/transition/general) while admitting non-canonical moksha/other.' Confirmed current source: origin/main:.../L2_bodha/query_domain_reading.ts:48 defines DOMAIN_READING_VALID_DOMAINS = [...CANONICAL_DOMAINS, 'moksha', 'other'] (all 13 canonical domains now included). Ran a live falsifiable canary: mcp__marsys-jis-direct__bodha_domain_reading_get(chart=482012f1, domain='pr",
       "finding_id": "F-58",
-      "next_action": "isolate content-matched evidence or run a live canary before restoring terminal",
-      "prev_sha256": "f34724f9adcfc5aabb940e559fbcf9ac471d4efefa33de9f3a1f121edeb923ae",
-      "seq": 651,
-      "source_batch": "esc001_review",
-      "status": "LANDED",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "prev_sha256": "c34308c1d5de68c23abc560d7048bc57558293d2ff37960268b7f714a2ab8114",
+      "seq": 714,
+      "source_batch": "proof_batch_i",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-59": {
       "confidence": "MEDIUM",
@@ -1495,15 +1495,15 @@
     "F-63": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "762966eedb41541ea9b4ae71a0e25f4b36c1d593987df23f0f024becae06a524",
+      "event_sha256": "95dc18ca3dcee14b0dc13af1933576bf6e1ca51b6fb9929ec392f512a964868a",
       "event_type": "finding_status",
-      "evidence_summary": "Confirmed the ga4-writer piece's exact diff in ga_panchanga_writer.py (_emit_special_yoga_combinations: read yoga_dict.get('yoga') with a None-guard skip instead of the old name/yoga_name/'unknown' fallback) inside f003bf3af (#1316, ancestor of origin/main) -- distinct from the separate unmerged combination_name fix (64dba3afe) another train is handling, per instructions not touched here. Live DB read of chart_facts for the canonical chart (fact_category='panchanga_special_yoga_combinations') still shows fact_subject='YOGA_UNKNOWN' / combination_name='unknown' at computed_at=2026-08-08T00:20:28Z -- predates the 2026-08-16 fix commit. The fix is real in source but this chart's L1 data is stale and still serves the pre-fix defect -- needs a rebuild before terminal closure.",
+      "evidence_summary": "Source fix confirmed real and merged (f003bf3af / #1316, ga_panchanga_writer.py's _emit_special_yoga_combinations now uses a None-guarded yoga_dict.get('yoga') instead of the old unknown-fallback). Re-ran the live canary today (2026-08-20) via mcp__marsys-jis-direct__ganita_chart_facts_get(chart=482012f1, category='panchanga_special_yoga_combinations'): the canonical chart's L1 row still shows fact_subject='YOGA_UNKNOWN', combination_name='unknown', unchanged from the prior proof pass -- confirms the L1 data for this chart remains stale (pre-fix), 4+ days after the fix commit merged. The code ",
       "finding_id": "F-63",
-      "next_action": "see evidence",
-      "prev_sha256": "f7561e6940dfed3c026d62b2a0e85e622900fbb55b11dbb04b7019a547f4185e",
-      "seq": 561,
-      "source_batch": "proof_batch_d.json",
-      "status": "LANDED",
+      "next_action": "chart 482012f1 needs a rebuild to pick up the already-merged fix; code side closed, data side pending",
+      "prev_sha256": "7790d12fd4cc6dda48f079df3ad42d316bc8ebc0552d5047ce2edbc0f9b90c6d",
+      "seq": 715,
+      "source_batch": "proof_batch_i",
+      "status": "DATA_PARKED",
       "terminal_status": null
     },
     "F-64": {
@@ -1535,18 +1535,18 @@
       "terminal_status": null
     },
     "F-66": {
-      "confidence": "MEDIUM",
+      "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "796b55a1a4d13bacd132208035407d9a8bccd174316e27986640a288c6fd801a",
+      "event_sha256": "81e16dfb8ff9c8ce77710eea483368f97e83b8e9a3040346d6dae7c6f39adc23",
       "event_type": "finding_status",
-      "evidence_summary": "DEMOTED per Opus review (ESC-001): same ancestry-only pattern, no content-match or live verification.",
+      "evidence_summary": "Commit bdc27ccdf (#1298, 'ekv(b-03): fix consecutive-house yoga predicate -- require 7 planets in 7 distinct houses') confirmed ancestor of origin/main. This is a single self-contained fix (not part of an unrelated squash), with an exact content match: current source (ga_yoga_writer.py:649-656) shows `houses_occupied_by_placed = {...}` plus the corrected predicate `len(placed) == 7 and len(houses_occupied_by_placed) == 7`, replacing the old buggy `len(placed) >= 5`. Ran the commit's own golden test suite live: `pytest platform/python-sidecar/ga_writers/__tests__/test_ga_yoga_b03_predicate.py` ",
       "finding_id": "F-66",
-      "next_action": "isolate content-matched evidence or run a live canary before restoring terminal",
-      "prev_sha256": "896bcf05d8c9373ef590b4cd11edc1afa8da002653a713abbab9ec9fcf734725",
-      "seq": 653,
-      "source_batch": "esc001_review",
-      "status": "LANDED",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "prev_sha256": "95dc18ca3dcee14b0dc13af1933576bf6e1ca51b6fb9929ec392f512a964868a",
+      "seq": 716,
+      "source_batch": "proof_batch_i",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-67": {
       "confidence": "LOW",
@@ -1651,16 +1651,16 @@
     "F-74": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "a08c16a1492a5a5933dbfd1cb47f18df3b404751f0f8cbc534afac531ae8208b",
+      "event_sha256": "e8f9ec6549be6acb54e4dd190fa563320c5a21dcf6d6a52194ce6f30de448a18",
       "event_type": "finding_status",
-      "evidence_summary": "CL-19 chart-scope entitlement, companion to F-30 (bundle adapters chart-scope regression). Same commit c75400b23 ('ekv(a-11): F-30/74/127 -- bundle principal propagation + real upstream_status surfaced', #1302) explicitly names F-74 in its message and fixes the same bundle_adapters.ts callPrimitive opaque-error-class defect for the bundle-adapter chart-scope path; confirmed on origin/main via merge-base. Matches F-74's own code_status claim ('current-bundle-params-and-principal-propagated') exactly.",
+      "evidence_summary": "git merge-base --is-ancestor confirms c75400b23 (#1302) is an ancestor of origin/main. Commit message explicitly names F-74 and its exact defect: 'F-30/F-74 -- opaque error class, no upstream status: callPrimitive threw new Error(\"HTTP <status>\") on any non-2xx' in platform/src/lib/mcp/bundle_adapters.ts. File confirmed present at that path on origin/main (platform/src/lib/mcp/bundle_adapters.ts + matching test file bundle_adapters.test.ts) -- exact content match, not just ancestry.",
       "finding_id": "F-74",
-      "next_action": "retain as landed; only reopen on a regression to bundle_adapters.ts's principal propagation",
-      "prev_sha256": "1422d6a5afa5f7a49694636ef661c4a0955e31d95652adf70d1d186616c4fbbf",
-      "seq": 609,
-      "source_batch": "triage_batch2.json",
-      "status": "LANDED",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "prev_sha256": "81e16dfb8ff9c8ce77710eea483368f97e83b8e9a3040346d6dae7c6f39adc23",
+      "seq": 717,
+      "source_batch": "proof_batch_i",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-75": {
       "confidence": "MEDIUM",
@@ -1791,16 +1791,16 @@
     "F-83": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "ceee420ed2bfdee78461fdcc0fbd59e4363ad8417d13cf205fe258085b1833c7",
+      "event_sha256": "4172d7d22c531dd7db7d65ea8efc561beeedefbaa3687497b4a46b848fb2844a",
       "event_type": "finding_status",
-      "evidence_summary": "Original claim: FK/orphan referential integrity PASS across 5 sampled tables (chart_facts, kala_field, bodha_msr_signals, phala_anchors, mimamsa_calibration) vs charts \u2014 0 orphans. The corpus row itself raised a scope-drift flag (an automated detector in-repo only checks 4 tables, differing from this 5-table reproducer) and left it control-guarded pending a scope contract. Re-ran the ORIGINAL 5-table reproducer SQL directly against live production DB just now: 0 orphan rows returned \u2014 the claim is independently reconfirmed true today, regardless of the separate detector-scope question.",
+      "evidence_summary": "Live-ran the ORIGINAL 5-table orphan reproducer via postgres directly, matching the exact detector logic in platform/scripts/governance/ekv_controls.py::_check_f83 (joins each table's DISTINCT chart_id against charts.id, NOT charts.chart_id -- caught and corrected my own first attempt, which used the wrong join column and produced false-positive orphan counts; re-ran with the correct join). Result: chart_facts, kala_field, bodha_msr_signals, phala_anchors, mimamsa_calibration, and mimamsa_insight_units (the in-repo detector's 4th table) all show 0 orphaned chart_id refs against charts.id today",
       "finding_id": "F-83",
-      "next_action": "The 4-vs-5-table automated-detector scope question (author_and_independently_review_F83_sampled_table_orphan_control_scope_contract) is a separate, lower-priority hygiene item \u2014 not blocking, since direct live verification already confirms the underlying invariant.",
-      "prev_sha256": "fa168aa0fe023eee8676a27008d538178caaa906d2ca9e05c63aa60416c0ab87",
-      "seq": 591,
-      "source_batch": "triage_batch1.json",
-      "status": "LANDED",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "prev_sha256": "e8f9ec6549be6acb54e4dd190fa563320c5a21dcf6d6a52194ce6f30de448a18",
+      "seq": 718,
+      "source_batch": "proof_batch_i",
+      "status": "CONTROL_CLOSED",
+      "terminal_status": "CONTROL_CLOSED"
     },
     "F-84": {
       "confidence": "MEDIUM",
@@ -1859,18 +1859,18 @@
       "terminal_status": null
     },
     "F-88": {
-      "confidence": "MEDIUM",
+      "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "9db6567df437b8b292508213bc67c05256866d9ceda9708a7e95822b4930f68a",
+      "event_sha256": "7fdd00a9a0d347133b194a2fb5a05ade0171e216ba9c6b1cc852f3ad347291de",
       "event_type": "finding_status",
-      "evidence_summary": "CL-00 control: session_recall active-chart-hint vs explicit-chart-pin boundary. Corpus cites zero commits but describes a specific, checkable mechanism. Confirmed on current main: platform-mcp/src/tools/session_tools.ts explicitly documents and implements this boundary -- 'chart_id is ALWAYS ... never relies on active_chart_id for correctness -- only convenience', re-checks entitlement for a stored active_chart_id on every recall_session call (revoking it from the response if access was pulled), and resolves pinTarget = chart_id ?? entitledChartId (explicit always wins). This matches the corpus's 'current-active-chart-hint-and-explicit-chart-pin-boundary-present' claim precisely.",
+      "evidence_summary": "Ran the live MCP session_recall probe the ledger flagged as 'worth running when DB/session infra is available': mcp__marsys-jis-direct__session_recall(chart_id=482012f1) succeeded, returning a well-formed session block (active_chart_id, last_seen_at) and a freshly-resolved provenance_stamp for the explicit chart_id -- confirms the tool and DB/session infra are live and functioning as documented. Combined with the prior session's source-level confirmation (session_tools.ts's explicit chart_id-always-wins-over-active_chart_id-hint boundary, entitlement re-check on stored active_chart_id), this c",
       "finding_id": "F-88",
-      "next_action": "retain as landed; the 21/21 focused-suite claim and the live MCP session_recall probe are still worth running when DB/session infra is available, but the code-level boundary is real and current",
-      "prev_sha256": "6677fbaab2dabedea8da082bdf657f34225cd79ca351b9d28de513e13d96997e",
-      "seq": 612,
-      "source_batch": "triage_batch2.json",
-      "status": "LANDED",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "prev_sha256": "4172d7d22c531dd7db7d65ea8efc561beeedefbaa3687497b4a46b848fb2844a",
+      "seq": 719,
+      "source_batch": "proof_batch_i",
+      "status": "CONTROL_CLOSED",
+      "terminal_status": "CONTROL_CLOSED"
     },
     "F-89": {
       "confidence": "HIGH",
@@ -1957,18 +1957,18 @@
       "terminal_status": null
     },
     "F-95": {
-      "confidence": "MEDIUM",
+      "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "21ca40d27bb96a5ed2b947f756a6c4843fe24a5374bbc3f6ddf2c79811e9e69d",
+      "event_sha256": "d318b78543017f38ac57e19e20539d231c63da72003b7932095b8a63ec1c087a",
       "event_type": "finding_status",
-      "evidence_summary": "CL-22 governance/registry drift: the concrete historical finding was a current_state_last_session_id_disagreement flagged by schema_validator.py. bundles.jsonl seq 236 (2026-08-18T17:22:56Z read-only current-main schema_validator run) confirms that rule no longer fires in current output -- the specific drift F-95 identified is cleared. schema_validator.py and CURRENT_STATE_v1_0.md are both confirmed present on the current worktree. 42 other, unrelated frontmatter/session-log residuals remain (exit 3), but those are a separate, already-tracked governance-hygiene backlog item, not F-95's specific claim.",
+      "evidence_summary": "Re-ran platform/scripts/governance/schema_validator.py live against the current worktree just now; grepped its output for the specific rule the finding tracked (current_state_last_session_id_disagreement / CURRENT_STATE) -- zero hits, confirming that specific drift rule still does not fire in current output, consistent with the prior session's seq-236 finding. This is a fresh, independent re-run today, not a repeat of the earlier receipt.",
       "finding_id": "F-95",
-      "next_action": "none for F-95's specific claim; the remaining 42 residuals are tracked separately under ongoing governance hygiene, not this finding",
-      "prev_sha256": "8ad0e1ee4484a6e3c63f2913f9c03304d7dc864b648734148b179114ce405a06",
-      "seq": 585,
-      "source_batch": "triage_batch0.json",
-      "status": "LANDED",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "prev_sha256": "7fdd00a9a0d347133b194a2fb5a05ade0171e216ba9c6b1cc852f3ad347291de",
+      "seq": 720,
+      "source_batch": "proof_batch_i",
+      "status": "CONTROL_CLOSED",
+      "terminal_status": "CONTROL_CLOSED"
     },
     "F-96": {
       "confidence": "MEDIUM-HIGH",
@@ -2001,16 +2001,16 @@
     "F-98": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "de0c0de13a7cd27d31a5e2ec6f6360fe16799a1665e944014e9cd89dfd40e051",
+      "event_sha256": "12f5b6f219e556e1f4729d109159871909745c281010e6a3fc125ce8259c82eb",
       "event_type": "finding_status",
-      "evidence_summary": "Original claim: bo_pramana_mapa's trap1_authority_inversion_count/trap2_narration_leak_count are backed by real detectors (not a hardcoded 0), and three sibling gates correctly serve NULL rather than a fabricated True \u2014 a positive control confirming the \u00a7N.8 SATYA-D\u012aPA fix. Current source (platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py) confirms: line ~122 documents 'F-09 trap2_narration_leak_count \u2014 LITERAL 0 (no detector)' as the historical defect, count_narration_leaks() (line 368) is the real detector, and lines 682-688 wire its result into the served row. Matching test file present at platform/python-sidecar/tests/l2/test_n8_earned_signal_detectors.py.",
+      "evidence_summary": "Confirmed on origin/main: bo_pramana_mapa.py line ~122 documents the historical 'F-09 trap2_narration_leak_count -- LITERAL 0 (no detector)' defect, count_narration_leaks() (line 368) is a real detector, and lines 682-688 wire its live result into the served row (trap2_result computed at line 615). Test file platform/python-sidecar/tests/l2/test_n8_earned_signal_detectors.py present and confirmed ancestor of origin/main (via commit 0be71c5e6). Ran it live: `pytest platform/python-sidecar/tests/l2/test_n8_earned_signal_detectors.py` -- 14 passed, 11 skipped (DB-dependent tests skip without live",
       "finding_id": "F-98",
-      "next_action": "None \u2014 retain as closed. No further action.",
-      "prev_sha256": "3441ca2a4bad25c9c06bc1c411c8e02507c503563bbba55aeaaa4d94f291b6a5",
-      "seq": 593,
-      "source_batch": "triage_batch1.json",
-      "status": "LANDED",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "prev_sha256": "d318b78543017f38ac57e19e20539d231c63da72003b7932095b8a63ec1c087a",
+      "seq": 721,
+      "source_batch": "proof_batch_i",
+      "status": "CONTROL_CLOSED",
+      "terminal_status": "CONTROL_CLOSED"
     },
     "F-99": {
       "confidence": "HIGH",
@@ -2028,9 +2028,9 @@
     }
   },
   "findings_morning_ship_ready_count": 10,
-  "findings_terminal_count": 55,
-  "journal_head_seq": 707,
-  "journal_head_sha256": "4fc5599674066eee9482c7048da805e2e9e53008dda36143fdd04d28bd3d36bc",
+  "findings_terminal_count": 66,
+  "journal_head_seq": 721,
+  "journal_head_sha256": "12f5b6f219e556e1f4729d109159871909745c281010e6a3fc125ce8259c82eb",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
