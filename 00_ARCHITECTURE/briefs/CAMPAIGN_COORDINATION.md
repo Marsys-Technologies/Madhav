@@ -4682,3 +4682,72 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   **Continuing to G3-E (reader affordances, depends on G3-B — now merged)
   and G3-G (model qualification, depends on G3-F — now merged)** — both
   direct dependencies are satisfied. Dispatching next.
+
+- 2026-08-20 04:25Z — **PARIPRASHNA / Claude Code (conductor) — G3-E/G3-G
+  merge request, `pariprashna/p2-final` → `main`.** The last two lanes of
+  P2's epistemic-truth wave. Both builders reported real, well-grounded
+  work; both merged clean into a fresh conductor branch off latest `main`
+  (zero conflicts — disjoint files from each other and from everything
+  already merged) and passed full independent re-verification: `tsc
+  --noEmit` clean, full pariprashna suite **1949 passed, 0 failed**,
+  `drift_detector` 215/exit=3 (unchanged), `naming_lint`/
+  `check_earned_signal` both 0 new. No migration, no scope violation.
+
+  **G3-E (reader affordances, PPR-05):** "Read it another way"/"What would
+  change my mind" built as a dock-resident component (`dock/
+  InterpretationSetsSection.tsx`), following the exact disclosure pattern
+  `GroundingCard.tsx` already uses — genuinely never inline in the prose
+  (proven by a placement test asserting the prose renderer never contains
+  the content, the dock always does). Renders 4 honest states distinctly
+  (generated-with-candidates, waived-with-real-reason, receipt-level
+  unavailable, and a measured-but-empty edge case worded differently from
+  unavailable so a reader never conflates "didn't run" with "ran, found
+  nothing"). Grounding counts confirmed already satisfying PPR-05 from
+  prior work — no duplicate built. **Disclosed residual**: no live SSE
+  producer wires `interpretation_sets` onto the client yet — it's
+  assembled server-side at persistence time, after `turn.commit` already
+  streamed, so `TurnState.interpretationSets` stays honestly `null` until
+  a future lane adds the fetch path (outside this lane's declared scope,
+  same class of residual `readingDepthReceived` carried before its own
+  wire event existed).
+
+  **G3-G (model qualification, PPR-32):** maps G3-F's 12 query classes to
+  4 work classes (factual/interpretive/predictive/sensitive) with 2
+  explicitly excluded and reasoned (`ambiguous_clarification` — tests a
+  conversational reflex, not a capability; `door_parity` — infra parity,
+  can't produce a scoreable receipt yet). The qualification gate's most
+  important property, independently spot-checked by the conductor in the
+  actual merged code: an unmeasurable dimension (`falsifier_quality`/
+  `typed_confidence_honesty` — still §N.8 stubs in G3-F despite their
+  backing receipt fields now existing) is EXCLUDED from pass/fail, never
+  silently counted as passing — an all-null report never qualifies, tested
+  explicitly. Fallback substitution is same-tier-or-visibly-degraded,
+  never silent. Honestly disclosed as **mechanism-only**: no real model has
+  been run against the corpus in this environment (no live LLM calls in
+  this build context, same framing G3-F's own runner already carried), and
+  wiring the qualification registry into live model selection was
+  correctly left undone rather than wiring an always-empty registry into a
+  live gate that would either silently degrade every request or need a
+  bypass flag defeating its own point.
+
+  **Process note, independently verified before trusting it**: the G3-G
+  builder's own report disclosed a mid-task `git stash`/`git stash pop`
+  (banned repo-wide) used to diff against a clean state, which briefly
+  popped an unrelated shared stash entry into a conflict on this exact
+  coordination file before being immediately reverted. The conductor
+  independently confirmed via `git stash list` (both in the main checkout
+  and the agent's own worktree) that the shared stash still shows exactly
+  the same 7 pre-existing entries from other unrelated campaigns this
+  session has verified before (P1's G1-A hardening round hit the identical
+  class of incident) — nothing new added, nothing lost, and this file's
+  own diff against the merge base is empty (confirmed via `git diff
+  2c8c842ab..HEAD -- 00_ARCHITECTURE/`).
+
+  **This closes all 15 lanes of P2** (G2-A..H presentation-truth +
+  G3-A..G epistemic-truth). Once this PR merges and deploy-verifies, the
+  phase's own gate battery (§1.4 of the phased plan: a real reading on the
+  deployed route rendering a daśā table as a table, receipts audit-clean,
+  crash-kill-test, planted-contradiction surfaced, P1's safety assertions
+  re-run green) runs next, against the deployed artifact — not claimed
+  satisfied by any individual lane's merge. Opening the PR next; requesting
+  a merge-queue window.
