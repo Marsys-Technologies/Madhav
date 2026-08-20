@@ -71,6 +71,9 @@ beforeEach(() => {
     }
     // get_strength.ts's own multi-graha signRes lookup (fact_subject = ANY([...])).
     if (/fact_category = 'graha_position'/.test(sql)) return { rows: SIGN_ROWS }
+    // F-60 fix: the new dedicated COUNT(*) query (must be checked BEFORE the generic
+    // `FROM chart_facts` SELECT branch below, since it also matches that regex).
+    if (/SELECT COUNT\(\*\)/.test(sql)) return { rows: [{ total_count: makeRows().length }] }
     if (/FROM chart_facts/.test(sql)) return { rows: makeRows() }
     return { rows: [] }
   })
