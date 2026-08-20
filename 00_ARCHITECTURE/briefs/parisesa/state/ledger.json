@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 792,
+  "event_count": 795,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -2035,8 +2035,8 @@
   },
   "findings_morning_ship_ready_count": 21,
   "findings_terminal_count": 85,
-  "journal_head_seq": 792,
-  "journal_head_sha256": "fad0b4897df61d1b0d8c1a4bd991bd4283fce80370c589d919f22e58fdb57fb9",
+  "journal_head_seq": 795,
+  "journal_head_sha256": "498db516ac7144e65f2265a6bf40f67f1431bb5cfbb306c3401d0c3b4369c30b",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
@@ -2175,6 +2175,16 @@
       "prev_sha256": "788dfe335b0e4beada505f477172903fcdb867e43f0163b7d7ef27b1879dab19",
       "seq": 779,
       "status": "NATURAL_COMPLETION"
+    },
+    "Preflight-Hardening": {
+      "detail": "Both conditions from the closeout report's 'GO, conditionally' recommendation are now closed and proven: the watchdog cwd-scoping gap (patched to v5, Opus-5 reviewed, 8/8 test scenarios passed) and durable self-healing sleep prevention (built, proven against real production paths including a real kill-and-recover cycle, then cleanly reset). PREFLIGHT_HARDENING_ADDENDUM_20260820.md written, updating the go/no-go recommendation from 'GO, conditionally' to unconditional GO. The branch-protection gap (PF-001) and the tracker's lack of an enforced single-writer lock (PF-002's operational lesson) remain open, owner-decision items, unchanged and not addressed by this session either -- explicitly restated as non-blockers requiring explicit owner authorization. STOP.flag confirmed present throughout and left set at session end -- not cleared by this session. No finding-repair work performed; no merges/deploys/data-writes; no touch to the 21 open PRs' content; the live 'parisesa' production pane never received a keystroke this session (all testing used isolated harnesses or STOP.flag-gated safe fires).",
+      "event_sha256": "498db516ac7144e65f2265a6bf40f67f1431bb5cfbb306c3401d0c3b4369c30b",
+      "event_type": "phase_transition",
+      "phase": "Preflight-Hardening",
+      "prev_sha256": "929454d06da7ae04945751b116ad6e8b013341e7c18e8453ecfad68a98353793",
+      "seq": 795,
+      "session": "PARISESA-V4-PREFLIGHT-20260820T181515Z",
+      "status": "COMPLETE"
     }
   }
 }
