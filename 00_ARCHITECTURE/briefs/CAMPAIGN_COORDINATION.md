@@ -5663,3 +5663,32 @@ worktree `/private/tmp/pariprashna-dd17-supersede`, branch
 gemini-2.5-flash upgrade from PR #1396 stays as the interim state; no
 further tier change made pending the native's own call-site classification
 review (delivered separately, not committed to the register).
+
+## 2026-08-21 — PR #1397 merged: DD-16/DD-17/DD-19/DD-20 execution arc closed
+
+PR #1397 (`pariprashna/dd17-supersede-diagnostic`) merged to `main` at
+`2f4811092e7e276201d49be3f29bd1750c290ec5`. Closes out this execution arc:
+
+- **DD-16** — CLOSED (PR #1396). Additive outbox migration applied to
+  production, crash-kill/outbox recovery replay verified for real against
+  the live table. Flag stays off.
+- **DD-17** — SUPERSEDED (this PR). The interim `gemini-2.5-flash` tier
+  upgrade from PR #1396 did not change the outcome (post-deploy diagnostic:
+  still 3/3 waived, same failure mode). Real root cause found and recorded:
+  a structured-output schema-binding defect, not a model-capability gap —
+  the native's broader model-tier policy supersedes this entry's original
+  single-call-site ruling, and moving this call site to a stronger tier
+  alone would not have fixed it regardless.
+- **DD-19** — filed, OWNED — UNDATED (PR #1396). Missing per-call usage/cost
+  logging on the interpretation-sets call site.
+- **DD-20** — filed, OWNED — UNDATED (this PR). The schema-binding defect
+  itself — the real fix candidate, not attempted in this diagnostic pass.
+
+No model configuration changed. A separate 4-deliverable call-site
+classification report (deep-reasoning vs. light, preview-model fallback,
+200K pricing-cliff measurement, internal-LLM-work enumeration) was
+delivered directly to the native for review — not committed to this
+register, no model change made pending that review.
+
+Worktrees used this arc: `/private/tmp/pariprashna-dd16-dd17` (PR #1396),
+`/private/tmp/pariprashna-dd17-supersede` (PR #1397, this entry).
