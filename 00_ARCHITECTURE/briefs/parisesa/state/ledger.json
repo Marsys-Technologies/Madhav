@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 837,
+  "event_count": 838,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -688,20 +688,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-134": {
-      "branch": "parisesa/repair-F134-rebase",
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "b71e6efb9dce0482dfed10439c97a697e594df42bacb3c510e52bfa6c8db8f0b",
+      "disposition": "FIXED",
+      "event_sha256": "1f7a31cbf3cc349115ef87b9f4b4f468940c56f892b63a3c6d265cd415f7b35b",
       "event_type": "finding_status",
-      "evidence_summary": "fetchGocharaSweep ranked windows by overlap+intensity but never checked peak_date vs as_of_date, so already-peaked windows served identically to genuinely-future ones. Fix adds is_past_peak (honest null when unknown) + past_peak_window_count + a new info-severity judgment_flag, flag-in-place not filter-out (correctly justified against B.10/N.6). Independently re-verified a real correctness risk (Postgres DATE-as-string vs Date-object type coercion) rather than trusting the prior record -- confirmed closed via explicit setTypeParser registration. Clean rebase, 1/1 new test + 3/3 sibling regression + tsc clean (pre-existing unrelated errors confirmed identical on bare main).",
+      "evidence_summary": "PR #1384 merged (bff74613098b8f2f68896b66df668d1ff424809b): reading_checklist.ts's GocharaSweepWindow gains per-window is_past_peak (null when peak_date null) and GocharaSweepResult gains past_peak_window_count aggregate; register_d9_judgment.ts adds gochara_top_window_already_peaked judgment flag; register_d8_assess_domain.ts mirrors past_peak_window_count across all 4 assess_* tools; envelope.ts JUDGMENT_FLAG_CODES vocabulary + generated envelope regenerated post-rebase conflict on this field. GA-5 independent review + adversarial pre-merge review passed; string-typed date comparison soundness independently re-verified against client.ts's DATE type parser registration.",
       "finding_id": "F-134",
-      "next_action": "owner reviews and merges PR #1384 at morning checkpoint",
+      "next_action": "none - terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1384",
-      "prev_sha256": "d4ee39e1308a5b651c943ac93e4a463a4721dbfdf44235ce1ace88d7749cb224",
-      "seq": 706,
-      "source_batch": "rebase_f134",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "a15227b0b0988d96afe3fb952610977da3462d6f3972094b738a2bc284be0858",
+      "seq": 838,
+      "source_batch": "PARISESA-V4-GA5-MERGE-WAVE",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-135": {
       "confidence": "HIGH",
@@ -2021,10 +2020,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 7,
-  "findings_terminal_count": 106,
-  "journal_head_seq": 837,
-  "journal_head_sha256": "a15227b0b0988d96afe3fb952610977da3462d6f3972094b738a2bc284be0858",
+  "findings_morning_ship_ready_count": 6,
+  "findings_terminal_count": 107,
+  "journal_head_seq": 838,
+  "journal_head_sha256": "1f7a31cbf3cc349115ef87b9f4b4f468940c56f892b63a3c6d265cd415f7b35b",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
