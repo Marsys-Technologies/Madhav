@@ -40,14 +40,36 @@ import {
 import { computeReceiptHash } from './hash'
 
 /**
- * The one registered L5 Mīmāṃsā calibration-bearing retrieval capability's
- * `tool_name` as of this lane (`registry/layers/L5_mimamsa/query_calibration.ts`
- * — capability id `mi_pramana`, STUBBED per that layer's own index.ts
- * comment). A real, named, single-source-of-truth-in-this-file list rather
- * than a guessed pattern match — extend it here if a second L5 calibration
- * capability is registered later.
+ * Every registered L5 Mīmāṃsā capability whose handler actually reads
+ * `mimamsa_calibration` and returns calibration-shaped data — audited by
+ * grepping `mimamsa_calibration` / `calibration_summary` across the FULL
+ * `registry/layers/L5_mimamsa/` directory (2026-08-20, P2-I hardening), not
+ * a guessed pattern match:
+ *
+ *   - `query_calibration.ts` (`tool_name: 'query_calibration'`, capability
+ *     id `mi_pramana`, STUBBED per that layer's own index.ts comment) — the
+ *     calibration scorecard/reliability-curve surface; `FROM
+ *     mimamsa_calibration` directly.
+ *   - `query_insights.ts` (`tool_name: 'query_insights'`, capability id
+ *     `mi_darshana`) — the primary L5 insight-surface query. Alongside its
+ *     `mimamsa_insight_units` rows it ALSO directly queries
+ *     `mimamsa_calibration` (`calSql`) and returns the result as a
+ *     `calibration_summary` object in its response — a second, real,
+ *     already-registered calibration-bearing tool, missed by this list's
+ *     prior single-entry form.
+ *
+ * Every other capability in this layer carrying `archetype: 'calibration'`
+ * (query_predictions, query_signal_families, query_manifestation_grammar,
+ * query_attribution, query_mimamsa_discoveries, query_insight_embeddings,
+ * query_manifestation_sets, query_load_bearing, query_journal,
+ * query_life_events, query_mechanism_retrodiction, lel_intake_checklist,
+ * prediction_lifecycle_sweep) was checked and does NOT read
+ * `mimamsa_calibration` — `archetype: 'calibration'` is a broader
+ * tool-category tag on that field, not evidence of a calibration-table read;
+ * do not add a name here on that tag alone. Re-run the grep across the
+ * directory before trusting this list, the same way it was produced.
  */
-export const CALIBRATION_BEARING_TOOL_NAMES: readonly string[] = ['query_calibration']
+export const CALIBRATION_BEARING_TOOL_NAMES: readonly string[] = ['query_calibration', 'query_insights']
 
 /**
  * CLAUDE.md §E's own words about L5's current calibration state — a fixed,

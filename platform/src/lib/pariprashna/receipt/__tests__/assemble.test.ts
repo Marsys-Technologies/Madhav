@@ -10,7 +10,7 @@
  */
 import { describe, it, expect } from 'vitest'
 
-import { assembleAcharyaReadingReceipt, CALIBRATION_BEARING_TOOL_NAMES } from '../assemble'
+import { assembleAcharyaReadingReceipt, CALIBRATION_BEARING_TOOL_NAMES, CALIBRATION_CONSULTED_NOTE } from '../assemble'
 import type { AssembleAcharyaReadingReceiptArgs } from '../assemble'
 import { AcharyaReadingReceiptSchema } from '../schema'
 import type { OpenBlock, DetectedCitationRow } from '@/lib/pariprashna/pipeline/reading_parts'
@@ -254,6 +254,18 @@ describe('assembleAcharyaReadingReceipt — per-field real-source tracing', () =
     const receipt = assembleAcharyaReadingReceipt(baseArgs({ validToolResults: [toolBundle('query_calibration')] }))
     expect(receipt.calibration_disclosure.consulted).toBe(true)
     expect(receipt.calibration_disclosure.consulted_tool_names).toEqual(['query_calibration'])
+  })
+
+  it('defect 3 RED→GREEN: query_insights is also a registered L5 calibration-bearing tool (registry/layers/L5_mimamsa/query_insights.ts directly reads mimamsa_calibration and returns calibration_summary) — a turn where ONLY query_insights ran must not emit a false "nothing consulted" disclosure', () => {
+    // RED: the list used to name only query_calibration — a turn where
+    // query_insights (and not query_calibration) ran would have fallen
+    // through to the false "no calibration capability was consulted"
+    // structural-mode disclosure. GREEN: query_insights is now named.
+    expect(CALIBRATION_BEARING_TOOL_NAMES).toContain('query_insights')
+    const receipt = assembleAcharyaReadingReceipt(baseArgs({ validToolResults: [toolBundle('query_insights')] }))
+    expect(receipt.calibration_disclosure.consulted).toBe(true)
+    expect(receipt.calibration_disclosure.consulted_tool_names).toEqual(['query_insights'])
+    expect(receipt.calibration_disclosure.disclosure_note).toBe(CALIBRATION_CONSULTED_NOTE)
   })
 
   it('prose_binding traces to committedBlocks + a real sha256 of accumulatedText', () => {
