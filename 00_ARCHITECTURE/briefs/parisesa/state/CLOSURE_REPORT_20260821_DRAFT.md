@@ -170,9 +170,8 @@ catch the regression actually goes red).
 
 ## 4. Findings ledger: terminal/parked split
 
-*(numbers to be finalized once the merge queue drains — see live ledger.json for
-current count; was 85/142 terminal at session start per the closeout report, is
-climbing as each merged PR's corresponding finding is closed)*
+**102/142 terminal as of this writing** (was 85/142 at session start per the
+closeout report), still climbing as the remaining 6 queued PRs merge.
 
 New this session (beyond PR-driven closures): a real tracking gap was found and
 fixed — PR merges were not automatically propagating to the findings ledger's own
@@ -181,16 +180,43 @@ terminal count had drifted behind actual shipped work. Corrected by emitting an
 explicit `finding_status` closure event for every finding whose corresponding PR
 has actually merged (not just queued), citing the real merge commit SHA.
 
+**A self-inflicted error, found and corrected the same session.** Early in this
+process this session reclassified F-05/F-131/F-139/F-43/F-140 from
+DECISION_PARKED to EXTERNAL_HOLD, reasoning their original finding-claim text was
+unrecoverable — a search that only checked the two active worktrees
+(`parisesa-v4-conductor`, `parisesa-v4-state`). A broader filesystem search found
+the actual source corpus at `/Users/Dev/shad_overnight/par-night/state/codex/`
+(a prior campaign phase's plain data directory — not a git repo, static files,
+safe to read). Once found, four of the five (F-05, F-43, F-139, F-140) turned out
+to be **already fixed and deployed** on current `main` — verified each one live
+(a real DB query for F-05/F-140, direct code inspection for F-43/F-139), not just
+assumed from the corpus text alone — and closed SERVICE_CLOSED with the specific
+evidence. The fifth (F-131) was correctly diagnosed as genuinely unfixed (a
+complete label-glossary module exists but is never imported anywhere — the same
+"authored but never wired" pattern F-05 had before its own fix) and returned to
+DECISION_PARKED with a concrete implementation path recorded, rather than chased
+into a rushed fix under remaining time pressure. **F-79** (separately corrected,
+same broadened-search discipline) was also found already resolved — its cited
+audit-trail gap (a production-applied migration's SQL missing from the whole
+repo) had already been closed by a prior PR, hash-verified exact match.
+
+This error and its correction are recorded here deliberately, not smoothed over:
+the lesson is that "the source data is unrecoverable" is a strong claim that
+deserves a genuinely broad search before being relied on, not just a check of
+the two directories immediately at hand.
+
 Additional GA-2 decide-and-act closures beyond the PR queue:
 - **F-136**: reclassified DECISION_PARKED → NOT_APPLICABLE_CLOSED. A CONTROL
   finding (not a defect) — already-honest disclosed data-thinness for this chart,
   compliant with a real native adjudication ruling (PK-R-1), confirmed live that
   the disclosure mechanism is genuinely wired on main.
-- **F-05, F-131, F-139, F-43, F-140**: reclassified DECISION_PARKED → EXTERNAL_HOLD.
-  Bookkeeping corrections, not new judgment calls — each finding's own prior
-  `next_action` already stated the blocker was a missing external corpus this
-  worktree does not have; DECISION_PARKED had implied an open policy question
-  nobody was actually waiting to decide.
+- **F-05, F-43, F-139, F-140, F-79**: closed SERVICE_CLOSED — each independently
+  verified live/on-`main` as already fixed by prior work (see correction narrative
+  above for full evidence per finding).
+- **F-131**: corrected back to DECISION_PARKED (not EXTERNAL_HOLD) with a full
+  diagnostic trail and a concrete two-option implementation path (write-path glue
+  + data rebuild, or an immediate serve-time filter with no rebuild needed) —
+  genuinely substantial porting/wiring work, not attempted this session.
 - **F-15**: closed SERVICE_CLOSED once its gating PR (#1382) merged, per the
   finding's own stated gate condition.
 
@@ -204,7 +230,7 @@ Additional GA-2 decide-and-act closures beyond the PR queue:
   decisions, not for substituting this session's judgment on questions a prior
   session already identified as requiring the specific human owner's input.
 - **Substantial new design+build items** (F-35, F-57, F-61, F-94, F-107, F-110,
-  F-113, F-114, F-118, F-126, F-52): each requires authoring a genuinely new
+  F-113, F-114, F-118, F-126, F-52, F-131): each requires authoring a genuinely new
   contract/design from scratch, independent review, then implementation — not
   reviewing an existing PR. Given real remaining session time and this campaign's
   own Acharya-grade quality bar, attempting all of these fresh tonight would trade
@@ -220,9 +246,6 @@ Additional GA-2 decide-and-act closures beyond the PR queue:
   production chart data for the native's own real chart deserves a dedicated,
   unhurried session with a properly authored packet, not being executed under a
   07:00 deadline alongside a dozen other things. Left parked deliberately.
-- **F-79**: investigation of 2 unresolved commit references, not attempted — lower
-  priority than the PR queue and finding-ledger sync work actually completed;
-  genuinely tractable as a quick follow-up.
 - **F-48, F-109 (partially)**: F-48 blocked on missing implementation elsewhere;
   F-109's citation-mislabel sub-finding was fully diagnosed (misattributed to F-65)
   but the substantive item (an independent 21-question qualitative re-grade) is a
