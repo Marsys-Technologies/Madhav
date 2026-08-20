@@ -83,6 +83,7 @@ import {
   recordSynthesisTurnObservation,
   type SynthesisObservationIdentity,
 } from '@/lib/pariprashna/observability/synthesis_observation'
+import { PARIPRASHNA_CITATION_APPENDIX } from '@/lib/synthesis/prompts/pariprashna_synthesis_prompt_v1'
 
 import { halt, proceed, resolveActivityLabel, type StageResult, type TurnParams } from './stage_context'
 import { PASS_ONE } from './evidence_stage'
@@ -306,6 +307,27 @@ export async function assembleSynthesisContext(args: {
   systemContentWithSummary = [systemContentWithSummary, NARRATION_NO_SOURCING_FILLER_CLAUSE]
     .filter(Boolean)
     .join('\n\n---\n\n')
+
+  // ── CITATION SENTINEL SYNTAX (item 2, P2-close pre-close audit; root of
+  // lanes B/K). `PARIPRASHNA_CITATION_APPENDIX` (pariprashna_synthesis_prompt_
+  // v1.ts) has taught the model the ⟦cite: …⟧ sentinel format since it was
+  // written — but `pariprashnaSynthesisPrompt`, the function that appends it,
+  // was never the function this stage actually calls (`buildConsultSystemContent`
+  // is, the shared consult-route builder, which has no citation-appendix
+  // concept at all). The receiving pipeline (`CitationStreamRewriter`,
+  // `TurnCitationStream`, the `citation.define` wire emission a few dozen
+  // lines below in THIS function) has been correct and wired the whole time;
+  // the model was simply never taught the syntax it exists to resolve.
+  // Same additive-splice position/convention as the clause above. Gated on
+  // the SAME flag `citationRewriteEnabled` reads below — the appendix must
+  // never reach the model when the rewriter that redacts/resolves its
+  // sentinels is off, or a raw ⟦cite: …⟧ token would leak into the reader's
+  // prose unredacted.
+  if (isFirstPaintCitationsEnabled()) {
+    systemContentWithSummary = [systemContentWithSummary, PARIPRASHNA_CITATION_APPENDIX]
+      .filter(Boolean)
+      .join('\n\n---\n\n')
+  }
 
   // ── INJECTION CONTAINMENT: the clause that makes the tags mean something. ──
   // Appended AFTER the evidence and the summary splice and BEFORE the safety
