@@ -4406,3 +4406,95 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   audit-clean, etc.) still runs at P2's actual phase close, against the
   deployed artifact, per §1.4 of the phased plan — not claimed satisfied
   here.
+
+- 2026-08-20 01:50Z — **PARIPRASHNA / Claude Code (conductor) — P2-I
+  receipt emission (G3-A, PPR-01) merge request, `pariprashna/p2-epistemic`
+  → `main`.** First lane of the epistemic-truth wave — gating for
+  G3-B/C/D/E/F/G. Given the entire point of this lane is implementing
+  CLAUDE.md §N.7/§N.8 for a new receipt system, applied proportional
+  scrutiny before merging: 1 independent verifier + 1 independent adversary
+  (both re-deriving from actual code/actual test runs, not the builder's
+  summary), then a targeted fix round, then the conductor's own independent
+  re-verification — the same rigor P1's G1-A safety gate received, for the
+  same reason (a claim about honesty is exactly the kind of claim worth
+  checking harder on).
+
+  **What the builder claimed**: an `AcharyaReadingReceipt` v1 (11 fields:
+  coverage, facts_consumed, derivation_chains, cross_domain,
+  evidence_grades, honest_gaps, safety_decision, calibration_disclosure,
+  prose_binding, provenance, receipt_hash), each traced to a real existing
+  pipeline source (never invented), a validator enforcing "every field
+  earned or null," persisted additively into `conversation_messages.
+  metadata_json` (no migration needed), flag-gated
+  (`PARIPRASHNA_RECEIPT_EMISSION_ENABLED`, default false).
+
+  **What the verifier found** (independently re-traced all 11 fields to
+  their real source, ran the validator's own red-case tests, then
+  constructed 3 more of its own): 9 of 11 fields SOURCE-CONFIRMED clean.
+  Two real, non-cosmetic defects: (1) `derivation_chains` silently emptied
+  for every block whenever the G2-B citation-rewriter flag was on — the
+  builder's `buildDerivationChains` re-scanned already-resolved block text
+  with the raw regex instead of using the same G2-B-aware source
+  `buildFactsConsumed` correctly used. (2) `calibration_disclosure`'s "one
+  registered L5 calibration tool" claim was false — `query_insights` also
+  reads the calibration table and was missing from the list, meaning a
+  turn that consulted calibration data via that tool would get a fabricated
+  "no calibration capability consulted" disclosure. Plus a lower-severity
+  residual (evidence_grades re-implements rather than calls the existing
+  `buildGroundingSummary()` — correct today, a real duplication) and an
+  honestly-disclosed validator scope limit (no cross-field coverage between
+  derivation_chains/facts_consumed/prose_binding — a legitimate design
+  choice per the module's own docstring, not a defect).
+
+  **What the adversary found** (tried 6 concrete attack angles, actually
+  executing code against each, defaulting to REFUTED under uncertainty):
+  the WRITE path (assemble → validate → persist) survived every attack —
+  no cross-turn contamination, no unavailable-collapsing-to-fake-zero,
+  facts_consumed/derivation_chains genuinely by-reference (§N.5), flag-off
+  path runs zero receipt-specific computation. But found something more
+  severe than the verifier's two items: the READ path
+  (`getLastTurnReceipt`/`getTurnReceiptByMessageId`) only ran Zod
+  `safeParse` (shape check) on rows read back from the DB, never the
+  coherence validator the write path already enforced — empirically
+  demonstrated a hash-mismatched receipt AND a receipt with an internally
+  incoherent `coverage` object both sailing through `safeParse` cleanly.
+  `store.ts`'s own docstring claimed *"cannot masquerade as a valid
+  receipt"* — false for the code as written, confirmed by actually running
+  the construction, not by reading the claim and taking it at its word.
+
+  **Fix round** (one targeted pass, explicitly scoped to only these 3
+  items, instructed NOT to touch anything either reviewer had cleared):
+  wired `validateAcharyaReadingReceipt` into both read functions
+  (mirroring the write path's own discipline, corrected the docstring to
+  match what the code now actually does); fixed `buildDerivationChains` to
+  filter resolved citations by the block's own real `[n]` markers instead
+  of re-scanning; audited the FULL `L5_mimamsa` registry layer (not just
+  patched in `query_insights` and stopped) — confirmed exactly 2 of 15
+  tools in that layer read the calibration table, both now listed. Deleted
+  an undisclosed, unwired, incomplete-field-coverage `ReceiptAuditPanel.tsx`
+  the original builder had added outside its own reported scope. Each of
+  the 3 fixes carries a real red→green test (the exact construction that
+  used to slip through, now caught; the exact flag-on case that used to
+  silently empty out, now populated) — verified by the fix-round agent, and
+  independently re-run by the conductor: full `npx tsc --noEmit` clean,
+  full pariprashna suite **1712 passed, 0 failed**, golden-stream harness
+  56/56 standalone (flag-off byte-identity intact), `drift_detector`
+  215/exit=3 (down 1 from the P2-presentation-wave baseline — a docs fix
+  landed via #1361, unrelated to this lane), `naming_lint`/
+  `check_earned_signal` both 0 new violations. No migration, no
+  governance-registry file, no scope violation (only
+  `lib/pariprashna/receipt/**` new + the same 4 pipeline/route files the
+  original builder's disclosed deviation already touched).
+
+  **Residuals carried forward, not fixed, explicitly not blocking**:
+  `evidence_grades`'s parallel-but-matching-today grade tally (should call
+  `buildGroundingSummary()` instead of re-implementing); the validator's
+  disclosed lack of cross-field coherence checking (a legitimate scope
+  limit, not silently claimed as complete); `hash.ts`'s `canonicalize()`
+  has no special case for `Date`/`Map`/`Set` values (not reachable through
+  the current schema — every date field is pre-stringified before hashing
+  — but latent if a future field adds one directly).
+
+  Opening the PR next; requesting a merge-queue window. Will continue to
+  G3-B/C/D/E (pipelined behind this lane per the plan's own `A → I →
+  {J,K,L,M}` rule) once this merges and deploy-verifies.
