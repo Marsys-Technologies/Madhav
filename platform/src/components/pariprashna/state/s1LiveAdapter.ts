@@ -49,16 +49,10 @@
  *     event is dropped (returns []).
  */
 
-import type {
-  Citation,
-  ClassifiedError,
-  ClassifiedErrorKind,
-  Grade,
-  GroundingSummary,
-  WireEvent,
-} from './types'
+import type { Citation, Grade, GroundingSummary, WireEvent } from './types'
 import type { PariprashnaEvent } from '@/lib/pariprashna/protocol/events'
 import { RETRIEVAL_FACET_NAMES, type RetrievalFacetKey } from '@/lib/pariprashna/lexicon'
+import { classifyPariprashnaError } from '@/lib/pariprashna/errors/classify'
 import { emptyGradeTally, rollUpGradeSummaryLabel, tallyGrade } from './groundingRollup'
 
 /** S-3 citation grade enum → C-1 reader Grade. */
@@ -108,35 +102,6 @@ function resolveActivityLabel(labelKey: string): string {
   const facet2 = RETRIEVAL_FACET_NAMES[bare as RetrievalFacetKey]
   if (facet2) return `Retrieved — ${facet2}`
   return 'Consulting the chart'
-}
-
-/** Classify an in-stream error code into C-1's ClassifiedError bands. */
-function classifyError(code: string, message: string): ClassifiedError {
-  const c = code.toLowerCase()
-  let kind: ClassifiedErrorKind = 'unknown'
-  if (c.includes('rate') || c.includes('429')) kind = 'rate_limit'
-  else if (c.includes('overload') || c.includes('capacity') || c.includes('503')) kind = 'model_overload'
-  else if (c.includes('timeout') || c.includes('deadline')) kind = 'timeout'
-  else if (c.includes('network') || c.includes('fetch') || c.includes('econn')) kind = 'network'
-  else if (c.includes('auth') || c.includes('401') || c.includes('403')) kind = 'auth'
-  const bandLabel =
-    kind === 'rate_limit'
-      ? 'The model is busy — retrying'
-      : kind === 'model_overload'
-        ? 'The model is busy — retrying'
-        : kind === 'timeout'
-          ? 'Taking longer than usual…'
-          : kind === 'network'
-            ? 'Reconnecting…'
-            : kind === 'auth'
-              ? 'Please sign in again'
-              : 'Something went wrong'
-  return {
-    kind,
-    bandLabel,
-    sentence: message || bandLabel,
-    actions: kind === 'auth' ? ['settings'] : kind === 'model_overload' ? ['switch_model', 'retry'] : ['retry'],
-  }
 }
 
 export interface S1LiveAdapter {
@@ -301,7 +266,12 @@ export function makeS1LiveAdapter(
         return [{ type: 'turn.close', turnId, eventId }]
 
       case 'error':
-        return [{ type: 'error', turnId, error: classifyError(ev.code, ev.message), eventId }]
+        // Canonical §7.5 classifier (P2-G) — this in-stream `error` event is,
+        // by construction, terminal (the reducer marks the turn `errored`),
+        // so `networkExhausted` defaults true. The raw `ev.message` is
+        // deliberately NOT forwarded into the reader-facing sentence (§7.5:
+        // never a raw provider error string) — it stays server/log-side only.
+        return [{ type: 'error', turnId, error: classifyPariprashnaError(ev.code), eventId }]
 
       case 'snapshot.apply': {
         // PB-2/M-5: the reconnect path's gap-fallback. Citations arrive as a

@@ -1,0 +1,95 @@
+#!/bin/sh
+# Item 2a, the tier that actually closes the loop: T1-T4 keep the OBSERVER alive. This is
+# the SUBJECT checking the observer -- the only tier guaranteed to be running at the moment
+# it matters, because the conductor is, by construction, active whenever a lane transition
+# is happening. The 2026-08-19 23m37s blind window would have been caught in seconds by
+# this, called at any lane transition during it.
+#
+# Contract: exit 0 = observatory healthy, safe to proceed. exit 1 = NOT healthy, halt --
+# with a one-line diagnosis naming which of five conditions failed:
+#   heartbeat stale, jobs unloaded, refs lagging, selftest failing, unacknowledged blind window.
+# Callable in under a second (a few small JSON reads + one launchctl list, no network, no
+# git). Must NOT acquire the label_ops.lock -- this script only reads state, never moves a
+# label, and a conductor calling this at every lane transition must never be made to wait
+# behind an install.sh or tracker-stop/tracker-start holding that lock.
+set -eu
+
+LABEL_PREFIX="${LABEL_PREFIX:-com.marsys.pariprashna}"
+RUNTIME_DIR="${HOME}/.pariprashna-tracker"
+
+LC_OUT="$(launchctl list 2>/dev/null | grep "${LABEL_PREFIX}" || true)"
+
+TRACKER_HC_RUNTIME_DIR="${RUNTIME_DIR}" TRACKER_HC_LABEL_PREFIX="${LABEL_PREFIX}" TRACKER_HC_LC_OUT="${LC_OUT}" python3 -c "
+import datetime, json, os, sys
+
+runtime_dir = os.environ['TRACKER_HC_RUNTIME_DIR']
+label_prefix = os.environ['TRACKER_HC_LABEL_PREFIX']
+lc_out = os.environ['TRACKER_HC_LC_OUT']
+
+def fail(msg):
+    print(f'OBSERVATORY UNHEALTHY: {msg}')
+    sys.exit(1)
+
+# 1. jobs loaded -- three labels expected in launchctl's own listing.
+expected = {f'{label_prefix}-trackerd', f'{label_prefix}-watchdog', f'{label_prefix}-serve'}
+present = {line.split()[-1] for line in lc_out.splitlines() if line.strip()}
+missing = sorted(expected - present)
+if missing:
+    fail(f'jobs unloaded: {missing}')
+
+# 2. heartbeat readable and fresh.
+hb_path = os.path.join(runtime_dir, 'heartbeat.json')
+try:
+    with open(hb_path, encoding='utf-8') as f:
+        hb = json.load(f)
+    t = datetime.datetime.strptime(hb['ts'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=datetime.timezone.utc)
+    age = (datetime.datetime.now(datetime.timezone.utc) - t).total_seconds()
+except Exception as e:
+    fail(f'heartbeat unreadable ({e})')
+if age > 180:
+    fail(f'heartbeat stale: {age:.0f}s old (>180s)')
+
+# 3. selftest passing (as of the last time it ran -- carried in heartbeat.json).
+selftest_last = hb.get('selftest_last')
+if selftest_last is not None and not selftest_last.get('all_passed'):
+    failed_names = [t['name'] for t in selftest_last.get('tests', []) if not t.get('passed')]
+    fail(f'selftest failing: {failed_names[:3]}')
+
+# 4. ref freshness -- from state.json (folded by project.py from the same mirror_fetch
+# signal the header pill reads). Same 180s bar as heartbeat staleness, for the same
+# severity: a live daemon reasoning from stale refs is not meaningfully safer than a dead
+# daemon.
+state_path = os.path.join(runtime_dir, 'state.json')
+try:
+    with open(state_path, encoding='utf-8') as f:
+        state = json.load(f)
+    rf = state.get('ref_freshness') or {}
+    last_success = rf.get('last_success_ts')
+    if last_success:
+        rt = datetime.datetime.strptime(last_success, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=datetime.timezone.utc)
+        ref_age = (datetime.datetime.now(datetime.timezone.utc) - rt).total_seconds()
+        if ref_age > 180:
+            fail(f'refs lagging: {ref_age:.0f}s since last successful mirror fetch (>180s)')
+    else:
+        fail('refs lagging: mirror has never fetched successfully')
+except FileNotFoundError:
+    pass  # state.json not written yet on a very fresh install -- not itself a health failure
+except (json.JSONDecodeError, KeyError, ValueError) as e:
+    fail(f'refs lagging: state.json unreadable ({e})')
+
+# 5. no unacknowledged blind window -- a restart must never launder an outage into green;
+# this is the check that makes that promise mean something to a caller, not just a banner.
+blind_path = os.path.join(runtime_dir, 'BLIND_WINDOW.json')
+if os.path.exists(blind_path):
+    try:
+        with open(blind_path, encoding='utf-8') as f:
+            bw = json.load(f)
+        if not bw.get('acknowledged'):
+            fail(f\"unacknowledged blind window: {bw.get('duration_s', 0):.0f}s \"
+                 f\"({bw.get('gap_start_ts')} -> {bw.get('gap_end_ts')})\")
+    except (json.JSONDecodeError, OSError) as e:
+        fail(f'blind window record unreadable ({e})')
+
+print(f'OBSERVATORY HEALTHY: heartbeat {age:.0f}s old, jobs loaded, selftest pass, refs fresh, no unacknowledged blind window')
+sys.exit(0)
+"

@@ -51,6 +51,9 @@ about leases and shared surfaces is load-bearing, not ceremony.
    (**§7 rules X-1..X-7 BIND you**), `PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`
    (RF fixes, DD-1..DD-11, train protocol, scaling, tracker spec, P0 definition),
    `PARIPRASHNA_PHASED_SWARM_IMPLEMENTATION_PLAN_v1_0.md`, `PARIPRASHNA_IMPLEMENTATION_ROADMAP_v1_0.md`
+   (**lane count (item 3, 2026-08-20): expanded to 53 during P0, tracked live in
+   `tracker/PLAN.yaml` — `PLAN.yaml` is normative for lane count/identity/dependency
+   edges, this roadmap is normative for intent/PPR mapping; not a renumbering**)
 
 ## AUTHORITY & AUTONOMY
 

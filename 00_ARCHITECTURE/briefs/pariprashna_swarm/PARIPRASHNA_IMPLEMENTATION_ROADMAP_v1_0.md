@@ -33,6 +33,19 @@ schema work · L = a lane that needs its own brief and probably sub-lanes. No
 calendar estimates: this project is phase-indexed, not time-indexed
 (MACRO_PLAN §3.8.A).
 
+**Lane count (added 2026-08-20, item 3, PARIPRASHNA-CLOSEOUT session).** This
+document and the kickoff prompt both cite the original ~30-lane estimate below.
+Lane decomposition expanded to **53 lanes** during P0, as tracked live in
+`00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/PLAN.yaml`
+(P0(6)+P1(10)+P2(15)+P3(6)+P4(11)+P5(5)) — not a renumbering of this document,
+a finer decomposition of the same gates as P0 execution surfaced real sub-lane
+boundaries the estimate hadn't. Renumbering nothing here. Division of
+authority going forward: **`PLAN.yaml` is normative for lane count, identity,
+and dependency edges** (it is what the observatory derives live state
+against); **this roadmap is normative for intent and PPR mapping** (what each
+gate proves and which requirement each lane closes). Read both; they answer
+different questions.
+
 **Reading the dependency column.** "blocks" = do not start the named lane
 until this one lands. Lanes with no blocker in the same gate are
 parallel-dispatchable.
