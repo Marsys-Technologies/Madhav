@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 760,
+  "event_count": 762,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1674,18 +1674,18 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-75": {
-      "confidence": "MEDIUM",
-      "disposition": "UNKNOWN",
-      "event_sha256": "5c0877c9f681ecfd9d238b0a5db18691f7ccf947e8b5c6f86b70b411ce23a8dd",
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "cee9f1c8ba4aaed13b5b648a2b2f9048e1224117443f8b144444afc026f805ff",
       "event_type": "finding_status",
-      "evidence_summary": "DB connection confirmed working, but this specific control (decade-seam contiguity) timed out twice (2min, then 5min) rather than erroring -- likely a slow query against the db-g1-small tier instance, possibly compounded by concurrent load from a live EKAVAKYATA SENTINEL process discovered also connected to the same DB port (see process_flag PF-003 below).",
+      "evidence_summary": "Live read-only DB query succeeded on retry (earlier attempts timed out, likely due to concurrent EKAVAKYATA SENTINEL DB load -- see PF-003): OK, 0 segment gaps (contiguous) -- decade-seam contiguity confirmed on live data.",
       "finding_id": "F-75",
-      "next_action": "retry with a longer timeout during a quieter DB window, or ask the EKV SENTINEL process's owner about concurrent load",
-      "prev_sha256": "b1f920b8a10f7f2ec6cdd2aa61cca02a971377d1f5b158140f1dba6ad7893dac",
-      "seq": 669,
-      "source_batch": "db_verification_batch",
-      "status": "DECISION_PARKED",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "prev_sha256": "1dbfe0ed419cd8199963fd351e464a69855a7a45ca49f9c164956386a88d62e9",
+      "seq": 761,
+      "source_batch": "db_verification_retry",
+      "status": "CONTROL_CLOSED",
+      "terminal_status": "CONTROL_CLOSED"
     },
     "F-75-batch": {
       "confidence": "HIGH",
@@ -1816,18 +1816,18 @@
       "terminal_status": "CONTROL_CLOSED"
     },
     "F-84": {
-      "confidence": "MEDIUM",
-      "disposition": "UNKNOWN",
-      "event_sha256": "7578acaafcc4657b18e8732b40072a5005250d9690be74bf6d702168d862697d",
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "f4a701eb2dbb335e36cc231c8f3e2763b6cdb3fe5effcaa2bfa84e58a7546e06",
       "event_type": "finding_status",
-      "evidence_summary": "Same timeout pattern as F-75 -- DB connection works, this specific query (duplicate/orphan check) did not complete in 5 minutes.",
+      "evidence_summary": "Live read-only DB query succeeded on retry: OK, 0 duplicate (event_class, segment_index) rows -- no duplicate natural-key rows confirmed on live data.",
       "finding_id": "F-84",
-      "next_action": "retry with a longer timeout during a quieter DB window",
-      "prev_sha256": "5c0877c9f681ecfd9d238b0a5db18691f7ccf947e8b5c6f86b70b411ce23a8dd",
-      "seq": 670,
-      "source_batch": "db_verification_batch",
-      "status": "DECISION_PARKED",
-      "terminal_status": null
+      "next_action": "none, terminal",
+      "prev_sha256": "cee9f1c8ba4aaed13b5b648a2b2f9048e1224117443f8b144444afc026f805ff",
+      "seq": 762,
+      "source_batch": "db_verification_retry",
+      "status": "CONTROL_CLOSED",
+      "terminal_status": "CONTROL_CLOSED"
     },
     "F-85": {
       "confidence": "HIGH",
@@ -2043,9 +2043,9 @@
     }
   },
   "findings_morning_ship_ready_count": 18,
-  "findings_terminal_count": 77,
-  "journal_head_seq": 760,
-  "journal_head_sha256": "1dbfe0ed419cd8199963fd351e464a69855a7a45ca49f9c164956386a88d62e9",
+  "findings_terminal_count": 79,
+  "journal_head_seq": 762,
+  "journal_head_sha256": "f4a701eb2dbb335e36cc231c8f3e2763b6cdb3fe5effcaa2bfa84e58a7546e06",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
