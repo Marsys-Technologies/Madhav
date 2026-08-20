@@ -1727,3 +1727,30 @@ SESSION-OPEN: Δ1 R40 2026-08-14T22:43Z — sole conductor (pid=41320 new, pid=3
   813 files / 9332 tests pass, 0 failures pre-merge; ESLint clean; `tsc` 0
   errors. Requesting a short merge-queue window; after merge, rebuild +
   canary-deploy per above, then live verification per this session's brief.
+
+- 2026-08-20 ~10:35Z — **PARIPRASHNA-GOLIVE-CLOSEOUT / Claude Code — merge
+  window requested (docs-only close-out, two items):** go-live closed live
+  in production this session (#1372 merged `7d2e69af1`, canary deploy
+  `amjis-web-01548-29x` @ 100%, all five Step 5 verifications PASS —
+  live SSE confirmed on both a synthetic and the real chart, unauthenticated
+  denial confirmed, safety-gate hard-stop confirmed live via a sanitized
+  fixture-suite phrase, `_ROLE_SEPARATION`/`_LIMITS_ENABLED`/
+  `_DURABLE_PERSISTENCE_ENABLED` all reconfirmed off post-deploy). Two
+  close-out items land here: (1) DD-13's deadline ruled by the native —
+  2026-09-03 or the next phase-close boundary, whichever comes first, with a
+  binary condition (both residuals closed, or the streaming-buffer-vs-
+  first-paint-citation tension explicitly resolved with a stated reason, or
+  DD-13 re-ruled openly — never silently re-dated again); (2) cross-tenant
+  denial on `/pariprashna`, previously flagged as code-verified-only, now
+  live-verified using the existing `probe-service-account` QA identity
+  (documented in `R5_RUN_LEDGER_v1_0.md`, no `profiles` row, already present
+  in `chart_grants`) — no new production account created. Positive control
+  (a chart it IS granted on) → `200`; two charts it holds no grant on →
+  both `307` to `/dashboard`, matching `resolveChartPageAccess`'s documented
+  `deny` behavior. Minted session cookie deleted after the test; no
+  credential persisted. Scope: `PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`
+  (DD-13 row + a result note) and `CAPABILITY_MANIFEST.json` (fingerprint
+  rotation for the same file) only — no `platform/**`, no migration, no
+  deploy. Disjoint from the live P2 conductor and PARIŚEṢA-RĀTRI-V4, same as
+  the prior entry. This closes the PARIPRASHNA-GOLIVE task per the native's
+  explicit close-out instruction — no further action expected after merge.
