@@ -4,16 +4,19 @@ import { useEffect, useRef } from 'react'
 import type { TurnState } from '../state/types'
 import { GroundingCard } from './GroundingCard'
 import { PredictionCard } from './PredictionCard'
+import { InterpretationSetsSection } from './InterpretationSetsSection'
 import { useDockController } from './DockController'
 
 /**
  * The collapsible right panel (§3.2, §5.8.0 ruling 2). Carries the
- * grounding ledger and the prediction-card placeholder — NOT inline in the
- * conversation column. Chips deep-link here (`⟦n⟧` → `openToCitation`);
- * clicking one opens the dock (if collapsed) and highlights + scrolls to
- * that row. No provenance anywhere — not the header, not this dock's
- * footer (§5.8.0 ruling 8c): the note at the bottom is a plain-language
- * caption, never a build id or priors dump.
+ * grounding ledger, the prediction-card placeholder, and — lane G3-E
+ * (PPR-05) — the "Read it another way" / "What would change my mind"
+ * interpretation-set affordances (`InterpretationSetsSection.tsx`). NONE of
+ * this lives inline in the conversation column. Chips deep-link here
+ * (`⟦n⟧` → `openToCitation`); clicking one opens the dock (if collapsed) and
+ * highlights + scrolls to that row. No provenance anywhere — not the
+ * header, not this dock's footer (§5.8.0 ruling 8c): the note at the bottom
+ * is a plain-language caption, never a build id or priors dump.
  */
 export function RightDock({ turns }: { turns: TurnState[] }) {
   const { open, setOpen, activeCitation } = useDockController()
@@ -26,11 +29,14 @@ export function RightDock({ turns }: { turns: TurnState[] }) {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [activeCitation])
 
-  const turnsWithGrounding = turns.filter((t) => Object.keys(t.citations).length > 0 || t.blocks.some((b) => b.kind === 'prediction_card'))
+  const turnsWithGrounding = turns.filter(
+    (t) => Object.keys(t.citations).length > 0 || t.blocks.some((b) => b.kind === 'prediction_card') || t.interpretationSets !== null,
+  )
   const orderedTurns = [...turnsWithGrounding].reverse()
 
   return (
     <div
+      data-testid="pp-right-dock"
       className="flex-none flex flex-col overflow-hidden rounded-[14px] transition-[width]"
       style={{
         width: open ? 312 : 46,
@@ -106,6 +112,7 @@ export function RightDock({ turns }: { turns: TurnState[] }) {
                       ))}
                     </>
                   )}
+                  {turn.interpretationSets && <InterpretationSetsSection interpretationSets={turn.interpretationSets} />}
                 </div>
               </div>
             )
