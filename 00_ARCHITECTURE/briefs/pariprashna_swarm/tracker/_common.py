@@ -136,7 +136,15 @@ def load_plan():
 
 
 def atomic_write_json(path, obj):
-    tmp = path + ".tmp"
+    # Tmp filename includes this process's own pid: two processes writing the SAME target
+    # path concurrently (which should never happen once acquire_pidfile()'s flock is
+    # correct, but did happen in production before that fix -- see the 2026-08-20
+    # duplicate-trackerd incident) must never race on ONE shared tmp path, where the loser's
+    # os.replace() would crash with FileNotFoundError because the winner already consumed
+    # it. Each process now always renames its OWN tmp file; os.replace() is independently
+    # atomic per call, so the only possible outcome is "last writer's content wins," never a
+    # crash.
+    tmp = f"{path}.{os.getpid()}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(obj, f, indent=2, sort_keys=True)
         f.write("\n")
@@ -144,7 +152,7 @@ def atomic_write_json(path, obj):
 
 
 def atomic_write_text(path, text):
-    tmp = path + ".tmp"
+    tmp = f"{path}.{os.getpid()}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         f.write(text)
     os.replace(tmp, path)

@@ -728,6 +728,85 @@ def test_rate_limit_reads_graphql_not_core():
                     ok, f"got={got!r}")
 
 
+def test_pidfile_flock_prevents_two_instances():
+    """2026-08-20 production incident: acquire_pidfile() used to be a plain
+    read-check-then-write with no real locking -- two processes starting close together
+    (as happened for real: launchd's own KeepAlive and a watchdog restart firing near-
+    simultaneously) could both see the recorded pid as dead and both proceed, giving two
+    live trackerd processes that raced every write to heartbeat.json/state.json (one of
+    them observed crashing outright: os.replace() on a shared tmp path whose file the
+    other process had already consumed and renamed away).
+
+    Honest scope: a TOCTOU race is inherently timing-dependent and not reliably
+    reproducible on demand (confirmed while writing this test -- deliberately reverting to
+    the old read-check-then-write code and running a sequential holder-then-challenger like
+    this one still passed, because sequential starts were never the bug; only two starts
+    landing in the same narrow window were). This test instead verifies the mechanism the
+    fix actually relies on, with two REAL, independent OS processes (not a fake in-process
+    simulation, which could pass by accident since flock() is per-open-file-description):
+    a first subprocess acquires the flock and stays alive (blocks on stdin) so the lock is
+    genuinely held by a separate process, and a second real subprocess attempting the same
+    acquisition must exit(1) immediately without ever reaching its own heartbeat write.
+    flock(LOCK_EX | LOCK_NB) being atomic at the kernel level -- the property that makes the
+    race structurally impossible, not just improbable -- is a documented OS guarantee, not
+    something this test derives from scratch."""
+    import subprocess
+    import tempfile
+    import time as time_mod
+    trackerd_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "trackerd.py")
+
+    with tempfile.TemporaryDirectory() as tmp:
+        fake_home = os.path.join(tmp, "fake_home")
+        runtime_dir = os.path.join(fake_home, ".pariprashna-tracker")
+        os.makedirs(os.path.join(runtime_dir, "events"))
+        os.makedirs(os.path.join(runtime_dir, "logs"))
+        env = dict(os.environ)
+        env["HOME"] = fake_home
+
+        holder_code = (
+            "import sys, os; sys.path.insert(0, %r); import trackerd; "
+            "trackerd.acquire_pidfile(); print('LOCKED', flush=True); sys.stdin.readline()"
+        ) % os.path.dirname(trackerd_path)
+        holder = subprocess.Popen(["python3", "-c", holder_code], env=env,
+                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, text=True)
+        try:
+            first_line = holder.stdout.readline().strip()
+            holder_locked = (first_line == "LOCKED")
+
+            challenger = subprocess.run(
+                ["python3", trackerd_path, "--once"], env=env,
+                capture_output=True, text=True, timeout=15,
+            )
+            challenger_rejected = (
+                challenger.returncode == 1
+                and "already running" in (challenger.stderr or "")
+            )
+            heartbeat_path = os.path.join(runtime_dir, "heartbeat.json")
+            challenger_never_wrote_heartbeat = not os.path.exists(heartbeat_path)
+        finally:
+            try:
+                holder.stdin.write("\n")
+                holder.stdin.close()
+            except (BrokenPipeError, OSError):
+                pass
+            try:
+                holder.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                holder.kill()
+
+        ok = holder_locked and challenger_rejected and challenger_never_wrote_heartbeat
+        return _result(
+            "acquire_pidfile() flock: a second concurrent daemon start is rejected, never "
+            "writes a heartbeat, while the first genuinely holds the lock",
+            ok,
+            f"holder_locked={holder_locked} challenger_rc={challenger.returncode} "
+            f"challenger_rejected={challenger_rejected} "
+            f"challenger_never_wrote_heartbeat={challenger_never_wrote_heartbeat} "
+            f"challenger_stderr={(challenger.stderr or '')[:200]!r}",
+        )
+
+
 def run_all():
     import time
     tests = [
@@ -751,6 +830,7 @@ def run_all():
         test_tracker_stop_start_marker_lifecycle(),
         test_lock_mutual_exclusion_cron_defers_during_install(),
         test_cron_watchdog_out_of_band_logic(),
+        test_pidfile_flock_prevents_two_instances(),
     ]
     all_passed = all(t["passed"] for t in tests)
     return {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "tests": tests, "all_passed": all_passed}

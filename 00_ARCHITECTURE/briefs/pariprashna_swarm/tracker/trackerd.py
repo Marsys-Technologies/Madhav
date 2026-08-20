@@ -5,6 +5,7 @@ Adaptive cadence: 20s while things are changing, backs off to 60s after 10 idle 
 snaps back to 20s the instant something changes. Stdlib only.
 """
 import datetime
+import fcntl
 import json
 import os
 import shutil
@@ -24,12 +25,12 @@ from tracker_emit import emit  # noqa: E402
 WRITER_ID = "trackerd"
 
 
-def _pid_alive(pid):
-    try:
-        os.kill(pid, 0)
-        return True
-    except (OSError, ProcessLookupError):
-        return False
+# Kept open (never closed) for the process's entire lifetime -- the flock it holds is what
+# actually enforces single-instance, so the file descriptor must outlive acquire_pidfile().
+# A module-level reference is required: without one, Python could garbage-collect the file
+# object and close the fd (silently releasing the lock) at any point after the function
+# returns.
+_pidfile_handle = None
 
 
 def deploy_static_dashboard():
@@ -45,18 +46,41 @@ def deploy_static_dashboard():
 
 
 def acquire_pidfile():
+    """Single-instance enforcement via an exclusive, non-blocking flock() held on the
+    pidfile for this process's entire lifetime -- NOT the read-check-then-write this used
+    to be. That older version had a real, exploitable race: two processes starting within
+    the same instant could both read the pidfile, both see the recorded pid as dead (or the
+    file absent), and both proceed to write their own pid -- neither one re-checks after
+    writing, so both keep running. This is exactly what happened in production on
+    2026-08-20 (two independent resurrection paths -- launchd KeepAlive and a watchdog
+    restart -- fired close together): two live trackerd processes, both writing
+    heartbeat.json/state.json every cycle, racing each other, one crashing outright when its
+    os.replace() target tmp file had already been consumed by the other (see
+    atomic_write_json's hardening in _common.py for the other half of that fix).
+    flock(LOCK_EX | LOCK_NB) is atomic at the kernel level: only one process can ever hold
+    it, the loser fails immediately (EAGAIN/EWOULDBLOCK -> OSError) with no window for a
+    race, and the OS releases the lock automatically on process exit -- including a bare
+    SIGKILL, so a dead process never leaves a stale lock behind (unlike the pidfile's
+    *contents*, which are just informational now, kept only for humans/other tooling to read
+    "who is it").
+    """
+    global _pidfile_handle
     ensure_runtime_dirs()
-    if os.path.exists(PIDFILE):
-        try:
-            with open(PIDFILE, encoding="utf-8") as f:
-                old_pid = int(f.read().strip())
-            if _pid_alive(old_pid) and old_pid != os.getpid():
-                print(f"trackerd already running as pid {old_pid}; exiting.", file=sys.stderr)
-                sys.exit(1)
-        except (ValueError, FileNotFoundError):
-            pass
-    with open(PIDFILE, "w", encoding="utf-8") as f:
-        f.write(str(os.getpid()))
+    f = open(PIDFILE, "a+")
+    try:
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        f.seek(0)
+        held_by = f.read().strip() or "unknown"
+        f.close()
+        print(f"trackerd already running (pidfile lock held, recorded pid: {held_by}); exiting.",
+              file=sys.stderr)
+        sys.exit(1)
+    f.seek(0)
+    f.truncate()
+    f.write(str(os.getpid()))
+    f.flush()
+    _pidfile_handle = f  # must stay open (and thus locked) for the rest of this process's life
 
 
 def check_blind_window():
