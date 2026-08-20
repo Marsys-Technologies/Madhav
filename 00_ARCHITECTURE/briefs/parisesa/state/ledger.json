@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 800,
+  "event_count": 802,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -2035,8 +2035,8 @@
   },
   "findings_morning_ship_ready_count": 21,
   "findings_terminal_count": 85,
-  "journal_head_seq": 800,
-  "journal_head_sha256": "87feb0acbb3338709af413e859a21c83033862f9d05899f1eed8864ed1c69070",
+  "journal_head_seq": 802,
+  "journal_head_sha256": "92e96fd86aaa34474397ab903a05cf8c996e0b7d67598b84533321bee5bfa984",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
