@@ -107,7 +107,14 @@ resolve (unresolved tool name), returned zero rows (a genuine empty result,
 not necessarily an error), or were withheld (NO-LEAKAGE policy). Do not
 fabricate content to fill these gaps — acknowledge the gap honestly in your
 reading if it is material to the question, exactly as you would disclose any
-other genuine absence of data.`
+other genuine absence of data.
+
+This project's canonical ayanāṁśa is lahiri_chitrapaksha. If <evidence> for
+any tool contains multiple rows for what is otherwise the same fact (same
+lord/level/system) tagged with different ayanamsha_id values, cite ONLY the
+lahiri_chitrapaksha row as the chart's answer. If a non-canonical-ayanāṁśa
+row is mentioned or compared at all, it must be explicitly labeled by its
+ayanāṁśa name rather than presented as the single unqualified answer.`
 
 function buildChartContext(chart: {
   id: string

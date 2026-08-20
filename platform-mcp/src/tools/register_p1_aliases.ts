@@ -523,12 +523,13 @@ function globalAlias(
 // system_id (F-0354) and requested windows (F-0471/0485) are honored uniformly — instead
 // of a divergent, vimshottari-only, windowless PyJHora sidecar surface for some names.
 const DASHA_FACET_SCHEMA: Record<string, z.ZodTypeAny> = {
-  // ayanamsha_id override: no server-side default (chart_dashas carries all 5) — omitting it
-  // returns one row PER ayanamsha. Pass "lahiri_chitrapaksha" for the single-row gate shape.
+  // F-93: ayanamsha_id now defaults server-side to lahiri_chitrapaksha (chart_dashas carries
+  // all 5) — omitting it returns exactly one row. Pass it explicitly only for a non-canonical
+  // ayanamsha.
   ayanamsha_id: z.string().optional().describe(
-    'Ayanamsha filter. NO server-side default — omitting it returns ALL 5 ayanamshas ' +
-    '(one row per ayanamsha). Pass "lahiri_chitrapaksha" explicitly for the standard ' +
-    'single-row current-dasha gate shape.'),
+    'Ayanamsha filter. Defaults server-side to "lahiri_chitrapaksha" (the project canonical ' +
+    'ayanamsha) when omitted — a bare call returns exactly one row, not one row per ayanamsha. ' +
+    'Pass this explicitly only to request a different, non-canonical ayanamsha.'),
   as_of_date:    z.string().optional().describe('ISO date — the dasha running on this date ("what dasha as of X"). Echoed in facets_applied.date_filter; a date before the chart birth date carries the structured as_of_date_precedes_chart_birth warning.'),
   date_contains: z.string().optional().describe('ISO date — alias of as_of_date.'),
   date_from:     z.string().optional().describe('ISO date — exclude periods ending before this date. Echoed in facets_applied.date_filter.'),
@@ -976,10 +977,16 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   regAlias(server, 'ganita_dashas_get',
     'L1 dasha periods, faceted by system/level/window (same as get_dashas). ' +
     'Defaults: system=vimshottari, level<=3 (Maha/Antar/Pratyantar), window=now±5y. ' +
-    'ayanamsha_id has NO default here (unlike system/level/window) — omitting it returns ' +
-    'one row PER AYANAMSHA (5 rows, ~3.2KB), busting the <=1KB current-dasha gate. ' +
+    // GA-5 review finding on #1393: this description still asserted the pre-F-93 contract
+    // ("NO default... ALWAYS pass explicitly") after DASHA_FACET_SCHEMA's own ayanamsha_id
+    // describe() (this same file) was updated to say the opposite -- a direct self-
+    // contradiction on the surface an LLM caller reads first. Corrected to match.
+    'ayanamsha_id defaults server-side to "lahiri_chitrapaksha" (the project canonical ' +
+    'ayanamsha) when omitted — a bare call returns exactly one row, not one row per ' +
+    'ayanamsha. Pass this explicitly only to request a different, non-canonical ayanamsha. ' +
     'Gate target (current dasha, <=1KB, ONE call): system=vimshottari, level=1, ' +
-    'as_of_date=<today>, ayanamsha_id="lahiri_chitrapaksha" — ALWAYS pass ayanamsha_id explicitly.',
+    'as_of_date=<today> — ayanamsha_id may be omitted; it already resolves to the gate\'s ' +
+    'canonical single-row shape.',
     'marsys://tool/L1/get_dashas',
     DASHA_FACET_SCHEMA, principal)
 
@@ -1981,8 +1988,10 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'L1 dasha periods, faceted by system/level/window (same as get_dashas / ganita_dashas_get). ' +
     'Honors system_id (all 8 systems: vimshottari, vimshottari_kp, yogini, ashtottari, ' +
     'chara_karaka, kalachakra, mudda, naisargika) and requested date windows. ' +
-    'Defaults: system=vimshottari, level<=3, window=now±5y. ayanamsha_id has NO default — ' +
-    'pass "lahiri_chitrapaksha" for the single-row current-dasha gate shape.',
+    // GA-5 review finding on #1393: matched to DASHA_FACET_SCHEMA's own updated
+    // ayanamsha_id describe() (same self-contradiction fix as ganita_dashas_get above).
+    'Defaults: system=vimshottari, level<=3, window=now±5y. ayanamsha_id defaults server-side ' +
+    'to "lahiri_chitrapaksha" when omitted — a bare call already returns the single-row shape.',
     'marsys://tool/L1/get_dashas',
     DASHA_FACET_SCHEMA, principal)
 
@@ -1990,8 +1999,8 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'L1 dasha periods, faceted by system/level/window (DB-backed, chart_id required). ' +
     'Honors system_id (all 8 systems) and requested date windows (as_of_date / window_start / ' +
     'window_end), echoing the applied filter back in facets_applied. Defaults: system=vimshottari, ' +
-    'level<=3, window=now±5y. ayanamsha_id has NO default — pass "lahiri_chitrapaksha" for the ' +
-    'single-row current-dasha gate shape.',
+    'level<=3, window=now±5y. ayanamsha_id defaults server-side to "lahiri_chitrapaksha" when ' +
+    'omitted — a bare call already returns the single-row current-dasha gate shape.',
     'marsys://tool/L1/get_dashas',
     DASHA_FACET_SCHEMA, principal)
 
