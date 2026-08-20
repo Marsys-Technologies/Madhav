@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "journal_head_seq": 387,
+  "journal_head_seq": 470,
   "note": "heartbeat timestamp intentionally omitted from this script (no wall-clock in this env); watchdog uses file mtime",
   "session": "PARISESA-V4-CONDUCTOR-20260820T005119Z"
 }
