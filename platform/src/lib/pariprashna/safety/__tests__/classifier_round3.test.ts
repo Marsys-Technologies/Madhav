@@ -160,22 +160,76 @@ describe('C-1 floor — two election questions that are NOT clean, and honestly 
     expect(found).not.toContain('hs1_date_of_death')
   })
 
-  it("\"…my father's death anniversary?\" reaches HS-4, but NOT HS-2 or HS-1", () => {
+  it("\"…my father's death anniversary?\" reaches NEITHER HS-4, HS-2, NOR HS-1 (fixed 2026-08-20)", () => {
     // The C-1 election pattern deliberately does not fire here: its target half
     // is pinned to a SELF-directed death and carries an `anniversary` lookahead
     // precisely so śrāddha work is not read as an election of one's own death.
-    // That worked.
+    // That worked from round 3 onward.
     //
-    // It still lands on HS-4 because the bare word `death` is in the
-    // pre-existing `hs4.mortality_terms` lexicon. That is a real, KNOWN
-    // over-trigger on third-party-mortality ritual questions — out of this
-    // round's scope (untouched by it, and it seals for review rather than
-    // refusing), recorded here so it is not mistaken for something round 3
-    // introduced or something nobody noticed.
+    // It USED TO still land on HS-4 because the bare word `death` was in the
+    // `hs4.mortality_terms` lexicon with no matching carve-out — documented
+    // here at the time as "a real, KNOWN over-trigger... out of this round's
+    // scope," not an oversight. Confirmed live in production on 2026-08-20
+    // (a probe-harness run against the deployed route, after
+    // `PARIPRASHNA_SAFETY_GATE_ENABLED` was flipped on, held this exact
+    // question under full HS review) — closing the gap the comment above
+    // always intended a future round to close, now that it was reproduced as
+    // a genuine live defect rather than a theoretical one. `hs4.mortality_terms`
+    // now carries the same `(?!\s+anniversar\w*)` lookahead HS-2's election
+    // pattern already had, on both `death` and `deaths`.
     const found = classes("Which tithi is auspicious for my father's death anniversary?")
     expect(found).not.toContain('hs2_suicide_adjacent')
     expect(found).not.toContain('hs1_date_of_death')
-    expect(found).toContain('hs4_mortality_window')
+    expect(found).not.toContain('hs4_mortality_window')
+    expect(found).toEqual([])
+  })
+
+  it('a genuine mortality question about the native still fires HS-4 (the fix is narrow, not a blanket exemption)', () => {
+    // Same lexicon, same file, no "anniversary" in sight — must still catch.
+    expectClass('What does my chart say about mortality and life expectancy?', 'hs4_mortality_window')
+    expectClass('When will I die?', 'hs1_date_of_death')
+  })
+
+  it('"death anniversary" embedded alongside a real mortality question still fires on the real question', () => {
+    // The lookahead narrows THIS occurrence of "death" only — it is not an
+    // exemption an attacker (or an anxious, compound question) can widen.
+    const found = classes(
+      "My father's death anniversary is next month, and separately — when will I die?",
+    )
+    expect(found).toContain('hs1_date_of_death')
+  })
+
+  it('a temporal/duration mortality ask combined with "death anniversary" phrasing still hard-stops — regression guard for the first fix attempt', () => {
+    // An independent adversarial review of the first version of this fix
+    // (2026-08-20) found it went too far: narrowing `MORTALITY_TERMS_A`
+    // itself (not just the standalone phrase-pattern lexicon) nulled the
+    // shared trigger the temporal/duration hard-stop combination rules key
+    // off, so a sentence whose ONLY mortality word was an anniversary-
+    // adjacent `death` — but which ALSO carried a genuine temporal/duration
+    // mortality ask — went from a correct hard_stop to classes:[] entirely.
+    // Confirmed live via a real revert-and-compare: pre-fix these returned
+    // hs1_date_of_death/hard_stop; the first fix attempt returned nothing.
+    // The corrected fix (MORTALITY_TERMS_A unchanged; the anniversary
+    // narrowing lives ONLY in `MORTALITY_TERMS_A_STANDALONE_REVIEW`, gating
+    // just the bare review-level push) must keep these as hard_stop.
+    expectClass(
+      'How many years until my death anniversary — this year or a future one?',
+      'hs1_date_of_death',
+    )
+    expectClass(
+      "It's almost time for my father's death anniversary. Also, separately: what year will my own life end?",
+      'hs1_date_of_death',
+    )
+  })
+
+  it('a PURE "death anniversary" question with no temporal/duration companion stays clean — the actual original bug', () => {
+    // The case the whole fix exists for: no hard-stop, no review, nothing.
+    expect(classes("Which tithi is auspicious for my father's death anniversary?")).toEqual([])
+    expect(
+      classes(
+        "My father's death anniversary is coming up next month — what does that period look like astrologically for the family?",
+      ),
+    ).toEqual([])
   })
 })
 
