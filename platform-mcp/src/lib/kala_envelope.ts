@@ -268,6 +268,13 @@ export async function resolveFieldSnapshot(
 export interface DrillPointerLike {
   instrument: string
   hint: string
+  /** F-123 (dead-pointer repair): the exact required-argument payload a caller must pass
+   *  when following this pointer, when the target tool has a required-argument gate this
+   *  object can already satisfy (e.g. `kala_explain_get`'s `domain`/`bhava`). Omitted when
+   *  the pointer target takes no required args, or when no such arg is derivable here —
+   *  never fabricated. See `explainPointerTo` below for the typed constructor that makes
+   *  this decision explicit at every `kala_explain_get` call site. */
+  args?: Record<string, unknown>
 }
 
 /** The honest "no lever exists" terminal state — distinct from a missing/omitted pointer
@@ -292,8 +299,26 @@ export interface TriPlanePointers {
   intervention_ref: TriPlanePointer | null
 }
 
-export function pointerTo(instrument: string, hint: string): DrillPointerLike {
-  return { instrument, hint }
+export function pointerTo(instrument: string, hint: string, args?: Record<string, unknown>): DrillPointerLike {
+  return args !== undefined ? { instrument, hint, args } : { instrument, hint }
+}
+
+/** F-123 (CL-11 dead pointer): typed constructor for every pointer that targets
+ *  `kala_explain_get`. That tool hard-errors without `domain` or `bhava`
+ *  (explain.ts: "either `domain` or `bhava` is required") — a bare `pointerTo('kala_explain_get',
+ *  hint)` therefore advertises a call a caller cannot actually complete by following it as
+ *  advertised, which is exactly the CL-11 defect class (a recover_via/drill_pointer that
+ *  reads as live but dead-ends). `args` is deliberately non-optional-by-type: every call site
+ *  must consciously supply `{ domain }`, `{ bhava }`, or explicit `null` (honest degrade — the
+ *  hint says so rather than fabricating a domain) — never silently omit it. */
+export function explainPointerTo(
+  hint: string,
+  args: { domain: string } | { bhava: number } | null,
+): DrillPointerLike {
+  if (args) {
+    return pointerTo('kala_explain_get', hint, args)
+  }
+  return { instrument: 'kala_explain_get', hint: `${hint} — pass domain or bhava when calling.` }
 }
 
 export function noLeverPointer(reason: string): KalaNoLever {

@@ -100,6 +100,7 @@ import {
   buildKalaFreshness,
   resolveFieldSnapshot,
   pointerTo,
+  explainPointerTo,
   noLeverPointer,
   isNoLever,
   computedCoverage,
@@ -1826,9 +1827,13 @@ export async function computeKalaAhead(
   const composed = composeArgument(reading)
 
   const triPlane: TriPlanePointers = {
-    interpretation_ref: pointerTo(
-      'kala_explain_get',
+    // F-123 (CL-11 dead pointer): kala_explain_get hard-errors without domain/bhava. args.domain
+    // is the same optional filter kala_ahead_get itself accepts — when the caller scoped this
+    // AHEAD call to a domain, the pointer carries it forward; otherwise it degrades honestly
+    // (explainPointerTo's null branch) rather than fabricating one.
+    interpretation_ref: explainPointerTo(
       'Why these forward windows fire — drivers and classical grounds behind each projection',
+      args.domain ? { domain: args.domain } : null,
     ),
     // ND-1 (ṢAḌ-DARŚANA W1 verify-reopen, 2026-07-30): was a bare `null`. AHEAD genuinely IS
     // the prediction plane, so there is no sibling surface to point at — but "this object is

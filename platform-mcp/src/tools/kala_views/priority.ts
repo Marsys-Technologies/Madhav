@@ -33,6 +33,7 @@ import {
   makeKalaEnvelope,
   resolveFieldSnapshot,
   pointerTo,
+  explainPointerTo,
   computedCoverage,
   honestEmptyCoverage,
   notInCorpusCoverage,
@@ -374,9 +375,12 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
         const reading = buildReading({ rows, dateFrom: resolvedDateFrom, dateTo: resolvedDateTo, domainFilter })
 
         const triPlane: TriPlanePointers = {
-          interpretation_ref: pointerTo(
-            'kala_explain_get',
+          // F-123 (CL-11 dead pointer): kala_explain_get hard-errors without domain/bhava.
+          // domainFilter (the same filter this priority response is already scoped by, when
+          // present) supplies the first domain; otherwise the pointer degrades honestly.
+          interpretation_ref: explainPointerTo(
             'drill into the causal chain (PACT stages) behind any of these ranked signals\' domain/bhava.',
+            domainFilter && domainFilter.length > 0 ? { domain: domainFilter[0] as string } : null,
           ),
           prediction_ref: pointerTo(
             'kala_ahead_get',
