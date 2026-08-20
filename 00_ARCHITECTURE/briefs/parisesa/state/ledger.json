@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 775,
+  "event_count": 776,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -497,18 +497,19 @@
       "terminal_status": null
     },
     "F-122": {
+      "branch": "parisesa/repair-F122-rebase",
       "confidence": "HIGH",
       "disposition": "STRANDED",
-      "event_sha256": "211abaf214011544cf135a55d4c66d1546a4ddce6bc90b4468cfe7aafce0ad6b",
+      "event_sha256": "1cd8b2d1f4291a63d6f7d4cae6beceadd1f6eeb13a415edf2d7906763b8f77d3",
       "event_type": "finding_status",
-      "evidence_summary": "Opus review (ESC-001) found PR #1368 has a genuine correctness bug: lattice_adjudication.ledgers[j] and candidates[i].judgment_ledger are the SAME object (elect.ts:851,970) -- the new trim sections mutate through one alias and silently empty the surviving candidate's confirmed dosha/parihara ledger, directly violating the SN.6 hardFloor density-doctrine the PR itself cites for that exact ledger. Also: new dangling references (frontier_candidate_ids not synced after trim), two hollow verification signals (ekv_controls.py substring-grep passes even with the section deleted; neither new test is on CI's platform-mcp allowlist, so '3/3 passing' is local-only), and a false comment claiming density-ordered sections when the code re-sorts by byte size.",
+      "evidence_summary": "All 4 Opus-review defects genuinely fixed on PR #1368: (1) core aliasing bug fixed via deep-copy (cloneJudgmentLedgerForCandidate), new adversarial test proves it (fails cleanly pre-fix with wrong counts, passes post-fix), verified via temporary revert-and-confirm-fail; (2) pareto candidate-id arrays synced post-trim, with an explicit documented reason for why gap_report/density are deliberately left unsynced; (3) the hollow ekv_controls.py detector went through 2 fix passes -- an independent code-reviewer caught a real blind spot in the first attempt (800-char lookahead window bleeding into adjacent sections), fixed with a proper comment/string-aware brace-matching parser, verified via scripted mutation testing; (4) misleading density-order comment corrected to describe the actual hardFloor-tier + byte-size sort behavior. A pre-existing test's budget_kb was legitimately retuned (documented why) since it had unknowingly relied on the bug. Independent code-reviewer caught and fixed 2 real issues before commit.",
       "finding_id": "F-122",
-      "next_action": "fix the ledger aliasing (deep-copy or give dosas_present/residual_dosas their own hardFloor+minKeep:1), sync frontier_candidate_ids after trim, add the tests to CI's allowlist -- then re-review before merge",
+      "next_action": "owner reviews and merges PR #1368 at morning checkpoint -- now genuinely ready, not just CI-green",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1368",
-      "prev_sha256": "6f5df839905869099028c36d54015963b816dbaadbe5c1dbe5de9b12781162f2",
-      "seq": 641,
-      "source_batch": "esc001_review",
-      "status": "NEEDS_REVISION",
+      "prev_sha256": "774ddb3f25cb30ae3ba128ffe267864b9b4cb19c16c9e8ba7d5cd1ab44630640",
+      "seq": 776,
+      "source_batch": "fix_f122",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-123": {
@@ -2045,10 +2046,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 20,
+  "findings_morning_ship_ready_count": 21,
   "findings_terminal_count": 84,
-  "journal_head_seq": 775,
-  "journal_head_sha256": "774ddb3f25cb30ae3ba128ffe267864b9b4cb19c16c9e8ba7d5cd1ab44630640",
+  "journal_head_seq": 776,
+  "journal_head_sha256": "1cd8b2d1f4291a63d6f7d4cae6beceadd1f6eeb13a415edf2d7906763b8f77d3",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
