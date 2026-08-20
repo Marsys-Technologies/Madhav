@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 795,
+  "event_count": 800,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -2035,9 +2035,45 @@
   },
   "findings_morning_ship_ready_count": 21,
   "findings_terminal_count": 85,
-  "journal_head_seq": 795,
-  "journal_head_sha256": "498db516ac7144e65f2265a6bf40f67f1431bb5cfbb306c3401d0c3b4369c30b",
+  "journal_head_seq": 800,
+  "journal_head_sha256": "87feb0acbb3338709af413e859a21c83033862f9d05899f1eed8864ed1c69070",
   "p1_steps": {
+    "P1-11_db_write_access": {
+      "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
+      "event_type": "p1_step",
+      "evidence": "Local gcloud identity (mail.abhisek.mohanty@gmail.com, active) can read secret 'amjis-db-password' via `gcloud secrets versions access latest --secret=amjis-db-password --project=madhav-astrology` (succeeded). Direct psql to the Cloud SQL public IP (34.93.202.112:5432) timed out (not in authorized networks) -- but the same Cloud SQL Auth Proxy method CI uses (cloud-sql-proxy v2.10.1, ADC auth) connected successfully to instance madhav-astrology:asia-south1:amjis-postgres and ran a real read query as amjis_app against database 'amjis', confirming pg_is_in_recovery()=f (writable primary). No credential was created, retrieved-and-stored, or rotated -- used exactly what was already accessible via existing gcloud ADC + Secret Manager IAM. GA-3 execution still requires the full v1.1 section 19.2 packet per the register; this only establishes that write access exists at all so a lane isn't wrongly PARKED-BY-AUTH.",
+      "prev_sha256": "e1d095a76e2ee2105e5d1114588f722857709cc5b09092e6099587aef92629b3",
+      "seq": 797,
+      "status": "PROVISIONED",
+      "step_id": "P1-11_db_write_access"
+    },
+    "P1-12_live_session_dev_env_access": {
+      "event_sha256": "bdfc010b4786fca74c46ac7d92ad22d1b216fab2624177ba48b2563a59b63f4f",
+      "event_type": "p1_step",
+      "evidence": "Two real, confirmed mechanisms: (1) the deploy pipeline's own post-deploy smoke stage (scripts/operator/end_to_end_smoke.sh, mcp_end_to_end_smoke.sh) runs non-interactively against the freshly-deployed --no-traffic candidate revision before any traffic promotion, using repo-held GH Actions secrets (SMOKE_CHART_ID, SMOKE_SESSION_COOKIE) not locally readable but not needed locally since this runs inside CI as part of every deploy this session triggers. (2) this Claude Code session already has the marsys-jis-direct MCP server connected live to the production product surface (125 tools; mcp_server_info call succeeded, catalog_version catalog-1+t152+r653c2a1a98c8) -- this is the actual mechanism this session will use for Acharya-grade domain-correctness cross-checks (ganita_*/bodha_*/kala_* tools reading real computed chart data), which is a stronger, more direct verification path than a synthetic browser session would be for astrological correctness review specifically.",
+      "prev_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
+      "seq": 798,
+      "status": "PROVISIONED",
+      "step_id": "P1-12_live_session_dev_env_access"
+    },
+    "P1-13_deploy_trigger_authority": {
+      "event_sha256": "ddec9d0b92b6e7b9f77eb7a47fa826fa419beacd2fc60bc02be6a8770c9d8741",
+      "event_type": "p1_step",
+      "evidence": ".github/workflows/deploy.yml read in full: deploys run via GitHub Actions using Workload Identity Federation (service account github-actions@madhav-astrology.iam.gserviceaccount.com), triggered either automatically (workflow_run after 'CI -- Ganga Quality Gate' succeeds on main) or via workflow_dispatch (gated by dispatch_gate.ts requiring ci_gate=require-ci-green unless an operator deliberately selects EMERGENCY-OVERRIDE-CI-NOT-GREEN with a >=20-char reason, both recorded in the run log). The canary/smoke/promote pattern GA-5 depends on is real and currently wired for deploy-web and deploy-mcp: --no-traffic deploy -> post-deploy smoke script -> `gcloud run services update-traffic --to-latest` promotion only on smoke success. `gh auth status` confirms this session's gh identity (amonty84) has repo permissions admin=true, push=true, sufficient to merge to main (which is what actually fires the automatic deploy trigger) and to `gh workflow run` a manual dispatch if ever needed. Not tested by actually triggering a deploy during provisioning -- that will happen for real the first time a finding's PR merges.",
+      "prev_sha256": "bdfc010b4786fca74c46ac7d92ad22d1b216fab2624177ba48b2563a59b63f4f",
+      "seq": 799,
+      "status": "PROVISIONED",
+      "step_id": "P1-13_deploy_trigger_authority"
+    },
+    "P1-14_merge_authority": {
+      "event_sha256": "87feb0acbb3338709af413e859a21c83033862f9d05899f1eed8864ed1c69070",
+      "event_type": "p1_step",
+      "evidence": "`gh api /repos/Marsys-Technologies/Madhav -q .permissions` returns {admin:true, maintain:true, pull:true, push:true, triage:true} for this session's gh identity. Consistent with the closeout session's independent finding of zero branch-protection rules repo-wide (PF-001) -- nothing structural blocks a merge to main. GA-5's own adversarial pre-merge review is the safety gate this campaign is choosing to rely on in place of the human review that authority would otherwise require.",
+      "prev_sha256": "ddec9d0b92b6e7b9f77eb7a47fa826fa419beacd2fc60bc02be6a8770c9d8741",
+      "seq": 800,
+      "status": "PROVISIONED",
+      "step_id": "P1-14_merge_authority"
+    },
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
       "event_type": "p1_step",
@@ -2139,6 +2175,16 @@
       "seq": 792,
       "session": "PARISESA-V4-CLOSEOUT-20260820T173721Z",
       "status": "COMPLETE"
+    },
+    "Full-Autonomy-v3.0-Kickoff": {
+      "detail": "PARISESA-V4 v3.0 FULL AUTONOMY kickoff: owner explicitly confirmed (live, in-conversation, after this session raised the scope-escalation concern in the open rather than proceeding silently) authorization for unattended overnight merges, deploys via the existing canary/smoke/promote pipeline, and GA-3 database writes -- no morning checkpoint. RESUME (not FIRST-KICKOFF): journal head was seq 795 (Preflight-Hardening COMPLETE) at session open; this session continues from there, does not restart the campaign.",
+      "event_sha256": "e1d095a76e2ee2105e5d1114588f722857709cc5b09092e6099587aef92629b3",
+      "event_type": "phase_transition",
+      "phase": "Full-Autonomy-v3.0-Kickoff",
+      "prev_sha256": "498db516ac7144e65f2265a6bf40f67f1431bb5cfbb306c3401d0c3b4369c30b",
+      "seq": 796,
+      "session": "PARISESA-V4-CONDUCTOR-20260820T191407Z",
+      "status": "STARTED"
     },
     "P-1": {
       "detail": "Branch-rescue/preservation steps verified DONE on origin. Two items not independently re-verified this session: local-main fast-forward (P-1.7 back half) and coord-edit worktree fast-forward (P-1.8) -- inherited from prior lineage's RESUME.md claim only, not itself journaled evidence. EKAVAKYATA formal park-tag (P-1.4) not found, flagged as gap. Proceeding to G0 / Phase 0 with these three items carried as open verification debt, not blockers (none is a merge/deploy/data action).",
