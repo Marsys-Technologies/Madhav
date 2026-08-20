@@ -13,6 +13,18 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 
+// P3-b tier-suppression (F-68) allowlist -- fail-closed: only a confidence_basis value
+// explicitly named here is treated as calibrated (GA-5 review finding on #1378; this was
+// previously an inline blacklist that inverted the safety direction -- see the handler
+// below for the full rationale). Empty today BY DESIGN: L4 is a NO-SCORING layer
+// (services/ph_pramana/engine.py), calibration is L5's job, and ph_sodhana's leakage
+// firewall (detect_layer_leakage, D43a) treats any other confidence_basis as build-fatal
+// contamination before such a row could ever reach this serve path. Module-scoped (not
+// handler-local) and exported so a test can exercise the REAL allowlist mechanism by
+// adding/removing a literal, rather than fabricating a confidence_basis string that
+// bypasses it -- see __tests__/posterior_provenance.test.ts.
+export const CALIBRATED_CONFIDENCE_BASES: Set<string> = new Set([])
+
 export const queryPredictiveAnchorsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L4/query_predictive_anchors',
   type:  'tool',
@@ -181,14 +193,16 @@ export const queryPredictiveAnchorsCapability: CapabilityDescriptor = {
       // n_observations lives at L5 query_calibration's mimamsa_multipliers. Anchors written
       // before BA-P5B (posterior/lift_vector_jsonb null) get an honest null block, never a
       // backfilled guess.
-      const NOT_YET_CALIBRATED = 'structural_not_yet_empirical'
-
       const anchorsWithProvenance = (result.rows as Array<Record<string, unknown>>).map(row => {
         const basis = row['confidence_basis']
-        // P3-b tier-suppression (F-68): fail-closed — null/missing/NOT_YET_CALIBRATED all suppress.
+        // P3-b tier-suppression (F-68): fail-closed allowlist -- only a basis value explicitly
+        // named in the module-level CALIBRATED_CONFIDENCE_BASES is treated as calibrated;
+        // everything else (null, missing, NOT_YET_CALIBRATED, empty string, or any
+        // future/unexpected value) suppresses. See the export's own doc-comment above for the
+        // fail-closed rationale (GA-5 review finding on #1378).
         // Mirrors ka_kshetra/stage8_spec.py:136's `None if window.get("baseline_is_synthetic") else
         // float(...)`. The stored phala_anchors row is never mutated — only the served shape changes.
-        const isCalibrated = basis != null && basis !== NOT_YET_CALIBRATED
+        const isCalibrated = typeof basis === 'string' && CALIBRATED_CONFIDENCE_BASES.has(basis)
 
         const posterior      = isCalibrated ? (row['posterior'] as number | null)       : null
         const confidenceLow  = isCalibrated ? (row['confidence_low'] as number | null)  : null

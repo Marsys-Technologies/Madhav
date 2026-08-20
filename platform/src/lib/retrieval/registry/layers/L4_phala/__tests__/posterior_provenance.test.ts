@@ -17,7 +17,7 @@ const queryMock = vi.fn()
 
 vi.mock('@/lib/db/client', () => ({ query: (...args: unknown[]) => queryMock(...args) }))
 
-import { queryPredictiveAnchorsCapability } from '../query_predictive_anchors'
+import { queryPredictiveAnchorsCapability, CALIBRATED_CONFIDENCE_BASES } from '../query_predictive_anchors'
 
 const NATIVE_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 
@@ -42,9 +42,17 @@ const REAL_ANCHOR_ROW = {
 
 // Same numeric values, calibrated tag — preserves the original canonical-or-floor intent
 // for future rows that have undergone empirical calibration (none in prod today).
+//
+// GA-5 review finding on #1378: this tag must be a member of the REAL
+// CALIBRATED_CONFIDENCE_BASES allowlist for the test below to exercise genuine calibrated
+// behavior -- fabricating an arbitrary string here would test a code path the allowlist
+// (empty by design today) would never actually let through, which is exactly the inverted-
+// gate defect this review caught. The test below adds/removes this literal from the real,
+// exported allowlist around the assertion, so it exercises the production mechanism.
+const TEST_ONLY_CALIBRATED_TAG = 'some_future_calibrated_value'
 const CALIBRATED_ANCHOR_ROW = {
   ...REAL_ANCHOR_ROW,
-  confidence_basis: 'some_future_calibrated_value',
+  confidence_basis: TEST_ONLY_CALIBRATED_TAG,
 }
 
 describe('query_predictive_anchors — posterior_provenance (R5.1 C2 item 4)', () => {
@@ -75,29 +83,38 @@ describe('query_predictive_anchors — posterior_provenance (R5.1 C2 item 4)', (
     expect(anchor.confidence_basis).toBe('structural_not_yet_empirical')
   })
 
-  it('calibrated row → stamps base_rate_source + explicit-null cardinality WITHOUT altering stored posterior/lift values (canonical-or-floor)', async () => {
-    queryMock.mockResolvedValueOnce({ rows: [CALIBRATED_ANCHOR_ROW] })
+  it('calibrated row (tag present in the real allowlist) → stamps base_rate_source + explicit-null cardinality WITHOUT altering stored posterior/lift values (canonical-or-floor)', async () => {
+    // Inject into the REAL, exported allowlist (not a parallel fabricated bypass) so this
+    // test proves the production isCalibrated check actually passes calibrated rows through
+    // once the allowlist is populated -- and always restore it, since it's module-scoped
+    // and shared across every test in this file.
+    CALIBRATED_CONFIDENCE_BASES.add(TEST_ONLY_CALIBRATED_TAG)
+    try {
+      queryMock.mockResolvedValueOnce({ rows: [CALIBRATED_ANCHOR_ROW] })
 
-    const result = await queryPredictiveAnchorsCapability.handler({ chart_id: NATIVE_CHART_ID }, undefined) as {
-      content: { anchors: Array<Record<string, unknown>> }
-      is_error: boolean
+      const result = await queryPredictiveAnchorsCapability.handler({ chart_id: NATIVE_CHART_ID }, undefined) as {
+        content: { anchors: Array<Record<string, unknown>> }
+        is_error: boolean
+      }
+
+      expect(result.is_error).toBe(false)
+      const anchor = result.content.anchors[0]
+
+      // Canonical-or-floor: calibrated row's computed values are untouched.
+      expect(anchor.posterior).toBe(0.322)
+      expect(anchor.lift_vector_jsonb).toEqual(REAL_ANCHOR_ROW.lift_vector_jsonb)
+
+      const prov = anchor.posterior_provenance as Record<string, unknown>
+      expect(prov).toBeDefined()
+      expect(prov.model).toBe('deterministic_product_lift')
+      // Never fabricates a sample size for a model that has none.
+      expect(prov.cardinality).toBeNull()
+      expect(String(prov.cardinality_note)).toMatch(/not a sample-fit/i)
+      expect(String(prov.base_rate_source)).toContain('brahma_event_ontology')
+      expect(prov.base_rate_value).toBe(0.2)
+    } finally {
+      CALIBRATED_CONFIDENCE_BASES.delete(TEST_ONLY_CALIBRATED_TAG)
     }
-
-    expect(result.is_error).toBe(false)
-    const anchor = result.content.anchors[0]
-
-    // Canonical-or-floor: calibrated row's computed values are untouched.
-    expect(anchor.posterior).toBe(0.322)
-    expect(anchor.lift_vector_jsonb).toEqual(REAL_ANCHOR_ROW.lift_vector_jsonb)
-
-    const prov = anchor.posterior_provenance as Record<string, unknown>
-    expect(prov).toBeDefined()
-    expect(prov.model).toBe('deterministic_product_lift')
-    // Never fabricates a sample size for a model that has none.
-    expect(prov.cardinality).toBeNull()
-    expect(String(prov.cardinality_note)).toMatch(/not a sample-fit/i)
-    expect(String(prov.base_rate_source)).toContain('brahma_event_ontology')
-    expect(prov.base_rate_value).toBe(0.2)
   })
 
   it('anchors written before BA-P5B (posterior/lift_vector_jsonb null) get an honest null provenance block, never a backfilled guess', async () => {

@@ -46,15 +46,24 @@ describe('query_predictive_anchors — P3-b tier-suppression (F-68)', () => {
     expect(result.content.anchors[0].posterior).toBeNull()
   })
 
-  it('a genuinely calibrated confidence_basis → numeric fields pass through unchanged', async () => {
-    queryMock.mockResolvedValueOnce({ rows: [{ ...BASE_ROW, confidence_basis: 'empirically_calibrated' }] })
+  // GA-5 review finding on #1378: this used to assert pass-through for an arbitrary
+  // string ('empirically_calibrated') and call it "a genuinely calibrated
+  // confidence_basis" -- but that string is not, and has never been, anything the write
+  // path (ph_sodhana's leakage firewall) permits into this column; asserting pass-through
+  // for it exercised a state the schema forbids, under an allowlist that is empty BY
+  // DESIGN today (L4 is NO-SCORING; calibration is L5's job). The correct fail-closed
+  // behavior is that an UNRECOGNIZED confidence_basis value suppresses exactly like the
+  // known NOT_YET_CALIBRATED one -- there is currently no string that legitimately serves
+  // calibrated numbers through this path.
+  it('an unrecognized confidence_basis value (not in the allowlist) → also suppressed, fail-closed', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [{ ...BASE_ROW, confidence_basis: 'some_unexpected_tag_not_in_allowlist' }] })
     const result = await queryPredictiveAnchorsCapability.handler({ chart_id: NATIVE_CHART_ID }, undefined) as {
       content: { anchors: Array<Record<string, unknown>> }
     }
     const anchor = result.content.anchors[0]
-    expect(anchor.posterior).toBe(0.322)
-    expect(anchor.lift_vector_jsonb).toEqual(BASE_ROW.lift_vector_jsonb)
-    expect((anchor.posterior_provenance as Record<string, unknown>).base_rate_value).toBe(0.2)
+    expect(anchor.posterior).toBeNull()
+    expect(anchor.lift_vector_jsonb).toBeNull()
+    expect(anchor.posterior_provenance).toBeNull()
   })
 
   it('pre-BA-P5B legacy row (posterior=null in DB, no confidence_basis) → not-computed note, not suppression note', async () => {
