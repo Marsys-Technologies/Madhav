@@ -116,9 +116,11 @@ export function Composer({ streaming, onSubmit, onStop }: ComposerProps) {
       >
         <textarea
           ref={textareaRef}
+          data-testid="pp-composer-textarea"
           className="pp-composer-field flex-1 bg-transparent outline-none border-none"
           style={{ color: 'var(--pp-ink)', height: LINE_HEIGHT_PX * MIN_LINES }}
           placeholder="Ask the chart…"
+          aria-label="Ask the chart"
           value={text}
           rows={MIN_LINES}
           disabled={streaming}
@@ -139,7 +141,8 @@ export function Composer({ streaming, onSubmit, onStop }: ComposerProps) {
             onClick={onStop}
             title="Stop"
             aria-label="Stop"
-            className="flex-none w-[34px] h-[34px] rounded-[9px] flex items-center justify-center"
+            data-testid="pp-composer-stop"
+            className="pp-composer-action flex-none w-[34px] h-[34px] rounded-[9px] flex items-center justify-center"
             style={{ border: '1px solid var(--pp-rule)', background: 'var(--pp-tint)', color: 'var(--pp-gold)' }}
           >
             <span aria-hidden style={{ width: 11, height: 11, background: 'var(--pp-gold)', borderRadius: 2 }} />
@@ -150,8 +153,9 @@ export function Composer({ streaming, onSubmit, onStop }: ComposerProps) {
             onClick={submit}
             title="Send"
             aria-label="Send"
+            data-testid="pp-composer-send"
             disabled={!text.trim()}
-            className="flex-none w-[34px] h-[34px] rounded-[9px] flex items-center justify-center font-mono"
+            className="pp-composer-action flex-none w-[34px] h-[34px] rounded-[9px] flex items-center justify-center font-mono"
             style={{
               border: '1px solid var(--pp-rule)',
               background: 'var(--pp-tint)',
