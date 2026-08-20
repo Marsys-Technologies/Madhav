@@ -71,7 +71,18 @@ export interface SignificantJudgment {
   block_id: string | null
   /** The text sent to the interpretation-set generator. */
   claim_text: string
-  /** Human-readable structural justification (audit/debug only — never reader-facing). */
+  /**
+   * Human-readable structural justification. Threaded through to the
+   * persisted `interpretation_sets` receipt field (`worker.ts`'s
+   * `waiverEntry`/`coerceEntry`) as `InterpretationSetEntry.detection_basis`
+   * — G3BC hardening "Also fix": a downstream reader of the persisted
+   * receipt needs to be able to tell a per-block structural classification
+   * (`domain_verdict`, `time_indexed`) apart from a TURN-SCOPED tool-
+   * consultation classification (`rules_in_tension`, `remedial` — gated on
+   * "was this tool consulted somewhere this turn", not "was this specific
+   * block verified against that tool's output"). Every string below is
+   * written to be honestly legible on its own, without this comment.
+   */
   detection_basis: string
 }
 
@@ -146,7 +157,10 @@ export function detectSignificantJudgments(
         category: 'rules_in_tension',
         block_id: b.id,
         claim_text: b.text,
-        detection_basis: "G2-A block role='caveat' + turn consulted contradiction_register",
+        detection_basis:
+          "G2-A block role='caveat' (per-block) + contradiction_register was consulted " +
+          'somewhere in this turn (TURN-SCOPED consultation — not verified specifically ' +
+          'for this block; a real per-block attribution does not exist in this pipeline yet)',
       })
     }
 
@@ -156,7 +170,10 @@ export function detectSignificantJudgments(
         category: 'remedial',
         block_id: b.id,
         claim_text: b.text,
-        detection_basis: 'remedy lexicon match + turn consulted remedial_codex_query',
+        detection_basis:
+          'remedy lexicon match on this block (per-block) + remedial_codex_query was ' +
+          'consulted somewhere in this turn (TURN-SCOPED consultation — not verified ' +
+          'specifically for this block)',
       })
     }
 

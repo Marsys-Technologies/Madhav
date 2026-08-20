@@ -153,11 +153,18 @@ describe('confidence_typing — flag ON: real per-type assignment end-to-end thr
     expect(receipt.confidence_typing.entries?.[0].confidence_type).toBe('empirically_calibrated')
   })
 
-  it('T-8: flags an overstated-precision confidence value from a calibration tool result against its own real (zero) sample size', () => {
+  // ── G3BC hardening defect 2 ──────────────────────────────────────────────
+  // The adversary's exact reproduction: BOTH calibration-bearing tools
+  // return their real data as a JSON-stringified `content` field, never a
+  // top-level `ToolBundleResult.confidence` (grepped zero hits across
+  // L5_mimamsa). The precision-bearing value lives INSIDE the parsed
+  // content — `calibration_summary.mean_composite_score`, the real
+  // query_insights column — paired with `calibration_summary.total_matches`,
+  // NOT a top-level `confidence` field the real handler never populates.
+  it('T-8 (defect 2 fix): flags an overstated-precision value living INSIDE the parsed calibration_summary content, never a nonexistent top-level `confidence` field', () => {
     const validToolResults = [
       toolBundle('query_insights', {
-        content: { calibration_summary: { total_matches: 0 } },
-        confidence: 0.734,
+        content: { calibration_summary: { total_matches: 0, mean_composite_score: 0.7341234567 } },
       }),
     ]
     const receipt = assembleAcharyaReadingReceipt(baseArgs({ validToolResults, typedConfidenceEnabled: true }))
@@ -169,15 +176,54 @@ describe('confidence_typing — flag ON: real per-type assignment end-to-end thr
     })
   })
 
-  it('does NOT flag a correctly-precise confidence value', () => {
+  it('T-8 (defect 2 fix): a genuinely top-level `confidence` field (the old, wrong read site) is NOT scanned — proves the fix reads content, not the dead field', () => {
     const validToolResults = [
       toolBundle('query_insights', {
-        content: { calibration_summary: { total_matches: 150 } },
-        confidence: 0.73,
+        content: { calibration_summary: { total_matches: 0 } },
+        confidence: 0.734, // the old (wrong) read site — must be ignored now
       }),
     ]
     const receipt = assembleAcharyaReadingReceipt(baseArgs({ validToolResults, typedConfidenceEnabled: true }))
     expect(receipt.confidence_typing.precision_flags).toEqual([])
+  })
+
+  it('does NOT flag a correctly-precise calibration_summary value', () => {
+    const validToolResults = [
+      toolBundle('query_insights', {
+        content: { calibration_summary: { total_matches: 150, mean_composite_score: 0.73 } },
+      }),
+    ]
+    const receipt = assembleAcharyaReadingReceipt(baseArgs({ validToolResults, typedConfidenceEnabled: true }))
+    expect(receipt.confidence_typing.precision_flags).toEqual([])
+  })
+
+  // ── G3BC hardening defect 3 ──────────────────────────────────────────────
+  // The adversary's exact reproduction: two independent query_insights
+  // calls (two separate ToolBundle entries — different invocation_params,
+  // e.g. different domains/strata), each n=15 — individually below the
+  // n>=30 activation threshold. Summing across bundles incorrectly opened
+  // the gate at a combined n=30; the fix takes the MIN across bundles, so
+  // the gate correctly stays closed (backed by only 15 relevant samples).
+  it('defect 3 fix: two independent calibration calls each below threshold do NOT combine via sum to incorrectly open the gate', () => {
+    const validToolResults = [
+      toolBundle('query_insights', { content: { calibration_summary: { total_matches: 15 } } }),
+      { ...toolBundle('query_insights', { content: { calibration_summary: { total_matches: 15 } } }), tool_bundle_id: 'tb-2', invocation_params: { domain: 'health' } },
+    ]
+    const receipt = assembleAcharyaReadingReceipt(baseArgs({ validToolResults, typedConfidenceEnabled: true }))
+    // Pre-fix this would have summed to 30 and opened the gate; the fix
+    // takes MIN(15, 15) = 15, which stays below the n>=30 threshold.
+    expect(receipt.confidence_typing.activation_gate?.sample_size).toBe(15)
+    expect(receipt.confidence_typing.activation_gate?.gate_open).toBe(false)
+  })
+
+  it('defect 3 fix: the gate correctly OPENS when every contributing result independently clears the threshold (not just their sum)', () => {
+    const validToolResults = [
+      toolBundle('query_insights', { content: { calibration_summary: { total_matches: 40 } } }),
+      { ...toolBundle('query_insights', { content: { calibration_summary: { total_matches: 35 } } }), tool_bundle_id: 'tb-2', invocation_params: { domain: 'health' } },
+    ]
+    const receipt = assembleAcharyaReadingReceipt(baseArgs({ validToolResults, typedConfidenceEnabled: true }))
+    expect(receipt.confidence_typing.activation_gate?.sample_size).toBe(35)
+    expect(receipt.confidence_typing.activation_gate?.gate_open).toBe(true)
   })
 
   it('a fully-populated confidence_typing receipt satisfies the schema', () => {

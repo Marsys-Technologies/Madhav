@@ -58,6 +58,9 @@ describe('generateInterpretationSets — generated path', () => {
     expect(entry.selected_rationale).toBeTruthy()
     expect(entry.falsifier).toBeTruthy()
     expect(entry.waiver_reason).toBeNull()
+    // G3BC hardening "Also fix" — detect.ts's own detection_basis threads
+    // through to the persisted entry, unchanged.
+    expect(entry.detection_basis).toBe(j.detection_basis)
   })
 })
 
@@ -140,6 +143,128 @@ describe('generateInterpretationSets — waiver path', () => {
       expect(entry.candidates).toBeNull()
       expect(entry.waiver_reason).toMatch(/call failed/)
     }
+  })
+})
+
+describe('generateInterpretationSets — G3BC hardening defect 5', () => {
+  const distinctCandidates = [
+    { reading: 'Reading A: steady growth via disciplined effort.', rationale: 'Supported by X.' },
+    { reading: 'Reading B: a single sharp promotion event.', rationale: 'Supported by Y.' },
+    { reading: 'Reading C: a lateral pivot rather than growth.', rationale: 'Supported by Z.' },
+  ]
+
+  it("degrades to a waiver on the adversary's exact vacuous falsifier (\"If I'm wrong, I'm wrong.\")", async () => {
+    const j = judgment()
+    const caller: InterpretationLlmCaller = async () =>
+      new Map([
+        [
+          j.judgment_id,
+          {
+            judgment_id: j.judgment_id,
+            status: 'generated' as const,
+            candidates: distinctCandidates,
+            selected_index: 0,
+            selected_rationale: 'A best fits the corroborating evidence.',
+            falsifier: "If I'm wrong, I'm wrong.",
+          },
+        ],
+      ])
+
+    const [entry] = await generateInterpretationSets([j], caller)
+    expect(entry.status).toBe('waived')
+    expect(entry.candidates).toBeNull()
+    expect(entry.falsifier).toBeNull()
+  })
+
+  it("degrades to a waiver on the adversary's second vacuous falsifier (\"maybe\")", async () => {
+    const j = judgment()
+    const caller: InterpretationLlmCaller = async () =>
+      new Map([
+        [
+          j.judgment_id,
+          {
+            judgment_id: j.judgment_id,
+            status: 'generated' as const,
+            candidates: distinctCandidates,
+            selected_index: 0,
+            selected_rationale: 'A best fits the corroborating evidence.',
+            falsifier: 'maybe',
+          },
+        ],
+      ])
+
+    const [entry] = await generateInterpretationSets([j], caller)
+    expect(entry.status).toBe('waived')
+  })
+
+  it('a genuine, specific, sufficiently-detailed falsifier still passes (the floor-raise does not reject real content)', async () => {
+    const j = judgment()
+    const caller: InterpretationLlmCaller = async () =>
+      new Map([
+        [
+          j.judgment_id,
+          {
+            judgment_id: j.judgment_id,
+            status: 'generated' as const,
+            candidates: distinctCandidates,
+            selected_index: 0,
+            selected_rationale: 'A best fits the corroborating evidence.',
+            falsifier: 'If no career advancement occurs within the next 18 months, this reading is wrong.',
+          },
+        ],
+      ])
+
+    const [entry] = await generateInterpretationSets([j], caller)
+    expect(entry.status).toBe('generated')
+    expect(entry.falsifier).toBe('If no career advancement occurs within the next 18 months, this reading is wrong.')
+  })
+
+  it("degrades to a waiver on the adversary's exact reworded-candidate construction (3 candidates, same conclusion reworded)", async () => {
+    const j = judgment()
+    const caller: InterpretationLlmCaller = async () =>
+      new Map([
+        [
+          j.judgment_id,
+          {
+            judgment_id: j.judgment_id,
+            status: 'generated' as const,
+            candidates: [
+              { reading: 'Your career will show strong steady growth this year.', rationale: 'Supported by X.' },
+              { reading: 'This year your career will show strong, steady growth.', rationale: 'Supported by X, restated.' },
+              { reading: 'Strong, steady career growth will occur this year.', rationale: 'Supported by X, again.' },
+            ],
+            selected_index: 0,
+            selected_rationale: 'A best fits the corroborating evidence.',
+            falsifier: 'If no career advancement occurs within the next 18 months, this reading is wrong.',
+          },
+        ],
+      ])
+
+    const [entry] = await generateInterpretationSets([j], caller)
+    expect(entry.status).toBe('waived')
+    expect(entry.candidates).toBeNull()
+  })
+
+  it('genuinely distinct candidates (different conclusions, not reworded) still pass', async () => {
+    const j = judgment()
+    const caller: InterpretationLlmCaller = async () =>
+      new Map([
+        [
+          j.judgment_id,
+          {
+            judgment_id: j.judgment_id,
+            status: 'generated' as const,
+            candidates: distinctCandidates,
+            selected_index: 0,
+            selected_rationale: 'A best fits the corroborating evidence.',
+            falsifier: 'If no career advancement occurs within the next 18 months, this reading is wrong.',
+          },
+        ],
+      ])
+
+    const [entry] = await generateInterpretationSets([j], caller)
+    expect(entry.status).toBe('generated')
+    expect(entry.candidates).toHaveLength(3)
   })
 })
 

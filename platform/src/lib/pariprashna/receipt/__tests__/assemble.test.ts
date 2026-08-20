@@ -414,7 +414,7 @@ describe('assembleAcharyaReadingReceipt — interpretation_sets (G3-B)', () => {
   it('traces to exactly what the caller supplies (never re-derived)', () => {
     const supplied = {
       status: 'measured' as const,
-      interpretation_sets_schema_version: 1 as const,
+      interpretation_sets_schema_version: 2 as const,
       detected_count: 1,
       covered_count: 1,
       truncated_count: 0,
@@ -424,6 +424,7 @@ describe('assembleAcharyaReadingReceipt — interpretation_sets (G3-B)', () => {
           judgment_id: 'sig-domain_verdict-1',
           category: 'domain_verdict' as const,
           status: 'generated' as const,
+          detection_basis: "G2-A block role='verdict' (first prose block of its pass)",
           candidates: [
             { reading: 'A', rationale: 'ra' },
             { reading: 'B', rationale: 'rb' },
@@ -447,7 +448,7 @@ describe('assembleAcharyaReadingReceipt — interpretation_sets (G3-B)', () => {
       baseArgs({
         interpretationSets: {
           status: 'measured',
-          interpretation_sets_schema_version: 1,
+          interpretation_sets_schema_version: 2,
           detected_count: 0,
           covered_count: 0,
           truncated_count: 0,

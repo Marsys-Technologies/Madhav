@@ -69,6 +69,22 @@ export const InterpretationSetEntrySchema = z.object({
   judgment_id: z.string(),
   category: SignificantJudgmentCategorySchema,
   status: z.enum(['generated', 'waived']),
+  /**
+   * G3BC hardening "Also fix" (same disclosure-not-detection-change pattern
+   * as defect 4). The REAL structural basis `detect.ts` already computed for
+   * this judgment (e.g. "turn consulted contradiction_register"), threaded
+   * through to the persisted receipt so a downstream reader can see WHY a
+   * `rules_in_tension`/`remedial` entry was classified — specifically,
+   * whether that classification rests on TURN-SCOPED tool consultation
+   * (a caveat block in a turn that consulted `contradiction_register`
+   * somewhere, not verified specifically for THIS block) versus a per-block
+   * structural signal (`domain_verdict`/`time_indexed` classify from the
+   * block's own text/role, no turn-scoping caveat applies). Always
+   * populated (every `SignificantJudgment` carries one) — present
+   * regardless of `status`, unlike the generated/waived-exclusive fields
+   * below.
+   */
+  detection_basis: z.string(),
   /** >=3 distinct candidates when generated; null when waived. */
   candidates: z.array(InterpretationCandidateSchema).nullable(),
   /** Index into `candidates` of the reading actually selected. */
@@ -98,7 +114,12 @@ export type InterpretationSetEntry = z.infer<typeof InterpretationSetEntrySchema
 // shape changes later.
 // ---------------------------------------------------------------------------
 
-export const INTERPRETATION_SETS_SCHEMA_VERSION = 1 as const
+// Bumped 1 -> 2 (G3BC hardening "Also fix"): `InterpretationSetEntrySchema`
+// gained the required `detection_basis` field. Safe to bump rather than make
+// the field optional — this whole sub-surface ships behind
+// PARIPRASHNA_INTERPRETATION_SETS_ENABLED (default OFF, pre-merge) and no
+// receipt has been persisted against v1 in production.
+export const INTERPRETATION_SETS_SCHEMA_VERSION = 2 as const
 
 export const ReceiptInterpretationSetsSchema = z.object({
   status: z.enum(['measured', 'unavailable']),

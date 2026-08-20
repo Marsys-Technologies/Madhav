@@ -43,9 +43,35 @@ const CATEGORY_PRIORITY: Readonly<Record<string, number>> = {
 
 export interface AssembleInterpretationSetsArgs extends DetectSignificantJudgmentsArgs {
   turnId: string
+  /**
+   * G3BC hardening defect 1. Real state of `PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED`
+   * (G2-A/G3-A's flag) THIS turn — required, not defaulted, so every call
+   * site must be explicit about a real dependency this module's own
+   * `detect.ts` header already documents but `feature_flags.ts` never
+   * declared: 4 of the 5 SIGNIFICANT-judgment categories (domain_verdict,
+   * rules_in_tension, remedial, time_indexed) classify from
+   * `OpenBlock.semantic`, which is `undefined` when semantic blocks are off.
+   * `false` here means `detectSignificantJudgments` would structurally find
+   * (at most) only `prediction_detected` hits — a receipt that reported
+   * `status: 'measured'` with a low/zero `detected_count` in that state would
+   * read as "genuinely no significant judgments this turn" when the real
+   * story is "the detector was structurally blind for 4/5 categories". This
+   * function reports the honest `unavailable` state instead — see
+   * `SEMANTIC_BLOCKS_DISABLED_REASON` below.
+   */
+  semanticBlocksEnabled: boolean
   /** Injectable for tests — see `worker.ts#InterpretationLlmCaller`. */
   caller?: InterpretationLlmCaller
 }
+
+/** Exported so callers/tests can assert on the exact reason string without
+ *  re-typing it (and so `persistence_stage.ts`'s error paths can reuse it). */
+export const SEMANTIC_BLOCKS_DISABLED_REASON =
+  'PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED was off this turn — 4 of the 5 significant-judgment ' +
+  'categories (domain_verdict, rules_in_tension, remedial, time_indexed) classify from ' +
+  'OpenBlock.semantic, which detect.ts cannot read without semantic blocks on; only ' +
+  'prediction_detected is structurally independent of this flag, so the field reports ' +
+  'unavailable as a whole rather than a partial/misleading detected_count'
 
 /** The default "the field was never even attempted this turn" value —
  *  used by `persistence_stage.ts` when the flag is off, and by
@@ -67,6 +93,10 @@ export function unavailableInterpretationSets(reason: string): ReceiptInterpreta
 export async function assembleInterpretationSets(
   args: AssembleInterpretationSetsArgs,
 ): Promise<ReceiptInterpretationSets> {
+  if (!args.semanticBlocksEnabled) {
+    return unavailableInterpretationSets(SEMANTIC_BLOCKS_DISABLED_REASON)
+  }
+
   const detected = detectSignificantJudgments(args)
   const ordered = [...detected].sort(
     (a, b) => (CATEGORY_PRIORITY[a.category] ?? 99) - (CATEGORY_PRIORITY[b.category] ?? 99),

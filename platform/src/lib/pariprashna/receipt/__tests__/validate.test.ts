@@ -223,7 +223,7 @@ describe('validateAcharyaReadingReceipt — interpretation_sets (G3-B)', () => {
       ...honestReceipt(),
       interpretation_sets: {
         status: 'measured' as const,
-        interpretation_sets_schema_version: 1 as const,
+        interpretation_sets_schema_version: 2 as const,
         detected_count: 2,
         covered_count: 2,
         truncated_count: 0,
@@ -233,6 +233,7 @@ describe('validateAcharyaReadingReceipt — interpretation_sets (G3-B)', () => {
             judgment_id: 'sig-domain_verdict-1',
             category: 'domain_verdict' as const,
             status: 'generated' as const,
+            detection_basis: "G2-A block role='verdict' (first prose block of its pass)",
             candidates: [
               { reading: 'A', rationale: 'ra' },
               { reading: 'B', rationale: 'rb' },
@@ -247,6 +248,10 @@ describe('validateAcharyaReadingReceipt — interpretation_sets (G3-B)', () => {
             judgment_id: 'sig-remedial-1',
             category: 'remedial' as const,
             status: 'waived' as const,
+            detection_basis:
+              'remedy lexicon match on this block (per-block) + remedial_codex_query was ' +
+              'consulted somewhere in this turn (TURN-SCOPED consultation — not verified ' +
+              'specifically for this block)',
             candidates: null,
             selected_index: null,
             selected_rationale: null,
@@ -275,7 +280,7 @@ describe('validateAcharyaReadingReceipt — interpretation_sets (G3-B)', () => {
       ...receipt,
       interpretation_sets: {
         status: 'measured' as const,
-        interpretation_sets_schema_version: 1 as const,
+        interpretation_sets_schema_version: 2 as const,
         detected_count: 1,
         covered_count: 1,
         truncated_count: 0,
@@ -300,7 +305,7 @@ describe('validateAcharyaReadingReceipt — interpretation_sets (G3-B)', () => {
       ...receipt,
       interpretation_sets: {
         status: 'measured' as const,
-        interpretation_sets_schema_version: 1 as const,
+        interpretation_sets_schema_version: 2 as const,
         detected_count: 1,
         covered_count: 1,
         truncated_count: 0,
@@ -310,6 +315,7 @@ describe('validateAcharyaReadingReceipt — interpretation_sets (G3-B)', () => {
             judgment_id: 'sig-domain_verdict-1',
             category: 'domain_verdict' as const,
             status: 'generated' as const,
+            detection_basis: "G2-A block role='verdict' (first prose block of its pass)",
             candidates: [{ reading: 'Only one.', rationale: 'r' }],
             selected_index: 0,
             selected_rationale: 'r',
@@ -334,7 +340,7 @@ describe('validateAcharyaReadingReceipt — interpretation_sets (G3-B)', () => {
       ...receipt,
       interpretation_sets: {
         status: 'measured' as const,
-        interpretation_sets_schema_version: 1 as const,
+        interpretation_sets_schema_version: 2 as const,
         detected_count: 1,
         covered_count: 1,
         truncated_count: 0,
@@ -344,6 +350,10 @@ describe('validateAcharyaReadingReceipt — interpretation_sets (G3-B)', () => {
             judgment_id: 'sig-remedial-1',
             category: 'remedial' as const,
             status: 'waived' as const,
+            detection_basis:
+              'remedy lexicon match on this block (per-block) + remedial_codex_query was ' +
+              'consulted somewhere in this turn (TURN-SCOPED consultation — not verified ' +
+              'specifically for this block)',
             candidates: null,
             selected_index: null,
             selected_rationale: null,

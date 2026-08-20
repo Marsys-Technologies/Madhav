@@ -145,11 +145,93 @@ function extractFirstJsonObject(text: string): string {
   return text
 }
 
+// ---------------------------------------------------------------------------
+// G3BC hardening defect 5. Minimal, STRUCTURAL, cheap checks — deliberately
+// NOT a full NLP quality/similarity system. These close the two EXACT
+// constructions the adversary demonstrated pass validation today
+// ("If I'm wrong, I'm wrong." / three reworded-but-identical candidates) and
+// raise the bar generally, but they do not and cannot guarantee every
+// vacuous falsifier or every near-duplicate candidate set is caught — this
+// is a floor-raise on top of the prompt's own instructions, not a complete
+// quality guarantee. A judgment that fails either check degrades to an
+// honest WAIVER (never silently passed through, never silently dropped).
+// ---------------------------------------------------------------------------
+
+/** Exact-phrase stock vacuities the adversary demonstrated pass today.
+ *  Matched case-insensitively against the TRIMMED falsifier text. Not
+ *  exhaustive by design (see module note above) — a denylist of known-bad
+ *  constructions, not a classifier. */
+const VACUOUS_FALSIFIER_PHRASES: readonly string[] = [
+  "if i'm wrong, i'm wrong",
+  'if i am wrong, i am wrong',
+  'maybe',
+  "it's possible i'm mistaken",
+  'it is possible i am mistaken',
+]
+
+/** A falsifier under this many words cannot structurally carry a real,
+ *  checkable condition ("what would have to be true/observed") — a
+ *  conservative floor, not a claim that anything longer is automatically
+ *  substantive. */
+const MIN_FALSIFIER_WORD_COUNT = 5
+
+/** Structural (not semantic) vacuous-falsifier check — see module note. */
+function isVacuousFalsifier(falsifier: string): boolean {
+  const trimmed = falsifier.trim()
+  // Strip trailing sentence punctuation before the stock-phrase compare —
+  // "If I'm wrong, I'm wrong." (the adversary's exact construction, with a
+  // period) must match the same denylist entry as the bare phrase.
+  const normalized = trimmed.toLowerCase().replace(/[.!?]+$/, '')
+  if (VACUOUS_FALSIFIER_PHRASES.includes(normalized)) return true
+  const wordCount = trimmed.split(/\s+/).filter(Boolean).length
+  if (wordCount < MIN_FALSIFIER_WORD_COUNT) return true
+  return false
+}
+
+/** Normalize to a lowercase token set for the cheap distinctness check —
+ *  strips punctuation, collapses whitespace. Deliberately crude (see module
+ *  note): this is a shared-token-ratio heuristic, not semantic similarity. */
+function tokenSet(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .split(/\s+/)
+      .filter(Boolean),
+  )
+}
+
+/** Shared-token overlap ratio (Jaccard-like, over the SMALLER set's size so
+ *  a short candidate fully contained in a longer one still reads as
+ *  near-duplicate). >= this ratio is treated as "not genuinely distinct". */
+const CANDIDATE_OVERLAP_THRESHOLD = 0.8
+
+function overlapRatio(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 || b.size === 0) return 0
+  let shared = 0
+  for (const tok of a) if (b.has(tok)) shared++
+  return shared / Math.min(a.size, b.size)
+}
+
+/** Structural (not semantic) distinctness check across a candidate set — see
+ *  module note. Flags the set as non-distinct if ANY pair of candidates'
+ *  `reading` texts overlap at or above `CANDIDATE_OVERLAP_THRESHOLD`. */
+function hasNearDuplicateCandidates(candidates: readonly { reading: string }[]): boolean {
+  const sets = candidates.map((c) => tokenSet(c.reading))
+  for (let i = 0; i < sets.length; i++) {
+    for (let j = i + 1; j < sets.length; j++) {
+      if (overlapRatio(sets[i], sets[j]) >= CANDIDATE_OVERLAP_THRESHOLD) return true
+    }
+  }
+  return false
+}
+
 function waiverEntry(j: SignificantJudgment, reason: string): InterpretationSetEntry {
   return {
     judgment_id: j.judgment_id,
     category: j.category,
     status: 'waived',
+    detection_basis: j.detection_basis,
     candidates: null,
     selected_index: null,
     selected_rationale: null,
@@ -174,15 +256,25 @@ function coerceEntry(j: SignificantJudgment, raw: LlmSetRaw): InterpretationSetE
   const candidates = raw.candidates ?? []
   if (candidates.length < MIN_INTERPRETATION_CANDIDATES) return null
   if (candidates.some((c) => !c.reading?.trim() || !c.rationale?.trim())) return null
+  // Defect 5(b): reject a candidate set with any near-duplicate pair — a
+  // structural floor-raise, not a semantic guarantee (see module note above
+  // `waiverEntry`). `coerceEntry` returning `null` here is turned into an
+  // honest waiver by the caller, same as every other structural-validation
+  // failure this function already produces.
+  if (hasNearDuplicateCandidates(candidates)) return null
   const idx = raw.selected_index
   if (idx === undefined || !Number.isInteger(idx) || idx < 0 || idx >= candidates.length) return null
   const selectedRationale = raw.selected_rationale?.trim()
   const falsifier = raw.falsifier?.trim()
   if (!selectedRationale || !falsifier) return null
+  // Defect 5(a): reject a structurally-vacuous falsifier (too short, or a
+  // known stock non-answer) — same structural-floor-raise discipline.
+  if (isVacuousFalsifier(falsifier)) return null
   return {
     judgment_id: j.judgment_id,
     category: j.category,
     status: 'generated',
+    detection_basis: j.detection_basis,
     candidates: candidates.map((c) => ({ reading: c.reading.trim(), rationale: c.rationale.trim() })),
     selected_index: idx,
     selected_rationale: selectedRationale,

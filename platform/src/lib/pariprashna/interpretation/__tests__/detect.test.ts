@@ -84,6 +84,21 @@ describe('detectSignificantJudgments — rules_in_tension', () => {
     })
     expect(withoutTool.filter((j) => j.category === 'rules_in_tension')).toHaveLength(0)
   })
+
+  // ── G3BC hardening "Also fix" ────────────────────────────────────────────
+  // Same disclosure-not-detection-change pattern as defect 4: the
+  // detection_basis text itself (threaded to the persisted receipt by
+  // worker.ts) must honestly say this classification rests on TURN-SCOPED
+  // tool consultation, not per-block verification.
+  it('detection_basis honestly discloses turn-scoped (not per-block-verified) consultation', () => {
+    const [judgment] = detectSignificantJudgments({
+      committedBlocks: [caveatBlock('blk-1-3', 'However, one classical source suggests otherwise.')],
+      predictionCandidates: [],
+      validToolResults: [toolBundle('contradiction_register')],
+    })
+    expect(judgment.detection_basis).toMatch(/turn-scoped/i)
+    expect(judgment.detection_basis).toContain('contradiction_register')
+  })
 })
 
 describe('detectSignificantJudgments — remedial', () => {

@@ -442,6 +442,11 @@ export async function runPersistenceStage(args: {
                     committedBlocks,
                     predictionCandidates: predictionCandidatesFound,
                     validToolResults,
+                    // G3BC hardening defect 1 — real flag state, not assumed
+                    // true: 4 of 5 significant-judgment categories are blind
+                    // without semantic blocks on (see assemble.ts's own doc
+                    // comment on this field).
+                    semanticBlocksEnabled: isSemanticBlocksEnabled(),
                   })
                   if ((interpretationSets.truncated_count ?? 0) > 0) {
                     console.warn(

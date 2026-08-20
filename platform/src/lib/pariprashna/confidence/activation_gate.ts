@@ -145,3 +145,76 @@ export function extractCalibrationSampleSize(payload: unknown): number | null {
 
   return null
 }
+
+/** A candidate numeric field to which the T-8 precision scan may apply, plus
+ *  the real backing sample size for that specific field (never a different
+ *  field's sample size). */
+export interface CalibrationPrecisionCandidate {
+  value: number
+  sampleSize: number | null
+}
+
+function coerceFiniteNumber(raw: unknown): number | null {
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw
+  // Postgres numeric(...) columns can arrive as strings via some pg driver
+  // paths (bigint/numeric handling) — accept a clean numeric string, same
+  // defensive convention `extractCalibrationSampleSize` already uses above.
+  if (typeof raw === 'string' && raw.trim() !== '' && Number.isFinite(Number(raw))) return Number(raw)
+  return null
+}
+
+/**
+ * G3BC hardening defect 2. `receipt/assemble.ts`'s T-8 precision scan used
+ * to read `ToolBundleResult.confidence` — a top-level field NEITHER
+ * `query_calibration.ts` NOR `query_insights.ts` ever populates (both return
+ * their real data as a JSON-stringified `content` field — see
+ * `tool_name_bridge.ts#toToolBundleResults`'s `'content' in content`
+ * branch). This function is the fix: it reads precision-bearing numeric
+ * values from the SAME PARSED payload shape `extractCalibrationSampleSize`
+ * above already successfully parses from (never a second, independently-
+ * invented parsing path), grounded in the real column names those two
+ * handlers actually return:
+ *
+ *   - `calibration_summary.mean_composite_score` (query_insights,
+ *     `numeric(4,3)`) — paired with `calibration_summary.total_matches`, the
+ *     SAME aggregate sample size `extractCalibrationSampleSize` extracts for
+ *     this shape.
+ *   - `verdict_distribution[].mean_score` / `.mean_timing` / `.mean_domain` /
+ *     `.mean_magnitude` (query_calibration, each `numeric(4,3)`) — each
+ *     PAIRED WITH THAT SAME ROW'S OWN `n`, never the turn-wide/summed sample
+ *     size — a per-verdict-group mean is only as precise as that group's own
+ *     count supports, not the whole turn's.
+ *
+ * Defensive by construction (§N.7 item 6): an unrecognized shape or
+ * non-numeric field returns no candidates for that field rather than
+ * guessing.
+ */
+export function extractCalibrationPrecisionCandidates(payload: unknown): CalibrationPrecisionCandidate[] {
+  if (payload === null || typeof payload !== 'object') return []
+  const obj = payload as Record<string, unknown>
+  const out: CalibrationPrecisionCandidate[] = []
+
+  const calSummary = obj.calibration_summary
+  if (calSummary !== null && typeof calSummary === 'object') {
+    const summary = calSummary as Record<string, unknown>
+    const value = coerceFiniteNumber(summary.mean_composite_score)
+    if (value !== null) {
+      out.push({ value, sampleSize: coerceFiniteNumber(summary.total_matches) })
+    }
+  }
+
+  const verdicts = obj.verdict_distribution
+  if (Array.isArray(verdicts)) {
+    for (const row of verdicts) {
+      if (row === null || typeof row !== 'object') continue
+      const r = row as Record<string, unknown>
+      const rowSampleSize = coerceFiniteNumber(r.n)
+      for (const field of ['mean_score', 'mean_timing', 'mean_domain', 'mean_magnitude'] as const) {
+        const value = coerceFiniteNumber(r[field])
+        if (value !== null) out.push({ value, sampleSize: rowSampleSize })
+      }
+    }
+  }
+
+  return out
+}

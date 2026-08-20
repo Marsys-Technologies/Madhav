@@ -89,7 +89,18 @@ export const CLASSICAL_PRIOR_BEARING_TOOL_NAMES: readonly string[] = [
 export const TYPING_BASIS = {
   L1_FACT_LAYER: 'l1_fact_layer',
   CALIBRATION_GATE_OPEN: 'calibration_gate_open',
-  CLASSICAL_SOURCE_CONSULTED: 'classical_source_consulted',
+  // G3BC hardening defect 4: renamed from 'classical_source_consulted' to
+  // disclose the turn-scoping this module's OWN header comment already
+  // documents (branch 3 above) directly in the value a receipt reader
+  // actually sees. Before this rename, the receipt's emitted `basis` string
+  // gave a downstream reader no way to tell "a classical tool was consulted
+  // SOMEWHERE this turn" apart from "specifically for this citation" — the
+  // exact ambiguity G3-A's `calibration_disclosure` field already avoids by
+  // disclosing turn-scoping in its OWN emitted `disclosure_note`. This is a
+  // naming/disclosure fix ONLY — `assignType` below still fires on the
+  // IDENTICAL condition (`classicalConsulted`, a turn-wide detector); no
+  // detection logic changed.
+  CLASSICAL_SOURCE_CONSULTED: 'classical_source_consulted_this_turn',
   L2_5_STRUCTURAL_SIGNAL: 'l2_5_structural_signal',
   UNRESOLVED_NO_DETECTOR: 'unresolved_no_detector',
 } as const

@@ -46,6 +46,7 @@ import {
   wasClassicalSourceConsulted,
   evaluateEmpiricalCalibrationGate,
   extractCalibrationSampleSize,
+  extractCalibrationPrecisionCandidates,
   scanPrecision,
   countDecimalPlaces,
 } from '@/lib/pariprashna/confidence'
@@ -331,8 +332,12 @@ function buildProvenance(stamp: TurnProvenanceStamp): ReceiptProvenance {
  * source `facts_consumed` already reads, never re-scanned a second way) via
  * `typeClaimConfidence`, computes the real `empirically_calibrated`
  * activation gate from this turn's own calibration-bearing tool results, and
- * runs the T-8 precision scan over any numeric `confidence` those same tool
- * results served.
+ * runs the T-8 precision scan over the precision-bearing numeric fields
+ * those same tool results served (see `extractCalibrationPrecisionCandidates`
+ * — G3BC hardening defect 2 fix: this used to read `ToolBundleResult.
+ * confidence`, a top-level field neither `query_calibration.ts` nor
+ * `query_insights.ts` ever populates, making the scan dead code against real
+ * production tool output; §N.8).
  *
  * The sample-size extraction is BEST-EFFORT and DEFENSIVE, grounded in a
  * verified real serialization path: `registry/tool_name_bridge.ts`'s
@@ -344,6 +349,29 @@ function buildProvenance(stamp: TurnProvenanceStamp): ReceiptProvenance {
  * their own). `JSON.parse` here can only fail on a genuine shape drift or a
  * differently-wired tool; on failure this returns null/skips rather than
  * guessing — the gate then honestly stays closed (see `activation_gate.ts`).
+ *
+ * G3BC hardening defect 3 fix: the sample size backing the
+ * `empirically_calibrated` activation gate is the MINIMUM sample size across
+ * this turn's contributing calibration-bearing tool RESULTS, never a SUM.
+ * Summing let two independent, unrelated calibration calls (e.g. two
+ * `query_insights` calls over different domains/strata, each n=15, neither
+ * individually meeting the activation threshold) combine into a
+ * turn-wide n=30 that incorrectly opened the gate for a claim really backed
+ * by only 15 relevant samples. This codebase does not thread a per-claim
+ * "which specific tool result backs THIS citation's typing" attribution
+ * through to receipt-assembly scope (the same turn-scoped-not-claim-scoped
+ * honesty boundary `type_claim.ts`'s `calibrationConsulted`/
+ * `classicalConsulted` already disclose for the OTHER two consultation-based
+ * types) — threading real per-claim tool-result attribution through the
+ * pipeline is a genuine, larger refactor out of scope for this hardening
+ * round, so MIN is the conservative fallback: it can never let a small,
+ * possibly-irrelevant sample borrow credibility from an unrelated larger
+ * one, at the cost of being more conservative than a true per-claim
+ * attribution would be (a real per-claim-backed sample size might legally
+ * exceed the minimum). Each bundle's OWN multiple results (rare — a single
+ * tool call ordinarily returns one result) still sum within that bundle,
+ * since they represent the SAME underlying call's own data; only the
+ * cross-bundle combination changed from sum to min.
  */
 function extractCalibrationSummaryFromToolBundle(tb: ToolBundle): unknown[] {
   const parsed: unknown[] = []
@@ -380,36 +408,53 @@ function buildConfidenceTyping(args: {
   const toolNames = args.validToolResults.map((tb) => tb.tool_name)
   const classicalConsulted = wasClassicalSourceConsulted(toolNames)
 
+  // sampleSize: MIN across contributing calibration-bearing tool RESULTS this
+  // turn (defect 3 fix — see doc comment above). null when no bundle yielded
+  // a real sample size.
   let sampleSize: number | null = null
   const precisionFlags: ReceiptPrecisionFlag[] = []
   for (const tb of calibrationBundles) {
     const payloads = extractCalibrationSummaryFromToolBundle(tb)
     let tbSampleSize: number | null = null
     for (const payload of payloads) {
+      // Sample size — same extraction as before, still summed WITHIN one
+      // bundle's own payloads (see doc comment: multiple results on the
+      // SAME bundle represent the same underlying call).
       const extracted = extractCalibrationSampleSize(payload)
       if (extracted !== null) {
         tbSampleSize = (tbSampleSize ?? 0) + extracted
-        sampleSize = (sampleSize ?? 0) + extracted
+      }
+      // T-8 precision scan (defect 2 fix) — read the precision-bearing
+      // value(s) from the PARSED content, never from the nonexistent
+      // top-level `ToolBundleResult.confidence`.
+      for (const candidate of extractCalibrationPrecisionCandidates(payload)) {
+        const scan = scanPrecision({
+          value: candidate.value,
+          servedDecimalPlaces: countDecimalPlaces(candidate.value),
+          // Prefer the candidate's OWN row-level sample size (e.g. a single
+          // verdict group's own `n`) over the bundle's aggregate — a more
+          // precise, more conservative pairing than falling back to
+          // `tbSampleSize` would be. Falls back to the bundle's own
+          // aggregate only when the candidate carries no row-level size of
+          // its own (e.g. the `calibration_summary` shape, which already
+          // pairs its value with its own `total_matches`).
+          sampleSize: candidate.sampleSize,
+        })
+        if (scan.overstated) {
+          precisionFlags.push({
+            tool_name: tb.tool_name,
+            overstated: scan.overstated,
+            max_supported_decimal_places: scan.max_supported_decimal_places,
+            served_decimal_places: scan.served_decimal_places,
+            sample_size: scan.sample_size,
+            band_label: scan.band_label,
+            demoted_value: scan.demoted_value,
+          })
+        }
       }
     }
-    for (const r of tb.results) {
-      if (typeof r.confidence !== 'number') continue
-      const scan = scanPrecision({
-        value: r.confidence,
-        servedDecimalPlaces: countDecimalPlaces(r.confidence),
-        sampleSize: tbSampleSize,
-      })
-      if (scan.overstated) {
-        precisionFlags.push({
-          tool_name: tb.tool_name,
-          overstated: scan.overstated,
-          max_supported_decimal_places: scan.max_supported_decimal_places,
-          served_decimal_places: scan.served_decimal_places,
-          sample_size: scan.sample_size,
-          band_label: scan.band_label,
-          demoted_value: scan.demoted_value,
-        })
-      }
+    if (tbSampleSize !== null) {
+      sampleSize = sampleSize === null ? tbSampleSize : Math.min(sampleSize, tbSampleSize)
     }
   }
 

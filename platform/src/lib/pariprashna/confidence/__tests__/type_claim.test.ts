@@ -49,6 +49,25 @@ describe('typeClaimConfidence — one real-shaped fixture per PPR-03 type', () =
     expect(entry.basis).toBe(TYPING_BASIS.CLASSICAL_SOURCE_CONSULTED)
   })
 
+  // ── G3BC hardening defect 4 ──────────────────────────────────────────────
+  // The emitted `basis` string itself (not just a symbolic reference to it)
+  // must disclose the turn-scoping — a downstream reader of the PERSISTED
+  // receipt only ever sees this literal value, never this module's own
+  // header comment. Asserting the literal (not just `TYPING_BASIS.
+  // CLASSICAL_SOURCE_CONSULTED`, which would pass even if the constant
+  // regressed back to the un-scoped wording) is the actual defect-4 proof.
+  it("defect 4 fix: classical_prior's basis literally says 'this_turn', not the old ambiguous 'classical_source_consulted'", () => {
+    const entry = typeClaimConfidence({
+      ref: 'SIG.MSR.011',
+      layer: 'L2.5',
+      calibrationConsulted: false,
+      calibrationGate: CLOSED_GATE,
+      classicalConsulted: true,
+    })
+    expect(entry.basis).toBe('classical_source_consulted_this_turn')
+    expect(entry.basis).not.toBe('classical_source_consulted')
+  })
+
   it('empirically_calibrated: calibration consulted AND the real activation gate is open', () => {
     const entry = typeClaimConfidence({
       ref: 'SIG.MSR.077',
