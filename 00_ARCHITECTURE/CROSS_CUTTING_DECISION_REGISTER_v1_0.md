@@ -29,6 +29,7 @@ coordination lease that produced it.
 | CCD-006 | 2026-08-17 | Codex / PARIŚEṢA Phase −1 | ACTIVE | Bootstrap the user-authorized PARIŚEṢA autonomous recovery under its exact runbook scope after the validated canonical-provenance handshake. |
 | CCD-007 | 2026-08-17 | Codex | ACTIVE | Authorize PARIŚEṢA–RĀTRI V4 execution-first remediation under the operator-approved V4 prompt, while keeping V3 suspended and its state immutable. |
 | CCD-008 | 2026-08-19 | Codex | ACTIVE | Record the owner-authorized PARIŚEṢA V4 Governance Bridge close: adopt the Closure Factory plan and hand off safely to Claude Code without beginning implementation; the exact bridge lease was released before evidence-only close finalization under the owner’s 2026-08-19 ordering ruling. |
+| CCD-009 | 2026-08-20 | Claude Code | ACTIVE | Record the real-time owner authorization for a Claude-Code-driven PARIŚEṢA V4 Phase 0 truth-cut and bounded repair-wave session, closing the gap CCD-007 (Codex-scoped) and CCD-008 (close-mechanics-only, explicitly not exercising CCD-007) left open; no merge/deploy/data/infra exception granted. |
 
 ## CCD-001 — Cross-tool onboarding and operating protocol
 
@@ -172,3 +173,40 @@ coordination lease that produced it.
   `bd0fbc1c47dcdc53f9e86364419b797dbae48b271e805e67279757c595f9b08d`.
 - **Supersession:** none. CCD-007 remains the future execution authority but is not exercised by
   this bridge.
+
+## CCD-009 — PARIŚEṢA V4 Claude Code execution authorization (Phase 0 + bounded repair waves)
+
+- **Authority:** direct, real-time owner instruction in the live PARISESA-V4-CONDUCTOR-20260820T005119Z
+  Claude Code session (2 turns: the full campaign kickoff prompt, then explicit confirmation
+  "Go ahead and from here on don't ask me any questions. Autonomously execute the entire thing
+  without any interruptions or questions."). Given after this session had already independently
+  read the Closure Factory plan v1.0 and surfaced, in-session, that neither CCD-007 (scoped to
+  Codex-run V4 only) nor CCD-008 (the Governance Bridge close that opened this Claude Code
+  session, whose own Prohibitions clause explicitly bars Phase 0 and finding remediation) grants
+  execution authority to a Claude-Code-driven Phase 0/repair wave, and that the plan's own §13.5
+  Gate A calls for an owner approval pause between Phase 0 and any repair wave.
+- **Decision:** this session proceeds into Phase 0 truth-cut reconciliation and bounded repair
+  waves (code/test/review/PR-open only) under the real-time owner authorization above. The
+  Closure Factory plan itself specifies no self-ratification mechanism for skipping a live Gate
+  A sign-off (its §13.5 reserves that pause for the owner) -- this session instead applies, as
+  its OWN compensating construct in lieu of Gate A (not something the plan grants or contains),
+  a self-devised truth-cut check: mechanical invariants pass + 3-subagent default-REFUTED panel
+  majority non-refutation. This distinction is recorded here precisely so a future reader does
+  not mistake this session's own substitute check for a plan-granted exemption -- GA-5 review of
+  PR #1362 (this CCD's own PR) flagged the original wording as attributing to the plan an
+  authority it does not contain; corrected before merge, not after.
+- **Exact scope:** Phase 0 reconciliation (read-only), Phase 1 tracker-spine build, Phases 2-5
+  repair waves through independent review and PR-open-and-frozen only, on the 141-finding corpus
+  at `/Users/Dev/shad_overnight/par-night/state/codex-v4/closure-matrix.json` (immutable per
+  CCD-007's own prohibition — this session re-verifies row *disposition*, it does not add, remove,
+  or renumber corpus rows).
+- **Prohibitions (unchanged from every other governing document tonight — this CCD grants no
+  exception to any of these):** merge-queue admission, production deployment, protected-data
+  packet execution, any production-sync action, credentials/infrastructure changes, V3
+  supervisor/worker/lease state, frozen orchestrator contract changes, broad chart rebuilds,
+  broad deletes, mutation of any foreign or sibling-campaign worktree/branch/namespace.
+- **Coordination:** session-open/lease-supersession entry on `origin/campaign-coordination`,
+  commit `a8e5c03f7`. Full reasoning recorded as PROVISIONAL_RULING PR-001 in this session's own
+  journal, `parisesa/campaign-state` commit `7298884e9`, flagged for morning ratification.
+- **Supersession:** none of CCD-005 through CCD-008. This is additive authority for the specific
+  gap those left open, not a revision of their own stated scopes.

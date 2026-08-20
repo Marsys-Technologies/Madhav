@@ -1634,10 +1634,10 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "e1e1bdfdfbeed50286673d6bdae1d86048c3b9b263031f2f2aaf7903eca05e5a",
+      "fingerprint": "ac60e81c198434263ae1b4559d7c3ece6219f9da111121ad69a473c3fc560903",
       "native_id": "project",
-      "last_verified_session": "PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z",
-      "last_verified_on": "2026-08-19"
+      "last_verified_session": "PARISESA-V4-CONDUCTOR-20260820T191407Z",
+      "last_verified_on": "2026-08-21"
     },
     {
       "canonical_id": "RETRIEVAL_TOOL_prashna_status",
