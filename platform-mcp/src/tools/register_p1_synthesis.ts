@@ -671,16 +671,19 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
     'Returns the kala_jivana_parva view: the life divided into named biographical periods ' +
     '(Parvas) based on Vimshottari mahadasha + dasha-sequence logic. Each Parva covers ' +
     'a named life stage with its dominant dasha lord, expected thematic domain, ' +
-    'start/end years (age-based), and cross-links to LEL events that fell within that Parva. ' +
+    'start/end years (age-based). ' +
+    'Note: LEL-event join is not yet implemented for this tool (lel_capable: false at the ' +
+    'capability layer). ' +
     'Use as the temporal backbone for reading the native\'s life story.',
     {
+      // (F-26) the LEL-event opt-in param was intentionally removed — the underlying
+      // capability declares lel_capable:false; re-adding it requires an actual LEL
+      // join in query_life_arc.ts first.
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
-      include_lel_events: z.boolean().optional()
-        .describe('Include Life Event Log matches for each Parva (default: true).'),
       limit:   z.number().int().min(1).max(100).optional().describe('Max Parvas (default: 50).'),
       offset:  z.number().int().min(0).optional().describe('Pagination offset (default: 0).'),
     },
-    async ({ chart_id, include_lel_events, limit, offset }) => {
+    async ({ chart_id, limit, offset }) => {
       if (!chart_id) return errorOutput('kala_life_arc_get', 'chart_id is required')
       try {
         // T-9 fix (R6 0d-clips): the underlying capability (query_life_arc.ts) reads
@@ -689,7 +692,6 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
         // advertised `limit` param). Map limit -> top_k so the cap is actually honored.
         const data = await callRegistryCapability('marsys://tool/L3/query_life_arc', {
           chart_id,
-          include_lel_events: include_lel_events !== false,
           top_k: limit ?? 50,
           offset: offset ?? 0,
         }, principal)
