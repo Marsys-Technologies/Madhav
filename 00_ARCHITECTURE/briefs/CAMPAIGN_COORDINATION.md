@@ -4824,3 +4824,55 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   (config-only, no rebuild, fast to revert); will verify each flag's real
   behavioral effect on the live deployed route before calling this phase
   gate-tested.
+
+- 2026-08-20 06:55Z — **PARIPRASHNA / Claude Code (conductor) — the 7 P2
+  flags are live in production (revision `amjis-web-01543-fhw`, 100%
+  traffic); the phase gate battery is BLOCKED, honestly, on a real
+  constraint — no credentials to drive an authenticated reading.**
+
+  **What's verified**: `gcloud run services update` succeeded (new
+  revision `amjis-web-01543-fhw`, `Ready: True`, 100% traffic);
+  `gcloud run services describe` confirms all 7 `MARSYS_FLAG_PARIPRASHNA_*`
+  env vars are actually set on the live container (not just requested);
+  `GET /api/health` → `{"status":"ok"}`; unauthenticated `POST
+  /api/pariprashna` → still 401 (auth guard intact under the new flags);
+  Cloud Run logs since the flip show zero errors/exceptions/crashes — the
+  service boots and serves clean with all 7 flags on.
+
+  **What's NOT verified, and can't be from this session**: the plan's own
+  P2 gate criteria (`PARIPRASHNA_PHASED_SWARM_IMPLEMENTATION_PLAN_v1_0.md`
+  §2 Phase II Gate) require "a real reading on the deployed route renders a
+  daśā table as a table and a verse as a verse... receipts audit-clean...
+  a planted-contradiction fixture surfaced" — this needs an ACTUAL
+  authenticated Paripraśna turn run against production. Checked what's
+  available in this environment: no browser/OAuth session for the native's
+  account; the `MCP_CANARY_KEY` (used in the deploy pipeline's own
+  post-deploy smoke) only exercises the `/mcp` auth PATH (bearer-token
+  wiring), never actually calls `prashna_ask` with a real chart query —
+  confirmed by reading `mcp_end_to_end_smoke.sh` directly, not assumed;
+  `scripts/operator/end_to_end_smoke.sh` has zero pariprashna-specific
+  probes (confirmed via grep — it's the general web-app smoke test).
+  **No fabricated "gate battery PASSED" claim is being made here** — this
+  is a genuine credential/access gap in what this session can exercise,
+  not a code-quality gap (every lane's own test suite + this session's two
+  full verifier+adversary+hardening cycles already establish the code
+  correctness as far as static/unit verification can). The live end-to-end
+  behavioral check (does the daśā table actually render as a table in a
+  real streamed reading, does a real receipt actually assemble and pass
+  its own validator against real production data, does the citation
+  rewriter actually produce first-paint markers on a real stream) needs
+  either the native's own live session (an AC-15-style spot check) or a
+  dedicated authenticated test harness with real credentials that doesn't
+  exist in this repo today. Recording this as the honest state of P2's
+  gate battery rather than silently declaring it satisfied by the flag
+  flip + smoke checks above, which is a materially weaker claim.
+
+  **Recommendation surfaced to the native directly** (not just here):
+  either the native runs a few real Paripraśna turns on the live deployed
+  route now that all 7 flags are on (cheapest, most direct verification —
+  the actual gate the plan asks for), or this session builds a dedicated
+  authenticated smoke harness with real service-account credentials before
+  claiming the gate battery complete. Not proceeding to declare P2 phase-
+  closed or tag `pariprashna/p2-close` until one of those happens — the
+  flags being live and error-free is real, valuable progress, but it is
+  not the same claim as "the gate battery passed."
