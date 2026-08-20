@@ -366,7 +366,12 @@ const VERBOSITY_ZOD = z.enum(['concise', 'detailed', 'exhaustive']).optional().d
   "Response-size knob (W3 + SAMAPANA Track B): 'concise' tightens this call's response-" +
   "budget ceiling (response_budget.ts) to roughly half its normal size — trimmable/catalog-" +
   "style sections shrink first; confirmed-finding sections marked hardFloor (e.g. judgment_" +
-  "query's bearing_yogas) never drop below their declared floor, concise or not. 'detailed' " +
+  "query's bearing_yogas) never drop below their declared floor, concise or not. A fixed C8 " +
+  "§4 set of immune honesty fields is never trimmed at all — stronger than hardFloor, not " +
+  "just floored (see IMMUNE_HONESTY_FIELDS in response_budget.ts): on assess_career/assess_" +
+  "wealth this includes domain_completeness and reading, so on a call whose bulk sits in " +
+  "those irreducible sections, the actual served bytes can shrink far less than 'roughly " +
+  "half' even under 'concise' — the ceiling drops, the immune content does not. 'detailed' " +
   "(default if omitted) keeps the normal, wider ceiling. 'exhaustive' keeps that SAME ceiling " +
   "(never narrower than 'detailed') AND additionally forces this call's mandatory B.11 " +
   "orientation pre-fetch to its full form (response_format:'full', not the default 10-signal " +
