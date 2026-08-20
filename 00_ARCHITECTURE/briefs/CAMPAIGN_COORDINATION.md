@@ -4901,3 +4901,86 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   parse failure — "Invalid control character" — while reading some
   unidentified upstream file) is NOT addressed by this PR; left open for a
   follow-up, not silently dropped.
+
+- 2026-08-20 11:05Z — **PARIPRASHNA / Claude Code (conductor) — built the
+  probe harness the 07:05Z gate-battery blocker asked for; merge request,
+  `pariprashna/probe-harness` → `main`.** Native-requested tooling, scoped
+  narrowly ("one credential seam, one script pair, done"). Branch off fresh
+  `origin/main`; territory `platform/scripts/probe/` only (new directory,
+  zero overlap with `pariprashna_swarm/tracker/**` or any conductor state
+  file) — no `platform/**` app code touched, no migration, no deploy.
+
+  **Credential seam**: investigated the MCP canary key first, per
+  instruction — confirmed live (not assumed) that it already authenticates
+  and can complete a real `prashna_ask` call; it only ever exercised the
+  auth boundary in the deploy smoke script by that script's own deliberate,
+  disclosed design choice (never send a real tool call, avoid live-LLM cost
+  on every deploy), not a credential limit. But `/api/pariprashna` (this
+  tool's actual target) is a structurally separate auth system —
+  `getServerUser()` reads only a Firebase `__session` cookie, no Bearer
+  fallback exists there — so the MCP key doesn't transfer regardless.
+  Reused the SAME identity the canary key already uses
+  (`user_uid: 'probe-service-account'`, which already holds real
+  `chart_grants` view rows on the synthetic test chart — a pre-existing
+  grant, not something created tonight) via the platform's own existing
+  `scripts/dev/mint_session_cookie.ts` impersonation pattern, inlined into
+  `ask.ts`. No new principal minted. Durable root secret is
+  `FIREBASE_ADMIN_CREDENTIALS` (non-expiring); the 14-day Firebase
+  session-cookie cap is sidestepped by minting fresh on every invocation
+  rather than caching — no "refresh" step exists because there's nothing to
+  refresh.
+
+  **Built**: `ask.ts`/`ask.sh` (POST → consume SSE to completion → one
+  immutable JSON file per turn under `probe/out/`, gitignored since a turn
+  file may embed a real reading; partial+non-zero-exit on truncation/error)
+  and `show.py` (eyeball a turn file without reading raw JSON). Two guards:
+  default chart is always the synthetic test chart unless `--chart-id` is
+  passed explicitly (never a silent default to the real native's chart);
+  every harness-created turn gets tagged (`[HARNESS PROBE]` conversation
+  title, applied immediately post-creation) and the exclusion claim was
+  VERIFIED LIVE, not just asserted — queried
+  `brahma_mimamsa_prediction_ledger` and `mimamsa_calibration` directly
+  after real probe runs: **0 rows for the synthetic chart in either table**;
+  the ledger's existing 5 rows are all correctly scoped to the real
+  native's canonical chart.
+
+  **Three real bugs found and fixed by actually running the tool, not by
+  reading it**: the Firebase web API key isn't in Secret Manager (it's a
+  public-by-design value, GitHub Actions repo secret only — re-sourced
+  correctly via `firebase apps:sdkconfig WEB`); the wire's `block.commit`
+  event uses snake_case `block_id`/`text`, not the client reducer's
+  camelCase `blockId`/`html` — a real field-mismatch crash on the first
+  live run, caught and fixed, not assumed correct from memory of the
+  reducer type; a Python nested-f-string syntax error in `show.py`, same
+  discipline.
+
+  **Direct progress on the 07:05Z-blocked P2 gate battery**: 3 real
+  authenticated turns completed end-to-end against production
+  (`partial:false, status:ok`) — the thing this session had no credentials
+  to do 4 hours ago. Independently confirmed via direct SQL that a real
+  `AcharyaReadingReceipt` persisted correctly for one of them (`receipt_hash`
+  present, `coverage.status: "measured"`) — the receipt-emission system
+  (G3-A, hardened over two adversarial rounds this session) genuinely works
+  end-to-end in live production, not just in tests.
+
+  **A real, substantive finding the gate battery exists to catch — surfaced
+  now, not smoothed over**: asked for "a table summarizing key planetary
+  strengths" in a whole-chart reading; the response's markdown table stayed
+  embedded inside a single `kind: paragraph` block rather than being
+  emitted as its own `kind: table` block. G2-A's classifier operates at
+  pass-boundary granularity (one classification per committed block, not
+  per structural element within a block) — a block that's mostly prose with
+  an embedded table still classifies as `paragraph`. This means "does a
+  table actually render as a table" — one of P2's own named gate criteria —
+  is **NOT YET true** for a table embedded mid-prose, only for a block that
+  is *itself* structurally a table start-to-finish. Recording this as an
+  open finding for whoever next works G2-A/G3 rendering fidelity, not
+  closing it here (out of this tooling task's own narrow scope) — this is
+  exactly the class of thing no automated test suite would have caught,
+  and exactly why the native asked for this tool.
+
+  P2's gate battery is still not being called complete — this tool makes
+  running it (and future spot-checks) actually possible going forward, but
+  the full battery (crash-kill-test, a planted-contradiction fixture,
+  systematic block-kind coverage across more query shapes) hasn't been run
+  yet. Opening the PR next; requesting a merge-queue window.
