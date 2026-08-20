@@ -140,15 +140,27 @@ flagged for the Decision Register at next docs close.
 | **DD-8** | Q-2 reading grading + docs seal (P4) | Gate-runner grades the three readings against the §J rubric, honestly labeled MACHINE-GRADED; the design-plan RATIFIED-AS-BUILT flip proceeds on it. |
 | **DD-9** | G0 PR merge | Pre-authorized: kickoff step 0 opens and merges the `pariprashna/g0-close` PR (doc-only diff) if not already merged, before anything else. |
 | **DD-10** | CAMPAIGN_COORDINATION dirty-file conflict | Never touch another workstream's dirty file: register the phase lease the moment the file is clean; until then log the deferral each phase (the G0 precedent). |
-| **DD-11** | Dead observatory during a lane transition (added 2026-08-20, PARIPRASHNA-CLOSEOUT session, item 2) | **The conductor calls `tracker-health-check` (`00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/tracker-health-check`) at every lane transition.** A non-zero exit is a HALT condition, same shape as every other DD-5-style halt: halt at the next lane boundary (not mid-lane), pin rollback, write resume state, restore the observatory (`tracker-start`, or file the incident if it won't come back clean), report — then resume. This is the tier that actually closes the loop the tracker-v2 observatory (§7) built: T1–T4 keep the *observer* alive, but every one of them is itself something that can be down; the subject (the conductor) checking the observer is the only watcher guaranteed to be running at the exact moment it matters. The 2026-08-19 23m37s blind window (tracker-v2 README, "The 2026-08-19 incident") would have been caught in seconds by this, had it existed then. |
+| **DD-11** | Dead observatory during a lane transition (added 2026-08-20, PARIPRASHNA-CLOSEOUT session, item 2; status corrected 2026-08-20, same session, item 2 follow-up) | **Status: IN FORCE — NOT YET WIRED.** The rule: the conductor calls `tracker-health-check` (`00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/tracker-health-check`) at every lane transition; a non-zero exit is a HALT condition, same shape as every other DD-5-style halt (halt at the next lane boundary, pin rollback, write resume state, restore the observatory, report, then resume). **Nothing calls it yet.** Confirmed live: the P2 conductor's own worktree (`pariprashna/p2`, branched at `d653236c2`, before PR #1355 merged) has neither `tracker-health-check` nor this DD-11 row in its own checked-out copy of this file — it cannot wire a call it doesn't have. This is the tier that actually closes the loop the tracker-v2 observatory (§7) built: T1–T4 keep the *observer* alive, but every one of them is itself something that can be down; the subject (the conductor) checking the observer is the only watcher guaranteed to be running at the exact moment it matters. The 2026-08-19 23m37s blind window (tracker-v2 README, "The 2026-08-19 incident") would have been caught in seconds by this, had it existed then — and stays uncaught by this specific mechanism until it's actually wired. **Missing call site:** a `tracker-health-check` invocation + halt-on-nonzero at the conductor's own lane-transition point (currently prose-only — `KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md`'s "write tracker state on EVERY lane transition" instruction, no deterministic hook exists to attach to). **Deadline: P2 close.** If P2 closes with this still unwired, the next session must either wire it before P3 opens or downgrade this row's status explicitly — it must not be left reading as satisfied. |
 
-**Effective at the next phase boundary (P1 close), not mid-phase.** DD-11 is
-a new standing rule, not a hotfix to something broken right now — the P1
-conductor is mid-phase as this is written, and inserting a new mandatory
-per-lane-transition call into a running phase risks exactly the kind of
-disruption DD-11 exists to prevent (an interruption at an unplanned moment).
-Rules land at boundaries; behavior changes at boundaries. P1 finishes under
-the rules it started under; P2 opens under DD-11.
+**Effective at the next phase boundary (P1 close), not mid-phase — landed,
+but landing is not the same as wired.** DD-11 was written as a new standing
+rule, not a hotfix to something broken right now — the P1 conductor was
+mid-phase when it was authored, and inserting a new mandatory
+per-lane-transition call into a running phase would have risked exactly the
+kind of disruption DD-11 exists to prevent (an interruption at an unplanned
+moment). P1 finished under the rules it started under; P2 opened under
+DD-11's *text*, but not its *enforcement* — investigated 2026-08-20 (same
+session, item 2 follow-up): the live P2 conductor session was found running
+from a worktree branched before this rule (or the script it calls) existed
+on `main`, and there is no deterministic per-lane hook in this campaign for
+any session to attach a check to short of editing the conductor's own
+in-flight files, which risks the disruption this rule was written to avoid
+in the first place. Editing prose a live session has already loaded into its
+own context does not change what that session does — only a session that
+starts fresh (or is deliberately resynced) after this text lands actually
+picks it up. Landing the rule's *text* is not the same claim as landing its
+*enforcement*, and the row above says so plainly rather than reading as
+closed.
 
 **Result: zero human gates.** The only stops are halt conditions, and every
 halt ends with rollback pinned, state resumable, and a report — never a hang.
