@@ -19,6 +19,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../types.js'
 
+// F-73: `fetchA5GocharaWindows` (explain.ts) calls `computeGocharaForecast` directly
+// (in-process, same package) instead of round-tripping through the registry/HTTP capability
+// system — the `marsys://tool/L4/gochara_forecast_get` URI it used to call was never backed
+// by a registered capability, so every call 404'd and A5's agreement was permanently
+// `insufficient_data`. Mock the real call site instead of intercepting an HTTP call that no
+// longer happens.
+const mockComputeGocharaForecast = vi.hoisted(() => vi.fn())
+vi.mock('../tools/retrieval/register_gochara_windows.js', () => ({
+  computeGocharaForecast: mockComputeGocharaForecast,
+}))
+
 type ToolHandler = (args: Record<string, unknown>) => Promise<{
   structuredContent?: { type: 'object'; object: unknown }
   content: Array<{ type: 'text'; text: string }>
@@ -115,6 +126,12 @@ function stubFetchForExplain(
   pactResponse: Record<string, unknown>,
   gocharaResponse: Record<string, unknown>,
 ) {
+  // F-73: gochara windows no longer come through fetch — see mockComputeGocharaForecast
+  // above. (marsys://tool/L4/gochara_forecast_get was never a real registered capability;
+  // this used to be papered over with a fetch-level mock the real code never hit.)
+  mockComputeGocharaForecast.mockReset()
+  mockComputeGocharaForecast.mockResolvedValue(gocharaResponse)
+
   vi.stubGlobal(
     'fetch',
     vi.fn(async (_url: string, opts: { body: string }) => {
@@ -135,11 +152,6 @@ function stubFetchForExplain(
       } else if (uri === 'marsys://tool/L5/get_field_snapshot' ||
                  uri === 'marsys://tool/L3/get_field_snapshot') {
         payload = { field_snapshot_id: 'snap-001', field_content_hash: 'hash-001' }
-      } else if (
-        uri === 'marsys://tool/L4/gochara_forecast_get' ||
-        uri === 'gochara_forecast_get'
-      ) {
-        payload = gocharaResponse
       } else {
         // Unknown URI — return empty payload rather than throwing, so PACT chain completes
         payload = { rows: [] }
