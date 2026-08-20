@@ -5333,3 +5333,201 @@ branch's own work is done and folded into `main`).
   `00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/**` only — no
   `platform/**`, no migration, no deploy, no credential. 26/26 selftests pass;
   the new one observed failing against the reverted pre-fix code.
+
+(backfilled from `main` — this same entry was merged there via PR #1380,
+a deviation from this branch's usual direct-append convention; copying it
+here too so this branch's record stays complete)
+
+- 2026-08-20 ~14:30Z — **PARIPRASHNA-CITATION-LEAK-FIX / Claude Code —
+  merged and deployed, live-reverified:** PR #1377
+  (`pariprashna/citation-leak-fix` → `main`, based on `origin/main @
+  429942e4c`, post HS-4 death-anniversary fix) fixed a citation/trust-
+  integrity leak live-reproduced twice this session against the real
+  native's canonical chart (`482012f1-710e-4a25-994a-93821f5871aa`): a
+  Paripraśna synthesis turn closed with the literal, user-visible sentence
+  *"...provided in this, this, and this artifacts."*
+
+  ROOT CAUSE: `register_leak_lint.ts`'s pre-existing register-name backstop
+  (correctly hides internal registers — MSR/UCN/CGM/CDLM/LEL/RM and their
+  spelled-out forms — from readers) substituted EACH register mention in a
+  LIST independently with its own "this"/"This" demonstrative. The names
+  were never actually leaking unredacted; only the substitution's grammar
+  broke when the model named several registers in one sentence (e.g.
+  "...provided in the MSR, CGM, and CDLM artifacts."). Confirmed via the
+  saved SSE event logs of both repro turns: 0 `citation.define` events and
+  an empty `facts_consumed`/`derivation_chains[].fact_refs` on both, and the
+  live flag read confirms `PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED`
+  (default OFF) is NOT in the currently-live flag bundle — so the leak fires
+  on the flag-OFF direct-`lintReaderProse`-call path; the flag-ON path
+  (`rewriter.ts`) calls the SAME function, so the fix covers both without
+  special-casing either (verified via import trace, not assumed).
+
+  FIX (two-pronged, matching this codebase's own defense-in-depth doctrine):
+  (1) `register_leak_lint.ts` — consecutive subjectSafe matches
+  (register_acronym / register_full_name) joined ONLY by list-connective
+  text (",", "and", "&", whitespace — nothing else) now collapse into ONE
+  demonstrative ("this"/"these"/"This"/"These") instead of one per item; a
+  lone match is a run of length 1 and is byte-for-byte the pre-fix
+  behavior. Deliberately does NOT collapse on "or" — "the MSR, the CGM, or
+  the CDLM" is a disjunction (one of three), not a co-occurring list, and
+  collapsing it would assert something the sentence didn't say (confirmed
+  via an 11-case adversarial probe, folded into the permanent test suite).
+  (2) `synthesis_stage.ts` (Paripraśna-only, NOT the shared consult route's
+  prompt builder) — new unconditional `NARRATION_NO_SOURCING_FILLER_CLAUSE`
+  telling the model to never write vague "based on the data provided in
+  these artifacts" closing disclaimers or name its own internal sources,
+  per CLAUDE.md §N.7 item 6 ("an honest null beats an invented judgment").
+
+  DISCLOSED, OUT-OF-SCOPE FINDING from this investigation (not fixed):
+  `platform/src/lib/synthesis/prompts/pariprashna_synthesis_prompt_v1.ts`
+  (the `⟦cite:...⟧` sentinel-format prompt appendix, `PARIPRASHNA_CITATION_APPENDIX`)
+  has ZERO production callers — even with the first-paint-citations flag on,
+  no live prompt ever teaches the model the sentinel syntax, so
+  `rewriter.ts` could never resolve a real sentinel today. Left untouched:
+  wiring it up is a separate, larger change to the live synthesis prompt
+  and not what caused the reported leak. Flagged here for whichever session
+  next touches the citation-resolution surface.
+
+  TESTS/GOVERNANCE: new `register_leak_lint.test.ts` (17 tests — exact
+  production repro text, byte-for-byte single-mention regression, bare-
+  marker carve-out, REWRITE-verdict unaffected, 6 adversarial edge cases).
+  Full suite 814 files / 9353 tests pass, 0 failures; `tsc --noEmit` clean;
+  ESLint clean. `naming_lint.py` 0 new (53 pre-existing baseline);
+  `drift_detector.py` 215 findings/exit=3, unchanged from baseline;
+  `check_earned_signal.py` 0 new (141 pre-existing, allowlisted) —
+  `earned_signal_allowlist.json`'s register_leak_lint.ts/`verdict` entry
+  corrected `max_occurrences` 5→6 + `sample_lines`, per the file's own
+  existing correction-comment convention (classifier.ts precedent), because
+  the refactor mechanically relocated one pre-existing literal into a new
+  source line, not a new kind of finding.
+
+  MERGE + DEPLOY: merged via merge queue at 2026-08-20T14:22:45Z, SHA
+  `340b358cf269f58aed6a526249eddd25b01bc109`. `Deploy to Cloud Run` ran
+  path-scoped correctly — `Build & Deploy Web` succeeded; `Build & Deploy
+  Pipeline Job Image` / `MCP` / `Sidecar` all `skipped` (platform/src-only
+  change, as expected). Traffic confirmed 100% on the new revision
+  `amjis-web-01553-7ld` via `gcloud run services describe`.
+
+  LIVE RE-VERIFICATION (both original repro questions, same canonical
+  chart, via the standing probe harness): (1) the Mercury/6th-house career
+  question — clean, no leak, no odd artifact, substantive ~4.8k-char
+  reading ending "**The verdict is clear:** Mercury is your greatest
+  professional asset...". (2) the Mercury-Mahadasha/Saturn-Antardasha
+  timing question — the SAME question whose saved pre-fix output contained
+  the exact leak text — now returns a clean, substantive reading with NO
+  "this, this, and this" pattern anywhere and no bare register acronym
+  visible; the closing "*This interpretation is based on the synthesis of
+  the detailed chart data provided in this, this, and this artifacts.*"
+  disclaimer sentence that appeared in the pre-fix version is GONE entirely
+  — the post-fix reading ends instead with a substantive "A Note on Timing"
+  paragraph discussing FORENSIC-source dasha-date methodology. One
+  unrelated, minor, NON-security cosmetic artifact was observed mid-answer
+  in this same turn ("...**Consolidation of Authority:** The This
+  describes this specific sub-period...") — a stray leftover article
+  before a demonstrative. This does NOT reproduce the target defect (no
+  repeated "this, this" pattern, no leaked identifier) and could not be
+  conclusively root-caused from client-visible output alone (the pre-
+  redaction model text is never persisted or logged with content, only a
+  scrub COUNT, by the existing gate-11 privacy discipline) — every
+  constructed hypothesis for how the CURRENT `register_leak_lint.ts` logic
+  could produce that exact leftover was traced through by hand and ruled
+  out (see PR #1377's own commit message for the traced hypotheses), and
+  the byte-for-byte single-mention regression test independently confirms
+  a lone match cannot leave its own article behind. Disclosed honestly as
+  an open, unresolved residual rather than silently fixed or ignored;
+  flagged for a follow-up session with server-log access to pin down.
+
+  Scope this entry covers: `platform/src/lib/pariprashna/citations/
+  register_leak_lint.ts`, `platform/src/lib/pariprashna/pipeline/
+  synthesis_stage.ts`, `platform/src/lib/pariprashna/citations/__tests__/
+  register_leak_lint.test.ts`, and `platform/scripts/governance/
+  earned_signal_allowlist.json` only — no other `platform/**` file, no
+  migration. Disjoint from the live P2 conductor and PARIŚEṢA-RĀTRI-V4 —
+  neither touches `citations/register_leak_lint.ts` or
+  `pipeline/synthesis_stage.ts` per a fresh read of this file before
+  opening the PR and again immediately before this append.
+
+## 2026-08-20 — interpretation_sets 100% waiver rate: root-cause hypothesis found, not fixed (cost/tier decision, not mine to make)
+
+Follow-up investigation into the "Item 3" finding from the earlier gate-
+battery report: 5/5 significant judgments waived across 2 real production
+turns, every one with `waiver_reason: "model produced no entry for this
+judgment_id"`.
+
+Read the real pipeline end to end (`interpretation/assemble.ts`,
+`interpretation/worker.ts`) — this is genuinely wired, not a stub or a
+disabled path. `assembleInterpretationSets` correctly gates on
+`semanticBlocksEnabled` (confirmed live/true, so this isn't the "structurally
+blind" case its own code comments warn about), detects real judgments,
+caps at `MAX_SIGNIFICANT_JUDGMENTS_PER_TURN=8` (both turns were well under
+cap, so nothing was silently truncated), and calls
+`generateInterpretationSets` → the REAL LLM call (`runAdapter`, JSON-schema
+structured output, one repair-retry on parse failure). The waiver reason
+observed ("model produced no entry for this judgment_id") only fires when
+the call itself SUCCEEDED (returned parseable JSON) but the returned `sets`
+array didn't contain matching `judgment_id`s — a different code path than
+"the call failed" (which has its own distinct waiver string) or "the
+model's entry failed structural validation" (also its own distinct string,
+never observed). This rules out a call-failure or malformed-entry
+explanation; the model's JSON response itself is essentially empty or
+non-matching.
+
+**Root-cause hypothesis (well-evidenced, not proven — no raw model output is
+logged for this call, so it can't be conclusively confirmed):** the call uses
+`callType: 'worker'`, resolved via `getEffectiveModel(DEFAULT_STACK_ID,
+'worker', 'primary')`. `DEFAULT_STACK_ID = 'gemini'`
+(`platform/src/lib/models/registry.ts`), and gemini's `worker`-tier model is
+`gemini-2.5-flash-lite` — the stack's cheapest/fastest tier, documented
+elsewhere in the same registry as suited for "planner + quick answers" /
+"title generation, history summarization" (the `worker` `CallType`'s own
+established use case, per `worker.ts`'s header comment, reused here rather
+than adding a new `CallType`). The task actually being asked of it —
+produce ≥3 genuinely distinct candidate interpretations plus a real,
+checkable falsifier per significant judgment, per PPR-02's spec — is a
+meaningfully harder structured-reasoning task than the tier's established
+use case, run with `reasoning: 'disable'` and `temperature: 0`. A capability
+mismatch (cheap/fast tier asked to do adjudication-grade synthesis) is a
+plausible, common failure mode for exactly this symptom (empty/non-
+conforming structured output under a demanding schema), consistent with
+100% of the observed sample.
+
+**Not fixed — this is a real cost/policy tradeoff, not mine to decide
+unilaterally.** The candidate fix (route this call to a stronger tier, e.g.
+`'mid'` or `'primary'`/synthesis-grade) means paying full-synthesis-grade
+cost on every significant judgment on every turn (up to 8× per turn under
+the existing cap) — a real spend decision, same category as the model-tier/
+spend-ceiling calls this project's own governance (`MACRO_PLAN_v2_0.md`
+Meta-Governance, corpus's own "spend ceiling" pre-authorization) reserves
+for explicit authorization rather than an in-session unilateral change.
+Flagging for the native/next session with authority over model spend:
+confirm the hypothesis (would need either raw-output logging added behind a
+debug flag, or a manual `caller` override run against a stronger tier as a
+one-off diagnostic) and decide the tier tradeoff before changing
+`worker.ts`'s call site.
+
+**P2 gate-battery status, consolidated:** HS-4 safety false-positive —
+fixed, merged, deployed, live-verified. Citation-slot template leak —
+fixed, merged, deployed, live-verified (entry above). Block-kind rendering
+(dasha table/verse) — real gap, live-confirmed, plausibly downstream of the
+disclosed MCP↔web namespace gap rather than a block-classifier defect.
+Crash-kill/outbox — honestly split: reducer-level incomplete-state handling
+already covered by existing tests; outbox-recovery itself untestable in
+production (flag off, migration never opened). Receipt B.4/waiver rate —
+structurally audit-clean (no fabrication), but a 100% waiver rate with a
+well-evidenced tier-mismatch hypothesis (this entry). Planted-contradiction
+fixture — the corpus's own canonical fixture collides with the HS-3 safety
+gate as authored (real finding for the fixture's maintainer); a faithful
+reworded variant showed the underlying contradiction-surfacing narration
+genuinely works (names the tension, doesn't smooth it), though the
+receipt's structured `cross_domain.domains` under-counted to a single
+domain on that run.
+
+Not declaring formal P2 phase close from here — three real, disclosed gaps
+remain open (block-rendering, outbox infrastructure, waiver-rate tier
+decision), each requiring either a larger infrastructure change (MCP↔web
+namespace wiring, the outbox migration) or a spend-policy decision above
+this session's own authority to make unilaterally, consistent with how
+this session has already deferred comparable calls (the 3 P1 safety flags,
+the durable-persistence flag) rather than resolving them on the native's
+behalf. Two real, independently-fixable defects (HS-4, citation leak) were
+found via this gate battery and are now closed end-to-end.
