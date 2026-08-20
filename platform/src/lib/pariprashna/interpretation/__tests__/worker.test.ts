@@ -18,6 +18,7 @@ import { describe, it, expect, vi } from 'vitest'
 import {
   generateInterpretationSets,
   resolveInterpretationSetsModelId,
+  parseAndValidateSets,
   INTERPRETATION_SETS_MODEL_ID,
   type InterpretationLlmCaller,
 } from '../worker'
@@ -297,5 +298,69 @@ describe('resolveInterpretationSetsModelId — DD-17', () => {
 
   it('is NOT the worker-tier model (regression guard for the DD-17 downgrade)', () => {
     expect(resolveInterpretationSetsModelId()).not.toBe('gemini-2.5-flash-lite')
+  })
+})
+
+describe('parseAndValidateSets — DD-20 (real bug, real repro texts, no network)', () => {
+  it('accepts a correctly-shaped response', () => {
+    const raw = JSON.stringify({
+      sets: [
+        {
+          judgment_id: 'sig-domain_verdict-1',
+          status: 'generated',
+          candidates: [
+            { reading: 'A', rationale: 'ra' },
+            { reading: 'B', rationale: 'rb' },
+            { reading: 'C', rationale: 'rc' },
+          ],
+          selected_index: 0,
+          selected_rationale: 'best',
+          falsifier: 'a real falsifier with enough words to pass',
+        },
+      ],
+    })
+    const map = parseAndValidateSets(raw)
+    expect(map.get('sig-domain_verdict-1')?.status).toBe('generated')
+  })
+
+  it('THROWS (not silently empty) on the exact wrong-envelope shape observed live against the real deployed model — {"judgments":[...]} with candidate_readings/strongest_reading, no "sets" key at all', () => {
+    // Byte-shape-equivalent to a real captured response (DD-20 register entry) —
+    // the actual defect this fix closes: valid JSON, wrong top-level key and
+    // wrong field names throughout, which `parsed.sets ?? []` used to silently
+    // swallow as "no entry" rather than surfacing as a real failure.
+    const raw = JSON.stringify({
+      judgments: [
+        {
+          judgment_id: 'sig-domain_verdict-1',
+          candidate_readings: [
+            { reading_id: 'c1', reading: 'A' },
+            { reading_id: 'c2', reading: 'B' },
+            { reading_id: 'c3', reading: 'C' },
+          ],
+          strongest_reading: { reading_id: 'c1', rationale: 'best', falsifier: 'because' },
+        },
+      ],
+    })
+    expect(() => parseAndValidateSets(raw)).toThrow(/schema-invalid/)
+  })
+
+  it('THROWS on a bare top-level array (the other wrong shape observed live)', () => {
+    const raw = JSON.stringify([
+      { judgment_id: 'sig-domain_verdict-1', candidate_readings: [], selected_reading: {} },
+    ])
+    expect(() => parseAndValidateSets(raw)).toThrow(/schema-invalid/)
+  })
+
+  it('THROWS on unparseable text (pre-existing behavior, unchanged)', () => {
+    expect(() => parseAndValidateSets('not json at all')).toThrow(/non-JSON/)
+  })
+
+  it('THROWS on empty text (pre-existing behavior, unchanged)', () => {
+    expect(() => parseAndValidateSets('   ')).toThrow(/no text output/)
+  })
+
+  it('THROWS when "sets" exists but its entries are wrong-shaped (missing required judgment_id)', () => {
+    const raw = JSON.stringify({ sets: [{ status: 'waived' }] })
+    expect(() => parseAndValidateSets(raw)).toThrow(/schema-invalid/)
   })
 })

@@ -39,6 +39,7 @@
  */
 import 'server-only'
 
+import { z } from 'zod'
 import type { JSONSchema7 } from 'json-schema'
 
 import { runAdapter } from '@/lib/adapters/run_adapter'
@@ -96,6 +97,51 @@ interface LlmSetRaw {
   falsifier?: string
   waiver_reason?: string
 }
+
+/**
+ * DD-20 (PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md §2). A live
+ * diagnostic against the deployed model found `responseFormat`'s schema
+ * (below, RESPONSE_SCHEMA) demonstrably NOT constraining this call's
+ * decoding: two independent experiments — stripping the free-text "match
+ * the schema" instruction, and rewriting the schema to make every field
+ * `required` with `nullable` types for the genuinely-optional ones (both
+ * documented Gemini best practices) — each produced BYTE-IDENTICAL raw
+ * output to the unmodified baseline. The model instead reliably returns a
+ * plausible-looking but wrong envelope (`{"judgments":[...]}` with
+ * `candidate_readings`/`strongest_reading`, or a bare top-level array —
+ * observed both shapes across repeated real calls), with genuinely
+ * excellent, on-task CONTENT every time. `adapter_gemini.ts`'s wiring is
+ * correct (confirmed: `pipeline_planner.ts`'s call through the SAME adapter
+ * with a larger schema succeeds cleanly on the first attempt) — this call's
+ * specific prompt+schema combination is just one Gemini does not reliably
+ * honor via native structured output.
+ *
+ * A THIRD experiment — an explicit repair-retry message restating the exact
+ * required top-level shape — reliably corrected it (verified against the
+ * live model, not assumed). The EXISTING generic repair message this module
+ * already had ("...not valid JSON matching the required schema...") was
+ * separately verified NOT sufficient on its own — it doesn't restate the
+ * shape, so the model has no new information to correct against.
+ *
+ * This is why the fix is two-part, not one: (1) `parseAndValidateSets`
+ * below gives `callOnce` a REAL detector for "valid JSON, wrong envelope" —
+ * before this fix nothing did, so `parsed.sets ?? []` silently defaulted to
+ * empty and the repair-retry (proven to work) never even fired for this
+ * failure class; (2) `INTERPRETATION_SETS_REPAIR_NOTE` replaces the generic
+ * repair text with the exact shape restatement proven to fix it.
+ */
+const LlmSetRawSchema = z.object({
+  judgment_id: z.string(),
+  status: z.enum(['generated', 'waived']),
+  candidates: z.array(z.object({ reading: z.string(), rationale: z.string() })).optional(),
+  selected_index: z.number().optional(),
+  selected_rationale: z.string().optional(),
+  falsifier: z.string().optional(),
+  waiver_reason: z.string().optional(),
+})
+const InterpretationSetsEnvelopeSchema = z.object({
+  sets: z.array(LlmSetRawSchema),
+})
 
 function systemPrompt(): string {
   return (
@@ -315,14 +361,45 @@ async function callOnce(
     responseSchema: RESPONSE_SCHEMA,
   }
   const interaction = await runAdapter(req)
-  const rawText = interaction.finalText ?? ''
+  return parseAndValidateSets(interaction.finalText ?? '')
+}
+
+/**
+ * Pure — no network. Split out from `callOnce` so DD-20's validation
+ * behavior (the actual fix) has real unit coverage independent of a live
+ * model call. Throws on ANY failure — no text, unparseable text, or valid
+ * JSON in the wrong envelope — so every failure class reaches the SAME
+ * caller-side repair-retry path (`defaultCaller`'s catch block). Before
+ * DD-20, only the first two threw; the third (valid JSON, wrong shape) was
+ * the actual, unhandled, 100%-observed failure mode.
+ */
+export function parseAndValidateSets(rawText: string): Map<string, LlmSetRaw> {
   if (!rawText.trim()) throw new Error('interpretation-sets call returned no text output')
   const fenceStripped = rawText.replace(/^```(?:json)?\s*/im, '').replace(/\s*```\s*$/m, '').trim()
   const jsonText = extractFirstJsonObject(fenceStripped)
-  const parsed = JSON.parse(jsonText) as { sets?: LlmSetRaw[] }
+  let parsedRaw: unknown
+  try {
+    parsedRaw = JSON.parse(jsonText)
+  } catch (err) {
+    throw new Error(
+      `interpretation-sets call returned non-JSON text output: ${err instanceof Error ? err.message : String(err)}`,
+    )
+  }
+  // DD-20: the shape check that was missing. Valid JSON in the wrong
+  // envelope must be treated the same as unparseable text — both are "the
+  // primary attempt failed", both must throw so the caller's existing
+  // repair-retry fires. Before this check, a wrong-shaped-but-valid
+  // response silently became `parsed.sets ?? []` (an empty map) and the
+  // repair-retry never ran at all.
+  const validated = InterpretationSetsEnvelopeSchema.safeParse(parsedRaw)
+  if (!validated.success) {
+    throw new Error(
+      `interpretation-sets call returned schema-invalid output: ${validated.error.message}`,
+    )
+  }
   const map = new Map<string, LlmSetRaw>()
-  for (const s of parsed.sets ?? []) {
-    if (s && typeof s.judgment_id === 'string') map.set(s.judgment_id, s)
+  for (const s of validated.data.sets) {
+    map.set(s.judgment_id, s)
   }
   return map
 }
@@ -353,6 +430,25 @@ export function resolveInterpretationSetsModelId(): string {
   return meta.id
 }
 
+/**
+ * DD-20: the generic predecessor of this message ("...not valid JSON
+ * matching the required schema. Reply again with ONLY the JSON object...")
+ * was verified NOT sufficient to fix a wrong-envelope response on its own —
+ * it doesn't tell the model what it actually got wrong. This exact
+ * restatement (the required top-level key, every field name, the
+ * generated/waived branching) was verified against the live model to
+ * reliably correct the failure this module actually observes.
+ */
+const INTERPRETATION_SETS_REPAIR_NOTE =
+  'Your previous response was not valid — it did not match the required JSON schema. ' +
+  'The REQUIRED top-level shape is exactly: {"sets": [{"judgment_id": string, "status": ' +
+  '"generated"|"waived", "candidates": [{"reading": string, "rationale": string}] (only if ' +
+  'status="generated"), "selected_index": number, "selected_rationale": string, "falsifier": ' +
+  'string, "waiver_reason": string (only if status="waived")}]}. ' +
+  'Reply again with ONLY a JSON object matching this EXACT shape — the top-level key MUST be ' +
+  '"sets", not "judgments" or anything else. No prose, no markdown fences, nothing before or ' +
+  'after the JSON.'
+
 async function defaultCaller(judgments: readonly SignificantJudgment[]): Promise<Map<string, LlmSetRaw>> {
   const modelId = resolveInterpretationSetsModelId()
   try {
@@ -362,12 +458,7 @@ async function defaultCaller(judgments: readonly SignificantJudgment[]): Promise
       '[pariprashna/interpretation] structured-output call failed schema/parse validation, retrying once:',
       err,
     )
-    return callOnce(
-      judgments,
-      modelId,
-      'Your previous response was not valid JSON matching the required schema. Reply again with ' +
-        'ONLY the JSON object — no prose, no markdown fences, nothing before or after the JSON.',
-    )
+    return callOnce(judgments, modelId, INTERPRETATION_SETS_REPAIR_NOTE)
   }
 }
 
