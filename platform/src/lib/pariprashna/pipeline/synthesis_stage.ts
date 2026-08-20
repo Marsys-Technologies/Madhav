@@ -60,6 +60,11 @@ import {
   rejectIdentityParams,
   ToolSequenceMonitor,
 } from '@/lib/pariprashna/injection'
+import { TurnMetricsCollector } from '@/lib/pariprashna/observability/turn_metrics'
+import {
+  recordSynthesisTurnObservation,
+  type SynthesisObservationIdentity,
+} from '@/lib/pariprashna/observability/synthesis_observation'
 
 import { halt, proceed, resolveActivityLabel, type StageResult, type TurnParams } from './stage_context'
 import { PASS_ONE } from './evidence_stage'
@@ -83,6 +88,17 @@ const STACK_TO_ADAPTER: Partial<Record<string, StackId>> = {
 }
 
 const AGENTIC_PROVIDERS = new Set<string>(['anthropic', 'google', 'openai', 'deepseek', 'nvidia'])
+
+/** Lane P2-E. A short, loggable error code for the `llm_usage_events.status='error'` row. */
+function extractStreamErrorCode(err: unknown): string {
+  if (err && typeof err === 'object') {
+    const e = err as { code?: unknown; name?: unknown; message?: unknown }
+    if (typeof e.code === 'string' && e.code.length > 0) return e.code
+    if (typeof e.name === 'string' && e.name.length > 0) return e.name
+    if (typeof e.message === 'string' && e.message.length > 0) return e.message.slice(0, 200)
+  }
+  return 'unknown_error'
+}
 
 export interface SynthesisContext {
   /** The full system prefix (bundle + guidance + durable-summary splice). */
@@ -252,6 +268,15 @@ export async function runSynthesisStage(args: {
    * of these is the strongest tool-sequence anomaly available.
    */
   removedCapabilities?: readonly string[]
+  /**
+   * Lane P2-E (PPR-33/GAP-14). Per-turn identity for the `llm_usage_events`
+   * observability write — see `observability/synthesis_observation.ts` for
+   * why this is optional and what happens when it is omitted (honest skip,
+   * never a fabricated conversation_id/user_id). Omitted by every caller
+   * today; wiring it through `app/api/pariprashna/route.ts` is a follow-up
+   * outside this lane's `may_touch` scope.
+   */
+  observability?: SynthesisObservationIdentity
 }): Promise<StageResult<SynthesisStageOutput>> {
   const { em, request, queryText, params, queryPlan, context } = args
   const { systemContentWithSummary, trimmedConversationHistory } = context
@@ -290,6 +315,71 @@ export async function runSynthesisStage(args: {
   em.phase({ phase: 'synthesize', status: 'start', pass_id: PASS_ONE })
   const synthesisStartedAt = Date.now()
 
+  // Lane P2-E (PPR-33/GAP-14). One collector for the whole turn — TTFT, the
+  // max provider-event gap, token usage, the register-lint firing rate and
+  // delta→commit lag. Pure/in-memory; read once via `.snapshot()` below.
+  const metrics = new TurnMetricsCollector(synthesisStartedAt)
+  /** Set when the stream loop's catch fires — `undefined` means success. */
+  let streamErrorCode: string | undefined
+  /** Guards against double-finalizing (the abort path returns early). */
+  let observabilityFinalized = false
+  /**
+   * Lane P2-E turn-end observability. Called from BOTH the client-abort early
+   * return and the normal end of the function, so an aborted turn is measured
+   * exactly like a completed one rather than silently dropped.
+   */
+  const finalizeObservability = (opts?: { aborted?: boolean }): void => {
+    if (observabilityFinalized) return
+    observabilityFinalized = true
+    const synthesisFinishedAt = Date.now()
+    const metricsSnapshot = metrics.snapshot()
+    // ALWAYS-ON, real-today summary — SERVER LOG ONLY, deliberately NOT an
+    // `em.flag` (never touches the SSE wire). Two independent reasons:
+    //   1. Wire-protocol discipline: every event type is a client-visible
+    //      protocol surface the PB-2 golden-stream harness
+    //      (`tests/pariprashna/route_ports/route_golden_stream.test.ts`)
+    //      byte-compares against a committed baseline; a NEW event type on
+    //      every turn is a real protocol change, not an internals-only one,
+    //      and is out of this lane's scope to make.
+    //   2. This content is inherently non-deterministic (wall-clock latency,
+    //      inter-event gaps) — the golden harness's OWN determinism check
+    //      (same scenario run twice must produce identical records) would
+    //      fail on it even if the event type were added to the baseline.
+    //      Ops/cost telemetry does not need to be part of a byte-identical
+    //      reader-facing contract.
+    console.log(
+      '[pariprashna/observability] synthesis_turn_metrics',
+      JSON.stringify({
+        ttft_ms: metricsSnapshot.ttft_ms,
+        latency_ms: synthesisFinishedAt - synthesisStartedAt,
+        max_event_gap_ms: metricsSnapshot.max_event_gap_ms,
+        events: metricsSnapshot.event_count,
+        passes: metricsSnapshot.pass_count,
+        register_lint_fires: metricsSnapshot.register_lint.fires,
+        register_lint_delta_calls: metricsSnapshot.register_lint.delta_calls,
+        delta_commit_lag_avg_ms:
+          metricsSnapshot.delta_commit_lag_ms.count > 0
+            ? Math.round(metricsSnapshot.delta_commit_lag_ms.total_ms / metricsSnapshot.delta_commit_lag_ms.count)
+            : null,
+        aborted: opts?.aborted === true,
+      }),
+    )
+    // Fire-and-forget: the EXISTING llm_usage_events schema (migration 001,
+    // `channel` migration 574) this lane wires. Never awaited — a telemetry
+    // write must not add latency to turn completion (same discipline
+    // `stream_capture.ts`/`ring_buffer.ts` already use on this hot path).
+    void recordSynthesisTurnObservation({
+      identity: args.observability,
+      stackId: adapterId,
+      modelId: params.modelId,
+      startedAt: new Date(synthesisStartedAt),
+      finishedAt: new Date(synthesisFinishedAt),
+      status: opts?.aborted || streamErrorCode ? 'error' : 'success',
+      errorCode: opts?.aborted ? 'client_aborted' : streamErrorCode,
+      snapshot: metricsSnapshot,
+    })
+  }
+
   // Pass/seam state — derived PURELY from the engine's own control flow
   // (tool-use events after prose), never from text/prose heuristics.
   // ── The PRE-WIRE pass's rule set (G1-A mortality + G1-G entitlement). ──────
@@ -305,7 +395,16 @@ export async function runSynthesisStage(args: {
   const mortalityRulesEnabled = args.safetyDecision?.enforced === true
   const prewireArmed = mortalityRulesEnabled || entitlementRules.length > 0
 
-  const assembler = new ReadingPartsAssembler(em, PASS_ONE, mortalityRulesEnabled, entitlementRules)
+  const assembler = new ReadingPartsAssembler(
+    em,
+    PASS_ONE,
+    mortalityRulesEnabled,
+    entitlementRules,
+    // Lane P2-E: real delta→commit lag, measured inside the assembler itself
+    // (see `reading_parts.ts` — an internal role-switch commit would be
+    // invisible to a lag measured from out here).
+    (lagMs) => metrics.recordDeltaCommitLag(lagMs),
+  )
   let proseSeenInPass = false
   let awaitingResume = false
   let lastToolInSeam = ''
@@ -460,9 +559,14 @@ export async function runSynthesisStage(args: {
         : adapter.chat(adapterChatReq)
 
     for await (const event of chatStream) {
+      // Lane P2-E. Observes every raw event (TTFT, max inter-event gap, token
+      // usage from 'usage' events) without altering it — the same event
+      // object flows into the branches below untouched.
+      metrics.recordEvent(event)
       if (request.signal.aborted) {
         drainScannerInto()
         assembler.commitBlock()
+        finalizeObservability({ aborted: true })
         return halt('aborted')
       }
       if (event.type === 'text_delta') {
@@ -483,6 +587,10 @@ export async function runSynthesisStage(args: {
         // the assembler's whole-block lint on commit is the backstop.
         const deltaLint = lintReaderProse(event.text)
         const cleanDelta = deltaLint.clean
+        // Lane P2-E: the register-lint firing rate — "the health signal that
+        // the primary defenses work" (roadmap line 91). Every delta counts as
+        // one measurement, firing or not; see `TurnMetricsCollector` docstring.
+        metrics.recordRegisterLint(deltaLint.leakCount)
         if (deltaLint.leakCount > 0) {
           em.flag({
             code: 'register_leak_scrubbed',
@@ -510,6 +618,7 @@ export async function runSynthesisStage(args: {
         assembler.commitBlock()
         if (proseSeenInPass) {
           assembler.passId += 1
+          metrics.recordPass()
           proseSeenInPass = false
           lastToolInSeam = event.name
           em.phase({ phase: 'retrieve', status: 'start', pass_id: assembler.passId })
@@ -527,6 +636,7 @@ export async function runSynthesisStage(args: {
   } catch (adapterErr) {
     console.error('[pariprashna] synthesis stream error:', adapterErr)
     em.flag({ code: 'synthesis_stream_error', level: 'error', detail: String(adapterErr) })
+    streamErrorCode = extractStreamErrorCode(adapterErr)
   }
   drainScannerInto()
   assembler.commitBlock()
@@ -582,6 +692,8 @@ export async function runSynthesisStage(args: {
     })
   }
   em.phase({ phase: 'synthesize', status: 'end', pass_id: assembler.passId, ms: Date.now() - synthesisStartedAt })
+
+  finalizeObservability()
 
   return proceed({
     assembler,
