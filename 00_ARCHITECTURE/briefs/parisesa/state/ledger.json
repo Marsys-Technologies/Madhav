@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 836,
+  "event_count": 837,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1922,20 +1922,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-93": {
-      "branch": "parisesa/repair-F93-rebase",
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "1dbfe0ed419cd8199963fd351e464a69855a7a45ca49f9c164956386a88d62e9",
+      "disposition": "FIXED",
+      "event_sha256": "a15227b0b0988d96afe3fb952610977da3462d6f3972094b738a2bc284be0858",
       "event_type": "finding_status",
-      "evidence_summary": "Real complete work on origin/par/night-F-93: ayanamsha_id had no server-side default in get_dashas.ts, could let a non-canonical-ayanamsha row reach synthesis undisambiguated. Rebase hit a genuine content conflict -- main independently grew its own invalid_ayanamsha_id validation guard since the branch point -- resolved by combining both (keep main's rejection of unrecognized ids, layer F-93's default-for-omitted behavior on top) rather than picking one side. Updated 4 stale docstrings that still claimed no default existed. Cross-lane check found PR #1369 (F-33) also touches get_dashas.ts in a disjoint region -- flagged for a post-merge sanity check, no code conflict. 23/23 + 16/16 (live DB integration) + 200 adjacent tests pass, tsc clean.",
+      "evidence_summary": "PR #1393 merged (fa911ec3cd3574c1770960b6f11ee5ca1c720c07): get_dashas.ts resolves ayanamsha_id server-side to lahiri_chitrapaksha when omitted (combined with main's independently-grown invalid_ayanamsha_id validation guard rather than replacing it); prashna_ask_synthesis.ts NO_LIVE_TOOLS_OVERRIDE prompt guard added as defense-in-depth; 4 stale docstrings claiming no server-side default corrected across get_dashas.ts and register_p1_aliases.ts's DASHA_FACET_SCHEMA. Rebase-recovery of stranded fix 491dd518b with a real content conflict resolved (not mechanical replay), cross-lane checked against #1369's disjoint get_dashas.ts hunk. GA-5 independent review + adversarial pre-merge review passed.",
       "finding_id": "F-93",
-      "next_action": "owner reviews and merges PR #1393 at morning checkpoint; sanity-check interaction with PR #1369 (F-33) post-merge",
+      "next_action": "none - terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1393",
-      "prev_sha256": "ccafb2290a5a282b3b1eaaccafc366ff0f4f7bf8654475883e58b1a0cd6f5634",
-      "seq": 760,
-      "source_batch": "rebase_f93",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "c597ca08fba8a230d7174ddce04000cab0ac0f2e378411717715901b35943d49",
+      "seq": 837,
+      "source_batch": "PARISESA-V4-GA5-MERGE-WAVE",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-94": {
       "confidence": "HIGH",
@@ -2022,10 +2021,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 8,
-  "findings_terminal_count": 105,
-  "journal_head_seq": 836,
-  "journal_head_sha256": "c597ca08fba8a230d7174ddce04000cab0ac0f2e378411717715901b35943d49",
+  "findings_morning_ship_ready_count": 7,
+  "findings_terminal_count": 106,
+  "journal_head_seq": 837,
+  "journal_head_sha256": "a15227b0b0988d96afe3fb952610977da3462d6f3972094b738a2bc284be0858",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
