@@ -269,6 +269,14 @@ export type FeatureFlag =
   // flipping one from silently arming the other.
   // Env: MARSYS_FLAG_PARIPRASHNA_INJECTION_CONTAINMENT.
   | 'PARIPRASHNA_INJECTION_CONTAINMENT'
+  // P2-D — Durable persistence (PPR-10, FD-9). Default false: ships dark.
+  // The direct (pre-P2-D) write path stays the sole active path off-flag;
+  // flipping this arms the write-ahead outbox — which additionally requires
+  // the `pariprashna_persistence_outbox` migration to have landed (see
+  // store/durable_outbox.ts's header) or the write path silently degrades
+  // back to direct mode with a disclosed `outbox_unavailable` detail. Flip
+  // via MARSYS_FLAG_PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED=true.
+  | 'PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -400,6 +408,9 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // move prose — flip it deliberately, with a reading compared before/after.
   // Flip via MARSYS_FLAG_PARIPRASHNA_INJECTION_CONTAINMENT=true.
   PARIPRASHNA_INJECTION_CONTAINMENT: false,
+  // P2-D — Durable persistence (PPR-10, FD-9). Default false — see the union
+  // declaration above for the full flip contract.
+  PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)
