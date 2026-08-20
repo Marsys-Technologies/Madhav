@@ -312,19 +312,69 @@ export interface BufferedRange {
   evicted: boolean
 }
 
+// ---------------------------------------------------------------------------
+// Reconnect/snapshot counters — lane P2-E (PPR-33 / GAP-14).
+//
+// `getBufferedEventsSince` is the ONE function the resume route
+// (`/api/pariprashna/resume/route.ts`, outside this lane's `may_touch`) calls
+// on every reconnect attempt to decide "incremental replay" vs "fall back to
+// a snapshot". Counting IN HERE, rather than at the route, measures the real
+// reconnect/snapshot-fallback rate without touching the route at all — the
+// route's behavior and return values are completely unchanged.
+//
+// PROCESS-LOCAL, same honest limitation this module already documents for the
+// in-memory buffer fallback: a multi-instance deploy undercounts the
+// service-wide rate (each instance only sees the reconnects that land on it).
+// Real, not fabricated — an honest per-process baseline, not a claim of
+// fleet-wide truth. `__resetReconnectCountersForTests` mirrors the module's
+// existing `__reset...ForTests` convention.
+// ---------------------------------------------------------------------------
+
+interface ReconnectCounters {
+  /** Every call to `getBufferedEventsSince` — i.e. every resume attempt. */
+  resumeAttempts: number
+  /** `evicted: true` returns — the caller falls back to a snapshot. */
+  evictedFallbacks: number
+  /** `null` returns — the turn was never opened or has fully expired. */
+  unknownTurn: number
+}
+
+const reconnectCounters: ReconnectCounters = { resumeAttempts: 0, evictedFallbacks: 0, unknownTurn: 0 }
+
+/** Snapshot of the reconnect/snapshot-fallback counters (read-only copy). */
+export function getReconnectCounters(): ReconnectCounters {
+  return { ...reconnectCounters }
+}
+
+/** Test helper — never for production request paths. */
+export function __resetReconnectCountersForTests(): void {
+  reconnectCounters.resumeAttempts = 0
+  reconnectCounters.evictedFallbacks = 0
+  reconnectCounters.unknownTurn = 0
+}
+
 /**
  * Events with `seq > sinceSeq`. Returns `null` only when the turn is
  * entirely unknown (never opened, or its meta has fully expired) — the
  * caller should treat that as `UNKNOWN_TURN`, distinct from `evicted`.
  */
 export async function getBufferedEventsSince(turnId: string, sinceSeq: number, nowMs = Date.now()): Promise<BufferedRange | null> {
+  reconnectCounters.resumeAttempts += 1
   const meta = await readMeta(turnId, nowMs)
-  if (!meta) return null
+  if (!meta) {
+    reconnectCounters.unknownTurn += 1
+    return null
+  }
   const all = await readAllEvents(turnId)
-  if (all === null) return { events: [], evicted: true } // Redis error mid-read — degrade to snapshot, never fabricate history
+  if (all === null) {
+    // Redis error mid-read — degrade to snapshot, never fabricate history
+    reconnectCounters.evictedFallbacks += 1
+    return { events: [], evicted: true }
+  }
   if (sinceSeq < meta.minSeqRetained - 1 && meta.maxSeqSeen >= 0) {
     // The client's last-seen seq is older than the oldest event we still have
     // (and at least one event has actually been recorded) — a real gap.
+    reconnectCounters.evictedFallbacks += 1
     return { events: [], evicted: true }
   }
   return { events: all.filter((e) => e.seq > sinceSeq), evicted: false }

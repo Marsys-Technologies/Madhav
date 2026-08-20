@@ -58,6 +58,8 @@ export class ReadingPartsAssembler {
   passId: number
   private blockCounter = 0
   private currentBlock: OpenBlock | null = null
+  /** Wall-clock time `ensureBlock` minted the currently-open block, if any. */
+  private blockOpenedAtMs: number | null = null
   private accumulated = ''
   readonly committedBlocks: OpenBlock[] = []
 
@@ -92,6 +94,17 @@ export class ReadingPartsAssembler {
      * same as before this lane.
      */
     private readonly semanticBlocksEnabled = false,
+    /**
+     * Lane P2-E (PPR-33/GAP-14). Fires once per COMMIT with the wall-clock ms
+     * between the block's first `ensureBlock` mint and this commit — the
+     * delta→commit lag the roadmap names. Hooked HERE rather than approximated
+     * from `synthesis_stage.ts`'s call sites because `ensureBlock` can trigger
+     * an internal commit on a role switch (prose↔thinking) that the caller
+     * never explicitly requests — measuring outside this class would silently
+     * miss exactly those commits. Default no-op so every pre-existing caller
+     * (and every test that constructs this class positionally) is unaffected.
+     */
+    private readonly onBlockCommitLagMs: (lagMs: number) => void = () => {},
   ) {
     this.passId = initialPassId
   }
@@ -136,6 +149,10 @@ export class ReadingPartsAssembler {
 
   commitBlock(): void {
     if (this.currentBlock) {
+      if (this.blockOpenedAtMs !== null) {
+        this.onBlockCommitLagMs(Date.now() - this.blockOpenedAtMs)
+        this.blockOpenedAtMs = null
+      }
       // The RAW deltas this block contributed. This — NOT the post-lint text —
       // is the copy sitting in `accumulated`, because `appendProse` writes the
       // delta into both places and nothing downstream of it rewrites
@@ -290,6 +307,7 @@ export class ReadingPartsAssembler {
     if (!this.currentBlock) {
       const id = `blk-${this.passId}-${++this.blockCounter}`
       this.currentBlock = { id, role, text: '' }
+      this.blockOpenedAtMs = Date.now()
       this.em.blockOpen({ block_id: id, pass_id: this.passId, role })
     }
     return this.currentBlock
