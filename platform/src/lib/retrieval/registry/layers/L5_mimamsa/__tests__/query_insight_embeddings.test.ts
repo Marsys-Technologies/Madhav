@@ -109,3 +109,51 @@ describe('query_insight_embeddings — handler contract', () => {
     }
   })
 })
+
+// GA-5 review finding on #1386: this file's mock always returned { rows: [] }, so the
+// mode=nearest evidence_grade suppression logic (added by #1386 itself) had ZERO test
+// coverage -- neither the structured-field nulling nor the embedded-grade statement
+// redaction. Real, non-empty row content is exercised here for the first time.
+describe('query_insight_embeddings — mode=nearest P3-b tier-suppression (F-69, mirrors query_insights.ts)', () => {
+  beforeEach(() => {
+    vi.mocked(mockQuery).mockReset()
+  })
+
+  it('evidence_grade=structural neighbor -> rank_consequence nulled AND embedded grade in statement redacted', async () => {
+    vi.mocked(mockQuery).mockResolvedValueOnce({
+      rows: [{
+        insight_id: 'ins-neighbor', cosine_distance: 0.12, insight_type: 'verdict_object',
+        statement: 'Career Setback: promised (grade 8.8/10). Strong evidence.',
+        rank_consequence: 0.88, evidence_grade: 'structural',
+      }],
+    } as never)
+    const result = await queryInsightEmbeddingsCapability.handler(
+      { chart_id: CHART_A, mode: 'nearest', seed_insight_id: 'ins-seed' },
+      undefined,
+    )
+    const rows = (result.content as { rows: Array<Record<string, unknown>> }).rows
+    expect(rows[0]?.['rank_consequence']).toBeNull()
+    expect(String(rows[0]?.['statement'])).not.toMatch(/8\.8/)
+    expect(String(rows[0]?.['statement'])).not.toMatch(/\(grade\s+[\d.]+\/10\)/i)
+    expect(String(rows[0]?.['statement'])).toContain('Career Setback')
+    expect(String(rows[0]?.['tier_suppression_note'])).toMatch(/suppressed at serve time/i)
+  })
+
+  it('evidence_grade=empirical neighbor -> passes through unchanged, statement untouched', async () => {
+    vi.mocked(mockQuery).mockResolvedValueOnce({
+      rows: [{
+        insight_id: 'ins-neighbor', cosine_distance: 0.05, insight_type: 'verdict_object',
+        statement: 'Career Growth: promised (grade 8.8/10). Strong evidence.',
+        rank_consequence: 0.88, evidence_grade: 'empirical',
+      }],
+    } as never)
+    const result = await queryInsightEmbeddingsCapability.handler(
+      { chart_id: CHART_A, mode: 'nearest', seed_insight_id: 'ins-seed' },
+      undefined,
+    )
+    const rows = (result.content as { rows: Array<Record<string, unknown>> }).rows
+    expect(rows[0]?.['rank_consequence']).toBe(0.88)
+    expect(String(rows[0]?.['statement'])).toContain('8.8')
+    expect(rows[0]?.['tier_suppression_note']).toBeUndefined()
+  })
+})

@@ -35,8 +35,29 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { EMPIRICALLY_CALIBRATED } from './query_insights'
 
 const MAX_LIMIT = 20
+
+// GA-5 review finding on #1386: reuses query_insights.ts's own allowlist constant
+// (previously duplicated a bare 'empirical' literal here) and, like that file's
+// suppressIfNotCalibrated, also redacts any embedded '(grade N.N/10)' substring in the
+// joined `statement` text -- the structured rank_consequence field being nulled means
+// nothing if the exact same number stays readable in the prose served alongside it.
+const EMBEDDED_GRADE_PATTERN = /\(grade\s+[\d.]+\/10\)/i
+function suppressNonCalibratedNeighbor(row: Record<string, unknown>): Record<string, unknown> {
+  if (row['evidence_grade'] === EMPIRICALLY_CALIBRATED) return row
+  const rawStatement = row['statement']
+  const statement = typeof rawStatement === 'string'
+    ? rawStatement.replace(EMBEDDED_GRADE_PATTERN, '(grade suppressed — see tier_suppression_note)')
+    : rawStatement
+  return {
+    ...row,
+    statement,
+    rank_consequence: null,
+    tier_suppression_note: `rank_consequence/statement's embedded grade suppressed at serve time: evidence_grade=${JSON.stringify(row['evidence_grade'])} — no empirically-calibrated score exists for this insight yet (P3-b tier-suppression, mirrors query_insights.ts's suppressIfNotCalibrated). The stored value is unaffected.`,
+  }
+}
 
 export const queryInsightEmbeddingsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L5/query_insight_embeddings',
@@ -125,9 +146,7 @@ export const queryInsightEmbeddingsCapability: CapabilityDescriptor = {
           ORDER BY cosine_distance ASC
           LIMIT $3`
         const result = await query(sql, [chart_id, seedId, topK])
-        const rows = (result.rows as Array<Record<string, unknown>>).map(row =>
-          row['evidence_grade'] === 'empirical' ? row : { ...row, rank_consequence: null }
-        )
+        const rows = (result.rows as Array<Record<string, unknown>>).map(suppressNonCalibratedNeighbor)
         return {
           content: {
             chart_id,

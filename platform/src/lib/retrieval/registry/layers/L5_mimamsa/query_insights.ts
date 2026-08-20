@@ -15,20 +15,34 @@
 import type { CapabilityDescriptor } from '../../index'
 import { query } from '@/lib/db/client'
 
-const EMPIRICALLY_CALIBRATED = 'empirical'
+export const EMPIRICALLY_CALIBRATED = 'empirical'
 
-function suppressIfNotCalibrated(row: Record<string, unknown>): Record<string, unknown> {
+// GA-5 review finding on #1386: mi_darshana.py builds `statement` as
+// "{name}: {status} (grade {grade:.1f}/10). {note}" for every row, INCLUDING rows this
+// function suppresses -- so the numeric fields below were nulled while the exact same
+// number stayed readable in plain text in the same response (live-confirmed: 27 of 31
+// non-empirical rows on the canonical chart embed a recoverable "grade N.N/10" this way).
+// Redact that substring too, not just the structured fields, or the suppression is
+// decorative rather than real.
+const EMBEDDED_GRADE_PATTERN = /\(grade\s+[\d.]+\/10\)/i
+
+export function suppressIfNotCalibrated(row: Record<string, unknown>): Record<string, unknown> {
   if (row['evidence_grade'] === EMPIRICALLY_CALIBRATED) return row
   // P3-b tier-suppression (F-69): evidence_grade is anything other than 'empirical' (structural,
   // prior_only, missing) → no empirically-calibrated score exists for this insight. Mirrors
   // ka_kshetra/stage8_spec.py:136. The stored mimamsa_insight_units row is never mutated.
   const pc = row['provenance_chain'] as Record<string, unknown> | null
+  const rawStatement = row['statement']
+  const statement = typeof rawStatement === 'string'
+    ? rawStatement.replace(EMBEDDED_GRADE_PATTERN, '(grade suppressed — see tier_suppression_note)')
+    : rawStatement
   return {
     ...row,
+    statement,
     rank_consequence: null,
     confidence_band: null,
     provenance_chain: pc == null ? pc : { ...pc, grade: null },
-    tier_suppression_note: `rank_consequence/confidence_band/provenance_chain.grade suppressed at serve time: evidence_grade=${JSON.stringify(row['evidence_grade'])} — no empirically-calibrated score exists for this insight yet (P3-b tier-suppression; see services/ka_kshetra/stage8_spec.py for the precedent this mirrors). The stored value is unaffected.`,
+    tier_suppression_note: `rank_consequence/confidence_band/provenance_chain.grade/statement's embedded grade suppressed at serve time: evidence_grade=${JSON.stringify(row['evidence_grade'])} — no empirically-calibrated score exists for this insight yet (P3-b tier-suppression; see services/ka_kshetra/stage8_spec.py for the precedent this mirrors). The stored value is unaffected.`,
   }
 }
 

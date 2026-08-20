@@ -57,4 +57,36 @@ describe('query_insights — P3-b tier-suppression (F-69)', () => {
     expect((unit.provenance_chain as Record<string, unknown>).grade).toBe(8.8)
     expect(unit.tier_suppression_note).toBeUndefined()
   })
+
+  // GA-5 review finding on #1386: the numeric fields being nulled means nothing if the
+  // exact same grade is still readable in plain text in `statement`, served in the same
+  // row. Live-confirmed: mi_darshana.py embeds every row's statement as
+  // "{name}: {status} (grade {grade:.1f}/10). {note}" -- including suppressed rows.
+  it('evidence_grade=structural → the grade embedded in statement text is ALSO redacted, not just the structured fields', async () => {
+    queryMock.mockResolvedValueOnce({
+      rows: [row({ evidence_grade: 'structural', statement: 'Career Setback: promised (grade 8.8/10). Strong evidence, corroborated across traditions.' })],
+    })
+    queryMock.mockResolvedValueOnce({ rows: [{}] })
+    const result = await queryInsightsCapability.handler({ chart_id: NATIVE_CHART_ID }, undefined) as {
+      content: { insight_units: Array<Record<string, unknown>> }
+    }
+    const unit = result.content.insight_units[0]
+    expect(unit.rank_consequence).toBeNull()
+    // the recoverable number must be gone from the served statement text
+    expect(String(unit.statement)).not.toMatch(/8\.8/)
+    expect(String(unit.statement)).not.toMatch(/\(grade\s+[\d.]+\/10\)/i)
+    // the rest of the statement (name, status, non-numeric prose) survives unredacted
+    expect(String(unit.statement)).toContain('Career Setback')
+    expect(String(unit.statement)).toContain('promised')
+    expect(String(unit.statement)).toContain('Strong evidence, corroborated across traditions.')
+  })
+
+  it('evidence_grade=assignment_only (an unrecognized/not-allowlisted value) → also suppressed, fail-closed', async () => {
+    queryMock.mockResolvedValueOnce({ rows: [row({ evidence_grade: 'assignment_only' })] })
+    queryMock.mockResolvedValueOnce({ rows: [{}] })
+    const result = await queryInsightsCapability.handler({ chart_id: NATIVE_CHART_ID }, undefined) as {
+      content: { insight_units: Array<Record<string, unknown>> }
+    }
+    expect(result.content.insight_units[0].rank_consequence).toBeNull()
+  })
 })
