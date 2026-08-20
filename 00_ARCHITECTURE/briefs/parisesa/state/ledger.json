@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 774,
+  "event_count": 775,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -481,18 +481,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-121": {
+      "branch": "parisesa/repair-F121-rebase",
       "confidence": "HIGH",
       "disposition": "STRANDED",
-      "event_sha256": "6f5df839905869099028c36d54015963b816dbaadbe5c1dbe5de9b12781162f2",
+      "event_sha256": "774ddb3f25cb30ae3ba128ffe267864b9b4cb19c16c9e8ba7d5cd1ab44630640",
       "event_type": "finding_status",
-      "evidence_summary": "Opus review (ESC-001) found PR #1366 NOT safe to merge as-is: regression-guard test only inspects body.uri, never max_level (would pass even if the fix were reverted); test fixture stretched 12d->100d span to pass against data it claims mirrors a 12-day live observation; new SANDHI_BAND_CONVENTION promises Sukshmadasha labeling but LEVEL_NAME map (query_active_dashas.ts:35) has no level-4 entry, serving 'L4' instead; doc-comment cites a string that actually lives in a test file, not the writer it names.",
+      "evidence_summary": "All 4 Opus-review defects genuinely fixed on PR #1366: (1) mock now filters by max_level, verified to actually catch a reverted fix; (2) fixture restored to the real 12-day observed span, band-width math re-verified honest (not re-engineered); (3) LEVEL_NAME extended to include Sukshmadasha per an established sibling-file precedent; (4) citation corrected to the DB-enforced cd_level_n_max4 constraint. 10/10 + 4/4 tests genuinely green (confirmed via deliberate revert-and-confirm-fail methodology), tsc/eslint clean.",
       "finding_id": "F-121",
-      "next_action": "fix the mock to honor max_level, correct the fixture span to the real 12-day observation, extend LEVEL_NAME to include level 4 (or remove the Sukshmadasha claim), correct the citation -- then re-review before merge",
+      "next_action": "owner reviews and merges PR #1366 at morning checkpoint -- now genuinely ready, not just CI-green",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1366",
-      "prev_sha256": "ac894a7cd355a6c9fd12107ec0979eaa9cb6535b63f855033b0790b99517895c",
-      "seq": 640,
-      "source_batch": "esc001_review",
-      "status": "NEEDS_REVISION",
+      "prev_sha256": "002df96a8e29dd5c54e272565a98a8fbbad0bcd5ebc752b552cff9b369ba6542",
+      "seq": 775,
+      "source_batch": "fix_f121",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-122": {
@@ -2044,10 +2045,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 19,
+  "findings_morning_ship_ready_count": 20,
   "findings_terminal_count": 84,
-  "journal_head_seq": 774,
-  "journal_head_sha256": "002df96a8e29dd5c54e272565a98a8fbbad0bcd5ebc752b552cff9b369ba6542",
+  "journal_head_seq": 775,
+  "journal_head_sha256": "774ddb3f25cb30ae3ba128ffe267864b9b4cb19c16c9e8ba7d5cd1ab44630640",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
