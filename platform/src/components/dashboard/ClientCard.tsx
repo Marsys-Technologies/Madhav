@@ -208,8 +208,8 @@ export function ClientCard({ chart }: Props) {
   const isBuilt = overallState === 'built' || overallState === 'attention'
   const isBuilding = overallState === 'building'
 
-  // Vimarśa (consume/analyze) is primary when built or building; Nirmāṇa (build) is primary otherwise.
-  const vimarsaPrimary = isBuilt || isBuilding
+  // Pariprashna (consult/analyze) is primary when built or building; Nirmāṇa (build) is primary otherwise.
+  const pariprashnaPrimary = isBuilt || isBuilding
 
   return (
     <>
@@ -251,13 +251,13 @@ export function ClientCard({ chart }: Props) {
           />
         </div>
 
-        {/* Action row: Nirmāṇa (build) · Vimarśa (analyze) */}
+        {/* Action row: Nirmāṇa (build) · Pariprashna (consult) */}
         <div className="flex gap-2 items-center">
           {chart.canBuild ? (
             <Link
               href={`/clients/${chart.id}/nirmana`}
               aria-label={`Nirmāṇa (build) — ${chart.name}`}
-              className={vimarsaPrimary ? GHOST_BTN : FILLED_BTN}
+              className={pariprashnaPrimary ? GHOST_BTN : FILLED_BTN}
             >
               Nirmāṇa
             </Link>
@@ -268,17 +268,17 @@ export function ClientCard({ chart }: Props) {
               aria-label={`Nirmāṇa (build) — ${chart.name} — view-only`}
               title="View-only — build restricted"
               data-testid="nirmana-disabled"
-              className={cn(vimarsaPrimary ? GHOST_BTN : FILLED_BTN, 'cursor-not-allowed opacity-35')}
+              className={cn(pariprashnaPrimary ? GHOST_BTN : FILLED_BTN, 'cursor-not-allowed opacity-35')}
             >
               Nirmāṇa
             </button>
           )}
           <Link
-            href={`/clients/${chart.id}/consume`}
-            aria-label={`Vimarśa (analyze) — ${chart.name}`}
-            className={vimarsaPrimary ? FILLED_BTN : GHOST_BTN}
+            href={`/clients/${chart.id}/pariprashna`}
+            aria-label={`Pariprashna (consult) — ${chart.name}`}
+            className={pariprashnaPrimary ? FILLED_BTN : GHOST_BTN}
           >
-            Vimarśa
+            Pariprashna
           </Link>
         </div>
       </div>

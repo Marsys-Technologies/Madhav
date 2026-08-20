@@ -154,11 +154,11 @@ export function RosterTableView({ charts }: RosterTableViewProps) {
                     </button>
                   )}
                   <Link
-                    href={`/clients/${c.id}/consume`}
+                    href={`/clients/${c.id}/pariprashna`}
                     className={cn(GHOST_BTN)}
-                    aria-label={`Vimarśa (analyze) — ${c.name}`}
+                    aria-label={`Pariprashna (consult) — ${c.name}`}
                   >
-                    Vimarśa
+                    Pariprashna
                   </Link>
                 </div>
               </td>
