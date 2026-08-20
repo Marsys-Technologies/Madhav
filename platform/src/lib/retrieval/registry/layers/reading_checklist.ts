@@ -250,11 +250,18 @@ export interface GocharaSweepWindow {
   peak_date: string | null
   valence: string | null
   is_adverse: boolean | null
+  is_past_peak: boolean | null   // null when peak_date is null (honest "can't tell")
 }
 
 export interface GocharaSweepResult {
   domain_covered: boolean
+  // GA-5 review finding on #1384: this counts every window matching the overlap query,
+  // INCLUDING already-peaked ones -- it is a raw match count, not "still upcoming" in the
+  // literal sense the name suggests. past_peak_window_count below is a SUBSET of this
+  // number, not a disjoint sibling count -- see the served `note` field for the same
+  // disclosure in the response itself.
   upcoming_window_count: number
+  past_peak_window_count: number
   windows: GocharaSweepWindow[]
   valence_breakdown: Record<string, number>
   window_range: { start: string; end: string }
@@ -284,13 +291,18 @@ export async function fetchGocharaSweep(
   const out: GocharaSweepResult = {
     domain_covered: false,
     upcoming_window_count: 0,
+    past_peak_window_count: 0,
     windows: [],
     valence_breakdown: {},
     window_range: { start, end },
     available: false,
     note: 'Forward gochara (transit) sweep over the kala_gochara_windows signed-intensity ' +
       'field, domain-scoped (MC-033). Compact top-by-magnitude summary + valence tally; ' +
-      'drill gochara_forecast_get for the full window set with signed intensities.',
+      'drill gochara_forecast_get for the full window set with signed intensities. ' +
+      'upcoming_window_count is every window matching this overlap query -- past_peak_window_count ' +
+      'is a SUBSET of it (windows whose peak already fell before as_of_date), not a separate ' +
+      'count; a window can be counted in both fields at once. Check each windows[] entry\'s ' +
+      'own is_past_peak before treating it as still-actionable timing.',
   }
   try {
     // Coverage probe: does this chart carry ANY gochara windows in the domain at all?
@@ -332,6 +344,9 @@ export async function fetchGocharaSweep(
       [chart_id, signal_domain, start, end],
     )
     out.upcoming_window_count = res.rows.length
+    const isPastPeak = (peakDate: string | null): boolean | null =>
+      peakDate === null ? null : peakDate < start
+    out.past_peak_window_count = res.rows.filter(r => isPastPeak(r.peak_date) === true).length
     for (const r of res.rows) {
       const v = r.valence ?? 'unknown'
       out.valence_breakdown[v] = (out.valence_breakdown[v] ?? 0) + 1
@@ -344,6 +359,7 @@ export async function fetchGocharaSweep(
       peak_date: r.peak_date,
       valence: r.valence,
       is_adverse: r.is_adverse,
+      is_past_peak: isPastPeak(r.peak_date),
     }))
   } catch {
     // non-fatal: leg degrades to honest not-computed upstream.

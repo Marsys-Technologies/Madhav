@@ -1159,6 +1159,17 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           'for this chart — its silence here is NOT an all-clear (S4-05 discipline); drill kala_windows_get.',
         ))
       }
+      if (gochara.windows[0]?.is_past_peak === true) {
+        judgment_flags.push(judgmentFlag(
+          'gochara_top_window_already_peaked',
+          `the top-ranked (highest |intensity|) window in gochara_sweep.top_windows ` +
+          `('${gochara.windows[0].event_class}', peak_date=${gochara.windows[0].peak_date}) ` +
+          `already peaked before as_of_date=${as_of_date} — served for context (it is still ` +
+          `inside the query's date-overlap horizon), but its intensity ranking should not be ` +
+          `read as a forward-looking signal. See top_windows[].is_past_peak for the full set.`,
+          'info',
+        ))
+      }
 
       // ── T5: the served reading_checklist receipt ──────────────────────────────────
       // Names WHICH classical units this response actually served, and for every absent
@@ -1249,6 +1260,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
               domain: spec.signal_domain,
               domain_covered: gochara.domain_covered,
               upcoming_window_count: gochara.upcoming_window_count,
+              past_peak_window_count: gochara.past_peak_window_count,
               valence_breakdown: gochara.valence_breakdown,
               window_range: gochara.window_range,
               // F-119 (EKAVĀKYATĀ A-06): attach resolution_disclosure so callers
