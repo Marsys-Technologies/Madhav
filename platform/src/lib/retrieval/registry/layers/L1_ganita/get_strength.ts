@@ -107,8 +107,13 @@ export const getStrengthCapability: CapabilityDescriptor = {
   },
   async handler(args, _ctx) {
     try {
-      const chartId    = args.chart_id as string
-      const limit      = Math.min((args.limit as number) ?? 500, 2000)
+      const chartId       = args.chart_id as string
+      // F-60 fix: the requested limit is recorded BEFORE the 2000-row hard cap is applied,
+      // so a silent truncation can be disclosed explicitly instead of hidden inside a
+      // same-shaped response (see `limit_capped` below).
+      const requestedLimit = (args.limit as number) ?? 500
+      const limit          = Math.min(requestedLimit, 2000)
+      const limitCapped    = requestedLimit > 2000
       const offset     = (args.offset as number) ?? 0
       const categories = (args.categories as string[]) ?? STRENGTH_CATEGORIES
       const frame = ((args.frame as string) ?? 'lagna') as ReferenceFrame
@@ -121,16 +126,16 @@ export const getStrengthCapability: CapabilityDescriptor = {
       const frameAyanamsha = (args.ayanamsha_id as string) ?? DEFAULT_AYANAMSHA
       const all = (args.all as boolean) === true
 
-      const params: unknown[] = [chartId, categories, limit, offset]
-      let sql = `
-        SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
-               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
-        FROM chart_facts
-        WHERE chart_id = $1 AND fact_category = ANY($2::text[])
-      `
+      // F-60 fix: build the WHERE clause + its params ONCE, shared by a dedicated COUNT
+      // query (the true pre-LIMIT/OFFSET row count matching this filter) and the SELECT
+      // query (the capped, paginated page) — so `total_available` below is never derived
+      // from the served page's own length (the defect: `total: servedRows.length` silently
+      // reported a post-cap, post-filter page length as if it were the true row count).
+      const whereParams: unknown[] = [chartId, categories]
+      let whereClause = `WHERE chart_id = $1 AND fact_category = ANY($2::text[])`
       if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
+        whereClause += ` AND ayanamsha_id = $${whereParams.length + 1}`
+        whereParams.push(args.ayanamsha_id as string)
       }
       if (args.graha_key) {
         // R5 W3 (graha_portrait lane) fix: the graha's identity lives in `fact_subject`
@@ -141,13 +146,30 @@ export const getStrengthCapability: CapabilityDescriptor = {
         // accident; filtering fact_subject with an exact-or-prefixed-or-suffixed match
         // covers both the bare-code categories (fact_subject = "SAT") and the
         // graha_in_house_composite_strength category (fact_subject = "SAT_IN_HOUSE_5").
-        sql += ` AND (fact_subject = $${params.length + 1}
-                  OR fact_subject ILIKE $${params.length + 2}
-                  OR fact_subject ILIKE $${params.length + 3})`
+        whereClause += ` AND (fact_subject = $${whereParams.length + 1}
+                  OR fact_subject ILIKE $${whereParams.length + 2}
+                  OR fact_subject ILIKE $${whereParams.length + 3})`
         const grahaKey = args.graha_key as string
-        params.push(grahaKey, `${grahaKey}\\_%`, `%\\_${grahaKey}`)
+        whereParams.push(grahaKey, `${grahaKey}\\_%`, `%\\_${grahaKey}`)
       }
-      sql += ` ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $3 OFFSET $4`
+
+      // F-60 fix: the TRUE pre-cap, pre-offset row count matching this filter — a distinct
+      // field from the served page length, computed by its own COUNT(*) query sharing the
+      // exact same WHERE predicate (never guessed from, or conflated with, the page below).
+      const countSql = `SELECT COUNT(*)::int AS total_count FROM chart_facts ${whereClause}`
+      const countResult = await query<{ total_count: number }>(countSql, whereParams)
+      const totalAvailable = Number(countResult.rows?.[0]?.total_count ?? 0)
+
+      const params: unknown[] = [...whereParams, limit, offset]
+      const limitParamIdx = whereParams.length + 1
+      const offsetParamIdx = whereParams.length + 2
+      const sql = `
+        SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+        FROM chart_facts
+        ${whereClause}
+        ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx}
+      `
 
       const result = await query<Record<string, unknown>>(sql, params)
       const rows = result.rows ?? []
@@ -211,7 +233,26 @@ export const getStrengthCapability: CapabilityDescriptor = {
 
       return {
         content: {
-          chart_id: chartId, categories, frame, rows: servedRows, total: servedRows.length,
+          chart_id: chartId, categories, frame, rows: servedRows,
+          // `total` is the ROWS SERVED IN THIS PAGE (unchanged shape/name — callers that
+          // already treat this as a page-length receipt keep working). F-60 fix: it is no
+          // longer the only count reported — `total_available` (below) is the TRUE row
+          // count matching this chart_id/categories/ayanamsha_id/graha_key filter, computed
+          // by its own COUNT(*) query, independent of `limit`/`offset`/the 2000-row cap/the
+          // `all:false` counterfactual-row drop. A caller that previously read `total` as
+          // "how many rows exist" was reading a page-length; `total_available` is the field
+          // that actually answers that question.
+          total: servedRows.length,
+          total_available: totalAvailable,
+          limit, offset,
+          ...(limitCapped ? {
+            limit_capped: true,
+            requested_limit: requestedLimit,
+            note_limit_cap: `The requested limit (${requestedLimit}) exceeds this tool's hard cap of ` +
+              '2000 and was reduced to 2000 for this call — disclosed explicitly rather than silently ' +
+              'truncated. `total_available` above reports the true row count matching the filter; use ' +
+              '`offset` to page through the remainder.',
+          } : {}),
           ...(frameContext ? { frame_context: frameContext } : {}),
           ...(!all ? {
             all: false,
