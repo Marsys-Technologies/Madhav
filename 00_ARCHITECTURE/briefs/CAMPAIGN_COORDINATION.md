@@ -5197,3 +5197,116 @@ regression caught and corrected, merged, deployed, live-verified) is closed.
 Continuing the broader P2 gate battery next (crash-kill-test, planted-
 contradiction fixture, systematic block-kind coverage across more query
 shapes) per the standing autonomy directive.
+
+## 2026-08-20 — P2 gate battery: real production evidence for items 1/3/4, item 2 split (honest gap), and two new defects found
+
+Continuation of "progress the implementation" after the HS-4 fix arc closed.
+Ran the P2 phase-close gate battery (`PARIPRASHNA_PHASED_SWARM_IMPLEMENTATION_PLAN_v1_0.md`
+gate: block rendering · crash-kill/outbox · receipt B.4/waiver rate · planted
+contradiction · P1 safety re-run) against the LIVE deployed route
+(`amjis-web-01552-cb7`) using the probe harness, real production turns (both
+the synthetic chart and, where the fixture is grounded in native-specific
+facts, the real canonical chart — same explicit-override guard documented in
+the probe-harness build), and direct DB reads of the persisted
+`acharya_reading_receipt`. P1 safety re-run: already closed by the HS-4
+entries above. Findings below are real, not simulated.
+
+**Item 4 — planted-contradiction fixture.** The corpus's own canonical
+fixture (`cross-domain-001-mercury-career-vs-6l`, grounded in `UCN_v4_0
+§IX.2`) as literally authored — its query text says "...6th house of
+obstacles and disease..." — never reaches the contradiction-surfacing check:
+`hs3_health_crisis` fires first (domain-classifier rule, not a lexical
+false-positive like HS-4 — the query genuinely asks about a disease-associated
+house) and the turn is held for review. This is a real, reproducible
+collision between the corpus's own gate-3 evidence fixture and the safety
+gate — worth a maintainer decision (reword the fixture, or accept it can only
+be exercised via a synthetic override path). A same-shape reworded query
+(replacing "disease" with "obstacles" only, preserving the actual
+Mercury-career-vs-6th-lord tension) got a real reading: the response
+explicitly named and engaged the tension ("Concurrent Outputs... not a
+liability that undermines its power, but the mechanism that ensures its
+power is constantly applied") rather than picking one side or going bland —
+genuine "surfaced, not smoothed" behavior. However the persisted receipt's
+`cross_domain.domains` recorded only `["career"]`, not the fixture's
+`expectedDomains: ["career","health"]` — the structured cross-domain signal
+under-counted even though the prose itself clearly engaged both domains.
+
+**Item 1 — block-kind rendering.** `MARSYS_FLAG_PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED`
+confirmed live (`true`) via `gcloud run services describe`. Two real
+production turns with clearly table/list-shaped content (a Mahadasha/
+Antardasha timing window with specific dates, a bulleted transit list) both
+persisted as a single `semantic_kind: "paragraph"` block — never decomposed
+into `table`/`list`/`heading` kinds. Both receipts show a large web-channel
+namespace gap (7/21 and 2/5 floor items served; the rest have "NO
+web-executable retrieval tool (MCP↔web namespace gap)") — plausibly why: the
+model has no structured tool output to hand off as a real table object, so it
+narrates dates/lists in markdown prose instead, and the semantic-block
+classifier has nothing table-shaped to classify. Reporting this as-is: the
+gate's literal criterion ("renders a daśā table as a table... verse as a
+verse with its gloss") is NOT currently met on the live route for a real
+dasha-timing question, and the most likely proximate cause is the disclosed
+MCP↔web namespace gap rather than a defect in the block-classifier itself.
+
+**New defect found (not previously known): citation-slot template leak.**
+Both of the above real production responses ended with the literal
+unsubstituted sentence *"This interpretation is based on the synthesis of
+the detailed chart data provided in this, this, and this artifacts."* — three
+bare instances of the word "this" where inline citation references were
+evidently meant to resolve, with 0 `citation.define` events on either turn.
+Grepped the codebase for this string — it is not a hardcoded template
+anywhere in `platform/src/lib/pariprashna/` or `platform/src/app/`, so this
+is model-generated prose expecting citation substitution that never
+happened, leaking raw scaffold language to a real user. Turn files:
+`probe/out/64bb96f5-b020-4c5b-a700-14220ffca44f.json`,
+`probe/out/abdf9baf-debd-46ee-a18d-d16ceb28d77c.json`. Flagging for a
+follow-up fix cycle (same discipline as the HS-4 fix: reproduce, fix, adversarial
+review given citation integrity is a stakes-bearing surface, deploy-verify).
+
+**Item 3 — receipt B.4 sets / significance trigger / waiver rate.**
+Receipts are structurally audit-clean and self-consistent: `evidence_grades`,
+`facts_consumed`, and `derivation_chains[].fact_refs` are all empty on both
+real turns, consistent with (not contradicting) the same disclosed
+MCP↔web namespace gap and `hallucination_count: 0` — the system is not
+fabricating citations it doesn't have. `interpretation_sets`: across the two
+turns, 5 significant judgments were detected (`domain_verdict` ×2,
+`time_indexed` ×2, `prediction_detected` ×1) and **all 5 were waived**, each
+with `waiver_reason: "model produced no entry for this judgment_id"` — a
+100% waiver rate on this small live sample. Per §N.7/§N.8 doctrine an honest
+waiver beats a fabricated interpretation set, so this is not itself a
+violation — but a consistent 100% waiver rate across every significance
+category observed (including a genuine `prediction_detected` hit) is worth
+monitoring/escalating: it suggests the interpretation-sets population step
+may not actually be reaching the model (a prompt-wiring question, not
+verified here) rather than the model genuinely having nothing to add every
+single time. No standalone fleet-wide waiver-rate audit script exists yet
+(noted by the scouting pass); this entry's 5/5 is a small honest sample, not
+a fleet measurement.
+
+**Item 2 — crash-kill-test / outbox recovery. Honest gap, not faked.** The
+"visible incomplete state" half is already covered by existing tests
+(`platform/tests/pariprashna/reducer/golden.test.ts`, the
+`disconnect-mid-block.json` fixture — real reducer code exercised against a
+truncated event stream, asserts `block.committed === false`) but was not
+independently re-exercised live this pass. The "outbox recovers" half is
+**not currently testable in production at all**: `durable_outbox.ts` /
+`durable_writer.ts` (P2-D) exist in code, but
+`MARSYS_FLAG_PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED` is off and its
+migration (`pariprashna_persistence_outbox`) was never opened — confirmed via
+git history, no such migration exists anywhere. Reporting this as a genuine,
+disclosed gap rather than working around it: this gate item cannot be
+honestly marked PASS until the migration lands and the flag flips (or a
+staging environment is stood up — none exists today).
+
+**Summary:** items 1 and 4 (as literally specified) do not currently pass on
+the live deployed route — not failures introduced by anything merged this
+session, but real, previously-unverified gaps the gate battery was designed
+to surface. Item 3 passes structurally but surfaces a 100%-waiver signal
+worth investigating. Item 2 is honestly split: half-covered by existing
+tests, half genuinely blocked on missing infrastructure (migration + flag).
+One new defect found (citation-slot template leak) queued for its own fix
+cycle next, following the same reproduce → fix → adversarial-review →
+deploy-verify → live-reverify discipline used for HS-4.
+
+Worktree: `/private/tmp/pariprashna-hs4-fix` (now on a `main-view` branch
+tracking `origin/main` for read access; the merged `pariprashna/hs4-fix`
+branch's own work is done and folded into `main`).
