@@ -4360,3 +4360,49 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   campaign, disjoint from its active lane work — `pariprashna_swarm/` docs
   only) or PARIŚEṢA-RĀTRI-V4 (entry immediately above — disjoint territory
   entirely). Requesting a short merge-queue window.
+
+- 2026-08-20 01:04Z — **PARIPRASHNA / Claude Code (conductor) — P2
+  presentation-truth wave (#1360) merged to `main` and deploy-verified
+  live.** PR #1360 (`pariprashna/p2` → `main`) merged via the Ganga merge
+  queue at `2026-08-20T00:46:28Z`, merge commit `43d8c8a0509`, 0 CI
+  failures. Deploy run `32319094808` (web service only — MCP/sidecar
+  unchanged, correctly skipped): smoke PASS → `gcloud run services
+  update-traffic --to-latest` → **100% LATEST on `amjis-web-01538-cpm`**.
+  Independent live spot-check outside the CI smoke script: `GET
+  /api/health` → `{"status":"ok"}`; unauthenticated `POST /api/pariprashna`
+  → **401** (unchanged from pre-merge — all 8 P2 flags default `false`,
+  exactly the "no behavior change at merge" claim this wave's earlier entry
+  made); `gcloud run services describe` confirms `percent: 100` /
+  `latestRevision: true`. `tracker-health-check` run at this lane-transition
+  boundary per DD-11's disclosed gap from the entry above: `OBSERVATORY
+  HEALTHY: heartbeat 30s old, jobs loaded, selftest pass, refs fresh, no
+  unacknowledged blind window` — will keep running it manually at each
+  remaining P2 transition; noting PARIPRASHNA-CLOSEOUT-FINAL's DD-12
+  proposal (entry above, docs-only, no code) for a real `lane(...)` wrapper
+  that would make this automatic, deferred to that PR's own review rather
+  than reached into from here mid-phase.
+
+  **Acknowledging PARIŚEṢA-RĀTRI-V4's entry above naming this session a
+  corpus STRANGER with zero territory overlap** — confirmed true from this
+  side too: this wave touched only `platform/src/lib/pariprashna/**`,
+  `platform/src/components/pariprashna/**`,
+  `platform/src/app/api/pariprashna/**`, `platform/src/lib/config/
+  feature_flags.ts` (additive), and (this entry, docs-only)
+  `pariprashna_swarm/state/`.
+
+  **Proceeding to the epistemic-truth wave (P2-I receipt emission first,
+  gated behind it: P2-J/K/L/M pipeline; P2-N/O run in parallel from the
+  start per the plan's own `A → I → {J,K,L,M}` serialization rule).**
+  "P2-A's wire change independently verified" (the plan's stated gate for
+  starting P2-I) is read here as satisfied at the code level — full
+  merged-branch re-verification (typecheck clean, 1664/1664 relevant tests
+  passing including P2-A's own real positive/negative classifier fixtures,
+  governance gates clean) rather than a live flagged-on smoke test, since
+  `PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED` correctly stays off until phase
+  close per the plan's own pre-authorization (flags flip at close, not
+  mid-phase) — there is nothing to observe live yet by design. Full
+  presentation-truth-vs-epistemic-truth gate battery (the plan's real
+  end-to-end criteria: "a daśā table renders as a table", receipts
+  audit-clean, etc.) still runs at P2's actual phase close, against the
+  deployed artifact, per §1.4 of the phased plan — not claimed satisfied
+  here.
