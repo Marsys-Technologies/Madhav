@@ -269,6 +269,78 @@ export type FeatureFlag =
   // flipping one from silently arming the other.
   // Env: MARSYS_FLAG_PARIPRASHNA_INJECTION_CONTAINMENT.
   | 'PARIPRASHNA_INJECTION_CONTAINMENT'
+  // P2-A G2-A — Semantic blocks on the wire (PPR-07, FD-1). Gates the WHOLE
+  // `src/lib/pariprashna/semantics` surface plus the new `prediction_card`
+  // wire event:
+  //   · OFF (default) — `block.commit` carries only `{ block_id, text }`
+  //     exactly as before (no `kind`/`role`/`content`/`table`/`gap_text`),
+  //     no commit-time classification runs, and no `prediction_card` event is
+  //     ever emitted. Byte-for-byte no change to the existing wire or to what
+  //     the client renders (the s1 live adapter's `block.commit` case
+  //     defaults `kind` to `'paragraph'` when the field is absent, same as
+  //     today).
+  //   · ON — every committed PROSE block is classified deterministically from
+  //     its own committed text (table / verse / gap_ribbon / heading /
+  //     paragraph, plus a verdict/elaboration/caveat role for paragraphs) and
+  //     the classification rides on that block's `block.commit` event; the
+  //     client's already-built `TableBlock`/`VerseBlock`/`GapRibbonBlock`
+  //     renderers activate on the live route instead of only in fixtures. A
+  //     detected, persisted prediction candidate is also surfaced as a
+  //     first-class `prediction_card` event carrying the structured
+  //     candidate + its real `message_parts.id`, which mounts the in-stream
+  //     `LogToSamiksha` confirm affordance (built and unmounted since PB-3).
+  // Env: MARSYS_FLAG_PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED.
+  | 'PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED'
+  // P2-C — Honest controls (PPR-09/16). Gates two additive, together-shipped
+  // behaviors that were previously either inert or misleading:
+  //   · `length_tier` (TODO(PB-4) in safety_gate.ts) gains a REAL effect —
+  //     `synthesis_stage.assembleSynthesisContext` appends a short, fixed
+  //     length-discipline instruction to the system prompt for `brief`/
+  //     `exhaustive` (never for `standard`, which stays a byte-identical
+  //     no-op whether or not the flag is on).
+  //   · `plan_stage.ts` emits an HONEST `reading_depth_received` grade
+  //     derived from the PLANNER's own `plan.scope_tuple.depth` (the real
+  //     signal of how deep the turn actually went), not from whatever the
+  //     composer's mode/pill claimed before planning ran. The client
+  //     surfaces it as a disclosure distinct from the requested tier.
+  // `model_id` needed no backend flag — `bindTurnParams` already binds it
+  // directly to the synthesis model (verified live end-to-end); the defect
+  // there was UI-only (the composer's model picker never sent its selection
+  // and offered labels with no matching registry id), fixed by wiring the
+  // real picker through, unconditionally, with no serving-path behavior
+  // change to gate.
+  // Default false: ships dark. Flip via
+  // MARSYS_FLAG_PARIPRASHNA_HONEST_CONTROLS_ENABLED=true.
+  | 'PARIPRASHNA_HONEST_CONTROLS_ENABLED'
+  // P2-B G2-B "Citations at first paint" (PPR-08, FD-2/FD-6). Gates wiring
+  // the already-built S-3 rewriter (`lib/pariprashna/citations/rewriter.ts`)
+  // into the live synthesis stream:
+  //   · OFF (default) — the synthesis stream runs exactly as it does today:
+  //     each delta goes through the bare `lintReaderProse` register-leak
+  //     scrub with no resolver, citation sentinels are redacted like any
+  //     other internal-id-shaped token, no `citation.define` event fires
+  //     during streaming, and persistence still re-derives citations by
+  //     regex-scanning the accumulated text (the pre-existing P0C-R5 dead
+  //     path — unchanged, not newly introduced, when this flag is off).
+  //     `turn.commit` carries no `grounding_summary` field.
+  //   · ON — a `TurnCitationStream` (per turn) resolves sentinels against
+  //     this turn's own retrieved evidence, emits `⟦n⟧`-style inline markers
+  //     + `citation.define`/`flag` wire events DURING streaming (not just at
+  //     final commit), persistence builds canonical citation parts from the
+  //     turn's own resolution ledger instead of re-scanning scrubbed prose,
+  //     and `turn.commit` carries a server-derived `grounding_summary`
+  //     (counts, grade rollup, completeness line) that the client prefers
+  //     over its own citation-tally estimate.
+  // Env: MARSYS_FLAG_PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED.
+  | 'PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED'
+  // P2-D — Durable persistence (PPR-10, FD-9). Default false: ships dark.
+  // The direct (pre-P2-D) write path stays the sole active path off-flag;
+  // flipping this arms the write-ahead outbox — which additionally requires
+  // the `pariprashna_persistence_outbox` migration to have landed (see
+  // store/durable_outbox.ts's header) or the write path silently degrades
+  // back to direct mode with a disclosed `outbox_unavailable` detail. Flip
+  // via MARSYS_FLAG_PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED=true.
+  | 'PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -400,6 +472,22 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // move prose — flip it deliberately, with a reading compared before/after.
   // Flip via MARSYS_FLAG_PARIPRASHNA_INJECTION_CONTAINMENT=true.
   PARIPRASHNA_INJECTION_CONTAINMENT: false,
+  // P2-A G2-A — Semantic blocks on the wire. Default false: ships dark, no
+  // behavior change on merge. Flip via
+  // MARSYS_FLAG_PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED=true once the client
+  // renderers have been verified against a real deployed reading.
+  PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED: false,
+  // P2-C — honest length shaping + scope-tuple-derived depth disclosure.
+  // Default false: ships dark. Flip via
+  // MARSYS_FLAG_PARIPRASHNA_HONEST_CONTROLS_ENABLED=true.
+  PARIPRASHNA_HONEST_CONTROLS_ENABLED: false,
+  // P2-B G2-B — citations at first paint. Default false: ships flag-OFF, the
+  // synthesis stream is byte-for-byte what it is today (see the declaration
+  // comment). Flip via MARSYS_FLAG_PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED=true.
+  PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED: false,
+  // P2-D — Durable persistence (PPR-10, FD-9). Default false — see the union
+  // declaration above for the full flip contract.
+  PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)

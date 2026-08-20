@@ -20,9 +20,16 @@
  * ── Honest lossiness (documented, not silent) ────────────────────────────────
  * S-1's wire is deliberately minimal; several rich fields C-1 renders are NOT
  * on it and are SYNTHESIZED here from what the stream does carry:
- *   • block roles: S-1 block.open carries role 'prose'|'thinking'; C-1's
- *     ReadingRole ('verdict'|…) is a curation concern S-1 does not express, so
- *     role is left undefined (renders as a plain paragraph).
+ *   • block kind/role: lane P2-A (protocol v2) adds commit-time `kind`/`role`/
+ *     `content`/`table`/`gap_text` to `block.commit`, but ONLY when the
+ *     server's `PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED` flag is on — with the
+ *     flag off (the default), these fields are absent and this adapter falls
+ *     back to `kind: 'paragraph'`/`role: undefined` exactly as before this
+ *     lane (renders as a plain paragraph, unchanged behavior). `block.open`
+ *     (the STREAMING tail) is deliberately NOT classified — classification is
+ *     commit-time only (the roadmap's "NOT mid-stream segmentation" point) —
+ *     so the live tail always streams as a plain paragraph regardless of the
+ *     flag; only the FROZEN block that replaces it on commit can carry a kind.
  *   • citation.grade: mapped from S-3's grade enum (primary|supporting|
  *     contextual|unverified) to C-1's Grade; source class defaults to
  *     'chart_factor' (S-1 carries `layer`, not a reader source-class).
@@ -44,15 +51,14 @@
 
 import type {
   Citation,
-  ClassifiedError,
-  ClassifiedErrorKind,
   Grade,
   GroundingSummary,
   WireEvent,
 } from './types'
-import type { PariprashnaEvent } from '@/lib/pariprashna/protocol/events'
+import type { PariprashnaEvent, GroundingSummaryGradeCounts } from '@/lib/pariprashna/protocol/events'
 import { RETRIEVAL_FACET_NAMES, type RetrievalFacetKey } from '@/lib/pariprashna/lexicon'
-import { emptyGradeTally, rollUpGradeSummaryLabel, tallyGrade } from './groundingRollup'
+import { classifyPariprashnaError } from '@/lib/pariprashna/errors/classify'
+import { emptyGradeTally, rollUpGradeSummaryLabel, tallyGrade, type GradeTally } from './groundingRollup'
 
 /** S-3 citation grade enum → C-1 reader Grade. */
 function mapGrade(grade: string | undefined): Grade {
@@ -74,6 +80,28 @@ function mapGrade(grade: string | undefined): Grade {
     default:
       return 'catalog'
   }
+}
+
+/**
+ * G2-B: fold the server's AGGREGATE `grade_counts` (S-3's CitationGrade enum
+ * — primary/supporting/contextual/unverified/prior_reading) into the client's
+ * `GradeTally` shape, reusing the SAME `mapGrade` this file already applies
+ * per-citation — one mapping definition, never two that could drift apart.
+ */
+function gradeCountsToTally(counts: GroundingSummaryGradeCounts): GradeTally {
+  const tally = emptyGradeTally()
+  const grades: (keyof GroundingSummaryGradeCounts)[] = [
+    'primary',
+    'supporting',
+    'contextual',
+    'unverified',
+    'prior_reading',
+  ]
+  for (const g of grades) {
+    const n = counts[g]
+    for (let i = 0; i < n; i++) tallyGrade(tally, mapGrade(g))
+  }
+  return tally
 }
 
 /** S-1 phase name → a reader band label (fallback to a generic verb). */
@@ -101,35 +129,6 @@ function resolveActivityLabel(labelKey: string): string {
   const facet2 = RETRIEVAL_FACET_NAMES[bare as RetrievalFacetKey]
   if (facet2) return `Retrieved — ${facet2}`
   return 'Consulting the chart'
-}
-
-/** Classify an in-stream error code into C-1's ClassifiedError bands. */
-function classifyError(code: string, message: string): ClassifiedError {
-  const c = code.toLowerCase()
-  let kind: ClassifiedErrorKind = 'unknown'
-  if (c.includes('rate') || c.includes('429')) kind = 'rate_limit'
-  else if (c.includes('overload') || c.includes('capacity') || c.includes('503')) kind = 'model_overload'
-  else if (c.includes('timeout') || c.includes('deadline')) kind = 'timeout'
-  else if (c.includes('network') || c.includes('fetch') || c.includes('econn')) kind = 'network'
-  else if (c.includes('auth') || c.includes('401') || c.includes('403')) kind = 'auth'
-  const bandLabel =
-    kind === 'rate_limit'
-      ? 'The model is busy — retrying'
-      : kind === 'model_overload'
-        ? 'The model is busy — retrying'
-        : kind === 'timeout'
-          ? 'Taking longer than usual…'
-          : kind === 'network'
-            ? 'Reconnecting…'
-            : kind === 'auth'
-              ? 'Please sign in again'
-              : 'Something went wrong'
-  return {
-    kind,
-    bandLabel,
-    sentence: message || bandLabel,
-    actions: kind === 'auth' ? ['settings'] : kind === 'model_overload' ? ['switch_model', 'retry'] : ['retry'],
-  }
 }
 
 export interface S1LiveAdapter {
@@ -192,7 +191,38 @@ export function makeS1LiveAdapter(
         return [{ type: 'block.delta', turnId, blockId: ev.block_id, textDelta: ev.delta, eventId }]
 
       case 'block.commit':
-        return [{ type: 'block.commit', turnId, blockId: ev.block_id, kind: 'paragraph', html: ev.text, eventId }]
+        // `ev.kind`/`ev.role`/`ev.table`/`ev.gap_text` are ABSENT unless the
+        // server's semantic-blocks flag is on (protocol v2, lane P2-A) — the
+        // `?? 'paragraph'` fallback is exactly the old hardcoded behavior, so
+        // a flag-OFF stream renders byte-for-byte as it did before this lane.
+        // `content` (present only when the reader-facing text differs from
+        // the raw commit text — a verse with its `>` markers stripped, a
+        // heading with its `#`s stripped) wins over `text` when present.
+        return [
+          {
+            type: 'block.commit',
+            turnId,
+            blockId: ev.block_id,
+            kind: ev.kind ?? 'paragraph',
+            role: ev.role,
+            html: ev.content ?? ev.text,
+            table: ev.table,
+            gapText: ev.gap_text,
+            eventId,
+          },
+        ]
+
+      case 'prediction_card':
+        return [
+          {
+            type: 'prediction_card',
+            turnId,
+            partId: ev.part_id,
+            conversationId: ev.conversation_id,
+            candidate: ev.candidate,
+            eventId,
+          },
+        ]
 
       case 'seam.open':
         // Real PASS-BOUNDARY seam → C-1's pass-seam UI. Synthesize a stable
@@ -235,29 +265,64 @@ export function makeS1LiveAdapter(
         return [{ type: 'flag', turnId, flag: ev.code, eventId }]
 
       case 'grade':
-        // Not a reducer-state driver in C-1 (lastEventId-only); dropped to keep
-        // the WireEvent stream free of no-op noise.
+        // Lane P2-C: the one `grade` subject the reducer DOES act on — the
+        // honest depth-received disclosure (`plan_stage.ts`). Every other
+        // subject (e.g. `query_class`) is not a reducer-state driver in C-1
+        // (lastEventId-only) and is dropped to keep the WireEvent stream free
+        // of no-op noise.
+        if (ev.subject === 'reading_depth_received') {
+          return [{ type: 'reading_depth.received', turnId, depth: ev.grade, eventId }]
+        }
         return []
 
       case 'turn.commit': {
         const elapsedSeconds = Math.max(0, Math.floor((Date.now() - openedAtMs) / 1000))
         const factorCount = citationsSeen - classicalSeen
-        const grounding: GroundingSummary = {
-          factorCount: Math.max(0, factorCount),
-          classicalCount: classicalSeen,
-          elapsedLabel: `0:${String(elapsedSeconds).padStart(2, '0')}`,
-          // HONEST rollup from the real per-citation grade distribution — never a
-          // confident verdict on the strength of a bare count (B.1/B.10, §6.7).
-          gradeSummaryLabel: rollUpGradeSummaryLabel(gradeTally),
-        }
-        return [{ type: 'turn.commit', turnId, grounding, eventId }]
+        const elapsedLabel = `0:${String(elapsedSeconds).padStart(2, '0')}`
+        // G2-B: prefer the SERVER-derived rollup when the wire carried one —
+        // it is computed from the server's own resolution ledger + the
+        // turn's floor/completeness receipt, neither of which the client can
+        // see. Absent → fall back to the citation-tally estimate this
+        // adapter has always computed, but now HONESTLY LABELED as an
+        // estimate (`source: 'client_estimate'`) rather than rendered
+        // indistinguishably from a server-derived summary (§N.7 item 6).
+        const grounding: GroundingSummary = ev.grounding_summary
+          ? {
+              factorCount: Math.max(0, factorCount),
+              classicalCount: classicalSeen,
+              elapsedLabel,
+              gradeSummaryLabel: rollUpGradeSummaryLabel(gradeCountsToTally(ev.grounding_summary.grade_counts)),
+              source: 'server',
+              completenessLine: ev.grounding_summary.completeness_line ?? undefined,
+            }
+          : {
+              factorCount: Math.max(0, factorCount),
+              classicalCount: classicalSeen,
+              elapsedLabel,
+              // HONEST rollup from the real per-citation grade distribution —
+              // never a confident verdict on the strength of a bare count
+              // (B.1/B.10, §6.7).
+              gradeSummaryLabel: rollUpGradeSummaryLabel(gradeTally),
+              source: 'client_estimate',
+            }
+        // P2-D: forward the wire's own persistence status so the reducer can
+        // honestly seed `persistence` (see reducer.ts's turn.commit case).
+        return [{ type: 'turn.commit', turnId, grounding, eventId, persistStatus: ev.status }]
       }
+
+      case 'turn.persisted':
+        return [{ type: 'turn.persisted', turnId, status: ev.status, detail: ev.detail, eventId }]
 
       case 'turn.close':
         return [{ type: 'turn.close', turnId, eventId }]
 
       case 'error':
-        return [{ type: 'error', turnId, error: classifyError(ev.code, ev.message), eventId }]
+        // Canonical §7.5 classifier (P2-G) — this in-stream `error` event is,
+        // by construction, terminal (the reducer marks the turn `errored`),
+        // so `networkExhausted` defaults true. The raw `ev.message` is
+        // deliberately NOT forwarded into the reader-facing sentence (§7.5:
+        // never a raw provider error string) — it stays server/log-side only.
+        return [{ type: 'error', turnId, error: classifyPariprashnaError(ev.code), eventId }]
 
       case 'snapshot.apply': {
         // PB-2/M-5: the reconnect path's gap-fallback. Citations arrive as a

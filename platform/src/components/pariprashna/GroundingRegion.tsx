@@ -11,11 +11,16 @@ import type { TurnState } from './state/types'
  */
 export function GroundingRegion({ turn }: { turn: TurnState }) {
   if (turn.status !== 'settled' || !turn.grounding) return null
-  const { factorCount, classicalCount } = turn.grounding
-  const summary =
+  const { factorCount, classicalCount, completenessLine, source } = turn.grounding
+  let summary =
     classicalCount > 0
       ? `Reading complete. Grounded in ${factorCount} chart factors, ${classicalCount} classical sources.`
       : `Reading complete. Grounded in ${factorCount} chart factors.`
+  if (completenessLine) summary += ` ${completenessLine}.`
+  // G2-B (§N.7 item 6): a client-estimated rollup must never read the same
+  // as a server-derived one — the ONE reader-facing summary this component
+  // announces discloses the estimate explicitly rather than silently.
+  if (source === 'client_estimate') summary += ' (Estimated from this session — not yet server-verified.)'
   return (
     <p role="status" aria-live="polite" className="sr-only">
       {summary}

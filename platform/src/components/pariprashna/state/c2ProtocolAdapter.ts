@@ -291,6 +291,10 @@ export function adaptC2Fixture(turnId: string, raw: C2Fixture): ScheduledEvent[]
               // Honest rollup from the real per-citation grade distribution — never
               // a confident verdict on the strength of a bare count (B.1/B.10, §6.7).
               gradeSummaryLabel: rollUpGradeSummaryLabel(gradeTally),
+              // This adapter maps C-2's recorded-fixture protocol, which never
+              // carries a server-derived grounding summary — always the
+              // disclosed client-estimate path (G2-B).
+              source: 'client_estimate',
             },
             eventId: String(event.id),
           },

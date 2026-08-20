@@ -44,16 +44,25 @@ import {
 } from '@/lib/pipelines/shared/onfinish_writethrough'
 import { computeCostUsd, getModelPricingSync } from '@/lib/llm/pricing'
 import { writeContextAssemblyLog } from '@/lib/db/monitoring-write'
-import { writeTurn } from '@/lib/pariprashna/store/writer'
+import { writeTurnDurable } from '@/lib/pariprashna/store/durable_writer'
 import { CANONICAL_SCHEMA_VERSION, type CanonicalMessage } from '@/lib/pariprashna/store/schema'
 import { withProvenanceStamp } from '@/lib/pariprashna/provenance/stamp'
 import { captureDetectedCandidates } from '@/lib/pariprashna/samiksha/capture'
+import { enrichCandidate, type CitationRef } from '@/lib/pariprashna/samiksha/detector'
+import { isSemanticBlocksEnabled } from '@/lib/pariprashna/semantics/flag'
+import type { ResolvedTurnCitation } from '@/lib/pariprashna/citations/stream_wiring'
+import type { ServerGroundingSummary } from '@/lib/pariprashna/protocol/events'
 import type { ToolBundle } from '@/lib/retrieval/shared_types'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
 
 import type { TurnIdentity, TurnParams } from './stage_context'
-import { buildCanonicalParts, detectTurnCitations, type OpenBlock } from './reading_parts'
+import {
+  buildCanonicalParts,
+  detectTurnCitations,
+  type DetectedCitationRow,
+  type OpenBlock,
+} from './reading_parts'
 import { computeTurnReceiptProvenance } from './receipt_stage'
 import type { CitationGateOutcome } from './validation_stage'
 
@@ -126,6 +135,24 @@ export async function runPersistenceStage(args: {
   synthesisStartedAt: number
   /** Lane G1-A. Enforced → the turn's predictive output is sampled (HS-6). */
   safetyDecision?: import('@/lib/pariprashna/safety').SafetyDecision
+  /**
+   * Lane G2-B (P0C-R5 fix). Whether the live citation rewriter ran this turn
+   * (`synthesis_stage.ts`'s `citationRewriteEnabled`). Drives which citation
+   * source persistence trusts: TRUE → the rewriter's own resolution ledger
+   * (`resolvedCitations`, never a re-scan of already-scrubbed
+   * `accumulatedText`); FALSE/omitted → the pre-existing
+   * `detectTurnCitations(accumulatedText)` regex path, unchanged.
+   */
+  citationRewriteEnabled?: boolean
+  /** Lane G2-B. The rewriter's resolution ledger — see `citationRewriteEnabled`. */
+  resolvedCitations?: readonly ResolvedTurnCitation[]
+  /**
+   * Lane G2-B. Server-derived grounding summary for this turn
+   * (`citations/grounding_summary.ts`). Attached to the `turn.commit` wire
+   * event when present; absent → the client falls back to its own citation
+   * tally, visibly labeled as an estimate (never silently substituted).
+   */
+  groundingSummary?: ServerGroundingSummary
 }): Promise<void> {
   const {
     em,
@@ -143,6 +170,9 @@ export async function runPersistenceStage(args: {
     validToolResults,
     citationGate,
     synthesisStartedAt,
+    citationRewriteEnabled = false,
+    resolvedCitations = [],
+    groundingSummary,
   } = args
   const { turnId, queryId, conversationId, chartId, isFirstTurn } = identity
 
@@ -197,6 +227,10 @@ export async function runPersistenceStage(args: {
             message_id: d.message_id,
             status: d.status,
             assistant_chars: accumulatedText.length,
+            // Lane G2-B. Additive/optional — absent when the flag is off or no
+            // summary was built, in which case the client's own citation
+            // tally is the (visibly labeled) degrade path.
+            ...(groundingSummary ? { grounding_summary: groundingSummary } : {}),
           })
           break
         }
@@ -306,15 +340,39 @@ export async function runPersistenceStage(args: {
           // (tests/pariprashna/reducer/canonical_serialization_golden.test.ts)
           // exercises independently against a client-reducer simulation.
           //
-          // Snippets are resolved ONLY when the prose actually cited something:
-          // an empty citation set must not cost a DB round-trip.
-          const citationsFound = detectTurnCitations(accumulatedText)
-          const snippets =
-            citationsFound.length > 0
-              ? await fetchMsrSnippets(citationsFound.map((c) => c.signal_id))
-              : new Map<string, string>()
+          // Lane G2-B (P0C-R5 fix): when the live rewriter ran this turn, its
+          // OWN resolution ledger is the citation source of truth —
+          // `accumulatedText` at this point contains resolved `[n]` markers,
+          // not raw `SIG.MSR.NNN` tokens (the register-leak lint already
+          // rewrote/redacted every such token before it reached
+          // `accumulatedText`), so re-scanning it here would silently find
+          // nothing regardless of what the reader actually saw. Snippets are
+          // already known from the resolver's prefetch — no second DB round
+          // trip. Flag-off path is UNCHANGED: detect from prose, fetch
+          // snippets only when something was actually detected.
+          let citationsFound: DetectedCitationRow[]
+          let snippets: Map<string, string>
+          if (citationRewriteEnabled) {
+            citationsFound = resolvedCitations.map((c) => ({
+              index: c.index,
+              signal_id: c.signal_id,
+              layer: c.layer,
+            }))
+            snippets = new Map(resolvedCitations.map((c) => [c.signal_id, c.snippet]))
+          } else {
+            citationsFound = detectTurnCitations(accumulatedText)
+            snippets =
+              citationsFound.length > 0
+                ? await fetchMsrSnippets(citationsFound.map((c) => c.signal_id))
+                : new Map<string, string>()
+          }
           const { parts: canonicalParts, predictionCandidates: predictionCandidatesFound } =
-            buildCanonicalParts({ committedBlocks, accumulatedText, snippets })
+            buildCanonicalParts({
+              committedBlocks,
+              accumulatedText,
+              snippets,
+              preResolvedCitations: citationRewriteEnabled ? citationsFound : undefined,
+            })
 
           const canonicalMessage: CanonicalMessage = {
             id: assistantMessageId,
@@ -328,7 +386,45 @@ export async function runPersistenceStage(args: {
 
           let canonicalOk = true
           try {
-            await writeTurn(canonicalMessage, canonicalParts)
+            // P2-D (PPR-10, FD-9): durability-envelope wrapper around the
+            // SAME writeTurn call this always made. Flag-off (default) is
+            // byte-for-byte the pre-P2-D behavior — see durable_writer.ts's
+            // header for the full mode breakdown.
+            const durableOutcome = await writeTurnDurable({
+              message: canonicalMessage,
+              parts: canonicalParts,
+              // Adapter, not a bare re-export: `query`'s own generic is
+              // constrained to `T extends QueryResultRow` (pg's row shape);
+              // `OutboxDb.query`'s is unconstrained (`T = Record<string,
+              // unknown>`) so the port stays usable by a fake in tests that
+              // never touches pg. The row cast is honest — both sides agree
+              // rows are plain JSON-shaped objects, `pg`'s constraint is
+              // narrower than the data actually requires.
+              outboxDb: {
+                query: async <T = Record<string, unknown>>(sql: string, params?: unknown[]) => {
+                  const result = await query<Record<string, unknown>>(sql, params)
+                  return { rows: result.rows as unknown as T[], rowCount: result.rowCount }
+                },
+              },
+              chartId,
+              turnId,
+            })
+            // Only emit turn.persisted once the outbox path actually ran —
+            // direct mode's durability is already fully expressed by
+            // turn.commit's own status (see reducer.ts's back-compat note);
+            // emitting a redundant event there would be noise, not signal.
+            // Emitted BEFORE the result check below so an honest 'pending'
+            // (write-ahead recorded, canonical write not yet confirmed)
+            // reaches the client even when this function goes on to throw.
+            if (durableOutcome.durable.mode === 'outbox' || durableOutcome.durable.detail) {
+              em.turnPersisted({
+                turn_id: turnId,
+                status: durableOutcome.durable.status,
+                mode: durableOutcome.durable.mode,
+                detail: durableOutcome.durable.detail,
+              })
+            }
+            if (!durableOutcome.result) throw durableOutcome.error ?? new Error('writeTurnDurable: no result and no error')
           } catch (err) {
             console.error('[pariprashna] canonical writeTurn failed', err)
             canonicalOk = false
@@ -362,6 +458,68 @@ export async function runPersistenceStage(args: {
               )
             } catch (err) {
               console.error('[pariprashna] samiksha detected-row capture failed', err)
+            }
+
+            // ── prediction_card wire event (lane P2-A / G2-A, protocol v2). ──
+            // Flag-gated (default OFF — see `semantics/flag.ts`). Runs a SECOND,
+            // dedicated SELECT rather than reusing `captureDetectedCandidates`'s
+            // internal pairing: that module is the frozen, sole writer of
+            // `detected` ledger rows (see its own header on why the in-stream
+            // mount was deferred to "a separate lane"), and this is that lane —
+            // deliberately kept decoupled from it rather than widening its
+            // return shape for an unrelated concern. Same claim-text FIFO
+            // pairing discipline as `capture.ts` (order-independent, duplicate-
+            // claim-safe); a candidate whose part cannot be located is silently
+            // skipped here exactly as capture.ts treats an "unpaired" candidate
+            // — an honest omission, never a guessed id.
+            if (canonicalOk && isSemanticBlocksEnabled()) {
+              try {
+                const { rows: predParts } = await query<{ id: string; claim: string | null }>(
+                  `SELECT id, body->>'claim' AS claim
+                     FROM message_parts
+                    WHERE message_id = $1 AND kind = 'prediction_candidate'
+                    ORDER BY seq`,
+                  [assistantMessageId],
+                )
+                const byClaim = new Map<string, string[]>()
+                for (const p of predParts) {
+                  if (!p.claim) continue
+                  const q = byClaim.get(p.claim)
+                  if (q) q.push(p.id)
+                  else byClaim.set(p.claim, [p.id])
+                }
+                const citationRefs: CitationRef[] = citationsFound.map((c) => ({ signal_id: c.signal_id, layer: c.layer }))
+                for (const raw of predictionCandidatesFound) {
+                  const queue = byClaim.get(raw.text)
+                  const partId = queue?.shift()
+                  if (!partId) continue // unpaired — honest omission, no event.
+                  const enriched = enrichCandidate(raw, {
+                    citations: citationRefs,
+                    nowDate: provenanceStamp.now_context_date,
+                  })
+                  em.predictionCard({
+                    conversation_id: conversationId,
+                    message_id: assistantMessageId,
+                    part_id: partId,
+                    candidate: {
+                      claim_text: enriched.claim_text,
+                      domain: enriched.domain,
+                      window_start: enriched.window_start,
+                      window_end: enriched.window_end,
+                      direction: enriched.direction,
+                      ...(enriched.confidence_stated !== undefined
+                        ? { confidence_stated: enriched.confidence_stated }
+                        : {}),
+                      technique_refs: enriched.technique_refs,
+                      grounding_fact_ids: enriched.grounding_fact_ids,
+                      score: enriched.score,
+                      horizon_text: enriched.horizon_text,
+                    },
+                  })
+                }
+              } catch (err) {
+                console.error('[pariprashna] prediction_card wire emission failed (non-fatal)', err)
+              }
             }
 
             // ── HS-6 (lane G1-A): sample this predictive reading into the

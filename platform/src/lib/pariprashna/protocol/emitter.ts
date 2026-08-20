@@ -17,6 +17,7 @@
 
 import {
   serializeEvent,
+  PARIPRASHNA_PROTOCOL_VERSION,
   type PariprashnaEvent,
   type TurnOpenEvent,
   type PhaseEvent,
@@ -30,11 +31,14 @@ import {
   type FlagEvent,
   type GradeEvent,
   type TurnCommitEvent,
+  type TurnPersistedEvent,
   type TurnCloseEvent,
   type ErrorEvent,
   type SnapshotApplyEvent,
+  type PredictionCardEvent,
 } from './events'
 import { assertNoCalibrationLeak } from '../no_leakage/calibration_leak_guard'
+import { isSemanticBlocksEnabled } from '../semantics/flag'
 
 /**
  * Write an ALREADY-STAMPED event (i.e. one carrying its own `seq`/`t`, read
@@ -139,7 +143,32 @@ export class PariprashnaEmitter {
   }
 
   turnOpen(body: Body<TurnOpenEvent, 'turn.open'>): void {
-    this.write({ type: 'turn.open', ...this.envelope(), ...body })
+    // `protocol_version` is stamped HERE, flag-gated, rather than left to the
+    // route call site (route.ts is out of this lane's `may_touch` scope) —
+    // this keeps the whole lane self-contained inside `lib/pariprashna/**`.
+    // Gated on `isSemanticBlocksEnabled()` because the P0-C golden-stream
+    // byte-equality harness (tests/pariprashna/route_ports/
+    // route_golden_stream.test.ts) asserts the route's committed baselines
+    // byte-for-byte, and those baselines predate this field — an earlier,
+    // unconditional version of this stamp broke that harness during this
+    // lane's own verification (a real "flag OFF must be byte-identical"
+    // violation the harness caught). An explicit `body.protocol_version`
+    // still wins over the computed default, matching every other builder's
+    // "caller can always override" contract.
+    //
+    // P2-D independently hit the same golden-stream break chasing the same
+    // "no auto-stamp with the flag off" requirement, and its own fix (never
+    // auto-stamp, full caller-opt-in) is already satisfied by this gate:
+    // with `PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED` off (the default) there is
+    // no stamp either way, so both lanes' byte-identity requirement holds.
+    // `protocolVersionOf` (events.ts) reads an absent field as version 1, the
+    // correct "old-version messages still parse" contract either way.
+    this.write({
+      type: 'turn.open',
+      ...this.envelope(),
+      ...(isSemanticBlocksEnabled() ? { protocol_version: PARIPRASHNA_PROTOCOL_VERSION } : {}),
+      ...body,
+    })
   }
 
   phase(body: Body<PhaseEvent, 'phase'>): void {
@@ -186,6 +215,11 @@ export class PariprashnaEmitter {
     this.write({ type: 'turn.commit', ...this.envelope(), ...body })
   }
 
+  /** P2-D (PPR-10/FD-9): the settled_visual/durably_persisted split — see events.ts. */
+  turnPersisted(body: Body<TurnPersistedEvent, 'turn.persisted'>): void {
+    this.write({ type: 'turn.persisted', ...this.envelope(), ...body })
+  }
+
   turnClose(body: Body<TurnCloseEvent, 'turn.close'>): void {
     this.write({ type: 'turn.close', ...this.envelope(), ...body })
   }
@@ -196,6 +230,10 @@ export class PariprashnaEmitter {
 
   snapshotApply(body: Body<SnapshotApplyEvent, 'snapshot.apply'>): void {
     this.write({ type: 'snapshot.apply', ...this.envelope(), ...body })
+  }
+
+  predictionCard(body: Body<PredictionCardEvent, 'prediction_card'>): void {
+    this.write({ type: 'prediction_card', ...this.envelope(), ...body })
   }
 
   /** Close the underlying controller exactly once. */

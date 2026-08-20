@@ -42,6 +42,18 @@ import { executeMCPTool } from '@/lib/synthesis/mcp_tool_executor'
 import { buildChatToolsFromNames } from '@/lib/retrieval/registry/schema_utils'
 import { buildConsultSystemContent } from '@/lib/pipelines/shared/run_adapter_dispatch'
 import { lintReaderProse } from '@/lib/pariprashna/citations/register_leak_lint'
+import { isFirstPaintCitationsEnabled } from '@/lib/pariprashna/citations/flag'
+import {
+  TurnCitationStream,
+  type ResolvedTurnCitation,
+  type UnstampedCitationWireEvent,
+} from '@/lib/pariprashna/citations/stream_wiring'
+import {
+  extractCandidateSignalIds,
+  fetchCandidateSignalLabels,
+  buildTurnCitationResolver,
+} from './citation_resolver'
+import type { ToolBundle } from '@/lib/retrieval/shared_types'
 import type { ChartOrientation } from '@/lib/retrieval/orientation'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
@@ -49,6 +61,9 @@ import { StreamingMortalityScanner } from '@/lib/pariprashna/safety/phrasing_sca
 import { PREWIRE_REDACTION_NOTICE } from '@/lib/pariprashna/safety/fixed_responses'
 import type { SafetyDecision } from '@/lib/pariprashna/safety'
 import { isInjectionContainmentEnabled } from '@/lib/pariprashna/injection/flag'
+import { isSemanticBlocksEnabled } from '@/lib/pariprashna/semantics/flag'
+import { isHonestControlsEnabled } from '@/lib/pariprashna/honest_controls/flag'
+import type { LengthTier } from '@/lib/pariprashna/protocol/events'
 import {
   buildEntitlementScanRules,
   containRetrievedEvidence,
@@ -60,6 +75,11 @@ import {
   rejectIdentityParams,
   ToolSequenceMonitor,
 } from '@/lib/pariprashna/injection'
+import { TurnMetricsCollector } from '@/lib/pariprashna/observability/turn_metrics'
+import {
+  recordSynthesisTurnObservation,
+  type SynthesisObservationIdentity,
+} from '@/lib/pariprashna/observability/synthesis_observation'
 
 import { halt, proceed, resolveActivityLabel, type StageResult, type TurnParams } from './stage_context'
 import { PASS_ONE } from './evidence_stage'
@@ -84,6 +104,17 @@ const STACK_TO_ADAPTER: Partial<Record<string, StackId>> = {
 
 const AGENTIC_PROVIDERS = new Set<string>(['anthropic', 'google', 'openai', 'deepseek', 'nvidia'])
 
+/** Lane P2-E. A short, loggable error code for the `llm_usage_events.status='error'` row. */
+function extractStreamErrorCode(err: unknown): string {
+  if (err && typeof err === 'object') {
+    const e = err as { code?: unknown; name?: unknown; message?: unknown }
+    if (typeof e.code === 'string' && e.code.length > 0) return e.code
+    if (typeof e.name === 'string' && e.name.length > 0) return e.name
+    if (typeof e.message === 'string' && e.message.length > 0) return e.message.slice(0, 200)
+  }
+  return 'unknown_error'
+}
+
 export interface SynthesisContext {
   /** The full system prefix (bundle + guidance + durable-summary splice). */
   systemContentWithSummary: string
@@ -95,6 +126,36 @@ export interface SynthesisContext {
   trimmedConversationHistory: ModelMessage[]
 }
 
+/**
+ * Lane P2-C (PPR-09/16) — honest length shaping. `length_tier` previously had
+ * NO live effect on synthesis (TODO(PB-4) in `safety_gate.ts`): the composer
+ * offered a Length pill, the request carried a real `length_tier`, and none of
+ * it changed a single byte of the prompt. This is the fix, not a cosmetic
+ * echo: a short, FIXED instruction appended to the system prompt, distinct per
+ * tier and gated behind `isHonestControlsEnabled()`.
+ *
+ * `standard` (and the flag-OFF path) appends NOTHING — the default reading is
+ * byte-identical to today's whether or not the flag is on, which is the same
+ * "the requested tier that means no change should cause no change" discipline
+ * NO-LEAKAGE and the safety prompt policy already follow elsewhere in this
+ * file. This is deterministic prompt guidance, not a computed chart claim —
+ * it does not re-derive or restate any L1/L2+ fact, so it carries no
+ * DERIVATION_LEDGER obligation (§B.3 is about claims, not verbosity framing).
+ */
+const LENGTH_TIER_GUIDANCE: Partial<Record<LengthTier, string>> = {
+  brief:
+    'Length discipline for THIS reading: BRIEF. Lead with the verdict and the ' +
+    'load-bearing evidence only. Omit secondary corroboration, tangential ' +
+    'detail, and elaboration the core claim does not need. Do not shorten by ' +
+    'dropping citations — every claim still needs its grounding, just fewer ' +
+    'claims.',
+  exhaustive:
+    'Length discipline for THIS reading: EXHAUSTIVE. Cover every relevant ' +
+    'domain, corroborating signal, and classical nuance the retrieved ' +
+    'evidence supports. Do not truncate for brevity or hold back a ' +
+    'well-grounded point to save space.',
+}
+
 export async function assembleSynthesisContext(args: {
   messages: UIMessage[]
   bundle: { assets: unknown }
@@ -103,6 +164,8 @@ export async function assembleSynthesisContext(args: {
   conversationId: string
   /** Lane G1-A. Omitted → no policy block (flag-OFF path and older callers). */
   safetyDecision?: SafetyDecision
+  /** Lane P2-C. Omitted → no length instruction (flag-OFF path and older callers). */
+  lengthTier?: LengthTier
 }): Promise<SynthesisContext> {
   const { messages, bundle, plan, orientation, conversationId } = args
 
@@ -185,6 +248,19 @@ export async function assembleSynthesisContext(args: {
     summaryText: conversationSummaryText,
   })
 
+  // ── LENGTH SHAPING (lane P2-C · PPR-09/16). ────────────────────────────────
+  // Narrow, additive splice — same position/convention as the durable-summary
+  // splice immediately above: appended to the FIXED structural prefix, not
+  // interleaved with the untrusted evidence bundle. `standard` (the schema
+  // default) intentionally adds nothing, so the common case's prompt is
+  // unchanged whether or not the flag is on.
+  if (isHonestControlsEnabled() && args.lengthTier) {
+    const lengthGuidance = LENGTH_TIER_GUIDANCE[args.lengthTier]
+    if (lengthGuidance) {
+      systemContentWithSummary = [systemContentWithSummary, lengthGuidance].filter(Boolean).join('\n\n---\n\n')
+    }
+  }
+
   // ── INJECTION CONTAINMENT: the clause that makes the tags mean something. ──
   // Appended AFTER the evidence and the summary splice and BEFORE the safety
   // policy, so the ordering downstream-of-untrusted-content reads:
@@ -229,6 +305,19 @@ export interface SynthesisStageOutput {
    * "the sequence was checked and was clean" (§N.8).
    */
   toolSequenceMonitor: ToolSequenceMonitor | null
+  /**
+   * Lane G2-B. Every citation the live rewriter actually resolved this turn,
+   * in wire order — `[]` (not null) when the flag is off, matching the
+   * honest-empty convention `toolSequenceMonitor` uses `null` for: here the
+   * distinction is moot because a caller that gates on `citationRewriteEnabled`
+   * already knows whether to trust this list, so an empty array (never
+   * populated) reads correctly either way.
+   */
+  resolvedCitations: readonly ResolvedTurnCitation[]
+  /** `TurnCitationStream.hallucinationCount`, or 0 when the flag is off. */
+  citationHallucinationCount: number
+  /** Whether this turn actually ran the live citation-rewriter path. */
+  citationRewriteEnabled: boolean
 }
 
 export async function runSynthesisStage(args: {
@@ -252,6 +341,24 @@ export async function runSynthesisStage(args: {
    * of these is the strongest tool-sequence anomaly available.
    */
   removedCapabilities?: readonly string[]
+  /**
+   * Lane G2-B. This turn's own retrieval-pass-1 results
+   * (`EvidenceStageOutput.validToolResults`) — the evidence scope the live
+   * citation resolver prefetches labels against. Omitted → the citation
+   * rewriter (when the flag is on) simply has no candidate ids to prefetch,
+   * so every sentinel resolves unverified rather than silently widening scope
+   * to some other source.
+   */
+  validToolResults?: readonly ToolBundle[]
+  /**
+   * Lane P2-E (PPR-33/GAP-14). Per-turn identity for the `llm_usage_events`
+   * observability write — see `observability/synthesis_observation.ts` for
+   * why this is optional and what happens when it is omitted (honest skip,
+   * never a fabricated conversation_id/user_id). Omitted by every caller
+   * today; wiring it through `app/api/pariprashna/route.ts` is a follow-up
+   * outside this lane's `may_touch` scope.
+   */
+  observability?: SynthesisObservationIdentity
 }): Promise<StageResult<SynthesisStageOutput>> {
   const { em, request, queryText, params, queryPlan, context } = args
   const { systemContentWithSummary, trimmedConversationHistory } = context
@@ -290,6 +397,71 @@ export async function runSynthesisStage(args: {
   em.phase({ phase: 'synthesize', status: 'start', pass_id: PASS_ONE })
   const synthesisStartedAt = Date.now()
 
+  // Lane P2-E (PPR-33/GAP-14). One collector for the whole turn — TTFT, the
+  // max provider-event gap, token usage, the register-lint firing rate and
+  // delta→commit lag. Pure/in-memory; read once via `.snapshot()` below.
+  const metrics = new TurnMetricsCollector(synthesisStartedAt)
+  /** Set when the stream loop's catch fires — `undefined` means success. */
+  let streamErrorCode: string | undefined
+  /** Guards against double-finalizing (the abort path returns early). */
+  let observabilityFinalized = false
+  /**
+   * Lane P2-E turn-end observability. Called from BOTH the client-abort early
+   * return and the normal end of the function, so an aborted turn is measured
+   * exactly like a completed one rather than silently dropped.
+   */
+  const finalizeObservability = (opts?: { aborted?: boolean }): void => {
+    if (observabilityFinalized) return
+    observabilityFinalized = true
+    const synthesisFinishedAt = Date.now()
+    const metricsSnapshot = metrics.snapshot()
+    // ALWAYS-ON, real-today summary — SERVER LOG ONLY, deliberately NOT an
+    // `em.flag` (never touches the SSE wire). Two independent reasons:
+    //   1. Wire-protocol discipline: every event type is a client-visible
+    //      protocol surface the PB-2 golden-stream harness
+    //      (`tests/pariprashna/route_ports/route_golden_stream.test.ts`)
+    //      byte-compares against a committed baseline; a NEW event type on
+    //      every turn is a real protocol change, not an internals-only one,
+    //      and is out of this lane's scope to make.
+    //   2. This content is inherently non-deterministic (wall-clock latency,
+    //      inter-event gaps) — the golden harness's OWN determinism check
+    //      (same scenario run twice must produce identical records) would
+    //      fail on it even if the event type were added to the baseline.
+    //      Ops/cost telemetry does not need to be part of a byte-identical
+    //      reader-facing contract.
+    console.log(
+      '[pariprashna/observability] synthesis_turn_metrics',
+      JSON.stringify({
+        ttft_ms: metricsSnapshot.ttft_ms,
+        latency_ms: synthesisFinishedAt - synthesisStartedAt,
+        max_event_gap_ms: metricsSnapshot.max_event_gap_ms,
+        events: metricsSnapshot.event_count,
+        passes: metricsSnapshot.pass_count,
+        register_lint_fires: metricsSnapshot.register_lint.fires,
+        register_lint_delta_calls: metricsSnapshot.register_lint.delta_calls,
+        delta_commit_lag_avg_ms:
+          metricsSnapshot.delta_commit_lag_ms.count > 0
+            ? Math.round(metricsSnapshot.delta_commit_lag_ms.total_ms / metricsSnapshot.delta_commit_lag_ms.count)
+            : null,
+        aborted: opts?.aborted === true,
+      }),
+    )
+    // Fire-and-forget: the EXISTING llm_usage_events schema (migration 001,
+    // `channel` migration 574) this lane wires. Never awaited — a telemetry
+    // write must not add latency to turn completion (same discipline
+    // `stream_capture.ts`/`ring_buffer.ts` already use on this hot path).
+    void recordSynthesisTurnObservation({
+      identity: args.observability,
+      stackId: adapterId,
+      modelId: params.modelId,
+      startedAt: new Date(synthesisStartedAt),
+      finishedAt: new Date(synthesisFinishedAt),
+      status: opts?.aborted || streamErrorCode ? 'error' : 'success',
+      errorCode: opts?.aborted ? 'client_aborted' : streamErrorCode,
+      snapshot: metricsSnapshot,
+    })
+  }
+
   // Pass/seam state — derived PURELY from the engine's own control flow
   // (tool-use events after prose), never from text/prose heuristics.
   // ── The PRE-WIRE pass's rule set (G1-A mortality + G1-G entitlement). ──────
@@ -305,7 +477,17 @@ export async function runSynthesisStage(args: {
   const mortalityRulesEnabled = args.safetyDecision?.enforced === true
   const prewireArmed = mortalityRulesEnabled || entitlementRules.length > 0
 
-  const assembler = new ReadingPartsAssembler(em, PASS_ONE, mortalityRulesEnabled, entitlementRules)
+  const assembler = new ReadingPartsAssembler(
+    em,
+    PASS_ONE,
+    mortalityRulesEnabled,
+    entitlementRules,
+    isSemanticBlocksEnabled(),
+    // Lane P2-E: real delta→commit lag, measured inside the assembler itself
+    // (see `reading_parts.ts` — an internal role-switch commit would be
+    // invisible to a lag measured from out here).
+    (lagMs) => metrics.recordDeltaCommitLag(lagMs),
+  )
   let proseSeenInPass = false
   let awaitingResume = false
   let lastToolInSeam = ''
@@ -412,6 +594,49 @@ export async function runSynthesisStage(args: {
     ? { ...baseLoopConfig, maxIterations: loopMaxIterations }
     : undefined
 
+  // ── G2-B: live citation rewriter (lane G2-B · PPR-08/FD-2/FD-6). ──────────
+  // Flag-OFF path below (`citationStream === null`) is byte-for-byte the
+  // pre-existing per-delta `lintReaderProse` call with no resolver — nothing
+  // here runs a query, builds a rewriter, or changes control flow when the
+  // flag is off.
+  const citationRewriteEnabled = isFirstPaintCitationsEnabled()
+  const onCitationWireEvent = (event: UnstampedCitationWireEvent): void => {
+    if (event.type === 'citation.define') {
+      em.citationDefine({
+        index: event.index,
+        signal_id: event.signal_id,
+        layer: event.layer,
+        snippet: event.snippet,
+        reader_label: event.reader_label,
+        grade: event.grade,
+      })
+    } else {
+      em.flag({ code: event.code, level: event.level, detail: event.detail })
+    }
+  }
+  let citationStream: TurnCitationStream | null = null
+  if (citationRewriteEnabled) {
+    const candidateIds = extractCandidateSignalIds({ validToolResults: args.validToolResults ?? [] })
+    const labels = await fetchCandidateSignalLabels(candidateIds)
+    citationStream = new TurnCitationStream({
+      resolver: buildTurnCitationResolver(labels),
+      modelId: params.modelId,
+      onWireEvent: onCitationWireEvent,
+    })
+  }
+  // Any text a citation-stream flush (a hold-back timeout or the terminal
+  // `.end()`) produces must go through the SAME mortality-scan + append path
+  // as an ordinary delta — see `drainScannerInto`'s own comment: the hold-back
+  // buffer must be drained before any block commit, or the tail is silently
+  // dropped. This is that same discipline for the citation rewriter's own
+  // hold-back.
+  const appendCitationFlushText = (text: string): void => {
+    if (!text) return
+    const safe = mortalityScanner ? mortalityScanner.push(text) : text
+    reportPrewireHits()
+    if (safe) assembler.appendProse(assembler.ensureBlock('prose'), safe)
+  }
+
   try {
     const chatStream =
       useAgenticLoop && loopConfig
@@ -460,9 +685,15 @@ export async function runSynthesisStage(args: {
         : adapter.chat(adapterChatReq)
 
     for await (const event of chatStream) {
+      // Lane P2-E. Observes every raw event (TTFT, max inter-event gap, token
+      // usage from 'usage' events) without altering it — the same event
+      // object flows into the branches below untouched.
+      metrics.recordEvent(event)
       if (request.signal.aborted) {
+        appendCitationFlushText(citationStream?.end() ?? '')
         drainScannerInto()
         assembler.commitBlock()
+        finalizeObservability({ aborted: true })
         return halt('aborted')
       }
       if (event.type === 'text_delta') {
@@ -473,43 +704,69 @@ export async function runSynthesisStage(args: {
           awaitingResume = false
         }
         const blk: OpenBlock = assembler.ensureBlock('prose')
-        // Gate 11 [integrity]: lint EVERY delta chunk before it reaches the
-        // wire — the model's own prose directly references internal register
-        // acronyms (confirmed in production: "(UCN §...)", "Cross-Domain
-        // Linkage Matrix (CDLM)"), independent of the citation-sentinel path
-        // this route already guards. Never fails the turn; a hit is scrubbed
-        // and reported as a telemetry flag. Residual: a leak pattern split
-        // exactly across a delta chunk boundary can still slip through here —
-        // the assembler's whole-block lint on commit is the backstop.
-        const deltaLint = lintReaderProse(event.text)
-        const cleanDelta = deltaLint.clean
-        if (deltaLint.leakCount > 0) {
-          em.flag({
-            code: 'register_leak_scrubbed',
-            level: 'warn',
-            detail: `${deltaLint.leakCount} internal identifier(s) scrubbed from streamed prose`,
-          })
+        if (citationStream) {
+          // G2-B live path: the rewriter resolves sentinels to inline markers
+          // + fires `citation.define`/`flag` wire events DURING streaming, and
+          // is itself the register-leak lint's single lint/emit exit
+          // (rewriter.ts) — no separate `lintReaderProse` call here. Lane P2-E
+          // residual: `metrics.recordRegisterLint` is NOT called on this path —
+          // the rewriter doesn't expose a comparable leak count today, and
+          // fabricating one would violate §N.8. When first-paint citations is
+          // on, the register-lint-firing-rate metric under-counts; both flags
+          // default off, so this is a disclosed gap, not a live one.
+          const rewritten = citationStream.write(event.text)
+          // HS-1 point (c): same ordering as the flag-OFF path below — the
+          // mortality scan runs AFTER the citation/register-leak pass.
+          const safeDelta = mortalityScanner ? mortalityScanner.push(rewritten) : rewritten
+          reportPrewireHits()
+          if (safeDelta) assembler.appendProse(blk, safeDelta)
+        } else {
+          // Gate 11 [integrity]: lint EVERY delta chunk before it reaches the
+          // wire — the model's own prose directly references internal register
+          // acronyms (confirmed in production: "(UCN §...)", "Cross-Domain
+          // Linkage Matrix (CDLM)"), independent of the citation-sentinel path
+          // this route already guards. Never fails the turn; a hit is scrubbed
+          // and reported as a telemetry flag. Residual: a leak pattern split
+          // exactly across a delta chunk boundary can still slip through here —
+          // the assembler's whole-block lint on commit is the backstop.
+          const deltaLint = lintReaderProse(event.text)
+          const cleanDelta = deltaLint.clean
+          // Lane P2-E: the register-lint firing rate — "the health signal that
+          // the primary defenses work" (roadmap line 91). Every delta counts as
+          // one measurement, firing or not; see `TurnMetricsCollector` docstring.
+          metrics.recordRegisterLint(deltaLint.leakCount)
+          if (deltaLint.leakCount > 0) {
+            em.flag({
+              code: 'register_leak_scrubbed',
+              level: 'warn',
+              detail: `${deltaLint.leakCount} internal identifier(s) scrubbed from streamed prose`,
+            })
+          }
+          // HS-1 point (c): the mortality scan runs AFTER the register lint (the
+          // lint's redactions cannot create a mortality phrase, only remove
+          // identifiers) and returns only sentence-complete, scanned text. When
+          // the gate is off, `mortalityScanner` is null and this is a pass-through.
+          const safeDelta = mortalityScanner ? mortalityScanner.push(cleanDelta) : cleanDelta
+          reportPrewireHits()
+          if (safeDelta) assembler.appendProse(blk, safeDelta)
         }
-        // HS-1 point (c): the mortality scan runs AFTER the register lint (the
-        // lint's redactions cannot create a mortality phrase, only remove
-        // identifiers) and returns only sentence-complete, scanned text. When
-        // the gate is off, `mortalityScanner` is null and this is a pass-through.
-        const safeDelta = mortalityScanner ? mortalityScanner.push(cleanDelta) : cleanDelta
-        reportPrewireHits()
-        if (safeDelta) assembler.appendProse(blk, safeDelta)
         proseSeenInPass = true
       } else if (event.type === 'thinking_delta') {
+        appendCitationFlushText(citationStream?.tick() ?? '')
         const blk = assembler.ensureBlock('thinking')
         assembler.appendThinking(blk, event.thinking)
       } else if (event.type === 'tool_use_start') {
+        appendCitationFlushText(citationStream?.tick() ?? '')
         em.activity({ key: `pass${assembler.passId}:tool:${event.id}`, label_key: resolveActivityLabel(event.name), pass_id: assembler.passId, status: 'running' })
       } else if (event.type === 'tool_use_complete') {
         // Engine re-entered retrieval. If prose was already emitted this pass,
         // THIS is a pass boundary (real control-flow truth).
+        appendCitationFlushText(citationStream?.tick() ?? '')
         drainScannerInto()
         assembler.commitBlock()
         if (proseSeenInPass) {
           assembler.passId += 1
+          metrics.recordPass()
           proseSeenInPass = false
           lastToolInSeam = event.name
           em.phase({ phase: 'retrieve', status: 'start', pass_id: assembler.passId })
@@ -527,7 +784,11 @@ export async function runSynthesisStage(args: {
   } catch (adapterErr) {
     console.error('[pariprashna] synthesis stream error:', adapterErr)
     em.flag({ code: 'synthesis_stream_error', level: 'error', detail: String(adapterErr) })
+    streamErrorCode = extractStreamErrorCode(adapterErr)
   }
+  // Terminal citation-stream flush — exactly once per turn (the abort branch
+  // above is the other terminal path and returns before reaching here).
+  appendCitationFlushText(citationStream?.end() ?? '')
   drainScannerInto()
   assembler.commitBlock()
   // A scan that FAILED (not "found nothing") is reported as its own flag. The
@@ -583,11 +844,16 @@ export async function runSynthesisStage(args: {
   }
   em.phase({ phase: 'synthesize', status: 'end', pass_id: assembler.passId, ms: Date.now() - synthesisStartedAt })
 
+  finalizeObservability()
+
   return proceed({
     assembler,
     accumulatedText: assembler.accumulatedText,
     synthesisStartedAt,
     finalPassId: assembler.passId,
     toolSequenceMonitor,
+    resolvedCitations: citationStream?.resolvedCitations ?? [],
+    citationHallucinationCount: citationStream?.hallucinationCount ?? 0,
+    citationRewriteEnabled,
   })
 }

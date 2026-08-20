@@ -53,8 +53,16 @@ describe('PB-3.1 G1 — the prediction loop has a live entry point', () => {
   })
 
   it('the call is inside the turn-commit persistence path, not a dead branch', () => {
+    // P2-D (PPR-10, FD-9): the direct `await writeTurn(canonicalMessage,
+    // canonicalParts)` call this anchor used to match was wrapped in
+    // `writeTurnDurable(...)` (store/durable_writer.ts) to add the
+    // settled_visual/durably_persisted distinction — same write, same
+    // ordering guarantee (still the commit step immediately preceding the
+    // capture call), new call shape. Anchor updated to match; the invariant
+    // this guard protects (capture happens AFTER the parts are committed) is
+    // unchanged.
     const callIdx = routeSrc.indexOf('captureDetectedCandidates({')
-    const writeTurnIdx = routeSrc.indexOf('await writeTurn(canonicalMessage, canonicalParts)')
+    const writeTurnIdx = routeSrc.indexOf('const durableOutcome = await writeTurnDurable({')
     expect(writeTurnIdx).toBeGreaterThan(-1)
     expect(callIdx).toBeGreaterThan(writeTurnIdx) // capture happens AFTER the parts are committed
   })

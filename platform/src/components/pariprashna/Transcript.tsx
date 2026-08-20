@@ -14,7 +14,7 @@ import { useFollowScroll } from './hooks/useFollowScroll'
  * historically shoved carets under tables (§5.5) — in favor of our own
  * explicit follow logic.
  */
-export function Transcript({ turns }: { turns: TurnState[] }) {
+export function Transcript({ turns, chartId }: { turns: TurnState[]; chartId?: string }) {
   const { ref, showFollowPill, notifyContentGrew, followToBottom, anchorNewTurn } = useFollowScroll<HTMLDivElement>()
   const prevTurnCount = useRef(0)
   const turnRefs = useRef(new Map<string, HTMLDivElement | null>())
@@ -40,7 +40,7 @@ export function Transcript({ turns }: { turns: TurnState[] }) {
       >
         {turns.map((turn) => (
           <div key={turn.id} ref={(el) => { turnRefs.current.set(turn.id, el) }}>
-            <Turn turn={turn} />
+            <Turn turn={turn} chartId={chartId} />
           </div>
         ))}
       </div>

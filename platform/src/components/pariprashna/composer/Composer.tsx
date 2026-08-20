@@ -1,18 +1,17 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { PickerPopover, type PickerRow } from './PickerPopover'
-import type { DepthOption, LengthOption } from '../state/types'
+import { getSynthesisModelRows } from './model_options'
+import type { DepthOption, LengthOption, SubmitControls } from '../state/types'
 import type { FixtureMode } from '../fixtures'
 
-const MODEL_ROWS: PickerRow<string>[] = [
-  { value: 'Auto', label: 'Auto', detail: 'best available' },
-  { value: 'Claude Opus', label: 'Claude Opus', meta: 'A · full loop' },
-  { value: 'Gemini 2.5 Pro', label: 'Gemini 2.5 Pro', meta: 'A · full loop' },
-  { value: 'GPT-4.1', label: 'GPT-4.1', meta: 'A · full loop' },
-  { value: 'DeepSeek V4', label: 'DeepSeek V4', meta: 'B · compact' },
-  { value: 'Kimi K2 · OpenRouter', label: 'Kimi K2 · OpenRouter', meta: 'C · bundle' },
-]
+/** Real registry ids (`@/lib/models/registry`) — see `model_options.ts`. The
+ *  previous hardcoded list ('Claude Opus', 'Kimi K2 · OpenRouter', …) named no
+ *  model the registry actually has; selecting one would have silently fallen
+ *  back to the stack default even if the selection had been wired through
+ *  (it previously was not — see the P2-C build report). */
+const MODEL_ROWS: PickerRow<string>[] = getSynthesisModelRows()
 
 const DEPTH_ROWS: PickerRow<DepthOption>[] = [
   { value: 'Auto', label: 'Auto', detail: 'from the question' },
@@ -34,8 +33,17 @@ const MAX_LINES = 8
 
 export interface ComposerProps {
   streaming: boolean
-  onSubmit: (text: string, mode: FixtureMode) => void
+  onSubmit: (text: string, mode: FixtureMode, controls: SubmitControls) => void
   onStop: () => void
+  /**
+   * Lane P2-C — the ACTUAL depth the last turn's `scope_tuple` resolved to
+   * (server-derived; `null` when unknown — flag-OFF deploy, no turn yet, or a
+   * turn the planner never scored). Rendered as an honest disclosure distinct
+   * from whatever `depth` below is currently selected for the NEXT turn.
+   */
+  depthReceived?: string | null
+  /** §5.3 `empty`: "focus is already in the composer." Only relevant on mount. */
+  autoFocus?: boolean
 }
 
 /** Maps the composer's Depth choice to which fixture the stub plays (see the build report for why). */
@@ -44,13 +52,48 @@ function depthToFixtureMode(depth: DepthOption): FixtureMode {
   return 'adaptive'
 }
 
-export function Composer({ streaming, onSubmit, onStop }: ComposerProps) {
+/**
+ * Lane P2-C — honest request mapping. `ReadingDepthSchema` only has two real
+ * values (`auto` | `deep_dive`; see `protocol/events.ts`), so `Quick`,
+ * `Standard`, and `Auto` are mapped to the SAME wire value: none of them are
+ * separately real on the backend today, and pretending otherwise would just
+ * move the lying pill from the picker into this function. Exported for the
+ * colocated unit test — pure, no component needed to exercise it.
+ */
+export function depthToReadingDepth(depth: DepthOption): SubmitControls['readingDepth'] {
+  return depth === 'Deep dive' ? 'deep_dive' : 'auto'
+}
+
+/** Lane P2-C — honest request mapping onto the real `LengthTierSchema` values. */
+export function lengthToLengthTier(length: LengthOption): SubmitControls['lengthTier'] {
+  if (length === 'Concise') return 'brief'
+  if (length === 'Detailed') return 'exhaustive'
+  return 'standard' // Auto | Balanced — both mean "no override" today
+}
+
+/** Lane P2-C — 'auto' sentinel → no `model_id` override (stack default binds). */
+export function modelToModelId(model: string): string | undefined {
+  return model === 'auto' ? undefined : model
+}
+
+export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus }: ComposerProps) {
   const [text, setText] = useState('')
-  const [model, setModel] = useState('Claude Opus')
+  const [model, setModel] = useState('auto')
   const [depth, setDepth] = useState<DepthOption>('Auto')
   const [length, setLength] = useState<LengthOption>('Auto')
   const [openPicker, setOpenPicker] = useState<'model' | 'depth' | 'length' | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+
+  const modelLabel = MODEL_ROWS.find((r) => r.value === model)?.label ?? model
+
+  // Mount-only: the design plan is explicit that `autoFocus` re-triggering on
+  // every re-render (e.g. after each submit) would steal focus mid-typing —
+  // this only ever runs once, matching the plain `<textarea autofocus>`
+  // semantics the empty state's copy describes.
+  useEffect(() => {
+    if (autoFocus) textareaRef.current?.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const footNote =
     depth === 'Auto' && length === 'Auto'
@@ -68,7 +111,11 @@ export function Composer({ streaming, onSubmit, onStop }: ComposerProps) {
   function submit() {
     const trimmed = text.trim()
     if (!trimmed || streaming) return
-    onSubmit(trimmed, depthToFixtureMode(depth))
+    onSubmit(trimmed, depthToFixtureMode(depth), {
+      modelId: modelToModelId(model),
+      readingDepth: depthToReadingDepth(depth),
+      lengthTier: lengthToLengthTier(length),
+    })
     setText('')
     requestAnimationFrame(() => {
       const el = textareaRef.current
@@ -80,7 +127,7 @@ export function Composer({ streaming, onSubmit, onStop }: ComposerProps) {
     <div className="px-5 pb-[18px] pt-3.5" style={{ borderTop: '1px solid var(--pp-rule)', background: 'var(--pp-panel)' }}>
       <div className="flex items-center gap-2 flex-wrap mb-2.5 px-0.5">
         <PickerPopover
-          valueLabel={model.replace(' · OpenRouter', '')}
+          valueLabel={modelLabel}
           rows={MODEL_ROWS}
           selected={model}
           open={openPicker === 'model'}
@@ -105,7 +152,11 @@ export function Composer({ streaming, onSubmit, onStop }: ComposerProps) {
           onOpenChange={(o) => setOpenPicker(o ? 'length' : null)}
           onSelect={setLength}
         />
-        <span className="ml-auto font-mono" style={{ fontSize: 10, color: 'var(--pp-gold-tertiary)', letterSpacing: '0.03em' }}>
+        <span className="ml-auto font-mono flex items-center gap-2" style={{ fontSize: 10, color: 'var(--pp-gold-tertiary)', letterSpacing: '0.03em' }}>
+          {/* Lane P2-C: honest disclosure of what the LAST turn actually got,
+              never a guess and never the same field as the picker above (which
+              is the request for the NEXT turn). Renders nothing when unknown. */}
+          {depthReceived && <span title="Depth the last reading actually received">depth received: {depthReceived}</span>}
           {footNote}
         </span>
       </div>
@@ -116,9 +167,11 @@ export function Composer({ streaming, onSubmit, onStop }: ComposerProps) {
       >
         <textarea
           ref={textareaRef}
+          data-testid="pp-composer-textarea"
           className="pp-composer-field flex-1 bg-transparent outline-none border-none"
           style={{ color: 'var(--pp-ink)', height: LINE_HEIGHT_PX * MIN_LINES }}
           placeholder="Ask the chart…"
+          aria-label="Ask the chart"
           value={text}
           rows={MIN_LINES}
           disabled={streaming}
@@ -139,7 +192,8 @@ export function Composer({ streaming, onSubmit, onStop }: ComposerProps) {
             onClick={onStop}
             title="Stop"
             aria-label="Stop"
-            className="flex-none w-[34px] h-[34px] rounded-[9px] flex items-center justify-center"
+            data-testid="pp-composer-stop"
+            className="pp-composer-action flex-none w-[34px] h-[34px] rounded-[9px] flex items-center justify-center"
             style={{ border: '1px solid var(--pp-rule)', background: 'var(--pp-tint)', color: 'var(--pp-gold)' }}
           >
             <span aria-hidden style={{ width: 11, height: 11, background: 'var(--pp-gold)', borderRadius: 2 }} />
@@ -150,8 +204,9 @@ export function Composer({ streaming, onSubmit, onStop }: ComposerProps) {
             onClick={submit}
             title="Send"
             aria-label="Send"
+            data-testid="pp-composer-send"
             disabled={!text.trim()}
-            className="flex-none w-[34px] h-[34px] rounded-[9px] flex items-center justify-center font-mono"
+            className="pp-composer-action flex-none w-[34px] h-[34px] rounded-[9px] flex items-center justify-center font-mono"
             style={{
               border: '1px solid var(--pp-rule)',
               background: 'var(--pp-tint)',

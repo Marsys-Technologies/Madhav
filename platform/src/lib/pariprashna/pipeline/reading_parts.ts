@@ -29,6 +29,7 @@ import {
   scanMortalityPhrasing,
   type PreWireSentenceRule,
 } from '@/lib/pariprashna/safety/phrasing_scan'
+import { classifyCommittedBlock } from '@/lib/pariprashna/semantics/block_classifier'
 import type { MessagePartInput } from '@/lib/pariprashna/store/schema'
 import {
   textPartFromBlock,
@@ -57,6 +58,8 @@ export class ReadingPartsAssembler {
   passId: number
   private blockCounter = 0
   private currentBlock: OpenBlock | null = null
+  /** Wall-clock time `ensureBlock` minted the currently-open block, if any. */
+  private blockOpenedAtMs: number | null = null
   private accumulated = ''
   readonly committedBlocks: OpenBlock[] = []
 
@@ -82,9 +85,38 @@ export class ReadingPartsAssembler {
      * other when only this one is populated.
      */
     private readonly preWireExtraRules: readonly PreWireSentenceRule[] = [],
+    /**
+     * Lane P2-A (G2-A). When true, `commitBlock` runs the deterministic
+     * commit-time semantic classifier over every PROSE block and carries its
+     * `kind`/`role`/`content`/`table`/`gap_text` on the `block.commit` event.
+     * Default false so every pre-existing caller (and the flag-OFF path) is
+     * byte-for-byte unchanged — the event carries exactly `{ block_id, text }`,
+     * same as before this lane.
+     */
+    private readonly semanticBlocksEnabled = false,
+    /**
+     * Lane P2-E (PPR-33/GAP-14). Fires once per COMMIT with the wall-clock ms
+     * between the block's first `ensureBlock` mint and this commit — the
+     * delta→commit lag the roadmap names. Hooked HERE rather than approximated
+     * from `synthesis_stage.ts`'s call sites because `ensureBlock` can trigger
+     * an internal commit on a role switch (prose↔thinking) that the caller
+     * never explicitly requests — measuring outside this class would silently
+     * miss exactly those commits. Default no-op so every pre-existing caller
+     * (and every test that constructs this class positionally) is unaffected.
+     */
+    private readonly onBlockCommitLagMs: (lagMs: number) => void = () => {},
   ) {
     this.passId = initialPassId
   }
+
+  /** The pass id of the last PROSE block this assembler committed — `-1`
+   *  before any prose has committed. Used only when `semanticBlocksEnabled`
+   *  is true, to derive the structural "is this the first prose block of its
+   *  pass" signal `classifyRole` needs, without any external wiring change:
+   *  `passId` is already advanced by the synthesis stage on a real pass
+   *  boundary (see synthesis_stage.ts), so comparing against it here is
+   *  self-contained. */
+  private lastProsePassSeen = -1
 
   /** Every scrubbed PROSE delta, concatenated. Thinking text is excluded. */
   get accumulatedText(): string {
@@ -117,6 +149,10 @@ export class ReadingPartsAssembler {
 
   commitBlock(): void {
     if (this.currentBlock) {
+      if (this.blockOpenedAtMs !== null) {
+        this.onBlockCommitLagMs(Date.now() - this.blockOpenedAtMs)
+        this.blockOpenedAtMs = null
+      }
       // The RAW deltas this block contributed. This — NOT the post-lint text —
       // is the copy sitting in `accumulated`, because `appendProse` writes the
       // delta into both places and nothing downstream of it rewrites
@@ -236,7 +272,27 @@ export class ReadingPartsAssembler {
           }
         }
       }
-      this.em.blockCommit({ block_id: this.currentBlock.id, text: this.currentBlock.text })
+      // Lane P2-A (G2-A): commit-time semantic classification, PROSE blocks
+      // only (a 'thinking' block is never reader-rendered and must never be
+      // classified as if it were). Computed from `this.currentBlock.text`
+      // AFTER the lint/pre-wire scans above, so classification runs on the
+      // exact text that reaches the wire, never on a since-redacted copy.
+      if (this.semanticBlocksEnabled && this.currentBlock.role === 'prose') {
+        const isFirstProseInPass = this.passId !== this.lastProsePassSeen
+        this.lastProsePassSeen = this.passId
+        const classification = classifyCommittedBlock(this.currentBlock.text, { isFirstProseInPass })
+        this.em.blockCommit({
+          block_id: this.currentBlock.id,
+          text: this.currentBlock.text,
+          kind: classification.kind,
+          role: classification.role,
+          content: classification.content,
+          table: classification.table,
+          gap_text: classification.gapText,
+        })
+      } else {
+        this.em.blockCommit({ block_id: this.currentBlock.id, text: this.currentBlock.text })
+      }
       this.committedBlocks.push({
         id: this.currentBlock.id,
         role: this.currentBlock.role,
@@ -251,6 +307,7 @@ export class ReadingPartsAssembler {
     if (!this.currentBlock) {
       const id = `blk-${this.passId}-${++this.blockCounter}`
       this.currentBlock = { id, role, text: '' }
+      this.blockOpenedAtMs = Date.now()
       this.em.blockOpen({ block_id: id, pass_id: this.passId, role })
     }
     return this.currentBlock
@@ -288,11 +345,24 @@ export interface CanonicalPartsInput {
   accumulatedText: string
   /** signal_id → snippet, resolved by the persistence stage's MSR reader. */
   snippets: Map<string, string>
+  /**
+   * Lane G2-B (P0C-R5 fix). When the live citation rewriter ran this turn
+   * (`synthesis_stage.ts`'s `citationRewriteEnabled`), `accumulatedText`
+   * contains resolved `[n]` markers, not raw `SIG.MSR.NNN` tokens — the
+   * register-leak lint has already scrubbed/rewritten every such token before
+   * it ever reached `accumulatedText`, so `detectTurnCitations` structurally
+   * finds nothing on that path (the dead path this fix closes). Supplying the
+   * rewriter's OWN resolution ledger here bypasses the re-scan entirely: the
+   * canonical citation parts are built from what was actually resolved on the
+   * wire, never re-derived from already-scrubbed prose. Omitted → falls back
+   * to `detectTurnCitations(accumulatedText)`, the pre-existing behavior.
+   */
+  preResolvedCitations?: readonly DetectedCitationRow[]
 }
 
 export interface CanonicalPartsOutput {
   parts: MessagePartInput[]
-  citations: DetectedCitationRow[]
+  citations: readonly DetectedCitationRow[]
   predictionCandidates: DetectedPredictionRow[]
 }
 
@@ -328,7 +398,7 @@ export function buildCanonicalParts(input: CanonicalPartsInput): CanonicalPartsO
     }
   }
 
-  const citations = detectTurnCitations(input.accumulatedText)
+  const citations = input.preResolvedCitations ?? detectTurnCitations(input.accumulatedText)
   for (const c of citations) {
     parts.push(
       citationPartFromDetection(
