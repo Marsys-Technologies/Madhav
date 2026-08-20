@@ -354,6 +354,31 @@ export type FeatureFlag =
   // that fails validation is logged and OMITTED, never persisted malformed.
   // Flip via MARSYS_FLAG_PARIPRASHNA_RECEIPT_EMISSION_ENABLED=true.
   | 'PARIPRASHNA_RECEIPT_EMISSION_ENABLED'
+  // G3-D / P2-L — Voice enforcement (PPR-04, roadmap line 104). A LINT
+  // EXTENSION of the register-leak lint, not a parallel scanner — see
+  // `src/lib/pariprashna/voice/voice_lint.ts`'s header. Gates the WHOLE
+  // `src/lib/pariprashna/voice` surface:
+  //   · OFF (default) — the per-delta lint call in `synthesis_stage.ts` (both
+  //     the citation-stream-on and citation-stream-off branches) and the
+  //     whole-block backstop in `reading_parts.ts`'s `commitBlock` run exactly
+  //     the register-leak lint they run today; `lintVoiceProse` is never
+  //     called. Byte-for-byte no change.
+  //   · ON — the SAME two call sites additionally run a second-person-
+  //     imperative detector on remedy-verb sentences (telemetry only — flags
+  //     "you should wear a ruby", passes "the tradition prescribes wearing a
+  //     ruby"; no safe generic rewrite exists for an arbitrary imperative
+  //     sentence, unlike the register-leak lint's own rewrite/redact
+  //     verdicts) and, only when this turn's G1-A `SafetyDecision` shows an
+  //     HS-class actually fired (the honest "difficult finding" proxy — no
+  //     finer-grained block-level difficulty classifier exists in this
+  //     codebase), a bounded/idempotent bare-probability framing rewrite plus
+  //     an uncertainty-before-severity ordering check (telemetry only). Under
+  //     the same difficult-finding condition, `synthesis_stage.ts`'s streaming
+  //     loop also force-commits an open prose block early once it crosses a
+  //     length floor at a sentence boundary — shorter committed blocks for
+  //     hard findings, never touching pass/seam state.
+  // Env: MARSYS_FLAG_PARIPRASHNA_VOICE_ENFORCEMENT_ENABLED.
+  | 'PARIPRASHNA_VOICE_ENFORCEMENT_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -504,6 +529,9 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // G3-A — AcharyaReadingReceipt v1 (PPR-01). Default false — see the union
   // declaration above for the full flip contract.
   PARIPRASHNA_RECEIPT_EMISSION_ENABLED: false,
+  // G3-D / P2-L — Voice enforcement (PPR-04). Default false — see the union
+  // declaration above for the full flip contract.
+  PARIPRASHNA_VOICE_ENFORCEMENT_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)
