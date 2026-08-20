@@ -35,21 +35,21 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
-import { EMPIRICALLY_CALIBRATED } from './query_insights'
+import { EMPIRICALLY_CALIBRATED, redactEmbeddedNumericEvidence } from './query_insights'
 
 const MAX_LIMIT = 20
 
 // GA-5 review finding on #1386: reuses query_insights.ts's own allowlist constant
-// (previously duplicated a bare 'empirical' literal here) and, like that file's
-// suppressIfNotCalibrated, also redacts any embedded '(grade N.N/10)' substring in the
-// joined `statement` text -- the structured rank_consequence field being nulled means
+// (previously duplicated a bare 'empirical' literal here) AND its shared redaction
+// function (round 2: was its own narrower single-shape copy, now the same shared
+// multi-shape redactor so a future added leak-shape fix in one file can't silently
+// diverge from the other) -- the structured rank_consequence field being nulled means
 // nothing if the exact same number stays readable in the prose served alongside it.
-const EMBEDDED_GRADE_PATTERN = /\(grade\s+[\d.]+\/10\)/i
 function suppressNonCalibratedNeighbor(row: Record<string, unknown>): Record<string, unknown> {
   if (row['evidence_grade'] === EMPIRICALLY_CALIBRATED) return row
   const rawStatement = row['statement']
   const statement = typeof rawStatement === 'string'
-    ? rawStatement.replace(EMBEDDED_GRADE_PATTERN, '(grade suppressed — see tier_suppression_note)')
+    ? redactEmbeddedNumericEvidence(rawStatement)
     : rawStatement
   return {
     ...row,

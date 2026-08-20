@@ -89,4 +89,43 @@ describe('query_insights — P3-b tier-suppression (F-69)', () => {
     }
     expect(result.content.insight_units[0].rank_consequence).toBeNull()
   })
+
+  // GA-5 review finding on #1386 round 2: the round-1 fix redacted only the 'verdict_object'
+  // template's "(grade N.N/10)" shape -- mi_darshana.py has (at least) 3 more templates that
+  // embed the same suppressed value differently. Live-confirmed 6 of 84 non-empirical rows
+  // (load_bearing + calibrated_outlook) leaked through round 1's fix untouched.
+  it('evidence_grade=structural, load_bearing template → the embedded sensitivity value is ALSO redacted', async () => {
+    queryMock.mockResolvedValueOnce({
+      rows: [row({
+        insight_type: 'load_bearing', evidence_grade: 'structural',
+        statement: 'Career Setback is load-bearing for this reading (sensitivity=0.60). Removing this signal would materially alter the reading.',
+      })],
+    })
+    queryMock.mockResolvedValueOnce({ rows: [{}] })
+    const result = await queryInsightsCapability.handler({ chart_id: NATIVE_CHART_ID }, undefined) as {
+      content: { insight_units: Array<Record<string, unknown>> }
+    }
+    const unit = result.content.insight_units[0]
+    expect(String(unit.statement)).not.toMatch(/0\.60/)
+    expect(String(unit.statement)).not.toMatch(/\(sensitivity=[\d.]+\)/i)
+    expect(String(unit.statement)).toContain('load-bearing for this reading')
+    expect(String(unit.statement)).toContain('Removing this signal would materially alter the reading.')
+  })
+
+  it('evidence_grade=prior_only, calibrated_outlook template → the embedded outcome-rate value is ALSO redacted', async () => {
+    queryMock.mockResolvedValueOnce({
+      rows: [row({
+        insight_type: 'calibrated_outlook', evidence_grade: 'prior_only',
+        statement: 'Across similar charts, the observed outcome rate is 0.0% across 12 events matching this pattern.',
+      })],
+    })
+    queryMock.mockResolvedValueOnce({ rows: [{}] })
+    const result = await queryInsightsCapability.handler({ chart_id: NATIVE_CHART_ID }, undefined) as {
+      content: { insight_units: Array<Record<string, unknown>> }
+    }
+    const unit = result.content.insight_units[0]
+    expect(String(unit.statement)).not.toMatch(/0\.0%/)
+    expect(String(unit.statement)).not.toMatch(/outcome rate is [\d.]+%/i)
+    expect(String(unit.statement)).toContain('across 12 events matching this pattern.')
+  })
 })

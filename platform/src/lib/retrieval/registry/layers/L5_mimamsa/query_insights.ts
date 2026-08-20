@@ -17,14 +17,30 @@ import { query } from '@/lib/db/client'
 
 export const EMPIRICALLY_CALIBRATED = 'empirical'
 
-// GA-5 review finding on #1386: mi_darshana.py builds `statement` as
-// "{name}: {status} (grade {grade:.1f}/10). {note}" for every row, INCLUDING rows this
-// function suppresses -- so the numeric fields below were nulled while the exact same
-// number stayed readable in plain text in the same response (live-confirmed: 27 of 31
-// non-empirical rows on the canonical chart embed a recoverable "grade N.N/10" this way).
-// Redact that substring too, not just the structured fields, or the suppression is
-// decorative rather than real.
-const EMBEDDED_GRADE_PATTERN = /\(grade\s+[\d.]+\/10\)/i
+// GA-5 review finding on #1386 (round 2): mi_darshana.py embeds a suppressed numeric
+// value in `statement` across (at least) FOUR distinct templates, not just one --
+// verdict_object: "(grade N.N/10)"; load_bearing: "(sensitivity=N.NN)"; calibrated_outlook:
+// "observed outcome rate is N.N%". Live-measured on the canonical chart: fixing only the
+// grade shape (round 1) left 6 of 84 non-empirical rows (load_bearing + calibrated_outlook)
+// leaking the same way, WHILE round 1's own tier_suppression_note claimed a suppression
+// that hadn't happened for those rows -- an unearned status claim (§N.8). Redacting by
+// SHAPE (not by re-deriving the row's own value, which risks drifting from how mi_darshana
+// actually formats it) catches all four known citation shapes regardless of which template
+// produced them. `g` flag added -- a statement could in principle carry more than one
+// citation.
+const EMBEDDED_NUMERIC_EVIDENCE_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
+  { pattern: /\(grade\s+[\d.]+\/10\)/gi, replacement: '(grade suppressed — see tier_suppression_note)' },
+  { pattern: /\(sensitivity=[\d.]+\)/gi, replacement: '(sensitivity suppressed — see tier_suppression_note)' },
+  { pattern: /observed outcome rate is [\d.]+%/gi, replacement: 'observed outcome rate is [suppressed — see tier_suppression_note]' },
+]
+
+export function redactEmbeddedNumericEvidence(statement: string): string {
+  let out = statement
+  for (const { pattern, replacement } of EMBEDDED_NUMERIC_EVIDENCE_PATTERNS) {
+    out = out.replace(pattern, replacement)
+  }
+  return out
+}
 
 export function suppressIfNotCalibrated(row: Record<string, unknown>): Record<string, unknown> {
   if (row['evidence_grade'] === EMPIRICALLY_CALIBRATED) return row
@@ -34,7 +50,7 @@ export function suppressIfNotCalibrated(row: Record<string, unknown>): Record<st
   const pc = row['provenance_chain'] as Record<string, unknown> | null
   const rawStatement = row['statement']
   const statement = typeof rawStatement === 'string'
-    ? rawStatement.replace(EMBEDDED_GRADE_PATTERN, '(grade suppressed — see tier_suppression_note)')
+    ? redactEmbeddedNumericEvidence(rawStatement)
     : rawStatement
   return {
     ...row,
@@ -42,7 +58,7 @@ export function suppressIfNotCalibrated(row: Record<string, unknown>): Record<st
     rank_consequence: null,
     confidence_band: null,
     provenance_chain: pc == null ? pc : { ...pc, grade: null },
-    tier_suppression_note: `rank_consequence/confidence_band/provenance_chain.grade/statement's embedded grade suppressed at serve time: evidence_grade=${JSON.stringify(row['evidence_grade'])} — no empirically-calibrated score exists for this insight yet (P3-b tier-suppression; see services/ka_kshetra/stage8_spec.py for the precedent this mirrors). The stored value is unaffected.`,
+    tier_suppression_note: `rank_consequence/confidence_band/provenance_chain.grade/statement's embedded numeric evidence (grade/sensitivity/outcome-rate citations) suppressed at serve time: evidence_grade=${JSON.stringify(row['evidence_grade'])} — no empirically-calibrated score exists for this insight yet (P3-b tier-suppression; see services/ka_kshetra/stage8_spec.py for the precedent this mirrors). The stored value is unaffected.`,
   }
 }
 
