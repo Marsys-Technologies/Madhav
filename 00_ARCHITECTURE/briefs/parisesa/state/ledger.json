@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 842,
+  "event_count": 843,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -628,20 +628,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-130": {
-      "branch": "parisesa/repair-F130-rebase",
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "d4ee39e1308a5b651c943ac93e4a463a4721dbfdf44235ce1ace88d7749cb224",
+      "disposition": "FIXED",
+      "event_sha256": "29869798c654c9fe0f9d87d543f369dc4f71f74fa69170f846938d2713a01683",
       "event_type": "finding_status",
-      "evidence_summary": "Corpus's 'historical-stale-service-closed' claim was unearned (own next_action was an unratified placeholder). Real narration-fidelity leak confirmed still live on main: readTimingWindowsFamily/readContradictionsFamily (registry_bridge.ts) still interpolate raw JSON.stringify() into served prose. Fix replaces with real fields (signature_class/activation window/peak) + contradiction_id-keyed fallback. Clean rebase, 2/2 target tests + tsc clean, cross-checked field names against independent live usage in ahead.ts.",
+      "evidence_summary": "PR #1383 merged (1434852dbacd7ba3c331d91491db438ac33f45db): F-130 replaced JSON.stringify prose leaks in assess_wealth/career reading families with proper field selection/narration. GA-5 independent review + adversarial pre-merge review passed; had been clean/mergeable but never armed for auto-merge until this wave's MORNING_SHIP_READY sweep found and enqueued it.",
       "finding_id": "F-130",
-      "next_action": "owner reviews and merges PR #1383 at morning checkpoint",
+      "next_action": "none - terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1383",
-      "prev_sha256": "fbc775aa7d362e2b124824c62e7d0ec6847ee021bc8994740dcc3e14a76e4a7f",
-      "seq": 705,
-      "source_batch": "rebase_f130",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "bdd33a79fa7279e5ad857e2de78a25ad45be6f5decd3d3563ab2b423fa319964",
+      "seq": 843,
+      "source_batch": "PARISESA-V4-GA5-MERGE-WAVE",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-131": {
       "confidence": "HIGH",
@@ -2016,10 +2015,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 2,
-  "findings_terminal_count": 111,
-  "journal_head_seq": 842,
-  "journal_head_sha256": "bdd33a79fa7279e5ad857e2de78a25ad45be6f5decd3d3563ab2b423fa319964",
+  "findings_morning_ship_ready_count": 1,
+  "findings_terminal_count": 112,
+  "journal_head_seq": 843,
+  "journal_head_sha256": "29869798c654c9fe0f9d87d543f369dc4f71f74fa69170f846938d2713a01683",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
