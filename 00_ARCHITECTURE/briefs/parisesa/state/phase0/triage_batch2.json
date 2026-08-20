@@ -1,0 +1,100 @@
+[
+  {
+    "finding_id": "F-102",
+    "classification": "STILL_UNKNOWN",
+    "evidence": "Corpus claims a focused-test pass logged 2026-08-18T17:41:06Z, bundles.jsonl event 243 as evidence. bundles.jsonl does not exist anywhere on this machine (searched /Users/Dev/shad_overnight/par-night/ fully) -- the claim is unfalsifiable in this environment, not just unverified.",
+    "next_action": "locate the actual focused-test file this claim refers to (defect class CL-00 control/informational) and re-run it live, or accept it cannot be verified here and note as a permanent evidence gap",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-11",
+    "classification": "LANDED",
+    "evidence": "Confirmed genuinely wired on current origin/main via a completely different route than the mis-cited cfb6444c8: platform/src/lib/retrieval/registry/tool_name_bridge.ts has an explicit comment 'F-11: ṢAḌDARŚANA W3 item 37 -- paddhati profile' at the exact registration site, query_kala_paddhati_profile is present in all 3 required structures (MCP_TO_RETRIEVAL_TOOL, TOOL_NAME_TO_URI, SURGICAL_TOOLS), and isAllowedSurgicalTool()'s Object.hasOwn gate would return true for it. This is real, direct, content-matched evidence -- strongest possible candidate for the next proof-train round.",
+    "next_action": "proof-train: live direct-MCP call exercising query_kala_paddhati_profile to close terminal (SERVICE_CLOSED likely)",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-114",
+    "classification": "OPEN",
+    "evidence": "No commits/PRs/runs cited in the corpus at all. Corpus's own disposition explicitly says 'fresh-domain-lens-ranking-repair-required'. No ingested/evidence artifacts found for F-114 anywhere. This is honestly unstarted work, not stranded or mis-cited.",
+    "next_action": "Wave FRESH: define question-lens relevance/tie-break requirements, add marriage/health ranking regressions, then implement",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-124",
+    "classification": "STRANDED",
+    "evidence": "Confirmed on current origin/main: attachDomainCompleteness() is wired for 'career' (line 3084) and 'wealth' (line 3166) but NOT for 'marriage' or 'health' -- the exact gap F-124 claims is still live. Sibling branch par/night-F-124 (commit 5f8871bcd, ratified COMPLETE by an independent ratifier with verbatim-verified spot checks) has the fix. Real, matching, ready-to-rebase work.",
+    "next_action": "Wave REBASE: rebase par/night-F-124 onto current origin/main, re-review, re-test, open frozen PR",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-128",
+    "classification": "STILL_UNKNOWN",
+    "evidence": "Shares the same mis-cited commit as F-16 (693a7bdc20, response-envelope double-wrap CL-21) which round 1's proof pass already confirmed has zero envelope/wrap content. No ingested/evidence artifacts found for F-128 specifically. Genuinely no evidence located this pass.",
+    "next_action": "locate the actual CL-21 envelope-wrap fix (same open question as F-16) or confirm no fix exists yet",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-14",
+    "classification": "STRANDED",
+    "evidence": "Confirmed on current origin/main: DOMAIN_READING_FAMILIES only has 'wealth' and 'career' keys -- 'health'/'relationship' still absent, matching F-14's exact claim (CL-14 uneven cross-cutting wiring). Sibling branch par/night-F-14 (commit 5f8a129b4, ratified COMPLETE, notes zero regressions vs pre-existing main failures) has the fix, touching registry_bridge.ts + response_budget.ts + a parity test.",
+    "next_action": "Wave REBASE: rebase par/night-F-14 onto current origin/main, re-review, re-test, open frozen PR",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-19",
+    "classification": "STILL_UNKNOWN",
+    "evidence": "Sole citation is the mis-cited cfb6444c8 (IF-001). Grepped for nodal/special-aspect/Rahu-7th patterns across platform dirs -- no clear match found (grep may be too narrow given unfamiliar naming; not exhaustive). No ingested artifacts for F-19.",
+    "next_action": "targeted search for the actual nodal special-aspect rendering code (likely in a graha-aspect or dignity module) before any status change",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-30",
+    "classification": "STILL_UNKNOWN",
+    "evidence": "Sole citation is the mis-cited cfb6444c8 (IF-001). Corpus's own next_action calls for an approved non-secret direct-MCP canary, not a code search -- this claim (CL-19 chart-scope entitlement boundary) is inherently a runtime-behavior check, not something git history alone can confirm or deny.",
+    "next_action": "proof-train: construct the specific chart-scope entitlement canary live via MCP",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-51",
+    "classification": "STILL_UNKNOWN",
+    "evidence": "Corpus itself cites ZERO commits/PRs/runs for this finding despite claiming disposition 'historical-stale/code-fixed' -- an empty-evidence terminal-sounding claim, the same class of problem IF-001/IF-002 already caught elsewhere (this time the corpus asserts closure with literally nothing behind it, not even a wrong citation).",
+    "next_action": "corpus's own claim is empty -- needs the actual fix commit located or an honest fresh-build determination; do not inherit 'code-fixed' from an unevidenced claim",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-74",
+    "classification": "STILL_UNKNOWN",
+    "evidence": "No commits cited at all in the corpus (same CL-19 class as F-30, likely a paired/duplicate defect). Requires the same non-secret direct-MCP bundle canary the corpus's own next_action specifies.",
+    "next_action": "proof-train: construct the chart-scope entitlement bundle canary live via MCP, likely jointly with F-30 (same defect class)",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-78",
+    "classification": "OPEN",
+    "evidence": "Sibling builder attempt genuinely FAILED (documented: 3/9 exit tests fail on a test-harness gap -- spec's _run_full_build omits a monkeypatch that's been required since SAMPURTI G1, 2026-08-10; builder's own notes say the underlying writer.py + migration 572 implementation is correct, only the integration test is broken). Branch par/night-F-78 does NOT exist on origin (ls-remote empty). The commit hash the builder artifact cites (51096a655645cdf640) DOES exist but is a completely unrelated merged PR (#1314, F-79/F-141 work) -- a fourth distinct evidence-integrity defect in this corpus, not recoverable as F-78's work.",
+    "next_action": "Wave FRESH: re-implement per the builder's own documented fix description (writer.py built_event_classes + migration 572), applying the missing monkeypatch the builder's notes already diagnosed -- do not trust the cited commit hash",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-84",
+    "classification": "STILL_UNKNOWN",
+    "evidence": "CL-00 control claim resting on a source-inspection assertion (kala_field unique constraint + chart_facts fact_id PK) that a live DB-connected check explicitly SKIPPED (fail-honest, no DATABASE_URL) rather than confirmed. Could not independently verify the schema claim via CAPABILITY_MANIFEST.json (no kala_field hits). Requires live DB access this environment doesn't have configured.",
+    "next_action": "DATA_PARKED-adjacent: needs live read-only DB constraint-metadata check once DB access is available -- not resolvable as a pure code/git task",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-88",
+    "classification": "STILL_UNKNOWN",
+    "evidence": "CL-00 control, corpus cites zero evidence and calls for an approved non-secret direct-MCP session_recall + chart-scoped-omission probe. Not a code-search-resolvable claim.",
+    "next_action": "proof-train: construct the session_recall + chart-scoped-omitted-chart probe live via MCP",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-99",
+    "classification": "STILL_UNKNOWN",
+    "evidence": "Round 1's proof pass demoted this from LANDED/SERVICE_CLOSED for being 'taken at face value' -- but on closer read, the corpus's canary evidence is actually a SPECIFIC, re-runnable claim (direct ganita_structural_get(facet=dosha_fires, response_format=v3) on the canonical chart, expecting D1 source fact d3dcd78d57e8fb0b fires=false, with 18 divisional fires explicitly stated not to contradict natal D1). This is falsifiable, unlike most of this batch's empty-evidence findings -- worth an actual live re-run rather than further demotion or promotion on file alone.",
+    "next_action": "proof-train: actually re-run the cited ganita_structural_get(facet=dosha_fires) call live and compare against the exact cited values -- this one has real re-verifiable specificity, prioritize it",
+    "confidence": "MEDIUM"
+  }
+]
