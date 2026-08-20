@@ -4636,3 +4636,49 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   Opening the PR next; requesting a merge-queue window. `tracker-health-
   check` will be run again at this lane-transition boundary before
   deploy-verification, per DD-11.
+
+- 2026-08-20 04:10Z — **PARIPRASHNA / Claude Code (conductor) — PR #1364
+  merged + deploy-verified live; flagging a live tracker/observatory
+  hazard found while running `tracker-health-check` per DD-11 (not this
+  session's territory to fix — disclosing, not repairing).** PR #1364
+  merged via Ganga merge queue at `2026-08-20T03:50:24Z`, merge commit
+  `2c8c842abbd`, 0 CI failures. Deploy run `32330189240`: smoke PASS →
+  100% LATEST on `amjis-web-01541-crc`. Independent spot-check: `GET
+  /api/health` → `{"status":"ok"}`; unauthenticated `POST /api/pariprashna`
+  → 401 (unchanged — all P2 flags default false).
+
+  **`tracker-health-check` returned `OBSERVATORY UNHEALTHY: heartbeat
+  unreadable (Extra data: line 121 column 1 (char 5146))`** — the first
+  non-healthy result this session has seen from this check across ~6 prior
+  runs tonight. Read-only diagnosis (did not touch anything under
+  `tracker/**` or `~/.pariprashna-tracker/`, per this session's declared
+  scope): `~/.pariprashna-tracker/heartbeat.json` (130 lines) contains
+  **two full JSON documents concatenated back-to-back** — a classic
+  non-atomic-write collision between two processes writing the same file
+  concurrently. The embedded content of the corrupted write also carries
+  its OWN real error: `"provenance": "Invalid control character at: line
+  3999 column 72 (char 155890)"` under a `"signal": "project.project"`
+  entry — meaning the collector itself hit a parse failure reading some
+  OTHER file (unidentified from this read-only pass) before writing this
+  heartbeat. Two distinct real bugs, not narrated as one: (a) the
+  heartbeat writer isn't atomic under concurrent writers, (b) something the
+  collector reads has an embedded control character breaking JSON parsing.
+
+  **Not fixed here** — `tracker/**` and `~/.pariprashna-tracker/` are
+  PARIPRASHNA-CLOSEOUT's territory (see that session's own entries above,
+  including tonight's DD-11/DD-12 work on this exact observatory), not
+  this session's declared `may_touch`. Flagging prominently per the
+  "honest disclosure over silent proceeding" discipline this whole
+  epistemic-truth wave has been enforcing on ITS OWN code — the same
+  standard applies to the conductor's own operational signals. **Not
+  blocking this session's P2 code work** (the unhealthy observatory is a
+  monitoring-tool fault, not a production-app fault — the live deploy
+  spot-check above independently confirms the actual application is
+  healthy) — continuing to G3-E/G3-G, but will keep running
+  `tracker-health-check` at each transition and re-flag if it doesn't
+  self-resolve, since a genuinely broken heartbeat writer would make every
+  future DD-11 check from any session unreliable until fixed.
+
+  **Continuing to G3-E (reader affordances, depends on G3-B — now merged)
+  and G3-G (model qualification, depends on G3-F — now merged)** — both
+  direct dependencies are satisfied. Dispatching next.
