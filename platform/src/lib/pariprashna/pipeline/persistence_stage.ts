@@ -48,6 +48,8 @@ import { writeTurn } from '@/lib/pariprashna/store/writer'
 import { CANONICAL_SCHEMA_VERSION, type CanonicalMessage } from '@/lib/pariprashna/store/schema'
 import { withProvenanceStamp } from '@/lib/pariprashna/provenance/stamp'
 import { captureDetectedCandidates } from '@/lib/pariprashna/samiksha/capture'
+import { enrichCandidate, type CitationRef } from '@/lib/pariprashna/samiksha/detector'
+import { isSemanticBlocksEnabled } from '@/lib/pariprashna/semantics/flag'
 import type { ToolBundle } from '@/lib/retrieval/shared_types'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
@@ -362,6 +364,68 @@ export async function runPersistenceStage(args: {
               )
             } catch (err) {
               console.error('[pariprashna] samiksha detected-row capture failed', err)
+            }
+
+            // ── prediction_card wire event (lane P2-A / G2-A, protocol v2). ──
+            // Flag-gated (default OFF — see `semantics/flag.ts`). Runs a SECOND,
+            // dedicated SELECT rather than reusing `captureDetectedCandidates`'s
+            // internal pairing: that module is the frozen, sole writer of
+            // `detected` ledger rows (see its own header on why the in-stream
+            // mount was deferred to "a separate lane"), and this is that lane —
+            // deliberately kept decoupled from it rather than widening its
+            // return shape for an unrelated concern. Same claim-text FIFO
+            // pairing discipline as `capture.ts` (order-independent, duplicate-
+            // claim-safe); a candidate whose part cannot be located is silently
+            // skipped here exactly as capture.ts treats an "unpaired" candidate
+            // — an honest omission, never a guessed id.
+            if (canonicalOk && isSemanticBlocksEnabled()) {
+              try {
+                const { rows: predParts } = await query<{ id: string; claim: string | null }>(
+                  `SELECT id, body->>'claim' AS claim
+                     FROM message_parts
+                    WHERE message_id = $1 AND kind = 'prediction_candidate'
+                    ORDER BY seq`,
+                  [assistantMessageId],
+                )
+                const byClaim = new Map<string, string[]>()
+                for (const p of predParts) {
+                  if (!p.claim) continue
+                  const q = byClaim.get(p.claim)
+                  if (q) q.push(p.id)
+                  else byClaim.set(p.claim, [p.id])
+                }
+                const citationRefs: CitationRef[] = citationsFound.map((c) => ({ signal_id: c.signal_id, layer: c.layer }))
+                for (const raw of predictionCandidatesFound) {
+                  const queue = byClaim.get(raw.text)
+                  const partId = queue?.shift()
+                  if (!partId) continue // unpaired — honest omission, no event.
+                  const enriched = enrichCandidate(raw, {
+                    citations: citationRefs,
+                    nowDate: provenanceStamp.now_context_date,
+                  })
+                  em.predictionCard({
+                    conversation_id: conversationId,
+                    message_id: assistantMessageId,
+                    part_id: partId,
+                    candidate: {
+                      claim_text: enriched.claim_text,
+                      domain: enriched.domain,
+                      window_start: enriched.window_start,
+                      window_end: enriched.window_end,
+                      direction: enriched.direction,
+                      ...(enriched.confidence_stated !== undefined
+                        ? { confidence_stated: enriched.confidence_stated }
+                        : {}),
+                      technique_refs: enriched.technique_refs,
+                      grounding_fact_ids: enriched.grounding_fact_ids,
+                      score: enriched.score,
+                      horizon_text: enriched.horizon_text,
+                    },
+                  })
+                }
+              } catch (err) {
+                console.error('[pariprashna] prediction_card wire emission failed (non-fatal)', err)
+              }
             }
 
             // ── HS-6 (lane G1-A): sample this predictive reading into the

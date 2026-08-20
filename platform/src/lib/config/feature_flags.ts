@@ -269,6 +269,28 @@ export type FeatureFlag =
   // flipping one from silently arming the other.
   // Env: MARSYS_FLAG_PARIPRASHNA_INJECTION_CONTAINMENT.
   | 'PARIPRASHNA_INJECTION_CONTAINMENT'
+  // P2-A G2-A — Semantic blocks on the wire (PPR-07, FD-1). Gates the WHOLE
+  // `src/lib/pariprashna/semantics` surface plus the new `prediction_card`
+  // wire event:
+  //   · OFF (default) — `block.commit` carries only `{ block_id, text }`
+  //     exactly as before (no `kind`/`role`/`content`/`table`/`gap_text`),
+  //     no commit-time classification runs, and no `prediction_card` event is
+  //     ever emitted. Byte-for-byte no change to the existing wire or to what
+  //     the client renders (the s1 live adapter's `block.commit` case
+  //     defaults `kind` to `'paragraph'` when the field is absent, same as
+  //     today).
+  //   · ON — every committed PROSE block is classified deterministically from
+  //     its own committed text (table / verse / gap_ribbon / heading /
+  //     paragraph, plus a verdict/elaboration/caveat role for paragraphs) and
+  //     the classification rides on that block's `block.commit` event; the
+  //     client's already-built `TableBlock`/`VerseBlock`/`GapRibbonBlock`
+  //     renderers activate on the live route instead of only in fixtures. A
+  //     detected, persisted prediction candidate is also surfaced as a
+  //     first-class `prediction_card` event carrying the structured
+  //     candidate + its real `message_parts.id`, which mounts the in-stream
+  //     `LogToSamiksha` confirm affordance (built and unmounted since PB-3).
+  // Env: MARSYS_FLAG_PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED.
+  | 'PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -400,6 +422,11 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // move prose — flip it deliberately, with a reading compared before/after.
   // Flip via MARSYS_FLAG_PARIPRASHNA_INJECTION_CONTAINMENT=true.
   PARIPRASHNA_INJECTION_CONTAINMENT: false,
+  // P2-A G2-A — Semantic blocks on the wire. Default false: ships dark, no
+  // behavior change on merge. Flip via
+  // MARSYS_FLAG_PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED=true once the client
+  // renderers have been verified against a real deployed reading.
+  PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)

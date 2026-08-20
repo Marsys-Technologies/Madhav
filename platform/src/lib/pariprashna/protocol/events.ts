@@ -59,6 +59,19 @@ const EnvelopeShape = {
   t: z.number().int().nonnegative(),
 } as const
 
+/**
+ * Wire protocol version — bumped on additive vocabulary changes so a
+ * consumer can tell (from `turn.open.protocol_version`) which fields may be
+ * present. v1 = the PB-1/S-1 baseline. v2 = lane P2-A / G2-A: `kind` /
+ * `role` / `content` / `table` / `gap_text` on `block.commit`, plus the new
+ * `prediction_card` event. A consumer that never checks this field is still
+ * safe — every v2 addition is OPTIONAL/additive and ships flag-gated OFF by
+ * default, so a v1 stream simply never carries the new fields, which decode
+ * to "v1 behavior" (e.g. absent `kind` means "render as a plain paragraph",
+ * exactly today's behavior).
+ */
+export const PARIPRASHNA_PROTOCOL_VERSION = 2
+
 // ---------------------------------------------------------------------------
 // Event schemas
 // ---------------------------------------------------------------------------
@@ -76,6 +89,9 @@ export const TurnOpenEventSchema = z.object({
   model_id: z.string(),
   reading_depth: ReadingDepthSchema,
   length_tier: LengthTierSchema,
+  /** See `PARIPRASHNA_PROTOCOL_VERSION`'s doc comment. Optional so a decoder
+   *  built against v1 (before this field existed) stays valid. */
+  protocol_version: z.number().int().positive().optional(),
 })
 export type TurnOpenEvent = z.infer<typeof TurnOpenEventSchema>
 
@@ -133,12 +149,59 @@ export const BlockDeltaEventSchema = z.object({
 })
 export type BlockDeltaEvent = z.infer<typeof BlockDeltaEventSchema>
 
+/**
+ * Semantic block kind (lane P2-A / G2-A, protocol v2) — the server's
+ * commit-time classification of a committed block, computed deterministically
+ * from the block's OWN committed text (never mid-stream segmentation; see
+ * `lib/pariprashna/semantics/block_classifier.ts`). Mirrors the client's
+ * `BlockKind` union (`components/pariprashna/state/types.ts`) minus the two
+ * client-only extensions (`list`, `seam`) this classifier never produces and
+ * minus `prediction_card`, which is now its own first-class event rather
+ * than a `block.commit` kind.
+ */
+export const BlockKindSchema = z.enum(['paragraph', 'heading', 'table', 'verse', 'gap_ribbon'])
+export type BlockKind = z.infer<typeof BlockKindSchema>
+
+/** Reading-role classification of a `paragraph` block. Mirrors the client's
+ *  `ReadingRole` union. Only meaningful when `kind === 'paragraph'`. */
+export const ReadingRoleSchema = z.enum(['verdict', 'elaboration', 'verse', 'caveat'])
+export type ReadingRole = z.infer<typeof ReadingRoleSchema>
+
+/** A parsed GFM-style table's headers + rows, both already reader-safe text. */
+export const BlockTableContentSchema = z.object({
+  headers: z.array(z.string()),
+  rows: z.array(z.array(z.string())),
+})
+export type BlockTableContent = z.infer<typeof BlockTableContentSchema>
+
 /** `block.commit` — a block is finalized; carries the full committed text. */
 export const BlockCommitEventSchema = z.object({
   type: z.literal('block.commit'),
   ...EnvelopeShape,
   block_id: z.string(),
   text: z.string(),
+  /**
+   * Additive, protocol v2 (lane P2-A / G2-A). All five fields below are
+   * OPTIONAL so a v1 emitter (the classifier's feature flag OFF) or an old
+   * decoder stays valid — absent `kind` means "treat as a plain paragraph",
+   * exactly today's behavior. Computed ONLY at commit time, from the block's
+   * own final text — never a mid-stream guess.
+   */
+  kind: BlockKindSchema.optional(),
+  /** Only set when `kind === 'paragraph'`. */
+  role: ReadingRoleSchema.optional(),
+  /**
+   * Reader-facing rendering text when it differs from `text` (e.g. a verse
+   * with its blockquote `>` markers stripped, a heading with its leading
+   * `#`s stripped). `text` itself is NEVER altered — it stays the raw
+   * committed copy that persistence/citation-detection/audit read. Absent
+   * `content` means `text` is already reader-ready as-is.
+   */
+  content: z.string().optional(),
+  /** Only set when `kind === 'table'`. */
+  table: BlockTableContentSchema.optional(),
+  /** Only set when `kind === 'gap_ribbon'`. */
+  gap_text: z.string().optional(),
 })
 export type BlockCommitEvent = z.infer<typeof BlockCommitEventSchema>
 
@@ -295,6 +358,53 @@ export const SnapshotApplyEventSchema = z.object({
 })
 export type SnapshotApplyEvent = z.infer<typeof SnapshotApplyEventSchema>
 
+/**
+ * The §14.2 structured prediction candidate, carried whole on the wire.
+ * Field names/shape mirror `lib/pariprashna/samiksha/detector.ts`'s
+ * `StructuredPredictionCandidate` exactly (this schema is the wire-typed
+ * projection of that isomorphic type, not a parallel definition — the
+ * persistence stage builds this object FROM `enrichCandidate`'s output).
+ */
+export const StructuredPredictionCandidateSchema = z.object({
+  claim_text: z.string(),
+  domain: z.string().nullable(),
+  window_start: z.string().nullable(),
+  window_end: z.string().nullable(),
+  direction: z.string().nullable(),
+  /** Present only when the prose literally stated a probability. */
+  confidence_stated: z.number().min(0).max(1).optional(),
+  technique_refs: z.array(z.string()),
+  grounding_fact_ids: z.array(z.string()),
+  score: z.number(),
+  horizon_text: z.string().nullable(),
+})
+export type StructuredPredictionCandidateWire = z.infer<typeof StructuredPredictionCandidateSchema>
+
+/**
+ * `prediction_card` — a first-class wire event (lane P2-A / G2-A, protocol
+ * v2) carrying the structured prediction candidate + the `message_parts.id`
+ * it was persisted as (`part_id`). This is what unlocks the in-stream
+ * `LogToSamiksha` confirm affordance (built and unmounted since PB-3, see
+ * `lib/pariprashna/samiksha/capture.ts`'s header for the prior residual):
+ * before this event existed, the wire carried a candidate ONLY as a
+ * formatted `flag` info string with no `message_parts.id`, so the client had
+ * nothing to POST back to `/api/pariprashna/samiksha/confirm`.
+ *
+ * Emitted from the persistence stage AFTER `writeTurn` has committed the
+ * turn's `prediction_candidate` parts (so `part_id` is a REAL, already-
+ * persisted id, never a guess) — later in the stream than `block.commit` for
+ * the prose that contains the claim, but still well before `turn.close`.
+ */
+export const PredictionCardEventSchema = z.object({
+  type: z.literal('prediction_card'),
+  ...EnvelopeShape,
+  conversation_id: z.string(),
+  message_id: z.string(),
+  part_id: z.string(),
+  candidate: StructuredPredictionCandidateSchema,
+})
+export type PredictionCardEvent = z.infer<typeof PredictionCardEventSchema>
+
 // ---------------------------------------------------------------------------
 // Discriminated union
 // ---------------------------------------------------------------------------
@@ -315,6 +425,7 @@ export const PariprashnaEventSchema = z.discriminatedUnion('type', [
   TurnCloseEventSchema,
   ErrorEventSchema,
   SnapshotApplyEventSchema,
+  PredictionCardEventSchema,
 ])
 export type PariprashnaEvent = z.infer<typeof PariprashnaEventSchema>
 
@@ -335,6 +446,7 @@ export const PARIPRASHNA_EVENT_TYPES = [
   'turn.close',
   'error',
   'snapshot.apply',
+  'prediction_card',
 ] as const
 export type PariprashnaEventType = (typeof PARIPRASHNA_EVENT_TYPES)[number]
 

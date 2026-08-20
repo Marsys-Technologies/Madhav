@@ -20,9 +20,16 @@
  * ── Honest lossiness (documented, not silent) ────────────────────────────────
  * S-1's wire is deliberately minimal; several rich fields C-1 renders are NOT
  * on it and are SYNTHESIZED here from what the stream does carry:
- *   • block roles: S-1 block.open carries role 'prose'|'thinking'; C-1's
- *     ReadingRole ('verdict'|…) is a curation concern S-1 does not express, so
- *     role is left undefined (renders as a plain paragraph).
+ *   • block kind/role: lane P2-A (protocol v2) adds commit-time `kind`/`role`/
+ *     `content`/`table`/`gap_text` to `block.commit`, but ONLY when the
+ *     server's `PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED` flag is on — with the
+ *     flag off (the default), these fields are absent and this adapter falls
+ *     back to `kind: 'paragraph'`/`role: undefined` exactly as before this
+ *     lane (renders as a plain paragraph, unchanged behavior). `block.open`
+ *     (the STREAMING tail) is deliberately NOT classified — classification is
+ *     commit-time only (the roadmap's "NOT mid-stream segmentation" point) —
+ *     so the live tail always streams as a plain paragraph regardless of the
+ *     flag; only the FROZEN block that replaces it on commit can carry a kind.
  *   • citation.grade: mapped from S-3's grade enum (primary|supporting|
  *     contextual|unverified) to C-1's Grade; source class defaults to
  *     'chart_factor' (S-1 carries `layer`, not a reader source-class).
@@ -192,7 +199,38 @@ export function makeS1LiveAdapter(
         return [{ type: 'block.delta', turnId, blockId: ev.block_id, textDelta: ev.delta, eventId }]
 
       case 'block.commit':
-        return [{ type: 'block.commit', turnId, blockId: ev.block_id, kind: 'paragraph', html: ev.text, eventId }]
+        // `ev.kind`/`ev.role`/`ev.table`/`ev.gap_text` are ABSENT unless the
+        // server's semantic-blocks flag is on (protocol v2, lane P2-A) — the
+        // `?? 'paragraph'` fallback is exactly the old hardcoded behavior, so
+        // a flag-OFF stream renders byte-for-byte as it did before this lane.
+        // `content` (present only when the reader-facing text differs from
+        // the raw commit text — a verse with its `>` markers stripped, a
+        // heading with its `#`s stripped) wins over `text` when present.
+        return [
+          {
+            type: 'block.commit',
+            turnId,
+            blockId: ev.block_id,
+            kind: ev.kind ?? 'paragraph',
+            role: ev.role,
+            html: ev.content ?? ev.text,
+            table: ev.table,
+            gapText: ev.gap_text,
+            eventId,
+          },
+        ]
+
+      case 'prediction_card':
+        return [
+          {
+            type: 'prediction_card',
+            turnId,
+            partId: ev.part_id,
+            conversationId: ev.conversation_id,
+            candidate: ev.candidate,
+            eventId,
+          },
+        ]
 
       case 'seam.open':
         // Real PASS-BOUNDARY seam → C-1's pass-seam UI. Synthesize a stable
