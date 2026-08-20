@@ -291,6 +291,27 @@ export type FeatureFlag =
   //     `LogToSamiksha` confirm affordance (built and unmounted since PB-3).
   // Env: MARSYS_FLAG_PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED.
   | 'PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED'
+  // P2-C — Honest controls (PPR-09/16). Gates two additive, together-shipped
+  // behaviors that were previously either inert or misleading:
+  //   · `length_tier` (TODO(PB-4) in safety_gate.ts) gains a REAL effect —
+  //     `synthesis_stage.assembleSynthesisContext` appends a short, fixed
+  //     length-discipline instruction to the system prompt for `brief`/
+  //     `exhaustive` (never for `standard`, which stays a byte-identical
+  //     no-op whether or not the flag is on).
+  //   · `plan_stage.ts` emits an HONEST `reading_depth_received` grade
+  //     derived from the PLANNER's own `plan.scope_tuple.depth` (the real
+  //     signal of how deep the turn actually went), not from whatever the
+  //     composer's mode/pill claimed before planning ran. The client
+  //     surfaces it as a disclosure distinct from the requested tier.
+  // `model_id` needed no backend flag — `bindTurnParams` already binds it
+  // directly to the synthesis model (verified live end-to-end); the defect
+  // there was UI-only (the composer's model picker never sent its selection
+  // and offered labels with no matching registry id), fixed by wiring the
+  // real picker through, unconditionally, with no serving-path behavior
+  // change to gate.
+  // Default false: ships dark. Flip via
+  // MARSYS_FLAG_PARIPRASHNA_HONEST_CONTROLS_ENABLED=true.
+  | 'PARIPRASHNA_HONEST_CONTROLS_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -427,6 +448,10 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // MARSYS_FLAG_PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED=true once the client
   // renderers have been verified against a real deployed reading.
   PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED: false,
+  // P2-C — honest length shaping + scope-tuple-derived depth disclosure.
+  // Default false: ships dark. Flip via
+  // MARSYS_FLAG_PARIPRASHNA_HONEST_CONTROLS_ENABLED=true.
+  PARIPRASHNA_HONEST_CONTROLS_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)

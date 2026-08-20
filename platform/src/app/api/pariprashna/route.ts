@@ -218,6 +218,7 @@ export async function POST(request: Request): Promise<Response> {
           orientation: evidence.orientation,
           conversationId,
           safetyDecision: postPlanSafety,
+          lengthTier: params.lengthTier,
         })
         const synthesized = await runSynthesisStage({
           em,

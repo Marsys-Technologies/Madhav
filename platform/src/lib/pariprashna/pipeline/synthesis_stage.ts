@@ -50,6 +50,8 @@ import { PREWIRE_REDACTION_NOTICE } from '@/lib/pariprashna/safety/fixed_respons
 import type { SafetyDecision } from '@/lib/pariprashna/safety'
 import { isInjectionContainmentEnabled } from '@/lib/pariprashna/injection/flag'
 import { isSemanticBlocksEnabled } from '@/lib/pariprashna/semantics/flag'
+import { isHonestControlsEnabled } from '@/lib/pariprashna/honest_controls/flag'
+import type { LengthTier } from '@/lib/pariprashna/protocol/events'
 import {
   buildEntitlementScanRules,
   containRetrievedEvidence,
@@ -96,6 +98,36 @@ export interface SynthesisContext {
   trimmedConversationHistory: ModelMessage[]
 }
 
+/**
+ * Lane P2-C (PPR-09/16) — honest length shaping. `length_tier` previously had
+ * NO live effect on synthesis (TODO(PB-4) in `safety_gate.ts`): the composer
+ * offered a Length pill, the request carried a real `length_tier`, and none of
+ * it changed a single byte of the prompt. This is the fix, not a cosmetic
+ * echo: a short, FIXED instruction appended to the system prompt, distinct per
+ * tier and gated behind `isHonestControlsEnabled()`.
+ *
+ * `standard` (and the flag-OFF path) appends NOTHING — the default reading is
+ * byte-identical to today's whether or not the flag is on, which is the same
+ * "the requested tier that means no change should cause no change" discipline
+ * NO-LEAKAGE and the safety prompt policy already follow elsewhere in this
+ * file. This is deterministic prompt guidance, not a computed chart claim —
+ * it does not re-derive or restate any L1/L2+ fact, so it carries no
+ * DERIVATION_LEDGER obligation (§B.3 is about claims, not verbosity framing).
+ */
+const LENGTH_TIER_GUIDANCE: Partial<Record<LengthTier, string>> = {
+  brief:
+    'Length discipline for THIS reading: BRIEF. Lead with the verdict and the ' +
+    'load-bearing evidence only. Omit secondary corroboration, tangential ' +
+    'detail, and elaboration the core claim does not need. Do not shorten by ' +
+    'dropping citations — every claim still needs its grounding, just fewer ' +
+    'claims.',
+  exhaustive:
+    'Length discipline for THIS reading: EXHAUSTIVE. Cover every relevant ' +
+    'domain, corroborating signal, and classical nuance the retrieved ' +
+    'evidence supports. Do not truncate for brevity or hold back a ' +
+    'well-grounded point to save space.',
+}
+
 export async function assembleSynthesisContext(args: {
   messages: UIMessage[]
   bundle: { assets: unknown }
@@ -104,6 +136,8 @@ export async function assembleSynthesisContext(args: {
   conversationId: string
   /** Lane G1-A. Omitted → no policy block (flag-OFF path and older callers). */
   safetyDecision?: SafetyDecision
+  /** Lane P2-C. Omitted → no length instruction (flag-OFF path and older callers). */
+  lengthTier?: LengthTier
 }): Promise<SynthesisContext> {
   const { messages, bundle, plan, orientation, conversationId } = args
 
@@ -185,6 +219,19 @@ export async function assembleSynthesisContext(args: {
     precedingBlock: systemContent ?? '',
     summaryText: conversationSummaryText,
   })
+
+  // ── LENGTH SHAPING (lane P2-C · PPR-09/16). ────────────────────────────────
+  // Narrow, additive splice — same position/convention as the durable-summary
+  // splice immediately above: appended to the FIXED structural prefix, not
+  // interleaved with the untrusted evidence bundle. `standard` (the schema
+  // default) intentionally adds nothing, so the common case's prompt is
+  // unchanged whether or not the flag is on.
+  if (isHonestControlsEnabled() && args.lengthTier) {
+    const lengthGuidance = LENGTH_TIER_GUIDANCE[args.lengthTier]
+    if (lengthGuidance) {
+      systemContentWithSummary = [systemContentWithSummary, lengthGuidance].filter(Boolean).join('\n\n---\n\n')
+    }
+  }
 
   // ── INJECTION CONTAINMENT: the clause that makes the tags mean something. ──
   // Appended AFTER the evidence and the summary splice and BEFORE the safety

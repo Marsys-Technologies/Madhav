@@ -42,6 +42,7 @@ export function makeInitialTurnState(id: string, userText: string): TurnState {
     activeSeam: null,
     citations: {},
     grounding: null,
+    readingDepthReceived: null,
     error: null,
     pendingPredictionCandidates: [],
     lastEventId: null,
@@ -251,6 +252,13 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
 
     case 'grade': {
       return updateTurn(state, action.turnId, (t) => ({ ...t, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }))
+    }
+
+    case 'reading_depth.received': {
+      return updateTurn(state, action.turnId, (t) => {
+        if (isDuplicateEvent(t, action.eventId)) return t
+        return { ...t, readingDepthReceived: action.depth, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
+      })
     }
 
     case 'turn.commit': {

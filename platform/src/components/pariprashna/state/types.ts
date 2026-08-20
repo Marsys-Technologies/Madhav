@@ -179,6 +179,15 @@ export interface TurnState {
    *  from this list post-arrival (`LogToSamiksha` tracks its own
    *  confirmed/dismissed UI state internally). */
   pendingPredictionCandidates: PendingPredictionCandidate[]
+  /**
+   * Lane P2-C (PPR-09/16) — honest depth disclosure. The ACTUAL depth the
+   * planner's `scope_tuple` resolved to for this turn (server-derived,
+   * `plan_stage.ts`'s `reading_depth_received` grade), distinct from whatever
+   * depth the composer requested. `null` until the event arrives — including
+   * permanently, on a flag-OFF deploy or a turn the planner never scored — and
+   * is rendered as an honest absence, never a guessed value (§N.7 item 6).
+   */
+  readingDepthReceived: string | null
   /** Most-recently-applied event id (debug/telemetry only — NOT the dedup key). */
   lastEventId: string | null
   /**
@@ -252,6 +261,12 @@ export type WireEvent =
   | { type: 'citation.define'; turnId: string; citation: Citation; eventId: string }
   | { type: 'flag'; turnId: string; flag: string; eventId: string }
   | { type: 'grade'; turnId: string; grade: Grade; note?: string; eventId: string }
+  /**
+   * Lane P2-C. Distinct from `grade` above (a different, S-3 citation-tier
+   * namespace) — the server's `reading_depth_received` grade subject maps
+   * here rather than through `mapGrade`, which has no case for it.
+   */
+  | { type: 'reading_depth.received'; turnId: string; depth: string; eventId: string }
   | { type: 'turn.commit'; turnId: string; grounding: GroundingSummary; eventId: string }
   | { type: 'turn.close'; turnId: string; eventId: string }
   | { type: 'error'; turnId: string; error: ClassifiedError; eventId: string }
@@ -297,4 +312,20 @@ export interface ModelOption {
   label: string
   tier: 'Auto' | 'A' | 'B' | 'C'
   tierNote: string
+}
+
+/**
+ * Lane P2-C (PPR-09/16) — what the composer actually submits alongside the
+ * question, once its three pills stopped being cosmetic. `modelId` is a REAL
+ * registry id (`@/lib/models/registry`) or `undefined` for "Auto" (no
+ * override — the stack's synthesis primary binds, same as today).
+ * `readingDepth`/`lengthTier` are the wire's own request vocabulary
+ * (`@/lib/pariprashna/protocol/events`), computed honestly from the picker
+ * state rather than smuggled through the dev-fixture `mode` the live host
+ * used to reuse for this.
+ */
+export interface SubmitControls {
+  modelId?: string
+  readingDepth: 'auto' | 'deep_dive'
+  lengthTier: 'brief' | 'standard' | 'exhaustive'
 }
