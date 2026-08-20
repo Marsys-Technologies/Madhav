@@ -24,6 +24,7 @@ import type { ResolvedTurnCitation } from '@/lib/pariprashna/citations/stream_wi
 import type { CitationGrade } from '@/lib/pariprashna/citations/types'
 import type { OpenBlock, DetectedCitationRow } from '@/lib/pariprashna/pipeline/reading_parts'
 import { extractCitations } from '@/lib/citations/citation_data_part'
+import type { ReceiptInterpretationSets } from '@/lib/pariprashna/interpretation/schema'
 
 import {
   ACHARYA_READING_RECEIPT_SCHEMA_VERSION,
@@ -106,6 +107,16 @@ export interface AssembleAcharyaReadingReceiptArgs {
   safetyDecision?: SafetyDecision
   validToolResults: readonly ToolBundle[]
   provenanceStamp: TurnProvenanceStamp
+  /**
+   * Lane G3-B (PPR-02) additive extension. Already-assembled
+   * `interpretation/assemble.ts` output (or the caller's own
+   * `unavailableInterpretationSets(reason)` when the G3-B flag was off this
+   * turn). Omitted entirely (every pre-existing caller/fixture) -> this
+   * function supplies its OWN honest "never attempted" default below, so
+   * every pre-G3-B call site stays byte-for-byte unchanged in every OTHER
+   * field while still getting a well-formed (not absent) receipt field.
+   */
+  interpretationSets?: ReceiptInterpretationSets
 }
 
 const CITATION_GRADES: readonly CitationGrade[] = [
@@ -265,6 +276,27 @@ function buildProseBinding(args: {
   }
 }
 
+/**
+ * Lane G3-B (PPR-02). The honest default when the caller supplies nothing —
+ * every pre-existing caller of this function (every fixture/test written
+ * before this lane) hits this branch and gets a well-formed `unavailable`
+ * field rather than an absent/undefined one, which is what lets
+ * `receipt/validate.ts`'s coherence check run uniformly over every FRESHLY
+ * ASSEMBLED receipt regardless of whether the caller knows about G3-B yet.
+ */
+function buildInterpretationSetsDefault(): ReceiptInterpretationSets {
+  return {
+    status: 'unavailable',
+    interpretation_sets_schema_version: null,
+    detected_count: null,
+    covered_count: null,
+    truncated_count: null,
+    waived_count: null,
+    sets: null,
+    unavailable_reason: 'interpretation-set generation did not run this turn (PARIPRASHNA_INTERPRETATION_SETS_ENABLED was off, or no value was supplied to the assembler)',
+  }
+}
+
 function buildProvenance(stamp: TurnProvenanceStamp): ReceiptProvenance {
   return {
     build_id: stamp.build_id,
@@ -363,6 +395,7 @@ export function assembleAcharyaReadingReceipt(
       accumulatedText: args.accumulatedText,
     }),
     provenance: buildProvenance(args.provenanceStamp),
+    interpretation_sets: args.interpretationSets ?? buildInterpretationSetsDefault(),
   }
 
   return {

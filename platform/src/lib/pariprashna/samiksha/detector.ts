@@ -121,9 +121,16 @@ const NEGATIVE_KEYWORDS = [
   'downturn', 'reversal', 'hardship', 'adversity', 'inauspicious', 'crisis',
 ]
 
-/** Map a citation layer / signal namespace onto a technique label, best-effort.
- *  Also inspects claim text for named techniques. Empty when nothing resolves. */
-const TECHNIQUE_KEYWORDS: ReadonlyArray<readonly [string, readonly string[]]> = [
+/**
+ * Map a citation layer / signal namespace onto a technique label, best-effort.
+ * Also inspects claim text for named techniques. Empty when nothing resolves.
+ *
+ * Exported (lane G3-B, PPR-02) so `interpretation/detect.ts`'s `time_indexed`
+ * significant-judgment detector can reuse this SAME lexicon rather than
+ * declaring a second, driftable copy (§N.7 item 3: no wrapper-local constant
+ * may shadow an existing one).
+ */
+export const TECHNIQUE_KEYWORDS: ReadonlyArray<readonly [string, readonly string[]]> = [
   ['vimshottari_dasha', ['dasha', 'daśā', 'mahadasha', 'antardasha', 'bhukti', 'vimshottari']],
   ['gochara_transit', ['transit', 'gochara', 'gocara', 'sade sati', 'saturn transit', 'jupiter transit']],
   ['tajaka_annual', ['tajaka', 'varshaphala', 'annual chart', 'muntha']],

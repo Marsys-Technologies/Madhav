@@ -62,6 +62,12 @@ import {
   withAcharyaReadingReceipt,
   isReceiptEmissionEnabled,
 } from '@/lib/pariprashna/receipt'
+import {
+  assembleInterpretationSets,
+  unavailableInterpretationSets,
+  isInterpretationSetsEnabled,
+  type ReceiptInterpretationSets,
+} from '@/lib/pariprashna/interpretation'
 
 import type { TurnIdentity, TurnParams } from './stage_context'
 import {
@@ -416,6 +422,48 @@ export async function runPersistenceStage(args: {
           let metadataWithReceipt = writeArgs.lastAssistantMetadata
           if (isReceiptEmissionEnabled()) {
             try {
+              // ── G3-B (PPR-02): interpretation_sets. ─────────────────────
+              // Depends on G3-A (this `if` block) per the roadmap's own
+              // dependency row — interpretation sets ride as an additive
+              // sub-field of the receipt this block assembles below. Real
+              // structured-output call inside `assembleInterpretationSets`
+              // (never client-fabricated); strictly non-fatal — a G3-B
+              // fault degrades to the honest `unavailable` field, exactly
+              // like every other best-effort splice in this file, and NEVER
+              // costs the reader their reading or their G3-A receipt.
+              let interpretationSets: ReceiptInterpretationSets = unavailableInterpretationSets(
+                'PARIPRASHNA_INTERPRETATION_SETS_ENABLED was off this turn',
+              )
+              if (isInterpretationSetsEnabled()) {
+                try {
+                  interpretationSets = await assembleInterpretationSets({
+                    turnId,
+                    committedBlocks,
+                    predictionCandidates: predictionCandidatesFound,
+                    validToolResults,
+                  })
+                  if ((interpretationSets.truncated_count ?? 0) > 0) {
+                    console.warn(
+                      `[pariprashna/interpretation] ${interpretationSets.truncated_count} significant ` +
+                        `judgment(s) detected but not processed this turn (per-turn cap)`,
+                    )
+                    em.flag({
+                      code: 'interpretation_sets_truncated',
+                      level: 'info',
+                      detail: `${interpretationSets.truncated_count} significant judgment(s) exceeded this turn's processing cap`,
+                    })
+                  }
+                } catch (err) {
+                  console.error(
+                    '[pariprashna/interpretation] interpretation-set generation failed (non-fatal, field omitted this turn):',
+                    err,
+                  )
+                  interpretationSets = unavailableInterpretationSets(
+                    'interpretation-set generation threw (see server log)',
+                  )
+                }
+              }
+
               const receipt = assembleAcharyaReadingReceipt({
                 turnId,
                 conversationId,
@@ -431,6 +479,7 @@ export async function runPersistenceStage(args: {
                 safetyDecision: args.safetyDecision,
                 validToolResults,
                 provenanceStamp,
+                interpretationSets,
               })
               const validation = validateAcharyaReadingReceipt(receipt)
               if (!validation.ok) {

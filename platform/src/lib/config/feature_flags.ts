@@ -354,6 +354,24 @@ export type FeatureFlag =
   // that fails validation is logged and OMITTED, never persisted malformed.
   // Flip via MARSYS_FLAG_PARIPRASHNA_RECEIPT_EMISSION_ENABLED=true.
   | 'PARIPRASHNA_RECEIPT_EMISSION_ENABLED'
+  // G3-B — interpretation_sets: three candidate interpretations + a
+  // falsifier per SIGNIFICANT judgment (PPR-02). Default false: ships dark.
+  // Depends on G3-A (PARIPRASHNA_RECEIPT_EMISSION_ENABLED) — interpretation
+  // sets ride as an additive sub-field of the receipt, so this flag has no
+  // effect unless receipt emission is also on. Off, `persistence_stage.ts`
+  // never calls `detectSignificantJudgments`/`generateInterpretationSets`
+  // and the receipt's `interpretation_sets` field assembles as
+  // `status: 'unavailable'` with an honest reason — zero new LLM calls, zero
+  // new DB reads. On, every SIGNIFICANT judgment this turn (domain verdict ·
+  // time-indexed · remedial · prediction-detected · rules-in-tension, each
+  // detected from a REAL structural signal — see
+  // `interpretation/detect.ts`) gets a real structured-output call
+  // requesting >=3 distinct candidate interpretations, a selected reading +
+  // rationale, and a falsifier — or an explicit, reason-carrying WAIVER when
+  // the model genuinely cannot produce 3 distinct candidates. Never
+  // fabricated client-side. Flip via
+  // MARSYS_FLAG_PARIPRASHNA_INTERPRETATION_SETS_ENABLED=true.
+  | 'PARIPRASHNA_INTERPRETATION_SETS_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -504,6 +522,9 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // G3-A — AcharyaReadingReceipt v1 (PPR-01). Default false — see the union
   // declaration above for the full flip contract.
   PARIPRASHNA_RECEIPT_EMISSION_ENABLED: false,
+  // G3-B — interpretation_sets (PPR-02). Default false — see the union
+  // declaration above for the full flip contract.
+  PARIPRASHNA_INTERPRETATION_SETS_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)

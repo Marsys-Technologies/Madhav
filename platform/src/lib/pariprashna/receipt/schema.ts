@@ -32,6 +32,7 @@
 import { z } from 'zod'
 
 import { GroundingSummaryGradeCountsSchema } from '@/lib/pariprashna/protocol/events'
+import { ReceiptInterpretationSetsSchema } from '@/lib/pariprashna/interpretation/schema'
 
 // ---------------------------------------------------------------------------
 // coverage — from the turn's own WebCompletenessReceipt (pipeline/
@@ -249,6 +250,18 @@ export const AcharyaReadingReceiptSchema = z.object({
   calibration_disclosure: ReceiptCalibrationDisclosureSchema,
   prose_binding: ReceiptProseBindingSchema,
   provenance: ReceiptProvenanceSchema,
+  /**
+   * Lane G3-B (PPR-02) additive extension. `>=3` candidate interpretations
+   * + a selected reading + a falsifier per SIGNIFICANT judgment this turn,
+   * or an explicit waiver. `.optional()` (not required) so every receipt
+   * persisted BEFORE this lane still validates — see `interpretation/
+   * schema.ts`'s own header for why the sub-object carries its OWN version
+   * literal rather than bumping `receipt_schema_version`. Every receipt
+   * ASSEMBLED by this codebase from this lane forward always sets it
+   * (never omits it) — `undefined` only ever appears on a legacy row read
+   * back from storage.
+   */
+  interpretation_sets: ReceiptInterpretationSetsSchema.optional(),
   /** sha256 hex of the canonical JSON of every field above (this field excluded). */
   receipt_hash: z.string(),
 })

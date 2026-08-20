@@ -41,6 +41,7 @@
 
 import type { AcharyaReadingReceipt } from './schema'
 import { computeReceiptHash } from './hash'
+import { MIN_INTERPRETATION_CANDIDATES } from '@/lib/pariprashna/interpretation/schema'
 
 export interface ReceiptValidationResult {
   ok: boolean
@@ -170,6 +171,95 @@ export function validateAcharyaReadingReceipt(receipt: AcharyaReadingReceipt): R
       `calibration_disclosure: consulted=${receipt.calibration_disclosure.consulted} but ` +
         `consulted_tool_names.length=${receipt.calibration_disclosure.consulted_tool_names.length}`,
     )
+  }
+
+  // ── V6/V7: interpretation_sets coherence (lane G3-B, PPR-02). ──────────────
+  // `.optional()` on the schema (a receipt persisted before G3-B lacks the
+  // key entirely) — only validate when the field is actually present, so a
+  // legacy row is judged against the contract it was written under, not a
+  // later one it never claimed to satisfy.
+  if (receipt.interpretation_sets) {
+    const is = receipt.interpretation_sets
+    checkStatusCoherence(
+      'interpretation_sets',
+      is.status,
+      {
+        interpretation_sets_schema_version: is.interpretation_sets_schema_version,
+        detected_count: is.detected_count,
+        covered_count: is.covered_count,
+        truncated_count: is.truncated_count,
+        waived_count: is.waived_count,
+        sets: is.sets,
+      },
+      is.unavailable_reason,
+      violations,
+    )
+
+    if (is.status === 'measured' && is.sets) {
+      // V6: coverage arithmetic — mirrors V4's served+empty+dark===floor_item_total.
+      if (is.covered_count !== null && is.sets.length !== is.covered_count) {
+        violations.push(
+          `interpretation_sets: sets.length(${is.sets.length}) !== covered_count(${is.covered_count})`,
+        )
+      }
+      if (
+        is.detected_count !== null &&
+        is.covered_count !== null &&
+        is.truncated_count !== null &&
+        is.covered_count + is.truncated_count !== is.detected_count
+      ) {
+        violations.push(
+          `interpretation_sets: covered_count(${is.covered_count}) + truncated_count(${is.truncated_count}) ` +
+            `!== detected_count(${is.detected_count})`,
+        )
+      }
+      const actualWaived = is.sets.filter((s) => s.status === 'waived').length
+      if (is.waived_count !== null && actualWaived !== is.waived_count) {
+        violations.push(
+          `interpretation_sets: waived_count(${is.waived_count}) !== actual waived entries(${actualWaived})`,
+        )
+      }
+
+      // V7: every entry is EITHER a real >=3-candidate set XOR a reasoned
+      // waiver — never a half-populated state, and never "no set and no
+      // waiver" (a SIGNIFICANT claim with neither is exactly what PPR-02's
+      // validator must reject — this is that check, applied per entry).
+      for (const entry of is.sets) {
+        const label = `interpretation_sets[${entry.judgment_id}]`
+        if (entry.status === 'generated') {
+          if (!entry.candidates || entry.candidates.length < MIN_INTERPRETATION_CANDIDATES) {
+            violations.push(
+              `${label}: status='generated' but candidates has fewer than ${MIN_INTERPRETATION_CANDIDATES} entries`,
+            )
+          }
+          if (
+            entry.selected_index === null ||
+            !entry.candidates ||
+            entry.selected_index < 0 ||
+            entry.selected_index >= entry.candidates.length
+          ) {
+            violations.push(`${label}: status='generated' but selected_index is out of range`)
+          }
+          if (!entry.selected_rationale) {
+            violations.push(`${label}: status='generated' but selected_rationale is empty`)
+          }
+          if (!entry.falsifier) {
+            violations.push(`${label}: status='generated' but falsifier is empty`)
+          }
+          if (entry.waiver_reason !== null) {
+            violations.push(`${label}: status='generated' but waiver_reason is non-null`)
+          }
+        } else {
+          if (entry.candidates !== null) violations.push(`${label}: status='waived' but candidates is non-null`)
+          if (entry.selected_index !== null) violations.push(`${label}: status='waived' but selected_index is non-null`)
+          if (entry.selected_rationale !== null) {
+            violations.push(`${label}: status='waived' but selected_rationale is non-null`)
+          }
+          if (entry.falsifier !== null) violations.push(`${label}: status='waived' but falsifier is non-null`)
+          if (!entry.waiver_reason) violations.push(`${label}: status='waived' but waiver_reason is empty`)
+        }
+      }
+    }
   }
 
   return { ok: violations.length === 0, violations }

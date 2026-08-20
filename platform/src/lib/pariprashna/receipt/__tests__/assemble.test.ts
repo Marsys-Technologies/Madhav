@@ -389,3 +389,74 @@ describe('assembleAcharyaReadingReceipt — schema coherence', () => {
     expect(() => AcharyaReadingReceiptSchema.parse(receipt)).not.toThrow()
   })
 })
+
+/**
+ * interpretation_sets — lane G3-B (PPR-02) additive extension. Proves the
+ * new field traces to whatever the caller supplies, and that every
+ * pre-existing caller (which supplies nothing) gets an honest, well-formed
+ * `unavailable` default rather than an absent/undefined field.
+ */
+describe('assembleAcharyaReadingReceipt — interpretation_sets (G3-B)', () => {
+  it('defaults to an honest unavailable field when the caller supplies nothing (every pre-G3-B call site)', () => {
+    const receipt = assembleAcharyaReadingReceipt(baseArgs())
+    expect(receipt.interpretation_sets).toEqual({
+      status: 'unavailable',
+      interpretation_sets_schema_version: null,
+      detected_count: null,
+      covered_count: null,
+      truncated_count: null,
+      waived_count: null,
+      sets: null,
+      unavailable_reason: expect.stringContaining('did not run this turn'),
+    })
+  })
+
+  it('traces to exactly what the caller supplies (never re-derived)', () => {
+    const supplied = {
+      status: 'measured' as const,
+      interpretation_sets_schema_version: 1 as const,
+      detected_count: 1,
+      covered_count: 1,
+      truncated_count: 0,
+      waived_count: 0,
+      sets: [
+        {
+          judgment_id: 'sig-domain_verdict-1',
+          category: 'domain_verdict' as const,
+          status: 'generated' as const,
+          candidates: [
+            { reading: 'A', rationale: 'ra' },
+            { reading: 'B', rationale: 'rb' },
+            { reading: 'C', rationale: 'rc' },
+          ],
+          selected_index: 0,
+          selected_rationale: 'A fits best.',
+          falsifier: 'If X, A is wrong.',
+          waiver_reason: null,
+        },
+      ],
+      unavailable_reason: null,
+    }
+    const receipt = assembleAcharyaReadingReceipt(baseArgs({ interpretationSets: supplied }))
+    expect(receipt.interpretation_sets).toEqual(supplied)
+  })
+
+  it('is included in the hashed content — supplying a different value changes receipt_hash', () => {
+    const withoutIt = assembleAcharyaReadingReceipt(baseArgs())
+    const withIt = assembleAcharyaReadingReceipt(
+      baseArgs({
+        interpretationSets: {
+          status: 'measured',
+          interpretation_sets_schema_version: 1,
+          detected_count: 0,
+          covered_count: 0,
+          truncated_count: 0,
+          waived_count: 0,
+          sets: [],
+          unavailable_reason: null,
+        },
+      }),
+    )
+    expect(withIt.receipt_hash).not.toBe(withoutIt.receipt_hash)
+  })
+})
