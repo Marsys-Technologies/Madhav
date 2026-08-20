@@ -63,6 +63,9 @@ import type { SafetyDecision } from '@/lib/pariprashna/safety'
 import { isInjectionContainmentEnabled } from '@/lib/pariprashna/injection/flag'
 import { isSemanticBlocksEnabled } from '@/lib/pariprashna/semantics/flag'
 import { isHonestControlsEnabled } from '@/lib/pariprashna/honest_controls/flag'
+import { isVoiceEnforcementEnabled } from '@/lib/pariprashna/voice/flag'
+import { lintVoiceProse } from '@/lib/pariprashna/voice/voice_lint'
+import { isDifficultFindingActive, shouldForceDifficultBlockBreak } from '@/lib/pariprashna/voice/pacing'
 import type { LengthTier } from '@/lib/pariprashna/protocol/events'
 import {
   buildEntitlementScanRules,
@@ -477,6 +480,14 @@ export async function runSynthesisStage(args: {
   const mortalityRulesEnabled = args.safetyDecision?.enforced === true
   const prewireArmed = mortalityRulesEnabled || entitlementRules.length > 0
 
+  // ── Lane G3-D (P2-L, PPR-04) — voice enforcement. ──────────────────────────
+  // Computed once per turn: `difficultFindingActive` is meaningless while the
+  // lane itself is off, and it is the same turn-level "difficult finding"
+  // proxy the per-delta pass below and the assembler's whole-block backstop
+  // both read (see `voice/pacing.ts`'s `isDifficultFindingActive`).
+  const voiceEnforcementEnabled = isVoiceEnforcementEnabled()
+  const difficultFindingActive = voiceEnforcementEnabled && isDifficultFindingActive(args.safetyDecision)
+
   const assembler = new ReadingPartsAssembler(
     em,
     PASS_ONE,
@@ -487,6 +498,8 @@ export async function runSynthesisStage(args: {
     // (see `reading_parts.ts` — an internal role-switch commit would be
     // invisible to a lag measured from out here).
     (lagMs) => metrics.recordDeltaCommitLag(lagMs),
+    voiceEnforcementEnabled,
+    difficultFindingActive,
   )
   let proseSeenInPass = false
   let awaitingResume = false
@@ -571,6 +584,21 @@ export async function runSynthesisStage(args: {
     const rest = mortalityScanner.flush()
     reportPrewireHits()
     if (rest) assembler.appendProse(assembler.ensureBlock('prose'), rest)
+  }
+
+  // ── Lane G3-D voice enforcement — the SAME per-delta lint pass. ────────────
+  // Chained immediately after whichever register-leak/citation-rewrite +
+  // mortality-scan pass already ran on a delta (BOTH the citation-stream-on
+  // and citation-stream-off branches below call this at the identical point —
+  // right before the safe delta is appended), not a second independent walk
+  // over the text. No-op (returns `text` unchanged) when the flag is off.
+  const applyVoiceLint = (text: string): string => {
+    if (!voiceEnforcementEnabled || !text) return text
+    const voice = lintVoiceProse(text, { difficultFinding: difficultFindingActive })
+    for (const f of voice.flags) {
+      em.flag({ code: f.code, level: f.level, detail: f.detail })
+    }
+    return voice.clean
   }
 
   // ── INJECTION CONTAINMENT: the tool-sequence anomaly trace (G1-G · PPR-13). ─
@@ -719,7 +747,9 @@ export async function runSynthesisStage(args: {
           // mortality scan runs AFTER the citation/register-leak pass.
           const safeDelta = mortalityScanner ? mortalityScanner.push(rewritten) : rewritten
           reportPrewireHits()
-          if (safeDelta) assembler.appendProse(blk, safeDelta)
+          // Lane G3-D: SAME pass, chained last (see `applyVoiceLint` above).
+          const voiceSafeDelta = applyVoiceLint(safeDelta)
+          if (voiceSafeDelta) assembler.appendProse(blk, voiceSafeDelta)
         } else {
           // Gate 11 [integrity]: lint EVERY delta chunk before it reaches the
           // wire — the model's own prose directly references internal register
@@ -748,9 +778,25 @@ export async function runSynthesisStage(args: {
           // the gate is off, `mortalityScanner` is null and this is a pass-through.
           const safeDelta = mortalityScanner ? mortalityScanner.push(cleanDelta) : cleanDelta
           reportPrewireHits()
-          if (safeDelta) assembler.appendProse(blk, safeDelta)
+          // Lane G3-D: SAME pass, chained last (see `applyVoiceLint` above).
+          const voiceSafeDelta = applyVoiceLint(safeDelta)
+          if (voiceSafeDelta) assembler.appendProse(blk, voiceSafeDelta)
         }
         proseSeenInPass = true
+        // ── Lane G3-D pacing policy — "shorter committed blocks" for difficult
+        // findings. A pure BLOCK-granularity effect (never touches `passId` or
+        // emits a seam), so it cannot violate this file's own documented
+        // PASS/SEAM TRUTH invariant. `blk` is still the block just appended to
+        // in whichever branch ran above.
+        if (voiceEnforcementEnabled && difficultFindingActive && shouldForceDifficultBlockBreak(blk.text)) {
+          const lengthAtBreak = blk.text.length
+          assembler.commitBlock()
+          em.flag({
+            code: 'voice_pacing_block_shortened',
+            level: 'info',
+            detail: `committed a difficult-finding block early at ${lengthAtBreak} chars (pacing policy)`,
+          })
+        }
       } else if (event.type === 'thinking_delta') {
         appendCitationFlushText(citationStream?.tick() ?? '')
         const blk = assembler.ensureBlock('thinking')

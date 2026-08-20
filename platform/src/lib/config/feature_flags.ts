@@ -354,6 +354,72 @@ export type FeatureFlag =
   // that fails validation is logged and OMITTED, never persisted malformed.
   // Flip via MARSYS_FLAG_PARIPRASHNA_RECEIPT_EMISSION_ENABLED=true.
   | 'PARIPRASHNA_RECEIPT_EMISSION_ENABLED'
+  // G3-D / P2-L — Voice enforcement (PPR-04, roadmap line 104). A LINT
+  // EXTENSION of the register-leak lint, not a parallel scanner — see
+  // `src/lib/pariprashna/voice/voice_lint.ts`'s header. Gates the WHOLE
+  // `src/lib/pariprashna/voice` surface:
+  //   · OFF (default) — the per-delta lint call in `synthesis_stage.ts` (both
+  //     the citation-stream-on and citation-stream-off branches) and the
+  //     whole-block backstop in `reading_parts.ts`'s `commitBlock` run exactly
+  //     the register-leak lint they run today; `lintVoiceProse` is never
+  //     called. Byte-for-byte no change.
+  //   · ON — the SAME two call sites additionally run a second-person-
+  //     imperative detector on remedy-verb sentences (telemetry only — flags
+  //     "you should wear a ruby", passes "the tradition prescribes wearing a
+  //     ruby"; no safe generic rewrite exists for an arbitrary imperative
+  //     sentence, unlike the register-leak lint's own rewrite/redact
+  //     verdicts) and, only when this turn's G1-A `SafetyDecision` shows an
+  //     HS-class actually fired (the honest "difficult finding" proxy — no
+  //     finer-grained block-level difficulty classifier exists in this
+  //     codebase), a bounded/idempotent bare-probability framing rewrite plus
+  //     an uncertainty-before-severity ordering check (telemetry only). Under
+  //     the same difficult-finding condition, `synthesis_stage.ts`'s streaming
+  //     loop also force-commits an open prose block early once it crosses a
+  //     length floor at a sentence boundary — shorter committed blocks for
+  //     hard findings, never touching pass/seam state.
+  // Env: MARSYS_FLAG_PARIPRASHNA_VOICE_ENFORCEMENT_ENABLED.
+  | 'PARIPRASHNA_VOICE_ENFORCEMENT_ENABLED'
+  // G3-B — interpretation_sets: three candidate interpretations + a
+  // falsifier per SIGNIFICANT judgment (PPR-02). Default false: ships dark.
+  // Depends on G3-A (PARIPRASHNA_RECEIPT_EMISSION_ENABLED) — interpretation
+  // sets ride as an additive sub-field of the receipt, so this flag has no
+  // effect unless receipt emission is also on. Off, `persistence_stage.ts`
+  // never calls `detectSignificantJudgments`/`generateInterpretationSets`
+  // and the receipt's `interpretation_sets` field assembles as
+  // `status: 'unavailable'` with an honest reason — zero new LLM calls, zero
+  // new DB reads. On, every SIGNIFICANT judgment this turn (domain verdict ·
+  // time-indexed · remedial · prediction-detected · rules-in-tension, each
+  // detected from a REAL structural signal — see
+  // `interpretation/detect.ts`) gets a real structured-output call
+  // requesting >=3 distinct candidate interpretations, a selected reading +
+  // rationale, and a falsifier — or an explicit, reason-carrying WAIVER when
+  // the model genuinely cannot produce 3 distinct candidates. Never
+  // fabricated client-side. Also depends on
+  // PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED (G2-A) — 4 of the 5 significant-
+  // judgment categories classify from `OpenBlock.semantic`, which only
+  // exists when semantic blocks are on; when semantic blocks are off, the
+  // interpretation_sets field honestly reports `status: 'unavailable'`
+  // (`reason: 'semantic_blocks_disabled'`) rather than a populated-looking
+  // `detected_count: 0` (G3BC hardening, defect 1). Flip via
+  // MARSYS_FLAG_PARIPRASHNA_INTERPRETATION_SETS_ENABLED=true.
+  | 'PARIPRASHNA_INTERPRETATION_SETS_ENABLED'
+  // G3-C — PPR-03 typed confidence. Default false: ships dark. Off,
+  // `assembleAcharyaReadingReceipt` writes its new `confidence_typing` field
+  // as `{ status: 'unavailable', ... }` and every other receipt field is
+  // byte-for-byte what G3-A already computed — this flag adds nothing to the
+  // 11 pre-existing fields' logic. On, each citation this turn is typed into
+  // one of the five PPR-03 confidence types (deterministic_fact /
+  // structural_prior / classical_prior / empirically_calibrated /
+  // unresolved) from a real per-type source (see
+  // `pariprashna/confidence/type_claim.ts`), `empirically_calibrated` is
+  // gated on a real sample-size activation gate
+  // (`pariprashna/confidence/activation_gate.ts` — proven closed under
+  // today's real L5 STRUCTURAL-mode data), and any numeric confidence value
+  // this turn served from a calibration-bearing tool is scanned for
+  // overstated precision (T-8,
+  // `pariprashna/confidence/precision_scan.ts`). Flip via
+  // MARSYS_FLAG_PARIPRASHNA_TYPED_CONFIDENCE_ENABLED=true.
+  | 'PARIPRASHNA_TYPED_CONFIDENCE_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -504,6 +570,15 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // G3-A — AcharyaReadingReceipt v1 (PPR-01). Default false — see the union
   // declaration above for the full flip contract.
   PARIPRASHNA_RECEIPT_EMISSION_ENABLED: false,
+  // G3-D / P2-L — Voice enforcement (PPR-04). Default false — see the union
+  // declaration above for the full flip contract.
+  PARIPRASHNA_VOICE_ENFORCEMENT_ENABLED: false,
+  // G3-B — interpretation_sets (PPR-02). Default false — see the union
+  // declaration above for the full flip contract.
+  PARIPRASHNA_INTERPRETATION_SETS_ENABLED: false,
+  // G3-C — typed confidence (PPR-03). Default false — see the union
+  // declaration above for the full flip contract.
+  PARIPRASHNA_TYPED_CONFIDENCE_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)

@@ -12,6 +12,7 @@ import { describe, it, expect } from 'vitest'
 
 import { assembleAcharyaReadingReceipt } from '../assemble'
 import { validateAcharyaReadingReceipt, assertValidAcharyaReadingReceipt } from '../validate'
+import { computeReceiptHash } from '../hash'
 import type { AcharyaReadingReceipt } from '../schema'
 import type { WebCompletenessReceipt } from '@/lib/pipeline/completeness_wiring'
 import type { TurnProvenanceStamp } from '@/lib/pariprashna/provenance/stamp'
@@ -199,5 +200,175 @@ describe('validateAcharyaReadingReceipt — RED: catches a fabricated/tampered f
   it('assertValidAcharyaReadingReceipt THROWS on a fabricated receipt (fails, not just logs)', () => {
     const receipt = { ...honestReceipt(), receipt_hash: 'f'.repeat(64) }
     expect(() => assertValidAcharyaReadingReceipt(receipt)).toThrow(/validation FAILED/)
+  })
+})
+
+/**
+ * interpretation_sets coherence — lane G3-B (PPR-02) additive extension.
+ * Same red/green discipline as the G3-A suite above: a GREEN case (a
+ * genuinely-assembled field, honest end to end) then RED cases each
+ * constructed to look plausible but with no real backing, confirming the
+ * validator actually catches each one.
+ */
+describe('validateAcharyaReadingReceipt — interpretation_sets (G3-B)', () => {
+  it('GREEN: accepts a receipt whose interpretation_sets is the honest unavailable default', () => {
+    const receipt = honestReceipt()
+    expect(receipt.interpretation_sets?.status).toBe('unavailable')
+    const result = validateAcharyaReadingReceipt(receipt)
+    expect(result.ok).toBe(true)
+  })
+
+  it('GREEN: accepts a receipt with a genuinely-measured, coherent interpretation_sets field', () => {
+    const receipt = {
+      ...honestReceipt(),
+      interpretation_sets: {
+        status: 'measured' as const,
+        interpretation_sets_schema_version: 2 as const,
+        detected_count: 2,
+        covered_count: 2,
+        truncated_count: 0,
+        waived_count: 1,
+        sets: [
+          {
+            judgment_id: 'sig-domain_verdict-1',
+            category: 'domain_verdict' as const,
+            status: 'generated' as const,
+            detection_basis: "G2-A block role='verdict' (first prose block of its pass)",
+            candidates: [
+              { reading: 'A', rationale: 'ra' },
+              { reading: 'B', rationale: 'rb' },
+              { reading: 'C', rationale: 'rc' },
+            ],
+            selected_index: 0,
+            selected_rationale: 'A fits best.',
+            falsifier: 'If X is observed, A is wrong.',
+            waiver_reason: null,
+          },
+          {
+            judgment_id: 'sig-remedial-1',
+            category: 'remedial' as const,
+            status: 'waived' as const,
+            detection_basis:
+              'remedy lexicon match on this block (per-block) + remedial_codex_query was ' +
+              'consulted somewhere in this turn (TURN-SCOPED consultation — not verified ' +
+              'specifically for this block)',
+            candidates: null,
+            selected_index: null,
+            selected_rationale: null,
+            falsifier: null,
+            waiver_reason: 'Only one classical rule applies; no genuine second reading exists.',
+          },
+        ],
+        unavailable_reason: null,
+      },
+    }
+    // receipt_hash was computed over the OLD (unavailable) interpretation_sets,
+    // so recompute it here the same way `assembleAcharyaReadingReceipt` would —
+    // this test is about STRUCTURAL coherence (V6/V7), not the hash (V1 is
+    // already independently covered above).
+    const { receipt_hash: _old, ...content } = receipt
+    void _old
+    const fixed = { ...content, receipt_hash: computeReceiptHash(content) }
+    const result = validateAcharyaReadingReceipt(fixed)
+    expect(result.ok).toBe(true)
+    expect(result.violations).toEqual([])
+  })
+
+  it('RED: catches a SIGNIFICANT claim with NEITHER a set NOR a waiver (sets shorter than covered_count)', () => {
+    const receipt = honestReceipt()
+    const tamperedContent = {
+      ...receipt,
+      interpretation_sets: {
+        status: 'measured' as const,
+        interpretation_sets_schema_version: 2 as const,
+        detected_count: 1,
+        covered_count: 1,
+        truncated_count: 0,
+        waived_count: 0,
+        // A claim was detected and "covered", but no entry was ever produced
+        // for it — exactly the defect PPR-02's validator must reject.
+        sets: [],
+        unavailable_reason: null,
+      },
+    }
+    const { receipt_hash: _old2, ...content } = tamperedContent
+    void _old2
+    const fixed = { ...content, receipt_hash: computeReceiptHash(content) }
+    const result = validateAcharyaReadingReceipt(fixed)
+    expect(result.ok).toBe(false)
+    expect(result.violations.some((v) => v.includes('sets.length') && v.includes('covered_count'))).toBe(true)
+  })
+
+  it('RED: catches a "generated" entry with fewer than 3 candidates (padded/incomplete set)', () => {
+    const receipt = honestReceipt()
+    const tamperedContent = {
+      ...receipt,
+      interpretation_sets: {
+        status: 'measured' as const,
+        interpretation_sets_schema_version: 2 as const,
+        detected_count: 1,
+        covered_count: 1,
+        truncated_count: 0,
+        waived_count: 0,
+        sets: [
+          {
+            judgment_id: 'sig-domain_verdict-1',
+            category: 'domain_verdict' as const,
+            status: 'generated' as const,
+            detection_basis: "G2-A block role='verdict' (first prose block of its pass)",
+            candidates: [{ reading: 'Only one.', rationale: 'r' }],
+            selected_index: 0,
+            selected_rationale: 'r',
+            falsifier: 'f',
+            waiver_reason: null,
+          },
+        ],
+        unavailable_reason: null,
+      },
+    }
+    const { receipt_hash: _old3, ...content } = tamperedContent
+    void _old3
+    const fixed = { ...content, receipt_hash: computeReceiptHash(content) }
+    const result = validateAcharyaReadingReceipt(fixed)
+    expect(result.ok).toBe(false)
+    expect(result.violations.some((v) => v.includes('fewer than 3'))).toBe(true)
+  })
+
+  it('RED: catches a "waived" entry with no waiver_reason (an unexplained waiver is not honest)', () => {
+    const receipt = honestReceipt()
+    const tamperedContent = {
+      ...receipt,
+      interpretation_sets: {
+        status: 'measured' as const,
+        interpretation_sets_schema_version: 2 as const,
+        detected_count: 1,
+        covered_count: 1,
+        truncated_count: 0,
+        waived_count: 1,
+        sets: [
+          {
+            judgment_id: 'sig-remedial-1',
+            category: 'remedial' as const,
+            status: 'waived' as const,
+            detection_basis:
+              'remedy lexicon match on this block (per-block) + remedial_codex_query was ' +
+              'consulted somewhere in this turn (TURN-SCOPED consultation — not verified ' +
+              'specifically for this block)',
+            candidates: null,
+            selected_index: null,
+            selected_rationale: null,
+            falsifier: null,
+            waiver_reason: null,
+          },
+        ],
+        unavailable_reason: null,
+      },
+    }
+    const { receipt_hash: _old4, ...content } = tamperedContent
+    void _old4
+    const fixed = { ...content, receipt_hash: computeReceiptHash(content) }
+    const result = validateAcharyaReadingReceipt(fixed)
+    expect(result.ok).toBe(false)
+    expect(result.violations.some((v) => v.includes('waiver_reason is empty'))).toBe(true)
   })
 })

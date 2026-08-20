@@ -24,6 +24,7 @@ import type { ResolvedTurnCitation } from '@/lib/pariprashna/citations/stream_wi
 import type { CitationGrade } from '@/lib/pariprashna/citations/types'
 import type { OpenBlock, DetectedCitationRow } from '@/lib/pariprashna/pipeline/reading_parts'
 import { extractCitations } from '@/lib/citations/citation_data_part'
+import type { ReceiptInterpretationSets } from '@/lib/pariprashna/interpretation/schema'
 
 import {
   ACHARYA_READING_RECEIPT_SCHEMA_VERSION,
@@ -36,8 +37,19 @@ import {
   type ReceiptCalibrationDisclosure,
   type ReceiptProseBinding,
   type ReceiptProvenance,
+  type ReceiptConfidenceTyping,
+  type ReceiptPrecisionFlag,
 } from './schema'
 import { computeReceiptHash } from './hash'
+import {
+  typeClaimConfidence,
+  wasClassicalSourceConsulted,
+  evaluateEmpiricalCalibrationGate,
+  extractCalibrationSampleSize,
+  extractCalibrationPrecisionCandidates,
+  scanPrecision,
+  countDecimalPlaces,
+} from '@/lib/pariprashna/confidence'
 
 /**
  * Every registered L5 Mīmāṃsā capability whose handler actually reads
@@ -106,6 +118,22 @@ export interface AssembleAcharyaReadingReceiptArgs {
   safetyDecision?: SafetyDecision
   validToolResults: readonly ToolBundle[]
   provenanceStamp: TurnProvenanceStamp
+  /**
+   * Lane G3-B (PPR-02) additive extension. Already-assembled
+   * `interpretation/assemble.ts` output (or the caller's own
+   * `unavailableInterpretationSets(reason)` when the G3-B flag was off this
+   * turn). Omitted entirely (every pre-existing caller/fixture) -> this
+   * function supplies its OWN honest "never attempted" default below, so
+   * every pre-G3-B call site stays byte-for-byte unchanged in every OTHER
+   * field while still getting a well-formed (not absent) receipt field.
+   */
+  interpretationSets?: ReceiptInterpretationSets
+  /**
+   * Lane G3-C (PPR-03). Own flag, layered on top of receipt emission itself
+   * — defaults to `false` (unavailable) when omitted, so every pre-existing
+   * caller/test of this function is unaffected. See `confidence/flag.ts`.
+   */
+  typedConfidenceEnabled?: boolean
 }
 
 const CITATION_GRADES: readonly CitationGrade[] = [
@@ -265,6 +293,27 @@ function buildProseBinding(args: {
   }
 }
 
+/**
+ * Lane G3-B (PPR-02). The honest default when the caller supplies nothing —
+ * every pre-existing caller of this function (every fixture/test written
+ * before this lane) hits this branch and gets a well-formed `unavailable`
+ * field rather than an absent/undefined one, which is what lets
+ * `receipt/validate.ts`'s coherence check run uniformly over every FRESHLY
+ * ASSEMBLED receipt regardless of whether the caller knows about G3-B yet.
+ */
+function buildInterpretationSetsDefault(): ReceiptInterpretationSets {
+  return {
+    status: 'unavailable',
+    interpretation_sets_schema_version: null,
+    detected_count: null,
+    covered_count: null,
+    truncated_count: null,
+    waived_count: null,
+    sets: null,
+    unavailable_reason: 'interpretation-set generation did not run this turn (PARIPRASHNA_INTERPRETATION_SETS_ENABLED was off, or no value was supplied to the assembler)',
+  }
+}
+
 function buildProvenance(stamp: TurnProvenanceStamp): ReceiptProvenance {
   return {
     build_id: stamp.build_id,
@@ -273,6 +322,160 @@ function buildProvenance(stamp: TurnProvenanceStamp): ReceiptProvenance {
     ranking_config: { mode: stamp.ranking_config.mode },
     now_context_date: stamp.now_context_date,
     computed_at: stamp.computed_at,
+  }
+}
+
+/**
+ * Lane G3-C (PPR-03) — `confidence_typing`.
+ *
+ * Types every citation this turn detected (`citationsFound` — the SAME
+ * source `facts_consumed` already reads, never re-scanned a second way) via
+ * `typeClaimConfidence`, computes the real `empirically_calibrated`
+ * activation gate from this turn's own calibration-bearing tool results, and
+ * runs the T-8 precision scan over the precision-bearing numeric fields
+ * those same tool results served (see `extractCalibrationPrecisionCandidates`
+ * — G3BC hardening defect 2 fix: this used to read `ToolBundleResult.
+ * confidence`, a top-level field neither `query_calibration.ts` nor
+ * `query_insights.ts` ever populates, making the scan dead code against real
+ * production tool output; §N.8).
+ *
+ * The sample-size extraction is BEST-EFFORT and DEFENSIVE, grounded in a
+ * verified real serialization path: `registry/tool_name_bridge.ts`'s
+ * `toToolBundleResults` JSON.stringifies a capability handler's plain
+ * `content` object (no `results`/`content` sub-key) into a SINGLE
+ * `ToolBundleResult.content` string — exactly the shape
+ * `query_calibration.ts`/`query_insights.ts` return (`{ ...,
+ * verdict_distribution, calibration_summary, ... }`, no `results` key of
+ * their own). `JSON.parse` here can only fail on a genuine shape drift or a
+ * differently-wired tool; on failure this returns null/skips rather than
+ * guessing — the gate then honestly stays closed (see `activation_gate.ts`).
+ *
+ * G3BC hardening defect 3 fix: the sample size backing the
+ * `empirically_calibrated` activation gate is the MINIMUM sample size across
+ * this turn's contributing calibration-bearing tool RESULTS, never a SUM.
+ * Summing let two independent, unrelated calibration calls (e.g. two
+ * `query_insights` calls over different domains/strata, each n=15, neither
+ * individually meeting the activation threshold) combine into a
+ * turn-wide n=30 that incorrectly opened the gate for a claim really backed
+ * by only 15 relevant samples. This codebase does not thread a per-claim
+ * "which specific tool result backs THIS citation's typing" attribution
+ * through to receipt-assembly scope (the same turn-scoped-not-claim-scoped
+ * honesty boundary `type_claim.ts`'s `calibrationConsulted`/
+ * `classicalConsulted` already disclose for the OTHER two consultation-based
+ * types) — threading real per-claim tool-result attribution through the
+ * pipeline is a genuine, larger refactor out of scope for this hardening
+ * round, so MIN is the conservative fallback: it can never let a small,
+ * possibly-irrelevant sample borrow credibility from an unrelated larger
+ * one, at the cost of being more conservative than a true per-claim
+ * attribution would be (a real per-claim-backed sample size might legally
+ * exceed the minimum). Each bundle's OWN multiple results (rare — a single
+ * tool call ordinarily returns one result) still sum within that bundle,
+ * since they represent the SAME underlying call's own data; only the
+ * cross-bundle combination changed from sum to min.
+ */
+function extractCalibrationSummaryFromToolBundle(tb: ToolBundle): unknown[] {
+  const parsed: unknown[] = []
+  for (const r of tb.results) {
+    try {
+      parsed.push(JSON.parse(r.content))
+    } catch {
+      // Non-JSON content (e.g. a plain-text snippet from a non-calibration
+      // tool that happens to share the name) — honestly skip, never guess.
+    }
+  }
+  return parsed
+}
+
+function buildConfidenceTyping(args: {
+  enabled: boolean
+  citationsFound: readonly DetectedCitationRow[]
+  validToolResults: readonly ToolBundle[]
+}): ReceiptConfidenceTyping {
+  if (!args.enabled) {
+    return {
+      status: 'unavailable',
+      entries: null,
+      activation_gate: null,
+      precision_flags: null,
+      unavailable_reason: 'PARIPRASHNA_TYPED_CONFIDENCE_ENABLED was off this turn',
+    }
+  }
+
+  const calibrationBundles = args.validToolResults.filter((tb) =>
+    CALIBRATION_BEARING_TOOL_NAMES.includes(tb.tool_name),
+  )
+  const calibrationConsulted = calibrationBundles.length > 0
+  const toolNames = args.validToolResults.map((tb) => tb.tool_name)
+  const classicalConsulted = wasClassicalSourceConsulted(toolNames)
+
+  // sampleSize: MIN across contributing calibration-bearing tool RESULTS this
+  // turn (defect 3 fix — see doc comment above). null when no bundle yielded
+  // a real sample size.
+  let sampleSize: number | null = null
+  const precisionFlags: ReceiptPrecisionFlag[] = []
+  for (const tb of calibrationBundles) {
+    const payloads = extractCalibrationSummaryFromToolBundle(tb)
+    let tbSampleSize: number | null = null
+    for (const payload of payloads) {
+      // Sample size — same extraction as before, still summed WITHIN one
+      // bundle's own payloads (see doc comment: multiple results on the
+      // SAME bundle represent the same underlying call).
+      const extracted = extractCalibrationSampleSize(payload)
+      if (extracted !== null) {
+        tbSampleSize = (tbSampleSize ?? 0) + extracted
+      }
+      // T-8 precision scan (defect 2 fix) — read the precision-bearing
+      // value(s) from the PARSED content, never from the nonexistent
+      // top-level `ToolBundleResult.confidence`.
+      for (const candidate of extractCalibrationPrecisionCandidates(payload)) {
+        const scan = scanPrecision({
+          value: candidate.value,
+          servedDecimalPlaces: countDecimalPlaces(candidate.value),
+          // Prefer the candidate's OWN row-level sample size (e.g. a single
+          // verdict group's own `n`) over the bundle's aggregate — a more
+          // precise, more conservative pairing than falling back to
+          // `tbSampleSize` would be. Falls back to the bundle's own
+          // aggregate only when the candidate carries no row-level size of
+          // its own (e.g. the `calibration_summary` shape, which already
+          // pairs its value with its own `total_matches`).
+          sampleSize: candidate.sampleSize,
+        })
+        if (scan.overstated) {
+          precisionFlags.push({
+            tool_name: tb.tool_name,
+            overstated: scan.overstated,
+            max_supported_decimal_places: scan.max_supported_decimal_places,
+            served_decimal_places: scan.served_decimal_places,
+            sample_size: scan.sample_size,
+            band_label: scan.band_label,
+            demoted_value: scan.demoted_value,
+          })
+        }
+      }
+    }
+    if (tbSampleSize !== null) {
+      sampleSize = sampleSize === null ? tbSampleSize : Math.min(sampleSize, tbSampleSize)
+    }
+  }
+
+  const gate = evaluateEmpiricalCalibrationGate({ sampleSize })
+
+  const entries = args.citationsFound.map((c) =>
+    typeClaimConfidence({
+      ref: c.signal_id,
+      layer: c.layer,
+      calibrationConsulted,
+      calibrationGate: gate,
+      classicalConsulted,
+    }),
+  )
+
+  return {
+    status: 'measured',
+    entries,
+    activation_gate: gate,
+    precision_flags: precisionFlags,
+    unavailable_reason: null,
   }
 }
 
@@ -363,6 +566,12 @@ export function assembleAcharyaReadingReceipt(
       accumulatedText: args.accumulatedText,
     }),
     provenance: buildProvenance(args.provenanceStamp),
+    interpretation_sets: args.interpretationSets ?? buildInterpretationSetsDefault(),
+    confidence_typing: buildConfidenceTyping({
+      enabled: args.typedConfidenceEnabled ?? false,
+      citationsFound: args.citationsFound,
+      validToolResults: args.validToolResults,
+    }),
   }
 
   return {

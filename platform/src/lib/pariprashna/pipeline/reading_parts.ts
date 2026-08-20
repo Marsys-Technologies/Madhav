@@ -30,6 +30,7 @@ import {
   type PreWireSentenceRule,
 } from '@/lib/pariprashna/safety/phrasing_scan'
 import { classifyCommittedBlock, type BlockClassification } from '@/lib/pariprashna/semantics/block_classifier'
+import { lintVoiceProse } from '@/lib/pariprashna/voice/voice_lint'
 import type { MessagePartInput } from '@/lib/pariprashna/store/schema'
 import {
   textPartFromBlock,
@@ -118,6 +119,23 @@ export class ReadingPartsAssembler {
      * (and every test that constructs this class positionally) is unaffected.
      */
     private readonly onBlockCommitLagMs: (lagMs: number) => void = () => {},
+    /**
+     * Lane G3-D (P2-L, PPR-04). When true, `commitBlock` runs the voice-
+     * enforcement lint (`voice/voice_lint.ts`) over every PROSE block as the
+     * whole-block backstop to the per-delta pass in `synthesis_stage.ts` —
+     * chained immediately after the register-leak lint above, in the SAME
+     * commit-time pass, not a second scan. Default false so every pre-existing
+     * caller (and the flag-OFF path) is byte-for-byte unchanged.
+     */
+    private readonly voiceEnforcementEnabled = false,
+    /**
+     * Lane G3-D. The turn-level "difficult finding" proxy (see
+     * `voice/pacing.ts`'s `isDifficultFindingActive`) — gates the
+     * probability-framing rewrite and the uncertainty-before-severity check
+     * inside the voice lint. Default false; ignored when
+     * `voiceEnforcementEnabled` is false.
+     */
+    private readonly difficultFindingActive = false,
   ) {
     this.passId = initialPassId
   }
@@ -282,6 +300,27 @@ export class ReadingPartsAssembler {
                 ? this.currentBlock.text
                 : scanMortalityPhrasing(rawBlockText, scanOptions).clean
             this.syncAccumulated(rawBlockText, replacement)
+          }
+        }
+        // Lane G3-D (P2-L, PPR-04) — voice enforcement, the whole-block
+        // backstop. Chained immediately after the register-leak lint and the
+        // pre-wire scans above, in this SAME commit-time pass — not a second
+        // walk over the block — mirroring exactly how the register-leak lint
+        // itself pairs a per-delta first line (`synthesis_stage.ts`) with this
+        // whole-block backstop for a pattern split across a delta boundary.
+        // Runs on the FINAL text those scans produced, so it never sees a
+        // since-redacted copy. Never fails the turn: `lintVoiceProse` never
+        // throws (same backstop-of-the-backstop discipline as
+        // `lintReaderProse`).
+        if (this.voiceEnforcementEnabled) {
+          const beforeVoice = this.currentBlock.text
+          const voice = lintVoiceProse(beforeVoice, { difficultFinding: this.difficultFindingActive })
+          if (voice.clean !== beforeVoice) {
+            this.currentBlock.text = voice.clean
+            this.syncAccumulated(beforeVoice, voice.clean)
+          }
+          for (const f of voice.flags) {
+            this.em.flag({ code: f.code, level: f.level, detail: f.detail })
           }
         }
       }
