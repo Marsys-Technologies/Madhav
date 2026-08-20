@@ -1,10 +1,10 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 12,
+  "event_count": 16,
   "findings": {},
   "findings_terminal_count": 0,
-  "journal_head_seq": 12,
-  "journal_head_sha256": "3326b7565516bc37ac17afaa185b8cc5df8d9edff0bcb416ce40142bb293847d",
+  "journal_head_seq": 16,
+  "journal_head_sha256": "495c976d55074762117d388a26fd534a1044bab95c093ada9d7023eb6f9261e6",
   "p1_steps": {
     "bridge_commit_preserved": {
       "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
