@@ -12,6 +12,10 @@ function makeVerdict(statement: string): Record<string, unknown> {
   return { statement }
 }
 
+function makeVerdictWithSupport(statement: string, n_support: number): Record<string, unknown> {
+  return { statement, n_support }
+}
+
 // 14 conditional (grades 3.8..5.9) + 13 promised (grades 6.0..9.0) = 27, 0 denied.
 // Intentionally scrambled: highest conditional (5.9) is first so sort is actually tested.
 const fixture27: Record<string, unknown>[] = [
@@ -82,5 +86,40 @@ describe('F-135 — buildRankedThemes weaknesses_empty_reason + grade sort', () 
     const result = buildRankedThemes(fixtureWithDenied, 'native')
     expect(result.weaknesses.length).toBeGreaterThan(0)
     expect(result.weaknesses_empty_reason).toBeNull()
+  })
+
+  // GA-5 review finding on #1385: the original weaknesses_empty_reason hardcoded a claim
+  // ('no event class scored below the denied ceiling, grade < 2.0/10') that is FALSE for
+  // exactly this case -- a denied row with a real grade above that ceiling, suppressed only
+  // because n_support=0. The reason must name this cause honestly instead.
+  it('a denied-but-zero-support row is excluded from weaknesses, and the reason names it (not a fabricated grade-ceiling claim)', () => {
+    const fixture: Record<string, unknown>[] = [
+      makeVerdictWithSupport('Career Setback: denied (grade 5.0/10).', 0),
+      makeVerdict('Longevity: promised (grade 6.0/10).'),
+    ]
+    const result = buildRankedThemes(fixture, 'native')
+    expect(result.weaknesses).toEqual([])
+    expect(result.weaknesses_empty_reason).not.toBeNull()
+    expect(result.weaknesses_empty_reason).toContain('1 event class')
+    expect(result.weaknesses_empty_reason).toContain('n_support=0')
+    // the old fabricated claim must NOT be present
+    expect(result.weaknesses_empty_reason).not.toContain('below the denied ceiling')
+    expect(result.weaknesses_empty_reason).not.toContain('2.0/10')
+    // the zero-support row still surfaces its own honest flag
+    expect(result.verdict_quality_flags.some(f => f.includes('n_support=0'))).toBe(true)
+  })
+
+  it('a no_evidence row is counted in the reason and sorts LAST in open_questions (null-grade branch coverage)', () => {
+    const fixture: Record<string, unknown>[] = [
+      makeVerdict('Property Acquisition: conditional (grade 3.8/10).'),
+      makeVerdict('Foreign Litigation: no evidence available for this event class — cannot assess.'),
+      makeVerdict('Longevity: promised (grade 6.0/10).'),
+    ]
+    const result = buildRankedThemes(fixture, 'native')
+    // the null-graded (no_evidence) entry must sort after the graded conditional one
+    expect(result.open_questions.length).toBe(2)
+    expect(result.open_questions[0]).toContain('Property Acquisition')
+    expect(result.open_questions[1]).toContain('Foreign Litigation')
+    expect(result.weaknesses_empty_reason).toContain('1 class(es) have no evidence available')
   })
 })
