@@ -49,6 +49,7 @@ import { StreamingMortalityScanner } from '@/lib/pariprashna/safety/phrasing_sca
 import { PREWIRE_REDACTION_NOTICE } from '@/lib/pariprashna/safety/fixed_responses'
 import type { SafetyDecision } from '@/lib/pariprashna/safety'
 import { isInjectionContainmentEnabled } from '@/lib/pariprashna/injection/flag'
+import { isSemanticBlocksEnabled } from '@/lib/pariprashna/semantics/flag'
 import {
   buildEntitlementScanRules,
   containRetrievedEvidence,
@@ -305,7 +306,13 @@ export async function runSynthesisStage(args: {
   const mortalityRulesEnabled = args.safetyDecision?.enforced === true
   const prewireArmed = mortalityRulesEnabled || entitlementRules.length > 0
 
-  const assembler = new ReadingPartsAssembler(em, PASS_ONE, mortalityRulesEnabled, entitlementRules)
+  const assembler = new ReadingPartsAssembler(
+    em,
+    PASS_ONE,
+    mortalityRulesEnabled,
+    entitlementRules,
+    isSemanticBlocksEnabled(),
+  )
   let proseSeenInPass = false
   let awaitingResume = false
   let lastToolInSeam = ''

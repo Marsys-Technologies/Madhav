@@ -29,6 +29,7 @@ import {
   scanMortalityPhrasing,
   type PreWireSentenceRule,
 } from '@/lib/pariprashna/safety/phrasing_scan'
+import { classifyCommittedBlock } from '@/lib/pariprashna/semantics/block_classifier'
 import type { MessagePartInput } from '@/lib/pariprashna/store/schema'
 import {
   textPartFromBlock,
@@ -82,9 +83,27 @@ export class ReadingPartsAssembler {
      * other when only this one is populated.
      */
     private readonly preWireExtraRules: readonly PreWireSentenceRule[] = [],
+    /**
+     * Lane P2-A (G2-A). When true, `commitBlock` runs the deterministic
+     * commit-time semantic classifier over every PROSE block and carries its
+     * `kind`/`role`/`content`/`table`/`gap_text` on the `block.commit` event.
+     * Default false so every pre-existing caller (and the flag-OFF path) is
+     * byte-for-byte unchanged — the event carries exactly `{ block_id, text }`,
+     * same as before this lane.
+     */
+    private readonly semanticBlocksEnabled = false,
   ) {
     this.passId = initialPassId
   }
+
+  /** The pass id of the last PROSE block this assembler committed — `-1`
+   *  before any prose has committed. Used only when `semanticBlocksEnabled`
+   *  is true, to derive the structural "is this the first prose block of its
+   *  pass" signal `classifyRole` needs, without any external wiring change:
+   *  `passId` is already advanced by the synthesis stage on a real pass
+   *  boundary (see synthesis_stage.ts), so comparing against it here is
+   *  self-contained. */
+  private lastProsePassSeen = -1
 
   /** Every scrubbed PROSE delta, concatenated. Thinking text is excluded. */
   get accumulatedText(): string {
@@ -236,7 +255,27 @@ export class ReadingPartsAssembler {
           }
         }
       }
-      this.em.blockCommit({ block_id: this.currentBlock.id, text: this.currentBlock.text })
+      // Lane P2-A (G2-A): commit-time semantic classification, PROSE blocks
+      // only (a 'thinking' block is never reader-rendered and must never be
+      // classified as if it were). Computed from `this.currentBlock.text`
+      // AFTER the lint/pre-wire scans above, so classification runs on the
+      // exact text that reaches the wire, never on a since-redacted copy.
+      if (this.semanticBlocksEnabled && this.currentBlock.role === 'prose') {
+        const isFirstProseInPass = this.passId !== this.lastProsePassSeen
+        this.lastProsePassSeen = this.passId
+        const classification = classifyCommittedBlock(this.currentBlock.text, { isFirstProseInPass })
+        this.em.blockCommit({
+          block_id: this.currentBlock.id,
+          text: this.currentBlock.text,
+          kind: classification.kind,
+          role: classification.role,
+          content: classification.content,
+          table: classification.table,
+          gap_text: classification.gapText,
+        })
+      } else {
+        this.em.blockCommit({ block_id: this.currentBlock.id, text: this.currentBlock.text })
+      }
       this.committedBlocks.push({
         id: this.currentBlock.id,
         role: this.currentBlock.role,
