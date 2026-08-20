@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 832,
+  "event_count": 834,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1568,20 +1568,19 @@
       "terminal_status": null
     },
     "F-68": {
-      "branch": "parisesa/repair-F68-tier-honesty",
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "aeccec306e94369e358667026eca1266a427ec61847d669ecdf744da2aa88fa9",
+      "disposition": "FIXED",
+      "event_sha256": "a9291b47061b0ff94cf8b7bbb09563737578d3e527b9549154b3b5bb02be4271",
       "event_type": "finding_status",
-      "evidence_summary": "PR #1378 opened and frozen -- tier-honesty leak fix, quarantined candidate reviewed and either recovered or rebuilt (see phase0/rebase_f68.json for full detail).",
+      "evidence_summary": "PR #1378 merged (31efce9eec389d803712b2f78c108e35191629e9): query_predictive_anchors.ts row-shaping gated on confidence_basis; posterior/confidence_low/confidence_high/lift_vector_jsonb/posterior_provenance nulled unless calibrated. Cherry-pick of pre-existing reviewed+ratified fix ca1032135 onto fresh main; GA-5 independent review + adversarial pre-merge review passed; exit test p3b_predictive_anchors_suppression.test.ts (4 cases) added. (corrective re-emit: prior seq 833 event used malformed key \"event\" instead of \"event_type\" and was ignored by rebuild_ledger -- self-caught, harmless no-op entry left in place per append-only discipline.)",
       "finding_id": "F-68",
-      "next_action": "owner reviews and merges PR #1378 at morning checkpoint",
+      "next_action": "none - terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1378",
-      "prev_sha256": "495df80d09a2e6c9ebbae6514984eeb8f8ad7ad225d733e42af44171c9801b03",
-      "seq": 703,
-      "source_batch": "rebase_f68",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "470e47d8681006f0a67b90c9dd8e481a0e6f2c1270ad36bc3240acf39c8d82d3",
+      "seq": 834,
+      "source_batch": "PARISESA-V4-GA5-MERGE-WAVE",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-69": {
       "branch": "parisesa/repair-F69-rebase",
@@ -2025,10 +2024,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 11,
-  "findings_terminal_count": 102,
-  "journal_head_seq": 832,
-  "journal_head_sha256": "6d5557f463ba26730d5ad7b9f6797dd866468bf1697f68de91ccf1cfcf43d2fc",
+  "findings_morning_ship_ready_count": 10,
+  "findings_terminal_count": 103,
+  "journal_head_seq": 834,
+  "journal_head_sha256": "a9291b47061b0ff94cf8b7bbb09563737578d3e527b9549154b3b5bb02be4271",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
