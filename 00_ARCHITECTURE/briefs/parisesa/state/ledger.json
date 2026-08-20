@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 808,
+  "event_count": 817,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -482,36 +482,34 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-121": {
-      "branch": "parisesa/repair-F121-rebase",
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "774ddb3f25cb30ae3ba128ffe267864b9b4cb19c16c9e8ba7d5cd1ab44630640",
+      "disposition": "LANDED",
+      "event_sha256": "a68bbdd91ca5220661a644c095b8f9cacaf595d15fbf0afc146617f70e1b8e17",
       "event_type": "finding_status",
-      "evidence_summary": "All 4 Opus-review defects genuinely fixed on PR #1366: (1) mock now filters by max_level, verified to actually catch a reverted fix; (2) fixture restored to the real 12-day observed span, band-width math re-verified honest (not re-engineered); (3) LEVEL_NAME extended to include Sukshmadasha per an established sibling-file precedent; (4) citation corrected to the DB-enforced cd_level_n_max4 constraint. 10/10 + 4/4 tests genuinely green (confirmed via deliberate revert-and-confirm-fail methodology), tsc/eslint clean.",
+      "evidence_summary": "PR #1366 merged to main under v3.0 full-autonomy authority, squash commit 407243b4cb3c49d619483c6e59c4988545b2b192. Went through GA-5 (independent Opus-5 adversarial pre-merge review; real defects found and fixed pre-merge on this finding's PR in most cases -- see the campaign journal's GA-5 batch entries for the specific finding-and-fix detail per PR) before merge. Confirmed merged via gh pr view --json state,mergeCommit.",
       "finding_id": "F-121",
-      "next_action": "owner reviews and merges PR #1366 at morning checkpoint -- now genuinely ready, not just CI-green",
+      "next_action": "none, terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1366",
-      "prev_sha256": "002df96a8e29dd5c54e272565a98a8fbbad0bcd5ebc752b552cff9b369ba6542",
-      "seq": 775,
-      "source_batch": "fix_f121",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "cb295fc39dba1cb40eadbd8e486f06acfe2fdda6f3eb523de12b9f060298f682",
+      "seq": 809,
+      "source_batch": "v3_full_autonomy_ga5_merges",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-122": {
-      "branch": "parisesa/repair-F122-rebase",
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "1cd8b2d1f4291a63d6f7d4cae6beceadd1f6eeb13a415edf2d7906763b8f77d3",
+      "disposition": "LANDED",
+      "event_sha256": "e4c0cb0fb9055e5e82783e505996628d978017a6ad16b1be050c4dad75fe4fa9",
       "event_type": "finding_status",
-      "evidence_summary": "All 4 Opus-review defects genuinely fixed on PR #1368: (1) core aliasing bug fixed via deep-copy (cloneJudgmentLedgerForCandidate), new adversarial test proves it (fails cleanly pre-fix with wrong counts, passes post-fix), verified via temporary revert-and-confirm-fail; (2) pareto candidate-id arrays synced post-trim, with an explicit documented reason for why gap_report/density are deliberately left unsynced; (3) the hollow ekv_controls.py detector went through 2 fix passes -- an independent code-reviewer caught a real blind spot in the first attempt (800-char lookahead window bleeding into adjacent sections), fixed with a proper comment/string-aware brace-matching parser, verified via scripted mutation testing; (4) misleading density-order comment corrected to describe the actual hardFloor-tier + byte-size sort behavior. A pre-existing test's budget_kb was legitimately retuned (documented why) since it had unknowingly relied on the bug. Independent code-reviewer caught and fixed 2 real issues before commit.",
+      "evidence_summary": "PR #1368 merged to main under v3.0 full-autonomy authority, squash commit 183c3101b8ca40e720673d98718ff8d63e9006cb. Went through GA-5 (independent Opus-5 adversarial pre-merge review; real defects found and fixed pre-merge on this finding's PR in most cases -- see the campaign journal's GA-5 batch entries for the specific finding-and-fix detail per PR) before merge. Confirmed merged via gh pr view --json state,mergeCommit.",
       "finding_id": "F-122",
-      "next_action": "owner reviews and merges PR #1368 at morning checkpoint -- now genuinely ready, not just CI-green",
+      "next_action": "none, terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1368",
-      "prev_sha256": "774ddb3f25cb30ae3ba128ffe267864b9b4cb19c16c9e8ba7d5cd1ab44630640",
-      "seq": 776,
-      "source_batch": "fix_f122",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "a68bbdd91ca5220661a644c095b8f9cacaf595d15fbf0afc146617f70e1b8e17",
+      "seq": 810,
+      "source_batch": "v3_full_autonomy_ga5_merges",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-123": {
       "branch": "parisesa/repair-F123-dead-pointer",
@@ -546,20 +544,19 @@
       "terminal_status": null
     },
     "F-125": {
-      "branch": "parisesa/repair-F125-orientation-export",
       "confidence": "HIGH",
-      "disposition": "UNKNOWN",
-      "event_sha256": "c50c5765a6c3366386f6958773de6c2c8bd9f6c842b2725d6d9cea26058d25b8",
+      "disposition": "LANDED",
+      "event_sha256": "4b26d9e496d548852a52b498467436f4f168f0d23819ffc3476b235bc921d549",
       "event_type": "finding_status",
-      "evidence_summary": "Ratified spec (sections 2a/2b/2c) implemented against current main after re-verifying the diagnosis still held (fetchOrientationContext still unexported, line shifted 2061->2019 from intervening edits). 8/8 new tests passing, all 6 regression assertions independently confirmed to genuinely fail pre-fix (not vacuous, verified via git stash). One deliberate documented deviation from literal spec: skipped the orientation merge on mortality-exclusion refusal to preserve gate G16's stronger 'refusal makes zero network calls before any await' invariant -- the literal spec text would have silently broken that. Full suite before/after diffed byte-identical on pre-existing failures (93 lines both), zero new regressions.",
+      "evidence_summary": "PR #1387 merged to main under v3.0 full-autonomy authority, squash commit edf775884a89aee11e53c5a3e20eec6b68d8a4b6. Went through GA-5 (independent Opus-5 adversarial pre-merge review; real defects found and fixed pre-merge on this finding's PR in most cases -- see the campaign journal's GA-5 batch entries for the specific finding-and-fix detail per PR) before merge. Confirmed merged via gh pr view --json state,mergeCommit.",
       "finding_id": "F-125",
-      "next_action": "owner reviews and merges PR #1387 at morning checkpoint",
+      "next_action": "none, terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1387",
-      "prev_sha256": "b4bec6eb921a4ab279a7861c3f707ccac7d2a9a6c2e0f80f3210c91eebae4bab",
-      "seq": 744,
-      "source_batch": "rebase_f125",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "ecba183652bb52d5ec2b68d5d9ad1e81bceba60e3f035110cc5817517222f4d2",
+      "seq": 816,
+      "source_batch": "v3_full_autonomy_ga5_merges",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-126": {
       "confidence": "HIGH",
@@ -708,20 +705,19 @@
       "terminal_status": null
     },
     "F-135": {
-      "branch": "parisesa/repair-F135-rebase",
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "4fc5599674066eee9482c7048da805e2e9e53008dda36143fdd04d28bd3d36bc",
+      "disposition": "LANDED",
+      "event_sha256": "ecba183652bb52d5ec2b68d5d9ad1e81bceba60e3f035110cc5817517222f4d2",
       "event_type": "finding_status",
-      "evidence_summary": "buildRankedThemes returned empty weaknesses[] with no signal for WHY -- silent-gap defect (chart with 0 denied but many conditional classes read as 'nothing wrong' vs honest 'nothing confirmed'). Fix adds weaknesses_empty_reason (null when non-empty; else states conditional-band count + lowest grade), sorts open_questions by grade. Traced new logic to already-validated provenance paths (no new L1/L5 re-derivation, holds SS N.5/N.7). Confirmed exit test exercises the real parseStatement fallback path, not a mock. Clean rebase, 6/6 target + 17/17 related tests + tsc clean; 25 pre-existing unrelated failures verified identical on a clean main baseline.",
+      "evidence_summary": "PR #1385 merged to main under v3.0 full-autonomy authority, squash commit 09aacac3f3967c07d290e64e6cb48de981b7b795. Went through GA-5 (independent Opus-5 adversarial pre-merge review; real defects found and fixed pre-merge on this finding's PR in most cases -- see the campaign journal's GA-5 batch entries for the specific finding-and-fix detail per PR) before merge. Confirmed merged via gh pr view --json state,mergeCommit.",
       "finding_id": "F-135",
-      "next_action": "owner reviews and merges PR #1385 at morning checkpoint",
+      "next_action": "none, terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1385",
-      "prev_sha256": "b71e6efb9dce0482dfed10439c97a697e594df42bacb3c510e52bfa6c8db8f0b",
-      "seq": 707,
-      "source_batch": "rebase_f135",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "081e0e129deb67284bed55b2177685c427310e1571ffcc55a1b67e7ef05c6a08",
+      "seq": 815,
+      "source_batch": "v3_full_autonomy_ga5_merges",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-136": {
       "confidence": "MEDIUM",
@@ -780,20 +776,19 @@
       "terminal_status": null
     },
     "F-14": {
-      "branch": "parisesa/repair-F14-F124-domain-depth",
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "2fa2eb9f4783f1bda860e1467513ef832043c46f17e03196a6b9f776dd1d53cd",
+      "disposition": "LANDED",
+      "event_sha256": "081e0e129deb67284bed55b2177685c427310e1571ffcc55a1b67e7ef05c6a08",
       "event_type": "finding_status",
-      "evidence_summary": "Reconciled with F-124 (both touched the exact same DOMAIN_READING_FAMILIES/attachDomainCompleteness lines). F-124's map/label/type-safety structure kept as base, F-14's exclusive honest-null domain_completeness_empty_reason disclosure layered in (ported to current, since-evolved buildAssessResponse). tsc clean, full vitest before/after diffed byte-identical on pre-existing failures (zero regressions), +6 new passing tests. PR #1382 covers both F-14 and F-124 -- neither should be re-attempted separately.",
+      "evidence_summary": "PR #1382 merged to main under v3.0 full-autonomy authority, squash commit 951990f7886b6d569045998ef1824e2d4f54c0ea. Went through GA-5 (independent Opus-5 adversarial pre-merge review; real defects found and fixed pre-merge on this finding's PR in most cases -- see the campaign journal's GA-5 batch entries for the specific finding-and-fix detail per PR) before merge. Confirmed merged via gh pr view --json state,mergeCommit.",
       "finding_id": "F-14",
-      "next_action": "owner reviews and merges PR #1382 at morning checkpoint",
+      "next_action": "none, terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1382",
-      "prev_sha256": "39e4532005d3a6f9c9a6a7e1fff06cec1e6e41bd3c4f07d3e930e36c8929c352",
-      "seq": 701,
-      "source_batch": "rebase_f14_f124",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "19dd99aa9751a511d3b37b2c456226b7c7207117eb4e72ae4815007466a572d9",
+      "seq": 814,
+      "source_batch": "v3_full_autonomy_ga5_merges",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-140": {
       "confidence": "HIGH",
@@ -965,34 +960,33 @@
     },
     "F-25": {
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "f3ad4bd1ebac369fc8017ec51604a0fb4370576fd6e7ece873c85ef6c1916d75",
+      "disposition": "LANDED",
+      "event_sha256": "19dd99aa9751a511d3b37b2c456226b7c7207117eb4e72ae4815007466a572d9",
       "event_type": "finding_status",
-      "evidence_summary": "Opus review (ESC-001) confirmed PR #1371 is safe to merge as-is, zero regression risk -- but re-labeled: principal.role never crosses the wire on this path (only X-MCP-User/X-MCP-Key-Id do), so the hardcoded super_admin was an AUDIT-ATTRIBUTION defect (every call mis-logged as system), not an authorization bypass as originally described. Correcting the PR body to match.",
+      "evidence_summary": "PR #1371 merged to main under v3.0 full-autonomy authority, squash commit b5387c7799d9ba5f3547d64a8c2aa1009527bb65. Went through GA-5 (independent Opus-5 adversarial pre-merge review; real defects found and fixed pre-merge on this finding's PR in most cases -- see the campaign journal's GA-5 batch entries for the specific finding-and-fix detail per PR) before merge. Confirmed merged via gh pr view --json state,mergeCommit.",
       "finding_id": "F-25",
-      "next_action": "correct PR #1371 body severity language, then genuinely ready for owner merge",
+      "next_action": "none, terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1371",
-      "prev_sha256": "211abaf214011544cf135a55d4c66d1546a4ddce6bc90b4468cfe7aafce0ad6b",
-      "seq": 642,
-      "source_batch": "esc001_review",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "974adea822013358fc1816cb66ee25315fa21c6d945ff3fee405eaa4852b9256",
+      "seq": 813,
+      "source_batch": "v3_full_autonomy_ga5_merges",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-26": {
-      "branch": "parisesa/repair-F26-lel-honest-disclosure",
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "ed1fb0874ea9bcb0eea86c41734d4309929536c12f5bde19ff6e84baf45450f7",
+      "disposition": "LANDED",
+      "event_sha256": "974adea822013358fc1816cb66ee25315fa21c6d945ff3fee405eaa4852b9256",
       "event_type": "finding_status",
-      "evidence_summary": "Original branch no longer existed on origin -- implemented fresh from a complete independently-ratified sibling spec (results/ingested/F-26.*.json) after confirming root cause still present. Fix: kala_life_arc_get no longer falsely advertises include_lel_events (lel_capable:false). Also fixed a real spec inconsistency (guard comment broke its own exit test). 2/2 tests passing, tsc clean. Independent corroboration of IF-001 (cfb6444c8's most recent touch to this file is at an unrelated line region).",
+      "evidence_summary": "PR #1370 merged to main under v3.0 full-autonomy authority, squash commit a4ea9a8ff4531c5ba5473a82477682716695b5c1. Went through GA-5 (independent Opus-5 adversarial pre-merge review; real defects found and fixed pre-merge on this finding's PR in most cases -- see the campaign journal's GA-5 batch entries for the specific finding-and-fix detail per PR) before merge. Confirmed merged via gh pr view --json state,mergeCommit.",
       "finding_id": "F-26",
-      "next_action": "owner reviews and merges PR #1370 at morning checkpoint",
+      "next_action": "none, terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1370",
-      "prev_sha256": "c63521c3bd7c5a98441d1bdbd861b0096185f04e0670f27b5817c1840678c5c9",
-      "seq": 242,
-      "source_batch": "rebase_f26",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "d468f1dcc6d59e1730eee3f28ff0f75a0b9d528fbef413fe82c03ff7f0d56e4b",
+      "seq": 812,
+      "source_batch": "v3_full_autonomy_ga5_merges",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-27": {
       "confidence": "HIGH",
@@ -1079,20 +1073,19 @@
       "terminal_status": "CONTROL_CLOSED"
     },
     "F-33": {
-      "branch": "parisesa/repair-F33-recovery",
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "89b5fecee69d7bb958db277ec90a00378f01007da1b4d0abb8af9bb83a29e4f0",
+      "disposition": "LANDED",
+      "event_sha256": "d468f1dcc6d59e1730eee3f28ff0f75a0b9d528fbef413fe82c03ff7f0d56e4b",
       "event_type": "finding_status",
-      "evidence_summary": "Recovered dangling commit e9bd4f58e3 (pre-birth as_of_date disclosure fix) via cherry-pick onto current origin/main. Fix: get_dashas.ts adds as_of_date_precedes_chart_birth judgment flag + temporal_context block, disclosure only, no data mutation. 2/2 tests passing, tsc clean on changed files. Independently reviewed a query-consolidation refactor in the diff for regressions -- none found.",
+      "evidence_summary": "PR #1369 merged to main under v3.0 full-autonomy authority, squash commit 55deab68b031fc386080f9995a04e05988c557e8. Went through GA-5 (independent Opus-5 adversarial pre-merge review; real defects found and fixed pre-merge on this finding's PR in most cases -- see the campaign journal's GA-5 batch entries for the specific finding-and-fix detail per PR) before merge. Confirmed merged via gh pr view --json state,mergeCommit.",
       "finding_id": "F-33",
-      "next_action": "owner reviews and merges PR #1369 at morning checkpoint",
+      "next_action": "none, terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1369",
-      "prev_sha256": "ed1fb0874ea9bcb0eea86c41734d4309929536c12f5bde19ff6e84baf45450f7",
-      "seq": 243,
-      "source_batch": "rebase_f33",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "e4c0cb0fb9055e5e82783e505996628d978017a6ad16b1be050c4dad75fe4fa9",
+      "seq": 811,
+      "source_batch": "v3_full_autonomy_ga5_merges",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-34": {
       "confidence": "HIGH",
@@ -1459,20 +1452,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-60": {
-      "branch": "parisesa/repair-F60-total-count-fix",
       "confidence": "HIGH",
-      "disposition": "OPEN",
-      "event_sha256": "ac94ea0289c0bb680c41055531b6c589ceca2c162f55874653039e20a92dd19b",
+      "disposition": "LANDED",
+      "event_sha256": "71775ef92b3e1895d5e5554c87eb6f2f6cd0ed747241112bb7406445a368fb8b",
       "event_type": "finding_status",
-      "evidence_summary": "Real defect confirmed and fixed: get_strength.ts silently capped limit to 2000 and reported total=servedRows.length (post-cap/post-offset page length masquerading as true count). Fix adds a genuine pre-LIMIT/OFFSET COUNT(*) as total_available, plus limit_capped/requested_limit/note_limit_cap disclosure when the cap is hit. Additive-only: grepped all callers, confirmed none read `total` as a true count, existing field semantics unchanged. 4/4 new tests fail pre-fix / pass post-fix, 2/2 + 14/14 regression suites pass, tsc/eslint clean.",
+      "evidence_summary": "PR #1388 merged to main under v3.0 full-autonomy authority, squash commit d3784353335cb24b3ed5da137bd181b71de8d696. Went through GA-5 (independent Opus-5 adversarial pre-merge review; real defects found and fixed pre-merge on this finding's PR in most cases -- see the campaign journal's GA-5 batch entries for the specific finding-and-fix detail per PR) before merge. Confirmed merged via gh pr view --json state,mergeCommit.",
       "finding_id": "F-60",
-      "next_action": "owner reviews and merges PR #1388 at morning checkpoint",
+      "next_action": "none, terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1388",
-      "prev_sha256": "c50c5765a6c3366386f6958773de6c2c8bd9f6c842b2725d6d9cea26058d25b8",
-      "seq": 745,
-      "source_batch": "rebase_f60",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "4b26d9e496d548852a52b498467436f4f168f0d23819ffc3476b235bc921d549",
+      "seq": 817,
+      "source_batch": "v3_full_autonomy_ga5_merges",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-61": {
       "confidence": "HIGH",
@@ -2033,10 +2025,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 21,
-  "findings_terminal_count": 85,
-  "journal_head_seq": 808,
-  "journal_head_sha256": "cb295fc39dba1cb40eadbd8e486f06acfe2fdda6f3eb523de12b9f060298f682",
+  "findings_morning_ship_ready_count": 12,
+  "findings_terminal_count": 94,
+  "journal_head_seq": 817,
+  "journal_head_sha256": "71775ef92b3e1895d5e5554c87eb6f2f6cd0ed747241112bb7406445a368fb8b",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
