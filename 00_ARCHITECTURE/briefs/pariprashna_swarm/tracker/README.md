@@ -424,6 +424,22 @@ the local network. Do not port-forward or tunnel it.**
   of the mirror's `main`) produces an `anomaly` event and never moves a completion count —
   same for a `gh`-vs-mirror merge-commit divergence (see "Ref freshness" above).
 
+## Operational hazards (for whoever runs this by hand)
+
+- **Scratch cleanup deletes by exact filename only — never `rm -rf` a directory that
+  contains tracked files.** During the 2026-08-20 PARIPRASHNA-CLOSEOUT session, cleaning up
+  two local adhoc `drift_detector.py` scratch-output files with
+  `rm -rf 00_ARCHITECTURE/drift_reports/` deleted the entire tracked directory — 166
+  committed historical files, not just the 2 scratch ones — because that directory holds
+  both. Caught via `git status` before anything was committed, restored with
+  `git checkout -- 00_ARCHITECTURE/drift_reports/`, verified restored, then the two actual
+  scratch files were removed by exact name (`rm <file1> <file2>`). No harm done, but it cost
+  a full stop-and-restore cycle that a one-line habit would have avoided. Recording it here
+  so the next session doesn't rediscover it the same way: when a script writes scratch
+  output into a directory that also holds tracked files (this repo has several such
+  directories — check `git status` on the directory *before* deleting anything in it, every
+  time), delete by exact filename, never by directory.
+
 ## Known, honestly-scoped gaps (not silently dropped — logged here, §N.6)
 
 - **T4's `crontab` installation step is not selftested** (see "(c) T4" above) — mutating the
