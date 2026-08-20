@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 834,
+  "event_count": 835,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1583,20 +1583,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-69": {
-      "branch": "parisesa/repair-F69-rebase",
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "b4bec6eb921a4ab279a7861c3f707ccac7d2a9a6c2e0f80f3210c91eebae4bab",
+      "disposition": "FIXED",
+      "event_sha256": "a6251a176c543d597eeb73f88447b2a39a270e675f07150db0e9745643c8379e",
       "event_type": "finding_status",
-      "evidence_summary": "Rebase of ratified commit c872d8372 onto current main (dc78e82df) -- zero conflicts, git's 3-way merge correctly interleaved with F-35's since-landed evidence_grade_counts block. Independently re-verified 3 semantic correctness points beyond the clean merge: evidence_grade_counts computed from pre-suppression rows (correct), F-35's new 'assignment_only' tier correctly falls into F-69's non-calibrated suppression (not an oversight), embeddings fix scoping to mode=nearest remains complete. 3/3 targeted + 120/120 layer suite pass, tsc/eslint clean.",
+      "evidence_summary": "PR #1386 merged (cb28ee255ca5cff9de85b1e02bd326a1c24dc5fd): query_insights.ts / query_insight_embeddings.ts numeric rank/confidence/grade + embedded-numeric-evidence text redacted under non-calibrated evidence_grade (EMBEDDED_NUMERIC_EVIDENCE_PATTERNS, 5 shapes, shared exported redactEmbeddedNumericEvidence()); suppressIfNotCalibrated also nulls provenance_chain.propensity alongside .grade. GA-5 independent review + adversarial pre-merge review passed; mutation-tested across multiple rounds.",
       "finding_id": "F-69",
-      "next_action": "owner reviews and merges PR #1386 at morning checkpoint",
+      "next_action": "none - terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1386",
-      "prev_sha256": "dce747a2c2512bd2324bf01d294e3c81b75dda430b1d9e1c0cad3e48e0dbb946",
-      "seq": 743,
-      "source_batch": "rebase_f69",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "a9291b47061b0ff94cf8b7bbb09563737578d3e527b9549154b3b5bb02be4271",
+      "seq": 835,
+      "source_batch": "PARISESA-V4-GA5-MERGE-WAVE",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-70": {
       "confidence": "HIGH",
@@ -2024,10 +2023,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 10,
-  "findings_terminal_count": 103,
-  "journal_head_seq": 834,
-  "journal_head_sha256": "a9291b47061b0ff94cf8b7bbb09563737578d3e527b9549154b3b5bb02be4271",
+  "findings_morning_ship_ready_count": 9,
+  "findings_terminal_count": 104,
+  "journal_head_seq": 835,
+  "journal_head_sha256": "a6251a176c543d597eeb73f88447b2a39a270e675f07150db0e9745643c8379e",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
