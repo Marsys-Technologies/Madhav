@@ -5086,3 +5086,65 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   ledger/calibration trace (same isolation already verified above), neither
   triggered persistence (no receipt, no conversation) since the safety-hold
   path returns before the pipeline's persistence stage runs.
+
+## 2026-08-20 — HS-4 death-anniversary false positive: fixed, PR #1376 open (2 attempts, adversary caught a regression in attempt 1)
+
+Follow-up to the "3 held-back P1 flags now live" entry above, which disclosed
+a confirmed-live false positive found via the new probe harness
+(`platform/scripts/probe/ask.sh`, PR #1374) and deliberately did not fix it
+in that entry, leaving the classifier-fix decision separate. This entry
+closes that loop.
+
+**The defect:** "My father's death anniversary is coming up next month —
+what does that period look like astrologically for the family?" was held
+under the full HS mortality-review gate in production, identical to a real
+mortality-timing question about the native. Root cause: two independent
+mortality lexicons in `classifier.ts` both had a bare, unguarded
+`death`/`deaths` match with no anniversary carve-out — `HS4_PATTERNS`'
+`hs4.mortality_terms` phrase pattern, and a separate Tier-A combination-rule
+lexicon `MORTALITY_TERMS_A`. HS-2's own `hs2.election_for_self_death`
+pattern in the same file already had an anniversary lookahead; these two did
+not.
+
+**Attempt 1 (never pushed, superseded):** added `(?!\s+anniversar\w*)` to
+both lexicons directly, narrowing `MORTALITY_TERMS_A` itself. Passed all
+669 classifier tests locally. Before merging, dispatched a dedicated
+adversarial-review agent specifically because this file required a full
+hardening round before its original P1 merge — same discipline applied
+again on a second touch. The adversary ran a controlled before/after
+comparison and found a genuine regression, not just an incomplete fix:
+narrowing `MORTALITY_TERMS_A` nulled the shared `mortalityA` trigger
+variable that the classifier's downstream hard-stop combination rules
+(`mortality_term_x_temporal_specificity`, `mortality_term_x_duration_limit`)
+depend on. Concrete repro: "How many years until my death anniversary —
+this year or a future one?" went from `hs1_date_of_death`/`hard_stop`
+(correct, pre-fix) to `classes: []` (completely undetected) — a strictly
+worse failure than the original bug. Verdict: NOT SAFE TO MERGE. Finding
+accepted without pushback; attempt 1 was never pushed or opened as a PR.
+
+**Attempt 2 (this fix, PR #1376):** reverts `MORTALITY_TERMS_A` to its
+original, unmodified form — it continues to gate the hard-stop combination
+pushes unchanged. Introduces a new, separate constant
+`MORTALITY_TERMS_A_STANDALONE_REVIEW` (identical lexicon, with the
+anniversary lookahead), used ONLY to gate the narrow `mortality_term_present`
+review-level push — the actual reported false positive. Both constants carry
+doc comments naming the split's reason so it isn't reintroduced. Two new
+regression-guard tests cover the adversary's exact compound-phrase repro
+(still hard-stops) and the original pure-anniversary phrasing (stays clean).
+
+**Verification:** 671/671 safety classifier tests, full pariprashna suite
+1953/1953, `tsc` clean, `drift_detector.py` 215/exit=3 (unchanged
+pre-existing baseline), `naming_lint.py` 0 new, `check_earned_signal.py`
+0 new (allowlist line reference for `classifier.ts`'s `assess_health` entry
+corrected 997→1018→1046 across both attempts' added lines — same reviewed
+false positive both times, not a new review).
+
+PR #1376 open, auto-merge armed, CI running as of this entry.
+`PARIPRASHNA_SAFETY_GATE_ENABLED`'s live state is untouched by this fix —
+that flag's on-state was not this session's decision; this fix only closes
+the specific defect its being-live surfaced. Once merged and deployed, will
+live-verify via the probe harness: the original false-positive phrase should
+clear review, and a compound temporal/duration+anniversary phrase should
+still correctly hard-stop.
+
+Worktree: `/private/tmp/pariprashna-hs4-fix`, branch `pariprashna/hs4-fix`.
