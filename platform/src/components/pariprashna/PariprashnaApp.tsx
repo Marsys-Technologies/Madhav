@@ -16,6 +16,7 @@ import { OverlayLayer } from './overlay/OverlayLayer'
 import { DockControllerProvider } from './dock/DockController'
 import { useFixtureStream } from './state/useFixtureStream'
 import { useLiveStream } from './hooks/useLiveStream'
+import { useVisualViewport } from './hooks/useVisualViewport'
 import type { FixtureMode } from './fixtures'
 import type { ThreadState } from './state/types'
 
@@ -125,6 +126,17 @@ function PariprashnaSurface({
   const activeTurn = state.turns[state.turns.length - 1]
   const streaming = !!activeTurn && !['settled', 'interrupted', 'errored'].includes(activeTurn.status)
 
+  // §9.2: composer pinned via `visualViewport`, never a `100vh` guess. The
+  // shell is sized to (and, on viewports where the API is supported, pinned
+  // to) the VISIBLE area — so when a mobile keyboard opens and shrinks the
+  // visual viewport, the shell shrinks with it and the composer (its last
+  // flex child) stays above the keyboard instead of being pushed underneath
+  // it. `100dvh` is the fallback for engines without `visualViewport` (SSR
+  // hydration, legacy browsers) — a dynamic-viewport unit, never the static
+  // `100vh` that caused this defect.
+  const vv = useVisualViewport()
+  const shellHeight = vv.supported && vv.height != null ? `${vv.height}px` : '100dvh'
+
   const handleSubmit = useCallback(
     (text: string, mode: FixtureMode) => {
       submit(text, mode)
@@ -151,7 +163,11 @@ function PariprashnaSurface({
 
   return (
     <DockControllerProvider defaultOpen={true}>
-      <div className="pp-root flex flex-col" style={{ minHeight: '100vh' }}>
+      <div
+        className="pp-root flex flex-col"
+        data-vh-source={vv.supported ? 'visual-viewport' : 'fallback'}
+        style={{ position: 'fixed', inset: 0, height: shellHeight }}
+      >
         <div className="flex-1 flex gap-3.5 p-4 items-stretch min-h-0" style={{ maxWidth: 1220, width: '100%', margin: '0 auto' }}>
           <div
             className="flex-1 min-w-0 flex flex-col rounded-[14px] overflow-hidden relative"
