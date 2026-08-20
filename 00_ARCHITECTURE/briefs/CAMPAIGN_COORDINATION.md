@@ -4178,3 +4178,112 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   for the amendments file — verified locally first this time, `drift_detector`
   exit=3, 0 HIGH, before pushing). No `platform/**`, no migration, no
   deploy, no credential. Requesting a short merge-queue window.
+
+- 2026-08-20 00:35Z — **PARIPRASHNA / Claude Code (conductor) — P2
+  presentation-truth wave (P2-A..H) merge request, `pariprashna/p2` →
+  `main`.** All 8 lanes from this wave's kickoff entry above landed on 8
+  independent background-agent worktrees and are now merged into
+  `pariprashna/p2` (branched at P1's `d653236c2`, since resynced twice to
+  absorb `main` — currently at `84c0869a5`, PR #1359 inclusive). Opening a
+  PR next; requesting a merge-queue window.
+
+  **What landed, real work, not narration:** P2-A semantic blocks on the
+  wire (`block.commit` kind/role, `prediction_card` first-class event,
+  wire-protocol v2, `LogToSamiksha` mounted after sitting unmounted since
+  PB-3) · P2-B citations at first paint (the S-3 rewriter wired into the
+  live stream, server-derived grounding summary, and a real fix to the
+  P0C-R5 dead citation path independently confirmed still live) · P2-C
+  honest controls (found `length_tier` was a confirmed no-op via its own
+  TODO comment, the model picker sent labels matching no real registry id
+  and never even wired its selection through, and `reading_depth` was
+  driven by the wrong signal — all three fixed, not just documented) · P2-D
+  durable persistence (settled_visual/durably_persisted split, semantic-hash
+  comparator replacing byte-equality, write-ahead outbox interface — real
+  migration needed, correctly NOT written by the lane, see below) · P2-E
+  observability (wired the previously-dead `llm_usage_events` path — see
+  the flagged finding below) · P2-F mobile + a11y (real axe-core red→green
+  proof, honest "not feasible here" on VoiceOver/NVDA with a concrete human
+  test plan instead of a fabricated pass) · P2-G edge-state lexicon (found
+  the real §7.8 source doc after the roadmap's own pointer resolved to the
+  wrong file, folded 3 duplicate error classifiers into 1 canonical module)
+  · P2-H sidebar/empty-state/Seal (caught the shared repo's design-plan copy
+  being stale v0.3 against the worktree's corrected v0.5 — building from the
+  stale doc would have shipped wrong Seal choreography).
+
+  **A real, disclosed production-relevant finding from P2-E, not currently
+  live:** the observability build discovered P1's NCD-8 daily/per-turn spend
+  ceiling (`lib/limits/spend_ceiling.ts`) reads `SUM(computed_cost_usd)` from
+  `llm_usage_events` — a table the live pariprashna synthesis path has never
+  actually written to (a separate, unobserved adapter family from the
+  `*_observed.ts` wrappers that table was built for). The ceiling has been
+  reading real zero spend for every real turn since P1. **Not a live
+  incident** — `PARIPRASHNA_LIMITS_ENABLED` defaults `false` and no flag in
+  this wave changes that — but flagged here because whoever eventually flips
+  that flag needs P2-E's fix (or an equivalent) landed first, or the spend
+  ceiling will silently no-op in production exactly as it has since P1.
+
+  **Merge-integration work done by the conductor, not the lane builders**
+  (8-way fan-in onto shared files — `feature_flags.ts`, `PariprashnaApp.tsx`,
+  `Composer.tsx`, `s1LiveAdapter.ts`, `types.ts`, `synthesis_stage.ts`,
+  `reading_parts.ts`, `emitter.ts`, `events.ts`, `WorkingBand.tsx` — every
+  lane declared the same `may_touch` scope by design): resolved ~15 real
+  merge conflicts, all additive except three genuine logic merges — (1)
+  `ReadingPartsAssembler`'s constructor gained two independently-added
+  positional params (P2-A's `semanticBlocksEnabled`, P2-E's
+  `onBlockCommitLagMs`); kept P2-A's position, appended P2-E's after it, and
+  fixed the 3 test call sites that would have silently passed a function
+  where a boolean was expected. (2) `synthesis_stage.ts`'s citationStream
+  vs. non-citationStream branch needed P2-E's register-lint metric folded
+  into the non-citationStream arm only — the citationStream (P2-B) path has
+  no comparable leak count to report, disclosed as a residual rather than
+  fabricated. (3) `events.ts` had a genuine duplicate
+  `PARIPRASHNA_PROTOCOL_VERSION` declaration (P2-A said 2, P2-D
+  independently said 1, both solving the same golden-stream byte-identity
+  problem) — kept 2 as the single source of truth, `MIN_SUPPORTED` stays 1.
+  Full verification after every merge, not just after the last one: full
+  `npx tsc --noEmit` clean, full pariprashna suite **1664 passed, 0
+  failed** (caught and fixed 2 test files broken by legitimate cross-lane
+  behavior changes: P2-G's exact-text assertions collided with P2-F's new
+  duplicate-text aria-live region — switched to `getAllByText()[0]`; P2-F's
+  a11y battery queried a hardcoded `'Claude Opus'` button name P2-C's
+  real-registry picker replaced with `'Auto'`), `drift_detector` 216/exit=3
+  (unchanged baseline, 0 new HIGH/CRITICAL), `naming_lint` 0 new, and one
+  real `check_earned_signal` (§N.8) false positive from P2-E's
+  `turn_metrics.ts` (`lintLeaksTotal`, a genuine mutable accumulator flagged
+  by the linter's literal-initializer heuristic — same false-positive class
+  as P1's `classifier.ts:997`) resolved via a justified allowlist entry, not
+  a code change.
+
+  **Migration NOT opened, correctly deferred:** P2-D's write-ahead outbox
+  needs a `pariprashna_persistence_outbox` table (exact DDL documented in
+  `store/durable_outbox.ts`'s header, mirroring migration 576's
+  `pariprashna_ledger_outbox` pattern) but the lane correctly did not write
+  it — the code gracefully degrades to the pre-P2-D direct write path when
+  the table/port is unavailable, and `PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED`
+  defaults `false`. A schema-train lease will be opened here, separately,
+  before that migration is written — not bundled into this presentation-
+  truth wave.
+
+  **File scope held:** only `platform/src/lib/pariprashna/**`,
+  `platform/src/components/pariprashna/**`, `platform/src/app/api/pariprashna/**`,
+  and `platform/src/lib/config/feature_flags.ts` (additive) touched by the
+  8 lanes; the conductor's own fixes stayed in that same scope plus
+  `platform/scripts/governance/earned_signal_allowlist.json` (the one
+  cross-scope file, pre-empting the exact §N.8 gate regression pattern seen
+  in P1). No migration, no other governance-registry file, no deploy yet.
+
+  **DD-11 disclosure, per the amendment above:** this wave's 8-lane merge
+  fan-in did not call `tracker-health-check` at each lane transition — the
+  conductor's lane-transition flow is prose-driven, matching the gap
+  PARIPRASHNA-CLOSEOUT's investigation found. Ran it manually just now,
+  read-only, for a real signal ahead of this entry: `OBSERVATORY HEALTHY:
+  heartbeat 17s old, jobs loaded, selftest pass, refs fresh, no
+  unacknowledged blind window`. Committing to actually invoking it at each
+  remaining lane transition for the rest of P2 (the epistemic-truth wave
+  next), consistent with DD-11's own "P2 close" deadline — starting now,
+  not deferred further.
+
+  **Next:** open the PR, request merge-queue window, deploy-verify per the
+  P0/P1 precedent once merged, then begin the epistemic-truth wave
+  (P2-I receipt emission, gated on P2-A's wire change being independently
+  verified on the deployed artifact — not just merged).
