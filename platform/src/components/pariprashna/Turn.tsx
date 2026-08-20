@@ -4,6 +4,7 @@ import { UserBlock } from './UserBlock'
 import { WorkingRegion } from './working/WorkingRegion'
 import { AnswerRegion } from './answer/AnswerRegion'
 import { GroundingRegion } from './GroundingRegion'
+import { PersistenceNotice } from './PersistenceNotice'
 
 /**
  * One question→answer unit (§3.4): fixed vertical region order — working
@@ -43,6 +44,7 @@ function TurnImpl({ turn }: { turn: TurnState }) {
             The connection was lost partway. What arrived is above; nothing was altered.
           </p>
         )}
+        <PersistenceNotice turn={turn} />
         <GroundingRegion turn={turn} />
       </div>
     </div>

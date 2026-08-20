@@ -250,8 +250,13 @@ export function makeS1LiveAdapter(
           // confident verdict on the strength of a bare count (B.1/B.10, §6.7).
           gradeSummaryLabel: rollUpGradeSummaryLabel(gradeTally),
         }
-        return [{ type: 'turn.commit', turnId, grounding, eventId }]
+        // P2-D: forward the wire's own persistence status so the reducer can
+        // honestly seed `persistence` (see reducer.ts's turn.commit case).
+        return [{ type: 'turn.commit', turnId, grounding, eventId, persistStatus: ev.status }]
       }
+
+      case 'turn.persisted':
+        return [{ type: 'turn.persisted', turnId, status: ev.status, detail: ev.detail, eventId }]
 
       case 'turn.close':
         return [{ type: 'turn.close', turnId, eventId }]

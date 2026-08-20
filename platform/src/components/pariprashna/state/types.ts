@@ -122,6 +122,36 @@ export type TurnStatus =
   | 'interrupted'
   | 'errored'
 
+/**
+ * P2-D (PPR-10, FD-9) — the settled_visual/durably_persisted split.
+ *
+ * `TurnState.status === 'settled'` is SETTLED_VISUAL: the reader sees a
+ * finished answer. It says nothing about whether the assistant turn is
+ * safely, irrecoverably stored — that is `TurnState.persistence`, tracked
+ * SEPARATELY:
+ *   'unknown' — no persistence signal has arrived yet (still streaming, or a
+ *               pre-P2-D wire that never emits one at all — see below).
+ *   'pending' — the write is underway/queued but not yet confirmed. An
+ *               HONEST intermediate state, never treated as durable.
+ *   'durable' — confirmed safely stored.
+ *   'failed'  — the write did not succeed. The turn's PROSE is unaffected
+ *               (it already rendered) — this is a storage-durability failure,
+ *               not a reading failure.
+ *
+ * Back-compat note: `turn.commit`'s `status: 'ok'` already meant "the write
+ * committed" in the pre-P2-D synchronous persistence path (see
+ * pipeline/persistence_stage.ts) — there was never actually a gap in that
+ * path, just no wire signal telling the client so. The reducer's `turn.commit`
+ * case therefore optimistically resolves `persistence` to 'durable' at commit
+ * time (never regressing an already-set value), so a pre-P2-D fixture/stream
+ * that never emits `turn.persisted` shows NO incomplete-turn banner — exactly
+ * today's behavior. A real `turn.persisted` event (only emitted by the new
+ * durable-persistence code path, gated behind
+ * `PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED`) can then REFINE that optimistic
+ * guess with the true state, including downgrading it back to 'pending'.
+ */
+export type PersistenceStatus = 'unknown' | 'pending' | 'durable' | 'failed'
+
 export interface ActiveSeam {
   blockId: string
   passIndex: number
@@ -169,6 +199,8 @@ export interface TurnState {
    */
   seenEventIds: Set<string>
   reconnectHollowCaret: boolean
+  /** P2-D (PPR-10, FD-9) — see `PersistenceStatus`'s doc comment. */
+  persistence: PersistenceStatus
 }
 
 export type SurfaceStatus = 'empty' | 'idle' | 'composing'
@@ -229,7 +261,25 @@ export type WireEvent =
   | { type: 'citation.define'; turnId: string; citation: Citation; eventId: string }
   | { type: 'flag'; turnId: string; flag: string; eventId: string }
   | { type: 'grade'; turnId: string; grade: Grade; note?: string; eventId: string }
-  | { type: 'turn.commit'; turnId: string; grounding: GroundingSummary; eventId: string }
+  | {
+      type: 'turn.commit'
+      turnId: string
+      grounding: GroundingSummary
+      eventId: string
+      /**
+       * P2-D ADDITIVE: the underlying wire `turn.commit.status` ('ok'|'error'),
+       * forwarded so the reducer can seed `persistence` honestly (see
+       * `PersistenceStatus`). Optional — a pre-P2-D adapter/fixture that never
+       * sets this leaves `persistence` at 'unknown' until (if ever) a
+       * `turn.persisted` event arrives, which is a strict subset of today's
+       * behavior, never a regression (no existing consumer read this before).
+       */
+      persistStatus?: 'ok' | 'error'
+    }
+  /** P2-D (PPR-10, FD-9) — see `PersistenceStatus`'s doc comment on TurnState.
+   *  Never 'unknown' on the wire — that value means "no signal has arrived",
+   *  which is a client-side absence, not something a server ever asserts. */
+  | { type: 'turn.persisted'; turnId: string; status: Exclude<PersistenceStatus, 'unknown'>; detail?: string; eventId: string }
   | { type: 'turn.close'; turnId: string; eventId: string }
   | { type: 'error'; turnId: string; error: ClassifiedError; eventId: string }
   | { type: 'reconnecting'; turnId: string; eventId: string }
