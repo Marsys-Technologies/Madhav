@@ -4321,3 +4321,42 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   worktrees for rebase/fresh-code waves; no `platform/**` write without a
   specific finding's own reviewed PR. No deploy/rebuild lease requested
   tonight — none needed under the overnight scope boundary.
+
+- 2026-08-20 ~01:00Z — **PARIPRASHNA-CLOSEOUT-FINAL / Claude Code — merge
+  window requested (docs-only, three items, no code):** PR #1361
+  (`pariprashna/closeout-final-2026-08-20` → `main`). (1) **DD-12** added to
+  `PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` §2's existing register:
+  the DD-11 investigation's root cause generalized — no deterministic
+  per-lane hook exists anywhere in this campaign for tracker emission,
+  health-checking, `may_touch` enforcement, or budget accounting alike, all
+  of it agent-remembered not mechanism-enforced. Proposes a `lane(...)`
+  wrapper making those disciplines side effects of being called; sets one
+  P2-close decision point covering both DD-11 and DD-12 (wrapper built →
+  DD-11 moves to WIRED; not built → DD-11 explicitly downgraded to
+  ADVISORY). DD-11's own duplicate deadline clause removed in favor of this
+  one. **No code written** — P2 is confirmed live and mid-flight (the P2
+  presentation-truth-wave merge window is visible a few entries above this
+  one), and reaching into a running phase's lane-transition mechanism is
+  exactly what DD-11's own effective-date note exists to prevent. (2)
+  `CLOSEOUT_TRACKER_AND_COLLISION_v1_0.md` extended with a fresh-reader
+  executive summary covering the full arc from the naive tracker spec
+  through all four hardening rounds (#1353/#1354/#1355/#1359), the three
+  independent freshness axes, the 23m37s blind window's FAILED attribution
+  search (reported as failed, not glossed over), the retracted HOME/label
+  overclaim, T4's measured 3m51s live restore, the SAMPŪRTI collision
+  cleanup, and the `rm -rf` near-miss. (3) A full integrity sweep — DD-1..12,
+  RF-1..12, X-1..7, the SAMPŪRTI re-landing debt — as one owner/deadline/
+  detector table. Found: `DD-3`'s infra hold and the SAMPŪRTI re-landing
+  debt both carry an owner but no deadline; `DD-5` (build-spend ceilings)
+  confirmed as a live, concrete instance of the exact defect class this arc
+  is about (reads as an enforced ceiling; the tracker's own README already
+  discloses budget tracking is self-reported, not derived) — already named
+  abstractly by DD-12, now named concretely; no entry found reading as fully
+  SATISFIED while silently lacking a detector. `drift_detector` and
+  `schema_validator` both run locally before pushing (exit=3 both, 0 new
+  HIGH/CRITICAL); fingerprint rotated for the one registered file touched
+  (`PARIPRASHNA_SWARM_PLAN_AMENDMENTS`). No `platform/**`, no migration, no
+  deploy, no credential. No collision expected with PARIPRAŚNA P2 (same
+  campaign, disjoint from its active lane work — `pariprashna_swarm/` docs
+  only) or PARIŚEṢA-RĀTRI-V4 (entry immediately above — disjoint territory
+  entirely). Requesting a short merge-queue window.
