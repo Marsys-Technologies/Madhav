@@ -4984,3 +4984,27 @@ B-05 · A-15 · A-11 · A-07 · A-08 · A-12 · A-13 · A-16 · A-17
   the full battery (crash-kill-test, a planted-contradiction fixture,
   systematic block-kind coverage across more query shapes) hasn't been run
   yet. Opening the PR next; requesting a merge-queue window.
+
+- 2026-08-20 11:35Z — **PARIPRAŚNA-TRACKER-V2 / Claude Code — merge window
+  requested (docs-and-tooling only):** third user report of "tracker still
+  stale" resolved, and the diagnosis was NOT liveness. The daemon was healthy
+  throughout (344 consecutive cycles, ~36s apart, zero gaps); the board's
+  *substance* was frozen for 17.5h while its timestamps ticked — it showed P1
+  and P2 as `PLANNED` (50/53 lanes `PLANNED`) after both phases had fully
+  shipped (#1356 P1, and #1360/#1363/#1364/#1365 closing all 15 P2 lanes).
+  Causes were all in this tracker's own code: hand-typed phase `status`
+  constants rendered as live state; 46/53 lanes left with no evidence source
+  by an earlier false-positive fix; and lane ids (`P1-A`) matched against
+  branches/PRs the swarm names by GATE (`G1-A`). Fix derives the board from
+  merged-PR evidence (title + bolded body ids — validated against all six real
+  phase PRs, reproducing published lane totals exactly), reads
+  `state/SWARM_TRACKER.json` as a clearly-labelled CLAIMED layer, replaces the
+  fabricated `PLANNED` default with an `UNOBSERVABLE` honesty floor, derives
+  phase status, and adds a fourth liveness axis (**board-vs-world divergence**)
+  that raises an anomaly whenever a merged PR's lane isn't shown done — the
+  detector whose absence let this survive three rounds. Branch
+  `pariprashna/tracker-v2-derive-reality`, scope
+  `00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/**` only; no
+  `platform/**`, no migration, no deploy, no credential. **Read-only w.r.t.
+  the conductor's files** — `state/SWARM_TRACKER.json` is consumed, never
+  written. 25/25 selftests pass; the 4 new ones each observed failing first.
