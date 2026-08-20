@@ -15,6 +15,74 @@
 import type { CapabilityDescriptor } from '../../index'
 import { query } from '@/lib/db/client'
 
+export const EMPIRICALLY_CALIBRATED = 'empirical'
+
+// GA-5 review finding on #1386 (rounds 2-3): mi_darshana.py embeds a suppressed numeric
+// value in `statement` across (at least) FIVE distinct templates, not just one --
+// verdict_object: "(grade N.N/10)"; load_bearing: "(sensitivity=N.NN)"; calibrated_outlook:
+// "observed outcome rate is N.N%"; manifestation_grammar's non-empirical branch:
+// "(prior-based estimate: N%)" (line 179 -- found round 3, LATENT on the canonical chart
+// today since its 7 rows are all currently evidence_grade=empirical, but the branch is
+// reachable and will fire on other charts). Redacting by SHAPE (not by re-deriving the
+// row's own value, which risks drifting from how mi_darshana actually formats it) catches
+// every known citation shape regardless of which template produced it. `g` flag added --
+// a statement could in principle carry more than one citation.
+//
+// STRUCTURAL RESIDUAL, NOT closed by this list (disclosed, not fixed -- round 3 finding):
+// emergent_law statements (mi_darshana.py line ~219) are free text copied from
+// mimamsa_discoveries, an unbounded shape no fixed regex list can be proven exhaustive
+// against. Closing that durably needs either a write-path fix (mi_darshana.py never embeds
+// a numeric confidence citation in free-text discoveries) or a serve-time numeric-residue
+// assertion (fail loud if ANY bare confidence-shaped number survives a suppressed row's
+// statement) -- both larger changes than this fix's own scope. Tracked, not chased into a
+// round 4.
+const EMBEDDED_NUMERIC_EVIDENCE_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
+  { pattern: /\(grade\s+[\d.]+\/10\)/gi, replacement: '(grade suppressed — see tier_suppression_note)' },
+  { pattern: /\(sensitivity=[\d.]+\)/gi, replacement: '(sensitivity suppressed — see tier_suppression_note)' },
+  { pattern: /observed outcome rate is [\d.]+%/gi, replacement: 'observed outcome rate is [suppressed — see tier_suppression_note]' },
+  { pattern: /\(prior-based estimate: [\d.]+%\)/gi, replacement: '(prior-based estimate suppressed — see tier_suppression_note)' },
+]
+
+export function redactEmbeddedNumericEvidence(statement: string): string {
+  let out = statement
+  for (const { pattern, replacement } of EMBEDDED_NUMERIC_EVIDENCE_PATTERNS) {
+    out = out.replace(pattern, replacement)
+  }
+  return out
+}
+
+export function suppressIfNotCalibrated(row: Record<string, unknown>): Record<string, unknown> {
+  if (row['evidence_grade'] === EMPIRICALLY_CALIBRATED) return row
+  // P3-b tier-suppression (F-69): evidence_grade is anything other than 'empirical' (structural,
+  // prior_only, missing) → no empirically-calibrated score exists for this insight. Mirrors
+  // ka_kshetra/stage8_spec.py:136. The stored mimamsa_insight_units row is never mutated.
+  const pc = row['provenance_chain'] as Record<string, unknown> | null
+  const rawStatement = row['statement']
+  const statement = typeof rawStatement === 'string'
+    ? redactEmbeddedNumericEvidence(rawStatement)
+    : rawStatement
+  // GA-5 review finding on #1386 round 3 (2nd finding, same round): mi_darshana.py writes
+  // the SAME suppressed float into more than one provenance_chain key depending on
+  // insight_type -- manifestation_grammar duplicates it as both provenance_chain.grade AND
+  // provenance_chain.propensity (mi_darshana.py's json.dumps({'channel':.., 'domain':.., 
+  // 'propensity': prop})). Nulling only .grade left .propensity serving the exact number
+  // .grade was just nulled for -- confirmed live: all 10 manifestation_grammar rows on the
+  // canonical chart currently carry this key (latent today, all currently empirical). Null
+  // BOTH known duplicate keys explicitly -- not a blanket "null every number in
+  // provenance_chain", which would incorrectly strip unrelated numeric fields other insight
+  // types legitimately carry (e.g. verdict_object's ranked_evidence[].salience, an evidence-
+  // weighting score, not a suppressed confidence value).
+  const suppressedProvenanceChain = pc == null ? pc : { ...pc, grade: null, propensity: null }
+  return {
+    ...row,
+    statement,
+    rank_consequence: null,
+    confidence_band: null,
+    provenance_chain: suppressedProvenanceChain,
+    tier_suppression_note: `rank_consequence/confidence_band/provenance_chain.grade+propensity/statement's embedded numeric evidence (grade/sensitivity/outcome-rate/prior-estimate citations) suppressed at serve time: evidence_grade=${JSON.stringify(row['evidence_grade'])} — no empirically-calibrated score exists for this insight yet (P3-b tier-suppression; see services/ka_kshetra/stage8_spec.py for the precedent this mirrors). The stored value is unaffected.`,
+  }
+}
+
 export const queryInsightsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L5/query_insights',
   type:  'tool',
@@ -141,7 +209,7 @@ export const queryInsightsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
-          insight_units:       insightResult.rows,
+          insight_units:       insightResult.rows.map(suppressIfNotCalibrated),
           calibration_summary,
           evidence_grade_counts,
           filters:             { insight_type, domain, min_rank, top_k, include_neg },

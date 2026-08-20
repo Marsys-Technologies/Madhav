@@ -35,8 +35,29 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { EMPIRICALLY_CALIBRATED, redactEmbeddedNumericEvidence } from './query_insights'
 
 const MAX_LIMIT = 20
+
+// GA-5 review finding on #1386: reuses query_insights.ts's own allowlist constant
+// (previously duplicated a bare 'empirical' literal here) AND its shared redaction
+// function (round 2: was its own narrower single-shape copy, now the same shared
+// multi-shape redactor so a future added leak-shape fix in one file can't silently
+// diverge from the other) -- the structured rank_consequence field being nulled means
+// nothing if the exact same number stays readable in the prose served alongside it.
+function suppressNonCalibratedNeighbor(row: Record<string, unknown>): Record<string, unknown> {
+  if (row['evidence_grade'] === EMPIRICALLY_CALIBRATED) return row
+  const rawStatement = row['statement']
+  const statement = typeof rawStatement === 'string'
+    ? redactEmbeddedNumericEvidence(rawStatement)
+    : rawStatement
+  return {
+    ...row,
+    statement,
+    rank_consequence: null,
+    tier_suppression_note: `rank_consequence/statement's embedded grade suppressed at serve time: evidence_grade=${JSON.stringify(row['evidence_grade'])} — no empirically-calibrated score exists for this insight yet (P3-b tier-suppression, mirrors query_insights.ts's suppressIfNotCalibrated). The stored value is unaffected.`,
+  }
+}
 
 export const queryInsightEmbeddingsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L5/query_insight_embeddings',
@@ -115,7 +136,7 @@ export const queryInsightEmbeddingsCapability: CapabilityDescriptor = {
 
         const sql = `
           SELECT n.insight_id, (n.embedding <=> s.embedding) AS cosine_distance,
-                 u.insight_type, u.statement, u.rank_consequence
+                 u.insight_type, u.statement, u.rank_consequence, u.evidence_grade
           FROM mimamsa_insight_embeddings n
           JOIN mimamsa_insight_embeddings s
             ON s.chart_id = n.chart_id AND s.insight_id = $2
@@ -125,14 +146,14 @@ export const queryInsightEmbeddingsCapability: CapabilityDescriptor = {
           ORDER BY cosine_distance ASC
           LIMIT $3`
         const result = await query(sql, [chart_id, seedId, topK])
+        const rows = (result.rows as Array<Record<string, unknown>>).map(suppressNonCalibratedNeighbor)
         return {
           content: {
             chart_id,
             mode,
             seed_insight_id: seedId,
-            rows: result.rows,
-            count: result.rows.length,
-            ...(result.rows.length === 0
+            rows, count: rows.length,
+            ...(rows.length === 0
               ? { empty_reason: `No neighbor rows found for seed_insight_id=${seedId} (seed may not exist, or the table is not yet populated for this chart's build).` }
               : {}),
             provenance: { tables: ['mimamsa_insight_embeddings', 'mimamsa_insight_units'], source: 'L5 Mīmāṃsā pgvector cosine-distance nearest-neighbor search between two already-computed embeddings; served chart-scoped.' },
