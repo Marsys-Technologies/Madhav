@@ -80,6 +80,10 @@ export const IMMUNE_HONESTY_FIELDS: ReadonlySet<string> = new Set<string>([
   'reading',
   'domain_completeness',
   'completeness_directive',
+  // F-14/F-124 (reconciled): the honest-disclosure counterpart to domain_completeness above —
+  // set instead of it when no precompiled concept-slice bundle exists yet for a domain
+  // (currently health/relationship). Must never be silently trimmed away either.
+  'domain_completeness_empty_reason',
   'coverage_map',
   // — ŚODHANA T3 (MC-005/MC-023 regression check): the deterministic VERDICT layer —
   // assess_*'s `verdict.clauses[].text` (EL-44 grounded prose sentences) and
