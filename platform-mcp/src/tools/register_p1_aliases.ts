@@ -710,16 +710,28 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   // block immediately above (same chart-scoped callRegistryCap pattern). Param names
   // (chart_id, ayanamsha_id, status, event_class_id, limit, offset) match the handler at
   // platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts verbatim.
+  // GA-5 review finding on #1391: the description below previously copied a STALE v3
+  // string verbatim from generated/mcp_surface_profiles.generated.ts (which has no CI
+  // --check/diff gate, so it drifted silently), not the live capability's own description
+  // at query_pratijna.ts. That reintroduced a claim a prior lane (PRATIJÑĀ v4 Lane B4,
+  // 2026-08-09) deliberately removed -- supporting_signal_ids/contradicting_signal_ids are
+  // ALWAYS NULL under the v4 engine (it never reads bodha_msr_signals) -- and omitted the
+  // real 'no_evidence' status value entirely. Sourced from queryPratijnaCapability's own
+  // description text instead of the stale generated copy.
   server.tool(
     'bodha_pratijna_get',
     'Retrieve the chart pratijna (promise / denial) ledger from bodha_pratijna — one adjudicated ' +
-    'row per event_class: status (promised | denied | conditional), grade, varga_confirmation, ' +
-    'the supporting_signal_ids and contradicting_signal_ids that back it, and a derivation. ' +
-    'Filters: ayanamsha_id, status, event_class_id. Bounded (LIMIT <=50) with a disclosed total ' +
-    '+ offset pagination.',
+    'row per event_class: status (promised | denied | conditional | no_evidence), grade, ' +
+    'varga_confirmation, and a derivation (bo_pratijna v4.1: a factor ledger of classical ' +
+    'significators, weights, and denial checks — the row\'s real evidence). Filters: ' +
+    'ayanamsha_id, status, event_class_id. Bounded (LIMIT <=50) with a disclosed total + offset ' +
+    'pagination. supporting_signal_ids / contradicting_signal_ids are always NULL under the v4 ' +
+    'engine (it does not use MSR-signal matching); no_evidence rows mean "no karyatva registry ' +
+    'entry for this event class" -- their grade is NULL (not scored), served honestly, not ' +
+    'gated or fabricated.',
     {
       ...ChartBase,
-      status: z.string().optional().describe("Filter to one status: 'promised' | 'denied' | 'conditional'."),
+      status: z.string().optional().describe("Filter to one status: 'promised' | 'denied' | 'conditional' | 'no_evidence'."),
       event_class_id: z.string().optional().describe('Filter to one event_class_id.'),
       limit: z.number().int().min(1).max(50).optional(),
       offset: z.number().int().min(0).optional(),

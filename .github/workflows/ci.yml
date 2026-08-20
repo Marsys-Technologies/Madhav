@@ -978,6 +978,9 @@ jobs:
       - name: synth_chart_brief_get top_discoveries honest-fields regression (platform-mcp) — F-129
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/f129_top_discoveries_honest_fields.test.ts
+      - name: bodha_pratijna_get MCP tool registration regression (platform-mcp) — F-67
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/f67_bodha_pratijna_get_registration.test.ts
       - name: vidhi registry codegen drift check (platform) — GT-56
         run: npm run codegen:vidhi:check
       - name: vidhi registry codegen parity test (platform-mcp) — GT-56
