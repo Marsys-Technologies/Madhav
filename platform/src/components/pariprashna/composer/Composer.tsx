@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { PickerPopover, type PickerRow } from './PickerPopover'
 import { getSynthesisModelRows } from './model_options'
 import type { DepthOption, LengthOption, SubmitControls } from '../state/types'
@@ -42,6 +42,8 @@ export interface ComposerProps {
    * from whatever `depth` below is currently selected for the NEXT turn.
    */
   depthReceived?: string | null
+  /** §5.3 `empty`: "focus is already in the composer." Only relevant on mount. */
+  autoFocus?: boolean
 }
 
 /** Maps the composer's Depth choice to which fixture the stub plays (see the build report for why). */
@@ -74,7 +76,7 @@ export function modelToModelId(model: string): string | undefined {
   return model === 'auto' ? undefined : model
 }
 
-export function Composer({ streaming, onSubmit, onStop, depthReceived }: ComposerProps) {
+export function Composer({ streaming, onSubmit, onStop, depthReceived, autoFocus }: ComposerProps) {
   const [text, setText] = useState('')
   const [model, setModel] = useState('auto')
   const [depth, setDepth] = useState<DepthOption>('Auto')
@@ -83,6 +85,15 @@ export function Composer({ streaming, onSubmit, onStop, depthReceived }: Compose
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   const modelLabel = MODEL_ROWS.find((r) => r.value === model)?.label ?? model
+
+  // Mount-only: the design plan is explicit that `autoFocus` re-triggering on
+  // every re-render (e.g. after each submit) would steal focus mid-typing —
+  // this only ever runs once, matching the plain `<textarea autofocus>`
+  // semantics the empty state's copy describes.
+  useEffect(() => {
+    if (autoFocus) textareaRef.current?.focus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const footNote =
     depth === 'Auto' && length === 'Auto'

@@ -152,6 +152,27 @@
   animation: pp-blink 1s step-end infinite;
 }
 
+/* ── The Seal (§5.3 `settling`) — steps 4 + 5 ──────────────────────────
+ * Step 4: the right dock's grounding ledger for a turn fades in 160ms the
+ * instant that turn seals (RightDock.tsx remounts the per-turn block on the
+ * settling transition so this class's mount-animation replays exactly once).
+ * Step 5: the closing rule — a centered 64px hairline beneath the answer
+ * region, scaleX 0→1 from center, 400ms — the one motion above 240ms besides
+ * the empty state's ecliptic line (§5.7 motion constitution). Both slots are
+ * audited by tests/pariprashna/motion_constitution_audit.test.ts.
+ */
+.pp-dock-seal-in {
+  animation: pp-fade-in 0.16s var(--pp-ease);
+}
+.pp-closing-rule {
+  width: 64px;
+  height: 1px;
+  margin: 20px auto 0;
+  background: var(--pp-rule);
+  transform-origin: center;
+  animation: pp-draw-x 0.4s var(--pp-ease);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pp-root [data-pp-spin],
   .pp-root [data-pp-pulse],

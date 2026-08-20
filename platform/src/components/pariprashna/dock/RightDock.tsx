@@ -71,30 +71,42 @@ export function RightDock({ turns }: { turns: TurnState[] }) {
             const predictionBlock = turn.blocks.find((b) => b.kind === 'prediction_card')
             const citations = Object.values(turn.citations).sort((a, b) => a.n - b.n)
             const classicalCount = citations.filter((c) => c.sourceClass === 'classical_source').length
+            // The Seal (§5.3 step 4): the sealed turn's own ledger fades in once,
+            // the instant `turn.commit` moves it to `settling`/`settled` — not on
+            // every intermediate citation arriving mid-stream (ruling 8a's
+            // "grounding accrues across passes" still holds; only the coordinated
+            // fade is a one-time settle event). Keying the inner block on the
+            // sealed/live split forces React to remount exactly once at that
+            // transition, replaying `.pp-dock-seal-in`'s mount animation once —
+            // further re-renders of an already-sealed turn (unrelated field
+            // updates) keep the same key and do not replay it.
+            const sealed = turn.status === 'settling' || turn.status === 'settled'
             return (
               <div key={turn.id} className="mb-5">
-                {predictionBlock?.prediction && <PredictionCard prediction={predictionBlock.prediction} />}
-                {citations.length > 0 && (
-                  <>
-                    <div style={{ fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--pp-gold-dim)', margin: '2px 0 10px' }}>
-                      <span style={{ color: 'var(--pp-ink)' }}>{citations.length}</span> CHART FACTORS
-                      {classicalCount > 0 && (
-                        <>
-                          {' '}
-                          · <span style={{ color: 'var(--pp-ink)' }}>{classicalCount}</span> CLASSICS
-                        </>
-                      )}
-                    </div>
-                    {citations.map((c) => (
-                      <GroundingCard
-                        key={c.n}
-                        citation={c}
-                        highlighted={activeCitation?.turnId === turn.id && activeCitation?.n === c.n}
-                        registerRef={(el) => cardRefs.current.set(`${turn.id}:${c.n}`, el)}
-                      />
-                    ))}
-                  </>
-                )}
+                <div key={sealed ? 'sealed' : 'live'} className={sealed ? 'pp-dock-seal-in' : undefined}>
+                  {predictionBlock?.prediction && <PredictionCard prediction={predictionBlock.prediction} />}
+                  {citations.length > 0 && (
+                    <>
+                      <div style={{ fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--pp-gold-dim)', margin: '2px 0 10px' }}>
+                        <span style={{ color: 'var(--pp-ink)' }}>{citations.length}</span> CHART FACTORS
+                        {classicalCount > 0 && (
+                          <>
+                            {' '}
+                            · <span style={{ color: 'var(--pp-ink)' }}>{classicalCount}</span> CLASSICS
+                          </>
+                        )}
+                      </div>
+                      {citations.map((c) => (
+                        <GroundingCard
+                          key={c.n}
+                          citation={c}
+                          highlighted={activeCitation?.turnId === turn.id && activeCitation?.n === c.n}
+                          registerRef={(el) => cardRefs.current.set(`${turn.id}:${c.n}`, el)}
+                        />
+                      ))}
+                    </>
+                  )}
+                </div>
               </div>
             )
           })}
