@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 843,
+  "event_count": 844,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -511,20 +511,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-123": {
-      "branch": "parisesa/repair-F123-dead-pointer",
       "confidence": "HIGH",
-      "disposition": "OPEN",
-      "event_sha256": "fbc775aa7d362e2b124824c62e7d0ec6847ee021bc8994740dcc3e14a76e4a7f",
+      "disposition": "FIXED",
+      "event_sha256": "947b2a639e6705992b4e9a734d796eaca926e9519da61d09d2c8ecefe4fed205",
       "event_type": "finding_status",
-      "evidence_summary": "PR #1379 opened and frozen -- fresh build for the dead-pointer defect confirmed reproducing on the deployed service (see phase0/rebase_f123.json for full detail).",
+      "evidence_summary": "PR #1379 merged (e40ecc075c3f6a27e9c9da2232f6e3a064d143d6): F-123 kala_explain_get dead pointer fixed across now.ts/ahead.ts/priority.ts real call sites. Required two rebases against advancing main (recurring ci.yml density-census insertion-point collision, resolved by keeping both sibling PRs' CI steps each time). GA-5 independent review + adversarial pre-merge review passed. This is the final PR in this session's GA-5 merge wave -- merge queue now empty.",
       "finding_id": "F-123",
-      "next_action": "owner reviews and merges PR #1379 at morning checkpoint",
+      "next_action": "none - terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1379",
-      "prev_sha256": "aeccec306e94369e358667026eca1266a427ec61847d669ecdf744da2aa88fa9",
-      "seq": 704,
-      "source_batch": "rebase_f123",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "29869798c654c9fe0f9d87d543f369dc4f71f74fa69170f846938d2713a01683",
+      "seq": 844,
+      "source_batch": "PARISESA-V4-GA5-MERGE-WAVE",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-124": {
       "confidence": "HIGH",
@@ -2015,10 +2014,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 1,
-  "findings_terminal_count": 112,
-  "journal_head_seq": 843,
-  "journal_head_sha256": "29869798c654c9fe0f9d87d543f369dc4f71f74fa69170f846938d2713a01683",
+  "findings_morning_ship_ready_count": 0,
+  "findings_terminal_count": 113,
+  "journal_head_seq": 844,
+  "journal_head_sha256": "947b2a639e6705992b4e9a734d796eaca926e9519da61d09d2c8ecefe4fed205",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
