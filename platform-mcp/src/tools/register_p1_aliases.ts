@@ -701,6 +701,46 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     }
   )
 
+  // query_pratijna → bodha_pratijna_get
+  // F-67: the capability is fully descriptor'd (mcp_surface_profiles.generated.ts) and
+  // bridge-aliased (tool_name_bridge.ts: both `query_pratijna` and its `bodha_pratijna_get`
+  // alias map to marsys://tool/L2/query_pratijna) but no server.tool() registration for
+  // either name existed anywhere in platform-mcp/src — a pure omission (exhaustive grep,
+  // zero hits). This block is the missing registration, modeled on the bodha_signals_get
+  // block immediately above (same chart-scoped callRegistryCap pattern). Param names
+  // (chart_id, ayanamsha_id, status, event_class_id, limit, offset) match the handler at
+  // platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts verbatim.
+  server.tool(
+    'bodha_pratijna_get',
+    'Retrieve the chart pratijna (promise / denial) ledger from bodha_pratijna — one adjudicated ' +
+    'row per event_class: status (promised | denied | conditional), grade, varga_confirmation, ' +
+    'the supporting_signal_ids and contradicting_signal_ids that back it, and a derivation. ' +
+    'Filters: ayanamsha_id, status, event_class_id. Bounded (LIMIT <=50) with a disclosed total ' +
+    '+ offset pagination.',
+    {
+      ...ChartBase,
+      status: z.string().optional().describe("Filter to one status: 'promised' | 'denied' | 'conditional'."),
+      event_class_id: z.string().optional().describe('Filter to one event_class_id.'),
+      limit: z.number().int().min(1).max(50).optional(),
+      offset: z.number().int().min(0).optional(),
+    },
+    async (params) => {
+      const { chart_id, ayanamsha_id, status, event_class_id, limit, offset } = params as Record<string, unknown>
+      if (!chart_id) return errOut('bodha_pratijna_get', 'chart_id is required')
+      try {
+        const data = await callRegistryCap('marsys://tool/L2/query_pratijna', {
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
+          status, event_class_id,
+          limit: (limit as number) ?? 50, offset: (offset as number) ?? 0,
+        }, principal) as Record<string, unknown>
+        // CL-11 guard: pass the real tool name explicitly — do NOT call bare dualOutput(data),
+        // which defaults toolName to the 'unknown_tool' placeholder. A brand-new registration
+        // must not reintroduce that class of bug.
+        return dualOutput(data, 'bodha_pratijna_get')
+      } catch (err) { return errOut('bodha_pratijna_get', String(err), { chart_id }) }
+    }
+  )
+
   // traverse_graph → bodha_graph_traverse_get
   // R-18 fix: this was previously registered via the generic regAlias() helper, which forwards
   // its extraSchema keys verbatim to the primitive. The primitive (traverse_chart_graph.ts) does
