@@ -22,7 +22,39 @@ from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 
 logger = logging.getLogger(__name__)
 
-GRAMMAR_FORMULA_VERSION = "mi_sambandha_v1.0"
+GRAMMAR_FORMULA_VERSION = "mi_sambandha_v1.1"  # v1.1: F-147 composite_verdict vocabulary fix
+
+# F-147 (same class as F-35 / F-143): the vocabulary of composite_verdict.
+# mimamsa_calibration.composite_verdict is written by exactly one code path —
+# mi_pramana._verdict_v2 (mi_pramana.py:417 is the sole INSERT) — and that
+# function emits UPPERCASE from a closed set of five:
+#   CONFIRMED   — scored >= 0.65, observation window elapsed
+#   PARTIAL     — 0.35 <= scored < 0.65
+#   REFUTED     — falsifier violated, or scored < 0.35
+#   UNRESOLVED  — window not yet attested complete; adjudication can still flip
+#   FALSE_ALARM — control-window prediction, by construction not a real outcome
+# The lowercase triple this module previously tested for ('confirmed'|'partial'|
+# 'denied') came from migration 348's stale inline column comment, NOT from any
+# writer: 'denied' has never been emitted by any code path, and no verdict is
+# ever lowercased. The comparison therefore could not match, so scored_count was
+# 0 for every row and evidence_grade='empirical' was unreachable — silently
+# defeating F-35's fix. See _ADJUDICATED_VERDICTS in mi_pariksha.py for the
+# identical fix applied to the same column at F-143.
+#
+# .upper() normalization (rather than bare uppercase literals) mirrors
+# mi_pariksha's ratified handling: composite_verdict is an unconstrained `text`
+# column (migration 348 has no CHECK), so normalizing at the comparison costs
+# nothing and cannot silently re-open this defect if a future writer differs.
+
+# Only these represent an ADJUDICATED outcome — a prediction whose window has
+# elapsed and whose result was actually scored against a real event. Only these
+# may support an 'empirical' evidence grade.
+_ADJUDICATED_VERDICTS = frozenset({"CONFIRMED", "PARTIAL", "REFUTED"})
+
+# Of the adjudicated verdicts, only these represent the predicted thing actually
+# having occurred — i.e. a channel that genuinely fired. REFUTED is adjudicated
+# (it counts toward scored_count) but is by definition not a firing.
+_FIRED_VERDICTS = frozenset({"CONFIRMED", "PARTIAL"})
 
 # Prior channel propensities by domain (when no empirical data)
 _PRIOR_PROPENSITIES: dict[str, dict[str, float]] = {
@@ -78,11 +110,11 @@ class MiSambandhaWriter(WriterBase):
                 counts[key] = {"fire": 0, "opp": 0, "scored": 0}
 
             counts[key]["opp"] += 1
-            verdict = row.get("composite_verdict") or ""
+            verdict = str(row.get("composite_verdict") or "").upper()
             ch_fired = row.get("manifestation_channel") or ""
-            if verdict in ("confirmed", "partial", "denied"):
+            if verdict in _ADJUDICATED_VERDICTS:
                 counts[key]["scored"] += 1
-            if verdict in ("confirmed", "partial") and ch_fired == channel_id:
+            if verdict in _FIRED_VERDICTS and ch_fired == channel_id:
                 counts[key]["fire"] += 1
 
         # Build grammar rows
