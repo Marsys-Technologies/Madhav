@@ -246,6 +246,66 @@ class TestBuildOutput:
         assert 'kala_field' in snap['hashed_tables']
 
 
+# ── F-149: the content hash reads its tables lazily ─────────────────────────
+
+class TestContentHashStreams:
+    """F-149. The writer used to accumulate every stage-0–8 row for the chart
+    into ONE list before hashing anything; on the native chart (~10.5M rows,
+    8.6M of them in `kala_field`) that OOM'd, which is why the F-141 rebuild was
+    deterministically impossible rather than merely slow.
+
+    The digest is unchanged (asserted against a reference implementation of the
+    old algorithm in test_stage4_field.py). What is asserted HERE is the writer
+    half: the rows are produced lazily, one table at a time.
+    """
+
+    @staticmethod
+    def _hash_selects(conn) -> list[str]:
+        want = {t for t, _, _ in W._CONTENT_HASH_QUERIES}
+        out = []
+        for stmt in conn.executed:
+            s = ' '.join(stmt.split())
+            for table in want:
+                if f'FROM {table} WHERE chart_id' in s or f'FROM {table} WHERE' in s:
+                    out.append(table)
+        return out
+
+    def test_the_row_source_is_a_generator_not_a_materialized_list(self):
+        writer, conn = _run_full_build(F.build_tables())
+        rows = writer._iter_content_hash_rows(conn)
+        assert not isinstance(rows, (list, tuple))
+        assert hasattr(rows, '__next__')
+
+    def test_no_table_is_queried_until_its_rows_are_pulled(self):
+        # The direct detector for "it streams": if this were still a list build,
+        # constructing the source would have issued all seven SELECTs up front.
+        writer, conn = _run_full_build(F.build_tables())
+        before = len(conn.executed)
+        rows = writer._iter_content_hash_rows(conn)
+        assert len(conn.executed) == before, 'queries issued before any row was pulled'
+        next(rows, None)
+        issued = len(conn.executed) - before
+        assert 1 <= issued <= 2, (
+            f'pulling one row issued {issued} statements — the writer is not '
+            'walking the hashed tables one at a time'
+        )
+        rows.close()
+
+    def test_every_hashed_table_is_still_covered(self):
+        # The streaming rewrite must not have quietly dropped a table: the
+        # snapshot advertises `hashed_tables`, and a hash that covered fewer
+        # tables than it advertises is a false clean.
+        writer, conn = _run_full_build(F.build_tables())
+        conn.executed.clear()
+        writer._compute_content_hash(conn)
+        covered = {t for t, _, _ in W._CONTENT_HASH_QUERIES
+                   if any(f'FROM {t}' in ' '.join(s.split()) for s in conn.executed)}
+        assert covered == set(W._HASHED_TABLES)
+
+    def test_query_table_list_and_hashed_tables_cannot_drift(self):
+        assert tuple(t for t, _, _ in W._CONTENT_HASH_QUERIES) == W._HASHED_TABLES
+
+
 # ── the legacy non-regression rail ───────────────────────────────────────────
 
 class TestLegacyUntouched:
