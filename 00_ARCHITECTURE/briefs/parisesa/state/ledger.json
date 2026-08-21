@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 934,
+  "event_count": 937,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -303,16 +303,16 @@
     "F-110": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "56e0d4a394c1661d0ff22c620d76513ef49a1b78e59ef4dc2a1b67ea96c34948",
+      "event_sha256": "48aa63896f0181bfb67373c4a69860b539ab3f3d4598a9caf957c8058ee775b6",
       "event_type": "finding_status",
-      "evidence_summary": "TOP-SEVERITY finding. Confirmed still-current live (not historical) on main. Correctly diagnosed: the launder is NOT the tier computation (L3's 0.70 convergence -> tier_1_high is honest at its layer, SS N.5-correct) -- it's ahead.ts's OWN narration re-stating convergence-as-probability and hardcoding dissent:[] while the server holds a real denial (63 cited L1 facts, composite -3.5). Found interpretPactJoin already existed, fully tested, ZERO production callers -- its own docstring falsely claimed a wiring that was never written (an SS N.8 defect inside code built to fix SS N.8 defects). Correctly identified BOTH obvious fixes (downgrade tier / suppress) as wrong (would violate SS N.5 and B.10/SS N.6 respectively) and caught a genuine second-defect trap: denied_at_promise/confirmation are horizon-invariant but denied_at_activation is as-of-date-scoped and must not gate a future window -- a naive wiring would have created a new defect. Shipped Option C (disclosure, byte-identical tier/narrative/score, new promise_gate field, dissent populated, contradicted evidence loses an invented 'strong' grade for undefined). 15 new tests including byte-equality proof against L3 input; 107/108 across all relevant suites (1 pre-existing failure confirmed via git stash). Escalated 3 real policy questions to native ruling (R1 suppression policy, R2 whether PACT should gate at L3 build time -- the only legitimate tier-changing fix, R3 whether INV-1 binds assess_*). Two residuals disclosed not dropped (F-110-b: assess_marriage's own no_contradictions_in_domain breach; F-110-c: kala_windows_get/kala_projections_get ungated).",
+      "evidence_summary": "GA-5 review (after one stall-recovery retry) returned MERGE: the disclosure genuinely changes what a caller would conclude, since the launder is woven into every string ahead.ts itself authors (thesis/verdict/evidence/dissent), not confined to an easy-to-miss field. Reviewer's one gap: could not reach the MCP connector to independently verify the core numeric claim (denied_at_promise, 63 cited facts, composite -3.5) live. This session independently closed that gap directly against production before merging: pact_query(chart_id=482012f1..., domain=relationship) returned pact_status='denied_at_promise', PROMISE stage composite_score=-3.5, verdict_grade='contested', reading_contract text stating 'grounded in 63 resolvable L1 fact reference(s)' -- matching the finding's and PR's cited numbers exactly. kala_ahead_get for the same chart/domain, called against current pre-merge production, reproduced the exact pre-fix defect shape: dissent=[], evidence[0].strength='strong', no promise_gate field anywhere in the response -- confirming the defect is real, live, and unpatched on current production (expected pre-merge state). PR #1426 merge-queue-enqueued via gh pr merge --squash --auto (mergeStateStatus=CLEAN, no blocking checks); the 'merge strategy set by merge queue' message is informational per this campaign's established pattern, not an error.",
       "finding_id": "F-110",
-      "next_action": "GA-5 review in flight (heightened scrutiny given top-severity)",
+      "next_action": "Auto-merge armed in GitHub merge queue; verify queue completion and flip to terminal SERVICE_CLOSED next session (or same session if queue drains before close).",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1426",
-      "prev_sha256": "a42b315cddb00e86adcfb90141fc7db6372c693fd0db92412e2a6c0f2f910116",
-      "seq": 924,
+      "prev_sha256": "e351a536e8649430ef681506dc4e164af4cf3d63ca0517b919456a0d98d561ef",
+      "seq": 935,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "DECISION_PARKED",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-111": {
@@ -1359,6 +1359,36 @@
       "pr_url": null,
       "prev_sha256": "4287947c674560847b39e647093c8402d52d2a5911941751e106b171b88cecb3",
       "seq": 934,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-175": {
+      "confidence": "HIGH",
+      "disposition": "PARKED",
+      "event_sha256": "2e54851a819ecb23727635994279d1983d895ef2b31bc537112baeba458a17b1",
+      "event_type": "finding_status",
+      "evidence_summary": "Newly discovered during F-110's investigation (PR #1426), disclosed as residual 'F-110-b' in that finding's own evidence rather than silently dropped -- now given its own formal F-number per campaign discipline. assess_marriage (and by the same code shape, likely the other assess_* domain tools) actively CERTIFIES no_contradictions_in_domain for a domain that F-110 independently confirmed IS denied_at_promise (relationship, chart 482012f1, composite -3.5, 63 cited facts). This is a stronger defect shape than F-110's own kala_ahead_get omission: not a missing disclosure but an affirmative false-clean claim. GA-5 reviewer's own words: 'the bigger remaining exposure... worse than an omission... the likeliest path a real query takes... should be next, not backlog.'",
+      "finding_id": "F-175",
+      "next_action": "OUT OF v3.1's explicit ordered scope (not on the directive's work list; surfaced as a side-effect discovery during F-110). Per campaign norms for out-of-scope discoveries, tracked and disclosed here rather than actioned unilaterally. Recommend this be the FIRST item taken up next session given reviewer's explicit priority flag -- needs its own investigation (scope: which assess_* domains are affected beyond marriage/relationship; whether the same PACT-join reuse pattern F-110 built (interpretPactJoin) can be wired into assess_* directly) before a fix is attempted.",
+      "pr_url": null,
+      "prev_sha256": "48aa63896f0181bfb67373c4a69860b539ab3f3d4598a9caf957c8058ee775b6",
+      "seq": 936,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-176": {
+      "confidence": "MEDIUM",
+      "disposition": "PARKED",
+      "event_sha256": "d166405b9ead7b0ce279525a6b6b4a9b2bd992f79d17390937a1d582b72d45ac",
+      "event_type": "finding_status",
+      "evidence_summary": "Newly discovered during F-110's investigation (PR #1426), disclosed as residual 'F-110-c' in that finding's own evidence rather than silently dropped -- now given its own formal F-number per campaign discipline. kala_windows_get and kala_projections_get were identified by the F-110 build agent as two more surfaces that read PROMISE-stage composite/tier data without the F-110 fix's promise_gate disclosure -- same class of defect as ahead.ts, narrower scope, not yet independently confirmed live for these two specific tools.",
+      "finding_id": "F-176",
+      "next_action": "OUT OF v3.1's explicit ordered scope. Needs live verification (same pact_query / direct-tool-call method used to confirm F-110 itself) before it's treated as more than a plausible-but-unconfirmed lead -- confidence intentionally kept at MEDIUM pending that check.",
+      "pr_url": null,
+      "prev_sha256": "2e54851a819ecb23727635994279d1983d895ef2b31bc537112baeba458a17b1",
+      "seq": 937,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -2611,10 +2641,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 10,
+  "findings_morning_ship_ready_count": 11,
   "findings_terminal_count": 122,
-  "journal_head_seq": 934,
-  "journal_head_sha256": "e351a536e8649430ef681506dc4e164af4cf3d63ca0517b919456a0d98d561ef",
+  "journal_head_seq": 937,
+  "journal_head_sha256": "d166405b9ead7b0ce279525a6b6b4a9b2bd992f79d17390937a1d582b72d45ac",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
