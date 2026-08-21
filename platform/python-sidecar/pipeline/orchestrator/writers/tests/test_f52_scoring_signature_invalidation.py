@@ -38,13 +38,36 @@ THE GATE
   (d) Changing the lambda_v3 / term_breakdown formula constants changes it.
   (e) With nothing changed, the signature and the fingerprint are stable, and
       the skip path still works (no over-invalidation on every run).
+  (f) Editing a MODULE-SCOPE scoring constant in a mechanism — the real
+      `ASPECT_OFFSETS` / `ASPECT_MODIFIERS` / `TARA_MODIFIERS` tables, which
+      live OUTSIDE `compute()` — changes the signature and the fingerprint.
+  (g) A function-style mechanism import (`from ...mechanisms.wNN_x import
+      compute`), which binds no module object, is still discovered.
+
+GATE (f) EXISTS BECAUSE GATE (c) WAS NOT ENOUGH (GA-5 adversarial review)
+------------------------------------------------------------------------
+The first F-52 cut digested `inspect.getsource(module.compute)` only, and gate
+(c) tested it by monkeypatching `engine._w30.compute` — which proves the fold
+notices a rebound `compute` attribute, NOT the claim the docstring made ("a
+modifier schedule changing 0.70 → 0.65, an aspect offset corrected"). Both of
+those named examples were FALSE: `w30_nodal_drishti.ASPECT_OFFSETS` and
+`w23_tara_bala.TARA_MODIFIERS` are MODULE-scope, so editing them on disk left
+the signature and the substep fingerprint byte-identical — the delta-skip would
+have fired on exactly the most likely real edit, i.e. F-52 recurring. Gate (f)
+below mutates REAL mechanism module SOURCE (not an attribute) and asserts the
+fingerprint moves.
 
 TDD note: every test below asserting signature-sensitivity was RED against the
 pre-fix source — `services.gochara_v3.scoring_signature` did not exist and
 `compute_substep_fingerprint`'s payload had no scoring-mechanism input at all,
 so a pre-w30 engine and the current engine produced the IDENTICAL fingerprint.
+Gates (f)/(g) were RED against the first F-52 cut for the reasons above.
 """
 from __future__ import annotations
+
+import importlib.util
+import inspect
+import sys
 
 import pytest
 
@@ -58,7 +81,9 @@ from pipeline.orchestrator.writers.ka_gochara_v3_century_materialize import (
 )
 from services.gochara_v3 import engine as engine_mod
 from services.gochara_v3.scoring_signature import (
+    MECHANISM_PACKAGE_PREFIX,
     discover_engine_mechanisms,
+    scan_engine_mechanism_imports,
     scoring_signature,
     scoring_signature_digest,
     toggle_flag_name,
@@ -208,6 +233,11 @@ def test_discovered_mechanisms_carry_real_toggle_state_not_an_assumed_default():
         "copy that can drift from it."
     )
     assert w30["compute_digest"] not in ("no-compute-callable", "source-unavailable")
+    # The whole-module digest is the term that covers module-scope scoring
+    # constants (GA-5 review); it must be a real digest, never a sentinel.
+    assert w30["module_source_digest"] not in ("source-unavailable", "module-not-loaded")
+    assert w30["module_source_digest"] != w30["compute_digest"]
+    assert w30["discovery"] == "module_object"
 
 
 def test_signature_records_the_engine_formula_constants():
@@ -410,6 +440,284 @@ def test_f52_gate_d_changing_the_served_formula_changes_the_fingerprint(monkeypa
         "GATE (d) FAILED: the persisted/served term_breakdown.formula string "
         "must be part of the fingerprint."
     )
+
+
+# ===========================================================================
+# GATE (f) — MODULE-SCOPE scoring constants. The GA-5 review's finding.
+#
+# These gates mutate REAL mechanism module SOURCE TEXT — the same edit the
+# reviewer performed on disk — and re-execute it, rather than monkeypatching a
+# `compute` attribute. That is the only way to exercise the whole-module digest
+# path genuinely: a compute-only digest passes gate (c) and fails these.
+# ===========================================================================
+
+
+def _module_variant(tmp_path, real_module, old_text: str, new_text: str):
+    """Re-execute ``real_module``'s REAL source with one edit applied.
+
+    Writes the edited source to a temp file and loads it under the module's own
+    dotted name (so mechanism discovery treats it exactly like the real thing),
+    WITHOUT registering it in ``sys.modules`` — no global state is touched.
+    This reproduces an on-disk source edit in-process.
+    """
+    src = inspect.getsource(real_module)
+    assert old_text in src, (
+        f"fixture out of date: {old_text!r} is no longer present in "
+        f"{real_module.__name__}'s source — update the gate to the real "
+        f"module-scope constant it is meant to mutate."
+    )
+    edited = src.replace(old_text, new_text, 1)
+    assert edited != src
+
+    path = tmp_path / f"{real_module.__name__.rsplit('.', 1)[-1]}_variant.py"
+    path.write_text(edited, encoding="utf-8")
+
+    spec = importlib.util.spec_from_file_location(real_module.__name__, str(path))
+    variant = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(variant)
+    return variant
+
+
+def test_f52_module_scope_constants_live_outside_compute():
+    """The premise of gate (f), asserted directly rather than assumed.
+
+    If this ever fails — i.e. the scoring tables move INSIDE `compute()` — the
+    compute-only digest would have sufficed after all, and gate (f)'s rationale
+    needs restating. Today it does not: both wired mechanisms keep their
+    scoring values at module scope, which is exactly why the first F-52 cut's
+    `inspect.getsource(module.compute)` digest was blind to a retune.
+    """
+    w30_module_src = inspect.getsource(engine_mod._w30)
+    w30_compute_src = inspect.getsource(engine_mod._w30.compute)
+    assert "ASPECT_OFFSETS: tuple[int, ...] = (4, 6, 8)" in w30_module_src
+    assert "ASPECT_OFFSETS: tuple[int, ...] = (4, 6, 8)" not in w30_compute_src
+
+    w23_module_src = inspect.getsource(engine_mod._w23)
+    w23_compute_src = inspect.getsource(engine_mod._w23.compute)
+    assert "TARA_MODIFIERS: dict[str, float] = {" in w23_module_src
+    assert "TARA_MODIFIERS: dict[str, float] = {" not in w23_compute_src
+
+
+def test_f52_gate_f_editing_a_module_scope_aspect_offset_changes_the_fingerprint(
+    monkeypatch, tmp_path,
+):
+    """GATE (f.1) — the reviewer's exact scenario, mechanised.
+
+    `ASPECT_OFFSETS = (4, 6, 8)` → `(4, 6, 8, 2)` in `w30_nodal_drishti` adds a
+    3rd-house nodal aspect to every transit evaluation, moving every window's
+    `w30_modifier` and therefore its `lambda_v3`. It adds no column, touches no
+    formula constant, and is OUTSIDE `compute()`. Proven on disk against the
+    first F-52 cut: signature and substep fingerprint were BYTE-IDENTICAL
+    before and after, so the delta-skip would still have fired and windows
+    would have stayed frozen at pre-retune scores — F-52 recurring.
+    """
+    args = ("marriage", "g3_2024_2034", ENGINE_VERSION, ["Venus"])
+    fp_before = compute_substep_fingerprint(*args)
+
+    variant = _module_variant(
+        tmp_path,
+        engine_mod._w30,
+        "ASPECT_OFFSETS: tuple[int, ...] = (4, 6, 8)",
+        "ASPECT_OFFSETS: tuple[int, ...] = (4, 6, 8, 2)",
+    )
+    monkeypatch.setattr(engine_mod, "_w30", variant)
+    fp_after = compute_substep_fingerprint(*args)
+
+    assert fp_before != fp_after, (
+        "GATE (f.1) FAILED: editing ASPECT_OFFSETS — a MODULE-SCOPE scoring "
+        "constant `compute()` reads — changes what w30 contributes to every "
+        "window's lambda_v3 and must invalidate stored fingerprints. A digest "
+        "of `module.compute` alone cannot see this; digest the whole module."
+    )
+
+
+def test_f52_gate_f_editing_a_module_scope_aspect_modifier_changes_the_fingerprint(
+    monkeypatch, tmp_path,
+):
+    """GATE (f.2): re-calibrating the nodal aspect MODIFIER table (also module
+    scope) must invalidate."""
+    args = ("marriage", "g3_2024_2034", ENGINE_VERSION, ["Venus"])
+    fp_before = compute_substep_fingerprint(*args)
+
+    variant = _module_variant(
+        tmp_path,
+        engine_mod._w30,
+        "6: 0.95,",
+        "6: 0.85,",
+    )
+    monkeypatch.setattr(engine_mod, "_w30", variant)
+
+    assert compute_substep_fingerprint(*args) != fp_before, (
+        "GATE (f.2) FAILED: re-calibrating ASPECT_MODIFIERS[6] (the 7th-aspect "
+        "opposition suppression) re-scores every affected window."
+    )
+
+
+def test_f52_gate_f_editing_the_tara_modifier_schedule_changes_the_fingerprint(
+    monkeypatch, tmp_path,
+):
+    """GATE (f.3) — the docstring's own second example, now actually true.
+
+    `TARA_MODIFIERS["naidhana"] 0.70 → 0.10` is the single most likely future
+    edit to this code (a classical re-calibration). It is module-scope in
+    `w23_tara_bala`, so the first F-52 cut was blind to it; the reviewer
+    confirmed byte-identical digests across this exact edit on disk.
+    """
+    args = ("marriage", "g3_2024_2034", ENGINE_VERSION, ["Venus"])
+    fp_before = compute_substep_fingerprint(*args)
+
+    variant = _module_variant(
+        tmp_path,
+        engine_mod._w23,
+        '"naidhana":    0.70,',
+        '"naidhana":    0.10,',
+    )
+    monkeypatch.setattr(engine_mod, "_w23", variant)
+
+    assert compute_substep_fingerprint(*args) != fp_before, (
+        "GATE (f.3) FAILED: the tara modifier schedule multiplies directly "
+        "into lambda_v3. Retuning it and skipping the rebuild serves a stale "
+        "classical judgment as current — the literal F-52 defect."
+    )
+
+
+def test_f52_gate_f_module_digest_is_a_strict_superset_of_the_compute_digest(
+    monkeypatch, tmp_path,
+):
+    """The whole-module digest must not have LOST the compute-body coverage it
+    replaced. An edit inside `compute()` — gate (c)'s claim, made against real
+    source instead of a rebound attribute — must still invalidate."""
+    args = ("marriage", "g3_2024_2034", ENGINE_VERSION, ["Venus"])
+    fp_before = compute_substep_fingerprint(*args)
+
+    # Pick a line that genuinely sits inside compute()'s own source, so the
+    # edit is unambiguously a compute-body edit and not a module-scope one.
+    compute_src = inspect.getsource(engine_mod._w30.compute)
+    module_src = inspect.getsource(engine_mod._w30)
+    body_line = next(
+        line for line in compute_src.splitlines()[1:]
+        if line.strip() and module_src.count(line) == 1
+    )
+    variant = _module_variant(
+        tmp_path,
+        engine_mod._w30,
+        body_line,
+        body_line + "  # value-computation edit inside compute()",
+    )
+    monkeypatch.setattr(engine_mod, "_w30", variant)
+
+    assert compute_substep_fingerprint(*args) != fp_before, (
+        "the whole-module digest must still cover edits INSIDE compute() — it "
+        "is a superset of the old compute-only digest, not a swap."
+    )
+
+
+def test_f52_unchanged_module_source_does_not_invalidate(monkeypatch, tmp_path):
+    """No over-invalidation from the module-digest change: re-executing a
+    mechanism's UNEDITED source leaves the fingerprint identical."""
+    args = ("marriage", "g3_2024_2034", ENGINE_VERSION, ["Venus"])
+    fp_before = compute_substep_fingerprint(*args)
+
+    src = inspect.getsource(engine_mod._w30)
+    path = tmp_path / "w30_identical.py"
+    path.write_text(src, encoding="utf-8")
+    spec = importlib.util.spec_from_file_location(engine_mod._w30.__name__, str(path))
+    identical = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(identical)
+
+    monkeypatch.setattr(engine_mod, "_w30", identical)
+    assert compute_substep_fingerprint(*args) == fp_before, (
+        "an identical-source rebuild of a mechanism must NOT invalidate — the "
+        "fold keys on source text, not on module identity."
+    )
+
+
+# ===========================================================================
+# GATE (g) — discovery of function-style mechanism imports.
+#
+# The first F-52 cut claimed a wired-in mechanism "cannot fail to appear here",
+# but discovery only matched `types.ModuleType` objects in `vars(engine)`. A
+# `from ...mechanisms.w24_sade_sati import compute as _sade` binds a FUNCTION,
+# not a module, and would have been silently invisible with nothing to catch
+# it. Route 2 (AST scan of the engine's source) closes it; these are its gates.
+# ===========================================================================
+
+
+def test_f52_engine_mechanism_import_scan_is_a_real_detector():
+    """The scan must actually parse the engine and report a live result — not
+    an unimplemented check wearing a clean result's clothes (§N.8)."""
+    scan = scan_engine_mechanism_imports()
+    assert scan["status"] == "ok", (
+        f"the engine's mechanism-import scan degraded to {scan['status']!r}. "
+        f"The discovery guarantee's route 2 is not running."
+    )
+    assert f"{MECHANISM_PACKAGE_PREFIX}w30_nodal_drishti" in scan["module_style"]
+    assert f"{MECHANISM_PACKAGE_PREFIX}w23_tara_bala" in scan["module_style"]
+
+    # Every mechanism module the scan finds, by either import style, must end
+    # up in the discovered set. This is the union guarantee, asserted.
+    scanned = set(scan["module_style"]) | set(scan["function_style"])
+    discovered = {m["module"] for m in discover_engine_mechanisms()}
+    assert scanned <= discovered, (
+        f"mechanism modules imported by engine.py but NOT discovered: "
+        f"{sorted(scanned - discovered)!r}"
+    )
+
+
+def test_f52_function_style_mechanism_import_is_not_invisible(tmp_path):
+    """GATE (g): an engine importing a mechanism function-style must still have
+    that mechanism folded into the signature.
+
+    Built as a real engine-shaped module whose SOURCE contains the
+    function-style import, so the AST scan does real work on real syntax.
+    """
+    real_w24 = importlib.import_module(f"{MECHANISM_PACKAGE_PREFIX}w24_sade_sati")
+    assert real_w24.__name__ in sys.modules
+
+    fake_engine_src = (
+        "from services.gochara_v3.mechanisms.w24_sade_sati import compute as _sade\n"
+        "LAMBDA_V3_FORMULA = 'lambda_v3 = PROMISE * sade_modifier'\n"
+        "TERM_BREAKDOWN_FORMULA = 'PROMISE × sade_modifier'\n"
+        "_W24_SADE_SATI_ENABLED = True\n"
+    )
+    path = tmp_path / "fake_engine_function_style.py"
+    path.write_text(fake_engine_src, encoding="utf-8")
+    spec = importlib.util.spec_from_file_location("fake_engine_function_style", str(path))
+    fake_engine = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fake_engine)
+
+    # Route 1 alone sees nothing: no module object is bound in the namespace.
+    import types as _types
+    assert not [
+        v for v in vars(fake_engine).values()
+        if isinstance(v, _types.ModuleType)
+        and getattr(v, "__name__", "").startswith(MECHANISM_PACKAGE_PREFIX)
+    ], "fixture invalid: the fake engine must bind NO mechanism module object"
+
+    scan = scan_engine_mechanism_imports(fake_engine)
+    assert scan["status"] == "ok"
+    assert scan["function_style"] == [f"{MECHANISM_PACKAGE_PREFIX}w24_sade_sati"]
+
+    entries = {m["mechanism_id"]: m for m in discover_engine_mechanisms(fake_engine)}
+    assert "w24_sade_sati" in entries, (
+        "GATE (g) FAILED: a mechanism imported function-style is invisible to "
+        "the fingerprint. Wiring one in that way would silently reintroduce "
+        "F-52 — a scoring mechanism the delta-skip does not know exists."
+    )
+    entry = entries["w24_sade_sati"]
+    assert entry["discovery"] == "function_style_import"
+    assert entry["enabled"] is True
+    assert entry["module_source_digest"] not in (
+        "source-unavailable", "module-not-loaded",
+    )
+
+
+def test_f52_signature_folds_the_import_scan_status():
+    """A scan that stops working must be a visible signature change, not a
+    silent loss of coverage (§N.8)."""
+    sig = scoring_signature()
+    assert sig["signature_version"] == 2
+    assert sig["import_scan"]["status"] == "ok"
 
 
 def test_mr38_row_schema_fold_still_holds(monkeypatch):

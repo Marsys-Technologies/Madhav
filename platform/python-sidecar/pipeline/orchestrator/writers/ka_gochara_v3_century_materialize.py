@@ -106,7 +106,7 @@ folds a LIVE scoring-mechanism signature (the engine's imported mechanism
 modules, their default toggles, their compute() source, and the engine's own
 formula constants) into the same hashed payload, so wiring or retuning a
 mechanism auto-invalidates. ENGINE_VERSION remains load-bearing only for
-value-computation changes made OUTSIDE any mechanism's compute() and outside
+value-computation changes made OUTSIDE any mechanism MODULE and outside
 the formula constants — a materially smaller surface, not zero. See the
 "Scoring-mechanism signature" section below and
 services/gochara_v3/scoring_signature.py.
@@ -663,16 +663,27 @@ DECADE_SLICES: list[DecadeSlice] = build_decade_slices()
 # multiplied into the score.
 #
 # FIX: fold `services.gochara_v3.scoring_signature.scoring_signature_digest()`
-# -- derived LIVE by walking the ENGINE module's own namespace for the
-# mechanism modules it imports, their default toggles, their compute() source,
-# and the engine's canonical formula constants -- into every substep's hashed
-# payload. Wiring a mechanism into the engine, flipping its default toggle, or
-# editing its compute() body now invalidates every stored fingerprint with no
-# human remembering to bump ENGINE_VERSION.
+# -- derived LIVE from the ENGINE module itself: the mechanism modules it
+# imports (both module-style and function-style, the latter found by
+# AST-scanning the engine's source), their default toggles, each mechanism
+# module's WHOLE source, and the engine's canonical formula constants -- into
+# every substep's hashed payload. Wiring a mechanism into the engine, flipping
+# its default toggle, or editing ANY line of a mechanism's module source now
+# invalidates every stored fingerprint with no human remembering to bump
+# ENGINE_VERSION.
+#
+# WHOLE MODULE, not just compute() (GA-5 adversarial review of the first F-52
+# cut): the fold originally digested `inspect.getsource(module.compute)` only,
+# while claiming it caught "a modifier schedule changing 0.70 -> 0.65, an
+# aspect offset corrected". Both examples were false -- w30_nodal_drishti's
+# ASPECT_OFFSETS/ASPECT_MODIFIERS and w23_tara_bala's TARA_MODIFIERS are
+# MODULE-scope, so editing them left the fingerprint byte-identical and the
+# delta-skip would still have fired on the most likely real-world edit. See
+# test_f52_scoring_signature_invalidation.py gates (f.1)-(f.3).
 #
 # SCOPE, honestly (this narrows the ENGINE_VERSION standing rule; it does not
-# retire it): a value-computation change in engine.py OUTSIDE any mechanism's
-# compute() and outside the formula constants -- retuning
+# retire it): a value-computation change in engine.py OUTSIDE any mechanism
+# module and outside the formula constants -- retuning
 # `_ACTIVITY_MAX_ORB_DEG`, rewriting `_compute_activity_v3`'s internals -- is
 # still covered only by the ENGINE_VERSION standing rule. See
 # scoring_signature.py's module docstring for the full catches/does-not-catch
@@ -725,9 +736,12 @@ def compute_substep_fingerprint(
       * scoring_signature — PARIŚEṢA F-52: the LIVE digest of the gochara_v3
                             engine's production scoring-mechanism set (which
                             mechanism modules the engine imports, their default
-                            toggles, their compute() source, and the engine's
-                            canonical lambda_v3 / term_breakdown formula
-                            constants). Read live via
+                            toggles, each mechanism module's WHOLE source
+                            (compute() body AND the module-scope scoring
+                            tables it reads — ASPECT_OFFSETS, TARA_MODIFIERS,
+                            … — which a compute()-only digest missed), and the
+                            engine's canonical lambda_v3 / term_breakdown
+                            formula constants). Read live via
                             `scoring_signature_digest()` — deliberately NOT a
                             parameter, so it is structurally impossible to
                             compute a fingerprint that does not reflect the
@@ -742,9 +756,9 @@ def compute_substep_fingerprint(
 
     SCOPE (PARĪKṢAKA F-3, narrowed by PARIŚEṢA F-52): the row_schema_* fold
     covers ROW SHAPE (which columns exist) only, and the scoring_signature
-    fold covers the ENGINE's mechanism set / toggles / compute() bodies /
-    formula constants. Neither covers a value-computation change made in
-    engine.py OUTSIDE a mechanism's compute() and outside the formula
+    fold covers the ENGINE's mechanism set / toggles / mechanism module
+    source / formula constants. Neither covers a value-computation change made
+    in engine.py OUTSIDE a mechanism module and outside the formula
     constants (retuning `_ACTIVITY_MAX_ORB_DEG`, rewriting
     `_compute_activity_v3`'s internals), nor one made in THIS writer's own
     row-building code without a column change (e.g. MR-13's honest valence
