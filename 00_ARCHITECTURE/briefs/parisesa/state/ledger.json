@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 869,
+  "event_count": 870,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -74,15 +74,16 @@
     },
     "F-06": {
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "5343954d70457adc37d24233c8f7654ca8cc8601a58929bbfe05b1a059614617",
+      "disposition": "LANDED",
+      "event_sha256": "84a3a64dd6e8e64e4dc6e2e6e44823870ab47369d8dc4527a45c4a5a5b750331",
       "event_type": "finding_status",
-      "evidence_summary": "Repair exists but is deliberately held pending RATE-07 trusted-edge/shared-fleet-rate-limit architecture authority -- an owner architecture decision, not a repo-only repair-wave task. Re-attempting rebase without that authority would be premature.",
+      "evidence_summary": "GA-5 review: DO-NOT-MERGE, 2 blocking defects found, both cheap. (1) The deploy-topology change (deploy-mcp needs deploy-web) rests on a false premise -- deploy-web actually always runs regardless of platform/** changes (its own path-filter gate mirrors the shared changes job's, no independent filter), so the claimed conditional skip is unreachable in practice. Real undisclosed effect: this would have PERMANENTLY serialized every future amjis-mcp deploy behind the full web pipeline, including urgent fixes like SF-002. Caught before merge. (2) A dangling leftover parenthetical in the new ref_remedies_chart_get description reinstates exactly the false tool-equivalence conflation F-06 exists to fix. Application code itself (rate limiter) verified exceptionally strong -- fail-closed proven, bounded proven, atomicity proven against real Postgres in CI. Fix dispatched: extract migration-apply into its own job, both deploy-web and deploy-mcp depend on that (not on each other) -- closes the real race at ~1min coupling instead of the full pipeline.",
       "finding_id": "F-06",
-      "next_action": "owner ruling on RATE-07 architecture authority needed before any rebase attempt",
-      "prev_sha256": "e5215dfbb4e8276eec3b2fddd41f9a8ad552e084e367416d5ab1ca12c940519c",
-      "seq": 737,
-      "source_batch": "round7_triage",
+      "next_action": "correction in flight -- re-review once pushed",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1411",
+      "prev_sha256": "fd80f6d89d74851598eb21477b521d950284c413a3df2b39a4df9d74b97a1ca8",
+      "seq": 870,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
@@ -2149,8 +2150,8 @@
   },
   "findings_morning_ship_ready_count": 4,
   "findings_terminal_count": 114,
-  "journal_head_seq": 869,
-  "journal_head_sha256": "fd80f6d89d74851598eb21477b521d950284c413a3df2b39a4df9d74b97a1ca8",
+  "journal_head_seq": 870,
+  "journal_head_sha256": "84a3a64dd6e8e64e4dc6e2e6e44823870ab47369d8dc4527a45c4a5a5b750331",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
