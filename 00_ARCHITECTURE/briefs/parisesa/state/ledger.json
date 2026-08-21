@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 905,
+  "event_count": 908,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1149,6 +1149,36 @@
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
+    "F-162": {
+      "confidence": "HIGH",
+      "disposition": "STRANDED",
+      "event_sha256": "feb2644c4ed2e5784b927d0cdd0645340fa00f0c0b98a34ceaf7a1fca149136c",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW, significant SS N.8 finding, found by F-94's investigation. check_chart_facts_schema's HIGH-severity arm reads schema.get('columns', []) against CHART_FACTS_SCHEMA.json -- but the 'columns' key has NEVER EXISTED in that file (0 occurrences, confirmed across its full git history). This means the function always hits the default empty list and returns early -- the entire chart_facts_column_missing check class, including checks for ayanamsha_id/engine_version/fact_id presence, HAS NEVER EXECUTED since this check was written and CANNOT execute in its current form. A governance gate that has always silently passed by construction, never by genuinely checking anything.",
+      "finding_id": "F-162",
+      "next_action": "fix the key lookup to match the schema file's real structure (investigate what CHART_FACTS_SCHEMA.json actually contains and correct the check to read it correctly), then verify it can genuinely FAIL under a constructed bad-schema before trusting it -- same discipline as this session's other SS N.8 fixes",
+      "pr_url": null,
+      "prev_sha256": "b71c3b65f95b4960ac7c131af9355cfc267d0459c419d744c5f1bee4727c48cc",
+      "seq": 907,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-163": {
+      "confidence": "MEDIUM",
+      "disposition": "STRANDED",
+      "event_sha256": "3f6763912ceccef63e7b9ef33420a50da2d611ffcc7d476a197e4ad49e50f0dd",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW finding, found by F-94's investigation. SS H.3.5's docstring claims it checks 'CURRENT rows' but the actual loop applies no status filter at all, flagging 11 PREDECESSOR-status entries as if they were current-registry drift. Must be fixed inside whatever change resolves RC-1 (SS H.3.5 is one of the two checks -- alongside SS H.3.8 -- that make up RC-1's 161-finding false-positive-by-construction issue), not independently, since the fix touches the same code path.",
+      "finding_id": "F-163",
+      "next_action": "fix as part of the RC-1 resolution (see F-94's own next_action) -- add the missing status filter when SS H.3.5's live-manifest diffing logic is corrected",
+      "pr_url": null,
+      "prev_sha256": "feb2644c4ed2e5784b927d0cdd0645340fa00f0c0b98a34ceaf7a1fca149136c",
+      "seq": 908,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
     "F-17": {
       "confidence": "HIGH",
       "disposition": "LANDED",
@@ -2250,15 +2280,16 @@
     },
     "F-94": {
       "confidence": "HIGH",
-      "disposition": "DECISION_PARKED",
-      "event_sha256": "2529fa4ed17409a44e8ace2ad8135c7a20590b449fa94e9e259a3740e4de3c1b",
+      "disposition": "LANDED",
+      "event_sha256": "b71c3b65f95b4960ac7c131af9355cfc267d0459c419d744c5f1bee4727c48cc",
       "event_type": "finding_status",
-      "evidence_summary": "kind=DEFECT, CL-22 governance/registry drift, but corpus's own current_evidence_class is 'CURRENT_GOVERNANCE_RESIDUAL_BASELINE_REPRODUCED' -- a read-only current-main drift_detector.py run reproduced 216 findings, all MEDIUM/LOW, exit code 3, matching a prior recovered-evidence count. Confirmed directly on origin/main that ONGOING_HYGIENE_POLICIES_v1_0.md Section F ('CI / cron cadence') documents exactly this discipline: exit code 3 is the normal baseline when drift_detector.py reports pre-existing whitelisted MEDIUM/LOW drift, and is governed by a known_residuals whitelist mechanism (Phase 14G Lockdown Whitelisted Residuals) rather than being an ad hoc bug. This is a documented, structurally-accepted governance residual state requiring a separately-governed registry reconciliation plan (per corpus's own control_status), not an undiagnosed code defect this triage lane should attempt to fix directly.",
+      "evidence_summary": "Full 215-finding categorization into 6 root causes (RC-1..RC-6), summing exactly. Reproduced live (215 findings, exit=3, matches ledger's 216 within one env-delta finding). Implemented detector-side fixes only (no corpus/registry mutation, per the finding's own constraint): RC-3 (skip_dirs matched against absolute path parts -- a real defect that made the gate's verdict depend on checkout directory name, 215/exit=3 vs 825/exit=2 depending on absolute vs relative invocation, now fixed to agree); RC-2 (superseded plan removed from a live-pointer scan). Measured result: 215 -> 164 findings, exit=3, 0 HIGH. CI ratchet DRIFT_BASELINE_MAX tightened 216->165 per the gate's own invited practice. RC-1 (74.9% of all findings, a single false-positive-by-construction diffing against an already-superseded registry file) requires a registry edit -- correctly NOT executed without dedicated review, 4 options costed in the plan doc, F-94 stays open until that lands.",
       "finding_id": "F-94",
-      "next_action": "Author and independently review a bounded governance registry reconciliation plan per corpus's own next_executable_action, before any registry/canonical-artifact mutation.",
-      "prev_sha256": "d19eff635f4be7d076b196e92a40898c76972c836ade4587ed48066f6360a614",
-      "seq": 626,
-      "source_batch": "triage_batch3.json",
+      "next_action": "GA-5 review of the detector-side fixes (#1422), then a SEPARATE dedicated review to choose among RC-1's 4 options (repoint/honest-marker-retire/freeze-pre-cutover-set/backfill-ruled-out) before any registry mutation",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1422",
+      "prev_sha256": "5413b76d1701e69f03c4d2a577b5b6e0555101a4fe4a3bc8586a2c97de205fef",
+      "seq": 906,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
@@ -2410,8 +2441,8 @@
   },
   "findings_morning_ship_ready_count": 1,
   "findings_terminal_count": 122,
-  "journal_head_seq": 905,
-  "journal_head_sha256": "5413b76d1701e69f03c4d2a577b5b6e0555101a4fe4a3bc8586a2c97de205fef",
+  "journal_head_seq": 908,
+  "journal_head_sha256": "3f6763912ceccef63e7b9ef33420a50da2d611ffcc7d476a197e4ad49e50f0dd",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
