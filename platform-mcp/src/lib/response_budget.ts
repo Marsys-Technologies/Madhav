@@ -790,6 +790,17 @@ export function assembleSaraContent<
   // Enforce ≤2KB kernel invariant.
   // verdict + promise are immune (irreducible honesty core). Trim pointers then
   // flags until under ceiling, alternating by whichever is larger.
+  //
+  // F-175: flag trimming is positional (`slice(0, -1)`, from the end), which means the LAST
+  // flag pushed is the FIRST discarded — regardless of what it says. Live-caught by this
+  // finding's own wiring test: on assess_career/assess_wealth the kernel crossed 2048 bytes
+  // and the trimmer dropped `promise_chain_contradicts_domain` (this server independently
+  // DENIES the domain being assessed) while keeping `complete_domain_accounting_attached`
+  // (a "full slice is available" convenience note). That is precisely the §N.6 item 2
+  // regression class — a generic trim zeroing the densest, most-actionable content while a
+  // lower-density section survives — one layer below where §N.6 previously legislated it.
+  // KERNEL_FLOOR_FLAG_CODES gives those flags a real hardFloor: they are trimmed only after
+  // every non-floor flag is gone, and never merely because they were appended last.
   const mutableKernel = kernel as unknown as Record<string, unknown>
   while (estimateBytes(kernel) > KERNEL_MAX_BYTES) {
     const pointers = mutableKernel['pointers'] as unknown[]
@@ -798,7 +809,15 @@ export function assembleSaraContent<
     if (pointers.length >= flags.length && pointers.length > 0) {
       mutableKernel['pointers'] = pointers.slice(0, -1)
     } else if (flags.length > 0) {
-      mutableKernel['flags'] = flags.slice(0, -1)
+      const trimmed = dropLowestPriorityFlag(flags)
+      if (trimmed === null) {
+        // Only floor flags remain. Fall back to pointers; if those are gone too, stop —
+        // the caller discloses the residual overage (`budget_exceeded_after_trim`) rather
+        // than silently discarding an honesty disclosure to make the kernel appear to fit.
+        if (pointers.length > 0) { mutableKernel['pointers'] = pointers.slice(0, -1); continue }
+        break
+      }
+      mutableKernel['flags'] = trimmed
     } else {
       break
     }
@@ -837,6 +856,46 @@ export function assembleSaraContent<
   if (includedLayers.includes('grounding') && grounding) assembled.grounding = grounding
   if (includedLayers.includes('evidence') && evidence) assembled.evidence = evidence
   return assembled
+}
+
+/**
+ * F-175 (§N.6 item 2, applied to the Sāra kernel's flag array): flag codes that carry a
+ * hardFloor. A flag in this set states that this server holds a finding which CONTRADICTS
+ * or LIMITS what the response's own verdict says — it is the densest, most-actionable line
+ * in the kernel, and a byte-pressure trim must reach it last, never first-because-appended-
+ * last. Deliberately narrow: membership is for "the reading you are about to trust is
+ * disputed / was never checked", not for every caveat.
+ */
+export const KERNEL_FLOOR_FLAG_CODES: ReadonlySet<string> = new Set<string>([
+  // F-175 — the PACT promise chain denies the very domain being assessed, or could not be
+  // consulted at all (unchecked ≠ clean; F-110 A7).
+  'promise_chain_contradicts_domain',
+  'promise_chain_unchecked',
+  // The response could not be made to fit without loss — dropping THIS one would make the
+  // overage itself invisible.
+  'budget_exceeded_after_trim',
+])
+
+function flagCodeOf(flag: unknown): string {
+  if (typeof flag === 'string') return flag.split(':')[0]!.trim()
+  if (flag && typeof flag === 'object' && typeof (flag as { code?: unknown }).code === 'string') {
+    return (flag as { code: string }).code
+  }
+  return ''
+}
+
+/**
+ * Drop the last flag that does NOT carry a kernel hardFloor. Returns null when every
+ * remaining flag is a floor flag — the caller must then trim something else or stop, rather
+ * than discarding an honesty disclosure.
+ */
+function dropLowestPriorityFlag(flags: readonly unknown[]): unknown[] | null {
+  for (let i = flags.length - 1; i >= 0; i--) {
+    if (!KERNEL_FLOOR_FLAG_CODES.has(flagCodeOf(flags[i]))) {
+      return [...flags.slice(0, i), ...flags.slice(i + 1)]
+    }
+  }
+  return null
 }
 
 function mergeTrimPointersIntoPointers(
