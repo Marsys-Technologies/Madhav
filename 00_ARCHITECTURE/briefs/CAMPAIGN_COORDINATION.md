@@ -6289,3 +6289,84 @@ Lease opened above is released. Final account:
 No file outside this lease's declared scope was touched. Worktree
 `.clone/worktrees/pariprashna-part-d` retained (Parts B/C/D share adjacent
 model/adapter scope); will be removed once Part C/E/F land or on request.
+
+## 2026-08-21 — PARIPRASHNA-P3-PREFLIGHT-PART-C / Claude Code — leased window: DD-22, table-in-prose block promotion, approach (c)
+
+Building DD-22 — approved approach (c) ("annotate rather than split"), not
+built until now, per `PARIPRASHNA_P2_CLOSE_REPORT_v1_0.md` §5 and the DD-22
+register entry. Read that §5 in full before starting, per its own
+instruction, rather than re-deriving the viability finding.
+
+**Sequencing gate satisfied before opening:** confirmed P3-B has not opened
+— zero references anywhere in `state/SWARM_TRACKER.json` (the live derived
+tracker, not `PLAN.yaml`'s static plan) and no open PR touches it. DD-22
+lands first, exactly as ruled.
+
+**Implementation, additive at every layer, zero change to `committedBlocks`
+cardinality:**
+1. `semantics/block_classifier.ts` — new `detectTableSpans(text)`: scans a
+   block's RAW text for embedded GFM table(s) that don't occupy the whole
+   block (unlike `parseMarkdownTable`, which requires line 0 to be the
+   header). Only reached via the `paragraph` fallback in `classifyBlockKind`
+   — a whole-block table is still caught by the existing, stronger
+   `parseMarkdownTable` check first, so no double-classification. `kind`
+   stays `'paragraph'`; `tableSpans` (offset ranges + parsed table) rides
+   alongside as new, optional metadata.
+2. `protocol/events.ts` — new `table_spans` optional field on
+   `BlockCommitEventSchema`, absent unless an embedded table was found
+   (same additive discipline as every other field there).
+3. `pipeline/reading_parts.ts` — `commitBlock()` threads
+   `classification.tableSpans` onto the wire event. **Re-verified acceptance
+   criterion 4** (safety scans run on the full text before classification)
+   directly against the current code (lines 181-358), not inherited from the
+   P2 report's snapshot: the register-leak lint, HS-1 mortality scan, and
+   voice lint all still run strictly before `classifyCommittedBlock` is
+   called — unchanged by this lane, confirmed by reading the ordering again,
+   not assumed.
+4. Client: `state/types.ts` (new `TableSpan` type + `CommittedBlock.tableSpans`),
+   `state/s1LiveAdapter.ts` (maps `ev.table_spans` → `tableSpans`),
+   `state/reducer.ts` (carries it onto the committed block), `FrozenBlock.tsx`
+   (passes it through), `ParagraphBlock.tsx` (the only consumer — when
+   present, slices `text` at the span offsets and interleaves real
+   `<TableBlock>`s between prose `<p>`s instead of rendering raw pipe-syntax
+   as flat text).
+
+**Acceptance criteria (native-set, verbatim, all four required):**
+1. Byte-exact reconstruction — proven in
+   `block_classifier.test.ts` (`detectTableSpans` describe block): the
+   offsets slice back to the exact original text, verified for both a
+   single embedded table and two tables with three prose gaps.
+2. Regression proof against #1399 (citations) — unit-level: `.text` is never
+   mutated by this lane, only read to compute offsets, so
+   `accumulatedText`/citation extraction are untouched by construction (same
+   argument the P2 report's own viability finding made). **Live probe-turn
+   proof (showing real `citation.define` events) still owed — will run
+   post-merge/deploy**, matching this campaign's own DD-21 discipline.
+3. Regression proof against #1400 (`facts_consumed`) — same construction
+   argument (every real consumer reads `.text`/`.role`/`.semantic.kind`/
+   `.semantic.role` as whole values, confirmed unchanged). **Live turn + DB
+   read still owed post-merge/deploy.**
+4. Safety-scan ordering — discharged above, re-verified against current
+   code, not trusted from the report's snapshot.
+
+**Verified:** 836/887 test files pass (the 3 failing files — pre-existing,
+unrelated to this lane — trace to `Cannot find module 'uuid'`/`'ajv-formats'`,
+the same environment gaps identified during Part A's typecheck); 0 new tsc
+errors; clean eslint.
+
+**Lease scope:**
+1. `platform/src/lib/pariprashna/semantics/block_classifier.ts` +
+   `__tests__/block_classifier.test.ts`
+2. `platform/src/lib/pariprashna/protocol/events.ts`
+3. `platform/src/lib/pariprashna/pipeline/reading_parts.ts`
+4. `platform/src/components/pariprashna/state/{types,s1LiveAdapter,reducer}.ts`
+5. `platform/src/components/pariprashna/answer/FrozenBlock.tsx` +
+   `answer/blocks/ParagraphBlock.tsx`
+
+**Checked immediately before opening:** fresh `origin/main` fetch
+(`a894fe1d6`); no open PR touches any of the above files; disjoint from
+every other active lease in this table. Worktree
+`.clone/worktrees/pariprashna-part-d`, branch
+`pariprashna/p3-preflight-part-c` (new branch off current `origin/main`,
+same worktree reused for adjacent scope). Opened before push, correcting
+Part B's sequencing slip.
