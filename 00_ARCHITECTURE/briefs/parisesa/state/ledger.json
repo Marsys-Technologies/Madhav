@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 937,
+  "event_count": 941,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -245,17 +245,17 @@
     "F-107": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "6a80ee6c3cf827dbe8a3a336ee404f78511bda98dba1d1cb060898589b0e79d2",
+      "event_sha256": "5b10ee9ad5b04fac0c9dcfb5c073eacf11b9b712dd6042b0a1641b613d648ed0",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review: MERGE, every load-bearing claim independently verified live (123 bodha_mechanisms rows all static_natal, zero varga columns; chart_vichara.varga_ratification wealth set D1/D2/D9/D11 domain_provisional=false confirmed real not narrated; zero pre-PR references to chart_vichara from either consumer; weight_varga_source confirmed genuinely dead; no import cycle; SUPPLEMENTARY_11/PARASHARI_16 classical distinction confirmed real; 1777/1777 tests independently re-run). Explicit non-blocking pushback: Option A (routing the ratified varga set as cited evidence) was actually implementable now for wealth -- the PR's own disclosure text hardcodes ['D1','D2','D9','D11'] as a wrapper-local string literal rather than reading it from L1, and this literal disagrees with the existing DOMAIN_DIRECT_VARGAS.wealth=['D2','D11'] TS registry by omitting D9. Reviewer recommendation: accept as genuine progress, file a follow-up rather than block.",
+      "evidence_summary": "check_ledger_pr_sync.py confirmed PR #1419 merged 2026-08-21T05:50:52Z (was MORNING_SHIP_READY/merge-queue-armed at last ledger write). GA-5 MERGE verdict already on record (cross-varga mechanism disclosure/design, 1777/1777 tests re-run, SUPPLEMENTARY_11/PARASHARI_16 classical distinction confirmed real). Follow-up F-164 already tracked separately (wrapper-local D1/D2/D9/D11 literal disagreeing with DOMAIN_DIRECT_VARGAS.wealth by omitting D9).",
       "finding_id": "F-107",
-      "next_action": "in merge queue, auto-merge armed. Follow-up tracked as F-164.",
+      "next_action": null,
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1419",
-      "prev_sha256": "9e8b06119118b6920abba36557953d8a741097f4346f9e8289199c3363b3cbaf",
-      "seq": 910,
+      "prev_sha256": "f9258c8e0d1ab8a6c780bd59ec6cd05f882b09ec7dd46be874205e48d18fbe20",
+      "seq": 940,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-108": {
       "confidence": "HIGH",
@@ -377,17 +377,17 @@
     "F-114": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "d0655bbd3e48304bbfe525032a5088c4e4a8163eb3973d3edc36cd15231c1579",
+      "event_sha256": "f9258c8e0d1ab8a6c780bd59ec6cd05f882b09ec7dd46be874205e48d18fbe20",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review: MERGE, no blocking defect. Every claim independently re-verified live including a direct production anchor-query run confirming the fix reaches 17 Venus + 51 bhava-7 rows (247 outside the old head-400 window) -- not a paper mechanism. Composite ranker's real usage elsewhere confirmed (4 call sites). Crash-safety of the new tie-break key probed and confirmed safe. Mutation-testing independently reproduced. One non-blocking but worth-tracking observation: lensRankBasisNote unconditionally claims the anchor slice was included even though that code path is wrapped in a silent catch{} and contributes nothing on zero in-family hits -- the same narration-vs-detector gap class this fix itself was built to close, one level up.",
+      "evidence_summary": "check_ledger_pr_sync.py confirmed PR #1424 merged 2026-08-21T06:15:11Z (was MORNING_SHIP_READY/merge-queue-armed at last ledger write). GA-5 MERGE verdict already on record for this PR (degenerate domain-lens signal ranking fix, 17 Venus + 51 bhava-7 rows reached, 247 outside old head-400 window, mutation-tested). Follow-up F-169 already tracked separately.",
       "finding_id": "F-114",
-      "next_action": "in merge queue, auto-merge armed. Follow-up tracked as F-169.",
+      "next_action": null,
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1424",
-      "prev_sha256": "6b17c2248592c8975fb14c582d20e4b08d13ff8e1b1d7be3fdaec28347e36180",
-      "seq": 919,
+      "prev_sha256": "78b8b90474f5c17ee91cd57a5c4b9b64c492e43227ae81b34aacbe58f21e9057",
+      "seq": 939,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-115": {
       "confidence": "MEDIUM-HIGH",
@@ -421,17 +421,17 @@
     "F-117": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "0a7226742d60c252129e7e7019cca9571854f45c695a8c36b73f157342fdfa3d",
+      "event_sha256": "b74e1f311d24f53d78ed0596a152075d79c3c892a223247726c236df22e93f5a",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review round 2: MERGE, no blocking defect. Round 1's vacuous-min() bug fix independently re-verified (>=2-candidate gate confirmed in the shared primitive, applies to both domain_burden AND motif_burden -- the same defect affected 21/120 motifs too). NULL semantics confirmed genuine (no coercion). Live numbers reproduced exactly, including reverting the gate to reproduce the original 3 buggy figures to the digit. Independence-claim withdrawal confirmed genuine and well-reasoned (Spearman -1.0 for motif_burden independently confirmed, honest weak-monotone-inverse for domain_burden), new native ruling raised on term weights. Reviewer's own explicit recommendation: ship domain_burden now with disclosure rather than withhold -- the only 'hold' alternative is the prior hardcoded 0.0, which is a fabricated constant wearing a measurement's clothes, strictly worse than an honest NULL. Full test suite hang independently confirmed pre-existing (reproduces on clean main with zero PR code present).",
+      "evidence_summary": "check_ledger_pr_sync.py confirmed PR #1415 merged 2026-08-21T05:23:47Z (was MORNING_SHIP_READY/merge-queue-armed at last ledger write). GA-5 MERGE verdict already on record (domain_burden/motif_burden vacuous-minimum fix; independence claim measured, found false, and withdrawn from both PR body and design contract rather than re-asserted -- reviewer's own recommendation to ship with disclosure over the prior fabricated 0.0 constant).",
       "finding_id": "F-117",
-      "next_action": "in merge queue, auto-merge armed",
+      "next_action": null,
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1415",
-      "prev_sha256": "b59d0399ff702b2630f7c846def141efc8c72c0df29a2dd6b3965eaf21268d53",
-      "seq": 896,
+      "prev_sha256": "5b10ee9ad5b04fac0c9dcfb5c073eacf11b9b712dd6042b0a1641b613d648ed0",
+      "seq": 941,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-118": {
       "confidence": "HIGH",
@@ -1682,17 +1682,17 @@
     "F-38": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "bd175878676ef90d1a093d9d17fe43e932b8db2158b076c55965f5d664390605",
+      "event_sha256": "78b8b90474f5c17ee91cd57a5c4b9b64c492e43227ae81b34aacbe58f21e9057",
       "event_type": "finding_status",
-      "evidence_summary": "MAJOR CORRECTION under v3.1 closure directive investigation: prior ledger text ('owner/Pratinidhi ruling on baseline-aware check needed') was WRONG -- traced to generic governance-policy boilerplate ('CONTROL_GUARDED_NO_PR until a baseline repair or narrow Pratinidhi baseline-aware-check ruling is recorded', a broad campaign-wide gate, not F-38-specific) bleeding into this finding's own next_action text. F-38's REAL original claim (verified against source corpus): kala_now_get performs no entitlement/existence check on chart_id, leaking a raw upstream 404 error string verbatim for a nonexistent chart. Found the REAL candidate in codex-v4/liveness.json: bundle 'F38-kala-now-chart-authorization', state=code_verified_review_passed_control_guarded, scope='Kala NOW registration auth gate and one handler seam', evidence 29/29 focused tests passing. The actual blocker is MECHANICAL (produce a registry-shim Gate Baseline Receipt before normal PR), not an owner/scholarly ruling. Removed from the F-23/F-38 provisional-ruling-only carve-out (that carve-out was scoped to genuine scholarly/owner-authority items; F-38 never actually was one) -- being executed as a real GA-5 item instead.",
+      "evidence_summary": "check_ledger_pr_sync.py caught a real sync gap: PR #1407 (merged 2026-08-21T02:38:03Z) implements exactly the re-scoped, non-scholarly finding this ledger's own prior entry (seq 852) correctly diagnosed -- kala_now_get performed no entitlement/existence check on chart_id, leaking a raw upstream 404 verbatim (existence-oracle + string-leak). Fix reuses the existing fail-closed remoteAuthorize() gate every other chart-scoped tool already uses, plus a sanitizeNativeContextError bounding pass (pattern-identical to the F-01 fix). 36/36 new+existing tests, 23/24 on the adjacent W1 suite (1 failure independently confirmed pre-existing on clean main), tsc/codegen/TAP-6 all clean. PROCESS GAP DISCLOSED, NOT SMOOTHED OVER: the ledger's own last entry for F-38 (seq 852) still listed 'GA-5 review, merge, deploy' as an open next_action with pr_url=null when this PR was found already merged -- no GA-5 adversarial-review round for this specific PR is recorded anywhere in this ledger. Given F-38's history (originally miscategorized under the F-23/F-38 scholarly-ruling-only carve-out, later correctly determined not to be a scholarly item at all), this session independently re-verified the live fix directly against production rather than closing on the PR's own word: kala_now_get(chart_id='aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee') via live MCP now returns a clean {ok:false, error:'AUTHZ_DENIED: not authorized to access this chart'} -- no gochara data, no raw 404, no existence oracle, matching the PR's claim exactly. Closing SERVICE_CLOSED on this independent live confirmation; the missing GA-5 round is recorded here as a genuine process-integrity gap for the closure report, not hidden.",
       "finding_id": "F-38",
-      "next_action": "locate/recover the actual F38-kala-now-chart-authorization candidate source, independently re-verify the 29/29 evidence claim, produce or bypass the Gate Baseline Receipt step, GA-5 review, merge, deploy",
-      "pr_url": null,
-      "prev_sha256": "e3397bca8b35e8b8837bdee4b6b7c0f8c7e63593703e44d0192dfbf54de6ee9a",
-      "seq": 852,
+      "next_action": null,
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1407",
+      "prev_sha256": "d166405b9ead7b0ce279525a6b6b4a9b2bd992f79d17390937a1d582b72d45ac",
+      "seq": 938,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "DECISION_PARKED",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-39": {
       "confidence": "HIGH",
@@ -2641,10 +2641,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 11,
-  "findings_terminal_count": 122,
-  "journal_head_seq": 937,
-  "journal_head_sha256": "d166405b9ead7b0ce279525a6b6b4a9b2bd992f79d17390937a1d582b72d45ac",
+  "findings_morning_ship_ready_count": 8,
+  "findings_terminal_count": 126,
+  "journal_head_seq": 941,
+  "journal_head_sha256": "b74e1f311d24f53d78ed0596a152075d79c3c892a223247726c236df22e93f5a",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
