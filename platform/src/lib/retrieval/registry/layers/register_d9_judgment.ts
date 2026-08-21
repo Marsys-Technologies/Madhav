@@ -73,6 +73,8 @@ import {
   fetchGocharaSweep,
   checklistExhaustiveness,
   DOMAIN_KP_CUSPS,
+  DOMAIN_INDU_LAGNA,
+  corroboratingVargasNotWeighted,
   type ChecklistUnit,
   type GocharaSweepWindow,
 } from './reading_checklist'
@@ -551,6 +553,54 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
 
     const judgment_flags: JudgmentFlagEntry[] = []
     const fact_ids = new Set<string>()
+
+    // ── F-107 (PARIŚEṢA-V4, CL-20): cross-varga scope disclosure ──────────────────
+    // SHASTRA_MAP assigns each domain exactly ONE operative varga, and only that varga's
+    // bhāveśa/kāraka dignity enters the verdict (the R-46/WP-1.8 varga term). Some domains
+    // classically carry more than one: wealth is the load-bearing case — BPHS Ch.6-7 splits
+    // dhana (accumulated wealth, D2 Horā) from lābha (gains/income, D11 Rudrāṃśa/
+    // Ekādaśāṃśa). judgment_query weights D2 alone.
+    //
+    // That narrower scope is a defensible choice; presenting it WITHOUT SAYING SO was not.
+    // A caller asking "what converges across my D1, D2, D11 and Indu Lagna on wealth?" got a
+    // D1+D2 verdict with no field anywhere naming D11 or Indu Lagna as unconsulted — a silent
+    // substitution of the narrower answer for the one asked (CLAUDE.md §N.7 item 6 / §N.8).
+    //
+    // This flag does NOT fold D11/Indu Lagna into the verdict. Doing so would mean inventing
+    // a cross-varga convergence weighting for which no ratified methodology exists in this
+    // instrument — see 00_ARCHITECTURE/briefs/parisesa/
+    // F107_DIVISIONAL_MECHANISM_DESIGN_CONTRACT_v1_0.md. It states the real scope and hands
+    // over live drill handles to the surfaces that DO serve those legs today.
+    const crossVarga = corroboratingVargasNotWeighted(spec.signal_domain, spec.varga)
+    const induLagnaUnjoined = DOMAIN_INDU_LAGNA.has(spec.signal_domain)
+    if (crossVarga.length > 0 || induLagnaUnjoined) {
+      const missing = [
+        ...crossVarga.map(v => `${v} (divisional)`),
+        ...(induLagnaUnjoined ? ['Indu Lagna (special_lagna)'] : []),
+      ]
+      judgment_flags.push(
+        judgmentFlag(
+          'cross_varga_convergence_not_computed',
+          `This verdict weights the operative varga ${spec.varga} ONLY. Classical for ` +
+            `'${spec.signal_domain}' but NOT consulted here: ${missing.join(', ')}. ` +
+            'Do NOT read this D1+' + spec.varga + ' verdict as a cross-varga convergence ' +
+            'finding. Where to get the real thing: (1) ganita_vichara_get ' +
+            `(family='varga_ratification', domain='${spec.signal_domain}') — a per-graha ` +
+            'agree/oppose vote of the domain\'s RATIFIED operative-varga set against the D1 ' +
+            'dignity direction, the one genuine cross-varga convergence primitive built here ' +
+            "(wealth's set is ['D1','D2','D9','D11'], domain_provisional=false); add " +
+            "family='varga_ratification_divergence' for the vargas that CONTRADICT D1. " +
+            `(2) assess_${spec.signal_domain} (varga_analysis.per_varga` +
+            (induLagnaUnjoined ? ' + varga_analysis.indu_lagna' : '') + ') for the raw per-varga ' +
+            'legs side by side. (3) ganita_chart_facts_get (divisional_chart=…)' +
+            (induLagnaUnjoined ? ', ganita_special_lagnas_get' : '') + ' for full placements. ' +
+            'Caveats that remain honest gaps: varga_ratification votes on GRAHAS, not on bhāvas, ' +
+            'and covers vargas only — no special lagna (Indu included) takes part in any ' +
+            'ratification vote; and NO named multi-node MECHANISM spanning divisional charts is ' +
+            'computed anywhere (bodha_mechanisms_get is rāśi-D1-only). See F-107.',
+        ),
+      )
+    }
 
     try {
       // ── Step 1+2 (lagna frame): bhava condition, bhāveśa condition, occupants, aspects ──
@@ -1182,8 +1232,35 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         { unit: 'bhava_bhavesha_from_chandra', state: bhavaSignMoon !== null && lordConditionMoon !== null ? 'served' : 'not_computed', detail: 'Sudarshana (Moon-frame) leg' },
         { unit: 'karakas', state: karakaConditions.length > 0 ? 'served' : 'not_joined', count: karakaConditions.length, detail: karakaConditions.length > 0 ? spec.karakas.join(', ') : 'no kāraka defined for a bare-bhāva query', ...(karakaConditions.length === 0 ? { drill: 'ganita_chart_facts_get' } : {}) },
         { unit: 'operative_varga', state: vargaConfirmed ? 'served' : 'empty_for_this_chart', detail: `${spec.varga} confirmation of bhāveśa/kāraka` },
+        // F-107: the domain's OTHER classical vargas. SHASTRA_MAP weights exactly one
+        // operative varga into the verdict; a domain like wealth classically carries two
+        // (D2 dhana + D11 lābha). Named here as not_joined with a live drill rather than
+        // left invisible behind an `operative_varga: served` box that reads as complete.
+        ...(crossVarga.length > 0
+          ? [{
+              unit: 'corroborating_vargas',
+              state: 'not_joined' as const,
+              count: crossVarga.length,
+              detail:
+                `${crossVarga.join('+')} — classical for '${spec.signal_domain}' but NOT weighted into this verdict ` +
+                `(only the operative varga ${spec.varga} is). No cross-varga convergence is computed here.`,
+              drill: `ganita_vichara_get (family='varga_ratification', domain='${spec.signal_domain}') / assess_${spec.signal_domain} (varga_analysis.per_varga) / ganita_chart_facts_get (divisional_chart=${crossVarga[0]})`,
+            }]
+          : []),
         { unit: 'ashtakavarga', state: 'not_joined', detail: 'bhāva AV bindus not folded into judgment_query', drill: 'ganita_chart_facts_get (category=ashtakavarga_*) / assess_* (varga_analysis)' },
-        { unit: 'special_lagnas', state: 'not_joined', detail: 'Indu/Ārūḍha/Hora lagnas not folded here', drill: 'ganita_special_lagnas_get' },
+        {
+          unit: 'special_lagnas',
+          state: 'not_joined',
+          detail: DOMAIN_INDU_LAGNA.has(spec.signal_domain)
+            // F-107: for wealth, Indu Lagna is not a generic "some lagna we skipped" — it is
+            // THE Jaimini wealth-strength lagna, stored two_pass_verified, and served by
+            // assess_wealth. Name it and where it is, so the gap is actionable.
+            ? 'Indu Lagna (Jaimini wealth-strength lagna) is computed + two_pass_verified for this chart but NOT folded into this verdict; Ārūḍha/Horā lagnas likewise'
+            : 'Indu/Ārūḍha/Hora lagnas not folded here',
+          drill: DOMAIN_INDU_LAGNA.has(spec.signal_domain)
+            ? `ganita_special_lagnas_get (categories=["special_lagna"]) / assess_${spec.signal_domain} (varga_analysis.indu_lagna)`
+            : 'ganita_special_lagnas_get',
+        },
         { unit: 'sensitive_degree_firings', state: sensitive.firings.length > 0 ? 'served' : (sensitive.available ? 'empty_for_this_chart' : 'not_computed'), count: sensitive.firings.length, detail: 'puṣkara/gaṇḍānta/mṛtyu-bhāga/kartari fired-state (MC-030)' },
         { unit: 'kp_cusp_chain', state: kp.cusps.length > 0 ? 'served' : 'not_computed', count: kp.cusps.length, detail: `KP sub-lord chain for cusp(s) ${kpCusps.join('/')} (MC-031)` },
         { unit: 'yogi_avayogi', state: 'not_joined', detail: 'yogi/avayogi/duplicate-yogi/sahayogi now computed (T6 / MC-029, fact_category sensitive_point_yogi) but not yet folded into this judgment', drill: 'ganita_sensitive_degrees_get' },

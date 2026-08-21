@@ -47,6 +47,8 @@ import {
   fetchGocharaSweep,
   checklistExhaustiveness,
   DOMAIN_KP_CUSPS,
+  DOMAIN_DIRECT_VARGAS,
+  DOMAIN_INDU_LAGNA,
   type ChecklistUnit,
   type GocharaSweepWindow,
 } from './reading_checklist'
@@ -181,13 +183,12 @@ function capArray<T>(
 // Lagna (the dedicated Jaimini wealth-strength lagna). Exported so a CI check (and the D8
 // test suite) can assert every SHASTRA_MAP domain this file serves has a non-empty entry —
 // "no domain assessor may ship a stub for a layer classical to its own domain."
-export const DOMAIN_DIRECT_VARGAS: Record<string, string[]> = {
-  wealth: ['D2', 'D11'],
-  career: ['D10'],
-  relationship: ['D9'],
-  health: ['D6'],
-}
-const DOMAIN_INDU_LAGNA = new Set(['wealth'])
+// F-107: the registry itself now lives in ./reading_checklist (a leaf module that
+// judgment_query can also import without a d9→d8 cycle). Re-exported from here
+// unchanged so every existing import path — including the Lane-E CI rule loop in
+// register_d8_assess_domain.lane_e.test.ts — keeps working, and so there is exactly
+// ONE definition rather than two registries that can drift (CLAUDE.md §B.8 / GA.1).
+export { DOMAIN_DIRECT_VARGAS, DOMAIN_INDU_LAGNA } from './reading_checklist'
 
 interface VargaDignityRow {
   graha: string
