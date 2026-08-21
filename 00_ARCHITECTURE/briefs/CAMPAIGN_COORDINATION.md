@@ -5946,3 +5946,67 @@ number.
 files. The new PARIPRAŚNA-TRACKER-V2 lease above scopes only to
 `00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/**` — disjoint from this
 lease's scope. No other active lease overlaps.
+
+## 2026-08-21 — PARIPRASHNA-P3-PREFLIGHT-PART-A / Claude Code — leased window: adapter parameter-surface audit
+
+Executing PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md Part A, native-authorized.
+Verified fresh `origin/main` @ `211abc463` before opening (matches the prompt's own
+verified-against commit). Verified the model-tier-ruling lease above is functionally
+closed per its own §0.4 method before treating it as non-overlapping: `9789fbf7d`
+(PR #1434) is a confirmed ancestor of `origin/main` and touches exactly that lease's
+declared scope; no later log entry exists. (Closing entry for that lease still owed —
+carried to Part G per the master prompt's own sequencing, not fixed here.)
+
+**Lease scope:**
+1. `platform/src/lib/adapters/providers/adapter_gemini.ts`
+2. `platform/src/lib/adapters/__tests__/providers/adapter_gemini_wire_body.test.ts` (new)
+
+**Checked immediately before opening:** no open PR touches either file; disjoint from
+every other active lease in this table. Worktree
+`.clone/worktrees/pariprashna-part-a`, branch `pariprashna/p3-preflight-part-a`.
+
+**Finding (bigger than the master prompt's own A.1 framing assumed):** built a
+fetch-boundary detector (real `ai`/`@ai-sdk/google` SDK, stubbed `global.fetch`, no
+live key/spend) that captures the actual outbound HTTP body. Two confirmed defects,
+both proven against the real request body:
+
+1. `responseFormat`/schema was dropped **completely**, not partially — the pinned
+   `ai@6.0.197` has no `responseFormat` parameter on `streamText()` at all;
+   structured output requires `output`/`experimental_output`. This affected every
+   live Gemini structured-output call (`planner`: 73 calls/mo via
+   `pipeline_planner.ts`; `synthesize`), not only the two new gemini-3.x catalog
+   entries — DD-20 was closed entirely at the symptom layer (parseAndValidateSets +
+   repair-retry), exactly as the master prompt's A.1 warned.
+2. `thinking_level` (Gemini 3.x) was never read from registry quirks — already
+   self-documented as a known gap in `registry.ts`'s own comments, now proven
+   against a real request body rather than taken on faith.
+
+Per native direction (asked mid-session rather than assumed): fixed both in this
+Part A lease rather than deferring to Part B. `output: Output.object({ schema:
+jsonSchema(...) })` replaces the dead `responseFormat` field; `prepareRequest` now
+branches on `thinking_level` vs `thinking_budget` per the model's own quirks, using
+`thinkingLevel: 'minimal'` (not `thinkingBudget: 0`, not a valid analog) when
+`reasoning=disable` is requested for a thinking_level model.
+
+**A.5 (repair-retry fire rate) — reported as unmeasurable, not estimated.** Cloud
+Logging shows 7 repair-retry warnings in the only window logs cover (~36h since
+2026-08-20T22:26Z). No reliable denominator exists: `interpretation_sets` calls are
+still absent from `llm_usage_events` (DD-19, confirmed still open, 0 rows), and
+`assembleInterpretationSets` runs once per turn independent of whether a fresh
+`synthesize` LLM call fired that turn, so `synthesize`'s 4-row/30d count is not a
+valid proxy (7 > 4 already disproves it). Reporting a rate from a bad proxy would be
+a fabricated number; not doing that (§N.8).
+
+**A.4 (Interactions API) — scoped, not migrated:** the real fix is same-shape
+(`output`/`Output.object`), not an API-surface migration. Full Interactions API
+migration is a separate, larger question if pursued later — out of Part A's depth.
+
+Verified: 53/53 adapter provider tests, 381/381 across
+adapters/pariprashna-interpretation/models-registry (no regressions), 0 new tsc
+errors (5 pre-existing, unrelated `Cannot find module` errors elsewhere in the tree
+— not introduced by this change, not in this lease's files), clean eslint.
+`pipeline_planner.ts`'s `tryBuildPlan` already defensively strips markdown fences —
+confirmed compatible (no-op once the model returns clean JSON).
+
+No model moved (Part B's job); the two gemini-3.x catalog entries remain unwired to
+any CallType.
