@@ -162,6 +162,12 @@ Post-rebuild, all three must hold:
 3. No graha whose D1 degree is OUTSIDE its band flipped to `moolatrikona`, and
    the `exalted` / `debilitated` counts are unchanged (the tier splits `own`; it
    must not consume any other tier).
+4. **Scope guard, added per §5b's correction**: `SELECT count(*) FROM
+   chart_facts WHERE fact_category='graha_dignity_per_varga' AND
+   fact_value_text ILIKE '%moola%' AND varga_n != 1` returns **zero**. Any
+   non-zero result means `ga_structural_writer` fabricated a D2+ moolatrikona
+   row from the replicated-D1-degree bug described in §5b and the execution
+   must be treated as failed, not as "the tier is now working."
 
 ## §5 — Open questions, disclosed rather than decided
 
@@ -181,19 +187,52 @@ degree as the deep/paramocca point used for Uccha Bala — and it is reserved fo
 PRATINIDHI ruling, not settled inside a vocabulary repair. Current behaviour is
 pinned by `test_known_gap_exaltation_sign_shadows_moolatrikona`.
 
-**§5b — Should the moolatrikona degree gate apply in vargas above D1?**
-`ga_structural_writer` applies the oracle to EVERY varga, passing the divisional
-`degree_in_sign`, so after rebuild `moolatrikona` will begin appearing in
-D2–D60 rows derived from divisional degrees. Its sibling `ga_vargas_writer`
-explicitly does the opposite, guarding its moolatrikona branch on `varga_n == 1`
-with the stated reason that *"vargas >1 have no meaningful 'degree within amsa'
-for a re-derived MT check."* Both behaviours are currently merged and they
-disagree. Exalted / debilitated / own are sign-based and translate to a varga
-cleanly; moolatrikona is the ONLY degree-based tier, so it is the odd one out.
-This packet does **not** change `ga_structural` — that would be deciding the
-question unilaterally — but the GA-3 execution should expect D2+ moolatrikona
-rows and should not treat them as a rebuild defect, and the question should be
-ruled on before the D2–D60 blast radius is treated as correct.
+**§5b — CORRECTED (GA-5 review found this section's original claim factually
+wrong; do not act on the version below the correction line if you are reading
+an older copy of this document).**
+
+Original claim (WRONG, do not act on it): "`ga_structural_writer` applies the
+oracle to EVERY varga, passing the divisional `degree_in_sign`... expect D2+
+moolatrikona rows and should not treat them as a rebuild defect."
+
+**Corrected, live-verified**: `ga_structural_writer._load_varga_positions`
+reads `chart_divisionals.varga_position` / `degree_in_sign` — and that column
+is **the D1 natal degree replicated verbatim across all 29 vargas** (Jupiter/
+lahiri/canonical reads `9.832504` for D1, D2, D3 … D2700 alike; only
+`sign_number` genuinely varies per varga). There is **no real per-varga degree
+anywhere in this database.** Passing this replicated D1 degree into the
+degree-gated moolatrikona check for a D2+ row is therefore not "a legitimate
+varga-level check that happens to reuse D1's number" — it is gating a
+classification on a value that has no relationship to the graha's actual
+position within that varga's sign at all.
+
+**Consequently: a GA-3 execution against the current `ga_structural_writer`
+would fabricate approximately 68 D2+ moolatrikona rows repo-wide (13 on the
+canonical chart)** — each one a real §N.7 item 6 / B.10 violation (a computed
+value invented from data that cannot support it), not a legitimate rebuild
+result. **This packet's §3.1 blast-radius count (3 rows) is correct only for
+D1.** Do NOT execute a GA-3 rebuild against `ga_structural_writer` for any
+varga above D1 under this packet. The D1-only blast radius (§3.1's 3 rows) is
+still valid and may proceed on its own merits; D2+ requires either (a) a real
+per-varga degree source being added to `chart_divisionals` first (a separate,
+larger finding), or (b) `ga_structural_writer` adopting `ga_vargas_writer`'s
+existing `varga_n == 1` guard (the question of WHICH of the two disagreeing
+writers is right is still a native ruling, not decided here) — before any
+D2+ moolatrikona classification can be trusted.
+
+`ga_vargas_writer` itself is not fully consistent either and needs its own
+note: `_compute_dignity` applies the moolatrikona check in every varga
+(multiple call sites), while only `_build_saptavargaja_rows` guards to
+`varga_n == 1` — the two paths within this one writer disagree with each
+other, a narrower version of the same open question. Separately,
+`ga_vargas_writer.py`'s `_compute_dignity(graha, varga_sign)` call (no degree
+argument) defaults to `0.0`, which trivially satisfies bottom-of-range checks
+and labels every karaka in its own moolatrikona SIGN as `'Moolatrikona'`
+regardless of real degree — a second, pre-existing MT-emitting surface this
+packet did not originally account for, persisted to `karaka_per_varga`/
+`dignity`. Exalted / debilitated / own are sign-based and translate to a varga
+cleanly; moolatrikona is the ONLY degree-based tier, so it remains the odd one
+out regardless of which writer's convention eventually wins.
 
 **§5c — A dormant second Sthāna Bala implementation.**
 `brahmagyan/ganita/l1_strength.py` carries its own local `PLANET_DIGNITY` table
