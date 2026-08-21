@@ -77,6 +77,23 @@ describe('query_mimamsa_discoveries — handler contract', () => {
     expect(prov['tables']).toEqual(['mimamsa_discoveries'])
   })
 
+  it('F-143: provenance discloses that n_support is not a scored-outcome count', async () => {
+    const result = await queryMimamsaDiscoveriesCapability.handler({ chart_id: CHART_A }, undefined)
+    const content = result.content as Record<string, unknown>
+    const prov = content['provenance'] as Record<string, unknown>
+    const semantics = prov['n_support_semantics'] as Record<string, string>
+    // This capability serves n_support raw, and its meaning differs per discovery_class —
+    // assignments for emergent_law, LIMIT-3-capped anchor matches for retrodiction.
+    expect(semantics['emergent_law']).toMatch(/assignments/i)
+    expect(semantics['emergent_law']).toMatch(/n_scored_matches/)
+    expect(semantics['retrodiction']).toMatch(/not an adjudicated hit/)
+  })
+
+  it('F-143: retrodiction is a filterable discovery_class (51 such rows exist on the canonical chart)', () => {
+    const schema = queryMimamsaDiscoveriesCapability.input_schema?.['discovery_class'] as unknown as Record<string, unknown>
+    expect(schema?.['enum']).toContain('retrodiction')
+  })
+
   it('native chart UUID never appears in any query param', async () => {
     await queryMimamsaDiscoveriesCapability.handler({ chart_id: CHART_A }, undefined)
     const calls = vi.mocked(mockQuery).mock.calls
