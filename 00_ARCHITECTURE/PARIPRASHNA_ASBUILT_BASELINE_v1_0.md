@@ -1,9 +1,9 @@
 ---
 artifact: PARIPRASHNA_ASBUILT_BASELINE_v1_0
 canonical_id: PARIPRASHNA_ASBUILT_BASELINE
-version: 1.1
+version: 1.2
 status: LIVING — regenerated at every gate close; every row carries an evidence class + date
-produced_during: PARIPRASHNA-V012-PHASE1 (Cowork, Fable 5, 2026-08-18); P1-I addendum (Claude Code, 2026-08-19)
+produced_during: PARIPRASHNA-V012-PHASE1 (Cowork, Fable 5, 2026-08-18); P1-I addendum (Claude Code, 2026-08-19); P2-close addendum (Claude Code, 2026-08-21)
 date: 2026-08-18
 baseline_of: git HEAD dfbdfe620 (branch ekv/b-01-dignity-oracle-fix snapshot) + live MCP census 2026-08-18 + PB close corpus
 authoritative_side: claude
@@ -22,6 +22,13 @@ changelog:
     command + timestamp evidence; the affected §1/§3 cells are annotated
     in place with a pointer rather than silently overwritten, since G1 has
     not gate-closed and other lanes may be relying on the original rows."
+  - "1.2 (2026-08-21): P2-close gate — GAP-7 and GAP-10 CLOSED (live
+    re-verification, not code inspection), moved to a new closed-gap table;
+    GAP-14 given a partial-progress note, left open at its original scope.
+    New §7 addendum carries the serving-revision + flag-env re-check against
+    amjis-web-01585-g92 (built from 3d08d1c1a) plus the citation/receipt
+    live evidence. See PARIPRASHNA_P2_CLOSE_REPORT_v1_0.md for the full
+    account this addendum summarizes."
 ---
 
 # Paripraśna — As-Built Baseline (2026-08-18)
@@ -67,18 +74,23 @@ resolution; `mcp_predictions` retired (471) · fail-closed chart authz
 | GAP-4 | PITR disabled, no restore drill (last verified F-25t) | RE-VERIFIED — still disabled (`False`) — see §6.1 · 2026-08-19 | G1 (PPR-33) |
 | GAP-5 | `ANTHROPIC_API_KEY` unprovisioned in production (anthropic stack fails instantly, masked by Gemini default) | DOCUMENT_ASSERTED (PURNATA §5.1a) · 2026-08-01 | G1 |
 | GAP-6 | Live wire renders paragraphs only (FD-1): table/verse/gap-ribbon/heading/roles/prediction_card have no live producer | STATIC_VERIFIED | G2 (PPR-07) |
-| GAP-7 | S-3 citation rewriter built, unwired; `citation.define` post-hoc; grounding summary client-synthesized (FD-2/FD-6) | STATIC_VERIFIED | G2 (PPR-08) |
 | GAP-8 | Model/Length pickers cosmetic; `length_tier` nonfunctional; depth from picker not scope tuple (FD-3/FD-12) | STATIC_VERIFIED | G2 (PPR-09/16) |
 | GAP-9 | No durable-persistence protocol (settled_visual vs durably_persisted undistinguished); parity invariant unbuilt; capture flag OFF per Ruling 80 (FD-9 — apparatus repurposed per PPR-10) | STATIC_VERIFIED | G2 (PPR-10) |
-| GAP-10 | No AcharyaReadingReceipt: B.4 sets, typed confidence, prose binding, safety_decision all unemitted | STATIC_VERIFIED | G3 (PPR-01..05) |
 | GAP-11 | prashna_ask is single-pass without lint/sentinel/receipt; unified plan type unwritten; store covers assistant turns only | STATIC_VERIFIED / DOCUMENT_ASSERTED | G4 (PPR-30) |
 | GAP-12 | Recall built-unwired (FD-5); LogToSamiksha unmounted (FD-4); window-opening ask unbuilt; dispute capture absent; feedback endpoint still discards (F-25c); digest transport log-only (FD-10) | STATIC_VERIFIED | G8 (PPR-18/31) |
 | GAP-13 | Calibration sink (Rulings 55/79) unbuilt; `model_p` column absent; method-version column is a PROPOSED Ruling-79 amendment | STATIC_VERIFIED | G9 (PPR-28/29) |
-| GAP-14 | Cost/latency metrics schema exists with 0 rows (F-25o); no TTFT aggregates; SLOs unbaselined | STATIC_VERIFIED 2026-07-19 · presumed standing | G2 (PPR-33) |
+| GAP-14 | Cost/latency metrics schema exists with 0 rows (F-25o); no TTFT aggregates; SLOs unbaselined | STATIC_VERIFIED 2026-07-19 · presumed standing; **PARTIAL PROGRESS 2026-08-21 — see §7.3**: the `route.ts` synthesis call site now writes real `llm_usage_events` rows (was: 0 rows from this call site specifically) — the SCHEMA-has-0-rows claim as originally scoped is narrowed, not closed; TTFT aggregates and SLO baselining remain entirely unbuilt | G2 (PPR-33) |
 | GAP-15 | Two error classifiers (adapter bands live; `classify-error.ts` dead, zero importers) | STATIC_VERIFIED · 2026-08-18 | G7 sweep |
 | GAP-16 | PB-9-DETECTOR (no-auto-promotion CI detector) open — property true by inspection only | DOCUMENT_ASSERTED (REPORT_PB-3 §G.9) | G1/G2 |
 | GAP-17 | audience_tier residue: type/comment-level + two JSON-schema `required` fields (load-bearing sites excised) | STATIC_VERIFIED · 2026-08-18 | G7 sweep |
 | GAP-18 | Post-six-views narration audit (PŪRṆATĀ handoff #2) not run | DOCUMENT_ASSERTED · 2026-08-01 | G8+ |
+
+### §3a — Gap register (closed)
+
+| # | Gap (as originally scoped) | Closed by | Class · date |
+|---|---|---|---|
+| GAP-7 | S-3 citation rewriter built, unwired; `citation.define` post-hoc; grounding summary client-synthesized (FD-2/FD-6) | PR #1399 (`4e6301770`) — spliced `PARIPRASHNA_CITATION_APPENDIX` into the live system-prompt assembly | LIVE_VERIFIED (real turns: `citation.define` fired 10× and 5×, not post-hoc) · 2026-08-21 — see §7.2 |
+| GAP-10 | No AcharyaReadingReceipt: B.4 sets, typed confidence, prose binding, safety_decision all unemitted | PR #1400 (`a1266f348`, receipt wire event) + PR #1404 (`3d08d1c1a`, Lane K typed confidence) | LIVE_VERIFIED (real `receipt.define` events carrying populated `interpretation_sets`, `facts_consumed`, and — via GroundingCard — a rendered `confidence_type` label) · 2026-08-21 — see §7.2/§7.3 |
 
 ## §4 — Engine content beneath the surface (DOCUMENT_ASSERTED, CURRENT_STATE §2)
 
@@ -206,4 +218,78 @@ normal deploy path never touched it," that would require either explicit
 authorization to run a read-only `SELECT` against production, or the
 operator's own migration-tracking record.
 
-*End PARIPRASHNA_ASBUILT_BASELINE v1.1 (2026-08-18; P1-I addendum 2026-08-19).*
+## §7 — P2-close addendum (2026-08-21)
+
+The P2-close gate (`PARIPRASHNA_P2_CLOSE_REPORT_v1_0.md` — the full account;
+this section is the Baseline-side summary). Per DD-21
+(`PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`), every claim below rests
+on a real probe turn, a real browser observation, or a direct database
+read — never CI-green or code inspection alone.
+
+### §7.1 — Serving revision + flag env
+
+```
+gcloud run services describe amjis-web --project=madhav-astrology --region=asia-south1 \
+  --format="value(status.latestReadyRevisionName,status.traffic)"
+```
+Result: `amjis-web-01585-g92`, 100% traffic — built from `3d08d1c1a`
+(items 1–3/5–7 + Lane K all merged, this is the first revision carrying all
+of them). Confirms both §1's "Flag ON in production" row and §6.4's
+serving-revision row, refreshed past `amjis-web-01529-hf8`.
+
+Live `MARSYS_FLAG_*` env (read via `--format="json(spec.template.spec.containers[0].env)"`,
+grepped for `PARIPRASHNA`), a materially richer surface than §6.3's
+2026-08-19 snapshot (several of these flags did not exist in code at all as
+of that check):
+
+```
+MARSYS_FLAG_PARIPRASHNA_ENABLED=true
+MARSYS_FLAG_PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED=true
+MARSYS_FLAG_PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED=true
+MARSYS_FLAG_PARIPRASHNA_HONEST_CONTROLS_ENABLED=true
+MARSYS_FLAG_PARIPRASHNA_RECEIPT_EMISSION_ENABLED=true
+MARSYS_FLAG_PARIPRASHNA_INTERPRETATION_SETS_ENABLED=true
+MARSYS_FLAG_PARIPRASHNA_TYPED_CONFIDENCE_ENABLED=true
+MARSYS_FLAG_PARIPRASHNA_VOICE_ENFORCEMENT_ENABLED=true
+MARSYS_FLAG_PARIPRASHNA_LEDGER_OUT_OF_PROCESS=true
+MARSYS_FLAG_PARIPRASHNA_INJECTION_CONTAINMENT=true
+MARSYS_FLAG_PARIPRASHNA_SAFETY_GATE_ENABLED=true
+```
+
+### §7.2 — Citation + receipt: live, not post-hoc (closes GAP-7, GAP-10)
+
+Two independent real turns (a probe-harness turn, a browser turn with real
+CDP device metrics) both showed: `citation.define` firing mid-stream (10
+and 5 events respectively, real `signal_id`/`layer` values, e.g.
+`KRK.C8.ATMA`, `DVS.D9.MOON`, `RM.05`) — not the post-hoc, client-synthesized
+grounding GAP-7 described; one `receipt.define` event per turn carrying a
+populated `interpretation_sets` (real generated candidate sets, a
+selection, a falsifier) and real `facts_consumed` entries — not the
+unemitted receipt GAP-10 described. See §3a for the formal gap closure and
+`PARIPRASHNA_P2_CLOSE_REPORT_v1_0.md` §2 for the full per-item account.
+
+### §7.3 — Typed confidence + observability (Lane K, item 6)
+
+Real browser observation: expanding a citation's detail panel rendered
+`"RM.05 · structural signal"` — the PPR-03 confidence type resolved from
+the live receipt and rendered on `GroundingCard.tsx`, not a placeholder.
+Real database read against `llm_usage_events` for the same turn's
+`prompt_id`: one row, `pipeline_stage: "synthesize"`,
+`provider: "gemini"`, `model: "gemini-2.5-pro"`, `input_tokens: 52366`,
+`output_tokens: 3248`, `status: "success"` — the main synthesis call site
+is no longer silently absent from the project's own real per-call
+usage/cost table (see GAP-14's partial-progress note in §3, which this
+narrows but does not close).
+
+### §7.4 — What this addendum does not claim
+
+Item 4 (table-in-prose block promotion, GAP-6's specific `table` sub-case)
+was evaluated and an approach approved but NOT built — GAP-6 stands
+unedited, open at its original scope. GAP-8, GAP-9, GAP-11, GAP-12, GAP-13
+are untouched by this gate and are not re-verified here. `llm_usage_events`
+now receiving real rows from the synthesis call site is real, narrow
+progress on GAP-14, not a closure of it — TTFT aggregates and SLO
+baselining remain entirely unbuilt.
+
+*End PARIPRASHNA_ASBUILT_BASELINE v1.2 (2026-08-18; P1-I addendum
+2026-08-19; P2-close addendum 2026-08-21).*

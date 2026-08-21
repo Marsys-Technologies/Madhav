@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-08-19T22:41:37Z",
+  "generated_at": "2026-08-21T02:50:00Z",
   "generator_version": "1.0",
   "entry_count": 128,
-  "fingerprint": "28b26a3b1d2c63a5cb1d1a17a1a587a28940165708a35e34926f4611d3fe38ef",
+  "fingerprint": "7713e122bcfe45fbd0cad736458f0395a72710ac493174701401cb19f2b1d60f",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1668,7 +1668,7 @@
     {
       "canonical_id": "PARIPRASHNA_ASBUILT_BASELINE",
       "path": "00_ARCHITECTURE/PARIPRASHNA_ASBUILT_BASELINE_v1_0.md",
-      "version": "1.0",
+      "version": "1.2",
       "status": "LIVING",
       "layer": "governance",
       "expose_to_chat": false,
@@ -1676,8 +1676,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "b1a6b87fa10885a85216372916eca98b3bad7fb518a1597fc6853038c28cff81",
-      "native_id": "project"
+      "fingerprint": "32bd2b7d457391d60ed0507c23b5573f61ff34a06a9562dc960bad486ae4eec3",
+      "native_id": "project",
+      "last_verified_session": "PARIPRASHNA-P2-CLOSE-2026-08-21"
     },
     {
       "canonical_id": "PARIPRASHNA_DECISION_REGISTER",
@@ -1793,8 +1794,8 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "2e3bf7bb322540bead21d758a54fd005d0f18955d562cd85d4c405c9a4943fcc",
-      "last_verified_session": "PARIPRASHNA-DD16-DD17-EXECUTE-DIAGNOSTIC-2026-08-21",
+      "fingerprint": "abecb04996784c2104798c54885d17edcfe1616cddd18aacfdd42fd789d8f589",
+      "last_verified_session": "PARIPRASHNA-P2-CLOSE-2026-08-21",
       "last_verified_on": "2026-08-21",
       "native_id": "project"
     },
