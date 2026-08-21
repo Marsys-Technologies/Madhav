@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 924,
+  "event_count": 925,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -653,15 +653,16 @@
     },
     "F-131": {
       "confidence": "HIGH",
-      "disposition": "DIAGNOSED_UNFIXED",
-      "event_sha256": "b58d729db7edb6fa937c9774bb6041a0f2ebce843a3793f4f03c80b90c19641d",
+      "disposition": "LANDED",
+      "event_sha256": "3e0fb660cf3e9c4a196abe4962bb352211655c7f8a9929891c9b3c3225c5e6de",
       "event_type": "finding_status",
-      "evidence_summary": "Corrected from this session's own earlier (wrong) EXTERNAL_HOLD reclassification -- the corpus data was recoverable (see self-correction entry) and this finding is genuinely diagnosable, just not a quick fix. Original claim: kala_priority_ranking_get serves raw bodha_msr_signals.signal_headline_text template strings verbatim (e.g. 'SAT: arudha pada: sign = Aquarius [ga_sensitive]'), and worse, an internal computation-abstention marker ('floored: no_canonical_per_varga_method' -- the writer had no verifiable classical D14 cheshta-bala formula and honestly floored per B.10) gets salience-scored and served as if it were a real priority signal. INVESTIGATED THIS SESSION: platform/python-sidecar/brahmagyan/signal_register_glossary.py already exists with a complete, well-cited acharya-grade label mapping AND an INTERNAL_MARKER_PATTERNS list specifically naming this exact defect in its own docstring -- but it is NEVER IMPORTED anywhere (grepped the full python-sidecar tree; zero non-test references), including not in bo_laksana.py's _build_headline_text, which the module's own docstring names as the intended call site. Same 'authored but never wired' pattern as F-05 was before its fix. Correctly fixing this requires either (a) wiring the Python glossary into the write path (bo_laksana.py) and then rebuilding the chart's bodha_msr_signals data to pick it up, or (b) a serve-time TS translation+filter at the actual raw-data source (platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts's callPriorityRankingCapability, which serves `ranked_signals: result.rows` completely unfiltered/untranslated straight from SQL) -- ported from the same glossary data, avoiding a data rebuild. Genuinely substantial (porting/wiring an entire label glossary across many signal_type families, not a mechanical patch) -- correctly left parked rather than rushed under the remaining session time budget, per this campaign's own floors-aspirational/no-rushed-correctness doctrine. This diagnostic work hands off a concrete implementation path, not just the original bug report.",
+      "evidence_summary": "Serve-time fix, no rebuild needed. Cross-language sourcing solved properly: the existing generate_vidhi_registry_mirror.ts codegen pattern reused so the Python glossary stays single source of truth, TS mirror generated + sha256-pinned with a CI parity test. Internal-marker exclusion correctly implemented via window functions INSIDE the ranking query (filtering after LIMIT would have silently shrunk the served page below top_k -- a real trap avoided). Excluded rows disclosed (matched pattern + rank they would have occupied), never silently dropped. requires_pass rows deliberately served-not-excluded, flagged catalog_only_unverified per SS N.6. Domain-correctness spot-check found a REAL glossary translation error (midpoint labeled 'Sandhya Bindu' -- twilight -- when the classical junction term is 'sandhi'; also found 18/55 pair subjects are ASC/MC chart angles, not grahas, making even the generic label wrong for a third of the family) -- corrected. Found a SECOND abstention-marker family (drik_requires_varga_aspect_geometry) the original finding never named, caught only by the bare 'floored:' pattern -- load-bearing, pinned by a test. Fixed SQL executed against real production (not just mocked tests). 34 new tests + 1796/1796 full retrieval suite. Two honest limitations disclosed: glossary coverage only 19.6% of live signals (unmapped served flagged, not relabelled); codegen:projections has ~9000 lines of PRE-EXISTING drift on pristine main (confirmed, then reverted rather than bundled in -- this PR does not touch that unrelated drift).",
       "finding_id": "F-131",
-      "next_action": "wire signal_register_glossary.py's INTERNAL_MARKER_PATTERNS + FACT_CATEGORY_DISPLAY_LABEL into either bo_laksana.py's write path (needs a follow-up chart data rebuild) or call_service_wrappers.ts's callPriorityRankingCapability serve path (immediate, no rebuild needed) -- author+review+implement, real design work, not attempted this session.",
-      "prev_sha256": "c8827231577d77c39ba8d1a9124e7e69746f7b316806da2ab5fd121b70e10bb4",
-      "seq": 831,
-      "source_batch": "v3_ga2_decision_closures_corrected",
+      "next_action": "GA-5 review in flight",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1427",
+      "prev_sha256": "56e0d4a394c1661d0ff22c620d76513ef49a1b78e59ef4dc2a1b67ea96c34948",
+      "seq": 925,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
@@ -2551,8 +2552,8 @@
   },
   "findings_morning_ship_ready_count": 6,
   "findings_terminal_count": 122,
-  "journal_head_seq": 924,
-  "journal_head_sha256": "56e0d4a394c1661d0ff22c620d76513ef49a1b78e59ef4dc2a1b67ea96c34948",
+  "journal_head_seq": 925,
+  "journal_head_sha256": "3e0fb660cf3e9c4a196abe4962bb352211655c7f8a9929891c9b3c3225c5e6de",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
