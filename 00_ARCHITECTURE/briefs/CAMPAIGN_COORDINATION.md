@@ -6167,3 +6167,85 @@ Lease opened above is released. Final account:
 No file outside this lease's declared scope was touched. Worktree
 `.clone/worktrees/pariprashna-part-d` retained (used for the live probe
 verification above); will be removed once Part B lands or on request.
+
+## 2026-08-21 — PARIPRASHNA-P3-PREFLIGHT-PART-B / Claude Code — leased window: the model moves (opened retroactively, before push — disclosed)
+
+Executing Part B of the master prompt: moving `synthesis`, `interpretation_sets`,
+`planner_fast`, `worker` in the `gemini` STACK_ROUTING onto the ruled tier
+table. **Disclosed process note:** the edits were made in the (already-open,
+adjacent-scope) `.clone/worktrees/pariprashna-part-d` worktree before this
+lease was opened — a sequencing slip against this log's own discipline of
+leasing before touching files. No push or merge happened before this entry;
+opened now, before any push, which is the checkpoint that actually matters
+for collision safety. Verified fresh `origin/main` (`e99cc1e45`) and no open
+PR touches either file before writing this entry.
+
+**Lease scope:**
+1. `platform/src/lib/models/registry.ts` — STACK_ROUTING.gemini moves +
+   MODELS[] hint/comment updates for the two 3.x catalog entries (now LIVE,
+   not catalog-only) + removal of the now-redundant STAGED_TIER_UPGRADE_ROUTING
+   const (nothing else referenced it; its whole purpose — recording the plan
+   before activation — is moot post-activation, and keeping a stale parallel
+   copy risks silent drift from the live STACK_ROUTING).
+2. `platform/src/lib/adapters/providers/adapter_gemini.ts` — one-line fix to
+   the Part A fallback (`thinkingLevel: 'minimal'` → `'low'`), found broken
+   by this Part's own live e2e re-run (see below).
+3. `platform/src/lib/adapters/__tests__/providers/adapter_gemini_wire_body.test.ts`
+   — test updated to match.
+
+**Correction made mid-edit, disclosed:** first pass moved `planner_deep`
+(reading "planner" from the ruled tier table's "planner + summarizer" row) —
+wrong. `worker`'s own CallType docstring says "title generation, **history
+summarization**, any call where minimal latency and minimal cost dominate" —
+that's "summarizer." Confirmed against `STAGED_TIER_UPGRADE_ROUTING`'s own
+prior CallType selection (`planner_fast` + `worker`, authored by the ruling
+session itself with direct access to the native's actual conversation) and
+against `pariprashna/summaries/worker.ts` — a module literally named for
+this, whose own comment states `callType: 'worker'` is exactly this
+CallType. Corrected: `planner_deep` reverted to unchanged
+(`gemini-2.5-flash`/`gemini-2.5-pro`), `worker` moved instead of
+`planner_deep`. Fallback pinned to GA `gemini-2.5-flash` per the master
+prompt's own ruled table (not `gemini-2.5-flash-lite`, which the staged
+const's pre-ruling-table draft had proposed for `worker`'s fallback
+specifically).
+
+**Disclosed, out-of-scope, not fixed:** `src/lib/conversations/title.ts`
+bypasses `STACK_ROUTING` entirely via a hardcoded `TITLE_MODEL_ID` override
+(currently Anthropic `claude-haiku-4-5`, confirmed live in `llm_usage_events`)
+— the exact same shape of bypass DD-17 closed for `interpretation_sets`.
+This means the `worker` move above does NOT change title generation's actual
+model (title.ts never resolves through `gemini.worker`) — only
+`pariprashna/summaries/worker.ts`'s history-summarization call is affected.
+Not this Part's scope to fix; flagging so it isn't mistaken for closed.
+
+**All B.2/B.4 preconditions verified before this edit, none skipped:**
+- B.4's cost-rate precondition: both new catalog models already carry real
+  cost rates in `registry.ts` (confirmed before Part D even started — the
+  actual DD-25 defect was unrelated to rate presence, see Part D's account
+  above).
+- The doc's own explicit precondition (d) (adapter `thinking_level` code
+  path): DONE, Part A.
+- Precondition (e) (a **fresh** `dd20_e2e_verify.ts` run, current as of this
+  activation, not the close-day proof): run live against the real API with a
+  temporary env-only `GOOGLE_GENERATIVE_AI_API_KEY` (fetched from Secret
+  Manager for the single invocation, never written to a file) — **FAILED
+  first**: `gemini-3.1-pro-preview` rejects `thinkingLevel='minimal'` with a
+  real HTTP 400 ("Thinking level MINIMAL is not supported for this model"),
+  a live-API-only defect no mocked unit test could catch. Fixed
+  (`adapter_gemini.ts`'s disable-fallback now sends `'low'`, confirmed the
+  lowest level Google's real API accepts for this model) and **re-run: PASS**
+  (1/1 entries genuinely generated, not waived). Separately spot-checked
+  `gemini-3.7-flash` accepts `thinkingLevel='low'` too (throwaway script, not
+  committed, removed after the check).
+- Precondition (c) (Google deprecation page re-check, required "before any
+  deploy that touches model config, including the eventual activation
+  deploy" — not satisfied by the earlier ruling session's check alone):
+  re-fetched live — neither model has a published shutdown date as of this
+  check.
+
+**Checked immediately before opening:** no open PR touches either file; no
+coordination-log entry indicates either is mid-edit elsewhere. Disjoint from
+the Part D lease above (already closed) and from every other active lease in
+this table. Worktree `.clone/worktrees/pariprashna-part-d`, branch
+`pariprashna/p3-preflight-part-d` (reused from Part D — adjacent scope, same
+worktree already had the DB tunnel + deps set up for the live e2e run).
