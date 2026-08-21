@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 983,
+  "event_count": 985,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1498,16 +1498,16 @@
       "terminal_status": null
     },
     "F-183": {
-      "confidence": "MEDIUM",
+      "confidence": "HIGH",
       "disposition": "PARKED",
-      "event_sha256": "ca06f582329ee6c4fa499ca736f76205ab679ea542e26fb6a5f5e01dc452a18d",
+      "event_sha256": "c402e750ee40e9f4f76bcfc6760e1fc512e989102422d33692ae5462aea31224",
       "event_type": "finding_status",
-      "evidence_summary": "Newly discovered during F-178/F-180 execution (PR #1436), disclosed as its own finding. Two loader robustness gaps, unrelated to the mantra content defect itself: (1) the remedy-corpus loader's ON CONFLICT DO UPDATE clause skips citation columns, meaning a future correction to source_citation/classical_ref-style fields on an existing remedy_id would silently fail to apply on reseed; (2) a [:500] string-truncation call crashes on a YAML null value instead of handling it gracefully. Neither is user-facing-content-incorrect on its own, but (1) specifically risks masking a FUTURE citation fix (exactly the class of fix this whole R-1/R-2/R-4 wave has been making) the same way #1429's own migration necessity was discovered -- this pattern will recur for every future mantra-corpus correction unless fixed.",
+      "evidence_summary": "Fixed as PR #1437 (open, awaiting GA-5). Both gaps confirmed real, in l0_remedy_loader.py's insert_to_corpus(), not seed_remedy_corpus() as originally assumed. Gap 1: ON CONFLICT DO UPDATE named 10 content columns and zero citation columns -- confirmed NOT deliberate immutability (unique index exists, every neighboring content column updates); added source_canonical_id/source_citation/classical_ref, plus (disclosed as beyond stated scope but same defect class) mantra_text and remedy_type, since each is fed from a YAML field whose sibling column already updated -- a corrected transliteration was otherwise leaving one corrected and one stale copy of the same value in a single row, the exact F-178/F-23 defect shape one level deeper. Gap 2: row.get(key,'')[:500] on two sites crashed on a present-but-null YAML key (.get's default never fires for an explicit None) -- sharper than filed: the tantric gate routes a null required column to insert_to_review_queue(), which carried the same expression, so the crash fired on exactly the rows the gate exists to handle. Both NOT NULL columns confirmed against live schema (verified read-only), so a null->'' degrade is correct, not an evasion of an honest-null option. 9 new tests, gap 1 tested against real upsert semantics (in-memory sqlite running the loader's own SQL, not string-matching); 3 separate mutations all correctly detected. Baseline 24F/114P vs branch 24F/123P (+9 exactly, 24 pre-existing). NEW DISCLOSED GAP, NOT FIXED: remedy_review_queue has NO unique constraint on remedy_id -- insert_to_review_queue()'s ON CONFLICT (remedy_id) will raise against a real DB; gap 2's TypeError had been silently masking this the whole time (the crash never let execution reach the broken ON CONFLICT). Needs a migration -- its own decision, not folded into this PR. Triaged separately as F-187.",
       "finding_id": "F-183",
-      "next_action": "Fix the ON CONFLICT DO UPDATE column list to include citation fields, and add a null-safe guard before the [:500] truncation.",
-      "pr_url": null,
-      "prev_sha256": "c20465bf7eb61052b7db7e41f426f523a7fb67dc9485862e56c5391986098364",
-      "seq": 975,
+      "next_action": "Dispatch GA-5 review for PR #1437.",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1437",
+      "prev_sha256": "120adc1468487288f3de5c9b917aab14342f5f3d4837c3b1cab47f15cbdf3544",
+      "seq": 984,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -1553,6 +1553,21 @@
       "pr_url": null,
       "prev_sha256": "183b4646a6d7411826a2d9905818d5ed84868c0f39663bd727348e9154ceb0dc",
       "seq": 981,
+      "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-187": {
+      "confidence": "HIGH",
+      "disposition": "PARKED",
+      "event_sha256": "fd195f365ac10db5bc127b56cee3612c11566a7f2ad077d47b4f7e59182ad253",
+      "event_type": "finding_status",
+      "evidence_summary": "Newly discovered during F-183 execution (PR #1437), disclosed as its own finding. remedy_review_queue has no unique constraint on remedy_id, so insert_to_review_queue()'s ON CONFLICT (remedy_id) clause will raise a real Postgres error against a live database (ON CONFLICT requires a matching unique index/constraint to target). This was previously masked: F-183's gap 2 (a [:500] TypeError on null YAML fields) crashed BEFORE execution ever reached this ON CONFLICT clause for the affected rows, so the broken constraint was never actually exercised in practice. Now that F-183 fixes the crash, this path becomes reachable and will fail without a migration.",
+      "finding_id": "F-187",
+      "next_action": "Author a migration adding a unique constraint on remedy_review_queue.remedy_id, verify idempotent, then confirm insert_to_review_queue()'s ON CONFLICT actually works end-to-end.",
+      "pr_url": null,
+      "prev_sha256": "c402e750ee40e9f4f76bcfc6760e1fc512e989102422d33692ae5462aea31224",
+      "seq": 985,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -2794,8 +2809,8 @@
   },
   "findings_morning_ship_ready_count": 3,
   "findings_terminal_count": 138,
-  "journal_head_seq": 983,
-  "journal_head_sha256": "120adc1468487288f3de5c9b917aab14342f5f3d4837c3b1cab47f15cbdf3544",
+  "journal_head_seq": 985,
+  "journal_head_sha256": "fd195f365ac10db5bc127b56cee3612c11566a7f2ad077d47b4f7e59182ad253",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
