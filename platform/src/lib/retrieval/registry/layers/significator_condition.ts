@@ -43,7 +43,9 @@
  * a calibrated probability; see selectNotablePlacements below for the code):
  *   A graded significator placement is NOTABLE iff EITHER
  *     (a) its D1 `dignity_state` is a classical EXTREME — |DIGNITY_WEIGHT| >= 1.5, i.e.
- *         exalted / debilitated / own / moolatrikona (the tiers no school disputes); OR
+ *         exalted(2) / debilitated(-2) / own(1.5) / moolatrikona(1.75) (the tiers no
+ *         school disputes; F-153: moolatrikona now sits strictly above own, both still
+ *         clear the 1.5 gate); OR
  *     (b) its ṣaḍbala rank sits in the TOP or BOTTOM quartile of the classical-seven
  *         population — the same quartile convention `ganita_dasha_lord_capability_get`
  *         already ships for its warning_tier (shadbala_percentile thresholds).
@@ -106,7 +108,8 @@ export interface SignificatorCondition {
 }
 
 /** |weight| >= this is a classical dignity EXTREME: exalted(2)/debilitated(-2)/own(1.5)/
- *  moolatrikona(1.5). great_friend(1)/friend(0.5)/neutral(0)/enemy(-0.5) are not. */
+ *  moolatrikona(1.75) — F-153: moolatrikona strictly outranks own, both clear this gate.
+ *  great_friend(1)/friend(0.5)/neutral(0)/enemy(-0.5) are not. */
 export const NOTABLE_DIGNITY_ABS_WEIGHT = 1.5
 
 /** Low-strength boundary — the EXACT constant + percentile definition
