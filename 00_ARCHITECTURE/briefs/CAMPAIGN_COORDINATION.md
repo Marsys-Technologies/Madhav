@@ -6370,3 +6370,65 @@ every other active lease in this table. Worktree
 `pariprashna/p3-preflight-part-c` (new branch off current `origin/main`,
 same worktree reused for adjacent scope). Opened before push, correcting
 Part B's sequencing slip.
+
+## 2026-08-21 — PARIPRASHNA-P3-PREFLIGHT-PART-C — lease CLOSED, PR #1443 merged + deployed + live-verified
+
+Lease opened above is released. Final account:
+
+- **Disclosed process incident, mid-lane:** an errant `git checkout main --
+  .` (working in a stale-detached-HEAD-adjacent local checkout, wrong
+  command for starting a fresh branch) overwrote the uncommitted Part C
+  working-tree edits with a very old local `main` ref (192 unrelated files,
+  ~15K deleted lines) before any of it was committed. Caught immediately via
+  `git status`/`git diff --stat` before touching anything further. Recovery:
+  `git reset --hard origin/main` to a known-clean baseline, then every edit
+  re-applied from this session's own record of its exact content (nothing
+  was lost — the edits existed nowhere else, but were fully reconstructable
+  from conversation context) — re-verified byte-for-byte identical to the
+  original 9-file, 274-insertion diff before committing. No data was lost;
+  real time was. Flagging for the record per this log's own disclosure
+  convention, not because it changed the outcome.
+- PR #1443 CI green on first real push (post-recovery). Merged via merge
+  queue (`1f2b7e443`). Deployed via the standing canary discipline: `Deploy
+  to Cloud Run` run 32529067763 — `Apply DB Migrations` (no-op, no new
+  migration), `Build & Deploy Web` succeeded (no-traffic deploy →
+  post-deploy smoke → promote to 100%). (One `gh run watch` transient
+  network timeout mid-poll — confirmed via direct `gh run view` the actual
+  run was healthy throughout; not a real failure.)
+- **Live-verified per DD-21, all three data-layer acceptance criteria,
+  against real production — not assumed from the unit tests:** probe turn
+  ("Give me a table comparing my top 3 planetary strengths by house and
+  sign.") produced a REAL markdown table with 9 inline citations, committed
+  as a single `kind=paragraph` block (confirmed via
+  `platform/scripts/probe/show.py`'s block listing:
+  `blk-1-1: kind=paragraph, role=verdict` — never split, never reclassified
+  to `kind=table`, exactly approach (c)'s design).
+  1. **Byte-exact (criterion 1):** direct DB read of `message_parts.body.text`
+     shows the full committed text — leading prose, the complete table
+     (header/separator/all three data rows with embedded `[n]` citation
+     markers), trailing prose — byte-for-byte as one unmutated string. Real
+     persisted proof, beyond the unit test's synthetic fixtures.
+  2. **Citation regression (criterion 2, vs #1399):** 9 real
+     `citation.define` events fired (confirmed in the probe transcript), and
+     9 separate `kind=citation` rows persisted in `message_parts` — citation
+     extraction fully intact with an embedded table present.
+  3. **`facts_consumed` regression (criterion 3, vs #1400):** DB read of
+     `conversation_messages.metadata_json->'acharya_reading_receipt'->'facts_consumed'`
+     shows exactly 9 entries, indices 1–9, each correctly ref'd
+     (`PLN.SATURN`, `YGA.SASHA_MPY`, ... `YGA.JUPITER_9H_NEAR_MPY`) —
+     matching the 9 citations in the prose exactly.
+  4. **Safety-scan ordering (criterion 4):** discharged via direct code
+     read at build time (see the lease-open entry above), not re-derived
+     here — no code changed between open and close that would affect it.
+- **Not independently confirmed this pass:** the CLIENT actually rendering
+  a real HTML `<table>` element (vs. this being visible only in the raw
+  persisted/transcript text) — the probe harness reads the SSE
+  wire/persistence layer, not a browser DOM. All four of the native's
+  stated acceptance criteria are about the wire/persistence/citation layer,
+  which is what was verified; a visual browser check of `ParagraphBlock`'s
+  `tableSpans` rendering was not additionally performed and is disclosed as
+  such, not claimed.
+
+No file outside this lease's declared scope was touched. Worktree
+`.clone/worktrees/pariprashna-part-d` retained (Parts E/F share adjacent
+pariprashna scope); will be removed once Part E/F land or on request.
