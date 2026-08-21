@@ -35,7 +35,9 @@ import {
   applyCompositeRanking, extractPrimaryBhava, extractPrimaryGraha,
 } from '../../../ranking/composite_ranker'
 import { fetchL1Context } from '../../../ranking/l1_context_fetcher'
-import { grahaAffinity, bhavaAffinity, DOMAIN_BHAVA_AFFINITY } from '../../../ranking/priors_config'
+import {
+  grahaAffinity, bhavaAffinity, DOMAIN_BHAVA_AFFINITY, domainAnchorActors,
+} from '../../../ranking/priors_config'
 import { CANONICAL_DOMAINS } from '@/lib/domain_vocabulary'
 
 // ADHIṢṬHĀNA Lane A7: this file's own comment already cited
@@ -54,6 +56,54 @@ const HYDRATION_ID_CAP = 2000
 const DISCRIMINATION_CANDIDATE_SIZE = 400
 /** How many domain-discriminated signals to surface on the reading. */
 const DISCRIMINATED_TOP_K = 20
+
+/**
+ * F-114 (PARIŚEṢA / CL-10) — per-lens re-rank candidate window.
+ *
+ * The stored `all_relevant_ranked_jsonb.ranked_signals` family is ordered by the
+ * BUILD-time, domain-agnostic `computed_salience` alone (bo_drishti.py sorts on a single
+ * float key with no tie-break). On the canonical chart the relationship family's top of
+ * distribution is a 13-way EXACT tie at salience 2.16108 — thirteen `ga_sensitive` SATURN
+ * rows (upagraha / saham / midpoint / bhṛgu-nāḍī / aprakāśa …). Slicing the head of that
+ * array to serve the "top 10 marriage signals" therefore returned ten indistinguishable
+ * rows, not one of which named the 7th lord, Venus, or a marriage yoga.
+ *
+ * `domain_salience_jsonb` does NOT rescue this: it is exactly
+ * `computed_salience / cardinality(domains_affected_array)` (verified 3698/3698 rows on the
+ * canonical chart), i.e. a uniform split carrying zero domain-specific information.
+ *
+ * The real domain-relevance machinery already exists in this repo and is already used two
+ * functions above (`computeDiscriminatedSignals`): `applyCompositeRanking` with the domain
+ * overlay — graha×domain affinity (VEN×relationship 1.50 vs SAT×relationship 0.90),
+ * bhāva×domain congruence (DOMAIN_BHAVA_AFFINITY.relationship = {7:2.2, 12:1.6, 8:1.5,
+ * 4:1.2}), varga grain, class prior, real L1 śaḍbala/dignity, dasha activation — plus a
+ * three-layer tie-break that guarantees no two served rows share a `final_rank_score`.
+ * F-114 is that ranker not being wired into the per-lens surface; this constant bounds the
+ * candidate window it re-ranks (mirrors DISCRIMINATION_CANDIDATE_SIZE).
+ *
+ * A ranker can only re-rank what it is given, and a salience-head window alone is NOT enough:
+ * measured on the canonical chart's marriage family (3,698 rows), the FIRST Venus-bearing row
+ * sits at stored rank 902 and the FIRST 7th-house row at 1,041 — so a head window of any
+ * affordable size would have re-ranked a candidate set that never contained the domain's own
+ * kāraka or kalatra-bhāva, and F-114's actual complaint ("not one names the 7th lord, Venus,
+ * or a marriage yoga") would have survived the fix. The candidate set is therefore
+ *   salience-head window  ∪  domain-ANCHOR slice
+ * where the anchor slice is a second bounded, salience-ordered query for rows naming a graha
+ * or bhāva the domain's OWN affinity tables rate above neutral (`domainAnchorActors`, a pure
+ * projection of GRAHA_DOMAIN_AFFINITY + DOMAIN_BHAVA_AFFINITY — no second list to drift).
+ *
+ * HONEST LIMITATION (disclosed on the response, never papered over): both legs are bounded,
+ * so this guarantees the domain's significators are CONSIDERED, not that every family member
+ * is. The whole family stays reachable via `query_signals`. See
+ * `00_ARCHITECTURE/briefs/parisesa/F114_RANKING_DESIGN_CONTRACT_v1_0.md`.
+ */
+const LENS_RERANK_CANDIDATE_SIZE = 400
+/** Bounded second leg: rows naming a domain kāraka graha or a primary domain bhāva. */
+const LENS_ANCHOR_SLICE_SIZE = 300
+
+/** Ranking-basis receipt values for a lens's served ranked_signals head. */
+const LENS_RANK_BASIS_COMPOSITE = 'composite_4d_domain_overlay'
+const LENS_RANK_BASIS_STORED    = 'stored_salience_build_time'
 
 /**
  * D-1.5b Lane B-7 (Gate B B7_budgets) — per-lens cap on the served
@@ -190,6 +240,215 @@ async function computeDiscriminatedSignals(
     }
   })
   return { signals, pool_size: res.rows.length, filtered_by: filterVal }
+}
+
+// ── F-114: per-lens domain-aware re-rank ─────────────────────────────────────────────
+
+/**
+ * Read a lens's ranked-signal array out of either schema shape
+ * (object `{ranked_signals: [...]}` or the flat schema-v1 array). Returns null when neither.
+ */
+function readLensRankedSignals(arj: unknown): unknown[] | null {
+  if (Array.isArray(arj)) return arj
+  if (arj && typeof arj === 'object') {
+    const rs = (arj as Record<string, unknown>)['ranked_signals']
+    if (Array.isArray(rs)) return rs
+  }
+  return null
+}
+
+interface LensRerank {
+  /** signal_id → 0-based composite rank within this lens (lower = better). */
+  rankById: Map<string, number>
+  /** signal_id → the ranker's own unique final_rank_score. */
+  scoreById: Map<string, number>
+  /** How many of the lens family actually entered the re-rank. */
+  candidate_window: number
+}
+
+/**
+ * F-114 — re-rank each lens's stored ranked_signals family through the SAME domain-aware
+ * composite ranker `computeDiscriminatedSignals` (and query_signals, and assess_*) already
+ * use, so the per-lens head served to a caller is domain-DISCRIMINATED instead of being the
+ * head of a build-time, domain-agnostic, tie-degenerate salience order.
+ *
+ * Deterministic; no LLM; touches NO stored salience column (the ranker's standing invariant —
+ * composite_ranker.ts header). One bounded DB round-trip for the union of all lenses'
+ * candidate ids. Returns an EMPTY map on any failure, so the caller falls back honestly to
+ * the stored order and says so via the rank-basis receipt (§N.8: a signal without a real
+ * detector behind it is null, not green — here, a re-rank that did not run is reported as
+ * not-run, never as though it had).
+ */
+async function computeLensRerank(
+  chart_id: string,
+  ayanamsha_id: string,
+  domain: string,
+  lensRows: Array<Record<string, unknown>>,
+): Promise<Map<string, LensRerank>> {
+  const out = new Map<string, LensRerank>()
+  // 'other'/'general' request no domain overlay at all — re-ranking would add no
+  // discrimination, so leave the stored order (and say so) rather than churn it.
+  if (domain === 'other' || domain === 'general') return out
+
+  // Leg 1 — salience-head window per lens, plus each lens's FULL membership set (already in
+  // memory from the jsonb) so the anchor slice below can be intersected against it exactly.
+  const perLens: Array<{ key: string; ids: string[]; family: Set<string> }> = []
+  const allIds = new Set<string>()
+  for (const lens of lensRows) {
+    const key = String(lens['lens_id'] ?? '')
+    if (!key) continue
+    const ranked = readLensRankedSignals(lens['all_relevant_ranked_jsonb'])
+    if (!ranked || ranked.length === 0) continue
+    const family = new Set<string>()
+    for (const rs of ranked) {
+      const sid = (rs as Record<string, unknown> | null)?.['signal_id']
+      if (typeof sid === 'string' && sid) family.add(sid)
+    }
+    const ids: string[] = []
+    for (const rs of ranked.slice(0, LENS_RERANK_CANDIDATE_SIZE)) {
+      const sid = (rs as Record<string, unknown> | null)?.['signal_id']
+      if (typeof sid === 'string' && sid) { ids.push(sid); allIds.add(sid) }
+    }
+    if (ids.length > 0) perLens.push({ key, ids, family })
+  }
+  if (allIds.size === 0) return out
+
+  // Leg 2 — domain-ANCHOR slice: rows naming a graha or bhāva the domain's own affinity tables
+  // rate above neutral. Without this the ranker never sees Venus or the 7th house on a real
+  // marriage family (measured stored ranks 902 / 1041 — far outside any affordable head window).
+  const anchorIdsByLens = new Map<string, string[]>()
+  const anchors = domainAnchorActors(domain)
+  if (anchors.graha_aliases.length > 0 || anchors.houses.length > 0) {
+    try {
+      const filters = ['chart_id = $1', 'ayanamsha_id = $2', '(lel_origin IS NULL OR lel_origin = false)']
+      const params: unknown[] = [chart_id, ayanamsha_id]
+      const tag = DOMAIN_TO_SIGNAL_FILTER[domain] ?? null
+      if (tag) { filters.push(`$${params.length + 1} = ANY(domains_affected_array)`); params.push(tag) }
+      const anchorPreds: string[] = []
+      if (anchors.graha_aliases.length > 0) {
+        params.push(anchors.graha_aliases)
+        anchorPreds.push(`lower(configuration_jsonb->>'graha') = ANY($${params.length}::text[])`)
+      }
+      if (anchors.houses.length > 0) {
+        const houseStrings = anchors.houses.map(String)
+        params.push(houseStrings)
+        // Mirrors extractPrimaryBhava's read order (composite_ranker.ts) — same keys, same precedence.
+        anchorPreds.push(
+          `COALESCE(configuration_jsonb->>'target_house', configuration_jsonb->>'house',` +
+          ` configuration_jsonb->>'bhava', configuration_jsonb->>'bhava_num',` +
+          ` configuration_jsonb->>'source_house') = ANY($${params.length}::text[])`,
+        )
+        params.push(`house_(${anchors.houses.join('|')})(?![0-9])`)
+        anchorPreds.push(`signal_type_id ~ $${params.length}`)
+      }
+      filters.push(`(${anchorPreds.join(' OR ')})`)
+      params.push(LENS_ANCHOR_SLICE_SIZE)
+      const anchorRes = await query<Record<string, unknown>>(
+        `SELECT signal_id::text AS signal_id FROM bodha_msr_signals
+         WHERE ${filters.join(' AND ')}
+         ORDER BY computed_salience DESC NULLS LAST, signal_id ASC
+         LIMIT $${params.length}`,
+        params,
+      )
+      for (const { key, family } of perLens) {
+        const hits: string[] = []
+        for (const r of anchorRes.rows) {
+          const sid = String(r['signal_id'] ?? '')
+          // Only promote a row that genuinely belongs to THIS lens's family — the anchor
+          // query is domain-scoped, not lens-scoped, and a lens must never be handed a row
+          // it does not actually carry.
+          if (sid && family.has(sid)) hits.push(sid)
+        }
+        if (hits.length > 0) {
+          anchorIdsByLens.set(key, hits)
+          for (const sid of hits) allIds.add(sid)
+        }
+      }
+    } catch {
+      // Non-fatal: the re-rank still runs on the salience-head window alone.
+    }
+  }
+
+  try {
+    // ONE bounded fetch of exactly the columns applyCompositeRanking reads. Fetching the
+    // ranker's inputs (rather than trusting the lens jsonb's 6-field projection) is the
+    // §N.5 discipline: the ranker reads the L2 row, it never re-derives it from a copy.
+    const res = await query<Record<string, unknown>>(
+      `SELECT signal_id, signal_type_id, signal_type_class, signal_tradition,
+              signal_summary_text, signal_headline_text, computed_salience,
+              top_k_salience_rank, domains_affected_array, constituent_facts_array,
+              source_subsystem, valence, verification_pass_status, citation_human,
+              lel_origin, signature_tier, configuration_jsonb,
+              graph_node_strength_contribution_jsonb
+       FROM bodha_msr_signals
+       WHERE chart_id = $1 AND ayanamsha_id = $2 AND signal_id = ANY($3::uuid[])`,
+      [chart_id, ayanamsha_id, [...allIds]],
+    )
+    if (res.rows.length === 0) return out
+    const rowById = new Map<string, Record<string, unknown>>()
+    for (const r of res.rows) rowById.set(String(r['signal_id']), r)
+
+    const as_of_date = new Date().toISOString().split('T')[0]
+    const ctx = await fetchL1Context(chart_id, ayanamsha_id, as_of_date)
+
+    for (const { key, ids } of perLens) {
+      const candidateIds = [...new Set([...ids, ...(anchorIdsByLens.get(key) ?? [])])]
+      const rows = candidateIds
+        .map(id => rowById.get(id))
+        .filter((r): r is Record<string, unknown> => r !== undefined)
+      if (rows.length === 0) continue
+      const scored = applyCompositeRanking(
+        rows as unknown as Parameters<typeof applyCompositeRanking>[0], ctx, domain,
+      )
+      const rankById  = new Map<string, number>()
+      const scoreById = new Map<string, number>()
+      scored.forEach((s, i) => {
+        const sid = String(s.signal_id)
+        rankById.set(sid, i)
+        scoreById.set(sid, s.final_rank_score)
+      })
+      out.set(key, { rankById, scoreById, candidate_window: rows.length })
+    }
+  } catch {
+    // Non-fatal: caller keeps the stored order and reports rank_basis honestly.
+    return new Map()
+  }
+  return out
+}
+
+/**
+ * F-114 — apply a lens's re-rank to its stored ranked_signals array.
+ * Rows inside the re-ranked candidate window sort by composite rank; rows outside it keep
+ * their stored relative order and stay strictly BELOW the window (never silently dropped —
+ * B.10). Returns the reordered array plus the basis receipt.
+ */
+function applyLensRerank(
+  ranked: unknown[],
+  rr: LensRerank | undefined,
+): { ordered: unknown[]; basis: string; candidate_window: number | null } {
+  if (!rr || rr.rankById.size === 0) {
+    return { ordered: ranked, basis: LENS_RANK_BASIS_STORED, candidate_window: null }
+  }
+  const OUTSIDE = Number.MAX_SAFE_INTEGER
+  const decorated = ranked.map((rs, storedIdx) => {
+    const sid = (rs as Record<string, unknown> | null)?.['signal_id']
+    const key = typeof sid === 'string' ? sid : ''
+    const r = rr.rankById.get(key)
+    const score = rr.scoreById.get(key)
+    return {
+      rs: (r !== undefined && rs && typeof rs === 'object' && !Array.isArray(rs))
+        ? { ...(rs as Record<string, unknown>), composite_rank: r, final_rank_score: score ?? null }
+        : rs,
+      order: r ?? OUTSIDE,
+      storedIdx,
+    }
+  })
+  decorated.sort((a, b) => (a.order - b.order) || (a.storedIdx - b.storedIdx))
+  return {
+    ordered: decorated.map(d => d.rs),
+    basis: LENS_RANK_BASIS_COMPOSITE,
+    candidate_window: rr.candidate_window,
+  }
 }
 
 interface HydratedSignalText {
@@ -519,6 +778,14 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
       ])
       const lensTotal = lensCountRes.rows[0]?.n ?? lensRes.rows.length
 
+      // F-114 (CL-10): domain-aware re-rank of each lens's ranked_signals family, BEFORE the
+      // per-lens head is sliced or hydrated — otherwise the head is the build-time salience
+      // order, whose top of distribution is a 13-way exact tie on the canonical chart.
+      const lensRerank = await computeLensRerank(
+        chart_id, ayanamsha_id, domain, lensRes.rows as Array<Record<string, unknown>>,
+      )
+      const lensRankBases = new Map<string, { basis: string; candidate_window: number | null }>()
+
       // Collect signal refs from CDLM cells and apply bounding.
       // shared_signal_ids_array is stripped from served cells in default mode
       // (shared_signal_count already present; raw IDs available via query_signals).
@@ -554,17 +821,16 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
       // D-1.5b B-7: hydrate exactly the rows we will SERVE per lens (max_signals_per_lens),
       // so no served ranked_signal is a bare ID-without-text (WP-1.2e) and no un-served row
       // pays a hydration lookup.
+      // F-114: hydrate the rows the RE-RANKED head will actually serve, not the stored-salience
+      // head — otherwise the composite-ranked rows come back as bare IDs-without-text.
       const lensRankedIds: string[] = []
       for (const lens of lensRes.rows as Array<Record<string, unknown>>) {
-        const arj = lens['all_relevant_ranked_jsonb']
-        const ranked = arj && typeof arj === 'object' && !Array.isArray(arj)
-          ? (arj as Record<string, unknown>)['ranked_signals']
-          : arj
-        if (Array.isArray(ranked)) {
-          for (const rs of ranked.slice(0, max_signals_per_lens)) {
-            const sid = (rs as Record<string, unknown>)?.['signal_id']
-            if (typeof sid === 'string' && sid) lensRankedIds.push(sid)
-          }
+        const ranked = readLensRankedSignals(lens['all_relevant_ranked_jsonb'])
+        if (!ranked) continue
+        const { ordered } = applyLensRerank(ranked, lensRerank.get(String(lens['lens_id'] ?? '')))
+        for (const rs of ordered.slice(0, max_signals_per_lens)) {
+          const sid = (rs as Record<string, unknown> | null)?.['signal_id']
+          if (typeof sid === 'string' && sid) lensRankedIds.push(sid)
         }
       }
       const textById = await hydrateSignalText(
@@ -608,6 +874,11 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
           }
         }
         const arj = lens['all_relevant_ranked_jsonb']
+        // F-114 (CL-10): re-order the family by the domain-aware composite ranker BEFORE the
+        // head is sliced. Without this, the served "top N for this domain" is the head of the
+        // build-time domain-agnostic salience order — on the canonical chart, ten SATURN
+        // ga_sensitive rows all tied at salience 2.16108, none naming the 7th lord or Venus.
+        const rr = lensRerank.get(String(lens['lens_id'] ?? ''))
         if (arj && typeof arj === 'object' && !Array.isArray(arj)) {
           const arjObj = arj as Record<string, unknown>
           const ranked = arjObj['ranked_signals']
@@ -615,7 +886,9 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
             const total = ranked.length
             const capped = total > max_signals_per_lens
             if (capped) anyLensCapped = true
-            const enriched = ranked.slice(0, max_signals_per_lens).map(rs => {
+            const { ordered, basis, candidate_window } = applyLensRerank(ranked, rr)
+            lensRankBases.set(String(lens['lens_id'] ?? ''), { basis, candidate_window })
+            const enriched = ordered.slice(0, max_signals_per_lens).map(rs => {
               const r = rs as Record<string, unknown>
               const t = typeof r['signal_id'] === 'string' ? textById.get(r['signal_id'] as string) : undefined
               return t ? { ...r, headline: t.headline, summary: t.summary, signature_tier: t.signature_tier } : r
@@ -625,6 +898,8 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
               all_relevant_ranked_jsonb: { ...arjObj, ranked_signals: enriched, total_count: total },
               ranked_signals_total:  total,
               ranked_signals_capped: capped,
+              ranked_signals_rank_basis: basis,
+              ...(candidate_window !== null ? { ranked_signals_rerank_window: candidate_window } : {}),
             }
           }
         }
@@ -633,15 +908,42 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
           const total = arj.length
           const capped = total > max_signals_per_lens
           if (capped) anyLensCapped = true
+          const { ordered, basis, candidate_window } = applyLensRerank(arj as unknown[], rr)
+          lensRankBases.set(String(lens['lens_id'] ?? ''), { basis, candidate_window })
           return {
             ...lens,
-            all_relevant_ranked_jsonb: (arj as unknown[]).slice(0, max_signals_per_lens),
+            all_relevant_ranked_jsonb: ordered.slice(0, max_signals_per_lens),
             ranked_signals_total:  total,
             ranked_signals_capped: capped,
+            ranked_signals_rank_basis: basis,
+            ...(candidate_window !== null ? { ranked_signals_rerank_window: candidate_window } : {}),
           }
         }
         return lens
       })
+
+      // F-114: honest roll-up receipt for the per-lens rank basis (§N.8 — a signal must be
+      // computed by a detector that measures the claim it asserts; here the claim is
+      // "these rows are domain-ranked", and the receipt reports it per lens, truthfully,
+      // including when the re-rank did NOT run).
+      const rerankedLensCount = [...lensRankBases.values()]
+        .filter(v => v.basis === LENS_RANK_BASIS_COMPOSITE).length
+      const lensRankBasisNote = rerankedLensCount > 0
+        ? `Each lens's ranked_signals head is re-ranked by the '${domain}' composite overlay ` +
+          `(graha×domain affinity × bhāva×domain congruence × varga grain × class prior × L1 śaḍbala/dignity × daśā activation), ` +
+          `the SAME ranker the top-level ranked_signals and query_signals use. ` +
+          `The stored bo_drishti order is build-time and domain-AGNOSTIC (raw computed_salience, no tie-break) — ` +
+          `on charts where its top of distribution is a tie-block, reading the stored head as "the top N for this domain" is unsound (F-114). ` +
+          `Candidate set = top ${LENS_RERANK_CANDIDATE_SIZE} of each family by stored salience ` +
+          `UNION a bounded ${LENS_ANCHOR_SLICE_SIZE}-row anchor slice naming the domain's own ` +
+          `kāraka grahas / primary bhāvas (${domainAnchorActors(domain).grahas.join('/') || '—'} · ` +
+          `bhāva ${domainAnchorActors(domain).houses.join('/') || '—'}), because on real families the ` +
+          `first kāraka-bearing row can sit far below any affordable salience window. Both legs are ` +
+          `bounded: the domain's significators are guaranteed CONSIDERED, not that every family member is. ` +
+          `Rows outside the candidate set keep their stored relative order and are never dropped. ` +
+          `Drill query_signals for the whole family.`
+        : `ranked_signals are served in their STORED bo_drishti order (build-time raw computed_salience, domain-agnostic, no tie-break). ` +
+          `No domain composite re-rank was applied for this call — read the head as a salience listing, NOT as "the top N for ${domain}" (F-114).`
 
       // E-2 freshness contract: re-derive DEFECT-001 live for this chart rather than
       // restating the historical "91.5% orphan" literal.
@@ -662,6 +964,11 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
             ? `Composite-ranked over ${discriminated.pool_size} '${discriminated.filtered_by}'-tagged candidates with the ${domain} overlay (graha×bhāva×varga). See each row's rationale.`
             : `'${domain}' is not a stored signal domain-tag; ranked whole-chart (${discriminated.pool_size} candidates) purely by the ${domain} classical overlay (graha×bhāva×varga). See each row's rationale.`,
           question_lenses:        hydratedLenses,
+          // F-114 (CL-10): rank-basis receipt for the per-lens ranked_signals heads.
+          ranked_signals_per_lens_rank_basis: rerankedLensCount > 0
+            ? LENS_RANK_BASIS_COMPOSITE : LENS_RANK_BASIS_STORED,
+          ranked_signals_per_lens_reranked_lenses: rerankedLensCount,
+          ranked_signals_per_lens_rank_note: lensRankBasisNote,
           // D-1.5b B-7 (Gate B B7_budgets): honest receipt for the per-lens ranked_signals
           // cap — the section whose unbounded emission (up to ~9.7k rows/lens) kept this
           // response at ~909KB. Per-lens ranked_signals_total/ranked_signals_capped carry the

@@ -1090,6 +1090,12 @@ export const JUDGMENT_FLAG_CODES = [
   // empty on the wire while receipt.varga_confirmed still carried an affirmative "✓" mark
   // (registry_bridge.ts's enforceVargaConfirmedHonesty).
   'varga_confirmed_forced_false',
+  // PARIŚEṢA-V4 F-107 (CL-20): the domain has classical vargas and/or a special lagna
+  // BEYOND the single operative varga this verdict weights (wealth = D2 dhana weighted,
+  // D11 lābha + Indu Lagna not), and no cross-varga convergence analysis exists anywhere
+  // in the instrument. Distinct from varga_confirmed_forced_false, which is about the
+  // OPERATIVE varga's own evidence being empty; this one is about scope breadth.
+  'cross_varga_convergence_not_computed',
   'timing_hook_failed',
   'afflictions_fetch_failed',
   'afflictions_empty',
