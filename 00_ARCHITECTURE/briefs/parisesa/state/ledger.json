@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 957,
+  "event_count": 959,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1408,6 +1408,21 @@
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
+    "F-178": {
+      "confidence": "MEDIUM",
+      "disposition": "PARKED",
+      "event_sha256": "9abfe4c1b73fa787876faf19b296022d9d248f60a6bd70868beda86222dc6434",
+      "event_type": "finding_status",
+      "evidence_summary": "Newly discovered during F-23/R-1..R-3 execution (PR #1429), disclosed as its own finding per campaign discipline. mantras.yaml (a reference-data file that is NOT currently loaded live -- only tantric.yaml is loaded) carries a fabricated, verbatim-quoted attestation on row mnt_saturn_shani_beeja_008: 'BPHS Ch.91 v.35-38: \"...\"' -- attesting to the exact classical locus that R-2's ruling (OWNER_RULINGS_20260821.md) already determined does NOT carry this class of tantric b\u012bja mantra. Confidence MEDIUM because the fabrication itself is clear but the file's live-load status (currently dormant per the investigating agent) means urgency is lower than F-23's own live-served rows -- still needs fixing before mantras.yaml is ever wired live, to avoid shipping a fabricated classical citation the moment it is.",
+      "finding_id": "F-178",
+      "next_action": "Correct or remove the fabricated BPHS Ch.91 v.35-38 quote on mnt_saturn_shani_beeja_008 in mantras.yaml, applying the same R-2 reattribution logic, before this file is ever loaded live.",
+      "pr_url": null,
+      "prev_sha256": "9d8df7ce2476f0c12bda0eaeef996a67252031fceee8573116697332cb7f755c",
+      "seq": 959,
+      "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
     "F-18": {
       "confidence": "HIGH",
       "disposition": "LANDED",
@@ -1481,14 +1496,14 @@
     "F-23": {
       "confidence": "HIGH",
       "disposition": "PARKED",
-      "event_sha256": "682eb582c62a7cc076f40d183b8e06efc96d54c7051531615ee532771281c5f5",
+      "event_sha256": "9d8df7ce2476f0c12bda0eaeef996a67252031fceee8573116697332cb7f755c",
       "event_type": "finding_status",
-      "evidence_summary": "Owner rulings received and filed (OWNER_RULINGS_20260821.md, R-1..R-4). All 4 open scholarly questions from F23_PROVISIONAL_RULING_20260821.md answered: (i) Devanagari on saturn_matrix_mantra is correct, transliteration field wrong -- fix to IAST 'o\u1e43 pr\u0101\u1e43 pr\u012b\u1e43 prau\u1e43 sa\u1e25 \u015banai\u015bcar\u0101ya nama\u1e25'; (ii) BPHS Ch.91-94 attribution on the 9 b\u012bja-matrix rows is incorrect-as-stated, reattribute to Navagraha b\u012bja tradition / Mantra Mahodadhi; (iii) the 27 nakshatra-row n\u0101ma-mantras stay as the served/japa form, classical_ref corrected to state BPHS Ch.94 supplies devat\u0101 attribution only (not mantra text), TB 3.1.1-2 \u1e5bks become Lane-4 attestation enrichment; (iv) Lane 4 corpus expansion authorized, strictly sequenced behind Lanes 1-3, gated on verbatim classical_attestation_text per new row. Column contract adopted: mantra_sanskrit=Devanagari, mantra_transliteration=IAST, mantra_text=recitation-ready japa form. Moves out of PROVISIONAL_RULING_AWAITING_SCHOLARLY_CONFIRMATION -- normal execution authorized, not yet executed (this event records the ruling, not the fix).",
+      "evidence_summary": "R-1/R-2/R-3 executed as PR #1429 (open, awaiting GA-5 review). Source of truth found: platform/python-sidecar/brahmagyan/l0_remedy_corpus.py, seeded via ON CONFLICT DO NOTHING -- both a source edit AND migration 581 were required (a Python-only fix would never have touched existing rows). Defect independently reproduced live before fixing. Scope EXPANDED beyond the ruling's own description, disclosed not hidden: (1) the '9 b\u012bja rows' are really 27 -- gen_planet_matrix() puts the same romanised b\u012bja in 3 cells per planet; F-23's original reproducer only counted remedy_type='mantra'; saturn_matrix_japa carried the identical contradiction, invisible to the finding, all 27 fixed together; (2) served prescription_text prose (4 rows incl. yantra_shani_spec_maharnava) also said 'shanaye', not just the structured mantra fields; (3) mantras.yaml (NOT currently loaded -- only tantric.yaml is live) carries a fabricated verbatim 'BPHS Ch.91 v.35-38' quote on mnt_saturn_shani_beeja_008, attesting to exactly the locus R-2 ruled does not carry this mantra class -- triaged separately as F-178; (4) mantra_text is NULL on all 36 rows -- a coverage gap for Lane 2, not a mis-assignment, no column renamed. Test evidence: new guard tests/l0/test_f23_mantra_script_and_citation.py (17 passing, uses a real Devanagari->IAST transliterator so coherence is computed per-row not golden-string-matched; mutation-tested, reverting Saturn fails 3 assertions); migration 581 executed against a local PG17 fixture, counts 27/4/9/27/27 exact, second run no-op, migrated table diffed against corrected Python across 283 rows x 7 columns -> 0 mismatches; pytest -k 'remedy or upaya or mantra' 23 failed/107 passed vs. clean-main baseline 23 failed/61 passed (identical pre-existing failure set); tsc clean. Open action items: built charts' bodha_rm_remedy_prescriptions still carry old prose until rebuilt (separate from this static-reference fix); migration 581 needs a CCD claim row per CROSS_CUTTING_DECISION_REGISTER_v1_0.md convention -- flagged, not yet done, exact claim-row requirement not fully investigated this pass.",
       "finding_id": "F-23",
-      "next_action": "Execute Lanes 2-3 (attestation backfill on the 9 b\u012bja + 13 Ch.88 rows first per R-4) under normal GA-5 discipline. Lane 1/F-144 already separately tracked as urgent.",
-      "pr_url": null,
-      "prev_sha256": "5e18c961455e76796c1d649715f7e003c4c2754cb45a0fa99cf2489aaa04f82d",
-      "seq": 951,
+      "next_action": "Dispatch GA-5 adversarial review for PR #1429. On MERGE: also confirm the CCD claim-row requirement for migration 581 before/alongside merge.",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1429",
+      "prev_sha256": "dd2693894378835a8dad80493b6cae7a668c47c165da6e2c7c4184866905fc5e",
+      "seq": 958,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -2659,8 +2674,8 @@
   },
   "findings_morning_ship_ready_count": 0,
   "findings_terminal_count": 136,
-  "journal_head_seq": 957,
-  "journal_head_sha256": "dd2693894378835a8dad80493b6cae7a668c47c165da6e2c7c4184866905fc5e",
+  "journal_head_seq": 959,
+  "journal_head_sha256": "9abfe4c1b73fa787876faf19b296022d9d248f60a6bd70868beda86222dc6434",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
