@@ -95,6 +95,30 @@ def _row_to_jsonb(value: Any) -> str | None:
     return json.dumps(value)
 
 
+def _citation_excerpt(value: Any, limit: int = 500) -> str:
+    """
+    Null-safe excerpt of a YAML text field for the ``source_citation`` column.
+
+    PARIŚEṢA-V4 F-183 (gap 2): a YAML key written with no value —
+    ``classical_attestation_text:`` — parses to ``None``, and because the KEY is
+    present ``row.get(k, '')`` returns ``None`` rather than the default, so the
+    ``[:500]`` that followed raised ``TypeError``.  The tantric gate routes rows
+    with a null required column to the review queue, so the crash fired on
+    exactly the rows that gate exists to handle.
+
+    Both target columns (``brahma_remedy_corpus.source_citation`` and
+    ``remedy_review_queue.source_citation``) are NOT NULL, so the honest-null
+    option (CLAUDE.md §N.7 item 6) is unavailable here: absent and null both
+    degrade to the empty string, which is what the absent-key branch already
+    stored.
+    """
+    if value is None:
+        return ''
+    if not isinstance(value, str):
+        value = str(value)
+    return value[:limit]
+
+
 def insert_to_review_queue(conn, row: dict[str, Any], reason: str) -> None:
     """Insert a rejected row to remedy_review_queue."""
     try:
@@ -137,7 +161,7 @@ def insert_to_review_queue(conn, row: dict[str, Any], reason: str) -> None:
                     'color_associated': None,
                     'confidence': 0.70,
                     'source_canonical_id': row.get('source_text', 'unknown'),
-                    'source_citation': row.get('classical_attestation_text', '')[:500],
+                    'source_citation': _citation_excerpt(row.get('classical_attestation_text')),
                     'classical_ref': f"{row.get('source_chapter', '')} {row.get('source_verse', '')}",
                     'category': row.get('category', ''),
                     'deity': row.get('deity', ''),
@@ -187,7 +211,22 @@ def insert_to_corpus(conn, row: dict[str, Any]) -> None:
                     cost_tier = EXCLUDED.cost_tier,
                     contraindications = EXCLUDED.contraindications,
                     classical_attestation_text = EXCLUDED.classical_attestation_text,
-                    prescription_text = EXCLUDED.prescription_text
+                    prescription_text = EXCLUDED.prescription_text,
+                    -- PARIŚEṢA-V4 F-183 (gap 1): the citation columns were absent
+                    -- from this list, so a correction to an ALREADY-SEEDED row's
+                    -- attribution — the exact class of fix the R-1/R-2/R-3 wave
+                    -- (#1429, #1436) has been making — reloaded silently as a
+                    -- no-op while the loader reported the row as inserted.
+                    source_canonical_id = EXCLUDED.source_canonical_id,
+                    source_citation = EXCLUDED.source_citation,
+                    classical_ref = EXCLUDED.classical_ref,
+                    -- Same defect class, one step removed: both of these are fed
+                    -- from a YAML field whose SIBLING column already updates
+                    -- (mantra_text ← mantra_transliteration, remedy_type ←
+                    -- category), so omitting them left the corrected and the
+                    -- stale copy of the same source value in one row.
+                    mantra_text = EXCLUDED.mantra_text,
+                    remedy_type = EXCLUDED.remedy_type
                 """,
                 {
                     'remedy_id': row['remedy_id'],
@@ -198,7 +237,7 @@ def insert_to_corpus(conn, row: dict[str, Any]) -> None:
                     'mantra_text': row.get('mantra_transliteration', row.get('mantra_text')),
                     'confidence': 0.85,
                     'source_canonical_id': row.get('source_text', 'BPHS'),
-                    'source_citation': row.get('classical_attestation_text', '')[:500],
+                    'source_citation': _citation_excerpt(row.get('classical_attestation_text')),
                     'classical_ref': (
                         f"{row.get('source_chapter', '')} {row.get('source_verse', '')}"
                     ).strip(),
