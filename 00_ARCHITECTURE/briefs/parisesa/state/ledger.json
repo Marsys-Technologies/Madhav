@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 955,
+  "event_count": 957,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1393,6 +1393,21 @@
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
+    "F-177": {
+      "confidence": "HIGH",
+      "disposition": "PARKED",
+      "event_sha256": "dd2693894378835a8dad80493b6cae7a668c47c165da6e2c7c4184866905fc5e",
+      "event_type": "finding_status",
+      "evidence_summary": "Newly discovered during F-31/R-8 verification, disclosed as its own finding per campaign discipline rather than left inline. LIVE-CONFIRMED (not just code-read): assembleSaraContent's response-budget trim loop (response_budget.ts:792-801, KERNEL_MAX_BYTES=2048) drops kernel.flags entries from the TAIL. domain_completeness_empty_reason -- the field #1382 specifically added to disclose when a domain's grounding was dropped all-or-nothing -- is pushed LAST in that array, so it is the first thing trimmed whenever a response is otherwise dense enough to hit the cap. Reproduced live on Abhisek health/marriage and Abhinandan health (all 3 flags present pre-trim, only 2 survive, and the missing one is always domain_completeness_empty_reason); decisively corroborated on chart e36ba429 where the field DOES survive (fewer competing flags) and reads 'No precompiled health concept-slice bundle exists yet'. This is precisely the failure mode CLAUDE.md SS N.6 item 2 (hardFloor) exists to prevent -- the densest, most-actionable disclosure in a response should be the LAST thing a budget trim removes, not the first. Two-part fix proposed by the investigating agent: push domain_completeness_empty_reason ahead of the flags array before other entries, AND/OR mark it non-trimmable (hardFloor-equivalent) in the trim loop -- the fix needs to actually determine which, or both, is correct rather than assume.",
+      "finding_id": "F-177",
+      "next_action": "Fix dispatched -- push empty_reason ahead of trim-eligible flags and/or mark it hardFloor-protected in assembleSaraContent's budget trim; verify live post-fix the same way this defect was found (direct MCP calls against built charts, not just unit tests).",
+      "pr_url": null,
+      "prev_sha256": "f9d858ef7f4b41d04c7dc872432ca91088b5aba190c4f518d84f3f4344f5999f",
+      "seq": 957,
+      "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
     "F-18": {
       "confidence": "HIGH",
       "disposition": "LANDED",
@@ -1582,16 +1597,16 @@
     "F-31": {
       "confidence": "HIGH",
       "disposition": "PARKED",
-      "event_sha256": "d617b0e3b9ceec9a56ff1e53e5499932fb39213342e0d3c6141d4b50dc737350",
+      "event_sha256": "f9d858ef7f4b41d04c7dc872432ca91088b5aba190c4f518d84f3f4344f5999f",
       "event_type": "finding_status",
-      "evidence_summary": "Owner ruling received and filed (OWNER_RULINGS_20260821.md, R-8). Authorized to construct a synthetic approved-reading session in dev/staging to verify PR #1338's fix -- pre-launch status (no real customers, standing v3.0-confirmed fact) means 'live user session' for verification purposes is a synthetic/test-account session, within the campaign's existing access and authority. If construction reveals the verification genuinely requires a real production user interaction, park back to EXTERNAL_HOLD with that specific evidence -- not yet constructed, this event records the authorization, not the verification.",
+      "evidence_summary": "R-8 verification EXECUTED (read-only MCP smoke against 3 built charts, 2 verbosity tiers -- no synthetic account was actually needed; 'approved reading in a live user session' traced to F-31's own next_action text in state/phase0/batch6.json and turned out to mean the assess_* MCP surface itself, there is no separate approval/consent gate in this product). PR #1338's own flag (domain_slice_not_configured) is confirmed permanently dead code on deployed main -- superseded by PR #1382 (F-14+F-124 reconciliation, merged 2026-08-20), which now always attaches a reading digest, so !hasAttachedReading can never be true (registry_bridge.ts:3014 acknowledges this in its own comment). #1382's OWN superseding disclosure (domain_completeness_empty_reason mirrored into kernel.flags) is confirmed LIVE-BROKEN: it's pushed last and assembleSaraContent's KERNEL_MAX_BYTES=2048 trim loop drops flags from the tail (response_budget.ts:792-801). Live-confirmed on Abhisek health/marriage and Abhinandan health (3 flags/2 pointers/1945B, trimmed to what a simulated 3-flag-with-empty-reason trim predicts) that BOTH disclosures are absent on the wire -- decisive corroboration on chart e36ba429 (sparse enough for the field to survive): domain_completeness_empty_reason IS present in grounding while kernel.flags is capped to exactly what the trim math predicts. Net: on built charts, callers get NEITHER disclosure -- the exact 'neither disclosure' failure #1382's own GA-5 review comment claimed to prevent. Spinning the precise, fully diagnosed defect out as its own finding (F-177) rather than closing F-31 as verified -- F-31's ORIGINAL depth-asymmetry question is superseded by this more specific, more severe, live-confirmed regression.",
       "finding_id": "F-31",
-      "next_action": "Construct the synthetic dev/staging approved-reading session per R-8 and verify PR #1338 directly.",
+      "next_action": "Tracked as F-177 (the trim-order defect) for the actual fix. F-31 stays non-terminal until F-177 lands and the original depth-asymmetry claim is re-confirmed resolved end-to-end.",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1338",
-      "prev_sha256": "abec9ae45e46fc083b40a0184f6eed21e768d8faeddfd7daace5534addbf4cf8",
-      "seq": 955,
+      "prev_sha256": "d617b0e3b9ceec9a56ff1e53e5499932fb39213342e0d3c6141d4b50dc737350",
+      "seq": 956,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
-      "status": "EXTERNAL_HOLD",
+      "status": "DECISION_PARKED",
       "terminal_status": null
     },
     "F-32": {
@@ -2644,8 +2659,8 @@
   },
   "findings_morning_ship_ready_count": 0,
   "findings_terminal_count": 136,
-  "journal_head_seq": 955,
-  "journal_head_sha256": "d617b0e3b9ceec9a56ff1e53e5499932fb39213342e0d3c6141d4b50dc737350",
+  "journal_head_seq": 957,
+  "journal_head_sha256": "dd2693894378835a8dad80493b6cae7a668c47c165da6e2c7c4184866905fc5e",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
