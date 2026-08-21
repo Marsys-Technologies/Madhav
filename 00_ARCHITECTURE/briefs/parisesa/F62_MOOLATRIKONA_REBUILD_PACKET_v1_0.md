@@ -162,12 +162,17 @@ Post-rebuild, all three must hold:
 3. No graha whose D1 degree is OUTSIDE its band flipped to `moolatrikona`, and
    the `exalted` / `debilitated` counts are unchanged (the tier splits `own`; it
    must not consume any other tier).
-4. **Scope guard, added per §5b's correction**: `SELECT count(*) FROM
-   chart_facts WHERE fact_category='graha_dignity_per_varga' AND
-   fact_value_text ILIKE '%moola%' AND varga_n != 1` returns **zero**. Any
-   non-zero result means `ga_structural_writer` fabricated a D2+ moolatrikona
-   row from the replicated-D1-degree bug described in §5b and the execution
-   must be treated as failed, not as "the tier is now working."
+4. **Scope guard, added per §5b's correction** (GA-5 re-review found the
+   original query below referenced a `varga_n` column that does not exist on
+   `chart_facts` — 25 real columns, checked via `information_schema` — so the
+   guard as first written could never run, let alone catch anything; corrected
+   to the working form using `fact_subject`, which carries the varga prefix,
+   e.g. `D1_JUP`/`D9_JUP`): `SELECT count(*) FROM chart_facts WHERE
+   fact_category='graha_dignity_per_varga' AND fact_value_text ILIKE
+   '%moola%' AND fact_subject NOT LIKE 'D1\_%'` returns **zero**. Any non-zero
+   result means `ga_structural_writer` fabricated a D2+ moolatrikona row from
+   the replicated-D1-degree bug described in §5b and the execution must be
+   treated as failed, not as "the tier is now working."
 
 ## §5 — Open questions, disclosed rather than decided
 
