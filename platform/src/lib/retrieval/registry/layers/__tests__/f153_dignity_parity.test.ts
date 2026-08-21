@@ -13,9 +13,15 @@
  * This test (a) asserts the strict ordering on the fixed TS scale, (b) asserts d10 no
  * longer hand-duplicates the map (one registry, not two — the defect's own propagation
  * mechanism), and (c) cross-checks *ordering* (not value equality — the scales genuinely
- * differ, 0-1 vs -2..2) against the live Python source of truth, the same drift-detection
- * pattern `signal_glossary.parity.test.ts` / `coverage_gate.test.ts` use for their own
- * cross-language checks.
+ * differ, 0-1 vs -2..2) against the live Python source of truth.
+ *
+ * Deliberately python-free (same rationale as `signal_glossary.parity.test.ts`'s own
+ * docstring: "must fail on a CI runner that has no Python interpreter at all" — the repo's
+ * `unit-tests` CI job runs bare `python3` with no sidecar deps installed, and
+ * `ga_condition_writer.py` unconditionally imports `psycopg` at module load, so actually
+ * executing it here is not viable). Instead this parses the `DIGNITY_SCORES` dict literal
+ * straight out of the .py source text, the same text-based approach
+ * `signal_glossary.parity.test.ts` uses for its own cross-language check.
  *
  * Companion Python-side test: `platform/python-sidecar/tests/
  * test_f62_moolatrikona_downstream_vocabulary.py` (`test_moolatrikona_outranks_own_in_every_score_map`).
@@ -23,14 +29,15 @@
  * `significator_condition.f113.test.ts`.
  */
 import { describe, expect, it } from 'vitest'
-import { spawnSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { DIGNITY_WEIGHT } from '../register_d9_judgment'
 
 // platform/src/lib/retrieval/registry/layers/__tests__ → platform/
 const PLATFORM_DIR = path.resolve(__dirname, '..', '..', '..', '..', '..', '..')
-const PYTHON_SIDECAR_DIR = path.join(PLATFORM_DIR, 'python-sidecar')
+const GA_CONDITION_WRITER_PATH = path.join(
+  PLATFORM_DIR, 'python-sidecar', 'ga_writers', 'ga_condition_writer.py',
+)
 const D10_PACT_PATH = path.resolve(__dirname, '..', 'register_d10_pact.ts')
 
 describe('F-153 — moolatrikona strictly outranks own (dignity weighting)', () => {
@@ -52,18 +59,19 @@ describe('F-153 — moolatrikona strictly outranks own (dignity weighting)', () 
   })
 
   it('matches the ordering (not value) of the live Python source of truth', () => {
-    const result = spawnSync(
-      'python3',
-      ['-c', 'from ga_writers.ga_condition_writer import DIGNITY_SCORES; ' +
-        'print(DIGNITY_SCORES["exalted"], DIGNITY_SCORES["moolatrikona"], DIGNITY_SCORES["own"])'],
-      { encoding: 'utf-8', cwd: PYTHON_SIDECAR_DIR },
-    )
-    expect(result.status, `python3 failed: ${result.stderr}`).toBe(0)
-    // Some sidecar modules print sys.path debug noise on import (unrelated to this test) —
-    // the values we want are on the LAST non-empty stdout line.
-    const lines = result.stdout.trim().split('\n')
-    const lastLine = lines[lines.length - 1]
-    const [exalted, moolatrikona, own] = lastLine.trim().split(/\s+/).map(Number)
+    expect(fs.existsSync(GA_CONDITION_WRITER_PATH)).toBe(true)
+    const py = fs.readFileSync(GA_CONDITION_WRITER_PATH, 'utf8')
+    const dictMatch = py.match(/DIGNITY_SCORES:\s*dict\[str,\s*float\]\s*=\s*\{([^}]*)\}/)
+    expect(dictMatch, 'DIGNITY_SCORES dict literal not found — has ga_condition_writer.py been restructured?').not.toBeNull()
+    const body = dictMatch![1]
+    const tierOf = (key: string): number => {
+      const m = body.match(new RegExp(`"${key}":\\s*([\\d.]+)`))
+      expect(m, `key "${key}" not found in DIGNITY_SCORES`).not.toBeNull()
+      return Number(m![1])
+    }
+    const exalted = tierOf('exalted')
+    const moolatrikona = tierOf('moolatrikona')
+    const own = tierOf('own')
     expect(exalted).toBeGreaterThan(moolatrikona)
     expect(moolatrikona).toBeGreaterThan(own)
     // Cross-check the TS scale reproduces the SAME ordering (ordering parity, not value
