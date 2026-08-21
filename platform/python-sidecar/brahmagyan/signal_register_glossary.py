@@ -44,6 +44,24 @@ Usage:
       3. INTERNAL_MARKER_PATTERNS identifies strings that are NOT astrological findings
          and must be filtered out of priority-ranking results (F-131 remediation).
 
+LIVE CONSUMER (F-131 remediation, 2026-08-21) — this module is no longer import-less:
+    The surface F-131 was found on (kala_priority_ranking_get) is a TypeScript capability
+    handler and cannot import Python. Rather than hand-copy these tables across the process
+    boundary, they are GENERATED into TypeScript per the single-source-contract mandate
+    (RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md §19):
+
+        source of truth : this file
+        generator       : platform/scripts/generate_signal_glossary_mirror.ts
+                          (`npm run codegen:signal-glossary`)
+        generated mirror: platform/src/lib/retrieval/signal_glossary.generated.ts
+        behaviour       : platform/src/lib/retrieval/signal_glossary.ts
+        serving seam    : platform/src/lib/retrieval/registry/layers/L3_kala/
+                          call_service_wrappers.ts :: callPriorityRankingCapability
+
+    EDITING THIS FILE REQUIRES REGENERATING THE MIRROR. The generated module pins the
+    sha256 of this file; `signal_glossary.parity.test.ts` re-hashes it and fails CI if the
+    two have drifted, so an un-regenerated edit here is caught mechanically, not by review.
+
 Authority:
     Labels are acharya-grade (§J standard: a senior Jyotish acharya should recognize
     the label as the correct classical term for the underlying concept).
@@ -64,7 +82,22 @@ FACT_CATEGORY_DISPLAY_LABEL: dict[str, str] = {
     "bhrigu_nadi_point":             "Bhrigu Nadi Special Point",
     "esoteric_point_shiva":          "Esoteric Shiva Point",
     "upagraha_position":             "Upagraha (Shadow Planet) Position",
-    "midpoint":                      "Midpoint (Sandhya Bindu)",
+    # F-131 remediation, domain-correctness spot-check: this label read
+    # "Midpoint (Sandhya Bindu)". "Sandhya bindu" is NOT a classical Jyotish term — sandhyā
+    # means twilight, and the classical word for a junction is sandhi (rāśi-sandhi,
+    # bhāva-sandhi), never "sandhya bindu" for a midpoint between two chart points. The live
+    # facts confirm what the category actually is: chart_facts rows under
+    # fact_category='midpoint' on the canonical chart carry 55 distinct fact_subject values,
+    # each a PAIR — and the pairs are not all grahas: alongside SUN-MOON / MAR-SAT / VEN-RAH
+    # there are nine ASC-* pairs (ASC-JUP, ASC-SUN, …) and nine MC-* pairs (MC-JUP, MC-SUN,
+    # …). Lagna and Madhya-lagna are chart ANGLES, not grahas, so "graha-pair" would be
+    # wrong for a third of the family. Keys are longitude_sidereal / sign / sign_lord /
+    # house_d1; source_calculation is pyjhora_adapter.sensitive — i.e. the midpoint between
+    # two chart points, a Western/Uranian-derived technique with no BPHS antecedent.
+    # Per §J and §N.7 item 6 (an honest null beats an invented judgment), the invented
+    # Sanskrit parenthetical is removed rather than replaced with a different guess, and the
+    # label is scoped to what the data actually contains.
+    "midpoint":                      "Chart-Point Pair Midpoint (graha/lagna/MC)",
     "graha_pada_join":               "Graha–Pada Junction",
     "saham_position":                "Saham (Arabic Lot) Position",
     "aprakasha_position":            "Aprakāśa (Dark Body) Position",
@@ -137,7 +170,7 @@ SIGNAL_TYPE_GLOSSARY: dict[str, str] = {
     "bhrigu nadi point":                 "Bhrigu Nadi Special Point",
     "esoteric point shiva":              "Esoteric Shiva Point",
     "upagraha position":                 "Upagraha (Shadow Planet) Position",
-    "midpoint":                          "Midpoint (Sandhya Bindu)",
+    "midpoint":                          "Chart-Point Pair Midpoint (graha/lagna/MC)",  # see FACT_CATEGORY_DISPLAY_LABEL note
     "graha pada join":                   "Graha–Pada Junction",
     "saham position":                    "Saham (Arabic Lot) Position",
     "aprakasha position":                "Aprakāśa (Dark Body) Position",

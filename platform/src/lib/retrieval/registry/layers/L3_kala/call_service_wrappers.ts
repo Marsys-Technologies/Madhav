@@ -20,6 +20,11 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { DEFAULT_AYANAMSHA } from '../../constants'
+import {
+  ABSTENTION_MARKER_PATTERNS,
+  CATALOG_ONLY_MARKER_PATTERNS,
+  humanizeSignalHeadline,
+} from '@/lib/retrieval/signal_glossary'
 
 // ── call_transit_search ───────────────────────────────────────────────────────
 
@@ -485,6 +490,12 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
     'Per-chart: requires chart_id.',
     'Ranks active signals by combined score of salience × activation_strength × convergence.',
     'Use to determine which signals deserve attention in a specific time window.',
+    'Each row carries signal_headline_label (acharya-grade label from the signal-register',
+    'glossary) alongside the raw signal_headline_text; headline_label_mapped=false means no',
+    'glossary entry exists and the raw template is passed through unchanged, never relabelled',
+    'by guess. Internal computation-abstention markers ("floored: …", a writer declining a',
+    'computation per B.10) are EXCLUDED from ranked_signals and disclosed verbatim in',
+    'excluded_internal_markers with the rank each would have occupied.',
   ].join(' '),
 
   scope: 'per_chart',
@@ -575,45 +586,149 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
       // multiplier rather than dropped (B.10: never silently drop data), and flagged per-row
       // (neutral_dignity_downranked) plus summarized in the envelope so a caller can tell a
       // downranked row apart from one that genuinely scored low.
+      // F-131 (PARIŚEṢA-V4): two defects on this surface, both fixed here at serve time.
+      //
+      //  (1) INTERNAL COMPUTATION-ABSTENTION MARKERS WERE RANKED AS PRIORITY SIGNALS.
+      //      "graha cheshta bala per varga: D14 = floored: no_canonical_per_varga_method
+      //      [ga_structural]" is not an astrological finding — it is the writer's honest
+      //      §B.10 record that no verifiable classical per-varga ceṣṭā-bala formula exists,
+      //      and it ranked #5 by priority_score on the native's own chart. Such rows are now
+      //      excluded from `ranked_signals` and DISCLOSED in `excluded_internal_markers`
+      //      with the pattern that matched and the rank they would have occupied — excluded
+      //      with a trace, never silently dropped (B.10, and the same disclosure discipline
+      //      as `neutral_dignity_downranked` below). `requires_pass` catalog-only rows are
+      //      deliberately NOT excluded — see signal_glossary.ts's disposition note (§N.6).
+      //
+      //  (2) RAW TEMPLATE STRINGS WERE SERVED AS PROSE. `signal_headline_text` is a
+      //      deterministic template whose category segment is a bare snake_case schema key.
+      //      Each served row now also carries `signal_headline_label`, the acharya-grade
+      //      form from the glossary — and `headline_label_mapped: false` plus the unchanged
+      //      raw string when no mapping exists (nothing is invented, §N.7 item 6).
+      //      `signal_headline_text` is still returned raw on every row (§N.5 / B.10).
+      //
+      // Excluding after the LIMIT would silently shrink the page below top_k, so the ranking
+      // is done in one query with two window functions: `partition_rank` ranks the servable
+      // (non-abstention) rows so exactly top_k of them come back, and `pre_exclusion_rank`
+      // records where an abstention row WOULD have landed, which is what makes the
+      // disclosure meaningful ("this was going to be your #5").
       const params: unknown[] = [chart_id, ayanamsha_id, date_from, date_to]
       let domainClause = ''
       if (domainsFilter && domainsFilter.length > 0) {
         params.push(domainsFilter)
         domainClause = ` AND m.domains_affected_array && $${params.length}::text[]`
       }
+      params.push(ABSTENTION_MARKER_PATTERNS)
+      const abstentionParam = params.length
+      params.push(CATALOG_ONLY_MARKER_PATTERNS)
+      const catalogParam = params.length
       params.push(top_k)
+      const topKParam = params.length
+
+      // strpos() over lowercased text rather than ILIKE: the glossary patterns contain `[`
+      // and `_`, both LIKE metacharacters, and a plain substring test is what the Python
+      // side's own semantics are. WITH ORDINALITY preserves glossary order so the most
+      // specific pattern is the one reported when several match.
+      const markerExpr = (paramIdx: number) => `
+            (SELECT t.p FROM unnest($${paramIdx}::text[]) WITH ORDINALITY AS t(p, ord)
+              WHERE strpos(lower(m.signal_headline_text), lower(t.p)) > 0
+              ORDER BY t.ord LIMIT 1)`
 
       const sql = `
-        SELECT
-          m.signal_id,
-          m.signal_headline_text,
-          m.computed_salience,
-          m.domains_affected_array,
-          m.signal_type_class,
-          a.orb_strength AS activation_strength,
-          to_char(a.activation_start, 'YYYY-MM-DD') AS window_start,
-          to_char(a.activation_end, 'YYYY-MM-DD')   AS window_end,
-          a.signature_class AS trigger_type,
-          (m.signal_headline_text ILIKE '%dignity%neutral%') AS neutral_dignity_downranked,
-          (m.computed_salience * COALESCE(a.orb_strength, 0.5) *
-            (CASE WHEN m.signal_headline_text ILIKE '%dignity%neutral%' THEN 0.3 ELSE 1.0 END)
-          ) AS priority_score
-        FROM bodha_msr_signals m
-        JOIN kala_activation a ON m.signal_id = a.signal_id
-          AND a.chart_id = m.chart_id
-          AND a.ayanamsha_id = m.ayanamsha_id
-        WHERE m.chart_id = $1
-          AND m.ayanamsha_id = $2
-          AND a.activation_end >= $3::date
-          AND a.activation_start <= $4::date${domainClause}
-        ORDER BY priority_score DESC NULLS LAST
-        LIMIT $${params.length}
+        WITH scored AS (
+          SELECT
+            m.signal_id,
+            m.signal_headline_text,
+            m.computed_salience,
+            m.domains_affected_array,
+            m.signal_type_class,
+            a.orb_strength AS activation_strength,
+            to_char(a.activation_start, 'YYYY-MM-DD') AS window_start,
+            to_char(a.activation_end, 'YYYY-MM-DD')   AS window_end,
+            a.signature_class AS trigger_type,
+            (m.signal_headline_text ILIKE '%dignity%neutral%') AS neutral_dignity_downranked,
+            ${markerExpr(abstentionParam)} AS abstention_marker_pattern,
+            ${markerExpr(catalogParam)} AS catalog_only_marker_pattern,
+            (m.computed_salience * COALESCE(a.orb_strength, 0.5) *
+              (CASE WHEN m.signal_headline_text ILIKE '%dignity%neutral%' THEN 0.3 ELSE 1.0 END)
+            ) AS priority_score
+          FROM bodha_msr_signals m
+          JOIN kala_activation a ON m.signal_id = a.signal_id
+            AND a.chart_id = m.chart_id
+            AND a.ayanamsha_id = m.ayanamsha_id
+          WHERE m.chart_id = $1
+            AND m.ayanamsha_id = $2
+            AND a.activation_end >= $3::date
+            AND a.activation_start <= $4::date${domainClause}
+        ),
+        ranked AS (
+          SELECT s.*,
+            ROW_NUMBER() OVER (
+              ORDER BY s.priority_score DESC NULLS LAST, s.signal_id
+            ) AS pre_exclusion_rank,
+            ROW_NUMBER() OVER (
+              PARTITION BY (s.abstention_marker_pattern IS NULL)
+              ORDER BY s.priority_score DESC NULLS LAST, s.signal_id
+            ) AS partition_rank
+          FROM scored s
+        )
+        SELECT * FROM ranked
+        WHERE (abstention_marker_pattern IS NULL     AND partition_rank     <= $${topKParam})
+           OR (abstention_marker_pattern IS NOT NULL AND pre_exclusion_rank <= $${topKParam})
+        ORDER BY priority_score DESC NULLS LAST, signal_id
       `
 
+      interface RankedRow {
+        signal_id?: string
+        signal_headline_text?: string | null
+        neutral_dignity_downranked?: boolean
+        abstention_marker_pattern?: string | null
+        catalog_only_marker_pattern?: string | null
+        priority_score?: number | null
+        pre_exclusion_rank?: number | string | null
+        partition_rank?: number | string | null
+        [k: string]: unknown
+      }
+
       const result = await query(sql, params)
-      const signalRefs = (result.rows as Array<{ signal_id?: string }>).map(r => r.signal_id).filter(Boolean) as string[]
-      const downrankedCount = (result.rows as Array<{ neutral_dignity_downranked?: boolean }>)
-        .filter(r => r.neutral_dignity_downranked === true).length
+      const allRows = result.rows as RankedRow[]
+
+      const excludedRows = allRows.filter(r => r.abstention_marker_pattern != null)
+      const servedRows   = allRows.filter(r => r.abstention_marker_pattern == null)
+
+      const rankedSignals: Array<Record<string, unknown>> = servedRows.map(row => {
+        // Drop the columns that exist only to drive the exclusion/ranking machinery — a
+        // caller should see signals, not the plumbing that selected them.
+        const rest: Record<string, unknown> = { ...row }
+        const catalogPattern = row.catalog_only_marker_pattern
+        delete rest.abstention_marker_pattern
+        delete rest.catalog_only_marker_pattern
+        delete rest.partition_rank
+        delete rest.pre_exclusion_rank
+        const humanized = humanizeSignalHeadline(row.signal_headline_text)
+        return {
+          ...rest,
+          // Raw template retained above via `rest.signal_headline_text` (B.10 / §N.5) —
+          // the label is an ADDITIONAL display field, not a replacement.
+          signal_headline_label:   humanized.headline_label,
+          headline_label_mapped:   humanized.label_mapped,
+          headline_fact_category:  humanized.matched_fact_category,
+          catalog_only_unverified: catalogPattern != null,
+        }
+      })
+
+      const excludedInternalMarkers = excludedRows.map(row => ({
+        signal_id:            row.signal_id,
+        signal_headline_text: row.signal_headline_text,
+        matched_pattern:      row.abstention_marker_pattern,
+        priority_score:       row.priority_score,
+        pre_exclusion_rank:   row.pre_exclusion_rank == null ? null : Number(row.pre_exclusion_rank),
+        exclusion_reason:     'internal_computation_abstention_marker',
+      }))
+
+      const signalRefs      = rankedSignals.map(r => r.signal_id).filter(Boolean) as string[]
+      const downrankedCount = rankedSignals.filter(r => r.neutral_dignity_downranked === true).length
+      const unmappedCount   = rankedSignals.filter(r => r.headline_label_mapped === false).length
+      const catalogOnlyCount = rankedSignals.filter(r => r.catalog_only_unverified === true).length
 
       return {
         content: {
@@ -622,8 +737,8 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
           date_from,
           date_to,
           domain_filter: domainsFilter,
-          ranked_signals: result.rows,
-          signal_count:   result.rows.length,
+          ranked_signals: rankedSignals,
+          signal_count:   rankedSignals.length,
           signal_id_refs: [...new Set(signalRefs)],
           neutral_dignity_downranked_count: downrankedCount,
           ...(downrankedCount > 0
@@ -631,6 +746,30 @@ export const callPriorityRankingCapability: CapabilityDescriptor = {
                 `("graha dignity per varga: dignity state = neutral") and were down-ranked (priority_score ` +
                 `x0.3) rather than treated as a genuine priority signal — see neutral_dignity_downranked ` +
                 `per row.` }
+            : {}),
+          // F-131 disclosure block. Always present (count + array), so a caller can tell
+          // "nothing was excluded" apart from "exclusion was never evaluated" (§N.8).
+          excluded_internal_marker_count: excludedInternalMarkers.length,
+          excluded_internal_markers:      excludedInternalMarkers,
+          ...(excludedInternalMarkers.length > 0
+            ? { excluded_internal_marker_note: `${excludedInternalMarkers.length} row(s) that would ` +
+                `otherwise have ranked within the top ${top_k} were EXCLUDED from ranked_signals: their ` +
+                `signal_headline_text is an internal computation-abstention marker (the writer floored ` +
+                `the value per §B.10 because no verifiable classical formula exists), not an ` +
+                `astrological finding. They are listed verbatim in excluded_internal_markers with the ` +
+                `matched pattern and the rank each would have occupied — excluded, not hidden.` }
+            : {}),
+          unmapped_headline_count: unmappedCount,
+          ...(unmappedCount > 0
+            ? { unmapped_headline_note: `${unmappedCount} of ${rankedSignals.length} row(s) have no ` +
+                `entry in the signal-register glossary; their signal_headline_label is the RAW template ` +
+                `string, unchanged, with headline_label_mapped=false. No label was invented for them.` }
+            : {}),
+          catalog_only_rows_in_page: catalogOnlyCount,
+          ...(catalogOnlyCount > 0
+            ? { catalog_only_note: `${catalogOnlyCount} row(s) are catalog-only matches awaiting ` +
+                `cross-verification (catalog_only_unverified=true) — served, but never to be read as ` +
+                `confirmed findings (§N.6). Cross-verified yoga firings: ganita_yoga_firings_get.` }
             : {}),
         },
         is_error: false,
