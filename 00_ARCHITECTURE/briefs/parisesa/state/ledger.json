@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 926,
+  "event_count": 929,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -655,16 +655,16 @@
     "F-131": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "3e0fb660cf3e9c4a196abe4962bb352211655c7f8a9929891c9b3c3225c5e6de",
+      "event_sha256": "adfaf2b6bb9421e88e6168504623926b11c8d48e319bc739d63b4e25f1fa579e",
       "event_type": "finding_status",
-      "evidence_summary": "Serve-time fix, no rebuild needed. Cross-language sourcing solved properly: the existing generate_vidhi_registry_mirror.ts codegen pattern reused so the Python glossary stays single source of truth, TS mirror generated + sha256-pinned with a CI parity test. Internal-marker exclusion correctly implemented via window functions INSIDE the ranking query (filtering after LIMIT would have silently shrunk the served page below top_k -- a real trap avoided). Excluded rows disclosed (matched pattern + rank they would have occupied), never silently dropped. requires_pass rows deliberately served-not-excluded, flagged catalog_only_unverified per SS N.6. Domain-correctness spot-check found a REAL glossary translation error (midpoint labeled 'Sandhya Bindu' -- twilight -- when the classical junction term is 'sandhi'; also found 18/55 pair subjects are ASC/MC chart angles, not grahas, making even the generic label wrong for a third of the family) -- corrected. Found a SECOND abstention-marker family (drik_requires_varga_aspect_geometry) the original finding never named, caught only by the bare 'floored:' pattern -- load-bearing, pinned by a test. Fixed SQL executed against real production (not just mocked tests). 34 new tests + 1796/1796 full retrieval suite. Two honest limitations disclosed: glossary coverage only 19.6% of live signals (unmapped served flagged, not relabelled); codegen:projections has ~9000 lines of PRE-EXISTING drift on pristine main (confirmed, then reverted rather than bundled in -- this PR does not touch that unrelated drift).",
+      "evidence_summary": "GA-5 review: MERGE, no blocking defect. Every claim independently verified including reproducing live against production (10 real signals + 1 disclosed abstention row at pre_exclusion_rank=3), the Sanskrit correction confirmed right (sandhya=twilight vs sandhi=the real classical junction term, no BPHS antecedent for a Uranian midpoint concept -- declining to invent a replacement confirmed correct per SS N.7 item 6), and the second abstention pattern confirmed load-bearing (24 of 66 live rows caught ONLY by the generic fallback). Three minor PR-body number corrections found (all understating: 54 not 55 midpoint subjects, 5 not 2 live floor-reason families, 20.4% not 19.6% coverage). Real follow-up found: sibling tool kala_priority_get does NOT get this fix's benefit -- excluded rows vanish with no trace at that surface, narration still quotes raw signal_headline_text.",
       "finding_id": "F-131",
-      "next_action": "GA-5 review in flight",
+      "next_action": "in merge queue, auto-merge armed. Follow-ups tracked as F-171/F-172.",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1427",
-      "prev_sha256": "56e0d4a394c1661d0ff22c620d76513ef49a1b78e59ef4dc2a1b67ea96c34948",
-      "seq": 925,
+      "prev_sha256": "d9d96c712033965ae222d3dafd58e4e45fe0b5dde584704000051e2f6545282e",
+      "seq": 927,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "DECISION_PARKED",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-132": {
@@ -1299,6 +1299,36 @@
       "pr_url": null,
       "prev_sha256": "e91b2010f945ffdb5cf2c19184e9b0c04a2abc964e6e3f2a9ef7bace31773dfa",
       "seq": 923,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-171": {
+      "confidence": "MEDIUM",
+      "disposition": "STRANDED",
+      "event_sha256": "72d561b85c7667c620c2ffb3dbaf0feca93955309c7b5c05a4f065e9e943f92e",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW finding, found by F-131's GA-5 reviewer. kala_priority_get (platform-mcp/src/tools/kala_views/priority.ts) is a sibling/superseding tool that does NOT benefit from F-131's fix -- it whitelists payload fields and forwards only neutral_dignity_*, so the abstention-marker-excluded rows vanish there with NO disclosure trace at all (worse than F-131's original defect, not just unfixed), and its own narration still quotes raw signal_headline_text directly.",
+      "finding_id": "F-171",
+      "next_action": "apply the same F-131 fix pattern (exclusion + disclosure + label translation) to kala_priority_get -- small, mechanical once F-131's pattern is established",
+      "pr_url": null,
+      "prev_sha256": "adfaf2b6bb9421e88e6168504623926b11c8d48e319bc739d63b4e25f1fa579e",
+      "seq": 928,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-172": {
+      "confidence": "LOW",
+      "disposition": "STRANDED",
+      "event_sha256": "fef78e7f5419db7ffd75cf8fc4a1d02184f1dc062ea865d23568d18870b3c353",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW, low-severity finding, found by F-131's GA-5 reviewer. codegen:signal-glossary:check (F-131's new sha256 parity guard) is not wired into CI, unlike its sibling codegen:vidhi:check -- a hand-edit of the generated TS glossary mirror would not be caught. requires_pass has 0 live rows on the canonical chart currently, so the SS N.6 disclosure path this session tested is synthetic-only so far, not yet exercised by real data.",
+      "finding_id": "F-172",
+      "next_action": "wire codegen:signal-glossary:check into CI matching the vidhi pattern -- small hygiene fix",
+      "pr_url": null,
+      "prev_sha256": "72d561b85c7667c620c2ffb3dbaf0feca93955309c7b5c05a4f065e9e943f92e",
+      "seq": 929,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -2551,10 +2581,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 6,
+  "findings_morning_ship_ready_count": 7,
   "findings_terminal_count": 122,
-  "journal_head_seq": 926,
-  "journal_head_sha256": "d9d96c712033965ae222d3dafd58e4e45fe0b5dde584704000051e2f6545282e",
+  "journal_head_seq": 929,
+  "journal_head_sha256": "fef78e7f5419db7ffd75cf8fc4a1d02184f1dc062ea865d23568d18870b3c353",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
