@@ -16,7 +16,15 @@ function renderBlockContent({ turnId, block, citations }: FrozenBlockProps) {
   switch (block.kind) {
     case 'paragraph':
     case 'list':
-      return <ParagraphBlock turnId={turnId} text={block.html} role={block.role} citations={citations} />
+      return (
+        <ParagraphBlock
+          turnId={turnId}
+          text={block.html}
+          role={block.role}
+          citations={citations}
+          tableSpans={block.tableSpans}
+        />
+      )
     case 'heading':
       return (
         <h3 style={{ fontFamily: 'var(--pp-font-serif)', fontSize: '24px', lineHeight: 1.25, fontWeight: 600, margin: '20px 0 8px' }}>

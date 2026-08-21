@@ -62,12 +62,23 @@ export interface TableBlockContent {
   rows: string[][]
 }
 
+/** A table embedded inside a `paragraph` block, not occupying the whole
+ *  block (DD-22, approach (c)). `start`/`end` are exact character offsets
+ *  into the block's own `html` text — see `ParagraphBlock` for how they're
+ *  used to slice prose/table segments. */
+export interface TableSpan {
+  start: number
+  end: number
+  table: TableBlockContent
+}
+
 export interface CommittedBlock {
   id: string
   kind: BlockKind
   role?: ReadingRole
   html: string // reader-safe HTML/text with citation sentinels already resolved to chip markup tokens
   table?: TableBlockContent
+  tableSpans?: TableSpan[]
   gapText?: string
   prediction?: PredictionCardData
   seamSummary?: string // for kind === 'seam': the settled divider text
@@ -328,6 +339,7 @@ export type WireEvent =
       role?: ReadingRole
       html?: string
       table?: TableBlockContent
+      tableSpans?: TableSpan[]
       gapText?: string
       prediction?: PredictionCardData
       eventId: string

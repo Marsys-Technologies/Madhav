@@ -260,6 +260,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
           role: action.role,
           html: action.html ?? (t.tail && t.tail.blockId === action.blockId ? t.tail.text : ''),
           table: action.table,
+          tableSpans: action.tableSpans,
           gapText: action.gapText,
           prediction: action.prediction,
         }
