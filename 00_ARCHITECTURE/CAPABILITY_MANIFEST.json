@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-08-21T02:45:00Z",
+  "generated_at": "2026-08-21T02:50:00Z",
   "generator_version": "1.0",
-  "entry_count": 129,
-  "fingerprint": "1334f4d6af85e2bd78f43352a1e957ff0ce6540a73add98235b17ac82d0b10d3",
+  "entry_count": 128,
+  "fingerprint": "7713e122bcfe45fbd0cad736458f0395a72710ac493174701401cb19f2b1d60f",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1827,21 +1827,6 @@
       "fingerprint": "24cbeea92c8617697bb10b8f57dcd281056e7c92d4f7ecc9550352410ddcf344",
       "native_id": "project",
       "adopted_by_session": "PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z"
-    },
-    {
-      "canonical_id": "PARIPRASHNA_P2_CLOSE_REPORT",
-      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_P2_CLOSE_REPORT_v1_0.md",
-      "version": "1.0",
-      "status": "CLOSED",
-      "layer": "governance",
-      "expose_to_chat": false,
-      "representations": [
-        "file"
-      ],
-      "interface_version": "1.0",
-      "fingerprint": "ddc1a2919df2dcc2c896b49f43d4ff6a4b2958cc31c1f266074499e8c3d09055",
-      "native_id": "project",
-      "last_verified_session": "PARIPRASHNA-P2-CLOSE-2026-08-21"
     }
   ]
 }
