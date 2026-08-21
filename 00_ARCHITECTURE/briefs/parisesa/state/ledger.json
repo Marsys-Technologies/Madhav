@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 944,
+  "event_count": 950,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -303,17 +303,17 @@
     "F-110": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "48aa63896f0181bfb67373c4a69860b539ab3f3d4598a9caf957c8058ee775b6",
+      "event_sha256": "955d4a0d1292b76410ffb929e26a124b323f4a6bd27d99366f6d02233954097d",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review (after one stall-recovery retry) returned MERGE: the disclosure genuinely changes what a caller would conclude, since the launder is woven into every string ahead.ts itself authors (thesis/verdict/evidence/dissent), not confined to an easy-to-miss field. Reviewer's one gap: could not reach the MCP connector to independently verify the core numeric claim (denied_at_promise, 63 cited facts, composite -3.5) live. This session independently closed that gap directly against production before merging: pact_query(chart_id=482012f1..., domain=relationship) returned pact_status='denied_at_promise', PROMISE stage composite_score=-3.5, verdict_grade='contested', reading_contract text stating 'grounded in 63 resolvable L1 fact reference(s)' -- matching the finding's and PR's cited numbers exactly. kala_ahead_get for the same chart/domain, called against current pre-merge production, reproduced the exact pre-fix defect shape: dissent=[], evidence[0].strength='strong', no promise_gate field anywhere in the response -- confirming the defect is real, live, and unpatched on current production (expected pre-merge state). PR #1426 merge-queue-enqueued via gh pr merge --squash --auto (mergeStateStatus=CLEAN, no blocking checks); the 'merge strategy set by merge queue' message is informational per this campaign's established pattern, not an error.",
+      "evidence_summary": "PR #1426 confirmed merged 2026-08-21T07:30:24Z. GA-5 MERGE verdict plus this session's own independent live pact_query/kala_ahead_get verification already on record. Top-severity PACT confidence-laundering finding fully closed. Residuals F-175/F-176 tracked separately, F-175 flagged as highest next priority.",
       "finding_id": "F-110",
-      "next_action": "Auto-merge armed in GitHub merge queue; verify queue completion and flip to terminal SERVICE_CLOSED next session (or same session if queue drains before close).",
+      "next_action": null,
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1426",
-      "prev_sha256": "e351a536e8649430ef681506dc4e164af4cf3d63ca0517b919456a0d98d561ef",
-      "seq": 935,
+      "prev_sha256": "47247ed9cb7ca700506b28655ae55f709cdc740bc618d41253c71d6609aa5721",
+      "seq": 949,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-111": {
       "confidence": "HIGH",
@@ -362,17 +362,17 @@
     "F-113": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "4287947c674560847b39e647093c8402d52d2a5911941751e106b171b88cecb3",
+      "event_sha256": "47247ed9cb7ca700506b28655ae55f709cdc740bc618d41253c71d6609aa5721",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review: MERGE. Every load-bearing claim independently reproduced against live production DB (D1_SAT=exalted fact_id confirmed, all shadbala/percentile figures real, pre-fix kernel_bytes=1974 exact match, root cause confirmed -- DOMAIN_DIRECT_VARGAS maps no domain to D1 at all). Budget-immunity claim verified in code (response_budget.ts's ceiling loop mutates only pointers/flags, never verdict/promise). Reuse of register_d9_judgment.ts's grader confirmed real (that file's entire diff is 3 export keywords, zero logic change). 1779/1779 tests, envelope sha recomputed and matched. Reviewer's own honest assessment: 'trading a TIER1 domain-correctness gap for one info-severity flag about content not served is the right side of that trade.'",
+      "evidence_summary": "PR #1425 confirmed merged 2026-08-21T07:19:30Z. GA-5 MERGE verdict already on record (significator_condition.ts, placed in budget-immune verdict layer). Follow-up F-174 tracked separately.",
       "finding_id": "F-113",
-      "next_action": "in merge queue, auto-merge armed. 5 minor non-blocking observations consolidated into follow-up F-174.",
+      "next_action": null,
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1425",
-      "prev_sha256": "c08fd086105a0b208176515aaa9b905768091cfcf521c6b4b26e0d9dc0743f85",
-      "seq": 933,
+      "prev_sha256": "e5d40763417ab192ea6a2aa079bf30296fd55953f87dca7efbd76e7982d936fa",
+      "seq": 948,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-114": {
       "confidence": "HIGH",
@@ -436,17 +436,17 @@
     "F-118": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "2bc4cb32d9ec36cb3daee18508f414605fa60f7a7c7e8bd5c88002236094c766",
+      "event_sha256": "e5d40763417ab192ea6a2aa079bf30296fd55953f87dca7efbd76e7982d936fa",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review (simplified retry after 2 stalls): MERGE. DB spot-check confirmed live (536/536 rows total_scheduled=0). 130/131 tests reproduced exactly (1 pre-existing skip). Diff scope confirmed clean (2 Lane U files + CI allowlist + design doc, orchestrator untouched). RESOLVED the open question from the original investigation: ph_pratikara.py's _load_prescriptions selects a column named 'graha' that does not exist -- live table has 'target_graha' instead. The SELECT raises, a broad except rolls back to savepoint and logs at DEBUG ONLY, method returns {} -- every MitigationContext gets prescriptions=[], explaining all 536 empty payloads. This is itself a real SS N.8 defect (silent failure producing a green-looking build) -- triaged separately as F-173.",
+      "evidence_summary": "PR #1423 confirmed merged 2026-08-21T07:08:20Z. GA-5 MERGE verdict already on record (after 3 stall-recovery retries). F-173 (real ph_pratikara root cause) tracked separately.",
       "finding_id": "F-118",
-      "next_action": "in merge queue, auto-merge armed. F-173 (the actual root cause) tracked separately -- once fixed, this PR's non_prescriptive bucket correctly empties on its own, no rework needed.",
+      "next_action": null,
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1423",
-      "prev_sha256": "2815763d828145800f1141c8a0136cad1c7b3e8bd7dc89ac555be6f9c9f01d6a",
-      "seq": 931,
+      "prev_sha256": "56540926b108e2ea26ca329c5c33a6600bf9edf7691ad63c73a0f930ea32bc61",
+      "seq": 947,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-119": {
       "confidence": "HIGH",
@@ -568,17 +568,17 @@
     "F-126": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "2815763d828145800f1141c8a0136cad1c7b3e8bd7dc89ac555be6f9c9f01d6a",
+      "event_sha256": "8e1e23ad0c5962e834db5385fff9eda35fe4b3b5121916db46338d9e8a4d43cd",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review (simplified retry after 2 stalls): MERGE. All 6 verification steps completed, none skipped. Detector logic read in full and confirmed to match claims -- asymmetry correct (only downgrades on a payload's own self-declared zero, never on shape inference). 49/49 tests reproduced exactly. Mutation test reproduced exactly (2 failures on revert, byte-matching PR's claim). Adversarial check: grepped every confidence_band reference codebase-wide, confirmed no schema validates the envelope band so 'none' can't be rejected at runtime; confirmed evidence_state is conditionally emitted so existing callers stay byte-identical.",
+      "evidence_summary": "PR #1420 confirmed merged 2026-08-21T06:46:58Z. GA-5 MERGE verdict already on record (confidence_band hardcode fix, new evidence_state.ts).",
       "finding_id": "F-126",
-      "next_action": "in merge queue, auto-merge armed",
+      "next_action": null,
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1420",
-      "prev_sha256": "fef78e7f5419db7ffd75cf8fc4a1d02184f1dc062ea865d23568d18870b3c353",
-      "seq": 930,
+      "prev_sha256": "2521688218184e867bfab91aa5d1023ce64d81e0d854dd863735b8b5153040cd",
+      "seq": 945,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-127": {
       "confidence": "HIGH",
@@ -655,17 +655,17 @@
     "F-131": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "adfaf2b6bb9421e88e6168504623926b11c8d48e319bc739d63b4e25f1fa579e",
+      "event_sha256": "56540926b108e2ea26ca329c5c33a6600bf9edf7691ad63c73a0f930ea32bc61",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review: MERGE, no blocking defect. Every claim independently verified including reproducing live against production (10 real signals + 1 disclosed abstention row at pre_exclusion_rank=3), the Sanskrit correction confirmed right (sandhya=twilight vs sandhi=the real classical junction term, no BPHS antecedent for a Uranian midpoint concept -- declining to invent a replacement confirmed correct per SS N.7 item 6), and the second abstention pattern confirmed load-bearing (24 of 66 live rows caught ONLY by the generic fallback). Three minor PR-body number corrections found (all understating: 54 not 55 midpoint subjects, 5 not 2 live floor-reason families, 20.4% not 19.6% coverage). Real follow-up found: sibling tool kala_priority_get does NOT get this fix's benefit -- excluded rows vanish with no trace at that surface, narration still quotes raw signal_headline_text.",
+      "evidence_summary": "PR #1427 confirmed merged 2026-08-21T06:57:40Z. GA-5 MERGE verdict already on record (sha256-pinned TS mirror of signal_register_glossary.py, Sanskrit mistranslation corrected). Follow-ups F-171/F-172 tracked separately.",
       "finding_id": "F-131",
-      "next_action": "in merge queue, auto-merge armed. Follow-ups tracked as F-171/F-172.",
+      "next_action": null,
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1427",
-      "prev_sha256": "d9d96c712033965ae222d3dafd58e4e45fe0b5dde584704000051e2f6545282e",
-      "seq": 927,
+      "prev_sha256": "8e1e23ad0c5962e834db5385fff9eda35fe4b3b5121916db46338d9e8a4d43cd",
+      "seq": 946,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-132": {
       "confidence": "HIGH",
@@ -1952,17 +1952,17 @@
     "F-57": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "6e0f1edad0fd7971ca771f7ec53db8d9cc7976b24b5fb1ed9eba5a6d2ea7a52d",
+      "event_sha256": "5e18c961455e76796c1d649715f7e003c4c2754cb45a0fa99cf2489aaa04f82d",
       "event_type": "finding_status",
-      "evidence_summary": "check_ledger_pr_sync.py run found PR #1417 (mergeStateStatus=DIRTY, not in merge queue -- fallen out due to a real conflict with F-107 (#1419), which merged in the interim). Rebased onto main directly: the conflict itself was the recurring judgment_flags insertion-point pattern (kept both PRs' independent blocks). Rebasing also surfaced a REAL cross-PR interaction, not just a textual conflict: F-57 correctly tightens SHASTRA_MAP.signal_domain from string to the CanonicalDomain union (the actual fix, replacing the dead 'other' literal) -- which silently broke an already-passing, unmodified F-107 test doing a runtime membership check via Set<CanonicalDomain>.has(string). Fixed at the test's own type boundary (widened the local Set to Set<string>) rather than weakening either PR's real fix -- the test's actual runtime assertion is unchanged. Verified post-rebase: tsc --noEmit clean project-wide; register_d9_judgment/reading_checklist suites 178/178 passing (42 pre-existing DB-gated skips); envelope.ts suite 60/60. Original GA-5 MERGE verdict for F-57's own fix (SHASTRA_MAP 11-domain correction) remains on record and unaffected -- this pass only repaired the rebase and the newly-surfaced interaction.",
+      "evidence_summary": "PR #1417 confirmed merged 2026-08-21T07:41:50Z (after this session's own rebase fixing both the F-107 merge conflict and the real cross-PR SHASTRA_MAP.signal_domain type-tightening interaction it exposed). Original GA-5 MERGE verdict for the 11-domain SHASTRA_MAP correction remains on record.",
       "finding_id": "F-57",
-      "next_action": "Force-pushed rebased branch, gh pr merge --auto re-armed. Awaiting fresh CI run + merge queue.",
+      "next_action": null,
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1417",
-      "prev_sha256": "3719a4a128e368a842a5cd4dccceff42cbe8c4dae78a02f8c6145ba88e210cb9",
-      "seq": 943,
+      "prev_sha256": "955d4a0d1292b76410ffb929e26a124b323f4a6bd27d99366f6d02233954097d",
+      "seq": 950,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-58": {
       "confidence": "HIGH",
@@ -2641,10 +2641,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 6,
-  "findings_terminal_count": 128,
-  "journal_head_seq": 944,
-  "journal_head_sha256": "2521688218184e867bfab91aa5d1023ce64d81e0d854dd863735b8b5153040cd",
+  "findings_morning_ship_ready_count": 0,
+  "findings_terminal_count": 134,
+  "journal_head_seq": 950,
+  "journal_head_sha256": "5e18c961455e76796c1d649715f7e003c4c2754cb45a0fa99cf2489aaa04f82d",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
