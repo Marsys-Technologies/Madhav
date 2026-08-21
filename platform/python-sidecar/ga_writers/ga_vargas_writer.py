@@ -118,8 +118,34 @@ _FLOORED_BODY_TO_SUBJECT = {
 BODY_TO_SUBJECT = {name: norm_graha(name) for name in CLASSICAL_BODIES}
 BODY_TO_SUBJECT.update(_FLOORED_BODY_TO_SUBJECT)
 
-# Saptavargaja bala: 7 vargas used by D1 (D1=moolam, D2, D3, D9, D12, D30, D60)
-SAPTAVARGA_SET = {1, 2, 3, 9, 12, 30, 60}
+# Saptavargaja bala: the classical Sapta-varga group —
+#   Rasi (D1), Hora (D2), Drekkana (D3), Saptamsa (D7), Navamsa (D9),
+#   Dwadasamsa (D12), Trimsamsa (D30).
+#
+# F-61 correction (PARIŚEṢA-V4): this set previously read {1,2,3,9,12,30,60},
+# i.e. it EXCLUDED D7 (Saptamsa — a real member, the division the group is
+# literally named for) and INCLUDED D60 (Shashtiamsa — not a saptavarga
+# member; D60 belongs to the Shodasavarga/Vimsopaka group, see
+# VIMSOPAKA_SHODA_WEIGHTS below). The membership is not a judgement call —
+# three independent authorities in this repo's own reach agree:
+#
+#   1. This project's own L0 canonical reference table, which is the
+#      authority L1 writers are supposed to inherit from:
+#        brahmagyan/l0_reference.py — strength_reference row
+#        `saptavargaja_bala`.formula_text ==
+#        "Sum of dignity points across D1,D2,D3,D7,D9,D12,D30"
+#      and the varga-group table at l0_reference.py:821,
+#        "saptavarga": {D1,D2,D3,D7,D9,D12,D30}   (no D60).
+#   2. PyJHora — the engine this writer already delegates its compound-relation
+#      ladder to — `jhora.const.sapthavargaja_factors == [1,2,3,7,9,12,30]`
+#      (installed 4.8.6), consumed by
+#      `jhora.horoscope.chart.strength._sapthavargaja_bala1/_sthana_bala`.
+#   3. BPHS Ch. 27 (Shadbala Adhyaya), Sthana Bala / Saptavargaja Bala.
+#
+# The prior set was therefore an internal-consistency violation against this
+# project's own L0 authority (§N.5: L1 does not get to restate an L0/L1
+# reference as its own divergent truth).
+SAPTAVARGA_SET = {1, 2, 3, 7, 9, 12, 30}
 # 7 classical grahas for shadbala (no Rahu/Ketu/Lagna)
 CLASSICAL_7_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
 

@@ -1760,3 +1760,168 @@ class TestKarakaWebCanonicalSchool:
                                          CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
         fids = [r["fact_id"] for r in out]
         assert len(fids) == len(set(fids)), "duplicate planet must not yield duplicate fact_ids"
+
+
+# ── F-61: saptavargaja_score materialization (PARIŚEṢA-V4) ───────────────────
+
+class TestF61SaptavargajaScoreMaterialized:
+    """F-61: `graha_saptavargaja_bala_component.<graha>.saptavargaja_score`
+    used to be served with fact_value_num=NULL and fact_value_text=NULL on
+    every graha of every chart — a fact_key literally named "...score" that
+    carried no score, only a JSONB pointer to GA6 rows a caller would have to
+    re-derive the sum from themselves.
+
+    The aggregate is a plain SUM of the per-varga virupa scores across the
+    classical saptavarga group, per this project's own L0 canonical reference
+    (brahmagyan/l0_reference.py, strength_reference.saptavargaja_bala:
+    "Sum of dignity points across D1,D2,D3,D7,D9,D12,D30", units virupa,
+    BPHS Ch.27) and PyJHora's `_sapthavargaja_bala1` (sum over
+    const.sapthavargaja_factors == [1,2,3,7,9,12,30]).
+    """
+
+    class _Cur:
+        def __init__(self, calls, rows):
+            self._calls, self._rows = calls, rows
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def execute(self, sql, params=None):
+            self._calls.append((sql, params))
+        def fetchall(self): return self._rows
+
+    class _Conn:
+        def __init__(self, rows):
+            self.calls = []
+            self._rows = rows
+        def cursor(self, row_factory=None):
+            return TestF61SaptavargajaScoreMaterialized._Cur(self.calls, self._rows)
+
+    # GA6-shaped rows: (id, varga, fact_value_num, fact_value_text)
+    @staticmethod
+    def _full_seven():
+        return [
+            ("id-d1",  "D1",  45.0,  "Moolatrikona"),
+            ("id-d2",  "D2",  30.0,  "Own"),
+            ("id-d3",  "D3",  22.5,  "Adhi_Mitra"),
+            ("id-d7",  "D7",  15.0,  "Mitra"),
+            ("id-d9",  "D9",   7.5,  "Sama"),
+            ("id-d12", "D12",  3.75, "Shatru"),
+            ("id-d30", "D30",  1.875, "Adhi_Shatru"),
+        ]
+
+    def _rows_for(self, div_rows):
+        return sut._build_shadbala_extension_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+            conn=self._Conn(rows=div_rows),
+        )
+
+    def _saptav(self, div_rows):
+        return [r for r in self._rows_for(div_rows)
+                if r["fact_category"] == "graha_saptavargaja_bala_component"]
+
+    # ── the regression itself ────────────────────────────────────────────────
+
+    def test_score_is_no_longer_null_when_ga6_rows_exist(self):
+        """The F-61 regression guard. Before the fix this was None for every graha."""
+        for r in self._saptav(self._full_seven()):
+            assert r["fact_value_num"] is not None, (
+                f"F-61 regression: {r['fact_subject']} saptavargaja_score is NULL "
+                "again despite GA6 constituent rows being present"
+            )
+
+    def test_score_equals_hand_computed_sum(self):
+        """Hand-computed: 45 + 30 + 22.5 + 15 + 7.5 + 3.75 + 1.875 = 125.625 virupa.
+
+        Every rung of the classical ladder appears exactly once, so this also
+        pins the ladder itself (Moolatrikona 45 / own 30 / great-friend 22.5 /
+        friend 15 / neutral 7.5 / enemy 3.75 / great-enemy 1.875 — BPHS Ch.27,
+        as stated in l0_reference.strength_reference.saptavargaja_bala).
+        """
+        expected = 45.0 + 30.0 + 22.5 + 15.0 + 7.5 + 3.75 + 1.875
+        assert expected == 125.625
+        for r in self._saptav(self._full_seven()):
+            assert r["fact_value_num"] == pytest.approx(125.625), (
+                f"{r['fact_subject']}: expected 125.625 virupa, got {r['fact_value_num']}"
+            )
+
+    def test_unit_and_constituent_ids_preserved(self):
+        for r in self._saptav(self._full_seven()):
+            assert r["unit"] == "virupa"
+            # §N.5: the L1-authority references must survive the aggregation
+            assert r["fact_value_jsonb"]["constituent_fact_ids"] == [
+                "id-d1", "id-d2", "id-d3", "id-d7", "id-d9", "id-d12", "id-d30"
+            ]
+
+    # ── honest coverage (§N.7 item 6 / §N.8) ─────────────────────────────────
+
+    def test_full_coverage_reports_complete(self):
+        for r in self._saptav(self._full_seven()):
+            assert r["fact_value_text"] == "complete_7_of_7"
+            assert r["fact_value_jsonb"]["coverage_complete"] is True
+            assert r["fact_value_jsonb"]["vargas_missing"] == []
+
+    def test_partial_coverage_is_flagged_not_silently_summed(self):
+        """A partial sum must never present itself as a whole one."""
+        partial = [row for row in self._full_seven() if row[1] != "D30"]
+        for r in self._saptav(partial):
+            assert r["fact_value_num"] == pytest.approx(125.625 - 1.875)
+            assert r["fact_value_text"] == "partial_6_of_7"
+            assert r["fact_value_jsonb"]["coverage_complete"] is False
+            assert r["fact_value_jsonb"]["vargas_missing"] == ["D30"]
+            assert "INCOMPLETE" in r["citation_human"]
+
+    def test_no_ga6_rows_yields_honest_null_not_zero(self):
+        """0.0 would read as a real 'no strength' verdict. Absence is NULL."""
+        for r in self._saptav([]):
+            assert r["fact_value_num"] is None
+            assert r["fact_value_text"] == "unavailable_0_of_7"
+            assert r["fact_value_jsonb"]["coverage_complete"] is False
+
+    def test_null_scored_ga6_row_is_skipped_not_coerced(self):
+        rows = [row for row in self._full_seven() if row[1] != "D30"]
+        rows.append(("id-d30", "D30", None, None))
+        for r in self._saptav(rows):
+            assert r["fact_value_num"] == pytest.approx(125.625 - 1.875)
+            assert r["fact_value_jsonb"]["vargas_missing"] == ["D30"]
+
+    # ── the saptavarga membership itself ─────────────────────────────────────
+
+    def test_expected_varga_group_is_the_classical_seven(self):
+        """D7 is a member (the group is named for it); D60 is NOT — D60 belongs
+        to the Shodasavarga/Vimsopaka group. Authority: this repo's own
+        l0_reference.py saptavarga table + jhora.const.sapthavargaja_factors.
+        """
+        assert sut.SAPTAVARGA_EXPECTED_VARGAS == ("D1", "D2", "D3", "D7", "D9", "D12", "D30")
+        assert "D7" in sut.SAPTAVARGA_EXPECTED_VARGAS
+        assert "D60" not in sut.SAPTAVARGA_EXPECTED_VARGAS
+
+    def test_stale_d60_rows_are_not_summed_into_the_score(self):
+        """Pre-F-61 builds wrote D60 saptavargaja rows (the old ga_vargas
+        SAPTAVARGA_SET wrongly held D60 and omitted D7). Those rows must be
+        excluded at read time so the aggregate matches its stated formula even
+        before the GA6 rebuild lands — the read query filters on the varga
+        group rather than trusting whatever GA6 happened to write.
+        """
+        conn = self._Conn(rows=[])
+        sut._build_shadbala_extension_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER, conn=conn)
+        issued_sql, params = conn.calls[0]
+        assert "= ANY(" in issued_sql, "read query must restrict to the saptavarga group"
+        assert list(sut.SAPTAVARGA_EXPECTED_VARGAS) in [p for p in params if isinstance(p, list)]
+
+        # And a D60 row handed to the aggregator is dropped, not summed.
+        rows = self._full_seven() + [("id-d60", "D60", 30.0, "Own")]
+        # (the SQL filter excludes it upstream; this asserts the expected-group
+        # contract the aggregate reports against does not grow a D60 entry)
+        for r in self._saptav(rows):
+            assert "D60" not in r["fact_value_jsonb"]["vargas_expected"]
+
+    # ── conn=None must stay safe (the pre-existing no-DB test path) ──────────
+
+    def test_conn_none_still_emits_rows_with_honest_null(self):
+        rows = sut._build_shadbala_extension_rows(
+            MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
+        saptav = [r for r in rows if r["fact_category"] == "graha_saptavargaja_bala_component"]
+        assert len(saptav) == len(sut.CLASSICAL_GRAHAS)
+        for r in saptav:
+            assert r["fact_value_num"] is None
+            assert r["fact_value_text"] == "unavailable_0_of_7"

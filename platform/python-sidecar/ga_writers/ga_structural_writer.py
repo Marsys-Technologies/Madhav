@@ -137,6 +137,15 @@ logger = logging.getLogger(__name__)
 CLASSICAL_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
 ALL_GRAHAS = CLASSICAL_GRAHAS + ["Rahu", "Ketu"]
 
+# The classical Sapta-varga group, as varga ids, in classical order. Mirrors
+# ga_vargas_writer.SAPTAVARGA_SET and this project's own L0 authority
+# (brahmagyan/l0_reference.py: strength_reference.saptavargaja_bala.formula_text
+# == "Sum of dignity points across D1,D2,D3,D7,D9,D12,D30"; varga-group table
+# "saptavarga"). Kept as a module-local copy — no cross-import between L1
+# writers, matching the DEEPTAMSA precedent above. Used only to report honest
+# coverage of the F-61 aggregate; it never fabricates a missing varga.
+SAPTAVARGA_EXPECTED_VARGAS = ("D1", "D2", "D3", "D7", "D9", "D12", "D30")
+
 # M-12: Deeptamsa (orb of light/influence) per graha, degrees — Tajika
 # Nilakanthi; mirrors PyJHora's jhora.const.deeptaamsa_of_planets (Sun,Moon,
 # Mars,Mercury,Jupiter,Venus,Saturn = 15,12,8,7,9,7,9) and ga_tajaka_writer's
@@ -1386,28 +1395,100 @@ def _build_shadbala_extension_rows(
             ),
         ))
 
-    # graha_saptavargaja_bala_component (V): resolvable reference to GA6 chart_divisionals rows
+    # graha_saptavargaja_bala_component (V): AGGREGATED score from GA6.
+    #
+    # F-61 fix (PARIŚEṢA-V4). This row is keyed `saptavargaja_score` but used
+    # to be emitted with value_num=None and value_text=None on every graha of
+    # every chart — the only payload was a JSONB pointer to the GA6
+    # chart_divisionals rows, so a caller asking for "the score" got a
+    # to-do list instead of a number. The aggregate was never computed
+    # anywhere; §N.8's question ("what code path would make this signal
+    # correctly read false?") had no answer because no code path produced a
+    # value at all.
+    #
+    # The aggregation is a plain SUM of the per-varga virupa scores, which is
+    # not a judgement call — this project's own L0 canonical reference states
+    # it verbatim:
+    #   brahmagyan/l0_reference.py, strength_reference row `saptavargaja_bala`:
+    #     formula_text = "Sum of dignity points across D1,D2,D3,D7,D9,D12,D30"
+    #     units        = "virupa"   source_citation = "BPHS Ch.27"
+    #     interpretation: Moolatrikona 45, own 30, great-friend 22.5,
+    #                     friend 15, neutral 7.5, enemy 3.75, great-enemy 1.875
+    # PyJHora agrees structurally (`_sapthavargaja_bala1` ->
+    # `svb_sum = list(map(sum, zip(*svb)))` over
+    # `const.sapthavargaja_factors == [1,2,3,7,9,12,30]`), and GA6's
+    # per-varga ladder already emits exactly those virupa values.
+    #
+    # HONEST COVERAGE (§N.7 item 6 / §N.8): the sum is only as complete as the
+    # GA6 rows behind it. We never invent a missing varga's contribution and
+    # never let a partial sum masquerade as a whole one:
+    #   - zero constituent vargas  -> value_num stays NULL (honest null, NOT 0.0,
+    #     which would read as a real "no strength" verdict);
+    #   - partial coverage         -> value_num carries the partial sum but
+    #     fact_value_text reads "partial_N_of_7" and the JSONB carries
+    #     coverage_complete=false plus the explicit vargas_missing list;
+    #   - full coverage            -> "complete_7_of_7", coverage_complete=true.
+    # A caller must never be able to read the number without the coverage
+    # flag being available alongside it (§N.6 item 1).
     for g_name in CLASSICAL_GRAHAS:
         subject = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
-        constituent_ids = (
-            _get_divisional_constituent_ids(conn, chart_id, ayanamsha_id, "varga_saptavargaja_bala_component", subject)
+        components = (
+            _get_saptavargaja_components(conn, chart_id, ayanamsha_id, subject)
             if conn is not None else []
         )
+        constituent_ids = [c["divisional_id"] for c in components]
+        vargas_present = [c["varga"] for c in components]
+        vargas_missing = [v for v in SAPTAVARGA_EXPECTED_VARGAS if v not in vargas_present]
+        coverage_complete = not vargas_missing
+
+        if components:
+            total_virupa = round(sum(c["score"] for c in components), 4)
+            coverage_text = (
+                "complete_7_of_7" if coverage_complete
+                else f"partial_{len(vargas_present)}_of_{len(SAPTAVARGA_EXPECTED_VARGAS)}"
+            )
+        else:
+            # No GA6 saptavargaja rows reachable for this graha. Emit an honest
+            # null rather than a plausible-looking 0.0.
+            total_virupa = None
+            coverage_text = "unavailable_0_of_7"
+
         rows.append(_base_row(
             "graha_saptavargaja_bala_component", subject, "saptavargaja_score",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
-            value_num=None,
+            value_num=total_virupa,
+            value_text=coverage_text,
+            unit="virupa" if total_virupa is not None else None,
             value_jsonb={
                 "source_table": "chart_divisionals",
                 "source_category": "varga_saptavargaja_bala_component",
                 "constituent_fact_ids": constituent_ids,
+                "formula": "sum(per-varga virupa score across the saptavarga group)",
+                "formula_source": (
+                    "l0_reference.strength_reference.saptavargaja_bala.formula_text "
+                    "('Sum of dignity points across D1,D2,D3,D7,D9,D12,D30'); BPHS Ch.27"
+                ),
+                "unit": "virupa",
+                "vargas_expected": list(SAPTAVARGA_EXPECTED_VARGAS),
+                "vargas_present": vargas_present,
+                "vargas_missing": vargas_missing,
+                "coverage_complete": coverage_complete,
+                "per_varga": [
+                    {"varga": c["varga"], "score": c["score"], "relation": c["relation"]}
+                    for c in components
+                ],
                 "note": f"chart_divisionals rows for {subject} across saptavarga set ({ayanamsha_id})",
             },
             verif=UNVERIFIED_DEFAULT,
-            source=f"pyjhora_adapter.ga6_reference/{eng_ver}",
+            source=f"ga_structural.saptavargaja_aggregate/{eng_ver}",
             citation_human=(
-                f"{g_name} saptavargaja bala component: see chart_divisionals "
-                f"varga_saptavargaja_bala_component ({ayanamsha_id})."
+                f"{g_name} Saptavargaja Bala: "
+                + (f"{total_virupa} virupa" if total_virupa is not None
+                   else "unavailable (no GA6 constituent rows)")
+                + f" = sum over {coverage_text} of the saptavarga group "
+                f"(D1,D2,D3,D7,D9,D12,D30); BPHS Ch.27 ({ayanamsha_id})."
+                + (f" INCOMPLETE — missing {', '.join(vargas_missing)}."
+                   if vargas_missing else "")
             ),
         ))
 
@@ -1668,6 +1749,57 @@ def _get_divisional_constituent_ids(
             (chart_id, ayanamsha_id, fact_category, graha_suffix),
         )
         return [row[0] for row in cur.fetchall()]
+
+
+def _get_saptavargaja_components(
+    conn: Any,
+    chart_id: str,
+    ayanamsha_id: str,
+    graha_suffix: str,
+) -> list[dict[str, Any]]:
+    """Return this graha's per-varga Saptavargaja contributions from GA6.
+
+    F-61: the GA8 `graha_saptavargaja_bala_component.<graha>.saptavargaja_score`
+    row needs the actual per-varga virupa VALUES to sum, not just the row ids
+    that `_get_divisional_constituent_ids` returns. Each element is
+    {divisional_id, varga, score, relation}.
+
+    Restricted to the classical saptavarga group (SAPTAVARGA_EXPECTED_VARGAS)
+    at read time as well as at write time: if a stale pre-F-61 build left
+    D60 rows in chart_divisionals (the old ga_vargas SAPTAVARGA_SET wrongly
+    contained D60 and omitted D7), they must NOT be summed into a score whose
+    stated formula is over D1,D2,D3,D7,D9,D12,D30. Filtering here means the
+    aggregate is correct-by-construction even before the GA6 rebuild lands.
+
+    Rows with a NULL score are skipped rather than coerced to 0.0 — a missing
+    contribution is reported as missing coverage, never as "no strength".
+    """
+    import psycopg.rows as _rows
+    with conn.cursor(row_factory=_rows.tuple_row) as cur:
+        cur.execute(
+            """SELECT id::text,
+                      split_part(fact_subject, '.', 1) AS varga,
+                      fact_value_num,
+                      fact_value_text
+               FROM chart_divisionals
+               WHERE chart_id = %s AND ayanamsha_id = %s
+                 AND fact_category = 'varga_saptavargaja_bala_component'
+                 AND split_part(fact_subject, '.', 2) = %s
+                 AND split_part(fact_subject, '.', 1) = ANY(%s)
+               ORDER BY fact_subject""",
+            (chart_id, ayanamsha_id, graha_suffix, list(SAPTAVARGA_EXPECTED_VARGAS)),
+        )
+        out: list[dict[str, Any]] = []
+        for row_id, varga, value_num, value_text in cur.fetchall():
+            if value_num is None:
+                continue
+            out.append({
+                "divisional_id": row_id,
+                "varga": varga,
+                "score": float(value_num),
+                "relation": value_text,
+            })
+    return out
 
 
 def _real_fact_id_ref(conn: Any, chart_id: str, ayanamsha_id: str,
