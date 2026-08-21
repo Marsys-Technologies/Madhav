@@ -1910,7 +1910,18 @@ const queryMantrasCapability: CapabilityDescriptor = {
       // (singular); the hard `category='mantras'` predicate + case-sensitive planet match
       // was the "Venus"→0 / "venus"→N split. Match category across BOTH columns and match
       // planet case-insensitively; emit empty_reason on a genuine empty.
-      const conditions: string[] = ["(LOWER(remedy_type) = 'mantra' OR LOWER(category) = 'mantras')"]
+      //
+      // F-144: `remedy_type='mantra'` also admits `category='corpus_sweep'` rows — the
+      // deterministic OCR-sweep scaffold (brahmagyan/l0_remedy_corpus.py::sweep_classical_text_chunks)
+      // that scores extraction legibility into `scaffold_status` ('live' | 'review' | 'rejected').
+      // This handler had no scaffold_status predicate at all, so a garbled-OCR sweep row graded
+      // 'review' (or a hand-rejected 'rejected' row) was served identically to a hand-curated
+      // mantra — the R-19 defect (MARSYS_DEFECT_GAP_REGISTER_v2_0.md), confirmed live with named
+      // example sweep_jupiter_mantra_2ab17171. Only 'live'-graded rows are servable here.
+      const conditions: string[] = [
+        "(LOWER(remedy_type) = 'mantra' OR LOWER(category) = 'mantras')",
+        "scaffold_status = 'live'",
+      ]
       const values: unknown[] = []
       if (planet) { values.push(planet); conditions.push(`LOWER(planet) = LOWER($${values.length})`) }
 
