@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 921,
+  "event_count": 923,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1285,6 +1285,21 @@
       "status": "SERVICE_CLOSED",
       "terminal_status": "SERVICE_CLOSED"
     },
+    "F-170": {
+      "confidence": "LOW",
+      "disposition": "STRANDED",
+      "event_sha256": "a42b315cddb00e86adcfb90141fc7db6372c693fd0db92412e2a6c0f2f910116",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW, low-severity soft-spot finding, found by F-61's GA-5 reviewer. _get_saptavargaja_components (ga_structural_writer.py) has no build_id filter -- if a chart ever had duplicate build generations of chart_divisionals, the sum would silently double while still reporting coverage_complete:true. Currently safe because GA6 uses replace_prior_chart_divisionals (write-path idempotency guarantees single build per chart), not because a detector catches it -- an SS N.8-adjacent soft spot resting on an invariant rather than an explicit check.",
+      "finding_id": "F-170",
+      "next_action": "add an explicit build_id filter/check (belt-and-suspenders alongside the write-path idempotency guarantee) -- small, low-priority hygiene fix",
+      "pr_url": null,
+      "prev_sha256": "e91b2010f945ffdb5cf2c19184e9b0c04a2abc964e6e3f2a9ef7bace31773dfa",
+      "seq": 923,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
     "F-18": {
       "confidence": "HIGH",
       "disposition": "LANDED",
@@ -1902,16 +1917,16 @@
     "F-61": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "3d3a92bf94fbbc32662132f5d8920ebc5150335e6973e79cf6c539acc9ff136a",
+      "event_sha256": "e91b2010f945ffdb5cf2c19184e9b0c04a2abc964e6e3f2a9ef7bace31773dfa",
       "event_type": "finding_status",
-      "evidence_summary": "The formula was NOT actually ambiguous, contrary to the ledger's own prior assessment -- this codebase's own L0 canonical table (brahmagyan/l0_reference.py, strength_reference.saptavargaja_bala) states it verbatim: sum of dignity points across D1/D2/D3/D7/D9/D12/D30, virupa, BPHS Ch.27, with the 45/30/22.5/15/7.5/3.75/1.875 ladder -- independently corroborated by PyJHora 4.8.6's own const.sapthavargaja_factors. GA6 already computed correct per-varga values (since a prior M-18 fix); GA8 simply never summed them (wrote a JSONB pointer, value_num=None, confirmed 105/105 NULL -- pure SS N.8, no code path produced a value at all). SECOND defect found en route: SAPTAVARGA_SET wrongly read {1,2,3,9,12,30,60} -- omitting D7 (the division the group is NAMED for) and including D60 (a Shodasavarga member, not saptavarga) -- inflating Mercury's score 76% on live data. Fixed both, materialized fact_value_num+unit=virupa, honest coverage disclosure (complete_7_of_7/partial_N_of_7/vargas_missing, NULL never 0.0 on absence). 13 new tests, hand-computed golden value 125.625 virupa, a test diffs GA6's set against l0_reference.py directly so the divergence can't silently return. Correctly did NOT decide the tatkalika-vs-rasi-derived-matrix question unilaterally (genuine domain ambiguity, needs GA-2 ruling) and correctly did NOT smuggle in a sibling identical-defect finding (vimsopaka_bala_per_graha also 105/105 NULL) -- left both for separate handling.",
+      "evidence_summary": "GA-5 review: MERGE. Reviewer independently INSTALLED PyJHora 4.8.6 locally and cross-checked the classical formula/varga set directly against its source (const.sapthavargaja_factors == [1,2,3,7,9,12,30], plain-sum implementation) rather than trusting the PR's citation claim. L0 citation confirmed verbatim (not paraphrased). Both defects (100% NULL, D7-missing/D60-extra) independently reproduced with digit-for-digit matching inflation numbers. GA6/GA8 field-naming consistency independently checked (a mismatch would have silently zeroed every score -- clean). Read-time filter confirmed to genuinely block D60 pre-rebuild. Deferred items (tatkalika convention, vimsopaka) confirmed genuinely untouched by the diff. One non-blocking soft spot found: no build_id filter in the read query -- safe today (write-path idempotency, 1 build per chart) but rests on that invariant holding, not a detector.",
       "finding_id": "F-61",
-      "next_action": "GA-5 review in flight. Rebuild required (ga_vargas then ga_structural, strict order) but not executed -- protected-data GA-3 item once code merges.",
+      "next_action": "in merge queue, auto-merge armed. Rebuild required (ga_vargas then ga_structural) not executed -- GA-3 item pending. Follow-up tracked as F-170.",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1418",
-      "prev_sha256": "df089fdb24434ada0c579e00314b2c86a056c59604ce020da4c3363ad79e2e99",
-      "seq": 916,
+      "prev_sha256": "681ff842d406ea9c2658b4c65028ce73b44a9f3ac7dc9180a6e78ab68cb71be3",
+      "seq": 922,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "DECISION_PARKED",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-62": {
@@ -2533,10 +2548,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 5,
+  "findings_morning_ship_ready_count": 6,
   "findings_terminal_count": 122,
-  "journal_head_seq": 921,
-  "journal_head_sha256": "681ff842d406ea9c2658b4c65028ce73b44a9f3ac7dc9180a6e78ab68cb71be3",
+  "journal_head_seq": 923,
+  "journal_head_sha256": "a42b315cddb00e86adcfb90141fc7db6372c693fd0db92412e2a6c0f2f910116",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
