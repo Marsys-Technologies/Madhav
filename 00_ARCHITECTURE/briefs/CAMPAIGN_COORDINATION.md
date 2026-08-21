@@ -5802,3 +5802,36 @@ this file's own disclosure convention rather than silently expanding scope.
 No Stream A / A-09 feature work touched; the underlying feature is already
 correct per the file's own sibling assertions, only the detector's own
 regex had the defect.
+
+## 2026-08-21 — PARIPRASHNA-P2-CLOSE-EXECUTE — lease CLOSED, P2 CLOSE tagged
+
+Lease opened above is released. Final account:
+
+- Items 1–3 (DD-20, citation sentinel, receipt wire event): PRs #1398/#1399/#1400,
+  merged, deployed, live-verified.
+- Items 5–7 + Lane K (added mid-window, native-ruled): PRs #1401/#1402/#1403/#1404,
+  merged, deployed, live-verified (real CDP device metrics for #1401's dock
+  collapse specifically; a direct DB read for #1402's `llm_usage_events` row;
+  a live browser turn reproducing the exact target grammar for #1403; a live
+  browser observation of the rendered confidence-type label for #1404).
+- Disclosed out-of-scope CI-unblocking fix: PR #1405 (D-08 comment
+  false-positive, unrelated campaign's file, blocking every new PR on
+  current main — not just this one's).
+- Governance delta: PR #1412 (DD-11 -> ADVISORY, DD-12/DD-20 -> CLOSED, new
+  DD-21/DD-22/DD-23, Baseline v1.1 -> v1.2, new
+  `PARIPRASHNA_P2_CLOSE_REPORT_v1_0.md`). One follow-up commit on the same
+  PR corrected a `CAPABILITY_MANIFEST.json` registration that pushed
+  `drift_detector` over the CI-enforced 216 baseline (DVA Ruling 4,
+  "raise only by ruling") — fixed by NOT registering the close report as a
+  canonical entry, matching the established precedent of prior close
+  reports (PURNATA/SAMAPTI/NIHSHESHA), not by raising the ceiling.
+- Tag `pariprashna/p2-close` created at `1ad8df05f` (the governance-delta
+  merge commit, which has every item above as an ancestor) and pushed.
+
+Item 4 (table-in-prose block promotion) was evaluated per the native's
+explicit sequencing gate (not touched until #1398/#1399/#1400 were merged,
+deployed, and live-observed), found viable under approach (c), approved,
+and carried as DD-22 — not built this gate.
+
+No file in this lease's scope was left mid-edit; all worktrees from this
+lease are being cleaned up now that everything is merged.
