@@ -35,6 +35,7 @@ NATIVE_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 #   prior_propensity 9, propensity_delta 10, n_support 11, confidence_band 12,
 #   evidence_grade 13, citation_ref 14, grammar_formula_version 15
 CHANNEL_ID, FIRE, OPP, SCORED, PROPENSITY, EVIDENCE_GRADE = 3, 5, 6, 7, 8, 13
+DELTA, CONFIDENCE_BAND, CITATION_REF = 10, 12, 14
 
 # The real, production-confirmed vocabulary.
 ADJUDICATED = ["CONFIRMED", "PARTIAL", "REFUTED"]
@@ -252,3 +253,102 @@ def test_production_verdict_distribution_produces_nonzero_scored_count():
     assert row[OPP] == 57
     assert row[SCORED] == 32, "PARTIAL(23) + REFUTED(7) + CONFIRMED(2)"
     assert row[EVIDENCE_GRADE] == "empirical"
+
+
+# ---------------------------------------------------------------------------
+# F-147 addendum (GA-5 review of PR #1439): unmeasured propensity is NULL,
+# a measured zero is 0.0 — the two must never collapse into one value.
+#
+# mimamsa_calibration.manifestation_channel is NULL on every live row (57/57,
+# verified against production) because mi_pramana._score_manifestation() is a
+# B.10 stub returning (0.5, None). fire_count therefore cannot be nonzero, so
+# `fire / opp` yielded 0.0 — "measured, never fires" — for a quantity nothing
+# ever measured (§N.7 item 6 / §N.8).
+# ---------------------------------------------------------------------------
+
+def test_propensity_is_null_when_no_channel_attribution_was_ever_recorded():
+    """The live production shape: 32 adjudicated outcomes, zero of them carrying
+    a manifestation_channel. channel_propensity must be None ("never measured"),
+    NOT 0.0 ("measured, found zero")."""
+    import json
+
+    rows = [
+        _assignment(i, "CONFIRMED", domain="relationship",
+                    channel_id="ch_relationship_verbal", fired_channel=None)
+        for i in range(32)
+    ]
+    row = _row_for(_run(rows), channel_id="ch_relationship_verbal")
+
+    assert row[OPP] == 32
+    assert row[SCORED] == 32
+    assert row[EVIDENCE_GRADE] == "empirical", "scored_count still earns the grade"
+    assert row[PROPENSITY] is None, (
+        "no outcome recorded which channel it manifested through — propensity is "
+        "unmeasured, and 0.0 would assert a measurement that never happened"
+    )
+    assert row[DELTA] is None, "no propensity means no delta against the prior"
+    # fire_count stays 0: migration 352 declares it `int NOT NULL`, so the
+    # honest null lands on channel_propensity and the REASON is machine-readable.
+    assert row[FIRE] == 0
+    citation = json.loads(row[CITATION_REF])
+    assert citation["propensity_null_reason"] == "no_manifestation_channel_recorded"
+    assert citation["channel_attribution_measured_count"] == 0
+
+
+def test_measured_zero_propensity_is_a_real_zero_not_a_null():
+    """Do NOT over-correct: a group where attributions WERE recorded but none
+    landed on this channel has genuinely measured a 0% firing rate. That 0.0 is
+    a finding and must survive as 0.0."""
+    import json
+
+    rows = [
+        _assignment(i, "CONFIRMED", fired_channel="ch_career_material")
+        for i in range(6)
+    ]
+    row = _row_for(_run(rows))
+
+    assert row[OPP] == 6
+    assert row[SCORED] == 6
+    assert row[FIRE] == 0
+    assert row[PROPENSITY] == 0.0, "measured zero must not be nulled out"
+    assert row[PROPENSITY] is not None
+    assert row[EVIDENCE_GRADE] == "empirical"
+    citation = json.loads(row[CITATION_REF])
+    assert "propensity_null_reason" not in citation
+    assert citation["channel_attribution_measured_count"] == 6
+
+
+def test_partial_channel_attribution_still_yields_a_measured_propensity():
+    """One recorded attribution in the group is enough to make the rate a
+    measurement rather than a structural zero."""
+    rows = [_assignment(0, "CONFIRMED", fired_channel="ch_career_verbal")] + [
+        _assignment(i + 1, "CONFIRMED", fired_channel=None) for i in range(4)
+    ]
+    row = _row_for(_run(rows))
+    assert row[FIRE] == 1
+    assert row[OPP] == 5
+    assert row[PROPENSITY] == pytest.approx(0.2)
+
+
+def test_blank_channel_attribution_counts_as_unmeasured():
+    """An empty/whitespace manifestation_channel attributes nothing; it is an
+    absence, not a measurement of zero."""
+    rows = [_assignment(i, "CONFIRMED", fired_channel="   ") for i in range(6)]
+    row = _row_for(_run(rows))
+    assert row[PROPENSITY] is None
+
+
+def test_confidence_band_does_not_swallow_a_measured_zero_propensity():
+    """`(propensity or prior)` — the truthiness pattern mi_darshana fixed at P2
+    for this same column — would centre the band on the PRIOR whenever the
+    measured propensity is exactly 0.0. Only a real None may fall back."""
+    rows = [
+        _assignment(i, "CONFIRMED", fired_channel="ch_career_material")
+        for i in range(6)
+    ]
+    row = _row_for(_run(rows))
+    assert row[PROPENSITY] == 0.0
+    # prior for ch_career_verbal is 0.40; a band centred there would be [0.3,0.5)
+    assert row[CONFIDENCE_BAND] == "[0.0,0.1)", (
+        "band must be centred on the measured 0.0, not on the prior"
+    )

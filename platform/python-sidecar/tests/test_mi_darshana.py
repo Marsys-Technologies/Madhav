@@ -111,14 +111,14 @@ def _pratijna_row(event_class_id, grade, status="conditional", domain="career",
 
 
 def _grammar_row(channel_propensity, prior_propensity, channel_id="ch1", domain="career", n=10,
-                  evidence_grade="empirical"):
+                  evidence_grade="empirical", scored_count=0):
     return {
         "channel_id": channel_id,
         "domain": domain,
         "channel_propensity": channel_propensity,
         "prior_propensity": prior_propensity,
         "n_support": n,
-        "scored_count": 0,
+        "scored_count": scored_count,
         "evidence_grade": evidence_grade,
     }
 
@@ -296,6 +296,63 @@ def test_channel_propensity_missing_falls_back_to_prior():
     assert result.rows_inserted == 1
     row = conn.inserted_rows[0]
     assert row[RANK_CONSEQUENCE] == 0.35
+
+
+# ── F-147 addendum (GA-5 review of PR #1439) ─────────────────────────────────
+#
+# mi_sambandha now emits channel_propensity = NULL when no outcome in the group
+# ever recorded a manifestation_channel (the live shape: 57/57 calibration rows
+# NULL, because mi_pramana._score_manifestation() is a B.10 stub). Such a row
+# can still be graded 'empirical' on scored_count alone. The narration branch
+# below would then have printed the PRIOR fallback under the words "empirical
+# learning" — presenting an unmeasured prior as a learned rate (§N.7 item 6).
+
+def test_empirical_grade_with_null_propensity_narrates_unmeasured_not_the_prior():
+    """An 'empirical'-graded row whose channel_propensity is NULL must say the
+    propensity is unmeasured — never dress the prior up as a learned rate."""
+    import json
+
+    conn, result = _run_grammar([
+        _grammar_row(channel_propensity=None, prior_propensity=0.45,
+                     channel_id="ch_relationship_verbal", domain="relationship",
+                     n=53, scored_count=32, evidence_grade="empirical")
+    ])
+
+    assert result.rows_inserted == 1
+    row = conn.inserted_rows[0]
+    statement = row[STATEMENT]
+    assert "UNMEASURED" in statement
+    assert "32 predictions" in statement, "the real scored count is still reported"
+    assert "fires with 45% propensity" not in statement, (
+        "the prior must never be narrated as the empirically-learned firing rate"
+    )
+    assert "empirical learning" not in statement
+    # rank_consequence is NOT NULL, so the prior still fills it — but provenance
+    # must make it unmistakable that this is a fallback, not a measurement.
+    assert row[RANK_CONSEQUENCE] == 0.45
+    prov = json.loads(row[PROVENANCE_CHAIN])
+    assert prov["propensity"] is None
+    assert prov["propensity_source"] == "prior_fallback"
+
+
+def test_empirical_grade_with_measured_zero_still_narrates_a_real_zero():
+    """The other half of the distinction: a genuinely measured 0.0 is a finding
+    and must keep the empirical-learning narration."""
+    import json
+
+    conn, result = _run_grammar([
+        _grammar_row(channel_propensity=0.0, prior_propensity=0.45,
+                     n=53, scored_count=32, evidence_grade="empirical")
+    ])
+
+    row = conn.inserted_rows[0]
+    statement = row[STATEMENT]
+    assert "fires with 0% propensity" in statement
+    assert "empirical learning" in statement
+    assert "UNMEASURED" not in statement
+    prov = json.loads(row[PROVENANCE_CHAIN])
+    assert prov["propensity"] == 0.0
+    assert prov["propensity_source"] == "measured"
 
 
 # ── SV-5 — `verdict_note` tradition-blindness (ŚUDDHA-VĀCA parked finding,
