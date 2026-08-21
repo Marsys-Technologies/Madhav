@@ -764,6 +764,44 @@ export interface SaraLayeredContent<
 }
 
 /**
+ * Kernel-flag analogue of `hardFloor` (array sections) and `IMMUNE_HONESTY_FIELDS`
+ * (scalar fields) — F-177.
+ *
+ * `assembleSaraContent`'s ≤2KB kernel trim drops `kernel.flags` entries from the TAIL of
+ * the array. That is position-based, not priority-based: the LAST flag pushed is the FIRST
+ * one deleted. F-177 (live-confirmed on chart 482012f1) is exactly that failure mode —
+ * PR #1382 mirrors `domain_completeness_empty_reason` into `kernel.flags` specifically so a
+ * caller still learns when a domain's grounding was dropped all-or-nothing, but pushes it
+ * LAST, so on any real built chart dense enough to reach the cap it was deleted before the
+ * wire. Because #1382 also made the older `domain_slice_not_configured` flag permanently
+ * unreachable (it is gated on `!hasAttachedReading`, and a `reading` is now always
+ * attached), callers received NEITHER disclosure — the exact outcome #1382's own GA-5
+ * review comment claimed to prevent.
+ *
+ * A flag nominated as protected is trimmed only after every UNPROTECTED flag and every
+ * pointer is already gone; if only protected flags remain, the trim STOPS and the kernel is
+ * allowed to exceed the 2KB ceiling rather than silently delete an honesty disclosure. That
+ * is the same ranking `IMMUNE_HONESTY_FIELDS` gives scalar honesty fields and `hardFloor`
+ * gives dense array sections (CLAUDE.md §N.6.2): a trimmer that can delete the very field
+ * disclosing that something was omitted defeats transparent trimming. `verdict` and
+ * `promise` are already unconditionally immune here; this extends comparable treatment to
+ * caller-nominated flags rather than inventing a parallel mechanism.
+ *
+ * Matching is by exact string equality for string flags, or by `code` for object flags — so
+ * a caller may protect either the literal flag value it pushed (the #1382 empty_reason text,
+ * which carries no code) or a closed-vocabulary `code`.
+ */
+export function isProtectedKernelFlag(flag: unknown, protectedFlags: ReadonlySet<string>): boolean {
+  if (protectedFlags.size === 0) return false
+  if (typeof flag === 'string') return protectedFlags.has(flag)
+  if (typeof flag === 'object' && flag !== null) {
+    const code = (flag as Record<string, unknown>)['code']
+    if (typeof code === 'string') return protectedFlags.has(code)
+  }
+  return false
+}
+
+/**
  * Assemble a SaraLayeredContent from kernel + optional grounding/evidence.
  *
  * This is the SINGLE construction point — callers never manually set
@@ -771,6 +809,9 @@ export interface SaraLayeredContent<
  * invariant is enforced here by trimming pointers/flags (never verdict or promise).
  * Counts are accepted from the caller at assembly time (computed BEFORE any layer
  * is omitted, so the composition_report is honest even when evidence is absent).
+ *
+ * `protected_flags` (F-177) nominates flag values/codes the kernel trim must preserve ahead
+ * of every unprotected flag and every pointer — see `isProtectedKernelFlag`.
  */
 export function assembleSaraContent<
   K extends SaraKernel,
@@ -782,23 +823,40 @@ export function assembleSaraContent<
   evidence?: E
   budget_kb: number
   counts: Record<string, number>
+  protected_flags?: ReadonlyArray<string>
 }): SaraLayeredContent<K, G, E> {
   const { kernel, grounding, evidence, budget_kb, counts } = opts
   const maxBytes = budget_kb * 1024
   const KERNEL_MAX_BYTES = 2048
+  const protectedFlags: ReadonlySet<string> = new Set(opts.protected_flags ?? [])
 
   // Enforce ≤2KB kernel invariant.
   // verdict + promise are immune (irreducible honesty core). Trim pointers then
   // flags until under ceiling, alternating by whichever is larger.
+  //
+  // F-177: flag trimming is PRIORITY-ordered, not purely positional. Only UNPROTECTED
+  // flags are eligible, and the alternation balances pointers against the count of
+  // ELIGIBLE flags — otherwise protected flags would inflate `flags.length` and cause the
+  // pointer list to be over-trimmed to compensate for entries that are never coming out.
   const mutableKernel = kernel as unknown as Record<string, unknown>
   while (estimateBytes(kernel) > KERNEL_MAX_BYTES) {
     const pointers = mutableKernel['pointers'] as unknown[]
     const flags = mutableKernel['flags'] as unknown[]
-    if (pointers.length === 0 && flags.length === 0) break // can't trim further
-    if (pointers.length >= flags.length && pointers.length > 0) {
+    // Tail-most trimmable flag: preserves the existing last-in-first-out cut order among
+    // the flags that ARE eligible, while stepping over protected ones wherever they sit.
+    let trimIdx = -1
+    let eligibleFlagCount = 0
+    for (let i = 0; i < flags.length; i++) {
+      if (!isProtectedKernelFlag(flags[i], protectedFlags)) {
+        eligibleFlagCount++
+        trimIdx = i
+      }
+    }
+    if (pointers.length === 0 && eligibleFlagCount === 0) break // can't trim further
+    if (pointers.length >= eligibleFlagCount && pointers.length > 0) {
       mutableKernel['pointers'] = pointers.slice(0, -1)
-    } else if (flags.length > 0) {
-      mutableKernel['flags'] = flags.slice(0, -1)
+    } else if (trimIdx >= 0) {
+      mutableKernel['flags'] = flags.filter((_, i) => i !== trimIdx)
     } else {
       break
     }

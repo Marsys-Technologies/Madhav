@@ -3000,8 +3000,13 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         : null
     const hasAttachedReading = normalized['reading'] !== undefined && normalized['reading'] !== null &&
       (!Array.isArray(normalized['reading']) || normalized['reading'].length > 0)
+    // F-177: every domain-completeness DISCLOSURE flag pushed below is nominated to
+    // assembleSaraContent's protected set, so the ≤2KB kernel trim cuts it only after every
+    // ordinary flag and every drill pointer is already gone. Collected by value (these flags
+    // are raw strings carrying no closed-vocabulary code).
+    const disclosureFlags: string[] = []
     if (missingSliceDomain && !hasAttachedReading && normalized['domain_completeness'] === undefined) {
-      flags.push(
+      disclosureFlags.push(
         `domain_slice_not_configured: no precomputed ${missingSliceDomain} dossier slice is attached; ` +
         'this assessment is not a complete domain reading.',
       )
@@ -3015,9 +3020,19 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     // unreachable too (gated on !hasAttachedReading) -- so a low-budget caller could receive
     // NEITHER disclosure. Mirror the same text into `flags` (kernel-layer, budget-protected)
     // whenever the empty_reason exists, independent of hasAttachedReading.
+    //
+    // F-177 (this PR): "kernel-layer" was NOT by itself "budget-protected". assembleSaraContent's
+    // ≤2KB kernel trim drops flags from the TAIL, and this mirror is pushed last — so on any
+    // chart dense enough to reach the cap it was the FIRST entry deleted, reproducing the
+    // very "neither disclosure" outcome the paragraph above set out to prevent (live-confirmed
+    // on chart 482012f1: assess_health/assess_marriage returned 2 of 3 declared pointers —
+    // proof the trim ran — and no empty_reason flag). Nominating it via `protected_flags`
+    // makes the protection explicit and position-independent, so a future flag pushed after
+    // this one cannot silently re-break it.
     if (typeof normalized['domain_completeness_empty_reason'] === 'string') {
-      flags.push(normalized['domain_completeness_empty_reason'] as string)
+      disclosureFlags.push(normalized['domain_completeness_empty_reason'] as string)
     }
+    flags.push(...disclosureFlags)
 
     if (!verdict) {
       flags.push(judgmentFlag(
@@ -3107,6 +3122,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       evidence: Object.keys(evidence).length > 0 ? evidence : undefined,
       budget_kb: effectiveBudgetKb,
       counts,
+      // F-177: honesty disclosures survive the kernel trim ahead of ordinary flags/pointers.
+      protected_flags: disclosureFlags,
     }
     const assembled = assembleSaraContent(assembly)
     // A caller may request a budget below the immutable <=2KB kernel ceiling. Do not
