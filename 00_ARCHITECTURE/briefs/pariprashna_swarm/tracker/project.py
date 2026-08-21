@@ -127,8 +127,25 @@ def derive_lane_state(lane, snapshot):
     # (1) PRIMARY, and the fix for this tracker's central defect: a merged PR that declares
     # it implements this lane. A merge is a fact. This is the only source that actually
     # tracks the swarm's real progress -- see collect.extract_lane_identifiers.
-    merged = (snapshot.get("recent_merged_prs") or {}).get("value") or []
     idents = set(lane_identifiers(lane))
+
+    # (1a) DURABLE, git-verified completion. Checked BEFORE the rolling PR window, because
+    # the window forgets: once a completing PR ages out of `gh pr list --limit N` the lane
+    # would otherwise revert MERGED -> UNOBSERVABLE even though the merge is still in main's
+    # history forever. Each entry here was re-verified against the mirror this very cycle
+    # (see collect_lane_evidence), so this is memoised evidence, never a cached conclusion.
+    le = (snapshot.get("lane_evidence") or {})
+    if le.get("evidence_class") == "DERIVED":
+        verified = (le.get("value") or {}).get("verified") or {}
+        for ident in lane_identifiers(lane):
+            ev = verified.get(ident)
+            if ev:
+                return ("MERGED", "DERIVED",
+                        f"PR #{ev['pr']} implements {ident}; merge commit "
+                        f"{ev['merge_commit'][:10]} re-verified this cycle as an ancestor of "
+                        f"main (durable record, window-independent)")
+
+    merged = (snapshot.get("recent_merged_prs") or {}).get("value") or []
     for pr in merged:
         implements = {i.upper() for i in (pr.get("implements") or [])}
         if not (idents & implements):
@@ -361,6 +378,53 @@ DONE_STATES = {"MERGED", "CLOSED", "GATED"}
 ACTIVE_STATES = {"BUILDING", "VERIFYING", "ADVERSARIAL", "QUEUED", "ADMISSIBLE", "SCOUTED"}
 
 
+def lane_regression_anomalies(out_lanes, events, snapshot):
+    """The detector that would have caught the 2026-08-21 board amnesia.
+
+    board_world_divergence compares the board against the merged-PR window -- the SAME
+    window lane state is derived from. When entries aged out of that window, the evidence
+    and the check went blind together and it reported "0 unreflected" while 25 lanes had
+    silently reverted to UNOBSERVABLE. A detector sharing its input with the thing it
+    checks cannot see that input truncate.
+
+    This one is window-independent: it compares against the projector's OWN event log,
+    which is append-only and durable. A lane this tracker previously observed as
+    MERGED/CLOSED (DERIVED) that no longer reads that way is a regression -- either real
+    (history rewritten, which should be loud) or a defect in the tracker (which should be
+    louder). Either way it is never silent."""
+    previously_done = {}
+    for ev in events:
+        if (ev.get("writer_id") == PROJECTOR_WRITER_ID and ev.get("kind") == "lane_state"
+                and ev.get("evidence_class") == "DERIVED"
+                and (ev.get("payload") or {}).get("state") in DONE_STATES):
+            previously_done[ev.get("lane")] = ev
+
+    new_events = []
+    regressed = []
+    for lane in out_lanes:
+        prior = previously_done.get(lane["id"])
+        if not prior or lane["state"] in DONE_STATES:
+            continue
+        regressed.append({"lane": lane["id"], "was": prior["payload"]["state"],
+                          "now": lane["state"], "since": prior.get("ts")})
+        key = f"regress:{lane['id']}:{prior['payload']['state']}->{lane['state']}"
+        if any(e.get("kind") == "anomaly" and (e.get("payload") or {}).get("regression_key") == key
+               for e in events):
+            continue
+        new_events.append(dict(
+            writer_id=PROJECTOR_WRITER_ID, kind="anomaly", lane=lane["id"],
+            evidence_class="DERIVED",
+            provenance="projector.py lane-regression check (event log, window-independent)",
+            payload={
+                "message": f"{lane['id']} was previously observed {prior['payload']['state']} "
+                           f"on derived evidence ({prior.get('ts')}) but now reads "
+                           f"{lane['state']} -- the board has LOST evidence it once had.",
+                "regression_key": key, "was": prior["payload"]["state"], "now": lane["state"],
+            },
+        ))
+    return regressed, new_events
+
+
 def fold_phase_status(plan, out_lanes, snapshot):
     """DERIVE each phase's status from its lanes' evidence, plus the conductor's gate
     results. Never a hand-typed constant again: PLAN.yaml used to carry `"status":
@@ -431,7 +495,10 @@ def board_world_divergence(out_lanes, snapshot, events, as_of_epoch):
 
     unreflected = []
     for pr in merged:
-        if not pr.get("is_ancestor_of_mirror_main"):
+        # Explicit False only. None means this PR's ancestry was never checked (it claims no
+        # lane, so the collector skips the git call) -- absence of a check is not evidence
+        # of divergence.
+        if pr.get("is_ancestor_of_mirror_main") is not True:
             continue
         implements = {i.upper() for i in (pr.get("implements") or [])}
         recognised = implements & known
@@ -576,7 +643,8 @@ def project(write_new_events=True):
     out_lanes, new_events = fold(plan, snapshot, events, as_of_epoch)
     new_events = new_events + gh_mirror_anomalies(snapshot, events)
     divergence, divergence_events = board_world_divergence(out_lanes, snapshot, events, as_of_epoch)
-    new_events = new_events + divergence_events
+    regressed, regression_events = lane_regression_anomalies(out_lanes, events, snapshot)
+    new_events = new_events + divergence_events + regression_events
 
     if write_new_events and new_events:
         for ne in new_events:
@@ -638,6 +706,8 @@ def project(write_new_events=True):
         "code_provenance": fold_code_provenance(snapshot),
         "ref_freshness": fold_ref_freshness(snapshot),
         "board_world_divergence": divergence,
+        "lane_regressions": regressed,
+        "lane_evidence": snapshot.get("lane_evidence"),
         "conductor_state": snapshot.get("conductor_state"),
         "shared_surfaces": {k: v for k, v in (snapshot.get("shared_surfaces") or {}).items()},
         "github_rate_limit": snapshot.get("github_rate_limit"),
