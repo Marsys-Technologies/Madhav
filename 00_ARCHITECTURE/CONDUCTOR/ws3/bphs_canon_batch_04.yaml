@@ -629,10 +629,10 @@ rules:
       Mantra remedies: each planet has a specific beeja mantra. Sun = "Om Hraam Hreem
       Hraum Sah Suryaya Namah" (6000 repetitions total); Moon = "Om Shraam Shreem
       Shraum Sah Chandraya Namah" (10,000); Mars = "Om Kraam Kreem Kraum Sah
-      Bhaumaya Namah" (7,000); Mercury = "Om Braam Breem Braum Sah Buddhaya Namah"
+      Bhaumaya Namah" (7,000); Mercury = "Om Braam Breem Braum Sah Budhaya Namah"
       (17,000); Jupiter = "Om Graam Greem Graum Sah Gurave Namah" (16,000); Venus =
       "Om Draam Dreem Draum Sah Shukraya Namah" (20,000); Saturn = "Om Praam Preem
-      Praum Sah Shanaye Namah" (19,000).
+      Praum Sah Shanaischaraya Namah" (19,000).
     scope: remedy
     school: parashari
     confidence: 0.80
@@ -644,6 +644,16 @@ rules:
       here are from Santhanam's BPHS translation. Mantra practice requires proper
       initiation (diksha) and correct pronunciation for maximum effect per the
       traditional understanding.
+      ATTRIBUTION (PARIŚEṢA-V4 F-180, owner ruling R-2, OWNER_RULINGS_20260821.md):
+      the "Om Praam Preem Praum Sah ... Namah" bīja class asserted here is tantric/
+      āgamic, transmitted through compilations such as Mantra Mahodadhi (Mahīdhara,
+      16th c.) and the Navagraha stotra literature. BPHS's own graha-śānti material
+      prescribes the Vedic ṛks, donations and propitiation procedures; BPHS Ch.82 is
+      upāya context for this rule, not the source of the bīja strings. Cite this rule
+      for the upāya prescription, never as attestation that BPHS supplies these mantras.
+      TRANSLITERATION (F-180, owner ruling R-1): Saturn's completion is śanaiścarāya,
+      not śanaye — "Om Shaneye/Shanaye Namah" is the separate short nāma-mantra, not the
+      completion of this bīja string. Mercury's is Budhaya (बुधाय, Budha), not Buddhaya.
     verified: true
     stub: false
     stub_reason: null
