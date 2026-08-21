@@ -1043,6 +1043,8 @@ jobs:
         run: npx vitest run src/lib/kala_upaya_diagnosis.test.ts src/tools/kala_views/upaya.test.ts src/tools/kala_views/upaya_weak_promise_gate.test.ts
       - name: vidhi registry codegen drift check (platform) — GT-56
         run: npm run codegen:vidhi:check
+      - name: signal-glossary codegen drift check (platform) — F-172
+        run: npm run codegen:signal-glossary:check
       - name: vidhi registry codegen parity test (platform-mcp) — GT-56
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/vidhi_codegen_parity.test.ts
