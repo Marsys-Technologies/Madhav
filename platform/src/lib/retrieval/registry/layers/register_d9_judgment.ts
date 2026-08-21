@@ -240,8 +240,16 @@ const BHAVA_TO_DOMAIN: Record<number, string> = {
 
 // Simple, deterministic, classically-uncontested dignity/benefic weighting — never an LLM
 // judgment, never a fabricated probability. Design §28.1 "graded (epistemic + strength)".
+// F-153: moolatrikona (45 ṣaṣṭyaṃśa, BPHS Ch.27 Saptavargaja/Sthāna Bala) is strictly
+// stronger than own (30 ṣaṣṭyaṃśa) — never equal. Python source of truth for the
+// differential: `platform/python-sidecar/ga_writers/ga_vargas_writer.py:1774-1786`
+// (saptavargaja_score 45.0 MT vs 30.0 own); ordering mirrored (not value-copied, the
+// scales differ) by `ga_condition_writer.DIGNITY_SCORES` (1.0/0.9/0.8) and
+// `priors_config.ts` (exalted 1.00 / moolatrikona 0.90 / own 0.80). This TS scale keeps
+// own == 1.5 (the ±1.5 band `significator_condition.ts`'s isDignityExtreme() gates on —
+// do NOT lower it) and raises moolatrikona one step above it, one step below exalted.
 export const DIGNITY_WEIGHT: Record<string, number> = {
-  exalted: 2, own: 1.5, moolatrikona: 1.5, great_friend: 1, friend: 0.5,
+  exalted: 2, moolatrikona: 1.75, own: 1.5, great_friend: 1, friend: 0.5,
   neutral: 0, enemy: -0.5, great_enemy: -1, debilitated: -2,
 }
 const NATURAL_BENEFICS = new Set(['Jupiter', 'Venus', 'Mercury', 'Moon'])

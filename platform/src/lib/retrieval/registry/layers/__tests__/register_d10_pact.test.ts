@@ -24,9 +24,17 @@ const mockQuery = vi.fn()
 vi.mock('@/lib/db/client', () => ({ query: (...args: unknown[]) => mockQuery(...args) }))
 
 const mockJudgmentHandler = vi.fn()
-vi.mock('../register_d9_judgment', () => ({
-  judgmentQueryCapability: { handler: (...args: unknown[]) => mockJudgmentHandler(...args) },
-}))
+// F-153: register_d10_pact.ts now imports the real DIGNITY_WEIGHT (and other exports) from
+// this module rather than hand-duplicating it — the mock must preserve those real exports
+// (via importOriginal) and only replace judgmentQueryCapability's handler, or every
+// DIGNITY_WEIGHT[...] lookup in gradeGrahaInVarga silently degrades to undefined/null.
+vi.mock('../register_d9_judgment', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../register_d9_judgment')>()
+  return {
+    ...actual,
+    judgmentQueryCapability: { handler: (...args: unknown[]) => mockJudgmentHandler(...args) },
+  }
+})
 
 import { pactQueryCapability } from '../register_d10_pact'
 
