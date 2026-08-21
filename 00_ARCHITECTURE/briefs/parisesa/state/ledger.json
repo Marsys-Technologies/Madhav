@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 997,
+  "event_count": 999,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1587,6 +1587,21 @@
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
+    "F-189": {
+      "confidence": "MEDIUM",
+      "disposition": "PARKED",
+      "event_sha256": "8c61002a17a5d98d90aa0e791c22d9504b2723183477aaaaf7947bb3e6a55f08",
+      "event_type": "finding_status",
+      "evidence_summary": "Newly discovered during F-62's GA-3 execution, disclosed as its own finding rather than silently left out of scope. F-62's D1 moolatrikona dignity correction (3 rows, chart 482012f1) was deliberately bounded to D1 only -- correctly, since re-running the downstream writer chain would have required either fabricating D2+ data from stale degrees or a much larger rebuild. Consequence: downstream L2-L5 consumers that derive from D1 dignity (ga_vichara, bo_laksana, bo_bimba, and whatever reads from them further downstream) still serve PRE-correction derived values for this chart -- the correction has not propagated. Also disclosed: the F62_MOOLATRIKONA_REBUILD_PACKET_v1_0.md document on main still lacks the quiescence/before-image/rollback sections the execution supplied ad hoc -- the filed packet itself is incomplete relative to what was actually done.",
+      "finding_id": "F-189",
+      "next_action": "Two separate follow-ups: (1) update the packet document with the R-7-compliant sections actually used (low-risk, doc-only); (2) determine and execute the correct scope for propagating the D1 correction through ga_vichara/bo_laksana/bo_bimba -- likely its own small GA-3 packet.",
+      "pr_url": null,
+      "prev_sha256": "863e06d8d4007e83908c4a2bc1895f74f6f8e4899f58fc83104367a082022541",
+      "seq": 999,
+      "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
     "F-19": {
       "confidence": "HIGH",
       "disposition": "LANDED",
@@ -2207,17 +2222,17 @@
     "F-62": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "b59d0399ff702b2630f7c846def141efc8c72c0df29a2dd6b3965eaf21268d53",
+      "event_sha256": "863e06d8d4007e83908c4a2bc1895f74f6f8e4899f58fc83104367a082022541",
       "event_type": "finding_status",
-      "evidence_summary": "PR #1416 merged (cfef54a25d413e901aa2025d111abd1db4478881) and deployed. Dignity oracle write path confirmed already-correct (prior PR #1296); 4 downstream consumers' moolatrikona spelling/vocabulary bug fixed. GA-3 rebuild packet (D1-scope only, 3 rows on the canonical chart, corrected across 2 review rounds to prevent D2+ fabrication) is ready for a future properly-authorized execution -- not executed this session.",
+      "evidence_summary": "GA-3 data rebuild EXECUTED and VERIFIED, within its defined D1-only, 3-row scope. Fresh quiescence proof clean (0 builds in 5min, 0 running assets, 0 write-intent locks DB-wide); correctly noted but did NOT touch ka_gochara_v3_century_materialize's recent terminal error state, per standing owner policy. Existing packet was missing quiescence/before-image/rollback sections entirely (a real R-7 gap) -- supplied fresh, including a genuinely rehearsed FK-inclusive rollback (chart_fact_identity->chart_facts CASCADE, the only FK) with a negative control proving the fingerprint check detects divergence. PRINCIPLED EXECUTION DEVIATION, correctly disclosed not silently made: did NOT re-run ga_structural writer as the packet's own \u00a75b anticipated -- verified at HEAD it has no varga_n guard, so a full re-run would have fabricated D2+ moolatrikona rows from stale/replicated D1 degree data, a real B.10 violation. Instead executed a guarded, scoped 3-row in-place correction reproducing the actual classify_dignity() output, 4 abort-on-fail guards in one transaction, honest formula_provenance_text. Verified: exactly 3 rows (D1_JUP, lahiri/krishnamurti/true_chitra ayanamshas) flipped own->moolatrikona correctly (raman/surya_siddhanta_classical correctly left as own, past the 10-degree boundary); tier counts otherwise unchanged (exalted 111/debilitated 89/neutral 957 identical, own 148->145 exactly -3); scope guard confirmed 0 non-D1 moolatrikona rows, 0 other charts, 0 non-Jupiter rows, 0 FK orphans touched. Two disclosed follow-ups, not fixed here: (1) the packet document on main still lacks the R-7 sections this execution supplied ad hoc -- needs a doc PR; (2) downstream L2-L5 consumers (ga_vichara/bo_laksana/bo_bimba) have NOT been rebuilt and still serve pre-correction derived values for this chart -- outside the deliberately bounded 3-row scope, triaged separately as F-189.",
       "finding_id": "F-62",
-      "next_action": "future GA-3 execution: rebuild the 3 D1 rows per F62_MOOLATRIKONA_REBUILD_PACKET_v1_0.md (D1-scope only)",
+      "next_action": null,
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1416",
-      "prev_sha256": "ab31963078c17fea71818f20d4cb7a30d32806ee0c1116e541f1f2735e51d085",
-      "seq": 895,
-      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "DATA_PARKED",
-      "terminal_status": null
+      "prev_sha256": "9223341978e4fb5921d73fd7dda7c7fd332659a89dfdbfc0ad3d642700f2c33e",
+      "seq": 998,
+      "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-63": {
       "confidence": "HIGH",
@@ -2824,9 +2839,9 @@
     }
   },
   "findings_morning_ship_ready_count": 0,
-  "findings_terminal_count": 142,
-  "journal_head_seq": 997,
-  "journal_head_sha256": "9223341978e4fb5921d73fd7dda7c7fd332659a89dfdbfc0ad3d642700f2c33e",
+  "findings_terminal_count": 143,
+  "journal_head_seq": 999,
+  "journal_head_sha256": "8c61002a17a5d98d90aa0e791c22d9504b2723183477aaaaf7947bb3e6a55f08",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
