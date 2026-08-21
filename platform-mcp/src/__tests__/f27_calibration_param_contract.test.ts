@@ -1,19 +1,29 @@
 /**
- * F-27 — the calibration tool pair must not advertise or forward no-op slice fields.
+ * F-27 — the calibration tool pair must advertise and forward the filters that are REAL,
+ * and advertise nothing that isn't.
  *
  * Original finding: `mimamsa_calibration_get({chart_id})` and the same call with
- * `domain: 'career'` added returned an identical `result_hash` — the `domain` parameter
- * was a complete no-op. The same was true of `limit` and `offset`, on both names of the
- * CR-51/CR-30 strict-alias pair (`mimamsa_calibration_get` / `query_calibration`).
+ * `domain: 'career'` added returned an identical `result_hash` — `domain` was a complete
+ * no-op, as were `limit` and `offset`, on both names of the CR-51/CR-30 strict-alias pair
+ * (`mimamsa_calibration_get` / `query_calibration`).
  *
- * Why the fields are REMOVED rather than implemented: the underlying capability
- * `marsys://tool/L5/query_calibration` declares `required_inputs: ['chart_id']` and its
- * handler reads only chart_id / include_held_out / promoted_only. There is no honest
- * domain filter to implement — the scorecard's verdict rows come from
- * `mimamsa_calibration`, which has no `domain` column at all (only `score_domain`, a
- * numeric match-quality score), and `mimamsa_multipliers.domain` is NULL for every row
- * on the canonical chart. Per CLAUDE.md §N.7 item 6 / §N.8, a parameter with no code
- * path behind it is removed, not left advertising a capability that does not exist.
+ * The first repair attempt deleted all three parameters, claiming no honest domain filter
+ * could be derived. Adversarial review proved that claim false: `mimamsa_calibration`
+ * carries `prediction_id` (348_mimamsa_pramana.sql:9) and `mimamsa_predictions` declares
+ * `domain text NOT NULL` (347_mimamsa_bhavisya.sql:10), with the composite index for the
+ * join already shipped (348:31). Live on the canonical chart, `domain: 'career'` narrows
+ * 57 calibration rows to 9. The narrowing itself is asserted at the capability layer
+ * (platform/.../L5_mimamsa/__tests__/f27_calibration_domain_filter.test.ts); THIS file
+ * asserts the MCP contract on top of it:
+ *
+ *   - `domain` is declared and forwarded on BOTH tool names (it was a no-op on one and
+ *     absent on the other);
+ *   - `include_held_out` / `promoted_only` — two GENUINE capability filters that no tool
+ *     name could reach — are declared and forwarded on both;
+ *   - `limit` / `offset` stay REMOVED: the capability has no pagination whatsoever, and
+ *     response size is governed by the alias's presentation-only `budget_kb`. Re-declaring
+ *     them would be the exact defect this repair closes (§N.8 Earned-Signal Principle);
+ *   - `budget_kb` remains presentation-only and never reaches the primitive.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
@@ -38,12 +48,12 @@ function makeCapturingServer() {
 
 const PRINCIPAL: Principal = { user_uid: 'test-user', key_id: 'test-key', role: 'super_admin' }
 const TEST_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
+const CALIBRATION_TOOLS = ['mimamsa_calibration_get', 'query_calibration'] as const
 
 /**
- * The capability handler's `content` object — verdict counts mirror the real
- * canonical-chart distribution (57 rows across 4 verdict classes), the exact data the
- * finding said a domain filter ought to be able to narrow. It cannot: `mimamsa_calibration`
- * has no domain column.
+ * The capability handler's `content` object, in the post-fix shape: verdict counts mirror
+ * the real canonical-chart distribution (57 rows across 4 verdict classes) and `filters`
+ * carries the domain-scope disclosure the capability now emits.
  */
 const CAPABILITY_CONTENT = {
   chart_id: TEST_CHART_ID,
@@ -53,11 +63,20 @@ const CAPABILITY_CONTENT = {
     { composite_verdict: 'REFUTED', n: 7 },
     { composite_verdict: 'CONFIRMED', n: 2 },
   ],
+  verdict_row_count: 57,
   reliability_curve: [],
   multipliers: [],
   qa_results: [],
   qa_summary: { total: 0, fail_count: 0 },
-  filters: { include_heldout: false, promoted_only: false },
+  filters: {
+    include_heldout: false,
+    promoted_only: false,
+    domain: null,
+    domain_filtered_sections: [],
+    domain_unfiltered_sections: [],
+    multipliers_total: 0,
+    multipliers_with_domain: 0,
+  },
 }
 
 /**
@@ -87,6 +106,15 @@ function stubPrimitiveFetch(sink: Record<string, unknown>[]) {
   }))
 }
 
+async function registerBoth() {
+  const { registerP1AliasTools } = await import('../tools/register_p1_aliases.js')
+  const { registerMimamsaOutcomeTool } = await import('../tools/mimamsa_outcome.js')
+  const capture = makeCapturingServer()
+  registerP1AliasTools(capture.server, PRINCIPAL)
+  registerMimamsaOutcomeTool(capture.server, PRINCIPAL)
+  return capture
+}
+
 beforeEach(() => {
   vi.unstubAllGlobals()
   vi.resetModules()
@@ -94,47 +122,62 @@ beforeEach(() => {
 })
 
 describe('F-27 calibration parameter contract', () => {
-  it('neither calibration tool name declares the no-op domain/limit/offset fields', async () => {
+  it('both tool names declare the three real filters and neither declares the removed pagination', async () => {
     stubPrimitiveFetch([])
+    const capture = await registerBoth()
 
-    const { registerP1AliasTools } = await import('../tools/register_p1_aliases.js')
-    const { registerMimamsaOutcomeTool } = await import('../tools/mimamsa_outcome.js')
-    const capture = makeCapturingServer()
-    registerP1AliasTools(capture.server, PRINCIPAL)
-    registerMimamsaOutcomeTool(capture.server, PRINCIPAL)
-
-    for (const name of ['mimamsa_calibration_get', 'query_calibration']) {
+    for (const name of CALIBRATION_TOOLS) {
       const schema = capture.schemas.get(name)
       expect(schema, `${name} must be registered`).toBeDefined()
       expect(schema).toHaveProperty('chart_id')
-      // The defect: these advertised a filter/pagination contract nothing implements.
-      expect(schema, `${name} must not advertise a no-op domain filter`).not.toHaveProperty('domain')
+      // The repair: a real, derived domain filter, reachable from both names.
+      expect(schema, `${name} must advertise the real domain filter`).toHaveProperty('domain')
+      // The reviewer's non-blocking half: genuine filters that no tool name could reach.
+      expect(schema, `${name} must advertise include_held_out`).toHaveProperty('include_held_out')
+      expect(schema, `${name} must advertise promoted_only`).toHaveProperty('promoted_only')
+      // Still genuinely unimplemented — the capability has no pagination at all.
       expect(schema, `${name} must not advertise a no-op limit`).not.toHaveProperty('limit')
       expect(schema, `${name} must not advertise a no-op offset`).not.toHaveProperty('offset')
     }
   })
 
-  it('neither tool forwards domain/limit/offset to the primitive even when passed them', async () => {
+  it('both tool names forward domain / include_held_out / promoted_only to the primitive', async () => {
     const forwarded: Record<string, unknown>[] = []
     stubPrimitiveFetch(forwarded)
+    const capture = await registerBoth()
 
-    const { registerP1AliasTools } = await import('../tools/register_p1_aliases.js')
-    const { registerMimamsaOutcomeTool } = await import('../tools/mimamsa_outcome.js')
-    const capture = makeCapturingServer()
-    registerP1AliasTools(capture.server, PRINCIPAL)
-    registerMimamsaOutcomeTool(capture.server, PRINCIPAL)
-
-    for (const name of ['mimamsa_calibration_get', 'query_calibration']) {
+    for (const name of CALIBRATION_TOOLS) {
       const result = await capture.handlers.get(name)!({
         chart_id: TEST_CHART_ID,
         domain: 'career',
-        limit: 1,
-        offset: 3,
+        include_held_out: true,
+        promoted_only: true,
       })
-      expect(result.isError, `${name} should still succeed`).toBeFalsy()
+      expect(result.isError, `${name} should succeed`).toBeFalsy()
     }
 
-    // Exactly chart_id reaches the capability — no discarded-at-the-far-end fields.
+    expect(forwarded).toHaveLength(CALIBRATION_TOOLS.length)
+    for (const [i, params] of forwarded.entries()) {
+      const name = CALIBRATION_TOOLS[i]
+      expect(params['chart_id'], `${name} chart_id`).toBe(TEST_CHART_ID)
+      // The defect was that this value was accepted and then thrown away.
+      expect(params['domain'], `${name} must forward domain`).toBe('career')
+      expect(params['include_held_out'], `${name} must forward include_held_out`).toBe(true)
+      expect(params['promoted_only'], `${name} must forward promoted_only`).toBe(true)
+      expect(params, `${name} must not invent pagination`).not.toHaveProperty('limit')
+      expect(params, `${name} must not invent pagination`).not.toHaveProperty('offset')
+    }
+  })
+
+  it('omitting the optional filters forwards chart_id alone (no undefined keys on the wire)', async () => {
+    const forwarded: Record<string, unknown>[] = []
+    stubPrimitiveFetch(forwarded)
+    const capture = await registerBoth()
+
+    for (const name of CALIBRATION_TOOLS) {
+      await capture.handlers.get(name)!({ chart_id: TEST_CHART_ID })
+    }
+
     expect(forwarded).toEqual([{ chart_id: TEST_CHART_ID }, { chart_id: TEST_CHART_ID }])
   })
 

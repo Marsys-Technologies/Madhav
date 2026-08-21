@@ -425,32 +425,55 @@ export function registerMimamsaOutcomeTool(server: McpServer, principal: Princip
           'Chart UUID. Required — must be a valid chart UUID from the charts table.'
         ),
 
-      // F-27 (PARIŚEṢA V4): `domain`, `limit` and `offset` used to be declared here and
-      // forwarded to the platform primitive. All three were complete no-ops — the
-      // capability `marsys://tool/L5/query_calibration` declares
-      // `required_inputs: ['chart_id']` and its handler reads only `chart_id`,
-      // `include_held_out` and `promoted_only`; it never reads domain/limit/offset, so
-      // two calls differing only in those fields returned a byte-identical payload.
+      // F-27 (PARIŚEṢA V4): `domain`, `limit` and `offset` were declared here and
+      // forwarded to the platform primitive while being complete no-ops — the capability
+      // `marsys://tool/L5/query_calibration` never read any of the three, so two calls
+      // differing only in those fields returned a byte-identical payload.
       //
-      // They are removed rather than implemented, because no honest implementation
-      // exists: the scorecard's verdict rows come from `mimamsa_calibration`, which has
-      // NO domain column at all (only `score_domain`, a numeric match-quality score, not
-      // a domain label). The one table that does carry a `domain` column,
-      // `mimamsa_multipliers`, holds NULL there for every row on the canonical chart.
-      // A `domain` filter over this data would have to be invented, not derived —
-      // CLAUDE.md §N.7 item 6 (an honest null beats an invented judgment) and §N.8
-      // (Earned-Signal Principle: a parameter with no code path behind it is not a
-      // feature, it is an unimplemented check wearing a feature's clothes).
+      // `domain` is now a REAL filter: the capability joins
+      // `mimamsa_calibration.prediction_id` -> `mimamsa_predictions.domain`
+      // (`text NOT NULL`, migration 347:10) over the shipped composite index
+      // `idx_mimamsa_calibration_prediction` (348:31). `limit`/`offset` stay REMOVED —
+      // the capability has no pagination at all, and response size is governed by the
+      // alias's presentation-only `budget_kb`, not by row offsets. Declaring them would
+      // be exactly the defect this repair exists to close (§N.8 Earned-Signal Principle:
+      // a parameter with no code path behind it is an unimplemented feature wearing a
+      // feature's clothes).
       //
-      // The twin alias `mimamsa_calibration_get` (register_p1_aliases.ts) already
-      // dropped these three fields; this restores contract parity across the documented
-      // CR-51/CR-30 strict-alias pair.
+      // `include_held_out` / `promoted_only` were the mirror-image defect: two GENUINE
+      // capability filters that no MCP tool name could reach. Both are surfaced here and
+      // on the twin alias, keeping the CR-51/CR-30 strict-alias pair at contract parity.
+      domain: z
+        .string()
+        .min(1)
+        .optional()
+        .describe(
+          'Optional life-domain filter (e.g. "career", "relationship", "transition"). ' +
+            'Narrows verdict_distribution to matches whose prediction carries this domain. ' +
+            'Sections with no domain dimension are returned unfiltered and named in ' +
+            'filters.domain_unfiltered_sections.'
+        ),
+
+      include_held_out: z
+        .boolean()
+        .optional()
+        .describe('Include held-out partition matches (default: false).'),
+
+      promoted_only: z
+        .boolean()
+        .optional()
+        .describe('Return only promoted (gate_passed=true) multipliers (default: false).'),
     },
     async (params) => {
       try {
         const result = await callPlatformPrimitiveDirect(
           'query_calibration',
-          { chart_id: params.chart_id },
+          {
+            chart_id:         params.chart_id,
+            domain:           params.domain,
+            include_held_out: params.include_held_out,
+            promoted_only:    params.promoted_only,
+          },
           principal,
         )
 
