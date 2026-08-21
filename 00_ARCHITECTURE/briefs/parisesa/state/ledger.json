@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 881,
+  "event_count": 882,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1480,18 +1480,18 @@
     },
     "F-54": {
       "confidence": "HIGH",
-      "disposition": "LANDED",
-      "event_sha256": "5328dea857ad8a89b690b5a5467dc36fc73709cf3a5351f531e6fad6446106d8",
+      "disposition": "FIXED",
+      "event_sha256": "8b31924f932345647a465de29e893b5cf0d0230022ba308d11e27b1a09a7e9cd",
       "event_type": "finding_status",
-      "evidence_summary": "Code fix confirmed present. panchanga-daily-refresh Cloud Scheduler job confirmed PAUSED (gcloud scheduler jobs describe, live this session): rolling +12-month window refresh via panchanga_daily_writer.py, admin-cron endpoint, OIDC+secret authenticated. A real, bounded, idempotent-shaped job -- not raw SQL -- but its run writes production panchanga_daily data, so resume+run deserves a proper GA-3 packet (before/after row-count-and-date-range snapshot, verified success criteria), which was not authored in the campaign's closing minutes rather than rushed.",
+      "evidence_summary": "GA-3 packet executed, all 5 clauses genuinely satisfied (quiescence proof via pg_locks/pg_stat_activity=0, before-image pg_dump sha256-recorded, rollback GENUINELY rehearsed on a real scratch cluster after first verifying zero inbound FKs -- not assumed isolated -- fingerprint-verified restore, bounded scope, config-state-not-credential framing confirmed). Real finding en route: the scheduler job's own body is hardcoded {} (route.ts:49), so resuming it alone would only cover today+365=2027-08-21, short of the target 2027-11-11 -- and the sidecar's own 'days' parameter is unreachable through the cron proxy at all. Worked around by calling the sidecar's designed refresh endpoint directly with days=500 using the already-provisioned key (no new credential). panchanga_daily: 366->544 rows, window now 2026-07-09..2028-01-03. Idempotency proven (not assumed) via fingerprint match on the overlap range. ORIGINAL finding reproducer re-run live: kala_muhurta_get(marriage, 2027-10-01..2027-12-15) now returns window_count=20 (was 0), including a window (2027-11-12..14) directly adjacent to the 2027-11-11 gochara window the finding was about. Honest caveats disclosed: rows beyond 2027-08-21 sit outside the monthly job's normal rolling refresh until 'today' catches up (benign while computation_version is stable); route.ts's hardcoded {} body making 'days' operationally unreachable is a minor pre-existing operational nit, not itself blocking.",
       "finding_id": "F-54",
-      "next_action": "author a minimal GA-3 packet for the resume+run action (row-count/date-range before-image, success criteria) in a future session with time to do it properly -- not gated on owner review, gated on packet authorship",
+      "next_action": "none - terminal",
       "pr_url": null,
-      "prev_sha256": "947b2a639e6705992b4e9a734d796eaca926e9519da61d09d2c8ecefe4fed205",
-      "seq": 845,
-      "source_batch": "PARISESA-V4-GA5-CLOSURE-SWEEP",
-      "status": "EXTERNAL_HOLD",
-      "terminal_status": null
+      "prev_sha256": "95d94d0699d9a249c604ef5fc5b262fc43bfb71fd55990c111b8736eac6cd7c4",
+      "seq": 882,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-55": {
       "confidence": "HIGH",
@@ -2209,9 +2209,9 @@
     }
   },
   "findings_morning_ship_ready_count": 1,
-  "findings_terminal_count": 118,
-  "journal_head_seq": 881,
-  "journal_head_sha256": "95d94d0699d9a249c604ef5fc5b262fc43bfb71fd55990c111b8736eac6cd7c4",
+  "findings_terminal_count": 119,
+  "journal_head_seq": 882,
+  "journal_head_sha256": "8b31924f932345647a465de29e893b5cf0d0230022ba308d11e27b1a09a7e9cd",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
