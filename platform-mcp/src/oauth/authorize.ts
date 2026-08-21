@@ -132,6 +132,26 @@ export async function handleAuthorize(req: Request, res: Response): Promise<void
     return
   }
 
+  // SF-003 fold-in (PARIŚEṢA-V4): reject any code_challenge_method other than
+  // S256 at registration time, rather than accepting it and never verifying it.
+  // Before this, a client could register a code_challenge with
+  // code_challenge_method: 'plain' (or omitted, whose RFC 7636 default is
+  // 'plain') and the record would be stored — but token.ts's verifier
+  // unconditionally SHA-256s, so a 'plain' challenge could never be redeemed at
+  // all, meaning no 'plain' path was ever exercised or verified. Discovery
+  // already advertises `code_challenge_methods_supported: ['S256']` only
+  // (discovery.ts); this makes /authorize actually enforce what discovery
+  // claims, instead of silently accepting a method it does not support.
+  // Deliberately NOT implementing a 'plain' verifier — it is the downgrade
+  // primitive PKCE hardens against.
+  if (params.code_challenge && params.code_challenge_method !== 'S256') {
+    res.status(400).json({
+      error: 'invalid_request',
+      error_description: 'code_challenge_method must be S256',
+    })
+    return
+  }
+
   const requestedScopes = (params.scope ?? 'mcp:tools').split(' ')
   const grantedScopes = requestedScopes.filter(s => VALID_SCOPES.includes(s))
 
