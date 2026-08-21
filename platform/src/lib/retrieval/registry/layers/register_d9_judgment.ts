@@ -220,14 +220,14 @@ const BHAVA_TO_DOMAIN: Record<number, string> = {
 
 // Simple, deterministic, classically-uncontested dignity/benefic weighting — never an LLM
 // judgment, never a fabricated probability. Design §28.1 "graded (epistemic + strength)".
-const DIGNITY_WEIGHT: Record<string, number> = {
+export const DIGNITY_WEIGHT: Record<string, number> = {
   exalted: 2, own: 1.5, moolatrikona: 1.5, great_friend: 1, friend: 0.5,
   neutral: 0, enemy: -0.5, great_enemy: -1, debilitated: -2,
 }
 const NATURAL_BENEFICS = new Set(['Jupiter', 'Venus', 'Mercury', 'Moon'])
 const NATURAL_MALEFICS = new Set(['Saturn', 'Mars', 'Rahu', 'Ketu', 'Sun'])
 
-interface GrahaCondition {
+export interface GrahaCondition {
   graha: string
   graha_code: string
   house: number | null
@@ -316,7 +316,7 @@ async function vargaDignity(
 
 /** D1 dignity + shadbala for one already-resolved graha entity. Never recomputes either —
  *  both are frozen build-time formula output (must_not_touch, R5 brief). */
-async function gradeGraha(chartId: string, ayanamshaId: string, g: ResolvedGraha): Promise<GrahaCondition> {
+export async function gradeGraha(chartId: string, ayanamshaId: string, g: ResolvedGraha): Promise<GrahaCondition> {
   const fact_ids = [...g.fact_ids]
   let dignity_state: string | null = null
   let shadbala_rupa: number | null = null

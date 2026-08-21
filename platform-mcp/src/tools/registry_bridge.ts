@@ -3053,6 +3053,11 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       chart_id: normalized['chart_id'],
       ayanamsha_id: normalized['ayanamsha_id'],
       reading_checklist: normalized['reading_checklist'],
+      // F-113: the D1 significator condition's structured detail. Its HEADLINE already rides
+      // in kernel.verdict (budget-immune); this is the drillable full set. Grounding is
+      // dropped all-or-nothing under budget pressure, which is precisely why the fact is not
+      // served from here alone.
+      significator_condition: normalized['significator_condition'],
       step_results: normalized['step_results'],
       gochara_sweep: normalized['gochara_sweep'],
       contradictions: normalized['contradictions'],

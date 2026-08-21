@@ -77,7 +77,10 @@ const WARNING_TIER_WEIGHTS = {
   low_ratification: 1,    // ratification_factor present and < 1.0 (design §11 clamp midpoint)
   functional_malefic: 1,  // functional_lordship contains 'malefic' (BPHS temporal/natural malefic)
 }
-const LOW_SHADBALA_PERCENTILE = 0.34
+// Exported (F-113): significator_condition.ts reuses this EXACT threshold + the
+// PERCENT_RANK-over-9-grahas percentile below it, so the assess_* significator surface and
+// this B8 view can never disagree about which graha counts as strength-extreme on a chart.
+export const LOW_SHADBALA_PERCENTILE = 0.34
 
 function computeWarningTier(row: {
   house_class: string | null
