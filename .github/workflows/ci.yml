@@ -1032,6 +1032,15 @@ jobs:
         # test on an unattached middleware is exactly the §N.8 defect class.
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/rate07_oauth_rate_limit.test.ts src/__tests__/rate07_oauth_route_wiring.test.ts
+      - name: F-118 kala_upaya_get duplicate-collapse + actionability regression (platform-mcp) — PARIŚEṢA-V4
+        # The tool served intervention_count=100 over 14 distinct labels — 50 byte-identical
+        # phala_mitigation severity classifications (empty remedy program) plus 13 bodha_rm
+        # remedies stored once per ayanamsha. Both files are required: the lib file proves the
+        # collapse/actionability/discrimination DETECTORS behave (including the cases that make
+        # each read false — §N.8), the tool file proves they are actually WIRED into the served
+        # response against a fixture reproducing the live row shape.
+        working-directory: platform-mcp
+        run: npx vitest run src/lib/kala_upaya_diagnosis.test.ts src/tools/kala_views/upaya.test.ts src/tools/kala_views/upaya_weak_promise_gate.test.ts
       - name: vidhi registry codegen drift check (platform) — GT-56
         run: npm run codegen:vidhi:check
       - name: vidhi registry codegen parity test (platform-mcp) — GT-56

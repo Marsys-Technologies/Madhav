@@ -318,10 +318,189 @@ describe('buildKalaUpayaResult — honest degradation (no live platform reachabl
     expect(noFrame.question_frame).toBeNull()
   })
 
+  it('F-118: the disclosure fields are always present and internally consistent, even when the ' +
+    'substrate is unreachable (an honest zero, never an omitted field)', async () => {
+    const response = (await buildKalaUpayaResult({ chart_id: CHART_ID, domain: 'career' }, PRINCIPAL)) as KalaUpayaResponse
+    expect(response.source_rows_considered).toBe(0)
+    expect(response.duplicate_rows_collapsed).toBe(0)
+    expect(response.non_prescriptive_rows).toEqual([])
+    expect(response.non_prescriptive_note).toBeNull()
+    expect(response.efficacy_discrimination.discriminating).toBe(false)
+    expect(response.efficacy_discrimination.rows_evaluated).toBe(0)
+  })
+
   it('runs identically (same coverage-concept set) on both canonical charts (gate G13)', async () => {
     const a = (await buildKalaUpayaResult({ chart_id: CHART_ID, domain: 'career' }, PRINCIPAL)) as KalaUpayaResponse
     const b = (await buildKalaUpayaResult({ chart_id: ABHINANDAN_CHART_ID, domain: 'career' }, PRINCIPAL)) as KalaUpayaResponse
     const conceptsOf = (r: KalaUpayaResponse) => r.coverage.map((c) => c.concept.split(' ')[0]).sort()
     expect(conceptsOf(a)).toEqual(conceptsOf(b))
+  })
+})
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// F-118 — THE LIVE REPRODUCER, as a regression test
+// ══════════════════════════════════════════════════════════════════════════════════════════
+//
+// Original claim (PARIŚEṢA baseline F-118, CL-09 earned-signal): calling
+//   kala_upaya_get(chart_id=482012f1-…, domain='relationship', as_of_date='2026-08-15')
+// returned `intervention_count=100` over only 14 DISTINCT labels — 50 of the 100 rows being the
+// byte-identical string 'light — for saturn — severity=medium × anchor_magnitude=minor → light'
+// (a severity classification, not an act), each under a different phala_mitigation UUID; the
+// other 50 being 13 bodha_rm remedies stored once per ayanamsha. All 100 carried
+// efficacy_tier='classically_attested' and targets_link='promise'.
+//
+// The fixtures below reproduce that live shape EXACTLY (verified against the production DB
+// 2026-08-21: phala_mitigation holds 536 rows/chart across 4 distinct (tier, graha, basis)
+// combinations, every one of them with an empty program_jsonb/tradition_options_jsonb/
+// recommended_tier_jsonb; bodha_rm_remedy_prescriptions holds 135 rows/chart = 27 remedies × 5
+// ayanamshas). The assertions are the finding's own counting recipe, inverted.
+describe('F-118 — kala_upaya_get no longer serves duplicated rows as distinct interventions', () => {
+  function wire(payload: Record<string, unknown>) {
+    return {
+      status: 200,
+      envelope: {
+        ok: true, trace_id: 't', epistemics: {},
+        result: { tool_bundle_id: 'tb', tool_name: 'x', results: [{ content: JSON.stringify(payload) }], result_hash: 'sha256:x' },
+        citations: [], plan: null, predictions_logged: [],
+      },
+    }
+  }
+
+  /** 50 phala_mitigation rows, byte-identical apart from their primary key — the live shape. */
+  const LIVE_DUPLICATED_LABEL = 'light — for saturn — severity=medium × anchor_magnitude=minor → light'
+  function fiftyIdenticalMitigationRows() {
+    return Array.from({ length: 50 }, (_, i) => ({
+      mitigation_id: `pm-${i}`, afflicting_graha: 'saturn', obstruction_severity: null,
+      intensity_tier: 'light', proportionality_basis: 'severity=medium × anchor_magnitude=minor → light',
+      classical_citation: 'Brihat Parashara Hora Shastra — Upaya chapter',
+      program_jsonb: { scheduled_ids: [], sequence_basis: 'prerequisite_topo_sort + incompatible_exclusion', total_scheduled: 0 },
+      tradition_options_jsonb: { vastu: [], vedic: [], modern: [], tantra: [], ayurvedic: [], lal_kitab: [] },
+      recommended_tier_jsonb: { free: [], low_cost: [], high_investment: [] },
+    }))
+  }
+
+  /** 10 distinct remedies × 5 ayanamsha copies = the unpinned 50-row page the tool used to get. */
+  const DISTINCT_REMEDIES = 10
+  function tenRemediesTimesFiveAyanamshas() {
+    const rows: Array<Record<string, unknown>> = []
+    for (let r = 0; r < DISTINCT_REMEDIES; r += 1) {
+      for (const aya of ['lahiri_chitrapaksha', 'krishnamurti', 'raman', 'true_chitra', 'surya_siddhanta_classical']) {
+        rows.push({
+          prescription_id: `rm-${r}-${aya}`, ayanamsha_id: aya, target_graha: 'saturn',
+          remedy_category: 'mantra',
+          remedy_label_human: `Recite remedy #${r} 108 times daily, facing east.`,
+          classical_strength_rating: 3, classical_sources_jsonb: ['BPHS ch.93'],
+          feasibility_score: 0.9, citation_ref: null, citation_human: `G27 remedy ${r}`,
+        })
+      }
+    }
+    return rows
+  }
+
+  beforeEach(() => {
+    mockCallPlatformPrimitive.mockReset()
+    mockCallPlatformWrites.mockReset()
+    mockCallKalaRegistryCap.mockReset()
+    mockCallKalaRegistryCap.mockImplementation(async (uri: string) => {
+      if (uri === 'marsys://tool/L-PACT/pact_query') {
+        return {
+          pact_status: 'denied_at_promise',
+          stages: [
+            { stage: 'PROMISE', status: 'denied', reason: 'The rashi checklist does not promise this matter' },
+            { stage: 'CONFIRMATION', status: 'denied', dignities: [{ role: 'bhavesha', graha: 'saturn' }] },
+          ],
+          fact_id_refs: ['fact-1'],
+        }
+      }
+      return { nodes: [], edges: [] }
+    })
+    mockCallPlatformPrimitive.mockImplementation(async (toolName: string, args: Record<string, unknown>) => {
+      if (toolName === 'mitigation_map') return wire({ remedies: fiftyIdenticalMitigationRows() })
+      if (toolName === 'bodha_rm_prescriptions_get') {
+        const all = tenRemediesTimesFiveAyanamshas()
+        const pinned = args['ayanamsha_id']
+          ? all.filter((r) => r['ayanamsha_id'] === args['ayanamsha_id'])
+          : all.slice(0, 50)
+        return wire({ rows: pinned })
+      }
+      return wire({ remedies: [] })
+    })
+  })
+
+  async function reproduce(): Promise<KalaUpayaResponse> {
+    const result = await buildKalaUpayaResult(
+      { chart_id: CHART_ID, domain: 'relationship', as_of_date: '2026-08-15' }, PRINCIPAL,
+    )
+    expect(isMortalityRefusal(result)).toBe(false)
+    return result as KalaUpayaResponse
+  }
+
+  it('intervention_count now equals the number of DISTINCT labels, never the raw row count', async () => {
+    const response = await reproduce()
+    const distinctLabels = new Set(response.interventions.map((r) => r.label)).size
+    expect(response.intervention_count).toBe(response.interventions.length)
+    expect(response.intervention_count).toBe(distinctLabels)
+    // The finding's own number: 100 served / 14 distinct. Never again.
+    expect(response.intervention_count).toBeLessThan(100)
+  })
+
+  it('no two served interventions are byte-identical (the 50-duplicate degeneracy is gone)', async () => {
+    const response = await reproduce()
+    const seen = new Set<string>()
+    for (const row of [...response.interventions, ...response.non_prescriptive_rows]) {
+      const key = `${row.source_surface}|${row.label}|${row.actionable_prescription ?? ''}`
+      expect(seen.has(key)).toBe(false)
+      seen.add(key)
+    }
+  })
+
+  it('the duplicated severity-classification row is served ONCE, out of interventions, and says ' +
+    'plainly that it stands for 50 source rows', async () => {
+    const response = await reproduce()
+    expect(response.interventions.some((r) => r.label === LIVE_DUPLICATED_LABEL)).toBe(false)
+    const collapsed = response.non_prescriptive_rows.filter((r) => r.label === LIVE_DUPLICATED_LABEL)
+    expect(collapsed).toHaveLength(1)
+    expect(collapsed[0]?.duplicate_row_count).toBe(50)
+    expect(collapsed[0]?.actionable_prescription).toBeNull()
+    expect(collapsed[0]?.duplicate_note).toContain('ONE recommendation, not 50')
+    expect(response.non_prescriptive_note).toContain('NO actionable prescription')
+  })
+
+  it('every row inside `interventions` names a real act (actionable_prescription is never null)', async () => {
+    const response = await reproduce()
+    expect(response.interventions.length).toBeGreaterThan(0)
+    for (const row of response.interventions) {
+      expect(row.actionable_prescription).not.toBeNull()
+      expect(String(row.actionable_prescription).trim().length).toBeGreaterThan(0)
+    }
+  })
+
+  it('the ayanamsha pin turns 5 identical copies of 10 remedies into 10 distinct remedies', async () => {
+    const response = await reproduce()
+    expect(response.interventions).toHaveLength(DISTINCT_REMEDIES)
+    for (const row of response.interventions) expect(row.duplicate_row_count).toBe(1)
+  })
+
+  it('the raw source-row figures are DISCLOSED, never hidden by the collapse (no silent drop)', async () => {
+    const response = await reproduce()
+    expect(response.source_rows_considered).toBe(50 + DISTINCT_REMEDIES)
+    expect(response.duplicate_rows_collapsed).toBe(49)
+    const servedRows = response.interventions.length + response.non_prescriptive_rows.length + response.uncited_remedy_rows.length
+    expect(servedRows).toBe(response.source_rows_considered - response.duplicate_rows_collapsed)
+  })
+
+  it('the uniform efficacy grading is DISCLOSED as carrying zero information (§N.8), rather than ' +
+    'read as a clean grade', async () => {
+    const response = await reproduce()
+    expect(response.efficacy_discrimination.discriminating).toBe(false)
+    expect(response.efficacy_discrimination.distinct_efficacy_tiers).toBe(1)
+    expect(response.efficacy_discrimination.note).toContain('zero information')
+    expect(response.efficacy_discrimination.note).toContain('F118_INTERVENTION_SEMANTICS_DESIGN_CONTRACT')
+  })
+
+  it('the reading/composed_text never quotes a severity classification as evidence of a remedy', async () => {
+    const response = await reproduce()
+    expect(response.composed_text).not.toContain(LIVE_DUPLICATED_LABEL)
+    for (const ev of response.reading.evidence) expect(ev.claim).not.toContain(LIVE_DUPLICATED_LABEL)
   })
 })
