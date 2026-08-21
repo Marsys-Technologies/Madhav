@@ -197,7 +197,27 @@ the D7/D9/D12/D30 weight *values* appear transposed. These are Vimsopaka
 weights, not Saptavargaja Bala inputs, so nothing in F-61 depends on them —
 flagged only so the discrepancy is on the record.
 
+**F-61-R4 — the sibling row `vimsopaka_bala_per_graha.vimsopaka_total` has the
+IDENTICAL defect.** Verified live, same query shape, same result:
+
+| fact_category | fact_key | rows | NULL `fact_value_num` |
+|---|---|---|---|
+| `graha_saptavargaja_bala_component` | `saptavargaja_score` | 105 | **105 (100%)** |
+| `vimsopaka_bala_per_graha` | `vimsopaka_total` | 105 | **105 (100%)** |
+
+Same GA8 function (`_build_shadbala_extension_rows`), same
+`_get_divisional_constituent_ids` pointer-only pattern, same "a `_total` key
+carrying no total" shape. It is **not fixed here**, deliberately: Vimsopaka is
+a *weighted* sum over the Shodasavarga group (`VIMSOPAKA_SHODA_WEIGHTS`, each
+group's weights summing to 20), not a plain sum over seven vargas — a
+different formula, a different varga group, and a different verification
+burden. Folding it into F-61 would smuggle an unreviewed second calculation
+into a PR whose citation chain covers only Saptavargaja. **It should be raised
+as its own finding** and given the same L0-authority treatment; the aggregation
+scaffolding this PR adds (read per-varga values, honest coverage reporting,
+NULL-not-zero on absence) is directly reusable for it.
+
 ---
 
 *F-61 design contract v1.0 — formula resolved from this project's own L0
-authority, not invented. Code landed; rebuild pending; three residuals disclosed.*
+authority, not invented. Code landed; rebuild pending; four residuals disclosed.*
