@@ -6,7 +6,7 @@ campaign: PARIŚEṢA-V4
 finding: F-188
 authored: 2026-08-22
 authored_by: PARIŚEṢA-V4 repair lane (GA-2 authority)
-execution_status: IMPLEMENTED — count_sql corrected (migration 584); accretion behaviour ratified as-is, not changed
+execution_status: IMPLEMENTED — count_sql corrected (migration 585, renumbered from 584 pre-merge — see §5 note); accretion behaviour ratified as-is, not changed
 ---
 
 # F-188 — `mimamsa_calibration_snapshot` is a RATIFIED exception to CLAUDE.md §N.3
@@ -18,7 +18,7 @@ The doctrine record for F-188's ratified exception. This is **not** a bug report
 intentional. The defect this finding actually closes was the **silence**: the exception existed
 in code with no doctrine citation, and `asset_registry.count_sql` for `mi_gunanaka` had never been
 updated to count the table the exception applies to. Both are fixed by this finding's PR
-(`platform/supabase/migrations/584_mi_gunanaka_count_sql_accretion_fix.sql` +
+(`platform/supabase/migrations/585_mi_gunanaka_count_sql_accretion_fix.sql` +
 `platform/scripts/seed/asset_registry_seed.ts`'s `mi_gunanaka` entry). Nothing about
 `_publish_snapshot()`'s behaviour changes here — see §5.
 
@@ -80,7 +80,14 @@ behaviour the table's actual contract requires, not by convenience.
    (2026-08-22) and this document by path. No code path changed.
 2. **This document** — the doctrine note CLAUDE.md §N.3 itself does not carry (and, per §L,
    cannot without native authorization); this is where the exception is recorded for audit.
-3. **`asset_registry.count_sql` for `mi_gunanaka`** — corrected (migration 584 +
+
+   **Migration renumbering note:** the migration carrying this fix was originally authored as
+   584, then renumbered to **585** before either it or the colliding PR merged — migration 584
+   was independently claimed by PR #1448 (F-187, `584_remedy_review_queue_remedy_id_unique.sql`),
+   a different finding's fix authored in parallel. F-187 kept 584; this finding's migration moved
+   to the next free slot. This is a pre-merge renumber, not a post-apply edit — CLAUDE.md §N.4's
+   "never edit an applied migration" rule was not implicated, since neither file had applied.
+3. **`asset_registry.count_sql` for `mi_gunanaka`** — corrected (migration 585 +
    `asset_registry_seed.ts`) from a single-table count that silently missed the accretion table
    to a two-table sum. This is the "Cockpit truth" half of CLAUDE.md §N.4 ("each asset needs a
    correct chart-scoped `count_sql`") — an asset whose data model *includes* a ratified accretion
@@ -101,9 +108,9 @@ precedent covers it by analogy.
 
 - Live query confirming the asymmetry (2026-08-22, chart `482012f1`):
   `mimamsa_multipliers` = 9 rows, `mimamsa_calibration_snapshot` = 4 rows, both `chart_id`-scoped.
-- Corrected `count_sql` verified to return **13** (9 + 4) for the same chart — see migration 584's
+- Corrected `count_sql` verified to return **13** (9 + 4) for the same chart — see migration 585's
   header and the F-188 test suite (`platform/python-sidecar/tests/test_f188_mi_gunanaka_count_sql.py`).
 - Source-level parity: `asset_registry_seed.ts`'s `mi_gunanaka.count_sql` literal and migration
-  584's `UPDATE ... SET count_sql` literal are asserted identical by the same test suite (the
+  585's `UPDATE ... SET count_sql` literal are asserted identical by the same test suite (the
   F-146 defect class — a seed and a migration silently diverging on the same field — applied
   here as a regression guard rather than found as a live defect).

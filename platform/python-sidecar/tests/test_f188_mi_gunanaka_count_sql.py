@@ -18,7 +18,7 @@ THE DEFECT (confirmed live, 2026-08-22):
 THE FIX: count_sql becomes a two-subquery sum ($1 repeated per subquery, the
 established convention — see ga_condition's count_sql in the same seed file),
 landed in BOTH scripts/seed/asset_registry_seed.ts (fresh environments) AND
-migration 584 (the already-deployed row — a seed change alone never revisits
+migration 585 (the already-deployed row — a seed change alone never revisits
 an existing asset_registry row).
 
 WHAT THESE TESTS ACTUALLY MEASURE (§N.8 — a status must have a real detector
@@ -26,7 +26,7 @@ behind it, not a proxy):
   1. (offline) The seed's mi_gunanaka count_sql references BOTH tables, not
      just mimamsa_multipliers — this is the "must-fail-before-the-fix" case;
      reverting to the single-table string makes it fail.
-  2. (offline) The seed's count_sql and migration 584's UPDATE ... SET
+  2. (offline) The seed's count_sql and migration 585's UPDATE ... SET
      count_sql literal are BYTE-IDENTICAL. This is the F-146 defect class
      (CLAUDE.md-catalogued: a seed and a migration silently disagreeing on
      the same field) turned into a permanent regression guard, not just a
@@ -54,7 +54,7 @@ _PLATFORM = os.path.dirname(_SIDECAR)
 
 _SEED = os.path.join(_PLATFORM, "scripts", "seed", "asset_registry_seed.ts")
 _MIGRATION = os.path.join(
-    _PLATFORM, "supabase", "migrations", "584_mi_gunanaka_count_sql_accretion_fix.sql"
+    _PLATFORM, "supabase", "migrations", "585_mi_gunanaka_count_sql_accretion_fix.sql"
 )
 
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
@@ -110,9 +110,9 @@ def _extract_seed_count_sql(asset_block: str) -> str:
 
 
 def _extract_migration_count_sql(migration_src: str) -> str:
-    """Pull the $sql$...$sql$-delimited value out of migration 584's UPDATE."""
+    """Pull the $sql$...$sql$-delimited value out of migration 585's UPDATE."""
     m = re.search(r"SET count_sql = \$sql\$(.+?)\$sql\$", migration_src, re.DOTALL)
-    assert m, "migration 584 does not contain the expected $sql$-delimited UPDATE"
+    assert m, "migration 585 does not contain the expected $sql$-delimited UPDATE"
     return m.group(1).strip()
 
 
@@ -145,18 +145,18 @@ def test_mi_gunanaka_count_sql_references_both_tables():
     )
 
 
-# ── Test 2: seed and migration 584 agree — the F-146 defect class ───────────
+# ── Test 2: seed and migration 585 agree — the F-146 defect class ───────────
 
 
 def test_mi_gunanaka_seed_and_migration_count_sql_agree():
-    """The seed's count_sql (fresh environments) and migration 584's UPDATE
+    """The seed's count_sql (fresh environments) and migration 585's UPDATE
     (the already-deployed row) must carry the IDENTICAL SQL string. A seed
     and a migration silently disagreeing on the same field is the F-146
     defect class this finding is the second confirmed instance of — this
     test is the permanent regression guard against a future edit landing in
     only one of the two files."""
     assert os.path.exists(_MIGRATION), (
-        f"migration 584 not found at {_MIGRATION} — F-188 requires both a seed "
+        f"migration 585 not found at {_MIGRATION} — F-188 requires both a seed "
         "fix and a migration (the seed alone never revisits an already-seeded "
         "asset_registry row)"
     )
@@ -168,7 +168,7 @@ def test_mi_gunanaka_seed_and_migration_count_sql_agree():
     migration_count_sql = _extract_migration_count_sql(migration_src)
 
     assert seed_count_sql == migration_count_sql, (
-        "mi_gunanaka count_sql has diverged between the seed and migration 584 "
+        "mi_gunanaka count_sql has diverged between the seed and migration 585 "
         "— this is exactly the F-146 defect class (a seed and a migration "
         "silently disagreeing on the same field).\n"
         f"seed:      {seed_count_sql!r}\n"

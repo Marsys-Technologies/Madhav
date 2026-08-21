@@ -1,5 +1,12 @@
--- Migration 584: mi_gunanaka count_sql — count the accretion table too (F-188)
+-- Migration 585: mi_gunanaka count_sql — count the accretion table too (F-188)
 -- Created: 2026-08-22
+-- Renumbered 584 -> 585: 584 collided with PR #1448 (F-187,
+-- 584_remedy_review_queue_remedy_id_unique.sql). Neither PR had merged;
+-- F-187 keeps 584, this migration was renumbered to the next free slot
+-- before either PR landed. No content change beyond the number, in both
+-- the filename and this header, per CLAUDE.md §N.4 (never edit an applied
+-- migration — this one was never applied, so the renumber is a pre-merge
+-- correction, not a post-apply edit).
 --
 -- ROOT CAUSE. asset_registry.count_sql for mi_gunanaka has always been the
 -- single-table form:
