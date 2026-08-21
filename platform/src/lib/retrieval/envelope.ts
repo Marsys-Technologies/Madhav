@@ -1120,6 +1120,14 @@ export const JUDGMENT_FLAG_CODES = [
   // this call — bhāveśa/kāraka/bhāva-occupant dignity + ṣaḍbala absent from the verdict.
   // Emitted only when a real detector says so (significator_condition.empty_reason), per §N.8.
   'significator_condition_unavailable',
+  // F-175 (PARIŚEṢA-V4): the assess_* PACT promise gate. `promise_chain_contradicts_domain`
+  // is emitted ONLY when pact_query independently returned a `denied_at_*` status for the
+  // SAME chart/domain this assessment reads — the §N.8 detector behind it is the live chain
+  // call itself (interpretPactJoin, INV-1: no override path). `promise_chain_unchecked` is
+  // its honest counterpart: the chain could not be consulted this call, and unchecked is
+  // NOT the same as checked-and-clear (F-110 acceptance criterion A7).
+  'promise_chain_contradicts_domain',
+  'promise_chain_unchecked',
   // ── D10 pact_query chain-honesty halts ──
   'confirmation_graha_unrecognized',
   'pact_halted_at_promise',

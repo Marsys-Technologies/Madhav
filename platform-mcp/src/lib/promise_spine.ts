@@ -29,11 +29,17 @@
  *   - `tools/kala_views/ahead.ts` — `computePromiseGate`, the F-110 PACT gate on
  *     `kala_ahead_get`'s forward projections. See
  *     `00_ARCHITECTURE/briefs/parisesa/F110_PACT_GATING_DESIGN_CONTRACT_v1_0.md`.
+ *   - `lib/assess_promise_gate.ts` — `buildAssessPromiseGate`, the F-175 PACT gate
+ *     on all four `assess_marriage`/`assess_career`/`assess_health`/`assess_wealth`
+ *     tools, wired in `tools/registry_bridge.ts` (`fetchAssessPromiseGate`). This
+ *     CLOSES residual F-110-b. The paragraph that stood here previously said the
+ *     assess_* handlers "still certify `contradictions.status=
+ *     'no_contradictions_in_domain'` without consulting this helper — an open INV-1
+ *     breach". As of 2026-08-21 they consult it, and a denial reaches the
+ *     budget-immune kernel (verdict clause + `kernel.promise` + a hardFloored flag).
  *
- * NOT yet wired (stated, not implied-clean): `registry_bridge.ts`'s `assess_*`
- * handlers still certify `contradictions.status='no_contradictions_in_domain'`
- * without consulting this helper — an open INV-1 breach carried as residual
- * F-110-b in the design contract §5.3/§7 R3.
+ * Keep this list TRUE. It once claimed a wiring that had never been written — the
+ * §N.8 defect class this module exists to close, committed inside the module itself.
  */
 
 // ── SaraPromiseJoin (canonical definition — matches A-09 response_budget.ts) ─
