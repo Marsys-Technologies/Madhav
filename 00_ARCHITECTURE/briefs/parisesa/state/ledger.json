@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 999,
+  "event_count": 1002,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -903,14 +903,14 @@
     "F-147": {
       "confidence": "HIGH",
       "disposition": "PARKED",
-      "event_sha256": "9cda669594a83c90f58451dee105fa13a9cb49c20068cff4afea85f0aef80faa",
+      "event_sha256": "2d0105325b76be6e46fc34a5a1809412aeb2f5afa1381c4bde6f6e765977c7d9",
       "event_type": "finding_status",
-      "evidence_summary": "Newly discovered during F-104/F-35's GA-3 packet authoring, disclosed as its own finding -- HIGH priority, makes an already-deployed fix (F-35, PR #1409) functionally inert. mi_sambandha.py's composite_verdict check (verdict in ('confirmed','partial','denied')) uses lowercase literals that never match production's actual mimamsa_calibration.composite_verdict values: measured 'UNRESOLVED' 25, 'PARTIAL' 23, 'REFUTED' 7, 'CONFIRMED' 2 -- uppercase, AND 'REFUTED' not 'denied' (two independent mismatches, not one). Effect: scored_count/fire_count/channel_propensity compute to 0 for every row, making mimamsa_manifestation_grammar.evidence_grade='empirical' permanently unreachable regardless of any data rebuild. This is a small, well-scoped string-comparison fix in a file already inside the F-104/F-35 packet's blast radius.",
+      "evidence_summary": "Fixed as PR #1439 (open, awaiting GA-5). Root cause independently confirmed: mimamsa_calibration.composite_verdict has exactly one writer (mi_pramana.py:417 _verdict_v2, confirmed no other INSERT/UPDATE exists), emitting uppercase from a closed 5-value set (CONFIRMED/PARTIAL/REFUTED/UNRESOLVED/FALSE_ALARM); production GROUP BY confirmed exactly UNRESOLVED 25/PARTIAL 23/REFUTED 7/CONFIRMED 2, zero lowercase, no 'denied'. Live re-aggregation: pre-fix literals yield scored=0 for every group; real vocabulary yields 32 for one channel. WHY TESTS MISSED IT: not absent, bug-compatible -- the existing test used the same fictional lowercase/'denied' fixture data, both inherited from a common ancestor (migration 348's stale inline column comment, which the old test docstring cited by file:line as its authority). Fixing only the source turned the pre-existing test red immediately -- tests needed fixing too, not just trusted. Fix mirrors the already-ratified handling of this same column in mi_pariksha.py (F-143) -- frozensets + .upper() normalization, chosen over bare uppercase literals because the column is unconstrained text with no CHECK and has now broken a consumer twice. GRAMMAR_FORMULA_VERSION bumped v1.0->v1.1 so a pending rebuild can distinguish stale rows. 251/251 full L5 suite passing, mutation-tested (revert -> 9 tests red including a production-shaped replay of the live 25/23/7/2 distribution). CRITICAL CORRECTION to F-35's own prior record: this fix repairs scored_count/evidence_grade ONLY, not all three counters as originally assumed -- fire_count/channel_propensity remain 0 for a SEPARATE, deeper reason (manifestation_channel is NULL on all 57 live rows because _score_manifestation() is a documented B.10 stub, unrelated to this bug). Triaged separately as F-190.",
       "finding_id": "F-147",
-      "next_action": "Fix the case/vocabulary mismatch in mi_sambandha.py's composite_verdict check, GA-5 review, merge -- BEFORE executing the F-104/F-35 rebuild packet, per that packet's own D2 recommendation.",
-      "pr_url": null,
-      "prev_sha256": "f318275d051fbb91c5577ddc972de9cbc6838d4f2ee57e0d432c37e9113e3528",
-      "seq": 996,
+      "next_action": "Dispatch GA-5 review for PR #1439.",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1439",
+      "prev_sha256": "8c61002a17a5d98d90aa0e791c22d9504b2723183477aaaaf7947bb3e6a55f08",
+      "seq": 1000,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -1616,6 +1616,21 @@
       "status": "SERVICE_CLOSED",
       "terminal_status": "SERVICE_CLOSED"
     },
+    "F-190": {
+      "confidence": "MEDIUM",
+      "disposition": "PARKED",
+      "event_sha256": "15155d64551095c200359398d0609e9a8c2b55c548d938903b016ac9635eb654",
+      "event_type": "finding_status",
+      "evidence_summary": "Newly discovered during F-147's fix, disclosed as its own finding. _score_manifestation() (in the mi_sambandha/mi_pramana writer chain) is a documented B.10 stub -- it never populates manifestation_channel, which is NULL on all 57 live mimamsa_calibration rows. This makes fire_count/channel_propensity permanently 0 regardless of F-147's fix or any data rebuild, because the channel-matching logic has nothing to match against. This is DIFFERENT from F-147's case-bug (which affected scored_count too) -- F-147's fix corrects scored_count/evidence_grade but cannot correct this, since the underlying channel-scoring computation itself was never implemented, not just miscompared. Creates a real narration-honesty question: after F-147+rebuild, a row can read evidence_grade='empirical' with channel_propensity=0.0, which reads as 'measured, found zero' rather than the true 'never measured' -- a SS N.7 item 6 shape (honest null vs invented default) needing either an actual implementation of _score_manifestation() or an explicit null/sentinel distinguishing unmeasured from measured-zero.",
+      "finding_id": "F-190",
+      "next_action": "Native decision needed: implement _score_manifestation() for real (larger scope, likely its own design contract), or add an honest null/unmeasured sentinel to channel_propensity distinguishing it from a real zero measurement -- the smaller, more immediately correct fix per SS N.7 item 6.",
+      "pr_url": null,
+      "prev_sha256": "95350edfbdfa8533648656d09c6612ba07698050eb9b05a367c6269ea1afe6ea",
+      "seq": 1002,
+      "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
     "F-20": {
       "confidence": "HIGH",
       "disposition": "LANDED",
@@ -1836,14 +1851,14 @@
     "F-35": {
       "confidence": "HIGH",
       "disposition": "PARKED",
-      "event_sha256": "1b585d55d9a0bced129f0308122b47ea5bd1e3ac92247355740dab52ec2bd1b4",
+      "event_sha256": "95350edfbdfa8533648656d09c6612ba07698050eb9b05a367c6269ea1afe6ea",
       "event_type": "finding_status",
-      "evidence_summary": "Canonical-chart half covered by the same packet as F-104 (see that entry). MOST IMPORTANT FINDING: the packet's own verification predicate (V2) proves that even after this rebuild executes, F-35's deployed fix (PR #1409, mi_sambandha.py's scored_count gate) remains FUNCTIONALLY INERT -- a separate, newly-discovered bug (F-147: mi_sambandha.py checks lowercase 'confirmed'/'partial'/'denied' against composite_verdict, but production stores uppercase 'CONFIRMED'/'PARTIAL'/'REFUTED' -- both case AND vocabulary mismatch) means scored_count/fire_count/channel_propensity will read 0 for every row after the rebuild, making the empirical grading tier permanently unreachable. The rebuild WOULD deliver F-35's stated fail-closed goal (7 unearned 'empirical' rows correctly fall to assignment_only) but would NOT make the tier actually function -- reading a clean V2 predicate as 'F-35 resolved, grades are earned' would itself be a SS N.8 violation. F-35 must NOT be flipped terminal even after this packet executes, until F-147 is separately fixed and verified. Also: this packet covers the canonical chart 482012f1 only -- Abhinandan (1c826d5a) is a separate consent surface needing its own packet, not yet authored.",
+      "evidence_summary": "CORRECTION to prior record: F-147's fix (PR #1439) repairs scored_count/evidence_grade only -- fire_count/channel_propensity will STILL read 0 after F-147 lands AND the F-104/F-35 rebuild executes, because manifestation_channel is NULL on all live rows (_score_manifestation() is a documented B.10 stub, a third, independent gap beyond the original scored_count case bug). Consequence: post-rebuild, at least one row will read evidence_grade='empirical' with channel_propensity=0.0 -- meaning 'never measured', not 'measured as zero' -- a SS N.7 item 6 (honest null vs invented default) shape that needs its own native ruling on how to represent 'measured but the measurement itself is stubbed'. F-35 still should NOT be flipped terminal once F-147+rebuild land -- the bar has moved from 'F-147 unblocks it' to 'F-147 unblocks scored_count/evidence_grade specifically; channel_propensity needs F-190 separately.'",
       "finding_id": "F-35",
-      "next_action": "F-147 must land and be verified BEFORE this rebuild is treated as resolving F-35, per the packet's own D2 recommendation. Second-chart packet not yet started.",
+      "next_action": "Do not close F-35 on F-147+rebuild alone. F-190 (the B.10 stub) needs its own resolution or an explicit native ruling on the 'empirical grade with unmeasured propensity' shape before F-35 can be considered fully resolved.",
       "pr_url": null,
-      "prev_sha256": "381a6d88d22fc92e15056b681c6b9a10cd0a7999bae8d9dfa441dbc14675074f",
-      "seq": 994,
+      "prev_sha256": "2d0105325b76be6e46fc34a5a1809412aeb2f5afa1381c4bde6f6e765977c7d9",
+      "seq": 1001,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -2840,8 +2855,8 @@
   },
   "findings_morning_ship_ready_count": 0,
   "findings_terminal_count": 143,
-  "journal_head_seq": 999,
-  "journal_head_sha256": "8c61002a17a5d98d90aa0e791c22d9504b2723183477aaaaf7947bb3e6a55f08",
+  "journal_head_seq": 1002,
+  "journal_head_sha256": "15155d64551095c200359398d0609e9a8c2b55c548d938903b016ac9635eb654",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
