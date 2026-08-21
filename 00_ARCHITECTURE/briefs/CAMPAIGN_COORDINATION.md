@@ -5865,3 +5865,23 @@ tagged `pariprashna/p2-close`; no P3 lane has opened yet (P3 remains
 campaign's current active lease in this table (none scope to
 `00_ARCHITECTURE/briefs/pariprashna_swarm/**` or
 `00_ARCHITECTURE/CAPABILITY_MANIFEST.json` at this moment).
+
+## 2026-08-21 — PARIPRASHNA-P3-PREFLIGHT-2026-08-21 — lease CLOSED, PR #1428 merged
+
+Lease opened above is released. PR #1428 merged (`bbb6a0a7078baedc9a25b43e3c5d0ea49aad4335`,
+via merge queue, auto-merge): DD-24 filed (BINDING ON P3), DD-22 amended
+in place with the DD-22-before-P3-B sequencing ruling, DD-21's
+observed-delivery clause folded into P3's gate criteria, P3-D's
+receipt-hash parity subject named (persisted receipt object + wire/
+persisted agreement precondition test), `PLAN.yaml` P3-B/P3-D lane
+annotations added, `CAPABILITY_MANIFEST.json` fingerprints rotated for
+both amended docs. `drift_detector` (164 findings, exit=3) and
+`schema_validator` (42 violations, exit=3) both verified identical to the
+pre-edit baseline via stash comparison before push — zero new findings.
+No P3 lane opened. No model changed (item 5 of the originating amendment —
+the Gemini model-tier decision packet — was delivered in-session, not as
+a doc change; still on the native's desk).
+
+No file in this lease's scope was left mid-edit; the working worktree at
+`.clone/worktrees/pariprashna-p3-preflight` is being cleaned up now that
+everything is merged.
