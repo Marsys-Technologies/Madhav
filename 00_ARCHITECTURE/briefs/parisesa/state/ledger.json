@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 895,
+  "event_count": 896,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -416,16 +416,16 @@
     "F-117": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "8443b6672d297339ca9dd51484193acce542a76806080212b74fe9f74f4b1972",
+      "event_sha256": "0a7226742d60c252129e7e7019cca9571854f45c695a8c36b73f157342fdfa3d",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review: DO-NOT-MERGE, 1 blocking defect. domain_burden's fix credits weakest-constituent burden via min() over a CDLM cell's constituents -- but 21/30 cells have exactly ONE material constituent, making that min() vacuous (trivially 'weakest' with nothing to compare against). Concrete failure: Sun (shadbala-STRONGEST graha, ratio 1.694) got domain_burden=0.654 entirely from 17 solo-constituent cells -- read as fragile when no real comparison happened. Worse: the PR's own 'proof of independence' claim (both in the PR body and the design contract doc) cited this exact artifact as evidence the fix works -- backwards, since that number IS the bug. Same defect class (SS N.8) the PR exists to eliminate, just relocated. Everything else in the PR verified sound: motif_burden and contradiction_factor fixes both hold, A13 spec citation verified real and correctly implemented, NULL-propagation for contradiction_factor verified safe through both readers, both deferred-to-native items (nodes weighting, priority_class vocabulary) correctly scoped as needing a ruling. Correction dispatched: require >=2 real candidates before crediting a cell, correct the independence claim to reflect real post-fix numbers.",
+      "evidence_summary": "GA-5 review round 2: MERGE, no blocking defect. Round 1's vacuous-min() bug fix independently re-verified (>=2-candidate gate confirmed in the shared primitive, applies to both domain_burden AND motif_burden -- the same defect affected 21/120 motifs too). NULL semantics confirmed genuine (no coercion). Live numbers reproduced exactly, including reverting the gate to reproduce the original 3 buggy figures to the digit. Independence-claim withdrawal confirmed genuine and well-reasoned (Spearman -1.0 for motif_burden independently confirmed, honest weak-monotone-inverse for domain_burden), new native ruling raised on term weights. Reviewer's own explicit recommendation: ship domain_burden now with disclosure rather than withhold -- the only 'hold' alternative is the prior hardcoded 0.0, which is a fabricated constant wearing a measurement's clothes, strictly worse than an honest NULL. Full test suite hang independently confirmed pre-existing (reproduces on clean main with zero PR code present).",
       "finding_id": "F-117",
-      "next_action": "correction in flight -- re-review once pushed",
+      "next_action": "in merge queue, auto-merge armed",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1415",
-      "prev_sha256": "47c31564d70214e03615170eaf618cb01af75cf13bdaaf42e2bc6f6f58bd2ca5",
-      "seq": 888,
+      "prev_sha256": "b59d0399ff702b2630f7c846def141efc8c72c0df29a2dd6b3965eaf21268d53",
+      "seq": 896,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "DECISION_PARKED",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-118": {
@@ -2315,10 +2315,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 0,
+  "findings_morning_ship_ready_count": 1,
   "findings_terminal_count": 121,
-  "journal_head_seq": 895,
-  "journal_head_sha256": "b59d0399ff702b2630f7c846def141efc8c72c0df29a2dd6b3965eaf21268d53",
+  "journal_head_seq": 896,
+  "journal_head_sha256": "0a7226742d60c252129e7e7019cca9571854f45c695a8c36b73f157342fdfa3d",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
