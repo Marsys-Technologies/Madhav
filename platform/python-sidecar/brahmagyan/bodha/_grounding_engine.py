@@ -10,6 +10,7 @@ Produces grounding assignments with:
   - verse_citation: source_verse.verse_ref from matched rule
   - match_confidence: 0.0–1.0
   - match_rationale: why this rule was chosen
+  - caveats: the matched rule's own `caveats` field (provenance/attribution note), or None
 
 Grounding Algorithm:
   For each signal, extract key terms:
@@ -27,11 +28,14 @@ Grounding Algorithm:
 """
 from __future__ import annotations
 
+import logging
 import re
 import yaml
 import glob
 import os
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 # ── Constants ──────────────────────────────────────────────────────────────
 
@@ -150,7 +154,10 @@ def load_all_rules() -> list[dict[str, Any]]:
                     if r:
                         all_rules.append(r)
         except Exception:
-            pass
+            # §N.8: a silent `pass` here drops the whole file's rules with no
+            # trace — log loudly so a corpus YAML break is diagnosable instead
+            # of surfacing only as a mysteriously-missing rule downstream.
+            logger.error("load_all_rules: failed to parse rule file %s", f, exc_info=True)
 
     return all_rules
 
@@ -391,6 +398,7 @@ def ground_signal(signal: dict[str, Any], rules: list[dict[str, Any]]) -> dict[s
             "verse_citation": None,
             "match_confidence": 0.0,
             "match_rationale": "No rule in WS-3 corpus reached minimum score threshold (0.20)",
+            "caveats": None,
         }
 
     # Extract verse reference
@@ -421,6 +429,7 @@ def ground_signal(signal: dict[str, Any], rules: list[dict[str, Any]]) -> dict[s
             f"scope={best_rule.get('scope')} / school={best_rule.get('school')} / "
             f"score={score:.3f}"
         ),
+        "caveats": best_rule.get("caveats"),
     }
 
 
