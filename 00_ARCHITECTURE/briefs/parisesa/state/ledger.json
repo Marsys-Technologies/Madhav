@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 851,
+  "event_count": 852,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1158,15 +1158,16 @@
     },
     "F-38": {
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "975b0d31163484f267b702bbcb700cbf6d3ff42a06790d2d23053b4089cc8869",
+      "disposition": "LANDED",
+      "event_sha256": "bd175878676ef90d1a093d9d17fe43e932b8db2158b076c55965f5d664390605",
       "event_type": "finding_status",
-      "evidence_summary": "Held pending a narrow Pratinidhi baseline-aware ruling per the matrix's own next_action -- an owner/governance decision, not a repo-only repair task.",
+      "evidence_summary": "MAJOR CORRECTION under v3.1 closure directive investigation: prior ledger text ('owner/Pratinidhi ruling on baseline-aware check needed') was WRONG -- traced to generic governance-policy boilerplate ('CONTROL_GUARDED_NO_PR until a baseline repair or narrow Pratinidhi baseline-aware-check ruling is recorded', a broad campaign-wide gate, not F-38-specific) bleeding into this finding's own next_action text. F-38's REAL original claim (verified against source corpus): kala_now_get performs no entitlement/existence check on chart_id, leaking a raw upstream 404 error string verbatim for a nonexistent chart. Found the REAL candidate in codex-v4/liveness.json: bundle 'F38-kala-now-chart-authorization', state=code_verified_review_passed_control_guarded, scope='Kala NOW registration auth gate and one handler seam', evidence 29/29 focused tests passing. The actual blocker is MECHANICAL (produce a registry-shim Gate Baseline Receipt before normal PR), not an owner/scholarly ruling. Removed from the F-23/F-38 provisional-ruling-only carve-out (that carve-out was scoped to genuine scholarly/owner-authority items; F-38 never actually was one) -- being executed as a real GA-5 item instead.",
       "finding_id": "F-38",
-      "next_action": "owner/Pratinidhi ruling on baseline-aware check needed before any repair",
-      "prev_sha256": "5886d2d6320cc69a0155453bafae1127bed4cc01e3a10fe3d2628870a683110f",
-      "seq": 739,
-      "source_batch": "round7_triage",
+      "next_action": "locate/recover the actual F38-kala-now-chart-authorization candidate source, independently re-verify the 29/29 evidence claim, produce or bypass the Gate Baseline Receipt step, GA-5 review, merge, deploy",
+      "pr_url": null,
+      "prev_sha256": "e3397bca8b35e8b8837bdee4b6b7c0f8c7e63593703e44d0192dfbf54de6ee9a",
+      "seq": 852,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
@@ -2036,8 +2037,8 @@
   },
   "findings_morning_ship_ready_count": 0,
   "findings_terminal_count": 113,
-  "journal_head_seq": 851,
-  "journal_head_sha256": "e3397bca8b35e8b8837bdee4b6b7c0f8c7e63593703e44d0192dfbf54de6ee9a",
+  "journal_head_seq": 852,
+  "journal_head_sha256": "bd175878676ef90d1a093d9d17fe43e932b8db2158b076c55965f5d664390605",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
