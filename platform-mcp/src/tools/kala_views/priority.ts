@@ -243,6 +243,13 @@ const QuestionFrameSchema = z.object({
 interface RankedSignalRow {
   signal_id?: string
   signal_headline_text?: string
+  // F-131 label layer (call_service_wrappers.ts :698-717) — rides through at runtime
+  // regardless of whether this file's own type declares it; declaring it here is what
+  // makes the label layer visible to this file's own narration code (F-171).
+  signal_headline_label?: string
+  headline_label_mapped?: boolean
+  headline_fact_category?: string | null
+  catalog_only_unverified?: boolean
   computed_salience?: number
   domains_affected_array?: string[]
   signal_type_class?: string
@@ -282,16 +289,21 @@ function buildReading(params: {
   const top = rows[0] as RankedSignalRow
   const thesis =
     `Top priority signal for ${dateFrom}–${dateTo}${domainClause}: ` +
-    `"${top.signal_headline_text ?? top.signal_id ?? 'unlabeled signal'}"` +
+    `"${top.signal_headline_label ?? top.signal_headline_text ?? top.signal_id ?? 'unlabeled signal'}"` +
     (top.neutral_dignity_downranked ? ' (down-ranked: neutral-dignity descriptor).' : '.')
 
   // Up to 5 rows as evidence, in the already-computed priority_score order — no re-ranking.
+  // F-171: narrate from the curated signal_headline_label (fallback to raw signal_headline_text
+  // only when no mapping exists — F-131's headline_label_mapped:false path), and flag
+  // catalog_only_unverified rows in the claim itself (§N.6 item 1: a caller must never be able
+  // to read a catalog-only match as a confirmed finding).
   const evidence: ArgumentEvidence[] = rows.slice(0, 5).map((row): ArgumentEvidence => ({
     claim:
-      `${row.signal_headline_text ?? row.signal_id ?? 'unlabeled signal'} ` +
+      `${row.signal_headline_label ?? row.signal_headline_text ?? row.signal_id ?? 'unlabeled signal'} ` +
       `(priority_score ${round3(row.priority_score) ?? 'n/a'}` +
       (row.neutral_dignity_downranked ? ', neutral-dignity down-rank applied' : '') +
       (row.trigger_type ? `, trigger: ${row.trigger_type}` : '') +
+      (row.catalog_only_unverified ? ', CATALOG-ONLY — awaiting cross-verification, not a confirmed finding' : '') +
       ')',
     fact_ids: row.signal_id ? [row.signal_id] : [],
     // No `strength` assigned — see file header honesty note: priority_score is today's
@@ -317,13 +329,19 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
     'VIEW 5 — PRIORITIZE ("of everything, what matters most right now?"). Wraps the same ' +
     'ka_tulana priority-ranking service kala_priority_ranking_get calls, re-served on the ' +
     'elevated kala_* envelope: an argument-shaped reading (thesis/evidence/dissent/verdict/' +
-    'falsifier), question_frame echo, field_snapshot_id, tri-plane pointers into EXPLAIN/' +
+    'falsifier — narrated from the curated signal_headline_label, raw signal_headline_text ' +
+    'only as fallback), question_frame echo, field_snapshot_id, tri-plane pointers into EXPLAIN/' +
     'AHEAD/ELECT, 3-state coverage (honestly flags that the W2 five-axis salience vector — ' +
     'informativeness/consequence/relevance/reliability/actionability — is not yet built; ' +
     'today\'s priority_score is the legacy single-scalar salience), freshness, and ' +
      'calibration_maturity (read from the chart-level calibration authority; an honest zero ' +
      'means no fitted row). Neutral-dignity descriptor rows are down-ranked (not dropped), same as the ' +
-    'underlying capability. [ṢAḌ-DARŚANA W0.4]',
+    'underlying capability. F-131 disclosure receipt forwarded verbatim: internal computation-' +
+    'abstention marker rows are excluded from ranked_signals (excluded_internal_marker_count/' +
+    '_markers/_note — count+array always present, so a caller can tell "nothing excluded" from ' +
+    '"never evaluated"), unmapped_headline_count/_note flags rows with no glossary label, and ' +
+    'catalog_only_rows_in_page/_note flags rows awaiting cross-verification (never confirmed ' +
+    'findings, §N.6). [ṢAḌ-DARŚANA W0.4]',
     {
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'lahiri_chitrapaksha')."),
@@ -471,6 +489,22 @@ export function registerKalaPriorityTool(server: McpServer, principal: Principal
           signal_count: (payload['signal_count'] as number | undefined) ?? rows.length,
           neutral_dignity_downranked_count: payload['neutral_dignity_downranked_count'] ?? 0,
           ...(payload['neutral_dignity_note'] ? { neutral_dignity_note: payload['neutral_dignity_note'] } : {}),
+          // F-171: forward F-131's disclosure receipt verbatim — this facade calls the SAME
+          // capability that already does the exclusion correctly; it must not throw away the
+          // receipt that makes the exclusion honest. Mirrors call_service_wrappers.ts's shape
+          // exactly: count + array always present (so a caller can tell "nothing was excluded"
+          // apart from "exclusion was never evaluated", §N.8); `_note` only when non-zero.
+          excluded_internal_marker_count: (payload['excluded_internal_marker_count'] as number | undefined) ?? 0,
+          excluded_internal_markers: Array.isArray(payload['excluded_internal_markers'])
+            ? payload['excluded_internal_markers']
+            : [],
+          ...(payload['excluded_internal_marker_note']
+            ? { excluded_internal_marker_note: payload['excluded_internal_marker_note'] }
+            : {}),
+          unmapped_headline_count: (payload['unmapped_headline_count'] as number | undefined) ?? 0,
+          ...(payload['unmapped_headline_note'] ? { unmapped_headline_note: payload['unmapped_headline_note'] } : {}),
+          catalog_only_rows_in_page: (payload['catalog_only_rows_in_page'] as number | undefined) ?? 0,
+          ...(payload['catalog_only_note'] ? { catalog_only_note: payload['catalog_only_note'] } : {}),
           ...salienceVectorPayload,
         }
 
