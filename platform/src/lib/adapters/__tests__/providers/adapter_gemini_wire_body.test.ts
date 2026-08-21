@@ -161,10 +161,13 @@ describe('adapterGemini — real wire body (fetch-boundary, no ai/@ai-sdk/google
     expect(thinkingConfig?.thinkingLevel).toBe('high')
   })
 
-  test('thinking_level model with reasoning=disable sends thinkingLevel=minimal, not thinkingBudget=0', async () => {
+  test('thinking_level model with reasoning=disable sends thinkingLevel=low, not thinkingBudget=0 or minimal', async () => {
     // Gemini 3.x has no documented "disabled" thinking_level (docs enumerate only
-    // minimal/low/medium/high) — 'minimal' is the closest analog to thinkingBudget=0
-    // on 2.x models, and the two fields are not interchangeable on the wire.
+    // minimal/low/medium/high), and the two fields are not interchangeable on the
+    // wire. 'low', NOT 'minimal': confirmed live against the real API
+    // (dd20_e2e_verify.ts re-run, PARIPRASHNA-P3-PREFLIGHT Part B) that
+    // gemini-3.1-pro-preview rejects thinkingLevel='minimal' with HTTP 400
+    // ("Thinking level MINIMAL is not supported for this model").
     const meta = makeMeta({
       id: 'gemini-3.1-pro-preview',
       quirks: {
@@ -180,7 +183,7 @@ describe('adapterGemini — real wire body (fetch-boundary, no ai/@ai-sdk/google
     const body = await captureWireBody(makeReq({ reasoning: 'disable' }), meta)
     const thinkingConfig = (body.generationConfig as Record<string, unknown> | undefined)
       ?.thinkingConfig as Record<string, unknown> | undefined
-    expect(thinkingConfig?.thinkingLevel).toBe('minimal')
+    expect(thinkingConfig?.thinkingLevel).toBe('low')
     expect(thinkingConfig?.thinkingBudget).toBeUndefined()
   })
 
