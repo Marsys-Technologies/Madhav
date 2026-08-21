@@ -15,11 +15,22 @@
  */
 import { describe, it, expect, vi } from 'vitest'
 
+// getEffectiveModel hits the DB-backed runtime-override cache (2026-08-21
+// registry fold-in, PARIPRASHNA-P3-PREFLIGHT-2026-08-21 item 2a) — mocked to
+// the real STACK_ROUTING['gemini']['interpretation_sets'] default so these
+// tests stay a pure unit test, same pattern prashna_ask_synthesis.test.ts
+// and the checkpoint tests use. registry.ts itself is NOT mocked — getModelMeta
+// below still reads the real MODELS catalog.
+const mockGetEffectiveModel = vi.fn()
+vi.mock('@/lib/models/runtime_config', () => ({
+  getEffectiveModel: (...args: unknown[]) => mockGetEffectiveModel(...args),
+}))
+mockGetEffectiveModel.mockResolvedValue('gemini-2.5-flash')
+
 import {
   generateInterpretationSets,
   resolveInterpretationSetsModelId,
   parseAndValidateSets,
-  INTERPRETATION_SETS_MODEL_ID,
   type InterpretationLlmCaller,
 } from '../worker'
 import { getModelMeta } from '@/lib/models/registry'
@@ -284,20 +295,19 @@ describe('generateInterpretationSets — no significant judgments', () => {
   })
 })
 
-describe('resolveInterpretationSetsModelId — DD-17', () => {
-  it('resolves to the mid-tier gemini model, not the worker tier', () => {
-    expect(resolveInterpretationSetsModelId()).toBe('gemini-2.5-flash')
-    expect(INTERPRETATION_SETS_MODEL_ID).toBe('gemini-2.5-flash')
+describe('resolveInterpretationSetsModelId — DD-17 (folded into the registry 2026-08-21)', () => {
+  it('resolves to the mid-tier gemini model, not the worker tier', async () => {
+    expect(await resolveInterpretationSetsModelId()).toBe('gemini-2.5-flash')
   })
 
-  it('the resolved model exists in the registry as tier=mid', () => {
-    const meta = getModelMeta(resolveInterpretationSetsModelId())
+  it('the resolved model exists in the registry as tier=mid', async () => {
+    const meta = getModelMeta(await resolveInterpretationSetsModelId())
     expect(meta).toBeDefined()
     expect(meta?.tier).toBe('mid')
   })
 
-  it('is NOT the worker-tier model (regression guard for the DD-17 downgrade)', () => {
-    expect(resolveInterpretationSetsModelId()).not.toBe('gemini-2.5-flash-lite')
+  it('is NOT the worker-tier model (regression guard for the DD-17 downgrade)', async () => {
+    expect(await resolveInterpretationSetsModelId()).not.toBe('gemini-2.5-flash-lite')
   })
 })
 
