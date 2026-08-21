@@ -229,6 +229,30 @@ identity through the **existing** contracts:
 - **`grant_type=authorization_code`.** `consumeAuthCode` does surface a validated `authCode.uid`, but the auth code is single-use and consumed by that very call, so a per-uid bucket adds little over layer 1 against replay. Not added, rather than added for the appearance of coverage.
 - **`GET /oauth/callback`.** The Firebase session verification yields a uid, but charging it would let an attacker who can trigger callbacks burn a legitimate user's quota mid-login. Layer 1 only, on purpose.
 
+### 3.5 ⚠️ CRITICAL pre-existing defect found during review — disclosed, NOT fixed here
+
+Chasing layer 2's premise (§5b M-1) surfaced what appears to be a **live authentication bypass
+on the `client_credentials` grant**, entirely pre-existing and unrelated to rate limiting:
+
+- `platform/src/lib/mcp/oauth/store.ts` — `validateClient` verifies the secret only
+  `if (clientSecret !== undefined)`; otherwise it returns the client record as valid.
+- `platform-mcp/src/oauth/oauth_platform_client.ts` — `JSON.stringify({ client_id, client_secret })`
+  with an undefined secret **omits the key from the body entirely**, so the platform sees
+  `undefined` and takes the skip branch.
+- `platform-mcp/src/oauth/token.ts` — the `client_credentials` branch then issues real access and
+  refresh tokens for `clientResult.owner_uid`.
+
+Read together: `POST /mcp/oauth/token {"grant_type":"client_credentials","client_id":"<victim>"}`
+with **no secret at all** appears to return working tokens for that client's owner. `client_id`
+is not a secret — it travels in authorize requests and redirect URLs.
+
+The skip branch is commented "for auth-code flow without secret (PKCE), skip", which is a
+legitimate need for the authorization_code + PKCE path — so the fix is a scoping decision about
+which grant may omit a secret, not a one-line deletion, and it could break existing clients.
+**That decision belongs to whoever owns the OAuth flow, not to a rate-limiting PR.** It is
+therefore raised as its own finding rather than silently patched here. This ruling's only action
+was to stop layer 2 from *resting* on the false premise.
+
 ### 3.4 Two things found, disclosed, and deliberately NOT fixed here
 
 Both are pre-existing, both are out of RATE-07's declared scope, and neither is made worse by
@@ -348,6 +372,101 @@ write, and the property proved (row-level `ON CONFLICT` serialisation) is engine
 not instance configuration.
 
 ---
+
+## 5b. Adversarial review of the first implementation — what it broke, and the fixes
+
+The first implementation of this ruling was submitted to an independent adversarial security
+review before merge. It found **two HIGH-severity defects in the design itself**, and the design
+is better for them. Recording them here rather than quietly amending the code, because the
+first draft's reasoning was plausible and wrong in an instructive way.
+
+### H-1 — the route-wide global ceiling was a fleet-wide DoS lever
+
+The draft charged the per-IP bucket and the route-global ceiling **unconditionally and in
+parallel**, justified as "no free rides off a global rejection". That reasoning was exactly
+backwards. Because rejected requests are also charged (§3.1, deliberate), a single
+unauthenticated address could pour its *rejected* traffic into the shared global bucket:
+~120 requests — about two seconds — exhausts `oauth_register`'s 120/hour global ceiling, and
+**every user on earth gets 429 on client registration for the next hour**, held indefinitely
+at ~0.03 rps. The same trick at 10 rps blocks all new OAuth logins via `oauth_authorize`.
+
+**Fix:** the store now charges an *ordered* batch and **stops at the first denial**; the gate
+sends the per-IP bucket first. Any one address's contribution to the global ceiling is now
+capped at its own per-IP limit, which is what makes a route-wide ceiling meaningful rather
+than weaponisable. The "no free rides" property it replaced was worth nothing: a caller that
+is already denied gains nothing from the bucket it did not reach.
+
+### H-2 — the limiter amplified a flood into the shared database pool
+
+Every request — including ones certain to be rejected — made 2–3 separate HTTPS calls to the
+platform, each a full Next route invocation taking one of the `max: 10` pool connections that
+`amjis-web` shares with chart queries, chat, and session verification. All requests to a route
+contend on **one tuple** (the global bucket row), so the writes serialise fleet-wide. The
+control built to stop a flood had become the mechanism by which the flood took down the web app.
+
+**Fix, three parts:** (i) one **batched** call instead of N; (ii) stop-on-deny, so a denied
+request costs one statement rather than two; (iii) a per-instance **deny-only load shed** — a
+bounded map of "this subject was already told 429 until T" consulted *before* the round trip.
+The shed is not a second limiter and the distinction is load-bearing: **it can only deny.** It
+never grants, never extends a limit, and losing it entirely costs efficiency and nothing else.
+That is precisely why the per-instance state this ruling rejects as an *authority* (§4, rejected
+sub-option) is correct as a *shed valve*.
+
+### M-1 — layer 2's "already validated" premise was false
+
+The draft charged a per-client bucket on `params.client_id` immediately after
+`validateOAuthClient` returned valid, commenting that the id had "been proven". It had not.
+`validateClient` (`platform/src/lib/mcp/oauth/store.ts`) verifies the secret only
+`if (clientSecret !== undefined)`, and `JSON.stringify` **drops an undefined `client_secret`
+from the request body entirely** — so a `client_credentials` request carrying *no* secret skips
+verification and is reported valid. Charging on that reintroduced the exact quota-poisoning
+primitive layer 2 exists to prevent (client_ids are not secret; they travel in authorize
+requests and redirects).
+
+**Fix:** the charge is gated on a secret actually having been presented, and is keyed on
+`clientResult.owner_uid` — a value the validation step *returned* — rather than on request input
+reached through an alias. See §3.5 for the underlying defect, which this does **not** fix.
+
+### M-2 — key cardinality was not actually bounded
+
+`ROUTE_LIMITS`' comment claimed the global ceiling "bounds key cardinality under an IP-spray
+attack". It did not: the per-IP row was written in the same batch as the global charge, so
+rejecting on the ceiling never prevented the row. On IPv6 a routed /64 — the standard
+allocation for one VPS or home line — gives one attacker 2^64 free bucket keys.
+
+**Fix:** IPv6 is charged per **/64**. IPv4 is deliberately left **exact**, not grouped to /24:
+IPv4 addresses are scarce and cost money, so the free-multiplication threat does not exist
+there, while a blanket /24 would group up to 256 unrelated ISP customers for no gain. Grouping
+only where the threat is real keeps the limit honest.
+
+### M-3 — the prune was a floating promise on a CPU-throttled service
+
+`void pruneExpiredRateBuckets()` was fired and not awaited. `amjis-web` deploys **without**
+`--no-cpu-throttling`, so CPU stops the instant the response is sent and the GC was not
+guaranteed to run at all — quietly falsifying migration 580's "no cron job maintains this
+table". **Fix:** awaited, inside its own try/catch so it can never turn a completed decision
+into a 500. The test that covers it now forces `shouldPrune()` rather than relying on its 1-in-64
+randomness, which had made the original assertion vacuous ~98% of the time — itself a §N.8 defect.
+
+### L-1 / L-2 — two smaller but real ones
+
+- **`/refresh` and `/token` budgeted the same operation twice.** `/refresh` is a thin alias that
+  forces `grant_type=refresh_token` and delegates to the same `handleToken`. Two bucket keys
+  meant a refresh-token guessing attack got the per-IP budget *twice* — once per URL — while the
+  limit was advertised once. Fixed: `/refresh` shares the `oauth_token` key, and the now-dead
+  `oauth_refresh` profile was deleted rather than left as misleading config.
+- **A wiring test checked spelling, not the claim.** The guard asserting no raw request field is
+  ever charged read `not.toMatch(/req\.(body|query|headers)/)` — but `token.ts` does
+  `const params = req.body`, so the real call site passed `params.client_id`, a raw body field
+  wearing an alias, and the detector reported clean on the one call it most needed to catch.
+  This is §N.8 inside a test. Fixed by inverting it to an **allowlist**: the subject must be a
+  property of an object a validation step produced, alias or not.
+
+### What the review found clean
+
+Cross-instance atomicity and the SQL (no lost update, no injection, correct window arithmetic,
+no INTEGER overflow path), fail-closed behaviour on every traced exit, the new platform route's
+attack surface, regression risk to the existing OAuth flows, the F-06 change, and secrets.
 
 ## 6. A deployment race this ruling created, and closed
 

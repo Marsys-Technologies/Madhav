@@ -94,22 +94,28 @@ describe('RATE-07 — SQL structural contract', () => {
 
 describe('RATE-07 — bucket key', () => {
   it('is a fixed-width sha256 hex regardless of subject length', () => {
-    const short = bucketKey('oauth_token', 'ip', '1.2.3.4')
-    const huge = bucketKey('oauth_token', 'ip', 'x'.repeat(8192))
+    const short = bucketKey('oauth_token', 'ip', '1.2.3.4', 60)
+    const huge = bucketKey('oauth_token', 'ip', 'x'.repeat(8192), 60)
     expect(short).toMatch(/^[0-9a-f]{64}$/)
     expect(huge).toMatch(/^[0-9a-f]{64}$/)
   })
 
   it('separates route, kind and subject so they cannot be confused with each other', () => {
-    expect(bucketKey('oauth_token', 'ip', 'a')).not.toBe(bucketKey('oauth_token', 'client', 'a'))
-    expect(bucketKey('oauth_token', 'ip', 'a')).not.toBe(bucketKey('oauth_authorize', 'ip', 'a'))
+    expect(bucketKey('oauth_token', 'ip', 'a', 60)).not.toBe(bucketKey('oauth_token', 'client', 'a', 60))
+    expect(bucketKey('oauth_token', 'ip', 'a', 60)).not.toBe(bucketKey('oauth_authorize', 'ip', 'a', 60))
     // A subject containing the delimiter must not be able to impersonate
     // another (route, kind) pair.
-    expect(bucketKey('oauth_token', 'ip', 'a|b')).not.toBe(bucketKey('oauth_token|ip', 'ip', 'a' as never))
+    expect(bucketKey('oauth_token', 'ip', 'a|b', 60)).not.toBe(bucketKey('oauth_token|ip', 'ip', 'a' as never, 60))
+  })
+
+  it('separates windows, so one subject charged with two window lengths cannot collide', () => {
+    // Without this, `window_seconds = EXCLUDED.window_seconds` in the upsert
+    // would let a 3600s call silently re-stamp a 60s bucket's window.
+    expect(bucketKey('oauth_token', 'ip', 'a', 60)).not.toBe(bucketKey('oauth_token', 'ip', 'a', 3600))
   })
 
   it('is stable', () => {
-    expect(bucketKey('r', 'ip', 's')).toBe(bucketKey('r', 'ip', 's'))
+    expect(bucketKey('r', 'ip', 's', 60)).toBe(bucketKey('r', 'ip', 's', 60))
   })
 })
 
@@ -189,7 +195,7 @@ describe('RATE-07 — allowed/denied boundary', () => {
     await consumeRateBucket(args)
     const params = queryMock.mock.calls[0]![1] as unknown[]
     expect(params).toHaveLength(5)
-    expect(params[0]).toBe(bucketKey('oauth_authorize', 'ip', '1.1.1.1'))
+    expect(params[0]).toBe(bucketKey('oauth_authorize', 'ip', '1.1.1.1', 60))
     expect(params[1]).toBe('oauth_authorize')
     expect(params[2]).toBe('ip')
     expect(params[3]).toBe(60)

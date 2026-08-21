@@ -180,7 +180,14 @@ app.post('/mcp/oauth/authorize', oauthRateLimit('oauth_authorize'), (req, res) =
 // GET /mcp/oauth/callback — Firebase auth callback (stamps uid onto auth code)
 app.get('/mcp/oauth/callback', oauthRateLimit('oauth_callback'), (req, res) => void handleCallback(req, res))
 app.post('/mcp/oauth/token', oauthRateLimit('oauth_token'), (req, res) => void handleToken(req, res))
-app.post('/mcp/oauth/refresh', oauthRateLimit('oauth_refresh'), async (req: Request, res: Response) => {
+// RATE-07 (security review fix): gated with the 'oauth_token' key, NOT a
+// separate 'oauth_refresh' key. This route is a thin alias — it forces
+// grant_type=refresh_token and delegates to the very same handleToken that
+// POST /mcp/oauth/token serves. Two distinct bucket keys over one underlying
+// operation meant a refresh-token guessing attack got the per-IP budget TWICE
+// (once via /refresh, once via /token with grant_type=refresh_token). Sharing
+// the key makes the advertised limit the real limit.
+app.post('/mcp/oauth/refresh', oauthRateLimit('oauth_token'), async (req: Request, res: Response) => {
   // Redirect to token endpoint with grant_type=refresh_token
   req.body.grant_type = 'refresh_token'
   await handleToken(req, res)

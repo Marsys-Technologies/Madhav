@@ -81,7 +81,7 @@ describe.skipIf(!ENABLED)('RATE-07 — real Postgres', () => {
 
     // And exactly ONE row exists for the whole burst.
     const rows = await query('SELECT hits FROM mcp_rate_buckets WHERE bucket_key = $1', [
-      bucketKey(ROUTE, 'ip', subject),
+      bucketKey(ROUTE, 'ip', subject, 300),
     ])
     expect(rows.rows).toHaveLength(1)
     expect(Number(rows.rows[0]!.hits)).toBe(N)
@@ -96,13 +96,13 @@ describe.skipIf(!ENABLED)('RATE-07 — real Postgres', () => {
 
     expect(second.hits, 'a new window must reset the counter').toBe(1)
     const rows = await query('SELECT count(*)::int AS n FROM mcp_rate_buckets WHERE bucket_key = $1', [
-      bucketKey(ROUTE, 'ip', subject),
+      bucketKey(ROUTE, 'ip', subject, 1),
     ])
     expect(Number(rows.rows[0]!.n), 'a recurring subject must occupy exactly one row forever').toBe(1)
   }, 15_000)
 
   it('TTL CLEANUP removes long-expired rows and leaves live ones alone', async () => {
-    const deadKey = bucketKey(ROUTE, 'ip', `dead-${RUN}`)
+    const deadKey = bucketKey(ROUTE, 'ip', `dead-${RUN}`, 60)
     const liveSubject = `live-${RUN}`
 
     // A row already well past its grace interval.
@@ -119,7 +119,7 @@ describe.skipIf(!ENABLED)('RATE-07 — real Postgres', () => {
 
     const dead = await query('SELECT 1 FROM mcp_rate_buckets WHERE bucket_key = $1', [deadKey])
     const live = await query('SELECT 1 FROM mcp_rate_buckets WHERE bucket_key = $1', [
-      bucketKey(ROUTE, 'ip', liveSubject),
+      bucketKey(ROUTE, 'ip', liveSubject, 300),
     ])
     expect(dead.rows, 'an expired bucket must be reclaimed').toHaveLength(0)
     expect(live.rows, 'a live bucket must survive the prune').toHaveLength(1)
@@ -131,7 +131,7 @@ describe.skipIf(!ENABLED)('RATE-07 — real Postgres', () => {
     const rows = await query<{ aligned: boolean }>(
       `SELECT (extract(epoch FROM window_start)::bigint % 60 = 0) AS aligned
          FROM mcp_rate_buckets WHERE bucket_key = $1`,
-      [bucketKey(ROUTE, 'ip', subject)]
+      [bucketKey(ROUTE, 'ip', subject, 60)]
     )
     expect(rows.rows[0]!.aligned, 'window_start must land on a window boundary').toBe(true)
   }, 15_000)
@@ -140,7 +140,7 @@ describe.skipIf(!ENABLED)('RATE-07 — real Postgres', () => {
     const subject = `secret-ip-${RUN}`
     await consumeRateBucket({ route: ROUTE, subjectKind: 'ip', subject, limit: 5, windowSeconds: 300 })
     const rows = await query('SELECT * FROM mcp_rate_buckets WHERE bucket_key = $1', [
-      bucketKey(ROUTE, 'ip', subject),
+      bucketKey(ROUTE, 'ip', subject, 300),
     ])
     expect(JSON.stringify(rows.rows[0])).not.toContain(subject)
   }, 15_000)

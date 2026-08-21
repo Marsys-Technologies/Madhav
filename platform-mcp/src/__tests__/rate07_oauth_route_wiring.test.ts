@@ -27,12 +27,20 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const SERVER_SRC = readFileSync(resolve(HERE, '../server.ts'), 'utf8')
 const TOKEN_SRC = readFileSync(resolve(HERE, '../oauth/token.ts'), 'utf8')
 
-/** The five OAuth mutation endpoints, and the route key each must be gated with. */
+/**
+ * The five OAuth mutation endpoints, and the route key each must be gated with.
+ *
+ * NOTE `/refresh` shares `oauth_token`, it does not have its own key: it forces
+ * grant_type=refresh_token and delegates to the same handleToken that `/token`
+ * serves. Giving it a separate bucket handed a refresh-token guessing attack the
+ * per-IP budget twice (once per URL) while advertising it once — found by
+ * adversarial review.
+ */
 const MUTATION_ROUTES: Array<{ method: 'post' | 'get'; path: string; key: keyof typeof ROUTE_LIMITS }> = [
   { method: 'post', path: '/mcp/oauth/authorize', key: 'oauth_authorize' },
   { method: 'get',  path: '/mcp/oauth/callback',  key: 'oauth_callback' },
   { method: 'post', path: '/mcp/oauth/token',     key: 'oauth_token' },
-  { method: 'post', path: '/mcp/oauth/refresh',   key: 'oauth_refresh' },
+  { method: 'post', path: '/mcp/oauth/refresh',   key: 'oauth_token' },
   { method: 'post', path: '/mcp/oauth/register',  key: 'oauth_register' },
 ]
 
@@ -115,11 +123,35 @@ describe('RATE-07 — post-validation charging happens after validation, never b
     expect(chargeAt).toBeGreaterThan(invalidClientAt)
   })
 
-  it('chargeValidatedSubject is never called with a raw request field', () => {
+  it('chargeValidatedSubject only ever receives a subject sourced from a VALIDATION RESULT', () => {
+    // This assertion used to read `not.toMatch(/req\.(body|query|headers)/)`.
+    // An adversarial review showed that was a §N.8 defect in the detector
+    // itself: `token.ts` does `const params = req.body`, so the real call site
+    // passes `params.client_id` — a raw body field wearing an alias — and the
+    // regex reported clean on the one call it most needed to catch. Checking
+    // spelling is not checking the claim.
+    //
+    // Inverted to an ALLOWLIST: the subject must be a property of an object
+    // that a validation step returned or produced. A new call site passing
+    // anything else fails, alias or not.
+    const ALLOWED_SUBJECT_SOURCES = /^(principal|clientResult|authCode|tokenRecord)\./
+
+    let found = 0
     for (const src of [SERVER_SRC, TOKEN_SRC]) {
-      for (const m of src.matchAll(/chargeValidatedSubject\([^)]*\)/g)) {
-        expect(m[0], 'a validated subject must not come straight off req').not.toMatch(/req\.(body|query|headers)/)
+      for (const m of src.matchAll(/chargeValidatedSubject\(\s*([^)]*?)\s*\)/g)) {
+        const args = m[1]!.split(',').map((a) => a.trim())
+        expect(args.length, `unexpected arity in: ${m[0]}`).toBe(4)
+        const subjectArg = args[3]!
+        found += 1
+        expect(
+          subjectArg,
+          `chargeValidatedSubject subject "${subjectArg}" must come from a validation result ` +
+            `(one of ${ALLOWED_SUBJECT_SOURCES.source}), not from request input — even via an alias`,
+        ).toMatch(ALLOWED_SUBJECT_SOURCES)
       }
     }
+    // Guard the guard: if the call sites are ever renamed away, this test must
+    // fail loudly rather than pass vacuously over zero matches.
+    expect(found, 'expected at least one chargeValidatedSubject call site to check').toBeGreaterThan(0)
   })
 })

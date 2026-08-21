@@ -23,7 +23,8 @@ import type { Request, Response } from 'express'
 import {
   deriveClientIdentity,
   normaliseIp,
-  consumeBucket,
+  rateLimitSubjectForIp,
+  consumeBuckets,
   chargeValidatedSubject,
   oauthRateLimit,
   sendRateLimited,
@@ -32,6 +33,8 @@ import {
   ROUTE_LIMITS,
   rateLimitEnabled,
   trustedProxyHops,
+  shedRemaining,
+  __resetDenyCacheForTests,
 } from '../lib/oauth_rate_limit.js'
 
 // ── Test doubles ─────────────────────────────────────────────────────────────
@@ -72,13 +75,51 @@ function makeRes(): FakeRes & Response {
   return res as FakeRes & Response
 }
 
-/** Build a fetch stub that returns a decision body. */
-function decisionFetch(decision: Record<string, unknown>, status = 200) {
+/** Build a fetch stub returning a raw body (used for malformed-body cases). */
+function rawFetch(body: unknown, status = 200) {
   return vi.fn(async () => ({
     ok: status >= 200 && status < 300,
     status,
-    json: async () => decision,
+    json: async () => body,
   })) as unknown as typeof fetch
+}
+
+/**
+ * Build a fetch stub that models the store's BATCH contract, including its
+ * server-side stop-on-deny: buckets are charged in order and evaluation halts
+ * at the first denial, so `decisions` is shorter than `buckets` when denied.
+ * `deny` decides, per subject_kind, whether that bucket rejects.
+ */
+function batchFetch(deny: (subjectKind: string) => boolean, retryAfter = 42) {
+  return vi.fn(async (_url: string, init: { body: string }) => {
+    const specs = JSON.parse(init.body).buckets as Array<Record<string, unknown>>
+    const decisions: Array<Record<string, unknown>> = []
+    let allowed = true
+    for (const s of specs) {
+      const kind = String(s['subject_kind'])
+      const ok = !deny(kind)
+      decisions.push({
+        subject_kind: kind,
+        allowed: ok,
+        limit: s['limit'],
+        hits: ok ? 1 : Number(s['limit']) + 1,
+        remaining: ok ? Number(s['limit']) - 1 : 0,
+        window_seconds: s['window_seconds'],
+        retry_after_seconds: retryAfter,
+      })
+      if (!ok) { allowed = false; break }   // stop-on-deny
+    }
+    return { ok: true, status: 200, json: async () => ({ allowed, decisions }) }
+  }) as unknown as typeof fetch
+}
+
+/** Every bucket allowed. */
+const allowAll = () => batchFetch(() => false)
+
+/** Parse the bucket specs sent on a given fetch call. */
+function sentBuckets(spy: unknown, callIndex = 0): Array<Record<string, unknown>> {
+  const calls = (spy as { mock: { calls: unknown[][] } }).mock.calls
+  return JSON.parse((calls[callIndex]![1] as { body: string }).body).buckets
 }
 
 const ORIGINAL_ENV = { ...process.env }
@@ -88,6 +129,7 @@ beforeEach(() => {
   process.env.MCP_INTERNAL_TOKEN = 'internal-test-token'
   delete process.env.MCP_TRUSTED_PROXY_HOPS
   delete process.env.MCP_OAUTH_RATE_LIMIT_ENABLED
+  __resetDenyCacheForTests()
 })
 
 afterEach(() => {
@@ -179,6 +221,52 @@ describe('RATE-07 §1 — client identity is not caller-assertable', () => {
     expect(normaliseIp('  203.0.113.9  ')).toBe('203.0.113.9')
     // A bare IPv6 must survive intact — it has many colons, not one.
     expect(normaliseIp('2001:db8::1')).toBe('2001:db8::1')
+    // Both spellings of an IPv4-mapped address must collapse to one bucket.
+    expect(normaliseIp('0:0:0:0:0:ffff:203.0.113.9')).toBe('203.0.113.9')
+    expect(normaliseIp('::FFFF:203.0.113.9')).toBe('203.0.113.9')
+  })
+})
+
+describe('RATE-07 §1b — bucket subject bounds key cardinality', () => {
+  it('charges IPv6 per /64 — an attacker cannot mint free buckets from its own prefix', () => {
+    // A routed /64 is the standard allocation for one VPS or one home line, so
+    // per-exact-address keying gives one attacker 2^64 free rows. This is the
+    // cardinality bound the migration's boundedness claim actually rests on.
+    const a = rateLimitSubjectForIp('2001:db8:abcd:1234:0:0:0:1')
+    const b = rateLimitSubjectForIp('2001:db8:abcd:1234:ffff:ffff:ffff:ffff')
+    expect(a).toBe(b)
+    expect(a).toMatch(/\/64$/)
+  })
+
+  it('still separates different /64s', () => {
+    expect(rateLimitSubjectForIp('2001:db8:abcd:1234::1'))
+      .not.toBe(rateLimitSubjectForIp('2001:db8:abcd:9999::1'))
+  })
+
+  it('handles compressed IPv6 without collapsing unrelated prefixes', () => {
+    expect(rateLimitSubjectForIp('2001:db8::1')).toBe(rateLimitSubjectForIp('2001:db8:0:0::abcd'))
+    expect(rateLimitSubjectForIp('2001:db8::1')).not.toBe(rateLimitSubjectForIp('2001:db9::1'))
+    expect(rateLimitSubjectForIp('::1')).toMatch(/\/64$/)
+  })
+
+  it('leaves IPv4 EXACT — grouping /24 would punish unrelated ISP customers for no gain', () => {
+    // IPv4 addresses are scarce and cost money, so the free-multiplication
+    // threat that motivates prefix grouping does not exist there.
+    expect(rateLimitSubjectForIp('203.0.113.9')).toBe('203.0.113.9')
+    expect(rateLimitSubjectForIp('203.0.113.9')).not.toBe(rateLimitSubjectForIp('203.0.113.10'))
+  })
+
+  it('passes through the honest "unknown" sentinel unchanged', () => {
+    expect(rateLimitSubjectForIp('unknown')).toBe('unknown')
+  })
+
+  it('the gate charges the PREFIX subject, not the raw address', async () => {
+    const fetchSpy = allowAll()
+    vi.stubGlobal('fetch', fetchSpy)
+    await oauthRateLimit('oauth_authorize')(
+      makeReq({ 'x-forwarded-for': '2001:db8:abcd:1234::5' }), makeRes(), vi.fn(),
+    )
+    expect(String(sentBuckets(fetchSpy)[0]!['subject'])).toMatch(/\/64$/)
   })
 })
 
@@ -186,7 +274,7 @@ describe('RATE-07 §1 — client identity is not caller-assertable', () => {
 
 describe('RATE-07 §2 — no charging of unvalidated identifiers', () => {
   it('the pre-handler gate charges ONLY ip and route_global — never a body-supplied client_id', async () => {
-    const fetchSpy = decisionFetch({ allowed: true, limit: 30, hits: 1, remaining: 29, window_seconds: 60, retry_after_seconds: 60 })
+    const fetchSpy = allowAll()
     vi.stubGlobal('fetch', fetchSpy)
 
     const req = makeReq({ 'x-forwarded-for': '203.0.113.9' })
@@ -197,58 +285,48 @@ describe('RATE-07 §2 — no charging of unvalidated identifiers', () => {
     await oauthRateLimit('oauth_authorize')(req, res, next)
 
     expect(next).toHaveBeenCalledOnce()
-    const kinds = (fetchSpy as unknown as { mock: { calls: unknown[][] } }).mock.calls.map(
-      (c) => JSON.parse((c[1] as { body: string }).body).subject_kind,
-    )
-    expect(new Set(kinds)).toEqual(new Set(['ip', 'route_global']))
-    const subjects = (fetchSpy as unknown as { mock: { calls: unknown[][] } }).mock.calls.map(
-      (c) => JSON.parse((c[1] as { body: string }).body).subject,
-    )
-    // The victim's client_id must appear NOWHERE in what was charged.
-    expect(subjects).not.toContain('victim-client-id')
+    const buckets = sentBuckets(fetchSpy)
+    expect(buckets.map((b) => b['subject_kind'])).toEqual(['ip', 'route_global'])
+    expect(buckets.map((b) => b['subject'])).not.toContain('victim-client-id')
+  })
+
+  it('sends ONE batched call, not one call per bucket (flood amplification fix)', async () => {
+    const fetchSpy = allowAll()
+    vi.stubGlobal('fetch', fetchSpy)
+    await oauthRateLimit('oauth_authorize')(makeReq({ 'x-forwarded-for': '203.0.113.9' }), makeRes(), vi.fn())
+    expect((fetchSpy as unknown as { mock: { calls: unknown[] } }).mock.calls).toHaveLength(1)
+    expect(sentBuckets(fetchSpy)).toHaveLength(2)
+  })
+
+  it('charges the per-IP bucket FIRST so stop-on-deny protects the shared global ceiling', async () => {
+    const fetchSpy = allowAll()
+    vi.stubGlobal('fetch', fetchSpy)
+    await oauthRateLimit('oauth_register')(makeReq({ 'x-forwarded-for': '203.0.113.9' }), makeRes(), vi.fn())
+    // Order is the contract that makes the route-wide ceiling non-weaponisable.
+    expect(sentBuckets(fetchSpy)[0]!['subject_kind']).toBe('ip')
   })
 
   it('chargeValidatedSubject refuses an empty subject rather than merging callers into one bucket', async () => {
-    const fetchSpy = decisionFetch({ allowed: true })
+    const fetchSpy = allowAll()
     vi.stubGlobal('fetch', fetchSpy)
     const res = makeRes()
 
     // Fails CLOSED rather than throwing: Express 4 does not catch rejections
-    // from an async handler, so a throw would hang the request rather than
-    // answer it. The refusal must still never reach the store.
+    // from an async handler, so a throw would hang the request.
     await expect(chargeValidatedSubject(res, 'oauth_token', 'client', '')).resolves.toBe(false)
     expect(res.statusCode).toBe(503)
     expect((fetchSpy as unknown as { mock: { calls: unknown[] } }).mock.calls).toHaveLength(0)
   })
 
-  it('the gate answers with 503 rather than hanging if identity derivation itself throws', async () => {
-    vi.stubGlobal('fetch', decisionFetch({ allowed: true }))
-    // A request object whose header access explodes — stands in for any
-    // unexpected throw inside the middleware.
-    const hostile = {
-      get headers(): never { throw new Error('boom') },
-      socket: {},
-    } as unknown as Request
-    const res = makeRes()
-    const next = vi.fn()
-
-    await expect(oauthRateLimit('oauth_authorize')(hostile, res, next)).resolves.toBeUndefined()
-    expect(next).not.toHaveBeenCalled()
-    expect(res.statusCode).toBe(503)
-  })
-
   it('chargeValidatedSubject charges the exact validated subject under the right kind', async () => {
-    const fetchSpy = decisionFetch({ allowed: true, limit: 120, hits: 3, remaining: 117, window_seconds: 60, retry_after_seconds: 60 })
+    const fetchSpy = allowAll()
     vi.stubGlobal('fetch', fetchSpy)
 
     const res = makeRes()
-    const ok = await chargeValidatedSubject(res, 'oauth_token', 'client', 'proven-client-id')
-    expect(ok).toBe(true)
-
-    const sent = JSON.parse(
-      ((fetchSpy as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]![1] as { body: string }).body,
-    )
-    expect(sent).toMatchObject({ route: 'oauth_token', subject_kind: 'client', subject: 'proven-client-id' })
+    expect(await chargeValidatedSubject(res, 'oauth_token', 'principal', 'proven-owner-uid')).toBe(true)
+    expect(sentBuckets(fetchSpy)[0]).toMatchObject({
+      route: 'oauth_token', subject_kind: 'principal', subject: 'proven-owner-uid',
+    })
   })
 })
 
@@ -260,7 +338,6 @@ describe('RATE-07 §3 — 429 and Retry-After', () => {
     sendRateLimited(res, 17.2, 'oauth_authorize')
     expect(res.statusCode).toBe(429)
     expect(res.headers['Retry-After']).toBe('18')
-    expect(Number.isInteger(Number(res.headers['Retry-After']))).toBe(true)
     expect(res.body).toMatchObject({ error: 'rate_limit_exceeded', retry_after_seconds: 18 })
     expect(String((res.body as { error_description: string }).error_description)).toContain('oauth_authorize')
   })
@@ -272,21 +349,7 @@ describe('RATE-07 §3 — 429 and Retry-After', () => {
   })
 
   it('the gate 429s when the per-IP bucket is exhausted, and does NOT call the handler', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (_url: string, init: { body: string }) => {
-        const kind = JSON.parse(init.body).subject_kind
-        return {
-          ok: true,
-          status: 200,
-          json: async () =>
-            kind === 'ip'
-              ? { allowed: false, limit: 30, hits: 31, remaining: 0, window_seconds: 60, retry_after_seconds: 42 }
-              : { allowed: true, limit: 600, hits: 5, remaining: 595, window_seconds: 60, retry_after_seconds: 60 },
-        }
-      }) as unknown as typeof fetch,
-    )
-
+    vi.stubGlobal('fetch', batchFetch((k) => k === 'ip', 42))
     const res = makeRes()
     const next = vi.fn()
     await oauthRateLimit('oauth_authorize')(makeReq({ 'x-forwarded-for': '203.0.113.9' }), res, next)
@@ -297,82 +360,113 @@ describe('RATE-07 §3 — 429 and Retry-After', () => {
   })
 
   it('the gate 429s on the route-wide global ceiling even when the per-IP bucket is fine', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (_url: string, init: { body: string }) => {
-        const kind = JSON.parse(init.body).subject_kind
-        return {
-          ok: true,
-          status: 200,
-          json: async () =>
-            kind === 'route_global'
-              ? { allowed: false, limit: 600, hits: 601, remaining: 0, window_seconds: 60, retry_after_seconds: 12 }
-              : { allowed: true, limit: 30, hits: 1, remaining: 29, window_seconds: 60, retry_after_seconds: 60 },
-        }
-      }) as unknown as typeof fetch,
-    )
-
+    vi.stubGlobal('fetch', batchFetch((k) => k === 'route_global', 12))
     const res = makeRes()
     const next = vi.fn()
     await oauthRateLimit('oauth_authorize')(makeReq({ 'x-forwarded-for': '203.0.113.9' }), res, next)
 
     expect(next).not.toHaveBeenCalled()
     expect(res.statusCode).toBe(429)
+    expect(res.headers['Retry-After']).toBe('12')
   })
 
-  it('charges BOTH buckets even when one already denies (no free rides off a global rejection)', async () => {
-    const fetchSpy = vi.fn(async (_url: string, init: { body: string }) => {
-      const kind = JSON.parse(init.body).subject_kind
-      return {
-        ok: true,
-        status: 200,
-        json: async () =>
-          kind === 'route_global'
-            ? { allowed: false, limit: 600, hits: 601, remaining: 0, window_seconds: 60, retry_after_seconds: 12 }
-            : { allowed: true, limit: 30, hits: 1, remaining: 29, window_seconds: 60, retry_after_seconds: 60 },
-      }
-    }) as unknown as typeof fetch
+  it('SECURITY: a per-IP denial does NOT charge the shared route_global bucket', async () => {
+    // The fleet-wide DoS lever an adversarial review found in the first draft:
+    // one address pouring its REJECTED traffic into the global ceiling could
+    // 429 client registration for every user on earth. Stop-on-deny caps any
+    // one address's contribution to the global bucket at its own per-IP limit.
+    const fetchSpy = batchFetch((k) => k === 'ip')
     vi.stubGlobal('fetch', fetchSpy)
 
+    await oauthRateLimit('oauth_register')(makeReq({ 'x-forwarded-for': '203.0.113.9' }), makeRes(), vi.fn())
+
+    const body = await (await (fetchSpy as unknown as typeof fetch)(
+      'x' as never, { body: JSON.stringify({ buckets: sentBuckets(fetchSpy) }) } as never,
+    )).json() as { decisions: Array<{ subject_kind: string }> }
+    // The store charged the ip bucket and STOPPED — route_global never charged.
+    expect(body.decisions.map((d) => d.subject_kind)).toEqual(['ip'])
+  })
+})
+
+// ── 3b. Deny-only load shed ──────────────────────────────────────────────────
+
+describe('RATE-07 §3b — deny-only load shed (flood does not amplify into the DB pool)', () => {
+  it('a repeat offender is refused WITHOUT a further store round trip', async () => {
+    const fetchSpy = batchFetch((k) => k === 'ip', 30)
+    vi.stubGlobal('fetch', fetchSpy)
+    const gate = oauthRateLimit('oauth_authorize')
+
+    const r1 = makeRes()
+    await gate(makeReq({ 'x-forwarded-for': '203.0.113.9' }), r1, vi.fn())
+    expect(r1.statusCode).toBe(429)
+    const callsAfterFirst = (fetchSpy as unknown as { mock: { calls: unknown[] } }).mock.calls.length
+
+    const r2 = makeRes()
+    const next2 = vi.fn()
+    await gate(makeReq({ 'x-forwarded-for': '203.0.113.9' }), r2, next2)
+    expect(r2.statusCode).toBe(429)
+    expect(next2).not.toHaveBeenCalled()
+    // The whole point: no additional call to the platform / DB pool.
+    expect((fetchSpy as unknown as { mock: { calls: unknown[] } }).mock.calls).toHaveLength(callsAfterFirst)
+  })
+
+  it('the shed can only DENY — it never lets a request through on its own', async () => {
+    // A cold cache decides nothing; the store is still consulted.
+    expect(shedRemaining('oauth_authorize', '203.0.113.9')).toBe(0)
+    const fetchSpy = allowAll()
+    vi.stubGlobal('fetch', fetchSpy)
+    const next = vi.fn()
+    await oauthRateLimit('oauth_authorize')(makeReq({ 'x-forwarded-for': '203.0.113.9' }), makeRes(), next)
+    expect(next).toHaveBeenCalledOnce()
+    expect((fetchSpy as unknown as { mock: { calls: unknown[] } }).mock.calls).toHaveLength(1)
+  })
+
+  it('a route_global denial is NOT cached per-subject (one global outage must not fan out)', async () => {
+    const fetchSpy = batchFetch((k) => k === 'route_global', 30)
+    vi.stubGlobal('fetch', fetchSpy)
+    const gate = oauthRateLimit('oauth_authorize')
+
+    await gate(makeReq({ 'x-forwarded-for': '203.0.113.9' }), makeRes(), vi.fn())
+    expect(shedRemaining('oauth_authorize', '203.0.113.9')).toBe(0)
+  })
+
+  it('the shed does not leak across routes or subjects', async () => {
+    vi.stubGlobal('fetch', batchFetch((k) => k === 'ip', 30))
     await oauthRateLimit('oauth_authorize')(makeReq({ 'x-forwarded-for': '203.0.113.9' }), makeRes(), vi.fn())
-    expect((fetchSpy as unknown as { mock: { calls: unknown[] } }).mock.calls).toHaveLength(2)
+    expect(shedRemaining('oauth_authorize', '203.0.113.9')).toBeGreaterThan(0)
+    expect(shedRemaining('oauth_token', '203.0.113.9')).toBe(0)
+    expect(shedRemaining('oauth_authorize', '198.51.100.1')).toBe(0)
   })
 })
 
 // ── 4. Fail-closed ───────────────────────────────────────────────────────────
 
 describe('RATE-07 §4 — fail CLOSED on store failure', () => {
-  it('consumeBucket throws (never returns allowed) when the store is unreachable', async () => {
+  const ONE = [{ route: 'oauth_token', subjectKind: 'ip' as const, subject: '1.1.1.1', limit: 10, windowSeconds: 60 }]
+
+  it('consumeBuckets throws (never returns allowed) when the store is unreachable', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('ECONNREFUSED') }) as unknown as typeof fetch)
-    await expect(
-      consumeBucket({ route: 'oauth_token', subjectKind: 'ip', subject: '1.1.1.1', limit: 10, windowSeconds: 60 }),
-    ).rejects.toBeInstanceOf(RateLimitStoreUnavailable)
+    await expect(consumeBuckets(ONE)).rejects.toBeInstanceOf(RateLimitStoreUnavailable)
   })
 
-  it('consumeBucket throws on a non-2xx store response', async () => {
-    vi.stubGlobal('fetch', decisionFetch({ error: 'boom' }, 500))
-    await expect(
-      consumeBucket({ route: 'oauth_token', subjectKind: 'ip', subject: '1.1.1.1', limit: 10, windowSeconds: 60 }),
-    ).rejects.toBeInstanceOf(RateLimitStoreUnavailable)
+  it('consumeBuckets throws on a non-2xx store response', async () => {
+    vi.stubGlobal('fetch', rawFetch({ error: 'boom' }, 500))
+    await expect(consumeBuckets(ONE)).rejects.toBeInstanceOf(RateLimitStoreUnavailable)
   })
 
-  it('consumeBucket throws on a body with no explicit boolean decision (never coerces)', async () => {
-    for (const body of [{}, { allowed: 'yes' }, { allowed: 1 }, { allowed: null }]) {
-      vi.stubGlobal('fetch', decisionFetch(body))
-      await expect(
-        consumeBucket({ route: 'oauth_token', subjectKind: 'ip', subject: '1.1.1.1', limit: 10, windowSeconds: 60 }),
-      ).rejects.toBeInstanceOf(RateLimitStoreUnavailable)
+  it('consumeBuckets throws on a body with no explicit boolean decision (never coerces)', async () => {
+    for (const body of [{}, { allowed: 'yes', decisions: [] }, { allowed: 1, decisions: [] }, { allowed: null }, { allowed: true }]) {
+      vi.stubGlobal('fetch', rawFetch(body))
+      await expect(consumeBuckets(ONE)).rejects.toBeInstanceOf(RateLimitStoreUnavailable)
     }
   })
 
-  it('consumeBucket throws on a non-JSON body', async () => {
+  it('consumeBuckets throws on a non-JSON body', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ({ ok: true, status: 200, json: async () => { throw new Error('not json') } })) as unknown as typeof fetch,
     )
-    await expect(
-      consumeBucket({ route: 'oauth_token', subjectKind: 'ip', subject: '1.1.1.1', limit: 10, windowSeconds: 60 }),
-    ).rejects.toBeInstanceOf(RateLimitStoreUnavailable)
+    await expect(consumeBuckets(ONE)).rejects.toBeInstanceOf(RateLimitStoreUnavailable)
   })
 
   it('the gate 503s (does NOT pass through) when the store is down', async () => {
@@ -398,16 +492,26 @@ describe('RATE-07 §4 — fail CLOSED on store failure', () => {
   it('chargeValidatedSubject fails closed too, returning false after writing 503', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('down') }) as unknown as typeof fetch)
     const res = makeRes()
-    const ok = await chargeValidatedSubject(res, 'oauth_register', 'principal', 'uid-123')
-    expect(ok).toBe(false)
+    expect(await chargeValidatedSubject(res, 'oauth_register', 'principal', 'uid-123')).toBe(false)
+    expect(res.statusCode).toBe(503)
+  })
+
+  it('the gate answers with 503 rather than hanging if identity derivation itself throws', async () => {
+    vi.stubGlobal('fetch', allowAll())
+    const hostile = {
+      get headers(): never { throw new Error('boom') },
+      socket: {},
+    } as unknown as Request
+    const res = makeRes()
+    const next = vi.fn()
+
+    await expect(oauthRateLimit('oauth_authorize')(hostile, res, next)).resolves.toBeUndefined()
+    expect(next).not.toHaveBeenCalled()
     expect(res.statusCode).toBe(503)
   })
 
   it('the kill switch is DEFAULT ON, and only an explicit "false" disables it', () => {
     expect(rateLimitEnabled()).toBe(true)
-    // Anything that is not literally "false" leaves the control ON — including
-    // an empty string and the near-misses an operator might reach for ('0',
-    // 'no', 'off'). A security control must not be switchable off by accident.
     for (const v of ['', 'true', 'TRUE', '0', 'no', 'off', 'yes', 'disabled']) {
       process.env.MCP_OAUTH_RATE_LIMIT_ENABLED = v
       expect(rateLimitEnabled(), `value ${JSON.stringify(v)} must NOT disable the limiter`).toBe(true)
@@ -420,7 +524,7 @@ describe('RATE-07 §4 — fail CLOSED on store failure', () => {
 
   it('when disabled, the gate passes through and makes NO store call', async () => {
     process.env.MCP_OAUTH_RATE_LIMIT_ENABLED = 'false'
-    const fetchSpy = decisionFetch({ allowed: true })
+    const fetchSpy = allowAll()
     vi.stubGlobal('fetch', fetchSpy)
     const next = vi.fn()
     await oauthRateLimit('oauth_authorize')(makeReq({ 'x-forwarded-for': '1.1.1.1' }), makeRes(), next)
@@ -432,9 +536,11 @@ describe('RATE-07 §4 — fail CLOSED on store failure', () => {
 // ── 5. Limit table sanity ────────────────────────────────────────────────────
 
 describe('RATE-07 §5 — route limit table', () => {
-  it('defines a limit for every one of the five OAuth mutation routes', () => {
+  it('defines a limit profile for every distinct OAuth bucket', () => {
+    // No 'oauth_refresh': /refresh shares the oauth_token bucket (see the
+    // ROUTE_LIMITS comment) so one operation is not budgeted twice.
     expect(Object.keys(ROUTE_LIMITS).sort()).toEqual(
-      ['oauth_authorize', 'oauth_callback', 'oauth_refresh', 'oauth_register', 'oauth_token'].sort(),
+      ['oauth_authorize', 'oauth_callback', 'oauth_register', 'oauth_token'].sort(),
     )
   })
 

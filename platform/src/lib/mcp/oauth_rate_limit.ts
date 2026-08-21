@@ -28,8 +28,9 @@
  * NO `SELECT` here: a read-then-write pair, even inside a transaction at READ
  * COMMITTED, lets two instances read the same count and both decide "allowed".
  * Anyone editing this file must preserve the single-statement property; the
- * `oauth_rate_limit_sql.test.ts` guard fails the build if a SELECT-then-UPDATE
- * shape reappears.
+ * structural guard in `src/lib/__tests__/mcp/oauth_rate_limit.test.ts`
+ * ("SQL structural contract") fails the build if a SELECT-then-UPDATE shape
+ * reappears.
  *
  * ── WINDOW SEMANTICS ────────────────────────────────────────────────────────
  * Fixed window, not sliding. `window_start = floor(now / window_seconds)` is
@@ -107,9 +108,18 @@ const BUCKET_KEY_VERSION = 'v1'
  * documentation only — the hash is computed here, server-side; the sidecar
  * sends the plain subject over the internal-token channel.
  */
-export function bucketKey(route: string, subjectKind: SubjectKind, subject: string): string {
+export function bucketKey(
+  route: string,
+  subjectKind: SubjectKind,
+  subject: string,
+  windowSeconds: number,
+): string {
+  // `windowSeconds` participates in the key so that two call sites charging the
+  // same (route, kind, subject) with DIFFERENT window lengths cannot collide on
+  // one row and silently re-stamp each other's window. No current call site does
+  // that; including it makes the invariant structural instead of conventional.
   return createHash('sha256')
-    .update(`${BUCKET_KEY_VERSION}|${route}|${subjectKind}|${subject}`)
+    .update(`${BUCKET_KEY_VERSION}|${route}|${subjectKind}|${subject}|${windowSeconds}`)
     .digest('hex')
 }
 
@@ -219,7 +229,7 @@ function validate(args: ConsumeRateBucketArgs): void {
 export async function consumeRateBucket(args: ConsumeRateBucketArgs): Promise<RateBucketDecision> {
   validate(args)
 
-  const key = bucketKey(args.route, args.subjectKind, args.subject)
+  const key = bucketKey(args.route, args.subjectKind, args.subject, args.windowSeconds)
 
   const result = await query<{
     hits: number
