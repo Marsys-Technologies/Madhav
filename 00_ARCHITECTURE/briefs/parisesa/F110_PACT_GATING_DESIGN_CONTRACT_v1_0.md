@@ -1,14 +1,29 @@
 ---
 canonical_id: F110_PACT_GATING_DESIGN_CONTRACT
-version: 1.0
+version: 1.1
 status: CURRENT
 campaign: PARIŚEṢA-V4
 finding: F-110 (CL-15 Cross-tool incoherence — TIER1-CORRECTNESS, top-severity)
 lane: LANE-PROMISEGATE (CL-15)
 authored: 2026-08-21
 authority: GA-2 design authority (PARIŚEṢA-V4)
-native_ruling_required: YES — §7 (Option B/D escalation only). §5 (Option C) is
-  implemented under existing doctrine and needs no new ruling.
+native_ruling_required: YES — §7 R1/R2 (Option B/D escalation only). §5 (Option C) is
+  implemented under existing doctrine and needs no new ruling. §7 R3 is CLOSED in its
+  disclosure form by F-175 (see the v1.1 changelog below); its residual policy half stays open.
+changelog:
+  - v1.1 (2026-08-21) — residual **F-110-b CLOSED by F-175**. The `assess_*` INV-1 breach
+    named in §5.3 and §7 R3 is fixed: all four `assess_marriage`/`career`/`health`/`wealth`
+    tools now consult `pact_query` for their own domain (inside the existing `Promise.all`,
+    no added latency) and apply the result through the SAME `interpretPactJoin` helper. Fixed
+    in the same Option C shape as `kala_ahead_get`: disclosure, not suppression, not a
+    fabricated downgrade. Also closes acceptance criterion A1's understatement — the helper
+    now has FIVE production call sites, not one. One NEW defect was found while fixing this
+    and is fixed in the same PR: `assembleSaraContent`'s ≤2KB kernel trim discarded flags
+    positionally (`slice(0, -1)`), which live-dropped `promise_chain_contradicts_domain` on
+    `assess_career`/`assess_wealth` while keeping a lower-density convenience note — a §N.6
+    item 2 regression one layer below where §N.6 previously legislated it. See
+    `KERNEL_FLOOR_FLAG_CODES` in `platform-mcp/src/lib/response_budget.ts`.
+  - v1.0 (2026-08-21) — original design contract.
 ---
 
 # F-110 — PACT Gating for `tier_1_high` Confidence Laundering
@@ -234,9 +249,12 @@ clear" and "never checked" were byte-identical to a caller. They are now disting
   calls on every `kala_ahead_get` is an unacceptable latency regression. Projections in
   *other* domains are listed by name in `ungated_projection_domains` — honestly disclosed
   as unvetted, never implied clean.
-- `assess_marriage`'s `no_contradictions_in_domain` (INV-1 breach) is **not** fixed here.
+- ~~`assess_marriage`'s `no_contradictions_in_domain` (INV-1 breach) is **not** fixed here.
   It is a `registry_bridge.ts` change on the L-DOMAIN capability path, a separate blast
-  radius. Carried as **residual F-110-b**.
+  radius. Carried as **residual F-110-b**.~~ **CLOSED 2026-08-21 by F-175** — fixed exactly
+  where this line predicted (`registry_bridge.ts`, L-DOMAIN path), in the same Option C
+  shape, across all four `assess_*` tools rather than `assess_marriage` alone. See the v1.1
+  changelog.
 - `kala_windows_get` / `kala_projections_get` serve the same substrate un-gated. Carried
   as **residual F-110-c**.
 
@@ -244,7 +262,7 @@ clear" and "never checked" were byte-identical to a caller. They are now disting
 
 | # | Criterion | State |
 |---|---|---|
-| A1 | `interpretPactJoin` has ≥1 production caller | MET |
+| A1 | `interpretPactJoin` has ≥1 production caller | MET (5 as of F-175: `ahead.ts` + the four `assess_*` tools) |
 | A2 | `kala_ahead_get(relationship)` on the canonical chart emits `promise_gate.pact_status = 'denied_at_promise'` | MET (unit); live pending deploy |
 | A3 | `reading.dissent` non-empty when the chain contradicts | MET |
 | A4 | `probability_tier` + `narrative` byte-identical to pre-fix | MET (asserted by test) |
@@ -268,14 +286,25 @@ envelope. It does **not** decide these three, which are policy, not engineering:
   reconciled at serve time? This is the architecturally cleaner fix and the only one that
   can legitimately change the tier (§N.5 permits the owning layer to grade its own value).
   It is an L3 writer change against a CLOSED layer seal and needs its own campaign.
-- **R3 — Does INV-1 bind `assess_*` (residual F-110-b)?** `promise_spine.ts` asserts INV-1
+- **R3 — Does INV-1 bind `assess_*` (residual F-110-b)?** ~~`promise_spine.ts` asserts INV-1
   as an invariant ("no caller may certify 'no contradictions' for a classically-denied
   domain"), but no code enforces it on the `assess_*` path — itself an §N.8 pattern: an
-  invariant with no enforcer.
+  invariant with no enforcer.~~ **ANSWERED IN ITS DISCLOSURE HALF, 2026-08-21 (F-175):** yes,
+  INV-1 binds `assess_*`, and it now has an enforcer — the four tools consult the chain and
+  a denial is surfaced in the budget-immune kernel (verdict clause + `kernel.promise` +
+  a hardFloored judgment flag). This needed no new ruling for the same reason §5 Option C
+  did not: nothing is suppressed, no tier or grade is re-derived. **Still open, and
+  deliberately NOT decided by F-175:** whether INV-1 should go further and forbid the
+  `contradictions.status = 'no_contradictions_in_domain'` VALUE itself in a denied domain.
+  F-175 left the L2 status verbatim (it is a true statement about `bodha_contradictions`,
+  and §N.5 forbids this layer overwriting it) and added the adjacent
+  `not_a_domain_all_clear: true` instead. Renaming or suppressing the L2 status is a policy
+  call about a shared L2 leaf, and belongs to the native.
 
 **Until R1/R2 are ruled, Option C is the correct floor: the system may not know which
 verdict is right, but it must never again present one while silently holding the other.**
 
 ---
 
-*F110_PACT_GATING_DESIGN_CONTRACT v1.0 — PARIŚEṢA-V4, GA-2 design authority, 2026-08-21.*
+*F110_PACT_GATING_DESIGN_CONTRACT v1.1 — PARIŚEṢA-V4, GA-2 design authority, 2026-08-21.
+v1.1 records the closure of residual F-110-b by F-175; no §3/§4/§5 doctrine changed.*

@@ -411,10 +411,28 @@ export async function buildVargaAnalysisDirect(
 // an LLM). Every clause states which real L1/L2 fact_ids it is grounded on; a clause that
 // describes an honest absence (no yogas fired, no contradictions) carries `grounded: false`
 // with an empty fact_ids array rather than a fabricated citation (B.10).
+/** F-175: stable, structural identity for each verdict clause. Added so a downstream
+ *  composer (platform-mcp's assess_* Sāra kernel) can target a specific clause — e.g. the
+ *  contradiction-absence certification the PACT promise gate must qualify — WITHOUT
+ *  substring-matching the prose it is about to correct. Pattern-matching generated prose to
+ *  decide whether a claim is being made is exactly the fragility §N.7 item 2 legislates
+ *  against for fact selection; the same reasoning applies to clause selection. */
+export type VerdictClauseId =
+  | 'overview'
+  | 'significator_condition'
+  | 'yoga_findings'
+  | 'varga_grounding'
+  | 'contradictions'
+  | 'timing'
+  /** Inserted downstream (platform-mcp) — never emitted by this file. */
+  | 'promise_chain'
+
 export interface VerdictClause {
   text: string
   fact_ids: string[]
   grounded: boolean
+  /** Optional for back-compat with hand-built test fixtures; always set by buildVerdictLayer. */
+  clause_id?: VerdictClauseId
 }
 export interface VerdictLayer {
   clauses: VerdictClause[]
@@ -459,6 +477,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
       'placements, contradictions, and dasha timing below.',
     fact_ids: top10FactIds,
     grounded: top10FactIds.length > 0,
+    clause_id: 'overview',
   })
 
   // 2 — F-113: D1 significator condition. Placed SECOND (immediately after the overview,
@@ -469,13 +488,13 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
   const sigCond = inputs.significatorCondition
   if (sigCond) {
     if (sigCond.empty_reason) {
-      clauses.push({ text: `Significator condition (D1) unavailable: ${sigCond.empty_reason}`, fact_ids: [], grounded: false })
+      clauses.push({ text: `Significator condition (D1) unavailable: ${sigCond.empty_reason}`, fact_ids: [], grounded: false, clause_id: 'significator_condition' })
     } else {
       const sentence = describeNotablePlacements(sigCond.notable, sigCond.bhava)
       const notableFactIds = Array.from(new Set(sigCond.notable.flatMap(p => p.fact_ids)))
       clauses.push(sentence
-        ? { text: sentence, fact_ids: notableFactIds, grounded: notableFactIds.length > 0 }
-        : { text: NO_NOTABLE_PLACEMENT_TEXT, fact_ids: [], grounded: false })
+        ? { text: sentence, fact_ids: notableFactIds, grounded: notableFactIds.length > 0, clause_id: 'significator_condition' as const }
+        : { text: NO_NOTABLE_PLACEMENT_TEXT, fact_ids: [], grounded: false, clause_id: 'significator_condition' as const })
     }
   }
 
@@ -491,6 +510,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
         `bear directly on this domain's significators${names ? `, including ${names}` : ''}.`,
       fact_ids: inputs.domainMatchedYogaFactIds,
       grounded: inputs.domainMatchedYogaFactIds.length > 0,
+      clause_id: 'yoga_findings',
     })
   } else if (inputs.bearingYogaFirings.length > 0) {
     clauses.push({
@@ -498,6 +518,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
         "name only this domain's bhāveśa/kāraka(s) — shown for context, not domain-confirmed.",
       fact_ids: [],
       grounded: false,
+      clause_id: 'yoga_findings',
     })
   } else {
     clauses.push({
@@ -505,6 +526,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
         'honest absence, not a fabricated claim either way.',
       fact_ids: [],
       grounded: false,
+      clause_id: 'yoga_findings',
     })
   }
 
@@ -518,6 +540,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
         'per-graha dignity and, where computed, per-varga Ashtakavarga).',
       fact_ids: vargaFactIds,
       grounded: vargaFactIds.length > 0,
+      clause_id: 'varga_grounding',
     })
   }
 
@@ -530,6 +553,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
         `${inputs.chartWideContradictionCount} chart-wide) — see contradictions for the adjudication detail.`,
       fact_ids: [],
       grounded: false,
+      clause_id: 'contradictions',
     })
   } else if (contraStatus === 'no_contradictions_in_domain') {
     clauses.push({
@@ -537,6 +561,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
         'exist chart-wide) — an honest domain-scoped absence, not a silent omission.',
       fact_ids: [],
       grounded: false,
+      clause_id: 'contradictions',
     })
   } else {
     clauses.push({
@@ -544,6 +569,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
         'has completed its L2 build (bo_karanajala) before reading this as a clean chart.',
       fact_ids: [],
       grounded: false,
+      clause_id: 'contradictions',
     })
   }
 
@@ -554,6 +580,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
         'activating_dasha for the exact bounds.',
       fact_ids: [],
       grounded: false,
+      clause_id: 'timing',
     })
   }
 

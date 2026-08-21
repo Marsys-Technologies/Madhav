@@ -88,9 +88,54 @@ describe('assess_* Sāra response contract', () => {
       // flag (asserted above in the prior test) is gated on !hasAttachedReading, permanently
       // unreachable once `reading` is always attached (as this test's own fixture proves it
       // is). A low-budget caller could receive NEITHER disclosure. The same text must also
-      // land in kernel.flags, which response_budget.ts never drops.
+      // land in kernel.flags.
+      //
+      // F-177 CORRECTION: the original wording here read "...which response_budget.ts never
+      // drops." That was not true, and this assertion did not test it -- assembleSaraContent
+      // trimmed kernel.flags from the TAIL, and the mirror is pushed last, so on a real chart
+      // it was the FIRST entry deleted (live-confirmed on 482012f1). This case only ever
+      // passed because its stub kernel is far under the 2048-byte ceiling, so no trim runs.
+      // The dense case is now covered end-to-end below and in
+      // f177_kernel_flag_disclosure_protection.test.ts.
       const kernel = object.kernel as Record<string, unknown>
       expect(kernel.flags).toContain(grounding.domain_completeness_empty_reason)
+    },
+  )
+
+  // F-177 (end-to-end, through the real registry_bridge handler -- not the lib in isolation):
+  // the same disclosure must survive when the kernel is genuinely dense enough to trigger
+  // assembleSaraContent's >=2048-byte trim, which is the condition every real built chart
+  // meets and the stub above does not. This is the case that fails on unmodified `main`.
+  it.each([
+    ['assess_health', 'health'],
+    ['assess_marriage', 'relationship'],
+  ] as const)(
+    '%s keeps its %s empty_reason disclosure in kernel.flags even when the kernel is trimmed',
+    async (tool, domain) => {
+      // A verdict long enough to push the assembled kernel past the 2048-byte ceiling on its
+      // own, mirroring the real multi-sentence assess_* verdicts observed in production.
+      const longClause = 'A deterministic partial-domain verdict sentence carrying grounded prose. '.repeat(30)
+      stubFetch({
+        chart_id: CHART_ID,
+        verdict: { clauses: [{ text: longClause, fact_ids: [], grounded: false }] },
+      })
+      const { registerRegistryBridgeTools } = await import('../tools/registry_bridge.js')
+      const { server, handlers } = makeCapturingServer()
+      registerRegistryBridgeTools(server, PRINCIPAL)
+
+      const result = await handlers.get(tool)!({ chart_id: CHART_ID })
+      const object = result.structuredContent!.object as Record<string, unknown>
+      const kernel = object.kernel as { flags: unknown[]; pointers: unknown[] }
+      const report = object.composition_report as { kernel_bytes: number }
+
+      // Baseline guard: the trim genuinely ran (otherwise this test proves nothing).
+      expect(kernel.pointers.length).toBeLessThan(3)
+
+      const disclosure = kernel.flags.find(
+        f => typeof f === 'string' && new RegExp(`No precompiled ${domain} concept-slice bundle exists yet`).test(f),
+      )
+      expect(disclosure).toBeDefined()
+      expect(report.kernel_bytes).toBeGreaterThan(0)
     },
   )
 
