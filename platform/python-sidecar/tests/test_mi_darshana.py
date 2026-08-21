@@ -355,6 +355,28 @@ def test_empirical_grade_with_measured_zero_still_narrates_a_real_zero():
     assert prov["propensity_source"] == "measured"
 
 
+# F-147 GA-5 review finding on #1439: the manifestation_grammar provenance dict used to
+# also embed a "rank_consequence" key duplicating the same value carried by the top-level
+# rank_consequence column and by propensity/propensity_source above — the third instance of
+# the P3-b duplicate-key leak past query_insights.ts's suppressIfNotCalibrated (which only
+# nulled provenance_chain.grade + .propensity, not this key). propensity_source already
+# carries the disclosure the key was redundant with; the field is dropped, not renamed.
+def test_manifestation_grammar_provenance_has_no_rank_consequence_key():
+    """The manifestation_grammar provenance dict must never carry a
+    'rank_consequence' key — it would leak the suppressed value past the
+    query_insights.ts suppressor's provenance_chain.grade/.propensity nulling."""
+    import json
+
+    conn, result = _run_grammar([
+        _grammar_row(channel_propensity=0.42, prior_propensity=0.45,
+                     n=53, scored_count=32, evidence_grade="empirical")
+    ])
+
+    row = conn.inserted_rows[0]
+    prov = json.loads(row[PROVENANCE_CHAIN])
+    assert "rank_consequence" not in prov
+
+
 # ── SV-5 — `verdict_note` tradition-blindness (ŚUDDHA-VĀCA parked finding,
 # fixed by NIḤŚEṢA Track B) ───────────────────────────────────────────────────
 #

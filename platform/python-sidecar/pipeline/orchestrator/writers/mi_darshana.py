@@ -315,15 +315,20 @@ class MiDarshanaWriter(WriterBase):
                 grade,
                 LEL_VERSION,
                 now,
-                # rank_consequence (NOT NULL) still carries the prior when the
-                # measured value is absent; provenance records which it is so a
-                # consumer can never read a prior as a measurement.
+                # rank_consequence (NOT NULL, top-level column) still carries the
+                # prior when the measured value is absent; provenance records
+                # which it is so a consumer can never read a prior as a
+                # measurement. F-147 GA-5 finding: this dict used to also embed
+                # a "rank_consequence" key duplicating that same value — the
+                # third instance of the P3-b duplicate-key leak (see
+                # query_insights.ts's suppressIfNotCalibrated comment). Removed:
+                # propensity_source already carries the disclosure, and the
+                # top-level column is the one callers/suppressors read.
                 json.dumps({
                     "channel": ch,
                     "domain": dom,
                     "propensity": prop if propensity_measured else None,
                     "propensity_source": "measured" if propensity_measured else "prior_fallback",
-                    "rank_consequence": prop,
                 }),
                 False,
                 SURFACE_FORMULA_VERSION,
