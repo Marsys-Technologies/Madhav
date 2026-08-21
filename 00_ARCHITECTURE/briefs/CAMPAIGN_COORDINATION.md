@@ -6107,3 +6107,22 @@ coordination-log entry indicates either is mid-edit elsewhere. Disjoint from
 the Part A lease above (already closed) and from every other active lease in
 this table. Worktree `.clone/worktrees/pariprashna-part-d`, branch
 `pariprashna/p3-preflight-part-d`.
+
+## 2026-08-21 — PARIPRASHNA-P3-PREFLIGHT-PART-D — correction: migration 575 reservation was wrong, renumbered 583
+
+The "Migration 575 reserved" note above checked `platform/migrations/`'s own
+max (574) only. **`platform/supabase/migrations/` is a separate directory with
+its own overlapping migration-number sequence**, already at 582 at the time —
+missed entirely, not disclosed at the time of reservation. CI's own MIG-1
+guard (`platform/scripts/ci/migration_number_guard.ts`) caught the real
+collision against `platform/supabase/migrations/575_pariprashna_chart_subject_consent.sql`
+on PR #1441's first push. Renumbered to **583** (max across BOTH directories +
+1, per `MIGRATION_AND_MERGE_PROTOCOL_v1_0.md §3`) — the file is now
+`platform/migrations/583_llm_pricing_versions_seed.sql`, with the header and
+every DD-25/DD-26 register reference updated to match. Appended, not edited
+in place, per this log's own append-only convention — the original entry
+above stands as the (incorrect) record of what was actually checked at the
+time. **Lesson for future reservations in this repo:** the migration-number
+check must span both `platform/migrations/` and `platform/supabase/migrations/`,
+not just the directory the new file happens to live in — `MIG-1`'s own guard
+already knows this; a manual pre-check that doesn't is the gap, not the tool.
