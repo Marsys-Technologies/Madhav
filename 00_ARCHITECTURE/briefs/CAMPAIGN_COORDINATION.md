@@ -5835,3 +5835,33 @@ and carried as DD-22 — not built this gate.
 
 No file in this lease's scope was left mid-edit; all worktrees from this
 lease are being cleaned up now that everything is merged.
+
+## 2026-08-21 — PARIPRASHNA-P3-PREFLIGHT-2026-08-21 / Claude Code — leased window: P3 pre-flight amendment (docs only)
+
+Native-requested pre-flight amendment to P3's planning set before any P3
+lane opens. Docs-only; no application code, migration, deploy, or
+production-data scope.
+
+**Lease scope:**
+1. `PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` §2 — new DD-24
+   (parity-vs-correctness rule bounding P3-D's parity assertion to an
+   enumerated web-door-gap baseline); in-place amendment to DD-22's row
+   recording the DD-22-before-P3-B sequencing ruling.
+2. `PARIPRASHNA_PHASED_SWARM_IMPLEMENTATION_PLAN_v1_0.md` — Phase III
+   section: DD-21 observed-delivery clause folded into the P3 gate; P3-D's
+   lane description amended to name its receipt-hash parity subject; a
+   DD-22/P3-B sequencing note added.
+3. `00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/PLAN.yaml` — P3-B and
+   P3-D lane entries annotated (new `amendment_note` field, additive only,
+   no existing field touched) cross-referencing the above.
+4. `CAPABILITY_MANIFEST.json` — fingerprint rotation for the two docs
+   above after edits land.
+
+**Checked immediately before opening:** no open PR touches any of the
+above four files; no coordination-log entry indicates any is mid-edit
+elsewhere. The pariprashna P2-close lease (above) is already RELEASED and
+tagged `pariprashna/p2-close`; no P3 lane has opened yet (P3 remains
+`PLANNED` in `PLAN.yaml` as of this lease). Disjoint from every other
+campaign's current active lease in this table (none scope to
+`00_ARCHITECTURE/briefs/pariprashna_swarm/**` or
+`00_ARCHITECTURE/CAPABILITY_MANIFEST.json` at this moment).
