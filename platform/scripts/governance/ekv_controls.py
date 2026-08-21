@@ -446,12 +446,33 @@ def _check_f88() -> ControlResult:
     return ControlResult("F-88", "SKIP", "Requires MCP live probe (session_recall) — run in E-04 battery", requires_mcp=True)
 
 
-def _check_f91() -> ControlResult:
+# F-154: the control used to stat platform/src/generated/projections/
+# mcp_surface_profiles.generated.ts — a path that has never existed (the platform-side
+# projection artifact at that directory is the .json sibling, not a .ts file). The
+# `.exists()` guard was therefore always False and the control returned SKIP for its
+# entire life — a CLAUDE.md §N.8 gate-that-cannot-fail defect. The real .generated.ts
+# artifact that actually gates MCP tool-catalog serving lives in the platform-mcp
+# package (built by mcp_surface_profile_builder.ts / generate_projections.ts from the
+# live retrieval registry) — that is the surface F-91's stated purpose ("MCP
+# tool-catalog profile scoping") is about, so the control now points there.
+#
+# Exposed as a module-level default (not hardcoded inline) so a test can inject a
+# different path — the old inline path was exactly the kind of "module-level constant
+# nothing can parameterize" defect this batch's sibling finding (F-162) also names.
+DEFAULT_MCP_SURFACE_PROFILES_PATH = (
+    REPO_ROOT / "platform-mcp" / "src" / "generated" / "mcp_surface_profiles.generated.ts"
+)
+
+
+def _check_f91(profiles_file: Optional[Path] = None) -> ControlResult:
     """F-91: MCP tool-catalog profile scoping — abbreviated static check."""
     # Static: verify the mcp_surface_profiles.generated.ts exists and has 'full'/'compact'/'consult'
-    profiles_file = REPO_ROOT / "platform" / "src" / "generated" / "projections" / "mcp_surface_profiles.generated.ts"
+    if profiles_file is None:
+        profiles_file = DEFAULT_MCP_SURFACE_PROFILES_PATH
     if not profiles_file.exists():
-        return ControlResult("F-91", "SKIP", "mcp_surface_profiles.generated.ts not found")
+        # A missing generated artifact is a real defect, not "not applicable here" —
+        # SKIP would mean the latter. FAIL, so this can no longer silently pass forever.
+        return ControlResult("F-91", "FAIL", f"mcp_surface_profiles.generated.ts not found at {profiles_file}")
     text = profiles_file.read_text(encoding="utf-8", errors="replace")
     has_full = '"full"' in text or "'full'" in text
     has_compact = '"compact"' in text or "'compact'" in text
