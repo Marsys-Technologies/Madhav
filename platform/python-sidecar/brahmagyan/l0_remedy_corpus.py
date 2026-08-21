@@ -59,6 +59,17 @@ CLASSICAL_REF_BIJA = (
     "BPHS Ch.91-94 (Upaya-adhyaya) — upāya context only, not the mantra's source"
 )
 
+# ── PARIŚEṢA-V4 F-182 / owner rulings R-1 + R-2 ───────────────────────────────
+# The same bīja class also appears on the domain-scaffold rows below, which cited
+# `BPHS Ch.88` rather than Ch.91-94. R-2 reaches them identically: BPHS is retained
+# only as upāya context, explicitly labelled. Applies to rows whose `mantra_text`
+# IS a `praam preem praum sah`-class bīja; nāma-mantra rows (e.g. "Om Gurave
+# Namah") are untouched by R-2 — BPHS Ch.88 legitimately covers those upāyas.
+CLASSICAL_REF_BIJA_CH88 = (
+    "Navagraha bīja tradition; compiled in Mantra Mahodadhi (Mahīdhara, 16th c.); "
+    "BPHS Ch.88 (Upaya-adhyaya) — upāya context only, not the mantra's source"
+)
+
 # ── PARIŚEṢA-V4 F-23 / owner ruling R-3 ───────────────────────────────────────
 # BPHS Ch.94 supplies the nakshatra DEVATA table, not the mantra text. The served
 # `Om <devata-dative> Namah` string is a constructed nama-mantra form. The citation
@@ -1339,9 +1350,9 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "day_of_week": "Sunday",
         "color_associated": "red",
         "confidence": 0.90,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "sun_health_gemstone_01",
@@ -1429,9 +1440,9 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "day_of_week": "Monday",
         "color_associated": "white",
         "confidence": 0.85,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "moon_wealth_gemstone_01",
@@ -1504,9 +1515,9 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "day_of_week": "Tuesday",
         "color_associated": "red",
         "confidence": 0.85,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "mars_health_gemstone_01",
@@ -1550,9 +1561,9 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "day_of_week": "Wednesday",
         "color_associated": "green",
         "confidence": 0.85,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "mercury_wealth_gemstone_01",
@@ -1592,13 +1603,13 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "remedy_type": "mantra",
         "scaffold_status": "live",
         "prescription_text": "Chant Guru Ashtottara Shatanamavali 108 times on Thursdays. Jupiter (Guru) blesses with wisdom, wealth, and progeny when propitiated.",
-        "mantra_text": "Om Graam Greem Graum Sah Guruve Namah",
+        "mantra_text": "Om Graam Greem Graum Sah Gurave Namah",
         "day_of_week": "Thursday",
         "color_associated": "yellow",
         "confidence": 0.90,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "jupiter_education_gemstone_01",
@@ -1656,9 +1667,9 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "day_of_week": "Friday",
         "color_associated": "white",
         "confidence": 0.90,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "venus_wealth_gemstone_01",
@@ -1702,9 +1713,9 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "day_of_week": "Saturday",
         "color_associated": "black",
         "confidence": 0.90,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "sat_career_charity_01",
@@ -1818,13 +1829,13 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "remedy_type": "mantra",
         "scaffold_status": "live",
         "prescription_text": "Chant the Rahu Beeja Mantra 18,000 times over 40 days for Rahu Mahadasha career difficulties. Rahu rules obsession, ambition, and unconventional paths.",
-        "mantra_text": "Om Bhram Bhreem Bhroum Sah Rahave Namah",
+        "mantra_text": "Om Bhraam Bhreem Bhraum Sah Rahave Namah",
         "day_of_week": "Saturday",
         "color_associated": "smoke grey",
         "confidence": 0.80,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "rahu_health_gemstone_01",
@@ -1879,13 +1890,13 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "remedy_type": "mantra",
         "scaffold_status": "live",
         "prescription_text": "Chant the Ketu Beeja Mantra 17,000 times over 40 days. Ketu rules moksha, liberation, and occult wisdom. Strong Ketu brings spiritual insight.",
-        "mantra_text": "Om Sram Sreem Sraum Sah Ketave Namah",
+        "mantra_text": "Om Sraam Sreem Sraum Sah Ketave Namah",
         "day_of_week": "Tuesday",
         "color_associated": "grey",
         "confidence": 0.80,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "ketu_health_gemstone_01",
@@ -1990,9 +2001,9 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "day_of_week": "Wednesday",
         "color_associated": "green",
         "confidence": 0.80,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "jupiter_spirituality_puja_01",
@@ -2001,7 +2012,7 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "remedy_type": "puja",  # was ritual
         "scaffold_status": "live",
         "prescription_text": "Perform Brihaspati Puja on Thursdays with yellow flowers, gram dal, and camphor. Study sacred texts or listen to vedic recitation. Worship Vishnu or Dakshinamurthy.",
-        "mantra_text": "Om Guruve Namah",
+        "mantra_text": "Om Gurave Namah",
         "day_of_week": "Thursday",
         "color_associated": "yellow",
         "confidence": 0.85,
@@ -2020,9 +2031,9 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "day_of_week": "Friday",
         "color_associated": "white",
         "confidence": 0.80,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "moon_spirituality_puja_01",

@@ -432,7 +432,7 @@
   deity: "Brihaspati"
   remedy_text: "Triphala — the classical tridoshic Ayurvedic formulation for Jupiter (liver, digestion, growth, and expansion). Triphala supports the liver (Jupiter's organ), promotes digestion, and builds ojas (vital essence). Daily evening dose in warm water."
   mantra_sanskrit: "ॐ गुरवे नमः"
-  mantra_transliteration: "Om Guruve Namah"
+  mantra_transliteration: "Om Gurave Namah"
   ingredients_jsonb: {"formula": "Triphala (Haritaki + Bibhitaki + Amalaki equal parts)", "form": "powder (churna) or tablet", "dosage": "3-5g powder in warm water before bed", "timing": "evening, 1 hour after dinner", "complementary": "Ashwagandha + Triphala for Jupiter debility"}
   timing_rules_jsonb: {"day": "start on Thursday", "time": "evening before sleep", "duration": "lifelong maintenance; 3-month intensive during Jupiter Mahadasha"}
   cost_tier: "free"
@@ -485,7 +485,7 @@
   deity: "Brihaspati"
   remedy_text: "Jupiter and the library/study. The home library or sacred text collection should be placed in the North-East (Ishanya — Jupiter's Vastu zone). Keep this area clean and elevated above ground level. Reading in the NE zone activates Jupiter's blessings for wisdom and dharma."
   mantra_sanskrit: "ॐ गुरवे नमः"
-  mantra_transliteration: "Om Guruve Namah"
+  mantra_transliteration: "Om Gurave Namah"
   ingredients_jsonb: {"direction": "North-East", "elements": ["library or sacred texts in NE", "spiritual images or guru photos", "fresh flowers and incense for puja room", "yellow or gold color accents"], "floor": "NE should not have heavy furniture pressed to floor — keep elevated or on shelves"}
   timing_rules_jsonb: {"day": "Thursday", "time": "morning", "implementation": "one-time arrangement; ongoing maintenance by keeping NE clean"}
   cost_tier: "free"

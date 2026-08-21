@@ -40,7 +40,12 @@ def _get_mod():
 
 
 PLANETS = {"Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"}
-VALID_SOURCES = {"BPHS", "Phaladeepika", "Tajaka"}
+# `classical_tradition` added for PARIŚEṢA-V4 owner ruling R-2 (F-23 / F-182):
+# the navagraha bīja class is not BPHS material and must not carry a BPHS
+# source_canonical_id. It is the value PR #1429 and migration 581 already
+# established for the 9 bīja matrix rows; F-182 extends it to the 11 bīja
+# domain-scaffold rows. See tests/l0/test_f182_mantra_corpus_sweep.py.
+VALID_SOURCES = {"BPHS", "Phaladeepika", "Tajaka", "classical_tradition"}
 
 
 # ── Constants and data ────────────────────────────────────────────────────────
