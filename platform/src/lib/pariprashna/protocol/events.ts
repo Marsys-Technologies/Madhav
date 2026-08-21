@@ -199,6 +199,17 @@ export const BlockTableContentSchema = z.object({
 })
 export type BlockTableContent = z.infer<typeof BlockTableContentSchema>
 
+/** A table embedded inside a `paragraph` block, not occupying the whole
+ *  block (DD-22, approach (c)). `start`/`end` are exact character offsets
+ *  into the block's own committed `text`, so the renderer can slice prose
+ *  before/after the table and draw it inline without losing any text. */
+export const BlockTableSpanSchema = z.object({
+  start: z.number(),
+  end: z.number(),
+  table: BlockTableContentSchema,
+})
+export type BlockTableSpan = z.infer<typeof BlockTableSpanSchema>
+
 /** `block.commit` — a block is finalized; carries the full committed text. */
 export const BlockCommitEventSchema = z.object({
   type: z.literal('block.commit'),
@@ -223,8 +234,15 @@ export const BlockCommitEventSchema = z.object({
    * `content` means `text` is already reader-ready as-is.
    */
   content: z.string().optional(),
-  /** Only set when `kind === 'table'`. */
+  /** Only set when `kind === 'table'` — the whole block is one table. */
   table: BlockTableContentSchema.optional(),
+  /** Only set when `kind === 'paragraph'` AND the block's text contains one
+   *  or more embedded tables that do not occupy the whole block (DD-22,
+   *  approach (c)). `kind` stays `'paragraph'`; this is additive metadata
+   *  for the renderer, not a reclassification. Absent on a v1 emitter or a
+   *  block with no embedded table — exactly today's plain-paragraph
+   *  rendering. */
+  table_spans: z.array(BlockTableSpanSchema).optional(),
   /** Only set when `kind === 'gap_ribbon'`. */
   gap_text: z.string().optional(),
 })

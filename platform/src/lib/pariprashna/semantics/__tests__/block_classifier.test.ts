@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { classifyBlockKind, classifyRole, classifyCommittedBlock } from '../block_classifier'
+import { classifyBlockKind, classifyRole, classifyCommittedBlock, detectTableSpans } from '../block_classifier'
 
 describe('classifyBlockKind — table', () => {
   it('classifies a real GFM markdown table', () => {
@@ -92,6 +92,93 @@ describe('classifyBlockKind — paragraph (default)', () => {
     expect(result.kind).toBe('paragraph')
     expect(result.table).toBeUndefined()
     expect(result.gapText).toBeUndefined()
+  })
+})
+
+describe('classifyBlockKind — embedded table span (DD-22, approach (c))', () => {
+  it('finds a table embedded between leading and trailing prose, kind stays paragraph', () => {
+    const text = [
+      'Your career window benefits from the following planetary support:',
+      '',
+      '| Planet | House | Strength |',
+      '| --- | --- | --- |',
+      '| Jupiter | 10th | Strong |',
+      '| Saturn | 6th | Moderate |',
+      '',
+      'This pattern favors steady, disciplined effort over sudden leaps.',
+    ].join('\n')
+    const result = classifyBlockKind(text)
+    expect(result.kind).toBe('paragraph')
+    expect(result.table).toBeUndefined() // whole-block table field, unused for embedded spans
+    expect(result.tableSpans).toHaveLength(1)
+    expect(result.tableSpans![0].table).toEqual({
+      headers: ['Planet', 'House', 'Strength'],
+      rows: [
+        ['Jupiter', '10th', 'Strong'],
+        ['Saturn', '6th', 'Moderate'],
+      ],
+    })
+  })
+
+  it('does NOT set tableSpans on ordinary prose with a bare "|" and no separator row', () => {
+    const text = 'The choice is between career | family — the chart does not force one over the other.'
+    const result = classifyBlockKind(text)
+    expect(result.kind).toBe('paragraph')
+    expect(result.tableSpans).toBeUndefined()
+  })
+
+  it('a whole-block table is still classified kind=table, not paragraph+tableSpans (no double-classification)', () => {
+    const text = ['| A | B |', '| --- | --- |', '| 1 | 2 |'].join('\n')
+    const result = classifyBlockKind(text)
+    expect(result.kind).toBe('table')
+    expect(result.tableSpans).toBeUndefined()
+  })
+})
+
+describe('detectTableSpans — byte-exact offset reconstruction (DD-22 acceptance criterion 1)', () => {
+  it('offsets slice back to the exact original text for a single embedded table', () => {
+    const text = [
+      'Before the table, some real prose with unicode: 21°34\'.',
+      '',
+      '| Col A | Col B |',
+      '| --- | --- |',
+      '| x | y |',
+      '',
+      'After the table, more prose.',
+    ].join('\n')
+    const spans = detectTableSpans(text)
+    expect(spans).toHaveLength(1)
+    const span = spans[0]
+    const reconstructed = text.slice(0, span.start) + text.slice(span.start, span.end) + text.slice(span.end)
+    expect(reconstructed).toBe(text)
+    // The sliced span itself must be exactly the table's own lines, no more, no less.
+    expect(text.slice(span.start, span.end)).toBe('| Col A | Col B |\n| --- | --- |\n| x | y |')
+  })
+
+  it('handles two separate embedded tables with reconstruction spanning all three prose gaps', () => {
+    const text = [
+      'First table:',
+      '| A | B |',
+      '| --- | --- |',
+      '| 1 | 2 |',
+      'Between the two tables.',
+      '| C | D |',
+      '| --- | --- |',
+      '| 3 | 4 |',
+      'Trailing prose.',
+    ].join('\n')
+    const spans = detectTableSpans(text)
+    expect(spans).toHaveLength(2)
+    let reconstructed = text.slice(0, spans[0].start)
+    reconstructed += text.slice(spans[0].start, spans[0].end)
+    reconstructed += text.slice(spans[0].end, spans[1].start)
+    reconstructed += text.slice(spans[1].start, spans[1].end)
+    reconstructed += text.slice(spans[1].end)
+    expect(reconstructed).toBe(text)
+  })
+
+  it('returns [] for prose with no table at all', () => {
+    expect(detectTableSpans('Just ordinary prose, nothing tabular here.')).toEqual([])
   })
 })
 

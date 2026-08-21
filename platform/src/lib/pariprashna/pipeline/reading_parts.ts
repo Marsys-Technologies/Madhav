@@ -342,6 +342,7 @@ export class ReadingPartsAssembler {
           role: classification.role,
           content: classification.content,
           table: classification.table,
+          table_spans: classification.tableSpans,
           gap_text: classification.gapText,
         })
       } else {
