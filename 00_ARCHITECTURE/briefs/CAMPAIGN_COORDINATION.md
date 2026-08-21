@@ -6432,3 +6432,61 @@ Lease opened above is released. Final account:
 No file outside this lease's declared scope was touched. Worktree
 `.clone/worktrees/pariprashna-part-d` retained (Parts E/F share adjacent
 pariprashna scope); will be removed once Part E/F land or on request.
+
+## 2026-08-21 — PARIPRASHNA-P3-PREFLIGHT-PART-E / Claude Code — leased window: DD-19, interpretation_sets usage gap
+
+Executing DD-19 (OWNED, DATED 2026-09-03, not launch-blocking — done ahead of
+deadline per native's "continue through E and F" direction this session).
+Scope of fix per the DD-19 register entry: set a real `pipeline_stage` on
+`interpretation/worker.ts`'s LLM call site so it starts appearing in
+`llm_usage_events`.
+
+**Finding beyond the register entry's own framing:** the fix isn't literally
+"add `pipeline_stage` to `QueryRequest`" — `QueryRequest` has no such field.
+`runAdapter()` itself does zero observability writes (confirmed by reading
+`adapters/run_adapter.ts`); every real call site (`planner` in
+`pipeline_planner.ts`, `title` in `conversations/title.ts`) calls
+`persistObservation()`/`computeCost()` EXPLICITLY, right after its own
+`runAdapter`/equivalent call — worker.ts's `callOnce` never did. Replicated
+the exact same OBS-S1-shape block.
+
+**Second finding, a real blocker the register entry didn't anticipate:**
+`llm_usage_events.pipeline_stage` has a live DB CHECK constraint
+(`llm_usage_events_pipeline_stage_check`) enumerating exactly
+`classify/compose/retrieve/synthesize/audit/other/planner/title/
+history_summary` — `'interpretation_sets'` is NOT in it. Without a
+migration, every observation write from this fix would fail the CHECK
+constraint and be silently swallowed by `persistObservation`'s own
+never-throws discipline — the fix would appear to work (code merged, no
+errors) while writing zero real rows, exactly the §N.8 defect class this
+whole campaign keeps finding. Migration **584** widens the constraint.
+
+**Lease scope:**
+1. `platform/src/lib/pariprashna/interpretation/worker.ts` — `callOnce`
+   threads `turnId`, times the call, fires a fire-and-forget
+   `persistObservation`/`computeCost` block with
+   `pipeline_stage: 'interpretation_sets'` after `runAdapter`.
+   `defaultCaller` and `generateInterpretationSets` thread `turnId` through
+   (new optional 3rd param on `generateInterpretationSets`, after `caller` —
+   preserves every existing 2-arg call site, including all `worker.test.ts`
+   custom-caller tests, which override `caller` entirely and never touch
+   `callOnce`).
+2. `platform/src/lib/pariprashna/interpretation/assemble.ts` — the one real
+   caller passes `args.turnId` through.
+3. `platform/src/lib/llm/observability/types.ts` — `'interpretation_sets'`
+   added to the `PipelineStage` union.
+4. `platform/migrations/584_llm_usage_events_interpretation_sets_stage.sql`
+   (new) — widens `llm_usage_events_pipeline_stage_check` to include
+   `'interpretation_sets'`, `DROP CONSTRAINT IF EXISTS` + unconditional
+   `ADD CONSTRAINT`, matching the established pattern
+   (`328_ka_transit_almanac_retired.sql`).
+
+**Migration 584 reserved** — confirmed via the MIG-1 guard script directly
+(`next allocatable number (max across BOTH + 1): 584`), not a manual
+directory scan, after the Part D collision lesson.
+
+**Checked immediately before opening:** fresh `origin/main` fetch
+(`1f2b7e443`); no open PR touches any of the above files; disjoint from
+every other active lease in this table. Worktree
+`.clone/worktrees/pariprashna-part-d`, branch
+`pariprashna/p3-preflight-part-e` (new branch off current `origin/main`).
