@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 909,
+  "event_count": 911,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -245,16 +245,16 @@
     "F-107": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "e27aa6099fd66087722eb2bda56992e0e1e7376457d0e3e9305e703e20b1f81d",
+      "event_sha256": "6a80ee6c3cf827dbe8a3a336ee404f78511bda98dba1d1cb060898589b0e79d2",
       "event_type": "finding_status",
-      "evidence_summary": "Investigation found the ledger's 'from-scratch design work' framing was half right: the MECHANISM half needs design work, but a real, ALREADY-RATIFIED cross-varga convergence primitive exists (chart_vichara.varga_ratification, wealth's design-ratified varga set = D1/D2/D9/D11, domain_provisional:false) that neither judgment_query nor bodha_mechanisms_get was using at all. Correctly declined to invent a weighting/convergence scheme (would be the exact CL-20 defect this finding is filed under) -- shipped disclosure only: varga_scope field, cross_varga_convergence_not_computed flag, corroborating_vargas checklist unit, both pointing callers at ganita_vichara_get. Two genuine classical ambiguities disclosed rather than resolved: D11 is supplementary not in the Parasari shodashavarga (BPHS Ch.6), and BPHS Ch.6's Hora is the sun/moon half-sign, not the generalized D2 dignity currently used. Design contract authored (F107_DIVISIONAL_MECHANISM_DESIGN_CONTRACT_v1_0.md) with 4 options, GA-2 recommends option A (route the existing ratification factor as cited evidence, invent nothing) -- 3 rulings requested from native. 15 new tests (asserting the disclosure fires, never that a finding is fabricated), 1777 retrieval tests pass 0 failures.",
+      "evidence_summary": "GA-5 review: MERGE, every load-bearing claim independently verified live (123 bodha_mechanisms rows all static_natal, zero varga columns; chart_vichara.varga_ratification wealth set D1/D2/D9/D11 domain_provisional=false confirmed real not narrated; zero pre-PR references to chart_vichara from either consumer; weight_varga_source confirmed genuinely dead; no import cycle; SUPPLEMENTARY_11/PARASHARI_16 classical distinction confirmed real; 1777/1777 tests independently re-run). Explicit non-blocking pushback: Option A (routing the ratified varga set as cited evidence) was actually implementable now for wealth -- the PR's own disclosure text hardcodes ['D1','D2','D9','D11'] as a wrapper-local string literal rather than reading it from L1, and this literal disagrees with the existing DOMAIN_DIRECT_VARGAS.wealth=['D2','D11'] TS registry by omitting D9. Reviewer recommendation: accept as genuine progress, file a follow-up rather than block.",
       "finding_id": "F-107",
-      "next_action": "GA-5 review of the disclosure-only PR, then native ruling needed on the design contract's 3 questions before full mechanism implementation can proceed",
+      "next_action": "in merge queue, auto-merge armed. Follow-up tracked as F-164.",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1419",
-      "prev_sha256": "589889425b73c631d179c50950de68a01a2fe2bac068efc68ccb998b8b05d342",
-      "seq": 902,
+      "prev_sha256": "9e8b06119118b6920abba36557953d8a741097f4346f9e8289199c3363b3cbaf",
+      "seq": 910,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "DECISION_PARKED",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-108": {
@@ -1176,6 +1176,21 @@
       "pr_url": null,
       "prev_sha256": "feb2644c4ed2e5784b927d0cdd0645340fa00f0c0b98a34ceaf7a1fca149136c",
       "seq": 908,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-164": {
+      "confidence": "MEDIUM",
+      "disposition": "STRANDED",
+      "event_sha256": "f70c94982293f636c525faf6dfb22c2d8eed6f92c59c9e4cbc3bfbfe48e2a118",
+      "event_type": "finding_status",
+      "evidence_summary": "Follow-up finding from F-107's GA-5 review. Two related, pre-existing (not introduced by F-107's PR) defects: (1) F-107's own disclosure text hardcodes the wealth-domain ratified varga set ['D1','D2','D9','D11'] as a wrapper-local string literal instead of reading it live from brahma_vichara_constants/chart_vichara (SS N.7 item 3 -- a constant shadowing an L1-computed value); (2) the existing TS registry DOMAIN_DIRECT_VARGAS.wealth=['D2','D11'] disagrees with the L0-ratified set by omitting D9 -- meaning F-107's own disclosure understates the true gap. Reviewer's explicit recommendation: implement Option A for wealth (read the ratified set live) and reconcile DOMAIN_DIRECT_VARGAS against brahma_vichara_constants.",
+      "finding_id": "F-164",
+      "next_action": "implement F-107's design contract Option A for wealth specifically (read chart_vichara.varga_ratification live instead of hardcoding), and reconcile DOMAIN_DIRECT_VARGAS.wealth to include D9 -- smaller, more tractable than the full cross-varga mechanism design question",
+      "pr_url": null,
+      "prev_sha256": "6a80ee6c3cf827dbe8a3a336ee404f78511bda98dba1d1cb060898589b0e79d2",
+      "seq": 911,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -2440,10 +2455,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 1,
+  "findings_morning_ship_ready_count": 2,
   "findings_terminal_count": 122,
-  "journal_head_seq": 909,
-  "journal_head_sha256": "9e8b06119118b6920abba36557953d8a741097f4346f9e8289199c3363b3cbaf",
+  "journal_head_seq": 911,
+  "journal_head_sha256": "f70c94982293f636c525faf6dfb22c2d8eed6f92c59c9e4cbc3bfbfe48e2a118",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
