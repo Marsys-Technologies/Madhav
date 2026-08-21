@@ -273,3 +273,70 @@ class TestInMemoryQuery:
         mod = _get_mod()
         result = mod._in_memory_query("Sun", None, None, 10)
         assert result["source"] == "in_memory"
+
+
+# ── F-144: sweep_classical_text_chunks OCR-confidence gating ──────────────────
+#
+# Prior behaviour: scaffold_status was gated only on marker/planet uniqueness,
+# never on whether the extracted text was legible at all. Live production check
+# (2026-08-21) found 29/49 corpus_sweep rows score below the already-established
+# LOW_CONFIDENCE_THRESHOLD (0.55, from brahmagyan.ocr_cleanup, EL-52) yet were
+# served scaffold_status='live' -- including the EL-52 hand-documented named
+# example (sweep_venus_japa_1b8a46b9 / chunk bphs_pg0581_c01, "3Tr?Ctrqqqad
+# EI€TITfEfrffTq"), which a prior lane had already flagged as garbled OCR.
+
+class TestSweepOcrConfidenceGating:
+    def _row(self, conn, content_en, chunk_id="test_chunk_c01", source_citation="Test Ch.1"):
+        cur = MagicMock()
+        cur.fetchall.return_value = [(chunk_id, "text_id_1", source_citation, content_en)]
+        conn.cursor.return_value.__enter__.return_value = cur
+        mod = _get_mod()
+        return mod.sweep_classical_text_chunks(conn)
+
+    def test_garbled_ocr_text_never_promoted_to_live(self):
+        # The actual EL-52 named-example garbled text (single marker "mantra",
+        # single planet "Venus" -- would previously have auto-promoted to 'live'
+        # purely on uniqueness).
+        garbled = (
+            "Chapter 47\n3Tr?Ctrqqqad\nEI€TITfEfrffTq I\n589\nfadtqs.aat*\n"
+            "aflunftqr<r{\n?6{ler\nqfilqfa llqqll\nqr aqrcti qt( |\ng\nei\n"
+            "€ai TTi q{Fft Eemrrt'lni\nIf Venus be lord of the mantra"
+        )
+        conn = MagicMock()
+        rows = self._row(conn, garbled)
+        assert len(rows) == 1
+        assert rows[0]["scaffold_status"] == "review", (
+            "garbled OCR text with a single unique marker+planet must NOT "
+            "auto-promote to 'live' -- this is the exact defect class F-144 fixes"
+        )
+
+    def test_legible_english_text_still_promoted_to_live(self):
+        # Deliberately avoids any OTHER marker word (e.g. "recite" would itself
+        # match the japa marker and force multi_marker=True/'review' regardless
+        # of legibility -- that's correct pre-existing behavior, just not what
+        # this test is isolating).
+        legible = (
+            "If Venus is the lord of the 7th house and well placed, the native "
+            "benefits from the Venus mantra daily during the Venus dasha, "
+            "reducing marital discord for lasting harmony in the home."
+        )
+        conn = MagicMock()
+        rows = self._row(conn, legible)
+        assert len(rows) == 1
+        assert rows[0]["scaffold_status"] == "live", (
+            "genuinely legible single-marker single-planet text should still "
+            "earn 'live' -- this fix must not blanket-demote everything"
+        )
+
+    def test_multi_marker_still_forces_review_regardless_of_legibility(self):
+        legible_but_ambiguous = (
+            "For Venus afflictions, the native may wear a gemstone, recite a "
+            "mantra, or worship at a temple depending on the dasha period."
+        )
+        conn = MagicMock()
+        rows = self._row(conn, legible_but_ambiguous)
+        assert len(rows) == 1
+        assert rows[0]["scaffold_status"] == "review", (
+            "multi-marker ambiguity must still force review even when the "
+            "text itself is perfectly legible -- pre-existing behavior preserved"
+        )

@@ -28,6 +28,7 @@ import json
 import logging
 
 from brahmagyan.graha_vocabulary import to_title
+from brahmagyan.ocr_cleanup import score_ocr_confidence, LOW_CONFIDENCE_THRESHOLD
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -3241,8 +3242,15 @@ def sweep_classical_text_chunks(conn) -> list[dict[str, Any]]:
             # (the INSERT validator would reject them)
             continue
 
-        # scaffold_status
-        if multi_marker or multi_planet:
+        # scaffold_status (F-144: marker/planet uniqueness alone says nothing about whether
+        # the extracted text is even legible, let alone an actual remedy — a single-marker,
+        # single-planet OCR-garbage row previously auto-promoted to 'live' unconditionally.
+        # score_ocr_confidence() is the same deterministic, already-reviewed EL-52 legibility
+        # heuristic classical_text_chunks.ocr_confidence_score was added for; it was never
+        # wired into this gate. Applied here at extraction time rather than depending on the
+        # chunks table being pre-scored, since it wasn't.)
+        ocr_score = score_ocr_confidence(content_en)
+        if multi_marker or multi_planet or ocr_score < LOW_CONFIDENCE_THRESHOLD:
             scaffold_status = 'review'
         else:
             scaffold_status = 'live'
