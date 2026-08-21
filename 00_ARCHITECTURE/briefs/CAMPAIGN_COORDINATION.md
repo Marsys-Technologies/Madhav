@@ -6126,3 +6126,44 @@ time. **Lesson for future reservations in this repo:** the migration-number
 check must span both `platform/migrations/` and `platform/supabase/migrations/`,
 not just the directory the new file happens to live in — `MIG-1`'s own guard
 already knows this; a manual pre-check that doesn't is the gap, not the tool.
+
+## 2026-08-21 — PARIPRASHNA-P3-PREFLIGHT-PART-D — lease CLOSED, PR #1441 merged + deployed + live-verified
+
+Lease opened above is released. Final account:
+
+- First CI push (PR #1441) failed two real, self-caused gates: MIG-1's
+  cross-directory migration-number collision (see correction entry above) and
+  a HIGH-severity `fingerprint_mismatch` drift finding on
+  `PARIPRASHNA_SWARM_PLAN_AMENDMENTS` (edited the file without rotating its
+  registered fingerprint in `CAPABILITY_MANIFEST.json` — rotated to the real
+  post-edit SHA256; `drift_detector` now exits 3, 164 findings, none HIGH,
+  under the 165 baseline). Both fixed and re-pushed; second CI run fully
+  green.
+- PR #1441 merged via merge queue (`e99cc1e45`). Deployed via the standing
+  canary discipline: `Deploy to Cloud Run` run 32519650838 — `Apply DB
+  Migrations` succeeded, `Build & Deploy Web` succeeded (no-traffic deploy →
+  post-deploy smoke → promote to 100%).
+- **Migration verified actually applied**, not trusted blind (`SELECT
+  count(*) FROM llm_pricing_versions` = 52; 26 input + 26 output rows,
+  matching the seed exactly).
+- **Live-verified per DD-21** (two distinct claims, per §N.8 — populated ≠
+  enforcing, checked separately, not conflated):
+  1. **Populated:** real probe turn (`4b0d033c-...`, "What house is my Sun
+     in?") produced a real `synthesize` row on `gemini-2.5-pro` (36,912 in /
+     1,448 out) with `computed_cost_usd: 0.060620` — non-null, and the exact
+     value the seeded rates predict (36,912 × $1.25/1M + 1,448 × $10.00/1M =
+     $0.06062). First time this field has ever populated on any row in this
+     table's history.
+  2. **Ceiling read-path no longer inert:** ran `spend_ceiling.ts`'s own
+     `getDailySpendUsd()` query verbatim against production for the probe's
+     `user_id` — returns the same real `$0.060620`, not `$0`. **Not tested in
+     this pass:** the actual reject path (deliberately exceeding $2/turn or
+     $40/day) — a separate, more expensive, disclosed test; not performed
+     here, not claimed as verified.
+- DD-25 amended in place with root cause + fix status; DD-26 filed for the
+  disclosed tiered-pricing gap (unfixed, no deadline set, native-scoped out
+  of this lease).
+
+No file outside this lease's declared scope was touched. Worktree
+`.clone/worktrees/pariprashna-part-d` retained (used for the live probe
+verification above); will be removed once Part B lands or on request.
