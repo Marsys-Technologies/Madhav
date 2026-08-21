@@ -358,6 +358,12 @@ function hedgeForGrade(evidenceGrade: unknown): string | null {
   if (g === 'prior_only' || g === 'documented_approximation') {
     return 'provisional — thin evidential base'
   }
+  // F-143: 'assignment_only' means a row has enough ASSIGNMENTS to look well-supported but
+  // fewer than 5 outcome-adjudicated matches behind it. Left unhedged it would read exactly
+  // like a calibrated row to a caller who only sees the theme text.
+  if (g === 'assignment_only') {
+    return 'provisional — assignments only, no scored outcomes behind it'
+  }
   return null
 }
 
@@ -914,7 +920,14 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           chart_id,
           depth,
           audience,
-          formula_version: 'mi_darshana_v1.0',
+          // F-143 / §N.7 item 3: this was the hardcoded literal 'mi_darshana_v1.0' — a
+          // wrapper-local constant shadowing a value the query above already selects
+          // (surface_formula_version). It could not track a writer version bump, so it
+          // would have started mislabelling every brief the moment mi_darshana bumped.
+          // Report what the rows actually carry; disclose a mixed set rather than picking one.
+          formula_version:
+            [...new Set(rows.map(r => r['surface_formula_version']).filter(Boolean))].join(', ') ||
+            'none — no insight units for this chart',
           calibration_mode: 'STRUCTURAL',
           calibration_note: 'L5 SEALED — empirical scores accrue as outcome data is recorded.',
           topics_covered: rows.length,

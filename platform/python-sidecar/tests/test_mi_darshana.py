@@ -44,7 +44,7 @@ class _FakeCursor:
         elif "FROM mimamsa_manifestation_grammar" in s:
             self._result = list(self._conn.grammar_rows)
         elif "FROM mimamsa_discoveries" in s:
-            self._result = []
+            self._result = list(self._conn.discovery_rows)
         elif "FROM mimamsa_load_bearing" in s:
             self._result = []
         elif "JOIN brahma_event_ontology" in s:
@@ -75,6 +75,7 @@ class _FakeConn:
     def __init__(self, reliability_rows):
         self.reliability_rows = list(reliability_rows)
         self.grammar_rows: list[dict] = []
+        self.discovery_rows: list[dict] = []
         self.inserted_rows: list[tuple] = []
         # Section-5 (bodha_pratijna verdict_object) fakes — opt-in per test.
         self.existing_tables: set[str] = set()
@@ -492,3 +493,139 @@ def test_assignment_only_grade_passed_through_not_hardcoded_empirical():
     row = conn.inserted_rows[0]
     assert row[EVIDENCE_GRADE] == "assignment_only"
     assert "empirical learning" not in row[STATEMENT]
+
+
+# ── F-143 — discovery evidence grading is per discovery_class ────────────────
+#
+# `"empirical" if n >= 5 else "prior_only"` read mimamsa_discoveries.n_support as a
+# count of scored outcomes for every class alike. It is not:
+#   emergent_law — attribution ASSIGNMENTS (incl. UNRESOLVED / FALSE_ALARM matches)
+#   retrodiction — matched anchors, capped at 3 by the source query's LIMIT 3
+# Confirmed live before the fix: 20 emergent_law rows on the canonical chart graded
+# 'empirical' off assignment volume alone (n_support 9..41), and all 51 retrodiction
+# rows graded 'prior_only' on a threshold their capped count can never reach.
+
+def _discovery_row(discovery_class="emergent_law", n_support=41, evidence_refs=None,
+                   discovery_id="disc_sig1_timing", strength=0.27, statement=None):
+    return {
+        "discovery_id": discovery_id,
+        "discovery_class": discovery_class,
+        "statement": statement or f"{discovery_class} test statement",
+        "strength": strength,
+        "n_support": n_support,
+        "confidence_band": "[0.12,0.42)",
+        "activation_status": "candidate",
+        "evidence_refs": evidence_refs,
+    }
+
+
+def _run_discoveries(discovery_rows):
+    conn = _FakeConn([])
+    conn.discovery_rows = discovery_rows
+    writer = MiDarshanaWriter()
+    result = writer._substep_insight_units(conn, NATIVE_CHART_ID, t0=0.0)
+    return conn, result
+
+
+def _basis(row):
+    return json.loads(row[PROVENANCE_CHAIN])["grade_basis"]
+
+
+def test_emergent_law_assignment_count_alone_never_grades_empirical():
+    """FAILS PRE-FIX: n_support=41 attribution ASSIGNMENTS graded 'empirical'.
+    A legacy row (evidence_refs with no n_scored_matches — every row in prod
+    until mi_pariksha v2.1 re-runs) must grade down, never up."""
+    conn, result = _run_discoveries([
+        _discovery_row(n_support=41, evidence_refs={"signal_id": "sig1", "dimension": "timing", "n": 41})
+    ])
+    assert result.rows_inserted == 1
+    row = conn.inserted_rows[0]
+    assert row[EVIDENCE_GRADE] == "assignment_only"
+    assert _basis(row)["rule"] == "no_scored_count_available"
+    assert _basis(row)["n_scored_matches"] is None
+
+
+def test_emergent_law_earns_empirical_only_from_adjudicated_matches():
+    """The tier is reachable — but only on the scored-match axis (>= 5), mirroring
+    F-35 / migration 573."""
+    conn, _ = _run_discoveries([
+        _discovery_row(n_support=41, evidence_refs={"n": 41, "n_distinct_matches": 20, "n_scored_matches": 6})
+    ])
+    row = conn.inserted_rows[0]
+    assert row[EVIDENCE_GRADE] == "empirical"
+    assert _basis(row) == {
+        "rule": "scored_matches_threshold", "n_support": 41,
+        "n_scored_matches": 6, "empirical_min": 5,
+    }
+
+
+def test_emergent_law_many_assignments_few_scored_is_assignment_only():
+    """The exact production shape: plenty of assignments, most of them from
+    UNRESOLVED matches whose adjudication can still flip."""
+    conn, _ = _run_discoveries([
+        _discovery_row(n_support=41, evidence_refs={"n": 41, "n_distinct_matches": 20, "n_scored_matches": 2})
+    ])
+    assert conn.inserted_rows[0][EVIDENCE_GRADE] == "assignment_only"
+
+
+def test_emergent_law_below_both_thresholds_is_prior_only():
+    conn, _ = _run_discoveries([
+        _discovery_row(n_support=3, evidence_refs={"n": 3, "n_scored_matches": 0})
+    ])
+    assert conn.inserted_rows[0][EVIDENCE_GRADE] == "prior_only"
+
+
+def test_retrodiction_graded_structural_not_prior_only():
+    """Retrodiction rows are chart-specific deterministic probes, not prior-derived —
+    and the n>=5 gate they used to face is unreachable behind the source query's
+    LIMIT 3, so it was never doing any grading work."""
+    conn, _ = _run_discoveries([
+        _discovery_row(discovery_class="retrodiction", n_support=3, discovery_id="retro_ev1")
+    ])
+    row = conn.inserted_rows[0]
+    assert row[EVIDENCE_GRADE] == "structural"
+    assert _basis(row)["rule"] == "retrodiction_never_empirical"
+    assert _basis(row)["anchors_matched"] == 3
+
+
+def test_retrodiction_never_empirical_even_above_any_count_threshold():
+    """Guard against a future 'just lower the bar' fix: the class cannot earn
+    'empirical' at ANY count while the blinding is unenforced and the anchor match
+    is unadjudicated — not even if the LIMIT 3 cap were lifted, and not even if a
+    scored count were somehow attached."""
+    conn, _ = _run_discoveries([
+        _discovery_row(discovery_class="retrodiction", n_support=99,
+                       evidence_refs={"n_scored_matches": 50}, discovery_id="retro_ev2")
+    ])
+    assert conn.inserted_rows[0][EVIDENCE_GRADE] == "structural"
+
+
+def test_unknown_discovery_class_fails_closed_to_prior_only():
+    """A class whose n_support semantics nothing has established must not inherit
+    emergent_law's assignment tier."""
+    conn, _ = _run_discoveries([
+        _discovery_row(discovery_class="temporal_rhythm", n_support=40, evidence_refs=None,
+                       discovery_id="tr_1")
+    ])
+    assert conn.inserted_rows[0][EVIDENCE_GRADE] == "prior_only"
+
+
+def test_discovery_provenance_is_json_serializable_and_carries_class():
+    conn, _ = _run_discoveries([
+        _discovery_row(evidence_refs={"n_scored_matches": 6}),
+        _discovery_row(discovery_class="retrodiction", n_support=0, discovery_id="retro_ev3"),
+    ])
+    for row in conn.inserted_rows:
+        prov = json.loads(row[PROVENANCE_CHAIN])
+        assert prov["discovery_class"] in ("emergent_law", "retrodiction")
+        assert isinstance(prov["grade_basis"], dict)
+        assert "rule" in prov["grade_basis"]
+
+
+def test_malformed_evidence_refs_does_not_crash_and_grades_down():
+    """evidence_refs is jsonb — a list (retrodiction's own shape), a string, or None
+    must all be tolerated without promoting the row."""
+    for refs in (None, [], ["not", "a", "dict"], "{}", {"n_scored_matches": "6"},
+                 {"n_scored_matches": True}):
+        conn, _ = _run_discoveries([_discovery_row(n_support=41, evidence_refs=refs)])
+        assert conn.inserted_rows[0][EVIDENCE_GRADE] == "assignment_only", refs

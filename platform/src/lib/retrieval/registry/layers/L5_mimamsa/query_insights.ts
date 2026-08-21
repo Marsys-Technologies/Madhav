@@ -28,20 +28,47 @@ export const EMPIRICALLY_CALIBRATED = 'empirical'
 // every known citation shape regardless of which template produced it. `g` flag added --
 // a statement could in principle carry more than one citation.
 //
-// STRUCTURAL RESIDUAL, NOT closed by this list (disclosed, not fixed -- round 3 finding):
-// emergent_law statements (mi_darshana.py line ~219) are free text copied from
-// mimamsa_discoveries, an unbounded shape no fixed regex list can be proven exhaustive
-// against. Closing that durably needs either a write-path fix (mi_darshana.py never embeds
-// a numeric confidence citation in free-text discoveries) or a serve-time numeric-residue
-// assertion (fail loud if ANY bare confidence-shaped number survives a suppressed row's
-// statement) -- both larger changes than this fix's own scope. Tracked, not chased into a
-// round 4.
+// STRUCTURAL RESIDUAL, NOT fully closed by this list (disclosed, not fixed -- round 3
+// finding): emergent_law statements are free text copied from mimamsa_discoveries, an
+// unbounded shape no fixed regex list can be proven exhaustive against. Closing that
+// durably needs either a write-path fix (mi_darshana.py never embeds a numeric confidence
+// citation in free-text discoveries) or a serve-time numeric-residue assertion (fail loud
+// if ANY bare confidence-shaped number survives a suppressed row's statement) -- both
+// larger changes than this fix's own scope. Tracked, not chased into a round 4.
+//
+// F-143 UPDATE: that residual stopped being latent. Before F-143, discovery rows with
+// n_support >= 5 were graded 'empirical' and so never reached this suppressor at all; the
+// fix demotes them (20 rows on the canonical chart) to 'assignment_only', which routes
+// their statements through here for the first time. The two shapes mi_pariksha's discovery
+// substep actually emits are now covered explicitly -- the current "mean credit=N.NN" form
+// and the pre-v2.1 "(mean=N.NN, n=N)" form, which stays in prod rows until mi_pariksha
+// re-runs. The unbounded-free-text residual above is unchanged in principle.
 const EMBEDDED_NUMERIC_EVIDENCE_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
   { pattern: /\(grade\s+[\d.]+\/10\)/gi, replacement: '(grade suppressed — see tier_suppression_note)' },
   { pattern: /\(sensitivity=[\d.]+\)/gi, replacement: '(sensitivity suppressed — see tier_suppression_note)' },
   { pattern: /observed outcome rate is [\d.]+%/gi, replacement: 'observed outcome rate is [suppressed — see tier_suppression_note]' },
   { pattern: /\(prior-based estimate: [\d.]+%\)/gi, replacement: '(prior-based estimate suppressed — see tier_suppression_note)' },
+  { pattern: /mean credit=[\d.]+/gi, replacement: 'mean credit=[suppressed — see tier_suppression_note]' },
+  { pattern: /\(mean=[\d.]+,\s*n=\d+\)/gi, replacement: '(mean credit suppressed — see tier_suppression_note)' },
 ]
+
+// F-143: evidence_grade is a TIERED vocabulary, not a boolean. Served verbatim per row and
+// counted in evidence_grade_counts; this legend keeps a caller from collapsing the tiers
+// into "empirical vs. not" and reading an assignment count as scored evidence.
+export const EVIDENCE_GRADE_LEGEND: Record<string, string> = {
+  empirical:
+    'backed by >= 5 outcome-adjudicated prediction/event matches (CONFIRMED|PARTIAL|REFUTED). ' +
+    'The only tier whose numeric fields are served unsuppressed.',
+  assignment_only:
+    'enough ASSIGNMENTS (attribution rows / channel opportunities) to look well-supported, but ' +
+    'fewer than 5 of them were outcome-adjudicated. Not evidence of accuracy. Numerics suppressed.',
+  prior_only:
+    'below every evidence threshold, or no scored count is recorded at all — the number shown ' +
+    'would come from a prior, not from this chart. Numerics suppressed.',
+  structural:
+    'deterministically derived from chart structure or from an unadjudicated probe ' +
+    '(e.g. retrodiction rows: an anchor match is not a scored hit). Numerics suppressed.',
+}
 
 export function redactEmbeddedNumericEvidence(statement: string): string {
   let out = statement
@@ -104,7 +131,7 @@ export const queryInsightsCapability: CapabilityDescriptor = {
     },
     insight_type: {
       type: 'string',
-      description: "Filter by type: 'calibrated_outlook'|'manifestation_grammar'|'emergent_law'|'load_bearing'|'negative_knowledge'",
+      description: "Filter by type: 'calibrated_outlook'|'manifestation_grammar'|'emergent_law'|'retrodiction'|'load_bearing'|'negative_knowledge'|'verdict_object'. ('retrodiction' and 'verdict_object' rows are written by mi_darshana and were previously undocumented here — insight_type mirrors mimamsa_discoveries.discovery_class for discovery-sourced rows.)",
       required: false,
     },
     domain: {
@@ -206,12 +233,20 @@ export const queryInsightsCapability: CapabilityDescriptor = {
         evidence_grade_counts[g] = (evidence_grade_counts[g] ?? 0) + 1
       }
 
+      // F-143: only legend entries for grades actually present, so the legend can never
+      // imply a tier this response does not contain.
+      const evidence_grade_legend: Record<string, string> = {}
+      for (const g of Object.keys(evidence_grade_counts)) {
+        evidence_grade_legend[g] = EVIDENCE_GRADE_LEGEND[g] ?? 'unrecognized tier — treated as not-calibrated (fail-closed: numerics suppressed).'
+      }
+
       return {
         content: {
           chart_id,
           insight_units:       insightResult.rows.map(suppressIfNotCalibrated),
           calibration_summary,
           evidence_grade_counts,
+          evidence_grade_legend,
           filters:             { insight_type, domain, min_rank, top_k, include_neg },
           total_returned:      insightResult.rows.length,
         },

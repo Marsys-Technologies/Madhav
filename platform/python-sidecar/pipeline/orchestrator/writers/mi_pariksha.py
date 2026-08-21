@@ -7,7 +7,9 @@ BA-P6: _DIM_WEIGHTS embedded dict DELETED (now in brahma_formula_constants).
        4 new substeps: retrodiction + control_windows + ablation + tail_only.
 
 7 substeps per chart:
-  1. "retrodiction"    — blind T−90d date-filtered retrodiction over admissible LEL events
+  1. "retrodiction"    — historical-anchor probe over admissible LEL events (the T−90d
+                         date-filtered blinding is DECLARED, not enforced at build time —
+                         see _substep_retrodiction; F-143)
   2. "control_windows" — ≥3 same-length no-event control windows per event (age-band stratified)
   3. "ablation"        — per-family marginal skill (ablation mask)
   4. "attribution"     — analytic from lift_vectors (catch-all deleted; empty excluded)
@@ -36,10 +38,20 @@ from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, reg
 logger = logging.getLogger(__name__)
 
 ATTRIBUTION_FORMULA_VER = "mi_pariksha_v2.0"
-DISCOVERY_FORMULA_VER = "mi_pariksha_v2.0"
-RETRODICTION_FORMULA_VER = "mi_pariksha_v2.0"
+DISCOVERY_FORMULA_VER = "mi_pariksha_v2.1"    # v2.1: F-143 n_scored_matches in evidence_refs
+RETRODICTION_FORMULA_VER = "mi_pariksha_v2.1"  # v2.1: F-143 statement no longer claims unenforced blinding
 
 _DIMENSIONS = ["timing", "magnitude", "domain", "falsifier", "manifestation"]
+
+# F-143 (same class as F-35): the ONLY composite_verdict values that represent an
+# ADJUDICATED outcome — i.e. a prediction whose observation window has elapsed and
+# whose result has actually been scored against a real event. mi_pramana._verdict_v2
+# emits these UPPERCASE. The other two verdicts it can emit are NOT evidence:
+#   UNRESOLVED  — window not yet attested complete; the adjudication can still flip
+#   FALSE_ALARM — control-window prediction, by construction not a real outcome
+# A discovery's n_support counts ATTRIBUTION ASSIGNMENTS across all of these; only
+# the adjudicated subset may ever support an 'empirical' evidence grade downstream.
+_ADJUDICATED_VERDICTS = frozenset({"CONFIRMED", "PARTIAL", "REFUTED"})
 
 # Default dim weights (C6: authoritative copy in brahma_formula_constants)
 _DEFAULT_DIM_WEIGHTS = {
@@ -86,7 +98,7 @@ class MiParikshaWriter(WriterBase):
     def plan_substeps(self, ctx) -> list[SubStep]:
         self._chart_id = str(ctx.config["chart_id"])
         return [
-            SubStep(key="retrodiction",    label="blind T−90d date-filtered retrodiction"),
+            SubStep(key="retrodiction",    label="historical-anchor probe (T−90d cutoff declared, not enforced)"),
             SubStep(key="control_windows", label="≥3 no-event control windows per event"),
             SubStep(key="ablation",        label="per-family marginal skill ablation"),
             SubStep(key="attribution",     label="analytic attribution from lift_vectors"),
@@ -120,12 +132,19 @@ class MiParikshaWriter(WriterBase):
 
     def _substep_retrodiction(self, conn, chart_id: str, t0: float) -> WriterResult:
         """
-        Blind retrodiction: for each admissible LEL event at date T, apply
-        DATE-FILTERED VIEWS (cutoff T−90d) over chart_facts/chart_dashas and run
-        the R-pipeline (promise→activation→anchor v2). Emit top-k (event_class, window, posterior).
+        Historical-anchor probe. TARGET design (not what runs at build time): for each
+        admissible LEL event at date T, apply DATE-FILTERED VIEWS (cutoff T−90d) over
+        chart_facts/chart_dashas and run the R-pipeline (promise→activation→anchor v2),
+        emitting top-k (event_class, window, posterior).
 
-        At build time without real ephemeris: emits structural retrodiction rows
-        with posterior=NULL and a note for serve-time enrichment.
+        WHAT ACTUALLY RUNS at build time (F-143 — stated plainly so no downstream grader
+        can mistake it for a backtest): the cutoff is computed but never applied; the query
+        below selects up to 3 phala_anchors in the event's domain whose window_start is on
+        or before the event date. It does NOT check that the anchor window CONTAINS the
+        event, nor that the anchor's event type matches what happened, nor that the anchor
+        was derivable from pre-cutoff data only. A row here is therefore a deterministic
+        structural probe, not adjudicated evidence — mi_darshana grades this class
+        'structural' and can never grade it 'empirical' (see _discovery_evidence_grade).
         """
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
@@ -196,9 +215,18 @@ class MiParikshaWriter(WriterBase):
                 chart_id,
                 retro_id,
                 "retrodiction",
-                f"Blind retrodiction for {event_id} ({ev['domain_primary']}) "
-                f"with T−90d cutoff {cutoff}. "
-                f"Top-k anchors matched: {len(top_k_anchors)}.",
+                # F-143 / §N.7: the old statement read "Blind retrodiction ... with T−90d
+                # cutoff {cutoff}", asserting a blinding this code path never performs —
+                # `cutoff` is computed and printed but never applied as a filter (the anchor
+                # query below filters on domain + window_start only; there are no
+                # date-filtered views at build time, as this method's own docstring says).
+                # The statement now says what actually ran. A row that claims blinding it
+                # did not perform is the same unearned-signal defect one layer up.
+                f"Retrodiction probe for {event_id} ({ev['domain_primary']}): "
+                f"{len(top_k_anchors)} pre-existing {ev['domain_primary']} anchor(s) had "
+                f"opened on or before the event date. "
+                f"NOT a blind backtest — the declared T−90d cutoff ({cutoff}) is not applied "
+                f"as a filter and an anchor match is not an adjudicated hit.",
                 top_k_json,
                 round(strength, 4),
                 len(top_k_anchors),
@@ -585,10 +613,22 @@ class MiParikshaWriter(WriterBase):
     # ── discovery ────────────────────────────────────────────────────────────
 
     def _substep_discovery(self, conn, chart_id: str, t0: float) -> WriterResult:
+        # F-143: join the attribution rows to the calibration verdict they came from.
+        # An attribution row is an ASSIGNMENT of analytic credit to a signal for one
+        # prediction↔event match; it is NOT evidence that an outcome was scored. Only
+        # matches with an adjudicated verdict (_ADJUDICATED_VERDICTS) carry that.
+        # ORDER BY: the 20-row cap below previously kept whichever groups the unordered
+        # scan happened to yield first, so a rebuild could silently swap which discoveries
+        # survive. Total ordering makes the cap deterministic.
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
-                "SELECT signal_id, family_id, dimension, credit_blame "
-                "FROM mimamsa_attribution WHERE chart_id = %s",
+                "SELECT a.signal_id, a.family_id, a.dimension, a.credit_blame, "
+                "       a.match_id, c.composite_verdict "
+                "FROM mimamsa_attribution a "
+                "LEFT JOIN mimamsa_calibration c "
+                "  ON c.chart_id = a.chart_id AND c.match_id = a.match_id "
+                "WHERE a.chart_id = %s "
+                "ORDER BY a.signal_id, a.dimension, a.match_id",
                 (chart_id,),
             )
             att_rows = cur.fetchall()
@@ -605,13 +645,23 @@ class MiParikshaWriter(WriterBase):
                                 duration_seconds=time.time() - t0,
                                 notes="no attribution data — 0 discoveries")
 
-        sig_dim_credits: dict[tuple, list[float]] = {}
+        sig_dim: dict[tuple, dict] = {}
         for row in att_rows:
             key = (str(row["signal_id"]), row["dimension"])
-            sig_dim_credits.setdefault(key, []).append(float(row.get("credit_blame") or 0.0))
+            agg = sig_dim.setdefault(
+                key, {"credits": [], "matches": set(), "scored_matches": set()}
+            )
+            agg["credits"].append(float(row.get("credit_blame") or 0.0))
+            match_id = row.get("match_id")
+            if match_id is not None:
+                agg["matches"].add(str(match_id))
+                verdict = str(row.get("composite_verdict") or "").upper()
+                if verdict in _ADJUDICATED_VERDICTS:
+                    agg["scored_matches"].add(str(match_id))
 
         rows: list[tuple] = []
-        for (signal_id, dimension), credits in sig_dim_credits.items():
+        for (signal_id, dimension), agg in sig_dim.items():
+            credits = agg["credits"]
             n = len(credits)
             if n < 3:
                 continue
@@ -619,11 +669,19 @@ class MiParikshaWriter(WriterBase):
             if mean_credit < 0.15:
                 continue
 
+            # F-143: the two counts mean different things and must never be conflated.
+            # n                 — attribution ASSIGNMENTS (this is what n_support stores)
+            # n_scored_matches  — distinct prediction↔event matches with an adjudicated
+            #                     verdict; the only count that can earn 'empirical'.
+            n_matches = len(agg["matches"])
+            n_scored = len(agg["scored_matches"])
+
             discovery_id = f"disc_{signal_id[:20]}_{dimension}"
             statement = (
                 f"Signal '{signal_id}' shows consistent {dimension}-dimension credit "
-                f"(mean={mean_credit:.2f}, n={n}). "
-                f"Candidate emergent calibration law."
+                f"(mean credit={mean_credit:.2f} across {n} attribution assignments "
+                f"over {n_matches} prediction-event matches, {n_scored} of them "
+                f"outcome-adjudicated). Candidate emergent calibration law."
             )
             conf_lo = max(0.0, mean_credit - 0.15)
             conf_hi = min(1.0, mean_credit + 0.15)
@@ -633,7 +691,18 @@ class MiParikshaWriter(WriterBase):
                 discovery_id,
                 "emergent_law",
                 statement,
-                json.dumps({"signal_id": signal_id, "dimension": dimension, "n": n}),
+                json.dumps({
+                    "signal_id": signal_id,
+                    "dimension": dimension,
+                    "n": n,
+                    "n_support_semantics": (
+                        "attribution-assignment rows, NOT independently scored outcomes "
+                        "(F-143) — read n_scored_matches for evidence strength"
+                    ),
+                    "n_distinct_matches": n_matches,
+                    "n_scored_matches": n_scored,
+                    "adjudicated_verdicts": sorted(_ADJUDICATED_VERDICTS),
+                }),
                 round(mean_credit, 4),
                 n,
                 f"[{round(conf_lo,2)},{round(conf_hi,2)})",
