@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 908,
+  "event_count": 909,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -432,15 +432,16 @@
     },
     "F-118": {
       "confidence": "HIGH",
-      "disposition": "OPEN",
-      "event_sha256": "f1a9774934d304f315fc922b76cffde84a3e55f0436fad9970d3f272c0cfcbf2",
+      "disposition": "LANDED",
+      "event_sha256": "9e8b06119118b6920abba36557953d8a741097f4346f9e8289199c3363b3cbaf",
       "event_type": "finding_status",
-      "evidence_summary": "Needs a fresh intervention-semantics repair authored: a real actionable-prescription field + per-row efficacy/feasibility detector -- substantial design work, not build-ready.",
+      "evidence_summary": "Investigation found the real problem is deeper than the original claim: phala_mitigation has 536 rows/chart but only 4 distinct served-content combinations, and EVERY row has an empty remedy payload (program_jsonb.total_scheduled=0, all tradition/tier buckets empty) -- there is no actual remedy in these rows at all, the label degenerated to a severity grade because that's the only real text present. bodha_rm_remedy_prescriptions separately duplicates 27 remedies x 5 ayanamshas unfiltered. Fixed: dedupeInterventions collapses duplicates with an honest duplicate_row_count disclosure (never silently drops); new actionable_prescription field + detector splits act-having rows from non_prescriptive_rows (SS N.6 shape, nothing dropped); ayanamsha budget pin; efficacy_discrimination as an SS N.8 honest disclosure of the degenerate citation-presence-only grading. Result measured on the actual captured live response: 100 rows -> 13 distinct actionable interventions + 1 non-prescriptive summary row (was 50 fake-distinct duplicates). Deferred to design contract: the genuine per-row efficacy/feasibility score, plus an unresolved question flagged for the conductor -- is ph_pratikara's empty remedy program an L4 BUILD DEFECT (should populate but doesn't) or is kala_upaya_get simply reading a surface it shouldn't for interventions at all?",
       "finding_id": "F-118",
-      "next_action": "author the intervention-semantics contract, independent review, then implement",
-      "prev_sha256": "bcca4820ef9c16de14a01b6a24673961c0e345ad17162db7ca0cedba5d7b5533",
-      "seq": 754,
-      "source_batch": "round9_triage",
+      "next_action": "GA-5 review in flight; separately, the ph_pratikara empty-remedy-program question needs conductor/native triage as a possible new L4 finding",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1423",
+      "prev_sha256": "3f6763912ceccef63e7b9ef33420a50da2d611ffcc7d476a197e4ad49e50f0dd",
+      "seq": 909,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
@@ -2441,8 +2442,8 @@
   },
   "findings_morning_ship_ready_count": 1,
   "findings_terminal_count": 122,
-  "journal_head_seq": 908,
-  "journal_head_sha256": "3f6763912ceccef63e7b9ef33420a50da2d611ffcc7d476a197e4ad49e50f0dd",
+  "journal_head_seq": 909,
+  "journal_head_sha256": "9e8b06119118b6920abba36557953d8a741097f4346f9e8289199c3363b3cbaf",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
