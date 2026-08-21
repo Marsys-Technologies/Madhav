@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 872,
+  "event_count": 874,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -835,14 +835,14 @@
     "F-143": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "86d9222ef9b2969e3e844671e129fa7af8f153aab7560e41fcf6126f1d0d5043",
+      "event_sha256": "16c37d0b8ff611f7ada090e5c6e92c02caae23f81a53f9fa61d5c88244c0e765",
       "event_type": "finding_status",
-      "evidence_summary": "Real, per-discovery-class grading fix, not a copy-paste of F-35's pattern (verified per-class it actually fits). emergent_law: kept the n>=5 bar but put a real quantity behind it -- joins attribution rows to their mi_pramana calibration verdict, counts DISTINCT matches with composite_verdict in {CONFIRMED,PARTIAL,REFUTED} as n_scored_matches, grades on that instead of raw attribution count. Measured against prod: of 30 candidate groups, 15 now correctly earn empirical, 15 correctly drop to assignment_only -- the bar bites both directions, not just down. retrodiction: correctly did NOT invent evidence -- traced the substep and found the T-90d cutoff is computed but never applied as a filter, anchor window/event-type are never checked -- no real detector exists behind a 'match', so graded honestly as structural (not prior_only, not empirical) with a test pinning it can never reach empirical at any count. 8 new tests confirmed failing on origin/main via revert, passing with fix; 58 python + 138 vitest green; 2 pre-existing failures confirmed identical on clean main.",
+      "evidence_summary": "GA-5 review: MERGE, no blocking defect. Join correctness independently verified (PK (chart_id,match_id) confirmed live, no fanout possible). Case-sensitivity trap (the exact class of bug found in F-35's own fix) independently confirmed NOT reintroduced here -- .upper() normalization + a dedicated test pins it. 15/15 empirical/assignment_only split reproduced exactly against live prod. Legacy-rows-grade-down-only confirmed, including a bool-is-int Python trap guard. Retrodiction's 'no real detector' claim confirmed literally true by reading the actual substep (T-90d cutoff computed but only used in an f-string, never as a filter). Retrodiction test confirmed non-vacuous (fails red on main with real prior n_support=99 case). Red-before-green independently reproduced (8 mi_darshana + 7 mi_pariksha failures on clean main). All CI green.",
       "finding_id": "F-143",
-      "next_action": "GA-5 review in flight",
+      "next_action": "in merge queue, auto-merge armed",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1414",
-      "prev_sha256": "84a3a64dd6e8e64e4dc6e2e6e44823870ab47369d8dc4527a45c4a5a5b750331",
-      "seq": 871,
+      "prev_sha256": "b6cb3df5f03eb12ae3fbbe69648fe9c52a635073fcfeba1dc14bc723d15050dd",
+      "seq": 873,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "MORNING_SHIP_READY",
       "terminal_status": null
@@ -903,6 +903,21 @@
       "pr_url": null,
       "prev_sha256": "86d9222ef9b2969e3e844671e129fa7af8f153aab7560e41fcf6126f1d0d5043",
       "seq": 872,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-148": {
+      "confidence": "HIGH",
+      "disposition": "STRANDED",
+      "event_sha256": "d28430b3199fe76329ca0fb8891ae4a1563ab3dd399ea4bb28b4effabf513188",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW finding, given its own ID per the F-143 GA-5 reviewer's own recommendation ('unlike F-35 it isn't explicitly raised for triage -- give it a finding ID'). mi_pariksha.py's retrodiction substep (_substep_...retrodiction) computes a T-90d cutoff but never applies it as an actual query filter (used only inside an f-string for the served statement text, not in the SQL WHERE clause); the matched anchor's window is never checked to actually contain the event date; the anchor's event_type is SELECTed but never compared against the real event's type. A 'retrodiction match' is therefore not really verified by anything -- 'top-k anchors matched' just means 'anchors existed in the same domain before the query cutoff', not 'this anchor actually predicted this specific event correctly'. F-143 correctly declined to fix this in-scope (graded the class honestly as 'structural' rather than inventing a fix for a different, larger problem) -- this finding tracks the underlying retrodiction-verification gap itself as its own item.",
+      "finding_id": "F-148",
+      "next_action": "author a real retrodiction-verification contract: apply the T-90d cutoff as an actual filter, check anchor window containment, compare event_type -- independent review, then implement. This is a new capability (real backtesting verification), not a grading fix -- treat as design-contract-batch-sized work, not a quick patch.",
+      "pr_url": null,
+      "prev_sha256": "16c37d0b8ff611f7ada090e5c6e92c02caae23f81a53f9fa61d5c88244c0e765",
+      "seq": 874,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -2180,8 +2195,8 @@
   },
   "findings_morning_ship_ready_count": 5,
   "findings_terminal_count": 114,
-  "journal_head_seq": 872,
-  "journal_head_sha256": "b6cb3df5f03eb12ae3fbbe69648fe9c52a635073fcfeba1dc14bc723d15050dd",
+  "journal_head_seq": 874,
+  "journal_head_sha256": "d28430b3199fe76329ca0fb8891ae4a1563ab3dd399ea4bb28b4effabf513188",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
