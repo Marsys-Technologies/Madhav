@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 891,
+  "event_count": 894,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1008,6 +1008,36 @@
       "pr_url": null,
       "prev_sha256": "8443b6672d297339ca9dd51484193acce542a76806080212b74fe9f74f4b1972",
       "seq": 889,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-154": {
+      "confidence": "MEDIUM",
+      "disposition": "STRANDED",
+      "event_sha256": "6e948dd5c33d5c09059b5f1e61c79e698fe8a40d1f1704c45a46e3f6e2a8df66",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW finding, found while closing F-91. _check_f91 in platform/scripts/governance/ekv_controls.py stats a '.generated.ts' projection file that does not exist -- only the '.json' variant does -- so this governance CI control has ALWAYS silently returned SKIP, never actually run its own check, for as long as it has existed. A SS N.8 earned-signal defect in the control itself (a governance gate that could never fail, wearing a passing result's clothes).",
+      "finding_id": "F-154",
+      "next_action": "small fix: correct the file extension/path the control checks, or point it at the real .json artifact -- verify it can genuinely FAIL under a constructed bad-state before trusting it again",
+      "pr_url": null,
+      "prev_sha256": "40ef2afbd1db1313dd7ec412af82426920d34110cd55a60faac02ab3d4e24756",
+      "seq": 893,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-155": {
+      "confidence": "LOW",
+      "disposition": "STRANDED",
+      "event_sha256": "ab31963078c17fea71818f20d4cb7a30d32806ee0c1116e541f1f2735e51d085",
+      "event_type": "finding_status",
+      "evidence_summary": "Minor, low-severity side observation from F-91's live verification. Profile allowlists (mcp_surface_profiles.generated.json) carry INTERNAL registry names, but the actual serving gate matches on PUBLIC-facing tool names -- a naming-layer mismatch. It fails CLOSED (under-serves: compact serves 13 of an intended 20 tools, consult 5 of 8), not open, so this is an availability/completeness gap, not a security issue.",
+      "finding_id": "F-155",
+      "next_action": "low priority: reconcile the profile allowlist's naming convention with the public-facing tool names the gate actually matches against, so compact/consult serve their full intended tool set",
+      "pr_url": null,
+      "prev_sha256": "6e948dd5c33d5c09059b5f1e61c79e698fe8a40d1f1704c45a46e3f6e2a8df66",
+      "seq": 894,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -2083,17 +2113,18 @@
     },
     "F-91": {
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "5886d2d6320cc69a0155453bafae1127bed4cc01e3a10fe3d2628870a683110f",
+      "disposition": "NOT_A_DEFECT",
+      "event_sha256": "40ef2afbd1db1313dd7ec412af82426920d34110cd55a60faac02ab3d4e24756",
       "event_type": "finding_status",
-      "evidence_summary": "Corpus's own hard dependency: blocked on F-06/RATE-07 resolving first. Same architecture gate.",
+      "evidence_summary": "Live verification post-F-06/RATE-07 deploy (revision amjis-mcp-00597-8zf, commit cf59bcd92). Real OAuth clients registered, real profile-scoped tools/list calls run against live production. Original premise FALSE at runtime: 'compact' profile serves 13 tools, NONE of which is any chart-facts-family tool (not the sensitive-degrees tool, not the general chart-facts tool) -- tools/call for all 4 relevant tool names under compact/consult returns MCP error -32602 'not found' (registration-level gate via server.tool() monkeypatch, not a filtered/degraded response). Comparative canary under 'full' profile confirms the two tools DO serve byte-identical sensitive-degree data (6 matching fact_ids) -- but entitlement (registry_bridge's ENTITLEMENT_DENIED gate), not profile visibility, is the real access-control layer, and it fires identically on both tool paths against an unentitled chart. Profile scoping controls discoverability; entitlement controls access -- the original 'bypass' framing conflated the two. This is correct, stricter-than-described behavior, not a defect.",
       "finding_id": "F-91",
-      "next_action": "wait on F-06/RATE-07 owner ruling",
-      "prev_sha256": "5343954d70457adc37d24233c8f7654ca8cc8601a58929bbfe05b1a059614617",
-      "seq": 738,
-      "source_batch": "round7_triage",
-      "status": "DECISION_PARKED",
-      "terminal_status": null
+      "next_action": "none - terminal, correctly informational",
+      "pr_url": null,
+      "prev_sha256": "32e541e26cc7e7226d9781a924aee2904b3b87e3069c6df7f01064cb1de8b987",
+      "seq": 892,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "CONTROL_CLOSED",
+      "terminal_status": "CONTROL_CLOSED"
     },
     "F-92": {
       "confidence": "HIGH",
@@ -2285,9 +2316,9 @@
     }
   },
   "findings_morning_ship_ready_count": 1,
-  "findings_terminal_count": 120,
-  "journal_head_seq": 891,
-  "journal_head_sha256": "32e541e26cc7e7226d9781a924aee2904b3b87e3069c6df7f01064cb1de8b987",
+  "findings_terminal_count": 121,
+  "journal_head_seq": 894,
+  "journal_head_sha256": "ab31963078c17fea71818f20d4cb7a30d32806ee0c1116e541f1f2735e51d085",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
