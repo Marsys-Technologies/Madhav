@@ -65,6 +65,11 @@ import { DEFAULT_AYANAMSHA } from '../constants'
 import type { DrillPointerType, JudgmentFlagEntry } from '../../envelope'
 import { judgmentFlag } from '../../envelope'
 import { derivedHouses } from '@/lib/jyotish/bhavat_bhavam_map'
+// F-57 (PARIŚEṢA-V4): the canonical 13-domain vocabulary — the SSoT every downstream
+// store (bodha_msr_signals.domains_affected_array, bodha_mechanisms.domains_affected_array,
+// brahma_event_ontology.domain) is actually keyed by. SHASTRA_MAP.signal_domain is now
+// typed to it so a non-vocabulary literal cannot be reintroduced silently.
+import { isCanonicalDomain, type CanonicalDomain } from '@/lib/domain_vocabulary'
 // ŚODHANA T5 (PŪRTI) — the three computed-but-never-joined classical legs + the
 // served reading_checklist receipt (MC-030/031/033 + the Offer-Law completeness fix).
 import {
@@ -115,9 +120,22 @@ interface DomainSpec {
   /** Operative varga for confirmation (design §28.1 "operative-varga confirmation"). */
   varga: string
   label: string
-  /** Maps onto bodha_msr_signals.domain (query_signals.ts) — 'other' where no exact
-   *  domain tag exists yet in the signal store. */
-  signal_domain: string
+  /** Maps onto the CANONICAL 13-domain vocabulary (`@/lib/domain_vocabulary`, mirroring
+   *  `brahmagyan/domain_vocabulary.py` and the migration-386 DB CHECK constraints) — the
+   *  tag every downstream store is actually keyed by: `bodha_msr_signals.
+   *  domains_affected_array`, `bodha_mechanisms.domains_affected_array`, and (via
+   *  `fetchGocharaSweep`) `brahma_event_ontology.domain`.
+   *
+   *  F-57 (PARIŚEṢA-V4): this field used to carry the literal `'other'` for eleven
+   *  domains, on the stale premise that "no exact domain tag exists yet in the signal
+   *  store". That premise is false and `'other'` is not a member of ANY of those three
+   *  vocabularies — so every leg keyed off it returned a structural zero. On the canonical
+   *  chart that silently hid 1,126 progeny signals (347 adverse) / 850 education (351
+   *  adverse) / 510 residence (220 adverse) plus 10/50/80 gochara windows respectively,
+   *  and — worse — served the `afflictions_empty` flag as an all-clear over them (§N.8:
+   *  a signal whose detector cannot ever read false). Every value here MUST now be a
+   *  member of CANONICAL_DOMAINS; `shastra_map_signal_domain.test.ts` asserts it. */
+  signal_domain: CanonicalDomain
   /** D-1.5b Lane B-4 (CR-97) — Bhavat-Bhavam "house of the house" derivation, backfilled
    *  from the shared registry (`bhavat_bhavam_map.ts`) right after SHASTRA_MAP below is
    *  declared. Optional in the type only because it is populated post-construction, not
@@ -138,14 +156,14 @@ export const SHASTRA_MAP: Record<string, DomainSpec> = {
   finance:      { bhava: 2,  karakas: ['Jupiter'],                   varga: 'D2',  label: 'Wealth / Prosperity',    signal_domain: 'wealth' },
   health:       { bhava: 1,  karakas: ['Sun'],                       varga: 'D6',  label: 'Health / Vitality',      signal_domain: 'health' },
   vitality:     { bhava: 1,  karakas: ['Sun'],                       varga: 'D6',  label: 'Health / Vitality',      signal_domain: 'health' },
-  progeny:      { bhava: 5,  karakas: ['Jupiter'],                   varga: 'D7',  label: 'Progeny / Children',     signal_domain: 'other' },
-  children:     { bhava: 5,  karakas: ['Jupiter'],                   varga: 'D7',  label: 'Progeny / Children',     signal_domain: 'other' },
+  progeny:      { bhava: 5,  karakas: ['Jupiter'],                   varga: 'D7',  label: 'Progeny / Children',     signal_domain: 'progeny' },
+  children:     { bhava: 5,  karakas: ['Jupiter'],                   varga: 'D7',  label: 'Progeny / Children',     signal_domain: 'progeny' },
   // F-0756 fix: bhāva-4 is NOT "education" — its primary significations are mother/home/
   // property/happiness. Vidyā's operative bhāva for the recipe is the 4th vidyā-sthāna (BPHS)
   // but it is judged as ONE leg of a 2/4/5/9 set; karakas are Mercury (learning), Jupiter
   // (jñāna), Ketu (deep insight/research). D24 (siddhāṃśa) is the education varga.
-  education:    { bhava: 4,  karakas: ['Mercury', 'Jupiter', 'Ketu'], varga: 'D24', label: 'Education / Vidyā',      signal_domain: 'other' },
-  vidya:        { bhava: 4,  karakas: ['Mercury', 'Jupiter', 'Ketu'], varga: 'D24', label: 'Education / Vidyā',      signal_domain: 'other' },
+  education:    { bhava: 4,  karakas: ['Mercury', 'Jupiter', 'Ketu'], varga: 'D24', label: 'Education / Vidyā',      signal_domain: 'education' },
+  vidya:        { bhava: 4,  karakas: ['Mercury', 'Jupiter', 'Ketu'], varga: 'D24', label: 'Education / Vidyā',      signal_domain: 'education' },
   // Spirituality = DHARMA (9th house) — Jupiter/Ketu, D20. Distinct from moksha below.
   spirituality: { bhava: 9,  karakas: ['Jupiter', 'Ketu'],           varga: 'D20', label: 'Spirituality / Dharma',  signal_domain: 'spirituality' },
   // Moksha = the 4-8-12 mokṣa-trikoṇa + Ketu axis (F-0973/0974) — NOT a 9th-house/dharma alias.
@@ -161,25 +179,25 @@ export const SHASTRA_MAP: Record<string, DomainSpec> = {
   buddhi:       { bhava: 1,  karakas: ['Moon', 'Mercury'],           varga: 'D1',  label: 'Character / Buddhi',     signal_domain: 'character' },
   // Home / residence / immovable property — 4th sukha-bhāva; Moon (home/mother), Mars
   // (land/immovables); D4 (caturthāṃśa). This is bhāva-4's REAL domain (F-0756), not education.
-  residence:    { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'other' },
-  property:     { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'other' },
-  home:         { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'other' },
+  residence:    { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'residence' },
+  property:     { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'residence' },
+  home:         { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'residence' },
   // F-55: 4 canonical domains absent from SHASTRA_MAP — reconcile CANONICAL_DOMAINS 1:1.
   // Family / kutumba — 2nd house (kutumba-sthāna, family lineage, speech); karakas Jupiter
   // (family prosperity, sons) + Moon (nurturing/maternal bond); D12 (dvādaśāṃśa, lineage/ancestry).
   // Bhavat-Bhavam: bhava 2 is EVEN → derived_bhavas: [] (even houses receive nothing — doctrine).
-  family:     { bhava: 2,  karakas: ['Jupiter', 'Moon'],              varga: 'D12', label: 'Family / Kutumba',            signal_domain: 'other' },
+  family:     { bhava: 2,  karakas: ['Jupiter', 'Moon'],              varga: 'D12', label: 'Family / Kutumba',            signal_domain: 'family' },
   // General / overall life pattern — lagna (1st house) as the catch-all life lens; karakas Sun
   // (ātmakāraka/soul) + Moon (manas/mind); D1 (natal chart, full-chart read).
-  general:    { bhava: 1,  karakas: ['Sun', 'Moon'],                  varga: 'D1',  label: 'General / Life Pattern',      signal_domain: 'other' },
+  general:    { bhava: 1,  karakas: ['Sun', 'Moon'],                  varga: 'D1',  label: 'General / Life Pattern',      signal_domain: 'general' },
   // Transition / transformation — 8th house (āyu-sthāna, sudden change, parivartan, hidden matters);
   // karakas Saturn (delay/vairāgya), Rahu (unexpected upheaval/foreign), Mars (acute crisis);
   // D8 (ashtamsha, transformative varga). Bhavat-Bhavam: bhava 8 EVEN → derived_bhavas: [].
-  transition: { bhava: 8,  karakas: ['Saturn', 'Rahu', 'Mars'],       varga: 'D8',  label: 'Transition / Transformation', signal_domain: 'other' },
+  transition: { bhava: 8,  karakas: ['Saturn', 'Rahu', 'Mars'],       varga: 'D8',  label: 'Transition / Transformation', signal_domain: 'transition' },
   // Travel / foreign — 9th house (dharma-sthāna, long journeys, fortune, foreign connections);
   // karakas Jupiter (long-distance dharma travel) + Rahu (foreign settlement, ativāsa);
   // D9 (navamsha, dharma/fortune varga). Bhavat-Bhavam: bhava 9 ODD → derived_bhavas: [5, 11].
-  travel:     { bhava: 9,  karakas: ['Jupiter', 'Rahu'],              varga: 'D9',  label: 'Travel / Foreign',            signal_domain: 'other' },
+  travel:     { bhava: 9,  karakas: ['Jupiter', 'Rahu'],              varga: 'D9',  label: 'Travel / Foreign',            signal_domain: 'travel' },
 }
 
 // D-1.5b Lane B-4 (CR-97): extend every SHASTRA_MAP domain with its Bhavat-Bhavam derived
@@ -429,7 +447,13 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         'progeny/children (bhava 5, Jupiter, D7), education/vidya (bhava 4, Mercury+Jupiter+Ketu, D24), ' +
         'residence/property/home (bhava 4, Moon+Mars, D4), character/buddhi (bhava 1, Moon+Mercury, D1), ' +
         'spirituality (bhava 9 dharma, Jupiter+Ketu, D20), moksha/liberation (bhava 12 mokṣa-trikoṇa, ' +
-        'Ketu+Saturn+Jupiter, D20 — distinct from spirituality/9th). Takes precedence over `bhava` if both given.',
+        'Ketu+Saturn+Jupiter, D20 — distinct from spirituality/9th), family (bhava 2, Jupiter+Moon, D12), ' +
+        'travel (bhava 9, Jupiter+Rahu, D9), transition (bhava 8, Saturn+Rahu+Mars, D8), ' +
+        'general (bhava 1, Sun+Moon, D1). Takes precedence over `bhava` if both given. ' +
+        'The response\'s `domain_resolution` block states which CANONICAL domain tag the ' +
+        'domain-scoped legs (MSR signals / afflictions / mechanisms / gochara sweep) were ' +
+        'actually queried with — e.g. `marriage` reads `relationship`, `moksha` reads ' +
+        '`spirituality` — so an empty domain-scoped leg is always readable against a named tag (F-57).',
     },
     bhava: {
       type: 'number',
@@ -516,6 +540,8 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
     }
     let spec: DomainSpec
     let domainKey: string | null = null
+    // F-57: true when the caller gave a bare bhāva that no canonical domain covers.
+    let bareBhavaNoCanonicalDomain = false
     if (domainInput && SHASTRA_MAP[domainInput]) {
       domainKey = domainInput
       spec = SHASTRA_MAP[domainInput]
@@ -536,7 +562,16 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           label: `Bhava ${bhavaInput} — ${enrich.label}`,
         }
       } else {
-        spec = { bhava: bhavaInput as HouseNumber, karakas: [], varga: 'D1', label: `Bhava ${bhavaInput}`, signal_domain: 'other' }
+        // F-57: `signal_domain: 'other'` here was a dead literal — 'other' is not a member
+        // of the canonical vocabulary any downstream store is keyed by, so every domain-scoped
+        // leg returned a structural zero that then got SERVED as an honest-looking empty.
+        // Bhāva 3 (parākrama/siblings) genuinely has no dedicated canonical domain — the
+        // 13-domain vocabulary has no 'siblings' member — so this really is a fallback, and it
+        // is now a REAL bucket ('general') carrying an explicit disclosure (see
+        // `domain_resolution` / the `domain_resolution_fallback` flag below) instead of a
+        // silent one.
+        spec = { bhava: bhavaInput as HouseNumber, karakas: [], varga: 'D1', label: `Bhava ${bhavaInput}`, signal_domain: 'general' }
+        bareBhavaNoCanonicalDomain = true
       }
     } else {
       return {
@@ -551,6 +586,55 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
 
     const judgment_flags: JudgmentFlagEntry[] = []
     const fact_ids = new Set<string>()
+
+    // ── F-57: domain-resolution disclosure (§N.6 pt 3 / §N.7 pt 6 / §N.8) ──────────────
+    // The requested domain KEY and the canonical domain the domain-scoped legs actually
+    // read are two different things (`marriage` reads `relationship`; `moksha` reads
+    // `spirituality`; a bare bhāva-3 has no canonical domain at all). Before this fix the
+    // difference was invisible on the wire AND — for eleven domains — resolved to the dead
+    // literal `'other'`, so an empty result was indistinguishable from a genuinely clean
+    // chart. Every response now states the resolution, and flags it whenever the resolved
+    // domain is not the requested one.
+    const requestedDomainKey = domainKey ?? (domainInput ?? null)
+    const domain_resolution = {
+      requested: requestedDomainKey,
+      requested_bhava: domainInput ? null : spec.bhava,
+      resolved_signal_domain: spec.signal_domain,
+      is_exact: requestedDomainKey === spec.signal_domain,
+      is_canonical: isCanonicalDomain(spec.signal_domain),
+      applies_to: [
+        'bearing_yogas_corroboration (bodha_msr_signals.domains_affected_array)',
+        'bearing_afflictions (bodha_msr_signals.domains_affected_array)',
+        'affliction_mechanisms (bodha_mechanisms.domains_affected_array)',
+        'gochara_sweep (brahma_event_ontology.domain)',
+        'the bodha_signals_get / gochara_forecast_get drill pointers',
+      ],
+      note:
+        'The domain-scoped legs listed in applies_to are keyed by the CANONICAL 13-domain ' +
+        'vocabulary (brahmagyan/domain_vocabulary.py), not by the shastra-map domain key. ' +
+        'resolved_signal_domain is the tag those legs were actually queried with — read any ' +
+        'empty domain-scoped leg against THIS value, not against `requested` (F-57).',
+    }
+    if (bareBhavaNoCanonicalDomain) {
+      judgment_flags.push(judgmentFlag(
+        'domain_resolution_fallback',
+        `bhāva ${spec.bhava} has no dedicated domain in the canonical 13-domain vocabulary ` +
+        `(there is no 'siblings'/'parākrama' member) — the domain-scoped legs ` +
+        `(${domain_resolution.applies_to.join('; ')}) were read against the fallback bucket ` +
+        `'${spec.signal_domain}', NOT against bhāva ${spec.bhava}'s own significations. ` +
+        'Their silence is therefore not an all-clear for this bhāva (S4-05 discipline); ' +
+        'the bhāva/bhāveśa/kāraka/varga legs above ARE bhāva-specific and stand on their own.',
+      ))
+    } else if (!domain_resolution.is_exact) {
+      judgment_flags.push(judgmentFlag(
+        'domain_resolution_aliased',
+        `domain '${requestedDomainKey}' resolves to the canonical signal domain ` +
+        `'${spec.signal_domain}' for the domain-scoped legs ` +
+        `(${domain_resolution.applies_to.join('; ')}) — a deliberate vocabulary mapping, ` +
+        'disclosed rather than applied silently (F-57). The bhāva/kāraka/varga legs remain ' +
+        `specific to '${requestedDomainKey}'.`,
+      ))
+    }
 
     try {
       // ── Step 1+2 (lagna frame): bhava condition, bhāveśa condition, occupants, aspects ──
@@ -1089,9 +1173,13 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       if (bearing_afflictions.length === 0 && affliction_mechanisms.length === 0) {
         judgment_flags.push(judgmentFlag(
           'afflictions_empty',
-          'no adverse-valence (malefic/mixed) signal or affliction mechanism ' +
-          'bears on this domain — reported honestly (DR-9 Part B partitioned serve; an honest ' +
-          'empty threat layer, not an omission).',
+          `no adverse-valence (malefic/mixed) signal or affliction mechanism is tagged with ` +
+          `canonical domain '${spec.signal_domain}' on this chart — reported honestly (DR-9 Part B ` +
+          'partitioned serve; an honest empty threat layer, not an omission). ' +
+          'F-57: this flag names the CANONICAL domain the threat layer was queried with, not the ' +
+          'requested key — an empty threat layer is only an all-clear for that tag (see ' +
+          '`domain_resolution`). Prior to F-57 eleven domains queried the dead literal ' +
+          "'other', which matches nothing, so this flag could not ever read false for them.",
         ))
       } else {
         judgment_flags.push(judgmentFlag(
@@ -1155,8 +1243,10 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       if (gochara.available && !gochara.domain_covered) {
         judgment_flags.push(judgmentFlag(
           'gochara_domain_not_covered',
-          `the gochara sweep does not cover the '${spec.signal_domain}' domain ` +
-          'for this chart — its silence here is NOT an all-clear (S4-05 discipline); drill kala_windows_get.',
+          `the gochara sweep carries no windows for canonical domain '${spec.signal_domain}' ` +
+          `(requested: ${requestedDomainKey ? `'${requestedDomainKey}'` : `bhāva ${spec.bhava}`}) ` +
+          'on this chart — its silence here is NOT an all-clear (S4-05 discipline); drill kala_windows_get. ' +
+          'See `domain_resolution` for how the requested domain mapped to the queried one (F-57).',
         ))
       }
       if (gochara.windows[0]?.is_past_peak === true) {
@@ -1188,7 +1278,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         { unit: 'kp_cusp_chain', state: kp.cusps.length > 0 ? 'served' : 'not_computed', count: kp.cusps.length, detail: `KP sub-lord chain for cusp(s) ${kpCusps.join('/')} (MC-031)` },
         { unit: 'yogi_avayogi', state: 'not_joined', detail: 'yogi/avayogi/duplicate-yogi/sahayogi now computed (T6 / MC-029, fact_category sensitive_point_yogi) but not yet folded into this judgment', drill: 'ganita_sensitive_degrees_get' },
         { unit: 'dasha_levels', state: timingAnchored ? 'served' : 'empty_for_this_chart', detail: 'Vimśottarī current + lord/kāraka mahādaśā windows + kala activation' },
-        { unit: 'gochara_sweep', state: gochara.domain_covered ? 'served' : (gochara.available ? 'empty_for_this_chart' : 'not_computed'), count: gochara.upcoming_window_count, detail: `forward transit windows, domain='${spec.signal_domain}' (MC-033)` },
+        { unit: 'gochara_sweep', state: gochara.domain_covered ? 'served' : (gochara.available ? 'empty_for_this_chart' : 'not_computed'), count: gochara.upcoming_window_count, detail: `forward transit windows, canonical domain='${spec.signal_domain}'${domain_resolution.is_exact ? '' : ` (requested '${requestedDomainKey ?? `bhāva ${spec.bhava}`}' — see domain_resolution, F-57)`} (MC-033)` },
         { unit: 'tajaka', state: 'not_joined', detail: 'annual (varṣaphala/tājaka) not folded into the natal judgment', drill: 'ganita_tajaka_get' },
       ]
       const exhaustiveness = checklistExhaustiveness(reading_checklist_units)
@@ -1213,7 +1303,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         // drill pointer follows suit. get_signals remains for the demoted bearing_yogas_corroboration
         // (MSR) leg, distinct from this.
         { instrument: 'ganita_yoga_firings_get', hint: 'full fired-yoga detail (strength, bhaṅga/cancellation, partial-formation %, dāśā-activation) beyond the domain-bearing subset shown in bearing_yogas here.', pointer_type: 'opposing_yoga' },
-        { instrument: 'bodha_signals_get', hint: `domain=${spec.signal_domain}, full yoga+dosha+karaka_alignment MSR signal set beyond bearing_yogas_corroboration's top ${max_signals} shown here — secondary/corroboration only (A3/R-3). (SC-18: was 'query_signals', a non-existent MCP tool name.)`, pointer_type: 'opposing_yoga' },
+        { instrument: 'bodha_signals_get', hint: `domain=${spec.signal_domain} (the canonical tag this domain resolves to — F-57), full yoga+dosha+karaka_alignment MSR signal set beyond bearing_yogas_corroboration's top ${max_signals} shown here — secondary/corroboration only (A3/R-3). (SC-18: was 'query_signals', a non-existent MCP tool name.)`, pointer_type: 'opposing_yoga' },
         { instrument: 'ganita_dashas_get', hint: 'full multi-level dasha timeline beyond the current + mahadasha-window slice shown here.', pointer_type: 'dasha_of_promise' },
         { instrument: 'bodha_graph_traverse_get', hint: `about:lord_of(bhava ${spec.bhava}) — causal graph context for the bhāveśa.`, pointer_type: 'dispositor_chain' },
         { instrument: 'ref_rules_search', hint: `verse citations for ${spec.label.toLowerCase()} judgment (BPHS/Phaladeepika bhava-adhyaya). (RC-04: was 'query_classical_texts', the internal registry capability name (marsys://tool/L0/query_classical_texts), not a live MCP tool name — same SC-18 dead-pointer class as the two siblings above; ref_rules_search is one of the tool's live MCP aliases per mcp_capability_bridge.ts.)`, pointer_type: 'other' },
@@ -1229,6 +1319,8 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           chart_id,
           ayanamsha_id,
           about: { domain: domainKey, bhava: spec.bhava, label: spec.label, karakas: spec.karakas, operative_varga: spec.varga },
+          // F-57: which canonical domain the domain-scoped legs were ACTUALLY queried with.
+          domain_resolution,
           checklist: {
             bhava_condition: {
               from_lagna: { sign: bhavaSignLagna.sign, house_number: bhavaSignLagna.house_number, frame: 'lagna' },
