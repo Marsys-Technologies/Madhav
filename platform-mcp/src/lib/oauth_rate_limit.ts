@@ -81,9 +81,25 @@ function platformUrl(): string {
 }
 
 /**
- * Kill switch. Default ON — a security control that ships defaulted-off is a
- * control nobody has. Set to 'false' only to roll back deliberately (and note
- * migration 580's DOWN section: turn this off BEFORE dropping the table).
+ * Kill switch. The CODE default is ON — a security control that ships
+ * defaulted-off is a control nobody has.
+ *
+ * ⚠️ THE DEPLOYED DEFAULT IS CURRENTLY THE OPPOSITE, DELIBERATELY AND
+ * TEMPORARILY: `deploy.yml`'s `deploy-mcp` env_vars sets
+ * `MCP_OAUTH_RATE_LIMIT_ENABLED=false` for the merge that introduces this
+ * module, because `consumeBuckets()` below depends on an amjis-web route that
+ * the SAME merge creates, and `deploy-mcp`/`deploy-web` run in parallel — the
+ * MCP revision can promote traffic before that route exists and would then 503
+ * every OAuth mutation. The follow-up that flips it to `true` is documented
+ * inline at that env_vars line (follow-up item RATE-07-ENABLE). Do not
+ * "correct" the code default to match the deployed one: the code default is
+ * right, the deployment override is the temporary part.
+ *
+ * When false, both entrypoints — {@link oauthRateLimit} and
+ * {@link chargeValidatedSubject} — return on their FIRST statement, ahead of
+ * every fail-closed branch, so disabled is a true no-op and not merely a
+ * usually-skips. Set to 'false' otherwise only to roll back deliberately (and
+ * note migration 580's DOWN section: turn this off BEFORE dropping the table).
  */
 export function rateLimitEnabled(): boolean {
   return (env('MCP_OAUTH_RATE_LIMIT_ENABLED') ?? 'true').toLowerCase() !== 'false'

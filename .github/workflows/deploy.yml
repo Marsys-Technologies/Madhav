@@ -688,6 +688,46 @@ jobs:
             # permissive direction. Verify the live XFF chain, then set this deliberately.
             # Full analysis: ruling §3.2 (DISCLOSED AMBIGUITY — client-IP derivation).
             MCP_TRUSTED_PROXY_HOPS=1
+            # RATE-07 SHIPS DISABLED IN THIS PR — AND MUST BE FLIPPED TO `true`
+            # IN A ONE-LINE FOLLOW-UP. Tracked as follow-up item RATE-07-ENABLE;
+            # this line is the whole change.
+            #
+            # WHY DISABLED: `consumeBuckets()` (platform-mcp/src/lib/oauth_rate_limit.ts)
+            # POSTs to ${PLATFORM_URL}/api/mcp/rate-limit/check — a route THIS PR
+            # creates, served by amjis-web. `deploy-mcp` and `deploy-web` both declare
+            # `needs: [migrate]` and therefore run in PARALLEL (deliberately — see the
+            # ordering comment at the top of this job; re-coupling them is a known
+            # worse outcome, not an option). deploy-mcp is a small TS build and
+            # normally promotes traffic BEFORE deploy-web finishes its Next build →
+            # push → deploy → smoke → promote. In that window the new MCP revision
+            # would be calling a route that does not exist on the OLD web revision:
+            # 404 → RateLimitStoreUnavailable → the gate does exactly what it is
+            # designed to do and answers 503 on ALL FIVE OAuth mutation endpoints.
+            # `mcp_end_to_end_smoke.sh` probes no OAuth route, so nothing would catch
+            # it before traffic promotion.
+            #
+            # Shipping disabled removes the window rather than racing it: with this
+            # set, `rateLimitEnabled()` returns false and BOTH entrypoints
+            # (`oauthRateLimit` middleware and `chargeValidatedSubject`) short-circuit
+            # on their FIRST statement — no fetch, no response written, no process
+            # state touched, control straight to the handler. The five endpoints
+            # behave byte-for-byte as they did before this PR (§N.8: proved by the
+            # "DISABLED PATH IS A TRUE NO-OP" tests in
+            # platform-mcp/src/__tests__/rate07_oauth_rate_limit.test.ts, not asserted
+            # here). The honest cost: they are also not yet PROTECTED by the limiter.
+            #
+            # HOW TO ENABLE (the follow-up PR, in full):
+            #   1. Confirm https://amjis-web-…run.app/api/mcp/rate-limit/check is live
+            #      on the CURRENT web revision — i.e. this PR's own deploy-web run has
+            #      completed at least once and promoted traffic. A POST with a valid
+            #      X-MCP-Internal-Token must return 200 with an `allowed` field (a 404
+            #      means the route is not deployed yet — do not proceed).
+            #   2. Change the line below to `MCP_OAUTH_RATE_LIMIT_ENABLED=true`, or
+            #      delete it (the code default is ON — see rateLimitEnabled()).
+            #   3. Merge. No code change, no migration, nothing else.
+            # Rollback is this same line back to `false`; note migration 580's DOWN
+            # section — turn the flag off BEFORE dropping mcp_rate_buckets.
+            MCP_OAUTH_RATE_LIMIT_ENABLED=false
           secrets: |
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1

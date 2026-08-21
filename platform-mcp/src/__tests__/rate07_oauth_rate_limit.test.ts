@@ -531,6 +531,73 @@ describe('RATE-07 §4 — fail CLOSED on store failure', () => {
     expect(next).toHaveBeenCalledOnce()
     expect((fetchSpy as unknown as { mock: { calls: unknown[] } }).mock.calls).toHaveLength(0)
   })
+
+  // ── DISABLED PATH IS A TRUE NO-OP ──────────────────────────────────────────
+  //
+  // This PR SHIPS WITH `MCP_OAUTH_RATE_LIMIT_ENABLED=false` in deploy.yml (see
+  // the deploy-mcp env_vars block and the PR body's FOLLOW-UP REQUIRED note).
+  // The reason is an ordering window: `deploy-mcp` and `deploy-web` both depend
+  // only on `migrate` and therefore run in PARALLEL, and deploy-mcp (a small TS
+  // build) normally promotes traffic FIRST. In that window the fail-closed gate
+  // would be calling `/api/mcp/rate-limit/check` — a route THIS PR creates on
+  // amjis-web — against the OLD web revision, which 404s, which the gate
+  // correctly reads as "store unavailable" and answers 503 on all five OAuth
+  // mutation endpoints. Shipping disabled removes that window entirely.
+  //
+  // That promise is only worth anything if "disabled" means EXACTLY the
+  // pre-PR behaviour: no store call, no response written, no throw, control
+  // handed straight to the handler. The tests below assert that for BOTH
+  // entrypoints, INCLUDING the inputs that would otherwise take a fail-closed
+  // 503 branch. Do not delete them when the flag is flipped on: they are what
+  // makes the flag a real rollback lever rather than a documented intention.
+  it('when disabled, the gate writes NOTHING to the response even if the store is unreachable', async () => {
+    process.env.MCP_OAUTH_RATE_LIMIT_ENABLED = 'false'
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('store down') }) as unknown as typeof fetch)
+    const res = makeRes()
+    const next = vi.fn()
+    await oauthRateLimit('oauth_token')(makeReq({ 'x-forwarded-for': '1.1.1.1' }), res, next)
+    expect(next).toHaveBeenCalledOnce()
+    expect(res.statusCode).toBeNull()
+    expect(res.body).toBeUndefined()
+    expect(res.headers).toEqual({})
+  })
+
+  it('when disabled, chargeValidatedSubject allows, makes NO store call, and writes nothing', async () => {
+    process.env.MCP_OAUTH_RATE_LIMIT_ENABLED = 'false'
+    const fetchSpy = vi.fn(async () => { throw new Error('store down') }) as unknown as typeof fetch
+    vi.stubGlobal('fetch', fetchSpy)
+    const res = makeRes()
+    expect(await chargeValidatedSubject(res, 'oauth_register', 'principal', 'uid-123')).toBe(true)
+    expect((fetchSpy as unknown as { mock: { calls: unknown[] } }).mock.calls).toHaveLength(0)
+    expect(res.statusCode).toBeNull()
+    expect(res.body).toBeUndefined()
+  })
+
+  it('when disabled, even an EMPTY validated subject is a pass-through, not a 503', async () => {
+    // Enabled, this input is the deliberate fail-closed BUG branch (proved
+    // above at "an empty validated subject fails CLOSED"). Disabled, the kill
+    // switch is checked FIRST, so the branch is unreachable and a caller that
+    // resolved no identity behaves exactly as it did before this PR existed.
+    process.env.MCP_OAUTH_RATE_LIMIT_ENABLED = 'false'
+    vi.stubGlobal('fetch', allowAll())
+    const res = makeRes()
+    expect(await chargeValidatedSubject(res, 'oauth_token', 'principal', '')).toBe(true)
+    expect(res.statusCode).toBeNull()
+  })
+
+  it('when disabled, a flood leaves the per-instance deny cache completely untouched', async () => {
+    // The shed cache is the module's only mutable process state. If the gate
+    // could still populate it while disabled, "disabled" would not be a true
+    // no-op — flipping the flag back on would inherit stale denials.
+    process.env.MCP_OAUTH_RATE_LIMIT_ENABLED = 'false'
+    vi.stubGlobal('fetch', batchFetch((k) => k === 'ip'))
+    const next = vi.fn()
+    for (let i = 0; i < 25; i++) {
+      await oauthRateLimit('oauth_authorize')(makeReq({ 'x-forwarded-for': '203.0.113.9' }), makeRes(), next)
+    }
+    expect(next).toHaveBeenCalledTimes(25)
+    expect(shedRemaining('oauth_authorize', rateLimitSubjectForIp('203.0.113.9'))).toBe(0)
+  })
 })
 
 // ── 5. Limit table sanity ────────────────────────────────────────────────────
