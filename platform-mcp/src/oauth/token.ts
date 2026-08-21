@@ -19,6 +19,7 @@ import type { OAuthTokenRequest, OAuthTokenResponse } from './types.js'
 import { issueTokens, refreshAccessToken } from './token_store.js'
 import { consumeAuthCode } from './authorize.js'
 import { validateOAuthClient } from './oauth_platform_client.js'
+import { chargeValidatedSubject } from '../lib/oauth_rate_limit.js'
 
 export async function handleToken(req: Request, res: Response): Promise<void> {
   const params = req.body as OAuthTokenRequest
@@ -45,6 +46,18 @@ export async function handleToken(req: Request, res: Response): Promise<void> {
     // Fail-closed: owner_uid must be a real Firebase uid.
     if (!clientResult.owner_uid || clientResult.owner_uid === 'anonymous') {
       res.status(400).json({ error: 'invalid_client', error_description: 'client has no verified owner_uid' })
+      return
+    }
+
+    // RATE-07 layer 2 (PARIŚEṢA-V4): the client_id has now been proven — its
+    // secret was checked above — so a per-client bucket can be charged without
+    // creating a quota-poisoning primitive. Charging on `params.client_id`
+    // BEFORE validateOAuthClient() would have let any anonymous caller exhaust a
+    // named client's token quota just by naming it. The route-wide IP + global
+    // buckets were already charged by the `oauthRateLimit('oauth_token')`
+    // middleware in server.ts before this handler ran.
+    // chargeValidatedSubject writes the 429/503 response itself when it denies.
+    if (!(await chargeValidatedSubject(res, 'oauth_token', 'client', params.client_id))) {
       return
     }
 

@@ -23,7 +23,7 @@
  *
  * 7 retrieval capabilities for brahma_remedy_corpus:
  *   1. query_remedies           — planet + domain + category + top_k
- *   2. query_remedies_for_chart — chart_id + affliction
+ *   2. query_remedies_for_chart — affliction keyword (global corpus; NOT chart-scoped)
  *   3. list_remedies_by_category — category
  *   4. read_remedy              — remedy_id
  *   5. query_tantric_remedies   — deity + purpose
@@ -141,9 +141,15 @@ export const queryRemedies: RetrievalTool = {
 export const queryRemediesForChart: RetrievalTool = {
   name: 'query_remedies_for_chart',
   version: '1.0.0',
+  // F-06 (PARIŚEṢA-V4) scope honesty: the SQL below reads only
+  // brahma_remedy_corpus (a global L0 reference table with no chart_id column).
+  // No chart-scoped filtering happens or can happen here; the previous
+  // "chart_id + affliction" description promised scoping the code never did.
   description:
-    'Return remedies relevant to a chart\'s afflictions. ' +
-    'chart_id + affliction (planet name or domain) → matching remedies.',
+    'Return corpus remedies matching an affliction keyword (planet name or life domain), ' +
+    'matched ILIKE against the planet and domain columns of brahma_remedy_corpus. ' +
+    'NOT chart-scoped: chart_id is not read and no chart-scoped SQL runs. ' +
+    'For chart-derived remedies use the L2 surface (marsys://tool/L2/query_remedies).',
   async retrieve(plan: QueryPlan, params?: Record<string, unknown>): Promise<ToolBundle> {
     const t0 = Date.now()
     const affliction = (params?.affliction as string | undefined) ?? (plan.planets?.[0]) ?? ''

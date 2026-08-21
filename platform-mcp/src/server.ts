@@ -26,6 +26,11 @@ import type { Principal } from './types.js'
 // M8: structured logging + request-ID + in-process rate limiting
 import { generateRequestId, log, logError } from './lib/logger.js'
 import { checkMcpRateLimit } from './lib/rate_limiter.js'
+// RATE-07: fleet-wide, Postgres-backed, fail-closed gate for the OAuth mutation
+// endpoints. NOT a replacement for checkMcpRateLimit above (which still guards
+// the authenticated POST /mcp tool path) — a different limiter with a different
+// contract; see lib/oauth_rate_limit.ts's header for the side-by-side.
+import { oauthRateLimit, chargeValidatedSubject } from './lib/oauth_rate_limit.js'
 // M6: surface spec for per-model declared profile
 import { callPlatformSurfaceSpec } from './client.js'
 // M5: DB-backed OAuth 2.0 endpoints
@@ -156,12 +161,26 @@ app.use(cookieParser())
 
 // ── OAuth 2.0 endpoints (M5: DB-backed, real Firebase identity) ──────────────
 // Per MCP authorization spec + ChatGPT connector requirements
+//
+// RATE-07 (PARIŚEṢA-V4 GA-2 ruling, 2026-08-21): every one of the five OAuth
+// MUTATION endpoints below now carries `oauthRateLimit(<route>)` — a fleet-wide,
+// Postgres-backed, fail-closed gate that runs BEFORE the handler, i.e. before any
+// auth-code row is written and before any credential is examined. Previously
+// these five had no rate limiting whatsoever: the in-process `checkMcpRateLimit`
+// Map below is keyed on `key_id`, which OAuth mutations do not carry, and is
+// wired only to `POST /mcp`. See `./lib/oauth_rate_limit.ts` for the identity
+// derivation and its disclosed X-Forwarded-For ambiguity.
+//
+// The two `.well-known` discovery routes are deliberately NOT gated: they are
+// idempotent static reads that a connector fetches before it can do anything
+// else, and limiting them would break discovery for a shared-egress client
+// without protecting any mutable state.
 
-app.post('/mcp/oauth/authorize', (req, res) => void handleAuthorize(req, res))
+app.post('/mcp/oauth/authorize', oauthRateLimit('oauth_authorize'), (req, res) => void handleAuthorize(req, res))
 // GET /mcp/oauth/callback — Firebase auth callback (stamps uid onto auth code)
-app.get('/mcp/oauth/callback', (req, res) => void handleCallback(req, res))
-app.post('/mcp/oauth/token', (req, res) => void handleToken(req, res))
-app.post('/mcp/oauth/refresh', async (req: Request, res: Response) => {
+app.get('/mcp/oauth/callback', oauthRateLimit('oauth_callback'), (req, res) => void handleCallback(req, res))
+app.post('/mcp/oauth/token', oauthRateLimit('oauth_token'), (req, res) => void handleToken(req, res))
+app.post('/mcp/oauth/refresh', oauthRateLimit('oauth_refresh'), async (req: Request, res: Response) => {
   // Redirect to token endpoint with grant_type=refresh_token
   req.body.grant_type = 'refresh_token'
   await handleToken(req, res)
@@ -169,12 +188,20 @@ app.post('/mcp/oauth/refresh', async (req: Request, res: Response) => {
 
 // M5: Dynamic client registration (RFC 7591 / MCP OAuth spec)
 // Writes to mcp_oauth_clients table via platform API.
-app.post('/mcp/oauth/register', async (req: Request, res: Response) => {
+app.post('/mcp/oauth/register', oauthRateLimit('oauth_register'), async (req: Request, res: Response) => {
   const authHeader = req.headers['authorization']
   // Registration requires a valid Bearer key to identify the registering user.
   const principal = await validateMcpKeyFromHeader(authHeader)
   if (!principal) {
     sendUnauthorized(res, { error: 'Unauthorized', message: 'Bearer key required to register an OAuth client' })
+    return
+  }
+
+  // RATE-07 layer 2: now — and only now — that the Bearer key has actually been
+  // validated, charge a per-principal bucket. Doing this BEFORE validation would
+  // let any anonymous caller spend a named user's registration quota by asserting
+  // their uid. `chargeValidatedSubject` writes the 429/503 itself when it denies.
+  if (!(await chargeValidatedSubject(res, 'oauth_register', 'principal', principal.user_uid))) {
     return
   }
 

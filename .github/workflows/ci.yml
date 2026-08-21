@@ -266,6 +266,29 @@ jobs:
       - name: SAMĪKṢĀ DB-integration suites (skip themselves without the env vars above)
         run: npx vitest run tests/pariprashna/samiksha src/lib/pariprashna/samiksha --reporter=verbose
 
+      - name: RATE-07 — provision the rate-limit bucket DB (migration 580, real file)
+        # A third throwaway database, bare: migration 580 is self-contained
+        # (CREATE TABLE IF NOT EXISTS, no FK to anything) and applying the REAL
+        # migration file — rather than a hand-copied DDL — is the point. If the
+        # migration and the code ever disagree, this step is where it surfaces.
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE rate07_test;"
+          psql -h localhost -U postgres -d rate07_test -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/580_mcp_oauth_rate_buckets.sql
+          psql -h localhost -U postgres -d rate07_test -v ON_ERROR_STOP=1 \
+            -c "SELECT to_regclass('public.mcp_rate_buckets') AS buckets;"
+
+      - name: RATE-07 — cross-instance atomicity + TTL cleanup against real Postgres
+        # The claim "concurrent charges each observe a distinct count" rests on
+        # Postgres serialising ON CONFLICT DO UPDATE per row. A mocked test cannot
+        # establish that; this step is the detector behind the claim (§N.8).
+        env:
+          MCP_RATE_LIMIT_DB_TEST: '1'
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rate07_test
+        run: npx vitest run src/lib/__tests__/mcp/oauth_rate_limit.db.test.ts --reporter=verbose
+
   pratijna-v4-fixture-property-tests:
     # PRATIJÑĀ v4 Lane B3 — the CI tier of the campaign's three-tier
     # verification plan (00_ARCHITECTURE/briefs/adhisthana/MASTER_PLAN_v1_0.md
@@ -984,6 +1007,20 @@ jobs:
       - name: F-123 kala_explain_get dead-pointer regression (real now.ts/ahead.ts/priority.ts sites) (platform-mcp)
         working-directory: platform-mcp
         run: npx vitest run src/tools/kala_views/f123_dead_pointer_regression.test.ts
+      - name: F-06 ref_remedies_chart_get scope-honesty regression (platform-mcp) — PARIŚEṢA-V4
+        # The tool advertised "Chart-specific remedy suggestions" while querying a
+        # global L0 corpus table that has no chart_id column. Locks the corrected
+        # description and the provenance-only chart_id parameter.
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/f06_remedies_scope_honesty.test.ts
+      - name: RATE-07 OAuth rate-limit gate + route wiring (platform-mcp) — PARIŚEṢA-V4
+        # Two files, both required: the first proves the gate's BEHAVIOUR (identity
+        # derivation vs. XFF spoofing, 429 + Retry-After, fail-closed on store
+        # failure, no charging before validation); the second proves the gate is
+        # actually ATTACHED to all five OAuth mutation routes. A passing behaviour
+        # test on an unattached middleware is exactly the §N.8 defect class.
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/rate07_oauth_rate_limit.test.ts src/__tests__/rate07_oauth_route_wiring.test.ts
       - name: vidhi registry codegen drift check (platform) — GT-56
         run: npm run codegen:vidhi:check
       - name: vidhi registry codegen parity test (platform-mcp) — GT-56
