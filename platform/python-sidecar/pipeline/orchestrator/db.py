@@ -76,6 +76,14 @@ def connect() -> psycopg.Connection:
         cur.execute("SET statement_timeout = 0")
         # S7-LOCK: bound lock-wait hangs — 5 min is a hang, not a slow operation.
         cur.execute("SET lock_timeout = '300s'")
+        # F-152: session-scoped (not `SET LOCAL`) — asset_runner.run_asset() commits
+        # multiple times per asset, and `SET LOCAL` does not survive a commit. This
+        # GUC is read by the asset_throughput_state_audit trigger (migration 584)
+        # via current_setting('marsys.triggered_by', true) so every state change
+        # written through this connection factory is attributable to the
+        # orchestrator, distinct from a NULL left by a write that bypassed it (a
+        # direct psql UPDATE, an ad hoc script).
+        cur.execute("SET marsys.triggered_by = 'asset_runner'")
         # GUC smoke-log: read current_setting() for ground-truth evidence in job logs.
         cur.execute(
             "SELECT current_setting('idle_in_transaction_session_timeout') AS idle_in_txn"
