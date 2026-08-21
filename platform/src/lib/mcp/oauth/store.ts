@@ -87,11 +87,20 @@ export async function validateClient(
   const row = rows[0]
   if (!row) return null
 
-  // If a secret is provided, verify it; for auth-code flow without secret (PKCE), skip.
-  if (clientSecret !== undefined) {
-    const incoming = sha256(clientSecret)
-    if (incoming !== row.client_secret_hash) return null
-  }
+  // SF-002 fix: this function has exactly one caller chain (the client_credentials
+  // grant handler, via /api/mcp/oauth/clients/validate) -- the authorization_code+PKCE
+  // flow never calls validateClient at all (it goes through consumeAuthCode + its own
+  // PKCE verification instead, see platform-mcp/src/oauth/token.ts's
+  // authorization_code branch). The prior "skip if no secret, for PKCE" comment
+  // described a justification that does not apply to this function's actual (only)
+  // caller. client_credentials grant REQUIRES client authentication per RFC 6749 §4.4 --
+  // omitting a secret must never validate. Previously: JSON.stringify() dropping an
+  // `undefined` client_secret key meant a request with NO secret at all skipped
+  // verification entirely and returned the client record as valid, letting anyone who
+  // knew a client_id (not secret-equivalent -- it appears in authorize/redirect URLs)
+  // obtain real access+refresh tokens for that client's owner_uid.
+  const incoming = sha256(clientSecret ?? '')
+  if (clientSecret === undefined || incoming !== row.client_secret_hash) return null
 
   return {
     client_id: row.client_id,
