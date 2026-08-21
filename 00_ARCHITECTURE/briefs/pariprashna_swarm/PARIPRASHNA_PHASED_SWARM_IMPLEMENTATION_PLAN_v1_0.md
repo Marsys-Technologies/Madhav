@@ -20,6 +20,16 @@ relates_to:
   - 00_ARCHITECTURE/briefs/pariprashna_build/CAMPAIGN_PB_MASTER_BRIEF_v1_0.md (the campaign idiom)
 changelog:
   - "1.0 (2026-08-19): initial plan."
+  - "1.0 (2026-08-21, PARIPRASHNA-P3-PREFLIGHT-2026-08-21, in place — no
+    version bump, per PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md's own
+    append-only-register convention, since this file's own §0 states
+    PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md wins on disagreement):
+    Phase III amended — DD-21 observed-delivery clause folded into the P3
+    gate; P3-D's receipt-hash parity subject named (persisted receipt
+    object, gated on a wire/persisted-agreement precondition test); P3-B
+    gated on DD-22 landing first and required to enumerate the web door's
+    known gaps per DD-24 before propagating to the MCP door. See DD-22/
+    DD-24 in the amendments doc for the full rulings this folds in."
 ---
 
 # Paripraśna — Phased Swarm Implementation Plan
@@ -328,9 +338,23 @@ product.
 
 **Lanes:** P3-A unified plan type (`PipelinePlan` ↔ `VidhiPlan`, the
 `tool_name ↔ primitive_id` map + CI proof) · P3-B headless loop extraction and
-`prashna_ask` re-based onto it with all gates · P3-C canonical store completion
-(history/user turns, tool_call/tool_result/reasoning parts) · P3-D door-parity
-contract tests (normalized receipt-hash equality) · P3-E CI post-deploy smoke,
+`prashna_ask` re-based onto it with all gates — **gated on DD-22 landing
+first** (both touch `commitBlock()`'s region of `reading_parts.ts`; see
+DD-22's own entry for the ordering ruling and rationale), and **its lane
+brief must ENUMERATE the web door's known gaps per DD-24** before
+propagating web-door behavior onto the MCP door, each gap marked either
+propagated-knowingly or fixed-first · P3-C canonical store completion
+(history/user turns, tool_call/tool_result/reasoning parts) · P3-D
+door-parity contract tests (normalized receipt-hash equality; **parity hashes
+the persisted receipt object — the validated object `receipt_stage.ts`/
+`receipt/assemble.ts` writes to the DB — not the wire `receipt.define` SSE
+event directly; because #1400 wired the wire event to emit from that same
+validated object, a precondition test asserting the two agree byte-for-byte
+on the web door is required before either is trusted as the parity subject,
+and P3-D does not open until that precondition test is in place and green**;
+per **DD-24**, the resulting parity assertion is valid only against DD-24's
+enumerated baseline — no parity pass may be cited as delivery evidence for a
+capability that baseline lists) · P3-E CI post-deploy smoke,
 demonstrated-can-fail (PB-4 F-6) · P3-F **the flip** (PB-4 F-5 steps 1–2:
 default routing everywhere, flag retained as the rollback lever, then seven
 consecutive green smokes — W-1, counter resets on any red).
@@ -339,7 +363,9 @@ consecutive green smokes — W-1, counter resets on any red).
 (parity hash, floor equivalence, plan subsumption — 6 claims) 18 · integrators
 1 · gate-runners 2 · scribe 1 → **≈ 37 agents**.
 
-**Parallelization.** A/B/C/D/E all parallel; **F is strictly last and strictly
+**Parallelization.** A/B/C/D/E all parallel **except B, which additionally
+waits on DD-22 merging first** (a hard prerequisite, not a scheduling
+preference — see P3-B's lane note above); **F is strictly last and strictly
 serial** — the flip is one act, and the seven-smoke hold is a wall clock the
 swarm simply waits out (cheap, no agents burning).
 
@@ -348,9 +374,16 @@ hold autonomously and declare it green **only** on seven consecutive passes
 with the counter reset by any red · rollback = flag flip, no approval needed.
 
 **Gate:** the same question through both doors yields receipt-hash-equal
-semantic projections · fresh session lands on the default route from dashboard
-and global nav · seven green smokes recorded in CI history *before* close ·
-flag retained (deletion is Phase IV).
+semantic projections, scoped to DD-24's enumerated baseline (parity is
+evidence the doors agree, never evidence either is correct, and is never
+cited as delivery evidence for an enumerated gap) · fresh session lands on
+the default route from dashboard and global nav, **confirmed by a live
+observation** (per DD-21), not by CI history alone · seven green smokes
+recorded in CI history *before* close — necessary but, per **DD-21**, not
+sufficient on its own · flag retained (deletion is Phase IV) · **per DD-21
+(binding P3 onward): no P3 lane closes on CI alone — every lane requires a
+live observation artifact (a captured probe transcript, a live browser
+observation, or a database read) in addition to whatever CI proves.**
 
 ---
 
