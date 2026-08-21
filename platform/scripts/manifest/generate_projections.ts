@@ -57,6 +57,7 @@ import {
 import { extractRegistryBridgeToolsFromDisk, REGISTRY_BRIDGE_PATH } from './extract_registry_bridge_tools'
 import { resolveWebToolBridge, type CanonicalFacesData } from './web_tool_bridge_builder'
 import { buildMcpSurfaceProfiles, consultIsSubsetOfFull, COMPACT_MAX_TOOLS } from './mcp_surface_profile_builder'
+import { buildCapabilityPublicNameBridge } from './extract_registrar_capability_bridge'
 import { TOOL_NAME_TO_URI, MCP_TO_RETRIEVAL_TOOL } from '../../src/lib/retrieval/registry/tool_name_bridge'
 import canonicalFacesRaw from '../../src/lib/retrieval/registry/canonical_faces.json'
 import { VIDHI_PRIMITIVES } from '../../src/lib/vidhi/registry_data'
@@ -221,7 +222,10 @@ function main(): void {
   // RC-1/RC-3 rulings), NOT an astrology domain — see mcp_surface_profile_builder.ts's
   // header for the full derivation. Profile selection at serve time is OAuth-scope-gated
   // (platform-mcp/src/lib/mcp_profile.ts), wired this same lane.
-  const mcpSurfaceProfiles = buildMcpSurfaceProfiles(caps)
+  // F-155 fix (PARIŚEṢA V4): computed once, explicitly, so the report below (§8) can cite
+  // its own honest unresolved/ambiguous counts rather than re-deriving them.
+  const capabilityPublicNameBridge = buildCapabilityPublicNameBridge(caps)
+  const mcpSurfaceProfiles = buildMcpSurfaceProfiles(caps, capabilityPublicNameBridge)
   const consultSubsetOfFull = consultIsSubsetOfFull(mcpSurfaceProfiles)
   writeJson('mcp_surface_profiles.generated.json', {
     generated_at: generatedAt,
@@ -272,6 +276,11 @@ export interface McpSurfaceProfileData {
   overflow_tool_names: string[]
   excluded_calibration_context_only: string[]
   excluded_not_llm_facing: string[]
+  excluded_sensitive_class: string[]
+  /** F-155 fix (PARIŚEṢA V4) — see mcp_surface_profile_builder.ts's own field doc comment. */
+  excluded_unresolved_registration: string[]
+  /** F-155 fix (PARIŚEṢA V4) — see mcp_surface_profile_builder.ts's own field doc comment. */
+  internal_name_mismatches: Record<string, string>
 }
 
 /**
@@ -579,6 +588,22 @@ TS mirror (\`platform-mcp/src/generated/mcp_surface_profiles.generated.ts\`) to 
 profile from the caller's OAuth scope and gate \`server.tool()\` registration in
 \`platform-mcp/src/server.ts\` accordingly — see that file's own doc comments for the
 scope-to-profile mapping and the safe-default (unscoped/legacy OAuth token → consult).
+
+**F-155 fix (PARIŚEṢA V4):** \`buildMcpToolRegistration\` used to emit \`tool_name: cap.name\` —
+the registry's INTERNAL capability name — where the request-time serving gate
+(\`platform-mcp/src/lib/mcp_profile.ts::applyProfileGate\`) matches the PUBLIC name a real
+\`server.tool(...)\` call registers under. Fails closed (an unmatched name is simply never
+callable) but under-served: the allowlist alone, before this fix, resolved only a fraction of
+its declared entries. \`extract_registrar_capability_bridge.ts\` now mechanically resolves each
+tagged capability's real public face by source-text scanning every registrar file under
+\`platform-mcp/src/tools/\` (generalizing \`extract_registry_bridge_tools.ts\`'s method beyond
+just \`registry_bridge.ts\`). This generation run: **${Object.keys(mcpSurfaceProfiles.compact.internal_name_mismatches).length + Object.keys(mcpSurfaceProfiles.consult.internal_name_mismatches).length + Object.keys(mcpSurfaceProfiles.full.internal_name_mismatches).length}**
+total internal-name-mismatch corrections across the three profiles (full: ${Object.keys(mcpSurfaceProfiles.full.internal_name_mismatches).length},
+compact: ${Object.keys(mcpSurfaceProfiles.compact.internal_name_mismatches).length}, consult:
+${Object.keys(mcpSurfaceProfiles.consult.internal_name_mismatches).length}); ${capabilityPublicNameBridge.unresolved.length}
+tagged capabilities across the whole catalog have NO live server.tool() registration under any
+name and are honestly excluded (never emitted as an unresolvable allowlist entry) — see each
+profile's own \`excluded_unresolved_registration\` field for the per-profile list.
 
 **Honest residuals, not silently closed:**
 - \`marsys_drill\` (the plan's named compact-profile dispatcher tool) does not exist in the

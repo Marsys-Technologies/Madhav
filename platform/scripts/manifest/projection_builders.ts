@@ -460,14 +460,27 @@ export interface McpToolRegistration {
   annotations: McpToolAnnotations
 }
 
-export function buildMcpToolRegistration(cap: CapabilityDescriptor): McpToolRegistration {
+/**
+ * @param realPublicName F-155 fix (PARIŚEṢA V4): the real, live `server.tool()`-registered
+ *   name to emit instead of `cap.name` (the registry's INTERNAL name, which is frequently
+ *   NOT what any tool is actually registered under — see
+ *   `extract_registrar_capability_bridge.ts` for the full mechanism). Optional and defaults
+ *   to `cap.name` so every OTHER existing call site (`buildMcpToolRegistrations`, the plain
+ *   mcp_full-tagged projection) is unchanged; `mcp_surface_profile_builder.ts` is the one
+ *   caller that resolves and passes it.
+ */
+export function buildMcpToolRegistration(
+  cap: CapabilityDescriptor,
+  realPublicName?: string,
+): McpToolRegistration {
+  const tool_name = realPublicName ?? cap.name
   return {
-    tool_name: cap.name,
+    tool_name,
     description: cap.display?.full_description ?? cap.description,
     input_schema: toJsonSchema(cap.input_schema, cap.required_inputs),
     uri: cap.uri,
     layer: cap.layer,
-    name_valid: MCP_NAME_PATTERN.test(cap.name),
+    name_valid: MCP_NAME_PATTERN.test(tool_name),
     annotations: buildMcpAnnotations(cap),
   }
 }
@@ -475,7 +488,7 @@ export function buildMcpToolRegistration(cap: CapabilityDescriptor): McpToolRegi
 export function buildMcpToolRegistrations(caps: CapabilityDescriptor[]): McpToolRegistration[] {
   return caps
     .filter((c) => resolveType(c) === 'tool' && hasTag(c, 'mcp_full'))
-    .map(buildMcpToolRegistration)
+    .map((c) => buildMcpToolRegistration(c))
     .sort((a, b) => a.tool_name.localeCompare(b.tool_name))
 }
 
