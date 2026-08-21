@@ -333,6 +333,266 @@ describe('M5 OAuth — token.ts fail-closed (M0 behaviour preserved)', () => {
     expect(body.access_token).toBe('mcp_at_real')
     expect(body.token_type).toBe('Bearer')
   })
+
+  // SF-003 (PARIŚEṢA-V4) — PKCE downgrade / unconditional enforcement.
+  //
+  // Fixed value pair: verifier is 43 chars of the RFC 7636 unreserved charset;
+  // challenge is BASE64URL(SHA256(verifier)), i.e. what a real client would send.
+  const PKCE_VERIFIER = 'a'.repeat(43)
+  const PKCE_CHALLENGE = 'ZtNPunH49FD35FWYhT5Tv8I7vRKQJ8uxMaL0_9eHjNA'
+
+  it('SF-003 exploit path: pkce_challenge set, code_verifier omitted -> 400, no tokens issued', async () => {
+    // Only ONE fetch call should ever happen (consumeAuthCode). If the bug were
+    // still present, control would fall through to issueTokens and a second
+    // fetch call would occur — asserting call count is itself a failure mode
+    // check, on top of the status/body assertions.
+    const fetchSpy = setupFetchSpy([{
+      status: 200,
+      body: {
+        record: {
+          client_id: 'test_client',
+          redirect_uri: 'https://example.com/cb',
+          uid: 'real_firebase_uid',
+          scopes: ['mcp:tools'],
+          pkce_challenge: PKCE_CHALLENGE,
+        },
+      },
+    }])
+
+    const { handleToken } = await import('../oauth/token.js')
+
+    const mockReq = {
+      body: {
+        grant_type: 'authorization_code',
+        client_id: 'test_client',
+        code: 'mcp_ac_no_verifier',
+        // code_verifier deliberately omitted — this is the exploit
+      },
+    } as Parameters<typeof handleToken>[0]
+
+    let statusCode = 200
+    let responseBody: unknown = null
+    const mockRes = {
+      status: (s: number) => { statusCode = s; return mockRes },
+      json: (b: unknown) => { responseBody = b },
+    } as Parameters<typeof handleToken>[1]
+
+    await handleToken(mockReq, mockRes)
+
+    expect(statusCode).toBe(400)
+    expect((responseBody as { error: string }).error).toBe('invalid_grant')
+    expect((responseBody as { access_token?: string }).access_token).toBeUndefined()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
+  })
+
+  it('non-string code_verifier (array) -> 400, not an unhandled crash (adversarial: type-confusion probe)', async () => {
+    setupFetchSpy([{
+      status: 200,
+      body: {
+        record: {
+          client_id: 'test_client',
+          redirect_uri: 'https://example.com/cb',
+          uid: 'real_firebase_uid',
+          scopes: ['mcp:tools'],
+          pkce_challenge: PKCE_CHALLENGE,
+        },
+      },
+    }])
+
+    const { handleToken } = await import('../oauth/token.js')
+
+    const mockReq = {
+      body: {
+        grant_type: 'authorization_code',
+        client_id: 'test_client',
+        code: 'mcp_ac_array_verifier',
+        code_verifier: [PKCE_VERIFIER],   // type confusion: array, not string
+      },
+    } as unknown as Parameters<typeof handleToken>[0]
+
+    let statusCode = 200
+    let responseBody: unknown = null
+    const mockRes = {
+      status: (s: number) => { statusCode = s; return mockRes },
+      json: (b: unknown) => { responseBody = b },
+    } as Parameters<typeof handleToken>[1]
+
+    await expect(handleToken(mockReq, mockRes)).resolves.not.toThrow()
+    expect(statusCode).toBe(400)
+    expect((responseBody as { error: string }).error).toBe('invalid_grant')
+  })
+
+  it('mismatched code_verifier -> 400 (regression guard on existing behaviour)', async () => {
+    setupFetchSpy([{
+      status: 200,
+      body: {
+        record: {
+          client_id: 'test_client',
+          redirect_uri: 'https://example.com/cb',
+          uid: 'real_firebase_uid',
+          scopes: ['mcp:tools'],
+          pkce_challenge: PKCE_CHALLENGE,
+        },
+      },
+    }])
+
+    const { handleToken } = await import('../oauth/token.js')
+
+    const mockReq = {
+      body: {
+        grant_type: 'authorization_code',
+        client_id: 'test_client',
+        code: 'mcp_ac_wrong_verifier',
+        code_verifier: 'b'.repeat(43),   // wrong verifier, valid shape
+      },
+    } as Parameters<typeof handleToken>[0]
+
+    let statusCode = 200
+    let responseBody: unknown = null
+    const mockRes = {
+      status: (s: number) => { statusCode = s; return mockRes },
+      json: (b: unknown) => { responseBody = b },
+    } as Parameters<typeof handleToken>[1]
+
+    await handleToken(mockReq, mockRes)
+
+    expect(statusCode).toBe(400)
+    expect((responseBody as { error: string }).error).toBe('invalid_grant')
+  })
+
+  it('malformed code_verifier (bad charset/length) -> 400, rejected before hashing', async () => {
+    setupFetchSpy([{
+      status: 200,
+      body: {
+        record: {
+          client_id: 'test_client',
+          redirect_uri: 'https://example.com/cb',
+          uid: 'real_firebase_uid',
+          scopes: ['mcp:tools'],
+          pkce_challenge: PKCE_CHALLENGE,
+        },
+      },
+    }])
+
+    const { handleToken } = await import('../oauth/token.js')
+
+    const mockReq = {
+      body: {
+        grant_type: 'authorization_code',
+        client_id: 'test_client',
+        code: 'mcp_ac_malformed_verifier',
+        code_verifier: 'too-short',   // < 43 chars
+      },
+    } as Parameters<typeof handleToken>[0]
+
+    let statusCode = 200
+    let responseBody: unknown = null
+    const mockRes = {
+      status: (s: number) => { statusCode = s; return mockRes },
+      json: (b: unknown) => { responseBody = b },
+    } as Parameters<typeof handleToken>[1]
+
+    await handleToken(mockReq, mockRes)
+
+    expect(statusCode).toBe(400)
+    expect((responseBody as { error: string }).error).toBe('invalid_grant')
+  })
+
+  it('correct code_verifier -> 200 (positive control)', async () => {
+    let fetchCallCount = 0
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
+      fetchCallCount++
+      if (fetchCallCount === 1) {
+        return Promise.resolve(new Response(JSON.stringify({
+          record: {
+            client_id: 'test_client',
+            redirect_uri: 'https://example.com/cb',
+            uid: 'real_firebase_uid',
+            scopes: ['mcp:tools'],
+            pkce_challenge: PKCE_CHALLENGE,
+          },
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      }
+      return Promise.resolve(new Response(JSON.stringify({
+        access_token: 'mcp_at_pkce_ok',
+        refresh_token: 'mcp_rt_pkce_ok',
+        expires_in: 3600,
+        scope: 'mcp:tools',
+      }), { status: 201, headers: { 'Content-Type': 'application/json' } }))
+    })
+
+    const { handleToken } = await import('../oauth/token.js')
+
+    const mockReq = {
+      body: {
+        grant_type: 'authorization_code',
+        client_id: 'test_client',
+        code: 'mcp_ac_correct_verifier',
+        code_verifier: PKCE_VERIFIER,
+      },
+    } as Parameters<typeof handleToken>[0]
+
+    let statusCode = 200
+    let responseBody: unknown = null
+    const mockRes = {
+      status: (s: number) => { statusCode = s; return mockRes },
+      json: (b: unknown) => { responseBody = b },
+    } as Parameters<typeof handleToken>[1]
+
+    await handleToken(mockReq, mockRes)
+
+    expect(statusCode).toBe(200)
+    const body = responseBody as { access_token: string }
+    expect(body.access_token).toBe('mcp_at_pkce_ok')
+  })
+
+  it('no pkce_challenge on the record + no verifier sent -> still succeeds (non-PKCE clients unaffected)', async () => {
+    let fetchCallCount = 0
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
+      fetchCallCount++
+      if (fetchCallCount === 1) {
+        return Promise.resolve(new Response(JSON.stringify({
+          record: {
+            client_id: 'test_client',
+            redirect_uri: 'https://example.com/cb',
+            uid: 'real_firebase_uid',
+            scopes: ['mcp:tools'],
+            // no pkce_challenge — this client never opted into PKCE
+          },
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
+      }
+      return Promise.resolve(new Response(JSON.stringify({
+        access_token: 'mcp_at_no_pkce',
+        refresh_token: 'mcp_rt_no_pkce',
+        expires_in: 3600,
+        scope: 'mcp:tools',
+      }), { status: 201, headers: { 'Content-Type': 'application/json' } }))
+    })
+
+    const { handleToken } = await import('../oauth/token.js')
+
+    const mockReq = {
+      body: {
+        grant_type: 'authorization_code',
+        client_id: 'test_client',
+        code: 'mcp_ac_no_pkce',
+        // no code_verifier either
+      },
+    } as Parameters<typeof handleToken>[0]
+
+    let statusCode = 200
+    let responseBody: unknown = null
+    const mockRes = {
+      status: (s: number) => { statusCode = s; return mockRes },
+      json: (b: unknown) => { responseBody = b },
+    } as Parameters<typeof handleToken>[1]
+
+    await handleToken(mockReq, mockRes)
+
+    expect(statusCode).toBe(200)
+    const body = responseBody as { access_token: string }
+    expect(body.access_token).toBe('mcp_at_no_pkce')
+  })
 })
 
 describe('M5 OAuth — dynamic client registration', () => {

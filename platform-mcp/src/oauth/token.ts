@@ -121,8 +121,43 @@ export async function handleToken(req: Request, res: Response): Promise<void> {
       return
     }
 
-    // PKCE verification.
-    if (authCode.pkce_challenge && params.code_verifier) {
+    // PKCE verification (SF-003, PARIŚEṢA-V4).
+    //
+    // RFC 7636 §4.6: "the token endpoint MUST verify [code_verifier] ... if the
+    // authorization request included the code_challenge parameter." If a
+    // code_challenge was registered, code_verifier is REQUIRED at redemption — its
+    // absence MUST be rejected, not silently accepted.
+    //
+    // The prior form of this check was `if (authCode.pkce_challenge &&
+    // params.code_verifier)` — a bare `&&` guard around the whole verification. That
+    // let an attacker who intercepted/stole an authorization code (redirect
+    // interception, browser history, a malicious app on the same custom URI scheme)
+    // simply OMIT code_verifier and redeem the code anyway, because the entire
+    // verification block was skipped rather than failed. The client asked for PKCE
+    // protection at /authorize; the server silently withdrew it at /token for anyone
+    // who chose not to present a verifier. Fixed by splitting the `&&` into an outer
+    // "was PKCE requested" gate with an inner "verifier missing -> reject" branch, so
+    // a registered challenge can no longer be bypassed by omission.
+    if (authCode.pkce_challenge) {
+      // typeof guard (not just truthiness): a JSON body can carry a non-string
+      // code_verifier (array/object). Without this, such a value can slip past a
+      // bare falsiness check and a regex .test() (which coerces to string), then
+      // throw inside crypto's .update() below — an unhandled exception instead of
+      // a clean 400. Checking the type up front keeps every rejection in this
+      // block a deliberate 400, never a crash.
+      if (typeof params.code_verifier !== 'string' || params.code_verifier.length === 0) {
+        res.status(400).json({ error: 'invalid_grant', error_description: 'code_verifier required' })
+        return
+      }
+
+      // RFC 7636 §4.1: code_verifier is 43-128 characters from the unreserved
+      // charset [A-Z a-z 0-9 - . _ ~]. Reject malformed input before it reaches
+      // crypto rather than hashing garbage.
+      if (!/^[A-Za-z0-9\-._~]{43,128}$/.test(params.code_verifier)) {
+        res.status(400).json({ error: 'invalid_grant', error_description: 'code_verifier malformed' })
+        return
+      }
+
       const crypto = await import('crypto')
       const challenge = crypto.createHash('sha256')
         .update(params.code_verifier)
