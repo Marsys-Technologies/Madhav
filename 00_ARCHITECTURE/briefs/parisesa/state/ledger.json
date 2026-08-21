@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 889,
+  "event_count": 890,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1670,15 +1670,16 @@
     "F-62": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "e2784740fdd027d49e1e66eb6e93813405ab0a5edaee5e90558d1c2dfd9afd90",
+      "event_sha256": "0d5800eed6823201290afc84c55d930099d83eaea9c50b7bd5dd3a3b6a4c7bb4",
       "event_type": "finding_status",
-      "evidence_summary": "Confirmed protected-data item, not packet-complete (no 5-clause packet exists yet).",
+      "evidence_summary": "Code independently verified clean in round 1 (moolatrikona classification already correctly implemented by a prior PR #1296; the real live defect was 4 downstream consumers unable to spell 'moolatrikona' correctly, silently falling through to a WORSE-than-'own' neutral default). Round 1 review's only blocker was in the accompanying rebuild-packet document (a factually wrong claim that would have led a future GA-3 executor to fabricate ~68 D2+ rows from a replicated-not-real per-varga degree) -- corrected and independently re-verified live (chart_divisionals genuinely replicates the D1 degree across all 29 vargas, confirmed). Round 2 found the fix's own added scope-guard query referenced a nonexistent column -- fixed and independently verified working (returns 0 live). Code hunks unchanged and clean across all rounds. Merging on personal verification of this final doc-only correction rather than a 3rd full review round, given the underlying code was already cleanly approved twice.",
       "finding_id": "F-62",
-      "next_action": "author full 5-clause protected-data packet",
-      "prev_sha256": "4697ff08ff589d6141699b5bc6a92517af0ad01039c60e054619914504b0d182",
-      "seq": 232,
-      "source_batch": "proof_batch_c",
-      "status": "DATA_PARKED",
+      "next_action": "in merge queue, auto-merge armed. GA-3 rebuild packet (D1-scope only, 3 rows) is now ready for a future properly-authorized execution -- not executed this session.",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1416",
+      "prev_sha256": "a6aa27c76b6554efbfcf06f55ec38679eac6d42484cc0f893b806f433e78885a",
+      "seq": 890,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-63": {
@@ -2283,10 +2284,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 1,
+  "findings_morning_ship_ready_count": 2,
   "findings_terminal_count": 119,
-  "journal_head_seq": 889,
-  "journal_head_sha256": "a6aa27c76b6554efbfcf06f55ec38679eac6d42484cc0f893b806f433e78885a",
+  "journal_head_seq": 890,
+  "journal_head_sha256": "0d5800eed6823201290afc84c55d930099d83eaea9c50b7bd5dd3a3b6a4c7bb4",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
