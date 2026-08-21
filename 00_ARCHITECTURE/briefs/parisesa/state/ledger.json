@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 878,
+  "event_count": 880,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -834,18 +834,18 @@
     },
     "F-143": {
       "confidence": "HIGH",
-      "disposition": "LANDED",
-      "event_sha256": "16c37d0b8ff611f7ada090e5c6e92c02caae23f81a53f9fa61d5c88244c0e765",
+      "disposition": "FIXED",
+      "event_sha256": "5e0343f37ac7ceb26ffae649484101586ee1a86ccd53217048e2a05418aa2224",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review: MERGE, no blocking defect. Join correctness independently verified (PK (chart_id,match_id) confirmed live, no fanout possible). Case-sensitivity trap (the exact class of bug found in F-35's own fix) independently confirmed NOT reintroduced here -- .upper() normalization + a dedicated test pins it. 15/15 empirical/assignment_only split reproduced exactly against live prod. Legacy-rows-grade-down-only confirmed, including a bool-is-int Python trap guard. Retrodiction's 'no real detector' claim confirmed literally true by reading the actual substep (T-90d cutoff computed but only used in an f-string, never as a filter). Retrodiction test confirmed non-vacuous (fails red on main with real prior n_support=99 case). Red-before-green independently reproduced (8 mi_darshana + 7 mi_pariksha failures on clean main). All CI green.",
+      "evidence_summary": "PR #1414 merged (ca9214f2cf44d5accf6ff760f1e875dc113b156d) and deployed. mi_darshana.py unearned-empirical-grade fix for discovery insights (emergent_law scored-match gating, retrodiction honestly left structural). Code-path fix -- terminal on merge+deploy for the CODE defect; the campaign's own note that chart 482012f1's 20 existing mis-graded rows won't be corrected until mi_darshana re-runs is a separate rebuild-pending item, tracked as part of the broader chart-482012f1 rebuild scope (see F-104/F-35 next_action), not blocking this finding's own closure.",
       "finding_id": "F-143",
-      "next_action": "in merge queue, auto-merge armed",
+      "next_action": "none - terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1414",
-      "prev_sha256": "b6cb3df5f03eb12ae3fbbe69648fe9c52a635073fcfeba1dc14bc723d15050dd",
-      "seq": 873,
+      "prev_sha256": "14d9b2126c323e6a5f649a2049e5ce141718e59855aee75cdc30157a68712ef7",
+      "seq": 880,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-144": {
       "confidence": "HIGH",
@@ -2149,18 +2149,18 @@
     },
     "SF-002": {
       "confidence": "HIGH",
-      "disposition": "LANDED",
-      "event_sha256": "41f12c4c805791e11c5ae7cf60fd164d40b2eead46ce7fd9aaba9bb0e2bc5f59",
+      "disposition": "FIXED",
+      "event_sha256": "14d9b2126c323e6a5f649a2049e5ce141718e59855aee75cdc30157a68712ef7",
       "event_type": "finding_status",
-      "evidence_summary": "Urgent GA-5 security review: MERGE. Exploit chain independently re-derived and confirmed by the reviewer from origin/main directly. 'Exactly one caller' claim independently re-audited with HIGH confidence (full git grep, barrel-export check, dynamic-import check, cross-package-import-impossibility check -- platform-mcp is a separate package that cannot import a server-only module). Mutation test reproduced exactly. Extra edge case checked and clean: an empty/null stored secret hash cannot exist (NOT NULL constraint + the only writer always generates 32 random bytes) so sha256('') can never accidentally match. FORENSICS (read-only, this session): checked production directly -- mcp_oauth_clients has ZERO registered clients, mcp_oauth_tokens has ZERO issued tokens (of any kind, any flow). The bypass had a real, confirmed code-level exploit path but ZERO actual exploitable surface in production -- no client was ever registered to target, no token was ever issued via it or any other flow. No incident response / revocation needed. Recorded here so this is not re-investigated as an open forensics question later.",
+      "evidence_summary": "PR #1413 merged (6dd202e8ac8384f4045da1772b1e67d85417e8bc) and deployed. CRITICAL live OAuth client_credentials no-secret authentication bypass closed. Forensics confirmed clean (0 clients ever registered, 0 tokens ever issued -- zero actual exploitation). Full incident timeline: found as a disclosed side-effect of F-06/RATE-07 work, independently re-confirmed end-to-end, fixed with mutation-tested proof, urgent GA-5 security review (MERGE verdict), merged and deployed same session.",
       "finding_id": "SF-002",
-      "next_action": "in merge queue, auto-merge armed",
+      "next_action": "none - terminal",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1413",
-      "prev_sha256": "66b5979a5982088ed0fbb31a8b0c339b51b116b6d5607178f8167db155256c13",
-      "seq": 866,
+      "prev_sha256": "d5f9a8c93cf28b36707f60c695727d2a4bf2e62b064c00f14052c9ad1e789754",
+      "seq": 879,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1-SECURITY-DISCLOSURE",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "SF-003": {
       "confidence": "HIGH",
@@ -2208,10 +2208,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 2,
-  "findings_terminal_count": 116,
-  "journal_head_seq": 878,
-  "journal_head_sha256": "d5f9a8c93cf28b36707f60c695727d2a4bf2e62b064c00f14052c9ad1e789754",
+  "findings_morning_ship_ready_count": 0,
+  "findings_terminal_count": 118,
+  "journal_head_seq": 880,
+  "journal_head_sha256": "5e0343f37ac7ceb26ffae649484101586ee1a86ccd53217048e2a05418aa2224",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
