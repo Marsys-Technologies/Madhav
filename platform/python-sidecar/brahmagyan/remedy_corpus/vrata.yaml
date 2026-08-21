@@ -3,6 +3,14 @@
 # Encoding: hand-curated from classical public-domain translations
 # ZERO LLM — deterministic authoring only
 
+# ── PARIŚEṢA-V4 F-182 / owner ruling R-2 (OWNER_RULINGS_20260821.md) ─────────
+# Rows below may pair a BPHS-attributed remedy with a `mantra_transliteration`
+# carrying a navagraha bīja of the `praam preem praum sah` class. That bīja class
+# is NOT BPHS material — it belongs to the tantric/āgamic layer transmitted via
+# Mantra Mahodadhi (Mahīdhara, 16th c.) and the Navagraha stotra literature.
+# Each row's `source_text` / `source_chapter` attributes the REMEDY (gemstone,
+# yantra, vrata, dāna), which BPHS does supply; it must never be read as
+# attributing the attached bīja mantra text to BPHS.
 - remedy_id: "vrt_sun_sunday_fast_001"
   planet: "Sun"
   domain: "career"
@@ -78,7 +86,7 @@
   deity: "Vishnu / Brihaspati"
   remedy_text: "Observe Thursday fast (Guruvara Vrata) for 16 consecutive Thursdays. Take only yellow foods — gram dal, turmeric rice. Read Vishnu Sahasranama or study sacred texts. This vrata blesses progeny, wealth, and marital harmony."
   mantra_sanskrit: "ॐ ग्रां ग्रीं ग्रौं सः गुरवे नमः"
-  mantra_transliteration: "Om Graam Greem Graum Sah Guruve Namah"
+  mantra_transliteration: "Om Graam Greem Graum Sah Gurave Namah"
   ingredients_jsonb: {"fast_type": "one meal; yellow foods", "permitted": ["chana dal", "turmeric rice", "yellow fruits", "milk"], "forbidden": ["non-vegetarian food", "alcohol", "cutting hair on Thursday"], "duration": "16 consecutive Thursdays"}
   timing_rules_jsonb: {"day": "Thursday", "duration_weeks": 16, "additional_restriction": "do not cut hair or nails on Thursdays during the vrata"}
   cost_tier: "accessible"

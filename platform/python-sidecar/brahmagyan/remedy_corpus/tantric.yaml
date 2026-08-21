@@ -29,9 +29,9 @@
   domain: "general"
   category: "tantric"
   deity: "Rahu"
-  remedy_text: "Rahu Graha Shanti Homa — fire ritual for Rahu pacification during Rahu Mahadasha or severe Rahu-afflicted periods. Uses blue-grey cloth as fire offering, along with coconut, urad dal, and iron nails. From BPHS Ch. 92 upayas chapter."
+  remedy_text: "Rahu Graha Shanti Homa — fire ritual for Rahu pacification during Rahu Mahadasha or severe Rahu-afflicted periods. Uses blue-grey cloth as fire offering, along with coconut, urad dal, and iron nails. The homa procedure is from the BPHS Ch. 92 upayas chapter; the bija mantra itself is from the Navagraha bija tradition (compiled in Mantra Mahodadhi, Mahidhara, 16th c.), not from BPHS."
   mantra_sanskrit: "ॐ भ्रां भ्रीं भ्रौं सः राहवे नमः"
-  mantra_transliteration: "Om Bhram Bhreem Bhroum Sah Rahave Namah"
+  mantra_transliteration: "Om Bhraam Bhreem Bhraum Sah Rahave Namah"
   ingredients_jsonb: {"homa_materials": ["urad dal (black lentils)", "blue-grey cloth strips", "coconut", "iron nails", "mustard seeds"], "fire_altar": "irregular or octagonal kunda for Rahu", "priest_required": true, "ahuti_count": 18000}
   timing_rules_jsonb: {"day": "Saturday", "time": "Rahu Kalam", "paksha": "any", "duration": "one-time or annual during Rahu Mahadasha"}
   cost_tier: "elaborate"
