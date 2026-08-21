@@ -204,15 +204,19 @@ MITIGATION_CATALOG: list[dict[str, Any]] = [
         ),
         "mitigation_type": "mantra",
         "mitigation_text": (
-            "Ketu Beeja Mantra: 'Om Shram Shreem Shroum Sah Ketave Namah' — "
+            "Ketu Beeja Mantra: 'Om Sraam Sreem Sraum Sah Ketave Namah' — "
             "108 repetitions daily during Ketu-Ketu AD. "
-            "BPHS Ch.17 v.8-14 prescribes this for Ketu Dasha mitigation. "
+            "BPHS Ch.17 v.8-14 prescribes Ketu Dasha mitigation; the bija mantra itself "
+            "is from the Navagraha bija tradition (Mantra Mahodadhi), not BPHS. "
             "Best recited at Tuesday/Wednesday dawn facing south-west. "
             "Alternatively: Ganesha mantra ('Om Gam Ganapataye Namah') — "
             "Ketu is classified as Ganesha's planet in Kerala tradition."
         ),
         "source_l0_rule_id": "L0.REMEDY.KETU.MANTRA.001",
-        "source_citation": "BPHS Ch.17 v.8-14 (Ketu Graha Shanti); Kerala Jyotish tradition",
+        "source_citation": "Navagraha bija tradition; compiled in Mantra Mahodadhi "
+                            "(Mahidhara, 16th c.); BPHS Ch.17 v.8-14 (Ketu Graha Shanti) "
+                            "- upaya context only, not the mantra's source; "
+                            "Kerala Jyotish tradition",
         "behavioral_guidance": (
             "Ketu-Ketu AD: practice deliberate non-attachment to outcomes. "
             "This period rewards meditation, yoga, or any practice that "
@@ -292,8 +296,8 @@ MITIGATION_CATALOG: list[dict[str, Any]] = [
         "mitigation_type": "mantra",
         "mitigation_text": (
             "Rahu-Ketu axis pacification: dual mantra practice. "
-            "For Rahu: 'Om Bhram Bhreem Bhroum Sah Rahave Namah' (108x, Saturday). "
-            "For Ketu: 'Om Shram Shreem Shroum Sah Ketave Namah' (108x, Tuesday). "
+            "For Rahu: 'Om Bhraam Bhreem Bhraum Sah Rahave Namah' (108x, Saturday). "
+            "For Ketu: 'Om Sraam Sreem Sraum Sah Ketave Namah' (108x, Tuesday). "
             "BPHS Ch.17: both Rahu and Ketu are shadow planets with no physical body — "
             "they are pacified by the lords of the signs they occupy. "
             "In native's chart: Rahu in Gemini (Mercury lord) + Ketu in Sagittarius "

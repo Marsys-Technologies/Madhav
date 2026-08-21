@@ -22,13 +22,21 @@
  * `worker` tier is a capability mismatch for a task materially harder than
  * its established use case (>=3 genuinely distinct interpretive candidates
  * plus a real falsifier per judgment). DD-17 ruled: upgrade THIS call site
- * to the `mid` tier. This is intentionally NOT done by changing
- * `STACK_ROUTING['gemini']['worker']` (which would also silently change
- * `summaries/worker.ts`'s title/summarization model) and NOT by adding a
- * new shared `CallType` (would require populating `STACK_ROUTING` for
- * every stack, outside DD-17's narrow scope) — `INTERPRETATION_SETS_MODEL_ID`
- * below is resolved and validated against the registry directly, local to
- * this one call site, no other call site's behavior changes.
+ * to the `mid` tier — done at the time via a LOCAL bypass constant
+ * (`INTERPRETATION_SETS_MODEL_ID`) rather than a new shared `CallType`,
+ * because adding one would have required populating `STACK_ROUTING` for
+ * every stack, which was out of DD-17's narrow scope that day.
+ *
+ * FOLDED INTO THE SHARED REGISTRY (2026-08-21, PARIPRASHNA-P3-PREFLIGHT-
+ * 2026-08-21, model-tier ruling item 2a): the native's own ruling named this
+ * bypass as a hazard — "DD-17's 'this call site only' instruction created a
+ * permanent bypass; close it before adding a tier policy on top, or the
+ * policy will silently not apply to the one call site it came from." This
+ * call site now resolves via `getEffectiveModel(DEFAULT_STACK_ID,
+ * 'interpretation_sets', 'primary')`, the same pattern every other call site
+ * in this codebase uses. `STACK_ROUTING['gemini']['interpretation_sets']`
+ * carries the SAME 'gemini-2.5-flash' id the bypass constant hardcoded — this
+ * is a plumbing change, not a model change; no model was moved by this edit.
  *
  * NEVER fabricates candidates client-side: every candidate/rationale/
  * falsifier a reader can eventually see came out of the model's own JSON
@@ -44,7 +52,8 @@ import type { JSONSchema7 } from 'json-schema'
 
 import { runAdapter } from '@/lib/adapters/run_adapter'
 import type { QueryRequest } from '@/lib/adapters/types'
-import { getModelMeta } from '@/lib/models/registry'
+import { getModelMeta, DEFAULT_STACK_ID } from '@/lib/models/registry'
+import { getEffectiveModel } from '@/lib/models/runtime_config'
 
 import type { SignificantJudgment } from './detect'
 import { MIN_INTERPRETATION_CANDIDATES, type InterpretationSetEntry } from './schema'
@@ -409,20 +418,20 @@ export type InterpretationLlmCaller = (
   judgments: readonly SignificantJudgment[],
 ) => Promise<Map<string, LlmSetRaw>>
 
-/** DD-17: the `mid`-tier gemini model, this call site only — see the module
- *  header for why this bypasses `getEffectiveModel`'s shared routing table. */
-export const INTERPRETATION_SETS_MODEL_ID = 'gemini-2.5-flash'
-
-/** Exported for the DD-17 resolution test — not otherwise called outside this module. */
-export function resolveInterpretationSetsModelId(): string {
-  // Validated against the live registry rather than trusted as a bare
-  // literal (§N.8) — fail loudly if the model is ever removed from
-  // `MODELS`, never silently fall back to a different (unvalidated) tier,
-  // which would defeat the point of DD-17's ruling.
-  const meta = getModelMeta(INTERPRETATION_SETS_MODEL_ID)
+/** Exported for the DD-17/registry-fold-in resolution test — not otherwise
+ *  called outside this module. Resolves via the shared `interpretation_sets`
+ *  CallType (2026-08-21 fold-in — see module header) instead of a local
+ *  bypass constant. */
+export async function resolveInterpretationSetsModelId(): Promise<string> {
+  const modelId = await getEffectiveModel(DEFAULT_STACK_ID, 'interpretation_sets', 'primary')
+  // Validated against the live registry rather than trusted blind (§N.8) —
+  // fail loudly if the resolved id is ever missing from `MODELS`, never
+  // silently fall back to a different (unvalidated) tier, which would
+  // defeat the point of DD-17's ruling.
+  const meta = getModelMeta(modelId)
   if (!meta) {
     throw new Error(
-      `DD-17 model resolution failed: '${INTERPRETATION_SETS_MODEL_ID}' is not in the model ` +
+      `interpretation_sets model resolution failed: '${modelId}' is not in the model ` +
         'registry (lib/models/registry.ts MODELS). This call site\'s model id must be updated, ' +
         'not silently substituted.',
     )
@@ -450,7 +459,7 @@ const INTERPRETATION_SETS_REPAIR_NOTE =
   'after the JSON.'
 
 async function defaultCaller(judgments: readonly SignificantJudgment[]): Promise<Map<string, LlmSetRaw>> {
-  const modelId = resolveInterpretationSetsModelId()
+  const modelId = await resolveInterpretationSetsModelId()
   try {
     return await callOnce(judgments, modelId)
   } catch (err) {

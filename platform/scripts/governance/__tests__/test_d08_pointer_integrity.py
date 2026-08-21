@@ -77,9 +77,14 @@ class TestF43DualOutputToolName:
         assert REGISTER_P1_ALIASES.exists(), f"File not found: {REGISTER_P1_ALIASES}"
         text = REGISTER_P1_ALIASES.read_text(encoding="utf-8")
 
-        # Find all dualOutput( invocations; count arguments by bracket depth
+        # Find all dualOutput( invocations; count arguments by bracket depth.
+        # Same comment-line guard as test_recover_via_instrument_not_unknown_tool_in_error_paths
+        # below — a `//` comment illustrating the banned pattern (e.g. "do NOT call bare
+        # dualOutput(data)") is not itself a call site and must not be scanned as one.
         bare_calls = []
         for m in re.finditer(r"\bdualOutput\s*\(", text):
+            if text[max(0, text.rfind("\n", 0, m.start())):m.start()].strip().startswith("//"):
+                continue
             open_idx = m.end() - 1
             depth = 0
             i = open_idx

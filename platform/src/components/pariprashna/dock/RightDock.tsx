@@ -87,6 +87,19 @@ export function RightDock({ turns }: { turns: TurnState[] }) {
             const predictionBlock = turn.blocks.find((b) => b.kind === 'prediction_card')
             const citations = Object.values(turn.citations).sort((a, b) => a.n - b.n)
             const classicalCount = citations.filter((c) => c.sourceClass === 'classical_source').length
+            // P2-close Lane K (PPR-03 typed confidence, G3-C). The receipt types
+            // EVERY CITATION this turn typed (confidence_typing's own header
+            // comment) — keyed by `ref`, the same token as `citation.ref`
+            // (TypedConfidenceEntrySchema's own doc comment). Built once per
+            // turn render, not per-citation, so a turn with many citations
+            // doesn't re-scan `entries` for each row. `undefined` (never a
+            // guessed type) when the receipt hasn't arrived, the flag was off,
+            // or this ref simply wasn't typed.
+            const confidenceTyping = turn.receipt?.confidence_typing
+            const confidenceByRef =
+              confidenceTyping?.status === 'measured' && confidenceTyping.entries
+                ? new Map(confidenceTyping.entries.map((e) => [e.ref, e.confidence_type]))
+                : null
             // The Seal (§5.3 step 4): the sealed turn's own ledger fades in once,
             // the instant `turn.commit` moves it to `settling`/`settled` — not on
             // every intermediate citation arriving mid-stream (ruling 8a's
@@ -118,6 +131,7 @@ export function RightDock({ turns }: { turns: TurnState[] }) {
                           citation={c}
                           highlighted={activeCitation?.turnId === turn.id && activeCitation?.n === c.n}
                           registerRef={(el) => cardRefs.current.set(`${turn.id}:${c.n}`, el)}
+                          confidenceType={confidenceByRef?.get(c.ref)}
                         />
                       ))}
                     </>

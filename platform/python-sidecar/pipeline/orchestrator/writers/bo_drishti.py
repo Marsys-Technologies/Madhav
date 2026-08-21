@@ -25,7 +25,10 @@ logger = logging.getLogger(__name__)
 
 ENGINE_VERSION        = "bo_drishti_v1.0"
 LENS_TEMPLATE_VERSION = "classical_v1.0"
-LENS_FORMULA_VERSION  = "drishti_formula_v1.0"
+# v1.1 (F-114): the stored ranked order is now TOTAL (salience DESC, template-first,
+# signal_id ASC) instead of salience-only. Reproducible across rebuilds; still deliberately
+# domain-agnostic — domain discrimination is a serve-time concern (composite_ranker.ts).
+LENS_FORMULA_VERSION  = "drishti_formula_v1.1"
 
 CANONICAL_AYAS = [
     "lahiri_chitrapaksha", "raman", "krishnamurti",
@@ -76,7 +79,17 @@ def _fetch_dict(conn: Any, sql: str, params: list) -> list[dict]:
 def _fetch_template_signals(
     conn: Any, chart_id: str, aya: str, domains: list[str]
 ) -> list[dict]:
-    """Fetch signals whose domains_affected_array overlaps the question's domains."""
+    """Fetch signals whose domains_affected_array overlaps the question's domains.
+
+    F-114 / CLAUDE.md §N.7 item 2 — TOTAL ordering. `computed_salience` alone is NOT a total
+    order over this set: on the canonical chart the relationship family carries a 13-way EXACT
+    tie at 2.16108 (and 61-way at 0.82800), so a salience-only ORDER BY leaves the head of the
+    stored ranked family at the mercy of Postgres' physical row order — two rebuilds of the
+    same chart could serve different "top 10 marriage signals". `signal_id ASC` makes the
+    stored order reproducible. It does NOT make it domain-discriminating; that is a
+    serve-time concern, handled by the composite ranker in query_domain_reading.ts (a Python
+    re-implementation here would be a second, drifting authority — §N.5).
+    """
     rows = _fetch_dict(
         conn,
         """SELECT signal_id, signal_type_id, signal_type_class, computed_salience,
@@ -84,7 +97,7 @@ def _fetch_template_signals(
            FROM bodha_msr_signals
            WHERE chart_id = %s AND ayanamsha_id = %s
              AND domains_affected_array && %s::text[]
-           ORDER BY computed_salience DESC NULLS LAST""",
+           ORDER BY computed_salience DESC NULLS LAST, signal_id ASC""",
         [chart_id, aya, domains],
     )
     return rows
@@ -221,7 +234,14 @@ def _build_lens(
             "non_template_significant": True,
         })
 
-    all_signals.sort(key=lambda x: x["salience"], reverse=True)
+    # F-114: total sort key. `salience` alone ties in large blocks (see
+    # _fetch_template_signals' docstring), and Python's stable sort would then just inherit
+    # whatever order the two source queries happened to produce. Template rows before
+    # wildcards at equal salience (the lens's own template IS its stated relevance basis),
+    # then signal_id — reproducible across rebuilds.
+    all_signals.sort(
+        key=lambda x: (-x["salience"], not x["in_template"], x["signal_id"]),
+    )
 
     all_relevant_ranked = {
         "ranked_signals": all_signals,

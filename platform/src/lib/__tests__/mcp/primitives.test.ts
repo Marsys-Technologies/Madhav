@@ -357,4 +357,121 @@ describe('POST /api/mcp/primitives/[tool] — dispatcher', () => {
     expect(capturedPlan).not.toBeNull()
     expect(capturedPlan!['chart_id']).toBeUndefined()
   })
+
+  // ── F-126 regression — confidence_band on a zero-result query ──────────────
+  //
+  // Live reproducer (production, canonical chart, 2026-08-21):
+  //   mimamsa_lel_query {query: "marriage relationship spouse partner wedding"}
+  //     → result …{"events":[],"count":0,"total_matching":0}…
+  //     → epistemics {"surgical":true,"confidence_band":"high", …}
+  // The band was hardcoded in this route, so NO result could ever produce a
+  // different value: an unearned grade (§N.8) claiming high confidence in a
+  // finding that does not exist. The band is now computed from the served result.
+
+  /** Byte-for-byte the payload production returned for the F-126 reproducer. */
+  const F126_EMPTY_LEL_BUNDLE = {
+    tool_bundle_id: '76b91eb2-46c3-4f4d-a878-51e090e8b629',
+    tool_name: 'lel_query',
+    tool_version: '1.0',
+    invocation_params: {
+      chart_id: NATIVE_CHART,
+      query: 'marriage relationship spouse partner wedding',
+    },
+    results: [
+      {
+        content: JSON.stringify({
+          chart_id: NATIVE_CHART,
+          events: [],
+          count: 0,
+          total_matching: 0,
+          has_more: false,
+          filters: {
+            category: null, domain: null, significance: null,
+            start_date: null, end_date: null,
+            query: 'marriage relationship spouse partner wedding',
+            limit: 50, offset: 0,
+          },
+          provenance: {
+            tables: ['life_events'],
+            no_leakage_note:
+              'life_events is a calibration corpus only — must not feed prediction generation.',
+            source: 'LIFE_EVENT_LOG (user-authored); served chart-scoped.',
+          },
+        }),
+      },
+    ],
+    served_from_cache: false,
+    latency_ms: 36,
+    result_hash: 'sha256:718b835d81d16e99fbdce27d3e4c062e12fa2a0c0b2746bb1282acdce057a73c',
+    schema_version: '1.0',
+  }
+
+  it('F-126: zero-result lel_query never serves confidence_band "high"', async () => {
+    mockGetTool.mockReturnValue({
+      name: 'lel_query',
+      version: '1.0',
+      retrieve: vi.fn().mockResolvedValue(F126_EMPTY_LEL_BUNDLE),
+    } as unknown as ReturnType<typeof getToolByName>)
+
+    const req = buildRequest('lel_query', {
+      params: { chart_id: NATIVE_CHART, query: 'marriage relationship spouse partner wedding' },
+    })
+    const res = await POST(req, buildRouteParams('lel_query'))
+    expect(res.status).toBe(200)
+
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    // The exact defect assertion — this failed before the fix.
+    expect(body.epistemics.confidence_band).not.toBe('high')
+    expect(body.epistemics.confidence_band).toBe('none')
+    expect(body.epistemics.evidence_state).toBe('empty')
+    // surgical describes the CALL MODE, not the confidence — still true.
+    expect(body.epistemics.surgical).toBe(true)
+    // Factual (non-predictive) read: falsifier stays null, never invented prose.
+    expect(body.epistemics.falsifier).toBeNull()
+    expect(body.epistemics.horizon_days).toBeNull()
+  })
+
+  it('F-126: a lel_query that DOES match rows still serves confidence_band "high"', async () => {
+    mockGetTool.mockReturnValue({
+      name: 'lel_query',
+      version: '1.0',
+      retrieve: vi.fn().mockResolvedValue({
+        ...F126_EMPTY_LEL_BUNDLE,
+        results: [
+          {
+            content: JSON.stringify({
+              chart_id: NATIVE_CHART,
+              events: [{ event_id: 'e1', event_date: '2011-02-13', description: 'marriage' }],
+              count: 1,
+              total_matching: 1,
+              has_more: false,
+            }),
+          },
+        ],
+      }),
+    } as unknown as ReturnType<typeof getToolByName>)
+
+    const req = buildRequest('lel_query', { params: { chart_id: NATIVE_CHART, query: 'marriage' } })
+    const res = await POST(req, buildRouteParams('lel_query'))
+    expect(res.status).toBe(200)
+
+    const body = await res.json()
+    expect(body.epistemics.confidence_band).toBe('high')
+    expect(body.epistemics.evidence_state).toBe('present')
+  })
+
+  it('F-126: a result with no readable count keeps the pre-existing "high" band', async () => {
+    // No invented downgrade where nothing measured the result set.
+    mockGetTool.mockReturnValue({
+      name: 'chart_facts_query',
+      version: '1.0',
+      retrieve: vi.fn().mockResolvedValue({ rows: [{ planet: 'Saturn' }] }),
+    } as unknown as ReturnType<typeof getToolByName>)
+
+    const req = buildRequest('query_chart_facts', { params: { category: 'shadbala' } })
+    const res = await POST(req, buildRouteParams('query_chart_facts'))
+    const body = await res.json()
+    expect(body.epistemics.confidence_band).toBe('high')
+  })
 })

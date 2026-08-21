@@ -14,7 +14,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import (  # noqa: E402
-    BLIND_WINDOW_JSON, HEARTBEAT_INTERVAL_FRESH_S, HEARTBEAT_INTERVAL_IDLE_S, HEARTBEAT_JSON,
+    ALIVE_JSON, BLIND_WINDOW_JSON, HEARTBEAT_INTERVAL_FRESH_S, HEARTBEAT_INTERVAL_IDLE_S, HEARTBEAT_JSON,
     IDLE_CYCLES_BEFORE_BACKOFF, PIDFILE, RUNTIME_DIR, STOPPED_INTENTIONALLY_JSON,
     compute_blind_window, ensure_runtime_dirs, atomic_write_json,
 )
@@ -23,6 +23,26 @@ import project  # noqa: E402
 from tracker_emit import emit  # noqa: E402
 
 WRITER_ID = "trackerd"
+
+
+def beat(stage):
+    """Stamp the liveness file. Distinct from heartbeat.json, which is written only when a
+    cycle COMPLETES -- a distinction the watchdog needs and did not have: a slow but
+    perfectly healthy cycle looked exactly like a dead process, so the watchdog SIGKILLed
+    working daemons mid-cycle (measured 2026-08-21: a 77s cycle plus the 20s sleep read as
+    97s apparent age against a 90s threshold, and 7 further cycles came within 20s of it).
+    Each kill destroyed that cycle's in-flight work and opened a real gap -- the outage was
+    manufactured by the thing meant to prevent outages.
+
+    Cheap by construction (one small atomic write) so it can be called between collector
+    steps without materially adding to cycle cost."""
+    try:
+        atomic_write_json(ALIVE_JSON, {
+            "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "pid": os.getpid(), "stage": stage,
+        })
+    except OSError:
+        pass  # liveness reporting must never be able to kill the daemon
 
 
 # Kept open (never closed) for the process's entire lifetime -- the flock it holds is what
@@ -128,8 +148,9 @@ def check_blind_window():
 def one_cycle():
     t0 = time.time()
     signal_failures = []
+    beat("cycle_start")
     try:
-        snapshot = collect.main()
+        snapshot = collect.main(beat=beat)
         mf = snapshot.get("mirror_fetch") or {}
         if not mf.get("ok"):
             signal_failures.append({"signal": "mirror_fetch", "provenance": mf.get("error"),
@@ -149,6 +170,7 @@ def one_cycle():
         if os.path.exists(STATE_JSON):
             with open(STATE_JSON, encoding="utf-8") as f:
                 state_before = f.read()
+        beat("project")
         state = project.project()
         from _common import STATE_JSON as SJ
         with open(SJ, encoding="utf-8") as f:
@@ -199,6 +221,7 @@ def main():
 
     deploy_static_dashboard()
     acquire_pidfile()
+    beat("startup")
     check_blind_window()  # item (d): must run before this process's own first heartbeat write
     idle_cycles = 0
     interval = HEARTBEAT_INTERVAL_FRESH_S
@@ -230,6 +253,7 @@ def main():
             "selftest_last": selftest_last, "pid": os.getpid(),
         }
         atomic_write_json(HEARTBEAT_JSON, heartbeat)
+        beat("cycle_end")
         emit(WRITER_ID, "daemon", {"event": "cycle", "cycle": cycle, "duration_ms": duration_ms,
                                     "changed": changed, "interval_s": interval},
              evidence_class="DERIVED", provenance="trackerd.py main loop")

@@ -207,7 +207,17 @@ describe('F-28 calibration ToolBundle budget', () => {
     expect(result.content[0]!.text).toContain('content_not_json')
   })
 
-  it('advertises only real calibration controls: chart_id plus presentation-only budget_kb', async () => {
+  // F-27 (PARIŚEṢA V4) retarget: this case used to assert `domain` was absent, on the
+  // then-believed premise that no domain filter could be derived from L5's schema.
+  // Adversarial review disproved that premise — `mimamsa_calibration.prediction_id`
+  // resolves to `mimamsa_predictions.domain` (`text NOT NULL`), and the filter is now
+  // implemented and live-verified (57 rows -> 9 for domain='career' on the canonical
+  // chart). `include_held_out`/`promoted_only` were likewise real capability filters that
+  // no tool name could reach. The invariant this case actually guards is unchanged and
+  // still enforced below: every advertised control must be backed by real behaviour —
+  // hence `limit`/`offset` stay absent (the capability has no pagination at all) and
+  // `budget_kb` stays presentation-only. See f27_calibration_param_contract.test.ts.
+  it('advertises only real calibration controls: no no-op pagination params', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => primitiveResponse(JSON.stringify(calibrationPayload()))))
 
     const { registerP1AliasTools } = await import('../tools/register_p1_aliases.js')
@@ -217,7 +227,11 @@ describe('F-28 calibration ToolBundle budget', () => {
     const schema = capture.schemas.get('mimamsa_calibration_get')!
     expect(schema).toHaveProperty('chart_id')
     expect(schema).toHaveProperty('budget_kb')
-    expect(schema).not.toHaveProperty('domain')
+    // Real, implemented capability filters — each must reach the primitive.
+    expect(schema).toHaveProperty('domain')
+    expect(schema).toHaveProperty('include_held_out')
+    expect(schema).toHaveProperty('promoted_only')
+    // Genuinely unimplemented — the capability has no LIMIT/OFFSET path whatsoever.
     expect(schema).not.toHaveProperty('limit')
     expect(schema).not.toHaveProperty('offset')
   })

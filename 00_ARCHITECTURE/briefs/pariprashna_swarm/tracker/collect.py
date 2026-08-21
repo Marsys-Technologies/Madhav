@@ -24,8 +24,8 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import (  # noqa: E402
-    CODE_DIR, GIT_REMOTE_URL, INSTALLED_FROM_JSON, MIRROR_DIR, MIRROR_FETCH_STATE_JSON,
-    REPO_ROOT, atomic_write_json, ensure_runtime_dirs, run, run_mirror,
+    ALIVE_JSON, CODE_DIR, GIT_REMOTE_URL, INSTALLED_FROM_JSON, LANE_EVIDENCE_JSON, MIRROR_DIR,
+    MIRROR_FETCH_STATE_JSON, REPO_ROOT, atomic_write_json, ensure_runtime_dirs, run, run_mirror,
 )
 
 GH_REPO = "Marsys-Technologies/Madhav"
@@ -239,7 +239,7 @@ def collect_recent_merged_prs(mirror_gate):
     if mirror_gate:
         return mirror_gate
     ok, out, err = run([
-        "gh", "pr", "list", "--repo", GH_REPO, "--state", "merged", "--limit", "60",
+        "gh", "pr", "list", "--repo", GH_REPO, "--state", "merged", "--limit", "150",
         "--json", "number,mergeCommit,mergedAt,headRefName,title,body",
     ], timeout=45)
     if not ok:
@@ -253,14 +253,26 @@ def collect_recent_merged_prs(mirror_gate):
         mc = (pr.get("mergeCommit") or {}).get("oid")
         if not mc:
             continue
-        anc_ok, _, _ = run_mirror(["merge-base", "--is-ancestor", mc, "main"])
+        implements = extract_lane_identifiers(pr.get("title"), pr.get("body"))
+        # Ancestry is only consulted for PRs that claim a lane. Verifying every PR in the
+        # window cost one git subprocess each (60/cycle) and was a large part of why cycle
+        # time drifted up toward the watchdog's kill threshold.
+        #
+        # NOT-CHECKED IS None, NEVER False. Defaulting the skipped ones to False made every
+        # unexamined PR look like a genuine gh-vs-mirror divergence and produced 143 false
+        # anomalies on the first run -- an unknown rendered as a negative finding, which is
+        # precisely the defect class this tracker exists to catch. Consumers must treat
+        # None as "no opinion" and only act on an explicit False.
+        anc_ok = None
+        if implements:
+            anc_ok, _, _ = run_mirror(["merge-base", "--is-ancestor", mc, "main"])
         # Bodies are large and this snapshot is rewritten every cycle -- keep the extracted
         # identifiers and the title, never the full body.
         results.append({
             "number": pr["number"], "merge_commit_sha": mc, "merged_at": pr.get("mergedAt"),
             "head_ref": pr.get("headRefName"), "is_ancestor_of_mirror_main": anc_ok,
             "title": (pr.get("title") or "")[:200],
-            "implements": extract_lane_identifiers(pr.get("title"), pr.get("body")),
+            "implements": implements,
         })
     return _derived(results, "gh pr list --state merged --limit 20, cross-checked via "
                               "git merge-base --is-ancestor against the mirror's main")
@@ -314,6 +326,74 @@ def collect_conductor_state(mirror_gate):
         "lane_stages": stages,
         "gate_results": gates,
     }, f"mirror show main:{CONDUCTOR_STATE_PATH} (conductor self-report -- CLAIMED, not derived)")
+
+
+def collect_lane_evidence(plan, merged_prs_cell, mirror_gate):
+    """DURABLE, git-verified lane completion. The fix for the 2026-08-21 regression where
+    the board forgot two shipped phases.
+
+    The failure it replaces: lane completion was read straight out of a rolling
+    `gh pr list --state merged --limit N` window. Completion is permanent, the window is
+    not -- once #1349..#1365 aged out past #1368, all 25 P0/P1/P2 lanes silently reverted
+    MERGED -> UNOBSERVABLE. And the board-vs-world detector could not catch it, because it
+    read the SAME window: both eyes went blind together.
+
+    How this is durable WITHOUT becoming a stored claim: the record keeps only (lane -> the
+    merge commit that completed it). Every cycle each recorded commit is RE-VERIFIED against
+    the mirror with `merge-base --is-ancestor`. Git remains the authority, so a rewritten or
+    reverted history revokes the state exactly as it should -- this is memoised evidence,
+    not a cached conclusion.
+
+    Honest failure mode: if this file is deleted, lanes whose PRs have left the API window
+    fall back to UNOBSERVABLE rather than silently keeping a remembered answer. That is the
+    §N.8-correct direction -- it under-claims rather than asserting something it can no
+    longer check -- and it self-heals for anything still in-window.
+    """
+    ensure_runtime_dirs()
+    record = {}
+    if os.path.exists(LANE_EVIDENCE_JSON):
+        try:
+            with open(LANE_EVIDENCE_JSON, encoding="utf-8") as f:
+                record = json.load(f).get("lanes", {}) or {}
+        except (json.JSONDecodeError, OSError):
+            record = {}
+
+    if mirror_gate:
+        # Cannot verify anything against git this cycle -- report UNKNOWN rather than
+        # replaying the record unverified.
+        return mirror_gate, len(record)
+
+    # Fold in anything newly visible in the PR window.
+    known_ids = set()
+    for lane in plan["lanes"]:
+        known_ids.add(lane["id"].upper())
+        if lane.get("gate"):
+            known_ids.add(lane["gate"].upper())
+    if (merged_prs_cell or {}).get("evidence_class") == "DERIVED":
+        for pr in merged_prs_cell.get("value") or []:
+            if not pr.get("is_ancestor_of_mirror_main"):
+                continue
+            for ident in pr.get("implements") or []:
+                ident = ident.upper()
+                if ident in known_ids and ident not in record:
+                    record[ident] = {"merge_commit": pr["merge_commit_sha"],
+                                     "pr": pr["number"],
+                                     "first_observed": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+
+    # Re-verify EVERY recorded commit against the mirror. Never trust the record alone.
+    verified, revoked = {}, []
+    for ident, ev in record.items():
+        ok, _, _ = run_mirror(["merge-base", "--is-ancestor", ev["merge_commit"], "main"])
+        if ok:
+            verified[ident] = ev
+        else:
+            revoked.append({"identifier": ident, **ev})
+
+    atomic_write_json(LANE_EVIDENCE_JSON, {"lanes": verified,
+                                            "updated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
+    return _derived({"verified": verified, "revoked": revoked},
+                    f"{LANE_EVIDENCE_JSON}: {len(verified)} lane completions, each re-verified this "
+                    f"cycle via git merge-base --is-ancestor against the mirror's main"), len(record)
 
 
 def collect_expected_artifacts(plan, mirror_gate):
@@ -466,7 +546,11 @@ def collect_shared_surfaces(mirror_gate):
     return out_obj
 
 
-def main():
+def main(beat=None):
+    def _beat(stage):
+        if beat:
+            beat(stage)
+
     plan = None
     try:
         with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "PLAN.yaml"), encoding="utf-8") as f:
@@ -475,10 +559,16 @@ def main():
         print(f"FATAL: cannot load PLAN.yaml: {e}", file=sys.stderr)
         sys.exit(1)
 
+    _beat('mirror_fetch')
     mirror_status = mirror_fetch()
     mirror_gate = None if mirror_status["ok"] else _unknown(
         f"mirror fetch failed ({mirror_status['action']}): {mirror_status['error']}"
     )
+
+    _beat('github')
+    _rmp = collect_recent_merged_prs(mirror_gate)
+    _beat('lane_evidence')
+    _lane_ev, _ = collect_lane_evidence(plan, _rmp, mirror_gate)
 
     snapshot = {
         "collected_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -487,7 +577,8 @@ def main():
         "git_worktrees": collect_git_worktrees(),
         "github_prs": collect_github_prs(),
         "github_rate_limit": collect_github_rate_limit(),
-        "recent_merged_prs": collect_recent_merged_prs(mirror_gate),
+        "recent_merged_prs": _rmp,
+        "lane_evidence": _lane_ev,
         "expected_artifacts": collect_expected_artifacts(plan, mirror_gate),
         "code_provenance": collect_code_provenance(mirror_gate),
         "conductor_state": collect_conductor_state(mirror_gate),

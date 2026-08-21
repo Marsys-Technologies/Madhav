@@ -764,6 +764,44 @@ export interface SaraLayeredContent<
 }
 
 /**
+ * Kernel-flag analogue of `hardFloor` (array sections) and `IMMUNE_HONESTY_FIELDS`
+ * (scalar fields) — F-177.
+ *
+ * `assembleSaraContent`'s ≤2KB kernel trim drops `kernel.flags` entries from the TAIL of
+ * the array. That is position-based, not priority-based: the LAST flag pushed is the FIRST
+ * one deleted. F-177 (live-confirmed on chart 482012f1) is exactly that failure mode —
+ * PR #1382 mirrors `domain_completeness_empty_reason` into `kernel.flags` specifically so a
+ * caller still learns when a domain's grounding was dropped all-or-nothing, but pushes it
+ * LAST, so on any real built chart dense enough to reach the cap it was deleted before the
+ * wire. Because #1382 also made the older `domain_slice_not_configured` flag permanently
+ * unreachable (it is gated on `!hasAttachedReading`, and a `reading` is now always
+ * attached), callers received NEITHER disclosure — the exact outcome #1382's own GA-5
+ * review comment claimed to prevent.
+ *
+ * A flag nominated as protected is trimmed only after every UNPROTECTED flag and every
+ * pointer is already gone; if only protected flags remain, the trim STOPS and the kernel is
+ * allowed to exceed the 2KB ceiling rather than silently delete an honesty disclosure. That
+ * is the same ranking `IMMUNE_HONESTY_FIELDS` gives scalar honesty fields and `hardFloor`
+ * gives dense array sections (CLAUDE.md §N.6.2): a trimmer that can delete the very field
+ * disclosing that something was omitted defeats transparent trimming. `verdict` and
+ * `promise` are already unconditionally immune here; this extends comparable treatment to
+ * caller-nominated flags rather than inventing a parallel mechanism.
+ *
+ * Matching is by exact string equality for string flags, or by `code` for object flags — so
+ * a caller may protect either the literal flag value it pushed (the #1382 empty_reason text,
+ * which carries no code) or a closed-vocabulary `code`.
+ */
+export function isProtectedKernelFlag(flag: unknown, protectedFlags: ReadonlySet<string>): boolean {
+  // Static floor set (F-175) applies to EVERY caller, with no per-call nomination.
+  const code = flagCodeOf(flag)
+  if (code !== '' && KERNEL_FLOOR_FLAG_CODES.has(code)) return true
+  if (protectedFlags.size === 0) return false
+  // Per-call nomination (F-177): exact string value, or closed-vocabulary code.
+  if (typeof flag === 'string' && protectedFlags.has(flag)) return true
+  return code !== '' && protectedFlags.has(code)
+}
+
+/**
  * Assemble a SaraLayeredContent from kernel + optional grounding/evidence.
  *
  * This is the SINGLE construction point — callers never manually set
@@ -771,6 +809,9 @@ export interface SaraLayeredContent<
  * invariant is enforced here by trimming pointers/flags (never verdict or promise).
  * Counts are accepted from the caller at assembly time (computed BEFORE any layer
  * is omitted, so the composition_report is honest even when evidence is absent).
+ *
+ * `protected_flags` (F-177) nominates flag values/codes the kernel trim must preserve ahead
+ * of every unprotected flag and every pointer — see `isProtectedKernelFlag`.
  */
 export function assembleSaraContent<
   K extends SaraKernel,
@@ -782,23 +823,50 @@ export function assembleSaraContent<
   evidence?: E
   budget_kb: number
   counts: Record<string, number>
+  protected_flags?: ReadonlyArray<string>
 }): SaraLayeredContent<K, G, E> {
   const { kernel, grounding, evidence, budget_kb, counts } = opts
   const maxBytes = budget_kb * 1024
   const KERNEL_MAX_BYTES = 2048
+  const protectedFlags: ReadonlySet<string> = new Set(opts.protected_flags ?? [])
 
   // Enforce ≤2KB kernel invariant.
   // verdict + promise are immune (irreducible honesty core). Trim pointers then
   // flags until under ceiling, alternating by whichever is larger.
+  //
+  // F-175: flag trimming is positional (`slice(0, -1)`, from the end), which means the LAST
+  // flag pushed is the FIRST discarded — regardless of what it says. Live-caught by this
+  // finding's own wiring test: on assess_career/assess_wealth the kernel crossed 2048 bytes
+  // and the trimmer dropped `promise_chain_contradicts_domain` (this server independently
+  // DENIES the domain being assessed) while keeping `complete_domain_accounting_attached`
+  // (a "full slice is available" convenience note). That is precisely the §N.6 item 2
+  // regression class — a generic trim zeroing the densest, most-actionable content while a
+  // lower-density section survives — one layer below where §N.6 previously legislated it.
+  // KERNEL_FLOOR_FLAG_CODES gives those flags a real hardFloor: they are trimmed only after
+  // every non-floor flag is gone, and never merely because they were appended last.
+  // F-177: flag trimming is PRIORITY-ordered, not purely positional. Only UNPROTECTED
+  // flags are eligible, and the alternation balances pointers against the count of
+  // ELIGIBLE flags — otherwise protected flags would inflate `flags.length` and cause the
+  // pointer list to be over-trimmed to compensate for entries that are never coming out.
   const mutableKernel = kernel as unknown as Record<string, unknown>
   while (estimateBytes(kernel) > KERNEL_MAX_BYTES) {
     const pointers = mutableKernel['pointers'] as unknown[]
     const flags = mutableKernel['flags'] as unknown[]
-    if (pointers.length === 0 && flags.length === 0) break // can't trim further
-    if (pointers.length >= flags.length && pointers.length > 0) {
+    // Tail-most trimmable flag: preserves the existing last-in-first-out cut order among
+    // the flags that ARE eligible, while stepping over protected ones wherever they sit.
+    let trimIdx = -1
+    let eligibleFlagCount = 0
+    for (let i = 0; i < flags.length; i++) {
+      if (!isProtectedKernelFlag(flags[i], protectedFlags)) {
+        eligibleFlagCount++
+        trimIdx = i
+      }
+    }
+    if (pointers.length === 0 && eligibleFlagCount === 0) break // can't trim further
+    if (pointers.length >= eligibleFlagCount && pointers.length > 0) {
       mutableKernel['pointers'] = pointers.slice(0, -1)
-    } else if (flags.length > 0) {
-      mutableKernel['flags'] = flags.slice(0, -1)
+    } else if (trimIdx >= 0) {
+      mutableKernel['flags'] = flags.filter((_, i) => i !== trimIdx)
     } else {
       break
     }
@@ -837,6 +905,32 @@ export function assembleSaraContent<
   if (includedLayers.includes('grounding') && grounding) assembled.grounding = grounding
   if (includedLayers.includes('evidence') && evidence) assembled.evidence = evidence
   return assembled
+}
+
+/**
+ * F-175 (§N.6 item 2, applied to the Sāra kernel's flag array): flag codes that carry a
+ * hardFloor. A flag in this set states that this server holds a finding which CONTRADICTS
+ * or LIMITS what the response's own verdict says — it is the densest, most-actionable line
+ * in the kernel, and a byte-pressure trim must reach it last, never first-because-appended-
+ * last. Deliberately narrow: membership is for "the reading you are about to trust is
+ * disputed / was never checked", not for every caveat.
+ */
+export const KERNEL_FLOOR_FLAG_CODES: ReadonlySet<string> = new Set<string>([
+  // F-175 — the PACT promise chain denies the very domain being assessed, or could not be
+  // consulted at all (unchecked ≠ clean; F-110 A7).
+  'promise_chain_contradicts_domain',
+  'promise_chain_unchecked',
+  // The response could not be made to fit without loss — dropping THIS one would make the
+  // overage itself invisible.
+  'budget_exceeded_after_trim',
+])
+
+function flagCodeOf(flag: unknown): string {
+  if (typeof flag === 'string') return flag.split(':')[0]!.trim()
+  if (flag && typeof flag === 'object' && typeof (flag as { code?: unknown }).code === 'string') {
+    return (flag as { code: string }).code
+  }
+  return ''
 }
 
 function mergeTrimPointersIntoPointers(

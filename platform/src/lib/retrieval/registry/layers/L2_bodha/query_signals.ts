@@ -264,7 +264,16 @@ export const querySignalsCapability: CapabilityDescriptor = {
     },
     domain: {
       type: 'string',
-      description: "Filter signals by domain (career, wealth, relationship, health, character, spirituality, other).",
+      // F-57 (PARIŚEṢA-V4): the old list advertised 6 domains + a non-existent 'other'.
+      // The filter is `$n = ANY(domains_affected_array)`, whose values are the canonical
+      // 13-domain vocabulary (@/lib/domain_vocabulary); 'other' is not a member and matches
+      // ZERO rows, and 7 real domains (progeny/education/residence/family/travel/transition/
+      // general) were never advertised at all. Listed exhaustively so a caller cannot be
+      // steered into a silently-empty filter.
+      description:
+        'Filter signals by canonical domain — one of: career, character, education, family, ' +
+        'general, health, progeny, relationship, residence, spirituality, transition, travel, ' +
+        "wealth. A value outside this vocabulary (e.g. the legacy 'other') matches no rows.",
     },
     source_subsystem: {
       type: 'string',

@@ -29,6 +29,21 @@ export interface BlockTable {
   rows: string[][]
 }
 
+/**
+ * A markdown table found EMBEDDED inside a larger paragraph block (DD-22,
+ * approach (c) — "annotate rather than split"). `start`/`end` are exact
+ * character offsets into the block's own raw `text` (never a normalized or
+ * trimmed copy), so `text.slice(0, spans[0].start)`, `text.slice(spans[0].start,
+ * spans[0].end)`, `text.slice(spans[0].end, ...)`, etc. concatenate back to
+ * `text` byte-for-byte — the renderer's reconstruction, not this module's,
+ * but only possible because the offsets are exact.
+ */
+export interface BlockTableSpan {
+  start: number
+  end: number
+  table: BlockTable
+}
+
 export interface BlockClassification {
   kind: WireBlockKind
   /** Only set when `kind === 'paragraph'`. */
@@ -37,8 +52,16 @@ export interface BlockClassification {
    *  with `>` stripped, heading with `#`s stripped). Undefined ⇒ the raw
    *  text is already reader-ready as-is. */
   content?: string
-  /** Only set when `kind === 'table'`. */
+  /** Only set when `kind === 'table'` — the WHOLE block is one table (the
+   *  original, stronger detector: header + separator + data rows occupy the
+   *  entire committed text). */
   table?: BlockTable
+  /** Only set when `kind === 'paragraph'` AND the block's text contains one
+   *  or more embedded tables that do NOT occupy the whole block (DD-22).
+   *  `kind` stays `'paragraph'` — this is metadata alongside it, not a
+   *  reclassification; `committedBlocks`' cardinality is unchanged (one
+   *  block per role-shift, same as before this field existed). */
+  tableSpans?: BlockTableSpan[]
   /** Only set when `kind === 'gap_ribbon'`. */
   gapText?: string
 }
@@ -80,6 +103,60 @@ function parseMarkdownTable(text: string): BlockTable | null {
   const rows = rest.map(splitTableRow).filter((r) => r.some((cell) => cell.length > 0))
   if (headers.length === 0 || rows.length === 0) return null
   return { headers, rows }
+}
+
+/**
+ * Scan a block's RAW (untrimmed) text for GFM markdown table(s) that do NOT
+ * occupy the whole block — a header line containing `|`, immediately
+ * followed by a valid separator row, then one or more data rows, with prose
+ * before and/or after. Unlike `parseMarkdownTable`, which requires line 0 to
+ * be the header and fails on any leading prose, this scans every line as a
+ * candidate header. Only called from the `paragraph` fallback path below —
+ * a block whose ENTIRE text is a table is caught by `parseMarkdownTable`
+ * first and never reaches this function, so no double-classification.
+ *
+ * Offsets are computed from the ORIGINAL, unmodified `text` — never a
+ * trimmed or normalized copy — so callers can slice `text` at these exact
+ * boundaries and reconstruct it byte-for-byte (DD-22 acceptance criterion
+ * 1). Returns `[]` when no embedded table is found.
+ */
+export function detectTableSpans(text: string): BlockTableSpan[] {
+  const rawLines = text.split('\n')
+  const lineStarts: number[] = []
+  let offset = 0
+  for (const line of rawLines) {
+    lineStarts.push(offset)
+    offset += line.length + 1 // +1 accounts for the '\n' this split() consumed
+  }
+
+  const spans: BlockTableSpan[] = []
+  let i = 0
+  while (i < rawLines.length - 1) {
+    const headerLine = rawLines[i].trim()
+    const sepLine = rawLines[i + 1].trim()
+    if (headerLine.includes('|') && TABLE_SEPARATOR_ROW.test(sepLine)) {
+      let j = i + 2
+      const dataLines: string[] = []
+      while (j < rawLines.length && rawLines[j].trim().includes('|')) {
+        dataLines.push(rawLines[j])
+        j++
+      }
+      const headers = splitTableRow(headerLine)
+      const rows = dataLines.map(splitTableRow).filter((r) => r.some((cell) => cell.length > 0))
+      if (headers.length > 0 && rows.length > 0) {
+        const lastLineIdx = j - 1
+        spans.push({
+          start: lineStarts[i],
+          end: lineStarts[lastLineIdx] + rawLines[lastLineIdx].length,
+          table: { headers, rows },
+        })
+        i = j
+        continue
+      }
+    }
+    i++
+  }
+  return spans
 }
 
 /** True iff every non-empty line of the block is a markdown blockquote line
@@ -143,6 +220,12 @@ export function classifyBlockKind(text: string): BlockClassification {
   if (headingText !== null) {
     return { kind: 'heading', content: headingText }
   }
+
+  // DD-22, approach (c): a table embedded in an otherwise-prose block does
+  // not reclassify the block — it stays 'paragraph', with the embedded
+  // table(s) carried as metadata for the renderer to draw inline.
+  const tableSpans = detectTableSpans(text)
+  if (tableSpans.length > 0) return { kind: 'paragraph', tableSpans }
 
   return { kind: 'paragraph' }
 }

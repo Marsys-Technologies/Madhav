@@ -1090,6 +1090,12 @@ export const JUDGMENT_FLAG_CODES = [
   // empty on the wire while receipt.varga_confirmed still carried an affirmative "✓" mark
   // (registry_bridge.ts's enforceVargaConfirmedHonesty).
   'varga_confirmed_forced_false',
+  // PARIŚEṢA-V4 F-107 (CL-20): the domain has classical vargas and/or a special lagna
+  // BEYOND the single operative varga this verdict weights (wealth = D2 dhana weighted,
+  // D11 lābha + Indu Lagna not), and no cross-varga convergence analysis exists anywhere
+  // in the instrument. Distinct from varga_confirmed_forced_false, which is about the
+  // OPERATIVE varga's own evidence being empty; this one is about scope breadth.
+  'cross_varga_convergence_not_computed',
   'timing_hook_failed',
   'afflictions_fetch_failed',
   'afflictions_empty',
@@ -1100,8 +1106,28 @@ export const JUDGMENT_FLAG_CODES = [
   'kp_cusp_chain_unavailable',
   'gochara_domain_not_covered',
   'gochara_top_window_already_peaked',
+  // ── F-57 (PARIŚEṢA-V4): domain-vocabulary resolution disclosure ──
+  // judgment_query's domain-scoped legs (MSR signals / afflictions / mechanisms / gochara
+  // sweep) are keyed by the canonical 13-domain vocabulary, NOT by the shastra-map domain
+  // key the caller passes. When the two differ the mapping is now stated on the wire
+  // instead of applied silently — an empty domain-scoped leg must always be readable
+  // against a named tag (CLAUDE.md §N.6 pt 3 / §N.7 pt 6 / §N.8).
+  'domain_resolution_aliased',
+  'domain_resolution_fallback',
   // ── D8 assess_domain (folds the former {claim, requires_acharya_validation} object shape) ──
   'domain_inference_requires_acharya_validation',
+  // F-113 (PARIŚEṢA-V4): the D1 (rāśi) significator-condition leg could not be assembled for
+  // this call — bhāveśa/kāraka/bhāva-occupant dignity + ṣaḍbala absent from the verdict.
+  // Emitted only when a real detector says so (significator_condition.empty_reason), per §N.8.
+  'significator_condition_unavailable',
+  // F-175 (PARIŚEṢA-V4): the assess_* PACT promise gate. `promise_chain_contradicts_domain`
+  // is emitted ONLY when pact_query independently returned a `denied_at_*` status for the
+  // SAME chart/domain this assessment reads — the §N.8 detector behind it is the live chain
+  // call itself (interpretPactJoin, INV-1: no override path). `promise_chain_unchecked` is
+  // its honest counterpart: the chain could not be consulted this call, and unchecked is
+  // NOT the same as checked-and-clear (F-110 acceptance criterion A7).
+  'promise_chain_contradicts_domain',
+  'promise_chain_unchecked',
   // ── D10 pact_query chain-honesty halts ──
   'confirmation_graha_unrecognized',
   'pact_halted_at_promise',

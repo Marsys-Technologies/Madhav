@@ -61,6 +61,18 @@ import {
 // channel — judgment_query, graha_portrait, pact_query. See response_budget.ts's header
 // for why this is structure-aware (shrinks named arrays) rather than a byte-truncation.
 import { finalizeMcpBudget, autoDetectTrimmableSections, type TrimmableSection, assembleSaraContent, type SaraKernel, type DrillPointerLike } from '../lib/response_budget.js'
+// F-175 (PARIŚEṢA-V4, residual F-110-b): the assess_* PACT promise gate. assess_marriage
+// certified `no_contradictions_in_domain` for the exact chart/domain pact_query independently
+// denies at PROMISE on 63 cited L1 facts. See assess_promise_gate.ts's header for the full
+// account; INV-1 in promise_spine.ts already declared that certification illegal.
+import {
+  PACT_CAPABILITY_URI,
+  buildAssessPromiseGate,
+  applyPromiseGateToVerdict,
+  annotateContradictionsWithPromiseGate,
+  promiseGateFlags,
+  type AssessPromiseGate,
+} from '../lib/assess_promise_gate.js'
 // Elevation Campaign v2.1 · Stream α (SATYA) — flagship completeness wiring.
 // γ built `dossier` (the Ω5 gather-then-compose engine) but a naive uninstructed agent asking
 // "how is my wealth?" reaches for the obviously-named `assess_wealth`, gets the shallow default
@@ -1638,6 +1650,36 @@ export async function attachDomainReading(
 }
 
 /**
+ * F-175: consult the PACT promise chain for an assess_* call's own domain.
+ *
+ * Calls the SAME `pact_query` capability `kala_explain_get` / `kala_ahead_get` consume — no
+ * second chain implementation, no new astrological computation (§N.5 / B.10) — and interprets
+ * it through the shared `interpretPactJoin` helper, whose `denied_at_* → stance:'contradicts'`
+ * mapping has no override path (INV-1).
+ *
+ * NEVER throws: the assess_* bundle must not become unavailable because the gate could not be
+ * evaluated. A failure returns `state:'unreachable'` with a null join, which is disclosed as
+ * `promise_chain_unchecked` — unchecked, never smoothed into clean (F-110 A7 / §N.8).
+ *
+ * Call-site note: this runs INSIDE the existing `Promise.all` alongside `fetchOrientationContext`
+ * and the domain capability, so it adds no serialized latency. `pact_query` runs judgment_query's
+ * full checklist and is expensive — exactly ONE call per response, scoped to this tool's own
+ * fixed domain (design contract §5.3).
+ */
+export async function fetchAssessPromiseGate(
+  domain: string, chart_id: string, ayanamsha_id: string, principal: Principal,
+): Promise<AssessPromiseGate> {
+  try {
+    const content = await callRegistryCapability(
+      PACT_CAPABILITY_URI, { chart_id, ayanamsha_id, domain }, chart_id, principal,
+    )
+    return buildAssessPromiseGate(domain, content)
+  } catch (err) {
+    return buildAssessPromiseGate(domain, null, String(err))
+  }
+}
+
+/**
  * R-21 fix — "receipt integrity": a served "✓" / boolean-true / string-affirmative receipt
  * mark (judgment_query's `receipt.varga_confirmed`, graha_portrait's `verdict.completeness`)
  * is computed from the CAPABILITY's own untrimmed output, before `applyMcpBudget` runs. If
@@ -2983,11 +3025,19 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
   ) {
     const effectiveBudgetKb = resolveMaxKb(toolName, budget_kb, effectiveVerbosity)
     const normalized = normalizeAssessmentPayload(response)
-    const verdict = assessmentVerdictText(normalized['verdict'])
+    // F-175: the PACT gate is applied to the verdict BEFORE the clause array is flattened to
+    // the kernel's frozen string contract. Targeting is by `clause_id`, never by matching the
+    // prose. A gate that does not contradict returns the verdict byte-identical.
+    const promiseGate = (normalized['promise_gate'] ?? null) as AssessPromiseGate | null
+    const verdict = assessmentVerdictText(applyPromiseGateToVerdict(normalized['verdict'], promiseGate))
     const upstreamErrored = normalized['is_error'] === true
     const flags = Array.isArray(normalized['judgment_flags'])
       ? [...normalized['judgment_flags'] as JudgmentFlagEntry[]]
       : []
+    // Kernel-layer disclosure. `grounding` (where the structured promise_gate lands) is dropped
+    // ALL-OR-NOTHING under budget pressure — live-confirmed on assess_marriage at its own 40KB
+    // default — so the denial must ALSO exist at a seam a trim cannot delete.
+    flags.push(...promiseGateFlags(promiseGate))
 
     // F-31: health and relationship have no precompiled D6/D9 dossier slice yet.
     // They must say so at the same judgment-flag seam that carries other material
@@ -3000,8 +3050,13 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         : null
     const hasAttachedReading = normalized['reading'] !== undefined && normalized['reading'] !== null &&
       (!Array.isArray(normalized['reading']) || normalized['reading'].length > 0)
+    // F-177: every domain-completeness DISCLOSURE flag pushed below is nominated to
+    // assembleSaraContent's protected set, so the ≤2KB kernel trim cuts it only after every
+    // ordinary flag and every drill pointer is already gone. Collected by value (these flags
+    // are raw strings carrying no closed-vocabulary code).
+    const disclosureFlags: string[] = []
     if (missingSliceDomain && !hasAttachedReading && normalized['domain_completeness'] === undefined) {
-      flags.push(
+      disclosureFlags.push(
         `domain_slice_not_configured: no precomputed ${missingSliceDomain} dossier slice is attached; ` +
         'this assessment is not a complete domain reading.',
       )
@@ -3015,9 +3070,19 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     // unreachable too (gated on !hasAttachedReading) -- so a low-budget caller could receive
     // NEITHER disclosure. Mirror the same text into `flags` (kernel-layer, budget-protected)
     // whenever the empty_reason exists, independent of hasAttachedReading.
+    //
+    // F-177 (this PR): "kernel-layer" was NOT by itself "budget-protected". assembleSaraContent's
+    // ≤2KB kernel trim drops flags from the TAIL, and this mirror is pushed last — so on any
+    // chart dense enough to reach the cap it was the FIRST entry deleted, reproducing the
+    // very "neither disclosure" outcome the paragraph above set out to prevent (live-confirmed
+    // on chart 482012f1: assess_health/assess_marriage returned 2 of 3 declared pointers —
+    // proof the trim ran — and no empty_reason flag). Nominating it via `protected_flags`
+    // makes the protection explicit and position-independent, so a future flag pushed after
+    // this one cannot silently re-break it.
     if (typeof normalized['domain_completeness_empty_reason'] === 'string') {
-      flags.push(normalized['domain_completeness_empty_reason'] as string)
+      disclosureFlags.push(normalized['domain_completeness_empty_reason'] as string)
     }
+    flags.push(...disclosureFlags)
 
     if (!verdict) {
       flags.push(judgmentFlag(
@@ -3035,7 +3100,12 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         unknown_reason: upstreamErrored ? 'upstream_assessment_error' as const : 'upstream_assessment_composition_absent' as const,
       }),
       flags,
-      promise: isRecord(normalized['promise']) ? normalized['promise'] as unknown as SaraKernel['promise'] : null,
+      // F-175: `SaraKernel.promise` has existed since A-08 and was null on EVERY assess_*
+      // response ever served, because nothing populated it. The PACT join populates it now.
+      // §N.8: null when the chain was not actually consulted — never a fabricated join.
+      promise: isRecord(normalized['promise'])
+        ? normalized['promise'] as unknown as SaraKernel['promise']
+        : (promiseGate?.join ?? null),
       pointers: [
         { instrument: 'bodha_domain_reading_get', hint: 'marsys://tool/L2/query_domain_reading' } as DrillPointerLike,
         { instrument: 'kala_windows_get', hint: 'marsys://tool/L3/query_temporal_activation' } as DrillPointerLike,
@@ -3053,9 +3123,22 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       chart_id: normalized['chart_id'],
       ayanamsha_id: normalized['ayanamsha_id'],
       reading_checklist: normalized['reading_checklist'],
+      // F-113: the D1 significator condition's structured detail. Its HEADLINE already rides
+      // in kernel.verdict (budget-immune); this is the drillable full set. Grounding is
+      // dropped all-or-nothing under budget pressure, which is precisely why the fact is not
+      // served from here alone.
+      significator_condition: normalized['significator_condition'],
       step_results: normalized['step_results'],
       gochara_sweep: normalized['gochara_sweep'],
-      contradictions: normalized['contradictions'],
+      // F-175: the L2 contradiction surface, annotated in place when the PACT chain disputes
+      // this domain. The L2 `status` value itself is NOT rewritten — `no_contradictions_in_domain`
+      // remains a true statement about `bodha_contradictions`, and this layer is not the
+      // authority over it (§N.5). What is added is the adjacent field that makes it impossible
+      // for a structured consumer to read that status as a domain all-clear (§N.6 item 1: a
+      // narrower instrument's finding is served flagged and separated, never flattened into the
+      // confirmed layer).
+      contradictions: annotateContradictionsWithPromiseGate(normalized['contradictions'], promiseGate),
+      promise_gate: promiseGate ?? undefined,
       house_analysis: normalized['house_analysis'],
       citations: normalized['citations'],
       provenance: normalized['provenance'],
@@ -3102,6 +3185,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
       evidence: Object.keys(evidence).length > 0 ? evidence : undefined,
       budget_kb: effectiveBudgetKb,
       counts,
+      // F-177: honesty disclosures survive the kernel trim ahead of ordinary flags/pointers.
+      protected_flags: disclosureFlags,
     }
     const assembled = assembleSaraContent(assembly)
     // A caller may request a budget below the immutable <=2KB kernel ceiling. Do not
@@ -3143,7 +3228,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // also present on this call.
         const effectiveVerbosity = resolveEffectiveVerbosity(verbosity, reading_depth)
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
-        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+        // F-175: the PACT promise gate runs IN this Promise.all — a third independent HTTP
+        // call, not a serialized one, so consulting the chain costs no added latency.
+        const [{ orientation_context, orientation_ok }, data, promise_gate] = await Promise.all([
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal, effectiveVerbosity),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_marriage',
@@ -3152,8 +3239,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               ...(max_contradictions != null ? { max_contradictions } : {}) },
             chart_id, principal
           ),
+          fetchAssessPromiseGate('relationship', chart_id, normalizeAyanamsha(ayanamsha_id), principal),
         ])
-        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown>, promise_gate }
         // F-14/F-124 (reconciled, PARISESA-V4 REBASE): domain reading parity with
         // assess_career/assess_wealth — assess_marriage never called either attach function.
         attachDomainCompleteness(response, 'relationship', chart_id)
@@ -3186,7 +3274,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // also present on this call.
         const effectiveVerbosity = resolveEffectiveVerbosity(verbosity, reading_depth)
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
-        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+        // F-175: the PACT promise gate runs IN this Promise.all — a third independent HTTP
+        // call, not a serialized one, so consulting the chain costs no added latency.
+        const [{ orientation_context, orientation_ok }, data, promise_gate] = await Promise.all([
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal, effectiveVerbosity),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_career',
@@ -3195,8 +3285,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               ...(max_contradictions != null ? { max_contradictions } : {}) },
             chart_id, principal
           ),
+          fetchAssessPromiseGate('career', chart_id, normalizeAyanamsha(ayanamsha_id), principal),
         ])
-        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown>, promise_gate }
         // Elevation α: back the naive-caller entrypoint with dossier's 100%-accounted territory.
         attachDomainCompleteness(response, 'career', chart_id)
         // SATYA-ŚEṢA W7: serve the reading itself, inline, not just a pointer to one.
@@ -3229,7 +3320,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // also present on this call.
         const effectiveVerbosity = resolveEffectiveVerbosity(verbosity, reading_depth)
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
-        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+        // F-175: the PACT promise gate runs IN this Promise.all — a third independent HTTP
+        // call, not a serialized one, so consulting the chain costs no added latency.
+        const [{ orientation_context, orientation_ok }, data, promise_gate] = await Promise.all([
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal, effectiveVerbosity),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_health',
@@ -3238,8 +3331,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               ...(max_contradictions != null ? { max_contradictions } : {}) },
             chart_id, principal
           ),
+          fetchAssessPromiseGate('health', chart_id, normalizeAyanamsha(ayanamsha_id), principal),
         ])
-        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown>, promise_gate }
         // F-14/F-124 (reconciled, PARISESA-V4 REBASE): domain reading parity with
         // assess_career/assess_wealth — assess_health never called either attach function.
         attachDomainCompleteness(response, 'health', chart_id)
@@ -3272,7 +3366,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // also present on this call.
         const effectiveVerbosity = resolveEffectiveVerbosity(verbosity, reading_depth)
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
-        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+        // F-175: the PACT promise gate runs IN this Promise.all — a third independent HTTP
+        // call, not a serialized one, so consulting the chain costs no added latency.
+        const [{ orientation_context, orientation_ok }, data, promise_gate] = await Promise.all([
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal, effectiveVerbosity),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_wealth',
@@ -3281,8 +3377,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               ...(max_contradictions != null ? { max_contradictions } : {}) },
             chart_id, principal
           ),
+          fetchAssessPromiseGate('wealth', chart_id, normalizeAyanamsha(ayanamsha_id), principal),
         ])
-        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown>, promise_gate }
         // Elevation α: back the naive-caller entrypoint with dossier's 100%-accounted territory.
         attachDomainCompleteness(response, 'wealth', chart_id)
         // SATYA-ŚEṢA W7: serve the reading itself, inline, not just a pointer to one.

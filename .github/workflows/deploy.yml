@@ -258,12 +258,35 @@ jobs:
           echo "sidecar=$sidecar  mcp=$mcp  pipeline=$pipeline"
   # ── /Path-change detection ───────────────────────────────────────────────────
 
-  deploy-web:
-    name: Build & Deploy Web
-    # Only deploy on workflow_run (CI passed on main) or manual dispatch.
-    # pull_request events are handled by the build-check job above.
-    # `needs: [changes]` is load-bearing, not cosmetic: it is what binds the manual-dispatch
-    # CI gate to this job — the one that runs migrations and promotes production traffic.
+  # ── Schema barrier (PARIŚEṢA-V4 / RATE-07, 2026-08-21) ──────────────────────
+  # Migrations used to run as four steps INSIDE `deploy-web`, which made
+  # `deploy-web` the de-facto schema barrier for the whole fleet. That was fine
+  # while nothing else needed to order against it — but RATE-07 ships a
+  # FAIL-CLOSED gate in `amjis-mcp` that queries a table created by migration
+  # 580. If the MCP revision starts serving before that migration applies, every
+  # OAuth mutation returns 503 until the migration lands. "The migration step
+  # runs early in deploy-web, so it usually wins" is not a detector, and
+  # CLAUDE.md §N.8 forbids resting a safety property on one.
+  #
+  # The migration is therefore its OWN job, and every service that ships code
+  # against the schema declares `needs: [migrate]`. This is the minimal barrier:
+  # ~1 minute of shared ordering (proxy + `migrate.ts`), NOT coupling to another
+  # service's full build/deploy/smoke/promote pipeline. In particular
+  # `deploy-mcp` does NOT depend on `deploy-web`: an unrelated web smoke flake
+  # must never block an urgent MCP deploy.
+  #
+  # `needs: [changes]` is load-bearing, not cosmetic: it is what binds the
+  # manual-dispatch CI gate (SAMĀPTI / RULING 73-CLOSE) to the job that writes to
+  # the production database. Never let this job float free of `changes`.
+  #
+  # Runs unconditionally rather than behind a `platform/supabase/migrations/**`
+  # path filter: `migrate.ts` is idempotent and skips already-applied files, so
+  # the no-new-migration case is a fast no-op, whereas a path filter would have
+  # to correctly predict every way a migration can reach main (merge commits,
+  # squash, revert, force-push) to stay safe. A cheap always-run beats a clever
+  # filter for a barrier whose failure mode is a fail-closed production outage.
+  migrate:
+    name: Apply DB Migrations
     needs: [changes]
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
@@ -282,10 +305,7 @@ jobs:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
 
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
-
-      # ── A-S8: Run idempotent migrations before deploying ─────────────────────
+      # ── A-S8: Run idempotent migrations before any service deploys ───────────
       - name: Start Cloud SQL Auth Proxy
         run: |
           curl -fsSL \
@@ -314,6 +334,45 @@ jobs:
             cd platform && npx tsx scripts/migrate.ts
           fi
       # ── /A-S8: migrations ─────────────────────────────────────────────────────
+  # ── /Schema barrier ─────────────────────────────────────────────────────────
+
+  deploy-web:
+    name: Build & Deploy Web
+    # Only deploy on workflow_run (CI passed on main) or manual dispatch.
+    # pull_request events are handled by the build-check job above.
+    # `needs: [changes]` is load-bearing, not cosmetic: it is what binds the manual-dispatch
+    # CI gate to this job — the one that promotes production traffic.
+    # `needs: [migrate]` replaces the four migration steps this job used to run inline
+    # (see the `migrate` job above); the ordering guarantee is unchanged for web —
+    # migrations still complete before this job's image build — it is simply now a
+    # barrier other services can also order against.
+    needs: [changes, migrate]
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      # NOTE: migrations no longer run here. They ran as four inline steps at this
+      # point until 2026-08-21 and now live in the dedicated `migrate` job, which
+      # this job declares in `needs:`. Ordering for web is unchanged (migrations
+      # still complete before the image build below); the extraction is what lets
+      # `deploy-mcp` order against the schema WITHOUT ordering against this entire
+      # job. Do not re-inline them.
 
       - name: Copy governance files into platform build context
         run: |
@@ -502,7 +561,37 @@ jobs:
   # here; trigger is GH Actions only. Image is pinned to Artifact Registry
   # (asia-south1-docker.pkg.dev/...), not legacy gcr.io.
   deploy-mcp:
-    needs: [changes]
+    # ORDERING (PARIŚEṢA-V4 / RATE-07, 2026-08-21): `migrate` is now a dependency,
+    # where before this job needed only `changes` and ran CONCURRENTLY with the
+    # migration step.
+    #
+    # WHY: RATE-07's OAuth rate-limit gate is FAIL-CLOSED by design, so an MCP
+    # revision serving before migration 580 creates `mcp_rate_buckets` returns 503
+    # on every OAuth mutation until the migration lands. "The migration usually
+    # finishes first" is not a detector, and CLAUDE.md §N.8 forbids resting a
+    # safety property on one.
+    #
+    # WHAT THIS DOES *NOT* DO — and an earlier revision of this PR got wrong:
+    # this job does NOT depend on `deploy-web`. A first attempt used
+    # `needs: [changes, deploy-web]` on the stated premise that "when platform/**
+    # is unchanged deploy-web is SKIPPED, so the coupling is conditional". That
+    # premise was FALSE: `deploy-web` carries no path filter — its `if:` is
+    # identical to `changes`'s own trigger gate — so it runs on every
+    # deploy-triggering event and the `skipped` branch was unreachable. The real
+    # effect would have been permanent serialisation of every MCP deploy behind
+    # the entire web pipeline (Cloud SQL proxy → migrations → Next build/push →
+    # Cloud Run deploy → smoke → traffic promotion), with any unrelated web smoke
+    # flake blocking all MCP deploys — including urgent security fixes.
+    # `needs: [migrate]` closes the identical ordering race at ~1 minute of
+    # shared barrier instead. Do not reintroduce a `deploy-web` dependency here.
+    #
+    # No `always()` guard: default `needs` semantics are exactly right. `migrate`
+    # shares this job's trigger `if:`, so it never skips on a deploy-triggering
+    # event — it succeeds (schema current → deploy) or fails (schema state
+    # unknown → MCP correctly held rather than shipping dependent code against
+    # unknown schema). The `always()` in the earlier revision existed only to
+    # service the unreachable `skipped` branch described above.
+    needs: [changes, migrate]
     if: (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && (needs.changes.outputs.force_all == 'true' || needs.changes.outputs.mcp == 'true')
     name: Build & Deploy MCP
     runs-on: ubuntu-latest
@@ -577,6 +666,68 @@ jobs:
             #     when a kala_field_window overlaps the filed prediction (v2 citation).
             SM_GAMMA_C4_ENABLED=true
             SM_GAMMA_C5_ENABLED=true
+            # RATE-07 (PARIŚEṢA-V4): how many hops in front of amjis-mcp are trusted to
+            # have APPENDED to X-Forwarded-For. The OAuth rate limiter reads the client
+            # identity from the RIGHT, this many entries in; the leftmost entry is fully
+            # caller-controlled and is never read. Set EXPLICITLY here — equal to the
+            # code default (trustedProxyHops(), platform-mcp/src/lib/oauth_rate_limit.ts),
+            # so this line changes no behaviour — because this file is where the ingress
+            # topology is actually configured, and an unset variable is an operator
+            # obligation nobody can see. THE RULE: add a GCLB / Cloud Armor / any further
+            # reverse proxy in front of this service and you MUST raise this to match, in
+            # the same PR. Getting it wrong is conservative, not permissive (identities
+            # COLLAPSE into one over-restrictive bucket; an attacker cannot steer the
+            # collapse onto a chosen third party), and the per-route global ceiling keeps
+            # the endpoint protected regardless — but it degrades per-IP attribution.
+            # OPEN ITEM for whoever owns the front door: MCP_BASE_URL above is the custom
+            # domain https://madhav.marsys.in/mcp, while `1` is correct for DIRECT
+            # *.run.app ingress (the path deploy.yml smoke-tests). If the custom domain
+            # routes through an additional appending hop, this value is low by that hop
+            # count. Disclosed, not silently guessed: raising it without confirming the
+            # real chain would trust a header segment a caller can forge, which is the
+            # permissive direction. Verify the live XFF chain, then set this deliberately.
+            # Full analysis: ruling §3.2 (DISCLOSED AMBIGUITY — client-IP derivation).
+            MCP_TRUSTED_PROXY_HOPS=1
+            # RATE-07 SHIPS DISABLED IN THIS PR — AND MUST BE FLIPPED TO `true`
+            # IN A ONE-LINE FOLLOW-UP. Tracked as follow-up item RATE-07-ENABLE;
+            # this line is the whole change.
+            #
+            # WHY DISABLED: `consumeBuckets()` (platform-mcp/src/lib/oauth_rate_limit.ts)
+            # POSTs to ${PLATFORM_URL}/api/mcp/rate-limit/check — a route THIS PR
+            # creates, served by amjis-web. `deploy-mcp` and `deploy-web` both declare
+            # `needs: [migrate]` and therefore run in PARALLEL (deliberately — see the
+            # ordering comment at the top of this job; re-coupling them is a known
+            # worse outcome, not an option). deploy-mcp is a small TS build and
+            # normally promotes traffic BEFORE deploy-web finishes its Next build →
+            # push → deploy → smoke → promote. In that window the new MCP revision
+            # would be calling a route that does not exist on the OLD web revision:
+            # 404 → RateLimitStoreUnavailable → the gate does exactly what it is
+            # designed to do and answers 503 on ALL FIVE OAuth mutation endpoints.
+            # `mcp_end_to_end_smoke.sh` probes no OAuth route, so nothing would catch
+            # it before traffic promotion.
+            #
+            # Shipping disabled removes the window rather than racing it: with this
+            # set, `rateLimitEnabled()` returns false and BOTH entrypoints
+            # (`oauthRateLimit` middleware and `chargeValidatedSubject`) short-circuit
+            # on their FIRST statement — no fetch, no response written, no process
+            # state touched, control straight to the handler. The five endpoints
+            # behave byte-for-byte as they did before this PR (§N.8: proved by the
+            # "DISABLED PATH IS A TRUE NO-OP" tests in
+            # platform-mcp/src/__tests__/rate07_oauth_rate_limit.test.ts, not asserted
+            # here). The honest cost: they are also not yet PROTECTED by the limiter.
+            #
+            # HOW TO ENABLE (the follow-up PR, in full):
+            #   1. Confirm https://amjis-web-…run.app/api/mcp/rate-limit/check is live
+            #      on the CURRENT web revision — i.e. this PR's own deploy-web run has
+            #      completed at least once and promoted traffic. A POST with a valid
+            #      X-MCP-Internal-Token must return 200 with an `allowed` field (a 404
+            #      means the route is not deployed yet — do not proceed).
+            #   2. Change the line below to `MCP_OAUTH_RATE_LIMIT_ENABLED=true`, or
+            #      delete it (the code default is ON — see rateLimitEnabled()).
+            #   3. Merge. No code change, no migration, nothing else.
+            # Rollback is this same line back to `false`; note migration 580's DOWN
+            # section — turn the flag off BEFORE dropping mcp_rate_buckets.
+            MCP_OAUTH_RATE_LIMIT_ENABLED=false
           secrets: |
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1

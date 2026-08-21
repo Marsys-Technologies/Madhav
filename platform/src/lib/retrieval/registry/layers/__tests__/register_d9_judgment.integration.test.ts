@@ -225,5 +225,64 @@ describeIf('judgment_query (marsys://tool/L-JUDGMENT/judgment_query) — live DB
         expect(bearingYogas.some(y => y['domain_match'] === true)).toBe(true)
       }
     })
+
+    // ── F-57 (PARIŚEṢA-V4): domain-vocabulary resolution ────────────────────────────
+    // Before the fix, education/progeny/residence (plus family/general/transition/travel)
+    // carried `signal_domain: 'other'` — a literal absent from every downstream vocabulary
+    // (bodha_msr_signals.domains_affected_array, bodha_mechanisms.domains_affected_array,
+    // brahma_event_ontology.domain). Every domain-scoped leg therefore returned a
+    // structural zero which the response then served as an honest-looking empty.
+    for (const domain of ['education', 'progeny', 'residence'] as const) {
+      it(`[${chartId}] ${domain}: domain-scoped legs query the domain itself, never 'other'`, async () => {
+        const result = await handler()({ chart_id: chartId, domain })
+        expect(result.is_error).toBe(false)
+        const content = result.content as Record<string, unknown>
+
+        const resolution = content['domain_resolution'] as Record<string, unknown>
+        expect(resolution, 'domain_resolution disclosure must be served').toBeTruthy()
+        expect(resolution['requested']).toBe(domain)
+        expect(resolution['resolved_signal_domain']).toBe(domain)
+        expect(resolution['is_exact']).toBe(true)
+        expect(resolution['is_canonical']).toBe(true)
+
+        const gochara = (content['checklist'] as Record<string, unknown>)['gochara_sweep'] as Record<string, unknown>
+        expect(gochara['domain'], "gochara sweep must not fall back to 'other'").toBe(domain)
+
+        // An exact resolution never emits an aliasing/fallback disclosure.
+        const flags = (content['judgment_flags'] as Array<Record<string, unknown>>) ?? []
+        const codes = flags.map(f => f['code'])
+        expect(codes).not.toContain('domain_resolution_aliased')
+        expect(codes).not.toContain('domain_resolution_fallback')
+      })
+    }
+
+    it(`[${chartId}] marriage: an aliased domain resolution is DISCLOSED, not silent`, async () => {
+      const result = await handler()({ chart_id: chartId, domain: 'marriage' })
+      expect(result.is_error).toBe(false)
+      const content = result.content as Record<string, unknown>
+      const resolution = content['domain_resolution'] as Record<string, unknown>
+      // 'marriage' is not a canonical member; the canonical vocabulary maps it to
+      // 'relationship'. That is a real mapping, not the F-57 defect — but it must be stated.
+      expect(resolution['requested']).toBe('marriage')
+      expect(resolution['resolved_signal_domain']).toBe('relationship')
+      expect(resolution['is_exact']).toBe(false)
+      expect(resolution['is_canonical']).toBe(true)
+      const codes = ((content['judgment_flags'] as Array<Record<string, unknown>>) ?? []).map(f => f['code'])
+      expect(codes).toContain('domain_resolution_aliased')
+    })
+
+    it(`[${chartId}] bare bhava 3 (no canonical domain) discloses its fallback bucket`, async () => {
+      // Bhāva 3 (parākrama/siblings) genuinely has no canonical-vocabulary member. This is
+      // the ONE case where a fallback is correct — so it must be visible, per S4-05.
+      const result = await handler()({ chart_id: chartId, bhava: 3 })
+      expect(result.is_error).toBe(false)
+      const content = result.content as Record<string, unknown>
+      const resolution = content['domain_resolution'] as Record<string, unknown>
+      expect(resolution['requested']).toBeNull()
+      expect(resolution['requested_bhava']).toBe(3)
+      expect(resolution['is_canonical'], 'the fallback bucket must still be a real tag').toBe(true)
+      const codes = ((content['judgment_flags'] as Array<Record<string, unknown>>) ?? []).map(f => f['code'])
+      expect(codes).toContain('domain_resolution_fallback')
+    })
   }
 })

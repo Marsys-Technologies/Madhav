@@ -574,7 +574,8 @@
         "paths": []
       },
       "budget_usd": null,
-      "gate": "G4-B"
+      "gate": "G4-B",
+      "amendment_note": "PARIPRASHNA-P3-PREFLIGHT-2026-08-21: gated on DD-22 landing first (both touch commitBlock()'s region of reading_parts.ts; see DD-22's entry in PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md for the ordering ruling + rationale). Lane brief must ENUMERATE the web door's known gaps per DD-24 before propagating web-door behavior onto the MCP door, each gap marked propagated-knowingly or fixed-first."
     },
     {
       "id": "P3-C",
@@ -606,7 +607,8 @@
         "paths": []
       },
       "budget_usd": null,
-      "gate": "G4-D"
+      "gate": "G4-D",
+      "amendment_note": "PARIPRASHNA-P3-PREFLIGHT-2026-08-21: parity hashes the persisted receipt object (the validated object receipt_stage.ts/receipt/assemble.ts writes to the DB), not the wire receipt.define SSE event directly. Precondition: a test proving the wire event and the persisted object agree byte-for-byte on the web door must exist and be green before this lane opens. Per DD-24, the resulting parity assertion is valid only against DD-24's enumerated web-door-gap baseline."
     },
     {
       "id": "P3-E",

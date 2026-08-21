@@ -438,6 +438,43 @@ Its selftest asserts it fires on a frozen board and stays silent on a correct on
 was observed failing as a no-op (its literal state before this change) against the real
 frozen-board scenario.
 
+## Evidence must be durable, and detectors must not share a window with what they check
+
+Two failures on 2026-08-21, both caused by the previous fix:
+
+**The board forgot two shipped phases.** Lane completion was derived from a rolling
+`gh pr list --state merged --limit N` window. Completion is permanent; the window is not.
+Once the six phase PRs (#1349..#1365) aged out past #1368, all 25 P0/P1/P2 lanes silently
+reverted `MERGED` → `UNOBSERVABLE`. `collect_lane_evidence` now keeps a durable record of
+(lane → the merge commit that completed it) in `~/.pariprashna-tracker/lane_evidence.json`
+and **re-verifies every recorded commit against the mirror each cycle**. Git stays the
+authority, so a rewritten history still revokes the state — memoised evidence, not a cached
+conclusion. If that file is deleted, out-of-window lanes fall back to `UNOBSERVABLE` rather
+than replaying an answer they can no longer check.
+
+**The detector was blind to it, because it read the same window.** `board_world_divergence`
+compares the board against the merged-PR window that lane state is derived from — so when
+the window truncated, evidence and check went dark together and it reported "0 unreflected"
+while 25 lanes had reverted. *A detector sharing its input with the thing it checks cannot
+see that input truncate.* `lane_regression_anomalies` is the window-independent counterpart:
+it compares against the projector's own append-only event log, and raises an anomaly
+whenever a lane previously observed `MERGED`/`CLOSED` on derived evidence no longer reads
+that way.
+
+## Liveness is not cycle completion
+
+`heartbeat.json` is written only when a cycle *finishes*, so a slow-but-healthy cycle was
+indistinguishable from a dead process — and the watchdog SIGKILLed working daemons
+mid-cycle. Measured 2026-08-21: a 77s cycle plus the 20s sleep read as 97s apparent age
+against a 90s threshold, with 7 further cycles within 20s of it. Each kill destroyed that
+cycle's in-flight work and opened a real gap: the outage was manufactured by the thing meant
+to prevent outages.
+
+`alive.json` is now stamped at cycle start and between collector steps, and the watchdog
+judges liveness by that. A busy process keeps proving it is alive; a dead one stops within
+seconds. (It falls back to `heartbeat.json` when `alive.json` is absent, so upgrading cannot
+leave the watchdog blind.)
+
 ## The four-tier tap (dead-man's switch)
 
 1. **T1** — `trackerd.py` stamps `~/.pariprashna-tracker/heartbeat.json` every cycle

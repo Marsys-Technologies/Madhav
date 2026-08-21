@@ -1712,13 +1712,41 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     }
   )
 
+  // F-06 (PARIŚEṢA-V4) scope honesty: this alias is NOT chart-scoped. It is a
+  // global keyword lookup against the L0 `brahma_remedy_corpus` reference table,
+  // which has no chart_id column and therefore cannot be filtered per-chart. The
+  // underlying capability (marsys://tool/L0/query_remedies_for_chart) accepts an
+  // optional chart_id but uses it for provenance echo only — never in the SQL
+  // WHERE clause. The description previously promised "Chart-specific remedy
+  // suggestions", which no code path could deliver. It now states what it does and
+  // points at `bodha_remedies_get` (marsys://tool/L2/query_remedies), the genuinely
+  // chart-scoped remedy surface. `chart_id` is exposed here so the MCP schema
+  // mirrors the capability's real contract rather than hiding the parameter.
   server.tool(
     'ref_remedies_chart_get',
-    '[Phase-1 alias] Chart-specific remedy suggestions (same as query_remedies_for_chart).',
-    { affliction: z.string().describe('Planet name or domain keyword'), top_k: z.number().int().optional() },
-    async ({ affliction, top_k }) => {
+    '[Phase-1 alias] Returns L0 corpus remedies matching an affliction keyword ' +
+      '(ILIKE against the planet and domain columns of brahma_remedy_corpus). ' +
+      'NOT chart-scoped: no chart data is read and no chart-scoped SQL runs. ' +
+      'chart_id is optional and is echoed back for provenance only — it does not filter results, ' +
+      'so two different charts with the same affliction keyword get identical rows. ' +
+      'When to prefer: use this for classical corpus lookup by planet/domain keyword. ' +
+      'For remedies actually derived from a specific chart, call bodha_remedies_get instead.',
+    {
+      affliction: z.string().describe('Planet name or domain keyword'),
+      top_k: z.number().int().optional(),
+      chart_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe('Chart UUID — provenance echo only; does NOT filter results. Use bodha_remedies_get for chart-scoped remedies.'),
+    },
+    async ({ affliction, top_k, chart_id }) => {
       try {
-        const data = await callPlatformPrim('query_remedies_for_chart', { affliction, top_k }, principal)
+        const data = await callPlatformPrim(
+          'query_remedies_for_chart',
+          { affliction, top_k, ...(chart_id ? { chart_id } : {}) },
+          principal,
+        )
         return dualOutput(data, 'ref_remedies_chart_get')
       } catch (err) { return errOut('ref_remedies_chart_get', String(err)) }
     }
@@ -2005,12 +2033,26 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'only qa_results when necessary; request budget_kb up to 200 for the complete QA detail.',
     {
       chart_id: z.string().uuid().describe('Chart UUID'),
+      // F-27 (PARIŚEṢA V4): `domain` is a real, derived filter — the capability joins
+      // mimamsa_calibration.prediction_id -> mimamsa_predictions.domain (text NOT NULL)
+      // over idx_mimamsa_calibration_prediction. `include_held_out`/`promoted_only` are
+      // genuine capability filters that were previously unreachable from ANY tool name.
+      domain: z.string().min(1).optional()
+        .describe('Optional life-domain filter (e.g. "career", "relationship", "transition"). Narrows verdict_distribution to matches whose prediction carries this domain; sections with no domain dimension are returned unfiltered and named in filters.domain_unfiltered_sections.'),
+      include_held_out: z.boolean().optional()
+        .describe('Include held-out partition matches (default: false).'),
+      promoted_only: z.boolean().optional()
+        .describe('Return only promoted (gate_passed=true) multipliers (default: false).'),
       budget_kb: z.number().int().min(1).max(200).optional()
         .describe('Presentation-only response budget in KB (default 40, max 200); never forwarded to query_calibration.'),
     },
-    async ({ chart_id, budget_kb }) => {
+    async ({ chart_id, domain, include_held_out, promoted_only, budget_kb }) => {
       try {
-        const data = await callPlatformPrim('query_calibration', { chart_id }, principal)
+        const data = await callPlatformPrim(
+          'query_calibration',
+          { chart_id, domain, include_held_out, promoted_only },
+          principal,
+        )
         return calibrationDualOutput(data, budget_kb ?? 40, budget_kb)
       } catch (err) { return errOut('mimamsa_calibration_get', String(err), { chart_id }) }
     }

@@ -1786,90 +1786,33 @@ class KaKshetraWriter(WriterBase):
         return WriterResult(asset_id=ASSET_ID, rows_inserted=1,
                             notes=f'content_hash={content_hash}')
 
+    def _iter_content_hash_rows(self, conn):
+        """Stream every hashed row as (table, natural_key, payload), one table at
+        a time, one server-side cursor batch at a time.
+
+        F-149. This used to build a single Python list of EVERY stage-0–8 row for
+        the chart before hashing anything — `kala_field` (~8.6M for the native
+        chart) + `kala_field_provenance` (~1.8M) + five smaller tables — and then
+        handed that list to a `sorted()` that made a second full copy of the
+        serialized form. Three simultaneous full materializations of ~10.5M rows
+        is the confirmed root cause of the OOM behind the F-141 incident: a
+        rebuild could not succeed, deterministically, on any machine sized for
+        this service.
+
+        Nothing about WHICH rows are hashed, or in what canonical form, changed —
+        the SQL below is verbatim what it was, and the resulting digest is
+        byte-identical (see `field_content_hash`'s own note). Only the
+        materialization strategy changed.
+        """
+        for table, key_cols, sql in _CONTENT_HASH_QUERIES:
+            with S4.streaming_cursor(conn, f'kfh_{table}') as cur:
+                cur.execute(sql, (self._chart_id, self._snapshot_id))
+                for r in S4.iter_rows(cur):
+                    yield (table, tuple(r[c] for c in key_cols), r)
+
     def _compute_content_hash(self, conn) -> str:
-        rows: list[tuple[str, tuple, dict[str, Any]]] = []
-        with conn.cursor() as cur:
-            cur.execute(
-                """SELECT event_class, segment_index, t_start, t_end, alpha, gamma,
-                          integral_days, refinement_depth, refinement_exhausted
-                     FROM kala_field WHERE chart_id = %s AND field_snapshot_id = %s""",
-                (self._chart_id, self._snapshot_id),
-            )
-            for r in S4._rows(cur):
-                key = (r['event_class'], r['segment_index'])
-                rows.append(('kala_field', key, {k: v for k, v in r.items()}))
-            cur.execute(
-                """SELECT window_id, event_class, t_start, t_end, t_peak, lambda_peak,
-                          expected_count, null_p, confidence_tier, weakest_link,
-                          adrishta_residual
-                     FROM kala_field_windows
-                    WHERE chart_id = %s AND field_snapshot_id = %s""",
-                (self._chart_id, self._snapshot_id),
-            )
-            for r in S4._rows(cur):
-                rows.append(('kala_field_windows', (r['window_id'],), dict(r)))
-            cur.execute(
-                """SELECT target_kind, target_id, term_key, term_value, log_contribution,
-                          weight_id, weight_value, source_kind, source_table, source_pk,
-                          source_fact_id, authority_basis
-                     FROM kala_field_provenance
-                    WHERE chart_id = %s AND field_snapshot_id = %s""",
-                (self._chart_id, self._snapshot_id),
-            )
-            for r in S4._rows(cur):
-                rows.append(('kala_field_provenance',
-                             (r['target_kind'], r['target_id'], r['term_key']), dict(r)))
-            cur.execute(
-                """SELECT event_class, bucket_days, q_threshold, replicates
-                     FROM kala_field_null
-                    WHERE chart_id = %s AND field_snapshot_id = %s""",
-                (self._chart_id, self._snapshot_id),
-            )
-            for r in S4._rows(cur):
-                rows.append(('kala_field_null', (r['event_class'], r['bucket_days']),
-                             dict(r)))
-            # ── stage 6 / 6.5 / 8 (see _HASHED_TABLES for why they are here) ──
-            cur.execute(
-                """SELECT window_id, event_class, factor_informativeness,
-                          factor_consequence, factor_relevance, factor_reliability,
-                          factor_actionability, salience, salience_weights_version,
-                          salience_basis, selected, selection_rank, marginal_gain,
-                          coverage_fraction, largest_omission_window_id,
-                          largest_omission_marginal_gain, cohort_version
-                     FROM kala_field_salience
-                    WHERE chart_id = %s AND field_snapshot_id = %s""",
-                (self._chart_id, self._snapshot_id),
-            )
-            for r in S4._rows(cur):
-                rows.append(('kala_field_salience', (r['window_id'],), dict(r)))
-            # `lel_derived = FALSE` is the §7.4 exclusion, stated in the WHERE
-            # clause rather than filtered afterwards: the hash must not be able
-            # to see a Lane E biographical_echo row even transiently.
-            cur.execute(
-                """SELECT insight_id, insight_type, event_class, window_id, t_start,
-                          t_end, statement_key, statement_params, fact_ids,
-                          cohort_surprise, cohort_version, surprise_basis,
-                          insight_score
-                     FROM kala_insights
-                    WHERE chart_id = %s AND field_snapshot_id = %s
-                      AND lel_derived = FALSE""",
-                (self._chart_id, self._snapshot_id),
-            )
-            for r in S4._rows(cur):
-                rows.append(('kala_insights', (r['insight_id'],), dict(r)))
-            # `computed_at` is excluded per §7.4's own column exclusion list; the
-            # `spec` blob is included because it IS the row's content, and it is
-            # byte-stable by construction (`_now_marker`, natural-key point ids).
-            cur.execute(
-                """SELECT generated_for, spec_version, spec, n_tracks, n_intervals,
-                          n_points, n_bands, empty_reason
-                     FROM kala_timeline_spec
-                    WHERE chart_id = %s AND field_snapshot_id = %s""",
-                (self._chart_id, self._snapshot_id),
-            )
-            for r in S4._rows(cur):
-                rows.append(('kala_timeline_spec', (r['generated_for'],), dict(r)))
-        return S4.field_content_hash(self._snapshot_id, rows)
+        return S4.field_content_hash(self._snapshot_id,
+                                     self._iter_content_hash_rows(conn))
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
@@ -2355,6 +2298,80 @@ _HASHED_TABLES: tuple[str, ...] = (
     'kala_insights',
     'kala_timeline_spec',
 )
+
+
+#: (table, natural-key columns, SQL) for every table in `_HASHED_TABLES`, in the
+#: order §7.4's hash walks them. Hoisted out of `_compute_content_hash` by F-149
+#: so the hash can be computed by STREAMING one table at a time instead of
+#: accumulating all seven into one list; the SQL text is verbatim what that
+#: method used to inline, deliberately, so that the circularity guard's statement
+#: census and the digest itself both see exactly what they saw before.
+#:
+#: Column-selection notes carried over from the inline version:
+#:   • `kala_insights` states `lel_derived = FALSE` in the WHERE clause rather
+#:     than filtering afterwards — the hash must not be able to see a Lane E
+#:     biographical_echo row even transiently.
+#:   • `kala_timeline_spec` excludes `computed_at` per §7.4's own column-exclusion
+#:     list; the `spec` blob IS the row's content and is byte-stable by
+#:     construction (`_now_marker`, natural-key point ids).
+_CONTENT_HASH_QUERIES: tuple[tuple[str, tuple[str, ...], str], ...] = (
+    ('kala_field', ('event_class', 'segment_index'),
+     """SELECT event_class, segment_index, t_start, t_end, alpha, gamma,
+                          integral_days, refinement_depth, refinement_exhausted
+                     FROM kala_field WHERE chart_id = %s AND field_snapshot_id = %s"""),
+    ('kala_field_windows', ('window_id',),
+     """SELECT window_id, event_class, t_start, t_end, t_peak, lambda_peak,
+                          expected_count, null_p, confidence_tier, weakest_link,
+                          adrishta_residual
+                     FROM kala_field_windows
+                    WHERE chart_id = %s AND field_snapshot_id = %s"""),
+    ('kala_field_provenance', ('target_kind', 'target_id', 'term_key'),
+     """SELECT target_kind, target_id, term_key, term_value, log_contribution,
+                          weight_id, weight_value, source_kind, source_table, source_pk,
+                          source_fact_id, authority_basis
+                     FROM kala_field_provenance
+                    WHERE chart_id = %s AND field_snapshot_id = %s"""),
+    ('kala_field_null', ('event_class', 'bucket_days'),
+     """SELECT event_class, bucket_days, q_threshold, replicates
+                     FROM kala_field_null
+                    WHERE chart_id = %s AND field_snapshot_id = %s"""),
+    # ── stage 6 / 6.5 / 8 (see _HASHED_TABLES for why they are here) ──
+    ('kala_field_salience', ('window_id',),
+     """SELECT window_id, event_class, factor_informativeness,
+                          factor_consequence, factor_relevance, factor_reliability,
+                          factor_actionability, salience, salience_weights_version,
+                          salience_basis, selected, selection_rank, marginal_gain,
+                          coverage_fraction, largest_omission_window_id,
+                          largest_omission_marginal_gain, cohort_version
+                     FROM kala_field_salience
+                    WHERE chart_id = %s AND field_snapshot_id = %s"""),
+    ('kala_insights', ('insight_id',),
+     """SELECT insight_id, insight_type, event_class, window_id, t_start,
+                          t_end, statement_key, statement_params, fact_ids,
+                          cohort_surprise, cohort_version, surprise_basis,
+                          insight_score
+                     FROM kala_insights
+                    WHERE chart_id = %s AND field_snapshot_id = %s
+                      AND lel_derived = FALSE"""),
+    ('kala_timeline_spec', ('generated_for',),
+     """SELECT generated_for, spec_version, spec, n_tracks, n_intervals,
+                          n_points, n_bands, empty_reason
+                     FROM kala_timeline_spec
+                    WHERE chart_id = %s AND field_snapshot_id = %s"""),
+)
+
+# A real detector, not a comment (§N.8): `hashed_tables` is written to every
+# snapshot row from `_HASHED_TABLES` while the digest is computed from
+# `_CONTENT_HASH_QUERIES`. If a future lane adds a table to one and forgets the
+# other, the stored `hashed_tables` would advertise coverage the hash does not
+# have. Import fails loudly instead — and it is a `raise`, not an `assert`,
+# because `python -O` strips asserts and a detector that can be optimized out is
+# the same class of defect as one that was never written.
+if tuple(t for t, _, _ in _CONTENT_HASH_QUERIES) != _HASHED_TABLES:
+    raise RuntimeError(
+        '_CONTENT_HASH_QUERIES and _HASHED_TABLES disagree: '
+        'kala_field_snapshots.hashed_tables would misdescribe what the hash covers'
+    )
 
 
 __all__ = ['KaKshetraWriter', 'ASSET_ID', 'HORIZON_DAYS', 'DECADES',

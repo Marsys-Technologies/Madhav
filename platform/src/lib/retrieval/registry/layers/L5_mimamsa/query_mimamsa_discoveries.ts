@@ -28,16 +28,18 @@ export const queryMimamsaDiscoveriesCapability: CapabilityDescriptor = {
   description: [
     'Retrieve L5 research-value discoveries from mimamsa_discoveries (mi_pariksha) —',
     'NOT the L2 bodha_discoveries table (a different concept; see bodha_discoveries_get',
-    'for that). Each row: discovery_class (emergent_law|contradiction_dominance|',
+    'for that). Each row: discovery_class (emergent_law|retrodiction|contradiction_dominance|',
     'temporal_rhythm|residual_candidate), statement, evidence_refs, strength, n_support,',
     'confidence_band, activation_status (candidate|supported|promoted), citation_ref.',
+    'n_support is NOT a count of scored outcomes and means something different per class —',
+    'read n_support_semantics in the response provenance before treating it as evidence (F-143).',
     'Filters: discovery_class, activation_status.',
     `Bounded to ${MAX_LIMIT} rows with a disclosed total.`,
   ].join(' '),
 
   input_schema: {
     chart_id:          { type: 'string', description: 'Chart UUID. Required.', required: true },
-    discovery_class:    { type: 'string', description: 'Filter by discovery_class (emergent_law|contradiction_dominance|temporal_rhythm|residual_candidate). Omit for all.', enum: ['emergent_law', 'contradiction_dominance', 'temporal_rhythm', 'residual_candidate'] },
+    discovery_class:    { type: 'string', description: 'Filter by discovery_class (emergent_law|retrodiction|contradiction_dominance|temporal_rhythm|residual_candidate). Omit for all.', enum: ['emergent_law', 'retrodiction', 'contradiction_dominance', 'temporal_rhythm', 'residual_candidate'] },
     activation_status:  { type: 'string', description: 'Filter by activation_status (candidate|supported|promoted). Omit for all.', enum: ['candidate', 'supported', 'promoted'] },
     limit:              { type: 'number', description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
   },
@@ -97,7 +99,17 @@ export const queryMimamsaDiscoveriesCapability: CapabilityDescriptor = {
           ...(rowsRes.rows.length === 0
             ? { empty_reason: `No L5 discovery rows matched (discovery_class=${discoveryClass ?? 'any'}, activation_status=${activationStatus ?? 'any'}).` }
             : {}),
-          provenance: { tables: ['mimamsa_discoveries'], source: 'L5 Mīmāṃsā research-value discoveries (mi_pariksha), distinct from L2 bodha_discoveries; served chart-scoped.' },
+          provenance: {
+            tables: ['mimamsa_discoveries'],
+            source: 'L5 Mīmāṃsā research-value discoveries (mi_pariksha), distinct from L2 bodha_discoveries; served chart-scoped.',
+            // F-143: this capability serves n_support raw. Its meaning is class-dependent and
+            // in NEITHER class is it a count of independently scored outcomes.
+            n_support_semantics: {
+              emergent_law: 'attribution ASSIGNMENTS for a (signal, dimension) pair — one per prediction/event match the signal appears in, including UNRESOLVED (window not elapsed) and FALSE_ALARM (control) matches. evidence_refs.n_scored_matches carries the outcome-adjudicated subset (present only on rows written by mi_pariksha >= v2.1).',
+              retrodiction: 'historical anchors matched, hard-capped at 3 by the query LIMIT — an anchor match is not an adjudicated hit, and the declared T−90d blinding is not enforced.',
+              other_classes: 'undocumented — do not read as scored evidence without checking the writing substep.',
+            },
+          },
         },
         is_error: false,
       }

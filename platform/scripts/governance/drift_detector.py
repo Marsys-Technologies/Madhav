@@ -132,7 +132,18 @@ GOVERNANCE_SURFACES_GLOBS = [
     "CLAUDE.md",
     # .geminirules + .gemini/project_state.md retired 2026-05-27 (ND.1 close-out)
     "00_ARCHITECTURE/MACRO_PLAN_v2_0.md",
-    "00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md",
+    # F-94/RC-2: PHASE_B_PLAN_v1_0.md removed from the LIVE-pointer scan 2026-08-21.
+    # Its own frontmatter reads `status: SUPERSEDED` (M2 closed 2026-05-01, CLAUDE.md §E),
+    # so by this list's own stated exclusion rule ("excludes closed/time-stamped
+    # artifacts") it does not belong here. It produced 51 of 215 findings — every one a
+    # backtick pointer to a `python-sidecar/rag/*` file deleted in the WS-0C legacy
+    # purge, i.e. an accurate description of the M2-era tree the plan documents. The
+    # emitted remediation ("resolve at PHASE_B_PLAN v1.0.3 amendment cycle") named an
+    # amendment cycle that cannot occur for a superseded plan, and acting on it would
+    # rewrite an archived record in violation of ONGOING_HYGIENE_POLICIES §A
+    # (archival retain-in-place). §H.3.3 check_mp_pbp_alignment still reads this file;
+    # only the §H.3.7 live-pointer scan is scoped off it. WARN.2 is retained in
+    # WHITELIST_TICKETS as audit trail and is now expected to match nothing.
     "00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md",
     "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
     "00_ARCHITECTURE/GOVERNANCE_STACK_v1_0.md",
@@ -517,10 +528,24 @@ def _build_basename_cache(repo_root: pathlib.Path) -> Dict[str, List[pathlib.Pat
     # venv/.venv excluded: local Python virtualenvs contain package files (router.py,
     # schemas.py, etc.) with generic basenames that would silently satisfy governance
     # phantom-reference checks — producing local hits that CI (no venv) cannot replicate.
+    #
+    # F-94/RC-3: skip_dirs MUST be matched against the path RELATIVE to repo_root, never
+    # against `p.parts` (which, when repo_root is absolute, includes every component of
+    # the checkout's own filesystem location). A checkout living under any directory
+    # named `.claude`, `venv`, `node_modules`, … made EVERY walked file match a skip_dir,
+    # emptying the cache and turning every backticked pointer into a phantom: measured
+    # 825 findings / exit=2 (571 spurious HIGH) versus 215 / exit=3 for the identical
+    # tree walked with a relative repo_root. A governance gate whose verdict depends on
+    # where the repo happens to be checked out is not measuring what it claims to
+    # measure (CLAUDE.md §N.8).
     skip_dirs = {"node_modules", ".git", "__pycache__", ".next", ".turbo", ".claude", "venv", ".venv"}
     for p in repo_root.rglob("*"):
         if p.is_file():
-            if any(part in skip_dirs for part in p.parts):
+            try:
+                rel_parts = p.relative_to(repo_root).parts
+            except ValueError:  # pragma: no cover — rglob results are always under root
+                rel_parts = p.parts
+            if any(part in skip_dirs for part in rel_parts):
                 continue
             cache.setdefault(p.name, []).append(p)
     _BASENAME_CACHE = cache

@@ -19,6 +19,7 @@ import type { OAuthTokenRequest, OAuthTokenResponse } from './types.js'
 import { issueTokens, refreshAccessToken } from './token_store.js'
 import { consumeAuthCode } from './authorize.js'
 import { validateOAuthClient } from './oauth_platform_client.js'
+import { chargeValidatedSubject } from '../lib/oauth_rate_limit.js'
 
 export async function handleToken(req: Request, res: Response): Promise<void> {
   const params = req.body as OAuthTokenRequest
@@ -46,6 +47,45 @@ export async function handleToken(req: Request, res: Response): Promise<void> {
     if (!clientResult.owner_uid || clientResult.owner_uid === 'anonymous') {
       res.status(400).json({ error: 'invalid_client', error_description: 'client has no verified owner_uid' })
       return
+    }
+
+    // RATE-07 layer 2 (PARIŚEṢA-V4) — charged ONLY when a secret was actually
+    // presented and therefore actually verified.
+    //
+    // ⚠️ WHY THE GUARD, AND A DISCLOSED PRE-EXISTING DEFECT: an earlier draft of
+    // this code charged `params.client_id` unconditionally here, on the stated
+    // premise that validateOAuthClient() above had "proven" it. An adversarial
+    // security review showed that premise is FALSE. `validateClient`
+    // (platform/src/lib/mcp/oauth/store.ts) verifies the secret only
+    // `if (clientSecret !== undefined)`, and `validateOAuthClient`'s
+    // JSON.stringify drops an undefined `client_secret` from the request body
+    // entirely — so a client_credentials request carrying NO secret skips
+    // verification and is reported valid. Charging on that would have handed
+    // any anonymous caller a quota-poisoning primitive against a named client:
+    // client_ids travel in authorize requests and redirects, so they are not
+    // secret.
+    //
+    // Gating the charge on a presented secret makes THIS code's premise true.
+    // It does NOT fix the underlying hole — that a secretless
+    // client_credentials request is honoured at all, and receives real tokens
+    // for the client's owner_uid — which is a pre-existing authentication
+    // defect out of RATE-07's scope, disclosed in the PR for its own triage
+    // rather than silently patched inside a rate-limiting change.
+    //
+    // The per-IP + route-global buckets were already charged by the
+    // `oauthRateLimit('oauth_token')` middleware before this handler ran, so a
+    // secretless caller is still rate limited — just not against a bucket
+    // belonging to an identity it has not proven.
+    // chargeValidatedSubject writes the 429/503 response itself when it denies.
+    // Charged on `clientResult.owner_uid` — the identity the validation step
+    // itself RESOLVED — rather than on `params.client_id`, which is request
+    // input reached through the `params` alias. Same reason as above: the
+    // subject of a post-validation bucket must come out of the validation
+    // result, never back out of the request.
+    if (params.client_secret) {
+      if (!(await chargeValidatedSubject(res, 'oauth_token', 'principal', clientResult.owner_uid))) {
+        return
+      }
     }
 
     let tokens: Awaited<ReturnType<typeof issueTokens>>

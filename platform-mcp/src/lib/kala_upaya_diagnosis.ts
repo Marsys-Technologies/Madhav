@@ -25,6 +25,14 @@
  * actually trips the detector, not merely asserts the identifiers are absent.
  * ══════════════════════════════════════════════════════════════════════════════════════════
  *
+ * F-118 (PARIŚEṢA-V4, CL-09): three additions, none of which rank or rewrite a row —
+ *   `dedupeInterventions` (byte-identical served content collapses to one row + an honest count),
+ *   `actionable_prescription` / `splitPrescriptive` (a row naming no act is never served as an
+ *     intervention — `extractPhalaMitigationPrescription` is the detector),
+ *   `assessEfficacyDiscrimination` (states whether the grading fields discriminate at all).
+ * The deferred half — a genuine per-row efficacy/feasibility score — is specified, not built:
+ * `00_ARCHITECTURE/briefs/parisesa/F118_INTERVENTION_SEMANTICS_DESIGN_CONTRACT_v1_0.md`.
+ *
  * §N.5 rail (the lower layer is the authority): every row this file serves carries
  * `source_surface` + the row's own primary key, and NO value is recomputed — only selected,
  * tiered by citation-presence, and routed to the diagnosed failing link. Ruling U-1 is
@@ -325,7 +333,40 @@ export interface UpayaIntervention {
   citation: string | null
   targets_link: FailingLink | null
   feasibility: number | null
+  /**
+   * F-118 — the ACTIONABLE half of the row, separated from its `label`.
+   *
+   * `label` is whatever the source row's display fields compose to; it is NOT a promise that
+   * the row prescribes an act. On `phala_mitigation` the composed label is a SEVERITY
+   * CLASSIFICATION (`intensity_tier` × `proportionality_basis`, e.g. "light — for saturn —
+   * severity=medium × anchor_magnitude=minor → light") and the row's actual remedy payload
+   * (`program_jsonb` / `tradition_options_jsonb` / `recommended_tier_jsonb`) is, on the live
+   * canonical chart, entirely empty — there is no act in the row at all.
+   *
+   * This field is `null` exactly when the row carries no act a native could perform, and the
+   * caller density-splits such rows OUT of `interventions` (`splitPrescriptive` below). A
+   * severity grade served in an array named `interventions` is an unearned actionability
+   * claim — CLAUDE.md §N.8: the signal must be computed by a detector that measures the
+   * specific claim it asserts, or it is null, not green.
+   */
+  actionable_prescription: string | null
+  /** F-118 — how many source rows carried byte-identical served content and were collapsed
+   *  into this one. `1` = a genuinely unique row. Never fabricated: the count is the size of
+   *  the collapse group `dedupeInterventions` actually formed. */
+  duplicate_row_count: number
+  /** F-118 — the collapsed siblings' primary keys (capped at `DUPLICATE_PK_SAMPLE_CAP`), so a
+   *  reader can always get back to every source row §N.5 requires be reachable. */
+  duplicate_source_pks: string[]
+  /** F-118 — an honest sentence whenever `duplicate_row_count > 1`; `null` otherwise. States
+   *  what was collapsed and does NOT name a varying axis it has not measured. */
+  duplicate_note: string | null
 }
+
+/** Cap on `duplicate_source_pks` — the collapse group can be hundreds of rows on
+ *  `phala_mitigation` (536 rows/chart on the canonical native), and an unbounded id array
+ *  would re-inflate exactly the byte budget this repair reclaims. The true group size is
+ *  always `duplicate_row_count`, which is never capped. */
+export const DUPLICATE_PK_SAMPLE_CAP = 10
 
 /**
  * Design §2.5's tier table, made executable: `classically_attested` iff the row carries a
@@ -352,7 +393,9 @@ function nonBlank(v: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null
 }
 
-/** `phala_mitigation` row shape (design §2.1 table — the columns Lane U actually reads). */
+/** `phala_mitigation` row shape (design §2.1 table — the columns Lane U actually reads).
+ *  F-118 adds the three remedy-payload columns `query_remedy_program` already selects and Lane
+ *  U previously ignored — the row's ONLY actionable content lives in them. */
 export interface PhalaMitigationRow {
   mitigation_id: string
   afflicting_graha: string | null
@@ -360,6 +403,69 @@ export interface PhalaMitigationRow {
   intensity_tier: string | null
   proportionality_basis: string | null
   classical_citation: string | null
+  /** `{ scheduled_ids: [...], sequence_basis, total_scheduled }` — the scheduled program. */
+  program_jsonb?: unknown
+  /** `{ vedic: [...], tantra: [...], ayurvedic: [...], vastu: [...], lal_kitab: [...], modern: [...] }`. */
+  tradition_options_jsonb?: unknown
+  /** `{ free: [...], low_cost: [...], high_investment: [...] }`. */
+  recommended_tier_jsonb?: unknown
+}
+
+/** Every non-blank string reachable one or two levels down an object-of-arrays / array shape.
+ *  Deliberately shallow and total: it reads what is there and returns nothing when nothing is
+ *  there — it never composes a stand-in sentence (B.10). */
+function collectPrescriptionStrings(value: unknown, out: string[]): void {
+  if (value == null) return
+  if (typeof value === 'string') {
+    const s = value.trim()
+    if (s.length > 0) out.push(s)
+    return
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectPrescriptionStrings(item, out)
+    return
+  }
+  if (typeof value === 'object') {
+    for (const item of Object.values(value as Record<string, unknown>)) collectPrescriptionStrings(item, out)
+  }
+}
+
+/**
+ * F-118 — the honest actionability detector for a `phala_mitigation` row.
+ *
+ * Returns the row's real prescription content when it has any, and `null` when it has none.
+ * On the live canonical chart every one of the 536 rows returns `null`: `program_jsonb` is
+ * `{"scheduled_ids": [], "sequence_basis": "...", "total_scheduled": 0}`, and both
+ * `tradition_options_jsonb` and `recommended_tier_jsonb` are objects whose every bucket is an
+ * empty array. That emptiness is a REAL, MEASURED property of the row — which is precisely why
+ * this returns `null` rather than falling back to the severity label: an unearned "here is your
+ * remedy" is the §N.7 item 6 defect ("an honest null beats an invented judgment").
+ *
+ * `sequence_basis` is deliberately NOT read as content: it is a description of how the (empty)
+ * program was ordered, not an act. `total_scheduled > 0` with populated `scheduled_ids` yields
+ * an honest POINTER to the scheduled rows — a real, followable instruction, and named as a
+ * pointer rather than dressed up as prose.
+ */
+export function extractPhalaMitigationPrescription(row: PhalaMitigationRow): string | null {
+  const parts: string[] = []
+  collectPrescriptionStrings(row.tradition_options_jsonb, parts)
+  collectPrescriptionStrings(row.recommended_tier_jsonb, parts)
+
+  const program = (row.program_jsonb && typeof row.program_jsonb === 'object' && !Array.isArray(row.program_jsonb))
+    ? (row.program_jsonb as Record<string, unknown>)
+    : null
+  const scheduledIds = program && Array.isArray(program['scheduled_ids'])
+    ? (program['scheduled_ids'] as unknown[]).filter((x) => typeof x === 'string' && x.trim().length > 0)
+    : []
+  if (scheduledIds.length > 0) {
+    parts.push(
+      `${scheduledIds.length} scheduled remedy step(s) — see phala_mitigation.program_jsonb.scheduled_ids ` +
+      `[${scheduledIds.slice(0, DUPLICATE_PK_SAMPLE_CAP).join(', ')}]`,
+    )
+  }
+
+  const deduped = [...new Set(parts)]
+  return deduped.length > 0 ? deduped.join(' · ') : null
 }
 
 export function phalaMitigationToIntervention(row: PhalaMitigationRow, targetsLink: FailingLink | null): UpayaIntervention {
@@ -376,6 +482,10 @@ export function phalaMitigationToIntervention(row: PhalaMitigationRow, targetsLi
     citation,
     targets_link: targetsLink,
     feasibility: null,
+    actionable_prescription: extractPhalaMitigationPrescription(row),
+    duplicate_row_count: 1,
+    duplicate_source_pks: [],
+    duplicate_note: null,
   }
 }
 
@@ -419,6 +529,13 @@ export function bodhaRmPrescriptionToIntervention(row: BodhaRmPrescriptionRow, t
     citation: citation ?? (hasCitation ? 'see classical_sources_jsonb' : null),
     targets_link: targetsLink,
     feasibility: typeof row.feasibility_score === 'number' ? row.feasibility_score : null,
+    // `remedy_label_human` on this surface IS the act ("Recite the Sun beej mantra … 108 times
+    // daily on Sunday, facing east") — so the prescription is the label, read not recomposed.
+    // A row without one carries only a category/graha pair, which is not an act: null.
+    actionable_prescription: nonBlank(row.remedy_label_human),
+    duplicate_row_count: 1,
+    duplicate_source_pks: [],
+    duplicate_note: null,
   }
 }
 
@@ -455,6 +572,179 @@ export function remedyCorpusRowToIntervention(row: RemedyCorpusRow, targetsLink:
     citation,
     targets_link: targetsLink,
     feasibility: null,
+    // `prescription_text` IS the act on this surface; a deity/planet pair alone is not.
+    actionable_prescription: nonBlank(row.prescription_text),
+    duplicate_row_count: 1,
+    duplicate_source_pks: [],
+    duplicate_note: null,
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// F-118 — duplicate collapse, actionability split, and the efficacy-discrimination detector
+// ══════════════════════════════════════════════════════════════════════════════════════════
+
+/** ASCII unit separator — cannot occur in any served text field, so the composite key below
+ *  is collision-free (a plain `join('|')` is not: a label containing `|` could forge a key). */
+const KEY_SEP = '\u001f'
+/** A sentinel for `null`, distinct from the empty string a field could genuinely hold. */
+const KEY_NULL = '\u0000'
+
+/** The served content of a row, as a comparable key. Two rows with the same key are, to every
+ *  consumer of this response, THE SAME RECOMMENDATION — their primary keys differ, but a
+ *  native reading the slate cannot act on the difference. Deliberately keyed on what is
+ *  SERVED (not on the source row's full column set): the claim being deduplicated is "this is
+ *  a distinct thing to do", and that claim lives entirely in the served fields. */
+function servedContentKey(row: UpayaIntervention): string {
+  return [
+    row.intervention_class,
+    row.label.trim(),
+    row.actionable_prescription ?? KEY_NULL,
+    row.citation ?? KEY_NULL,
+    row.efficacy_tier,
+    row.targets_link ?? KEY_NULL,
+    row.feasibility == null ? KEY_NULL : String(row.feasibility),
+  ].join(KEY_SEP)
+}
+
+export interface DedupeResult {
+  rows: UpayaIntervention[]
+  /** Total source rows removed (input length − output length). Never an estimate. */
+  collapsed_row_count: number
+}
+
+/**
+ * F-118 — collapse byte-identical served content into ONE row carrying an honest count.
+ *
+ * The defect this repairs: `kala_upaya_get` served 100 "interventions" that were 14 distinct
+ * recommendations — 50 byte-identical `phala_mitigation` rows (one per obstruction, all with
+ * an empty remedy program) and 50 `bodha_rm_remedy_prescriptions` rows that were 13 remedies
+ * each stored once per ayanamsha. `intervention_count=100` was read as "100 things to do";
+ * nothing in the response let a caller tell otherwise. Collapsing is not data loss: every
+ * collapsed primary key stays reachable (`duplicate_source_pks`, capped) and the true group
+ * size is stated exactly (`duplicate_row_count`).
+ *
+ * Order is stable — the first occurrence is the representative, so the source surfaces' own
+ * ORDER BY (severity DESC / resonance_match_score DESC) survives the collapse untouched. No
+ * ranking is computed here (ruling U-1: no recomputed remedy ranking).
+ */
+export function dedupeInterventions(rows: UpayaIntervention[]): DedupeResult {
+  const groups = new Map<string, UpayaIntervention[]>()
+  const order: string[] = []
+  for (const row of rows) {
+    const key = servedContentKey(row)
+    const existing = groups.get(key)
+    if (existing) existing.push(row)
+    else { groups.set(key, [row]); order.push(key) }
+  }
+
+  const out: UpayaIntervention[] = []
+  for (const key of order) {
+    const group = groups.get(key) as UpayaIntervention[]
+    const representative = group[0] as UpayaIntervention
+    const siblings = group.slice(1)
+    if (siblings.length === 0) { out.push(representative); continue }
+    const sampledPks = siblings.slice(0, DUPLICATE_PK_SAMPLE_CAP).map((r) => r.source_pk)
+    out.push({
+      ...representative,
+      duplicate_row_count: group.length,
+      duplicate_source_pks: sampledPks,
+      duplicate_note:
+        `${group.length} rows on ${representative.source_surface} carried byte-identical served ` +
+        'content and were collapsed into this one row — this is ONE recommendation, not ' +
+        `${group.length}. The representative row's primary key is ${representative.source_pk}; ` +
+        `${sampledPks.length} of the ${siblings.length} collapsed sibling key(s) are listed in ` +
+        'duplicate_source_pks. What varied between the source rows was not measured here and is ' +
+        'not claimed — only that nothing a native could act on differed.',
+    })
+  }
+  return { rows: out, collapsed_row_count: rows.length - out.length }
+}
+
+/**
+ * F-118 §N.6 density split #2 (actionability). A row whose `actionable_prescription` is `null`
+ * names no act — it is a classification, a severity grade, or a bare category/graha pair. Such
+ * a row is STILL SERVED (B.10 forbids silently dropping data) but in its own field with its own
+ * count, never inside `interventions` where its presence reads as "here is something to do".
+ * Mirrors the cited/uncited split below exactly, and decides by the row's own field rather than
+ * by re-deriving actionability from the surface name.
+ */
+export function splitPrescriptive(rows: UpayaIntervention[]): {
+  prescriptive: UpayaIntervention[]
+  nonPrescriptive: UpayaIntervention[]
+} {
+  const prescriptive: UpayaIntervention[] = []
+  const nonPrescriptive: UpayaIntervention[] = []
+  for (const row of rows) {
+    if (row.actionable_prescription !== null) prescriptive.push(row)
+    else nonPrescriptive.push(row)
+  }
+  return { prescriptive, nonPrescriptive }
+}
+
+/** F-118 — the earned-signal report for this response's own grading fields (§N.8). */
+export interface EfficacyDiscrimination {
+  /** True iff at least one of the grading fields actually took more than one value across the
+   *  served rows. `false` means: within THIS response, no row could have graded differently on
+   *  any discriminating field — the grade carries zero information. */
+  discriminating: boolean
+  rows_evaluated: number
+  distinct_efficacy_tiers: number
+  distinct_feasibility_values: number
+  distinct_targets_link_values: number
+  note: string
+}
+
+/**
+ * F-118 — measures whether this response's grading fields discriminate at all, and says so.
+ *
+ * The original finding: all 100 served rows carried `efficacy_tier='classically_attested'` and
+ * `targets_link='promise'`, with `feasibility` null on half — so no row in the response could
+ * ever have graded differently on any of the three fields. That is the §N.8 defect exactly: a
+ * grade whose detector cannot produce a different value is not a clean grade, it is an
+ * un-implemented one wearing a grade's clothes.
+ *
+ * This function does NOT fix the grading (a genuine per-row efficacy/feasibility score is
+ * from-scratch design work — see F118_INTERVENTION_SEMANTICS_DESIGN_CONTRACT_v1_0.md). It
+ * measures and DISCLOSES the degeneracy, so a caller can never read a uniform tier as a
+ * meaningful one. Note the honest scope limit: `targets_link` is uniform BY CONSTRUCTION (every
+ * row is routed to the single diagnosed failing link), so it is reported for the reader but
+ * never counted toward `discriminating` — counting it would make this detector read green for a
+ * reason that has nothing to do with the grade.
+ */
+export function assessEfficacyDiscrimination(rows: UpayaIntervention[]): EfficacyDiscrimination {
+  const tiers = new Set(rows.map((r) => r.efficacy_tier))
+  const feas = new Set(rows.map((r) => (r.feasibility == null ? KEY_NULL : String(r.feasibility))))
+  const links = new Set(rows.map((r) => r.targets_link ?? KEY_NULL))
+  const discriminating = rows.length > 1 && (tiers.size > 1 || feas.size > 1)
+
+  let note: string
+  if (rows.length === 0) {
+    note = 'No intervention rows were served, so no grading field could be evaluated.'
+  } else if (rows.length === 1) {
+    note = 'A single intervention row was served — a one-row slate cannot demonstrate ' +
+      'discrimination either way; this is reported as non-discriminating rather than assumed clean.'
+  } else if (discriminating) {
+    note = `Grading fields discriminate across the ${rows.length} served rows ` +
+      `(${tiers.size} distinct efficacy_tier value(s), ${feas.size} distinct feasibility value(s)).`
+  } else {
+    note = `Every one of the ${rows.length} served rows carries the SAME efficacy_tier and the ` +
+      'SAME feasibility value — within this response no row could have graded differently on ' +
+      'any discriminating field, so the grade carries zero information and must not be read as ' +
+      'a ranking or an endorsement. efficacy_tier here is derived from citation-PRESENCE only ' +
+      '(assignEfficacyTier), and both source surfaces carry a blanket citation constant on every ' +
+      'row, which is why the tier is uniform. A genuine per-row efficacy/feasibility detector is ' +
+      'open design work — 00_ARCHITECTURE/briefs/parisesa/' +
+      'F118_INTERVENTION_SEMANTICS_DESIGN_CONTRACT_v1_0.md.'
+  }
+
+  return {
+    discriminating,
+    rows_evaluated: rows.length,
+    distinct_efficacy_tiers: tiers.size,
+    distinct_feasibility_values: feas.size,
+    distinct_targets_link_values: links.size,
+    note,
   }
 }
 
@@ -482,6 +772,11 @@ export interface RemedyFetchResult {
   errors: string[]
 }
 
+/** The platform-wide default ayanamsha (the same value every `ayanamsha_id` input across the
+ *  registry documents as its default). See the F-118 note at the `bodha_rm_prescriptions_get`
+ *  call site for why Lane U pins it. */
+export const CANONICAL_AYANAMSHA_ID = 'lahiri_chitrapaksha'
+
 /**
  * Fetches all three remedy surfaces (design §2.1's inventory) and maps each row through its
  * own mapper — no local ranking, no recomputation (ruling U-1). Each surface is fetched
@@ -505,7 +800,13 @@ export async function fetchRemedyRows(
   // 400'd. Error strings keep the capability names for greppability.
   const [mitigationSettled, prescriptionSettled, corpusSettled] = await Promise.allSettled([
     callPlatformPrimitive('mitigation_map', { chart_id: params.chart_id, limit: 50 }, principal),
-    callPlatformPrimitive('bodha_rm_prescriptions_get', { chart_id: params.chart_id, limit: 50 }, principal),
+    // F-118: `bodha_rm_remedy_prescriptions` stores ONE ROW PER AYANAMSHA (5 rows for the same
+    // remedy — 135 rows/chart for 27 distinct remedies). Fetching unfiltered spent the whole
+    // 50-row budget on ~10 remedies × 5 identical copies. Pinning the ayanamsha spends the same
+    // budget on distinct remedies instead. `dedupeInterventions` still runs afterwards — the
+    // pin is a budget fix, the collapse is the honesty fix, and neither is load-bearing for the
+    // other (a chart with no rows on the pinned ayanamsha falls back below).
+    callPlatformPrimitive('bodha_rm_prescriptions_get', { chart_id: params.chart_id, ayanamsha_id: CANONICAL_AYANAMSHA_ID, limit: 50 }, principal),
     params.targetedGraha
       ? callPlatformPrimitive('query_remedies_for_chart', { chart_id: params.chart_id, affliction: params.targetedGraha, top_k: 20 }, principal)
       : Promise.resolve(null),
@@ -546,7 +847,19 @@ export async function fetchRemedyRows(
       if (failure !== null) {
         errors.push(`query_rm_prescriptions (bodha_rm_prescriptions_get): ${unwrapFailureReason('bodha_rm_prescriptions_get', failure)}`)
       } else {
-        const rows = Array.isArray(payload?.['rows']) ? (payload['rows'] as BodhaRmPrescriptionRow[]) : []
+        let rows = Array.isArray(payload?.['rows']) ? (payload['rows'] as BodhaRmPrescriptionRow[]) : []
+        // F-118 fallback: the ayanamsha pin above is a budget optimisation, never a filter that
+        // may silently empty the slate. A chart with no rows on the canonical ayanamsha is
+        // re-read unfiltered (and the duplicate collapse then does the whole job).
+        if (rows.length === 0) {
+          const retry = await callPlatformPrimitive('bodha_rm_prescriptions_get', { chart_id: params.chart_id, limit: 50 }, principal)
+          if (retry && retry.status === 200 && retry.envelope.ok) {
+            const retryUnwrapped = unwrapPrimitiveResult(retry.envelope.result)
+            if (retryUnwrapped.failure === null && Array.isArray(retryUnwrapped.payload?.['rows'])) {
+              rows = retryUnwrapped.payload['rows'] as BodhaRmPrescriptionRow[]
+            }
+          }
+        }
         const targetFiltered = params.targetedGraha
           ? rows.filter((r) => !r.target_graha || r.target_graha === params.targetedGraha)
           : rows

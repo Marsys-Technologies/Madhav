@@ -96,6 +96,21 @@ any writer change that ALTERS COMPUTED VALUES without adding/removing/
 renaming a column must still bump ENGINE_VERSION by hand. See the
 "Row-schema signature" section below for the full account.
 
+PARIŚEṢA F-52 ADDENDUM (unblocks F-21): that hand-bump rule was itself the
+next defect. W2.3's `tara_modifier` and W3.0's `w30_modifier` were wired into
+engine.py's lambda_v3 product without an ENGINE_VERSION bump — no column
+changed, so MR-38's fold saw nothing, every stored fingerprint matched, the
+delta-skip fired, and the canonical chart's served windows are still frozen at
+their pre-mechanism scores with the OLD term_breakdown.formula string. F-52
+folds a LIVE scoring-mechanism signature (the engine's imported mechanism
+modules, their default toggles, their compute() source, and the engine's own
+formula constants) into the same hashed payload, so wiring or retuning a
+mechanism auto-invalidates. ENGINE_VERSION remains load-bearing only for
+value-computation changes made OUTSIDE any mechanism MODULE and outside
+the formula constants — a materially smaller surface, not zero. See the
+"Scoring-mechanism signature" section below and
+services/gochara_v3/scoring_signature.py.
+
 ENGINE_VERSION COMPOSITION NOTE: MR-16 bumped ENGINE_VERSION "v3.0" ->
 "v3.1" for its own scope/output-shape change (dynamic event-class discovery
 + coverage_quality note in suppression_state). PARIṢKĀRA MR-11(b)/PK-R-8's
@@ -301,6 +316,9 @@ from services.gochara_v3.interval_solver import (
     find_threshold_crossings, score_chain_milestones, IntervalBoundary, MilestoneScore,
 )
 from services.gochara_v3.threshold import ThresholdConfig, fetch_base_rate_for_class
+# PARIŚEṢA F-52: live scoring-mechanism signature — see the "Scoring-mechanism
+# signature" note near compute_substep_fingerprint below.
+from services.gochara_v3.scoring_signature import scoring_signature_digest
 from services.gochara_v3.context import ClassContext
 # PARIṢKĀRA MR-11(b) / PK-R-8: the peak-anchored hierarchy producer
 # (era⊃month⊃day, parent_window_id, R8.1-R8.6) — see resolution_hierarchy.py
@@ -619,6 +637,66 @@ DECADE_SLICES: list[DecadeSlice] = build_decade_slices()
 
 
 # ---------------------------------------------------------------------------
+# Scoring-mechanism signature (PARIŚEṢA F-52 — unblocks F-21)
+# ---------------------------------------------------------------------------
+#
+# PRIOR DEFECT (the value-computation gap MR-38 explicitly left open): W2.3's
+# `tara_modifier` and W3.0's `w30_modifier` (the later-tradition Rahu/Ketu
+# 5/7/9 special-aspect compensator, enabled by default) were both wired into
+# engine.py's production lambda_v3 product --
+#
+#     raw_lambda = promise * permission * activity * tara_modifier
+#                  * w30_modifier * quality_gates
+#
+# -- which MOVES the stored lambda_v3 value and rewrites the served
+# `term_breakdown.formula` string, while adding/removing/renaming NO column.
+# MR-38's row-shape fold therefore saw nothing, ENGINE_VERSION was not bumped,
+# every stored fingerprint still matched, the delta-skip fired, and
+# already-materialised windows stayed frozen at their PRE-mechanism scores.
+# Confirmed live on the canonical chart: every served window's term_breakdown
+# carries the old formula string with zero occurrences of tara_modifier /
+# w30_modifier (PARIŚEṢA F-21's reproducer).
+#
+# This is a §N.8 Earned-Signal defect: "fingerprint unchanged -> skip" asserts
+# "nothing that affects this window's score changed", but its detector only
+# ever measured inputs + column lists, never the mechanism set actually
+# multiplied into the score.
+#
+# FIX: fold `services.gochara_v3.scoring_signature.scoring_signature_digest()`
+# -- derived LIVE from the ENGINE module itself: the mechanism modules it
+# imports (both module-style and function-style, the latter found by
+# AST-scanning the engine's source), their default toggles, each mechanism
+# module's WHOLE source, and the engine's canonical formula constants -- into
+# every substep's hashed payload. Wiring a mechanism into the engine, flipping
+# its default toggle, or editing ANY line of a mechanism's module source now
+# invalidates every stored fingerprint with no human remembering to bump
+# ENGINE_VERSION.
+#
+# WHOLE MODULE, not just compute() (GA-5 adversarial review of the first F-52
+# cut): the fold originally digested `inspect.getsource(module.compute)` only,
+# while claiming it caught "a modifier schedule changing 0.70 -> 0.65, an
+# aspect offset corrected". Both examples were false -- w30_nodal_drishti's
+# ASPECT_OFFSETS/ASPECT_MODIFIERS and w23_tara_bala's TARA_MODIFIERS are
+# MODULE-scope, so editing them left the fingerprint byte-identical and the
+# delta-skip would still have fired on the most likely real-world edit. See
+# test_f52_scoring_signature_invalidation.py gates (f.1)-(f.3).
+#
+# SCOPE, honestly (this narrows the ENGINE_VERSION standing rule; it does not
+# retire it): a value-computation change in engine.py OUTSIDE any mechanism
+# module and outside the formula constants -- retuning
+# `_ACTIVITY_MAX_ORB_DEG`, rewriting `_compute_activity_v3`'s internals -- is
+# still covered only by the ENGINE_VERSION standing rule. See
+# scoring_signature.py's module docstring for the full catches/does-not-catch
+# statement.
+#
+# REBUILD REQUIREMENT: this fold changes what FUTURE builds compute. It cannot
+# retroactively re-score rows already in kala_gochara_windows /
+# kala_gochara_windows_v2. Charts already materialised keep their stale
+# pre-mechanism windows until this writer is re-run for them -- at which point
+# the delta-skip correctly declines to fire.
+
+
+# ---------------------------------------------------------------------------
 # Fingerprint computation
 # ---------------------------------------------------------------------------
 
@@ -655,13 +733,40 @@ def compute_substep_fingerprint(
                             ROW_SCHEMA_COLUMNS' definition for the full
                             defect this closes.
 
-    SCOPE (PARĪKṢAKA F-3): the row_schema_* fold covers ROW SHAPE (which
-    columns exist) only. It does NOT cover VALUE-COMPUTATION changes — a
-    writer edit that changes what value a column gets, without adding,
-    removing, or renaming any column, still evades this fold and remains
-    covered ONLY by the ENGINE_VERSION standing rule, unchanged from before
-    MR-38. A fingerprint match means "the inputs and the writer's column
-    list are unchanged" — not "the writer's computed values are unchanged".
+      * scoring_signature — PARIŚEṢA F-52: the LIVE digest of the gochara_v3
+                            engine's production scoring-mechanism set (which
+                            mechanism modules the engine imports, their default
+                            toggles, each mechanism module's WHOLE source
+                            (compute() body AND the module-scope scoring
+                            tables it reads — ASPECT_OFFSETS, TARA_MODIFIERS,
+                            … — which a compute()-only digest missed), and the
+                            engine's canonical lambda_v3 / term_breakdown
+                            formula constants). Read live via
+                            `scoring_signature_digest()` — deliberately NOT a
+                            parameter, so it is structurally impossible to
+                            compute a fingerprint that does not reflect the
+                            engine's CURRENT scoring mechanisms. Wiring
+                            `w30_nodal_drishti` (or `w23_tara_bala`) into the
+                            lambda_v3 product — a real change to every stored
+                            window's VALUE that adds no column — therefore
+                            invalidates every previously-stored fingerprint,
+                            which is precisely what it failed to do before
+                            F-52. See the "Scoring-mechanism signature" note
+                            above for the full defect.
+
+    SCOPE (PARĪKṢAKA F-3, narrowed by PARIŚEṢA F-52): the row_schema_* fold
+    covers ROW SHAPE (which columns exist) only, and the scoring_signature
+    fold covers the ENGINE's mechanism set / toggles / mechanism module
+    source / formula constants. Neither covers a value-computation change made
+    in engine.py OUTSIDE a mechanism module and outside the formula
+    constants (retuning `_ACTIVITY_MAX_ORB_DEG`, rewriting
+    `_compute_activity_v3`'s internals), nor one made in THIS writer's own
+    row-building code without a column change (e.g. MR-13's honest valence
+    derivation). The ENGINE_VERSION standing rule remains load-bearing for
+    exactly those, on a materially smaller surface than before F-52. A
+    fingerprint match means "the inputs, the writer's column list, and the
+    engine's scoring-mechanism set are unchanged" — not "every computed value
+    is unchanged".
 
     Inputs are sorted so the fingerprint is stable across row-order changes.
 
@@ -677,6 +782,8 @@ def compute_substep_fingerprint(
             "resonance_targets": sorted(resonance_targets),
             "row_schema_staging": list(STAGING_ROW_SCHEMA_COLUMNS),
             "row_schema_prod": list(ROW_SCHEMA_COLUMNS),
+            # PARIŚEṢA F-52 — live, never a parameter (see docstring above).
+            "scoring_signature": scoring_signature_digest(),
         },
         sort_keys=True,
     )
@@ -2272,6 +2379,7 @@ __all__ = [
     "GocharaV3CenturyMaterializeWriter",
     "build_decade_slices",
     "compute_substep_fingerprint",
+    "scoring_signature_digest",  # PARIŚEṢA F-52 — re-exported for auditability
     "_fetch_class_valence",
     "_fetch_class_shape",
     "_normalize_milestone_template",

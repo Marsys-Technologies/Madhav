@@ -1,5 +1,5 @@
 import 'server-only'
-import { streamText, stepCountIs, smoothStream, jsonSchema } from 'ai'
+import { streamText, stepCountIs, smoothStream, jsonSchema, Output } from 'ai'
 import { google } from '@ai-sdk/google'
 import type { Adapter, StreamTextOptions } from './base'
 import type { ModelMeta } from '@/lib/models/registry'
@@ -17,19 +17,41 @@ export const adapterGemini: Adapter = {
   providerId: 'google',
 
   prepareRequest(req: QueryRequest, meta: ModelMeta): StreamTextOptions {
-    const thinkingBudget =
-      req.reasoning !== 'disable'
-        ? (meta.quirks.request_transforms?.thinking_budget as number | undefined) ?? 24576
-        : 0
+    // Gemini 3.x models declare `thinking_level` (minimal/low/medium/high) in their
+    // registry quirks instead of `thinking_budget` (registry.ts's gemini-3.1-pro-preview /
+    // gemini-3.7-flash catalog entries). thinkingLevel and thinkingBudget are distinct,
+    // non-interchangeable fields on the wire (@ai-sdk/google's own
+    // google-generative-ai-options.ts schema) — send whichever the model declares, never
+    // both. Gemini 3.x has no documented "disabled" thinking_level; 'low' is used when
+    // reasoning=disable is requested — NOT 'minimal': confirmed live against the real API
+    // (PARIPRASHNA-P3-PREFLIGHT Part B, dd20_e2e_verify.ts re-run) that
+    // gemini-3.1-pro-preview REJECTS thinkingLevel='minimal' outright ("Thinking level
+    // MINIMAL is not supported for this model", HTTP 400) — a real, model-specific API
+    // constraint no mocked unit test could have caught. 'low' is the lowest level
+    // confirmed accepted.
+    const requestTransforms = meta.quirks.request_transforms as
+      | { thinking_budget?: number; thinking_level?: 'minimal' | 'low' | 'medium' | 'high' }
+      | undefined
+    const thinkingConfig: Record<string, unknown> =
+      requestTransforms?.thinking_level !== undefined
+        ? { thinkingLevel: req.reasoning === 'disable' ? 'low' : requestTransforms.thinking_level }
+        : { thinkingBudget: req.reasoning === 'disable' ? 0 : requestTransforms?.thinking_budget ?? 24576 }
 
     const googleOptions: Record<string, unknown> = {
       safetySettings: SAFETY_BLOCK_NONE,
-      thinkingConfig: { thinkingBudget },
+      thinkingConfig,
     }
 
-    // responseSchema is passed via responseFormat so AI SDK wires responseMimeType
-    // ('application/json') and responseSchema into generationConfig for us.
-    // Setting it only in providerOptions.google is ignored by @ai-sdk/google v6.
+    // Structured output MUST go through `output` (Output.object), not a top-level
+    // `responseFormat` field. In the pinned `ai` SDK (v6), streamText() has no
+    // `responseFormat` parameter at all — an unrecognized key silently falls into an
+    // untyped settings bag and never reaches the provider's generationConfig. The
+    // provider-level `responseFormat` the google provider actually reads comes from
+    // `output?.responseFormat` internally. This was DD-20's real, still-live wiring gap —
+    // DD-20's parseAndValidateSets + repair-retry fixed the symptom (silently accepting
+    // schema-noncompliant text), not this. Confirmed against the real outbound HTTP body
+    // in adapter_gemini_wire_body.test.ts, not inferred from SDK docs.
+    const output = req.responseSchema ? Output.object({ schema: jsonSchema(req.responseSchema) }) : undefined
 
     const tools =
       req.tools?.length
@@ -51,10 +73,8 @@ export const adapterGemini: Adapter = {
       messages: req.messages,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       providerOptions: { google: googleOptions } as any,
-      ...(req.responseSchema && {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        responseFormat: { type: 'json', schema: req.responseSchema } as any,
-      }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ...(output && { output: output as any }),
       maxOutputTokens: req.maxOutputTokens ?? meta.maxOutputTokens,
       temperature: req.temperature,
       tools,

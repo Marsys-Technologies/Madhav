@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-08-19T22:41:37Z",
+  "generated_at": "2026-08-21T05:30:00Z",
   "generator_version": "1.0",
   "entry_count": 128,
-  "fingerprint": "28b26a3b1d2c63a5cb1d1a17a1a587a28940165708a35e34926f4611d3fe38ef",
+  "fingerprint": "4ae7534d3b0faf48e7b028f48cc856846c7d84b5523ae350a2b2dccac929339c",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1668,7 +1668,7 @@
     {
       "canonical_id": "PARIPRASHNA_ASBUILT_BASELINE",
       "path": "00_ARCHITECTURE/PARIPRASHNA_ASBUILT_BASELINE_v1_0.md",
-      "version": "1.0",
+      "version": "1.2",
       "status": "LIVING",
       "layer": "governance",
       "expose_to_chat": false,
@@ -1676,8 +1676,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "b1a6b87fa10885a85216372916eca98b3bad7fb518a1597fc6853038c28cff81",
-      "native_id": "project"
+      "fingerprint": "32bd2b7d457391d60ed0507c23b5573f61ff34a06a9562dc960bad486ae4eec3",
+      "native_id": "project",
+      "last_verified_session": "PARIPRASHNA-P2-CLOSE-2026-08-21"
     },
     {
       "canonical_id": "PARIPRASHNA_DECISION_REGISTER",
@@ -1779,8 +1780,10 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "a6646b1da2f0964b52ac9b0b5f6adfc2800fe9ab28e0507eb36db1d631d28ad8",
-      "native_id": "project"
+      "fingerprint": "bd8f590c3b01a6ca769cbe28871676a15cf435a3d388fff92962efcd4fb9ff59",
+      "native_id": "project",
+      "last_verified_session": "PARIPRASHNA-P3-PREFLIGHT-2026-08-21",
+      "last_verified_on": "2026-08-21"
     },
     {
       "canonical_id": "PARIPRASHNA_SWARM_PLAN_AMENDMENTS",
@@ -1793,9 +1796,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "2e3bf7bb322540bead21d758a54fd005d0f18955d562cd85d4c405c9a4943fcc",
-      "last_verified_session": "PARIPRASHNA-DD16-DD17-EXECUTE-DIAGNOSTIC-2026-08-21",
-      "last_verified_on": "2026-08-21",
+      "fingerprint": "1f9ef2d47291a42029616c70e42e9308065a2fd9f04b188afc8c9dd89cde8c7e",
+      "last_verified_session": "PARIPRASHNA-P3-PREFLIGHT-PART-D",
+      "last_verified_on": "2026-08-22",
       "native_id": "project"
     },
     {

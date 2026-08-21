@@ -57,6 +57,25 @@ WATCHDOG_STALE_THRESHOLD_S = 90
 # every cycle). Not read by the projector; collect.py owns it exclusively.
 MIRROR_FETCH_STATE_JSON = os.path.join(RUNTIME_DIR, "mirror_fetch_state.json")
 
+# Durable, git-verified record of which merge commit completed which lane. Lane completion
+# is a PERMANENT fact, but it was being derived from a ROLLING `gh pr list --limit N`
+# window -- so once the six phase PRs (#1349..#1365) aged out past #1368, every P0/P1/P2
+# lane silently reverted MERGED -> UNOBSERVABLE and the board "forgot" two shipped phases.
+# Recording (lane -> merge commit) here and re-verifying ancestry against the mirror every
+# cycle makes the evidence window-independent while keeping it DERIVED: git stays the
+# authority and a rewritten history would correctly revoke the state.
+LANE_EVIDENCE_JSON = os.path.join(RUNTIME_DIR, "lane_evidence.json")
+
+# Liveness beat, distinct from heartbeat.json. heartbeat.json is written only when a cycle
+# COMPLETES, so a slow-but-perfectly-healthy cycle is indistinguishable from a dead process
+# to anything watching it -- and the watchdog was consequently SIGKILLing working daemons
+# mid-cycle (measured 2026-08-21: a 77s cycle + 20s sleep = 97s apparent age, past the 90s
+# threshold; 7 more cycles came within 20s of it). This file is stamped at cycle start and
+# between collector steps, so "alive and working" and "finished a cycle" stop being the
+# same signal.
+ALIVE_JSON = os.path.join(RUNTIME_DIR, "alive.json")
+ALIVE_STALE_THRESHOLD_S = 90
+
 # Item (b): written by tracker-stop BEFORE it boots the three launchd jobs out, cleared by
 # tracker-start once the daemon is confirmed healthy again. Its presence at daemon-startup
 # time is what lets trackerd distinguish "this gap was requested" from "this gap is an

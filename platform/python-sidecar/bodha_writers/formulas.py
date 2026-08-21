@@ -47,9 +47,19 @@ VERSION_REMEDY_LEVERAGE_JOIN_FORMULA = "v1.0"
 # ──────────────────────────────────────────────────────────────────────────────
 
 # Dignity score lookup (A10 §4 table)
+#
+# F-62: the canonical key is "moolatrikona" — the spelling
+# `brahmagyan.dignity_oracle.classify_dignity` actually emits and the spelling
+# stored in `chart_facts.graha_dignity_per_varga`. This table previously carried
+# only "mooltrikona" (no 'a'), so every moolatrikona graha missed the lookup and
+# fell to the caller's 0.50 neutral default — scoring BELOW the plain "own"
+# (0.85) it would have received before the oracle learned the tier at all.
+# "mooltrikona" is retained as a same-valued legacy alias so any historic caller
+# still passing that string does not regress; nothing emits it.
 DIGNITY_SCORE: dict[str, float] = {
     "exalted":       1.00,
-    "mooltrikona":   0.95,
+    "moolatrikona":  0.95,
+    "mooltrikona":   0.95,   # legacy alias — not emitted; see F-62 note above
     "own":           0.85,
     "friend":        0.65,
     "neutral":       0.50,

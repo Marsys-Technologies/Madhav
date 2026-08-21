@@ -19,6 +19,8 @@
     "pipeline:msr-sql-test": "tsx src/scripts/test/msr_sql_smoke.ts",
     "audit:replay": "tsx scripts/audit/replay.ts",
     "audit:smoke": "tsx scripts/audit/smoke.ts",
+    "codegen:signal-glossary": "tsx scripts/generate_signal_glossary_mirror.ts",
+    "codegen:signal-glossary:check": "tsx scripts/generate_signal_glossary_mirror.ts --check",
     "codegen:vidhi": "tsx scripts/generate_vidhi_registry_mirror.ts",
     "codegen:vidhi:check": "tsx scripts/generate_vidhi_registry_mirror.ts --check",
     "codegen:projections": "tsx --conditions=react-server scripts/manifest/generate_projections.ts",

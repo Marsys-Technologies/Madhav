@@ -57,12 +57,18 @@ Authority: KALA_W2_FIELD_DESIGN_v1_0.md §5.1–§5.4, §7.4, §8.3, §9.4.
 from __future__ import annotations
 
 import bisect
+import contextlib
 import hashlib
+import heapq
 import json
 import logging
 import math
+import os
+import struct
+import tempfile
+import uuid
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Mapping, Optional, Sequence
+from typing import Any, Iterable, Iterator, Mapping, Optional, Sequence
 
 import numpy as np
 
@@ -205,9 +211,145 @@ class FieldPins:
         return 'kfs_' + hashlib.sha256(payload.encode('utf-8')).hexdigest()[:32]
 
 
+def _positive_int_env(name: str, default: int) -> int:
+    """Read a positive-int tuning knob, falling back to `default` on anything
+    unparseable or non-positive rather than crashing a build over a typo'd env."""
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        logger.warning('%s=%r is not an integer — using default %d', name, raw, default)
+        return default
+    if value <= 0:
+        logger.warning('%s=%d is not positive — using default %d', name, value, default)
+        return default
+    return value
+
+
+#: Rows pulled per network round-trip when streaming a hashed table (F-149).
+#: Only ever this many DB rows are materialized at once.
+FETCH_BATCH_ROWS = _positive_int_env('KA_KSHETRA_FETCH_BATCH_ROWS', 20_000)
+
+#: Serialized entries held in RAM before a sorted run is spilled to disk (F-149).
+#: This is the ONLY quantity that bounds `field_content_hash`'s peak memory —
+#: it is deliberately independent of the row count, which is the whole point of
+#: the fix. 250k × ~400B ≈ 100MB, and 10.5M rows spills 42 runs, comfortably
+#: under any open-file limit.
+HASH_SORT_CHUNK_ENTRIES = _positive_int_env('KA_KSHETRA_HASH_SORT_CHUNK', 250_000)
+
+#: Directory for the merge-sort spill files. `None` = the platform default
+#: (`TMPDIR`). Set this when `/tmp` is a small tmpfs — the spill is on the order
+#: of the serialized dataset (~3GB for the native chart's 10.5M rows).
+HASH_SPILL_DIR = os.environ.get('KA_KSHETRA_HASH_SPILL_DIR') or None
+
+#: Explicit I/O buffer per spill run. Pinned rather than left to the platform
+#: default because that default is `st_blksize`, which is 4KB on ext4 and 128KB
+#: on APFS — a 32x swing in the merge phase's per-run overhead, and the one term
+#: in this function's memory profile that grows with the RUN COUNT rather than
+#: with the chunk. At the shipped 250k chunk, 10.5M rows spill 42 runs = ~2.7MB,
+#: which is noise beside the ~100MB chunk itself.
+_SPILL_BUFFER_BYTES = 1 << 16
+
+_RUN_HEADER = struct.Struct('<III')
+
+
+def _spill_run(entries: list[tuple[str, str, str]], spill_dir: Optional[str]):
+    """Write one already-sorted run to an anonymous temp file and rewind it.
+
+    Length-prefixed rather than delimited: `canonical_json` escapes control
+    characters, so a newline-delimited format would *happen* to work today, but
+    it would be a correctness claim resting on a property of a different
+    function. Explicit lengths cannot be broken by a future serializer change.
+    """
+    fh = tempfile.TemporaryFile(dir=spill_dir, buffering=_SPILL_BUFFER_BYTES)
+    pack = _RUN_HEADER.pack
+    write = fh.write
+    for table, key_json, payload_json in entries:
+        tb = table.encode('utf-8')
+        kb = key_json.encode('utf-8')
+        pb = payload_json.encode('utf-8')
+        write(pack(len(tb), len(kb), len(pb)))
+        write(tb)
+        write(kb)
+        write(pb)
+    fh.flush()
+    fh.seek(0)
+    return fh
+
+
+def _read_run(fh) -> Iterator[tuple[str, str, str]]:
+    """Replay one spilled run in its stored (sorted) order."""
+    unpack = _RUN_HEADER.unpack
+    size = _RUN_HEADER.size
+    read = fh.read
+    while True:
+        head = read(size)
+        if not head:
+            return
+        if len(head) != size:
+            raise RuntimeError('truncated content-hash spill run — refusing to '
+                               'emit a hash over a partial dataset')
+        lt, lk, lp = unpack(head)
+        blob = read(lt + lk + lp)
+        if len(blob) != lt + lk + lp:
+            raise RuntimeError('truncated content-hash spill run — refusing to '
+                               'emit a hash over a partial dataset')
+        yield (blob[:lt].decode('utf-8'),
+               blob[lt:lt + lk].decode('utf-8'),
+               blob[lt + lk:].decode('utf-8'))
+
+
+def _sorted_hash_entries(
+    rows: Iterable[tuple[str, tuple, Mapping[str, Any]]],
+    chunk_entries: int,
+    spill_dir: Optional[str],
+) -> Iterator[tuple[str, str, str]]:
+    """Yield every entry in total `sorted()` order using bounded memory.
+
+    A textbook external merge sort: accumulate at most `chunk_entries`
+    serialized entries, sort that run, spill it, and finally k-way merge the
+    runs. The emitted order is the total order over the multiset of entries, so
+    it does NOT depend on `chunk_entries` — which is what makes the resulting
+    digest identical to the pre-F-149 in-memory `sorted()` implementation and
+    identical across every batch size a runtime might pick.
+
+    Fast path: a dataset that fits in one chunk never touches disk at all, so
+    small builds and every unit test behave exactly as before.
+    """
+    runs: list[Any] = []
+    buf: list[tuple[str, str, str]] = []
+    try:
+        for table, key, payload in rows:
+            buf.append((table, canonical_json(list(key)), canonical_json(dict(payload))))
+            if len(buf) >= chunk_entries:
+                buf.sort()
+                runs.append(_spill_run(buf, spill_dir))
+                buf = []
+        buf.sort()
+        if not runs:
+            # Single-chunk fast path — no spill file is ever created.
+            yield from buf
+            return
+        if buf:
+            runs.append(_spill_run(buf, spill_dir))
+        buf = []
+        logger.info('field_content_hash: merging %d spilled runs (chunk=%d entries)',
+                    len(runs), chunk_entries)
+        yield from heapq.merge(*(_read_run(fh) for fh in runs))
+    finally:
+        for fh in runs:
+            with contextlib.suppress(Exception):
+                fh.close()
+
+
 def field_content_hash(
     pin_identity: str,
     rows: Iterable[tuple[str, tuple, Mapping[str, Any]]],
+    *,
+    chunk_entries: Optional[int] = None,
+    spill_dir: Optional[str] = None,
 ) -> str:
     """§7.4's FULL hash: the pin identity plus a canonical serialization of every
     stage 0–8 row, sorted by (table_name, natural key).
@@ -215,7 +357,8 @@ def field_content_hash(
     `rows` yields (table_name, natural_key_tuple, payload) with the volatile
     columns (`id`, `computed_at`, `created_at`, `released_at`) ALREADY EXCLUDED by
     the caller — including them would make two identical builds hash differently
-    and turn hash-replay into a permanently-red gate.
+    and turn hash-replay into a permanently-red gate. `rows` MAY be a lazy
+    iterator (and, from `KaKshetraWriter`, is one).
 
     Sorting by the natural key (not by insertion order) is what makes the hash
     independent of substep dispatch order, which the design requires because the
@@ -224,13 +367,29 @@ def field_content_hash(
     THIS is the value the hash-replay CI compares and the value CIRCULARITY GUARD
     CG-1 is stated over. Comparing the pin identity alone would be a claim with no
     detector behind it (§N.8).
+
+    ── F-149: bounded memory, UNCHANGED digest ──────────────────────────────
+    This used to be `sorted(<generator>)` over a caller-materialized list, i.e.
+    three simultaneous full copies of the dataset (the caller's list, the
+    generator's serialized tuples, and `sorted`'s output). At the native chart's
+    ~10.5M stage-0–8 rows that OOM'd, which is the confirmed root cause of the
+    F-141 `ka_kshetra` incident — a rebuild was *deterministically* impossible.
+
+    The sort is now an external merge sort bounded by `chunk_entries`, and the
+    caller streams its rows from server-side cursors. The digest is byte-identical
+    to the old implementation for every input, at every chunk size: the merge
+    reproduces the same total order `sorted()` produced. That equality is asserted
+    directly by `TestContentHash` against a reference implementation of the old
+    algorithm, so this is a memory fix and NOT a hash-version change — every
+    previously stored `kfh_` value stays comparable.
     """
-    entries = sorted(
-        (table, canonical_json(list(key)), canonical_json(dict(payload)))
-        for table, key, payload in rows
-    )
     digest = hashlib.sha256()
     digest.update(pin_identity.encode('utf-8'))
+    entries = _sorted_hash_entries(
+        rows,
+        chunk_entries if chunk_entries is not None else HASH_SORT_CHUNK_ENTRIES,
+        spill_dir if spill_dir is not None else HASH_SPILL_DIR,
+    )
     for table, key_json, payload_json in entries:
         digest.update(b'\x1e')
         digest.update(table.encode('utf-8'))
@@ -743,17 +902,93 @@ def require_baseline(
 
 # ── DB loaders (lane-boundary crossings are TABLE reads or published fns) ────
 
-def _rows(cur) -> list[dict]:
+def _normalize_batch(cur, fetched, cols: Optional[list[str]] = None) -> list[dict]:
     """Normalize psycopg2 tuple rows and psycopg3/dict-cursor rows alike —
     the same defensive shape `ka_gochara_sweep` uses, because the sidecar runs
     against both cursor factories depending on entry point."""
-    fetched = cur.fetchall()
     if not fetched:
         return []
     if isinstance(fetched[0], dict):
         return [dict(r) for r in fetched]
-    cols = [d[0] for d in cur.description]
+    if cols is None:
+        cols = [d[0] for d in cur.description]
     return [dict(zip(cols, r)) for r in fetched]
+
+
+def _rows(cur) -> list[dict]:
+    """Eager fetch — correct and preferred for the SMALL, bounded lookups
+    (weights, clocks, one snapshot row) this module's loaders do.
+
+    Do NOT use it for a per-chart fact table: `ka_kshetra`'s largest hashed
+    tables run to millions of rows for a real chart, and `fetchall()` there is
+    half of the F-149 OOM. Use `iter_rows` + `streaming_cursor` for those.
+    """
+    return _normalize_batch(cur, cur.fetchall())
+
+
+def iter_rows(cur, batch_size: Optional[int] = None) -> Iterator[dict]:
+    """Stream normalized dict rows, materializing at most `batch_size` at once.
+
+    Falls back to `_rows` for any cursor without `fetchmany` (the in-memory test
+    fake is one), so this is safe to use unconditionally — but note the fallback
+    is only memory-safe because such cursors hold small fixtures. The real
+    memory guarantee comes from pairing this with `streaming_cursor`: on a
+    CLIENT-side psycopg cursor, libpq has already buffered the entire result set
+    before `fetchmany` returns its first batch, so batching alone would not have
+    fixed F-149.
+    """
+    fetchmany = getattr(cur, 'fetchmany', None)
+    if fetchmany is None:
+        yield from _rows(cur)
+        return
+    size = batch_size if batch_size is not None else FETCH_BATCH_ROWS
+    cols: Optional[list[str]] = None
+    while True:
+        fetched = fetchmany(size)
+        if not fetched:
+            return
+        if cols is None and not isinstance(fetched[0], dict):
+            cols = [d[0] for d in cur.description]
+        yield from _normalize_batch(cur, fetched, cols)
+
+
+@contextlib.contextmanager
+def streaming_cursor(conn, name_hint: str = 'kfh', itersize: Optional[int] = None):
+    """A server-side (named) cursor when the driver supports one, else a plain one.
+
+    A named cursor is what actually bounds memory: it becomes a `DECLARE ...
+    CURSOR` + `FETCH FORWARD n`, so the client never holds more than one batch.
+    `DECLARE` is read-only and participates in the caller's transaction, so this
+    stays inside the FROZEN orchestrator contract — the writer neither commits
+    nor closes `ctx.db_conn`, it only opens and closes its own cursor.
+
+    Cursor names are UUID-suffixed because a named cursor's name must be unique
+    within its transaction, and this is called once per hashed table.
+    """
+    size = itersize if itersize is not None else FETCH_BATCH_ROWS
+    cur = None
+    try:
+        try:
+            cur = conn.cursor(name=f'{name_hint}_{uuid.uuid4().hex}')
+        except Exception as exc:  # driver has no named cursors — degrade, don't fail
+            # Logged rather than silent: a fallback to a client-side cursor
+            # silently reinstates the F-149 memory profile on a big table, and a
+            # degradation nobody can see is how that defect survived the first time.
+            logger.warning('no server-side cursor for %s (%s) — falling back to a '
+                           'client-side cursor; memory is NOT bounded on this path',
+                           name_hint, exc)
+            cur = None
+        if cur is None:
+            cur = conn.cursor()
+        else:
+            with contextlib.suppress(Exception):
+                cur.itersize = size
+        yield cur
+    finally:
+        close = getattr(cur, 'close', None)
+        if close is not None:
+            with contextlib.suppress(Exception):
+                close()
 
 
 def resolve_weights_pin(conn) -> tuple[str, dict[str, float]]:
@@ -1074,6 +1309,7 @@ __all__ = [
     'SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT',   # re-exported for writer convenience
     'ProvenanceReconciliationError', 'ClassSkipped', 'UpstreamStageIncomplete',
     'canonical_json', 'FieldPins', 'field_content_hash',
+    'iter_rows', 'streaming_cursor',
     'Primitive', 'EnvelopeIndex', 'LadderPeriod', 'FieldEvaluator',
     'assert_provenance_reconciles', 'require_baseline', 'require_event_shape',
     'resolve_weights_pin', 'load_class_lifetime_count', 'load_event_shape',

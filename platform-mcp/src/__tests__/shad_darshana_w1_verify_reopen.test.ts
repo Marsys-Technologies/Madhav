@@ -76,7 +76,7 @@ type TransitMode =
 
 function mockFetch(opts: {
   transit?: TransitMode
-  panchanga?: 'ok' | 'dispatch_fail' | 'overlay_failed'
+  panchanga?: 'ok' | 'dispatch_fail' | 'overlay_failed' | 'overlay_not_found'
   varshaRow?: Record<string, unknown> | null
 }) {
   const transit = opts.transit ?? 'ok'
@@ -144,12 +144,14 @@ function mockFetch(opts: {
             hora: [{ label: 'hora_mars', start_utc: iso(-2 * H), end_utc: iso(2 * H) }],
             planets: { moon: { name: 'Moon', sign_id: 6, sign_name: 'Virgo', nakshatra_id: 13, nakshatra_name: 'Hasta' } },
           },
-          native_context: panchanga === 'overlay_failed'
+          native_context: panchanga === 'overlay_failed' || panchanga === 'overlay_not_found'
             ? null
             : { chart_id: CHART, moon_sign_id: MOON_SIGN, moon_sign_name: 'Aquarius', birth_nakshatra_id: 25, birth_nakshatra_name: 'Purva Bhadrapada' },
           native_context_error: panchanga === 'overlay_failed'
             ? "TypeError: compute_panchang() got an unexpected keyword argument 'tz_offset_minutes'"
-            : null,
+            : panchanga === 'overlay_not_found'
+              ? `HTTP 404: Chart '${CHART}' not found`
+              : null,
         }
         break
       case 'marsys://tool/L1/get_panchanga':
@@ -339,6 +341,19 @@ describe('Root Cause B — items 29 + 32: the single-date panchāṅga joins act
       .toContain('tz_offset_minutes')
     // chandrāṣṭama still works, because L1 is its authority — not the failed overlay.
     expect(result.chandrashtama?.natal_moon_sign_source).toBe('l1_chart_facts')
+  })
+
+  it('F-38: an existence-oracle upstream error is bounded, not echoed verbatim (end-to-end)', async () => {
+    vi.stubGlobal('fetch', mockFetch({ panchanga: 'overlay_not_found' }))
+    const result = await computeKalaNow(CHART, {}, PRINCIPAL)
+
+    const whole = JSON.stringify(result)
+    // The raw upstream string leaked BOTH into provenance_envelope AND the chandrāṣṭama
+    // coverage reason. Neither may carry the transport status or the chart identity.
+    expect(whole).not.toContain('HTTP 404')
+    expect(whole).not.toContain('not found')
+    expect(result.provenance_envelope.panchanga_native_context_error)
+      .toBe('the birth-chart overlay was not available for this chart on this call')
   })
 
   it('a genuine dispatch failure is still reported, and is NOT worded as a bare transient', async () => {

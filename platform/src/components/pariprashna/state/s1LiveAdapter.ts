@@ -199,6 +199,10 @@ export function makeS1LiveAdapter(
         // `content` (present only when the reader-facing text differs from
         // the raw commit text — a verse with its `>` markers stripped, a
         // heading with its `#`s stripped) wins over `text` when present.
+        // `ev.table_spans` (DD-22, approach (c)) is ABSENT unless the block's
+        // text contains an embedded table — `undefined` here means
+        // `ParagraphBlock` renders exactly as it did before this field
+        // existed, same discipline as every other field above.
         return [
           {
             type: 'block.commit',
@@ -208,6 +212,7 @@ export function makeS1LiveAdapter(
             role: ev.role,
             html: ev.content ?? ev.text,
             table: ev.table,
+            tableSpans: ev.table_spans,
             gapText: ev.gap_text,
             eventId,
           },

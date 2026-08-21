@@ -78,7 +78,7 @@
   deity: "Brihaspati"
   remedy_text: "Donate yellow gram (chana dal), turmeric, yellow cloth, or gold on Thursdays. Feed Brahmins or priests. Donate to educational institutions, temples, or vedic scholars. Feeding birds (especially peacocks) with grain is also effective."
   mantra_sanskrit: "ॐ गुरवे नमः"
-  mantra_transliteration: "Om Guruve Namah"
+  mantra_transliteration: "Om Gurave Namah"
   ingredients_jsonb: {"items": ["chana dal/yellow gram (500g)", "turmeric", "yellow cloth", "gold ornament or coin"], "recipients": ["Brahmin", "teacher/guru", "temple priest", "child", "peacock"], "day": "Thursday"}
   timing_rules_jsonb: {"day": "Thursday", "time": "morning", "frequency": "weekly during Jupiter dasha", "minimum_repetitions": 19}
   cost_tier: "accessible"
