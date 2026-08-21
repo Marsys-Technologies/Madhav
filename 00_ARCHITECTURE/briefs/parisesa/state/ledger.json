@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 971,
+  "event_count": 975,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1411,14 +1411,14 @@
     "F-178": {
       "confidence": "HIGH",
       "disposition": "PARKED",
-      "event_sha256": "43a57bfa5efc8e5fda664a2233804c561dbbdac427d99b121309189678415e57",
+      "event_sha256": "82bdffa89992ef9e5ea96016cf93aa7b179cceacc4298373923d874d69a0ee68",
       "event_type": "finding_status",
-      "evidence_summary": "SEVERITY CORRECTED (was MEDIUM, confidence 'file not currently loaded live'). GA-5 review of PR #1429 independently found: l0_remedy_loader.py's __main__ calls load_remedies() with default file_glob='*.yaml' -- the fabricated 'BPHS Ch.91 v.35-38' quote on mnt_saturn_shani_beeja_008 in mantras.yaml is reachable via the DEFAULT invocation path today, not gated behind a hypothetical future glob change as originally filed. Upgraded to HIGH confidence, same urgency class as F-23/F-180.",
+      "evidence_summary": "Fixed as PR #1436 (open, CI green, awaiting GA-5). Cited defect confirmed: mnt_saturn_shani_beeja_008's fabricated verbatim 'BPHS Ch.91 v.35-38' quote. Scope expanded on investigation: all 9 bija rows (not 1) had the same fabricated-verbatim-quote construction, with verse refs colliding with unrelated non-bija rows in the same file -- all 9 reattributed byte-identical to PR #1429's CLASSICAL_REF_BIJA, fabricated quotes replaced with an honest 'no verbatim classical attestation located' statement (not an invented replacement, per SS N.7 item 6). R-1's transliteration defect NOT present in this file (Saturn already correct), but 5 OTHER script-coherence defects found and fixed in the same sweep (Guruve/Gurave, Bhram-Bhroum/Bhraam-Bhraum, Sram/Sraam, Bhuta-Krit/Bhuta-Krid, Shanir-Ahukethavah/Shani-Rahu-Ketavah). Premise correction: orchestrator loads only tantric.yaml, production DB has 0 mnt_* rows -- armed-but-unserved, confirming original F-178 confidence upgrade was about the DEFAULT loader invocation path being reachable, not about current production state. New test tests/l0/test_f178_f180_mantra_transliteration_and_citation.py, 28 passed, 1 declared skip, all 11 fixes mutation-tested and detected. Deliberately NOT touched: 'Om Shanaye Namah' in bphs_pilot_rules.yaml/bphs_batch_05.yaml IS the correct short nama-mantra per R-1 -- pinned by a test so it doesn't get incorrectly 'fixed' by a future pass.",
       "finding_id": "F-178",
-      "next_action": "Correct or remove the fabricated BPHS Ch.91 v.35-38 quote per R-2's reattribution logic -- now urgent, not deferred.",
-      "pr_url": null,
-      "prev_sha256": "f653ea74132f12a2a22820e0c15c53467f4e79efd3564df1e412a4f421c73b6f",
-      "seq": 964,
+      "next_action": "Dispatch GA-5 review for PR #1436 (combined with F-180).",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1436",
+      "prev_sha256": "bd203d3c409c3a8849a5d532e1c40505e67f2fe6e246381a45881561f1f6b881",
+      "seq": 972,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -1455,14 +1455,14 @@
     "F-180": {
       "confidence": "HIGH",
       "disposition": "PARKED",
-      "event_sha256": "9e5571cda70ac83cbc611ec0ffaaf6fc52a2e5d2530e7034975333877d6b66aa",
+      "event_sha256": "bc366747250d6e6cd0a3ed079e0ff2c0f00a60036c43f0992115c29de243b449",
       "event_type": "finding_status",
-      "evidence_summary": "Newly discovered by GA-5 review of PR #1429, disclosed as its own finding. 00_ARCHITECTURE/CONDUCTOR/ws3/bphs_canon_batch_04.yaml:635 -- LIVE-LOADED (via bodha/_grounding_engine.py's unexcluded *.yaml glob, unlike F-178's dormant mantras.yaml) -- asserts as classical BPHS sloka the exact defect PR #1429 just fixed elsewhere: Saturn bija given as '...Sah Shanaye Namah' instead of '...Sah Shanaischaraya Namah'. PLUS a second, previously undiscovered instance of the same defect class on the same file: Mercury's bija mantra should read 'Budhaya' not 'Buddhaya' (an extra syllable/consonant doubling error, same internal-consistency-decisive reasoning as R-1). Same R-1/R-2 reattribution logic from OWNER_RULINGS_20260821.md applies directly -- this is not a new scholarly question, just a second location needing the same already-ruled fix.",
+      "evidence_summary": "Fixed as PR #1436 (open, CI green, awaiting GA-5). Both cited defects confirmed and fixed (Shanaye->Shanaischaraya, Buddhaya->Budhaya). Complication correctly flagged rather than glossed over: this file is NOT an immutable snapshot (WS3 method lists the dir as may-touch, no checksum), but rule_id BPHS.82.8.1/verse_ref 82.8 are load-bearing -- pinned 5x in l2_remediation_grounded.py and served as verse_citation by _grounding_engine.py -- so R-2's reattribution was applied as a caveats ADDITION rather than replacing the identifiers, which are asserted unchanged by a pinning test. text_excerpt left byte-intact and the cross-corpus repetition-count/chapter divergence with mantras.yaml disclosed rather than silently reconciled.",
       "finding_id": "F-180",
-      "next_action": "Apply R-1/R-2's already-ruled correction to bphs_canon_batch_04.yaml:635 (Saturn transliteration + Mercury Budhaya/Buddhaya correction + citation reattribution). No new owner ruling needed -- R-1/R-2 already cover this.",
-      "pr_url": null,
-      "prev_sha256": "43a57bfa5efc8e5fda664a2233804c561dbbdac427d99b121309189678415e57",
-      "seq": 965,
+      "next_action": "Dispatch GA-5 review for PR #1436 (combined with F-178).",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1436",
+      "prev_sha256": "82bdffa89992ef9e5ea96016cf93aa7b179cceacc4298373923d874d69a0ee68",
+      "seq": 973,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -1478,6 +1478,36 @@
       "pr_url": null,
       "prev_sha256": "8b515ee1154f5ef40c5e6c326107ed20255c239a59b849d16fdc56cc2e3be255",
       "seq": 968,
+      "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-182": {
+      "confidence": "HIGH",
+      "disposition": "PARKED",
+      "event_sha256": "c20465bf7eb61052b7db7e41f426f523a7fb67dc9485862e56c5391986098364",
+      "event_type": "finding_status",
+      "evidence_summary": "Newly discovered during F-178/F-180 execution (PR #1436), disclosed as its own finding rather than silently scoped out. The sanaye/BPHS-misattribution defect class (R-1/R-2 from OWNER_RULINGS_20260821.md) is genuinely widespread across this corpus, beyond the 3 locations fixed so far (l0_remedy_corpus.py via #1429, mantras.yaml + bphs_canon_batch_04.yaml via #1436). CONFIRMED LIVE IN PRODUCTION: 4 rows -- jupiter_wealth_mantra_01, jupiter_spirituality_puja_01, rahu_career_mantra_01, tan_rahu_graha_shanti_002. Also present in 8 more YAML files, plus code files l4_mitigation.py, l2_remediation_grounded.py, and l0_remedy_corpus.py itself at lines 1563/1789/1850/1972 (instances NOT covered by #1429's fix -- meaning #1429 did not achieve full coverage of its own target file). HIGH confidence/priority given 4 confirmed-live rows; the same already-ruled R-1/R-2 correction applies, no new scholarly judgment needed, but this is a real sweep-the-whole-corpus job, not a two-location fix.",
+      "finding_id": "F-182",
+      "next_action": "Full corpus sweep applying R-1/R-2 to all remaining identified locations, prioritizing the 4 live-production rows first.",
+      "pr_url": null,
+      "prev_sha256": "bc366747250d6e6cd0a3ed079e0ff2c0f00a60036c43f0992115c29de243b449",
+      "seq": 974,
+      "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-183": {
+      "confidence": "MEDIUM",
+      "disposition": "PARKED",
+      "event_sha256": "ca06f582329ee6c4fa499ca736f76205ab679ea542e26fb6a5f5e01dc452a18d",
+      "event_type": "finding_status",
+      "evidence_summary": "Newly discovered during F-178/F-180 execution (PR #1436), disclosed as its own finding. Two loader robustness gaps, unrelated to the mantra content defect itself: (1) the remedy-corpus loader's ON CONFLICT DO UPDATE clause skips citation columns, meaning a future correction to source_citation/classical_ref-style fields on an existing remedy_id would silently fail to apply on reseed; (2) a [:500] string-truncation call crashes on a YAML null value instead of handling it gracefully. Neither is user-facing-content-incorrect on its own, but (1) specifically risks masking a FUTURE citation fix (exactly the class of fix this whole R-1/R-2/R-4 wave has been making) the same way #1429's own migration necessity was discovered -- this pattern will recur for every future mantra-corpus correction unless fixed.",
+      "finding_id": "F-183",
+      "next_action": "Fix the ON CONFLICT DO UPDATE column list to include citation fields, and add a null-safe guard before the [:500] truncation.",
+      "pr_url": null,
+      "prev_sha256": "c20465bf7eb61052b7db7e41f426f523a7fb67dc9485862e56c5391986098364",
+      "seq": 975,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -2719,8 +2749,8 @@
   },
   "findings_morning_ship_ready_count": 2,
   "findings_terminal_count": 136,
-  "journal_head_seq": 971,
-  "journal_head_sha256": "bd203d3c409c3a8849a5d532e1c40505e67f2fe6e246381a45881561f1f6b881",
+  "journal_head_seq": 975,
+  "journal_head_sha256": "ca06f582329ee6c4fa499ca736f76205ab679ea542e26fb6a5f5e01dc452a18d",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
