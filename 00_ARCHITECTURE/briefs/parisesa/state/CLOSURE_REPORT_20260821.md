@@ -319,6 +319,12 @@ cross-service auth-validation race against `amjis-web`'s own concurrent deploy i
 that same workflow run. Confirmed live: production is currently on the revision
 from the deploy that passed cleanly; zero production impact at any point.
 
+**Final state confirmed at closure**: `main` HEAD = `e40ecc075c3f6a27e9c9da2232f6e3a064d143d6`
+(the #1379/F-123 merge, the session's last). Its `Deploy to Cloud Run` run
+(`32430596208`) completed successfully. Production is in sync with `main` — no
+merge landed without its corresponding deploy completing (successfully or with the
+one investigated-and-explained transient failure above) before the campaign closed.
+
 ## 6. Cross-campaign log
 
 Zero violations. PARIPRAŚNA (stranger corpus) was read-only referenced where its
@@ -339,4 +345,44 @@ resolved by refreshing the heartbeat — not an actual session death/restart).
 
 ## 8. Recommendation
 
-*(to be finalized)*
+The campaign reached natural completion ahead of the 07:00 local deadline: merge
+queue drained (21/21 session PRs merged), production confirmed in sync with the
+final commit, findings ledger at 113/142 terminal (was 85/142 at kickoff), and the
+coordination lease released. Nothing here awaits owner sign-off — this section is
+what the next session (or the owner, whenever they next look) should know to pick
+up cleanly.
+
+**For the next PARIŚEṢA session:**
+
+1. **29 findings remain genuinely parked**, each with a specific, non-generic
+   reason recorded in §4 above (owner-authority-specific, substantial new
+   design+build work, GA-3 protected-data packet authorship, external
+   live-session/infra dependencies, or a real gating chain). None of these are
+   "forgotten" — each was actively re-verified this session, not just carried
+   forward unexamined.
+2. **Highest-value next actions, roughly in order of leverage:**
+   - Author the GA-3 packets for the 4 chart-482012f1 L5/data-rebuild items
+     (F-104, F-116, F-63, F-71) — the code fixes are already shipped; only the
+     rebuild execution is missing, and one properly-authored packet may cover all
+     four in a single rebuild pass.
+   - Author the minimal GA-3 packet for F-54 (resume + run the
+     `panchanga-daily-refresh` scheduler job) — small, bounded, well-understood.
+   - F-131 has a concrete two-option implementation path already recorded
+     (write-path glue + rebuild, or an immediate serve-time filter) — the most
+     "shovel-ready" of the substantial design+build items.
+   - F-06/RATE-07 architecture authority genuinely needs the owner's own ruling —
+     F-91 is gated behind it; resolving F-06 unblocks two findings, not one.
+3. **Structural fix worth doing, not just re-doing manually again**: the
+   PR-merged → ledger-status sync gap recurred twice this session (§4). A cheap
+   guard — e.g. a script that diffs `gh pr list --state merged` referencing an
+   F-number against the ledger's own terminal set — would catch this
+   mechanically instead of depending on a manual sweep remembering to check.
+4. **No cross-campaign cleanup needed.** PARIPRAŚNA and EKAVĀKYATĀ namespaces were
+   read-only referenced only, zero violations (§6).
+
+This session's own operating discipline — escalating the v3.0 scope confirmation
+before acting, self-catching and correcting both the F-05-et-al. misclassification
+and the two ledger-sync gaps, and declining to rush the protected-data and
+substantial-design items under deadline pressure rather than trading correctness
+for a higher terminal-count number — is offered as the standard the next session
+should hold itself to, not just this one.

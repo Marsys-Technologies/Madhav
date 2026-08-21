@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 845,
+  "event_count": 846,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -2017,8 +2017,8 @@
   },
   "findings_morning_ship_ready_count": 0,
   "findings_terminal_count": 113,
-  "journal_head_seq": 845,
-  "journal_head_sha256": "5328dea857ad8a89b690b5a5467dc36fc73709cf3a5351f531e6fad6446106d8",
+  "journal_head_seq": 846,
+  "journal_head_sha256": "67c2872bd8052bbf6472c5ebbf5ef7ecd91104d6e2f31ff8919e787b25f3dcf0",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
@@ -2167,6 +2167,16 @@
       "seq": 796,
       "session": "PARISESA-V4-CONDUCTOR-20260820T191407Z",
       "status": "STARTED"
+    },
+    "GA-4-PROGRAMME-CLOSE": {
+      "closed_at_utc": "2026-08-21T00:12:00Z",
+      "event_sha256": "67c2872bd8052bbf6472c5ebbf5ef7ecd91104d6e2f31ff8919e787b25f3dcf0",
+      "event_type": "phase_transition",
+      "evidence": "PARISESA-V4-CONDUCTOR-20260820T191407Z natural completion. 21/21 session PRs merged, merge queue empty, production confirmed in sync with main (e40ecc075, Deploy to Cloud Run run 32430596208 success). Findings ledger: 113/142 terminal (SERVICE_CLOSED 83 + CONTROL_CLOSED 25 + HISTORICAL_STALE_CLOSED 3 + NOT_APPLICABLE_CLOSED 2), 29 explicitly parked with recorded per-finding rationale (DECISION_PARKED 17, DATA_PARKED 7, LANDED 2, EXTERNAL_HOLD 2, BLOCKED_NO_IMPL 1). Coordination lease PARISESA-V4-CONDUCTOR-20260820T191407Z released on campaign-coordination. Closure report finalized at 00_ARCHITECTURE/briefs/parisesa/state/CLOSURE_REPORT_20260821.md (renamed from _DRAFT). Cross-campaign violations: 0. Closed ahead of the 07:00 IST deadline (actual: ~05:40 IST).",
+      "phase": "GA-4-PROGRAMME-CLOSE",
+      "prev_sha256": "5328dea857ad8a89b690b5a5467dc36fc73709cf3a5351f531e6fad6446106d8",
+      "seq": 846,
+      "status": "CLOSED"
     },
     "P-1": {
       "detail": "Branch-rescue/preservation steps verified DONE on origin. Two items not independently re-verified this session: local-main fast-forward (P-1.7 back half) and coord-edit worktree fast-forward (P-1.8) -- inherited from prior lineage's RESUME.md claim only, not itself journaled evidence. EKAVAKYATA formal park-tag (P-1.4) not found, flagged as gap. Proceeding to G0 / Phase 0 with these three items carried as open verification debt, not blockers (none is a merge/deploy/data action).",
