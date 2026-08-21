@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 863,
+  "event_count": 864,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1050,16 +1050,17 @@
     },
     "F-27": {
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "651367590e1bf2f2614072c0cb6151d742e6b1cd28775771962f124cd3080c08",
+      "disposition": "LANDED",
+      "event_sha256": "ab90c17d93d73a0c35a5aa9ff4043263af3645cde95d6aad9531a3a9f071f22e",
       "event_type": "finding_status",
-      "evidence_summary": "Blocked awaiting merge authority for a prior PR per the corpus's own next_action -- an owner/process decision, not a repo-only repair task. A real candidate (par/night-F-27) exists for whenever that authority clears.",
+      "evidence_summary": "Real fix, corrected after a first version was correctly DO-NOT-MERGE'd for a false premise (claimed no derivable domain filter existed; a real indexed join via mimamsa_predictions.domain does). Final version implements the real join-based filter in query_calibration.ts, live-verified (57 total/0 unjoined/9 career), plus wired the two genuinely-real-but-unreachable params (include_held_out, promoted_only) found during review. GA-5 re-review: MERGE, every load-bearing claim independently re-verified (join correctness incl. 1:1 PK fanout check, live DB numbers exact, scope disclosure accurate, multipliers_with_domain genuinely measured not hardcoded, mutation-tested, zero regressions via set-diff against main). Rebased clean onto current main before merge.",
       "finding_id": "F-27",
-      "next_action": "owner confirms merge authority for the prior PR, then rebase par/night-F-27",
-      "prev_sha256": "9ddefbc1344aedbff070f7e50467640657d0b6410f524e4e59ab614bc41a0518",
-      "seq": 748,
-      "source_batch": "round9_triage",
-      "status": "DECISION_PARKED",
+      "next_action": "in merge queue, auto-merge armed",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1406",
+      "prev_sha256": "c485b574796b98bdb8288b7711d2d79ec5fed4e1423d8979cede8028a1414441",
+      "seq": 864,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-28": {
@@ -2086,10 +2087,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 2,
+  "findings_morning_ship_ready_count": 3,
   "findings_terminal_count": 114,
-  "journal_head_seq": 863,
-  "journal_head_sha256": "c485b574796b98bdb8288b7711d2d79ec5fed4e1423d8979cede8028a1414441",
+  "journal_head_seq": 864,
+  "journal_head_sha256": "ab90c17d93d73a0c35a5aa9ff4043263af3645cde95d6aad9531a3a9f071f22e",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
