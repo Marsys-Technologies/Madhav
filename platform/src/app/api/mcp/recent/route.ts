@@ -24,6 +24,7 @@ import { NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
 import { buildEnvelope, buildErrorEnvelope, buildEpistemicsBlock } from '@/lib/mcp/epistemics'
 import { validateServiceToken } from '@/lib/mcp/service_token'
+import { detectEvidenceState, surgicalConfidenceBand } from '@/lib/mcp/evidence_state'
 
 // ── Row shape for query results ──────────────────────────────────────────────
 
@@ -197,12 +198,31 @@ export async function GET(request: Request) {
       }
     })
 
+    // F-161: `confidence_band` was hardcoded 'high' here regardless of whether
+    // any recent queries were actually found — the same §N.8 unearned-grade
+    // defect F-126 fixed in the primitives route. The result carries `queries`
+    // (an array), so `detectEvidenceState` grades it directly: a non-empty
+    // array wins outright as 'present'; an empty array falls through to the
+    // `count` field below (COUNT_KEYS' served-page-size convention) and grades
+    // 'empty'. `count` is added to the served result for this same reason —
+    // without a COUNT_KEYS member, the empty-array case would report
+    // 'indeterminate' and the band would never move off 'high' (§N.8 — a
+    // detector that exists but can never fire is not a fix).
+    const result = { queries, count: queries.length }
+    const evidenceState = detectEvidenceState(result)
+
     return NextResponse.json(
       buildEnvelope({
         trace_id: '',
         audience_tier: audienceTier,
-        epistemics: buildEpistemicsBlock({ surgical: true, confidence_band: 'high' }),
-        result: { queries },
+        epistemics: buildEpistemicsBlock({
+          surgical: true,
+          confidence_band: surgicalConfidenceBand(evidenceState),
+          evidence_state: evidenceState,
+          horizon_days: null,
+          falsifier: null,
+        }),
+        result,
         citations: [],
         plan: null,
         predictions_logged: [],
