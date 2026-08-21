@@ -19,7 +19,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../types.js'
-import { computeKalaNow, registerKalaNowGetTool } from '../tools/kala_views/now.js'
+import { computeKalaNow, registerKalaNowGetTool, sanitizeNativeContextError } from '../tools/kala_views/now.js'
 import { isNoLever } from '../lib/kala_envelope.js'
 
 const TEST_CHART_ID = '00000000-0000-0000-0000-000000000001'
@@ -447,5 +447,119 @@ describe('kala_now_get — tool registration', () => {
     const mockServer = { tool: () => { callCount++ } } as unknown as McpServer
     registerKalaNowGetTool(mockServer, TEST_PRINCIPAL)
     expect(callCount).toBe(1)
+  })
+})
+
+// ── F-38 (PARIŚEṢA-V4): entitlement gate + upstream error-string bounding ─────────
+describe('kala_now_get — F-38 chart entitlement gate', () => {
+  it('denies an unauthorized/nonexistent chart BEFORE any NOW data fetch', async () => {
+    let handler: ((params: Record<string, unknown>) => Promise<Record<string, unknown>>) | null = null
+    const mockServer = {
+      tool: (...args: unknown[]) => { handler = args[3] as typeof handler },
+    } as unknown as McpServer
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes('/api/mcp/authz')) {
+        return { ok: true, json: async () => ({ authorized: false }) } as Response
+      }
+      throw new Error('NOW data fetch must not run after authorization denial')
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    registerKalaNowGetTool(mockServer, TEST_PRINCIPAL)
+
+    const result = await handler!({ chart_id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee' })
+
+    expect(result['isError']).toBe(true)
+    expect(result['structuredContent']).toEqual({
+      type: 'object',
+      object: {
+        ok: false,
+        error: 'AUTHZ_DENIED: not authorized to access this chart',
+        tool: 'kala_now_get',
+        chart_id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+      },
+    })
+    // Exactly one fetch — the authz call — and nothing after it.
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0]?.[0]).toContain('/api/mcp/authz')
+  })
+
+  it('the denial envelope carries no chart data, only the typed error', async () => {
+    let handler: ((params: Record<string, unknown>) => Promise<Record<string, unknown>>) | null = null
+    const mockServer = {
+      tool: (...args: unknown[]) => { handler = args[3] as typeof handler },
+    } as unknown as McpServer
+    vi.stubGlobal('fetch', vi.fn(async () => (
+      { ok: true, json: async () => ({ authorized: false }) } as Response
+    )))
+    registerKalaNowGetTool(mockServer, TEST_PRINCIPAL)
+
+    const result = await handler!({ chart_id: 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee' })
+    const text = JSON.stringify(result)
+    expect(text).not.toContain('gochara_dual_reference')
+    expect(text).not.toContain('provenance_envelope')
+    expect(text).not.toContain('coverage')
+  })
+
+  it('an authorized chart still reaches computeKalaNow (gate is not a blanket deny)', async () => {
+    let handler: ((params: Record<string, unknown>) => Promise<Record<string, unknown>>) | null = null
+    const mockServer = {
+      tool: (...args: unknown[]) => { handler = args[3] as typeof handler },
+    } as unknown as McpServer
+    let sawNonAuthzFetch = false
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.includes('/api/mcp/authz')) {
+        return { ok: true, json: async () => ({ authorized: true }) } as Response
+      }
+      sawNonAuthzFetch = true
+      return { ok: false, status: 503, text: async () => 'down' } as Response
+    }))
+    registerKalaNowGetTool(mockServer, TEST_PRINCIPAL)
+
+    const result = await handler!({ chart_id: 'bbbbbbbb-cccc-4ddd-8eee-ffffffffffff' })
+    expect(result['isError']).toBeUndefined()
+    expect(sawNonAuthzFetch).toBe(true)
+  })
+})
+
+describe('kala_now_get — F-38 upstream error-string bounding', () => {
+  it('collapses an existence-oracle upstream error (no chart_id, no HTTP status)', () => {
+    const out = sanitizeNativeContextError(
+      "HTTP 404: Chart 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee' not found"
+    )
+    expect(out).not.toContain('aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee')
+    expect(out).not.toContain('404')
+    expect(out).not.toContain('not found')
+    expect(out).toBe('the birth-chart overlay was not available for this chart on this call')
+  })
+
+  it('collapses authorization-class upstream errors too', () => {
+    expect(sanitizeNativeContextError('HTTP 403: Forbidden')).toBe(
+      'the birth-chart overlay was not available for this chart on this call'
+    )
+  })
+
+  it('ND-4 is preserved: a real diagnosable defect reason still comes through', () => {
+    const out = sanitizeNativeContextError(
+      "HTTP 500: native_context hydration failed: tz_offset_minutes was None"
+    )
+    expect(out).toContain('tz_offset_minutes')
+    expect(out).not.toMatch(/^HTTP/)
+  })
+
+  it('redacts UUIDs and URLs, and bounds length', () => {
+    const out = sanitizeNativeContextError(
+      'overlay build for aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee failed at http://panchanga.internal:8080/x'
+    )
+    expect(out).not.toContain('aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee')
+    expect(out).not.toContain('panchanga.internal')
+    expect(out).toContain('<redacted>')
+    expect(sanitizeNativeContextError('z'.repeat(500))?.length).toBeLessThanOrEqual(201)
+  })
+
+  it('non-strings and empties stay null (honest null, never an invented reason)', () => {
+    expect(sanitizeNativeContextError(undefined)).toBeNull()
+    expect(sanitizeNativeContextError(null)).toBeNull()
+    expect(sanitizeNativeContextError('')).toBeNull()
+    expect(sanitizeNativeContextError(42)).toBeNull()
   })
 })

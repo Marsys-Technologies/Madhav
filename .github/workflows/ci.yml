@@ -963,7 +963,11 @@ jobs:
         # lattice_adjudication.ledgers[] bookkeeping copy).
         working-directory: platform-mcp
         run: npx vitest run src/tools/kala_views/__tests__/elect_budget_trim_f122.test.ts src/tools/kala_views/__tests__/elect_sections_coverage.test.ts src/tools/kala_views/__tests__/elect_ledger_alias_f122.test.ts
-      - name: kala_now_get kala_darshana_confluence coverage-honesty regression (platform-mcp)
+      - name: kala_now_get coverage-honesty + F-38 entitlement-gate regression (platform-mcp)
+        # Covers the original kala_darshana_confluence coverage-honesty regression AND the
+        # PARIŚEṢA-V4 F-38 gate: kala_now_get must reject an unentitled/nonexistent chart_id
+        # via remoteAuthorize BEFORE any data fetch, and must never echo a raw upstream
+        # error string (which was leaking `HTTP 404: Chart '<uuid>' not found` verbatim).
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/kala_now_get.test.ts
       - name: kala_now_get kota_chakra + sudarshana_varsha serving regression (platform-mcp) — ṢAḌ-DARŚANA W3 items 16/17

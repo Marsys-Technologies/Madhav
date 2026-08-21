@@ -1024,6 +1024,42 @@ function errOut(tool: string, msg: string, extra?: Record<string, unknown>) {
   return { ...dualOutput({ ok: false, error: msg, tool, ...extra }, tool), isError: true as const }
 }
 
+/** Generic, bounded stand-in for an upstream overlay error whose text is an existence /
+ *  authorization oracle rather than a diagnosable defect description. */
+const NATIVE_CONTEXT_ERROR_GENERIC =
+  'the birth-chart overlay was not available for this chart on this call'
+
+/**
+ * F-38 (PARIŚEṢA-V4): bound the panchāṅga `native_context_error` passthrough.
+ *
+ * ND-4 (ṢAḌ-DARŚANA W1 verify-reopen) deliberately surfaces the specific upstream reason so a
+ * deterministic upstream defect is not relabelled a transient outage — that stays. What must NOT
+ * survive is the raw upstream transport/identity detail: a verbatim `HTTP 404: Chart '<uuid>' not
+ * found` echoes an internal status code AND answers "does this chart exist?" straight out of the
+ * envelope. Same discipline as the F-01 `query_prospective_ledger.ts` bounding (PR #1322): the
+ * caller gets a truthful reason, never the upstream's raw string.
+ *
+ * Rules, in order: drop non-strings/empties → collapse existence/authorization-class errors to a
+ * generic sentence → strip `HTTP <code>:` transport prefixes → redact UUIDs and URLs → cap length.
+ */
+export function sanitizeNativeContextError(raw: unknown): string | null {
+  if (typeof raw !== 'string' || raw.length === 0) return null
+
+  // Existence / authorization oracle classes carry no diagnosable content — collapse wholesale.
+  if (/\b(not found|does not exist|no such chart|unauthori[sz]ed|forbidden|permission denied)\b/i.test(raw)) {
+    return NATIVE_CONTEXT_ERROR_GENERIC
+  }
+
+  const redacted = raw
+    .replace(/^\s*HTTP\s+\d{3}\s*:?\s*/i, '')
+    .replace(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g, '<redacted>')
+    .replace(/https?:\/\/\S+/gi, '<redacted>')
+    .trim()
+
+  if (redacted.length === 0) return NATIVE_CONTEXT_ERROR_GENERIC
+  return redacted.length > 200 ? `${redacted.slice(0, 200)}…` : redacted
+}
+
 // ── Window-family shape (query_temporal_activation's `window_families` /
 // `forward_windows` rows — read verbatim, never re-derived) ────────────────────────
 
@@ -1656,9 +1692,7 @@ export async function computeKalaNow(
   // "L0 panchāṅga service unreachable this call" — wording that named a transient outage for
   // what was in fact a deterministic upstream defect reproducible on every call.
   const nativeContextError = panchangaResp.content?.['native_context_error']
-  const nativeContextErrorDetail = typeof nativeContextError === 'string' && nativeContextError.length > 0
-    ? nativeContextError
-    : null
+  const nativeContextErrorDetail = sanitizeNativeContextError(nativeContextError)
   /** The honest, non-misleading reason string for any panchāṅga-backed field that came up
    *  empty. Distinguishes a genuine dispatch failure from a present-but-incomplete payload —
    *  and never calls a persistent defect "unreachable this call". */
@@ -2189,6 +2223,17 @@ export function registerKalaNowGetTool(server: McpServer, principal: Principal):
   server.tool(TOOL_NAME, TOOL_DESCRIPTION, InputSchema.shape, async (params) => {
     const input = InputSchema.parse(params)
     if (!input.chart_id) return errOut(TOOL_NAME, 'chart_id is required')
+    // F-38 (PARIŚEṢA-V4): entitlement/existence gate BEFORE any computation or data fetch —
+    // the same fail-closed `remoteAuthorize` helper every other chart-scoped tool uses
+    // (ganita_chart_facts_get, assess_career, judgment_query, dossier, catalog_chart_select,
+    // and this file's own gochara join at fetchGocharaNarrativeWindows). Without it, a
+    // syntactically-valid but nonexistent/unentitled chart_id returned a structurally
+    // successful envelope full of chart-UNRELATED live transit data.
+    if (!(await remoteAuthorize(principal, input.chart_id))) {
+      return errOut(TOOL_NAME, 'AUTHZ_DENIED: not authorized to access this chart', {
+        chart_id: input.chart_id,
+      })
+    }
     try {
       const result = await computeKalaNow(
         input.chart_id,
