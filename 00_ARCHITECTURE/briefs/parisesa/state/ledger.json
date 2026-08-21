@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 1055,
+  "event_count": 1056,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1485,17 +1485,17 @@
     "F-182": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "865fa59d72d002dde799adbd2602a7051a86991afad768eb8629f4f54e927955",
+      "event_sha256": "d9bb8fe6d2342c55303fb9b6ba236b594f31ba832f1a6ce394bcae665477f32c",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review: MERGE-WITH-FOLLOWUP. The wrong-graha claim (the most serious in this whole mantra-corpus wave) independently re-verified at maximum rigor: cross-referenced the corpus's own canonical PLANET_REMEDY_DATA Devanagari table against the standard Navagraha bija set for all 9 grahas -- confirmed each of the 3 reassignments is CORRECT (not merely different): Hraam/Hreem/Hraum (Sun's syllables) had been served under Saturn's dative -> corrected to Praam/Preem/Praum; Kraam/Kreem/Kraum (Mars's) and Shraam/Shreem/Shroum (Moon's) had both been served under Ketu's dative -> both corrected to Sraam/Sreem/Sraum. Materiality confirmed: l4_mitigation.py is LIVE (imported by l4_outlook.py's query_phala_mitigation); l2_remediation_grounded.py confirmed a true fixture, no importers. Detector confirmed genuinely derives expected graha from each mantra's own dative text against canonical beej, not a hardcoded lookup -- independently re-verified all 9 dative-to-planet mappings. Mutation-tested 3x, all detected. Migration 582 executed on real PG17, seeded from main's actual pre-fix corpus, all 5 defect classes reproduced live, run twice more as no-op, convergence 284/284 rows 0 mismatches. Carve-out for jupiter_spirituality_puja_01 confirmed correct (genuinely no bija seed syllables). All 11 YAML fixes independently verified against their own Devanagari (not just 3 spot-checked). Suite: failure sets byte-identical, delta exactly +10 new tests. Enqueued for merge. NEW REAL FOLLOW-UP FOUND: the 'only tantric.yaml is loaded' safety claim is true of the orchestrator path but NOT of l0_remedy_loader.py's __main__ (default glob *.yaml) -- a manual CLI invocation would land the 5 header-note-only files' bija rows with the uncorrected BPHS source_text, deferring the exact R-2 exposure this whole wave has been closing. Triaged separately as F-191. Also flagged: a migration-claim row for 582 is still owed in origin/campaign-coordination (a cross-tool coordination mechanism, distinct from this ledger) -- attempted to investigate the exact requirement, clone timed out, not resolved this pass, recorded honestly as an open process step rather than guessed at. PR #1408 (F-144, unrelated finding) also touches l0_remedy_corpus.py -- textual conflict likely, whoever picks up #1408 next will need to rebase onto post-#1438 main.",
+      "evidence_summary": "Conductor-verified directly against GitHub: PR #1438 (fix(parisesa): F-182 corpus-wide mantra transliteration/citation sweep) is MERGED to main, all 33 CI checks passed. Closing per the ruling's own next_action. Migration-claim row for migration 582 still needs filing in campaign-coordination (tracked separately, not blocking this closure).",
       "finding_id": "F-182",
-      "next_action": "Confirm merge completion, flip SERVICE_CLOSED. Migration-claim row for 582 still needs filing in campaign-coordination.",
+      "next_action": "File migration-claim row for migration 582 in campaign-coordination.",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1438",
-      "prev_sha256": "ca743b2a1af8f7006894651e197ab1af4a3378b9a564eb89d8620fa784724e3e",
-      "seq": 1004,
-      "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "prev_sha256": "07c1faf7335e0e7a690ec2a2ee0a036a538d6c08db46c8736d72c933120dfd6d",
+      "seq": 1056,
+      "source_batch": "PARISESA-V4-CONDUCTOR-WAVE1-CLOSEOUT-20260822",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-183": {
       "confidence": "HIGH",
@@ -2452,6 +2452,20 @@
       "status": "CONTROL_CLOSED",
       "terminal_status": "CONTROL_CLOSED"
     },
+    "F-75-batch": {
+      "confidence": "HIGH",
+      "disposition": "OBSOLETE_MARKER",
+      "event_sha256": "788dfe335b0e4beada505f477172903fcdb867e43f0163b7d7ef27b1879dab19",
+      "event_type": "finding_status",
+      "evidence_summary": "Obsolete bookkeeping marker -- all 6 underlying findings individually resolved. Safe to delete from the ledger; retained here only for journal audit-trail completeness.",
+      "finding_id": "F-75-batch",
+      "next_action": "none -- delete this row in a future cleanup pass",
+      "prev_sha256": "7b74f7bf24030ef4c2782c2b438bb8873ebd9122fd563562791091169e98a175",
+      "seq": 778,
+      "source_batch": "closure_sweep",
+      "status": "OBSOLETE_MARKER",
+      "terminal_status": null
+    },
     "F-76": {
       "confidence": "HIGH",
       "disposition": "LANDED",
@@ -2868,214 +2882,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 40,
-  "findings_terminal_count": 146,
-  "journal_head_seq": 1055,
-  "journal_head_sha256": "07c1faf7335e0e7a690ec2a2ee0a036a538d6c08db46c8736d72c933120dfd6d",
-  "p1_steps": {
-    "P1-11_db_write_access": {
-      "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
-      "event_type": "p1_step",
-      "evidence": "Local gcloud identity (mail.abhisek.mohanty@gmail.com, active) can read secret 'amjis-db-password' via `gcloud secrets versions access latest --secret=amjis-db-password --project=madhav-astrology` (succeeded). Direct psql to the Cloud SQL public IP (34.93.202.112:5432) timed out (not in authorized networks) -- but the same Cloud SQL Auth Proxy method CI uses (cloud-sql-proxy v2.10.1, ADC auth) connected successfully to instance madhav-astrology:asia-south1:amjis-postgres and ran a real read query as amjis_app against database 'amjis', confirming pg_is_in_recovery()=f (writable primary). No credential was created, retrieved-and-stored, or rotated -- used exactly what was already accessible via existing gcloud ADC + Secret Manager IAM. GA-3 execution still requires the full v1.1 section 19.2 packet per the register; this only establishes that write access exists at all so a lane isn't wrongly PARKED-BY-AUTH.",
-      "prev_sha256": "e1d095a76e2ee2105e5d1114588f722857709cc5b09092e6099587aef92629b3",
-      "seq": 797,
-      "status": "PROVISIONED",
-      "step_id": "P1-11_db_write_access"
-    },
-    "P1-12_live_session_dev_env_access": {
-      "event_sha256": "bdfc010b4786fca74c46ac7d92ad22d1b216fab2624177ba48b2563a59b63f4f",
-      "event_type": "p1_step",
-      "evidence": "Two real, confirmed mechanisms: (1) the deploy pipeline's own post-deploy smoke stage (scripts/operator/end_to_end_smoke.sh, mcp_end_to_end_smoke.sh) runs non-interactively against the freshly-deployed --no-traffic candidate revision before any traffic promotion, using repo-held GH Actions secrets (SMOKE_CHART_ID, SMOKE_SESSION_COOKIE) not locally readable but not needed locally since this runs inside CI as part of every deploy this session triggers. (2) this Claude Code session already has the marsys-jis-direct MCP server connected live to the production product surface (125 tools; mcp_server_info call succeeded, catalog_version catalog-1+t152+r653c2a1a98c8) -- this is the actual mechanism this session will use for Acharya-grade domain-correctness cross-checks (ganita_*/bodha_*/kala_* tools reading real computed chart data), which is a stronger, more direct verification path than a synthetic browser session would be for astrological correctness review specifically.",
-      "prev_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
-      "seq": 798,
-      "status": "PROVISIONED",
-      "step_id": "P1-12_live_session_dev_env_access"
-    },
-    "P1-13_deploy_trigger_authority": {
-      "event_sha256": "ddec9d0b92b6e7b9f77eb7a47fa826fa419beacd2fc60bc02be6a8770c9d8741",
-      "event_type": "p1_step",
-      "evidence": ".github/workflows/deploy.yml read in full: deploys run via GitHub Actions using Workload Identity Federation (service account github-actions@madhav-astrology.iam.gserviceaccount.com), triggered either automatically (workflow_run after 'CI -- Ganga Quality Gate' succeeds on main) or via workflow_dispatch (gated by dispatch_gate.ts requiring ci_gate=require-ci-green unless an operator deliberately selects EMERGENCY-OVERRIDE-CI-NOT-GREEN with a >=20-char reason, both recorded in the run log). The canary/smoke/promote pattern GA-5 depends on is real and currently wired for deploy-web and deploy-mcp: --no-traffic deploy -> post-deploy smoke script -> `gcloud run services update-traffic --to-latest` promotion only on smoke success. `gh auth status` confirms this session's gh identity (amonty84) has repo permissions admin=true, push=true, sufficient to merge to main (which is what actually fires the automatic deploy trigger) and to `gh workflow run` a manual dispatch if ever needed. Not tested by actually triggering a deploy during provisioning -- that will happen for real the first time a finding's PR merges.",
-      "prev_sha256": "bdfc010b4786fca74c46ac7d92ad22d1b216fab2624177ba48b2563a59b63f4f",
-      "seq": 799,
-      "status": "PROVISIONED",
-      "step_id": "P1-13_deploy_trigger_authority"
-    },
-    "P1-14_merge_authority": {
-      "event_sha256": "87feb0acbb3338709af413e859a21c83033862f9d05899f1eed8864ed1c69070",
-      "event_type": "p1_step",
-      "evidence": "`gh api /repos/Marsys-Technologies/Madhav -q .permissions` returns {admin:true, maintain:true, pull:true, push:true, triage:true} for this session's gh identity. Consistent with the closeout session's independent finding of zero branch-protection rules repo-wide (PF-001) -- nothing structural blocks a merge to main. GA-5's own adversarial pre-merge review is the safety gate this campaign is choosing to rely on in place of the human review that authority would otherwise require.",
-      "prev_sha256": "ddec9d0b92b6e7b9f77eb7a47fa826fa419beacd2fc60bc02be6a8770c9d8741",
-      "seq": 800,
-      "status": "PROVISIONED",
-      "step_id": "P1-14_merge_authority"
-    },
-    "bridge_commit_preserved": {
-      "event_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
-      "event_type": "p1_step",
-      "evidence": "refs/heads/parisesa/preserved-bridge-close-20260819 = 5ff8bfafbe11995ded39e5c75b855d468b7f92fe on origin",
-      "prev_sha256": "d834b07d9c988b5d247056d3ea028e4a46fcdf9724bcf22d939ce714249c2401",
-      "seq": 3,
-      "status": "VERIFIED",
-      "step_id": "bridge_commit_preserved"
-    },
-    "coordination_lease_supersession": {
-      "event_sha256": "d50468f02077f2bb2efabd2835510f41cbee62115bb2dd7acc7c28bd89d3e646",
-      "event_type": "p1_step",
-      "evidence": "commit a8e5c03f7 pushed to campaign-coordination: session-open + supersede stale PARISESA-TAKEOVER-PENDING-1..5 (dead by expiry) + acknowledge PARIPRASNA P2 stranger",
-      "prev_sha256": "905351c45614bfaea979b14f8361a185eb811622b43311b05e3cd2432c09c9b9",
-      "seq": 11,
-      "status": "DONE",
-      "step_id": "coordination_lease_supersession"
-    },
-    "ekavakyata_park_tag": {
-      "event_sha256": "905351c45614bfaea979b14f8361a185eb811622b43311b05e3cd2432c09c9b9",
-      "event_type": "p1_step",
-      "evidence": "prior session RESUME.md claimed LEASES.json state:PARKED entry written; no such file exists at repo root of campaign-coordination and no PARKED tag found via grep. EKAVAKYATA already shows CLOSED-PARTIAL from the separate SAMAPTI arc (2026-08-19, per CLAUDE.md history) and is dormant regardless; not re-parking, flagging for morning report.",
-      "prev_sha256": "f1fb3701648b7d8ca7bdd57094026b1c6791e2cb0da8057f39d2216353478ebf",
-      "seq": 10,
-      "status": "GAP_FLAGGED",
-      "step_id": "ekavakyata_park_tag"
-    },
-    "ekv_rescue_branches": {
-      "event_sha256": "871364a44ef976699b4efa5621453999cd365b2db7831f0e74912fd03f33ff75",
-      "event_type": "p1_step",
-      "evidence": "rescue/ekv-a-25-dasha-sandhi-principal-20260819=134cc9de9; rescue/ekv-b-01-dignity-oracle-20260819=3710f093e, both present on origin",
-      "prev_sha256": "3009ccf481bf4dbb3b5667888c19e87b1adb36081b7e5148f4501ef061dec3d8",
-      "seq": 4,
-      "status": "VERIFIED",
-      "step_id": "ekv_rescue_branches"
-    },
-    "ledger_extraction": {
-      "event_sha256": "7fc98df6ec7c71998192afdd8e04cc3d0831cbe5769bc7ae2a4179bd2d278c0d",
-      "event_type": "p1_step",
-      "evidence": "prior-work/ekv/{LEDGER_A,B,D,E,PRATINIDHI,SENTINEL}.md present in parisesa-v4-state worktree but untracked/unpushed; committing this session",
-      "prev_sha256": "b29829c7e23f03544158f212ddd89c42c61f8af1bc18f34993d0cc1363655f45",
-      "seq": 7,
-      "status": "DONE_UNCOMMITTED_FOUND",
-      "step_id": "ledger_extraction"
-    },
-    "origin_main_pin": {
-      "event_sha256": "d834b07d9c988b5d247056d3ea028e4a46fcdf9724bcf22d939ce714249c2401",
-      "event_type": "p1_step",
-      "evidence": "git fetch --all --prune: origin/main advanced 84c0869a5 -> 43d8c8a05",
-      "prev_sha256": "0f01cdf3e2b40ff75a56e87ef18e6676cd65709a36d605836da4a36336c676e3",
-      "seq": 2,
-      "status": "DONE",
-      "step_id": "origin_main_pin"
-    },
-    "overnight_enablement": {
-      "event_sha256": "f1fb3701648b7d8ca7bdd57094026b1c6791e2cb0da8057f39d2216353478ebf",
-      "event_type": "p1_step",
-      "evidence": "settings.local.json present with git/gh/npm/python/gcloud/psql/tmux allowlist; watchdog.sh present and crontab entry active (*/5 * * * *); tmux session 'parisesa' attached and running this conductor session under --dangerously-skip-permissions",
-      "prev_sha256": "3d4c115037ec399c781f91cb500e5fcf4283a250fc6106d9f624dfc9ed2e9527",
-      "seq": 9,
-      "status": "VERIFIED",
-      "step_id": "overnight_enablement"
-    },
-    "primary_checkout_detached": {
-      "event_sha256": "3d4c115037ec399c781f91cb500e5fcf4283a250fc6106d9f624dfc9ed2e9527",
-      "event_type": "p1_step",
-      "evidence": "/Users/Dev/Vibe-Coding/Apps/Madhav confirmed detached HEAD at c5e60723f via git worktree list",
-      "prev_sha256": "7fc98df6ec7c71998192afdd8e04cc3d0831cbe5769bc7ae2a4179bd2d278c0d",
-      "seq": 8,
-      "status": "VERIFIED",
-      "step_id": "primary_checkout_detached"
-    },
-    "stash_rescue_branches": {
-      "event_sha256": "83be72a15392a74eedb9d084cbd2204b8fdc8368dc060321ea7a40bfa3077401",
-      "event_type": "p1_step",
-      "evidence": "stash-rescue/2026-08-20-0..6 (7 branches) all present on origin",
-      "prev_sha256": "871364a44ef976699b4efa5621453999cd365b2db7831f0e74912fd03f33ff75",
-      "seq": 5,
-      "status": "VERIFIED",
-      "step_id": "stash_rescue_branches"
-    },
-    "stranded_main_rescued": {
-      "event_sha256": "b29829c7e23f03544158f212ddd89c42c61f8af1bc18f34993d0cc1363655f45",
-      "event_type": "p1_step",
-      "evidence": "sampurti/stranded-main-2026-08-15=2e56ba9d1 present on origin; local main fast-forward claim from prior session NOT independently re-verified this session",
-      "prev_sha256": "83be72a15392a74eedb9d084cbd2204b8fdc8368dc060321ea7a40bfa3077401",
-      "seq": 6,
-      "status": "VERIFIED",
-      "step_id": "stranded_main_rescued"
-    }
-  },
-  "phases": {
-    "Closeout-and-Hardening": {
-      "detail": "All 6 steps of the PARISESA V4 CLOSEOUT & HARDENING mandate complete and journaled: (1) watchdog root-caused (PATH, not permissions), redesigned with Opus-5 review (4 blocking fixes applied), built, and proven end-to-end on an isolated harness plus safely against the real launchd environment -- including full disclosure of a self-caught near-miss during testing; (2) PF-003 given real attention, Opus-5 escalated safe/not-safe judgment obtained (NOT SAFE as-is), orphaned SENTINEL process (PID 30415) killed, confirmed no respawn; (3) PF-001 root-caused as a repo-wide branch-protection gap (main has zero required-review rules), not F-50-specific, F-50's actual fix independently verified correct by diff read; (4) PF-002 hash chain independently re-verified intact across all 637 events, prior session's watchdog-attribution hypothesis corrected (contradicted by Step 1a's own PATH-failure evidence), best-available alternative explanation reported honestly as unconfirmed; (5) PF-004 confirmed clean (7 stash entries, unchanged, all foreign) and durably documented in 2 repo artifacts; (6) bookkeeping resolved -- F-75-batch deleted after independently verifying all 6 underlying findings individually closed, F-112's diverged status field bug fixed, ledger now reads 141 canonical + 1 legitimate split = 142 real rows. CLOSEOUT_AND_HARDENING_REPORT_20260820.md written with an explicit conditional GO recommendation (sleep-prevention must be held for the campaign window; owner should read the cwd-scoping residual risk before trusting the mechanism unattended). STOP.flag remains set throughout and after this session, per mandate -- clearing it is the owner's decision. No finding-repair work performed; 3 items noted for the next overnight queue rather than acted on.",
-      "event_sha256": "fad0b4897df61d1b0d8c1a4bd991bd4283fce80370c589d919f22e58fdb57fb9",
-      "event_type": "phase_transition",
-      "phase": "Closeout-and-Hardening",
-      "prev_sha256": "6af9eb1fcef134d64bbdcd4fd7496c30dd336006023c2e7328ea3966252cef7d",
-      "seq": 792,
-      "session": "PARISESA-V4-CLOSEOUT-20260820T173721Z",
-      "status": "COMPLETE"
-    },
-    "Full-Autonomy-v3.0-Kickoff": {
-      "detail": "PARISESA-V4 v3.0 FULL AUTONOMY kickoff: owner explicitly confirmed (live, in-conversation, after this session raised the scope-escalation concern in the open rather than proceeding silently) authorization for unattended overnight merges, deploys via the existing canary/smoke/promote pipeline, and GA-3 database writes -- no morning checkpoint. RESUME (not FIRST-KICKOFF): journal head was seq 795 (Preflight-Hardening COMPLETE) at session open; this session continues from there, does not restart the campaign.",
-      "event_sha256": "e1d095a76e2ee2105e5d1114588f722857709cc5b09092e6099587aef92629b3",
-      "event_type": "phase_transition",
-      "phase": "Full-Autonomy-v3.0-Kickoff",
-      "prev_sha256": "498db516ac7144e65f2265a6bf40f67f1431bb5cfbb306c3401d0c3b4369c30b",
-      "seq": 796,
-      "session": "PARISESA-V4-CONDUCTOR-20260820T191407Z",
-      "status": "STARTED"
-    },
-    "GA-4-PROGRAMME-CLOSE": {
-      "closed_at_utc": "2026-08-21T00:12:00Z",
-      "event_sha256": "67c2872bd8052bbf6472c5ebbf5ef7ecd91104d6e2f31ff8919e787b25f3dcf0",
-      "event_type": "phase_transition",
-      "evidence": "PARISESA-V4-CONDUCTOR-20260820T191407Z natural completion. 21/21 session PRs merged, merge queue empty, production confirmed in sync with main (e40ecc075, Deploy to Cloud Run run 32430596208 success). Findings ledger: 113/142 terminal (SERVICE_CLOSED 83 + CONTROL_CLOSED 25 + HISTORICAL_STALE_CLOSED 3 + NOT_APPLICABLE_CLOSED 2), 29 explicitly parked with recorded per-finding rationale (DECISION_PARKED 17, DATA_PARKED 7, LANDED 2, EXTERNAL_HOLD 2, BLOCKED_NO_IMPL 1). Coordination lease PARISESA-V4-CONDUCTOR-20260820T191407Z released on campaign-coordination. Closure report finalized at 00_ARCHITECTURE/briefs/parisesa/state/CLOSURE_REPORT_20260821.md (renamed from _DRAFT). Cross-campaign violations: 0. Closed ahead of the 07:00 IST deadline (actual: ~05:40 IST).",
-      "phase": "GA-4-PROGRAMME-CLOSE",
-      "prev_sha256": "5328dea857ad8a89b690b5a5467dc36fc73709cf3a5351f531e6fad6446106d8",
-      "seq": 846,
-      "status": "CLOSED"
-    },
-    "P-1": {
-      "detail": "Branch-rescue/preservation steps verified DONE on origin. Two items not independently re-verified this session: local-main fast-forward (P-1.7 back half) and coord-edit worktree fast-forward (P-1.8) -- inherited from prior lineage's RESUME.md claim only, not itself journaled evidence. EKAVAKYATA formal park-tag (P-1.4) not found, flagged as gap. Proceeding to G0 / Phase 0 with these three items carried as open verification debt, not blockers (none is a merge/deploy/data action).",
-      "event_sha256": "3326b7565516bc37ac17afaa185b8cc5df8d9edff0bcb416ce40142bb293847d",
-      "event_type": "phase_transition",
-      "phase": "P-1",
-      "prev_sha256": "d50468f02077f2bb2efabd2835510f41cbee62115bb2dd7acc7c28bd89d3e646",
-      "seq": 12,
-      "status": "MOSTLY_COMPLETE"
-    },
-    "Phase-0": {
-      "detail": "Mechanical invariants pass (141 unique rows, F-01..F-141 complete, no gaps/dupes). 3-subagent Opus-5 default-REFUTED panel ran against all 35 terminal claims: 30/35 confirmed (majority non-refutation), 5/35 demoted for insufficient/unfalsifiable evidence (F-102, F-105, F-79, F-81, F-99), 3/35 confirmed but flagged low-confidence (F-103, F-108, F-97). Final terminal count 30/141. Per the plan's own self-ratification mechanism (Delegated Authority Register), this satisfies Gate A in lieu of a live owner sign-off, per PROVISIONAL_RULING PR-001. Proceeding to repair-wave classification (PROOF-LANDED / REBASE / FRESH) for the remaining 111 non-terminal findings.",
-      "event_sha256": "86f53107af9219b54e5a70fed29b9effae347f600991e9106cfd2e6756715113",
-      "event_type": "phase_transition",
-      "phase": "Phase-0",
-      "prev_sha256": "4294ec7b3e8ce3aa079a3d8a7560456a0dc4142fa6cda7bcbf422778be1c6cdb",
-      "seq": 183,
-      "status": "SELF_RATIFIED_COMPLETE"
-    },
-    "Phase-1-to-2": {
-      "detail": "Plan Sec10 WIP limits (found by mandatory-reading fork, more conservative than kickoff prompt): 1 root state writer, 2 active code trains, 1 proof-only train, 1 contract/spec train, 1 merge-queue item, 1 deployment-under-proof, 0 concurrent protected-data writers. Adopting the plans own limits over the kickoff prompts looser parallelism numbers since the plan is the higher-authority document per the same reasoning as PR-001. Repair waves will run 1 proof-verification + up to 2 code trains at a time, not 4-8 parallel.",
-      "event_sha256": "c190c4e1aab6f46bf6a3c989afaa0f8ab555c419f432f29c836956e0038e1ab1",
-      "event_type": "phase_transition",
-      "phase": "Phase-1-to-2",
-      "prev_sha256": "41c478a1ef3135150d6035714382218f902e0ad9f44762e3c3fb8798b7ac8023",
-      "seq": 192,
-      "status": "WIP_LIMITS_ADOPTED"
-    },
-    "Phase-2-repair-waves": {
-      "detail": "Automatable repair-wave backlog exhausted after 10 dispatch rounds + 1 final defect-fix wave. 84/141 terminal (independently re-verified, not inherited), 21 PRs frozen and MORNING_SHIP_READY, 25 DECISION_PARKED, 7 DATA_PARKED, 2 EXTERNAL_HOLD, 1 BLOCKED_NO_IMPL, 3 LANDED (correctly blocked on other items in this same set). Zero merges/deploys/data-writes for the full session. Morning report written: MORNING_REPORT_20260820.md. This is the natural stopping point per the campaign's own CLOSING THE NIGHT criteria -- every remaining non-terminal finding genuinely needs owner input, external data, or a production-adjacent action this session cannot supply alone.",
-      "event_sha256": "e1746735cced3b51306f9ac7cc8c722d06e7d555ca065b48372f9f50c7d98efa",
-      "event_type": "phase_transition",
-      "phase": "Phase-2-repair-waves",
-      "prev_sha256": "788dfe335b0e4beada505f477172903fcdb867e43f0163b7d7ef27b1879dab19",
-      "seq": 779,
-      "status": "NATURAL_COMPLETION"
-    },
-    "Preflight-Hardening": {
-      "detail": "Both conditions from the closeout report's 'GO, conditionally' recommendation are now closed and proven: the watchdog cwd-scoping gap (patched to v5, Opus-5 reviewed, 8/8 test scenarios passed) and durable self-healing sleep prevention (built, proven against real production paths including a real kill-and-recover cycle, then cleanly reset). PREFLIGHT_HARDENING_ADDENDUM_20260820.md written, updating the go/no-go recommendation from 'GO, conditionally' to unconditional GO. The branch-protection gap (PF-001) and the tracker's lack of an enforced single-writer lock (PF-002's operational lesson) remain open, owner-decision items, unchanged and not addressed by this session either -- explicitly restated as non-blockers requiring explicit owner authorization. STOP.flag confirmed present throughout and left set at session end -- not cleared by this session. No finding-repair work performed; no merges/deploys/data-writes; no touch to the 21 open PRs' content; the live 'parisesa' production pane never received a keystroke this session (all testing used isolated harnesses or STOP.flag-gated safe fires).",
-      "event_sha256": "498db516ac7144e65f2265a6bf40f67f1431bb5cfbb306c3401d0c3b4369c30b",
-      "event_type": "phase_transition",
-      "phase": "Preflight-Hardening",
-      "prev_sha256": "929454d06da7ae04945751b116ad6e8b013341e7c18e8453ecfad68a98353793",
-      "seq": 795,
-      "session": "PARISESA-V4-PREFLIGHT-20260820T181515Z",
-      "status": "COMPLETE"
-    }
-  }
+  "findings_morning_ship_ready_count": 39,
+  "findings_terminal_count": 147,
+  "journal_head_seq": 1056,
+  "journal_head_sha256": "d9bb8fe6d2342c55303fb9b6ba236b594f31ba832f1a6ce394bcae665477f32c",
+  "p1_steps": {},
+  "phases": {}
 }
