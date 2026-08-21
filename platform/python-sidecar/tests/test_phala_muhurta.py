@@ -15,6 +15,7 @@ BRAHMA-PH-4-4
 
 from __future__ import annotations
 
+from contextlib import ExitStack
 from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -211,21 +212,239 @@ class TestF47ActionSensitiveDasha:
 
         assert business > marriage
 
-    def test_weekday_overlay_uses_canonical_action_significators(self):
-        """F-47: the weekday component cannot be one action-agnostic table."""
+    def test_transit_quality_stays_action_sensitive_after_f48(self):
+        """F-47's property, re-asserted on F-48's REAL mechanism.
+
+        F-47 established that the transit sub-score must not collapse to one
+        action-agnostic table. F-48 replaced that sub-score's *content* — the
+        weekday-lord overlay it originally asserted against is gone, because
+        weekday is vara, not a transit (and was already scored inside
+        panchanga_quality). The invariant survives the replacement: with the
+        same transiting sky, an action whose ontology significators are
+        transiting favourable houses from the natal Moon must outscore one
+        whose significators are transiting unfavourable houses.
+        """
         mod = _get_muhurta_module()
-        # 2026-08-19 is Wednesday / Mercury's weekday.
         at = datetime(2026, 8, 19, tzinfo=timezone.utc)
         ontology = {
-            "marriage": ["Venus", "Jupiter"],
-            "business": ["Mercury", "Jupiter", "Sun"],
+            "marriage": ["Venus"],
+            "business": ["Mercury"],
+        }
+        # Natal Moon in Aries (1). Venus in Taurus (2) → 2nd from Moon;
+        # Mercury in Gemini (3) → 3rd from Moon.
+        transit_signs = {"moon": 1, "venus": 2, "mercury": 3}
+        rules = {
+            ("venus", 2): {"rule_type": "unfavourable", "vedha_house": None,
+                           "phala": "loss", "classical_citation": "BPHS Ch.29"},
+            ("mercury", 3): {"rule_type": "favourable", "vedha_house": 9,
+                             "phala": "gain", "classical_citation": "BPHS Ch.29"},
         }
 
-        with patch.object(mod, "_activity_significators_for_action", side_effect=lambda action: ontology[action]):
-            marriage = mod._transit_quality_for_window(at, "marriage")
-            business = mod._transit_quality_for_window(at, "business")
+        with patch.object(mod, "_activity_significators_for_action",
+                          side_effect=lambda action: ontology[action]), \
+             patch.object(mod, "_natal_moon_sign_id", return_value=1), \
+             patch.object(mod, "_transiting_sign_ids", return_value=transit_signs), \
+             patch.object(mod, "_fetch_gochara_rules", return_value=rules):
+            marriage, _ = mod._transit_quality_for_window(
+                NATIVE_CHART_ID, at, "marriage", "postgresql://fake/test")
+            business, _ = mod._transit_quality_for_window(
+                NATIVE_CHART_ID, at, "business", "postgresql://fake/test")
 
+        assert business is not None and marriage is not None
         assert business > marriage
+
+
+# ── §2b — F-48: transit_quality is REAL gochara, or an honest null ───────────
+#
+# The ruling these tests enforce: `transit_quality` must be computed from actual
+# transiting planetary positions graded against the classical Gochara corpus, or
+# be None. It must never again be a lunar-phase/weekday proxy — and critically,
+# it must never be a plausible-looking neutral number standing in for "the
+# transits were not assessed" (§N.7 item 6 / §N.8).
+
+class TestTransitQualityIsEarned:
+
+    _AT = datetime(2026, 8, 19, tzinfo=timezone.utc)
+    _URL = "postgresql://fake/test"
+
+    def _rules(self):
+        return {
+            ("jupiter", 11): {"rule_type": "favourable", "vedha_house": 5,
+                              "phala": "Gains", "classical_citation": "BPHS Ch.29"},
+            ("saturn", 8): {"rule_type": "unfavourable", "vedha_house": None,
+                            "phala": "Affliction", "classical_citation": "BPHS Ch.29"},
+        }
+
+    def test_no_lunar_phase_or_weekday_proxy_remains(self):
+        """The removed mechanism must be gone from the module, not merely unused.
+
+        A real detector for the F-48 defect: the old implementation's two
+        fingerprints were the hardcoded synodic epoch `2451550.1` and a
+        `weekday_lords` table. Either reappearing means the proxy is back.
+        """
+        import inspect
+        mod = _get_muhurta_module()
+        src = inspect.getsource(mod._transit_quality_for_window)
+        assert "2451550.1" not in src
+        assert "weekday" not in src.lower()
+        assert "lunar_phase" not in src
+
+    def test_signature_requires_chart_and_db(self):
+        """The old signature could not have consulted a chart or the ephemeris.
+
+        `(window_start, action_type)` had no way to reach a natal Moon or a
+        transiting position — the shape itself proved no transit was computed.
+        """
+        import inspect
+        mod = _get_muhurta_module()
+        params = list(inspect.signature(mod._transit_quality_for_window).parameters)
+        assert params == ["chart_id", "window_start", "action_type", "db_url"]
+
+    def test_returns_none_not_a_neutral_number_when_ephemeris_missing(self):
+        mod = _get_muhurta_module()
+        with patch.object(mod, "_natal_moon_sign_id", return_value=1), \
+             patch.object(mod, "_transiting_sign_ids", return_value=None), \
+             patch.object(mod, "_fetch_gochara_rules", return_value=self._rules()):
+            score, details = mod._transit_quality_for_window(
+                NATIVE_CHART_ID, self._AT, "business", self._URL)
+        assert score is None
+        assert details["available"] is False
+        assert details["unavailable_reason"] == "ephemeris_daily_unavailable_for_date"
+
+    def test_returns_none_when_natal_moon_unavailable(self):
+        mod = _get_muhurta_module()
+        with patch.object(mod, "_natal_moon_sign_id", return_value=None), \
+             patch.object(mod, "_transiting_sign_ids", return_value={"moon": 5}), \
+             patch.object(mod, "_fetch_gochara_rules", return_value=self._rules()):
+            score, details = mod._transit_quality_for_window(
+                NATIVE_CHART_ID, self._AT, "business", self._URL)
+        assert score is None
+        assert details["unavailable_reason"] == "natal_moon_sign_unavailable"
+
+    def test_returns_none_with_no_db_url(self):
+        mod = _get_muhurta_module()
+        score, details = mod._transit_quality_for_window(
+            NATIVE_CHART_ID, self._AT, "business", "")
+        assert score is None
+        assert details["unavailable_reason"] == "no_database_url"
+
+    def test_chandra_bala_uses_the_real_transiting_moon(self):
+        """Natal Moon Aries(1); transit Moon in Aquarius(11) → 11th from Moon,
+        the most auspicious Chandra Bala position (Labha). Same natal Moon with
+        the transit Moon in Scorpio(8) → 8th, the inauspicious one. The score
+        must move with the actual transiting Moon position."""
+        mod = _get_muhurta_module()
+
+        def run(moon_sign):
+            with patch.object(mod, "_natal_moon_sign_id", return_value=1), \
+                 patch.object(mod, "_transiting_sign_ids",
+                              return_value={"moon": moon_sign}), \
+                 patch.object(mod, "_fetch_gochara_rules", return_value=self._rules()), \
+                 patch.object(mod, "_activity_significators_for_action",
+                              return_value=None):
+                return mod._transit_quality_for_window(
+                    NATIVE_CHART_ID, self._AT, "general", self._URL)
+
+        good, good_d = run(11)
+        bad, bad_d = run(8)
+        assert good is not None and bad is not None
+        assert good > bad
+        assert good_d["transit_moon_house_from_natal_moon"] == 11
+        assert bad_d["transit_moon_house_from_natal_moon"] == 8
+        assert good_d["components_used"] == ["chandra_bala"]
+
+    def test_vedha_cancels_a_favourable_gochara(self):
+        """Jupiter in the 11th from the natal Moon is favourable — unless the
+        vedha house (5th) is simultaneously occupied by another transiting
+        graha, which classically nullifies the result (BPHS Ch.29 /
+        Phaladeepika Ch.26). The cancellation must actually fire."""
+        mod = _get_muhurta_module()
+
+        def run(transit_signs):
+            with patch.object(mod, "_natal_moon_sign_id", return_value=1), \
+                 patch.object(mod, "_transiting_sign_ids", return_value=transit_signs), \
+                 patch.object(mod, "_fetch_gochara_rules", return_value=self._rules()), \
+                 patch.object(mod, "_activity_significators_for_action",
+                              return_value=["Jupiter"]):
+                return mod._transit_quality_for_window(
+                    NATIVE_CHART_ID, self._AT, "business", self._URL)
+
+        # Natal Moon Aries(1). Jupiter in Aquarius(11) → 11th house. Vedha house
+        # is the 5th → Leo(5). Case A: nobody in Leo. Case B: Mars in Leo.
+        clean, clean_d = run({"jupiter": 11})
+        vedha, vedha_d = run({"jupiter": 11, "mars": 5})
+
+        assert clean is not None and vedha is not None
+        assert clean > vedha
+        assert clean_d["significator_gochara"][0]["verdict"] == "favourable"
+        assert vedha_d["significator_gochara"][0]["verdict"] == "favourable_vedha_cancelled"
+        assert vedha_d["significator_gochara"][0]["vedha_occupants"] == ["mars"]
+
+    def test_details_carry_the_audit_receipt(self):
+        """§N.6 item 4 — the density/derivation signalling must be DATA, so a
+        caller can audit the number rather than re-deriving it from source."""
+        mod = _get_muhurta_module()
+        with patch.object(mod, "_natal_moon_sign_id", return_value=1), \
+             patch.object(mod, "_transiting_sign_ids",
+                          return_value={"moon": 11, "jupiter": 11}), \
+             patch.object(mod, "_fetch_gochara_rules", return_value=self._rules()), \
+             patch.object(mod, "_activity_significators_for_action",
+                          return_value=["Jupiter"]):
+            score, details = mod._transit_quality_for_window(
+                NATIVE_CHART_ID, self._AT, "business", self._URL)
+
+        assert score is not None
+        assert details["available"] is True
+        assert details["method"] == "gochara_from_natal_moon"
+        assert details["resolution"] == "daily_noon_ut"
+        assert details["grade_convention"]["favourable"] == 0.85
+        assert details["weights"]["chandra_bala"] == 0.40
+        # The two disclosed limits are named, not silently dropped.
+        assert "vedha_exemptions_not_in_corpus" in details["gaps"]
+        row = details["significator_gochara"][0]
+        assert row["graha"] == "jupiter"
+        assert row["house_from_natal_moon"] == 11
+        assert row["classical_citation"] == "BPHS Ch.29"
+        assert set(details["components_used"]) == {"chandra_bala", "significator_gochara"}
+
+    def test_transiting_sign_ids_are_cached_per_date(self):
+        mod = _get_muhurta_module()
+        mod._TRANSIT_SIGNS_CACHE.clear()
+        with patch.object(mod, "_read_transiting_sign_ids",
+                          return_value={"moon": 4}) as reader:
+            first = mod._transiting_sign_ids(self._AT, self._URL)
+            second = mod._transiting_sign_ids(self._AT, self._URL)
+        assert first == second == {"moon": 4}
+        assert reader.call_count == 1
+        mod._TRANSIT_SIGNS_CACHE.clear()
+
+
+class TestCompositeHandlesUnassessedTransit:
+
+    def test_none_transit_renormalizes_instead_of_padding(self):
+        """An unavailable transit sub-score must not be quietly worth 0.55.
+
+        With all four sub-scores equal, dropping one weight and renormalizing
+        the rest leaves the composite unchanged — that is the property proving
+        the remaining three kept their relative proportions and nothing was
+        invented to fill the gap.
+        """
+        mod = _get_muhurta_module()
+        assert mod.compute_muhurta_score(0.8, 0.8, None, 0.8) == pytest.approx(0.8)
+        assert mod.compute_muhurta_score(0.4, 0.4, None, 0.4) == pytest.approx(0.4)
+
+    def test_none_transit_is_not_equivalent_to_a_neutral_stand_in(self):
+        mod = _get_muhurta_module()
+        honest = mod.compute_muhurta_score(0.9, 0.9, None, 0.9)
+        padded = mod.compute_muhurta_score(0.9, 0.9, 0.55, 0.9)
+        assert honest != padded
+
+    def test_all_four_present_still_matches_the_sql_weights(self):
+        """The 40/30/20/10 contract (SQL phala_compute_muhurta_score) is
+        untouched on the fully-available path."""
+        mod = _get_muhurta_module()
+        expected = 0.40 * 0.7 + 0.30 * 0.6 + 0.20 * 0.5 + 0.10 * 0.4
+        assert mod.compute_muhurta_score(0.7, 0.6, 0.5, 0.4) == pytest.approx(expected)
 
 
 # ── §3 — muhurta_finder — response structure ─────────────────────────────────
@@ -356,33 +575,61 @@ class TestMuhurtaFinderResponseStructure:
 
 class TestGenerateMuhurtaWindows:
 
-    def _patched(self, mod):
+    def _patched(self, mod, **overrides):
         """
-        Context-manager tuple: fake DB url + every date resolves to a real-shaped
-        row + coverage lookup short-circuited (no live network attempt in tests).
+        One composed context manager: fake DB url + every date resolves to a
+        real-shaped row + every other DB touch short-circuited (no live network
+        attempt in tests).
 
         T-8 fix (D-1.6 S-1): generate_muhurta_windows now also calls
         _current_dasha_lords() per window (live chart_dashas lookup, replacing the
         old hardcoded "Mercury MD (2026-2043)" citation) — mocked here the same way
         _fetch_panchanga_row already was, so these tests never attempt a real
         psycopg.connect() against the fake DB URL.
+
+        F-48: the transit sub-score is now REAL gochara and therefore touches
+        three more authorities — the natal Moon fact (chart_facts), the
+        transiting positions (ephemeris_daily via ka_graha_sancara), and the
+        classical rules (bg_transit_rules). All three are patched at the leaf,
+        NOT at `_transit_quality_for_window` itself, so these tests still
+        exercise the real scoring path end-to-end. Defaults model "no transit
+        authority available" (the honest-None arm); `**overrides` lets a test
+        supply real-shaped transit data instead.
         """
-        return (
-            patch.object(mod, "_get_db_url", return_value="postgresql://fake/test"),
-            patch.object(mod, "_fetch_panchanga_row", return_value=_fake_panchanga_row()),
-            patch.object(mod, "_panchanga_coverage", return_value=("2026-06-01", "2027-06-01")),
-            patch.object(mod, "_current_dasha_lords", return_value={
+        defaults = {
+            "_get_db_url": patch.object(
+                mod, "_get_db_url", return_value="postgresql://fake/test"),
+            "_fetch_panchanga_row": patch.object(
+                mod, "_fetch_panchanga_row", return_value=_fake_panchanga_row()),
+            "_panchanga_coverage": patch.object(
+                mod, "_panchanga_coverage", return_value=("2026-06-01", "2027-06-01")),
+            "_current_dasha_lords": patch.object(mod, "_current_dasha_lords", return_value={
                 "md_lord": "Mercury", "md_start": "2010-08-17", "md_end": "2027-08-17",
                 "ad_lord": "Saturn",
             }),
-            patch.object(mod, "_activity_significators_for_action", return_value=None),
-            patch.object(mod, "_fetch_tara_bala_baseline", return_value={}),
-        )
+            "_activity_significators_for_action": patch.object(
+                mod, "_activity_significators_for_action", return_value=None),
+            "_fetch_tara_bala_baseline": patch.object(
+                mod, "_fetch_tara_bala_baseline", return_value={}),
+            # F-48 leaves — default to unavailable so the honest-None arm runs.
+            "_natal_moon_sign_id": patch.object(
+                mod, "_natal_moon_sign_id", return_value=None),
+            "_read_transiting_sign_ids": patch.object(
+                mod, "_read_transiting_sign_ids", return_value=None),
+            "_fetch_gochara_rules": patch.object(
+                mod, "_fetch_gochara_rules", return_value={}),
+        }
+        for name, replacement in overrides.items():
+            defaults[name] = patch.object(mod, name, **replacement)
+
+        stack = ExitStack()
+        for cm in defaults.values():
+            stack.enter_context(cm)
+        return stack
 
     def test_returns_at_least_one_window_for_90_day_range(self):
         mod = _get_muhurta_module()
-        p1, p2, p3, p4, p5, p6 = self._patched(mod)
-        with p1, p2, p3, p4, p5, p6:
+        with self._patched(mod):
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="general",
@@ -412,8 +659,7 @@ class TestGenerateMuhurtaWindows:
 
     def test_all_scores_in_range(self):
         mod = _get_muhurta_module()
-        p1, p2, p3, p4, p5, p6 = self._patched(mod)
-        with p1, p2, p3, p4, p5, p6:
+        with self._patched(mod):
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="education",
@@ -429,8 +675,7 @@ class TestGenerateMuhurtaWindows:
     def test_source_citation_non_null_on_all_windows(self):
         """B.3 mandate: source_citation is NON-NULL on every row."""
         mod = _get_muhurta_module()
-        p1, p2, p3, p4, p5, p6 = self._patched(mod)
-        with p1, p2, p3, p4, p5, p6:
+        with self._patched(mod):
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="general",
@@ -444,8 +689,7 @@ class TestGenerateMuhurtaWindows:
 
     def test_windows_sorted_by_score_desc(self):
         mod = _get_muhurta_module()
-        p1, p2, p3, p4, p5, p6 = self._patched(mod)
-        with p1, p2, p3, p4, p5, p6:
+        with self._patched(mod):
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="education",
@@ -465,8 +709,7 @@ class TestGenerateMuhurtaWindows:
     def test_min_score_filter_applied(self):
         mod = _get_muhurta_module()
         min_score = 0.60
-        p1, p2, p3, p4, p5, p6 = self._patched(mod)
-        with p1, p2, p3, p4, p5, p6:
+        with self._patched(mod):
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="general",
@@ -482,8 +725,7 @@ class TestGenerateMuhurtaWindows:
 
     def test_factors_structure_present(self):
         mod = _get_muhurta_module()
-        p1, p2, p3, p4, p5, p6 = self._patched(mod)
-        with p1, p2, p3, p4, p5, p6:
+        with self._patched(mod):
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="education",
@@ -504,8 +746,7 @@ class TestGenerateMuhurtaWindows:
     def test_limit_respected(self):
         mod = _get_muhurta_module()
         limit = 5
-        p1, p2, p3, p4, p5, p6 = self._patched(mod)
-        with p1, p2, p3, p4, p5, p6:
+        with self._patched(mod):
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
                 action_type="general",
@@ -691,6 +932,9 @@ class TestLiveDashaCitation:
                  "ad_lord": "Saturn",
              }), \
              patch.object(mod, "_activity_significators_for_action", return_value=None), \
+             patch.object(mod, "_natal_moon_sign_id", return_value=None), \
+             patch.object(mod, "_read_transiting_sign_ids", return_value=None), \
+             patch.object(mod, "_fetch_gochara_rules", return_value={}), \
              patch.object(mod, "_fetch_tara_bala_baseline", return_value={}):
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,
@@ -721,6 +965,9 @@ class TestLiveDashaCitation:
              patch.object(mod, "_panchanga_coverage", return_value=("2026-06-01", "2027-06-01")), \
              patch.object(mod, "_dasha_quality_for_chart", side_effect=dasha_quality), \
              patch.object(mod, "_current_dasha_lords", return_value=None), \
+             patch.object(mod, "_natal_moon_sign_id", return_value=None), \
+             patch.object(mod, "_read_transiting_sign_ids", return_value=None), \
+             patch.object(mod, "_fetch_gochara_rules", return_value={}), \
              patch.object(mod, "_fetch_tara_bala_baseline", return_value={}):
             result = mod.generate_muhurta_windows(
                 chart_id=NATIVE_CHART_ID,

@@ -238,7 +238,17 @@ function windowDrivers(w: MuhurtaWindow): string[] {
   if (f) {
     if (f.panchanga_quality >= 0.6) drivers.push(`panchanga_quality=${f.panchanga_quality.toFixed(2)}`)
     if (f.dasha_quality >= 0.6) drivers.push(`dasha_quality=${f.dasha_quality.toFixed(2)} (${f.dasha_details?.md_lord}/${f.dasha_details?.ad_lord})`)
-    if (f.transit_quality >= 0.6) drivers.push(`transit_quality=${f.transit_quality.toFixed(2)}`)
+    // F-48: transit_quality is null when the transit authorities could not be
+    // read for the window. A null is NOT a driver and is NOT a zero — it is
+    // "not assessed", surfaced as its own entry so a reader never mistakes the
+    // driver list's silence for a clean transit bill (§N.6 / §N.8).
+    if (f.transit_quality !== null && f.transit_quality !== undefined) {
+      if (f.transit_quality >= 0.6) drivers.push(`transit_quality=${f.transit_quality.toFixed(2)}`)
+    } else {
+      drivers.push(
+        `transit_quality=not_assessed (${f.transit_details?.unavailable_reason ?? 'unavailable'})`,
+      )
+    }
     if (f.signal_activation >= 0.6) drivers.push(`signal_activation=${f.signal_activation.toFixed(2)}`)
   }
   if (w.tara_bala?.favorable) drivers.push(`tara_bala=${w.tara_bala.tara_name} (favorable)`)
