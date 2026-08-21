@@ -39,7 +39,7 @@ import pathlib
 import re
 import sys
 import traceback
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 # Local import
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
@@ -609,66 +609,58 @@ def check_phantom_references(repo_root: pathlib.Path) -> List[Finding]:
     return findings
 
 
-def check_chart_facts_schema(repo_root: pathlib.Path) -> List[Finding]:
-    """B-10 — CHART_FACTS_SCHEMA.json column presence verification.
+# F-162: CHART_FACTS_SCHEMA.json is a category/fact_key taxonomy (top-level keys
+# schema_version / categories / channels) — it has never carried a "columns" key, so
+# the prior version of this check (`declared_columns = {col["name"] for col in
+# schema.get("columns", [])}`) always evaluated to an empty set and always took the
+# always-taken early return at the old :650-659, meaning the entire HIGH
+# "chart_facts_column_missing" class had never once executed.
+#
+# Fix (CLAUDE.md §N.8 / plan option (b)): the column contract lives HERE, as a short,
+# explicitly-declared REQUIRED set, checked directly against the live table's
+# information_schema on every run — not as a second hand-maintained registry that can
+# itself drift (the GA.1 failure mode option (a) would have introduced).
+#
+# Every name below was verified against the real, live `chart_facts` table
+# (2026-08-22, `SELECT column_name FROM information_schema.columns WHERE
+# table_name='chart_facts'`) before being added. NOTE: a prior version of this check
+# named `computed_at_iso` as required — that column does NOT exist (the real column is
+# `computed_at`). Do not resurrect `computed_at_iso`.
+REQUIRED_CHART_FACTS_COLUMNS: frozenset = frozenset({
+    "chart_id",
+    "fact_id",
+    "ayanamsha_id",
+    "engine_version",
+    "fact_category",
+    "fact_subject",
+    "fact_key",
+})
 
-    Loads platform/scripts/governance/CHART_FACTS_SCHEMA.json and verifies
-    every declared column is present in the actual chart_facts table via psql.
-    Skips gracefully if DB is not reachable or psql is unavailable (LOW finding).
+
+def _query_live_chart_facts_columns() -> Tuple[Optional[Set[str]], Optional[Finding]]:
+    """Fetch the live `chart_facts` column set via psql / information_schema.
+
+    Returns `(columns, None)` on success, or `(None, finding)` where `finding` is a
+    LOW `schema_db_unreachable` Finding explaining why (no psql binary, DB down,
+    query error). Split out of `check_chart_facts_schema` into its own function so it
+    has an injection point for tests — F-154's sibling defect in this same batch was
+    "a control whose path is a module-level constant cannot be tested"; the equivalent
+    problem here was an inline `subprocess.run` call with no seam, which is part of
+    why the always-empty-declared-columns early return upstream of it survived
+    unnoticed as long as it did.
     """
     import subprocess
     import shutil
 
-    findings: List[Finding] = []
-    schema_path = repo_root / "platform/scripts/governance/CHART_FACTS_SCHEMA.json"
-
-    if not schema_path.exists():
-        findings.append(Finding(
-            cls="schema_file_missing",
-            severity="HIGH",
-            canonical_id=None,
-            surfaces_involved=["platform/scripts/governance/CHART_FACTS_SCHEMA.json"],
-            evidence="CHART_FACTS_SCHEMA.json not found — B-10 schema governance artifact missing",
-            suggested_remediation="Run B-10 session to create CHART_FACTS_SCHEMA.json",
-        ))
-        return findings
-
-    try:
-        schema = json.loads(schema_path.read_text(encoding="utf-8"))
-    except Exception as exc:
-        findings.append(Finding(
-            cls="schema_file_invalid",
-            severity="HIGH",
-            canonical_id=None,
-            surfaces_involved=["platform/scripts/governance/CHART_FACTS_SCHEMA.json"],
-            evidence=f"Could not parse CHART_FACTS_SCHEMA.json: {exc}",
-            suggested_remediation="Repair the JSON file",
-        ))
-        return findings
-
-    declared_columns = {col["name"] for col in schema.get("columns", [])}
-    if not declared_columns:
-        findings.append(Finding(
-            cls="schema_file_empty",
-            severity="MEDIUM",
-            canonical_id=None,
-            surfaces_involved=["platform/scripts/governance/CHART_FACTS_SCHEMA.json"],
-            evidence="CHART_FACTS_SCHEMA.json has no columns declared",
-            suggested_remediation="Populate the columns array",
-        ))
-        return findings
-
-    # Try to reach the DB via psql. Honour standard PG env vars.
     if not shutil.which("psql"):
-        findings.append(Finding(
+        return None, Finding(
             cls="schema_db_unreachable",
             severity="LOW",
             canonical_id=None,
             surfaces_involved=["platform/scripts/governance/CHART_FACTS_SCHEMA.json"],
             evidence="psql not found on PATH — skipping live column verification",
             suggested_remediation="Install postgresql-client to enable live schema checks",
-        ))
-        return findings
+        )
 
     pg_host = os.environ.get("PGHOST", "127.0.0.1")
     pg_port = os.environ.get("PGPORT", "5433")
@@ -688,50 +680,85 @@ def check_chart_facts_schema(repo_root: pathlib.Path) -> List[Finding]:
             capture_output=True, text=True, timeout=10, env=env,
         )
         if result.returncode != 0:
-            findings.append(Finding(
+            return None, Finding(
                 cls="schema_db_unreachable",
                 severity="LOW",
                 canonical_id=None,
                 surfaces_involved=["platform/scripts/governance/CHART_FACTS_SCHEMA.json"],
                 evidence=f"psql exit {result.returncode}: {result.stderr.strip()[:200]}",
                 suggested_remediation="Ensure DB is running on PGHOST:PGPORT for live schema checks",
-            ))
-            return findings
-        live_columns = {line.strip() for line in result.stdout.splitlines() if line.strip()}
+            )
+        return {line.strip() for line in result.stdout.splitlines() if line.strip()}, None
     except Exception as exc:
-        findings.append(Finding(
+        return None, Finding(
             cls="schema_db_unreachable",
             severity="LOW",
             canonical_id=None,
             surfaces_involved=["platform/scripts/governance/CHART_FACTS_SCHEMA.json"],
             evidence=f"psql invocation failed: {exc}",
             suggested_remediation="Check DB connectivity and PGPASSWORD env var",
+        )
+
+
+def check_chart_facts_schema(repo_root: pathlib.Path) -> List[Finding]:
+    """B-10 / F-162 — chart_facts REQUIRED-column presence verification.
+
+    CHART_FACTS_SCHEMA.json is checked for existence and JSON-validity as the B-10
+    governance artifact, but — since it carries no column contract (see
+    REQUIRED_CHART_FACTS_COLUMNS above) — is no longer the source of the column list
+    itself. The column list is REQUIRED_CHART_FACTS_COLUMNS, checked directly against
+    the live `chart_facts` table via `_query_live_chart_facts_columns()`.
+
+    Skips gracefully if DB is not reachable or psql is unavailable (LOW finding) —
+    that degradation path was already honest and is preserved unchanged.
+    """
+    findings: List[Finding] = []
+    schema_path = repo_root / "platform/scripts/governance/CHART_FACTS_SCHEMA.json"
+
+    if not schema_path.exists():
+        findings.append(Finding(
+            cls="schema_file_missing",
+            severity="HIGH",
+            canonical_id=None,
+            surfaces_involved=["platform/scripts/governance/CHART_FACTS_SCHEMA.json"],
+            evidence="CHART_FACTS_SCHEMA.json not found — B-10 schema governance artifact missing",
+            suggested_remediation="Run B-10 session to create CHART_FACTS_SCHEMA.json",
         ))
         return findings
 
-    missing = declared_columns - live_columns
-    if missing:
-        for col in sorted(missing):
-            findings.append(Finding(
-                cls="chart_facts_column_missing",
-                severity="HIGH",
-                canonical_id=None,
-                surfaces_involved=["platform/scripts/governance/CHART_FACTS_SCHEMA.json", "chart_facts"],
-                evidence=f"Column '{col}' declared in CHART_FACTS_SCHEMA.json but absent from live chart_facts table",
-                suggested_remediation=f"Run the migration that adds '{col}' to chart_facts, or remove it from CHART_FACTS_SCHEMA.json if intentionally dropped",
-            ))
-    else:
-        # All declared columns present — also check the two key B-series columns explicitly
-        for required in ("ayanamsha_id", "engine_version", "computed_at_iso", "chart_id", "fact_id"):
-            if required not in live_columns:
-                findings.append(Finding(
-                    cls="chart_facts_column_missing",
-                    severity="HIGH",
-                    canonical_id=None,
-                    surfaces_involved=["chart_facts"],
-                    evidence=f"Required B-series column '{required}' missing from live chart_facts table",
-                    suggested_remediation=f"Apply the B-series migration that adds '{required}'",
-                ))
+    try:
+        json.loads(schema_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        findings.append(Finding(
+            cls="schema_file_invalid",
+            severity="HIGH",
+            canonical_id=None,
+            surfaces_involved=["platform/scripts/governance/CHART_FACTS_SCHEMA.json"],
+            evidence=f"Could not parse CHART_FACTS_SCHEMA.json: {exc}",
+            suggested_remediation="Repair the JSON file",
+        ))
+        return findings
+
+    live_columns, unreachable_finding = _query_live_chart_facts_columns()
+    if unreachable_finding is not None:
+        findings.append(unreachable_finding)
+        return findings
+
+    assert live_columns is not None  # invariant: exactly one of the two is set
+
+    missing = REQUIRED_CHART_FACTS_COLUMNS - live_columns
+    for col in sorted(missing):
+        findings.append(Finding(
+            cls="chart_facts_column_missing",
+            severity="HIGH",
+            canonical_id=None,
+            surfaces_involved=["chart_facts"],
+            evidence=f"Required column '{col}' missing from live chart_facts table",
+            suggested_remediation=(
+                f"Apply the migration that adds '{col}' to chart_facts, or if '{col}' was "
+                "renamed/retired, correct REQUIRED_CHART_FACTS_COLUMNS in drift_detector.py"
+            ),
+        ))
 
     return findings
 
