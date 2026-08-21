@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 1006,
+  "event_count": 1007,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -903,14 +903,14 @@
     "F-147": {
       "confidence": "HIGH",
       "disposition": "PARKED",
-      "event_sha256": "30dda7b96c073a2e7e5656e3698b82a9a46eee9b26844dfe80b05b56304e27e7",
+      "event_sha256": "e62ac9b49d09f35f2507ad6a5c62a3331f660d016d2ab0378e9321c7b1af5355",
       "event_type": "finding_status",
-      "evidence_summary": "Addendum pushed to the existing PR #1439 branch (2 commits now, still open). Diagnosis re-confirmed against production: mimamsa_calibration count(manifestation_channel)=0 across 57 rows; the exact rescued group (relationship/ch_relationship_verbal) measured opp=53/scored=32/measured=0. Fix: per-group measured counter, channel_propensity=None when 0; fire_count stays 0 not None (migration 352 declares it NOT NULL -- correctly put the honest null on the nullable column instead, with a machine-readable reason in citation_ref, mirroring mi_pariksha's own F-143 count-semantics caveat pattern). REAL DOWNSTREAM DEFECT FOUND AND FIXED, not just the narrow ask: (1) a '(propensity or prior)' truthiness bug in the confidence-band calc that would have re-centred the band on the prior whenever propensity was a real 0.0 -- same defect class mi_darshana independently fixed at P2 two lines below; (2) MORE SERIOUSLY, mi_darshana's empirical narration branch fell back to prior_propensity on a bare NULL -- meaning a naive None-only fix would have printed something like 'fires with 45% propensity (n=32 outcome-scored, empirical learning)', a PRIOR dressed as a MEASURED rate, actively worse than the original 0.0 defect. Fixed with a new narration branch stating the gap explicitly (UNMEASURED, not zero) plus a provenance_chain.propensity_source field (measured|prior_fallback). TS layer needed no change (NULLS LAST ordering, uncoerced pass-through already correct). L5 suite 334->341 passed/2 skipped, 0 regressions, round-1 tests (32-scored, 25/23/7/2) still green. New tests for both the null-vs-real-zero distinction and the narration fix, mutation-tested in 3 separate passes, all correctly detected. Both formula versions bumped v1.1->v1.2. One residual honestly disclosed, not fixed: rank_consequence (NOT NULL) still carries the prior on an unmeasured-but-empirical row -- P3-b suppression only fires on non-empirical grades, so this specific field's honesty gap survives this pass.",
+      "evidence_summary": "Confirmatory GA-5 re-review round 3: DO-NOT-MERGE, one addendum-introduced regression found, everything else verified good. Original DO-NOT-MERGE concern confirmed resolved (traced live-shape end-to-end: scored_count=32, fire_count=0, channel_propensity=None, propensity_null_reason recorded). The 'naive fix would have been worse' claim independently confirmed real, not scope creep -- reproduced the exact pre-narration-fix output ('fires with 45% propensity... empirical learning', a prior dressed as measured). Narration fix traced and confirmed genuine. fire_count/NOT NULL reasoning confirmed correct against migration 352. Tests 341/2 vs 334/2 exact, all 3 mutation passes reproduced, governance guards clean. BLOCKING FINDING: the addendum's own new provenance_chain.rank_consequence field REOPENS A PREVIOUSLY-CLOSED GA-5 finding from PR #1386 round 3 (query_insights.ts's P3-b suppressor nulls a hardcoded key list -- grade, propensity -- but rank_consequence was never added to that list). Reproduced live: an assignment_only row with measured propensity 0.42 correctly nulls top-level rank_consequence, pc.propensity, and pc.grade -- but pc.rank_consequence still SERVES 0.42. Not a corner case: most groups still have scored<5 -> assignment_only, so every such row leaks. Fix specified precisely: drop 'rank_consequence': prop from the provenance dict (propensity_source already conveys the disclosure), or add rank_consequence:null to P3-b's null list -- either closes it, plus a covering test for the specific new key. Non-blocking follow-up also flagged: confidence_band still serves an unsuppressed prior-only range on empirical/NULL-propensity rows via query_manifestation_grammar.ts, which has no suppression logic at all -- undisclosed by the addendum, worth its own finding once F-147 itself lands.",
       "finding_id": "F-147",
-      "next_action": "Dispatch a confirmatory GA-5 re-review before merging -- the addendum went well beyond the original narrow ask (touched narration layer, band truthiness) and deserves independent verification before it unblocks the F-104/F-35 rebuild.",
+      "next_action": "One-line fix (drop the rank_consequence key or add it to P3-b's null list) + covering test, then a final confirmatory pass before merge.",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1439",
-      "prev_sha256": "2353f0ad452ec488dfe9d47e05075623e9f5c8949ac0fa00bf047b97ba6b8207",
-      "seq": 1006,
+      "prev_sha256": "30dda7b96c073a2e7e5656e3698b82a9a46eee9b26844dfe80b05b56304e27e7",
+      "seq": 1007,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -2870,8 +2870,8 @@
   },
   "findings_morning_ship_ready_count": 1,
   "findings_terminal_count": 143,
-  "journal_head_seq": 1006,
-  "journal_head_sha256": "30dda7b96c073a2e7e5656e3698b82a9a46eee9b26844dfe80b05b56304e27e7",
+  "journal_head_seq": 1007,
+  "journal_head_sha256": "e62ac9b49d09f35f2507ad6a5c62a3331f660d016d2ab0378e9321c7b1af5355",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
