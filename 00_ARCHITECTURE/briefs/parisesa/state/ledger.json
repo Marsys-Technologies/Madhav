@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 852,
+  "event_count": 854,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -829,6 +829,21 @@
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
+    "F-144": {
+      "confidence": "HIGH",
+      "disposition": "STRANDED",
+      "event_sha256": "bc468aa61dad5dc2b34ebaee4996dffbe4ed3985ea4701b55178901412f48f48",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW finding, triaged from F-23's investigation Lane 1 (explicitly separated as needing NO scholarly gate, unlike F-23's other lanes). brahma_remedy_corpus contains 3 corpus_sweep rows (sweep_mars_mantra_4c2c8f53, sweep_mercury_mantra_2068cf00, and a 3rd) marked scaffold_status='live' that are OCR garbage from brahmagyan/l0_remedy_corpus.py::sweep_classical_text_chunks (line 3147, regex-marker chunk sweep with no content-quality gate). Confirmed live: sweep_mars_mantra_4c2c8f53 (chunk_id=bphs_pg0294_c01) is actually about Arudha Pada calculation, not a remedy at all; sweep_mercury_mantra_2068cf00 is unreadable OCR ('qu\ufb01emudtsww:'). Both served today by ref_mantras_get. Same SS N.8 earned-signal violation class as documented elsewhere this campaign: scaffold_status='live' asserts vetted-unambiguous but the promotion detector only checks regex-marker-plus-planet-word presence. Migration 465_classical_text_chunks_ocr_cleanup.sql (EL-52, 2026-07-25) already added ocr_confidence_score/low_confidence_flag at the classical_text_chunks table level but the derived remedy_corpus rows were never re-scored/demoted, and no serving path filters on scaffold_status.",
+      "finding_id": "F-144",
+      "next_action": "demote the 3 corpus_sweep rows from scaffold_status='live' to 'review' (or filter category='corpus_sweep' at serve time), then give the sweep's promotion predicate a real detector reusing migration 465's existing ocr_confidence_score -- classic earned-signal fix, GA-2 authority applies, no scholarly gate needed",
+      "pr_url": null,
+      "prev_sha256": "179050c4c98bb57548265ef8cd4f914fafe67eb4ae9cc179fb346c5f4542b4a1",
+      "seq": 854,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
     "F-15": {
       "confidence": "HIGH",
       "disposition": "LANDED",
@@ -945,15 +960,16 @@
     "F-23": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "e1d831c16c1fa9f3dcc2e85e3da9bc0358413ad1ba9f80222498edafd37b2ddb",
+      "event_sha256": "179050c4c98bb57548265ef8cd4f914fafe67eb4ae9cc179fb346c5f4542b4a1",
       "event_type": "finding_status",
-      "evidence_summary": "Not a code defect -- genuine classical-content data-coverage gap requiring scholarly/editorial authority, not a repairable bug.",
+      "evidence_summary": "Full investigation completed per v3.1 carve-out (investigate+draft only, no implementation). Original honest-null claim CONFIRMED correct. But the '24% coverage' framing itself was misleading: real usable coverage is 87% (58/67) once mantra_transliteration is counted -- the reproducer only checked 2 of 3 mantra columns. Real defect: 3-way column-assignment incoherence across ingestion cohorts (BPHS Ch.94 nakshatra rows use mantra_transliteration only; BPHS Ch.88 per-planet rows use mantra_text only; the graha-beeja matrix uses mantra_sanskrit+transliteration). Also found: (a) 3 corpus_sweep rows are OCR garbage (one is actually about Arudha Pada calc, not a remedy at all) marked scaffold_status='live' -- triaged separately as F-144 (Lane 1, no scholarly gate, urgent); (b) an internal Sanskrit contradiction in the Saturn beeja mantra (Devanagari says shanaishcaraya, transliteration says shanaye); (c) classical_attestation_text is 0/67 for mantras. Full draft (4-lane recommendation, example complete entries, open questions for scholarly reviewer) filed at 00_ARCHITECTURE/briefs/parisesa/state/F23_PROVISIONAL_RULING_20260821.md. Recorded as PROVISIONAL, not decided -- Lanes 2-4 (column normalization rule, presentation fix, corpus expansion) all await native/scholarly ruling.",
       "finding_id": "F-23",
-      "next_action": "owner decision on classical content authority needed",
-      "prev_sha256": "ba9fd5f0069cd5bcf536e4ad0652afd6a4d017ab32e9c0031309037d8c939e49",
-      "seq": 213,
-      "source_batch": "proof_batch_b",
-      "status": "DECISION_PARKED",
+      "next_action": "native/scholarly review of F23_PROVISIONAL_RULING_20260821.md -- specifically the 4 open questions listed in its own closing section",
+      "pr_url": null,
+      "prev_sha256": "bd175878676ef90d1a093d9d17fe43e932b8db2158b076c55965f5d664390605",
+      "seq": 853,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "PROVISIONAL_RULING_AWAITING_SCHOLARLY_CONFIRMATION",
       "terminal_status": null
     },
     "F-24": {
@@ -2037,8 +2053,8 @@
   },
   "findings_morning_ship_ready_count": 0,
   "findings_terminal_count": 113,
-  "journal_head_seq": 852,
-  "journal_head_sha256": "bd175878676ef90d1a093d9d17fe43e932b8db2158b076c55965f5d664390605",
+  "journal_head_seq": 854,
+  "journal_head_sha256": "bc468aa61dad5dc2b34ebaee4996dffbe4ed3985ea4701b55178901412f48f48",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
