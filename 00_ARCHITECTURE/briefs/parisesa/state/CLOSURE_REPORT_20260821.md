@@ -257,7 +257,7 @@ Additional GA-2 decide-and-act closures beyond the PR queue:
   expanded GA-2 authority — the delegation was for operational/campaign-management
   decisions, not for substituting this session's judgment on questions a prior
   session already identified as requiring the specific human owner's input.
-- **Substantial new design+build items** (F-35, F-57, F-61, F-94, F-107, F-110,
+- **Substantial new design+build items** (F-57, F-61, F-94, F-107, F-110,
   F-113, F-114, F-118, F-126, F-52, F-131): each requires authoring a genuinely new
   contract/design from scratch, independent review, then implementation — not
   reviewing an existing PR. Given real remaining session time and this campaign's
@@ -266,14 +266,45 @@ Additional GA-2 decide-and-act closures beyond the PR queue:
   aspirational, not gates; no fabricated/rushed correctness) rejects. Deliberately
   left parked rather than rushed. This is a capacity-based decision, recorded here
   explicitly rather than left as an unexplained gap.
-- **GA-3 protected-data items** (F-104, F-116, F-117, F-141, F-62, F-63, F-71):
-  several of these ("chart 482012f1 needs an L5/data rebuild to pick up the
+
+  **F-35 correction, post-closure**: an external review flagged this ledger
+  entry's "no fix exists anywhere" claim as suspicious (it was, verbatim, a
+  different finding's text miscopied in an earlier pass — see §4 above's
+  ledger-sync-gap note for the pattern). Independent Opus-5 adversarial
+  verification (explicitly briefed to find a reason NOT to close it) found the
+  real fix landed via PR #1316 (`355be01df`, 2026-08-17) — `mi_sambandha.py`'s
+  scored/opp-threshold evidence-grade gating, code-correct and test-verified
+  (`test_mi_sambandha.py` 2/2, `test_mi_darshana.py` assignment/grade cases 6/6),
+  migration 573 applied. **But the original defect still reproduces live**: the
+  writers have not been re-run since the fix landed (all grammar rows in prod
+  show `scored_count=0`, `updated_at` predating the fix — system-wide, not just
+  one chart), so production still serves the pre-fix `'empirical'` grade for the
+  finding's own repro case. F-35 is therefore **moved to the GA-3 protected-data
+  group below**, not this design-work group — it needs a rebuild, not a design
+  pass, and the fix behind it is the most confidently-verified of anything in
+  this ledger's parked set.
+
+  **New discovery, same review**: the reviewer independently found `mi_darshana.py:224`
+  applies the identical unearned-'empirical'-grade defect class to a different
+  code path (`emergent_law`/discovery insights, graded from a raw mining-support
+  count with no scored/opportunity distinction) — never in F-35's own scope, and
+  never fixed by its PR. Confirmed live: **20 rows currently graded `'empirical'`
+  on the canonical chart `482012f1` in production today** — a real, currently-live
+  defect on the native's own chart, found as a side effect of verifying an
+  unrelated finding. Logged as `F-142-CANDIDATE` in the ledger rather than left to
+  evaporate; needs a real F-number and formal intake next session, not a
+  unilateral fix under this session's closed-out authority.
+- **GA-3 protected-data items** (F-35, F-104, F-116, F-117, F-141, F-62, F-63,
+  F-71): several of these ("chart 482012f1 needs an L5/data rebuild to pick up the
   already-merged fix") have their CODE fix already shipped, but a real GA-3 packet
   (quiescence proof, before-images, tested rollback, bounded scope) was never
   authored for the actual data rebuild — only the need was identified. Rebuilding
   production chart data for the native's own real chart deserves a dedicated,
   unhurried session with a properly authored packet, not being executed under a
   07:00 deadline alongside a dozen other things. Left parked deliberately.
+  F-35's rebuild need is confirmed system-wide (not just chart `482012f1`), so its
+  packet is likely a separate, broader-scope one from the single-chart packet
+  that may cover F-104/F-116/F-63/F-71 together.
 - **F-48, F-109 (partially)**: F-48 blocked on missing implementation elsewhere;
   F-109's citation-mislabel sub-finding was fully diagnosed (misattributed to F-65)
   but the substantive item (an independent 21-question qualitative re-grade) is a
@@ -361,28 +392,55 @@ up cleanly.
    "forgotten" — each was actively re-verified this session, not just carried
    forward unexamined.
 2. **Highest-value next actions, roughly in order of leverage:**
+   - **F-35 is now the single most shovel-ready GA-3 item in this ledger**: an
+     independent Opus-5 adversarial review confirmed the code fix is landed and
+     correct (tests re-run, migration confirmed applied) — the *only* missing
+     piece is re-running `mi_sambandha`/`mi_darshana`, confirmed needed
+     system-wide (every chart, not just one). Zero design or verification risk
+     remains; this is pure execution once a packet is authored.
    - Author the GA-3 packets for the 4 chart-482012f1 L5/data-rebuild items
      (F-104, F-116, F-63, F-71) — the code fixes are already shipped; only the
      rebuild execution is missing, and one properly-authored packet may cover all
-     four in a single rebuild pass.
+     four in a single rebuild pass. (Separate packet from F-35's system-wide one.)
    - Author the minimal GA-3 packet for F-54 (resume + run the
      `panchanga-daily-refresh` scheduler job) — small, bounded, well-understood.
    - F-131 has a concrete two-option implementation path already recorded
      (write-path glue + rebuild, or an immediate serve-time filter) — the most
-     "shovel-ready" of the substantial design+build items.
+     "shovel-ready" of the *design-work* items (F-35 above is more shovel-ready
+     still, since it needs no design at all).
    - F-06/RATE-07 architecture authority genuinely needs the owner's own ruling —
      F-91 is gated behind it; resolving F-06 unblocks two findings, not one.
+   - **`F-142-CANDIDATE`** (new, found post-closure): `mi_darshana.py:224` grades
+     discovery/emergent-law insights `'empirical'` from a raw mining-support count
+     alone — same unearned-grade defect class F-35 just fixed elsewhere in the
+     same writer pair, never covered by that fix. **Confirmed live: 20 rows on
+     the canonical chart `482012f1` are affected right now.** Needs formal
+     F-number intake next session before a fix is attempted — flagged here so it
+     doesn't evaporate, not fixed under this session's already-closed authority.
 3. **Structural fix worth doing, not just re-doing manually again**: the
-   PR-merged → ledger-status sync gap recurred twice this session (§4). A cheap
-   guard — e.g. a script that diffs `gh pr list --state merged` referencing an
-   F-number against the ledger's own terminal set — would catch this
-   mechanically instead of depending on a manual sweep remembering to check.
+   PR-merged → ledger-status sync gap recurred **three times** in this session
+   (F-68-et-al., then F-112-DOCSTRING/F-124/F-73, then F-35 itself). Built and
+   committed this session, post-closure:
+   `00_ARCHITECTURE/briefs/parisesa/scripts/check_ledger_pr_sync.py` — diffs
+   merged `fix(parisesa)` PRs (by F-number, extracted from title+body) against
+   the ledger's terminal set. Read-only; reports candidates for a human to
+   confirm, does not auto-close (its own docstring documents a known
+   false-positive shape from incidental F-number mentions in PR prose). Run it
+   at the start of every future PARIŚEṢA session, not just when drift is
+   suspected.
 4. **No cross-campaign cleanup needed.** PARIPRAŚNA and EKAVĀKYATĀ namespaces were
    read-only referenced only, zero violations (§6).
 
 This session's own operating discipline — escalating the v3.0 scope confirmation
 before acting, self-catching and correcting both the F-05-et-al. misclassification
-and the two ledger-sync gaps, and declining to rush the protected-data and
-substantial-design items under deadline pressure rather than trading correctness
-for a higher terminal-count number — is offered as the standard the next session
-should hold itself to, not just this one.
+and three rounds of the ledger-sync gap (the third caught by a tool built to catch
+it, then verified against reality rather than trusted at face value), and
+declining to rush the protected-data and substantial-design items under deadline
+pressure rather than trading correctness for a higher terminal-count number — is
+offered as the standard the next session should hold itself to, not just this
+one. The F-35 correction in particular is worth internalizing as a pattern: an
+external reviewer's skepticism about one ledger entry ("this text looks
+copy-pasted") led, via one honest re-verification, to recovering a real closure
+candidate *and* discovering a live, currently-unaddressed defect on the native's
+own chart that no prior pass had found. Suspicion of the ledger's own claims,
+applied consistently, finds real things.
