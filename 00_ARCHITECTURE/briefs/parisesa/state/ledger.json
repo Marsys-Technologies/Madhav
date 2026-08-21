@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 925,
+  "event_count": 926,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -361,15 +361,16 @@
     },
     "F-113": {
       "confidence": "HIGH",
-      "disposition": "OPEN",
-      "event_sha256": "d68a9472f02ee1548e07ef982835706abd01927b37ff1a326cb8f37e81d82923",
+      "disposition": "LANDED",
+      "event_sha256": "d9d96c712033965ae222d3dafd58e4e45fe0b5dde584704000051e2f6545282e",
       "event_type": "finding_status",
-      "evidence_summary": "Genuinely unbuilt -- a domain-assessment evidence-selection contract has not yet been authored. Design work required first.",
+      "evidence_summary": "Diagnosis: genuine coverage gap, not a ranking bug. Reproduced live (still worse than filed -- now kernel-only, evidence/grounding omitted at default budget). Root cause: runAssessDomain never reads D1/rasi dignity/house/shadbala of the domain's bhavesha/karaka/bhava-occupants at all -- no ranking can surface a fact never fetched. Two real aggravators found: judgment_query only COUNTS 7th-house occupants (benefic/malefic tally) never grades dignity; and the D9 leg + graha_shadbala_ranking that assess_* DOES compute lands in evidence/verdict_skeleton, which assembleSaraContent drops all-or-nothing at default budget -- exactly the response_budget trap this campaign already knows about from earlier this session. Fix: reuses register_d9_judgment.ts's ALREADY-REVIEWED grader (no new/drifting second authority per SS N.5), exports (not re-declares) the exact PERCENT_RANK window + LOW_SHADBALA_PERCENTILE constant ganita_dasha_lord_capability_get already ships (surfaces can't drift apart), selection thresholds not invented. Result placed in a verdict clause that's the ONE budget-immune layer -- correctly avoiding the trap its own aggravator #2 identified. Applies to all 4 assess_* tools. 17 new tests over real production rows; 1779/1779 retrieval tests; envelope codegen regenerated+checked clean.",
       "finding_id": "F-113",
-      "next_action": "author the selection contract + regression, independent review, then implement",
-      "prev_sha256": "7cfbdc250cd14f4c2276e05214e3541226098538c1e5aac85a165566347dca27",
-      "seq": 752,
-      "source_batch": "round9_triage",
+      "next_action": "GA-5 review in flight",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1425",
+      "prev_sha256": "3e0fb660cf3e9c4a196abe4962bb352211655c7f8a9929891c9b3c3225c5e6de",
+      "seq": 926,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
@@ -2552,8 +2553,8 @@
   },
   "findings_morning_ship_ready_count": 6,
   "findings_terminal_count": 122,
-  "journal_head_seq": 925,
-  "journal_head_sha256": "3e0fb660cf3e9c4a196abe4962bb352211655c7f8a9929891c9b3c3225c5e6de",
+  "journal_head_seq": 926,
+  "journal_head_sha256": "d9d96c712033965ae222d3dafd58e4e45fe0b5dde584704000051e2f6545282e",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
