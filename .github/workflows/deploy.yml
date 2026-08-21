@@ -834,13 +834,23 @@ jobs:
 
       - name: Re-point Cloud Run Job at the new image
         run: |
+          # F-185: KA_KSHETRA_HASH_SPILL_DIR was unconfigured, so the writer
+          # silently fell back to TMPDIR (`/tmp`), which is RAM-backed tmpfs on
+          # Cloud Run — no volume mount exists anywhere in this repo's infra to
+          # give it a real disk. Interim disposition: pin it to `/tmp`
+          # explicitly (so the choice is observable, not an implicit fallback —
+          # the writer now logs the resolved path and filesystem kind at
+          # startup) and raise --memory to cover the ~3-4.2GB RAM-backed spill
+          # at the native chart's 10.5M-row scale on top of the job's existing
+          # working set. Provisioning a disk-backed volume mount is out of
+          # scope for this fix; see F-185 in the PARISESA-V4 findings.
           gcloud run jobs update brahma-build-pipeline-job \
             --region=${{ env.GCP_REGION }} \
             --image=asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ github.sha }} \
             --task-timeout=86400 \
-            --memory=8Gi \
+            --memory=16Gi \
             --cpu=4 \
-            --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events \
+            --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events,KA_KSHETRA_HASH_SPILL_DIR=/tmp \
             --quiet
 
       - name: Verify ga_writers is importable in the pushed image

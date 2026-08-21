@@ -930,3 +930,103 @@ class TestLoadLegacyCrosscheck:
             'Bound params must be exactly (chart_id, event_class); '
             'the authority sub-select uses a correlated column reference, '
             'not a third bound parameter')
+
+
+class TestSpillDirEnv:
+    """F-185: `KA_KSHETRA_HASH_SPILL_DIR` used to be read with
+    `os.environ.get(...) or None` — no validation, no logging, so a
+    misconfigured or silently-tmpfs spill directory was invisible until an
+    OOM. `_resolve_spill_dir_env` / `_detect_filesystem_kind` are the fix's
+    detectors; these tests are the §N.8 "can it actually fail" proof for each
+    branch, plus the deliberate accept-not-reject behaviour for tmpfs (no
+    Cloud Run volume mount exists in this repo's infra, so the interim
+    disposition is memory headroom, not a hard tmpfs failure — see
+    deploy.yml)."""
+
+    def test_unset_returns_none_and_logs_info(self, monkeypatch, caplog):
+        monkeypatch.delenv('KA_KSHETRA_HASH_SPILL_DIR', raising=False)
+        with caplog.at_level('INFO', logger='services.ka_kshetra.stage4_field'):
+            result = S4._resolve_spill_dir_env('KA_KSHETRA_HASH_SPILL_DIR')
+        assert result is None
+        assert any('not set' in r.message for r in caplog.records)
+
+    def test_empty_string_treated_as_unset(self, monkeypatch):
+        monkeypatch.setenv('KA_KSHETRA_HASH_SPILL_DIR', '')
+        assert S4._resolve_spill_dir_env('KA_KSHETRA_HASH_SPILL_DIR') is None
+
+    def test_a_real_writable_directory_is_accepted_and_logged(self, tmp_path, monkeypatch, caplog):
+        monkeypatch.setenv('KA_KSHETRA_HASH_SPILL_DIR', str(tmp_path))
+        monkeypatch.setattr(S4, '_detect_filesystem_kind', lambda path: 'ext4')
+        with caplog.at_level('INFO', logger='services.ka_kshetra.stage4_field'):
+            result = S4._resolve_spill_dir_env('KA_KSHETRA_HASH_SPILL_DIR')
+        assert result == str(tmp_path)
+        assert any('ext4' in r.message for r in caplog.records)
+
+    def test_nonexistent_directory_raises(self, tmp_path, monkeypatch):
+        missing = tmp_path / 'does-not-exist'
+        monkeypatch.setenv('KA_KSHETRA_HASH_SPILL_DIR', str(missing))
+        with pytest.raises(RuntimeError, match='does not exist'):
+            S4._resolve_spill_dir_env('KA_KSHETRA_HASH_SPILL_DIR')
+
+    def test_read_only_directory_raises(self, tmp_path, monkeypatch):
+        if os.geteuid() == 0:
+            pytest.skip('root bypasses the write-permission check this test exercises')
+        ro_dir = tmp_path / 'read-only'
+        ro_dir.mkdir()
+        ro_dir.chmod(0o555)
+        try:
+            monkeypatch.setenv('KA_KSHETRA_HASH_SPILL_DIR', str(ro_dir))
+            with pytest.raises(RuntimeError, match='not writable'):
+                S4._resolve_spill_dir_env('KA_KSHETRA_HASH_SPILL_DIR')
+        finally:
+            ro_dir.chmod(0o755)
+
+    def test_insufficient_free_space_raises(self, tmp_path, monkeypatch):
+        monkeypatch.setenv('KA_KSHETRA_HASH_SPILL_DIR', str(tmp_path))
+        fake_usage = type('Usage', (), {'free': S4.REQUIRED_SPILL_FREE_BYTES - 1})()
+        monkeypatch.setattr(S4.shutil, 'disk_usage', lambda path: fake_usage)
+        with pytest.raises(RuntimeError, match='free'):
+            S4._resolve_spill_dir_env('KA_KSHETRA_HASH_SPILL_DIR')
+
+    def test_tmpfs_is_accepted_not_rejected_but_warns_loudly(self, tmp_path, monkeypatch, caplog):
+        # This is the load-bearing case: F-185's directive (no volume mount
+        # exists to provision in this fix) is "accept tmpfs, raise memory
+        # instead of a hard fail" — but the acceptance must be OBSERVABLE, not
+        # silent. Today's pre-fix code neither raised nor logged anything.
+        monkeypatch.setenv('KA_KSHETRA_HASH_SPILL_DIR', str(tmp_path))
+        monkeypatch.setattr(S4, '_detect_filesystem_kind', lambda path: 'tmpfs')
+        with caplog.at_level('WARNING', logger='services.ka_kshetra.stage4_field'):
+            result = S4._resolve_spill_dir_env('KA_KSHETRA_HASH_SPILL_DIR')
+        assert result == str(tmp_path)
+        assert any(
+            r.levelname == 'WARNING' and 'tmpfs' in r.message for r in caplog.records
+        ), 'a tmpfs spill dir must be logged at WARNING, not silently accepted'
+
+    def test_undetectable_filesystem_warns_does_not_raise(self, tmp_path, monkeypatch, caplog):
+        # §N.8: a check that cannot determine the answer on this platform must
+        # say so (WARNING), never report a silent pass at INFO or below.
+        monkeypatch.setenv('KA_KSHETRA_HASH_SPILL_DIR', str(tmp_path))
+        monkeypatch.setattr(S4, '_detect_filesystem_kind', lambda path: None)
+        with caplog.at_level('WARNING', logger='services.ka_kshetra.stage4_field'):
+            result = S4._resolve_spill_dir_env('KA_KSHETRA_HASH_SPILL_DIR')
+        assert result == str(tmp_path)
+        assert any(r.levelname == 'WARNING' for r in caplog.records)
+
+    def test_detect_filesystem_kind_returns_none_without_proc_mounts(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(S4.os.path, 'exists', lambda p: False)
+        assert S4._detect_filesystem_kind(str(tmp_path)) is None
+
+    def test_detect_filesystem_kind_matches_longest_mount_prefix(self, tmp_path, monkeypatch):
+        fake_proc_mounts = (
+            'overlay / overlay rw,relatime 0 0\n'
+            f'tmpfs {tmp_path} tmpfs rw,relatime 0 0\n'
+        )
+        real_exists = S4.os.path.exists
+        monkeypatch.setattr(
+            S4.os.path, 'exists',
+            lambda p: True if p == '/proc/mounts' else real_exists(p))
+        # `open` is a builtin, not a module attribute of S4 — patch it via
+        # builtins so the function under test (which calls bare `open(...)`)
+        # observes the fake mount table.
+        monkeypatch.setattr('builtins.open', lambda *a, **kw: __import__('io').StringIO(fake_proc_mounts))
+        assert S4._detect_filesystem_kind(str(tmp_path)) == 'tmpfs'
