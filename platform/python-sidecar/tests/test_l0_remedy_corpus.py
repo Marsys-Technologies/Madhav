@@ -279,10 +279,13 @@ class TestInMemoryQuery:
 #
 # Prior behaviour: scaffold_status was gated only on marker/planet uniqueness,
 # never on whether the extracted text was legible at all. Live production check
-# (2026-08-21) found 29/49 corpus_sweep rows score below the already-established
-# LOW_CONFIDENCE_THRESHOLD (0.55, from brahmagyan.ocr_cleanup, EL-52) yet were
-# served scaffold_status='live' -- including the EL-52 hand-documented named
-# example (sweep_venus_japa_1b8a46b9 / chunk bphs_pg0581_c01, "3Tr?Ctrqqqad
+# (2026-08-21, corrected post-GA5-re-review -- the original "29/49" estimate in
+# an earlier version of this PR did not reproduce and is not used here) found
+# 35/49 corpus_sweep rows score below the already-established
+# LOW_CONFIDENCE_THRESHOLD (0.55, from brahmagyan.ocr_cleanup, EL-52), 31 of
+# them currently served scaffold_status='live' -- including the EL-52
+# hand-documented named example (sweep_venus_japa_1b8a46b9 / chunk
+# bphs_pg0581_c01, "3Tr?Ctrqqqad
 # EI€TITfEfrffTq"), which a prior lane had already flagged as garbled OCR.
 
 class TestSweepOcrConfidenceGating:
