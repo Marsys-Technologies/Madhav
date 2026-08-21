@@ -6249,3 +6249,43 @@ the Part D lease above (already closed) and from every other active lease in
 this table. Worktree `.clone/worktrees/pariprashna-part-d`, branch
 `pariprashna/p3-preflight-part-d` (reused from Part D — adjacent scope, same
 worktree already had the DB tunnel + deps set up for the live e2e run).
+
+## 2026-08-21 — PARIPRASHNA-P3-PREFLIGHT-PART-B — lease CLOSED, PR #1442 merged + deployed + live-verified
+
+Lease opened above is released. Final account:
+
+- PR #1442: CI green except one flaky `DB Integration Tests (SAMĪKṢĀ,
+  throwaway Postgres)` failure (`type "message_parts" already exists`,
+  cascading into an unrelated `table does not exist` — a migration-race on
+  the fresh throwaway Postgres, nothing to do with this PR's files). Verified
+  flaky, not real, by re-running the single job with zero code changes:
+  passed clean. Merged via merge queue (`a894fe1d6`).
+- Deployed via the standing canary discipline: `Deploy to Cloud Run` run
+  32524418679 — `Apply DB Migrations` (no-op, no new migration in this PR),
+  `Build & Deploy Web` succeeded (no-traffic deploy → post-deploy smoke →
+  promote to 100%).
+- **Live-verified per DD-21** — real probe turn ("What does my Saturn
+  placement suggest about career discipline?") produced, in the same
+  production window:
+  - `planner` on `gemini-3.7-flash`: 30,812 in / 850 out,
+    `computed_cost_usd: 0.026296` — matches the seeded rate exactly
+    (30,812×$0.75/1M + 850×$3.75/1M).
+  - `synthesize` on `gemini-3.1-pro-preview`: 84,448 in / 2,814 out,
+    `computed_cost_usd: 0.202664` — matches exactly (84,448×$2.00/1M +
+    2,814×$12.00/1M; under the 200K tier threshold, so the flat-rate
+    approximation from migration 583 was exact this turn, not merely
+    close).
+  - Both new models genuinely serving real traffic with cost correctly
+    computed — Part B and Part D's fixes verified working together, not
+    independently.
+- **Disclosed, unrelated observation (third occurrence across Part
+  A/D/B probes):** the `title` pipeline_stage (Anthropic `claude-haiku-4-5`,
+  via `title.ts`'s `TITLE_MODEL_ID` bypass — see Part B's disclosure above)
+  has now errored with 0 tokens on every single probe turn this campaign has
+  run. Not chased — out of every Part's declared scope — but flagged since a
+  100% observed failure rate across three independent live turns is a real
+  signal, not noise.
+
+No file outside this lease's declared scope was touched. Worktree
+`.clone/worktrees/pariprashna-part-d` retained (Parts B/C/D share adjacent
+model/adapter scope); will be removed once Part C/E/F land or on request.
