@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 1002,
+  "event_count": 1003,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -903,14 +903,14 @@
     "F-147": {
       "confidence": "HIGH",
       "disposition": "PARKED",
-      "event_sha256": "2d0105325b76be6e46fc34a5a1809412aeb2f5afa1381c4bde6f6e765977c7d9",
+      "event_sha256": "ca743b2a1af8f7006894651e197ab1af4a3378b9a564eb89d8620fa784724e3e",
       "event_type": "finding_status",
-      "evidence_summary": "Fixed as PR #1439 (open, awaiting GA-5). Root cause independently confirmed: mimamsa_calibration.composite_verdict has exactly one writer (mi_pramana.py:417 _verdict_v2, confirmed no other INSERT/UPDATE exists), emitting uppercase from a closed 5-value set (CONFIRMED/PARTIAL/REFUTED/UNRESOLVED/FALSE_ALARM); production GROUP BY confirmed exactly UNRESOLVED 25/PARTIAL 23/REFUTED 7/CONFIRMED 2, zero lowercase, no 'denied'. Live re-aggregation: pre-fix literals yield scored=0 for every group; real vocabulary yields 32 for one channel. WHY TESTS MISSED IT: not absent, bug-compatible -- the existing test used the same fictional lowercase/'denied' fixture data, both inherited from a common ancestor (migration 348's stale inline column comment, which the old test docstring cited by file:line as its authority). Fixing only the source turned the pre-existing test red immediately -- tests needed fixing too, not just trusted. Fix mirrors the already-ratified handling of this same column in mi_pariksha.py (F-143) -- frozensets + .upper() normalization, chosen over bare uppercase literals because the column is unconstrained text with no CHECK and has now broken a consumer twice. GRAMMAR_FORMULA_VERSION bumped v1.0->v1.1 so a pending rebuild can distinguish stale rows. 251/251 full L5 suite passing, mutation-tested (revert -> 9 tests red including a production-shaped replay of the live 25/23/7/2 distribution). CRITICAL CORRECTION to F-35's own prior record: this fix repairs scored_count/evidence_grade ONLY, not all three counters as originally assumed -- fire_count/channel_propensity remain 0 for a SEPARATE, deeper reason (manifestation_channel is NULL on all 57 live rows because _score_manifestation() is a documented B.10 stub, unrelated to this bug). Triaged separately as F-190.",
+      "evidence_summary": "GA-5 review: DO-NOT-MERGE (as-is). Every factual claim in the PR independently confirmed true (sole writer confirmed via migration-464 DROP of the legacy path; production distribution queried directly, exact match; migration 348:17's stale comment confirmed verbatim; pre-fix tests confirmed bug-compatible; mi_pariksha.py's mirrored pattern confirmed genuine; all 9 mutation-test reds reproduced exactly; GRAMMAR_FORMULA_VERSION bump confirmed sufficient, nothing gates on it). THE BLOCKER IS AN INTERACTION, not a defect in the fix itself: _score_manifestation() returns (0.5, None) always -- manifestation_channel is NULL on all 57 live rows (confirmed: count(manifestation_channel)=0), so fire_count structurally cannot be nonzero and propensity computes to 0.0 (not None). This PR makes evidence_grade='empirical' reachable, which switches OFF query_insights.ts's suppressIfNotCalibrated redaction for exactly these rows -- so mi_darshana would narrate e.g. 'the channel fires with 0% propensity (n=32 outcome-scored predictions, empirical learning)' as a served claim. Today's 10 stale empirical/propensity-0 rows are self-healing -- a rebuild WITHOUT this PR replaces them with honest assignment_only rows (SS N.7 item 6 compliant). A rebuild WITH this PR re-creates them as legitimately-earned, freshly-stamped v1.1 rows, PERMANENTLY -- converting a detectable stale artifact into a code-sanctioned false claim, a real SS N.8 violation. Small, same-file fix specified by the reviewer: emit propensity=None (not 0.0) when no row in the group has a non-NULL manifestation_channel -- an unmeasurable rate is null, not zero. This also directly resolves F-190's honest-null-vs-invented-default question for the propensity field specifically.",
       "finding_id": "F-147",
-      "next_action": "Dispatch GA-5 review for PR #1439.",
+      "next_action": "Implement the reviewer's specified fix (propensity=None when unmeasurable) in the same PR, then re-review before merging or executing the F-104/F-35 rebuild.",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1439",
-      "prev_sha256": "8c61002a17a5d98d90aa0e791c22d9504b2723183477aaaaf7947bb3e6a55f08",
-      "seq": 1000,
+      "prev_sha256": "15155d64551095c200359398d0609e9a8c2b55c548d938903b016ac9635eb654",
+      "seq": 1003,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -2855,8 +2855,8 @@
   },
   "findings_morning_ship_ready_count": 0,
   "findings_terminal_count": 143,
-  "journal_head_seq": 1002,
-  "journal_head_sha256": "15155d64551095c200359398d0609e9a8c2b55c548d938903b016ac9635eb654",
+  "journal_head_seq": 1003,
+  "journal_head_sha256": "ca743b2a1af8f7006894651e197ab1af4a3378b9a564eb89d8620fa784724e3e",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
