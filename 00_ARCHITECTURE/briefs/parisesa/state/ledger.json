@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 943,
+  "event_count": 944,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -2483,17 +2483,17 @@
     "F-94": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "681ff842d406ea9c2658b4c65028ce73b44a9f3ac7dc9180a6e78ab68cb71be3",
+      "event_sha256": "2521688218184e867bfab91aa5d1023ce64d81e0d854dd863735b8b5153040cd",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review: MERGE, no blocking defect. Every claim independently reproduced on fresh worktrees of both main and the PR branch. RC-3 fix confirmed CANNOT weaken the gate (mathematically -- absolute vs relative parts produce an identical match set on any clean path, the change only removes phantoms). RC-2 fix confirmed defensible (frontmatter genuinely SUPERSEDED, single call site, no coverage lost elsewhere). F-94.b/c scope-deferral confirmed correct. One real finding: a CI comment's 'environment delta' justification for +1 slack was FALSE (the real CI run logged 215, identical to the workstation measurement) -- corrected directly in the PR body/comment per this campaign's own SS N.8 discipline applied to its own governance tooling.",
+      "evidence_summary": "PR #1422 confirmed merged 2026-08-21T06:37:05Z (was MORNING_SHIP_READY/queue-position-1 at closure-report writing time). GA-5 MERGE verdict already on record. Note: RC-1 (74.9% of findings) still needs its own dedicated review before any registry mutation, tracked as a separate explicit follow-up, not folded into this closure.",
       "finding_id": "F-94",
-      "next_action": "in merge queue, auto-merge armed. RC-1 (74.9% of findings) still needs its own dedicated review before any registry mutation -- separate follow-up, not blocking this PR.",
+      "next_action": null,
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1422",
-      "prev_sha256": "515b0c00dddb5d84abee61cade9f7ef2df9088012a2e1e53cf2a2205453787a6",
-      "seq": 921,
+      "prev_sha256": "6e0f1edad0fd7971ca771f7ec53db8d9cc7976b24b5fb1ed9eba5a6d2ea7a52d",
+      "seq": 944,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-95": {
       "confidence": "HIGH",
@@ -2641,10 +2641,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 7,
-  "findings_terminal_count": 127,
-  "journal_head_seq": 943,
-  "journal_head_sha256": "6e0f1edad0fd7971ca771f7ec53db8d9cc7976b24b5fb1ed9eba5a6d2ea7a52d",
+  "findings_morning_ship_ready_count": 6,
+  "findings_terminal_count": 128,
+  "journal_head_seq": 944,
+  "journal_head_sha256": "2521688218184e867bfab91aa5d1023ce64d81e0d854dd863735b8b5153040cd",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
