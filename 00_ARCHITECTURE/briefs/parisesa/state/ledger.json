@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 990,
+  "event_count": 992,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1602,16 +1602,17 @@
     },
     "F-21": {
       "confidence": "HIGH",
-      "disposition": "LANDED",
-      "event_sha256": "027fdafa78859f4084635ce0fa99b7f7ef2ff87852998619fb6e012409209b72",
+      "disposition": "PARKED",
+      "event_sha256": "5790a1a2606d14e72d4e6ecb8b47a6c89e3821c3d6f427c335c8c2ca0e25672c",
       "event_type": "finding_status",
-      "evidence_summary": "F-21's gating dependency F-52 (nodal-scoring fingerprint-invalidation defect) remains not-terminal in ledger.json as of this pass (status LANDED, terminal_status null, confidence HIGH -- 'no fingerprint-invalidation packet exists anywhere in the repo or its history; the underlying nodal-scoring defect remains only partially addressed'). No new evidence changes this. F-21 correctly cannot promote to terminal while its blocker is open; re-checked ledger.json directly rather than re-running F-52's own investigation (out of scope for this batch).",
+      "evidence_summary": "F-52's own gate (the gochara_forecast_get corpus canary needs the fixed fingerprint logic reflected in the actual served data) can no longer be satisfied through a rebuild -- the owner has explicitly declined the ka_gochara_v3_century_materialize re-run that would produce that data (see F-52's entry). Status changed from LANDED to EXTERNAL_HOLD to reflect this is now blocked on an owner decision, not a pending execution step. Reclassifying, not re-litigating F-52's own owner-ruled disposition.",
       "finding_id": "F-21",
-      "next_action": "wait on F-52",
-      "prev_sha256": "aa344a31a3018e74d249497b4394eb5363146cb4efb4b7e92e2fd774a73441a8",
-      "seq": 709,
-      "source_batch": "proof_batch_i",
-      "status": "LANDED",
+      "next_action": "Remains blocked unless the owner authorizes a gochara rebuild in the future, or a different (non-rebuild) verification path for the canary is found.",
+      "pr_url": null,
+      "prev_sha256": "c2c80b41730292d27bd3a688b78b9e31bc314d38262d423730f65d69270e4062",
+      "seq": 992,
+      "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
+      "status": "EXTERNAL_HOLD",
       "terminal_status": null
     },
     "F-22": {
@@ -2045,17 +2046,17 @@
     },
     "F-52": {
       "confidence": "HIGH",
-      "disposition": "LANDED",
-      "event_sha256": "4ed4c12e1f12dc48c78b005fd9d1b8a9094817bb52c0c7d895705cc12865ccd1",
+      "disposition": "PARKED",
+      "event_sha256": "c2c80b41730292d27bd3a688b78b9e31bc314d38262d423730f65d69270e4062",
       "event_type": "finding_status",
-      "evidence_summary": "PR #1409 merged (3118407af06500e1a2ec160a09fb8ddfb1db657a). Fingerprint-invalidation scope fix landed and deployed. NOT yet terminal: code-fix-only, per the PR's own repeated disclosure -- ka_gochara_v3_century_materialize must be re-run for F-21's gate (and F-52's own served-data claim) to actually clear. Same rebuild-pending pattern as F-35.",
+      "evidence_summary": "OWNER RULING, direct instruction 2026-08-21: 'For gochara-adjacent fixes, just fix the code but don't rebuild. That's fine enough.' Code fix (PR #1409, nodal-scoring fingerprint invalidation) is confirmed merged and confirmed present in the deployed image (git merge-base --is-ancestor 3118407a against brahma-pipeline:25c8aaac). The DATA-side re-materialization (ka_gochara_v3_century_materialize) is EXPLICITLY DECLINED BY OWNER, not merely deferred -- do not attempt it again, code-only fix is accepted as sufficient. PROCESS NOTE (kept in full, not smoothed over): an attempted dispatch this session was refused after 33ms by a real production safety rail (build_protected_assets, PARISKARA MR-06 2026-08-10, protecting generation=3.0 gochara rows for both canonical charts) -- zero chart data was written or changed (all 4 before/after content hashes byte-identical). The dispatching agent's own self-disclosed defect: it trusted the writer's docstring claim ('generation=3.0 writes pass through safely') over the live build_protected_assets table, checking the live table only AFTER the failed dispatch rather than before -- a real SS N.5/N.8-class lapse (unverified claim trusted over live source of truth), caught by the system's own protection rail rather than the agent's own diligence. Control-plane bookkeeping rows were written (build_runs, build_run_assets, asset_throughput now truthfully reads state='error' with the BUILD-PROTECTED message) -- left as an honest record, not masked. Separately clarified: the owner's ~30-hour figure may refer to the SIBLING asset ka_gochara_sweep (~22h documented full-plan cost, 303 substeps), not this asset -- not confirmed either way, and moot now given the owner's code-only instruction covers the whole gochara-adjacent family regardless.",
       "finding_id": "F-52",
-      "next_action": "re-run ka_gochara_v3_century_materialize for the native chart (and re-check F-21's gate) -- GA-3 rebuild pending, not yet executed this session",
+      "next_action": "None -- code-only fix accepted as sufficient per direct owner instruction. STANDING POLICY for any future gochara-adjacent finding (ka_gochara_v3_century_materialize, ka_gochara_sweep, or any ka_gochara_* asset): code fixes are fine, rebuilds/re-materializations are NOT to be executed without a fresh, explicit owner authorization.",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1409",
-      "prev_sha256": "d28430b3199fe76329ca0fb8891ae4a1563ab3dd399ea4bb28b4effabf513188",
-      "seq": 875,
-      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "DATA_PARKED",
+      "prev_sha256": "daa4d8f98459908088b4e9290b11f92050fcd12c3fbe90f22a5800a0d7c70972",
+      "seq": 991,
+      "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
+      "status": "EXTERNAL_HOLD",
       "terminal_status": null
     },
     "F-53": {
@@ -2809,8 +2810,8 @@
   },
   "findings_morning_ship_ready_count": 0,
   "findings_terminal_count": 142,
-  "journal_head_seq": 990,
-  "journal_head_sha256": "daa4d8f98459908088b4e9290b11f92050fcd12c3fbe90f22a5800a0d7c70972",
+  "journal_head_seq": 992,
+  "journal_head_sha256": "5790a1a2606d14e72d4e6ecb8b47a6c89e3821c3d6f427c335c8c2ca0e25672c",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
