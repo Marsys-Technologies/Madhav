@@ -266,25 +266,28 @@ export const MODELS: ModelMeta[] = [
   },
 
 
-  // ── Gemini 3.x — CATALOG ONLY, NOT ACTIVE (PARIPRASHNA-P3-PREFLIGHT-2026-08-21) ──
-  // Registered per the native's ruling item 1 (model ids verified) + item 2
-  // (do not move any model yet — registration only). Neither model is
-  // referenced by any live STACK_ROUTING entry; see STAGED_TIER_UPGRADE_ROUTING
-  // below for the pinned activation plan. Model ids + specs verified live
+  // ── Gemini 3.x — LIVE 2026-08-21 (PARIPRASHNA-P3-PREFLIGHT Part B) ──────────
+  // Registered catalog-only 2026-08-21 (model-tier ruling item 1/2, PR #1434);
+  // moved onto STACK_ROUTING's synthesis/interpretation_sets (3.1-pro-preview)
+  // and planner_deep/planner_fast (3.7-flash) the same day, Part B. Both
+  // fallbacks are pinned to GA models (gemini-2.5-pro / gemini-2.5-flash),
+  // never another preview — preview-to-preview pinning relocates the
+  // fragility rather than removing it. Model ids + specs verified live
   // against https://ai.google.dev/gemini-api/docs/models and
-  // .../gemini-api/docs/pricing on 2026-08-21 — neither model has a published
+  // .../gemini-api/docs/pricing on 2026-08-21 — neither model had a published
   // deprecation date as of that check (see DD register for the standing
-  // re-check rule). KNOWN GAP: both use Gemini 3.x's `thinking_level`
-  // (low/medium/high) parameter, not the `thinking_budget` numeric token
-  // count `adapter_gemini.ts` currently sends (`thinkingConfig.thinkingBudget`,
-  // line ~20) — the adapter needs a `thinking_level` code path before either
-  // model can actually serve traffic, not just be selected here.
+  // re-check rule). The KNOWN GAP this block used to describe (adapter not
+  // reading `thinking_level`, sending stale `thinking_budget` instead) is
+  // FIXED (PARIPRASHNA-P3-PREFLIGHT Part A, PR #1440,
+  // adapter_gemini.ts's prepareRequest now branches on which field a model's
+  // quirks declare) — confirmed against the real outbound HTTP body in
+  // adapter_gemini_wire_body.test.ts, not assumed.
   {
     id: 'gemini-3.1-pro-preview',
     provider: 'google',
     tier: 'premium',
     label: 'Gemini 3.1 Pro (preview)',
-    hint: 'PREVIEW — no GA successor named. 1M ctx, $2/$12 (<=200K in), $4/$18 (>200K in). Not wired to any CallType; see STAGED_TIER_UPGRADE_ROUTING.',
+    hint: 'PREVIEW — no GA successor named. 1M ctx, $2/$12 (<=200K in), $4/$18 (>200K in). LIVE: synthesis + interpretation_sets primary, fallback gemini-2.5-pro.',
     speedTier: 'deep',
     maxInputTokens: 1_048_576,
     maxOutputTokens: 65_536,
@@ -300,8 +303,6 @@ export const MODELS: ModelMeta[] = [
       structured_output_format: 'gemini_response_schema',
       cache_strategy: 'context_caching',
       system_prompt_shape: 'system_message',
-      // thinking_level (not thinking_budget) — adapter does not read this key
-      // yet; recorded here as the intended config, not a functioning one.
       request_transforms: { safety_filter: 'block_none', thinking_level: 'high' },
     },
   },
@@ -310,7 +311,7 @@ export const MODELS: ModelMeta[] = [
     provider: 'google',
     tier: 'mid',
     label: 'Gemini 3.7 Flash',
-    hint: 'GA (stable). 1M ctx, $0.75/$3.75 through 2026-12-31, rising to $1.50/$7.50 on 2027-01-01. Not wired to any CallType; see STAGED_TIER_UPGRADE_ROUTING.',
+    hint: 'GA (stable). 1M ctx, $0.75/$3.75 through 2026-12-31, rising to $1.50/$7.50 on 2027-01-01. LIVE: planner_fast + worker primary, fallback gemini-2.5-flash.',
     speedTier: 'balanced',
     maxInputTokens: 1_000_000,
     maxOutputTokens: 65_536,
@@ -326,8 +327,6 @@ export const MODELS: ModelMeta[] = [
       structured_output_format: 'gemini_response_schema',
       cache_strategy: 'context_caching',
       system_prompt_shape: 'system_message',
-      // thinking_level: 'high' per the native's own ruling item 1/2b — same
-      // adapter caveat as gemini-3.1-pro-preview above.
       request_transforms: { safety_filter: 'block_none', thinking_level: 'high' },
     },
   },
@@ -1256,34 +1255,45 @@ export const STACK_ROUTING: Record<ModelStack, Record<CallType, { primary: strin
   // Gemini 2.5 Pro has the largest context of any stack: 2M tokens.
   // Context caching available — 90% discount on repeated prompts.
   gemini: {
+    // synthesis + interpretation_sets moved to gemini-3.1-pro-preview 2026-08-21
+    // (PARIPRASHNA-P3-PREFLIGHT Part B, native-ruled tier table, model-tier
+    // ruling item 1/2b). Fallback pinned to GA gemini-2.5-pro, never another
+    // preview — preview-to-preview pinning relocates the fragility rather
+    // than removing it (both fallbacks in this stack must be GA).
     synthesis: {
-      primary:  'gemini-2.5-pro',                           // 2M ctx, $1.25–$2.50/$10–$15
-      fallback: 'gemini-2.5-flash',                         // 1M ctx, $0.075/$0.30
+      primary:  'gemini-3.1-pro-preview',                   // 1M ctx, $2–$4/$12–$18, thinking_level='high'
+      fallback: 'gemini-2.5-pro',                           // GA — 2M ctx, $1.25–$2.50/$10–$15
     },
     planner_deep: {
-      primary:  'gemini-2.5-flash',                         // 1M ctx, $0.075/$0.30
+      primary:  'gemini-2.5-flash',                         // 1M ctx, $0.075/$0.30 — UNCHANGED, not in B.2's "planner + summarizer" tier move
       fallback: 'gemini-2.5-pro',                           // 2M ctx, higher cost
     },
+    // planner_fast + worker moved to gemini-3.7-flash 2026-08-21 (PARIPRASHNA-P3-PREFLIGHT
+    // Part B, native-ruled "planner + summarizer" tier). "summarizer" = worker, per its own
+    // docstring above ("title generation, history summarization... minimal latency and
+    // minimal cost dominate") — confirmed against STAGED_TIER_UPGRADE_ROUTING's own prior
+    // CallType selection (planner_fast + worker, authored by the ruling session itself),
+    // not planner_deep as a first pass at this edit incorrectly assumed. Fallback pinned to
+    // GA gemini-2.5-flash for both, per the ruled tier table (not gemini-2.5-flash-lite,
+    // which STAGED_TIER_UPGRADE_ROUTING's own worker row had proposed pre-ruling-table).
     planner_fast: {
-      primary:  'gemini-2.5-flash',                         // 1M ctx, fast + cheap
-      fallback: 'gemini-2.5-flash-lite',                    // $0.015, ultra-cheap
+      primary:  'gemini-3.7-flash',                         // 1M ctx, thinking_level='high'/'low'
+      fallback: 'gemini-2.5-flash',                         // GA — 1M ctx fallback
     },
     context_assembly: {
       primary:  'gemini-2.5-flash',                         // 1M ctx, cost-efficient
       fallback: 'gemini-2.5-pro',                           // 2M ctx fallback
     },
     worker: {
-      primary:  'gemini-2.5-flash-lite',                    // $0.015/$0.06, tool-use (replaced gemini-2.0-flash-lite, HTTP 404 2026-05-03)
-      fallback: 'gemini-2.5-flash',                         // 1M ctx fallback
+      primary:  'gemini-3.7-flash',                         // 1M ctx, thinking_level='high'/'low' — title gen + history summarization
+      fallback: 'gemini-2.5-flash',                         // GA — 1M ctx fallback
     },
     interpretation_sets: {
-      // DD-17's ruling, unchanged by folding it into the registry
-      // (PARIPRASHNA-P3-PREFLIGHT-2026-08-21 item 2a) — 'gemini-2.5-flash'
-      // is the SAME model `INTERPRETATION_SETS_MODEL_ID` resolved to before
-      // this entry existed; this is a plumbing change, not a model change.
-      // Fallback newly defined here (the bypass constant had none) —
-      // escalates to the flagship on failure, same shape as context_assembly.
-      primary:  'gemini-2.5-flash',
+      // DD-17's ruling on the MODEL held; the TIER moved 2026-08-21 (Part B) —
+      // same work-class-per-tier reasoning as synthesis above, since
+      // interpretation_sets is a synthesis-shaped call (3-way candidate
+      // reading + falsifier synthesis per significant judgment).
+      primary:  'gemini-3.1-pro-preview',
       fallback: 'gemini-2.5-pro',
     },
     eval_judge:      { primary: 'gemini-2.5-pro',       fallback: 'gemini-2.5-flash' },

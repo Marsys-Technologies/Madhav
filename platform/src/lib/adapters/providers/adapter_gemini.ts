@@ -22,14 +22,19 @@ export const adapterGemini: Adapter = {
     // gemini-3.7-flash catalog entries). thinkingLevel and thinkingBudget are distinct,
     // non-interchangeable fields on the wire (@ai-sdk/google's own
     // google-generative-ai-options.ts schema) — send whichever the model declares, never
-    // both. Gemini 3.x has no documented "disabled" thinking_level; 'minimal' is its
-    // lowest tier and the closest analog to thinkingBudget=0 on 2.x models.
+    // both. Gemini 3.x has no documented "disabled" thinking_level; 'low' is used when
+    // reasoning=disable is requested — NOT 'minimal': confirmed live against the real API
+    // (PARIPRASHNA-P3-PREFLIGHT Part B, dd20_e2e_verify.ts re-run) that
+    // gemini-3.1-pro-preview REJECTS thinkingLevel='minimal' outright ("Thinking level
+    // MINIMAL is not supported for this model", HTTP 400) — a real, model-specific API
+    // constraint no mocked unit test could have caught. 'low' is the lowest level
+    // confirmed accepted.
     const requestTransforms = meta.quirks.request_transforms as
       | { thinking_budget?: number; thinking_level?: 'minimal' | 'low' | 'medium' | 'high' }
       | undefined
     const thinkingConfig: Record<string, unknown> =
       requestTransforms?.thinking_level !== undefined
-        ? { thinkingLevel: req.reasoning === 'disable' ? 'minimal' : requestTransforms.thinking_level }
+        ? { thinkingLevel: req.reasoning === 'disable' ? 'low' : requestTransforms.thinking_level }
         : { thinkingBudget: req.reasoning === 'disable' ? 0 : requestTransforms?.thinking_budget ?? 24576 }
 
     const googleOptions: Record<string, unknown> = {
