@@ -53,6 +53,17 @@ import {
   type GocharaSweepWindow,
 } from './reading_checklist'
 import { judgmentFlag, type JudgmentFlagEntry } from '../../envelope'
+// F-113 (PARIŚEṢA-V4): the D1 (rāśi) significator-condition leg. Before this, assess_*
+// consumed the OPERATIVE VARGA's dignity (D9 for relationship) but never the rāśi dignity/
+// house/ṣaḍbala of the domain's own bhāveśa, kāraka(s) or bhāva occupants — which is how
+// an EXALTED Saturn in the 7th bhāva could be absent from every byte of assess_marriage.
+// The module reuses judgment_query's already-reviewed grading mechanism; see its header.
+import {
+  buildSignificatorCondition,
+  describeNotablePlacements,
+  NO_NOTABLE_PLACEMENT_TEXT,
+  type SignificatorCondition,
+} from './significator_condition'
 
 // F-119 (EKAVĀKYATĀ A-06): attach resolution_disclosure to gochara_sweep rows
 // so callers can distinguish genuine timing windows from era-scale context rows.
@@ -423,7 +434,17 @@ interface VerdictLayerInputs {
   chartWideContradictionCount: number
   temporalOk: boolean
   stageTemporalCount: number
+  /** F-113: the D1 significator-condition leg. Optional so existing callers/tests that
+   *  never assembled it keep their exact prior clause set (no silent behaviour change). */
+  significatorCondition?: SignificatorCondition | null
 }
+
+// F-113: the verdict layer is the ONLY assess_* surface that survives every budget pass —
+// `assembleSaraContent` drops `grounding` and `evidence` ALL-OR-NOTHING (live-confirmed:
+// assess_marriage at its 40KB default omits BOTH), while `kernel.verdict` is immune to
+// trimming by construction. A domain's most consequential classical placement therefore
+// belongs in a verdict clause, not only in a structured section a trim can delete.
+const VERDICT_MAX_CLAUSES = 6
 
 export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
   const clauses: VerdictClause[] = []
@@ -440,7 +461,25 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
     grounded: top10FactIds.length > 0,
   })
 
-  // 2 — yoga findings.
+  // 2 — F-113: D1 significator condition. Placed SECOND (immediately after the overview,
+  // ahead of yoga/varga/contradiction/timing) because a classical dignity extreme on the
+  // domain's own bhāveśa/kāraka/bhāva-occupant is the highest-order statement the rāśi makes
+  // about that domain — an acharya reads it before anything else. An honest absence is stated
+  // explicitly rather than the clause silently disappearing (B.10 / §N.7 item 6).
+  const sigCond = inputs.significatorCondition
+  if (sigCond) {
+    if (sigCond.empty_reason) {
+      clauses.push({ text: `Significator condition (D1) unavailable: ${sigCond.empty_reason}`, fact_ids: [], grounded: false })
+    } else {
+      const sentence = describeNotablePlacements(sigCond.notable, sigCond.bhava)
+      const notableFactIds = Array.from(new Set(sigCond.notable.flatMap(p => p.fact_ids)))
+      clauses.push(sentence
+        ? { text: sentence, fact_ids: notableFactIds, grounded: notableFactIds.length > 0 }
+        : { text: NO_NOTABLE_PLACEMENT_TEXT, fact_ids: [], grounded: false })
+    }
+  }
+
+  // 3 — yoga findings.
   const domainMatched = inputs.bearingYogaFirings.filter(y => y['domain_match'] === true)
   if (domainMatched.length > 0) {
     const names = domainMatched.slice(0, 3)
@@ -518,7 +557,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
     })
   }
 
-  const bounded = clauses.slice(0, 5)
+  const bounded = clauses.slice(0, VERDICT_MAX_CLAUSES)
   return {
     clauses: bounded,
     sentence_count: bounded.length,
@@ -769,6 +808,20 @@ async function runAssessDomain(
 
     // ── Step 5: direct varga/AV consumption (EL-45) — never a "see other tool" stub ──
     const vargaAnalysis = await buildVargaAnalysisDirect(chart_id, ayanamsha_id, domain)
+
+    // ── Step 5b (F-113): D1 (rāśi) significator condition ─────────────────────────
+    // The varga leg above reads the OPERATIVE VARGA (D9 for relationship) only. Nothing in
+    // this assembler read the rāśi dignity/house/ṣaḍbala of the domain's own bhāveśa,
+    // kāraka(s) or bhāva OCCUPANTS — the gap that let an exalted Saturn in the 7th bhāva be
+    // absent from every byte of assess_marriage on the canonical chart. Non-fatal: on failure
+    // the leg reports its own empty_reason and the rest of the assessment stands.
+    let significatorCondition: SignificatorCondition | null = null
+    try {
+      significatorCondition = await buildSignificatorCondition(chart_id, ayanamsha_id, domain)
+    } catch (err) {
+      significatorCondition = null
+      void err
+    }
 
     // ── Assemble verdict_skeleton (deterministic — no LLM inference) ──────────
     // Groups signals by reasoning-chain stage.
@@ -1100,6 +1153,17 @@ async function runAssessDomain(
     const reading_checklist_units: ChecklistUnit[] = [
       { unit: 'bhava_bhavesha', state: 'served', detail: 'domain reading (question lenses + bhāveśa via CDLM cells)' },
       { unit: 'karakas', state: 'served', detail: t5Spec ? t5Spec.karakas.join(', ') : domain },
+      // F-113: the D1 (rāśi) condition of bhāveśa + kāraka(s) + bhāva occupants. Previously
+      // NOT a checklist unit at all — its absence was invisible, which is exactly how the
+      // exalted-Saturn-in-the-7th omission survived a "served" reading_checklist.
+      {
+        unit: 'significator_condition_d1',
+        state: significatorCondition && !significatorCondition.empty_reason ? 'served' : 'not_computed',
+        count: significatorCondition ? significatorCondition.notable.length : 0,
+        detail: significatorCondition?.empty_reason
+          ?? 'D1 dignity + sign + house + ṣaḍbala of bhāveśa, kāraka(s) and bhāva occupants; ' +
+             'count = placements at a classical dignity/ṣaḍbala extreme (F-113)',
+      },
       { unit: 'operative_vargas', state: (vargaAnalysis && Object.keys(vargaAnalysis).length > 0) ? 'served' : 'not_computed', detail: (DOMAIN_DIRECT_VARGAS[domain] ?? []).join('+') + ' dignity + AV' },
       { unit: 'ashtakavarga', state: 'served', detail: 'per-varga pinda/sarva folded into varga_analysis' },
       { unit: 'special_lagnas', state: DOMAIN_INDU_LAGNA.has(domain) ? 'served' : 'not_joined', detail: DOMAIN_INDU_LAGNA.has(domain) ? 'Indu Lagna (Jaimini wealth lagna)' : 'no special-lagna leg for this domain', ...(DOMAIN_INDU_LAGNA.has(domain) ? {} : { drill: 'ganita_special_lagnas_get' }) },
@@ -1141,6 +1205,7 @@ async function runAssessDomain(
       chartWideContradictionCount,
       temporalOk: temporalResult.ok,
       stageTemporalCount: stageTemporal.length,
+      significatorCondition,
     })
 
     return {
@@ -1187,6 +1252,10 @@ async function runAssessDomain(
         })(),
         // EL-45: direct consumption, not a "see other tool" stub — see buildVargaAnalysisDirect.
         varga_analysis: vargaAnalysis,
+        // F-113: the D1 (rāśi) significator condition — every graded placement, plus the
+        // `notable` subset the verdict clause names. Structured detail lives here; the
+        // headline statement lives in `verdict` (the budget-immune kernel layer).
+        significator_condition: significatorCondition,
         // T5 (PŪRTI): the three computed-but-never-joined classical legs, served inline.
         sensitive_degree_firings: t5Sensitive.firings,
         kp_cusp_chain: { cusps: t5Kp.cusps, note: t5Kp.note },
@@ -1234,6 +1303,19 @@ async function runAssessDomain(
         },
         judgment_flags: [
           judgmentFlag('domain_inference_requires_acharya_validation', judgment_flag_note, 'warning'),
+          // F-113: disclose the D1 significator leg's state at the flag seam — a `not_computed`
+          // leg is a stated limit on the verdict, never a silent gap. §N.8: the flag has a real
+          // detector behind it (buildSignificatorCondition's own empty_reason), not a proxy.
+          ...(significatorCondition === null || significatorCondition.empty_reason
+            ? [judgmentFlag(
+                'significator_condition_unavailable',
+                'the D1 (rāśi) dignity/ṣaḍbala condition of this domain\'s bhāveśa, kāraka(s) and ' +
+                  'bhāva occupants could not be assembled this call' +
+                  (significatorCondition?.empty_reason ? ` — ${significatorCondition.empty_reason}` : '') +
+                  '. Read the verdict without it; drill ganita_chart_facts_get / judgment_query.',
+                'warning',
+              )]
+            : []),
           // GA-5 review finding on #1384: register_d9_judgment.ts already flags this exact
           // condition (gochara_top_window_already_peaked) from the same fetchGocharaSweep data;
           // this file threaded past_peak_window_count/is_past_peak through without ever

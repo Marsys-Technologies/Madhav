@@ -1108,6 +1108,10 @@ export const JUDGMENT_FLAG_CODES = [
   'gochara_top_window_already_peaked',
   // ── D8 assess_domain (folds the former {claim, requires_acharya_validation} object shape) ──
   'domain_inference_requires_acharya_validation',
+  // F-113 (PARIŚEṢA-V4): the D1 (rāśi) significator-condition leg could not be assembled for
+  // this call — bhāveśa/kāraka/bhāva-occupant dignity + ṣaḍbala absent from the verdict.
+  // Emitted only when a real detector says so (significator_condition.empty_reason), per §N.8.
+  'significator_condition_unavailable',
   // ── D10 pact_query chain-honesty halts ──
   'confirmation_graha_unrecognized',
   'pact_halted_at_promise',
