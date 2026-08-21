@@ -1106,6 +1106,14 @@ export const JUDGMENT_FLAG_CODES = [
   'kp_cusp_chain_unavailable',
   'gochara_domain_not_covered',
   'gochara_top_window_already_peaked',
+  // ── F-57 (PARIŚEṢA-V4): domain-vocabulary resolution disclosure ──
+  // judgment_query's domain-scoped legs (MSR signals / afflictions / mechanisms / gochara
+  // sweep) are keyed by the canonical 13-domain vocabulary, NOT by the shastra-map domain
+  // key the caller passes. When the two differ the mapping is now stated on the wire
+  // instead of applied silently — an empty domain-scoped leg must always be readable
+  // against a named tag (CLAUDE.md §N.6 pt 3 / §N.7 pt 6 / §N.8).
+  'domain_resolution_aliased',
+  'domain_resolution_fallback',
   // ── D8 assess_domain (folds the former {claim, requires_acharya_validation} object shape) ──
   'domain_inference_requires_acharya_validation',
   // F-113 (PARIŚEṢA-V4): the D1 (rāśi) significator-condition leg could not be assembled for

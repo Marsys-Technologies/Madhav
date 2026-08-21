@@ -56,7 +56,12 @@ describe('F-107 — domain→classical-varga registry', () => {
   })
 
   it('every registry key is a real SHASTRA_MAP signal_domain (no orphaned entry)', () => {
-    const signalDomains = new Set(Object.values(SHASTRA_MAP).map(s => s.signal_domain))
+    // Set<string>, not Set<CanonicalDomain>: this is a runtime membership check against
+    // DOMAIN_DIRECT_VARGAS/DOMAIN_INDU_LAGNA's own plain-string keys (F-107's registry
+    // predates and is independent of F-57's CanonicalDomain narrowing of
+    // SHASTRA_MAP.signal_domain) -- narrowing here would just move the same assertion from
+    // a runtime .toBe(true) to a compile-time cast, not make it more honest.
+    const signalDomains = new Set<string>(Object.values(SHASTRA_MAP).map(s => s.signal_domain))
     for (const domain of Object.keys(DOMAIN_DIRECT_VARGAS)) {
       expect(signalDomains.has(domain), `${domain} is not any SHASTRA_MAP signal_domain`).toBe(true)
     }
