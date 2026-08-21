@@ -25,6 +25,27 @@ from services.ph_pratikara.engine import (
 logger = logging.getLogger(__name__)
 
 
+def _safe_float(value, default: float, *, field: str, row_id) -> float:
+    """
+    Coerce a possibly-TEXT numeric column to float; never raises.
+
+    classical_strength_rating is declared TEXT on bodha_rm_remedy_prescriptions
+    (bo_upaya writes it as str(confidence) or ''), not NUMERIC. A blank or
+    non-numeric value must not crash the whole prescriptions load — fall back
+    to the documented default and warn so the row is traceable.
+    """
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        logger.warning(
+            "ph_pratikara: prescription %s has non-numeric %s=%r; using default %s",
+            row_id, field, value, default,
+        )
+        return default
+
+
 @register('ph_pratikara')
 class PhPratikaraWriter(WriterBase):
     """
@@ -193,52 +214,53 @@ class PhPratikaraWriter(WriterBase):
         return result
 
     def _load_prescriptions(self, conn, chart_id: str) -> dict[str, list[RemedyPrescription]]:
-        """Load bodha_rm_remedy_prescriptions grouped by afflicting_graha."""
+        """
+        Load bodha_rm_remedy_prescriptions grouped by target_graha.
+        Fails loud on query errors — bodha_rm_remedy_prescriptions exists (bo_upaya,
+        L2 Bodha); silent suppression is the bug pattern (see _load_obstructions).
+        """
         result: dict[str, list[RemedyPrescription]] = {}
-        try:
-            with conn.cursor() as sp:
-                sp.execute("SAVEPOINT sp_pratikara_presc")
-            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-                cur.execute(
-                    """
-                    SELECT prescription_id, tradition, sub_tradition, remedy_category,
-                           classical_strength_rating, resonance_match_score, feasibility_score,
-                           estimated_cost_inr_range_jsonb, requires_acharya_review,
-                           prerequisite_prescription_ids_array, incompatible_with_prescription_ids_array,
-                           recommended_hora, recommended_choghadiya, pranapratishtha,
-                           classical_citation_text, graha
-                    FROM bodha_rm_remedy_prescriptions
-                    WHERE chart_id = %s
-                    ORDER BY resonance_match_score DESC NULLS LAST
-                    """,
-                    (chart_id,),
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            cur.execute(
+                """
+                SELECT prescription_id, tradition, sub_tradition, remedy_category,
+                       classical_strength_rating, resonance_match_score, feasibility_score,
+                       estimated_cost_inr_range_jsonb, requires_acharya_review_flag,
+                       prerequisite_prescription_ids_array, incompatible_with_prescription_ids_array,
+                       recommended_hora_lord_array, recommended_choghadiya_window_array,
+                       pranapratishtha_required_flag, classical_sources_jsonb, target_graha
+                FROM bodha_rm_remedy_prescriptions
+                WHERE chart_id = %s
+                ORDER BY resonance_match_score DESC NULLS LAST
+                """,
+                (chart_id,),
+            )
+            for row in cur.fetchall():
+                graha_key = str(row.get('target_graha') or 'generic').lower()
+                hora_arr = row.get('recommended_hora_lord_array') or []
+                choghadiya_arr = row.get('recommended_choghadiya_window_array') or []
+                # classical_sources_jsonb shape (bo_upaya writer): {"source_id": ..., "citation": ...}
+                sources = row.get('classical_sources_jsonb')
+                if not isinstance(sources, dict):
+                    sources = {}
+                p = RemedyPrescription(
+                    prescription_id=str(row['prescription_id']),
+                    tradition=str(row.get('tradition') or 'vedic'),
+                    remedy_category=str(row.get('remedy_category') or ''),
+                    classical_strength_rating=_safe_float(
+                        row.get('classical_strength_rating'), 0.5,
+                        field='classical_strength_rating', row_id=row.get('prescription_id'),
+                    ),
+                    resonance_match_score=float(row.get('resonance_match_score') or 0.5),
+                    feasibility_score=float(row.get('feasibility_score') or 0.5),
+                    estimated_cost_inr_range=row.get('estimated_cost_inr_range_jsonb') or {},
+                    requires_acharya_review=bool(row.get('requires_acharya_review_flag')),
+                    prerequisite_ids=list(row.get('prerequisite_prescription_ids_array') or []),
+                    incompatible_ids=list(row.get('incompatible_with_prescription_ids_array') or []),
+                    recommended_hora=(hora_arr[0] if hora_arr else None),
+                    recommended_choghadiya=(choghadiya_arr[0] if choghadiya_arr else None),
+                    pranapratishtha=bool(row.get('pranapratishtha_required_flag')),
+                    classical_citation=str(sources.get('citation') or ''),
                 )
-                for row in cur.fetchall():
-                    graha_key = str(row.get('graha') or 'generic').lower()
-                    p = RemedyPrescription(
-                        prescription_id=str(row['prescription_id']),
-                        tradition=str(row.get('tradition') or 'vedic'),
-                        remedy_category=str(row.get('remedy_category') or ''),
-                        classical_strength_rating=float(row.get('classical_strength_rating') or 0.5),
-                        resonance_match_score=float(row.get('resonance_match_score') or 0.5),
-                        feasibility_score=float(row.get('feasibility_score') or 0.5),
-                        estimated_cost_inr_range=row.get('estimated_cost_inr_range_jsonb') or {},
-                        requires_acharya_review=bool(row.get('requires_acharya_review')),
-                        prerequisite_ids=list(row.get('prerequisite_prescription_ids_array') or []),
-                        incompatible_ids=list(row.get('incompatible_with_prescription_ids_array') or []),
-                        recommended_hora=row.get('recommended_hora'),
-                        recommended_choghadiya=row.get('recommended_choghadiya'),
-                        pranapratishtha=bool(row.get('pranapratishtha')),
-                        classical_citation=str(row.get('classical_citation_text') or ''),
-                    )
-                    result.setdefault(graha_key, []).append(p)
-            with conn.cursor() as sp:
-                sp.execute("RELEASE SAVEPOINT sp_pratikara_presc")
-        except Exception as exc:
-            try:
-                with conn.cursor() as sp:
-                    sp.execute("ROLLBACK TO SAVEPOINT sp_pratikara_presc")
-            except Exception:
-                pass
-            logger.debug("ph_pratikara: prescriptions load skipped: %s", exc)
+                result.setdefault(graha_key, []).append(p)
         return result

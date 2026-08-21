@@ -669,3 +669,224 @@ class TestPratikaraWriterSchemaGuard:
         assert result.rows_inserted == 1, (
             f"Null-graha obstruction must still produce a row; got {result.rows_inserted}"
         )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PH_PRATIKARA WRITER — F-173 regression (bodha_rm_remedy_prescriptions schema)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class _F173FakeCursor:
+    """Minimal cursor stand-in: records the executed SQL, returns canned rows."""
+
+    def __init__(self, rows, capture):
+        self._rows = rows
+        self._capture = capture
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def execute(self, sql, params=None):
+        self._capture['sql'] = sql
+        self._capture['params'] = params
+
+    def fetchall(self):
+        return self._rows
+
+
+class _F173FakeConn:
+    """Minimal conn stand-in for conn.cursor(row_factory=...) — ignores row_factory."""
+
+    def __init__(self, rows):
+        self._rows = rows
+        self.captured = {}
+
+    def cursor(self, row_factory=None):
+        return _F173FakeCursor(self._rows, self.captured)
+
+
+class TestPratikaraPrescriptionsSchemaGuard:
+    """
+    Guard tests for F-173: _load_prescriptions SELECTed six nonexistent columns
+    on bodha_rm_remedy_prescriptions (graha, requires_acharya_review,
+    recommended_hora, recommended_choghadiya, pranapratishtha,
+    classical_citation_text), and the SAVEPOINT/except swallow turned the
+    resulting UndefinedColumn into a silent empty dict — 536/536 charts got
+    empty phala_mitigation remedy payloads. Fixing the names alone would then
+    hit a live ValueError, because classical_strength_rating is TEXT and the
+    old code did a bare float() on it.
+
+    These tests verify (mirroring TestPratikaraWriterSchemaGuard's pattern for
+    the sibling kala_obstruction bug):
+      1. Source-level: real column names are used, no bare 'graha', no SAVEPOINT.
+      2. Behavioural: _load_prescriptions actually executes against a fake
+         cursor and correctly builds RemedyPrescription objects — including
+         safely coercing TEXT classical_strength_rating values that are
+         numeric-string, empty-string, and outright garbage, none of which
+         may raise.
+    """
+
+    def _writer_source(self) -> str:
+        import os
+        path = os.path.join(
+            os.path.dirname(__file__), '..', 'pipeline', 'orchestrator', 'writers', 'ph_pratikara.py'
+        )
+        with open(path) as f:
+            return f.read()
+
+    # ── source-level guards ──────────────────────────────────────────────
+
+    def test_no_silent_savepoint_swallow_prescriptions(self):
+        """Writer must not use SAVEPOINT to silently swallow prescriptions query errors."""
+        src = self._writer_source()
+        assert 'sp_pratikara_presc' not in src, (
+            "ph_pratikara writer must not silently swallow bodha_rm_remedy_prescriptions "
+            "query errors via SAVEPOINT"
+        )
+
+    def test_prescriptions_query_uses_real_columns(self):
+        """SELECT must use the real bodha_rm_remedy_prescriptions column names."""
+        src = self._writer_source()
+        for real_col in (
+            'target_graha',
+            'requires_acharya_review_flag',
+            'recommended_hora_lord_array',
+            'recommended_choghadiya_window_array',
+            'pranapratishtha_required_flag',
+            'classical_sources_jsonb',
+        ):
+            assert real_col in src, f"ph_pratikara must select {real_col} from bodha_rm_remedy_prescriptions"
+        assert 'classical_citation_text' not in src, (
+            "classical_citation_text does not exist on bodha_rm_remedy_prescriptions"
+        )
+
+    def test_prescriptions_select_has_no_bare_graha_column(self):
+        """The SELECT must name target_graha, never a bare 'graha' (that's on the sibling resonances table)."""
+        import re
+        src = self._writer_source()
+        m = re.search(r'SELECT prescription_id.*?FROM bodha_rm_remedy_prescriptions', src, re.DOTALL)
+        assert m, "could not locate the bodha_rm_remedy_prescriptions SELECT in ph_pratikara.py"
+        select_clause = m.group(0)
+        bare_graha = re.search(r'(?<!target_)\bgraha\b', select_clause)
+        assert bare_graha is None, (
+            f"prescriptions SELECT names a bare 'graha' column (in: {select_clause!r}); "
+            "the real column on bodha_rm_remedy_prescriptions is target_graha — graha lives "
+            "only on the sibling table bodha_rm_resonances"
+        )
+
+    # ── behavioural: real execution against a fake cursor ──────────────────
+
+    def test_load_prescriptions_builds_rows_and_coerces_text_strength_rating(self):
+        """
+        Real _load_prescriptions() call (no method patching) against rows shaped
+        exactly like bo_upaya's real inserts. Covers: normal numeric-string
+        classical_strength_rating, an empty-string one (bo_upaya's own
+        str(confidence) or '' convention), and outright garbage — none may raise,
+        and the coerced value must fall back to the documented 0.5 default.
+        Also covers target_graha grouping/lower-casing, None → 'generic', the
+        array-typed hora/choghadiya columns, and the classical_sources_jsonb →
+        classical_citation extraction (bo_upaya's real {"source_id","citation"} shape).
+        """
+        from pipeline.orchestrator.writers.ph_pratikara import PhPratikaraWriter
+
+        rows = [
+            {
+                'prescription_id': 'p1', 'tradition': 'vedic', 'sub_tradition': None,
+                'remedy_category': 'mantra',
+                'classical_strength_rating': '0.85',  # normal numeric TEXT
+                'resonance_match_score': 0.7, 'feasibility_score': 0.9,
+                'estimated_cost_inr_range_jsonb': {'max_inr': 0},
+                'requires_acharya_review_flag': False,
+                'prerequisite_prescription_ids_array': [],
+                'incompatible_with_prescription_ids_array': [],
+                'recommended_hora_lord_array': ['jupiter', 'mercury'],
+                'recommended_choghadiya_window_array': ['amrit'],
+                'pranapratishtha_required_flag': True,
+                'classical_sources_jsonb': {'source_id': 'BPHS', 'citation': 'BPHS 45.12'},
+                'target_graha': 'Jupiter',
+            },
+            {
+                'prescription_id': 'p2', 'tradition': 'vedic', 'sub_tradition': None,
+                'remedy_category': 'dana',
+                'classical_strength_rating': '',  # bo_upaya's str(confidence) or '' — blank TEXT
+                'resonance_match_score': 0.5, 'feasibility_score': 0.5,
+                'estimated_cost_inr_range_jsonb': None,
+                'requires_acharya_review_flag': True,
+                'prerequisite_prescription_ids_array': None,
+                'incompatible_with_prescription_ids_array': None,
+                'recommended_hora_lord_array': None,
+                'recommended_choghadiya_window_array': None,
+                'pranapratishtha_required_flag': None,
+                'classical_sources_jsonb': None,
+                'target_graha': None,  # → 'generic' bucket
+            },
+            {
+                'prescription_id': 'p3', 'tradition': 'kp', 'sub_tradition': None,
+                'remedy_category': 'gem',
+                'classical_strength_rating': 'not-a-number',  # garbage TEXT — must not raise
+                'resonance_match_score': None, 'feasibility_score': None,
+                'estimated_cost_inr_range_jsonb': {},
+                'requires_acharya_review_flag': False,
+                'prerequisite_prescription_ids_array': [],
+                'incompatible_with_prescription_ids_array': [],
+                'recommended_hora_lord_array': [],
+                'recommended_choghadiya_window_array': [],
+                'pranapratishtha_required_flag': False,
+                'classical_sources_jsonb': {},
+                'target_graha': 'Saturn',
+            },
+        ]
+        conn = _F173FakeConn(rows)
+        writer = PhPratikaraWriter()
+
+        result = writer._load_prescriptions(conn, '482012f1-710e-4a25-994a-93821f5871aa')
+
+        # Executed SQL used the real columns (belt-and-braces on top of the source guards above).
+        assert 'target_graha' in conn.captured['sql']
+        assert 'classical_citation_text' not in conn.captured['sql']
+
+        assert set(result.keys()) == {'jupiter', 'generic', 'saturn'}
+
+        p1 = result['jupiter'][0]
+        assert p1.classical_strength_rating == 0.85
+        assert p1.classical_citation == 'BPHS 45.12'
+        assert p1.recommended_hora == 'jupiter'
+        assert p1.recommended_choghadiya == 'amrit'
+        assert p1.pranapratishtha is True
+        assert p1.requires_acharya_review is False
+
+        p2 = result['generic'][0]
+        assert p2.classical_strength_rating == 0.5, "blank TEXT rating must fall back to the 0.5 default"
+        assert p2.classical_citation == ''
+        assert p2.recommended_hora is None
+        assert p2.recommended_choghadiya is None
+        assert p2.requires_acharya_review is True
+
+        p3 = result['saturn'][0]
+        assert p3.classical_strength_rating == 0.5, "garbage TEXT rating must fall back, not raise"
+        assert p3.resonance_match_score == 0.5
+        assert p3.feasibility_score == 0.5
+
+    def test_load_prescriptions_empty_result_is_empty_dict_not_error(self):
+        """No rows → empty dict, same shape the caller (run()) already handles."""
+        from pipeline.orchestrator.writers.ph_pratikara import PhPratikaraWriter
+
+        conn = _F173FakeConn([])
+        writer = PhPratikaraWriter()
+        result = writer._load_prescriptions(conn, '482012f1-710e-4a25-994a-93821f5871aa')
+        assert result == {}
+
+    def test_safe_float_helper_never_raises(self):
+        """Unit-level guard on the TEXT→float coercion helper itself."""
+        from pipeline.orchestrator.writers.ph_pratikara import _safe_float
+
+        assert _safe_float('0.85', 0.5, field='x', row_id='r1') == 0.85
+        assert _safe_float('', 0.5, field='x', row_id='r1') == 0.5
+        assert _safe_float(None, 0.5, field='x', row_id='r1') == 0.5
+        assert _safe_float('not-a-number', 0.5, field='x', row_id='r1') == 0.5
+        assert _safe_float('1', 0.5, field='x', row_id='r1') == 1.0
+        # Decimal/numeric types (as NUMERIC columns come back) must pass through too.
+        from decimal import Decimal
+        assert _safe_float(Decimal('0.42'), 0.5, field='x', row_id='r1') == 0.42
