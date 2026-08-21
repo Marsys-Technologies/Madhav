@@ -54,6 +54,10 @@ import { runAdapter } from '@/lib/adapters/run_adapter'
 import type { QueryRequest } from '@/lib/adapters/types'
 import { getModelMeta, DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
+import { resolveProvider } from '@/lib/db/monitoring-write'
+import { persistObservation, computeCost } from '@/lib/llm/observability'
+import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
+import { getStorageClient } from '@/lib/storage'
 
 import type { SignificantJudgment } from './detect'
 import { MIN_INTERPRETATION_CANDIDATES, type InterpretationSetEntry } from './schema'
@@ -354,6 +358,7 @@ function coerceEntry(j: SignificantJudgment, raw: LlmSetRaw): InterpretationSetE
 async function callOnce(
   judgments: readonly SignificantJudgment[],
   modelId: string,
+  turnId: string | undefined,
   repairNote?: string,
 ): Promise<Map<string, LlmSetRaw>> {
   const req: QueryRequest = {
@@ -369,7 +374,56 @@ async function callOnce(
     reasoning: 'disable',
     responseSchema: RESPONSE_SCHEMA,
   }
+  const startedAt = new Date()
   const interaction = await runAdapter(req)
+  const finishedAt = new Date()
+
+  // DD-19: this call site was entirely absent from llm_usage_events — no
+  // pipeline_stage was ever set on it, the field persist.ts keys the row
+  // on. Same OBS-S1-shape block pipeline_planner.ts's 'planner' stage and
+  // conversations/title.ts's 'title' stage already use; runAdapter() itself
+  // does no observability writes of its own (confirmed by reading
+  // adapters/run_adapter.ts — no persistObservation/computeCost calls
+  // there), so every call site is responsible for its own. Fire-and-forget:
+  // never blocks or fails the real call this function exists for.
+  const obsUsage: TokenUsage = {
+    input_tokens: interaction.usage.inputTokens ?? 0,
+    output_tokens: interaction.usage.outputTokens ?? 0,
+    cache_read_tokens: 0,
+    cache_write_tokens: 0,
+    reasoning_tokens: 0,
+  }
+  const obsProvider = (resolveProvider(modelId) ?? 'unknown') as ProviderName
+  void (async () => {
+    const obsDb = getStorageClient()
+    const costResult = await computeCost(obsProvider, modelId, obsUsage, startedAt, obsDb).catch(() => null)
+    await persistObservation(
+      {
+        provider: obsProvider,
+        model: modelId,
+        prompt_text: null,
+        system_prompt: null,
+        parameters: { model: modelId, temperature: 0, repair_retry: repairNote !== undefined },
+        conversation_id: turnId ?? 'unknown-turn',
+        conversation_name: null,
+        prompt_id: `${turnId ?? 'unknown-turn'}:interpretation_sets`,
+        user_id: 'native',
+        pipeline_stage: 'interpretation_sets',
+      },
+      {
+        response_text: null,
+        usage: obsUsage,
+        status: 'success',
+        started_at: startedAt,
+        finished_at: finishedAt,
+      },
+      costResult,
+      obsDb,
+    ).catch((err) => {
+      console.warn('[pariprashna/interpretation] observability write failed (non-fatal):', err)
+    })
+  })()
+
   return parseAndValidateSets(interaction.finalText ?? '')
 }
 
@@ -458,16 +512,19 @@ const INTERPRETATION_SETS_REPAIR_NOTE =
   '"sets", not "judgments" or anything else. No prose, no markdown fences, nothing before or ' +
   'after the JSON.'
 
-async function defaultCaller(judgments: readonly SignificantJudgment[]): Promise<Map<string, LlmSetRaw>> {
+async function defaultCaller(
+  judgments: readonly SignificantJudgment[],
+  turnId?: string,
+): Promise<Map<string, LlmSetRaw>> {
   const modelId = await resolveInterpretationSetsModelId()
   try {
-    return await callOnce(judgments, modelId)
+    return await callOnce(judgments, modelId, turnId)
   } catch (err) {
     console.warn(
       '[pariprashna/interpretation] structured-output call failed schema/parse validation, retrying once:',
       err,
     )
-    return callOnce(judgments, modelId, INTERPRETATION_SETS_REPAIR_NOTE)
+    return callOnce(judgments, modelId, turnId, INTERPRETATION_SETS_REPAIR_NOTE)
   }
 }
 
@@ -483,12 +540,22 @@ async function defaultCaller(judgments: readonly SignificantJudgment[]): Promise
 export async function generateInterpretationSets(
   judgments: readonly SignificantJudgment[],
   caller: InterpretationLlmCaller = defaultCaller,
+  /**
+   * DD-19. Optional so every existing 2-arg call site (every test in
+   * worker.test.ts, all of which override `caller`) is unaffected — those
+   * never reach `callOnce`, so `turnId` is meaningless to them. Only
+   * threaded to the REAL default path (`caller === defaultCaller`, a
+   * reference-equality check against the single top-level function this
+   * module exports as its own default, true whether the caller was
+   * defaulted implicitly or passed explicitly).
+   */
+  turnId?: string,
 ): Promise<InterpretationSetEntry[]> {
   if (judgments.length === 0) return []
 
   let byId: Map<string, LlmSetRaw>
   try {
-    byId = await caller(judgments)
+    byId = caller === defaultCaller ? await defaultCaller(judgments, turnId) : await caller(judgments)
   } catch (err) {
     console.error(
       '[pariprashna/interpretation] structured-output call failed (incl. repair retry) — ' +

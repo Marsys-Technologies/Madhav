@@ -104,7 +104,7 @@ export async function assembleInterpretationSets(
   const toProcess = ordered.slice(0, MAX_SIGNIFICANT_JUDGMENTS_PER_TURN)
   const truncatedCount = ordered.length - toProcess.length
 
-  const sets = await generateInterpretationSets(toProcess, args.caller)
+  const sets = await generateInterpretationSets(toProcess, args.caller, args.turnId)
   const metrics = computeInterpretationSetsMetrics(sets)
   logInterpretationSetsMetrics({ turnId: args.turnId, metrics, truncatedCount })
 
