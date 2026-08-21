@@ -271,6 +271,12 @@ class KaKshetraWriter(WriterBase):
         self._shared_ladder = None             # list[BoundaryRow]
         self._shared_extra_breakpoints = None  # list[float]
         self._shared_layer0 = None             # layer0.Layer0, set on first class (DHARA_ENGINE_SPEC §1)
+        # F-186: memoizes `_load_window_provenance`'s dict[window_id, list[dict]]
+        # for the build's lifetime. `_load_window_fact_ids` used to call the
+        # loader a SECOND time rather than reuse the first call's result,
+        # doubling a full-table read of `kala_field_provenance` (~1.8M rows for
+        # the native chart). Same lazy-init pattern as `_shared_envelopes`.
+        self._window_provenance_cache: dict[str, list[dict]] | None = None
         self._birth_date, self._birth_time = self._load_birth_instant(conn, self._chart_id)
 
         # §7.5 sub-rule 5: resolve the weights version EXACTLY ONCE, here, and
@@ -1349,6 +1355,46 @@ class KaKshetraWriter(WriterBase):
                       if counts['empty_reason'] else '')))
 
     # ── stage 6/6.5/8 loaders + shape adapters ───────────────────────────────
+    #
+    # F-186 audit (CLAUDE.md §N.8 — a decision needs the number that justifies
+    # it, not streaming-on-principle). All four loaders used to end in
+    # `S4._rows(cur)` (a single `fetchall()`), which the module's own docstring
+    # (`stage4_field._rows`) already flags as wrong for a per-chart fact table.
+    # Per-loader disposition, largest table first:
+    #   • `_load_window_provenance` (`kala_field_provenance`, ~1.8M rows for the
+    #     native chart per `_iter_content_hash_rows`'s F-149 measurement) — WAS
+    #     read via `S4._rows` (client-side `fetchall()`, forcing the driver to
+    #     buffer the whole ~1.8M-row resultset before Python saw any of it)
+    #     TWICE per build: once directly (stage 6) and once more via
+    #     `_load_window_fact_ids` (stage 6.5), which called this loader again
+    #     instead of reusing its result. STREAMED (`streaming_cursor` +
+    #     `iter_rows`, mirroring F-149's `_iter_content_hash_rows`) and
+    #     MEMOIZED on `self._window_provenance_cache` so the second call site
+    #     reuses the first read. The `target_kind = 'window'` filter is not a
+    #     bug to change: `kala_field_provenance` writes only ever set
+    #     `target_kind='window'` (both `INSERT INTO kala_field_provenance`
+    #     sites in this file hardcode `'window'`; the column's CHECK constraint
+    #     in migration 493 also allows `'segment'`/`'insight'` for future use)
+    #     — the filter selects everything that exists today by construction,
+    #     not because it fails to filter.
+    #   • `_load_segments` (`kala_field`, ~8.6M rows chart-wide per the same
+    #     measurement) — called once per event class (§D.2 Hub H). STREAMED for
+    #     the same reason: still returns a `list[Segment]` (not a generator)
+    #     because callers consume it more than once (window detection, then the
+    #     write batch) — the fix bounds what the driver buffers during the
+    #     fetch, not the final in-memory shape, which was never the problem
+    #     here.
+    #   • `_load_committed_windows` (`kala_field_windows`) — one row per
+    #     committed window; `_write_windows_batch`'s own comment puts this at
+    #     "thousands of windows" for a real chart, three orders of magnitude
+    #     below the two tables above. LEFT EAGER (streaming a bounded loader is
+    #     churn, not a fix, per §N.4's floors-are-aspirational spirit) — but its
+    #     redundant `sorted(..., key=lambda r: r['window_id'])` is removed: the
+    #     SQL already carries `ORDER BY window_id`, so the Python sort was a
+    #     second full materialization doing nothing the query hadn't already
+    #     done.
+    #   • `_load_salience` (`kala_field_salience`) — one float per window, the
+    #     smallest of the four. LEFT EAGER, same reasoning.
 
     def _load_committed_windows(self, conn) -> list[dict]:
         with conn.cursor() as cur:
@@ -1362,10 +1408,22 @@ class KaKshetraWriter(WriterBase):
                     ORDER BY window_id""",
                 (self._chart_id, self._snapshot_id),
             )
-            return sorted(S4._rows(cur), key=lambda r: r['window_id'])
+            return S4._rows(cur)
 
     def _load_window_provenance(self, conn) -> dict[str, list[dict]]:
-        with conn.cursor() as cur:
+        """`window_id -> [provenance edge rows]`, memoized for the build.
+
+        F-186: streamed (`S4.streaming_cursor` + `S4.iter_rows`, the F-149
+        pattern) rather than `S4._rows`'s single `fetchall()` — this table
+        runs to ~1.8M rows for the native chart. Memoized on
+        `self._window_provenance_cache` because `_load_window_fact_ids` below
+        also needs this result and used to re-query for it, doubling the
+        full-table read every build.
+        """
+        if self._window_provenance_cache is not None:
+            return self._window_provenance_cache
+        out: dict[str, list[dict]] = {}
+        with S4.streaming_cursor(conn, 'kfp_window_provenance') as cur:
             cur.execute(
                 """SELECT target_id, term_key, log_contribution, source_fact_id
                      FROM kala_field_provenance
@@ -1374,9 +1432,9 @@ class KaKshetraWriter(WriterBase):
                     ORDER BY target_id, term_key""",
                 (self._chart_id, self._snapshot_id),
             )
-            out: dict[str, list[dict]] = {}
-            for r in S4._rows(cur):
+            for r in S4.iter_rows(cur):
                 out.setdefault(r['target_id'], []).append(r)
+        self._window_provenance_cache = out
         return out
 
     def _load_window_fact_ids(self, conn) -> dict[str, list[str]]:
@@ -1955,7 +2013,18 @@ class KaKshetraWriter(WriterBase):
             )
 
     def _load_segments(self, conn, event_class: str) -> list[Segment]:
-        with conn.cursor() as cur:
+        """F-186: streamed (`S4.streaming_cursor` + `S4.iter_rows`) rather than
+        `S4._rows`'s single `fetchall()` — `kala_field` runs to ~8.6M rows
+        chart-wide (§D.2 Hub H measurement), and this loader is called once per
+        event class in a loop (:611/:766/:1558-area callers), so the eager
+        fetch forced the driver to fully buffer each class's slice before
+        Python began normalizing any of it. Still returns a `list[Segment]`,
+        not a generator: every caller consumes `segments` more than once
+        (window detection, then the write batch), so full materialization is
+        unavoidable here — streaming only bounds what the driver buffers
+        during the fetch itself.
+        """
+        with S4.streaming_cursor(conn, 'kf_segments') as cur:
             cur.execute(
                 """SELECT segment_index, t_start, t_end, alpha, gamma,
                           refinement_depth, refinement_exhausted, refinement_residual
@@ -1971,7 +2040,7 @@ class KaKshetraWriter(WriterBase):
                         refinement_depth=int(r['refinement_depth'] or 0),
                         refinement_exhausted=bool(r['refinement_exhausted']),
                         refinement_residual=r['refinement_residual'])
-                for r in S4._rows(cur)
+                for r in S4.iter_rows(cur)
             ]
 
     def _citation_resolution(self, conn, edges) -> tuple[int, int]:
