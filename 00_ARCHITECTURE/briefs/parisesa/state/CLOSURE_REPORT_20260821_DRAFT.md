@@ -2,15 +2,18 @@
 title: PARIŚEṢA V4 Closure Report — Full Autonomy v3.0
 session: PARISESA-V4-CONDUCTOR-20260820T191407Z
 date: 2026-08-21
-status: DRAFT — merge queue still draining, numbers not final
+status: FINAL — natural completion, merge queue drained, lease released
 ---
 
 # PARIŚEṢA V4 Closure Report — Full Autonomy v3.0
 
-**DRAFT.** This file will be finalized (renamed to drop `_DRAFT`) once the merge queue
-finishes draining and all in-flight PRs have either merged or been re-parked with a
-recorded reason. Numbers below are accurate as of the last edit timestamp in this
-document's own git history, not necessarily current.
+**FINAL.** Written at natural completion (2026-08-21, ~05:35 IST — ahead of the
+07:00 local deadline the governing directive set as the outer bound). The merge
+queue drained fully: all 21 `fix(parisesa)` PRs this session opened or recovered
+ultimately merged to `main`, production is confirmed in sync with the final merge
+commit, and the campaign's coordination lease
+(`PARISESA-V4-CONDUCTOR-20260820T191407Z`) has been released. This is a record of
+what happened, not a request for approval — nothing in it awaits owner sign-off.
 
 ## 0. Authorization
 
@@ -174,22 +177,29 @@ catch the regression actually goes red).
 
 ## 4. Findings ledger: terminal/parked split
 
-**112/142 terminal as of this writing** (was 85/142 at session start per the
-closeout report; was 102/142 at the previous draft edit), still climbing as the
-last PR (#1379, F-123) finishes its merge-queue run. Reached via: F-68 (#1378),
-F-129 (#1389), F-93 (#1393), F-134 (#1384), F-69 (#1386), F-67 (#1391), F-130
-(#1383) each closed on live PR-merge confirmation — plus a **second, independently
-caught ledger-sync-gap correction**: F-112-DOCSTRING (#1394), F-124 (#1382), and
-F-73 (#1390) were confirmed MERGED on GitHub but still stuck at stale pre-v3.0
-`MORNING_SHIP_READY` status in the ledger, only found during a deliberate sweep of
-every finding still carrying "owner reviews and merges at morning checkpoint"
-language — v2.1.1-era phrasing v3.0 has no equivalent of. Same defect class as the
-first sync-gap catch (§ below), same fix: emit `finding_status` closure events
-citing the real merge SHA, don't assume the ledger tracks itself. This recurred
-because the correction mechanism after the first catch was "fix the drift you
-found," not "add a check that prevents new drift" — worth a structural fix (an
-automated PR-merged → ledger-status cross-check) in a future session rather than
-relying on manual sweeps to keep catching it.
+**Final: 113/142 terminal** (was 85/142 at session start per the closeout report).
+`MORNING_SHIP_READY` is now 0 — every PR that was queued this session merged.
+Final status-count breakdown: SERVICE_CLOSED 83, CONTROL_CLOSED 25,
+HISTORICAL_STALE_CLOSED 3, NOT_APPLICABLE_CLOSED 2 (= 113 terminal) · plus
+DECISION_PARKED 17, DATA_PARKED 7, LANDED 2, EXTERNAL_HOLD 2, BLOCKED_NO_IMPL 1
+(= 29 explicitly parked, each with a recorded reason below). 113 + 29 = 142.
+
+Reached via 8 direct PR-merge closures this wave: F-68 (#1378), F-129 (#1389),
+F-93 (#1393), F-134 (#1384), F-69 (#1386), F-67 (#1391), F-130 (#1383), F-123
+(#1379, the final PR) — plus a **second, independently caught ledger-sync-gap
+correction**: F-112-DOCSTRING (#1394), F-124 (#1382), and F-73 (#1390) were
+confirmed MERGED on GitHub but still stuck at stale pre-v3.0 `MORNING_SHIP_READY`
+status in the ledger, only found during a deliberate sweep of every finding still
+carrying "owner reviews and merges at morning checkpoint" language — v2.1.1-era
+phrasing v3.0 has no equivalent of. Same defect class as the first sync-gap catch
+(§ below), same fix: emit `finding_status` closure events citing the real merge
+SHA, don't assume the ledger tracks itself. This recurred because the correction
+mechanism after the first catch was "fix the drift you found," not "add a check
+that prevents new drift" — worth a structural fix (an automated
+PR-merged → ledger-status cross-check) in a future session rather than relying on
+manual sweeps to keep catching it. **This is now the second time this exact defect
+class has been found and corrected in one session** — recorded as a named risk for
+the next campaign to design against, not just re-fixed silently a second time.
 
 New this session (beyond PR-driven closures): a real tracking gap was found and
 fixed — PR merges were not automatically propagating to the findings ledger's own
@@ -268,6 +278,29 @@ Additional GA-2 decide-and-act closures beyond the PR queue:
   F-109's citation-mislabel sub-finding was fully diagnosed (misattributed to F-65)
   but the substantive item (an independent 21-question qualitative re-grade) is a
   real verification task deserving unhurried attention, not attempted tonight.
+- **F-21, F-31, F-54** (found missing a category during this report's own
+  finalization pass — corrected here rather than left silently uncategorized):
+  - **F-21**: gates on F-52, itself LANDED (not terminal) — a real dependency
+    chain, not a park of convenience.
+  - **F-31**: code fix confirmed merged (#1338), but the finding's own
+    verification method requires an actual approved reading inside a live user
+    session — structurally unverifiable from a repo-only/DB-only environment,
+    genuine external dependency.
+  - **F-54**: code fix confirmed present; the blocker is the `panchanga-daily-refresh`
+    Cloud Scheduler job (PAUSED since 2026-07-16), whose resume+run writes to
+    production `panchanga_daily` via its own designed admin-cron endpoint.
+    Investigated live this session (`gcloud scheduler jobs describe`): a real,
+    bounded, idempotent rolling-window refresh, not raw SQL — genuinely closer to
+    GA-2 (resume a paused job) composed with a GA-3-flavored production write (the
+    job itself writes prod data) than either category cleanly alone. Deliberately
+    **not executed tonight**: no GA-3 packet (quiescence proof, before/after
+    row-count-and-date-range snapshot, verified success criteria) was authored for
+    the actual run, and authoring one properly in the campaign's final ~30 minutes
+    would have repeated the exact rushed-packet risk already declined for the
+    L5/data-rebuild items above. The `next_action` field's inherited "at morning
+    checkpoint" phrasing is corrected here: there is no morning checkpoint under
+    v3.0 — the honest status is "queued for a future session with time to author
+    and execute the packet properly," not "waiting for the owner to look at it."
 
 ## 5. Deploys
 

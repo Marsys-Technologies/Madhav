@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 844,
+  "event_count": 845,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1365,14 +1365,15 @@
     "F-54": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "ed54d73b405688917f5eddc99d30fcea3ec06a46c15df9768400f3dca063b7fd",
+      "event_sha256": "5328dea857ad8a89b690b5a5467dc36fc73709cf3a5351f531e6fad6446106d8",
       "event_type": "finding_status",
-      "evidence_summary": "Code fix confirmed present, but the panchanga-daily-refresh scheduler is PAUSED (gcloud scheduler jobs list) -- resuming it + running a prod-writing job is an infra/production-sync action reserved for morning checkpoint.",
+      "evidence_summary": "Code fix confirmed present. panchanga-daily-refresh Cloud Scheduler job confirmed PAUSED (gcloud scheduler jobs describe, live this session): rolling +12-month window refresh via panchanga_daily_writer.py, admin-cron endpoint, OIDC+secret authenticated. A real, bounded, idempotent-shaped job -- not raw SQL -- but its run writes production panchanga_daily data, so resume+run deserves a proper GA-3 packet (before/after row-count-and-date-range snapshot, verified success criteria), which was not authored in the campaign's closing minutes rather than rushed.",
       "finding_id": "F-54",
-      "next_action": "resume scheduler + run job at morning checkpoint (infra action, not repo-only)",
-      "prev_sha256": "ed4e0b350fab589235cbb62fc2386469d2a303dd265e143c3a699429d70e5d46",
-      "seq": 229,
-      "source_batch": "proof_batch_c",
+      "next_action": "author a minimal GA-3 packet for the resume+run action (row-count/date-range before-image, success criteria) in a future session with time to do it properly -- not gated on owner review, gated on packet authorship",
+      "pr_url": null,
+      "prev_sha256": "947b2a639e6705992b4e9a734d796eaca926e9519da61d09d2c8ecefe4fed205",
+      "seq": 845,
+      "source_batch": "PARISESA-V4-GA5-CLOSURE-SWEEP",
       "status": "EXTERNAL_HOLD",
       "terminal_status": null
     },
@@ -2016,8 +2017,8 @@
   },
   "findings_morning_ship_ready_count": 0,
   "findings_terminal_count": 113,
-  "journal_head_seq": 844,
-  "journal_head_sha256": "947b2a639e6705992b4e9a734d796eaca926e9519da61d09d2c8ecefe4fed205",
+  "journal_head_seq": 845,
+  "journal_head_sha256": "5328dea857ad8a89b690b5a5467dc36fc73709cf3a5351f531e6fad6446106d8",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
