@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 981,
+  "event_count": 983,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1366,17 +1366,17 @@
     "F-175": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "36e33547e2b190d8bfddbd9bcf306a3396d3af327773a68d6e0915013f186d89",
+      "event_sha256": "431b790b48f3bd468712f53cbbfcf6e392387f1864fd9d4451665250bdc74234",
       "event_type": "finding_status",
-      "evidence_summary": "Reconciled PR #1435 pushed and independently re-verified before merge: tree-hash proof of zero drift between the reviewer's already-tested working tree (git write-tree = 0edf09d2...) and the actual pushed commit (git commit-tree on that exact tree, post-commit rev-parse confirms identical); local == remote branch SHA confirmed. All gates RE-RUN on the pushed commit itself, not just the pre-push state: tsc clean, codegen:envelope --check OK (confirms the stale-generated-file repair survived), 68/68 tests passing across all 4 test files from both original PRs. #1430 closed unmerged (superseded, comment posted explaining why) -- its functional content is fully carried in #1435. Enqueued for merge.",
+      "evidence_summary": "PR #1435 confirmed merged 2026-08-21T11:51:19Z. GA-5 review + independently-executed-and-verified reconciliation with F-177 already on record.",
       "finding_id": "F-175",
-      "next_action": "Confirm #1435 merge completion, flip to SERVICE_CLOSED.",
+      "next_action": null,
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1435",
-      "prev_sha256": "db532507e19cf3e6a5c1ec68c2bf0a2a8ce01292075f599c5c6819b2ffdfa809",
-      "seq": 969,
+      "prev_sha256": "c4a807d0c5f05b854df4d524a54973ba6b3ca32151032d976d18080828eacc44",
+      "seq": 982,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-176": {
       "confidence": "MEDIUM",
@@ -1396,17 +1396,17 @@
     "F-177": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "b830740c435dec2be13197cf87e45e25876a133812868c034da2987c19daf8c8",
+      "event_sha256": "120adc1468487288f3de5c9b917aab14342f5f3d4837c3b1cab47f15cbdf3544",
       "event_type": "finding_status",
-      "evidence_summary": "Same reconciled PR #1435 as F-175 -- see that finding's entry for the full verification account. Notably, #1435 keeps THIS PR's (#1431's) trim-loop structure (trimIdx/eligibleFlagCount) as the base, judged structurally more robust than #1430's approach by the reviewer's own independent analysis. #1431 closed unmerged (superseded, comment posted explaining why, noting its structure was preserved) -- its functional content is fully carried in #1435. Enqueued for merge.",
+      "evidence_summary": "PR #1435 confirmed merged 2026-08-21T11:51:19Z (same reconciled PR as F-175). GA-5 review + reconciliation already on record.",
       "finding_id": "F-177",
-      "next_action": "Confirm #1435 merge completion, flip to SERVICE_CLOSED.",
+      "next_action": null,
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1435",
-      "prev_sha256": "36e33547e2b190d8bfddbd9bcf306a3396d3af327773a68d6e0915013f186d89",
-      "seq": 970,
+      "prev_sha256": "431b790b48f3bd468712f53cbbfcf6e392387f1864fd9d4451665250bdc74234",
+      "seq": 983,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-178": {
       "confidence": "HIGH",
@@ -2792,10 +2792,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 5,
-  "findings_terminal_count": 136,
-  "journal_head_seq": 981,
-  "journal_head_sha256": "c4a807d0c5f05b854df4d524a54973ba6b3ca32151032d976d18080828eacc44",
+  "findings_morning_ship_ready_count": 3,
+  "findings_terminal_count": 138,
+  "journal_head_seq": 983,
+  "journal_head_sha256": "120adc1468487288f3de5c9b917aab14342f5f3d4837c3b1cab47f15cbdf3544",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
