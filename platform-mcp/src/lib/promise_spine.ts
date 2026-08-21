@@ -20,8 +20,20 @@
  *
  * F-110/49/51-pair (EKV): the composition kernel's `promise` field was null
  * for every response because no helper existed to populate it. This module
- * closes that gap; registry_bridge.ts assess_* handlers wire it in by
- * calling `interpretPactJoin` in parallel with their main capability call.
+ * closes that gap.
+ *
+ * PRODUCTION CALLERS (kept truthful — this list previously claimed a wiring
+ * that had never been written, which is itself the §N.8 defect class this
+ * module exists to close: `grep -rn interpretPactJoin` returned only this file
+ * and its own test until 2026-08-21):
+ *   - `tools/kala_views/ahead.ts` — `computePromiseGate`, the F-110 PACT gate on
+ *     `kala_ahead_get`'s forward projections. See
+ *     `00_ARCHITECTURE/briefs/parisesa/F110_PACT_GATING_DESIGN_CONTRACT_v1_0.md`.
+ *
+ * NOT yet wired (stated, not implied-clean): `registry_bridge.ts`'s `assess_*`
+ * handlers still certify `contradictions.status='no_contradictions_in_domain'`
+ * without consulting this helper — an open INV-1 breach carried as residual
+ * F-110-b in the design contract §5.3/§7 R3.
  */
 
 // ── SaraPromiseJoin (canonical definition — matches A-09 response_budget.ts) ─
