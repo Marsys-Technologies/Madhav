@@ -44,6 +44,29 @@ SOURCE_PHALA = "Phaladeepika (Mantreswara), trans. G.S. Kapoor, public domain"
 SOURCE_TAJAKA = "Tajaka Neelakanthi, classical tradition, public domain"
 SOURCE_CLASSICAL = "classical tradition (Jyotish)"
 
+# ── PARIŚEṢA-V4 F-23 / owner ruling R-2 (OWNER_RULINGS_20260821.md) ───────────
+# The `praam preem praum sah` navagraha bija class belongs to the tantric/agamic
+# layer transmitted through compilations such as Mantra Mahodadhi and the
+# Navagraha Stotra literature — NOT to BPHS, whose graha-santi material prescribes
+# Vedic rks, donations and propitiation procedures. The prior
+# `BPHS Ch.91-94 (Upaya-adhyaya)` attribution was ruled incorrect-as-stated.
+# BPHS is retained only as upaya context, explicitly labelled as such.
+SOURCE_BIJA = (
+    "Navagraha bīja tradition; compiled in Mantra Mahodadhi (Mahīdhara, 16th c.)"
+)
+CLASSICAL_REF_BIJA = (
+    "Navagraha bīja tradition; compiled in Mantra Mahodadhi (Mahīdhara, 16th c.); "
+    "BPHS Ch.91-94 (Upaya-adhyaya) — upāya context only, not the mantra's source"
+)
+
+# ── PARIŚEṢA-V4 F-23 / owner ruling R-3 ───────────────────────────────────────
+# BPHS Ch.94 supplies the nakshatra DEVATA table, not the mantra text. The served
+# `Om <devata-dative> Namah` string is a constructed nama-mantra form. The citation
+# must say exactly that and no more.
+CLASSICAL_REF_NAKSHATRA_MANTRA = (
+    "BPHS Ch.94 (devatā attribution); mantra: nāma-mantra form (constructed)"
+)
+
 # ── Valid ontology vocabulary sets ────────────────────────────────────────────
 
 VALID_REMEDY_TYPES = {
@@ -98,6 +121,7 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
     "sun": {
         "beej": "Om Hraam Hreem Hraum Sah Suryaya Namah",
         "beej_sa": "ॐ ह्रां ह्रीं ह्रौं सः सूर्याय नमः",
+        "beej_iast": "oṃ hrāṃ hrīṃ hrauṃ saḥ sūryāya namaḥ",
         "deity": "Surya",
         "day": "Sunday",
         "color": "red/orange",
@@ -108,6 +132,7 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
     "moon": {
         "beej": "Om Shraam Shreem Shraum Sah Chandraya Namah",
         "beej_sa": "ॐ श्रां श्रीं श्रौं सः चन्द्राय नमः",
+        "beej_iast": "oṃ śrāṃ śrīṃ śrauṃ saḥ candrāya namaḥ",
         "deity": "Chandra",
         "day": "Monday",
         "color": "white",
@@ -118,6 +143,7 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
     "mars": {
         "beej": "Om Kraam Kreem Kraum Sah Bhaumaya Namah",
         "beej_sa": "ॐ क्रां क्रीं क्रौं सः भौमाय नमः",
+        "beej_iast": "oṃ krāṃ krīṃ krauṃ saḥ bhaumāya namaḥ",
         "deity": "Hanuman/Kartikeya",
         "day": "Tuesday",
         "color": "red",
@@ -128,6 +154,7 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
     "mercury": {
         "beej": "Om Braam Breem Braum Sah Budhaya Namah",
         "beej_sa": "ॐ ब्रां ब्रीं ब्रौं सः बुधाय नमः",
+        "beej_iast": "oṃ brāṃ brīṃ brauṃ saḥ budhāya namaḥ",
         "deity": "Vishnu/Budha",
         "day": "Wednesday",
         "color": "green",
@@ -138,6 +165,7 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
     "jupiter": {
         "beej": "Om Graam Greem Graum Sah Gurave Namah",
         "beej_sa": "ॐ ग्रां ग्रीं ग्रौं सः गुरवे नमः",
+        "beej_iast": "oṃ grāṃ grīṃ grauṃ saḥ gurave namaḥ",
         "deity": "Brihaspati/Vishnu",
         "day": "Thursday",
         "color": "yellow",
@@ -148,6 +176,7 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
     "venus": {
         "beej": "Om Draam Dreem Draum Sah Shukraya Namah",
         "beej_sa": "ॐ द्रां द्रीं द्रौं सः शुक्राय नमः",
+        "beej_iast": "oṃ drāṃ drīṃ drauṃ saḥ śukrāya namaḥ",
         "deity": "Lakshmi/Shukra",
         "day": "Friday",
         "color": "white/variegated",
@@ -156,8 +185,9 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
         "dana": ["sugar", "white cloth", "curd", "silver", "perfume"],
     },
     "saturn": {
-        "beej": "Om Praam Preem Praum Sah Shanaye Namah",
+        "beej": "Om Praam Preem Praum Sah Shanaischaraya Namah",
         "beej_sa": "ॐ प्रां प्रीं प्रौं सः शनैश्चराय नमः",
+        "beej_iast": "oṃ prāṃ prīṃ prauṃ saḥ śanaiścarāya namaḥ",
         "deity": "Shani/Hanuman",
         "day": "Saturday",
         "color": "black/dark blue",
@@ -168,6 +198,7 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
     "rahu": {
         "beej": "Om Bhraam Bhreem Bhraum Sah Rahave Namah",
         "beej_sa": "ॐ भ्रां भ्रीं भ्रौं सः राहवे नमः",
+        "beej_iast": "oṃ bhrāṃ bhrīṃ bhrauṃ saḥ rāhave namaḥ",
         "deity": "Durga",
         "day": "Saturday",
         "color": "smoky/grey",
@@ -178,6 +209,7 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
     "ketu": {
         "beej": "Om Sraam Sreem Sraum Sah Ketave Namah",
         "beej_sa": "ॐ स्रां स्रीं स्रौं सः केतवे नमः",
+        "beej_iast": "oṃ srāṃ srīṃ srauṃ saḥ ketave namaḥ",
         "deity": "Ganesha",
         "day": "Saturday/Tuesday",
         "color": "multicolour/grey",
@@ -212,13 +244,13 @@ def gen_planet_matrix() -> list[dict[str, Any]]:
             "scaffold_status": "live",
             "prescription_text": text,
             "mantra_sanskrit": d["beej_sa"],
-            "mantra_transliteration": d["beej"],
+            "mantra_transliteration": d["beej_iast"],
             "deity": d["deity"],
             "day_of_week": d["day"],
             "color_associated": d["color"],
-            "source_canonical_id": "BPHS",
-            "source_citation": SOURCE_BPHS,
-            "classical_ref": "BPHS Ch.91-94 (Upaya-adhyaya)",
+            "source_canonical_id": "classical_tradition",
+            "source_citation": SOURCE_BIJA,
+            "classical_ref": CLASSICAL_REF_BIJA,
             "cost_tier": "free",
             "confidence": 0.90,
         })
@@ -327,7 +359,7 @@ def gen_planet_matrix() -> list[dict[str, Any]]:
             "remedy_type": "yantra",
             "scaffold_status": "live",
             "prescription_text": text,
-            "mantra_transliteration": d["beej"],
+            "mantra_transliteration": d["beej_iast"],
             "day_of_week": d["day"],
             "source_canonical_id": "BPHS",
             "source_citation": SOURCE_CLASSICAL,
@@ -390,7 +422,7 @@ def gen_planet_matrix() -> list[dict[str, Any]]:
             "remedy_type": "japa",
             "scaffold_status": "live",
             "prescription_text": text,
-            "mantra_transliteration": d["beej"],
+            "mantra_transliteration": d["beej_iast"],
             "mantra_sanskrit": d["beej_sa"],
             "day_of_week": d["day"],
             "source_canonical_id": "BPHS",
@@ -2141,7 +2173,8 @@ SOURCE_MC = "Muhurta Chintamani, classical Jyotish muhurta text"
 SOURCE_YM = "Yantra Maharnava, classical yantra text"
 SOURCE_BS = "Brihat Samhita (Varahamihira), classical Jyotish/astronomy text"
 
-# 27 nakshatra deity + mantra data (BPHS Ch.94; standard tradition)
+# 27 nakshatra deity + mantra data. BPHS Ch.94 supplies the DEVATA column only;
+# the mantra column is a constructed nama-mantra form (owner ruling R-3, F-23).
 _NAKSHATRA_DATA: list[tuple[str, str, str, str, str]] = [
     # (nakshatra_id, nakshatra_name, ruling_planet, presiding_deity, mantra_transliteration)
     ("ashwini",       "Ashwini",       "ketu",    "Ashwini Kumaras",  "Om Ashwinibhyam Namah"),
@@ -2182,7 +2215,9 @@ def _gen_nakshatra_mantra_rows() -> list[dict[str, Any]]:
     """
     Generate one mantra remedy row per nakshatra for birth-nakshatra propitiation.
     27 rows total.
-    Source: BPHS Ch.94 (nakshatra devata table); standard Jyotish mantra tradition.
+    Source: BPHS Ch.94 supplies the nakshatra devata attribution ONLY. The mantra
+    string is a constructed nama-mantra (Om <devata-dative> Namah), not BPHS text —
+    see PARISESA-V4 owner ruling R-3 (OWNER_RULINGS_20260821.md).
     """
     rows: list[dict[str, Any]] = []
     for nak_id, nak_name, planet, deity, mantra in _NAKSHATRA_DATA:
@@ -2190,8 +2225,9 @@ def _gen_nakshatra_mantra_rows() -> list[dict[str, Any]]:
             f"For birth in {nak_name} nakshatra: recite the nakshatra devata mantra "
             f"'{mantra}' 108 times daily, especially on the day ruled by {planet.capitalize()}. "
             f"The presiding deity is {deity}. This propitiation pacifies afflictions to "
-            f"the natal Moon/lagna when in this nakshatra and is prescribed for nakshatra "
-            f"shanti in BPHS Ch.94."
+            f"the natal Moon/lagna when in this nakshatra. Nakshatra shanti is prescribed in "
+            f"BPHS Ch.94, which supplies the presiding devata; the 'Om <devata> Namah' "
+            f"recitation form itself is a constructed nama-mantra, not BPHS text."
         )
         rows.append({
             "remedy_id": f"nakshatra_{nak_id}_mantra",
@@ -2204,7 +2240,7 @@ def _gen_nakshatra_mantra_rows() -> list[dict[str, Any]]:
             "deity": deity,
             "source_canonical_id": "BPHS",
             "source_citation": SOURCE_BPHS,
-            "classical_ref": "BPHS Ch.94 (Nakshatra devata table); Deva Keralam",
+            "classical_ref": CLASSICAL_REF_NAKSHATRA_MANTRA,
             "cost_tier": "free",
             "confidence": 0.85,
             "category": "nakshatra_shanti",
@@ -3012,7 +3048,7 @@ YANTRA_SPEC_REMEDIES: list[dict[str, Any]] = [
             "magic square numbers within a six-petal lotus, within a circle, within "
             "a square bhupura. Inscribe in black ink or blue paste. "
             "Energise on Saturday during Krishna Paksha (waning moon) with Shani beej "
-            "mantra 'Om Praam Preem Praum Sah Shanaye Namah' 23,000 times. "
+            "mantra 'Om Praam Preem Praum Sah Shanaischaraya Namah' 23,000 times. "
             "Install in a black cloth facing west."
         ),
         "deity": "Shani/Hanuman",
