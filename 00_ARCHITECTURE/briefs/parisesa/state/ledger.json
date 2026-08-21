@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 912,
+  "event_count": 918,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1196,6 +1196,66 @@
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
+    "F-165": {
+      "confidence": "MEDIUM",
+      "disposition": "STRANDED",
+      "event_sha256": "8e6f81e9e4765de0d8ced5ba9df2a6f0889c97559cd6373645ed268eabdf901c",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW finding, found by F-57's GA-5 reviewer. 'general' domain matches ZERO bodha_msr_signals rows fleet-wide, and bodha_mechanisms carries only 'wealth' data (16 rows) -- so affliction_mechanisms is structurally zero for 12 of 13 canonical domains. judgment_query(domain='general') still emits afflictions_empty with is_exact:true and NO disclosure that this is structural, not a genuine empty result. Same defect class F-57 just fixed for 11 domains, residual in 2 more places (general domain + affliction_mechanisms coverage generally) -- narrower than before F-57, not eliminated.",
+      "finding_id": "F-165",
+      "next_action": "extend F-57's disclosure pattern to cover the general-domain zero-match case and affliction_mechanisms' structural 1-of-13-domains coverage -- small follow-up, same shape as F-57's own fix",
+      "pr_url": null,
+      "prev_sha256": "8c000f6b27fd3f2e44005e9bc1eb1da4c8561c2439a8b2f71117a49329ebd64e",
+      "seq": 914,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-166": {
+      "confidence": "LOW",
+      "disposition": "STRANDED",
+      "event_sha256": "df089fdb24434ada0c579e00314b2c86a056c59604ce020da4c3363ad79e2e99",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW, low-severity finding, found by F-57's GA-5 reviewer. assess_* (register_d8_assess_domain.ts) inherits F-57's corrected domain tag but gets no domain_resolution disclosure block -- assess_marriage still silently reads 'relationship' with no aliasing disclosure. Also: F-57's own new integration test cases (5 of them) never run in CI (no workflow sets INTEGRATION=true) -- domain_resolution emission has zero automated enforcement, only SHASTRA_MAP contents are unit-covered (pre-existing gate pattern, not a regression this PR introduced). And a dead test-file-name pointer in a comment F-57 added (cites a nonexistent filename).",
+      "finding_id": "F-166",
+      "next_action": "low priority: wire domain_resolution disclosure into assess_* family; fix the dead comment pointer; consider whether the integration suite should run in CI at all (a broader, separate question)",
+      "pr_url": null,
+      "prev_sha256": "8e6f81e9e4765de0d8ced5ba9df2a6f0889c97559cd6373645ed268eabdf901c",
+      "seq": 915,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-167": {
+      "confidence": "MEDIUM",
+      "disposition": "STRANDED",
+      "event_sha256": "78c7e7d35bbd9fa10a28c27f99590fe528119053d153dfcbd8f17cc14f2ff955",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW finding, found by F-61's own investigation, deliberately NOT smuggled into F-61's PR (correctly left for its own handling). vimsopaka_bala_per_graha.vimsopaka_total carries the IDENTICAL 105/105 NULL defect F-61 just fixed for saptavargaja_score -- same pattern (a JSONB pointer written, the actual weighted sum never computed), but vimsopaka is a DIFFERENT (weighted, not simple-sum) formula, so F-61's fix cannot be directly copy-pasted.",
+      "finding_id": "F-167",
+      "next_action": "same investigation pattern as F-61: find/verify the correct vimsopaka weighting scheme (cite classical source), check if GA6 already computes the per-varga values, implement the summation at GA8 with honest coverage disclosure -- likely a smaller lift than F-61 since the SS N.8 pattern and fix shape are now well-understood",
+      "pr_url": null,
+      "prev_sha256": "3d3a92bf94fbbc32662132f5d8920ebc5150335e6973e79cf6c539acc9ff136a",
+      "seq": 917,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-168": {
+      "confidence": "LOW",
+      "disposition": "STRANDED",
+      "event_sha256": "6b17c2248592c8975fb14c582d20e4b08d13ff8e1b1d7be3fdaec28347e36180",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW, low-confidence finding, found by F-61's own investigation, deliberately disclosed not fixed (genuine domain question). PyJHora's own computation uses a rasi-derived tatkalika matrix while this codebase recomputes tatkalika per-varga -- a real methodological divergence between two legitimate approaches, needs a GA-2 ruling on which convention this codebase should follow, not a unilateral decision. Also disclosed: D30 chart is never built in GA6 (caps saptavargaja coverage at 6/7, explaining why the array always held only 6 ids); L0 vimsopaka weights appear transposed (needs verification, not confirmed).",
+      "finding_id": "F-168",
+      "next_action": "native/GA-2 ruling needed on tatkalika computation convention (per-varga vs rasi-derived-matrix); separately verify the D30-never-built and vimsopaka-weights-transposed observations",
+      "pr_url": null,
+      "prev_sha256": "78c7e7d35bbd9fa10a28c27f99590fe528119053d153dfcbd8f17cc14f2ff955",
+      "seq": 918,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
     "F-17": {
       "confidence": "HIGH",
       "disposition": "LANDED",
@@ -1768,16 +1828,17 @@
     },
     "F-57": {
       "confidence": "HIGH",
-      "disposition": "OPEN",
-      "event_sha256": "7cfbdc250cd14f4c2276e05214e3541226098538c1e5aac85a165566347dca27",
+      "disposition": "LANDED",
+      "event_sha256": "8c000f6b27fd3f2e44005e9bc1eb1da4c8561c2439a8b2f71117a49329ebd64e",
       "event_type": "finding_status",
-      "evidence_summary": "No fix commit exists anywhere. Needs a domain-mapping contract (requested-vs-covered transit domain) authored and independently reviewed before any repair attempt -- design work.",
+      "evidence_summary": "GA-5 review: MERGE, no blocking defect. Every claim independently reproduced live including the exact original reproducer on deployed prod pre-fix. Type change confirmed to have real teeth (reintroducing 'other' fails compilation + 4/6 tests under independent mutation). Full suite re-run larger than author's own claim (876/9918 vs 828/9478), confirming no hidden subset. Scope-expansion decision (11 domains not 3) explicitly endorsed by the reviewer: same literal/field/commit lineage, and the CanonicalDomain retype could not compile with any 'other' left standing, so a narrower PR was not mechanically available.",
       "finding_id": "F-57",
-      "next_action": "author the domain-mapping contract, independent review, then implement",
-      "prev_sha256": "d2b0db8c9ae2eb62ec996e409aa6bd6f17ebc806647b6e99e3ccbe23ad379455",
-      "seq": 751,
-      "source_batch": "round9_triage",
-      "status": "DECISION_PARKED",
+      "next_action": "in merge queue, auto-merge armed. Non-blocking residuals tracked separately (F-165, F-166).",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1417",
+      "prev_sha256": "c3153b59d1239e8e1c3c135624d184983af11a76e1b8101d691cf638755e1199",
+      "seq": 913,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-58": {
@@ -1825,15 +1886,16 @@
     },
     "F-61": {
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "fb90db60300ee3b417114d8a47c3fad8d10d5dc8e9d684aec136dc93258f7169",
+      "disposition": "LANDED",
+      "event_sha256": "3d3a92bf94fbbc32662132f5d8920ebc5150335e6973e79cf6c539acc9ff136a",
       "event_type": "finding_status",
-      "evidence_summary": "The finding's own fix is an aggregate-calculation/GA6-to-GA8 writer-rebuild CONTRACT that has never been authored -- this is design work requiring independent review before any implementation, not a rebase of existing content (no branch exists).",
+      "evidence_summary": "The formula was NOT actually ambiguous, contrary to the ledger's own prior assessment -- this codebase's own L0 canonical table (brahmagyan/l0_reference.py, strength_reference.saptavargaja_bala) states it verbatim: sum of dignity points across D1/D2/D3/D7/D9/D12/D30, virupa, BPHS Ch.27, with the 45/30/22.5/15/7.5/3.75/1.875 ladder -- independently corroborated by PyJHora 4.8.6's own const.sapthavargaja_factors. GA6 already computed correct per-varga values (since a prior M-18 fix); GA8 simply never summed them (wrote a JSONB pointer, value_num=None, confirmed 105/105 NULL -- pure SS N.8, no code path produced a value at all). SECOND defect found en route: SAPTAVARGA_SET wrongly read {1,2,3,9,12,30,60} -- omitting D7 (the division the group is NAMED for) and including D60 (a Shodasavarga member, not saptavarga) -- inflating Mercury's score 76% on live data. Fixed both, materialized fact_value_num+unit=virupa, honest coverage disclosure (complete_7_of_7/partial_N_of_7/vargas_missing, NULL never 0.0 on absence). 13 new tests, hand-computed golden value 125.625 virupa, a test diffs GA6's set against l0_reference.py directly so the divergence can't silently return. Correctly did NOT decide the tatkalika-vs-rasi-derived-matrix question unilaterally (genuine domain ambiguity, needs GA-2 ruling) and correctly did NOT smuggle in a sibling identical-defect finding (vimsopaka_bala_per_graha also 105/105 NULL) -- left both for separate handling.",
       "finding_id": "F-61",
-      "next_action": "author the aggregate-calculation/writer-rebuild contract, then independent review, then implement",
-      "prev_sha256": "975b0d31163484f267b702bbcb700cbf6d3ff42a06790d2d23053b4089cc8869",
-      "seq": 740,
-      "source_batch": "round7_triage",
+      "next_action": "GA-5 review in flight. Rebuild required (ga_vargas then ga_structural, strict order) but not executed -- protected-data GA-3 item once code merges.",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1418",
+      "prev_sha256": "df089fdb24434ada0c579e00314b2c86a056c59604ce020da4c3363ad79e2e99",
+      "seq": 916,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
@@ -2456,10 +2518,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 2,
+  "findings_morning_ship_ready_count": 3,
   "findings_terminal_count": 122,
-  "journal_head_seq": 912,
-  "journal_head_sha256": "c3153b59d1239e8e1c3c135624d184983af11a76e1b8101d691cf638755e1199",
+  "journal_head_seq": 918,
+  "journal_head_sha256": "6b17c2248592c8975fb14c582d20e4b08d13ff8e1b1d7be3fdaec28347e36180",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
