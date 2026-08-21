@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 896,
+  "event_count": 903,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -244,15 +244,16 @@
     },
     "F-107": {
       "confidence": "HIGH",
-      "disposition": "STRANDED",
-      "event_sha256": "dcb76b69babe2ea626acd4c6b9c064d56b258bf5cb00dda515a5f7b78aa2a97a",
+      "disposition": "LANDED",
+      "event_sha256": "e27aa6099fd66087722eb2bda56992e0e1e7376457d0e3e9305e703e20b1f81d",
       "event_type": "finding_status",
-      "evidence_summary": "Needs a divisional-mechanism precode contract authored and independently reviewed per the corpus's own next_executable_action -- design work, not an existing fix to rebase.",
+      "evidence_summary": "Investigation found the ledger's 'from-scratch design work' framing was half right: the MECHANISM half needs design work, but a real, ALREADY-RATIFIED cross-varga convergence primitive exists (chart_vichara.varga_ratification, wealth's design-ratified varga set = D1/D2/D9/D11, domain_provisional:false) that neither judgment_query nor bodha_mechanisms_get was using at all. Correctly declined to invent a weighting/convergence scheme (would be the exact CL-20 defect this finding is filed under) -- shipped disclosure only: varga_scope field, cross_varga_convergence_not_computed flag, corroborating_vargas checklist unit, both pointing callers at ganita_vichara_get. Two genuine classical ambiguities disclosed rather than resolved: D11 is supplementary not in the Parasari shodashavarga (BPHS Ch.6), and BPHS Ch.6's Hora is the sun/moon half-sign, not the generalized D2 dignity currently used. Design contract authored (F107_DIVISIONAL_MECHANISM_DESIGN_CONTRACT_v1_0.md) with 4 options, GA-2 recommends option A (route the existing ratification factor as cited evidence, invent nothing) -- 3 rulings requested from native. 15 new tests (asserting the disclosure fires, never that a finding is fabricated), 1777 retrieval tests pass 0 failures.",
       "finding_id": "F-107",
-      "next_action": "author + independently review the divisional mechanism precode contract",
-      "prev_sha256": "fb90db60300ee3b417114d8a47c3fad8d10d5dc8e9d684aec136dc93258f7169",
-      "seq": 741,
-      "source_batch": "round7_triage",
+      "next_action": "GA-5 review of the disclosure-only PR, then native ruling needed on the design contract's 3 questions before full mechanism implementation can proceed",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1419",
+      "prev_sha256": "589889425b73c631d179c50950de68a01a2fe2bac068efc68ccb998b8b05d342",
+      "seq": 902,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
@@ -271,18 +272,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-109": {
-      "confidence": "MEDIUM",
-      "disposition": "DECISION_PARKED",
-      "event_sha256": "586a33b2aa63a2d40c5740bf1cb7669373dce4a57004f2b890d275c482ed2ddf",
+      "confidence": "HIGH",
+      "disposition": "VERIFIED",
+      "event_sha256": "8fc7b37c9c5af171adb964ead83057ee533932ae1f23d85f4e3c2734973bd8fb",
       "event_type": "finding_status",
-      "evidence_summary": "Original claim (from state/codex/corpus_ledger.json, not the closure-matrix's evidence citation): a 21-question wealth-domain dark-corpus qualitative re-run scored 19/21 (90.48%) BRIGHT under a new per-answer rubric, explicitly NOT comparable to the older 2026-07-25 concept-coverage metric (5.58%) it superficially resembles. This is a CONTROL/CL-00 finding \u2014 no code defect asserted, defect_or_control=CONTROL, kind of claim is a qualitative audit measurement, not a code path. CHECKED THE TASK'S HINT DIRECTLY: commit 33289b579a ('ekv(b-02): F-109 \u2014 Rahu/Ketu cast 5th/7th/9th parashari aspects...') is NOT genuinely F-109's evidence \u2014 that commit's subject line mislabels itself; its actual content (nodal special-aspect fix) matches F-65 (CL-07 nodal aspect truncation) exactly, and F-65's own corpus row already correctly cites 33289b579a and correctly describes it. This is a second, distinct instance of the citation-mislabeling root cause the task described (IF-002), now caught at the source (a commit message typo) rather than in the corpus. The real F-109 evidence artifact (pp2-audit/evidence/E1_dark_corpus_21q_results.json) does not exist in either the conductor repo or shad_overnight tree \u2014 it was an ephemeral session artifact never committed. The underlying question-set/baseline docs it references DO exist in-repo (00_ARCHITECTURE/llm_consumption_audit/ledgers/elevation_v2/DARK_CORPUS_REPLAY_SET_v1_0.json, capability_map/DARK_CORPUS_REPORT_v1_0.md).",
+      "evidence_summary": "Fresh 21-question wealth-domain replay independently run, per the finding's own next_action ('not a code-fix item... run and independently grade a fresh replay'). Rubric written and committed BEFORE grading (3 gates: specificity, grounding, honest-closure; ties-go-DARK anti-motivated-reasoning rule). Score: 19/21 = 90.48%, SAME as the prior baseline -- independently re-derived, not restated. Same 2 DARK questions (DC-W-16, DC-W-21), same root cause: DC-W-16 IS the F-107 reproducer, and F-107's own investigation (this same session) confirmed only a disclosure/design-contract shipped, not implementation -- consistent, not a regression. Grader self-corrected a mid-pass scoring error transparently (initially missed tool capability that existed, corrected to 90.48% from an initial 76.19% mis-score, documented in the report). Commit 33289b579a's F-109/F-65 subject-line mislabel confirmed real but confirmed NOT to have propagated into the ledger (F-109's own entry correctly cites the real source commit). Full report: F109_WEALTH_REPLAY_20260821_v1_0.md. This closes F-109 as a verification task -- the finding's own claim (90.48% baseline) is confirmed accurate and current.",
       "finding_id": "F-109",
-      "next_action": "Not a code-fix item. Run and independently grade a fresh full 21-question wealth replay under a versioned qualitative rubric before citing any percent/trend claim from this finding; the corpus row's own next_executable_action already says this. Also flag commit 33289b579a's own subject-line mislabel (says F-109, should say F-65) as a source-of-truth hygiene fix for whoever maintains commit-message conventions.",
-      "prev_sha256": "36bc9da0e54c2d53873971546f9822e502d6ce30f43571bf07dc92dc8939a490",
-      "seq": 595,
-      "source_batch": "triage_batch1.json",
-      "status": "DECISION_PARKED",
-      "terminal_status": null
+      "next_action": "none - terminal (verification complete; the underlying DC-W-16/DC-W-21 gaps remain tracked separately under F-107 and the new D-1..D-4 findings below)",
+      "pr_url": null,
+      "prev_sha256": "0a7226742d60c252129e7e7019cca9571854f45c695a8c36b73f157342fdfa3d",
+      "seq": 897,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-11": {
       "confidence": "HIGH",
@@ -1042,6 +1044,66 @@
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
+    "F-156": {
+      "confidence": "HIGH",
+      "disposition": "STRANDED",
+      "event_sha256": "505a2aa921c743c198b009323746d7ece05d32c8a945be859d19f14fecee3d2d",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW finding (was 'D-2' in F-109's replay report), HIGH severity. assess_wealth asserts D11 data was consumed and cites varga_analysis.per_varga as its evidence -- but that section is ABSENT from the actual response (confirmed: omitted_sections includes grounding/evidence, only 1839 of a 40KB budget used). Reproduced 3 separate ways including deep_dive mode. This is the load-bearing overclaim behind DC-W-16's DARK grade in the F-109 replay -- a SS N.7 item 4 class defect (a claim about what evidence was used that the response itself cannot substantiate).",
+      "finding_id": "F-156",
+      "next_action": "fix: either genuinely include the varga_analysis.per_varga section when D11 claims are made, or stop claiming D11 consumption when the section is budget-trimmed out -- the current state (claiming X while shipping not-X) is the specific defect, either resolution closes it",
+      "pr_url": null,
+      "prev_sha256": "8fc7b37c9c5af171adb964ead83057ee533932ae1f23d85f4e3c2734973bd8fb",
+      "seq": 898,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-157": {
+      "confidence": "MEDIUM",
+      "disposition": "STRANDED",
+      "event_sha256": "f90bd95e3dcb3db51285e1563fe95814ba42427cb8364b5e887581618f2fbdc9",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW finding (was 'D-1'), moderate severity, found in F-109's replay. parivartana_per_varga emits own-sign placements (e.g. Jupiter_in_Sagittarius_Jupiter_in_Sagittarius) as 'mutual_exchange' -- a real classical yoga requiring TWO DIFFERENT grahas exchanging signs, not one graha sitting in its own sign restated as if exchanging with itself. Affects ~20 of 30 rows in the affected surface; D1's only row is this artifact.",
+      "finding_id": "F-157",
+      "next_action": "add a real distinct-graha guard to parivartana detection -- own-sign placement is not parivartana, small well-scoped fix",
+      "pr_url": null,
+      "prev_sha256": "505a2aa921c743c198b009323746d7ece05d32c8a945be859d19f14fecee3d2d",
+      "seq": 899,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-158": {
+      "confidence": "MEDIUM",
+      "disposition": "STRANDED",
+      "event_sha256": "42248da1ed8b54238269704592c94b6610300ef25d8e4262188e241b402b1b77",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW finding (was 'D-3'), a doctrine question found in F-109's replay. D2-only operative varga scores varga_term:0 while Venus (the 2nd lord) is exalted in D11 -- the operative-varga selection logic may be too narrow (D2-only) for wealth-domain scoring when other classically-relevant vargas (D11 for gains) carry strong dignity that D2-only scoring structurally cannot see. Related to F-107's own finding that wealth's design-ratified varga set is D1/D2/D9/D11 (chart_vichara.varga_ratification), not D2 alone -- these two findings may share one real fix.",
+      "finding_id": "F-158",
+      "next_action": "coordinate with F-107's design contract (recommends routing chart_vichara.varga_ratification as cited evidence) -- likely resolved as part of whatever F-107's native ruling decides, not a separate independent fix",
+      "pr_url": null,
+      "prev_sha256": "f90bd95e3dcb3db51285e1563fe95814ba42427cb8364b5e887581618f2fbdc9",
+      "seq": 900,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-159": {
+      "confidence": "LOW",
+      "disposition": "STRANDED",
+      "event_sha256": "589889425b73c631d179c50950de68a01a2fe2bac068efc68ccb998b8b05d342",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW, low-confidence finding (was 'D-4' + routing candidates R-1..R-4), found in F-109's replay. A real, undisclosed cross-ayanamsha divergence: Moon = Aquarius under lahiri/krishnamurti (houses 4/5) but Pisces under surya_siddhanta_classical -- a sign-boundary crossing that moves the entire Chandra-lagna wealth-reading frame depending on which ayanamsha is used, with no disclosure of this sensitivity to the caller. Plus several lower-confidence routing observations (R-1..R-4) not individually detailed here -- see F109_WEALTH_REPLAY_20260821_v1_0.md SS4 for the full list.",
+      "finding_id": "F-159",
+      "next_action": "investigate whether ayanamsha-boundary-crossing sensitivity should be disclosed wherever Chandra-lagna-based domain framing is served (a design question, not a quick fix) -- lower priority than F-156/F-157/F-158",
+      "pr_url": null,
+      "prev_sha256": "42248da1ed8b54238269704592c94b6610300ef25d8e4262188e241b402b1b77",
+      "seq": 901,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
     "F-16": {
       "confidence": "HIGH",
       "disposition": "LANDED",
@@ -1055,6 +1117,21 @@
       "source_batch": "proof_batch_f_g",
       "status": "SERVICE_CLOSED",
       "terminal_status": "SERVICE_CLOSED"
+    },
+    "F-160": {
+      "confidence": "MEDIUM",
+      "disposition": "STRANDED",
+      "event_sha256": "3f4cc5d0ac46b8b66e5f8cb34984a7156929c2cd84fa169055b219cd23693b8a",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW finding, found by F-107's own investigation as an adjacent SS N.8 defect. judgment_query's varga_confirmed flag is a bare 'rows.length > 0' check against a table that is populated for essentially every built chart -- near-always-green with no real detector behind its specific claim (that the operative varga was genuinely confirmed/ratified for this domain, not just that SOME row exists in a generically-populated table).",
+      "finding_id": "F-160",
+      "next_action": "give varga_confirmed a real detector matching what it claims (e.g. check against chart_vichara.varga_ratification's actual domain_provisional/ratified status, not just row presence) -- small, well-scoped fix, same shape as other SS N.8 fixes this campaign has already made",
+      "pr_url": null,
+      "prev_sha256": "e27aa6099fd66087722eb2bda56992e0e1e7376457d0e3e9305e703e20b1f81d",
+      "seq": 903,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
     },
     "F-17": {
       "confidence": "HIGH",
@@ -2316,9 +2393,9 @@
     }
   },
   "findings_morning_ship_ready_count": 1,
-  "findings_terminal_count": 121,
-  "journal_head_seq": 896,
-  "journal_head_sha256": "0a7226742d60c252129e7e7019cca9571854f45c695a8c36b73f157342fdfa3d",
+  "findings_terminal_count": 122,
+  "journal_head_seq": 903,
+  "journal_head_sha256": "3f4cc5d0ac46b8b66e5f8cb34984a7156929c2cd84fa169055b219cd23693b8a",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
