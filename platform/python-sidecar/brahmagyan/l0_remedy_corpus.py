@@ -3242,19 +3242,6 @@ def sweep_classical_text_chunks(conn) -> list[dict[str, Any]]:
             # (the INSERT validator would reject them)
             continue
 
-        # scaffold_status (F-144: marker/planet uniqueness alone says nothing about whether
-        # the extracted text is even legible, let alone an actual remedy — a single-marker,
-        # single-planet OCR-garbage row previously auto-promoted to 'live' unconditionally.
-        # score_ocr_confidence() is the same deterministic, already-reviewed EL-52 legibility
-        # heuristic classical_text_chunks.ocr_confidence_score was added for; it was never
-        # wired into this gate. Applied here at extraction time rather than depending on the
-        # chunks table being pre-scored, since it wasn't.)
-        ocr_score = score_ocr_confidence(content_en)
-        if multi_marker or multi_planet or ocr_score < LOW_CONFIDENCE_THRESHOLD:
-            scaffold_status = 'review'
-        else:
-            scaffold_status = 'live'
-
         # Deterministic remedy_id with sweep_ prefix
         h = hashlib.sha256(content_en[:80].encode()).hexdigest()[:8]
         remedy_id = f"sweep_{planet}_{remedy_type}_{h}"
@@ -3264,6 +3251,24 @@ def sweep_classical_text_chunks(conn) -> list[dict[str, Any]]:
 
         # Prescription text = first 400 chars of content_en (truncated cleanly)
         prescription_text = content_en[:400].rsplit(' ', 1)[0] if len(content_en) > 400 else content_en
+
+        # scaffold_status (F-144: marker/planet uniqueness alone says nothing about whether
+        # the extracted text is even legible, let alone an actual remedy — a single-marker,
+        # single-planet OCR-garbage row previously auto-promoted to 'live' unconditionally.
+        # score_ocr_confidence() is the same deterministic, already-reviewed EL-52 legibility
+        # heuristic classical_text_chunks.ocr_confidence_score was added for; it was never
+        # wired into this gate. Applied here at extraction time rather than depending on the
+        # chunks table being pre-scored, since it wasn't. Scores prescription_text (what is
+        # ACTUALLY served to a caller), not the full content_en chunk — a bad line elsewhere
+        # in the source chunk that never makes it into the served 400-char excerpt should not
+        # demote a row whose served content is genuinely legible, and the reverse: score what
+        # a reader will actually see, per this campaign's GA-5 review finding on the first
+        # version of this fix.)
+        ocr_score = score_ocr_confidence(prescription_text)
+        if multi_marker or multi_planet or ocr_score < LOW_CONFIDENCE_THRESHOLD:
+            scaffold_status = 'review'
+        else:
+            scaffold_status = 'live'
 
         row: dict[str, Any] = {
             "remedy_id": remedy_id,
@@ -3348,7 +3353,11 @@ def seed_remedy_corpus(
 ) -> dict[str, Any]:
     """
     Seed brahma_remedy_corpus with combined remedy corpus.
-    Uses INSERT ... ON CONFLICT (remedy_id) DO NOTHING for idempotency.
+    Uses INSERT ... ON CONFLICT (remedy_id) DO NOTHING for idempotency, EXCEPT for
+    category='corpus_sweep' rows, which use DO UPDATE on (scaffold_status, confidence)
+    only (F-144) -- sweep rows' scaffold_status is re-derived from score_ocr_confidence()
+    on every writer run, so a re-run must be able to correct a row's classification, not
+    silently no-op forever on the first-ever insert.
 
     Returns dict with:
         remedies_inserted, remedies_skipped, live_count, total_built
@@ -3416,7 +3425,10 @@ def seed_remedy_corpus(
                     %(mantra_transliteration)s, %(cost_tier)s,
                     %(contraindications)s, %(scaffold_status)s
                 )
-                ON CONFLICT (remedy_id) DO NOTHING
+                ON CONFLICT (remedy_id) DO UPDATE SET
+                    scaffold_status = EXCLUDED.scaffold_status,
+                    confidence = EXCLUDED.confidence
+                WHERE EXCLUDED.category = 'corpus_sweep'
                 """,
                 {
                     "remedy_id": r["remedy_id"],
