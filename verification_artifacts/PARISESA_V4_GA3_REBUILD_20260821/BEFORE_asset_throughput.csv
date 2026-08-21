@@ -1,0 +1,105 @@
+asset_id,rows_per_second,measurement_count,last_measured_at,last_measured_build_id,history,chart_id,state,built_against_upstream_hash,built_against_writer_hash,last_built_at,last_error,rows_written,expected_rows
+ga_dashas,,0,2026-08-05 20:15:46.512333+00,a91ecb8d-efe6-4447-9d3e-5dd456316b24,[],482012f1-710e-4a25-994a-93821f5871aa,lit,d2cce165fdb5a139,"",2026-08-08 00:28:48.084722+00,,483859,
+mi_jivanaghatana,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,a9cafb1349937d4b,"",2026-08-08 00:18:13.998786+00,,64,
+ga_strength,,0,2026-06-15 16:05:13.99742+00,1121a534-ab3e-40e5-86c0-86cf0a15ca6f,[],482012f1-710e-4a25-994a-93821f5871aa,lit,f1a5692b21ca16c2,"",2026-08-08 00:22:40.267346+00,,13195,
+ga_ayurdaya,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,d2cce165fdb5a139,"",2026-08-08 00:24:26.537211+00,,130,
+bo_cgm_paths,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,131b71373b512076,"",2026-08-12 15:24:23.846897+00,,45,
+ga_positions,,0,2026-06-15 19:54:30.509245+00,1c2b2142-4577-429b-8eb1-501cc39233af,[],482012f1-710e-4a25-994a-93821f5871aa,lit,e3b0c44298fc1c14,"",2026-08-08 00:20:23.263514+00,,1205,
+ka_gochara_resonance,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,718d4e423946c7b6,"",2026-08-12 22:24:33.722445+00,,762,
+ka_vedha_gochara,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,57625616d5f54311,"",2026-08-12 22:22:21.937707+00,,176,
+ka_yojaka,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,608f3b28358166cc,"",2026-08-12 15:26:14.468605+00,,50104,
+ka_gochara,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,521cd9013a1f47d0,unknown,2026-08-13 01:04:50.784593+00,,83,
+mi_sambandha,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,e134df6b5eb2cc62,unknown,2026-08-13 01:16:35.345857+00,,24,
+ka_tulana,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,2385e84337cc7b77,unknown,2026-08-13 01:15:55.289687+00,,0,
+ph_nimitta,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,d262d67b0474fb50,unknown,2026-08-13 01:16:00.435155+00,,139,
+ph_pratikara,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,48b953307c1d2b77,unknown,2026-08-13 01:16:05.883214+00,,536,
+mi_seva,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,9efe218db234ed7d,unknown,2026-08-13 01:17:19.31703+00,,0,
+bo_sudarshana,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,d2cce165fdb5a139,"",2026-08-08 00:21:37.357375+00,,45,
+ka_avadhi,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,5fc98e01c2a61efb,"",2026-08-12 15:25:35.723162+00,,1169,
+bo_arudha,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,5b77203384c11e96,"",2026-08-12 15:24:24.455229+00,,25,
+bo_vargottama_dhana,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,f1a5692b21ca16c2,"",2026-08-08 00:22:51.583173+00,,14,
+bo_karanajala,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,fbfcd1553b6895af,unknown,2026-08-10 01:39:13.491048+00,,864,
+ka_dasha_kala,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,95c52d17608b0840,"",2026-08-08 00:28:57.200368+00,,0,
+bo_sangati,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,bcb1543cbdefec28,unknown,2026-08-10 01:39:25.777184+00,,535,
+ga_sensitive_degree,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,d2cce165fdb5a139,"",2026-08-08 00:24:04.345849+00,,335,
+bo_laksana_rerank,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,f6366270f8815300,"",2026-08-12 15:33:52.779554+00,,10824,
+ph_phaladesa,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,5d58ffb62f2de804,unknown,2026-08-13 01:16:27.343582+00,,13,
+ph_muhurta,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,940703431dd489c9,unknown,2026-08-13 01:16:03.105166+00,,139,
+ph_sankrama,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,bbe49896de1dd64e,unknown,2026-08-13 01:16:21.621682+00,,2510,
+ph_rectification,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,bb1935be1d62af32,unknown,2026-08-13 01:16:06.163083+00,,186,
+ga_condition,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,cb151834a1b36542,"",2026-08-08 00:33:31.083879+00,,45,
+ga_yoga,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,bdf8c3a001c34a2d,"",2026-08-10 01:19:49.749424+00,,63,
+ga_sade_sati,,0,2026-06-15 20:17:00.297087+00,d6f07c93-b827-4930-8dff-4f0483a7973f,[],482012f1-710e-4a25-994a-93821f5871aa,lit,3b6fb365f16a7cdb,"",2026-08-10 01:27:59.010151+00,,6287,
+ga_panchanga,,0,2026-06-15 19:55:17.693563+00,1c2b2142-4577-429b-8eb1-501cc39233af,[],482012f1-710e-4a25-994a-93821f5871aa,lit,d2cce165fdb5a139,"",2026-08-08 00:21:16.756299+00,,437,
+ph_suddha_sodhana,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,76bff428b1b402b3,unknown,2026-08-13 01:16:09.082588+00,,139,
+bo_cdlm_summary,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,c972d96bbfea6a08,"",2026-08-12 15:24:28.877092+00,,70,
+bo_special_lagna,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,05dbd2ceff8c788c,"",2026-08-12 15:24:34.91592+00,,20,
+ga_prashna,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,d2cce165fdb5a139,"",2026-08-08 00:21:24.675263+00,,0,
+ga_medical,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,353eaed544731fb6,"",2026-08-08 00:33:43.530277+00,,45,
+ga_sensitive,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,408690358b9bab4e,"",2026-08-10 01:17:31.432222+00,,8775,
+ka_sangam,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,e1435a06d58a14b2,unknown,2026-08-13 01:07:13.494312+00,,14868,
+ph_pramana,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,1a50e40dd798a21d,unknown,2026-08-13 01:16:22.481143+00,,139,
+bo_bimba,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,63d0a19e3331c957,unknown,2026-08-10 01:38:26.744012+00,,255,
+ga_transit_anchors,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,d2cce165fdb5a139,"",2026-08-08 00:23:04.727271+00,,45,
+bo_drishti,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,5a9248375d49843e,"",2026-08-12 15:25:33.087706+00,,60,
+ga_tajaka,,0,2026-06-11 18:12:42.923992+00,be24be16-4f55-46ba-97d3-b0ef042dc1a6,[],482012f1-710e-4a25-994a-93821f5871aa,lit,cde451dedba7db69,"",2026-08-12 15:25:49.372724+00,,240,
+ga_vastu,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,5754e0ec52d4cc02,"",2026-08-08 00:33:42.220856+00,,40,
+ka_gochara_sweep,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,error,1e9e46326a49170c,"",2026-08-12 15:56:35.616518+00,no writer registered for ka_gochara_sweep,0,
+ka_taranga,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,343edfeef89d47ab,unknown,2026-08-13 01:07:58.689168+00,,92412,
+ka_bhavishya_lekha,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,3882a19a0733792c,unknown,2026-08-13 01:15:54.314753+00,,100,
+ka_vighnakara,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,971f71f0afca78c6,unknown,2026-08-13 01:08:12.911241+00,,536,
+ka_kala_darshana,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,00a380192e19fd7a,unknown,2026-08-13 01:15:53.303027+00,,750,
+ka_jivana_parva,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,41135177d7df8ef7,unknown,2026-08-13 01:15:55.070135+00,,100,
+ph_sodhana,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,11b3394e6d919f0c,unknown,2026-08-13 01:16:07.622477+00,,97,
+bo_cgm_motifs,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,131b71373b512076,"",2026-08-10 01:52:07.071369+00,,600,
+ga_vargas,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,d2cce165fdb5a139,"",2026-08-08 00:21:56.664016+00,,38620,
+bo_upaya,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,300910699be5b5ee,"",2026-08-10 01:52:43.884028+00,,235,
+mi_bhavisya,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,4810a757d4035ee4,unknown,2026-08-13 01:16:29.759381+00,,278,
+bo_laksana,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,8fe864ed2155ab6d,unknown,2026-08-10 01:37:48.729536+00,,49955,
+ga_structural,,0,2026-06-18 14:24:29.53629+00,fee46721-63b7-4c2b-ae3d-d20fa8645be3,[],482012f1-710e-4a25-994a-93821f5871aa,lit,5769d6b6a88203dd,"",2026-08-10 01:19:25.651731+00,,103489,
+ka_kota_chakra,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,9da8bd5084202af3,"",2026-08-12 22:24:19.467933+00,,588,
+bo_pratijna,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,75bc49db9c1aa568,unknown,2026-08-10 01:39:42.02802+00,,135,
+mi_abhilekha,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,5ca856fe744fab07,unknown,2026-08-13 01:16:30.108068+00,,0,
+mi_pariksha,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,eadf4612ecef6882,unknown,2026-08-13 01:16:34.592741+00,,1664,
+mi_adhilepa,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,91545f502408908c,unknown,2026-08-13 01:17:18.097464+00,,112270,
+mi_pramana,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,b107a12d68a70ca2,unknown,2026-08-13 01:16:30.265087+00,,63,
+mi_gunanaka,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,eadf4612ecef6882,unknown,2026-08-13 01:16:30.660879+00,,9,
+mi_darshana,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,afba6fd41be92722,unknown,2026-08-13 01:17:22.604778+00,,115,
+ka_gochara_v3_century_materialize,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,d467308721c90aa9,"",2026-08-12 23:34:57.964701+00,,914,
+ka_sudarshana_varsha,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,d2cce165fdb5a139,"",2026-08-08 00:24:35.216202+00,,120,
+bo_yantra_mechanism,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,6a7a79cd82c90253,"",2026-08-12 15:25:16.822318+00,,615,
+ka_moorti_nirnaya,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,c040b2ec40c62627,"",2026-08-12 15:25:38.53547+00,,72,
+ka_tithi_pravesha,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,d2cce165fdb5a139,"",2026-08-12 15:25:40.396005+00,,120,
+ga_vichara,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,0747c632c4f24c3c,"",2026-08-10 01:30:11.496209+00,,8249,
+ga_nakshatra,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,4b6e1da8822a4d5d,"",2026-08-08 00:26:44.197161+00,,2847,1802
+ka_kshetra,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,6e70ee6d75cd7fea,unknown,2026-08-15 06:28:11.690022+00,"orphan-watchdog: heartbeat went stale while a substep plan was in flight. 301 substep(s) committed and 8599775 data row(s) are present, but this route cannot prove the plan finished, so the asset was NOT promoted to 'lit'. Re-run the build to complete the plan (substep progress is resumable).",11069325,
+bo_nakshatra_semantic,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,74a2aee7fbc2437a,"",2026-08-08 00:26:58.33863+00,,45,
+bo_pramana_mapa,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,f87f8606746bb8c4,unknown,2026-08-12 23:44:40.654882+00,,1,
+bo_samvada,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,a66ba39f5b20b5c0,unknown,2026-08-12 23:44:40.940843+00,,1,
+bo_samskara,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,63d0a19e3331c957,unknown,2026-08-12 23:43:59.172831+00,,50104,
+bo_chart_gestalt,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,ec83e0f50ec7eb80,unknown,2026-08-12 23:44:26.973022+00,,5,
+mi_sankalpa,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,dormant,99d1bbeed7ef47d1,unknown,2026-08-13 01:02:38.387443+00,,0,
+bo_anveshana,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,1686fbe9e76d170a,unknown,2026-08-12 23:44:24.671206+00,,3774,
+mi_bhara,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,error,53be7fa0ef18347d,"",2026-08-13 01:02:31.824568+00,"TypeError: float() argument must be a string or a real number, not 'NoneType'
+Traceback (most recent call last):
+  File ""/app/platform/python-sidecar/pipeline/orchestrator/asset_runner.py"", line 562, in _run_data_writer
+    rows_inserted, rows_updated = _drive_substeps(conn, cur, run_id, chart_id, asset_id, writer, ctx)
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""/app/platform/python-sidecar/pipeline/orchestrator/asset_runner.py"", line 440, in _drive_substeps
+    result = writer.run_substep(ctx, step)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""/app/platform/python-sidecar/pipeline/orchestrator/writers/__init__.py"", line 134, in run_substep
+    return self.run(ctx)
+           ^^^^^^^^^^^^^
+  File ""/app/platform/python-sidecar/pipeline/orchestrator/writers/mi_bhara.py"", line 141, in run
+    open_predictions = db.fetch_open_predictions(conn, chart_id, birth_iso)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File ""/app/platform/python-sidecar/services/mi_bhara/db.py"", line 185, in fetch_open_predictions
+    return [
+           ^
+  File ""/app/platform/python-sidecar/services/mi_bhara/db.py"", line 189, in <listcomp>
+    window_start=float(r[""w_start""]),
+                 ^^^^^^^^^^^^^^^^^^^
+TypeError: float() argument must be a string or a real number, not 'NoneType'
+",0,
+ka_kalasutra,,0,,,[],482012f1-710e-4a25-994a-93821f5871aa,lit,3cbf894c8a0e79dd,unknown,2026-08-13 01:15:50.567754+00,,335403,

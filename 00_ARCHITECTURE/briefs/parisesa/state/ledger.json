@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 854,
+  "event_count": 856,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -844,6 +844,21 @@
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
+    "F-145": {
+      "confidence": "HIGH",
+      "disposition": "STRANDED",
+      "event_sha256": "f8cf7576ec30f650aa624bd2ea28e6511a39824ee30e26cbe085ffa4ad9b1c49",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW finding, surfaced as a side effect of F-48's GA-5 review. bg_transit_rules table (source for muhurta transit-quality scoring, F-48/#1410) is claimed by the writer's own comment to hold 65 rows but live count is 77: 7 real double_transit rows from migration 397, plus 5 STALE Venus 'unfavourable' rows absent from the current source list -- the table deliberately doesn't delete-then-insert per l0_transit.py:797-806 (an intentional exception to the campaign's usual L0 upsert discipline, but one that has now let stale rows accumulate). F-48's new scorer's IN ('favourable','unfavourable') filter WILL read these 5 stale rows, affecting Venus-significator readings (marriage domain). Confirmed live, pre-existing L0 drift, not introduced by #1410.",
+      "finding_id": "F-145",
+      "next_action": "triage into formal review: either (a) change l0_transit.py to delete-then-insert like other L0 writers (re-litigate why it doesn't), or (b) add a source-freshness check that flags/excludes rows no longer in the current source list -- author a small contract, independent review, then implement",
+      "pr_url": null,
+      "prev_sha256": "ed18eb3657f6feb84fd69f72f424eaec308793a34cc369e6d4cb538336d65f82",
+      "seq": 856,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
     "F-15": {
       "confidence": "HIGH",
       "disposition": "LANDED",
@@ -1315,16 +1330,17 @@
     },
     "F-48": {
       "confidence": "HIGH",
-      "disposition": "BLOCKED_NO_IMPL",
-      "event_sha256": "1d2c72540148ef14f975811f72bc5b9917a10733c6f421d6027f6a9ef5cefcb0",
+      "disposition": "LANDED",
+      "event_sha256": "ed18eb3657f6feb84fd69f72f424eaec308793a34cc369e6d4cb538336d65f82",
       "event_type": "finding_status",
-      "evidence_summary": "Deep-verified: origin/main's muhurta.py still contains the declared 'seasonal approximation' the finding is about \u2014 genuinely not fixed. A local-only partial commit (fe129c82d, not on any pushed ref, not an origin/main ancestor) exists but the corpus itself says not to merely relabel/reweight the heuristic. This is correctly blocked on an architecture/classical-semantics authority decision, not stranded work waiting for a rebase.",
+      "evidence_summary": "GA-2 ruling made: transit_quality in muhurta.py replaced with real BPHS Ch.29 Gochara-from-natal-Moon computation (pyswisseph/ephemeris_daily, 825k rows, confirmed live) instead of the lunar-phase+weekday approximation. Prior SP-1 'honest relabel' decision overturned on the record -- GA-5 review corrected an important premise: that prior decision was NOT actually native-ruled (it was resolved by AI campaign roles, conductor+PRATINIDHI) -- this is an AI overturning a prior AI decision, aligned with the one genuinely native-ruled item in this territory (D39, mandates live-transit personalization), not a breach of owner authority. Real double-counting bug also found and fixed (old code re-spent tithi/vara already scored elsewhere at 40%, panchanga held ~60% of a composite advertising 40%). GA-5 review verdict MERGE after rebase (CI D-08 failure was a stale-base issue, not a regression -- rebased clean, no conflicts). Process note for native awareness (non-blocking): PR borrows D39's authority across a layer boundary (D39 governs the ph_muhurta writer, not this serving-layer module) and uses a different source-list (ephemeris_daily+bg_transit_rules+chart_facts) than D39's own literal wording (ka_gochara+ga_condition) -- defensible per the review but not literally what was specified; worth native confirmation at leisure, not blocking.",
       "finding_id": "F-48",
-      "next_action": "Needs an owner/architecture ruling on which of the two named authority sources (heuristic vs bg_ephemeris/Swiss Ephemeris) governs PH-4-4 scoring before any candidate fix can be built \u2014 DECISION_PARKED candidate, not a code train.",
-      "prev_sha256": "bfa61db52dbfcad681bdd16eb2d0ac136c13b517b4469337cfa57a7e59506357",
-      "seq": 146,
-      "source_batch": "batch7.json",
-      "status": "BLOCKED_NO_IMPL",
+      "next_action": "in merge queue, auto-merge armed",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1410",
+      "prev_sha256": "bc468aa61dad5dc2b34ebaee4996dffbe4ed3985ea4701b55178901412f48f48",
+      "seq": 855,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-49": {
@@ -2051,10 +2067,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 0,
+  "findings_morning_ship_ready_count": 1,
   "findings_terminal_count": 113,
-  "journal_head_seq": 854,
-  "journal_head_sha256": "bc468aa61dad5dc2b34ebaee4996dffbe4ed3985ea4701b55178901412f48f48",
+  "journal_head_seq": 856,
+  "journal_head_sha256": "f8cf7576ec30f650aa624bd2ea28e6511a39824ee30e26cbe085ffa4ad9b1c49",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
