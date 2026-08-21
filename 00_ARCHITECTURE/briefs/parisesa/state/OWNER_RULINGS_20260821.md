@@ -12,6 +12,16 @@ scope: >
   F-23 (4 scholarly questions), F-150 + PAR-R-9 policy gap, F-141 countersignature,
   F-146 process adoption, F-31 verification path, plus standing guidance for the
   DATA_PARKED executions and F-175/F-149 sequencing.
+filed_by: >
+  PARISESA-V4-CONDUCTOR session (Sonnet 5) independently filed this document verbatim
+  at 00_ARCHITECTURE/briefs/parisesa/OWNER_RULINGS_20260821.md (a non-canonical path,
+  now a pointer to this file) upon receiving it from the operator, before this
+  canonical state/ copy existed. R-1..R-9 were executed from that filing — see the
+  ledger (finding_id F-175 through F-187, source_batch
+  PARISESA-V4-OWNER-RULINGS-20260821) for the full execution record, all independently
+  GA-5 reviewed. Confirmed via HANDOFF_COWORK_SUPERVISOR_20260821.md (committed
+  alongside this canonical copy) that the "Fable 5 / Cowork delegation" provenance
+  claim is genuine, not merely recorded-as-given.
 ---
 
 # Owner Rulings — PARISESA-V4, 2026-08-21
