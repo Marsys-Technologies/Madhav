@@ -210,6 +210,22 @@ export async function POST(request: Request) {
 
   const traceId = crypto.randomUUID()
 
+  // F-161: `confidence_band` is hardcoded 'high' here, unlike the sibling
+  // primitives/trace/recent routes fixed for the same §N.8 unearned-grade
+  // defect (F-126). DELIBERATELY NOT WIRED to `detectEvidenceState` — this
+  // route carries a structural blocker, not just a missing COUNT_KEYS member:
+  //   1. The served result carries `word_count` (below), which is not a
+  //      COUNT_KEYS member and must not become one — adding it would silently
+  //      change evidence-state detection for every other route that happens
+  //      to serve a `word_count` field.
+  //   2. Even fixing (1) would not make this route capable of an honest
+  //      'empty' grade: `filterToSection` (above, :70) returns the FULL
+  //      document content when the requested `section` has no match (:88-91),
+  //      so a caller can never actually get zero content back from this
+  //      route — there is no zero-result state to detect.
+  // Fixing this for real means `filterToSection` reporting no-match as an
+  // honest empty first. Tracked as a separate, deferred finding — this route
+  // ships unchanged rather than wearing a no-op fix's clothes.
   return NextResponse.json(
     buildEnvelope({
       trace_id: traceId,
