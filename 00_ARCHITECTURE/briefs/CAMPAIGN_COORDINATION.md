@@ -5778,3 +5778,27 @@ all, confirmed by reading its own `playwright.config.ts` header). Item 4
 than split") and RULED APPROVED but NOT built — carries as its own dated
 register entry per the native's ruling. Item 8 (register close-out + tag)
 still pending on all of the above verifying live.
+
+## 2026-08-21 — PARIPRASHNA-P2-CLOSE-EXECUTE — disclosed out-of-scope fix: PR #1405
+
+While merging #1404 (Lane K), the required `D-08 — Pointer Integrity Tests`
+check came back red on current `main` — NOT from anything in #1404 (verified:
+zero diff on the file it complains about). Root cause: PR #1391 (parisesa,
+unrelated campaign) added a real, correctly-formed `dualOutput(data,
+'bodha_pratijna_get')` call alongside a `//` comment that illustrates the
+banned bare-call pattern as an example — `test_d08_pointer_integrity.py`'s
+scanner has no comment-awareness and flagged the comment text itself. This
+is currently blocking EVERY new PR based on current `main`, not just
+pariprashna's.
+
+Filed as its own tiny, standalone, disclosed PR — **#1405**
+(`fix/d08-comment-false-positive`), touching only
+`platform/scripts/governance/__tests__/test_d08_pointer_integrity.py` (one
+line: reuse the SAME comment-line guard the file's own sibling assertion
+already applies two functions below). Verified the guard doesn't blind the
+detector to a real bare call (injected one into a scratch copy, still
+caught). Not part of pariprashna's `may_touch` scope — flagging here per
+this file's own disclosure convention rather than silently expanding scope.
+No Stream A / A-09 feature work touched; the underlying feature is already
+correct per the file's own sibling assertions, only the detector's own
+regex had the defect.
