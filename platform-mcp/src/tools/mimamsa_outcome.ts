@@ -425,31 +425,32 @@ export function registerMimamsaOutcomeTool(server: McpServer, principal: Princip
           'Chart UUID. Required — must be a valid chart UUID from the charts table.'
         ),
 
-      domain: z
-        .string()
-        .optional()
-        .describe('Optional domain filter (forwarded to the capability; currently informational).'),
-
-      limit: z
-        .number()
-        .int()
-        .min(1)
-        .max(100)
-        .optional()
-        .describe('Maximum rows to return where applicable. Default: capability default.'),
-
-      offset: z
-        .number()
-        .int()
-        .min(0)
-        .optional()
-        .describe('Pagination offset.'),
+      // F-27 (PARIŚEṢA V4): `domain`, `limit` and `offset` used to be declared here and
+      // forwarded to the platform primitive. All three were complete no-ops — the
+      // capability `marsys://tool/L5/query_calibration` declares
+      // `required_inputs: ['chart_id']` and its handler reads only `chart_id`,
+      // `include_held_out` and `promoted_only`; it never reads domain/limit/offset, so
+      // two calls differing only in those fields returned a byte-identical payload.
+      //
+      // They are removed rather than implemented, because no honest implementation
+      // exists: the scorecard's verdict rows come from `mimamsa_calibration`, which has
+      // NO domain column at all (only `score_domain`, a numeric match-quality score, not
+      // a domain label). The one table that does carry a `domain` column,
+      // `mimamsa_multipliers`, holds NULL there for every row on the canonical chart.
+      // A `domain` filter over this data would have to be invented, not derived —
+      // CLAUDE.md §N.7 item 6 (an honest null beats an invented judgment) and §N.8
+      // (Earned-Signal Principle: a parameter with no code path behind it is not a
+      // feature, it is an unimplemented check wearing a feature's clothes).
+      //
+      // The twin alias `mimamsa_calibration_get` (register_p1_aliases.ts) already
+      // dropped these three fields; this restores contract parity across the documented
+      // CR-51/CR-30 strict-alias pair.
     },
     async (params) => {
       try {
         const result = await callPlatformPrimitiveDirect(
           'query_calibration',
-          { chart_id: params.chart_id, domain: params.domain, limit: params.limit, offset: params.offset },
+          { chart_id: params.chart_id },
           principal,
         )
 
