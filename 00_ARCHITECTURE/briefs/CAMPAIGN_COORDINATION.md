@@ -6010,3 +6010,44 @@ confirmed compatible (no-op once the model returns clean JSON).
 
 No model moved (Part B's job); the two gemini-3.x catalog entries remain unwired to
 any CallType.
+
+## 2026-08-21 — PARIPRASHNA-P3-PREFLIGHT-PART-A — lease CLOSED, PR #1440 merged + deployed + live-verified
+
+Lease opened above is released. Final account:
+
+- PR #1440 merged via merge queue (`8bb4d0cb6`), full CI green (all real gates
+  pass; deploy/nightly/blocked jobs correctly skip on a PR branch).
+- Deployed via the standing canary discipline: `Deploy to Cloud Run` run
+  32512500484 — tagged revision at 0% traffic → post-deploy smoke → promote to
+  100% traffic. All green.
+- **Live-verified per DD-21** (observed-delivery, not just CI-green/merged/flagged):
+  two real probe turns via `ask.sh` against the synthetic chart
+  (`1c826d5a-...`) post-deploy.
+  - Turn `82fbc1a1-...` ("What is my ascendant sign?") completed cleanly:
+    `synthesize` succeeded on `gemini-2.5-pro` (36,912 in / 1,619 out) with real
+    prose + 4 citations rendered, no repair-retry needed on the primary attempt —
+    direct evidence the `output`/`Output.object` fix is reaching production.
+  - Turn `1b6905a7-...` ("What does the current dasha period emphasize for
+    career?") timed out client-side (~303s) before completing. Traced via
+    Cloud Run logs (not left unexplained): the underlying `query_id=2df94a28-...`
+    planner primary attempt ran to its output-token ceiling
+    (65,524/65,536) and terminated with `Unterminated string in JSON at position
+    221807`; the pre-existing repair-retry then fired and succeeded normally
+    (171 tokens, `query_id=39d5cab6-...`). No `synthesize` row followed —
+    consistent with the server correctly aborting the rest of the pipeline once
+    my client's connection had already dropped, not a defect in the fix.
+    **Disclosed, not chased further:** worth a look by whoever next touches
+    planner reliability at scale (possibly Part B, since it moves models) —
+    schema enforcement is now genuinely active for `planner` too (this lease's
+    fix), so a primary attempt that previously returned lenient free-text may
+    now sometimes run long attempting truly schema-conforming JSON for a broad
+    query. The existing repair-retry recovered it correctly; flagging the
+    pattern, not claiming it as a regression this lease caused or needs to fix.
+
+A.5's fire-rate finding stands as filed above (unmeasurable without DD-19 first).
+A.4's Interactions-API scoping note stands as filed above (not migrated).
+
+No file outside this lease's declared scope was touched. Worktree
+`.clone/worktrees/pariprashna-part-a` retained for Part B (adjacent scope, same
+adapter file family) — will be removed once Part B's PR merges, or immediately
+if the native prefers a fresh worktree per §0.5.
