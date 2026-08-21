@@ -193,38 +193,189 @@ class TestDashaProximityWired:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# _fetch_cgm_motif_weakness — wired real source #3
+# _fetch_cgm_motif_weakest_node_burden — wired real source #3
+#
+# F-117 SUPERSEDES the BA-P2.5 #4 shape of this fetcher. It previously computed
+# 1 - MIN(motif_strength); those assertions are replaced (not merely relaxed)
+# because that quantity was structurally incapable of varying — bo_cgm_motifs
+# writes motif_strength as a per-motif-CLASS constant, so the term evaluated to
+# exactly 0.4 for all nine grahas of the native chart. The fetcher now computes
+# A13 §3's own definition: the share of a graha's motif memberships in which it
+# is the weakest participating node by L1 shadbala.
 # ─────────────────────────────────────────────────────────────────────────────
 
-class TestCgmMotifWeaknessWired:
+class TestCgmMotifWeakestNodeBurden:
     def _load(self):
         return _load_module("bo_upaya.py")
 
-    def test_weakness_is_one_minus_min_motif_strength(self):
+    def test_weakest_member_by_l1_shadbala_carries_the_burden(self):
         mod = self._load()
-        conn = _conn_returning([("Saturn", 0.3)])
-        result = mod._fetch_cgm_motif_weakness(conn, "chart-1", "lahiri_chitrapaksha")
-        assert result["Saturn"] == pytest.approx(0.7)
+        conn = _conn_returning([("m1", ["Saturn", "Jupiter"])])
+        result = mod._fetch_cgm_motif_weakest_node_burden(
+            conn, "chart-1", "lahiri", {"Saturn": 0.5, "Jupiter": 1.4}
+        )
+        assert result["Saturn"] == pytest.approx(1.0)
+        assert result["Jupiter"] == pytest.approx(0.0)
+
+    def test_normalized_by_the_grahas_own_membership_count(self):
+        mod = self._load()
+        conn = _conn_returning([
+            ("m1", ["Saturn", "Jupiter"]),
+            ("m2", ["Saturn", "Mars"]),
+        ])
+        # Saturn is weakest in m1 only; Mars is weakest in m2. Saturn: 1 of 2.
+        result = mod._fetch_cgm_motif_weakest_node_burden(
+            conn, "chart-1", "lahiri",
+            {"Saturn": 0.9, "Jupiter": 1.4, "Mars": 0.4},
+        )
+        assert result["Saturn"] == pytest.approx(0.5)
+        assert result["Mars"] == pytest.approx(1.0)
+        assert result["Jupiter"] == pytest.approx(0.0)
+
+    def test_is_not_degenerate_when_upstream_motif_strength_is_constant(self):
+        """The exact F-117 regression: identical motif_strength for every motif must
+        no longer produce an identical burden for every graha. motif_strength is not
+        read at all now — L1 shadbala decides the weak member."""
+        mod = self._load()
+        conn = _conn_returning([
+            ("m1", ["Sun", "Venus"]),
+            ("m2", ["Venus", "Mars"]),
+            ("m3", ["Sun", "Mars"]),
+        ])
+        result = mod._fetch_cgm_motif_weakest_node_burden(
+            conn, "chart-1", "lahiri", {"Sun": 1.7, "Venus": 0.8, "Mars": 1.1},
+        )
+        assert len(set(result.values())) > 1, (
+            f"motif_burden must discriminate between grahas, got {result}"
+        )
 
     def test_non_graha_node_subject_is_skipped(self):
         mod = self._load()
-        conn = _conn_returning([("HOUSE_5", 0.2)])
-        result = mod._fetch_cgm_motif_weakness(conn, "chart-1", "lahiri_chitrapaksha")
+        conn = _conn_returning([("m1", ["HOUSE_5", "ASC"])])
+        result = mod._fetch_cgm_motif_weakest_node_burden(
+            conn, "chart-1", "lahiri", {"Saturn": 0.5}
+        )
         assert result == {}
 
-    def test_null_strength_is_skipped_not_fabricated(self):
+    def test_node_with_no_l1_shadbala_is_never_credited_as_weakest(self):
+        """§N.5 / B.10: classical shadbala defines no requirement for Rahu/Ketu, so
+        they cannot be adjudged the weak member. They still count as members (the
+        denominator), but the burden goes to the weakest graha that HAS an L1 row."""
         mod = self._load()
-        conn = _conn_returning([("Mars", None)])
-        result = mod._fetch_cgm_motif_weakness(conn, "chart-1", "lahiri_chitrapaksha")
-        assert "Mars" not in result
+        conn = _conn_returning([("m1", ["Rahu", "Jupiter"])])
+        result = mod._fetch_cgm_motif_weakest_node_burden(
+            conn, "chart-1", "lahiri", {"Jupiter": 1.4}
+        )
+        assert result["Rahu"] == pytest.approx(0.0)
+        assert result["Jupiter"] == pytest.approx(1.0)
+
+    def test_motif_of_only_nodes_credits_nobody(self):
+        mod = self._load()
+        conn = _conn_returning([("m1", ["Rahu", "Ketu"])])
+        result = mod._fetch_cgm_motif_weakest_node_burden(
+            conn, "chart-1", "lahiri", {"Jupiter": 1.4}
+        )
+        assert result == {"Rahu": 0.0, "Ketu": 0.0}
 
     def test_no_motifs_returns_empty_dict(self):
         """Honest: grahas with no motif membership get no entry (caller defaults to 0.0
-        'no burden observed', not a fabricated positive value)."""
+        'no structural motif to be the weak point of', not a fabricated value)."""
         mod = self._load()
         conn = _conn_returning([])
-        result = mod._fetch_cgm_motif_weakness(conn, "chart-1", "lahiri_chitrapaksha")
+        result = mod._fetch_cgm_motif_weakest_node_burden(
+            conn, "chart-1", "lahiri", {"Saturn": 0.5}
+        )
         assert result == {}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# F-117 — _cdlm_weakest_constituent_burden (domain_burden; was hardcoded 0.0)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestCdlmWeakestConstituentBurden:
+    def _load(self):
+        return _load_module("bo_upaya.py")
+
+    def test_weakest_material_constituent_of_a_cell_carries_it(self):
+        mod = self._load()
+        cells = {"Venus": ["c1"], "Jupiter": ["c1"]}
+        result = mod._cdlm_weakest_constituent_burden(
+            cells, {"Venus": 0.84, "Jupiter": 1.4}
+        )
+        assert result["Venus"] == pytest.approx(1.0)
+        assert result["Jupiter"] == pytest.approx(0.0)
+
+    def test_normalized_by_the_grahas_own_cell_count(self):
+        mod = self._load()
+        cells = {"Venus": ["c1", "c2"], "Jupiter": ["c1"], "Mars": ["c2"]}
+        result = mod._cdlm_weakest_constituent_burden(
+            cells, {"Venus": 0.84, "Jupiter": 1.4, "Mars": 0.4}
+        )
+        assert result["Venus"] == pytest.approx(0.5)   # weakest in c1, not c2
+        assert result["Mars"] == pytest.approx(1.0)
+
+    def test_no_longer_hardcoded_zero_for_every_graha(self):
+        """The exact F-117 regression: domain_burden was 0 for all nine grahas."""
+        mod = self._load()
+        cells = {"Venus": ["c1"], "Jupiter": ["c1"], "Mars": ["c2"], "Sun": ["c2"]}
+        result = mod._cdlm_weakest_constituent_burden(
+            cells, {"Venus": 0.84, "Jupiter": 1.4, "Mars": 1.1, "Sun": 1.7}
+        )
+        assert any(v > 0 for v in result.values()), result
+        assert len(set(result.values())) > 1, result
+
+    def test_graha_bridging_no_cell_is_absent_not_fabricated(self):
+        mod = self._load()
+        assert mod._cdlm_weakest_constituent_burden({}, {"Venus": 0.84}) == {}
+
+    def test_node_without_shadbala_is_not_credited_as_weakest(self):
+        mod = self._load()
+        cells = {"Ketu": ["c1"], "Jupiter": ["c1"]}
+        result = mod._cdlm_weakest_constituent_burden(cells, {"Jupiter": 1.4})
+        assert result["Ketu"] == pytest.approx(0.0)
+        assert result["Jupiter"] == pytest.approx(1.0)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# F-117 — _fetch_msr_contradiction_burden (honest NULL, no substitution)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestMsrContradictionBurden:
+    def _load(self):
+        return _load_module("bo_upaya.py")
+
+    def test_reports_source_unavailable_when_upstream_column_is_empty(self):
+        """§N.7 item 4 / §N.8: the availability flag must have a real detector behind
+        it. With zero populated contradicts_signals_array rows it reads False, and the
+        caller stores NULL rather than a 0.0 indistinguishable from a measurement."""
+        mod = self._load()
+        conn = _conn_returning([(0,)])
+        burden, available = mod._fetch_msr_contradiction_burden(conn, "chart-1", "lahiri")
+        assert available is False
+        assert burden == {}
+
+    def test_reads_the_source_when_it_is_populated(self):
+        mod = self._load()
+        conn = MagicMock()
+        conn.execute.return_value.fetchall.side_effect = [
+            [(3,)],                              # probe: source populated
+            [("Mars", 2.0), ("Venus", 1.0)],     # per-graha conflict salience
+        ]
+        burden, available = mod._fetch_msr_contradiction_burden(conn, "chart-1", "lahiri")
+        assert available is True
+        assert burden["Mars"] == pytest.approx(1.0)   # chart-relative peak
+        assert burden["Venus"] == pytest.approx(0.5)
+
+    def test_does_not_substitute_dosha_counts(self):
+        """The pre-F-117 defect: contradiction_factor was fed dosha counts, the same
+        fact affliction_count_normalized already carries. This fetcher touches only
+        contradicts_signals_array — no dosha table appears in its SQL."""
+        mod = self._load()
+        conn = _conn_returning([(0,)])
+        mod._fetch_msr_contradiction_burden(conn, "chart-1", "lahiri")
+        sql = " ".join(str(c) for c in conn.execute.call_args_list).lower()
+        assert "contradicts_signals_array" in sql
+        assert "dosha" not in sql
 
 
 # ─────────────────────────────────────────────────────────────────────────────

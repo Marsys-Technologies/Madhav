@@ -494,45 +494,256 @@ def _fetch_dasha_proximity(conn: Any, chart_id: str, aya: str, at_dt: datetime) 
     return out
 
 
-def _fetch_cgm_motif_weakness(conn: Any, chart_id: str, aya: str) -> dict[str, float]:
-    """graha → weakness burden (0..1) contributed by CGM structural motifs it
-    participates in (mutual_reception / stellium / parivartana_chain).
+# ── F-117 — the three "burden" terms of resonance_score_v1 ────────────────────
+# PARIŚEṢA-V4 finding F-117 observed that contradiction_factor, domain_burden and
+# motif_burden were CONSTANT across all nine grahas of the native chart, leaving
+# weakness_score (dominated by inverse shadbala) as the only varying input and the
+# resulting ranking an inverse-shadbala restatement with three decorative terms.
+#
+# Root cause is DIFFERENT for each of the three — see the individual functions:
+#   motif_burden        — read a real column that upstream fills with a per-CLASS
+#                         CONSTANT, so the reader was structurally incapable of
+#                         varying (§N.8: a signal whose detector cannot ever read
+#                         differently is not a measurement). REPAIRED here to the
+#                         A13 §3 definition the spec actually states.
+#   domain_burden       — hardcoded 0.0 with an honest B.10 note that no source
+#                         existed. A source DOES now exist (CR-67's CDLM
+#                         material-constituent join, already fetched in this same
+#                         writer). REPAIRED here.
+#   contradiction_factor— wired, but to the WRONG input: dosha counts, which A13
+#                         §3 assigns to affliction_count_normalized (the same fact
+#                         was being counted twice in one formula). The spec's own
+#                         designated source — bodha_msr_signals.contradicts_signals_
+#                         array — is 100% unpopulated upstream. NOT silently
+#                         re-substituted: reported as an honest NULL + audit flag.
+#
+# COMMON GROUNDING RULE (§N.5): "weakest" is always decided by the L1-authoritative
+# shadbala ratio read by _fetch_shadbala — referenced, never recomputed. Grahas with
+# no L1 shadbala row (structurally Rahu/Ketu: classical ṣaḍbala defines no requirement
+# for the nodes) are EXCLUDED from weakest-node candidacy rather than assigned an
+# invented strength. Their burden terms are therefore 0.0 — an honest "cannot be
+# adjudged the weak point on a measure that does not apply to them", surfaced in
+# ephemeris_audit_jsonb.node_weakest_candidacy_excluded rather than left to be
+# misread as "measured, no burden".
 
-    BA-P2.5 #4: real value from bodha_cgm_motifs.motif_strength (written by
-    bo_cgm_motifs), joined to bodha_cgm_nodes.node_subject to resolve graha
-    identity. Uses MIN(motif_strength) across a graha's motifs (a chain/pattern
-    is only as strong as its weakest constituent — same product/min-over-parts
-    philosophy already established for bo_cgm_paths.path_strength, JL-013).
-    weakness = 1.0 - min(motif_strength); grahas with no motif membership get
-    0.0 (honest "no burden observed", not a fabricated value).
 
-    NOTE: bo_cgm_motifs' stellium/parivartana_chain detectors are Tier-3-blocked
-    on missing bo_karanajala dispositor edges (see bo_cgm_motifs.py); only
-    mutual_reception motifs reliably populate today. That is a bo_cgm_motifs-side
-    gap, not something this reader should paper over.
+def _weakest_by_shadbala(grahas: Any, shadbala: dict[str, float]) -> str | None:
+    """The weakest of `grahas` by L1 shadbala ratio (§N.5 — referenced, not recomputed).
+
+    Returns None when NONE of the candidates carries an L1 shadbala row (e.g. a
+    motif consisting only of Rahu/Ketu): the question "which of these is weakest"
+    has no L1-grounded answer, so no graha is credited with the burden.
+    """
+    candidates = [g for g in grahas if g in shadbala]
+    if not candidates:
+        return None
+    return min(candidates, key=lambda g: shadbala[g])
+
+
+def _fetch_cgm_motif_weakest_node_burden(
+    conn: Any, chart_id: str, aya: str, shadbala: dict[str, float]
+) -> dict[str, float]:
+    """graha → motif_burden (0..1), per A13 §3: the normalized count of CGM
+    structural motifs in which this graha is the WEAKEST participating node.
+
+    A13 §3 states the term literally as:
+        motif_burden = normalized(sum(cgm_motifs_with_graha_as_weakest_node))
+
+    PRIOR IMPLEMENTATION (BA-P2.5 #4, replaced by F-117): computed
+    ``1.0 - MIN(motif_strength)`` over the graha's motif memberships. That is a
+    different quantity from the spec's, and — decisively — it cannot vary:
+    bo_cgm_motifs assigns motif_strength as a fixed per-motif-CLASS constant
+    (live-verified on chart 482012f1: mutual_aspect = 0.6 for all 180 rows,
+    mutual_aspect_triangle = 0.75 for all 420 rows; two distinct values across
+    600 motifs). Every graha participates in at least one mutual_aspect, so
+    ``1 - min(strength)`` evaluated to exactly 0.4 for all nine grahas of the
+    native chart. Per §N.8, a term whose detector has no code path that could
+    read differently is not a measurement — it is a constant wearing a
+    measurement's clothes, and it silently inflated every graha's resonance by
+    the same 1.04x.
+
+    THE SPEC'S DEFINITION IS NOT DEGENERATE on the same data: motif MEMBERSHIP is
+    uniform (each graha sits in 36 motifs) but WEAKEST-MEMBER-SHIP is not — a graha
+    with a low L1 shadbala ratio is the weak point of many of the motifs it joins,
+    a strong one of none. Normalizing by the graha's own membership count keeps the
+    term on [0,1] and makes it read as "what proportion of the structural patterns
+    I take part in do I am the weak link of".
+
+    Grahas with no motif membership get 0.0 (honest "no structural motif to be the
+    weak point of" — not a fabricated value).
     """
     rows = conn.execute(
-        """SELECT n.node_subject, MIN(m.motif_strength) AS weakest_strength
+        """SELECT m.motif_id::text AS motif_id,
+                  array_agg(DISTINCT n.node_subject) AS subjects
            FROM bodha_cgm_motifs m
            JOIN bodha_cgm_nodes n
              ON n.node_id = ANY(m.involved_node_ids_array)
             AND n.chart_id = m.chart_id AND n.ayanamsha_id = m.ayanamsha_id
            WHERE m.chart_id = %s AND m.ayanamsha_id = %s
-           GROUP BY n.node_subject""",
+           GROUP BY m.motif_id""",
         [chart_id, aya],
     ).fetchall()
-    out: dict[str, float] = {}
+
+    membership: dict[str, int] = {}
+    weakest_count: dict[str, int] = {}
     for r in rows:
+        subjects_raw = r[1] if isinstance(r, (tuple, list)) else r.get("subjects")
         # bo_bimba writes node_subject as the title-case graha name directly
         # (e.g. "Sun", "Mars") — already KNOWN_GRAHAS-shaped, no code translation.
-        subject = str(r[0] if isinstance(r, tuple) else r.get("node_subject", ""))
-        if subject not in KNOWN_GRAHAS:
+        subjects = [
+            str(s) for s in (subjects_raw or []) if str(s) in KNOWN_GRAHAS
+        ]
+        if not subjects:
             continue
-        strength = r[1] if isinstance(r, tuple) else r.get("weakest_strength")
-        if strength is None:
-            continue
-        out[subject] = max(0.0, min(1.0 - float(strength), 1.0))
+        for g in subjects:
+            membership[g] = membership.get(g, 0) + 1
+        weakest = _weakest_by_shadbala(subjects, shadbala)
+        if weakest is not None:
+            weakest_count[weakest] = weakest_count.get(weakest, 0) + 1
+
+    return {
+        g: round(min(weakest_count.get(g, 0) / n, 1.0), 6)
+        for g, n in membership.items()
+        if n > 0
+    }
+
+
+def _cdlm_weakest_constituent_burden(
+    graha_cdlm_cells: dict[str, list[str]], shadbala: dict[str, float]
+) -> dict[str, float]:
+    """graha → domain_burden (0..1), per A13 §3: the normalized count of CDLM
+    cross-domain-linkage cells in which this graha is the WEAKEST material
+    constituent — i.e. how much of this native's cross-domain load rests on this
+    graha at precisely the point where it is the weak link.
+
+    A13 §3 states the term as:
+        domain_burden = normalized(sum(cdlm_weakest_constituent_count))
+    and A13 §2 names its source as A11 CDLM's ``weakest_constituent_graha_jsonb``.
+
+    PRIOR IMPLEMENTATION (BA-P2.5 #4, replaced by F-117): hardcoded 0.0 for every
+    graha, with an accurate note that ``bodha_cdlm_cells.weakest_constituent_graha_jsonb``
+    is a dead column bo_sangati never populates, so nothing could be referenced
+    (B.10). That note was correct WHEN WRITTEN. It has since been overtaken:
+    CR-67 (SARVA-SIDDHI W-3) added ``_fetch_graha_cdlm_cells`` to THIS SAME WRITER,
+    which resolves — via MSR constituent_facts_array → chart_facts.fact_subject,
+    an entirely L1-grounded path — exactly which grahas are material (above-equal-
+    share) constituents of which CDLM cells. bo_upaya has been storing that result
+    in associated_cdlm_cells_array since CR-67 while continuing to feed 0.0 into
+    the formula term it was designed to fill.
+
+    This function closes that gap WITHOUT inventing any new grounding: it takes
+    CR-67's already-computed graha→cells map and asks the one further question the
+    spec's term needs — of the material constituents of each cell, which is weakest
+    by L1 shadbala (§N.5, referenced not recomputed). Normalized by the graha's own
+    cell count, so it reads as "of the cross-domain bridges I carry, what proportion
+    am I the weak point of". A graha bridging no cell gets 0.0 (honest empty).
+    """
+    cell_members: dict[str, list[str]] = {}
+    for graha, cells in (graha_cdlm_cells or {}).items():
+        for cell in cells or []:
+            cell_members.setdefault(cell, []).append(graha)
+
+    weakest_count: dict[str, int] = {}
+    for members in cell_members.values():
+        weakest = _weakest_by_shadbala(members, shadbala)
+        if weakest is not None:
+            weakest_count[weakest] = weakest_count.get(weakest, 0) + 1
+
+    out: dict[str, float] = {}
+    for graha, cells in (graha_cdlm_cells or {}).items():
+        n = len(cells or [])
+        if n > 0:
+            out[graha] = round(min(weakest_count.get(graha, 0) / n, 1.0), 6)
     return out
+
+
+def _fetch_msr_contradiction_burden(
+    conn: Any, chart_id: str, aya: str
+) -> tuple[dict[str, float], bool]:
+    """(graha → contradiction_factor 0..1, source_available).
+
+    A13 §2 names the source for this term explicitly: A10 MSR's
+    ``contradicts_signals_array``. A13 §3:
+        contradiction_factor = normalized(sum(msr_signals_in_conflict_ref_graha))
+
+    PRIOR IMPLEMENTATION (replaced by F-117) fed
+    ``min(len(dosha_by_graha[graha]) * 0.1, 1.0)`` — the count of DOSHAS attached
+    to the graha. That is the wrong quantity twice over:
+      1. A13 §3 already spends a dedicated additive term on exactly that fact
+         (``affliction_count_normalized``, weight 0.10, fed from the same
+         ``dosha_by_graha`` map). Feeding it a second time into the multiplicative
+         contradiction term double-counted one fact under two names.
+      2. A dosha is not a contradiction. A contradiction is two MSR signals whose
+         classical readings oppose each other — a fundamentally different piece of
+         evidence about how confidently the chart speaks on a graha.
+
+    HONEST NULL RATHER THAN SUBSTITUTION (§N.7 item 6, §N.8): the spec's designated
+    source is unpopulated upstream — live-verified on chart 482012f1/krishnamurti,
+    0 of 10,040 bodha_msr_signals rows carry a non-empty contradicts_signals_array
+    (bo_laksana has no code path that writes it). This function therefore checks
+    whether the source carries ANY data before reading it, and reports
+    ``source_available=False`` when it does not. The caller stores NULL in the
+    column in that case — "not measured" — instead of a 0.0 that a reader cannot
+    distinguish from a measured "no contradictions found". Substituting some other
+    conveniently-available number to keep the column populated is precisely the
+    defect this repair exists to remove.
+    """
+    probe = conn.execute(
+        """SELECT count(*) FILTER (
+                     WHERE contradicts_signals_array IS NOT NULL
+                       AND array_length(contradicts_signals_array, 1) > 0
+                   ) AS n_contra
+           FROM bodha_msr_signals
+           WHERE chart_id = %s AND ayanamsha_id = %s""",
+        [chart_id, aya],
+    ).fetchall()
+    n_contra = 0
+    if probe:
+        p = probe[0]
+        raw = p[0] if isinstance(p, (tuple, list)) else p.get("n_contra")
+        n_contra = int(raw or 0)
+    if n_contra == 0:
+        return {}, False
+
+    rows = conn.execute(
+        """
+        SELECT CASE cf.fact_subject
+                 WHEN 'SUN' THEN 'Sun'  WHEN 'MOON' THEN 'Moon' WHEN 'MAR' THEN 'Mars'
+                 WHEN 'MER' THEN 'Mercury' WHEN 'JUP' THEN 'Jupiter' WHEN 'VEN' THEN 'Venus'
+                 WHEN 'SAT' THEN 'Saturn' WHEN 'RAH_MEAN' THEN 'Rahu' WHEN 'KET_MEAN' THEN 'Ketu'
+               END AS graha,
+               SUM(s.computed_salience) AS conflict_salience
+        FROM bodha_msr_signals s
+        JOIN LATERAL (
+          SELECT DISTINCT cf.fact_subject FROM chart_facts cf
+          WHERE cf.fact_id = ANY(s.constituent_facts_array)
+            AND cf.fact_subject IN
+              ('SUN','MOON','MAR','MER','JUP','VEN','SAT','RAH_MEAN','KET_MEAN')
+        ) cf ON TRUE
+        WHERE s.chart_id = %s AND s.ayanamsha_id = %s
+          AND s.contradicts_signals_array IS NOT NULL
+          AND array_length(s.contradicts_signals_array, 1) > 0
+        GROUP BY 1
+        """,
+        [chart_id, aya],
+    ).fetchall()
+
+    raw_by_graha: dict[str, float] = {}
+    for r in rows:
+        graha = str((r[0] if isinstance(r, (tuple, list)) else r.get("graha")) or "")
+        val = r[1] if isinstance(r, (tuple, list)) else r.get("conflict_salience")
+        if graha in KNOWN_GRAHAS and val is not None:
+            raw_by_graha[graha] = max(0.0, float(val))
+    if not raw_by_graha:
+        return {}, True
+
+    # Normalize chart-relatively (max = 1.0): the term is a comparison across THIS
+    # native's grahas, exactly like weakest_rank_in_chart — there is no universal
+    # absolute conflict-salience scale to divide by.
+    peak = max(raw_by_graha.values())
+    if peak <= 0:
+        return {g: 0.0 for g in raw_by_graha}, True
+    return {g: round(v / peak, 6) for g, v in raw_by_graha.items()}, True
 
 
 # ── CR-67 (SARVA-SIDDHI W-3): resonance → CDLM cell join ────────────────────
@@ -1031,7 +1242,22 @@ def _priority_class(rank: int, total: int) -> str:
     "everyone low" — the same degenerate flatness, inverted, and one that
     would also make the classing depend on how afflicted a chart happens to
     be overall rather than on which of ITS OWN grahas most needs remedial
-    attention. `weakest_rank_in_chart` already names the right frame:
+    attention.
+
+    F-117 CAVEAT (disclosed, NOT silently resolved — CLAUDE.md §J): because the
+    classing is purely rank-relative, rank 1 receives the top class for EVERY
+    chart ever built, however mild its absolute affliction — on the native chart
+    a resonance_score of 0.173 on a 0..1 scale is labelled "critical". The
+    ranking is honest; the WORD is not, and no code path exists that could make
+    "critical" read false (§N.8). Two further problems are recorded rather than
+    fixed here, both needing a native design ruling: (a) A13 §3's own schema
+    specifies the vocabulary 'urgent' | 'recommended' | 'optional', three levels,
+    not the four 'critical' | 'high' | 'medium' | 'low' emitted here — a
+    registry-disagreement between spec and implementation; (b) whether the top
+    class should additionally require an absolute weakness_score floor, which
+    needs calibration evidence this repair does not have. Until that ruling,
+    ephemeris_audit_jsonb.priority_class_basis states the rank-relative frame
+    explicitly so no reader can take the label for an absolute verdict. `weakest_rank_in_chart` already names the right frame:
     upaya priority is inherently a comparison across THIS native's own nine
     grahas (classical practice remedies the relatively weakest, not grahas
     that fail a universal absolute bar). Reclassified as rank-relative thirds
@@ -1112,10 +1338,27 @@ def _build_resonances_and_prescriptions(
     except (TypeError, ValueError):
         _now_dt = datetime.now(timezone.utc)
     dasha_proximity = _fetch_dasha_proximity(conn, chart_id, aya, _now_dt)
-    cgm_motif_weakness = _fetch_cgm_motif_weakness(conn, chart_id, aya)
+    # F-117: motif_burden per A13 §3 — "in what proportion of the structural
+    # motifs I join am I the weakest member", by L1 shadbala. Replaces the
+    # 1 - min(motif_strength) reader, which could only ever return a per-class
+    # constant (0.4 chart-wide for 482012f1). See the function's docstring.
+    cgm_motif_weakness = _fetch_cgm_motif_weakest_node_burden(
+        conn, chart_id, aya, shadbala
+    )
     # CR-67 (SARVA-SIDDHI W-3): graha → CDLM cells the graha is a material
     # constituent of (was 100% NULL DB-wide — the missing L2 derivation).
     graha_cdlm_cells = _fetch_graha_cdlm_cells(conn, chart_id, aya)
+    # F-117: domain_burden per A13 §3, derived from CR-67's join above — no new
+    # grounding invented, only the "which constituent is weakest" question asked
+    # of data this writer already had in hand. Replaces the hardcoded 0.0.
+    cdlm_domain_burden = _cdlm_weakest_constituent_burden(graha_cdlm_cells, shadbala)
+    # F-117: contradiction_factor per A13 §2/§3 — MSR contradicts_signals_array,
+    # NOT dosha counts (which A13 already spends affliction_count_normalized on).
+    # source_available is False when the upstream column carries nothing chart-wide,
+    # in which case the column is written NULL rather than a misreadable 0.0.
+    msr_contradiction, contradiction_source_available = _fetch_msr_contradiction_burden(
+        conn, chart_id, aya
+    )
 
     resonances: list[dict] = []
 
@@ -1183,15 +1426,18 @@ def _build_resonances_and_prescriptions(
             vargottama_absence_score=vargottama_absence,
             # BA-P2.5 #4 — WIRED: real GA7 chart_dashas coverage as of computed_at.
             dasha_proximity_activation_score=dasha_proximity.get(graha, 0.0),
-            msr_signals_in_conflict=min(len(dosha_by_graha.get(graha, [])) * 0.1, 1.0),
-            # BA-P2.5 #4 — honest placeholder: bodha_cdlm_cells.weakest_constituent_graha_jsonb
-            # exists as a column but is never populated by bo_sangati (dead column) — no real
-            # per-graha CDLM value exists yet to reference. Left at 0.0 per B.10.
-            cdlm_weakest_constituent_count=0.0,
-            # BA-P2.5 #4 — WIRED: real bodha_cgm_motifs.motif_strength (min over the graha's
-            # motif memberships). Often 0.0 in practice while bo_cgm_motifs' stellium /
-            # parivartana_chain detectors remain Tier-3-blocked on missing bo_karanajala
-            # dispositor edges — that is a bo_cgm_motifs-side gap, not fabricated here.
+            # F-117 — WIRED to the spec's own source (A13 §2: MSR
+            # contradicts_signals_array), not to dosha counts. 0.0 both when the
+            # graha genuinely carries no contradicting signal AND when the upstream
+            # source is unpopulated — the two cases are distinguished for the reader
+            # by the NULL column + audit flags below, never conflated in the score.
+            msr_signals_in_conflict=msr_contradiction.get(graha, 0.0),
+            # F-117 — WIRED: proportion of the CDLM cross-domain cells this graha
+            # materially constitutes in which it is the WEAKEST constituent by L1
+            # shadbala (A13 §3), from CR-67's already-grounded join.
+            cdlm_weakest_constituent_count=cdlm_domain_burden.get(graha, 0.0),
+            # F-117 — WIRED: proportion of this graha's CGM motif memberships in
+            # which it is the weakest participating node by L1 shadbala (A13 §3).
             cgm_motifs_weakest_node=cgm_motif_weakness.get(graha, 0.0),
             is_yoga_karaka=is_yk,
             chara_role=chara_role,
@@ -1214,7 +1460,14 @@ def _build_resonances_and_prescriptions(
             "resonance_score": round(float(r_result["resonance_score"]), 6),
             "resonance_score_formula_version": r_result["resonance_score_formula_version"],
             "weakness_score": round(float(r_result["weakness_score"]), 6),
-            "contradiction_factor": round(float(r_result["contradiction_factor"]), 6),
+            # F-117 (§N.7 item 6 / §N.8): NULL — not 0.0 — when the spec's designated
+            # upstream source carries nothing chart-wide. A stored 0.0 would be
+            # indistinguishable to every downstream reader from a measured
+            # "no contradictions found"; NULL says "not measured" honestly.
+            "contradiction_factor": (
+                round(float(r_result["contradiction_factor"]), 6)
+                if contradiction_source_available else None
+            ),
             "domain_burden": round(float(r_result["domain_burden"]), 6),
             "motif_burden": round(float(r_result["motif_burden"]), 6),
             "is_yoga_karaka_flag": is_yk,
@@ -1249,25 +1502,84 @@ def _build_resonances_and_prescriptions(
                 # independent of the weakest-graha fields above (different source: is_vargottama).
                 "vargottama_absence_score": vargottama_absence,
                 "cancellation_burden": 0.0,
-                "cdlm_weakest_constituent_count": 0.0,
+                # ── F-117 provenance for the three "burden" terms ──────────────
+                "cdlm_weakest_constituent_count": cdlm_domain_burden.get(graha, 0.0),
+                "cgm_motifs_weakest_node": cgm_motif_weakness.get(graha, 0.0),
+                "motif_burden_basis": (
+                    "A13 §3: share of this graha's CGM motif memberships in which it is "
+                    "the weakest participating node by L1 shadbala ratio (referenced, §N.5). "
+                    "Replaces the pre-F-117 1-min(motif_strength) reader, which could only "
+                    "return bo_cgm_motifs' per-motif-class CONSTANT."
+                ),
+                "domain_burden_basis": (
+                    "A13 §3: share of the CDLM cross-domain cells this graha materially "
+                    "constitutes (CR-67 join) in which it is the weakest constituent by L1 "
+                    "shadbala. Replaces the pre-F-117 hardcoded 0.0."
+                ),
+                "contradiction_factor_basis": (
+                    "A13 §2/§3: MSR contradicts_signals_array, chart-relative "
+                    "salience normalization. Pre-F-117 this term was fed dosha counts — "
+                    "the same fact affliction_count_normalized already carries."
+                ),
+                # §N.8: the flag has a real detector — _fetch_msr_contradiction_burden
+                # probes the upstream column and can genuinely read either way.
+                "contradiction_factor_available": contradiction_source_available,
+                "contradiction_factor_unavailable_reason": (
+                    None if contradiction_source_available else
+                    "bodha_msr_signals.contradicts_signals_array is unpopulated for this "
+                    "(chart, ayanamsha) — bo_laksana has no code path that writes it. "
+                    "contradiction_factor stored NULL (not measured), and the resonance "
+                    "multiplier uses the neutral 1.0 rather than a substituted value."
+                ),
+                # §N.5 / F-117: nodes carry no classical shadbala requirement, so they
+                # cannot be adjudged the weakest member of a motif or CDLM cell. Their
+                # motif_burden / domain_burden are 0.0 by EXCLUSION, not by measurement.
+                "node_weakest_candidacy_excluded": (graha not in shadbala),
+                "strength_basis": (
+                    "l1_shadbala_ratio" if graha in shadbala
+                    else "none_shadbala_undefined_for_this_graha"
+                ),
+                # F-117: remedy_priority_class is RANK-RELATIVE within this native's own
+                # grahas (MC-025a). It is not an absolute severity verdict: rank 1 is
+                # labelled the top class for every chart ever built, however mildly
+                # afflicted, so the word must not be read as "this chart is in crisis".
+                "priority_class_basis": (
+                    "rank_relative_thirds_of_this_chart (see _priority_class); NOT an "
+                    "absolute severity threshold — the top-ranked graha of any chart "
+                    "receives the top class regardless of its absolute weakness_score."
+                ),
                 # CR-67: count of CDLM cross-domain-linkage cells this graha is a
                 # material constituent of (salience-share ≥ equal-share baseline),
                 # resolved via constituent_facts_array → chart_facts.fact_subject.
                 "associated_cdlm_cell_count": len(graha_cdlm_cells.get(graha) or []),
                 "note": (
-                    "cancellation_burden, cdlm_weakest_constituent_count remain honest 0.0 "
-                    "placeholders (no already-computed source exists yet, B.10); "
+                    "cancellation_burden remains an honest 0.0 placeholder (no "
+                    "already-computed per-graha source exists, B.10). "
                     "shadbala_normalized, bhava_bala_normalized, vargottama_absence_score, "
                     "dispositor_chain_weakness, dasha_proximity_activation_score, "
-                    "cgm_motifs_weakest_node are all wired to real L1/L2 data "
-                    "(MC-025a fixed shadbala/bhava_bala/vargottama; BA-P2.5 #4 wired the rest). "
+                    "cgm_motifs_weakest_node and cdlm_weakest_constituent_count are all wired "
+                    "to real L1/L2 data (MC-025a fixed shadbala/bhava_bala/vargottama; "
+                    "BA-P2.5 #4 wired dispositor/dasha; F-117 repaired the three burden terms). "
                     "shadbala/bhava_bala missing-data fallback is 1.0 (neutral/no-penalty for "
-                    "this term), not 0.5 — see _fetch_shadbala's docstring."
+                    "this term), not 0.5 — see _fetch_shadbala's docstring; when that fallback "
+                    "fires (nodes), strength_basis says so and the citation prints sha=n/a "
+                    "rather than a measured-looking 1.00."
                 ),
             }),
             "verification_pass_status": "documented_approximation",
             "citation_ref": f"bo_upaya/resonance/{graha}",
-            "citation_human": f"Resonance: {graha} | sha={sha_norm:.2f} dosha_count={len(dosha_by_graha.get(graha, []))}",
+            # F-117 (§N.7 item 1): "shadbala" in missing_inputs means NO L1 shadbala row
+            # exists for this graha — structurally true for Rahu/Ketu, for whom classical
+            # ṣaḍbala defines no requirement at all. Printing the neutral 1.0 FALLBACK as
+            # "sha=1.00" stated an unmeasured quantity as a measured one, and read as the
+            # strongest possible ratio (achieved == required) for the two grahas the
+            # measure does not apply to. Print the honest absence instead.
+            "citation_human": (
+                f"Resonance: {graha} | "
+                + ("sha=n/a (no classical shadbala for this graha)"
+                   if "shadbala" in missing_inputs else f"sha={sha_norm:.2f}")
+                + f" dosha_count={len(dosha_by_graha.get(graha, []))}"
+            ),
             "computed_at": now,
         })
 
@@ -1299,6 +1611,34 @@ def _build_resonances_and_prescriptions(
                 "shadbala or bhava_bala inputs may be missing for chart %s/%s",
                 scores[0], chart_id, aya,
             )
+
+        # F-117 / §N.8 (Earned-Signal Principle): the resonance-level guard above
+        # could not have caught this finding — resonance_score DID vary; what was
+        # degenerate were three of its four inputs, each collapsing to a per-chart
+        # constant and so contributing nothing but a uniform multiplier. A term
+        # that is identical for all nine grahas is not discriminating between
+        # them, and the ranking is then a restatement of whatever else varies.
+        # This detector asks that question directly, per term, and CAN read either
+        # way — contradiction_factor is legitimately constant-NULL while its
+        # upstream source is unpopulated, so it is exempted only in exactly that
+        # case, on the flag that has its own real detector.
+        _burden_terms = {
+            "motif_burden": True,
+            "domain_burden": True,
+            "contradiction_factor": contradiction_source_available,
+        }
+        for _term, _checkable in _burden_terms.items():
+            if not _checkable:
+                continue
+            _vals = [r[_term] for r in resonances if r[_term] is not None]
+            if len(_vals) > 2 and (max(_vals) - min(_vals)) < 1e-9:
+                logger.warning(
+                    "[bo_upaya] DEGENERATE INPUT TERM (F-117 class): %s is the constant "
+                    "%.4f for all %d grahas of chart %s/%s — it contributes a uniform "
+                    "multiplier and discriminates between no two grahas. Check the "
+                    "upstream source before trusting the resulting remedy ranking.",
+                    _term, float(_vals[0]), len(_vals), chart_id, aya,
+                )
 
     # Prescriptions (top 3 remedies per graha from corpus)
     prescriptions: list[dict] = []
