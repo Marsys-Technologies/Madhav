@@ -1,4 +1,10 @@
--- Migration 575: seed llm_pricing_versions (currently empty, root cause of DD-25)
+-- Migration 583: seed llm_pricing_versions (currently empty, root cause of DD-25)
+-- (Renumbered from 575 pre-merge: platform/supabase/migrations/ is a SEPARATE
+-- migration directory with its own overlapping number sequence, already at 582
+-- by the time 575 was reserved in campaign-coordination against only
+-- platform/migrations/'s own max (574) — the MIG-1 CI guard caught the
+-- cross-directory collision. 583 = max across BOTH directories + 1, per
+-- 00_ARCHITECTURE/MIGRATION_AND_MERGE_PROTOCOL_v1_0.md §3.)
 -- Created: 2026-08-21
 --
 -- PARIPRASHNA-P3-PREFLIGHT Part D. computeCost() (platform/src/lib/llm/observability/
