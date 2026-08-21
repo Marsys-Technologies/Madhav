@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 903,
+  "event_count": 905,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -563,15 +563,16 @@
     },
     "F-126": {
       "confidence": "HIGH",
-      "disposition": "OPEN",
-      "event_sha256": "01cb60e97305b7dcbb88ac9e5f6a25f1111bde6a121049fd0a98e092b1b95336",
+      "disposition": "LANDED",
+      "event_sha256": "6eb263c5e674f1af19df6dd099acdaba7b6f5ee0684c99a81fd0d2e0d48251d8",
       "event_type": "finding_status",
-      "evidence_summary": "Needs a fresh fail-honest empty-result repair designed: confidence_band must degrade/null when the underlying result set is empty -- design work not yet done.",
+      "evidence_summary": "Root cause found to be systemic, not LEL-specific: platform/src/app/api/mcp/primitives/[tool]/route.ts:310 hardcoded confidence_band:'high' for EVERY surgical primitive -- nothing computed it, an SS N.8 defect with no detector at all behind the claim. Live-reproduced pre-fix (real trace_id captured, zero-result payload graded 'high'). Fix: new evidence_state.ts measures the served result -- zero-count -> band 'none'/evidence_state:'empty'; populated -> 'present'/high unchanged; unmeasurable -> 'indeterminate'/high (no invented downgrade). Mutation-tested (restoring hardcoded 'high' fails 2 tests). 3 sibling routes (asset/recent/trace) confirmed to carry the identical hardcoded defect, correctly flagged and NOT swept into this PR's scope.",
       "finding_id": "F-126",
-      "next_action": "author the fail-honest repair contract, independent review, then implement",
-      "prev_sha256": "f1a9774934d304f315fc922b76cffde84a3e55f0436fad9970d3f272c0cfcbf2",
-      "seq": 755,
-      "source_batch": "round9_triage",
+      "next_action": "GA-5 review in flight",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1420",
+      "prev_sha256": "3f4cc5d0ac46b8b66e5f8cb34984a7156929c2cd84fa169055b219cd23693b8a",
+      "seq": 904,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
@@ -1129,6 +1130,21 @@
       "pr_url": null,
       "prev_sha256": "e27aa6099fd66087722eb2bda56992e0e1e7376457d0e3e9305e703e20b1f81d",
       "seq": 903,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-161": {
+      "confidence": "HIGH",
+      "disposition": "STRANDED",
+      "event_sha256": "5413b76d1701e69f03c4d2a577b5b6e0555101a4fe4a3bc8586a2c97de205fef",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW finding, same defect class and same fix shape as F-126, found by F-126's own investigation but correctly not swept into that PR's scope. 3 sibling MCP primitive routes (asset/recent/trace, in the same platform/src/app/api/mcp/primitives/ family) hardcode confidence_band:'high' identically to what F-126 just fixed for the general [tool] route.",
+      "finding_id": "F-161",
+      "next_action": "apply the same evidence_state.ts fix pattern F-126 established to these 3 sibling routes -- small, well-scoped, mechanical once F-126 merges (reuse its new shared module)",
+      "pr_url": null,
+      "prev_sha256": "6eb263c5e674f1af19df6dd099acdaba7b6f5ee0684c99a81fd0d2e0d48251d8",
+      "seq": 905,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -2394,8 +2410,8 @@
   },
   "findings_morning_ship_ready_count": 1,
   "findings_terminal_count": 122,
-  "journal_head_seq": 903,
-  "journal_head_sha256": "3f4cc5d0ac46b8b66e5f8cb34984a7156929c2cd84fa169055b219cd23693b8a",
+  "journal_head_seq": 905,
+  "journal_head_sha256": "5413b76d1701e69f03c4d2a577b5b6e0555101a4fe4a3bc8586a2c97de205fef",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
