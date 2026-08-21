@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 968,
+  "event_count": 970,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1365,17 +1365,17 @@
     },
     "F-175": {
       "confidence": "HIGH",
-      "disposition": "PARKED",
-      "event_sha256": "51f1e503749f5464222e7f53997e97cc0eecd6f5d22e1623045e91e5af184cfc",
+      "disposition": "LANDED",
+      "event_sha256": "36e33547e2b190d8bfddbd9bcf306a3396d3af327773a68d6e0915013f186d89",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review: MERGE-WITH-FOLLOWUP, independently verified (tsc clean, 56/56 tests, mutation-tested twice -- neutering applyPromiseGateToVerdict reddens 12 tests incl. all 4 tools' end-to-end certification check; reverting the trim helper reddens 4). Doctrine clean: SS N.5 respected (L2 contradictions.status annotated not rewritten, fact_ids inherited from join.shared_fact_ids not re-derived), SS N.8 honest (unreachable state -> promise_chain_unchecked, never smoothed clean), clause_id-based targeting not prose matching. Reviewer's own follow-up notes: the new promise_chain clause is budget-immune, increasing trim pressure elsewhere (makes F-177's fix MORE necessary, not less); one extra uncached pact_query per assess_* call, a real load cost worth tracking; incidentally found main@bbb6a0a already failing codegen:envelope --check (stale generated file from #1417/F-57) -- #1430 repairs this as a side effect. SUPERSEDED: #1430 and #1431 genuinely conflict/overlap (see F-177's entry) -- both PRs' functional content is being carried forward into ONE reconciled PR the same reviewer already built and verified (68/68 combined tests, tsc clean, no new full-suite failures). #1430 itself will be closed unmerged once the reconciled PR lands.",
+      "evidence_summary": "Reconciled PR #1435 pushed and independently re-verified before merge: tree-hash proof of zero drift between the reviewer's already-tested working tree (git write-tree = 0edf09d2...) and the actual pushed commit (git commit-tree on that exact tree, post-commit rev-parse confirms identical); local == remote branch SHA confirmed. All gates RE-RUN on the pushed commit itself, not just the pre-push state: tsc clean, codegen:envelope --check OK (confirms the stale-generated-file repair survived), 68/68 tests passing across all 4 test files from both original PRs. #1430 closed unmerged (superseded, comment posted explaining why) -- its functional content is fully carried in #1435. Enqueued for merge.",
       "finding_id": "F-175",
-      "next_action": "Superseded by the reconciled PR (in flight). Close #1430 unmerged once the reconciled PR merges.",
-      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1430",
-      "prev_sha256": "9e5571cda70ac83cbc611ec0ffaaf6fc52a2e5d2530e7034975333877d6b66aa",
-      "seq": 966,
+      "next_action": "Confirm #1435 merge completion, flip to SERVICE_CLOSED.",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1435",
+      "prev_sha256": "db532507e19cf3e6a5c1ec68c2bf0a2a8ce01292075f599c5c6819b2ffdfa809",
+      "seq": 969,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
-      "status": "DECISION_PARKED",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-176": {
@@ -1395,17 +1395,17 @@
     },
     "F-177": {
       "confidence": "HIGH",
-      "disposition": "PARKED",
-      "event_sha256": "8b515ee1154f5ef40c5e6c326107ed20255c239a59b849d16fdc56cc2e3be255",
+      "disposition": "LANDED",
+      "event_sha256": "b830740c435dec2be13197cf87e45e25876a133812868c034da2987c19daf8c8",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review: MERGE on its own merits, independently verified (tsc clean, 23/23 tests, mutation-tested -- restoring the original flags.length/slice(0,-1) loop reddens 6 tests incl. 2 end-to-end through the real registry_bridge handler; includes an anti-vacuity guard proving the trim actually ran AND a trim-not-disabled guard). RECONCILIATION WITH F-175/#1430 EXECUTED AND VERIFIED by the same reviewer (not just recommended): git-merge confirmed the real conflict is confined to response_budget.ts (registry_bridge.ts auto-merges cleanly, semantically disjoint additions). Root cause of the conflict: BOTH PRs independently built protected-set mechanisms (neither is the weaker ordering-based approach), but neither alone covers both flags -- #1430's static KERNEL_FLOOR_FLAG_CODES can't protect #1431's flag (its flagCodeOf splits on ':' and domain_completeness_empty_reason's live text has no colon, so its 'code' is the whole sentence, unregisterable); #1431's per-call protected_flags COULD protect #1430's flags but only if every call site remembers -- a static registry can't be forgotten. #1431's eligibleFlagCount-rebalancing loop is structurally better and subsumes #1430's fallback branch. Reviewer executed the unification (single isProtectedKernelFlag predicate: static floor check first, then per-call set by value or code; dropLowestPriorityFlag deleted as dead code) and verified all 68 tests from both PRs pass together, tsc clean, full-suite shows zero new failures beyond 3 pre-existing kala_ahead_get* timeout flakes (reproduced on unmodified base). Reconciled PR being pushed by the same agent now.",
+      "evidence_summary": "Same reconciled PR #1435 as F-175 -- see that finding's entry for the full verification account. Notably, #1435 keeps THIS PR's (#1431's) trim-loop structure (trimIdx/eligibleFlagCount) as the base, judged structurally more robust than #1430's approach by the reviewer's own independent analysis. #1431 closed unmerged (superseded, comment posted explaining why, noting its structure was preserved) -- its functional content is fully carried in #1435. Enqueued for merge.",
       "finding_id": "F-177",
-      "next_action": "Superseded by the reconciled PR (in flight, same reviewer pushing what it already verified). Close #1431 unmerged once the reconciled PR merges.",
-      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1431",
-      "prev_sha256": "51f1e503749f5464222e7f53997e97cc0eecd6f5d22e1623045e91e5af184cfc",
-      "seq": 967,
+      "next_action": "Confirm #1435 merge completion, flip to SERVICE_CLOSED.",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1435",
+      "prev_sha256": "36e33547e2b190d8bfddbd9bcf306a3396d3af327773a68d6e0915013f186d89",
+      "seq": 970,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
-      "status": "DECISION_PARKED",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-178": {
@@ -2717,10 +2717,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 0,
+  "findings_morning_ship_ready_count": 2,
   "findings_terminal_count": 136,
-  "journal_head_seq": 968,
-  "journal_head_sha256": "db532507e19cf3e6a5c1ec68c2bf0a2a8ce01292075f599c5c6819b2ffdfa809",
+  "journal_head_seq": 970,
+  "journal_head_sha256": "b830740c435dec2be13197cf87e45e25876a133812868c034da2987c19daf8c8",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
