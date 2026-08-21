@@ -267,6 +267,20 @@ interface LensRerank {
 }
 
 /**
+ * F-169 — observable receipt for the anchor leg (the domain-ANCHOR slice below), so the
+ * served `lensRankBasisNote` can never assert the anchor-slice UNION ran when it silently
+ * didn't. The bare `catch {}` this replaces let the note claim "the domain's significators
+ * are guaranteed CONSIDERED" in three cases where that was false: the anchor query threw, the
+ * domain declared no anchor actors so the leg never ran, or the query ran but matched none of
+ * these lenses' families.
+ *   'applied'         — the anchor leg ran and contributed at least one row to some lens.
+ *   'no_anchors'       — the domain has no graha/bhāva anchors configured; the leg never ran.
+ *   'no_family_hits'   — the leg ran but matched none of these lenses' families.
+ *   'failed'           — the anchor query threw; logged (non-fatal) and reported here.
+ */
+type AnchorLegStatus = 'applied' | 'no_anchors' | 'no_family_hits' | 'failed'
+
+/**
  * F-114 — re-rank each lens's stored ranked_signals family through the SAME domain-aware
  * composite ranker `computeDiscriminatedSignals` (and query_signals, and assess_*) already
  * use, so the per-lens head served to a caller is domain-DISCRIMINATED instead of being the
@@ -284,11 +298,13 @@ async function computeLensRerank(
   ayanamsha_id: string,
   domain: string,
   lensRows: Array<Record<string, unknown>>,
-): Promise<Map<string, LensRerank>> {
+): Promise<{ perLens: Map<string, LensRerank>; anchor_leg: AnchorLegStatus }> {
   const out = new Map<string, LensRerank>()
+  // F-169: default until the anchor-leg guard below (or its try/catch) proves otherwise.
+  let anchorLeg: AnchorLegStatus = 'no_anchors'
   // 'other'/'general' request no domain overlay at all — re-ranking would add no
   // discrimination, so leave the stored order (and say so) rather than churn it.
-  if (domain === 'other' || domain === 'general') return out
+  if (domain === 'other' || domain === 'general') return { perLens: out, anchor_leg: anchorLeg }
 
   // Leg 1 — salience-head window per lens, plus each lens's FULL membership set (already in
   // memory from the jsonb) so the anchor slice below can be intersected against it exactly.
@@ -311,7 +327,7 @@ async function computeLensRerank(
     }
     if (ids.length > 0) perLens.push({ key, ids, family })
   }
-  if (allIds.size === 0) return out
+  if (allIds.size === 0) return { perLens: out, anchor_leg: anchorLeg }
 
   // Leg 2 — domain-ANCHOR slice: rows naming a graha or bhāva the domain's own affinity tables
   // rate above neutral. Without this the ranker never sees Venus or the 7th house on a real
@@ -350,6 +366,7 @@ async function computeLensRerank(
          LIMIT $${params.length}`,
         params,
       )
+      let anyAnchorHits = false
       for (const { key, family } of perLens) {
         const hits: string[] = []
         for (const r of anchorRes.rows) {
@@ -361,11 +378,23 @@ async function computeLensRerank(
         }
         if (hits.length > 0) {
           anchorIdsByLens.set(key, hits)
+          anyAnchorHits = true
           for (const sid of hits) allIds.add(sid)
         }
       }
-    } catch {
-      // Non-fatal: the re-rank still runs on the salience-head window alone.
+      // F-169: the leg ran and queried successfully — distinguish "found nothing in these
+      // lenses' families" from "applied", both honestly, neither claiming the other.
+      anchorLeg = anyAnchorHits ? 'applied' : 'no_family_hits'
+    } catch (e) {
+      // F-169: non-fatal — the re-rank still runs on the salience-head window alone — but the
+      // failure must be BOTH logged and served, never silently voided (the defect this
+      // replaces). Mirrors the correct shape at the second catch below (:412–415 pre-fix).
+      anchorLeg = 'failed'
+      console.warn(
+        `[query_domain_reading] F-169: anchor-slice query failed for domain='${domain}' ` +
+        `chart_id=${chart_id} ayanamsha_id=${ayanamsha_id} — falling back to the ` +
+        `salience-head candidate set alone (non-fatal): ${e instanceof Error ? e.message : String(e)}`,
+      )
     }
   }
 
@@ -384,7 +413,7 @@ async function computeLensRerank(
        WHERE chart_id = $1 AND ayanamsha_id = $2 AND signal_id = ANY($3::uuid[])`,
       [chart_id, ayanamsha_id, [...allIds]],
     )
-    if (res.rows.length === 0) return out
+    if (res.rows.length === 0) return { perLens: out, anchor_leg: anchorLeg }
     const rowById = new Map<string, Record<string, unknown>>()
     for (const r of res.rows) rowById.set(String(r['signal_id']), r)
 
@@ -410,10 +439,14 @@ async function computeLensRerank(
       out.set(key, { rankById, scoreById, candidate_window: rows.length })
     }
   } catch {
-    // Non-fatal: caller keeps the stored order and reports rank_basis honestly.
-    return new Map()
+    // Non-fatal: caller keeps the stored order and reports rank_basis honestly. (Note:
+    // whatever `anchorLeg` was already determined to be is preserved — this leg's failure
+    // is a separate signal from the anchor leg's — but it is moot for the served note, since
+    // an empty perLens map here forces every lens's basis to STORED, which never reads
+    // anchor_leg at all.)
+    return { perLens: new Map(), anchor_leg: anchorLeg }
   }
-  return out
+  return { perLens: out, anchor_leg: anchorLeg }
 }
 
 /**
@@ -781,7 +814,10 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
       // F-114 (CL-10): domain-aware re-rank of each lens's ranked_signals family, BEFORE the
       // per-lens head is sliced or hydrated — otherwise the head is the build-time salience
       // order, whose top of distribution is a 13-way exact tie on the canonical chart.
-      const lensRerank = await computeLensRerank(
+      // F-169: anchor_leg is the observable receipt for the anchor-slice leg above —
+      // threaded through so the served note can never claim the UNION guarantee ran when
+      // it silently didn't (query threw / no anchors configured / matched nothing).
+      const { perLens: lensRerank, anchor_leg: anchorLeg } = await computeLensRerank(
         chart_id, ayanamsha_id, domain, lensRes.rows as Array<Record<string, unknown>>,
       )
       const lensRankBases = new Map<string, { basis: string; candidate_window: number | null }>()
@@ -928,18 +964,42 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
       // including when the re-rank did NOT run).
       const rerankedLensCount = [...lensRankBases.values()]
         .filter(v => v.basis === LENS_RANK_BASIS_COMPOSITE).length
+      // F-169: the candidate-set clause is branched on the anchor leg's OWN observable
+      // receipt (anchorLeg) rather than assumed from rerankedLensCount alone — the main
+      // rerank leg (bodha_msr_signals fetch, second try/catch above) can succeed and set
+      // rerankedLensCount > 0 completely independently of whether the anchor leg ran, so
+      // the old unconditional "guaranteed CONSIDERED" sentence could be served even when
+      // the anchor leg threw, was never configured, or matched nothing (the F-169 defect).
+      const anchorLegClause: Record<AnchorLegStatus, string> = {
+        applied:
+          `Candidate set = top ${LENS_RERANK_CANDIDATE_SIZE} of each family by stored salience ` +
+          `UNION a bounded ${LENS_ANCHOR_SLICE_SIZE}-row anchor slice naming the domain's own ` +
+          `kāraka grahas / primary bhāvas (${domainAnchorActors(domain).grahas.join('/') || '—'} · ` +
+          `bhāva ${domainAnchorActors(domain).houses.join('/') || '—'}), because on real families the ` +
+          `first kāraka-bearing row can sit far below any affordable salience window. Both legs are ` +
+          `bounded: the domain's significators are guaranteed CONSIDERED, not that every family member is. `,
+        no_anchors:
+          `The '${domain}' domain declares no anchor kāraka grahas / primary bhāvas, so the anchor slice ` +
+          `was never queried — candidate set is the top ${LENS_RERANK_CANDIDATE_SIZE} of each family by ` +
+          `stored salience alone; the domain's significators are NOT guaranteed considered. `,
+        no_family_hits:
+          `A bounded ${LENS_ANCHOR_SLICE_SIZE}-row anchor slice naming the domain's own kāraka grahas / ` +
+          `primary bhāvas (${domainAnchorActors(domain).grahas.join('/') || '—'} · ` +
+          `bhāva ${domainAnchorActors(domain).houses.join('/') || '—'}) was queried but matched none of ` +
+          `these lenses' families — candidate set is the top ${LENS_RERANK_CANDIDATE_SIZE} of each family ` +
+          `by stored salience alone; the domain's significators are NOT guaranteed considered. `,
+        failed:
+          `The domain-anchor slice query failed (logged, non-fatal) — candidate set fell back to the top ` +
+          `${LENS_RERANK_CANDIDATE_SIZE} of each family by stored salience alone; the domain's ` +
+          `significators are NOT guaranteed considered. `,
+      }
       const lensRankBasisNote = rerankedLensCount > 0
         ? `Each lens's ranked_signals head is re-ranked by the '${domain}' composite overlay ` +
           `(graha×domain affinity × bhāva×domain congruence × varga grain × class prior × L1 śaḍbala/dignity × daśā activation), ` +
           `the SAME ranker the top-level ranked_signals and query_signals use. ` +
           `The stored bo_drishti order is build-time and domain-AGNOSTIC (raw computed_salience, no tie-break) — ` +
           `on charts where its top of distribution is a tie-block, reading the stored head as "the top N for this domain" is unsound (F-114). ` +
-          `Candidate set = top ${LENS_RERANK_CANDIDATE_SIZE} of each family by stored salience ` +
-          `UNION a bounded ${LENS_ANCHOR_SLICE_SIZE}-row anchor slice naming the domain's own ` +
-          `kāraka grahas / primary bhāvas (${domainAnchorActors(domain).grahas.join('/') || '—'} · ` +
-          `bhāva ${domainAnchorActors(domain).houses.join('/') || '—'}), because on real families the ` +
-          `first kāraka-bearing row can sit far below any affordable salience window. Both legs are ` +
-          `bounded: the domain's significators are guaranteed CONSIDERED, not that every family member is. ` +
+          anchorLegClause[anchorLeg] +
           `Rows outside the candidate set keep their stored relative order and are never dropped. ` +
           `Drill query_signals for the whole family.`
         : `ranked_signals are served in their STORED bo_drishti order (build-time raw computed_salience, domain-agnostic, no tie-break). ` +
@@ -969,6 +1029,10 @@ export const queryDomainReadingCapability: CapabilityDescriptor = {
             ? LENS_RANK_BASIS_COMPOSITE : LENS_RANK_BASIS_STORED,
           ranked_signals_per_lens_reranked_lenses: rerankedLensCount,
           ranked_signals_per_lens_rank_note: lensRankBasisNote,
+          // F-169: observable receipt for the domain-anchor leg, independent of whether the
+          // main rerank leg (rerankedLensCount) succeeded — see anchorLegClause above for how
+          // this and the note stay in lockstep.
+          ranked_signals_per_lens_anchor_leg: anchorLeg,
           // D-1.5b B-7 (Gate B B7_budgets): honest receipt for the per-lens ranked_signals
           // cap — the section whose unbounded emission (up to ~9.7k rows/lens) kept this
           // response at ~909KB. Per-lens ranked_signals_total/ranked_signals_capped carry the
