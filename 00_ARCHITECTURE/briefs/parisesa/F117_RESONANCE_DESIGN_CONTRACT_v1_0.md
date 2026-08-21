@@ -1,6 +1,6 @@
 ---
 canonical_id: F117_RESONANCE_DESIGN_CONTRACT
-version: 1.0
+version: 1.1
 status: OPEN — awaiting native design ruling
 author: PARIŚEṢA-V4 (GA-2 design authority)
 date: 2026-08-21
@@ -8,6 +8,26 @@ finding: F-117 — bo_upaya resonance placeholder terms
 scope: platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py
        platform/python-sidecar/bodha_writers/formulas.py (resonance_score_v1)
        00_ARCHITECTURE/A13_RM_SPEC_v1_0.md §3
+changelog:
+  - version: 1.1
+    date: 2026-08-21
+    summary: >
+      GA-5 adversarial review correction. v1.0's §3/D-4 cited "Sun is ṣaḍbala-STRONGEST
+      yet carries 0.65 domain_burden" as PROOF that domain_burden had become independent
+      of ṣaḍbala. That was backwards: the 0.654 was the defect's own artefact. 21 of the
+      30 CDLM cells on 482012f1/krishnamurti have exactly ONE material constituent, and
+      min() over a singleton names it "weakest" vacuously — the round-1 fix had RELOCATED
+      the §N.8 defect, not removed it. Both "weakest of" terms now require ≥2
+      ṣaḍbala-bearing candidates (numerator AND denominator); an unweighed graha stores
+      NULL, not 0.0. D-4 rewritten from re-measured live numbers: BOTH burden terms are
+      ṣaḍbala-collinear (motif_burden Spearman −1.0 across all 7 classical grahas;
+      domain_burden monotone inverse across the 4 grahas that receive a measurement).
+      The independence claim is WITHDRAWN, not restated with better numbers. A new native
+      ruling is requested on whether the two collinear terms should keep their formula
+      weights. No claim in this document now rests on an ungated figure.
+  - version: 1.0
+    date: 2026-08-21
+    summary: Initial design contract for F-117 (three burden-term repairs + D-1..D-4).
 ---
 
 # F-117 — bo_upaya resonance: what was repaired, and what still needs a ruling
@@ -42,13 +62,28 @@ implementation had drifted from. No new grounding was invented; "weakest" is
 decided everywhere by the L1-authoritative ṣaḍbala ratio (§N.5 — referenced,
 never recomputed).
 
-1. **`motif_burden`** → share of a graha's CGM motif memberships in which it is
-   the weakest participating node. Spec text: `normalized(sum(cgm_motifs_with_graha_as_weakest_node))`.
-   Live result: 8 distinct values across 9 grahas, 0.00 → 1.00 (was: 0.4 ×9).
+Both "weakest of" terms additionally require **≥2 ṣaḍbala-bearing candidates**
+before any burden is credited (GA-5 review, see D-4): `min()` over a one-element
+set returns that element by definition, so a solo group is not a comparison and
+enters **neither numerator nor denominator**. A graha that never stood in such a
+comparison stores **NULL** ("never weighed"), never `0.0` ("weighed, never the
+weak link").
+
+1. **`motif_burden`** → share of the CGM motifs in which a graha was actually
+   weighed against another that it is the weakest node of. Spec text:
+   `normalized(sum(cgm_motifs_with_graha_as_weakest_node))`.
+   Live (482012f1/krishnamurti), gated — 21 of 120 motifs dropped as uncomparable:
+   Venus 1.00, Moon 0.76, Mercury 0.55, Mars 0.36, Jupiter 0.21, Saturn 0.09,
+   Sun 0.00, Rahu/Ketu NULL (was: 0.4 ×9).
 2. **`domain_burden`** → share of the CDLM cross-domain cells a graha materially
-   constitutes in which it is the weakest constituent. Spec text:
-   `normalized(sum(cdlm_weakest_constituent_count))`. Live result: Mars 1.00,
-   Moon 1.00, Jupiter 0.89, Sun 0.65, Saturn 0.10, Rahu/Ketu 0.00 (was: 0.0 ×9).
+   constitutes **and was weighed in** that it is the weakest constituent of. Spec
+   text: `normalized(sum(cdlm_weakest_constituent_count))`.
+   Live, gated — **21 of 30 cells are solo-constituent and are dropped**:
+   Moon 1.00, Jupiter 0.89, Sun 0.00, Saturn 0.00; Mars NULL (all 3 of its cells
+   are solo), Mercury/Venus NULL (constitute no cell), Rahu/Ketu NULL (no
+   classical ṣaḍbala, so never a candidate). Was: `0.0 ×9` pre-F-117, and
+   `Sun 0.65 / Mars 1.00 / Saturn 0.10` in the ungated round-1 fix — those three
+   figures were **artefacts of the vacuous `min()`**, not measurements. See D-4.
 3. **`contradiction_factor`** → read from `contradicts_signals_array` (the spec's
    own source), with a **real availability detector**. When the upstream column
    is empty chart-wide the column is written **NULL** ("not measured") rather
@@ -117,19 +152,67 @@ Two separable problems:
 `bo_laksana` work item, out of scope for a `bo_upaya` repair; the honest NULL is
 correct in the meantime, not a permanent answer.
 
-### D-4 — Residual ṣaḍbala collinearity in `motif_burden` (honest disclosure)
+### D-4 — BOTH burden terms remain ṣaḍbala-collinear (corrected honest disclosure)
 
-The repaired `motif_burden` is no longer constant, but on the native chart it
-correlates strongly with ṣaḍbala rank (Venus, the ṣaḍbala-weakest, is the weak
-member of all 36 of its motifs). **This PR therefore does NOT claim to have
-decoupled the ranking from inverse ṣaḍbala.** The cause is upstream motif
-topology: `bo_cgm_motifs` currently emits only a near-uniform mutual-aspect
-graph (every graha in exactly 36 motifs) because its stellium and
-parivartana_chain detectors are Tier-3-blocked on missing `bo_karanajala`
-dispositor edges. With a varied motif set the term separates on structure rather
-than strength. `domain_burden` is already genuinely independent (Sun is the
-ṣaḍbala-STRONGEST yet carries 0.65 domain burden; Saturn carries 0.10) — that
-term does add real information today.
+**This entry previously asserted the opposite for `domain_burden`, and was
+wrong.** It cited "Sun is the ṣaḍbala-STRONGEST yet carries 0.65 domain burden"
+as proof the term had become independent of ṣaḍbala. A GA-5 adversarial review
+established that **that number was the bug's own artefact**: 21 of the 30 CDLM
+cells on 482012f1/krishnamurti have exactly ONE material constituent, and a
+`min()` over a singleton names that constituent "weakest" by definition. Sun's
+0.654 came entirely from 17 such solo cells — it never meant "Sun is fragile in
+these domains", only "Sun was the sole candidate; nothing was compared". The
+apparent independence was the defect being visible, not the fix working. Same
+§N.8 defect class the rest of this PR exists to remove — relocated, not removed.
+
+With the ≥2-candidate gate applied, the honest picture on this chart is:
+
+| graha | ṣaḍbala ratio | `motif_burden` | `domain_burden` |
+|---|---|---|---|
+| Sun | 1.694 | 0.00 | 0.00 |
+| Saturn | 1.498 | 0.09 | 0.00 |
+| Jupiter | 1.200 | 0.21 | 0.89 |
+| Mars | 1.114 | 0.36 | NULL (all 3 cells solo) |
+| Mercury | 1.079 | 0.55 | NULL (no cell) |
+| Moon | 0.942 | 0.76 | 1.00 |
+| Venus | 0.844 | 1.00 | NULL (no cell) |
+| Rahu / Ketu | n/a (no classical ṣaḍbala) | NULL | NULL |
+
+(Values re-measured live by running the shipped functions themselves against
+production data for `482012f1/krishnamurti`, not by re-deriving the arithmetic
+separately.)
+
+`motif_burden` is a **perfectly monotone inverse function of ṣaḍbala rank**
+(Spearman −1.0 across all seven classical grahas: 0.00, 0.09, 0.21, 0.36, 0.55,
+0.76, 1.00 as ṣaḍbala descends). `domain_burden`, across the four grahas that
+receive a measurement at all, is **also monotone inverse** — Sun 0.00 and Saturn
+0.00 (the two strongest), then Jupiter 0.89, then Moon 1.00 (the weakest of the
+four). Jupiter carrying more burden than Sun is not independence: it reflects only
+which cells Jupiter co-constitutes, and its 9 comparable cells are near-duplicates
+of a single recurring {Jupiter, Saturn, Sun} triad, within which Jupiter is simply
+the ṣaḍbala-weakest.
+
+**So: neither burden term decouples the remedy ranking from inverse ṣaḍbala on
+this chart, and this PR does not claim otherwise for either one.** What the PR
+does deliver is that all three terms are now *honest*: they either measure the
+thing they name or report NULL, and the F-117 per-term degeneracy guard can now
+detect the failure. The underlying concern F-117 raised — that the ranking is
+substantially an inverse-ṣaḍbala restatement — is **confirmed, not resolved**.
+
+Two structural causes, both upstream and both out of scope for a `bo_upaya` fix:
+
+- **Motif topology.** `bo_cgm_motifs` emits only a near-uniform mutual-aspect
+  graph because its stellium and parivartana_chain detectors are Tier-3-blocked
+  on missing `bo_karanajala` dispositor edges. Every graha sits in the same
+  number of motifs, so "who is weakest here" reduces to global ṣaḍbala order.
+- **CDLM cell sparsity.** Only 9 of 30 cells hold a real multi-graha comparison,
+  and they repeat one triad. The term is measurable but thinly evidenced.
+
+**Native ruling requested:** given that both multiplicative burden terms are
+currently ṣaḍbala-collinear by construction, should they retain their 0.15 / 0.10
+weights in `resonance_score_v1` — or should the formula be re-derived once the
+upstream topology gaps close? Retaining them today amplifies inverse ṣaḍbala
+under three different names rather than adding independent evidence.
 
 ## §4 — Data rebuild required (NOT executed here)
 

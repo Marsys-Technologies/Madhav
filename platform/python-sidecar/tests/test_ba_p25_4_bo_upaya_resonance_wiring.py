@@ -259,15 +259,21 @@ class TestCgmMotifWeakestNodeBurden:
 
     def test_node_with_no_l1_shadbala_is_never_credited_as_weakest(self):
         """§N.5 / B.10: classical shadbala defines no requirement for Rahu/Ketu, so
-        they cannot be adjudged the weak member. They still count as members (the
-        denominator), but the burden goes to the weakest graha that HAS an L1 row."""
+        they cannot be adjudged the weak member.
+
+        GA-5 (F-117 round 2) TIGHTENED this: excluding the node leaves Jupiter as the
+        SOLE candidate, and "weakest of one" is vacuous. Jupiter must NOT collect the
+        burden here — the motif is dropped entirely (numerator and denominator).
+        """
         mod = self._load()
         conn = _conn_returning([("m1", ["Rahu", "Jupiter"])])
         result = mod._fetch_cgm_motif_weakest_node_burden(
             conn, "chart-1", "lahiri", {"Jupiter": 1.4}
         )
-        assert result["Rahu"] == pytest.approx(0.0)
-        assert result["Jupiter"] == pytest.approx(1.0)
+        assert result == {}, (
+            "a motif with one shadbala-bearing member is not a comparison; "
+            f"nobody may be credited, got {result}"
+        )
 
     def test_motif_of_only_nodes_credits_nobody(self):
         mod = self._load()
@@ -275,11 +281,13 @@ class TestCgmMotifWeakestNodeBurden:
         result = mod._fetch_cgm_motif_weakest_node_burden(
             conn, "chart-1", "lahiri", {"Jupiter": 1.4}
         )
-        assert result == {"Rahu": 0.0, "Ketu": 0.0}
+        # GA-5: not {"Rahu": 0.0, "Ketu": 0.0} — a stored 0.0 would read as a
+        # measured "compared, never weakest". Nothing was compared: absent = NULL.
+        assert result == {}
 
     def test_no_motifs_returns_empty_dict(self):
-        """Honest: grahas with no motif membership get no entry (caller defaults to 0.0
-        'no structural motif to be the weak point of', not a fabricated value)."""
+        """Honest: grahas with no motif membership get no entry, which the caller
+        stores as NULL ('never weighed'), not as a fabricated 0.0."""
         mod = self._load()
         conn = _conn_returning([])
         result = mod._fetch_cgm_motif_weakest_node_burden(
@@ -329,11 +337,129 @@ class TestCdlmWeakestConstituentBurden:
         assert mod._cdlm_weakest_constituent_burden({}, {"Venus": 0.84}) == {}
 
     def test_node_without_shadbala_is_not_credited_as_weakest(self):
+        """GA-5 (F-117 round 2): dropping Ketu leaves Jupiter alone in c1. "Weakest of
+        one" is vacuous, so Jupiter is credited NOTHING — not 1.0."""
         mod = self._load()
         cells = {"Ketu": ["c1"], "Jupiter": ["c1"]}
         result = mod._cdlm_weakest_constituent_burden(cells, {"Jupiter": 1.4})
-        assert result["Ketu"] == pytest.approx(0.0)
+        assert result == {}, result
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# F-117 GA-5 ROUND 2 — the ≥2-candidate gate.
+#
+# The round-1 fix moved the §N.8 defect rather than removing it: it credited full
+# weakest-constituent burden via min() over a CDLM cell's material constituents,
+# but 21 of 30 cells on 482012f1/krishnamurti hold exactly ONE. A min() over a
+# singleton is vacuous — the sole member is "weakest" by definition however strong
+# it is. Live consequence: Sun, the shadbala-STRONGEST graha of the chart (ratio
+# 1.694), scored domain_burden 0.654 off 17 solo cells, reading downstream as
+# "Sun is the fragile point of these domains".
+#
+# These tests fail against the round-1 implementation and pass against the gate.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestWeakestComparisonRequiresTwoCandidates:
+    def _load(self):
+        return _load_module("bo_upaya.py")
+
+    # ── the primitive ────────────────────────────────────────────────────────
+
+    def test_solo_candidate_group_has_no_weakest(self):
+        mod = self._load()
+        assert mod._weakest_by_shadbala(["Sun"], {"Sun": 1.694}) is None
+
+    def test_two_candidate_group_does_have_a_weakest(self):
+        mod = self._load()
+        sha = {"Sun": 1.694, "Jupiter": 1.2}
+        assert mod._weakest_by_shadbala(["Sun", "Jupiter"], sha) == "Jupiter"
+
+    def test_group_of_many_but_one_shadbala_bearer_has_no_weakest(self):
+        """Members ≥2 is not enough — the CANDIDATES must be ≥2."""
+        mod = self._load()
+        assert mod._weakest_by_shadbala(
+            ["Sun", "Rahu", "Ketu"], {"Sun": 1.694}
+        ) is None
+
+    # ── domain_burden: the headline regression ───────────────────────────────
+
+    def test_solo_constituent_cell_contributes_no_measured_burden(self):
+        """THE regression this class exists for: a one-constituent cell must not
+        produce a burden value for anybody."""
+        mod = self._load()
+        result = mod._cdlm_weakest_constituent_burden(
+            {"Sun": ["solo1", "solo2", "solo3"]}, {"Sun": 1.694}
+        )
+        assert result == {}, (
+            "solo-constituent cells are not comparisons; they must yield no "
+            f"measured burden (NULL downstream), got {result}"
+        )
+
+    def test_multi_constituent_cell_does_contribute(self):
+        """The other half of the contract — the gate must not silence real data."""
+        mod = self._load()
+        result = mod._cdlm_weakest_constituent_burden(
+            {"Sun": ["c1"], "Jupiter": ["c1"]}, {"Sun": 1.694, "Jupiter": 1.2}
+        )
+        assert result == {"Sun": pytest.approx(0.0),
+                          "Jupiter": pytest.approx(1.0)}
+
+    def test_solo_cells_leave_the_denominator_too(self):
+        """Numerator-only gating would be its own fabrication: it would assert
+        'compared here, and was not the weak link' about cells nothing compared.
+
+        Sun is material in 3 cells; only c1 is a real comparison, and there Sun is
+        the stronger. domain_burden must be 0/1 = 0.0 — NOT 0/3.
+        """
+        mod = self._load()
+        result = mod._cdlm_weakest_constituent_burden(
+            {"Sun": ["c1", "solo1", "solo2"], "Jupiter": ["c1"]},
+            {"Sun": 1.694, "Jupiter": 1.2},
+        )
+        assert result["Sun"] == pytest.approx(0.0)
         assert result["Jupiter"] == pytest.approx(1.0)
+
+    def test_strongest_graha_cannot_accumulate_burden_from_solo_cells(self):
+        """The live 482012f1 shape in miniature: the chart's STRONGEST graha is the
+        lone constituent of many cells and a genuine (non-weakest) member of a few.
+        Pre-gate this read 0.654; it must now read 0.0, and never exceed the
+        burden of a graha that is genuinely the weak link."""
+        mod = self._load()
+        sun_cells = [f"solo{i}" for i in range(17)] + ["m1", "m2"]
+        result = mod._cdlm_weakest_constituent_burden(
+            {"Sun": sun_cells, "Jupiter": ["m1", "m2"]},
+            {"Sun": 1.694, "Jupiter": 1.2},
+        )
+        assert result["Sun"] == pytest.approx(0.0), (
+            f"shadbala-strongest graha must carry no measured burden, got {result}"
+        )
+        assert result["Jupiter"] > result["Sun"]
+
+    def test_graha_with_only_solo_cells_is_unmeasured_not_zero(self):
+        """Mars' live case: all 3 of its cells are solo. Absent (→ NULL), not 0.0 —
+        0.0 would read as a measured 'compared, never the weak link'."""
+        mod = self._load()
+        result = mod._cdlm_weakest_constituent_burden(
+            {"Mars": ["s1", "s2", "s3"], "Sun": ["c1"], "Jupiter": ["c1"]},
+            {"Mars": 1.114, "Sun": 1.694, "Jupiter": 1.2},
+        )
+        assert "Mars" not in result, result
+        assert result["Jupiter"] == pytest.approx(1.0)
+
+    # ── motif_burden: same primitive, same defect class ──────────────────────
+
+    def test_motif_with_one_shadbala_bearing_member_contributes_nothing(self):
+        mod = self._load()
+        conn = _conn_returning([
+            ("m1", ["Sun", "Rahu"]),      # 1 candidate — vacuous
+            ("m2", ["Sun", "Jupiter"]),   # 2 candidates — real
+        ])
+        result = mod._fetch_cgm_motif_weakest_node_burden(
+            conn, "chart-1", "lahiri", {"Sun": 1.694, "Jupiter": 1.2}
+        )
+        # Only m2 counts: Jupiter weakest 1/1; Sun compared once, never weakest.
+        assert result == {"Sun": pytest.approx(0.0),
+                          "Jupiter": pytest.approx(1.0)}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

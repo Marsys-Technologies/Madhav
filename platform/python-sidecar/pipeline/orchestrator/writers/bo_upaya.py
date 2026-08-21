@@ -521,23 +521,76 @@ def _fetch_dasha_proximity(conn: Any, chart_id: str, aya: str, at_dt: datetime) 
 # shadbala ratio read by _fetch_shadbala — referenced, never recomputed. Grahas with
 # no L1 shadbala row (structurally Rahu/Ketu: classical ṣaḍbala defines no requirement
 # for the nodes) are EXCLUDED from weakest-node candidacy rather than assigned an
-# invented strength. Their burden terms are therefore 0.0 — an honest "cannot be
-# adjudged the weak point on a measure that does not apply to them", surfaced in
-# ephemeris_audit_jsonb.node_weakest_candidacy_excluded rather than left to be
-# misread as "measured, no burden".
+# invented strength, and are surfaced in
+# ephemeris_audit_jsonb.node_weakest_candidacy_excluded.
+#
+# GA-5 REVIEW CORRECTION (F-117 round 2): the exclusion rule above is necessary but
+# was not sufficient. Excluding non-shadbala candidates still left groups holding a
+# SINGLE shadbala-bearing candidate, where "the weakest" is decided by min() over a
+# one-element set — vacuous by construction. Both burden terms now require ≥2 real
+# candidates before any credit is given, in NUMERATOR and DENOMINATOR alike, and a
+# graha that never stood in such a comparison stores NULL, not 0.0.
+
+
+# §N.8 — a comparison needs at least two things to compare. `min()` over a
+# one-element set returns that element by definition, no matter how strong it
+# actually is; the result is arithmetic, not a measurement. Every "weakest of"
+# question in this module is therefore gated on having ≥2 real candidates.
+MIN_WEAKEST_CANDIDATES = 2
 
 
 def _weakest_by_shadbala(grahas: Any, shadbala: dict[str, float]) -> str | None:
     """The weakest of `grahas` by L1 shadbala ratio (§N.5 — referenced, not recomputed).
 
-    Returns None when NONE of the candidates carries an L1 shadbala row (e.g. a
-    motif consisting only of Rahu/Ketu): the question "which of these is weakest"
-    has no L1-grounded answer, so no graha is credited with the burden.
+    Returns None when the group carries FEWER THAN TWO L1-shadbala-bearing
+    candidates — i.e. when no actual comparison is possible. Two distinct cases
+    both land here, and both are honestly "not measured", never "no burden":
+
+      * NO candidate carries an L1 shadbala row (e.g. a motif of only Rahu/Ketu).
+      * EXACTLY ONE candidate does. This is the F-117 GA-5 review finding: a
+        ``min()`` over a singleton is VACUOUS — the sole member is trivially "the
+        weakest" by definition, however strong it really is. Live on
+        482012f1/krishnamurti, 21 of 30 CDLM cells and 21 of 120 CGM motifs are
+        exactly this shape, and crediting them produced the headline artefact
+        that Sun — the shadbala-STRONGEST graha of the chart at ratio 1.694 —
+        carried domain_burden 0.654, read by every downstream surface as "Sun is
+        the fragile point of these domains" when the truth was only "Sun was the
+        sole candidate; nothing was compared". §N.8: a signal whose detector
+        cannot read false is not a detector. Gating here rather than at each call
+        site because the vacuity is a property of ``min()`` over a singleton, not
+        of any one caller.
+
+    Callers must exclude a None-returning group from the burden DENOMINATOR too,
+    not merely the numerator — counting an uncomparable group as "I was not the
+    weakest here" fabricates the opposite measurement just as surely.
     """
     candidates = [g for g in grahas if g in shadbala]
-    if not candidates:
+    if len(candidates) < MIN_WEAKEST_CANDIDATES:
         return None
     return min(candidates, key=lambda g: shadbala[g])
+
+
+def _normalize_weakest_share(
+    comparable: dict[str, int], weakest_count: dict[str, int]
+) -> dict[str, float]:
+    """graha → share of its COMPARABLE groups in which it was the weakest.
+
+    `comparable` counts ONLY the groups in which this graha actually stood in a
+    ≥2-candidate comparison (see `_weakest_by_shadbala`), so every key here has a
+    real denominator and every value is a real measurement.
+
+    A graha that never stood in such a comparison is **ABSENT from the returned
+    dict** — it is not mapped to 0.0. Callers therefore read with a bare
+    ``.get(graha)`` and treat the resulting ``None`` as "not measured", storing
+    NULL. A 0.0 would be indistinguishable downstream from a measured "compared,
+    and never the weak link", which is the precise misreading F-117's GA-5 review
+    caught. Same "unmeasured, not fabricated" discipline this writer already
+    applies to contradiction_factor.
+    """
+    return {
+        g: round(min(weakest_count.get(g, 0) / n, 1.0), 6)
+        for g, n in comparable.items()
+    }
 
 
 def _fetch_cgm_motif_weakest_node_burden(
@@ -563,14 +616,15 @@ def _fetch_cgm_motif_weakest_node_burden(
     the same 1.04x.
 
     THE SPEC'S DEFINITION IS NOT DEGENERATE on the same data: motif MEMBERSHIP is
-    uniform (each graha sits in 36 motifs) but WEAKEST-MEMBER-SHIP is not — a graha
-    with a low L1 shadbala ratio is the weak point of many of the motifs it joins,
-    a strong one of none. Normalizing by the graha's own membership count keeps the
-    term on [0,1] and makes it read as "what proportion of the structural patterns
-    I take part in do I am the weak link of".
+    uniform but WEAKEST-MEMBER-SHIP is not — a graha with a low L1 shadbala ratio is
+    the weak point of many of the motifs it joins, a strong one of none.
 
-    Grahas with no motif membership get 0.0 (honest "no structural motif to be the
-    weak point of" — not a fabricated value).
+    GA-5/F-117 CORRECTION: both numerator and denominator count only motifs carrying
+    ≥2 shadbala-bearing members. Live on 482012f1/krishnamurti, 21 of 120 motifs have
+    exactly one, where "weakest" is vacuous (see `_weakest_by_shadbala`). The term
+    therefore reads "of the structural patterns where I was actually WEIGHED against
+    another graha, what share am I the weak link of". A graha never so weighed gets
+    **None (not measured)**, not 0.0.
     """
     rows = conn.execute(
         """SELECT m.motif_id::text AS motif_id,
@@ -595,17 +649,18 @@ def _fetch_cgm_motif_weakest_node_burden(
         ]
         if not subjects:
             continue
-        for g in subjects:
-            membership[g] = membership.get(g, 0) + 1
         weakest = _weakest_by_shadbala(subjects, shadbala)
-        if weakest is not None:
-            weakest_count[weakest] = weakest_count.get(weakest, 0) + 1
+        if weakest is None:
+            # GA-5/F-117: no comparison was possible in this motif (<2 shadbala-
+            # bearing members). It contributes to NEITHER numerator NOR
+            # denominator — see _weakest_by_shadbala's docstring.
+            continue
+        for g in subjects:
+            if g in shadbala:
+                membership[g] = membership.get(g, 0) + 1
+        weakest_count[weakest] = weakest_count.get(weakest, 0) + 1
 
-    return {
-        g: round(min(weakest_count.get(g, 0) / n, 1.0), 6)
-        for g, n in membership.items()
-        if n > 0
-    }
+    return _normalize_weakest_share(membership, weakest_count)
 
 
 def _cdlm_weakest_constituent_burden(
@@ -634,27 +689,45 @@ def _cdlm_weakest_constituent_burden(
     This function closes that gap WITHOUT inventing any new grounding: it takes
     CR-67's already-computed graha→cells map and asks the one further question the
     spec's term needs — of the material constituents of each cell, which is weakest
-    by L1 shadbala (§N.5, referenced not recomputed). Normalized by the graha's own
-    cell count, so it reads as "of the cross-domain bridges I carry, what proportion
-    am I the weak point of". A graha bridging no cell gets 0.0 (honest empty).
+    by L1 shadbala (§N.5, referenced not recomputed).
+
+    GA-5/F-117 CORRECTION — the defect this function shipped with, and its live
+    magnitude. Numerator and denominator originally counted EVERY cell the graha
+    materially constitutes. But on 482012f1/krishnamurti **21 of 30 CDLM cells have
+    exactly ONE material constituent**, and `min()` over a singleton is vacuous: the
+    sole constituent is "the weakest" by definition. The visible result was that Sun,
+    the shadbala-STRONGEST graha of this chart (ratio 1.694), scored domain_burden
+    0.654 — 17 solo cells' worth of credit — which every downstream remedy surface
+    reads as "Sun is the fragile point of these domains". Only 9 of the 30 cells hold
+    a genuine multi-graha comparison.
+
+    Both numerator and denominator now count only cells with ≥2 shadbala-bearing
+    constituents, so the term reads "of the cross-domain bridges where I was actually
+    WEIGHED against another graha, what share am I the weak point of". A graha
+    bridging no comparable cell gets **None (not measured)**, not 0.0 — on this chart
+    that is Mars, whose 3 cells are all solo. Post-gate live values (same chart):
+    Moon 1.000, Jupiter 0.889, Sun 0.000, Saturn 0.000, Rahu 0.000, Ketu 0.000,
+    Mars None, Mercury/Venus None (constitute no cell at all).
     """
     cell_members: dict[str, list[str]] = {}
     for graha, cells in (graha_cdlm_cells or {}).items():
         for cell in cells or []:
             cell_members.setdefault(cell, []).append(graha)
 
+    comparable: dict[str, int] = {}
     weakest_count: dict[str, int] = {}
     for members in cell_members.values():
         weakest = _weakest_by_shadbala(members, shadbala)
-        if weakest is not None:
-            weakest_count[weakest] = weakest_count.get(weakest, 0) + 1
+        if weakest is None:
+            # GA-5/F-117: solo-constituent (or all-node) cell — no comparison
+            # happened, so it enters NEITHER numerator NOR denominator.
+            continue
+        for g in members:
+            if g in shadbala:
+                comparable[g] = comparable.get(g, 0) + 1
+        weakest_count[weakest] = weakest_count.get(weakest, 0) + 1
 
-    out: dict[str, float] = {}
-    for graha, cells in (graha_cdlm_cells or {}).items():
-        n = len(cells or [])
-        if n > 0:
-            out[graha] = round(min(weakest_count.get(graha, 0) / n, 1.0), 6)
-    return out
+    return _normalize_weakest_share(comparable, weakest_count)
 
 
 def _fetch_msr_contradiction_burden(
@@ -1407,6 +1480,11 @@ def _build_resonances_and_prescriptions(
         # every graha regardless of the real is_vargottama fact).
         is_vargottama = "vargottama" in states
         vargottama_absence = 0.0 if is_vargottama else 1.0
+        # GA-5/F-117: None = "never weighed against another graha" (no group with
+        # ≥2 shadbala-bearing candidates). Distinct from 0.0 = "weighed, never the
+        # weak link". Absent key and explicit None both mean unmeasured.
+        domain_burden_measured = cdlm_domain_burden.get(graha)
+        motif_burden_measured  = cgm_motif_weakness.get(graha)
 
         r_inputs = ResonanceInputs(
             shadbala_normalized=min(sha_norm, 1.0),
@@ -1435,10 +1513,12 @@ def _build_resonances_and_prescriptions(
             # F-117 — WIRED: proportion of the CDLM cross-domain cells this graha
             # materially constitutes in which it is the WEAKEST constituent by L1
             # shadbala (A13 §3), from CR-67's already-grounded join.
-            cdlm_weakest_constituent_count=cdlm_domain_burden.get(graha, 0.0),
+            # GA-5: None ("no comparable cell") feeds the formula's NEUTRAL 0.0 —
+            # no burden asserted — while the stored column below keeps the NULL.
+            cdlm_weakest_constituent_count=(domain_burden_measured or 0.0),
             # F-117 — WIRED: proportion of this graha's CGM motif memberships in
             # which it is the weakest participating node by L1 shadbala (A13 §3).
-            cgm_motifs_weakest_node=cgm_motif_weakness.get(graha, 0.0),
+            cgm_motifs_weakest_node=(motif_burden_measured or 0.0),
             is_yoga_karaka=is_yk,
             chara_role=chara_role,
         )
@@ -1468,8 +1548,18 @@ def _build_resonances_and_prescriptions(
                 round(float(r_result["contradiction_factor"]), 6)
                 if contradiction_source_available else None
             ),
-            "domain_burden": round(float(r_result["domain_burden"]), 6),
-            "motif_burden": round(float(r_result["motif_burden"]), 6),
+            # GA-5/F-117 (§N.8, same discipline as contradiction_factor above):
+            # NULL — not 0.0 — when this graha never stood in a ≥2-candidate
+            # weakest-comparison. 0.0 would be indistinguishable from a measured
+            # "compared, never the weak link".
+            "domain_burden": (
+                round(float(r_result["domain_burden"]), 6)
+                if domain_burden_measured is not None else None
+            ),
+            "motif_burden": (
+                round(float(r_result["motif_burden"]), 6)
+                if motif_burden_measured is not None else None
+            ),
             "is_yoga_karaka_flag": is_yk,
             "is_chara_karaka_role": chara_role,
             "weakest_rank_in_chart": None,  # set after ranking
@@ -1503,18 +1593,42 @@ def _build_resonances_and_prescriptions(
                 "vargottama_absence_score": vargottama_absence,
                 "cancellation_burden": 0.0,
                 # ── F-117 provenance for the three "burden" terms ──────────────
-                "cdlm_weakest_constituent_count": cdlm_domain_burden.get(graha, 0.0),
-                "cgm_motifs_weakest_node": cgm_motif_weakness.get(graha, 0.0),
+                "cdlm_weakest_constituent_count": domain_burden_measured,
+                "cgm_motifs_weakest_node": motif_burden_measured,
+                # §N.8: real detectors — both read False for a graha that genuinely
+                # stood in a ≥2-candidate comparison, and True for one that never did.
+                "domain_burden_measured": domain_burden_measured is not None,
+                "motif_burden_measured": motif_burden_measured is not None,
+                "burden_unmeasured_reason": (
+                    None
+                    if (domain_burden_measured is not None
+                        and motif_burden_measured is not None)
+                    else (
+                        "A NULL burden means this graha never stood in a group carrying "
+                        "≥2 L1-shadbala-bearing candidates, so no weakest-of comparison "
+                        "ran. It does NOT mean 'compared and found not weakest'. The "
+                        "resonance multiplier uses the neutral 1.0 for such a term."
+                    )
+                ),
                 "motif_burden_basis": (
-                    "A13 §3: share of this graha's CGM motif memberships in which it is "
-                    "the weakest participating node by L1 shadbala ratio (referenced, §N.5). "
-                    "Replaces the pre-F-117 1-min(motif_strength) reader, which could only "
-                    "return bo_cgm_motifs' per-motif-class CONSTANT."
+                    "A13 §3: share of the CGM motifs in which this graha was actually "
+                    "WEIGHED (motif carries ≥2 L1-shadbala-bearing members) that it is the "
+                    "weakest member of, by L1 shadbala ratio (referenced, §N.5). Replaces "
+                    "the pre-F-117 1-min(motif_strength) reader, which could only return "
+                    "bo_cgm_motifs' per-motif-class CONSTANT. GA-5 gate: motifs with <2 "
+                    "shadbala-bearing members (21 of 120 live on 482012f1/krishnamurti) "
+                    "enter neither numerator nor denominator — min() over a singleton is "
+                    "vacuous, not a measurement."
                 ),
                 "domain_burden_basis": (
                     "A13 §3: share of the CDLM cross-domain cells this graha materially "
-                    "constitutes (CR-67 join) in which it is the weakest constituent by L1 "
-                    "shadbala. Replaces the pre-F-117 hardcoded 0.0."
+                    "constitutes (CR-67 join) AND was actually WEIGHED in (cell carries ≥2 "
+                    "L1-shadbala-bearing constituents) that it is the weakest constituent "
+                    "of. Replaces the pre-F-117 hardcoded 0.0. GA-5 gate: 21 of 30 cells "
+                    "live on 482012f1/krishnamurti are SOLO-constituent, where 'weakest' is "
+                    "vacuous; crediting them made Sun — the shadbala-STRONGEST graha of the "
+                    "chart — carry domain_burden 0.654. Gated, Sun reads 0.000 across its 9 "
+                    "genuinely comparable cells."
                 ),
                 "contradiction_factor_basis": (
                     "A13 §2/§3: MSR contradicts_signals_array, chart-relative "
@@ -1532,8 +1646,9 @@ def _build_resonances_and_prescriptions(
                     "multiplier uses the neutral 1.0 rather than a substituted value."
                 ),
                 # §N.5 / F-117: nodes carry no classical shadbala requirement, so they
-                # cannot be adjudged the weakest member of a motif or CDLM cell. Their
-                # motif_burden / domain_burden are 0.0 by EXCLUSION, not by measurement.
+                # cannot be adjudged the weakest member of a motif or CDLM cell — they
+                # are excluded from candidacy (and, per the GA-5 gate, do not count
+                # toward the ≥2 real candidates a comparison needs).
                 "node_weakest_candidacy_excluded": (graha not in shadbala),
                 "strength_basis": (
                     "l1_shadbala_ratio" if graha in shadbala
