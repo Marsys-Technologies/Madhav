@@ -766,9 +766,11 @@ jobs:
         env:
           # Ratcheted DOWN 216 → 165 on 2026-08-21 (F-94 narrow repair; the DVA Ruling 4
           # comment above explicitly invites lowering after cleanup). Measured 164
-          # findings / exit=3 on the post-repair tree; the +1 is the environment delta
-          # between a runner without psql and a workstation with it (schema_db_unreachable
-          # vs a3_schema_db_unreachable). Lower freely; raise only by ruling.
+          # findings / exit=3 on the post-repair tree, matching CI's own last logged run
+          # (215 pre-fix, identical to the workstation) -- the +1 is plain slack, not an
+          # environment delta (GA-5 review corrected this comment's prior, unearned
+          # "environment delta" justification -- no such delta was ever measured).
+          # Lower freely; raise only by ruling.
           DRIFT_BASELINE_MAX: '165'
         run: |
           ec=0
