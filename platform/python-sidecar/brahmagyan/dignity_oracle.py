@@ -63,6 +63,31 @@ _DATA: dict[str, dict] = {
 
 _NODES: frozenset[str] = frozenset(["Rahu", "Ketu"])
 
+# ── Emittable vocabulary (F-62) ───────────────────────────────────────────────
+# The EXHAUSTIVE set of values `classify_dignity` can return, and therefore the
+# exhaustive set of values that can appear in
+# `chart_facts.graha_dignity_per_varga` / `fact_key='dignity_state'`.
+#
+# This constant exists because F-62 found the failure mode it prevents: when the
+# B-01 oracle first became able to emit "moolatrikona", four downstream consumer
+# maps could not spell it — three of them keyed on "mooltrikona" (no 'a'), one
+# enumerated only a four-value scale — so a moolatrikona graha silently scored
+# BELOW the plain "own" it used to score, in the exact tier classical Sthana Bala
+# ranks HIGHEST after exaltation. Every consumer that maps a dignity_state to a
+# score, tier, or valence must cover this set; `tests/test_f62_moolatrikona_
+# downstream_vocabulary.py` is the detector that fails when one does not
+# (CLAUDE.md §N.8 — a signal with no detector behind it is not a signal).
+#
+# Adding a tier here without updating that test's consumer roster will fail CI.
+DIGNITY_STATES: frozenset[str] = frozenset(
+    ["exalted", "debilitated", "moolatrikona", "own", "neutral"]
+)
+
+# Historic misspelling seen in pre-F-62 consumer maps. Kept ONLY so that legacy
+# lookups against those maps do not silently regress to a default; nothing in
+# this module emits it, and no new code should key on it.
+LEGACY_MOOLATRIKONA_ALIASES: frozenset[str] = frozenset(["mooltrikona", "mulatrikona"])
+
 
 def classify_dignity(graha: str, sign_name: str, degree_in_sign: float) -> str:
     """Classify the dignity of `graha` occupying `sign_name` at `degree_in_sign`.

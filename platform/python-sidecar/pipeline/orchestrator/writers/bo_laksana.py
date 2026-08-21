@@ -314,7 +314,13 @@ _MALEFIC_VALUE_SUBSTRINGS = (
     "retrograde", "cancel", "dosha", "kala_sarpa",
 )
 _BENEFIC_VALUE_SUBSTRINGS = (
-    "exalted", "uccha", "own", "mooltrikona", "friend", "benefic",
+    # F-62: "moolatrikona" is the spelling the B-01 dignity oracle emits and the
+    # one stored in chart_facts. It is NOT a substring of the legacy
+    # "mooltrikona" spelling that used to be the only entry here (and vice
+    # versa), so a moolatrikona graha — the strongest own-sign tier in classical
+    # Sthana Bala — matched no benefic substring at all and fell through to the
+    # malefic scan. Both spellings are listed; only the first is ever emitted.
+    "exalted", "uccha", "own", "moolatrikona", "mooltrikona", "friend", "benefic",
     "yoga_karaka", "vargottama", "strong",
 )
 
@@ -1809,8 +1815,14 @@ def _safe_float(v: Any, default: float = 0.5) -> float:
         return default
 
 
+# F-62: "moolatrikona" is the canonical emitted spelling (see
+# brahmagyan.dignity_oracle.DIGNITY_STATES); "mooltrikona" is a same-valued
+# legacy alias kept so historic callers do not regress. Before this fix the
+# alias was the ONLY key, so a moolatrikona graha scored 0.50 (the caller's
+# neutral default) instead of 0.95 — below the 0.85 it would have scored as
+# plain "own".
 _DIGNITY_SCORE: dict[str, float] = {
-    "exalted": 1.00, "mooltrikona": 0.95, "own": 0.85,
+    "exalted": 1.00, "moolatrikona": 0.95, "mooltrikona": 0.95, "own": 0.85,
     "friend": 0.65, "neutral": 0.50, "enemy": 0.35, "debilitated": 0.10,
 }
 
@@ -2332,7 +2344,12 @@ def _build_signal_row(
 # Dignity strength tier for cross-check comparisons
 _DIGNITY_STRENGTH_TIER: dict[str, int] = {
     "exalted": 3, "uccha": 3,
-    "own": 2, "mooltrikona": 2,
+    # F-62: "moolatrikona" is the emitted spelling; "mooltrikona" is the legacy
+    # alias. Without the canonical key, `_dignity_tier` returned 0 (the neutral
+    # tier) for a moolatrikona graha, so the D1→D9 cross-check read a genuine
+    # own-sign-strongest placement as neutral and could report a spurious
+    # promotion or demotion across the navamsha.
+    "own": 2, "moolatrikona": 2, "mooltrikona": 2,
     "friend": 1, "mitra": 1,
     "neutral": 0,
     "enemy": -1, "shatru": -1,
