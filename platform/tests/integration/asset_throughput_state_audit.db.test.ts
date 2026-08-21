@@ -25,7 +25,7 @@
  * required is not merely opt-in-and-may-never-run, it re-verifies on every PR.
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
-import { Pool } from 'pg'
+import { Pool, Client } from 'pg'
 import fs from 'fs'
 import path from 'path'
 
@@ -182,10 +182,29 @@ describe.skipIf(!TEST_DB_URL)('asset_throughput_state_audit trigger (F-152) — 
   })
 
   it('triggered_by is NULL when the GUC was never set (a direct psql-style UPDATE)', async () => {
-    await pool.query(
-      `UPDATE asset_throughput SET state = 'building' WHERE chart_id = $1 AND asset_id = $2 AND state = 'lit'`,
-      [CHART, ASSET_ID]
-    )
+    // Deliberately NOT using the shared `pool` above. marsys.triggered_by is a
+    // custom ("placeholder") Postgres GUC: once SET (even via SET LOCAL inside a
+    // transaction that later commits, as the previous test does) on a given
+    // physical backend connection, that connection's placeholder stays
+    // registered for the rest of its life — a later current_setting(name, true)
+    // on the SAME connection returns '' instead of NULL, even though nothing
+    // "really" set it for this query. The shared pool can hand any test any
+    // connection, so this assertion needs a connection that has genuinely never
+    // seen the GUC. Production is unaffected by this quirk:
+    // pipeline/orchestrator/db.py::connect() opens a brand-new physical
+    // connection per build and sets the GUC exactly once for that connection's
+    // entire lifetime — it never toggles between set and unset on one connection
+    // the way this shared-pool test setup incidentally does.
+    const freshClient = new Client({ connectionString: TEST_DB_URL })
+    await freshClient.connect()
+    try {
+      await freshClient.query(
+        `UPDATE asset_throughput SET state = 'building' WHERE chart_id = $1 AND asset_id = $2 AND state = 'lit'`,
+        [CHART, ASSET_ID]
+      )
+    } finally {
+      await freshClient.end()
+    }
     const row = await latestAuditRow()
     expect(row).not.toBeNull()
     expect(row!.triggered_by).toBeNull()
