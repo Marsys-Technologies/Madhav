@@ -277,3 +277,74 @@ I did not, and §0's "Packet B: EXECUTE" call was made on an incomplete model of
 - **Namespaces:** PARIPRAŚNA / EKAVĀKYATĀ untouched.
 - Writers use the L1+ idempotency standard (§N.3) — per-chart delete-then-insert scoped to
   `(chart_id × natural key)`. A rebuild REPLACES; it does not accrete.
+
+## §8 — Execution log and two defects in THIS packet's own discipline
+
+### §8.1 — What ran
+
+| Run | Action | Assets | Result |
+|---|---|---|---|
+| `257eb0c2` | `build` | mi_sambandha, mi_darshana, mi_bhara | mi_* **skipped** (already `lit`); mi_bhara ran 600 s → watchdog timeout |
+| `5b1ec47a` | `rebuild` | bo_upaya | **completed, 26 s** — F-116 fixed and verified |
+| `87eebd20` | `rebuild` | mi_sambandha, mi_darshana | BLOCKED on stale upstream |
+| `49e38d36` | `rebuild` | 7 L5 assets | BLOCKED — true chain is 10 assets across L2→L4→L5 |
+| rollback | — | bo_upaya cluster | **REFUSED by FK; transaction rolled back, nothing partially applied** |
+
+### §8.2 — Defect 1: the rollback rehearsal could not have failed
+
+§4 reported `ROLLBACK_REHEARSAL_RESULT: PASS` with byte-identical sha256 on four tables. That
+result was real but **not load-bearing**, because the scratch cluster replicated only the four
+target tables. Production's
+`bodha_rm_dasha_windowed_prescriptions_base_prescription_id_fkey` did not exist there. The real
+rollback hit exactly that constraint and was refused:
+
+```
+ERROR: update or delete on table "bodha_rm_remedy_prescriptions" violates foreign key constraint
+DETAIL: Key (prescription_id)=(bd012fb3-…) is still referenced from bodha_rm_dasha_windowed_prescriptions
+```
+
+**A rollback rehearsed against an incomplete schema replica is not a tested rollback.** The
+rehearsal's detector was structurally incapable of producing a failure — the §N.8 defect class, in
+the packet written to enforce §N.8. A correct rehearsal replicates the constraint set, not just
+the columns: `pg_dump --schema-only` of the target tables *plus every table with an inbound or
+outbound FK to them*.
+
+### §8.3 — Defect 2: before-image coverage did not match the writer's true write set
+
+§3 snapshotted `bodha_rm_remedy_prescriptions` as "the F-116 table." `bo_upaya` in fact co-writes a
+**four-table cluster** — `bodha_rm_remedy_prescriptions` (135), `…_dasha_windowed_prescriptions`
+(5), `…_dosha_remedy_bundles` (5), `…_pattern_remedies` (45) — which is what its 240 `rows_written`
+counts. Only the first was snapshotted, so §19.2 clause 2 was **not** satisfied for Packet B, and
+a complete rollback is not possible from the snapshots taken.
+
+Scope should be derived from the writer's actual INSERT targets (or `asset_registry.count_sql`,
+which names them), never from the finding's headline table.
+
+### §8.4 — State left behind, and why no further mutation was attempted
+
+Verified, not assumed:
+- All 135 prescriptions regenerated with **fresh** ids (0 overlap with before) — `bo_upaya` mints
+  new UUIDs each rebuild.
+- **Structural columns unchanged**: for the same remedy set, `remedy_id_g27`, `remedy_category`,
+  `target_graha`, `resonance_match_score`, `feasibility_score`, `classical_strength_rating` differ
+  on **0 rows**. The change is label-honesty plus the new flag, not a change of prescribed remedy.
+- **Zero dangling references** anywhere: `dasha_windowed` 0 orphans, `dosha_remedy_bundles` 0/5,
+  `pattern_remedies` 0/45. The cluster was rewritten consistently.
+- All 24 chart-scoped `mimamsa_*` tables **byte-identical** to their before-images. The blocked runs
+  wrote no data.
+
+The database is therefore in a **valid, internally consistent state**. Attempting a second,
+*unrehearsed* multi-table rollback at this point — after two verification blind spots had already
+been exposed — would risk compounding the incident rather than resolving it. Current-state images
+of the whole `bo_upaya` cluster are captured in `AFTER_bo_upaya_cluster/`, so a future rollback is
+possible from a complete snapshot even though the original one was not.
+
+### §8.5 — Honest carry-forward
+
+F-116's fix is real and verified, but the chain it feeds (`ph_pratikara → ph_pramana →
+ph_phaladesa → mi_bhavisya → mi_pramana → {mi_gunanaka, mi_pariksha} → mi_adhilepa →
+mi_sambandha → mi_darshana`) is `stale`/`error` and still reflects the pre-rebuild prescriptions.
+Bringing the chart to full consistency — and delivering F-35 and F-104 — needs **one 10-asset
+L2→L4→L5 rebuild**, with before-images for the `phala_*` and `mimamsa_*` write sets and a rehearsal
+that includes the FK graph. That is a native-authorized scope decision, not a clause this packet
+can self-certify.
