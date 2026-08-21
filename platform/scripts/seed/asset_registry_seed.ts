@@ -2702,12 +2702,20 @@ WHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'`,
     english_description: 'Empirical multiplier weights learned from calibration outcomes',
     storage_type: 'postgres_table',
     target_table: 'mimamsa_multipliers',
-    count_sql: 'SELECT count(*) FROM mimamsa_multipliers WHERE chart_id = $1',
+    // F-188: count_sql was single-table (mimamsa_multipliers only) and silently
+    // missed mimamsa_calibration_snapshot — the append-only calibration-snapshot
+    // accretion table _publish_snapshot() writes to on every rebuild (a RATIFIED
+    // §N.3 exception; see mi_gunanaka.py::_publish_snapshot docstring and
+    // 00_ARCHITECTURE/briefs/parisesa/F188_ACCRETION_EXCEPTION_v1_0.md). Cockpit
+    // truth (CLAUDE.md §N.4) requires count_sql to reflect everything the asset
+    // owns; $1 repeated per subquery is the established multi-table convention
+    // (see ga_condition above).
+    count_sql: `SELECT (SELECT COUNT(*) FROM mimamsa_multipliers WHERE chart_id = $1) + (SELECT COUNT(*) FROM mimamsa_calibration_snapshot WHERE chart_id = $1) AS count`,
     size_sql: "SELECT pg_total_relation_size('mimamsa_multipliers')",
     target_floor: null,
     expected_volume_formula: null,
     expected_volume_inputs: null,
-    volume_explanation: 'One row per multiplier type — small, stable catalog; grows only when new signal categories are added',
+    volume_explanation: 'One row per multiplier type (mimamsa_multipliers, delete-then-insert per §N.3) plus one accreted row per rebuild in mimamsa_calibration_snapshot (RATIFIED append-only exception to §N.3 — see F-188 doctrine note)',
     // mi_kula retained: migration 365 established this edge (mi_gunanaka.py:70
     // reads mimamsa_signal_families, owned by mi_kula) — a real hard build-order
     // dependency. BA Phase 2.5 #9 additionally adds bg_formula_constants
