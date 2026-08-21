@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 929,
+  "event_count": 932,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -436,16 +436,16 @@
     "F-118": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "9e8b06119118b6920abba36557953d8a741097f4346f9e8289199c3363b3cbaf",
+      "event_sha256": "2bc4cb32d9ec36cb3daee18508f414605fa60f7a7c7e8bd5c88002236094c766",
       "event_type": "finding_status",
-      "evidence_summary": "Investigation found the real problem is deeper than the original claim: phala_mitigation has 536 rows/chart but only 4 distinct served-content combinations, and EVERY row has an empty remedy payload (program_jsonb.total_scheduled=0, all tradition/tier buckets empty) -- there is no actual remedy in these rows at all, the label degenerated to a severity grade because that's the only real text present. bodha_rm_remedy_prescriptions separately duplicates 27 remedies x 5 ayanamshas unfiltered. Fixed: dedupeInterventions collapses duplicates with an honest duplicate_row_count disclosure (never silently drops); new actionable_prescription field + detector splits act-having rows from non_prescriptive_rows (SS N.6 shape, nothing dropped); ayanamsha budget pin; efficacy_discrimination as an SS N.8 honest disclosure of the degenerate citation-presence-only grading. Result measured on the actual captured live response: 100 rows -> 13 distinct actionable interventions + 1 non-prescriptive summary row (was 50 fake-distinct duplicates). Deferred to design contract: the genuine per-row efficacy/feasibility score, plus an unresolved question flagged for the conductor -- is ph_pratikara's empty remedy program an L4 BUILD DEFECT (should populate but doesn't) or is kala_upaya_get simply reading a surface it shouldn't for interventions at all?",
+      "evidence_summary": "GA-5 review (simplified retry after 2 stalls): MERGE. DB spot-check confirmed live (536/536 rows total_scheduled=0). 130/131 tests reproduced exactly (1 pre-existing skip). Diff scope confirmed clean (2 Lane U files + CI allowlist + design doc, orchestrator untouched). RESOLVED the open question from the original investigation: ph_pratikara.py's _load_prescriptions selects a column named 'graha' that does not exist -- live table has 'target_graha' instead. The SELECT raises, a broad except rolls back to savepoint and logs at DEBUG ONLY, method returns {} -- every MitigationContext gets prescriptions=[], explaining all 536 empty payloads. This is itself a real SS N.8 defect (silent failure producing a green-looking build) -- triaged separately as F-173.",
       "finding_id": "F-118",
-      "next_action": "GA-5 review in flight; separately, the ph_pratikara empty-remedy-program question needs conductor/native triage as a possible new L4 finding",
+      "next_action": "in merge queue, auto-merge armed. F-173 (the actual root cause) tracked separately -- once fixed, this PR's non_prescriptive bucket correctly empties on its own, no rework needed.",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1423",
-      "prev_sha256": "3f6763912ceccef63e7b9ef33420a50da2d611ffcc7d476a197e4ad49e50f0dd",
-      "seq": 909,
+      "prev_sha256": "2815763d828145800f1141c8a0136cad1c7b3e8bd7dc89ac555be6f9c9f01d6a",
+      "seq": 931,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "DECISION_PARKED",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-119": {
@@ -568,16 +568,16 @@
     "F-126": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "6eb263c5e674f1af19df6dd099acdaba7b6f5ee0684c99a81fd0d2e0d48251d8",
+      "event_sha256": "2815763d828145800f1141c8a0136cad1c7b3e8bd7dc89ac555be6f9c9f01d6a",
       "event_type": "finding_status",
-      "evidence_summary": "Root cause found to be systemic, not LEL-specific: platform/src/app/api/mcp/primitives/[tool]/route.ts:310 hardcoded confidence_band:'high' for EVERY surgical primitive -- nothing computed it, an SS N.8 defect with no detector at all behind the claim. Live-reproduced pre-fix (real trace_id captured, zero-result payload graded 'high'). Fix: new evidence_state.ts measures the served result -- zero-count -> band 'none'/evidence_state:'empty'; populated -> 'present'/high unchanged; unmeasurable -> 'indeterminate'/high (no invented downgrade). Mutation-tested (restoring hardcoded 'high' fails 2 tests). 3 sibling routes (asset/recent/trace) confirmed to carry the identical hardcoded defect, correctly flagged and NOT swept into this PR's scope.",
+      "evidence_summary": "GA-5 review (simplified retry after 2 stalls): MERGE. All 6 verification steps completed, none skipped. Detector logic read in full and confirmed to match claims -- asymmetry correct (only downgrades on a payload's own self-declared zero, never on shape inference). 49/49 tests reproduced exactly. Mutation test reproduced exactly (2 failures on revert, byte-matching PR's claim). Adversarial check: grepped every confidence_band reference codebase-wide, confirmed no schema validates the envelope band so 'none' can't be rejected at runtime; confirmed evidence_state is conditionally emitted so existing callers stay byte-identical.",
       "finding_id": "F-126",
-      "next_action": "GA-5 review in flight",
+      "next_action": "in merge queue, auto-merge armed",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1420",
-      "prev_sha256": "3f4cc5d0ac46b8b66e5f8cb34984a7156929c2cd84fa169055b219cd23693b8a",
-      "seq": 904,
+      "prev_sha256": "fef78e7f5419db7ffd75cf8fc4a1d02184f1dc062ea865d23568d18870b3c353",
+      "seq": 930,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "DECISION_PARKED",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-127": {
@@ -1329,6 +1329,21 @@
       "pr_url": null,
       "prev_sha256": "72d561b85c7667c620c2ffb3dbaf0feca93955309c7b5c05a4f065e9e943f92e",
       "seq": 929,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-173": {
+      "confidence": "HIGH",
+      "disposition": "STRANDED",
+      "event_sha256": "c08fd086105a0b208176515aaa9b905768091cfcf521c6b4b26e0d9dc0743f85",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW, high-confidence finding -- the actual L4 root cause underneath F-118's symptom. ph_pratikara.py's _load_prescriptions (pipeline/orchestrator/writers/ph_pratikara.py, ~line 209) SELECTs a column literally named 'graha' from bodha_rm_remedy_prescriptions -- but that column does not exist on the live table (the real column is 'target_graha'). The SELECT raises an exception, a broad except-block catches it, rolls back to a savepoint, and logs the failure at DEBUG level only (invisible in normal build logs) -- the method then returns an empty dict. Every MitigationContext for every chart therefore gets prescriptions=[], explaining phala_mitigation's 536/536 empty remedy payloads chart-wide. A build-fatal-in-substance error masquerading as a successful, silent no-op -- exactly the SS N.8 defect class this campaign has repeatedly found.",
+      "finding_id": "F-173",
+      "next_action": "fix the column name (graha -> target_graha), raise the log level for this failure class to at least WARNING/ERROR (a silently-swallowed SELECT failure should never log at DEBUG), then re-run ph_pratikara for affected charts -- a GA-3 rebuild once the code fix lands. Small, well-scoped, high-value fix.",
+      "pr_url": null,
+      "prev_sha256": "2bc4cb32d9ec36cb3daee18508f414605fa60f7a7c7e8bd5c88002236094c766",
+      "seq": 932,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -2581,10 +2596,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 7,
+  "findings_morning_ship_ready_count": 9,
   "findings_terminal_count": 122,
-  "journal_head_seq": 929,
-  "journal_head_sha256": "fef78e7f5419db7ffd75cf8fc4a1d02184f1dc062ea865d23568d18870b3c353",
+  "journal_head_seq": 932,
+  "journal_head_sha256": "c08fd086105a0b208176515aaa9b905768091cfcf521c6b4b26e0d9dc0743f85",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
