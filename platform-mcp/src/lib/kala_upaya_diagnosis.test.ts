@@ -51,6 +51,12 @@ import {
   bodhaRmPrescriptionToIntervention,
   remedyCorpusRowToIntervention,
   splitCitedUncited,
+  extractPhalaMitigationPrescription,
+  dedupeInterventions,
+  splitPrescriptive,
+  assessEfficacyDiscrimination,
+  DUPLICATE_PK_SAMPLE_CAP,
+  CANONICAL_AYANAMSHA_ID,
   fetchRemedyRows,
   fetchAlternateRoutes,
   buildEligibilityPointer,
@@ -63,6 +69,7 @@ import {
   resolveDisclosureTier,
   type PactStatus,
   type UpayaIntervention,
+  type PhalaMitigationRow,
 } from './kala_upaya_diagnosis.js'
 
 const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
@@ -310,7 +317,9 @@ describe('splitCitedUncited — §N.6 density split (mirrors convention_only_fac
     return {
       id: 'x', intervention_class: 'remedy_corpus', source_surface: 'brahma_remedy_corpus',
       source_pk: 'x', label: 'x', efficacy_tier: 'classically_attested', citation: 'cite',
-      targets_link: null, feasibility: null, ...over,
+      targets_link: null, feasibility: null,
+      actionable_prescription: 'do the thing', duplicate_row_count: 1,
+      duplicate_source_pks: [], duplicate_note: null, ...over,
     }
   }
   it('never merges a citation-less row into cited', () => {
@@ -323,6 +332,202 @@ describe('splitCitedUncited — §N.6 density split (mirrors convention_only_fac
   it('an all-cited input produces an empty uncited array (not omitted, an honest empty array)', () => {
     const { uncited } = splitCitedUncited([row({ id: 'a' })])
     expect(uncited).toEqual([])
+  })
+})
+
+// ══════════════════════════════════════════════════════════════════════════════════════════
+// F-118 — duplicate collapse, actionability split, efficacy-discrimination detector
+// ══════════════════════════════════════════════════════════════════════════════════════════
+
+describe('F-118 extractPhalaMitigationPrescription — the actionability detector', () => {
+  /** The EXACT live shape read off the canonical chart's phala_mitigation rows (all 536 of
+   *  them carry this): an empty program, empty tradition buckets, empty cost tiers. */
+  function liveEmptyRow(): PhalaMitigationRow {
+    return {
+      mitigation_id: 'pm-live', afflicting_graha: 'saturn', obstruction_severity: null,
+      intensity_tier: 'light', proportionality_basis: 'severity=medium × anchor_magnitude=minor → light',
+      classical_citation: 'Brihat Parashara Hora Shastra — Upaya chapter',
+      program_jsonb: { scheduled_ids: [], sequence_basis: 'prerequisite_topo_sort + incompatible_exclusion', total_scheduled: 0 },
+      tradition_options_jsonb: { vastu: [], vedic: [], modern: [], tantra: [], ayurvedic: [], lal_kitab: [] },
+      recommended_tier_jsonb: { free: [], low_cost: [], high_investment: [] },
+    }
+  }
+
+  it('returns null on the live all-empty row — never falls back to the severity label', () => {
+    expect(extractPhalaMitigationPrescription(liveEmptyRow())).toBeNull()
+  })
+
+  it('never reads sequence_basis as content (it describes the ordering, not an act)', () => {
+    const out = extractPhalaMitigationPrescription(liveEmptyRow())
+    expect(out).toBeNull()
+    expect(String(out)).not.toContain('topo_sort')
+  })
+
+  it('returns the real tradition options when the row actually carries any', () => {
+    const row = liveEmptyRow()
+    row.tradition_options_jsonb = { vedic: ['Shani japa, 23000 counts'], tantra: [], modern: [] }
+    expect(extractPhalaMitigationPrescription(row)).toBe('Shani japa, 23000 counts')
+  })
+
+  it('returns an honest POINTER (never invented prose) when a program is actually scheduled', () => {
+    const row = liveEmptyRow()
+    row.program_jsonb = { scheduled_ids: ['rx-1', 'rx-2'], total_scheduled: 2 }
+    const out = extractPhalaMitigationPrescription(row)
+    expect(out).toContain('2 scheduled remedy step(s)')
+    expect(out).toContain('rx-1')
+  })
+
+  it('the mapper carries the detector result onto the served row (a live row is null)', () => {
+    const served = phalaMitigationToIntervention(liveEmptyRow(), 'promise')
+    expect(served.actionable_prescription).toBeNull()
+    // The label is STILL the severity classification — the repair does not rewrite the label,
+    // it stops the label being read as a prescription.
+    expect(served.label).toContain('severity=medium')
+    expect(served.duplicate_row_count).toBe(1)
+  })
+})
+
+describe('F-118 dedupeInterventions — the byte-identical collapse', () => {
+  function served(over: Partial<UpayaIntervention> = {}): UpayaIntervention {
+    return {
+      id: 'phala_mitigation:x', intervention_class: 'phala_mitigation', source_surface: 'phala_mitigation',
+      source_pk: 'x', label: 'light — for saturn — severity=medium × anchor_magnitude=minor → light',
+      efficacy_tier: 'classically_attested', citation: 'BPHS — Upaya chapter', targets_link: 'promise',
+      feasibility: null, actionable_prescription: null, duplicate_row_count: 1,
+      duplicate_source_pks: [], duplicate_note: null, ...over,
+    }
+  }
+
+  it('THE REPRODUCER: 50 byte-identical rows collapse to ONE row that states it stands for 50', () => {
+    const rows = Array.from({ length: 50 }, (_, i) => served({ id: `phala_mitigation:pm-${i}`, source_pk: `pm-${i}` }))
+    const { rows: out, collapsed_row_count } = dedupeInterventions(rows)
+    expect(out).toHaveLength(1)
+    expect(collapsed_row_count).toBe(49)
+    expect(out[0]?.duplicate_row_count).toBe(50)
+    expect(out[0]?.duplicate_note).toContain('ONE recommendation, not 50')
+  })
+
+  it('caps the listed sibling keys but NEVER caps the true count (no silent under-reporting)', () => {
+    const rows = Array.from({ length: 50 }, (_, i) => served({ id: `phala_mitigation:pm-${i}`, source_pk: `pm-${i}` }))
+    const { rows: out } = dedupeInterventions(rows)
+    expect(out[0]?.duplicate_source_pks).toHaveLength(DUPLICATE_PK_SAMPLE_CAP)
+    expect(out[0]?.duplicate_row_count).toBe(50)
+  })
+
+  it('the same remedy stored once per ayanamsha collapses to one (the bodha_rm half of F-118)', () => {
+    const rows = ['a', 'b', 'c', 'd', 'e'].map((pk) => served({
+      id: `bodha_rm_remedy_prescriptions:${pk}`, intervention_class: 'bodha_rm_prescription',
+      source_surface: 'bodha_rm_remedy_prescriptions', source_pk: pk,
+      label: 'Recite the Sun beej mantra 108 times daily on Sunday, facing east.',
+      actionable_prescription: 'Recite the Sun beej mantra 108 times daily on Sunday, facing east.',
+      feasibility: 0.9,
+    }))
+    const { rows: out } = dedupeInterventions(rows)
+    expect(out).toHaveLength(1)
+    expect(out[0]?.duplicate_row_count).toBe(5)
+  })
+
+  it('NEVER collapses genuinely distinct recommendations, and keeps source order', () => {
+    const rows = [
+      served({ id: 'a', source_pk: 'a', label: 'Remedy A', actionable_prescription: 'Do A' }),
+      served({ id: 'b', source_pk: 'b', label: 'Remedy B', actionable_prescription: 'Do B' }),
+      served({ id: 'c', source_pk: 'c', label: 'Remedy A', actionable_prescription: 'Do A' }),
+    ]
+    const { rows: out, collapsed_row_count } = dedupeInterventions(rows)
+    expect(out.map((r) => r.label)).toEqual(['Remedy A', 'Remedy B'])
+    expect(collapsed_row_count).toBe(1)
+    expect(out[0]?.duplicate_row_count).toBe(2)
+    expect(out[1]?.duplicate_row_count).toBe(1)
+    expect(out[1]?.duplicate_note).toBeNull()
+  })
+
+  it('a differing feasibility or tier is a REAL difference and is never collapsed away', () => {
+    const rows = [
+      served({ id: 'a', source_pk: 'a', actionable_prescription: 'Do A', feasibility: 0.9 }),
+      served({ id: 'b', source_pk: 'b', actionable_prescription: 'Do A', feasibility: 0.2 }),
+      served({ id: 'c', source_pk: 'c', actionable_prescription: 'Do A', feasibility: 0.9, efficacy_tier: 'traditional' }),
+    ]
+    expect(dedupeInterventions(rows).rows).toHaveLength(3)
+  })
+
+  it('an empty input is an honest empty result, not a crash', () => {
+    expect(dedupeInterventions([])).toEqual({ rows: [], collapsed_row_count: 0 })
+  })
+})
+
+describe('F-118 splitPrescriptive — a severity grade is never served as an intervention', () => {
+  function served(over: Partial<UpayaIntervention> = {}): UpayaIntervention {
+    return {
+      id: 'x', intervention_class: 'phala_mitigation', source_surface: 'phala_mitigation',
+      source_pk: 'x', label: 'x', efficacy_tier: 'classically_attested', citation: 'c',
+      targets_link: 'promise', feasibility: null, actionable_prescription: null,
+      duplicate_row_count: 1, duplicate_source_pks: [], duplicate_note: null, ...over,
+    }
+  }
+  it('routes a null-prescription row OUT of the prescriptive list, decided by the row field', () => {
+    const { prescriptive, nonPrescriptive } = splitPrescriptive([
+      served({ id: 'grade' }),
+      served({ id: 'act', actionable_prescription: 'Recite the Shani beej mantra 108×' }),
+    ])
+    expect(prescriptive.map((r) => r.id)).toEqual(['act'])
+    expect(nonPrescriptive.map((r) => r.id)).toEqual(['grade'])
+  })
+  it('never DROPS the non-prescriptive row (B.10 — served separately, not discarded)', () => {
+    const { prescriptive, nonPrescriptive } = splitPrescriptive([served({ id: 'grade' })])
+    expect(prescriptive).toEqual([])
+    expect(nonPrescriptive).toHaveLength(1)
+  })
+})
+
+describe('F-118 assessEfficacyDiscrimination — the §N.8 earned-signal detector', () => {
+  function served(over: Partial<UpayaIntervention> = {}): UpayaIntervention {
+    return {
+      id: 'x', intervention_class: 'bodha_rm_prescription', source_surface: 'bodha_rm_remedy_prescriptions',
+      source_pk: 'x', label: 'x', efficacy_tier: 'classically_attested', citation: 'c',
+      targets_link: 'promise', feasibility: 0.9, actionable_prescription: 'do it',
+      duplicate_row_count: 1, duplicate_source_pks: [], duplicate_note: null, ...over,
+    }
+  }
+
+  it('THE FINDING: a slate where every row grades identically reports discriminating=false', () => {
+    const rows = Array.from({ length: 13 }, (_, i) => served({ id: `r${i}`, source_pk: `r${i}` }))
+    const out = assessEfficacyDiscrimination(rows)
+    expect(out.discriminating).toBe(false)
+    expect(out.distinct_efficacy_tiers).toBe(1)
+    expect(out.note).toContain('zero information')
+  })
+
+  it('reports discriminating=true once a grading field genuinely varies (a real detector, ' +
+    'not a constant — this is the case that proves the flag CAN read differently)', () => {
+    const out = assessEfficacyDiscrimination([
+      served({ id: 'a', source_pk: 'a', feasibility: 0.9 }),
+      served({ id: 'b', source_pk: 'b', feasibility: 0.2 }),
+    ])
+    expect(out.discriminating).toBe(true)
+  })
+
+  it('a varying efficacy_tier alone is enough', () => {
+    const out = assessEfficacyDiscrimination([
+      served({ id: 'a', source_pk: 'a' }),
+      served({ id: 'b', source_pk: 'b', efficacy_tier: 'traditional' }),
+    ])
+    expect(out.discriminating).toBe(true)
+  })
+
+  it('targets_link is REPORTED but never counted toward discrimination (it is uniform by ' +
+    'construction — every row routes to the one diagnosed failing link)', () => {
+    const out = assessEfficacyDiscrimination([
+      served({ id: 'a', source_pk: 'a', targets_link: 'promise' }),
+      served({ id: 'b', source_pk: 'b', targets_link: 'activation' }),
+    ])
+    expect(out.distinct_targets_link_values).toBe(2)
+    expect(out.discriminating).toBe(false)
+  })
+
+  it('a one-row or empty slate is reported non-discriminating, never assumed clean', () => {
+    expect(assessEfficacyDiscrimination([served()]).discriminating).toBe(false)
+    expect(assessEfficacyDiscrimination([]).rows_evaluated).toBe(0)
+    expect(assessEfficacyDiscrimination([]).discriminating).toBe(false)
   })
 })
 
@@ -680,5 +885,38 @@ describe('fetchRemedyRows', () => {
     const result = await fetchRemedyRows({ chart_id: CHART_ID, targetedGraha: null, failingLink: null }, PRINCIPAL)
     expect(result.interventions).toEqual([])
     expect(result.errors.some((e) => e.includes('results_missing'))).toBe(true)
+  })
+
+  // ── F-118: the ayanamsha budget pin + its non-silencing fallback ──
+  function wireEnvelope(payload: Record<string, unknown>) {
+    return {
+      status: 200,
+      envelope: {
+        ok: true, trace_id: 't',
+        result: { tool_bundle_id: 'tb-1', tool_name: 'x', results: [{ content: JSON.stringify(payload) }], result_hash: 'sha256:x' },
+      },
+    } as unknown as { status: number; envelope: { ok: true; result: unknown } }
+  }
+
+  it('F-118: pins the ayanamsha on bodha_rm_prescriptions_get — the surface stores ONE ROW PER ' +
+    'AYANAMSHA, so an unpinned read spends the whole 50-row budget on 5 copies of each remedy', async () => {
+    mockCallPlatformPrimitive.mockImplementation(async () => wireEnvelope({ rows: [{ prescription_id: 'p1', remedy_label_human: 'Do X', citation_human: 'c' }] }))
+    await fetchRemedyRows({ chart_id: CHART_ID, targetedGraha: null, failingLink: 'promise' }, PRINCIPAL)
+    const call = mockCallPlatformPrimitive.mock.calls.find((c) => c[0] === 'bodha_rm_prescriptions_get')
+    expect((call?.[1] as Record<string, unknown>)['ayanamsha_id']).toBe(CANONICAL_AYANAMSHA_ID)
+  })
+
+  it('F-118: the pin is a budget fix, NEVER a filter that can silently empty the slate — a ' +
+    'chart with no rows on the canonical ayanamsha is re-read unfiltered', async () => {
+    let prescriptionCalls = 0
+    mockCallPlatformPrimitive.mockImplementation(async (toolName: string, args: Record<string, unknown>) => {
+      if (toolName !== 'bodha_rm_prescriptions_get') return wireEnvelope({ remedies: [] })
+      prescriptionCalls += 1
+      if (args['ayanamsha_id']) return wireEnvelope({ rows: [] })
+      return wireEnvelope({ rows: [{ prescription_id: 'p-fallback', remedy_label_human: 'Recite the Shani beej mantra 108×', citation_human: 'BPHS' }] })
+    })
+    const result = await fetchRemedyRows({ chart_id: CHART_ID, targetedGraha: null, failingLink: 'promise' }, PRINCIPAL)
+    expect(prescriptionCalls).toBe(2)
+    expect(result.interventions.map((r) => r.source_pk)).toEqual(['p-fallback'])
   })
 })

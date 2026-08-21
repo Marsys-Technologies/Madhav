@@ -28,6 +28,12 @@
  * naming the `for_intervention` contract this design PUBLISHES for Lane R to implement in
  * `elect.ts` (never a duplicate window computation — SINGLE TEMPORAL AUTHORITY, brief §7 item 44).
  *
+ * F-118 (PARIŚEṢA-V4, CL-09 earned-signal): the served slate is now COLLAPSED (byte-identical
+ * source rows become one row carrying an honest count), SPLIT BY ACTIONABILITY (a row naming no
+ * act is served in `non_prescriptive_rows`, never inside `interventions`), and its grading
+ * degeneracy is DISCLOSED (`efficacy_discrimination`). None of this ranks or rewrites a row —
+ * ruling U-1 still holds; the repair is about what the response CLAIMS, not about the rows.
+ *
  * Registration: `registerKalaUpayaGet` is called from `registry_bridge.ts`'s
  * `registerRegistryBridgeTools` — ONE canonical registration for this tool, per brief §2.
  */
@@ -65,6 +71,10 @@ import {
   resolveAndFileFilingState,
   resolveDisclosureTier,
   splitCitedUncited,
+  dedupeInterventions,
+  splitPrescriptive,
+  assessEfficacyDiscrimination,
+  type EfficacyDiscrimination,
   type MortalityExclusionRefusal,
   type PactDiagnosis,
   type UpayaIntervention,
@@ -168,8 +178,26 @@ export interface KalaUpayaResponse extends KalaEnvelope {
     statement: string
     authority_basis: string | null
   }
+  /** F-118: deduplicated AND actionability-filtered. Every row here is a distinct act a native
+   *  could actually perform. `duplicate_row_count` on a row states how many identical source
+   *  rows it stands for. */
   interventions: UpayaIntervention[]
+  /** F-118: the count of DISTINCT ACTIONABLE recommendations — never the raw source-row count.
+   *  `source_rows_considered` and `duplicate_rows_collapsed` disclose the raw figures. */
   intervention_count: number
+  /** F-118 — how many source rows were read before the collapse (the number this tool used to
+   *  report as `intervention_count`). */
+  source_rows_considered: number
+  /** F-118 — how many source rows were byte-identical duplicates of a row already served. */
+  duplicate_rows_collapsed: number
+  /** F-118 §N.6 split #2: rows that name NO act (a severity grade, a bare category) — served in
+   *  full, counted separately, never inside `interventions`. */
+  non_prescriptive_rows: UpayaIntervention[]
+  non_prescriptive_row_count: number
+  non_prescriptive_note: string | null
+  /** F-118 §N.8 earned-signal disclosure: whether this response's own grading fields took more
+   *  than one value at all. */
+  efficacy_discrimination: EfficacyDiscrimination
   uncited_remedy_rows: UpayaIntervention[]
   uncited_remedy_row_count: number
   uncited_remedy_note: string | null
@@ -282,7 +310,20 @@ export async function buildKalaUpayaResult(params: KalaUpayaParams, principal: P
     fetchAlternateRoutes({ chart_id: params.chart_id, blockedGraha: targetedGraha }, principal),
   ])
 
-  const { cited, uncited } = splitCitedUncited(remedyResult.interventions)
+  // ── F-118 (in this exact order; each step is a separate, independently-testable claim) ──
+  //  1. COLLAPSE byte-identical served content. The slate used to report 100 "interventions"
+  //     that were 14 distinct recommendations (50 identical phala_mitigation rows + 13 bodha_rm
+  //     remedies stored once per ayanamsha). Every collapsed key stays reachable on the row.
+  //  2. SPLIT by citation (the pre-existing §N.6 split, unchanged).
+  //  3. SPLIT by ACTIONABILITY: a row whose `actionable_prescription` is null names no act —
+  //     on the canonical chart every phala_mitigation row is a severity classification with a
+  //     provably empty remedy program. Such a row is served in its own field, never inside
+  //     `interventions`, where its presence would be an unearned actionability claim (§N.8).
+  const sourceRowsConsidered = remedyResult.interventions.length
+  const { rows: dedupedRows, collapsed_row_count: duplicateRowsCollapsed } = dedupeInterventions(remedyResult.interventions)
+  const { cited, uncited } = splitCitedUncited(dedupedRows)
+  const { prescriptive, nonPrescriptive } = splitPrescriptive(cited)
+  const efficacyDiscrimination = assessEfficacyDiscrimination(prescriptive)
   const eligibilityPointer = buildEligibilityPointer(failingLink)
   const efficacyReport = buildEfficacyReport()
 
@@ -376,7 +417,9 @@ export async function buildKalaUpayaResult(params: KalaUpayaParams, principal: P
     chart_id: params.chart_id,
     diagnosis,
     diagnosisReason: pactResult.reason,
-    interventions: cited,
+    // F-118: the reading quotes only rows that name a real act — a severity grade quoted as
+    // evidence for "here is your remedy" is the narration-fidelity defect §N.7 item 6 names.
+    interventions: prescriptive,
   })
   const composed = composeArgument(reading)
 
@@ -442,8 +485,21 @@ export async function buildKalaUpayaResult(params: KalaUpayaParams, principal: P
       statement: diagnosis?.statement ?? reading.thesis,
       authority_basis: diagnosis?.authority_basis ?? null,
     },
-    interventions: cited,
-    intervention_count: cited.length,
+    interventions: prescriptive,
+    intervention_count: prescriptive.length,
+    source_rows_considered: sourceRowsConsidered,
+    duplicate_rows_collapsed: duplicateRowsCollapsed,
+    non_prescriptive_rows: nonPrescriptive,
+    non_prescriptive_row_count: nonPrescriptive.length,
+    non_prescriptive_note:
+      nonPrescriptive.length > 0
+        ? `${nonPrescriptive.length} cited row(s) carry NO actionable prescription — their source ` +
+          'row names a severity/intensity classification or a bare category, not an act a native ' +
+          'could perform (on phala_mitigation, program_jsonb/tradition_options_jsonb/' +
+          'recommended_tier_jsonb are all empty). They are served here in full, never counted as ' +
+          'interventions (§N.6 density split; §N.8 — an actionability claim needs a detector).'
+        : null,
+    efficacy_discrimination: efficacyDiscrimination,
     uncited_remedy_rows: uncited,
     uncited_remedy_row_count: uncited.length,
     uncited_remedy_note:
@@ -477,6 +533,15 @@ bodha_rm_*, or brahma_remedy_corpus by source_surface + primary key). Optionally
 auto-falsifiable prospective entry on explicit native-directed adoption (adopt_intervention). \
 Returns the elevated kala envelope (argument-shaped reading, 3-state coverage, freshness \
 attestation, calibration_maturity, tri-plane pointers) plus a disclosure block.
+
+READING THE COUNTS: intervention_count counts DISTINCT, ACTIONABLE recommendations, never raw \
+source rows. Source rows carrying byte-identical served content are collapsed into one row that \
+states how many it stands for (duplicate_row_count, duplicate_source_pks), and the raw figures \
+stay visible (source_rows_considered, duplicate_rows_collapsed). A row that names no act a \
+native could perform (a severity/intensity classification, a bare category) is served in \
+non_prescriptive_rows, never inside interventions. efficacy_discrimination states whether the \
+grading fields took more than one value at all in this response — when discriminating is false \
+the tier carries zero information and must not be read as a ranking.
 
 INDIVIDUALIZED LIFE-SPAN EXCLUSION (absolute, every audience tier): a request touching a \
 date-of-death or life-span subject is refused outright — no diagnosis, candidate, or window of \
