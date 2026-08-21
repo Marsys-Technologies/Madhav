@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 880,
+  "event_count": 881,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -75,16 +75,16 @@
     "F-06": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "84a3a64dd6e8e64e4dc6e2e6e44823870ab47369d8dc4527a45c4a5a5b750331",
+      "event_sha256": "95d94d0699d9a249c604ef5fc5b262fc43bfb71fd55990c111b8736eac6cd7c4",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review: DO-NOT-MERGE, 2 blocking defects found, both cheap. (1) The deploy-topology change (deploy-mcp needs deploy-web) rests on a false premise -- deploy-web actually always runs regardless of platform/** changes (its own path-filter gate mirrors the shared changes job's, no independent filter), so the claimed conditional skip is unreachable in practice. Real undisclosed effect: this would have PERMANENTLY serialized every future amjis-mcp deploy behind the full web pipeline, including urgent fixes like SF-002. Caught before merge. (2) A dangling leftover parenthetical in the new ref_remedies_chart_get description reinstates exactly the false tool-equivalence conflation F-06 exists to fix. Application code itself (rate limiter) verified exceptionally strong -- fail-closed proven, bounded proven, atomicity proven against real Postgres in CI. Fix dispatched: extract migration-apply into its own job, both deploy-web and deploy-mcp depend on that (not on each other) -- closes the real race at ~1min coupling instead of the full pipeline.",
+      "evidence_summary": "GA-5 review converged after 3 rounds (each round found and fixed a real defect: false-equivalence text, unreachable-conditional deploy coupling, a second deploy-ordering race the first fix introduced). Round 3: MERGE, no new defect, reviewer's own explicit meta-assessment endorsed merging as-is over splitting (the disabled-by-default shipping strategy already achieves the practical effect of a split -- all remaining risk isolated into the tiny, separately-tracked RATE-07-ENABLE follow-up). One final cosmetic nit (precondition-check text ambiguity) fixed directly in the PR body before merge.",
       "finding_id": "F-06",
-      "next_action": "correction in flight -- re-review once pushed",
+      "next_action": "in merge queue, auto-merge armed. RATE-07-ENABLE remains tracked separately (EXTERNAL_HOLD) for the follow-up enable step.",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1411",
-      "prev_sha256": "fd80f6d89d74851598eb21477b521d950284c413a3df2b39a4df9d74b97a1ca8",
-      "seq": 870,
+      "prev_sha256": "5e0343f37ac7ceb26ffae649484101586ee1a86ccd53217048e2a05418aa2224",
+      "seq": 881,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "DECISION_PARKED",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-07": {
@@ -2208,10 +2208,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 0,
+  "findings_morning_ship_ready_count": 1,
   "findings_terminal_count": 118,
-  "journal_head_seq": 880,
-  "journal_head_sha256": "5e0343f37ac7ceb26ffae649484101586ee1a86ccd53217048e2a05418aa2224",
+  "journal_head_seq": 881,
+  "journal_head_sha256": "95d94d0699d9a249c604ef5fc5b262fc43bfb71fd55990c111b8736eac6cd7c4",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
