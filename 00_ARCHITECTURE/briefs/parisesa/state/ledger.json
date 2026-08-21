@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 856,
+  "event_count": 857,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1388,15 +1388,16 @@
     "F-52": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "f4c0752756c5984863065195aed117ec8cb4bec694691d696511caa36157e03f",
+      "event_sha256": "3ffdb3a5457544d1069e91233df44f1a796f7513292d409972a8e95e49b0d50e",
       "event_type": "finding_status",
-      "evidence_summary": "Re-ran the prior pass's exact check: `git grep -il 'fingerprint_invalidat\\|nodal_scor'` across HEAD (excluding the unrelated orchestrator substep-ledger fingerprinting hits) returns zero results -- no fingerprint-invalidation packet exists anywhere in the repo today. The underlying nodal-scoring defect remains only partially addressed. Correctly stays LANDED, not terminal; F-21 (gated on it) correctly cannot promote either.",
+      "evidence_summary": "GA-2 design authority applied: fingerprint-invalidation mechanism for nodal-scoring already existed (compute_substep_fingerprint) but had insufficient scope -- module-level constants (ASPECT_OFFSETS, TARA_MODIFIERS) weren't covered, only compute() function source. Fixed via whole-module source digest (superset of prior compute-only digest) + AST-based scan of the engine's own imports for mechanism discovery (handles absolute function-style, module-style, `as` aliasing, star-imports, nested/conditional imports; scan-degradation itself folds into the signature for safe over-invalidation). GA-5 re-review (after first version was correctly DO-NOT-MERGE'd for the same compute-only-digest gap) independently reproduced the exact mutation-test proof from scratch (real disk edits, cleared __pycache__, fresh interpreter) and confirmed MERGE. One honest non-blocking residual disclosed: relative imports (`from ...mechanisms.w24 import compute as _sade`, level>0) are NOT discovered by the AST scan -- low risk, this codebase uses absolute imports exclusively (only 4 relative imports repo-wide, all in test files), one-line fix available if ever needed.",
       "finding_id": "F-52",
-      "next_action": "see evidence for gating dependency",
-      "prev_sha256": "a56a924ad3beacb57f1b833b4eb273c0951214b23578ff738268292f4159f9f4",
-      "seq": 728,
-      "source_batch": "proof_batch_h",
-      "status": "LANDED",
+      "next_action": "in merge queue, auto-merge armed. IMPORTANT: this PR does not re-score existing data -- once merged+deployed, ka_gochara_v3_century_materialize must be re-run for F-21's gate to actually clear (code-fix-only, rebuild-pending, same pattern as F-35).",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1409",
+      "prev_sha256": "f8cf7576ec30f650aa624bd2ea28e6511a39824ee30e26cbe085ffa4ad9b1c49",
+      "seq": 857,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-53": {
@@ -2067,10 +2068,10 @@
       "terminal_status": "CONTROL_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 1,
+  "findings_morning_ship_ready_count": 2,
   "findings_terminal_count": 113,
-  "journal_head_seq": 856,
-  "journal_head_sha256": "f8cf7576ec30f650aa624bd2ea28e6511a39824ee30e26cbe085ffa4ad9b1c49",
+  "journal_head_seq": 857,
+  "journal_head_sha256": "3ffdb3a5457544d1069e91233df44f1a796f7513292d409972a8e95e49b0d50e",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
