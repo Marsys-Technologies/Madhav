@@ -335,6 +335,26 @@ def _publish_snapshot(conn, chart_id: str, cells: list[dict], formula_version: s
     affected chart every time it occurred. `str(chart_id)[:8]` makes the id-prefix
     slice work correctly for both a `str` and a `uuid.UUID` input, fixing the
     computation at its root rather than merely tolerating the exception.
+
+    F-188 (PARIŚEṢA-V4, ratified 2026-08-22): this function is a deliberate,
+    RATIFIED exception to CLAUDE.md §N.3's per-chart delete-then-insert
+    idempotency standard. `snapshot_id` embeds `int(time.time())`, so every
+    rebuild inserts a NEW row into `mimamsa_calibration_snapshot` rather than
+    replacing a prior one — the table accretes across rebuilds by design. This
+    is correct, not a bug: `mimamsa_calibration_snapshot` is the append-only
+    historical record the L5 calibration loop reads (two-key publication —
+    key-1 = this writer, key-2 = native Ācārya-Pratinidhi sign-off; see the
+    table's own COMMENT in migration 400). A delete-then-insert here would
+    destroy exactly the history the table exists to keep, discarding every
+    prior proposed/published snapshot instead of preserving it alongside the
+    new one. `mimamsa_multipliers` (the INSERT above, guarded by the
+    `DELETE FROM mimamsa_multipliers WHERE chart_id = %s` at the top of
+    `run()`) correctly obeys §N.3 in the ordinary way — the exception is
+    scoped to this one accretion table, not to the asset as a whole. See
+    `00_ARCHITECTURE/briefs/parisesa/F188_ACCRETION_EXCEPTION_v1_0.md` for the
+    full doctrine note; `asset_registry.count_sql` for `mi_gunanaka` was
+    corrected in the same finding to count both tables (it previously counted
+    `mimamsa_multipliers` only and silently missed this table's rows).
     """
     try:
         snapshot_id = f"snap_{str(chart_id)[:8]}_{int(time.time())}"
