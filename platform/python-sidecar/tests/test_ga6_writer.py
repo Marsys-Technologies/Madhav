@@ -123,6 +123,42 @@ class TestConstants:
         m = _mod()
         assert len(m.SAPTAVARGA_SET) == 7
 
+    def test_saptavarga_set_is_the_classical_group(self):
+        """F-61 (PARIŚEṢA-V4): the set previously read {1,2,3,9,12,30,60} —
+        it omitted D7 (Saptamsa, the division the group is named for) and
+        included D60 (Shashtiamsa, a Shodasavarga/Vimsopaka member, not a
+        saptavarga one). Three authorities agree on the membership:
+          - this repo's own L0 canonical table, brahmagyan/l0_reference.py:
+            strength_reference.saptavargaja_bala.formula_text ==
+            "Sum of dignity points across D1,D2,D3,D7,D9,D12,D30", and the
+            varga-group table's "saptavarga" entry (D1,D2,D3,D7,D9,D12,D30);
+          - jhora.const.sapthavargaja_factors == [1,2,3,7,9,12,30];
+          - BPHS Ch.27 (Shadbala Adhyaya), Sthana Bala.
+        """
+        m = _mod()
+        assert m.SAPTAVARGA_SET == {1, 2, 3, 7, 9, 12, 30}
+        assert 7 in m.SAPTAVARGA_SET, "D7 (Saptamsa) is a saptavarga member"
+        assert 60 not in m.SAPTAVARGA_SET, "D60 is Shodasavarga, not saptavarga"
+
+    def test_saptavarga_set_matches_l0_reference_authority(self):
+        """§N.5: L1 must not restate an L0 reference as its own divergent
+        truth. Read the membership straight out of l0_reference and compare."""
+        m = _mod()
+        from brahmagyan import l0_reference as l0
+        table = None
+        for attr in dir(l0):
+            val = getattr(l0, attr)
+            if isinstance(val, dict) and "saptavarga" in val and isinstance(
+                    val.get("saptavarga"), dict):
+                table = val["saptavarga"]
+                break
+        assert table is not None, "l0_reference saptavarga varga-group table not found"
+        l0_membership = {int(k.lstrip("Dd")) for k in table}
+        assert m.SAPTAVARGA_SET == l0_membership, (
+            f"GA6 SAPTAVARGA_SET {sorted(m.SAPTAVARGA_SET)} disagrees with the L0 "
+            f"authority {sorted(l0_membership)}"
+        )
+
     def test_vimsopaka_d9_weight(self):
         m = _mod()
         assert m.VIMSOPAKA_SHODA_WEIGHTS[9] == 3.0
