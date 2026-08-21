@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 965,
+  "event_count": 968,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1366,14 +1366,14 @@
     "F-175": {
       "confidence": "HIGH",
       "disposition": "PARKED",
-      "event_sha256": "5037a5668c4d4e8c94fc946752ae2450f95c9585da1d4c9323a364e1b82ed6ba",
+      "event_sha256": "51f1e503749f5464222e7f53997e97cc0eecd6f5d22e1623045e91e5af184cfc",
       "event_type": "finding_status",
-      "evidence_summary": "Fixed as PR #1430 (open, awaiting GA-5 review -- NOT yet reviewed, dispatched combined with F-177 given the overlap below). Reproduced live before fixing: assess_marriage for chart 482012f1 claims 'an honest domain-scoped absence, not a silent omission' for no_contradictions_in_domain while pact_query for the same chart/domain shows denied_at_promise/-3.5/63 facts. Root cause: the certification's only detector is a domains_affected_array filter over one L2 table -- structurally blind to the promise chain (SS N.8). Scope: ALL FOUR assess_* tools, not just marriage -- share buildAssessResponse + runAssessDomain. Fix reuses F-110's Option C pattern (disclosure not suppression) via the same interpretPactJoin helper: a promise_chain clause inserted before favorable findings, kernel.promise populated (null on every assess_* response ever served before this), a hardFloored flag, clause_id-based targeting (not prose matching). L2 finding left verbatim per SS N.5 -- added an adjacent not_a_domain_all_clear:true flag instead of overwriting the L2 status value (flagged as a native policy call, not decided unilaterally). SECOND defect found while fixing: assembleSaraContent's kernel trim discarded flags positionally, live-dropping promise_chain_contradicts_domain on career/wealth while KEEPING a 'full slice available' note -- fixed with new KERNEL_FLOOR_FLAG_CODES. 45 new tests, mutation-tested, platform-mcp failing-file set byte-identical to stashed main baseline (34/34, empty symmetric diff), platform 9571/9571, tsc clean both packages. OVERLAP FLAGGED: F-177 (PR #1431, landed independently and concurrently) ALSO added a kernel-flag trim-protection mechanism to the exact same trim loop (protected_flags/isProtectedKernelFlag vs this PR's KERNEL_FLOOR_FLAG_CODES) -- these need reconciliation before either merges, not a mechanical rebase alone. Own disclosed follow-up: the trimmer bug was found by accident fixing something else -- other Sara tools' budget-trim paths are NOT audited for the same silent-drop class, triaged as F-179.",
+      "evidence_summary": "GA-5 review: MERGE-WITH-FOLLOWUP, independently verified (tsc clean, 56/56 tests, mutation-tested twice -- neutering applyPromiseGateToVerdict reddens 12 tests incl. all 4 tools' end-to-end certification check; reverting the trim helper reddens 4). Doctrine clean: SS N.5 respected (L2 contradictions.status annotated not rewritten, fact_ids inherited from join.shared_fact_ids not re-derived), SS N.8 honest (unreachable state -> promise_chain_unchecked, never smoothed clean), clause_id-based targeting not prose matching. Reviewer's own follow-up notes: the new promise_chain clause is budget-immune, increasing trim pressure elsewhere (makes F-177's fix MORE necessary, not less); one extra uncached pact_query per assess_* call, a real load cost worth tracking; incidentally found main@bbb6a0a already failing codegen:envelope --check (stale generated file from #1417/F-57) -- #1430 repairs this as a side effect. SUPERSEDED: #1430 and #1431 genuinely conflict/overlap (see F-177's entry) -- both PRs' functional content is being carried forward into ONE reconciled PR the same reviewer already built and verified (68/68 combined tests, tsc clean, no new full-suite failures). #1430 itself will be closed unmerged once the reconciled PR lands.",
       "finding_id": "F-175",
-      "next_action": "Combined GA-5 review with F-177/#1431 dispatched to assess reconciliation of the two independently-added trim-protection mechanisms before either merges.",
+      "next_action": "Superseded by the reconciled PR (in flight). Close #1430 unmerged once the reconciled PR merges.",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1430",
-      "prev_sha256": "9abfe4c1b73fa787876faf19b296022d9d248f60a6bd70868beda86222dc6434",
-      "seq": 960,
+      "prev_sha256": "9e5571cda70ac83cbc611ec0ffaaf6fc52a2e5d2530e7034975333877d6b66aa",
+      "seq": 966,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -1396,14 +1396,14 @@
     "F-177": {
       "confidence": "HIGH",
       "disposition": "PARKED",
-      "event_sha256": "d7ad02f782f58e7fe603e142d36a5161729c4155e810b6ceaf22eefd91f0b995",
+      "event_sha256": "8b515ee1154f5ef40c5e6c326107ed20255c239a59b849d16fdc56cc2e3be255",
       "event_type": "finding_status",
-      "evidence_summary": "Fixed as PR #1431 (open, awaiting GA-5 review -- NOT yet reviewed, dispatched combined with F-175 given the overlap). Diagnosis independently re-verified: tail-trim at response_budget.ts:794-805, mirror pushed last at registry_bridge.ts:3018 (note: real path is platform-mcp/src/tools/registry_bridge.ts, not platform/src/lib/mcp/ as originally briefed). Live-confirmed on chart 482012f1 pre-fix: assess_health (concise+detailed) and assess_marriage (detailed) returned only 2 of the 3 pointers buildAssessResponse declares unconditionally (proof the trim loop ran) and no domain_completeness_empty_reason flag; hand-tracing the loop reproduces both observed shapes exactly. Could not reach the corroborating sparse chart e36ba429 (entitlement gap) -- primary-chart evidence stands alone. Chose approach (b) -- extend the trim mechanism with a real protected-flags set (isProtectedKernelFlag, matches string flags by value / object flags by code), trim loop cuts the tail-most ELIGIBLE flag and rebalances pointer count against eligible-flag count so protected entries don't over-cut pointers; if only protected flags remain, trim stops rather than delete a disclosure -- over (a) reordering, since ordering-only protection would be re-broken by the next flag anyone adds later (matches CLAUDE.md SS N.6's own hardFloor principle). Notes IMMUNE_HONESTY_FIELDS already listed this field (L86) -- it just never reached the kernel trim, a separate priority-blind slice. 10 new unit tests on a fixture rebuilt from the real observed live kernel, 2 new end-to-end cases through the real handler; mutation-tested two ways (full revert: 13->2 failed/11 passed on clean main; targeted one-line predicate mutation: 4 behavioral tests red). Full suite: 89 baseline failures -> 87 post-fix, comm -13 diff of failure sets EMPTY (zero new failures). tsc clean. Honestly disclosed: verification is red-only (branch not deployed, no live post-fix production call); the 2048-byte ceiling can now be exceeded in a pathological all-protected case (unreachable from buildAssessResponse in practice, argued as the correct SS N.6 trade but a real behavior change).",
+      "evidence_summary": "GA-5 review: MERGE on its own merits, independently verified (tsc clean, 23/23 tests, mutation-tested -- restoring the original flags.length/slice(0,-1) loop reddens 6 tests incl. 2 end-to-end through the real registry_bridge handler; includes an anti-vacuity guard proving the trim actually ran AND a trim-not-disabled guard). RECONCILIATION WITH F-175/#1430 EXECUTED AND VERIFIED by the same reviewer (not just recommended): git-merge confirmed the real conflict is confined to response_budget.ts (registry_bridge.ts auto-merges cleanly, semantically disjoint additions). Root cause of the conflict: BOTH PRs independently built protected-set mechanisms (neither is the weaker ordering-based approach), but neither alone covers both flags -- #1430's static KERNEL_FLOOR_FLAG_CODES can't protect #1431's flag (its flagCodeOf splits on ':' and domain_completeness_empty_reason's live text has no colon, so its 'code' is the whole sentence, unregisterable); #1431's per-call protected_flags COULD protect #1430's flags but only if every call site remembers -- a static registry can't be forgotten. #1431's eligibleFlagCount-rebalancing loop is structurally better and subsumes #1430's fallback branch. Reviewer executed the unification (single isProtectedKernelFlag predicate: static floor check first, then per-call set by value or code; dropLowestPriorityFlag deleted as dead code) and verified all 68 tests from both PRs pass together, tsc clean, full-suite shows zero new failures beyond 3 pre-existing kala_ahead_get* timeout flakes (reproduced on unmodified base). Reconciled PR being pushed by the same agent now.",
       "finding_id": "F-177",
-      "next_action": "Combined GA-5 review with F-175/#1430 dispatched to assess reconciliation of the two independently-added trim-protection mechanisms before either merges.",
+      "next_action": "Superseded by the reconciled PR (in flight, same reviewer pushing what it already verified). Close #1431 unmerged once the reconciled PR merges.",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1431",
-      "prev_sha256": "5037a5668c4d4e8c94fc946752ae2450f95c9585da1d4c9323a364e1b82ed6ba",
-      "seq": 961,
+      "prev_sha256": "51f1e503749f5464222e7f53997e97cc0eecd6f5d22e1623045e91e5af184cfc",
+      "seq": 967,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -1463,6 +1463,21 @@
       "pr_url": null,
       "prev_sha256": "43a57bfa5efc8e5fda664a2233804c561dbbdac427d99b121309189678415e57",
       "seq": 965,
+      "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-181": {
+      "confidence": "MEDIUM",
+      "disposition": "PARKED",
+      "event_sha256": "db532507e19cf3e6a5c1ec68c2bf0a2a8ce01292075f599c5c6819b2ffdfa809",
+      "event_type": "finding_status",
+      "evidence_summary": "Newly discovered during F-175/F-177 GA-5 reconciliation review, disclosed as its own finding. Once kernel-flag trim protection is real (post the F-175/F-177 reconciled merge), a kernel consisting only of protected flags can exceed the 2048-byte KERNEL_MAX_BYTES ceiling with no honest signal that it happened -- composition_report.kernel_bytes carries the true number but nothing flags the overage as such; budget_exceeded_after_trim checks the 40KB TOTAL response budget, not the kernel ceiling specifically, so it doesn't fire for this case. The protection mechanism itself widens this pre-existing gap (previously, over-budget kernels got silently trimmed to fit; now a protected-only kernel is allowed to exceed the cap, on purpose, for honesty -- but the overage itself isn't disclosed).",
+      "finding_id": "F-181",
+      "next_action": "Add a kernel_ceiling_exceeded_for_disclosure flag (or equivalent) when the protected-only kernel exceeds KERNEL_MAX_BYTES, per the reviewer's own recommendation. Low urgency -- narrow edge case, not user-facing incorrectness, just an incomplete honesty signal.",
+      "pr_url": null,
+      "prev_sha256": "8b515ee1154f5ef40c5e6c326107ed20255c239a59b849d16fdc56cc2e3be255",
+      "seq": 968,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -2704,8 +2719,8 @@
   },
   "findings_morning_ship_ready_count": 0,
   "findings_terminal_count": 136,
-  "journal_head_seq": 965,
-  "journal_head_sha256": "9e5571cda70ac83cbc611ec0ffaaf6fc52a2e5d2530e7034975333877d6b66aa",
+  "journal_head_seq": 968,
+  "journal_head_sha256": "db532507e19cf3e6a5c1ec68c2bf0a2a8ce01292075f599c5c6819b2ffdfa809",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
