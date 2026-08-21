@@ -32,7 +32,10 @@ from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, reg
 
 logger = logging.getLogger(__name__)
 
-SURFACE_FORMULA_VERSION = "mi_darshana_v1.1"  # v1.1: F-143 per-discovery_class evidence grading
+# v1.2: F-147 addendum — unmeasured channel_propensity narrated as unmeasured,
+#       not as the prior dressed up as an empirically-learned rate.
+# v1.1: F-143 per-discovery_class evidence grading
+SURFACE_FORMULA_VERSION = "mi_darshana_v1.2"
 LEL_VERSION = "v1.7"
 
 _INSIGHT_TYPES = {
@@ -264,7 +267,8 @@ class MiDarshanaWriter(WriterBase):
             # an absence marker. Only fall back to prior_propensity (NOT NULL)
             # when channel_propensity is actually missing (None).
             _channel_prop_raw = r.get("channel_propensity")
-            if _channel_prop_raw is not None:
+            propensity_measured = _channel_prop_raw is not None
+            if propensity_measured:
                 prop = float(_channel_prop_raw)
             else:
                 _prior_prop_raw = r.get("prior_propensity")
@@ -272,7 +276,23 @@ class MiDarshanaWriter(WriterBase):
             n = r.get("n_support") or 0
             grade = r.get("evidence_grade", "prior_only")
             scored = r.get("scored_count") or 0
-            if grade == "empirical":
+            if grade == "empirical" and not propensity_measured:
+                # F-147 addendum (§N.7 item 6): a row can earn 'empirical' on
+                # scored_count while channel_propensity stays NULL, because
+                # mi_pramana._score_manifestation() is still a stub and never
+                # records WHICH channel an outcome manifested through
+                # (mi_sambandha emits citation_ref.propensity_null_reason =
+                # 'no_manifestation_channel_recorded' for exactly this case).
+                # Narrating `prop` here would print the PRIOR as though it were
+                # the empirically-learned rate — a worse invention than the 0.0
+                # this addendum removed. Say the gap instead.
+                statement = (
+                    f"For {dom} events, {scored} predictions on the '{ch}' channel have been "
+                    f"outcome-scored, but none recorded which channel the outcome actually "
+                    f"manifested through — so this channel's firing propensity is UNMEASURED, "
+                    f"not zero. Prior-based estimate only: {prop:.0%}."
+                )
+            elif grade == "empirical":
                 statement = (
                     f"For {dom} events, the '{ch}' channel fires with {prop:.0%} propensity "
                     f"(n={scored} outcome-scored predictions, empirical learning)."
@@ -295,7 +315,21 @@ class MiDarshanaWriter(WriterBase):
                 grade,
                 LEL_VERSION,
                 now,
-                json.dumps({"channel": ch, "domain": dom, "propensity": prop}),
+                # rank_consequence (NOT NULL, top-level column) still carries the
+                # prior when the measured value is absent; provenance records
+                # which it is so a consumer can never read a prior as a
+                # measurement. F-147 GA-5 finding: this dict used to also embed
+                # a "rank_consequence" key duplicating that same value — the
+                # third instance of the P3-b duplicate-key leak (see
+                # query_insights.ts's suppressIfNotCalibrated comment). Removed:
+                # propensity_source already carries the disclosure, and the
+                # top-level column is the one callers/suppressors read.
+                json.dumps({
+                    "channel": ch,
+                    "domain": dom,
+                    "propensity": prop if propensity_measured else None,
+                    "propensity_source": "measured" if propensity_measured else "prior_fallback",
+                }),
                 False,
                 SURFACE_FORMULA_VERSION,
             ))

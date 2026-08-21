@@ -22,7 +22,67 @@ from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 
 logger = logging.getLogger(__name__)
 
-GRAMMAR_FORMULA_VERSION = "mi_sambandha_v1.0"
+GRAMMAR_FORMULA_VERSION = "mi_sambandha_v1.2"  # v1.2: F-147 addendum — honest-null channel_propensity
+
+# F-147 (same class as F-35 / F-143): the vocabulary of composite_verdict.
+# mimamsa_calibration.composite_verdict is written by exactly one code path —
+# mi_pramana._verdict_v2 (mi_pramana.py:417 is the sole INSERT) — and that
+# function emits UPPERCASE from a closed set of five:
+#   CONFIRMED   — scored >= 0.65, observation window elapsed
+#   PARTIAL     — 0.35 <= scored < 0.65
+#   REFUTED     — falsifier violated, or scored < 0.35
+#   UNRESOLVED  — window not yet attested complete; adjudication can still flip
+#   FALSE_ALARM — control-window prediction, by construction not a real outcome
+# The lowercase triple this module previously tested for ('confirmed'|'partial'|
+# 'denied') came from migration 348's stale inline column comment, NOT from any
+# writer: 'denied' has never been emitted by any code path, and no verdict is
+# ever lowercased. The comparison therefore could not match, so scored_count was
+# 0 for every row and evidence_grade='empirical' was unreachable — silently
+# defeating F-35's fix. See _ADJUDICATED_VERDICTS in mi_pariksha.py for the
+# identical fix applied to the same column at F-143.
+#
+# .upper() normalization (rather than bare uppercase literals) mirrors
+# mi_pariksha's ratified handling: composite_verdict is an unconstrained `text`
+# column (migration 348 has no CHECK), so normalizing at the comparison costs
+# nothing and cannot silently re-open this defect if a future writer differs.
+
+# Only these represent an ADJUDICATED outcome — a prediction whose window has
+# elapsed and whose result was actually scored against a real event. Only these
+# may support an 'empirical' evidence grade.
+_ADJUDICATED_VERDICTS = frozenset({"CONFIRMED", "PARTIAL", "REFUTED"})
+
+# Of the adjudicated verdicts, only these represent the predicted thing actually
+# having occurred — i.e. a channel that genuinely fired. REFUTED is adjudicated
+# (it counts toward scored_count) but is by definition not a firing.
+_FIRED_VERDICTS = frozenset({"CONFIRMED", "PARTIAL"})
+
+# F-147 addendum (§N.7 item 6 / §N.8 — GA-5 review of PR #1439).
+#
+# fire_count is derived by comparing mimamsa_calibration.manifestation_channel
+# against the channel being graded. That column is written only by
+# mi_pramana._score_manifestation(), which is a documented B.10-compliant stub
+# (`return 0.5, None`, deferred to MIMAMSA_V2 S4) — so the column is NULL on
+# every live row. fire_count is therefore STRUCTURALLY unable to be nonzero, and
+# `fire / opp` computed 0.0: a number that reads "measured, and it never fires"
+# for a quantity that was in fact never measured at all.
+#
+# Left as-is, the F-147 vocabulary fix (which correctly makes evidence_grade
+# 'empirical' reachable) would have shipped rows saying, in narration,
+# "the channel fires with 0% propensity (n=32 outcome-scored predictions,
+# empirical learning)" — an invented judgment standing in for "I don't know",
+# and one the pending F-104/F-35 rebuild would have baked into fresh rows.
+#
+# So: channel_propensity is NULL (migration 352 declares it nullable precisely
+# for this) whenever NO row in the group carried a channel attribution. A group
+# that DID record attributions and saw zero firings still gets a real 0.0 —
+# that is a measurement, and must not be flattened into the same null.
+#
+# fire_count itself stays 0 rather than NULL: migration 352 declares it
+# `int NOT NULL`, so an honest null there needs a migration, not a writer
+# change. The null lands on channel_propensity, and the reason is recorded
+# machine-readably in citation_ref (see _PROPENSITY_UNMEASURED below), which is
+# how mi_pariksha records the same kind of count-semantics caveat (F-143).
+_PROPENSITY_UNMEASURED = "no_manifestation_channel_recorded"
 
 # Prior channel propensities by domain (when no empirical data)
 _PRIOR_PROPENSITIES: dict[str, dict[str, float]] = {
@@ -75,14 +135,19 @@ class MiSambandhaWriter(WriterBase):
             key = ("prediction_set", domain, channel_id, domain)
 
             if key not in counts:
-                counts[key] = {"fire": 0, "opp": 0, "scored": 0}
+                counts[key] = {"fire": 0, "opp": 0, "scored": 0, "measured": 0}
 
             counts[key]["opp"] += 1
-            verdict = row.get("composite_verdict") or ""
-            ch_fired = row.get("manifestation_channel") or ""
-            if verdict in ("confirmed", "partial", "denied"):
+            verdict = str(row.get("composite_verdict") or "").upper()
+            ch_fired = str(row.get("manifestation_channel") or "").strip()
+            # "measured" = this outcome recorded WHICH channel it manifested
+            # through, so it could have contributed a firing. Blank/NULL
+            # attributes nothing and is not a measurement of zero.
+            if ch_fired:
+                counts[key]["measured"] += 1
+            if verdict in _ADJUDICATED_VERDICTS:
                 counts[key]["scored"] += 1
-            if verdict in ("confirmed", "partial") and ch_fired == channel_id:
+            if verdict in _FIRED_VERDICTS and ch_fired == channel_id:
                 counts[key]["fire"] += 1
 
         # Build grammar rows
@@ -92,7 +157,10 @@ class MiSambandhaWriter(WriterBase):
             opp = cnts["opp"]
             fire = cnts["fire"]
             scored = cnts["scored"]
-            propensity = fire / opp if opp > 0 else None
+            measured = cnts["measured"]
+            # Honest null: no attribution was ever recorded for this group, so
+            # fire/opp would be 0.0-by-construction, not a measured rate.
+            propensity = fire / opp if (opp > 0 and measured > 0) else None
             prior = _PRIOR_PROPENSITIES.get(domain, _PRIOR_PROPENSITIES["default"]).get(channel_id, 0.5)
             delta = round(propensity - prior, 4) if propensity is not None else None
             n = opp
@@ -101,8 +169,19 @@ class MiSambandhaWriter(WriterBase):
                 else "assignment_only" if opp >= 5
                 else "prior_only"
             )
-            conf_lo = max(0.0, (propensity or prior) - 0.1)
-            conf_hi = min(1.0, (propensity or prior) + 0.1)
+            # `propensity or prior` would ALSO swallow a real, measured 0.0 (the
+            # same truthiness defect mi_darshana fixed at P2 for this very
+            # column). Only an actual None may fall back to the prior.
+            band_center = propensity if propensity is not None else prior
+            conf_lo = max(0.0, band_center - 0.1)
+            conf_hi = min(1.0, band_center + 0.1)
+
+            citation: dict = {
+                "method": "fire_over_opportunity",
+                "channel_attribution_measured_count": measured,
+            }
+            if propensity is None and opp > 0:
+                citation["propensity_null_reason"] = _PROPENSITY_UNMEASURED
 
             rows.append((
                 chart_id,
@@ -119,7 +198,7 @@ class MiSambandhaWriter(WriterBase):
                 n,
                 f"[{round(conf_lo,2)},{round(conf_hi,2)})" if n >= 5 else None,
                 grade,
-                json.dumps({"method": "fire_over_opportunity"}),
+                json.dumps(citation),
                 GRAMMAR_FORMULA_VERSION,
             ))
 

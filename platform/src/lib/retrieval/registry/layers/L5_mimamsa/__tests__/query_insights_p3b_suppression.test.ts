@@ -175,4 +175,32 @@ describe('query_insights — P3-b tier-suppression (F-69)', () => {
     expect(pc.channel).toBe('career_c1')
     expect(pc.domain).toBe('career')
   })
+
+  // F-147 GA-5 review finding on #1439: mi_darshana.py's manifestation_grammar provenance
+  // dict carried a THIRD duplicate-key leak past this same suppressor -- "rank_consequence"
+  // duplicating the same suppressed float as .grade and .propensity (0.42 live-reproduced on
+  // the canonical chart). Write-path fix removed the key at the source; this is the covering
+  // test for the suppressor's defense-in-depth nulling of it, mirroring the .propensity test
+  // above. Must fail on pre-fix code (suppressedProvenanceChain only nulled grade/propensity).
+  it('evidence_grade=assignment_only, manifestation_grammar template → provenance_chain.rank_consequence is ALSO nulled, not just .grade/.propensity', async () => {
+    queryMock.mockResolvedValueOnce({
+      rows: [row({
+        insight_type: 'manifestation_grammar', evidence_grade: 'assignment_only',
+        statement: 'Channel propensity for this configuration: insufficient evidence for an empirical grade (prior-based estimate: 42%).',
+        provenance_chain: { channel: 'career_c1', domain: 'career', propensity: 0.42, grade: 0.42, rank_consequence: 0.42 },
+      })],
+    })
+    queryMock.mockResolvedValueOnce({ rows: [{}] })
+    const result = await queryInsightsCapability.handler({ chart_id: NATIVE_CHART_ID }, undefined) as {
+      content: { insight_units: Array<Record<string, unknown>> }
+    }
+    const unit = result.content.insight_units[0]
+    const pc = unit.provenance_chain as Record<string, unknown>
+    expect(pc.grade).toBeNull()
+    expect(pc.propensity).toBeNull()
+    expect(pc.rank_consequence).toBeNull()
+    // non-numeric-suppression-relevant keys survive
+    expect(pc.channel).toBe('career_c1')
+    expect(pc.domain).toBe('career')
+  })
 })
