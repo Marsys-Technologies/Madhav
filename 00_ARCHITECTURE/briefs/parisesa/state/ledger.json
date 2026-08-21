@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 911,
+  "event_count": 912,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -374,15 +374,16 @@
     },
     "F-114": {
       "confidence": "HIGH",
-      "disposition": "OPEN",
-      "event_sha256": "bcca4820ef9c16de14a01b6a24673961c0e345ad17162db7ca0cedba5d7b5533",
+      "disposition": "LANDED",
+      "event_sha256": "c3153b59d1239e8e1c3c135624d184983af11a76e1b8101d691cf638755e1199",
       "event_type": "finding_status",
-      "evidence_summary": "Needs a precode ranking contract (question-lens relevance + tie-break rules) authored and reviewed before implementation -- design work.",
+      "evidence_summary": "This was a wiring gap, not a design gap -- composite_ranker.ts already implements a full graha x domain / bhava x domain / varga / class-prior / L1-shadbala / dasha ranking contract with a genuine tie-break, already used by the same file's top-level ranked_signals, just never applied to this specific family (bodha_question_lenses.all_relevant_ranked_jsonb, built by bo_drishti.py, ordered purely on domain-agnostic raw computed_salience with no tie-break -- confirmed non-reproducible head across rebuilds). domain_salience_jsonb verified to be exactly computed_salience/|domains| across all 3698 rows -- zero real domain information, the obvious-looking free fix was a trap. Correctly caught a SECOND trap: a naive head-window re-rank would have silently ranked a pool that never contained the domain's own significators (first Venus row at stored rank 902, first 7th-house row at 1041, both outside any reasonable head window) -- fixed via a bounded domain-anchor slice (pure projection of existing affinity tables, no new list). Measured on real production rows: distinct salience in top-10 1->5, distinct rank score 1->10, bhava-7 rows in top-20 0->6, Venus-naming rows 0->5. Every test assertion mutation-checked. Honestly disclosed remaining gap: fix ranks the existing corpus, does not enrich it -- if MSR itself doesn't emit first-class 7th-lord/yoga signals tagged to this domain, the ranker can't surface what was never generated (a separate, upstream bo_laksana coverage question).",
       "finding_id": "F-114",
-      "next_action": "author the ranking contract, independent review, then implement",
-      "prev_sha256": "d68a9472f02ee1548e07ef982835706abd01927b37ff1a326cb8f37e81d82923",
-      "seq": 753,
-      "source_batch": "round9_triage",
+      "next_action": "GA-5 review in flight",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1424",
+      "prev_sha256": "f70c94982293f636c525faf6dfb22c2d8eed6f92c59c9e4cbc3bfbfe48e2a118",
+      "seq": 912,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
@@ -2457,8 +2458,8 @@
   },
   "findings_morning_ship_ready_count": 2,
   "findings_terminal_count": 122,
-  "journal_head_seq": 911,
-  "journal_head_sha256": "f70c94982293f636c525faf6dfb22c2d8eed6f92c59c9e4cbc3bfbfe48e2a118",
+  "journal_head_seq": 912,
+  "journal_head_sha256": "c3153b59d1239e8e1c3c135624d184983af11a76e1b8101d691cf638755e1199",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
