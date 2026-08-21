@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 877,
+  "event_count": 878,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -2132,6 +2132,21 @@
       "status": "CONTROL_CLOSED",
       "terminal_status": "CONTROL_CLOSED"
     },
+    "RATE-07-ENABLE": {
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "d5f9a8c93cf28b36707f60c695727d2a4bf2e62b064c00f14052c9ad1e789754",
+      "event_type": "finding_status",
+      "evidence_summary": "Tracked follow-up from F-06/RATE-07's PR #1411 (round 3 fix). The PR ships the full rate-limiter infrastructure (migration 580, the new /api/mcp/rate-limit/check route, the sidecar gate) but with MCP_OAUTH_RATE_LIMIT_ENABLED=false in deploy-mcp's env_vars -- a deliberate, disclosed, minimal fix for a real deploy-ordering race (deploy-web and deploy-mcp now run in parallel; the new route might not be live yet when deploy-mcp promotes). Disabled path independently verified as a true no-op (traced ahead of every fail-closed branch, 4 new tests). Honest gap disclosed: between this merge and the enable follow-up, the 5 OAuth mutation endpoints remain exactly as unprotected as they are on main today -- not worsened, just not yet closed.",
+      "finding_id": "RATE-07-ENABLE",
+      "next_action": "one-line follow-up PR: once this PR's own deploy-web run has completed and promoted traffic, verify POST /api/mcp/rate-limit/check with a valid X-MCP-Internal-Token returns 200 with an allowed field (404 = not deployed, do not proceed), then change deploy.yml's MCP_OAUTH_RATE_LIMIT_ENABLED=false line to true or delete it (code default is ON). No code change, no migration. Genuinely trivial once the precondition is verified.",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1411",
+      "prev_sha256": "baa04c61f18351e1d6ee9a37eac53e7d6ba0ca9d7eb4a5ad646c082938ad3197",
+      "seq": 878,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "EXTERNAL_HOLD",
+      "terminal_status": null
+    },
     "SF-002": {
       "confidence": "HIGH",
       "disposition": "LANDED",
@@ -2195,8 +2210,8 @@
   },
   "findings_morning_ship_ready_count": 2,
   "findings_terminal_count": 116,
-  "journal_head_seq": 877,
-  "journal_head_sha256": "baa04c61f18351e1d6ee9a37eac53e7d6ba0ca9d7eb4a5ad646c082938ad3197",
+  "journal_head_seq": 878,
+  "journal_head_sha256": "d5f9a8c93cf28b36707f60c695727d2a4bf2e62b064c00f14052c9ad1e789754",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
