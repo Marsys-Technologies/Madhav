@@ -6051,3 +6051,59 @@ No file outside this lease's declared scope was touched. Worktree
 `.clone/worktrees/pariprashna-part-a` retained for Part B (adjacent scope, same
 adapter file family) — will be removed once Part B's PR merges, or immediately
 if the native prefers a fresh worktree per §0.5.
+
+## 2026-08-21 — PARIPRASHNA-P3-PREFLIGHT-PART-D / Claude Code — leased window: DD-25 root-cause fix, migration 575 reserved
+
+Executing Part D out of the master prompt's literal B→D order, ahead of Part B,
+per Part B's own §B.4: "treat Part D's fix and Part B's move as
+mutually-verifying, not independent." Verified directly (`gemini-2.5-pro`
+already carries real registry.ts cost rates yet its live rows are still
+`computed_cost_usd: null`) that the null is NOT caused by missing rates on any
+model — Part B's own precondition check would pass trivially and give a false
+sense of readiness while masking the real defect. Doing D first so B's own
+closing verification step ("re-verify computed_cost_usd populates on a real
+post-move turn") can actually succeed.
+
+**Finding — wider than DD-25's own text:** traced `computed_cost_usd`'s write
+path (`platform/src/lib/llm/observability/{cost,observe}.ts`). The defect is
+not synthesize-specific: `computeCost()` never reads `registry.ts`'s
+`costPer1MInput`/`costPer1MOutput` at all — it queries a separate table,
+`llm_pricing_versions`, which has **zero rows** (confirmed by direct query).
+Every call throws `PricingNotFoundError`; `safeComputeCost()` in `observe.ts`
+catches it, logs to `console.error`, returns `null`. Confirmed live:
+`computed_cost_usd` is null on 100% of `llm_usage_events` rows across every
+provider (gemini/anthropic/nim/deepseek) and every pipeline_stage
+(planner/title/synthesize) in the last 30 days — not merely on the
+`synthesize` row DD-25's own text names. No migration or script anywhere in
+the repo ever seeded this table; this is a feature shipped with its data
+source never populated, not a migration that silently no-op'd.
+
+**Disclosed limitation in the fix, native-ruled:** Google's real pricing is
+tiered by input size (registry.ts's own comments: e.g. gemini-2.5-pro
+"$1.25 up to 200K input; $2.50 above 200K"), but `llm_pricing_versions`'s
+schema holds one flat `price_per_million_usd` per `(provider, model,
+token_class)`. Ruled: seed the flat rate now from registry.ts's current
+values (unblocks NCD-8 + cost visibility immediately); the tier gap is
+disclosed, not silently absorbed — costs will be under-priced for any
+>200K-input call until a schema extension lands as its own follow-up. Not
+fixing the schema in this lease (native-scoped to match Part D's own
+trace-and-fix brief, not a schema-change brief).
+
+**Migration 575 reserved** (`platform/migrations/575_llm_pricing_versions_seed.sql`) —
+confirmed free against a fresh `origin/main` fetch (`8bb4d0cb6`) immediately
+before this reservation; latest migration on `origin/main` is 574
+(`ncd8_spend_ceilings_channel_attribution`).
+
+**Lease scope:**
+1. `platform/migrations/575_llm_pricing_versions_seed.sql` (new)
+2. `00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` §2
+   — DD-25 amended in place: root cause corrected from "synthesize row" to the
+   actual global scope; tier-pricing gap filed as its own dated follow-up
+   (not a new DD-number — an amendment to DD-25's own text, since it's the
+   same finding at its real scope, not a new defect).
+
+**Checked immediately before opening:** no open PR touches either file; no
+coordination-log entry indicates either is mid-edit elsewhere. Disjoint from
+the Part A lease above (already closed) and from every other active lease in
+this table. Worktree `.clone/worktrees/pariprashna-part-d`, branch
+`pariprashna/p3-preflight-part-d`.
