@@ -43,6 +43,7 @@ import {
   buildEpistemicsBlock,
   buildEntitlementDenialEnvelope,
 } from '@/lib/mcp/epistemics'
+import { detectEvidenceState, surgicalConfidenceBand } from '@/lib/mcp/evidence_state'
 import { checkRateLimit, buildRateLimitErrorEnvelope } from '@/lib/mcp/rate_limiter'
 import { traceEmitter } from '@/lib/trace/emitter'
 import { buildTraceSummary } from '@/lib/mcp/trace_summary'
@@ -304,10 +305,28 @@ export async function POST(request: Request, { params }: RouteParams) {
     },
   })
 
-  // Build surgical epistemics block
+  // Build surgical epistemics block.
+  //
+  // F-126: `confidence_band` was hardcoded 'high' here for every primitive, so a
+  // query that matched ZERO rows still served "high confidence" — a grade with no
+  // detector behind it (§N.8 Earned-Signal). Live reproducer: mimamsa_lel_query
+  // with query="marriage relationship spouse partner wedding" returned
+  // {events: [], count: 0, total_matching: 0} under confidence_band: 'high'.
+  //
+  // The band is now computed from the result actually being served:
+  //   rows served / no readable count → 'high' (unchanged behaviour)
+  //   result set reports zero rows    → 'none' + evidence_state: 'empty'
+  //
+  // `surgical` stays true — it describes the CALL MODE (planner + B.11 floor
+  // bypassed), not the confidence, and that is just as true of an empty read.
+  // `falsifier` stays null — a falsifier is required for PREDICTIVE answers; an
+  // empty factual lookup makes no prediction, and inventing prose here would be
+  // narration, not a falsifier (§N.7 item 6).
+  const evidenceState = detectEvidenceState(toolResult)
   const epistemics = buildEpistemicsBlock({
     surgical: true,
-    confidence_band: 'high',
+    confidence_band: surgicalConfidenceBand(evidenceState),
+    evidence_state: evidenceState,
     horizon_days: null,
     falsifier: null,
   })
