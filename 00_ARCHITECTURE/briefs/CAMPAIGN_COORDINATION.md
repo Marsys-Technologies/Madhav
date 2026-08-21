@@ -5911,3 +5911,38 @@ everything is merged.
   "refs are lagging" anomalies — caught, fixed (unchecked is now `None`), and
   its test retargeted after the first version proved to be testing the wrong
   function entirely.
+
+## 2026-08-21 — PARIPRASHNA-P3-PREFLIGHT-MODEL-TIER-RULING — leased window: DD-25, DD-19 dating, registry fold-in, model catalog registration
+
+Native ruling on the model-tier decision packet (PARIPRASHNA-P3-PREFLIGHT-
+2026-08-21's item 5). Model IDs verified (gemini-3.1-pro-preview,
+gemini-3.7-flash); classification table approved. NO MODEL IS BEING MOVED —
+this lease registers catalog entries + closes a registry bypass + files two
+DD entries. Three verification actions also performed under this ruling
+(not file-scope, but disclosed): 3 real probe turns via `ask.sh` (synthetic
+chart `1c826d5a-...`, default) to verify PR #1402 writes `llm_usage_events`
+rows on every turn; a live `dd20_e2e_verify.ts` re-run for a fresh waiver
+number.
+
+**Lease scope:**
+1. `platform/src/lib/models/registry.ts` — new `interpretation_sets`
+   CallType + STACK_ROUTING entries (all 6 stacks; gemini's primary
+   unchanged at `gemini-2.5-flash` — no model moved); two new catalog-only
+   MODELS[] entries (`gemini-3.1-pro-preview`, `gemini-3.7-flash`), neither
+   wired to any live CallType; new `STAGED_TIER_UPGRADE_ROUTING` const
+   (inert, read by nothing) recording the pinned fallback design.
+2. `platform/src/lib/pariprashna/interpretation/worker.ts` +
+   `__tests__/worker.test.ts` — `INTERPRETATION_SETS_MODEL_ID` bypass
+   retired; `resolveInterpretationSetsModelId()` now resolves via
+   `getEffectiveModel(DEFAULT_STACK_ID, 'interpretation_sets', 'primary')`,
+   same registry-default value as before (plumbing change, not a model
+   change).
+3. `PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` §2 — new DD-25
+   (computed_cost_usd null on the synthesis row, OWNED, DATED 2026-09-03,
+   HARD PRECONDITION for public access / `PARIPRASHNA_LIMITS_ENABLED`);
+   DD-19 amended in place — DATED 2026-09-03, scoped as non-launch-blocking.
+
+**Checked immediately before opening:** no open PR touches any of the above
+files. The new PARIPRAŚNA-TRACKER-V2 lease above scopes only to
+`00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/**` — disjoint from this
+lease's scope. No other active lease overlaps.
