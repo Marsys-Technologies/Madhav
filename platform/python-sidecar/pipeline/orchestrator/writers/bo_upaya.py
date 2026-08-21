@@ -638,7 +638,9 @@ def _fetch_cgm_motif_weakest_node_burden(
         [chart_id, aya],
     ).fetchall()
 
-    membership: dict[str, int] = {}
+    # NB: counts COMPARABLE motifs, not raw memberships — a motif in which this
+    # graha was never weighed against another is excluded from both sides.
+    comparable: dict[str, int] = {}
     weakest_count: dict[str, int] = {}
     for r in rows:
         subjects_raw = r[1] if isinstance(r, (tuple, list)) else r.get("subjects")
@@ -657,10 +659,10 @@ def _fetch_cgm_motif_weakest_node_burden(
             continue
         for g in subjects:
             if g in shadbala:
-                membership[g] = membership.get(g, 0) + 1
+                comparable[g] = comparable.get(g, 0) + 1
         weakest_count[weakest] = weakest_count.get(weakest, 0) + 1
 
-    return _normalize_weakest_share(membership, weakest_count)
+    return _normalize_weakest_share(comparable, weakest_count)
 
 
 def _cdlm_weakest_constituent_burden(
