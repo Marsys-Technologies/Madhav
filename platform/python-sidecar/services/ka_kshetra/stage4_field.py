@@ -64,6 +64,7 @@ import json
 import logging
 import math
 import os
+import shutil
 import struct
 import tempfile
 import uuid
@@ -239,10 +240,99 @@ FETCH_BATCH_ROWS = _positive_int_env('KA_KSHETRA_FETCH_BATCH_ROWS', 20_000)
 #: under any open-file limit.
 HASH_SORT_CHUNK_ENTRIES = _positive_int_env('KA_KSHETRA_HASH_SORT_CHUNK', 250_000)
 
+#: Free-space floor a configured `KA_KSHETRA_HASH_SPILL_DIR` must clear before
+#: the writer will use it (F-185). The real spill at the native chart's 10.5M
+#: rows is on the order of ~3-4.2GB (see HASH_SPILL_DIR's docstring below); 5GiB
+#: gives headroom above that working estimate rather than pinning the bare
+#: minimum a single run happens to need today.
+REQUIRED_SPILL_FREE_BYTES = 5 * (1 << 30)
+
+
+def _detect_filesystem_kind(path: str) -> Optional[str]:
+    """Best-effort filesystem-type lookup for `path`, by longest matching mount
+    prefix in `/proc/mounts`. Returns `None` — not a filesystem name — when the
+    platform has no `/proc` (e.g. macOS dev) or the mount table cannot be read.
+    An undetectable condition is reported as unknown, never silently treated as
+    "confirmed not tmpfs" (§N.8: a check that cannot fail on this platform must
+    say so, not report green)."""
+    if not os.path.exists('/proc/mounts'):
+        return None
+    try:
+        with open('/proc/mounts', 'r') as fh:
+            lines = fh.readlines()
+    except OSError:
+        return None
+    resolved = os.path.realpath(path)
+    best_match = ''
+    best_kind: Optional[str] = None
+    for line in lines:
+        parts = line.split()
+        if len(parts) < 3:
+            continue
+        mount_point, fs_kind = parts[1], parts[2]
+        if resolved == mount_point or resolved.startswith(mount_point.rstrip('/') + '/'):
+            if len(mount_point) >= len(best_match):
+                best_match = mount_point
+                best_kind = fs_kind
+    return best_kind
+
+
+def _resolve_spill_dir_env(name: str) -> Optional[str]:
+    """Read, VALIDATE, and LOG the spill-directory override (F-185).
+
+    Unlike the sibling env-var readers above (`_positive_int_env`-backed
+    KA_KSHETRA_FETCH_BATCH_ROWS / KA_KSHETRA_HASH_SORT_CHUNK), the bare
+    `os.environ.get(...) or None` this replaces validated nothing and logged
+    nothing — a misconfigured, missing, or silently-tmpfs spill dir was
+    invisible until an OOM.
+
+    Interim disposition (F-185, no Cloud Run volume mount exists anywhere in
+    this repo's infra; provisioning one is out of scope here — see
+    deploy.yml's brahma-build-pipeline-job): a tmpfs-backed directory is
+    ACCEPTED rather than rejected. The accompanying deploy-config change sizes
+    the Cloud Run job's `--memory` to cover the RAM-backed spill instead of
+    treating tmpfs as a hard failure. What must never happen again is a SILENT
+    tmpfs fallback, so this always logs the resolved path and its detected
+    filesystem kind at WARNING when it is tmpfs (or undetectable), and still
+    fails loudly on a configured directory that does not exist, is not
+    writable, or does not clear `REQUIRED_SPILL_FREE_BYTES`.
+    """
+    raw = os.environ.get(name)
+    if not raw:
+        logger.info('%s not set — spill runs use the platform TMPDIR default', name)
+        return None
+    if not os.path.isdir(raw):
+        raise RuntimeError(f'{name}={raw!r} does not exist or is not a directory')
+    if not os.access(raw, os.W_OK):
+        raise RuntimeError(f'{name}={raw!r} exists but is not writable')
+    free_bytes = shutil.disk_usage(raw).free
+    if free_bytes < REQUIRED_SPILL_FREE_BYTES:
+        raise RuntimeError(
+            f'{name}={raw!r} has only {free_bytes} bytes free, below the '
+            f'required {REQUIRED_SPILL_FREE_BYTES} — refusing to configure a '
+            'spill directory that cannot hold a full run')
+    fs_kind = _detect_filesystem_kind(raw)
+    if fs_kind is None:
+        logger.warning(
+            '%s=%r resolved (writable, %d bytes free) but this platform has no '
+            '/proc/mounts to confirm its filesystem type — proceeding without a '
+            'tmpfs determination', name, raw, free_bytes)
+    elif fs_kind == 'tmpfs':
+        logger.warning(
+            '%s=%r resolves to a tmpfs mount — spill I/O is RAM-backed. This is '
+            'the accepted F-185 interim (no disk-backed Cloud Run volume mount '
+            'exists yet); the deploy config provisions memory headroom for it. '
+            '%d bytes free.', name, raw, free_bytes)
+    else:
+        logger.info('%s=%r resolves to filesystem %r, %d bytes free',
+                    name, raw, fs_kind, free_bytes)
+    return raw
+
+
 #: Directory for the merge-sort spill files. `None` = the platform default
 #: (`TMPDIR`). Set this when `/tmp` is a small tmpfs — the spill is on the order
 #: of the serialized dataset (~3GB for the native chart's 10.5M rows).
-HASH_SPILL_DIR = os.environ.get('KA_KSHETRA_HASH_SPILL_DIR') or None
+HASH_SPILL_DIR = _resolve_spill_dir_env('KA_KSHETRA_HASH_SPILL_DIR')
 
 #: Explicit I/O buffer per spill run. Pinned rather than left to the platform
 #: default because that default is `st_blksize`, which is 4KB on ext4 and 128KB
