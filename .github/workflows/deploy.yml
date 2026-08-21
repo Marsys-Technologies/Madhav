@@ -502,8 +502,33 @@ jobs:
   # here; trigger is GH Actions only. Image is pinned to Artifact Registry
   # (asia-south1-docker.pkg.dev/...), not legacy gcr.io.
   deploy-mcp:
-    needs: [changes]
-    if: (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && (needs.changes.outputs.force_all == 'true' || needs.changes.outputs.mcp == 'true')
+    # ORDERING (PARIŚEṢA-V4 / RATE-07, 2026-08-21): `deploy-web` is now a
+    # dependency, where before this job needed only `changes` and the two ran
+    # CONCURRENTLY.
+    #
+    # WHY: `deploy-web` is the ONLY job that runs database migrations (its "Run
+    # database migrations" step, before its image build). `amjis-mcp` code that
+    # depends on a new table therefore had a real race — if the MCP revision
+    # started serving before the migration applied, it would hit a missing
+    # table. RATE-07 makes that concrete and unforgiving: the OAuth rate-limit
+    # gate is FAIL-CLOSED by design, so a missing `mcp_rate_buckets` table means
+    # every OAuth mutation returns 503 until deploy-web catches up. Relying on
+    # "the migration step usually finishes first" is exactly the kind of
+    # undetected assumption CLAUDE.md §N.8 forbids.
+    #
+    # The `always()` guard keeps the pre-existing behaviour intact for the case
+    # this ordering does not concern: when `platform/**` is unchanged, deploy-web
+    # is SKIPPED, there is no new migration to wait for, and the MCP deploy
+    # proceeds exactly as it did before. If deploy-web FAILED, the MCP deploy is
+    # held — correct, because a failed web deploy means the migration state is
+    # unknown, and shipping sidecar code against unknown schema is the hazard.
+    needs: [changes, deploy-web]
+    if: >-
+      always()
+      && needs.changes.result == 'success'
+      && (needs.deploy-web.result == 'success' || needs.deploy-web.result == 'skipped')
+      && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+      && (needs.changes.outputs.force_all == 'true' || needs.changes.outputs.mcp == 'true')
     name: Build & Deploy MCP
     runs-on: ubuntu-latest
     permissions:

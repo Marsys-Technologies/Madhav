@@ -349,7 +349,27 @@ not instance configuration.
 
 ---
 
-## 6. F-06 disposition
+## 6. A deployment race this ruling created, and closed
+
+Adopting a fail-closed limiter backed by a **new table** creates an ordering obligation that
+did not previously exist. `deploy-web` is the only job that runs migrations; `deploy-mcp`
+needed only `changes` and therefore ran **concurrently** with it. An `amjis-mcp` revision
+serving before migration 580 applied would 503 every OAuth mutation until deploy-web caught up.
+
+The migration step does run early in `deploy-web` (before its image build), so in practice it
+would usually win the race — but "usually wins" is not a detector, and §N.8 forbids resting a
+safety property on one. `deploy-mcp` therefore now declares `needs: [changes, deploy-web]`,
+guarded with `always()` so that:
+
+- `platform/**` unchanged → `deploy-web` SKIPPED → no new migration exists → MCP deploys exactly as before;
+- `deploy-web` SUCCESS → migrations applied → MCP deploys;
+- `deploy-web` FAILED → migration state unknown → MCP is **held**, rather than shipping dependent code against unknown schema.
+
+This is a change to shared deployment topology, made under this ruling's authority because the
+race is one this ruling's own design introduced. It is flagged in the PR body as the item most
+deserving of independent scrutiny.
+
+## 7. F-06 disposition
 
 The registry descriptor for `marsys://tool/L0/query_remedies_for_chart` already said the
 honest thing ("No chart-scoped SQL — this is a global corpus lookup"; `scope: 'global'`, the
