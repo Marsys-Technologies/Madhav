@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 890,
+  "event_count": 891,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -74,18 +74,18 @@
     },
     "F-06": {
       "confidence": "HIGH",
-      "disposition": "LANDED",
-      "event_sha256": "95d94d0699d9a249c604ef5fc5b262fc43bfb71fd55990c111b8736eac6cd7c4",
+      "disposition": "FIXED",
+      "event_sha256": "32e541e26cc7e7226d9781a924aee2904b3b87e3069c6df7f01064cb1de8b987",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review converged after 3 rounds (each round found and fixed a real defect: false-equivalence text, unreachable-conditional deploy coupling, a second deploy-ordering race the first fix introduced). Round 3: MERGE, no new defect, reviewer's own explicit meta-assessment endorsed merging as-is over splitting (the disabled-by-default shipping strategy already achieves the practical effect of a split -- all remaining risk isolated into the tiny, separately-tracked RATE-07-ENABLE follow-up). One final cosmetic nit (precondition-check text ambiguity) fixed directly in the PR body before merge.",
+      "evidence_summary": "PR #1411 merged (cf59bcd92019b412fa64a57871ec891226a92b10) and deployed. ref_remedies_chart_get scope-honesty fix landed (honest description, chart_id exposed as provenance-only, points to bodha_remedies_get). RATE-07 infrastructure landed alongside it (migration 580, rate-limit-check route, sidecar gate) but shipped disabled by default (MCP_OAUTH_RATE_LIMIT_ENABLED=false) pending the RATE-07-ENABLE follow-up once deploy-web's route is confirmed live -- tracked separately (EXTERNAL_HOLD). This PR itself is terminal: the scope-honesty fix is live, and shipping the rate-limit infra disabled-by-default was the deliberate, reviewed, correct choice (not a partial/incomplete state).",
       "finding_id": "F-06",
-      "next_action": "in merge queue, auto-merge armed. RATE-07-ENABLE remains tracked separately (EXTERNAL_HOLD) for the follow-up enable step.",
+      "next_action": "none - terminal (RATE-07-ENABLE tracked separately)",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1411",
-      "prev_sha256": "5e0343f37ac7ceb26ffae649484101586ee1a86ccd53217048e2a05418aa2224",
-      "seq": 881,
+      "prev_sha256": "0d5800eed6823201290afc84c55d930099d83eaea9c50b7bd5dd3a3b6a4c7bb4",
+      "seq": 891,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-07": {
       "confidence": "HIGH",
@@ -2284,10 +2284,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 2,
-  "findings_terminal_count": 119,
-  "journal_head_seq": 890,
-  "journal_head_sha256": "0d5800eed6823201290afc84c55d930099d83eaea9c50b7bd5dd3a3b6a4c7bb4",
+  "findings_morning_ship_ready_count": 1,
+  "findings_terminal_count": 120,
+  "journal_head_seq": 891,
+  "journal_head_sha256": "32e541e26cc7e7226d9781a924aee2904b3b87e3069c6df7f01064cb1de8b987",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
