@@ -805,6 +805,25 @@ export function assembleDomainCompleteness(domain: string, chart_id: string): Re
   }
 }
 
+/** F-174: bound + sanitize an interpolated error message before it lands in
+ *  `domain_completeness_empty_reason`, which is in `IMMUNE_HONESTY_FIELDS`
+ *  (response_budget.ts:86) — never string-truncated, never auto-declared trimmable by the
+ *  budget trimmer. An unbounded raw error string interpolated there is therefore protected
+ *  right alongside the field itself once mirrored into `protected_flags`
+ *  (registry_bridge.ts's disclosureFlags / assembleSaraContent), which lets an arbitrarily
+ *  long error evict every drill pointer + unprotected flag before the kernel trim gives up
+ *  (assembleSaraContent's `pointers.length === 0 && eligibleFlagCount === 0` break). Strips
+ *  newlines/control chars and collapses whitespace first — a multi-line or JSON-shaped error
+ *  message would otherwise corrupt the `code:detail` flag-string shape `flagCodeOf`
+ *  (response_budget.ts:929) parses via `split(':')[0]` — then clamps to the same 200-char
+ *  bound as the existing precedent (`kala_views/explain.ts:359`; do not invent a new
+ *  constant), appending an explicit truncation marker when the clamp actually fires (a
+ *  silently-cut error message is itself a small honesty defect). */
+function clampErrorForDisclosure(msg: string): string {
+  const sanitized = msg.replace(/[\x00-\x1f\x7f]+/g, ' ').replace(/\s+/g, ' ').trim()
+  return sanitized.length > 200 ? `${sanitized.slice(0, 200)}…[truncated]` : sanitized
+}
+
 /** Attach the dossier completeness block + an un-missable steer onto an assess_* response,
  *  mutating it in place. No-op when no slice is precompiled for (domain, chart). */
 export function attachDomainCompleteness(response: Record<string, unknown>, domain: string, chart_id: string): void {
@@ -839,7 +858,7 @@ export function attachDomainCompleteness(response: Record<string, unknown>, doma
           `No domain_completeness/completeness_directive block was assembled for domain='${domain}' — ` +
           `honestly omitted rather than fabricated (B.10). This IS a query failure: ` +
           `gate_reason=${JSON.stringify(diag.gate_reason)}` +
-          (diag.error ? `, error=${diag.error.class}: ${diag.error.message}` : '') + '.'
+          (diag.error ? `, error=${diag.error.class}: ${clampErrorForDisclosure(diag.error.message)}` : '') + '.'
       }
     } catch (e) {
       // assembleDomainCompleteness's own try/catch already told us runDossier threw; recover
@@ -847,7 +866,7 @@ export function attachDomainCompleteness(response: Record<string, unknown>, doma
       emptyReasonMsg =
         `No domain_completeness/completeness_directive block was assembled for domain='${domain}' — ` +
         `honestly omitted rather than fabricated (B.10). This IS a query failure: the dossier query ` +
-        `threw: ${String(e instanceof Error ? e.message : e)}.`
+        `threw: ${clampErrorForDisclosure(String(e instanceof Error ? e.message : e))}.`
     }
     response['domain_completeness_empty_reason'] = emptyReasonMsg
     return
