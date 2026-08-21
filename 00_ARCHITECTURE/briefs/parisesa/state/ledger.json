@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 978,
+  "event_count": 981,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -932,17 +932,17 @@
     },
     "F-149": {
       "confidence": "HIGH",
-      "disposition": "PARKED",
-      "event_sha256": "bd203d3c409c3a8849a5d532e1c40505e67f2fe6e246381a45881561f1f6b881",
+      "disposition": "LANDED",
+      "event_sha256": "a763d9bf0e5cdb816a9db621c0f1dc9230abf4d4665f0b7b60fa49494c283463",
       "event_type": "finding_status",
-      "evidence_summary": "Fixed as PR #1432 (open, CI green 25 pass/8 skip/0 fail, awaiting GA-5 review). Root cause independently re-derived (matched the ledger's own prior seq-885 diagnosis): THREE simultaneous full materializations of the ~10.5M-row ka_kshetra dataset -- stage4_field._rows() unbatched fetchall() on a client cursor; writer._compute_content_hash accumulating all 7 hashed tables into one list before hashing; field_content_hash's sorted() producing a second full copy. Measured on main's actual algorithm at increasing scale (183MB@200k -> 297MB@400k -> 528MB@800k, cleanly linear) and extrapolated to ~6.8GB at 10.5M -- explains both the OOM and F-141's original rows_written anomaly (11,069,325 vs 10,502,780 actual = crash-partway + retry over already-committed rows). Fix: streaming (server-side named cursor + fetchmany) + external merge sort bounded by chunk size not row count -- deliberately NOT switched to an order-independent commutative digest, because that would silently re-baseline every stored hash (the F-77 hash-replay control); the merge sort reproduces sorted()'s exact total order so the digest is BYTE-IDENTICAL to the old algorithm, verified directly (both old and new produce kfh_d04d17e6e609de4955bbf43908ef4722 at 800k entries). Realistic-scale test actually run (env-gated): full 10.5M-row run PASS, 4m58s, 688MB; standalone benchmark 212.3MB@10.5M vs 211.0MB@800k -- flat across a 13x row increase (this satisfies R-6 condition 1's 'tested against a realistically-sized dataset' requirement literally, not by proxy). 3 independent mutation tests (in-memory-sort regression, concatenate-instead-of-merge, eager-accumulation) all correctly detect their respective reintroduced defects. 1365/1365 full tests/l3/ suite passing (+27 new); FROZEN orchestrator contract untouched; no ka_kshetra data or asset_throughput row read or written.",
+      "evidence_summary": "GA-5 review: MERGE-WITH-FOLLOWUP, exhaustively independently verified. Byte-identity re-verified from a FRESH transcription of main's algorithm (not the PR's own reference), 128 (n x shape x chunk) combinations including adversarial cases the PR never tested (chunk-boundary ties, 1001 exact-duplicate entries straddling boundaries, non-BMP/CJK/NUL/newline/escape payloads) -- all match, multiset AND order identical. Memory independently measured at shipped defaults: 167.4MB@800k -> 169.9MB@10.5M, flat. Full 10.5M-row test independently re-run: PASS, 3m57s. All 3 mutation tests reproduced exactly. 1365/1365 tests/l3 confirmed. FROZEN SS N.2 contract confirmed clean (DECLARE is read-only, joins caller's txn; no run/plan_substeps/run_substep signature touched). Enqueued for merge. TWO REAL FOLLOW-UP GAPS THAT AFFECT R-6's GATE, disclosed not blocking: (1) spill is measured ~4.2GB to TMPDIR (code comment's '~3GB' is optimistic), and KA_KSHETRA_HASH_SPILL_DIR is set NOWHERE in the repo -- no deploy config, env file, or runbook; on Cloud Run (tmpfs-backed /tmp) the bounded-memory property would INVERT completely -- triaged as F-185 (HIGH, real deployment risk); (2) this fix covers only the hash-computation step -- other eager-fetchall functions in the same writer (_load_window_provenance, _load_segments, _load_salience, _load_windows) are NOT covered and not proven safe at 10.5M -- triaged as F-186. Reviewer's own explicit assessment: R-6 condition 1 ('tested against a realistically-sized dataset') is satisfied for the content-hash computation specifically, but NOT yet sufficient evidence the full rebuild will complete end-to-end -- F-141 remains gated until F-185+F-186 are also resolved, not just this PR.",
       "finding_id": "F-149",
-      "next_action": "Dispatch GA-5 review for PR #1432. On MERGE: F-149 itself closes, but F-141's actual rebuild remains gated on R-6 conditions 2+3 (GA-3 packet with R-7 additions, archived pre-rebuild snapshot) -- explicitly still open per the PR's own scope statement.",
+      "next_action": "Confirm merge completion, flip SERVICE_CLOSED. F-141 stays EXTERNAL_HOLD -- do not treat R-6 condition 1 as fully cleared until F-185/F-186 land.",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1432",
-      "prev_sha256": "b830740c435dec2be13197cf87e45e25876a133812868c034da2987c19daf8c8",
-      "seq": 971,
+      "prev_sha256": "bc5e28ba508cd03944ff08eb9b59f3a497bd69b979fc3a086fe67320fb83f979",
+      "seq": 979,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
-      "status": "DECISION_PARKED",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-15": {
@@ -1523,6 +1523,36 @@
       "pr_url": null,
       "prev_sha256": "993dc4fb78eb01150e36512593a8da4f2e269c94449332037dfc0038d18ecdc9",
       "seq": 978,
+      "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-185": {
+      "confidence": "HIGH",
+      "disposition": "PARKED",
+      "event_sha256": "183b4646a6d7411826a2d9905818d5ed84868c0f39663bd727348e9154ceb0dc",
+      "event_type": "finding_status",
+      "evidence_summary": "Newly discovered by GA-5 review of PR #1432, disclosed as its own finding. F-149's streaming/merge-sort fix relies on spilling to TMPDIR/KA_KSHETRA_HASH_SPILL_DIR when memory bounds are exceeded, measured at ~4.2GB for the real 10.5M-row dataset (code comment's '~3GB' estimate is optimistic). KA_KSHETRA_HASH_SPILL_DIR is configured NOWHERE in the repo -- no deploy config, env file, or runbook sets it, meaning it falls back to the platform default TMPDIR. On Cloud Run specifically, /tmp is RAM-backed (tmpfs) -- spilling ~4.2GB 'to disk' there would actually consume ~4.2GB of RAM, completely inverting the bounded-memory property F-149's fix was built to guarantee. This is a real deployment/config gap that could silently defeat F-149's own fix if F-141's rebuild is ever attempted without addressing it first.",
+      "finding_id": "F-185",
+      "next_action": "Pin KA_KSHETRA_HASH_SPILL_DIR to a real, non-tmpfs disk mount with verified free space (>=8GB per reviewer's recommendation) in deploy config before F-141's rebuild is attempted.",
+      "pr_url": null,
+      "prev_sha256": "a763d9bf0e5cdb816a9db621c0f1dc9230abf4d4665f0b7b60fa49494c283463",
+      "seq": 980,
+      "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-186": {
+      "confidence": "MEDIUM",
+      "disposition": "PARKED",
+      "event_sha256": "c4a807d0c5f05b854df4d524a54973ba6b3ca32151032d976d18080828eacc44",
+      "event_type": "finding_status",
+      "evidence_summary": "Newly discovered by GA-5 review of PR #1432, disclosed as its own finding. F-149's fix covers only the content-hash computation step of the ka_kshetra writer. The same writer has OTHER functions doing eager fetchall()-style full materializations of large tables at the same 10.5M-row scale, not covered by F-149's fix and not proven safe: _load_window_provenance (kala_field_provenance), _load_segments (kala_field per event_class), _load_salience, _load_windows. Until these are audited (and streamed/batched if they show the same unbounded-memory pattern), the writer as a WHOLE is not proven to complete at real scale even though the hash step specifically now is.",
+      "finding_id": "F-186",
+      "next_action": "Audit _load_window_provenance/_load_segments/_load_salience/_load_windows for the same unbounded-memory pattern F-149 fixed; stream/batch any that show it, at realistic scale, same rigor as F-149.",
+      "pr_url": null,
+      "prev_sha256": "183b4646a6d7411826a2d9905818d5ed84868c0f39663bd727348e9154ceb0dc",
+      "seq": 981,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -2762,10 +2792,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 4,
+  "findings_morning_ship_ready_count": 5,
   "findings_terminal_count": 136,
-  "journal_head_seq": 978,
-  "journal_head_sha256": "bc5e28ba508cd03944ff08eb9b59f3a497bd69b979fc3a086fe67320fb83f979",
+  "journal_head_seq": 981,
+  "journal_head_sha256": "c4a807d0c5f05b854df4d524a54973ba6b3ca32151032d976d18080828eacc44",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
