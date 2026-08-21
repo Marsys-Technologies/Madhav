@@ -21,12 +21,20 @@ at full continuous scope with no further checkpoints. All three were honored thr
 
 ## 1. Headline numbers
 
+**Updated 2026-08-21, post-merge-queue-drain**: the 7 items listed below as
+"draining the merge queue" have all since landed (F-94 first, then F-57/F-110/
+F-113/F-118/F-126/F-131 as a batch once the queue cleared). Every item in
+v3.1's explicit ordered work list is now either terminal or at its correctly-
+scoped non-terminal end state (DATA_PARKED pending a GA-3 rebuild,
+EXTERNAL_HOLD, or PROVISIONAL_RULING awaiting the native). Numbers below are
+final as of journal seq 950.
+
 | | at v3.1 start (v3.0 close) | at v3.1 close |
 |---|---|---|
 | Total tracked findings | 148 | **182** |
-| Terminal (any closure status) | 113 | **127** |
-| Baseline (F-1..F-142) terminal | — | **124 / 141** ¹ |
-| Journal head seq | ~852 | **943** |
+| Terminal (any closure status) | 113 | **134** |
+| Baseline (F-1..F-142) terminal | — | **131 / 141** ¹ |
+| Journal head seq | ~852 | **950** |
 
 ¹ The "142-finding corpus" the native's directive referenced tracks as 141 distinct
 `F-N ≤ 142` ledger rows today (F-142 itself was formally re-triaged and re-numbered
@@ -108,12 +116,10 @@ design):
 
 ## 4. What's still open, and exactly why
 
-**7 items mechanically draining the merge queue** (F-57, F-94, F-110, F-113,
-F-118, F-126, F-131) — all GA-5 MERGE-approved, `pr_url` set, auto-merge armed.
-None are blocked on a decision; they are blocked on GitHub's merge-queue
-throughput (6-deep at time of writing). Expect these to self-close to
-SERVICE_CLOSED without further intervention; the next session (or a later check
-this session) should confirm and flip them.
+*(All 7 merge-queue items — F-57, F-94, F-110, F-113, F-118, F-126, F-131 —
+have since landed and been flipped SERVICE_CLOSED; this section originally
+described them as in-flight. Left visible here only as a record that queue
+throughput, not a decision, was ever the blocker.)*
 
 **6 items DATA_PARKED** (F-35, F-52, F-62, F-63, F-71, F-104) — code fixes are
 shipped and native-authorized; only a GA-3-protected-data rebuild execution

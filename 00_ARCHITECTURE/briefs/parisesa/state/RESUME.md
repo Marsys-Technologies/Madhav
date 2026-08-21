@@ -1,15 +1,16 @@
 # PARISESA-V4 RESUME (authoritative — journal-derived)
 
 **Session:** PARISESA-V4-CONDUCTOR-20260820T191407Z (v3.1 "Full Closure", live)
-**Journal head:** seq 944
-**Phase:** v3.1 ordered work list complete; 6 items draining the GitHub merge queue
+**Journal head:** seq 950
+**Phase:** v3.1 ordered work list FULLY complete — merge queue drained, every
+mechanically-executable item landed.
 
 ## ⚠️ READ THIS FIRST
 This file previously pointed at the v3.0 session's natural-completion snapshot
 (seq 779, 84/141 terminal) — that closure is long superseded. The native's v3.1
 "Full Closure" directive has since run to completion in the SAME live session
 this heartbeat belongs to (`claude_session_id` in heartbeat.json). Current
-state: **128/182 findings terminal (125/141 on the original baseline corpus)**.
+state: **134/182 findings terminal (131/141 on the original baseline corpus)**.
 Full account: `00_ARCHITECTURE/briefs/parisesa/CLOSURE_REPORT_V3_1_20260821.md`.
 
 This "Resume per RESUME.md" text you may have just seen in the pane is the
@@ -22,9 +23,8 @@ the timestamp below and re-run `check_ledger_pr_sync.py` before trusting any
 finding's status at face value.
 
 ## What's actually left (see CLOSURE_REPORT_V3_1_20260821.md §4 for full detail)
-- **6 items mechanically draining the merge queue** (F-57, F-110, F-113,
-  F-118, F-126, F-131) — all GA-5 MERGE-approved, auto-merge armed. Just
-  confirm merge and flip to SERVICE_CLOSED; no decision needed.
+- **Merge queue: fully drained.** All 7 items that were in flight (F-57, F-94,
+  F-110, F-113, F-118, F-126, F-131) have landed and are SERVICE_CLOSED.
 - **6 items DATA_PARKED** (F-35, F-52, F-62, F-63, F-71, F-104) — code shipped,
   GA-3-protected-data rebuild execution remains, most with packets already
   authored (F-104 needs one authored from scratch).
