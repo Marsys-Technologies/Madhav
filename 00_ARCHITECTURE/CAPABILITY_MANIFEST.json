@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-08-19T22:41:37Z",
+  "generated_at": "2026-08-21T02:45:00Z",
   "generator_version": "1.0",
-  "entry_count": 128,
-  "fingerprint": "28b26a3b1d2c63a5cb1d1a17a1a587a28940165708a35e34926f4611d3fe38ef",
+  "entry_count": 129,
+  "fingerprint": "1334f4d6af85e2bd78f43352a1e957ff0ce6540a73add98235b17ac82d0b10d3",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1668,7 +1668,7 @@
     {
       "canonical_id": "PARIPRASHNA_ASBUILT_BASELINE",
       "path": "00_ARCHITECTURE/PARIPRASHNA_ASBUILT_BASELINE_v1_0.md",
-      "version": "1.0",
+      "version": "1.2",
       "status": "LIVING",
       "layer": "governance",
       "expose_to_chat": false,
@@ -1676,8 +1676,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "b1a6b87fa10885a85216372916eca98b3bad7fb518a1597fc6853038c28cff81",
-      "native_id": "project"
+      "fingerprint": "32bd2b7d457391d60ed0507c23b5573f61ff34a06a9562dc960bad486ae4eec3",
+      "native_id": "project",
+      "last_verified_session": "PARIPRASHNA-P2-CLOSE-2026-08-21"
     },
     {
       "canonical_id": "PARIPRASHNA_DECISION_REGISTER",
@@ -1793,8 +1794,8 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "2e3bf7bb322540bead21d758a54fd005d0f18955d562cd85d4c405c9a4943fcc",
-      "last_verified_session": "PARIPRASHNA-DD16-DD17-EXECUTE-DIAGNOSTIC-2026-08-21",
+      "fingerprint": "abecb04996784c2104798c54885d17edcfe1616cddd18aacfdd42fd789d8f589",
+      "last_verified_session": "PARIPRASHNA-P2-CLOSE-2026-08-21",
       "last_verified_on": "2026-08-21",
       "native_id": "project"
     },
@@ -1826,6 +1827,21 @@
       "fingerprint": "24cbeea92c8617697bb10b8f57dcd281056e7c92d4f7ecc9550352410ddcf344",
       "native_id": "project",
       "adopted_by_session": "PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_P2_CLOSE_REPORT",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_P2_CLOSE_REPORT_v1_0.md",
+      "version": "1.0",
+      "status": "CLOSED",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "ddc1a2919df2dcc2c896b49f43d4ff6a4b2958cc31c1f266074499e8c3d09055",
+      "native_id": "project",
+      "last_verified_session": "PARIPRASHNA-P2-CLOSE-2026-08-21"
     }
   ]
 }
