@@ -764,7 +764,12 @@ jobs:
         # historical PHASE_B_PLAN refs — booked for quarterly governance pass 2026-07-24)
         # Use || to capture exit code without set -e aborting on non-zero exit.
         env:
-          DRIFT_BASELINE_MAX: '216'   # DVA Ruling 4 T0 baseline. Lower freely; raise only by ruling.
+          # Ratcheted DOWN 216 → 165 on 2026-08-21 (F-94 narrow repair; the DVA Ruling 4
+          # comment above explicitly invites lowering after cleanup). Measured 164
+          # findings / exit=3 on the post-repair tree; the +1 is the environment delta
+          # between a runner without psql and a workstation with it (schema_db_unreachable
+          # vs a3_schema_db_unreachable). Lower freely; raise only by ruling.
+          DRIFT_BASELINE_MAX: '165'
         run: |
           ec=0
           out=$(python platform/scripts/governance/drift_detector.py) || ec=$?
