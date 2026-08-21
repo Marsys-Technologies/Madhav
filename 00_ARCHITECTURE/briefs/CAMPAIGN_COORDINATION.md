@@ -5885,3 +5885,29 @@ a doc change; still on the native's desk).
 No file in this lease's scope was left mid-edit; the working worktree at
 `.clone/worktrees/pariprashna-p3-preflight` is being cleaned up now that
 everything is merged.
+
+- 2026-08-21 11:05Z — **PARIPRAŚNA-TRACKER-V2 / Claude Code — merge window
+  requested (docs-and-tooling only):** fifth "tracker out of sync" report,
+  two independent root causes, both from this tracker's own previous change.
+  (1) Lane completion was derived from a rolling `gh pr list --limit N`
+  window; the window had rotated to #1368..#1428 so the six phase PRs
+  (#1349..#1365) supplying ALL P0/P1/P2 evidence aged out and 25 lanes
+  silently reverted MERGED → UNOBSERVABLE (P2 went 15/15 → 0/15 live). Fixed
+  with a durable (lane → completing merge commit) record re-verified against
+  the mirror every cycle — git remains the authority. (2) The watchdog judged
+  liveness by `heartbeat.json`, which is written only at cycle COMPLETION, so
+  slow-but-healthy cycles were SIGKILLed mid-flight (77s cycle + 20s sleep =
+  97s vs a 90s threshold; five resurrections 08:59–10:02 today) — the outages
+  were manufactured by the outage-preventer. Fixed with a separate
+  `alive.json` liveness beat. Also added a window-independent lane-regression
+  detector: the existing board-vs-world check read the SAME window it was
+  meant to police, so both went blind together. Branch
+  `pariprashna/tracker-v2-durable-evidence`, scope
+  `00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/**` only — no
+  `platform/**`, no migration, no deploy, no credential; the conductor's
+  `state/SWARM_TRACKER.json` is read-only as before. 29/29 selftests pass.
+  **Disclosed:** while fixing, a cycle-cost optimisation briefly made
+  unchecked PR ancestry default to `False`, producing 143 fabricated
+  "refs are lagging" anomalies — caught, fixed (unchecked is now `None`), and
+  its test retargeted after the first version proved to be testing the wrong
+  function entirely.
