@@ -5737,3 +5737,44 @@ stop and report rather than push through.
 Worktree: `/private/tmp/pariprashna-p2-close`, branch
 `pariprashna/p2-close-fixes` (may split into per-item branches if that
 proves cleaner for independent PR review — will note here if so).
+
+## 2026-08-21 — PARIPRASHNA-P2-CLOSE-EXECUTE update — items split into per-item PRs, 1–3 delivered
+
+Continuing the lease opened above. Items 1–3 (DD-20 fix, citation sentinel,
+receipt wire event) merged to `main` (`369719a99`, `4e6301770`, `a1266f348`),
+deployed (`amjis-web-01572-m95`, 100% traffic), and live-verified via a real
+probe turn against production — not from CI green.
+
+Per the note above, items 5/6/7 split into independent PRs rather than one
+`pariprashna/p2-close-fixes` branch, each its own worktree/branch:
+- #1401 `pariprashna/p2-close-item5-dock-collapse` — RightDock mobile collapse
+  fix + a new real e2e spec (`tests/e2e/pariprashna/dock-collapse.spec.ts`,
+  SMOKE_SESSION_COOKIE-gated) + a vitest-exclude follow-up. Touches
+  `platform/src/components/pariprashna/PariprashnaApp.tsx`,
+  `platform/src/components/pariprashna/dock/{RightDock,DockController}.tsx`,
+  `platform/vitest.config.ts`.
+- #1402 `pariprashna/p2-close-item6-observability` — wires `observability`
+  identity into `runSynthesisStage`. Touches
+  `platform/src/app/api/pariprashna/route.ts` only.
+- #1403 `pariprashna/p2-close-item7-voice-anchor` — voice-lint bare-imperative
+  anchor now tolerates a bulleted/labeled prefix. Touches
+  `platform/src/lib/pariprashna/voice/voice_lint.ts` + its test file.
+
+A fourth lane was added mid-window, ruled in by the native after items 1–3's
+live-verification report surfaced it (Lane K, typed confidence — not in this
+entry's original numbered list, added here for transparency):
+- #1404 `pariprashna/p2-close-lane-k-typed-confidence` — threads
+  `receipt.confidence_typing` through to `GroundingCard.tsx` via a new
+  `ref -> confidence_type` lookup in `RightDock.tsx`. Touches
+  `platform/src/components/pariprashna/dock/{GroundingCard,RightDock}.tsx`.
+
+All four PRs disjoint from each other and from items 1–3's already-merged
+files. #1401/#1402/#1403 CI-clean and mergeable as of this entry; #1404 still
+running. Next: merge all four, deploy, live-verify each (real probe turn /
+real browser with CDP device metrics for #1401's dock collapse specifically —
+the fixture-based `g-mobile.spec.ts` harness cannot render `RightDock` at
+all, confirmed by reading its own `playwright.config.ts` header). Item 4
+(committedBlocks table-detection) evaluated (approach (c), "annotate rather
+than split") and RULED APPROVED but NOT built — carries as its own dated
+register entry per the native's ruling. Item 8 (register close-out + tag)
+still pending on all of the above verifying live.
