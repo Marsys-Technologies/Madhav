@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 864,
+  "event_count": 865,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -2085,12 +2085,27 @@
       "source_batch": "proof_batch_h",
       "status": "CONTROL_CLOSED",
       "terminal_status": "CONTROL_CLOSED"
+    },
+    "SF-002": {
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "66b5979a5982088ed0fbb31a8b0c339b51b116b6d5607178f8167db155256c13",
+      "event_type": "finding_status",
+      "evidence_summary": "CRITICAL, live, pre-existing authentication bypass -- discovered as a disclosed side-effect of the F-06/RATE-07 work (PR #1411), independently re-confirmed end-to-end before writing any fix (not just trusted). platform/src/lib/mcp/oauth/store.ts::validateClient skipped secret-hash verification entirely when clientSecret===undefined, returning the client record as valid. Reached via POST /mcp/oauth/token {grant_type:'client_credentials', client_id:'<any known id>'} with NO client_secret field -- JSON.stringify() drops undefined keys upstream, so the platform validate route saw no secret and skipped verification, issuing real access+refresh tokens for that client's owner_uid to anyone who knew a (non-secret-equivalent) client_id. Traced the full call chain (token.ts -> oauth_platform_client.ts -> platform validate route -> store.ts) and confirmed validateClient has exactly one caller chain in the codebase (client_credentials grant only) -- the authorization_code+PKCE flow never calls it at all, so the stated 'skip for PKCE' justification for the vulnerable branch never applied to its actual only caller. Fixed: always require+verify the secret. 5 new tests, mutation-tested (revert -> exploit test fails, full client record leaked as 'valid'; restore -> passes). Zero regressions (platform/src/lib/mcp/ 65 passed/3 skipped; platform-mcp m5_oauth.test.ts 17/17). Urgent GA-5 security review dispatched.",
+      "finding_id": "SF-002",
+      "next_action": "URGENT GA-5 security review in flight -- merge and deploy as soon as review clears, do not delay",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1413",
+      "prev_sha256": "ab90c17d93d73a0c35a5aa9ff4043263af3645cde95d6aad9531a3a9f071f22e",
+      "seq": 865,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1-SECURITY-DISCLOSURE",
+      "status": "MORNING_SHIP_READY",
+      "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 3,
+  "findings_morning_ship_ready_count": 4,
   "findings_terminal_count": 114,
-  "journal_head_seq": 864,
-  "journal_head_sha256": "ab90c17d93d73a0c35a5aa9ff4043263af3645cde95d6aad9531a3a9f071f22e",
+  "journal_head_seq": 865,
+  "journal_head_sha256": "66b5979a5982088ed0fbb31a8b0c339b51b116b6d5607178f8167db155256c13",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
