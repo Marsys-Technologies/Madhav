@@ -1730,8 +1730,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       'chart_id is optional and is echoed back for provenance only — it does not filter results, ' +
       'so two different charts with the same affliction keyword get identical rows. ' +
       'When to prefer: use this for classical corpus lookup by planet/domain keyword. ' +
-      'For remedies actually derived from a specific chart, call bodha_remedies_get instead ' +
-      '(same as query_remedies_for_chart).',
+      'For remedies actually derived from a specific chart, call bodha_remedies_get instead.',
     {
       affliction: z.string().describe('Planet name or domain keyword'),
       top_k: z.number().int().optional(),

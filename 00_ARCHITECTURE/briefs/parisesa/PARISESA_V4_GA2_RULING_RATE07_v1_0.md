@@ -95,13 +95,28 @@ platform API:
 | `POST /oauth/register` | `validateMcpKeyFromHeader` + `registerOAuthClient` |
 
 A fail-closed limiter must, by construction, reject when its store is unreachable. On route
-3 that rejection coincides with an outage in which the endpoint was already going to fail —
-the limiter is never the *sole* reason a request dies. On route 1, Redis would be a
-**second, independent** dependency: a Redis outage would take down OAuth even while Postgres
-was perfectly healthy. Route 1 therefore *reduces* the availability of these endpoints in
-exchange for latency the endpoints demonstrably do not need. That is a bad trade here.
-This inverts the usual "Redis for rate limiting" default, and it inverts it on a fact
-specific to this codebase, not on a general preference.
+3 that rejection lands in a failure domain the endpoint *already* depends on — no NEW
+dependency is introduced. On route 1, Redis would be a **second, independent** dependency: a
+Redis outage would take down OAuth even while Postgres was perfectly healthy. Route 1
+therefore *reduces* the availability of these endpoints in exchange for latency the endpoints
+demonstrably do not need. That is a bad trade here. This inverts the usual "Redis for rate
+limiting" default, and it inverts it on a fact specific to this codebase, not on a general
+preference.
+
+**Stated precisely, because "no new failure domain" is not the same as "no new failure
+mode".** There is at least one branch that reaches a terminal response without any Postgres
+round-trip, and the gate does change its behaviour under a store outage:
+`handleCallback` (`platform-mcp/src/oauth/authorize.ts`) returns a **302 back to Firebase
+login** when no `__session` cookie is present — a pure redirect, taken before
+`verifySessionCookieViaPlat` and `stampDbAuthCodeUid`, i.e. before the Postgres dependencies
+this section's table lists for that endpoint. Layer 1 charges per-IP ahead of that branch, so
+during a bucket-store outage a request that would previously have redirected now receives a
+`503`. That is a real new failure MODE on a previously Postgres-free path, and it is the
+honest cost of fail-closed. It does not disturb the route-1-vs-route-3 comparison, which turns
+on failure *domains*: Redis would add an independent one, and callers on that branch would
+then be 503'd by a Redis outage while Postgres was healthy — strictly worse than being 503'd
+only when the database these endpoints already need is down. The claim this ruling rests on is
+the domain claim; the mode change is disclosed rather than papered over.
 
 **(b) Query volume and latency genuinely do not need Redis.** OAuth mutations are
 per-authorization-session events, not per-request events. The per-tool-call hot path is
@@ -209,9 +224,26 @@ how well IP attribution works; and
 does not bite legitimate traffic.
 
 **Owed to whoever operates the front door:** if a GCLB / Cloud Armor / additional proxy is in
-front of `amjis-mcp`, `MCP_TRUSTED_PROXY_HOPS` must be raised to match. This is documented in
-the module header and in the PR body; it is a configuration obligation this ruling creates and
-does not discharge.
+front of `amjis-mcp`, `MCP_TRUSTED_PROXY_HOPS` must be raised to match. This is a
+configuration obligation this ruling creates and does not fully discharge.
+
+It is, however, no longer *invisible*. The GA-5 review noted that an obligation disclosed only
+in a module header and a PR body is not actionable at the place it must be acted on, so
+`MCP_TRUSTED_PROXY_HOPS=1` is now set **explicitly** in `deploy.yml`'s `deploy-mcp` `env_vars`
+block — equal to the code default, so it changes no behaviour — with the raise-it-when-you-add-
+a-hop rule stated inline. Ingress topology is configured in that file; the variable now lives
+next to the thing that would invalidate it.
+
+**Still genuinely open, and deliberately not guessed:** `MCP_BASE_URL` is the custom domain
+`https://madhav.marsys.in/mcp`, while `1` is correct for **direct `*.run.app` ingress** — the
+path `deploy.yml` actually smoke-tests. If the custom domain routes through an additional
+appending hop, `1` is low by that hop count. This was not "fixed" by raising the number,
+because raising it without confirming the real chain would trust an XFF segment a caller can
+forge — the *permissive* direction, and the only direction with a security consequence. Being
+low is conservative: identities collapse into one over-restrictive bucket, the collapse is not
+attacker-steerable onto a chosen third party, and the per-route global ceiling protects the
+endpoint regardless. The correct discharge is to observe the live XFF chain on the custom-domain
+path and then set the value deliberately.
 
 ### 3.3 Where layer 2 applies, and where it deliberately does not
 
@@ -221,7 +253,7 @@ identity through the **existing** contracts:
 | Path | Layer 2 subject | Why |
 |---|---|---|
 | `POST /oauth/register` | `principal.user_uid` | `validateMcpKeyFromHeader` proves the Bearer key first. |
-| `POST /oauth/token` (`client_credentials`) | `params.client_id` | `validateOAuthClient` has verified the secret, and the `invalid_client` rejection precedes the charge. |
+| `POST /oauth/token` (`client_credentials`) | `clientResult.owner_uid` (kind `principal`) | The subject of a post-validation bucket must come out of the validation result, not out of the request. `params.client_id` is attacker-controlled request input; `owner_uid` is the identity `validateOAuthClient` itself RESOLVED, and the `invalid_client` rejection precedes the charge. |
 
 **Not wired, deliberately:**
 
@@ -477,16 +509,69 @@ serving before migration 580 applied would 503 every OAuth mutation until deploy
 
 The migration step does run early in `deploy-web` (before its image build), so in practice it
 would usually win the race — but "usually wins" is not a detector, and §N.8 forbids resting a
-safety property on one. `deploy-mcp` therefore now declares `needs: [changes, deploy-web]`,
-guarded with `always()` so that:
+safety property on one.
 
-- `platform/**` unchanged → `deploy-web` SKIPPED → no new migration exists → MCP deploys exactly as before;
-- `deploy-web` SUCCESS → migrations applied → MCP deploys;
-- `deploy-web` FAILED → migration state unknown → MCP is **held**, rather than shipping dependent code against unknown schema.
+### 6.1 The first fix was wrong, and how
+
+The first attempt made `deploy-mcp` declare `needs: [changes, deploy-web]` with an `always()`
+guard, justified in-workflow by this claim:
+
+> when `platform/**` is unchanged, deploy-web is SKIPPED, there is no new migration to wait
+> for, and the MCP deploy proceeds exactly as it did before.
+
+**That premise was false, and an independent GA-5 adversarial review caught it.** `deploy-web`
+carries no path filter of its own — its `if:` is character-for-character the same trigger gate
+as the `changes` job's — so on any deploy-triggering event it **always runs**. The
+`needs.deploy-web.result == 'skipped'` branch was unreachable, and the `always()` that existed
+to service it was dead weight.
+
+The undisclosed real effect was therefore not a conditional coupling but a **permanent** one:
+every future `amjis-mcp` deploy serialised behind the entire web pipeline — Cloud SQL proxy →
+migrations → Next build/push → Cloud Run deploy → smoke → traffic promotion — with any
+`deploy-web` failure, including an unrelated web smoke flake, blocking all MCP deploys. For a
+service that ships urgent security fixes, that is a materially worse property than the race it
+was closing, and it was sold as something milder than it was.
+
+### 6.2 The corrected topology — a barrier, not a coupling
+
+The migration steps are extracted from `deploy-web` into their own `migrate` job, and BOTH
+`deploy-web` and `deploy-mcp` declare `needs: [changes, migrate]`. `deploy-mcp` does **not**
+depend on `deploy-web`.
+
+```
+changes ──┬── migrate ──┬── deploy-web
+          │             └── deploy-mcp
+          ├── deploy-sidecar
+          └── deploy-pipeline-job
+```
+
+- Acyclic; nothing depends on `deploy-mcp`.
+- Closes the **identical** ordering race at ~1 minute of shared barrier (proxy + `migrate.ts`)
+  instead of a full web deploy.
+- `migrate` shares the deploy jobs' trigger `if:`, so it never skips on a deploy-triggering
+  event: it succeeds (schema current → both deploy) or fails (schema state unknown → both
+  correctly held). No `always()` needed — default `needs` semantics are exactly right.
+- `migrate` keeps `needs: [changes]`, preserving the SAMĀPTI / RULING 73-CLOSE manual-dispatch
+  CI gate on the one job that writes to the production database. The "every deploy job is
+  gated by `changes`" invariant holds transitively.
+- `migrate` runs unconditionally rather than behind a `platform/supabase/migrations/**` path
+  filter: `migrate.ts` is idempotent and skips applied files, so the no-new-migration case is a
+  fast no-op — whereas a path filter would have to correctly predict every way a migration can
+  reach `main` (merge, squash, revert, force-push) to stay safe. A cheap always-run beats a
+  clever filter for a barrier whose failure mode is a fail-closed production outage.
+
+One side effect, verified benign: `deploy-web` no longer runs `npm install --ignore-scripts
+--no-fund tsx pg` in `platform/` before assembling its Docker build context, so the web image
+is now built from the repo's **committed** `package.json` / `package-lock.json` rather than a
+pair that step had mutated in place (it promoted `tsx` from `devDependencies` into
+`dependencies`). The Dockerfile runs a plain `npm ci` — devDependencies included — and `pg` is
+already a committed dependency, so image contents are unchanged. The PR-only `build-check` job
+has always built this image with no such step, which is the standing evidence that the
+pristine manifest builds.
 
 This is a change to shared deployment topology, made under this ruling's authority because the
-race is one this ruling's own design introduced. It is flagged in the PR body as the item most
-deserving of independent scrutiny.
+race is one this ruling's own design introduced. It remains the item most deserving of
+independent scrutiny — a judgement the review above has already vindicated once.
 
 ## 7. F-06 disposition
 

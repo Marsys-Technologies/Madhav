@@ -82,9 +82,16 @@ BEGIN;
 -- ══════════════════════════════════════════════════════════════════════════════
 
 CREATE TABLE IF NOT EXISTS mcp_rate_buckets (
-  -- SHA-256 hex of 'v1|<route>|<subject_kind>|<subject>'. Fixed 64 chars, so a
-  -- hostile subject (a 4 KB forged header value) can never widen the key or the
-  -- index. This is the ONLY place the subject participates in the schema.
+  -- SHA-256 hex of 'v1|<route>|<subject_kind>|<subject>|<window_seconds>'.
+  -- Fixed 64 chars, so a hostile subject (a 4 KB forged header value) can never
+  -- widen the key or the index. This is the ONLY place the subject participates
+  -- in the schema.
+  --
+  -- `window_seconds` is part of the hashed input (see `bucketKey`,
+  -- platform/src/lib/mcp/oauth_rate_limit.ts) so that two call sites charging the
+  -- same (route, kind, subject) with DIFFERENT window lengths cannot collide on
+  -- one row and silently re-stamp each other's window. No current call site does
+  -- that; including it makes the invariant structural rather than conventional.
   bucket_key      TEXT        PRIMARY KEY,
 
   -- Denormalised for operator diagnosis only; NEVER read by the limit decision.
@@ -126,9 +133,11 @@ COMMENT ON TABLE mcp_rate_buckets IS
   '00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_GA2_RULING_RATE07_v1_0.md';
 
 COMMENT ON COLUMN mcp_rate_buckets.bucket_key IS
-  'SHA-256 hex of ''v1|<route>|<subject_kind>|<subject>''. The subject is hashed '
-  'rather than stored so (a) the key is fixed-width regardless of input and '
-  '(b) client IP addresses do not accumulate here in cleartext.';
+  'SHA-256 hex of ''v1|<route>|<subject_kind>|<subject>|<window_seconds>''. The '
+  'subject is hashed rather than stored so (a) the key is fixed-width regardless '
+  'of input and (b) client IP addresses do not accumulate here in cleartext. '
+  'window_seconds participates so two call sites charging the same subject with '
+  'different window lengths cannot collide on one row.';
 
 COMMENT ON COLUMN mcp_rate_buckets.subject_kind IS
   'Identity CLASS only (ip | client | principal | route_global). The subject '

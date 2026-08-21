@@ -71,6 +71,19 @@ describe('F-06 — ref_remedies_chart_get scope honesty', () => {
     expect(desc).toContain('bodha_remedies_get')
   })
 
+  it('does not equate bodha_remedies_get with query_remedies_for_chart', () => {
+    // Regression guard for a defect the FIRST repair introduced. The old
+    // description ended '(same as query_remedies_for_chart)', where the
+    // parenthetical correctly annotated THIS tool. The rewrite kept the
+    // parenthetical but moved the sentence, so it read
+    //   '...call bodha_remedies_get instead (same as query_remedies_for_chart)'
+    // — asserting the chart-scoped L2 tool IS the global L0 lookup, which is
+    // precisely the false equivalence this whole finding exists to kill.
+    const desc = captured.get('ref_remedies_chart_get')!.description
+    expect(desc).not.toMatch(/bodha_remedies_get[^.]*same as/i)
+    expect(desc).not.toMatch(/same as[^.]*query_remedies_for_chart/i)
+  })
+
   it('exposes chart_id in the schema (callers can pass it) and labels it provenance-only', () => {
     const tool = captured.get('ref_remedies_chart_get')!
     // The original defect was that chart_id could not even be passed.
