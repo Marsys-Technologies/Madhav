@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 975,
+  "event_count": 978,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1410,17 +1410,17 @@
     },
     "F-178": {
       "confidence": "HIGH",
-      "disposition": "PARKED",
-      "event_sha256": "82bdffa89992ef9e5ea96016cf93aa7b179cceacc4298373923d874d69a0ee68",
+      "disposition": "LANDED",
+      "event_sha256": "141d5be11aac6c8d8a2c9a483d5ff5c15e4b755538147d5db1f74f1665c0ef93",
       "event_type": "finding_status",
-      "evidence_summary": "Fixed as PR #1436 (open, CI green, awaiting GA-5). Cited defect confirmed: mnt_saturn_shani_beeja_008's fabricated verbatim 'BPHS Ch.91 v.35-38' quote. Scope expanded on investigation: all 9 bija rows (not 1) had the same fabricated-verbatim-quote construction, with verse refs colliding with unrelated non-bija rows in the same file -- all 9 reattributed byte-identical to PR #1429's CLASSICAL_REF_BIJA, fabricated quotes replaced with an honest 'no verbatim classical attestation located' statement (not an invented replacement, per SS N.7 item 6). R-1's transliteration defect NOT present in this file (Saturn already correct), but 5 OTHER script-coherence defects found and fixed in the same sweep (Guruve/Gurave, Bhram-Bhroum/Bhraam-Bhraum, Sram/Sraam, Bhuta-Krit/Bhuta-Krid, Shanir-Ahukethavah/Shani-Rahu-Ketavah). Premise correction: orchestrator loads only tantric.yaml, production DB has 0 mnt_* rows -- armed-but-unserved, confirming original F-178 confidence upgrade was about the DEFAULT loader invocation path being reachable, not about current production state. New test tests/l0/test_f178_f180_mantra_transliteration_and_citation.py, 28 passed, 1 declared skip, all 11 fixes mutation-tested and detected. Deliberately NOT touched: 'Om Shanaye Namah' in bphs_pilot_rules.yaml/bphs_batch_05.yaml IS the correct short nama-mantra per R-1 -- pinned by a test so it doesn't get incorrectly 'fixed' by a future pass.",
+      "evidence_summary": "GA-5 review: MERGE-WITH-FOLLOWUP, exhaustively independently verified. All 9 fabricated bija quotes confirmed real (verse-collision cross-check against mnt_vishnu_sahasranama_014/other rows in the same file). Replacement text confirmed honest -- test_bija_rows_carry_no_verbatim_quotation asserts no quote marks and no 'BPHS Ch.N v.NN' pattern can ever be reintroduced. All 6 script corrections independently checked against each row's own Devanagari by the reviewer (not eyeballed). classical_ref/source_canonical_id confirmed byte-identical to PR #1429's constants across all 9 rows. 'Not loaded live' claim confirmed twice (bg_remedies.py file_glob, AND a direct production DB query: 0 mnt_* rows, 4 tantric rows present). 6/11 fixes independently mutation-tested, all detected. Merged origin/main in clean, 46/0 skip-activated passed, wider tests/l0 99 passed, 25/25 CI checks green. Enqueued for merge.",
       "finding_id": "F-178",
-      "next_action": "Dispatch GA-5 review for PR #1436 (combined with F-180).",
+      "next_action": "Confirm merge completion, flip SERVICE_CLOSED.",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1436",
-      "prev_sha256": "bd203d3c409c3a8849a5d532e1c40505e67f2fe6e246381a45881561f1f6b881",
-      "seq": 972,
+      "prev_sha256": "ca06f582329ee6c4fa499ca736f76205ab679ea542e26fb6a5f5e01dc452a18d",
+      "seq": 976,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
-      "status": "DECISION_PARKED",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-179": {
@@ -1454,17 +1454,17 @@
     },
     "F-180": {
       "confidence": "HIGH",
-      "disposition": "PARKED",
-      "event_sha256": "bc366747250d6e6cd0a3ed079e0ff2c0f00a60036c43f0992115c29de243b449",
+      "disposition": "LANDED",
+      "event_sha256": "993dc4fb78eb01150e36512593a8da4f2e269c94449332037dfc0038d18ecdc9",
       "event_type": "finding_status",
-      "evidence_summary": "Fixed as PR #1436 (open, CI green, awaiting GA-5). Both cited defects confirmed and fixed (Shanaye->Shanaischaraya, Buddhaya->Budhaya). Complication correctly flagged rather than glossed over: this file is NOT an immutable snapshot (WS3 method lists the dir as may-touch, no checksum), but rule_id BPHS.82.8.1/verse_ref 82.8 are load-bearing -- pinned 5x in l2_remediation_grounded.py and served as verse_citation by _grounding_engine.py -- so R-2's reattribution was applied as a caveats ADDITION rather than replacing the identifiers, which are asserted unchanged by a pinning test. text_excerpt left byte-intact and the cross-corpus repetition-count/chapter divergence with mantras.yaml disclosed rather than silently reconciled.",
+      "evidence_summary": "GA-5 review: MERGE-WITH-FOLLOWUP. Load-bearing-identifier claim confirmed (BPHS.82.8.1 pinned 5x in l2_remediation_grounded.py, verse_ref served as verse_citation by _grounding_engine) -- not renaming was the right call. REAL GAP FOUND, not blocking this PR but tracked separately as F-184: the new caveats field this PR adds is never actually read at serve time -- _grounding_engine.ground_signal() returns only rule_id/verse_citation/school/confidence, zero 'caveat' references in either consumer. The R-2 correction as shipped is corpus-internal only; the served surface still shows bare 'BPHS 82.8' with no disclosure of the reattribution. The PR's own 'applied as a caveats addition' description overstated its actual reach. Enqueued for merge.",
       "finding_id": "F-180",
-      "next_action": "Dispatch GA-5 review for PR #1436 (combined with F-178).",
+      "next_action": "Confirm merge completion, flip SERVICE_CLOSED. See F-184 for the caveats-not-served gap.",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1436",
-      "prev_sha256": "82bdffa89992ef9e5ea96016cf93aa7b179cceacc4298373923d874d69a0ee68",
-      "seq": 973,
+      "prev_sha256": "141d5be11aac6c8d8a2c9a483d5ff5c15e4b755538147d5db1f74f1665c0ef93",
+      "seq": 977,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
-      "status": "DECISION_PARKED",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-181": {
@@ -1508,6 +1508,21 @@
       "pr_url": null,
       "prev_sha256": "c20465bf7eb61052b7db7e41f426f523a7fb67dc9485862e56c5391986098364",
       "seq": 975,
+      "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-184": {
+      "confidence": "MEDIUM",
+      "disposition": "PARKED",
+      "event_sha256": "bc5e28ba508cd03944ff08eb9b59f3a497bd69b979fc3a086fe67320fb83f979",
+      "event_type": "finding_status",
+      "evidence_summary": "Newly discovered by GA-5 review of PR #1436, disclosed as its own finding. _grounding_engine.ground_signal() only surfaces rule_id/verse_citation/school/confidence to callers -- the caveats field F-180's fix added to bphs_canon_batch_04.yaml (disclosing that the Saturn/Mercury bija mantras shouldn't be read as verbatim BPHS text) is dead weight at serve time. Same 'the fix is real but the disclosure doesn't reach the wire' pattern as F-177 (domain_completeness_empty_reason) and F-175 (promise_chain), just in the citation/grounding-engine surface rather than the assess_*/kala_ahead_get surface. Also disclosed alongside: source_chapter/source_verse now carry non-chapter/non-verse prose text (harmless per current consumers but semantically stretched, worth a schema note); text_excerpt overclaim and the cross-corpus repetition-count divergence with mantras.yaml (16k/19k vs 19k/23k) are correctly disclosed-not-fixed in the merged PR.",
+      "finding_id": "F-184",
+      "next_action": "Wire caveats (or an equivalent field) into _grounding_engine.ground_signal()'s return shape so the R-2 disclosure actually reaches callers, not just the corpus file.",
+      "pr_url": null,
+      "prev_sha256": "993dc4fb78eb01150e36512593a8da4f2e269c94449332037dfc0038d18ecdc9",
+      "seq": 978,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -2747,10 +2762,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 2,
+  "findings_morning_ship_ready_count": 4,
   "findings_terminal_count": 136,
-  "journal_head_seq": 975,
-  "journal_head_sha256": "ca06f582329ee6c4fa499ca736f76205ab679ea542e26fb6a5f5e01dc452a18d",
+  "journal_head_seq": 978,
+  "journal_head_sha256": "bc5e28ba508cd03944ff08eb9b59f3a497bd69b979fc3a086fe67320fb83f979",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
