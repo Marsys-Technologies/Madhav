@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 923,
+  "event_count": 924,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -301,16 +301,17 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-110": {
-      "confidence": "MEDIUM",
-      "disposition": "OPEN",
-      "event_sha256": "de34a8d7918f40feeeea372394c47cb2196b7a84c87af5d5322f1c5def82f3d8",
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "56e0d4a394c1661d0ff22c620d76513ef49a1b78e59ef4dc2a1b67ea96c34948",
       "event_type": "finding_status",
-      "evidence_summary": "Needs promise_spine.ts's interpretPactJoin wired into kala_ahead_get -- cross-cutting change touching how PACT denial gates tier_1_high verdicts, real design decision on gating approach needed first.",
+      "evidence_summary": "TOP-SEVERITY finding. Confirmed still-current live (not historical) on main. Correctly diagnosed: the launder is NOT the tier computation (L3's 0.70 convergence -> tier_1_high is honest at its layer, SS N.5-correct) -- it's ahead.ts's OWN narration re-stating convergence-as-probability and hardcoding dissent:[] while the server holds a real denial (63 cited L1 facts, composite -3.5). Found interpretPactJoin already existed, fully tested, ZERO production callers -- its own docstring falsely claimed a wiring that was never written (an SS N.8 defect inside code built to fix SS N.8 defects). Correctly identified BOTH obvious fixes (downgrade tier / suppress) as wrong (would violate SS N.5 and B.10/SS N.6 respectively) and caught a genuine second-defect trap: denied_at_promise/confirmation are horizon-invariant but denied_at_activation is as-of-date-scoped and must not gate a future window -- a naive wiring would have created a new defect. Shipped Option C (disclosure, byte-identical tier/narrative/score, new promise_gate field, dissent populated, contradicted evidence loses an invented 'strong' grade for undefined). 15 new tests including byte-equality proof against L3 input; 107/108 across all relevant suites (1 pre-existing failure confirmed via git stash). Escalated 3 real policy questions to native ruling (R1 suppression policy, R2 whether PACT should gate at L3 build time -- the only legitimate tier-changing fix, R3 whether INV-1 binds assess_*). Two residuals disclosed not dropped (F-110-b: assess_marriage's own no_contradictions_in_domain breach; F-110-c: kala_windows_get/kala_projections_get ungated).",
       "finding_id": "F-110",
-      "next_action": "author the PACT-gating contract, independent review, then implement",
-      "prev_sha256": "01cb60e97305b7dcbb88ac9e5f6a25f1111bde6a121049fd0a98e092b1b95336",
-      "seq": 756,
-      "source_batch": "round9_triage",
+      "next_action": "GA-5 review in flight (heightened scrutiny given top-severity)",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1426",
+      "prev_sha256": "a42b315cddb00e86adcfb90141fc7db6372c693fd0db92412e2a6c0f2f910116",
+      "seq": 924,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
@@ -2550,8 +2551,8 @@
   },
   "findings_morning_ship_ready_count": 6,
   "findings_terminal_count": 122,
-  "journal_head_seq": 923,
-  "journal_head_sha256": "a42b315cddb00e86adcfb90141fc7db6372c693fd0db92412e2a6c0f2f910116",
+  "journal_head_seq": 924,
+  "journal_head_sha256": "56e0d4a394c1661d0ff22c620d76513ef49a1b78e59ef4dc2a1b67ea96c34948",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
