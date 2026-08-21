@@ -1780,8 +1780,10 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "a6646b1da2f0964b52ac9b0b5f6adfc2800fe9ab28e0507eb36db1d631d28ad8",
-      "native_id": "project"
+      "fingerprint": "bd8f590c3b01a6ca769cbe28871676a15cf435a3d388fff92962efcd4fb9ff59",
+      "native_id": "project",
+      "last_verified_session": "PARIPRASHNA-P3-PREFLIGHT-2026-08-21",
+      "last_verified_on": "2026-08-21"
     },
     {
       "canonical_id": "PARIPRASHNA_SWARM_PLAN_AMENDMENTS",
@@ -1794,8 +1796,8 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "4bdc0202106c089017650c684208c753245657e2f421007b26304779c4ad7111",
-      "last_verified_session": "PARIPRASHNA-DD13-REDATE-2026-08-21",
+      "fingerprint": "a9cf322047c32e78ab5dc1d8214fc9043f977f6feb7799aab059f9777dd234eb",
+      "last_verified_session": "PARIPRASHNA-P3-PREFLIGHT-2026-08-21",
       "last_verified_on": "2026-08-21",
       "native_id": "project"
     },
