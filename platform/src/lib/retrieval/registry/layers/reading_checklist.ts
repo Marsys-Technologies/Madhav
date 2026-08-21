@@ -175,6 +175,49 @@ export const DOMAIN_KP_CUSPS: Record<string, number[]> = {
   residence: [4, 11], property: [4, 11], home: [4, 11],
 }
 
+// ── F-107 (PARIŚEṢA-V4, CL-20): the domain → classical-varga registry ─────────
+// MOVED here from register_d8_assess_domain.ts (which now re-exports it, so every
+// existing import path and the Lane-E CI rule keep working unchanged). It lives in
+// this leaf module so BOTH assess_* (register_d8) and judgment_query (register_d9)
+// can read ONE registry rather than each carrying its own copy — register_d8 already
+// imports SHASTRA_MAP from register_d9, so a direct d9→d8 import would be a cycle,
+// and a second local copy would be a GA.1-class registry disagreement (CLAUDE.md §B.8).
+//
+// NOTE the deliberate asymmetry this registry makes visible: SHASTRA_MAP (register_d9)
+// gives each domain exactly ONE *operative* varga — the one whose bhāveśa/kāraka dignity
+// is weighted into judgment_query's verdict. This registry gives the FULL classical varga
+// set for the domains that have more than one. Wealth is the case that matters: BPHS
+// Ch.6-7 assigns dhana (accumulated wealth) to D2 Horā and lābha (gains/income) to D11
+// Rudrāṃśa/Ekādaśāṃśa — two distinct arthas, two distinct vargas. judgment_query weights
+// only D2. That is a real, defensible scoping choice; what was NOT acceptable was leaving
+// it undisclosed, so callers could read a D2-weighted verdict as a full cross-varga
+// wealth judgment (F-107).
+
+/** Domain → the full classical varga set for that domain (superset of SHASTRA_MAP's
+ *  single operative varga). Consumed directly from L1 by assess_* (EL-45); disclosed
+ *  but NOT weighted by judgment_query (F-107). */
+export const DOMAIN_DIRECT_VARGAS: Record<string, string[]> = {
+  wealth: ['D2', 'D11'],
+  career: ['D10'],
+  relationship: ['D9'],
+  health: ['D6'],
+}
+
+/** Domains carrying a dedicated special-lagna leg. Indu Lagna (Jaimini; computed from
+ *  the 9th-lord kalās of Lagna + Moon) is the wealth-strength lagna — a wealth indicator
+ *  independent of the 2nd/11th house-and-lord reading. Stored two_pass_verified in
+ *  chart_facts (fact_category='special_lagna', fact_subject='INDU_LAGNA'). */
+export const DOMAIN_INDU_LAGNA = new Set(['wealth'])
+
+/**
+ * F-107 — which classical vargas a domain has that judgment_query does NOT weight into
+ * its verdict, given the single operative varga SHASTRA_MAP assigns it. Empty array when
+ * the operative varga already covers the domain's whole classical varga set.
+ */
+export function corroboratingVargasNotWeighted(domain: string, operativeVarga: string): string[] {
+  return (DOMAIN_DIRECT_VARGAS[domain] ?? []).filter(v => v !== operativeVarga)
+}
+
 export interface KpCuspLink {
   house: number
   sign: unknown
