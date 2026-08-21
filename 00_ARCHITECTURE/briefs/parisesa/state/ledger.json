@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 882,
+  "event_count": 887,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -804,17 +804,17 @@
     },
     "F-141": {
       "confidence": "HIGH",
-      "disposition": "LANDED",
-      "event_sha256": "5486024a102e228c795e6551d94ae7aca07b545a8f4a91ee83d80b8893888c92",
+      "disposition": "STRANDED",
+      "event_sha256": "3e6cc37e6393e1d0f81ca3a3ba81c7c4cc85f05f0fd850de6ee9b7f9d6c7e5b0",
       "event_type": "finding_status",
-      "evidence_summary": "Confirmed protected-data item -- status/evidence unchanged from prior pass. Correcting only the stale next_action language: 'morning checkpoint decision' is v2.1.1-era phrasing v3.0 has no equivalent of (there is no morning checkpoint under the v3.0 directive this campaign ran under). Same correction already applied to F-54's entry during closure; F-117 and F-141 were flagged by external review as having been missed in that pass.",
+      "evidence_summary": "Investigated fully, executed NOTHING -- correctly respected a genuine, independently-re-verified standing PRATINIDHI ruling (PAR-R-9: 'NO DB WRITE. Both options refused; the question was malformed'). Live state has changed since the original finding text: ka_kshetra/482012f1 is now state='stale', not 'lit' -- see F-150 for why. rows_written=11,069,325 vs 10,502,780 actual (re-confirmed) still holds. Root cause of the original OOM (the reason a rebuild was ever hand-repaired in the first place) confirmed STILL LIVE and unfixed: services/ka_kshetra/writer.py's _compute_content_hash and stage4_field.py's _rows()/field_content_hash chain do three simultaneous full materializations of ~10.5M rows with no batching/cursor itersize/incremental digest -- a rebuild would OOM again, deterministically. This makes option (b) (real rebuild) not just risky but currently IMPOSSIBLE until F-149 lands. Option (a) (metadata-only correction) is foreclosed by PAR-R-9 itself plus this campaign's own GOVERNANCE_INTEGRITY_PROTOCOL SS18.3 Gate C (owner countersignature required for any state flip) -- correctly identified as the missing clause, not executed.",
       "finding_id": "F-141",
-      "next_action": "author the applicable GA-3 packet clause(s) for this protected-data item in a future session with time to do it properly -- gated on packet authorship, not on owner review",
+      "next_action": "genuinely blocked on: (1) F-149 (streaming content-hash fix) landing first -- rebuild is impossible before that: (2) owner/PRATINIDHI countersignature for ANY further action on this specific row, per PAR-R-9 -- do not attempt metadata correction or rebuild without it, even after F-149 lands",
       "pr_url": null,
-      "prev_sha256": "6daa83ed33db070656b6d169368d761e640b3b36105499f743292ec6f5ca619a",
-      "seq": 849,
-      "source_batch": "PARISESA-V4-POST-CLOSURE-CORRECTION",
-      "status": "DATA_PARKED",
+      "prev_sha256": "8b31924f932345647a465de29e893b5cf0d0230022ba308d11e27b1a09a7e9cd",
+      "seq": 883,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "EXTERNAL_HOLD",
       "terminal_status": null
     },
     "F-142-CANDIDATE": {
@@ -922,6 +922,21 @@
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
+    "F-149": {
+      "confidence": "HIGH",
+      "disposition": "STRANDED",
+      "event_sha256": "dc5e7d5ae066f9e6d7583c8fd159f1131c6fd5de6b930351d1e0c26c67fae9af",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW finding, found by F-141's investigation, hard prerequisite for any future ka_kshetra rebuild (F-141/F-71-class work). services/ka_kshetra/writer.py's _compute_content_hash is unbounded; stage4_field.py's _rows() does a bare cur.fetchall() with no cursor itersize/batching, and field_content_hash then sorts a full second copy -- three simultaneous full materializations of ~10.5M rows (kala_field 8.6M + provenance 1.84M + 5 smaller tables). This is the confirmed, still-live root cause of the original OOM that led to the F-141 manual-repair incident in the first place. A rebuild attempt today would OOM again, deterministically -- confirmed by reading the current code, not assumed.",
+      "finding_id": "F-149",
+      "next_action": "author a streaming/batched rewrite of the content-hash computation (server-side cursor with itersize, incremental hash update instead of full materialize-then-sort) -- independent review, then implement, then test against a realistically-sized dataset before any real rebuild is attempted",
+      "pr_url": null,
+      "prev_sha256": "3c384a8ad6cd94b2030f06251c8bd36b966e1e67be0e2b9fbc0aa2dbf964f235",
+      "seq": 885,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
     "F-15": {
       "confidence": "HIGH",
       "disposition": "LANDED",
@@ -936,6 +951,51 @@
       "source_batch": "v3_ga2_decision_closures",
       "status": "SERVICE_CLOSED",
       "terminal_status": "SERVICE_CLOSED"
+    },
+    "F-150": {
+      "confidence": "HIGH",
+      "disposition": "STRANDED",
+      "event_sha256": "3c384a8ad6cd94b2030f06251c8bd36b966e1e67be0e2b9fbc0aa2dbf964f235",
+      "event_type": "finding_status",
+      "evidence_summary": "CRITICAL PROCESS/GOVERNANCE finding, self-disclosed via the F-141 investigation, recorded prominently per this campaign's own disclosure discipline -- NOT smoothed over. This session's OWN earlier chart-482012f1 GA-3 Packet B execution (the bo_upaya rebuild that closed F-116, executed by triggered_by='parisesa-v4-ga3-packetB' at 02:31:53 today) had an UNINTENDED side effect: asset_runner.py's transitive stale-cascade logic (which flips downstream-dependent assets from 'lit' to 'stale' when an upstream asset rebuilds, per its own correct designed behavior) included ka_kshetra in bo_upaya's downstream closure -- and silently flipped ka_kshetra's state from 'lit' to 'stale', WITHOUT clearing last_error or last_built_at. This mutated the exact row that a standing, independently-verified PRATINIDHI ruling (PAR-R-9: 'NO DB WRITE. Both options refused.') had explicitly ordered PRESERVED as an untraced diagnostic specimen -- one of PAR-R-9's own rescoped remediation items was a 'pre-write snapshot' specifically to guard this row against exactly this kind of unintended mutation, and that guard did not anticipate an indirect cascade effect from an unrelated, properly-authorized write elsewhere in the DAG. No data was corrupted (state/error metadata only, not the underlying 8.6M+ computed rows) and no deliberate/direct write occurred -- but this defeats a standing owner-adjacent ruling and is recorded here in full, not minimized. Correcting this (reverting state back to 'lit'/whatever the pre-cascade value was) would ITSELF be a DB write to the same protected row -- compounding rather than fixing the violation -- so this session did NOT attempt any correction.",
+      "finding_id": "F-150",
+      "next_action": "OWNER/PRATINIDHI ATTENTION REQUIRED, not an engineering task: (1) decide whether to restore the pre-cascade state (itself requires new authority, since PAR-R-9 forbids ANY write to this row) or accept the new state as the honest current reality and update/retire PAR-R-9's preservation scope accordingly; (2) this reveals a real gap in how 'preserve, do not repair' rulings interact with the orchestrator's own automatic cascade mechanism -- worth a standing policy: should specific rows be exempt from automatic cascade invalidation when under an active preservation ruling? See F-152 (audit trigger design note) for a partial technical mitigation for the future.",
+      "pr_url": null,
+      "prev_sha256": "3e6cc37e6393e1d0f81ca3a3ba81c7c4cc85f05f0fd850de6ee9b7f9d6c7e5b0",
+      "seq": 884,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1-PROCESS-VIOLATION",
+      "status": "EXTERNAL_HOLD",
+      "terminal_status": null
+    },
+    "F-151": {
+      "confidence": "MEDIUM",
+      "disposition": "STRANDED",
+      "event_sha256": "546def96c5252a96fa12900effc2186c4392395ccdd3c1570ea004684a8303ff",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW finding, found by F-141's investigation. kala_field_snapshots holds a complete row (field_content_hash=kfh_3a8d00db..., built_at=06:41:14 today) but build_substep_progress has NO corresponding 'snapshot' substep row -- _run_snapshot (writer.py:1732) is supposed to write the snapshot AND record the substep in the same transaction (both-or-neither), so this specific hash was written OUT-OF-BAND, not by the orchestrator -- meaning a manual repair touched real DATA (the snapshot hash itself), not just the state metadata field F-141's original claim was about. Its correctness is currently UNVERIFIABLE (checking it would require re-running the same computation that currently OOMs, per F-149).",
+      "finding_id": "F-151",
+      "next_action": "cannot verify until F-149 (streaming content-hash fix) lands -- once it does, independently recompute field_content_hash and compare against the out-of-band value; if it disagrees, the served snapshot is wrong and needs its own remediation",
+      "pr_url": null,
+      "prev_sha256": "dc5e7d5ae066f9e6d7583c8fd159f1131c6fd5de6b930351d1e0c26c67fae9af",
+      "seq": 886,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-152": {
+      "confidence": "MEDIUM",
+      "disposition": "STRANDED",
+      "event_sha256": "47c31564d70214e03615170eaf618cb01af75cf13bdaaf42e2bc6f6f58bd2ca5",
+      "event_type": "finding_status",
+      "evidence_summary": "Design-note finding (not yet a code defect, a recommended safeguard), found by F-141's investigation. asset_throughput has exactly one DB trigger, on UPDATE OF chart_id -- it never fires on SET state, so nothing distinguishes an earned (orchestrator-promoted) state change from a manual UPDATE or an automatic cascade side-effect. admin_audit_log has no coverage of this table either. This gap is what let both the original manual 'lit'-repair AND today's F-150 cascade-mutation happen invisibly, with no audit trail pointing to either.",
+      "finding_id": "F-152",
+      "next_action": "recommend an AFTER UPDATE OF state audit trigger on asset_throughput recording old_state/new_state/current_user/application_name/triggered_by -- cheap, non-destructive, would have caught both F-150 and the original manual repair. Author + independent review before implementing (touches a core orchestrator table, treat with care).",
+      "pr_url": null,
+      "prev_sha256": "546def96c5252a96fa12900effc2186c4392395ccdd3c1570ea004684a8303ff",
+      "seq": 887,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
     },
     "F-16": {
       "confidence": "HIGH",
@@ -2210,8 +2270,8 @@
   },
   "findings_morning_ship_ready_count": 1,
   "findings_terminal_count": 119,
-  "journal_head_seq": 882,
-  "journal_head_sha256": "8b31924f932345647a465de29e893b5cf0d0230022ba308d11e27b1a09a7e9cd",
+  "journal_head_seq": 887,
+  "journal_head_sha256": "47c31564d70214e03615170eaf618cb01af75cf13bdaaf42e2bc6f6f58bd2ca5",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
