@@ -116,6 +116,33 @@ logger = logging.getLogger(__name__)
 _W23_TARA_BALA_ENABLED: bool = True
 
 # ---------------------------------------------------------------------------
+# Canonical lambda_v3 formula strings (PARIŚEṢA F-52)
+# ---------------------------------------------------------------------------
+# These two strings ARE the served, human-readable statement of which
+# mechanism terms participate in the production lambda_v3 product. They were
+# previously inline literals at their two emission sites; they are hoisted to
+# module scope so `services.gochara_v3.scoring_signature` can fold them into
+# the materializer's delta fingerprint WITHOUT a hand-maintained duplicate
+# that could drift from what is actually emitted (same "derive from the real
+# artefact" discipline as PARIṢKĀRA MR-38's INSERT-template column parse).
+#
+# Adding or removing a term here (as W2.3's `tara_modifier` and W3.0's
+# `w30_modifier` both did) therefore automatically invalidates every stored
+# gochara-window fingerprint — see scoring_signature.py for the full account
+# of the F-52 defect this closes.
+LAMBDA_V3_FORMULA: str = (
+    "lambda_v3 = PROMISE * PERMISSION * activity * tara_modifier "
+    "* w30_modifier * quality_gates"
+)
+
+# The `term_breakdown.formula` value actually persisted onto every
+# kala_gochara_windows row and served by gochara_activation_get /
+# gochara_forecast_get. PARIŚEṢA F-21's reproducer reads exactly this string.
+TERM_BREAKDOWN_FORMULA: str = (
+    "PROMISE × PERMISSION × activity × tara_modifier × w30_modifier × quality_gates"
+)
+
+# ---------------------------------------------------------------------------
 # W1.1 constants
 # ---------------------------------------------------------------------------
 # Maximum orb for activity decay (degrees). Contacts within this orb score
@@ -621,7 +648,7 @@ def _evaluate_single_from_context(
     x_t_compat = activity  # activity IS the v3 replacement for X(t)
     x_t_detail_compat = {
         **activity_detail,
-        "formula": "lambda_v3 = PROMISE * PERMISSION * activity * tara_modifier * w30_modifier * quality_gates",
+        "formula": LAMBDA_V3_FORMULA,
         "v3_mode": True,
         "term_breakdown": term_breakdown,
         "tara_modifier": round(tara_modifier, 8),
@@ -749,7 +776,7 @@ def _evaluate_single_from_context(
         "quality_gates": round(quality_gates, 8),
         "lambda_v3": round(raw_lambda, 8),
         "activity_terms": x_t_detail_compat.get("contributions", []),
-        "formula": "PROMISE × PERMISSION × activity × tara_modifier × w30_modifier × quality_gates",
+        "formula": TERM_BREAKDOWN_FORMULA,
     }
 
     # W1.5 credible interval — structural_prior: ±20% band, clamped to [0,1].
