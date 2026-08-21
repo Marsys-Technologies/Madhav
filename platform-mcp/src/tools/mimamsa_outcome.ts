@@ -425,31 +425,55 @@ export function registerMimamsaOutcomeTool(server: McpServer, principal: Princip
           'Chart UUID. Required — must be a valid chart UUID from the charts table.'
         ),
 
+      // F-27 (PARIŚEṢA V4): `domain`, `limit` and `offset` were declared here and
+      // forwarded to the platform primitive while being complete no-ops — the capability
+      // `marsys://tool/L5/query_calibration` never read any of the three, so two calls
+      // differing only in those fields returned a byte-identical payload.
+      //
+      // `domain` is now a REAL filter: the capability joins
+      // `mimamsa_calibration.prediction_id` -> `mimamsa_predictions.domain`
+      // (`text NOT NULL`, migration 347:10) over the shipped composite index
+      // `idx_mimamsa_calibration_prediction` (348:31). `limit`/`offset` stay REMOVED —
+      // the capability has no pagination at all, and response size is governed by the
+      // alias's presentation-only `budget_kb`, not by row offsets. Declaring them would
+      // be exactly the defect this repair exists to close (§N.8 Earned-Signal Principle:
+      // a parameter with no code path behind it is an unimplemented feature wearing a
+      // feature's clothes).
+      //
+      // `include_held_out` / `promoted_only` were the mirror-image defect: two GENUINE
+      // capability filters that no MCP tool name could reach. Both are surfaced here and
+      // on the twin alias, keeping the CR-51/CR-30 strict-alias pair at contract parity.
       domain: z
         .string()
-        .optional()
-        .describe('Optional domain filter (forwarded to the capability; currently informational).'),
-
-      limit: z
-        .number()
-        .int()
         .min(1)
-        .max(100)
         .optional()
-        .describe('Maximum rows to return where applicable. Default: capability default.'),
+        .describe(
+          'Optional life-domain filter (e.g. "career", "relationship", "transition"). ' +
+            'Narrows verdict_distribution to matches whose prediction carries this domain. ' +
+            'Sections with no domain dimension are returned unfiltered and named in ' +
+            'filters.domain_unfiltered_sections.'
+        ),
 
-      offset: z
-        .number()
-        .int()
-        .min(0)
+      include_held_out: z
+        .boolean()
         .optional()
-        .describe('Pagination offset.'),
+        .describe('Include held-out partition matches (default: false).'),
+
+      promoted_only: z
+        .boolean()
+        .optional()
+        .describe('Return only promoted (gate_passed=true) multipliers (default: false).'),
     },
     async (params) => {
       try {
         const result = await callPlatformPrimitiveDirect(
           'query_calibration',
-          { chart_id: params.chart_id, domain: params.domain, limit: params.limit, offset: params.offset },
+          {
+            chart_id:         params.chart_id,
+            domain:           params.domain,
+            include_held_out: params.include_held_out,
+            promoted_only:    params.promoted_only,
+          },
           principal,
         )
 

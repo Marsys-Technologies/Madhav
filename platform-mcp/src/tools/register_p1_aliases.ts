@@ -2005,12 +2005,26 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'only qa_results when necessary; request budget_kb up to 200 for the complete QA detail.',
     {
       chart_id: z.string().uuid().describe('Chart UUID'),
+      // F-27 (PARIŚEṢA V4): `domain` is a real, derived filter — the capability joins
+      // mimamsa_calibration.prediction_id -> mimamsa_predictions.domain (text NOT NULL)
+      // over idx_mimamsa_calibration_prediction. `include_held_out`/`promoted_only` are
+      // genuine capability filters that were previously unreachable from ANY tool name.
+      domain: z.string().min(1).optional()
+        .describe('Optional life-domain filter (e.g. "career", "relationship", "transition"). Narrows verdict_distribution to matches whose prediction carries this domain; sections with no domain dimension are returned unfiltered and named in filters.domain_unfiltered_sections.'),
+      include_held_out: z.boolean().optional()
+        .describe('Include held-out partition matches (default: false).'),
+      promoted_only: z.boolean().optional()
+        .describe('Return only promoted (gate_passed=true) multipliers (default: false).'),
       budget_kb: z.number().int().min(1).max(200).optional()
         .describe('Presentation-only response budget in KB (default 40, max 200); never forwarded to query_calibration.'),
     },
-    async ({ chart_id, budget_kb }) => {
+    async ({ chart_id, domain, include_held_out, promoted_only, budget_kb }) => {
       try {
-        const data = await callPlatformPrim('query_calibration', { chart_id }, principal)
+        const data = await callPlatformPrim(
+          'query_calibration',
+          { chart_id, domain, include_held_out, promoted_only },
+          principal,
+        )
         return calibrationDualOutput(data, budget_kb ?? 40, budget_kb)
       } catch (err) { return errOut('mimamsa_calibration_get', String(err), { chart_id }) }
     }
