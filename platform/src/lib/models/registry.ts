@@ -266,6 +266,73 @@ export const MODELS: ModelMeta[] = [
   },
 
 
+  // ── Gemini 3.x — CATALOG ONLY, NOT ACTIVE (PARIPRASHNA-P3-PREFLIGHT-2026-08-21) ──
+  // Registered per the native's ruling item 1 (model ids verified) + item 2
+  // (do not move any model yet — registration only). Neither model is
+  // referenced by any live STACK_ROUTING entry; see STAGED_TIER_UPGRADE_ROUTING
+  // below for the pinned activation plan. Model ids + specs verified live
+  // against https://ai.google.dev/gemini-api/docs/models and
+  // .../gemini-api/docs/pricing on 2026-08-21 — neither model has a published
+  // deprecation date as of that check (see DD register for the standing
+  // re-check rule). KNOWN GAP: both use Gemini 3.x's `thinking_level`
+  // (low/medium/high) parameter, not the `thinking_budget` numeric token
+  // count `adapter_gemini.ts` currently sends (`thinkingConfig.thinkingBudget`,
+  // line ~20) — the adapter needs a `thinking_level` code path before either
+  // model can actually serve traffic, not just be selected here.
+  {
+    id: 'gemini-3.1-pro-preview',
+    provider: 'google',
+    tier: 'premium',
+    label: 'Gemini 3.1 Pro (preview)',
+    hint: 'PREVIEW — no GA successor named. 1M ctx, $2/$12 (<=200K in), $4/$18 (>200K in). Not wired to any CallType; see STAGED_TIER_UPGRADE_ROUTING.',
+    speedTier: 'deep',
+    maxInputTokens: 1_048_576,
+    maxOutputTokens: 65_536,
+    capabilities: ['tool-use'],
+    role: 'synthesis',
+    costPer1MInput: 2.00,        // $2.00 up to 200K input; $4.00 above 200K
+    costPer1MOutput: 12.00,      // $12.00 up to 200K input; $18.00 above 200K
+    reasoningMode: 'native',
+    quirks: {
+      reasoning_via: 'native',
+      streaming_required: false,
+      tool_use_format: 'gemini',
+      structured_output_format: 'gemini_response_schema',
+      cache_strategy: 'context_caching',
+      system_prompt_shape: 'system_message',
+      // thinking_level (not thinking_budget) — adapter does not read this key
+      // yet; recorded here as the intended config, not a functioning one.
+      request_transforms: { safety_filter: 'block_none', thinking_level: 'high' },
+    },
+  },
+  {
+    id: 'gemini-3.7-flash',
+    provider: 'google',
+    tier: 'mid',
+    label: 'Gemini 3.7 Flash',
+    hint: 'GA (stable). 1M ctx, $0.75/$3.75 through 2026-12-31, rising to $1.50/$7.50 on 2027-01-01. Not wired to any CallType; see STAGED_TIER_UPGRADE_ROUTING.',
+    speedTier: 'balanced',
+    maxInputTokens: 1_000_000,
+    maxOutputTokens: 65_536,
+    capabilities: ['tool-use'],
+    role: 'both',
+    costPer1MInput: 0.75,        // rises to $1.50 on 2027-01-01 — re-check before then
+    costPer1MOutput: 3.75,       // rises to $7.50 on 2027-01-01 — re-check before then
+    reasoningMode: 'native',
+    quirks: {
+      reasoning_via: 'native',
+      streaming_required: false,
+      tool_use_format: 'gemini',
+      structured_output_format: 'gemini_response_schema',
+      cache_strategy: 'context_caching',
+      system_prompt_shape: 'system_message',
+      // thinking_level: 'high' per the native's own ruling item 1/2b — same
+      // adapter caveat as gemini-3.1-pro-preview above.
+      request_transforms: { safety_filter: 'block_none', thinking_level: 'high' },
+    },
+  },
+
+
   // ── DeepSeek ────────────────────────────────────────────────────────────────
   // Current:   deepseek-v4-pro (synthesis, thinking)  |  deepseek-v4-flash (worker)
   // Deprecated: deepseek-chat (→ V4 Flash alias, retires 2026-07-24)
@@ -1018,6 +1085,14 @@ export type CallType =
   | 'planner_fast'
   | 'context_assembly'
   | 'worker'
+  // interpretation_sets — 3-way distinct candidate reading + falsifier
+  // synthesis per significant judgment (pariprashna/interpretation/worker.ts,
+  // DD-17/DD-20). Folded into the shared registry 2026-08-21
+  // (PARIPRASHNA-P3-PREFLIGHT-2026-08-21, model-tier ruling item 2a) —
+  // previously a local bypass constant on that one call site only; see
+  // DD-17's entry in PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md for why
+  // the bypass existed and why it was closed.
+  | 'interpretation_sets'
   // AIOps CP.1 — Quality & Verification call types (cross-stack; pick from full catalog)
   | 'eval_judge'       // grades outputs in answer:eval / planner:eval scripts
   | 'eval_generator'   // generates eval prompts dynamically
@@ -1124,6 +1199,14 @@ export const STACK_ROUTING: Record<ModelStack, Record<CallType, { primary: strin
       primary:  'nvidia/nemotron-3-super-120b-a12b',        // ✅ 356ms, confirmed live 2026-05-03
       fallback: 'claude-haiku-4-5',                         // prompt-caching, reliable paid fallback
     },
+    interpretation_sets: {
+      // Same pick as context_assembly — nearest existing role by capability
+      // demand (quality-sensitive, not latency-sensitive). Never exercised on
+      // this stack in production yet (worker.ts's bypass only ever resolved
+      // to a gemini id); added for STACK_ROUTING completeness (2026-08-21).
+      primary:  'nvidia/nemotron-3-super-120b-a12b',
+      fallback: 'nvidia/llama-3.3-nemotron-super-49b-v1',
+    },
     // AIOps CP.1 Quality & Verification (R13 seeds — same as synthesis/planner_deep/worker)
     eval_judge:      { primary: 'nvidia/nemotron-3-super-120b-a12b',             fallback: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning' },
     eval_generator:  { primary: 'nvidia/llama-3.3-nemotron-super-49b-v1',        fallback: 'nvidia/nemotron-3-super-120b-a12b' },
@@ -1155,6 +1238,11 @@ export const STACK_ROUTING: Record<ModelStack, Record<CallType, { primary: strin
     worker: {
       primary:  'claude-haiku-4-5',                         // $1/$5, prompt-caching
       fallback: 'claude-sonnet-4-6',                        // fallback if Haiku fails
+    },
+    interpretation_sets: {
+      // Same pick as context_assembly — see NIM stack's comment above.
+      primary:  'claude-sonnet-4-6',
+      fallback: 'claude-opus-4-7',
     },
     eval_judge:      { primary: 'claude-opus-4-7',   fallback: 'claude-sonnet-4-6' },
     eval_generator:  { primary: 'claude-sonnet-4-6', fallback: 'claude-opus-4-7' },
@@ -1188,6 +1276,16 @@ export const STACK_ROUTING: Record<ModelStack, Record<CallType, { primary: strin
       primary:  'gemini-2.5-flash-lite',                    // $0.015/$0.06, tool-use (replaced gemini-2.0-flash-lite, HTTP 404 2026-05-03)
       fallback: 'gemini-2.5-flash',                         // 1M ctx fallback
     },
+    interpretation_sets: {
+      // DD-17's ruling, unchanged by folding it into the registry
+      // (PARIPRASHNA-P3-PREFLIGHT-2026-08-21 item 2a) — 'gemini-2.5-flash'
+      // is the SAME model `INTERPRETATION_SETS_MODEL_ID` resolved to before
+      // this entry existed; this is a plumbing change, not a model change.
+      // Fallback newly defined here (the bypass constant had none) —
+      // escalates to the flagship on failure, same shape as context_assembly.
+      primary:  'gemini-2.5-flash',
+      fallback: 'gemini-2.5-pro',
+    },
     eval_judge:      { primary: 'gemini-2.5-pro',       fallback: 'gemini-2.5-flash' },
     eval_generator:  { primary: 'gemini-2.5-flash',     fallback: 'gemini-2.5-pro' },
     smoke_synth:     { primary: 'gemini-2.5-pro',       fallback: 'gemini-2.5-flash' },
@@ -1219,6 +1317,11 @@ export const STACK_ROUTING: Record<ModelStack, Record<CallType, { primary: strin
     worker: {
       primary:  'gpt-4.1-nano',                             // 1M ctx, $0.05/$0.20
       fallback: 'gpt-4.1-mini',                             // 1M ctx fallback
+    },
+    interpretation_sets: {
+      // Same pick as context_assembly — see NIM stack's comment above.
+      primary:  'gpt-4.1-mini',
+      fallback: 'gpt-4.1',
     },
     eval_judge:      { primary: 'gpt-4.1',      fallback: 'gpt-4.1-mini' },
     eval_generator:  { primary: 'gpt-4.1-mini', fallback: 'gpt-4.1' },
@@ -1253,6 +1356,11 @@ export const STACK_ROUTING: Record<ModelStack, Record<CallType, { primary: strin
       primary:  'deepseek-v4-flash',                        // non-thinking, canonical API ID (was: deepseek-chat alias, retired 2026-07-24)
       fallback: 'deepseek-v4-pro',                          // fallback
     },
+    interpretation_sets: {
+      // Same pick as context_assembly — see NIM stack's comment above.
+      primary:  'deepseek-v4-flash',
+      fallback: 'deepseek-v4-pro',
+    },
     eval_judge:      { primary: 'deepseek-v4-pro',  fallback: 'deepseek-v4-flash' },
     eval_generator:  { primary: 'deepseek-v4-pro',  fallback: 'deepseek-v4-flash' },
     smoke_synth:     { primary: 'deepseek-v4-pro',  fallback: 'deepseek-v4-flash' },
@@ -1272,6 +1380,7 @@ export const STACK_ROUTING: Record<ModelStack, Record<CallType, { primary: strin
     planner_fast:     { primary: 'gemini-2.5-flash-lite', fallback: 'gemini-2.5-flash' },
     context_assembly: { primary: 'gemini-2.5-flash',     fallback: 'gemini-2.5-pro' },
     worker:           { primary: 'gemini-2.5-flash-lite', fallback: 'gpt-4.1-nano' },
+    interpretation_sets: { primary: 'gemini-2.5-flash',   fallback: 'gemini-2.5-pro' },
     eval_judge:       { primary: 'gemini-2.5-pro',       fallback: 'deepseek-v4-pro' },
     eval_generator:   { primary: 'gemini-2.5-flash',     fallback: 'deepseek-v4-pro' },
     smoke_synth:      { primary: 'gemini-2.5-pro',       fallback: 'deepseek-v4-pro' },
@@ -1279,6 +1388,48 @@ export const STACK_ROUTING: Record<ModelStack, Record<CallType, { primary: strin
     checkpoint_5_5:   { primary: 'gemini-2.5-flash-lite', fallback: 'gpt-4.1-nano' },
     checkpoint_8_5:   { primary: 'gemini-2.5-flash-lite', fallback: 'gpt-4.1-nano' },
   },
+}
+
+/**
+ * STAGED (NOT ACTIVE) — the model-tier-policy activation plan for
+ * gemini-3.1-pro-preview / gemini-3.7-flash, pinned per the native's ruling
+ * (PARIPRASHNA-P3-PREFLIGHT-2026-08-21, item 2b). NOTHING reads this object —
+ * it is not wired into `getEffectiveModel`, `STACK_ROUTING`, or
+ * `CALL_TYPE_ROUTING`. Its only purpose is to record the intended
+ * primary/fallback pair for each CallType BEFORE activation, so switching a
+ * CallType over later is a one-line `STACK_ROUTING.gemini[callType] =
+ * STAGED_TIER_UPGRADE_ROUTING[callType]`-shaped change instead of a fresh
+ * design decision made under deploy pressure.
+ *
+ * Preconditions still open before ANY of these may be copied into
+ * STACK_ROUTING (native ruling, item 2 + item 6):
+ *   (a) DONE 2026-08-21 — interpretation_sets folded into the shared registry.
+ *   (b) DONE 2026-08-21 — this table itself (fallbacks pinned).
+ *   (c) DONE 2026-08-21 — Google deprecation page checked (see DD register);
+ *       standing re-check rule added, must re-run before any deploy that
+ *       touches model config, including the eventual activation deploy.
+ *   (d) OPEN — adapter_gemini.ts needs a `thinking_level` code path; it
+ *       currently only sends `thinkingConfig.thinkingBudget` (numeric,
+ *       Gemini 2.x-era), not `thinkingLevel` (low/medium/high, Gemini
+ *       3.x-era) — see MODELS[] entries above.
+ *   (e) OPEN — a fresh `dd20_e2e_verify.ts` waiver-rate run, current as of
+ *       the activation decision, not the 2026-08-21 close-day proof.
+ *
+ * Fallback rationale (gemini-3.1-pro-preview → gemini-2.5-pro, not another
+ * preview): checked live 2026-08-21 against
+ * https://ai.google.dev/gemini-api/docs/deprecations — preview models get
+ * as little as ~2 weeks' shutdown notice and are typically replaced by the
+ * NEXT preview, not a GA model (gemini-3-pro-preview → gemini-3.1-pro-preview
+ * is the exact precedent). Pinning another preview as the fallback would
+ * just relocate the fragility. gemini-2.5-pro is GA, is the model
+ * gemini-3.1-pro-preview would be upgrading FROM, and is already the live
+ * synthesis primary — zero new integration risk as a fallback.
+ */
+export const STAGED_TIER_UPGRADE_ROUTING: Partial<Record<CallType, { primary: string; fallback: string }>> = {
+  synthesis:           { primary: 'gemini-3.1-pro-preview', fallback: 'gemini-2.5-pro' },
+  interpretation_sets: { primary: 'gemini-3.1-pro-preview', fallback: 'gemini-2.5-pro' },
+  planner_fast:        { primary: 'gemini-3.7-flash',       fallback: 'gemini-2.5-flash' },
+  worker:              { primary: 'gemini-3.7-flash',       fallback: 'gemini-2.5-flash-lite' },
 }
 
 /**
