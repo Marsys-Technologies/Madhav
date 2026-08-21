@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 986,
+  "event_count": 990,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -933,17 +933,17 @@
     "F-149": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "a763d9bf0e5cdb816a9db621c0f1dc9230abf4d4665f0b7b60fa49494c283463",
+      "event_sha256": "4a1476c77047207fc980a990ca254850dc1848c5371aae64ea7c10a1f6ce8ee4",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review: MERGE-WITH-FOLLOWUP, exhaustively independently verified. Byte-identity re-verified from a FRESH transcription of main's algorithm (not the PR's own reference), 128 (n x shape x chunk) combinations including adversarial cases the PR never tested (chunk-boundary ties, 1001 exact-duplicate entries straddling boundaries, non-BMP/CJK/NUL/newline/escape payloads) -- all match, multiset AND order identical. Memory independently measured at shipped defaults: 167.4MB@800k -> 169.9MB@10.5M, flat. Full 10.5M-row test independently re-run: PASS, 3m57s. All 3 mutation tests reproduced exactly. 1365/1365 tests/l3 confirmed. FROZEN SS N.2 contract confirmed clean (DECLARE is read-only, joins caller's txn; no run/plan_substeps/run_substep signature touched). Enqueued for merge. TWO REAL FOLLOW-UP GAPS THAT AFFECT R-6's GATE, disclosed not blocking: (1) spill is measured ~4.2GB to TMPDIR (code comment's '~3GB' is optimistic), and KA_KSHETRA_HASH_SPILL_DIR is set NOWHERE in the repo -- no deploy config, env file, or runbook; on Cloud Run (tmpfs-backed /tmp) the bounded-memory property would INVERT completely -- triaged as F-185 (HIGH, real deployment risk); (2) this fix covers only the hash-computation step -- other eager-fetchall functions in the same writer (_load_window_provenance, _load_segments, _load_salience, _load_windows) are NOT covered and not proven safe at 10.5M -- triaged as F-186. Reviewer's own explicit assessment: R-6 condition 1 ('tested against a realistically-sized dataset') is satisfied for the content-hash computation specifically, but NOT yet sufficient evidence the full rebuild will complete end-to-end -- F-141 remains gated until F-185+F-186 are also resolved, not just this PR.",
+      "evidence_summary": "PR #1432 confirmed merged 2026-08-21T12:34:00Z. GA-5 MERGE-WITH-FOLLOWUP verdict already on record; F-185/F-186 track the two disclosed follow-ups.",
       "finding_id": "F-149",
-      "next_action": "Confirm merge completion, flip SERVICE_CLOSED. F-141 stays EXTERNAL_HOLD -- do not treat R-6 condition 1 as fully cleared until F-185/F-186 land.",
+      "next_action": null,
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1432",
-      "prev_sha256": "bc5e28ba508cd03944ff08eb9b59f3a497bd69b979fc3a086fe67320fb83f979",
-      "seq": 979,
+      "prev_sha256": "215aad67368cfcf9095127dd67cdd44604184b0944af5ed84588643873ec6e49",
+      "seq": 987,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-15": {
       "confidence": "HIGH",
@@ -1411,17 +1411,17 @@
     "F-178": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "141d5be11aac6c8d8a2c9a483d5ff5c15e4b755538147d5db1f74f1665c0ef93",
+      "event_sha256": "19abd3c741e46dfc37fc35d1f8acb95d9b2419e8fe0a62f97d649683673bc81c",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review: MERGE-WITH-FOLLOWUP, exhaustively independently verified. All 9 fabricated bija quotes confirmed real (verse-collision cross-check against mnt_vishnu_sahasranama_014/other rows in the same file). Replacement text confirmed honest -- test_bija_rows_carry_no_verbatim_quotation asserts no quote marks and no 'BPHS Ch.N v.NN' pattern can ever be reintroduced. All 6 script corrections independently checked against each row's own Devanagari by the reviewer (not eyeballed). classical_ref/source_canonical_id confirmed byte-identical to PR #1429's constants across all 9 rows. 'Not loaded live' claim confirmed twice (bg_remedies.py file_glob, AND a direct production DB query: 0 mnt_* rows, 4 tantric rows present). 6/11 fixes independently mutation-tested, all detected. Merged origin/main in clean, 46/0 skip-activated passed, wider tests/l0 99 passed, 25/25 CI checks green. Enqueued for merge.",
+      "evidence_summary": "PR #1436 confirmed merged 2026-08-21T12:23:37Z. GA-5 MERGE-WITH-FOLLOWUP verdict already on record.",
       "finding_id": "F-178",
-      "next_action": "Confirm merge completion, flip SERVICE_CLOSED.",
+      "next_action": null,
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1436",
-      "prev_sha256": "ca06f582329ee6c4fa499ca736f76205ab679ea542e26fb6a5f5e01dc452a18d",
-      "seq": 976,
+      "prev_sha256": "4a1476c77047207fc980a990ca254850dc1848c5371aae64ea7c10a1f6ce8ee4",
+      "seq": 988,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-179": {
       "confidence": "MEDIUM",
@@ -1455,17 +1455,17 @@
     "F-180": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "993dc4fb78eb01150e36512593a8da4f2e269c94449332037dfc0038d18ecdc9",
+      "event_sha256": "f0d00040bef23e7bc556676f7b613f4a1c8eef99f46179b7c1bf25808c6a64d4",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review: MERGE-WITH-FOLLOWUP. Load-bearing-identifier claim confirmed (BPHS.82.8.1 pinned 5x in l2_remediation_grounded.py, verse_ref served as verse_citation by _grounding_engine) -- not renaming was the right call. REAL GAP FOUND, not blocking this PR but tracked separately as F-184: the new caveats field this PR adds is never actually read at serve time -- _grounding_engine.ground_signal() returns only rule_id/verse_citation/school/confidence, zero 'caveat' references in either consumer. The R-2 correction as shipped is corpus-internal only; the served surface still shows bare 'BPHS 82.8' with no disclosure of the reattribution. The PR's own 'applied as a caveats addition' description overstated its actual reach. Enqueued for merge.",
+      "evidence_summary": "PR #1436 confirmed merged 2026-08-21T12:23:37Z (same PR as F-178). F-184 tracks the disclosed caveats-not-served follow-up.",
       "finding_id": "F-180",
-      "next_action": "Confirm merge completion, flip SERVICE_CLOSED. See F-184 for the caveats-not-served gap.",
+      "next_action": null,
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1436",
-      "prev_sha256": "141d5be11aac6c8d8a2c9a483d5ff5c15e4b755538147d5db1f74f1665c0ef93",
-      "seq": 977,
+      "prev_sha256": "19abd3c741e46dfc37fc35d1f8acb95d9b2419e8fe0a62f97d649683673bc81c",
+      "seq": 989,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-181": {
       "confidence": "MEDIUM",
@@ -1499,18 +1499,18 @@
     },
     "F-183": {
       "confidence": "HIGH",
-      "disposition": "PARKED",
-      "event_sha256": "c402e750ee40e9f4f76bcfc6760e1fc512e989102422d33692ae5462aea31224",
+      "disposition": "LANDED",
+      "event_sha256": "daa4d8f98459908088b4e9290b11f92050fcd12c3fbe90f22a5800a0d7c70972",
       "event_type": "finding_status",
-      "evidence_summary": "Fixed as PR #1437 (open, awaiting GA-5). Both gaps confirmed real, in l0_remedy_loader.py's insert_to_corpus(), not seed_remedy_corpus() as originally assumed. Gap 1: ON CONFLICT DO UPDATE named 10 content columns and zero citation columns -- confirmed NOT deliberate immutability (unique index exists, every neighboring content column updates); added source_canonical_id/source_citation/classical_ref, plus (disclosed as beyond stated scope but same defect class) mantra_text and remedy_type, since each is fed from a YAML field whose sibling column already updated -- a corrected transliteration was otherwise leaving one corrected and one stale copy of the same value in a single row, the exact F-178/F-23 defect shape one level deeper. Gap 2: row.get(key,'')[:500] on two sites crashed on a present-but-null YAML key (.get's default never fires for an explicit None) -- sharper than filed: the tantric gate routes a null required column to insert_to_review_queue(), which carried the same expression, so the crash fired on exactly the rows the gate exists to handle. Both NOT NULL columns confirmed against live schema (verified read-only), so a null->'' degrade is correct, not an evasion of an honest-null option. 9 new tests, gap 1 tested against real upsert semantics (in-memory sqlite running the loader's own SQL, not string-matching); 3 separate mutations all correctly detected. Baseline 24F/114P vs branch 24F/123P (+9 exactly, 24 pre-existing). NEW DISCLOSED GAP, NOT FIXED: remedy_review_queue has NO unique constraint on remedy_id -- insert_to_review_queue()'s ON CONFLICT (remedy_id) will raise against a real DB; gap 2's TypeError had been silently masking this the whole time (the crash never let execution reach the broken ON CONFLICT). Needs a migration -- its own decision, not folded into this PR. Triaged separately as F-187.",
+      "evidence_summary": "PR #1437 confirmed merged 2026-08-21T13:02:09Z. GA-5 MERGE-WITH-FOLLOWUP verdict already on record; F-187 tracks the disclosed remedy_review_queue constraint gap.",
       "finding_id": "F-183",
-      "next_action": "Dispatch GA-5 review for PR #1437.",
+      "next_action": null,
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1437",
-      "prev_sha256": "120adc1468487288f3de5c9b917aab14342f5f3d4837c3b1cab47f15cbdf3544",
-      "seq": 984,
+      "prev_sha256": "f0d00040bef23e7bc556676f7b613f4a1c8eef99f46179b7c1bf25808c6a64d4",
+      "seq": 990,
       "source_batch": "PARISESA-V4-OWNER-RULINGS-20260821",
-      "status": "DECISION_PARKED",
-      "terminal_status": null
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-184": {
       "confidence": "MEDIUM",
@@ -2807,10 +2807,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 3,
-  "findings_terminal_count": 138,
-  "journal_head_seq": 986,
-  "journal_head_sha256": "215aad67368cfcf9095127dd67cdd44604184b0944af5ed84588643873ec6e49",
+  "findings_morning_ship_ready_count": 0,
+  "findings_terminal_count": 142,
+  "journal_head_seq": 990,
+  "journal_head_sha256": "daa4d8f98459908088b4e9290b11f92050fcd12c3fbe90f22a5800a0d7c70972",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
