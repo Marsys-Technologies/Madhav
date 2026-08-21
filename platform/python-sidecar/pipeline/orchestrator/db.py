@@ -78,7 +78,7 @@ def connect() -> psycopg.Connection:
         cur.execute("SET lock_timeout = '300s'")
         # F-152: session-scoped (not `SET LOCAL`) — asset_runner.run_asset() commits
         # multiple times per asset, and `SET LOCAL` does not survive a commit. This
-        # GUC is read by the asset_throughput_state_audit trigger (migration 584)
+        # GUC is read by the asset_throughput_state_audit trigger (migration 586)
         # via current_setting('marsys.triggered_by', true) so every state change
         # written through this connection factory is attributable to the
         # orchestrator, distinct from a NULL left by a write that bypassed it (a

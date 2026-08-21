@@ -287,11 +287,12 @@ jobs:
         env:
           MCP_RATE_LIMIT_DB_TEST: '1'
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rate07_test
+        run: npx vitest run src/lib/__tests__/mcp/oauth_rate_limit.db.test.ts --reporter=verbose
 
       - name: F-152 — provision the asset_throughput_state_audit test DB
         # The test file itself (tests/integration/asset_throughput_state_audit.db.test.ts)
         # builds the minimal asset_throughput fixture table and applies migration
-        # 584 (the REAL file, not a hand-copied re-implementation) in its own
+        # 586 (the REAL file, not a hand-copied re-implementation) in its own
         # beforeAll — this step only needs to create the empty, name-checked
         # throwaway database the test refuses to run without.
         env:
@@ -309,7 +310,6 @@ jobs:
         env:
           F152_AUDIT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/f152_audit_test
         run: npx vitest run tests/integration/asset_throughput_state_audit.db.test.ts --reporter=verbose
-        run: npx vitest run src/lib/__tests__/mcp/oauth_rate_limit.db.test.ts --reporter=verbose
 
   pratijna-v4-fixture-property-tests:
     # PRATIJÑĀ v4 Lane B3 — the CI tier of the campaign's three-tier

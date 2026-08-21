@@ -1,4 +1,4 @@
--- migration 584: PARIŚEṢA-V4 F-152 — audit trigger on asset_throughput.state changes
+-- migration 586: PARIŚEṢA-V4 F-152 — audit trigger on asset_throughput.state changes
 -- + admin visibility.
 --
 -- WHY: asset_throughput.state is the orchestrator's single source of truth for
@@ -83,7 +83,7 @@ COMMENT ON TABLE asset_throughput_state_audit IS
   'regardless of caller (orchestrator, psql, one-off script). Deliberately '
   'unconstrained (no FKs, no CHECKs, every column but id/changed_at nullable) so '
   'the audit trigger is structurally incapable of aborting the write it records '
-  '— see migration 584 header comment. Complements, does not replace, '
+  '— see migration 586 header comment. Complements, does not replace, '
   'orchestrator_event_register (migration 499), which is allowlisted to two '
   'application-emitted event types and blind to a direct SQL UPDATE.';
 

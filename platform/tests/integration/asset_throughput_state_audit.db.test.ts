@@ -2,7 +2,7 @@
 /**
  * PARIŚEṢA-V4 F-152 — asset_throughput_state_audit trigger, LIVE-DB test.
  *
- * Executes the REAL migration file (584) against a REAL throwaway Postgres, so
+ * Executes the REAL migration file (586) against a REAL throwaway Postgres, so
  * the AFTER UPDATE OF state trigger is proven end-to-end against its own
  * on-disk SQL rather than a hand-copied re-implementation that could silently
  * drift from what actually ships (CLAUDE.md §N.8 — a detector must measure the
@@ -33,7 +33,7 @@ const TEST_DB_URL = process.env.F152_AUDIT_TEST_DATABASE_URL
 
 const MIGRATION_PATH = path.resolve(
   __dirname,
-  '../../supabase/migrations/584_f152_asset_throughput_state_audit.sql'
+  '../../supabase/migrations/586_f152_asset_throughput_state_audit.sql'
 )
 
 // Fixture chart_id. Same fixture-UUID idiom as the other .db.test.ts files in
