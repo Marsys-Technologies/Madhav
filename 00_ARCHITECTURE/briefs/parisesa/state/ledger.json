@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 942,
+  "event_count": 943,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1952,14 +1952,14 @@
     "F-57": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "8c000f6b27fd3f2e44005e9bc1eb1da4c8561c2439a8b2f71117a49329ebd64e",
+      "event_sha256": "6e0f1edad0fd7971ca771f7ec53db8d9cc7976b24b5fb1ed9eba5a6d2ea7a52d",
       "event_type": "finding_status",
-      "evidence_summary": "GA-5 review: MERGE, no blocking defect. Every claim independently reproduced live including the exact original reproducer on deployed prod pre-fix. Type change confirmed to have real teeth (reintroducing 'other' fails compilation + 4/6 tests under independent mutation). Full suite re-run larger than author's own claim (876/9918 vs 828/9478), confirming no hidden subset. Scope-expansion decision (11 domains not 3) explicitly endorsed by the reviewer: same literal/field/commit lineage, and the CanonicalDomain retype could not compile with any 'other' left standing, so a narrower PR was not mechanically available.",
+      "evidence_summary": "check_ledger_pr_sync.py run found PR #1417 (mergeStateStatus=DIRTY, not in merge queue -- fallen out due to a real conflict with F-107 (#1419), which merged in the interim). Rebased onto main directly: the conflict itself was the recurring judgment_flags insertion-point pattern (kept both PRs' independent blocks). Rebasing also surfaced a REAL cross-PR interaction, not just a textual conflict: F-57 correctly tightens SHASTRA_MAP.signal_domain from string to the CanonicalDomain union (the actual fix, replacing the dead 'other' literal) -- which silently broke an already-passing, unmodified F-107 test doing a runtime membership check via Set<CanonicalDomain>.has(string). Fixed at the test's own type boundary (widened the local Set to Set<string>) rather than weakening either PR's real fix -- the test's actual runtime assertion is unchanged. Verified post-rebase: tsc --noEmit clean project-wide; register_d9_judgment/reading_checklist suites 178/178 passing (42 pre-existing DB-gated skips); envelope.ts suite 60/60. Original GA-5 MERGE verdict for F-57's own fix (SHASTRA_MAP 11-domain correction) remains on record and unaffected -- this pass only repaired the rebase and the newly-surfaced interaction.",
       "finding_id": "F-57",
-      "next_action": "in merge queue, auto-merge armed. Non-blocking residuals tracked separately (F-165, F-166).",
+      "next_action": "Force-pushed rebased branch, gh pr merge --auto re-armed. Awaiting fresh CI run + merge queue.",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1417",
-      "prev_sha256": "c3153b59d1239e8e1c3c135624d184983af11a76e1b8101d691cf638755e1199",
-      "seq": 913,
+      "prev_sha256": "3719a4a128e368a842a5cd4dccceff42cbe8c4dae78a02f8c6145ba88e210cb9",
+      "seq": 943,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "MORNING_SHIP_READY",
       "terminal_status": null
@@ -2643,8 +2643,8 @@
   },
   "findings_morning_ship_ready_count": 7,
   "findings_terminal_count": 127,
-  "journal_head_seq": 942,
-  "journal_head_sha256": "3719a4a128e368a842a5cd4dccceff42cbe8c4dae78a02f8c6145ba88e210cb9",
+  "journal_head_seq": 943,
+  "journal_head_sha256": "6e0f1edad0fd7971ca771f7ec53db8d9cc7976b24b5fb1ed9eba5a6d2ea7a52d",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
