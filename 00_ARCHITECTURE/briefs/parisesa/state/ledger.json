@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 932,
+  "event_count": 934,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -362,16 +362,16 @@
     "F-113": {
       "confidence": "HIGH",
       "disposition": "LANDED",
-      "event_sha256": "d9d96c712033965ae222d3dafd58e4e45fe0b5dde584704000051e2f6545282e",
+      "event_sha256": "4287947c674560847b39e647093c8402d52d2a5911941751e106b171b88cecb3",
       "event_type": "finding_status",
-      "evidence_summary": "Diagnosis: genuine coverage gap, not a ranking bug. Reproduced live (still worse than filed -- now kernel-only, evidence/grounding omitted at default budget). Root cause: runAssessDomain never reads D1/rasi dignity/house/shadbala of the domain's bhavesha/karaka/bhava-occupants at all -- no ranking can surface a fact never fetched. Two real aggravators found: judgment_query only COUNTS 7th-house occupants (benefic/malefic tally) never grades dignity; and the D9 leg + graha_shadbala_ranking that assess_* DOES compute lands in evidence/verdict_skeleton, which assembleSaraContent drops all-or-nothing at default budget -- exactly the response_budget trap this campaign already knows about from earlier this session. Fix: reuses register_d9_judgment.ts's ALREADY-REVIEWED grader (no new/drifting second authority per SS N.5), exports (not re-declares) the exact PERCENT_RANK window + LOW_SHADBALA_PERCENTILE constant ganita_dasha_lord_capability_get already ships (surfaces can't drift apart), selection thresholds not invented. Result placed in a verdict clause that's the ONE budget-immune layer -- correctly avoiding the trap its own aggravator #2 identified. Applies to all 4 assess_* tools. 17 new tests over real production rows; 1779/1779 retrieval tests; envelope codegen regenerated+checked clean.",
+      "evidence_summary": "GA-5 review: MERGE. Every load-bearing claim independently reproduced against live production DB (D1_SAT=exalted fact_id confirmed, all shadbala/percentile figures real, pre-fix kernel_bytes=1974 exact match, root cause confirmed -- DOMAIN_DIRECT_VARGAS maps no domain to D1 at all). Budget-immunity claim verified in code (response_budget.ts's ceiling loop mutates only pointers/flags, never verdict/promise). Reuse of register_d9_judgment.ts's grader confirmed real (that file's entire diff is 3 export keywords, zero logic change). 1779/1779 tests, envelope sha recomputed and matched. Reviewer's own honest assessment: 'trading a TIER1 domain-correctness gap for one info-severity flag about content not served is the right side of that trade.'",
       "finding_id": "F-113",
-      "next_action": "GA-5 review in flight",
+      "next_action": "in merge queue, auto-merge armed. 5 minor non-blocking observations consolidated into follow-up F-174.",
       "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1425",
-      "prev_sha256": "3e0fb660cf3e9c4a196abe4962bb352211655c7f8a9929891c9b3c3225c5e6de",
-      "seq": 926,
+      "prev_sha256": "c08fd086105a0b208176515aaa9b905768091cfcf521c6b4b26e0d9dc0743f85",
+      "seq": 933,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
-      "status": "DECISION_PARKED",
+      "status": "MORNING_SHIP_READY",
       "terminal_status": null
     },
     "F-114": {
@@ -1344,6 +1344,21 @@
       "pr_url": null,
       "prev_sha256": "2bc4cb32d9ec36cb3daee18508f414605fa60f7a7c7e8bd5c88002236094c766",
       "seq": 932,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-174": {
+      "confidence": "LOW",
+      "disposition": "STRANDED",
+      "event_sha256": "e351a536e8649430ef681506dc4e164af4cf3d63ca0517b919456a0d98d561ef",
+      "event_type": "finding_status",
+      "evidence_summary": "Consolidated low-severity follow-up, 5 items found by F-113's GA-5 reviewer, none individually urgent: (1) the budget-trim simulation showed the trim is slightly worse than F-113's own PR body claimed (one pointer AND catalog_only_rows_present both deterministically drop, not 'worst-case' one or the other); (2) catalog_only_* fields are in IMMUNE_HONESTY_FIELDS but assembleSaraContent doesn't consult that mechanism -- harmless at default budget today, but on a chart where grounding/evidence DO fit, catalog rows could ship without their SS N.6 flag; (3) an unbounded String(err) in significator_condition.ts's empty_reason flows into the un-truncatable verdict -- a verbose driver error could theoretically evict all pointers+flags; (4) PERCENT_RANK SQL copied verbatim rather than shared (constant can't drift, the SQL string could); (5) a '+N further' pointer references grounding, which drops at default budget -- likely to fire visibly on assess_career.",
+      "finding_id": "F-174",
+      "next_action": "low priority hygiene pass: clamp the unbounded error string (item 3 is the only one with a real, if narrow, failure mode); the rest are informational for whoever next touches response_budget.ts or significator_condition.ts",
+      "pr_url": null,
+      "prev_sha256": "4287947c674560847b39e647093c8402d52d2a5911941751e106b171b88cecb3",
+      "seq": 934,
       "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
@@ -2596,10 +2611,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 9,
+  "findings_morning_ship_ready_count": 10,
   "findings_terminal_count": 122,
-  "journal_head_seq": 932,
-  "journal_head_sha256": "c08fd086105a0b208176515aaa9b905768091cfcf521c6b4b26e0d9dc0743f85",
+  "journal_head_seq": 934,
+  "journal_head_sha256": "e351a536e8649430ef681506dc4e164af4cf3d63ca0517b919456a0d98d561ef",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
