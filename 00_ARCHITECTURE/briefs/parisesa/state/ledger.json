@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 870,
+  "event_count": 872,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -832,6 +832,21 @@
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
+    "F-143": {
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "86d9222ef9b2969e3e844671e129fa7af8f153aab7560e41fcf6126f1d0d5043",
+      "event_type": "finding_status",
+      "evidence_summary": "Real, per-discovery-class grading fix, not a copy-paste of F-35's pattern (verified per-class it actually fits). emergent_law: kept the n>=5 bar but put a real quantity behind it -- joins attribution rows to their mi_pramana calibration verdict, counts DISTINCT matches with composite_verdict in {CONFIRMED,PARTIAL,REFUTED} as n_scored_matches, grades on that instead of raw attribution count. Measured against prod: of 30 candidate groups, 15 now correctly earn empirical, 15 correctly drop to assignment_only -- the bar bites both directions, not just down. retrodiction: correctly did NOT invent evidence -- traced the substep and found the T-90d cutoff is computed but never applied as a filter, anchor window/event-type are never checked -- no real detector exists behind a 'match', so graded honestly as structural (not prior_only, not empirical) with a test pinning it can never reach empirical at any count. 8 new tests confirmed failing on origin/main via revert, passing with fix; 58 python + 138 vitest green; 2 pre-existing failures confirmed identical on clean main.",
+      "finding_id": "F-143",
+      "next_action": "GA-5 review in flight",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1414",
+      "prev_sha256": "84a3a64dd6e8e64e4dc6e2e6e44823870ab47369d8dc4527a45c4a5a5b750331",
+      "seq": 871,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
+      "status": "MORNING_SHIP_READY",
+      "terminal_status": null
+    },
     "F-144": {
       "confidence": "HIGH",
       "disposition": "STRANDED",
@@ -874,6 +889,21 @@
       "prev_sha256": "51d02bdc4b668d80609f02600593b5657a9f847a25d6a76a647151b77e6dfb47",
       "seq": 863,
       "source_batch": "PARISESA-V4-GA3-EXECUTION",
+      "status": "DECISION_PARKED",
+      "terminal_status": null
+    },
+    "F-147": {
+      "confidence": "HIGH",
+      "disposition": "STRANDED",
+      "event_sha256": "b6cb3df5f03eb12ae3fbbe69648fe9c52a635073fcfeba1dc14bc723d15050dd",
+      "event_type": "finding_status",
+      "evidence_summary": "NEW finding, found by F-143's own agent as a side effect of building a correctly-scoped grading fix for a sibling code path. F-35's own already-merged fix (mi_sambandha.py:83, from PR #1316) tests verdict strings as lowercase ('confirmed','partial','denied') but production mimamsa_calibration.composite_verdict only ever holds UPPERCASE (CONFIRMED/PARTIAL/REFUTED) -- confirmed via the same live-DB check used elsewhere this session. This means F-35's 'scored' counter is ALWAYS 0 in production, regardless of how much real scored evidence exists -- every manifestation_grammar row falls through to the 'assignment_only'/'prior_only' tiers even when real CONFIRMED/PARTIAL evidence exists for it. Fail-closed direction (under-grades, never over-grades an unearned empirical claim) -- opposite failure mode from F-143/F-35's original defect, so not itself a \u00a7N.7/N.8 dishonesty violation, but it does mean F-35's fix does not actually behave as intended once deployed: the intended empirical/assignment_only distinction collapses to 'always assignment_only or worse' until this is corrected.",
+      "finding_id": "F-147",
+      "next_action": "small fix: correct the verdict-string case comparison in mi_sambandha.py:83 to match production's actual UPPERCASE composite_verdict values (or normalize case on comparison) -- small, well-scoped, needs its own PR + the same rebuild-pending pattern as F-35 itself once deployed",
+      "pr_url": null,
+      "prev_sha256": "86d9222ef9b2969e3e844671e129fa7af8f153aab7560e41fcf6126f1d0d5043",
+      "seq": 872,
+      "source_batch": "PARISESA-V4-CLOSURE-V3.1",
       "status": "DECISION_PARKED",
       "terminal_status": null
     },
@@ -2148,10 +2178,10 @@
       "terminal_status": null
     }
   },
-  "findings_morning_ship_ready_count": 4,
+  "findings_morning_ship_ready_count": 5,
   "findings_terminal_count": 114,
-  "journal_head_seq": 870,
-  "journal_head_sha256": "84a3a64dd6e8e64e4dc6e2e6e44823870ab47369d8dc4527a45c4a5a5b750331",
+  "journal_head_seq": 872,
+  "journal_head_sha256": "b6cb3df5f03eb12ae3fbbe69648fe9c52a635073fcfeba1dc14bc723d15050dd",
   "p1_steps": {
     "P1-11_db_write_access": {
       "event_sha256": "340eb49eb5597db61be944919a5b5ce37b3c8062de55be6a260f6aaa00a0eb17",
