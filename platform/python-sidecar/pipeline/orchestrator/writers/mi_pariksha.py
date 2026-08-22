@@ -39,7 +39,9 @@ logger = logging.getLogger(__name__)
 
 ATTRIBUTION_FORMULA_VER = "mi_pariksha_v2.0"
 DISCOVERY_FORMULA_VER = "mi_pariksha_v2.1"    # v2.1: F-143 n_scored_matches in evidence_refs
-RETRODICTION_FORMULA_VER = "mi_pariksha_v2.1"  # v2.1: F-143 statement no longer claims unenforced blinding
+RETRODICTION_FORMULA_VER = "mi_pariksha_v2.2"  # v2.2: F-148 pt.1 — evidence_refs discloses
+                                                # cutoff/containment/event_type as unearned;
+                                                # rank_credit renamed rank_position_weight
 
 _DIMENSIONS = ["timing", "magnitude", "domain", "falsifier", "manifestation"]
 
@@ -196,17 +198,41 @@ class MiParikshaWriter(WriterBase):
                     top_k_anchors = cur.fetchall()
 
             retro_id = f"retro_{event_id}"
-            top_k_json = json.dumps([
+            # F-148 pt.1: evidence_refs is a DICT (not a bare list) so the disclosure
+            # flags below can ride alongside the per-anchor detail — mirrors the
+            # F-143 emergent_law shape at _substep_discovery. `rank_credit` was
+            # renamed `rank_position_weight`: it is an NDCG-style positional weight,
+            # not a relevance credit — nothing here has adjudicated that a match is
+            # relevant, so a name implying earned relevance was an invented judgment
+            # (§N.7 item 6).
+            top_k_list = [
                 {
                     "anchor_id": str(a["anchor_id"]),
                     "domain": a["domain"],
                     "posterior": float(a["posterior"]) if a["posterior"] else None,
                     "window_start": str(a["window_start"]),
                     "rank": i + 1,
-                    "rank_credit": round(1.0 / math.log2(i + 2), 4),
+                    "rank_position_weight": round(1.0 / math.log2(i + 2), 4),
                 }
                 for i, a in enumerate(top_k_anchors)
-            ])
+            ]
+            top_k_json = json.dumps({
+                "top_k": top_k_list,
+                # None of these three is checked at build time — see this method's
+                # own docstring. Recorded as explicit `false`/`null` rather than
+                # omitted, so a caller reading only n_support cannot mistake
+                # silence for verification.
+                "cutoff_enforced": False,
+                "window_containment_checked": False,
+                "event_type_compared": False,
+                "n_adjudicated_hits": None,
+                "n_support_semantics": (
+                    "n_support counts domain-matched phala_anchors whose window_start "
+                    "is on or before the event date — window containment "
+                    "(window_start <= event_date <= window_end) and event_type match "
+                    "are NOT verified (F-148). An anchor match is not an adjudicated hit."
+                ),
+            })
 
             has_match = len(top_k_anchors) > 0
             strength = float(top_k_anchors[0]["posterior"]) if has_match and top_k_anchors[0]["posterior"] else 0.0
