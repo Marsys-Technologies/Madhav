@@ -45,7 +45,13 @@ import {
 import { computeCostUsd, getModelPricingSync } from '@/lib/llm/pricing'
 import { writeContextAssemblyLog } from '@/lib/db/monitoring-write'
 import { writeTurnDurable } from '@/lib/pariprashna/store/durable_writer'
-import { CANONICAL_SCHEMA_VERSION, type CanonicalMessage } from '@/lib/pariprashna/store/schema'
+import { writeTurn } from '@/lib/pariprashna/store/writer'
+import {
+  CANONICAL_SCHEMA_VERSION,
+  USER_TURN_MODEL_ID,
+  USER_TURN_PROVIDER,
+  type CanonicalMessage,
+} from '@/lib/pariprashna/store/schema'
 import { withProvenanceStamp } from '@/lib/pariprashna/provenance/stamp'
 import { captureDetectedCandidates } from '@/lib/pariprashna/samiksha/capture'
 import { enrichCandidate, type CitationRef } from '@/lib/pariprashna/samiksha/detector'
@@ -364,6 +370,67 @@ export async function runPersistenceStage(args: {
             messages: historyMsgs,
           })
 
+          // ── P3-C (SMṚTI completion): canonical USER-turn mirror. ─────────
+          // The legacy write immediately above remains the ONLY writer of
+          // `conversation_messages.parts_json` for history — UNCHANGED, per
+          // this file's own M-2 scope-decision note above (rearchitecting the
+          // full multi-message history write is still out of scope; every
+          // prior turn continues to persist exactly as it always has). This
+          // block ADDITIONALLY stamps the canonical schema_version/model_id/
+          // provider columns plus a mirrored `text` message_parts row onto
+          // the SAME `conversation_messages` row the legacy write just wrote
+          // for THIS turn's own user query — so a canonical reader
+          // (readCanonicalMessage/readTurnParts) can find the user's side of
+          // the turn, not only the assistant's. `historyMsgs` already carries
+          // the SAME id the legacy write above used (both are built from the
+          // same array — see its construction near the top of this
+          // function), so this reuses the existing row's id, never a second
+          // row for the same message — but `writeTurn`'s upsert
+          // (`store/writer.ts`) is a FULL-ROW `ON CONFLICT DO UPDATE`, NOT an
+          // additive update of only the additive columns: it also rewrites
+          // `conversation_id`, `parent_message_id`, `role`, and
+          // `metadata_json` from the values passed to this call, none of
+          // which are set here — so this call overwrites the row's
+          // `metadata_json` to `{}` and `parent_message_id` to `null`.
+          // `parts_json` survives untouched (the legacy write above is the
+          // only writer of that column; `writeTurn` never touches it).
+          // Latent, not live-breaking today: `conversation_writer.ts`'s own
+          // user-row write already sets `metadata_json = {}`, and no
+          // production path inserts a `parent_message_id` for a user row
+          // today (only `regenerate/route.ts` reads it) — but this is still
+          // a real gap for the day something does write one. Restricting
+          // `writeTurn`'s SET list to only the columns a caller intends to
+          // touch would close this properly; that is a behaviour change and
+          // is out of scope for this pass.
+          // Best-effort and strictly non-fatal, same discipline as every
+          // other splice in this file: a completeness-record fault must
+          // never cost the reader their reading.
+          const lastUserHistoryMsg = [...historyMsgs].reverse().find((m) => m.role === 'user')
+          if (lastUserHistoryMsg?.id) {
+            try {
+              const userText = ((lastUserHistoryMsg.parts ?? []) as Array<{ type: string; text?: string }>)
+                .filter((p) => p.type === 'text')
+                .map((p) => p.text ?? '')
+                .join(' ')
+                .trim()
+              if (userText) {
+                await writeTurn(
+                  {
+                    id: lastUserHistoryMsg.id,
+                    conversation_id: conversationId,
+                    role: 'user',
+                    schema_version: CANONICAL_SCHEMA_VERSION,
+                    model_id: USER_TURN_MODEL_ID,
+                    provider: USER_TURN_PROVIDER,
+                  },
+                  [{ seq: 0, kind: 'text', body: { text: userText }, model_visible: true }],
+                )
+              }
+            } catch (err) {
+              console.error('[pariprashna] canonical user-turn write failed (non-fatal)', err)
+            }
+          }
+
           // Assistant row — PB-2/M-2 canonical path. Built from the turn's own
           // in-memory data via route_writer_adapter.ts's production mapping
           // functions (now behind reading_parts.buildCanonicalParts) — the SAME
@@ -397,13 +464,27 @@ export async function runPersistenceStage(args: {
                 ? await fetchMsrSnippets(citationsFound.map((c) => c.signal_id))
                 : new Map<string, string>()
           }
-          const { parts: canonicalParts, predictionCandidates: predictionCandidatesFound } =
-            buildCanonicalParts({
-              committedBlocks,
-              accumulatedText,
-              snippets,
-              preResolvedCitations: citationRewriteEnabled ? citationsFound : undefined,
+          const {
+            parts: canonicalParts,
+            predictionCandidates: predictionCandidatesFound,
+            toolArgsRedactedCount,
+          } = buildCanonicalParts({
+            committedBlocks,
+            accumulatedText,
+            snippets,
+            preResolvedCitations: citationRewriteEnabled ? citationsFound : undefined,
+            // Lane P3-C: successful retrieval-pass dispatches become canonical
+            // tool_call/tool_result parts — see reading_parts.ts's header for
+            // ordering + the disclosed narrowing (successful dispatches only).
+            validToolResults,
+          })
+          if (toolArgsRedactedCount > 0) {
+            em.flag({
+              code: 'tool_args_register_leak_redacted',
+              level: 'warn',
+              detail: `${toolArgsRedactedCount} tool_call arg set(s) redacted before persistence (register-leak lint hit)`,
             })
+          }
 
           // ── G3-A (PPR-01): AcharyaReadingReceipt v1. ────────────────────
           // Assembled from data this closure ALREADY computed above

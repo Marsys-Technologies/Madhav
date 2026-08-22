@@ -525,6 +525,27 @@
     {
       "fn": "writeTurn",
       "message": {
+        "id": "00000000-0000-4000-8000-000000000004",
+        "conversation_id": "00000000-0000-4000-8000-000000000001",
+        "role": "user",
+        "schema_version": 1,
+        "model_id": "n/a",
+        "provider": "user"
+      },
+      "parts": [
+        {
+          "seq": 0,
+          "kind": "text",
+          "body": {
+            "text": "How does my career unfold?"
+          },
+          "model_visible": true
+        }
+      ]
+    },
+    {
+      "fn": "writeTurn",
+      "message": {
         "id": "00000000-0000-4000-8000-000000000005",
         "conversation_id": "00000000-0000-4000-8000-000000000001",
         "role": "assistant",
@@ -563,6 +584,48 @@
       "parts": [
         {
           "seq": 0,
+          "kind": "tool_call",
+          "body": {
+            "call_id": "tb-msr_sql",
+            "tool_name": "Reading the whole chart",
+            "args": {}
+          },
+          "model_visible": false
+        },
+        {
+          "seq": 1,
+          "kind": "tool_result",
+          "body": {
+            "call_id": "tb-msr_sql",
+            "status": "done",
+            "count": 12,
+            "ms": "<ms>"
+          },
+          "model_visible": false
+        },
+        {
+          "seq": 2,
+          "kind": "tool_call",
+          "body": {
+            "call_id": "tb-chart_facts_query",
+            "tool_name": "Retrieved — chart data",
+            "args": {}
+          },
+          "model_visible": false
+        },
+        {
+          "seq": 3,
+          "kind": "tool_result",
+          "body": {
+            "call_id": "tb-chart_facts_query",
+            "status": "done",
+            "count": 8,
+            "ms": "<ms>"
+          },
+          "model_visible": false
+        },
+        {
+          "seq": 4,
           "kind": "text",
           "body": {
             "text": "| House | Lord | Dignity |\n| 1 | lord-1 | own |\n| 2 | lord-2 | own |\n| 3 | lord-3 | own |\n| 4 | lord-4 | own |\n| 5 | lord-5 | own |\n| 6 | lord-6 | own |\n| 7 | lord-7 | own |\n| 8 | lord-8 | own |\n| 9 | lord-9 | own |\n| 10 | lord-10 | own |\n| 11 | lord-11 | own |\n| 12 | lord-12 | own |\nThe table above summarises the twelve houses.",
