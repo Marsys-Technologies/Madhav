@@ -1,4 +1,10 @@
--- Migration 584: widen llm_usage_events_pipeline_stage_check to allow 'interpretation_sets'.
+-- Migration 587: widen llm_usage_events_pipeline_stage_check to allow 'interpretation_sets'.
+-- (Renumbered from 584 pre-merge: another campaign's PR claimed
+-- platform/supabase/migrations/584 in the time between this migration's
+-- reservation and its merge-queue attempt — a genuine collision on the
+-- fresh cross-directory number space, not a repeat of the earlier
+-- incomplete-check mistake from Part D. 587 = max across BOTH directories
+-- + 1, confirmed fresh against origin/main immediately before renumbering.)
 --
 -- PARIPRASHNA-P3-PREFLIGHT Part E (DD-19). interpretation/worker.ts's LLM
 -- call site now writes real llm_usage_events rows tagged
