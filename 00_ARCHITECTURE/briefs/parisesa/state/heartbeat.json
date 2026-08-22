@@ -1,7 +1,7 @@
 {
   "campaign_id": "PARISESA-V4",
   "claude_session_id": "c05567cd-3567-44c4-8eb2-bcb9bd488f74",
-  "journal_head_seq": 1097,
-  "note": "heartbeat timestamp intentionally omitted from this script (no wall-clock in this env); watchdog uses file mtime. claude_session_id (added v5 preflight hardening) lets the watchdog pin `claude --resume <uuid>` instead of a bare `--continue`, which cwd alone cannot disambiguate when a project directory holds more than one conversation.",
+  "journal_head_seq": 1098,
+  "note": "CAMPAIGN CLOSED BY OWNER DECISION as of this session (2026-08-22). Do not resume without a fresh, explicit owner go-ahead. See RESUME.md.",
   "session": "PARISESA-V4-CONDUCTOR-20260822T023000Z"
 }
