@@ -1,0 +1,16 @@
+{
+  "turn_id": "clean-04-story",
+  "question": "What has my life been like so far, as this chart tells it?",
+  "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+  "conversation_id": "clean-conv-0001",
+  "partial": false,
+  "terminal_status": "ok",
+  "blocks": [{ "blockId": "b1", "kind": "paragraph", "role": "verdict" }],
+  "prose": "Your life has moved through several dasha chapters of gradually rising responsibility. You are currently in the Mahadasha of Saturn, and this chapter continues that same long arc of consolidation rather than breaking from it.",
+  "events": [
+    { "type": "block.commit", "raw": { "type": "block.commit", "block_id": "b1", "kind": "paragraph", "role": "verdict", "text": "Your life has moved through several dasha chapters of gradually rising responsibility. You are currently in the Mahadasha of Saturn, and this chapter continues that same long arc of consolidation rather than breaking from it." }, "receivedAtMs": 100 },
+    { "type": "citation.define", "raw": { "type": "citation.define", "index": 0, "signal_id": "SIG.KALA.003", "layer": "L3", "snippet": "life-arc chapters", "reader_label": "dasha chapter sequence", "grade": "confirmed" }, "receivedAtMs": 90 },
+    { "type": "grade", "raw": { "type": "grade", "subject": "citation_gate", "grade": "PASS" }, "receivedAtMs": 95 },
+    { "type": "turn.close", "raw": { "type": "turn.close", "status": "ok" }, "receivedAtMs": 200 }
+  ]
+}
