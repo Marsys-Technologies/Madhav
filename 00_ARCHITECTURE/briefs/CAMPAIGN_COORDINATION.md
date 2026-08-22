@@ -6939,3 +6939,45 @@ every prior part.
 `00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`,
 new file `00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md`)
 do not appear in any other currently open lease in this table.
+
+## 2026-08-22 — PARIPRASHNA-TRACKER-SYNC-2026-08-22 / Claude Code — leased window: SWARM_TRACKER.json reconstruction sync (docs-only, no code change)
+
+Owner-requested reconstruction of `00_ARCHITECTURE/briefs/pariprashna_swarm/state/SWARM_TRACKER.json`,
+stale since PR #1357 ("P1 FOUNDATION close, entering P2") despite P2's full
+15-lane set, P2 close (tag `pariprashna/p2-close`), and P3-Preflight Parts A-F
+having landed on `main` since. Owner asked for this brought up to date and
+opened as a PR for review — this session does the reconstruction and hands it
+to the owner, it does not merge it. Docs-only; no application code, migration,
+deploy, or production-data scope.
+
+**Lease scope:**
+1. `00_ARCHITECTURE/briefs/pariprashna_swarm/state/SWARM_TRACKER.json` only.
+
+**Checked immediately before opening:** fresh `origin/main` fetch
+(`2b272a326e6107f8d604c8ebaf0f62bfd00ac068`) and fresh
+`origin/campaign-coordination` fetch (`e26627323424a1ceda43283cb79cfcc111d3b2fc`
+— tip at the moment this entry is appended, includes the just-discovered
+PARIPRASHNA-P3-PREFLIGHT-PART-G lease-open entry immediately above);
+`gh pr list --search "SWARM_TRACKER"` and `--search "CAMPAIGN_COORDINATION"`
+both return zero open PRs; the tail of this file (Part G's lease-open entry)
+has no open lease beneath it for either target file. **Disclosed, not a
+collision:** PR #1475 (`pariprashna/p3-preflight-part-g`, OPEN, unmerged,
+`mergeStateStatus: BLOCKED` as of this check) touches
+`00_ARCHITECTURE/CAPABILITY_MANIFEST.json`,
+`00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`,
+and the new `PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md` — none of which
+is this session's target file, so no scope collision. Because that PR is
+real, disclosed narrative (this coordination log) but not yet merged code,
+this reconstruction sources DD-13/DD-19/DD-24/DD-25/DD-26 status strictly
+from `PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` on `origin/main` as
+currently merged, and separately records what Part G's own lease-open entry
+narrates (DD-13 CLOSED by native ruling, DD-27 filed) as REPORTED-BUT-NOT-YET-
+MERGED — not folded into the tracker as if it were already true of `main`.
+
+Sourced entirely from this file's own entries (`origin/campaign-coordination`,
+primarily lines ~4021-6867 covering P1 close through P3-Preflight Part F, plus
+the just-appended Part G lease-open entry) and
+`PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` /
+`CURRENT_STATE_v1_0.md` (both `origin/main`) for cross-check — no invented
+status, PR number, or DD state; anything not traceable to a real entry is
+written into the tracker as "not verified from source" rather than guessed.
