@@ -1142,6 +1142,14 @@ export const JUDGMENT_FLAG_CODES = [
   'as_of_date_precedes_chart_birth',
   // ── response_budget.ts finalizeMcpBudget hard-cap ──
   'budget_exceeded_after_trim',
+  // F-181 (PARIŚEṢA-V4): the Sāra kernel (assess_* tools) is trimmed to its own ≤2KB
+  // ceiling BEFORE the whole-envelope budget check runs — a distinct, tighter invariant
+  // from `budget_exceeded_after_trim` above (which reports whole-envelope overage).
+  // Emitted by `assembleSaraContent` when even flooring every eligible pointer/flag could
+  // not bring the kernel under KERNEL_MAX_BYTES (i.e. the surviving protected-flag content
+  // alone exceeds the ceiling) — the honest disclosure that this specific invariant was
+  // breached, distinct from and in addition to the whole-envelope signal.
+  'kernel_ceiling_exceeded_for_disclosure',
   // ── provenance-stamp drift (distinct subsystem, provenance_stamp.ts) — included so a
   // value it already emits (as a plain string, unconverted this wave) is always a VALID
   // code, not an orphaned literal outside the closed vocabulary. ──
