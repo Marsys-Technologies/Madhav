@@ -6807,3 +6807,61 @@ touches either file (`gh pr list --search` on both paths → empty). Fresh
 branch `pariprashna/p3-preflight-part-f-residual-b` cut off current
 `origin/main`. Worktree `.clone/worktrees/pariprashna-part-d` reused;
 will be removed once this lands or on request.
+
+## 2026-08-22 — PARIPRASHNA-P3-PREFLIGHT-PART-F — residual (b) investigation CLOSED (reported, not resolved), PR #1467 merged + deployed
+
+Lease opened above is released. Final account:
+
+- PR #1467: CI green (22/22 real checks including `Governance Gates
+  (drift / schema / edge / native-literal / py-sidecar)` — the job that
+  covers the fingerprint-registry check this PR's own edit touches),
+  merged via the merge queue cleanly on the first attempt (no ejection).
+- Deployed: `main@49209b067` → `CI — Ganga Quality Gate` run `32563470129`
+  succeeded (16/16 jobs, `Governance Gates` included), → `Deploy to Cloud
+  Run` run `32563982121` succeeded (`Apply DB Migrations` no-op success,
+  `Build & Deploy Web` success).
+- **Honest observation, not a defect and not investigated further (out of
+  this ticket's scope):** the deploy pipeline ran a full `Build & Deploy
+  Web` for a change that touched only two files under `00_ARCHITECTURE/`,
+  neither under `platform/`. Whatever gates "Build & Deploy Web" appears to
+  trigger on more than just `platform/`-path changes, or unconditionally.
+  Not a failure — the redeploy succeeded cleanly and is a no-op in effect
+  (identical served code) — but flagged here rather than silently accepted,
+  in case it is relevant to a future session auditing deploy-pipeline
+  efficiency. Not filed as a DD; this is a resource-efficiency observation,
+  not a correctness or safety gap.
+
+**What this lease actually delivered:** per DD-13's own explicit
+instruction, residual (b) is INVESTIGATED and REPORTED, not resolved. The
+DD-13 register entry (`PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`)
+now carries: residual (a)'s closure recorded, and residual (b)'s tension
+stated precisely (with real code citations and a real, measured production
+data point — 2/36 real assistant messages contain mortality-adjacent
+vocabulary, both benign) plus three unselected options. **This does NOT
+satisfy DD-13's own binary-condition branch (a) or (b)** — branch (a)
+needs BOTH residuals closed (only (a) is), and branch (b) needs the tension
+EXPLICITLY RESOLVED one way or the other with a stated reason, which this
+investigation deliberately does not do, per this session's master-prompt
+authorization ("if the two are in genuine tension, that tension is itself
+part of what this ticket must report back — not something to resolve
+unilaterally"). DD-13 therefore remains OWNED, not CLOSED, at the
+2026-09-03 deadline still on record — whoever picks up that deadline next
+needs to either make the branch-(b) call the native/user was asked to make
+here, or invoke branch (c) (re-rule openly) if neither buffer direction is
+chosen by then. This is stated plainly so DD-13's own status is not
+mistakenly read as fully resolved by this session's work.
+
+No file outside this lease's declared scope was touched. Worktree
+`.clone/worktrees/pariprashna-part-d` retained; will be removed once this
+authorization's remaining Parts (G, H) are taken up or on request.
+
+---
+
+**PARIPRASHNA-P3-PREFLIGHT-PART-F is now fully closed** (both residual (a)
+— code fix, merged/deployed/live-verified — and residual (b) —
+investigated and reported, per the ticket's own scope). Per this
+authorization's Parts A–H structure, Parts G (hygiene/bookkeeping) and H
+(close + tag) remain. The native/user's last explicit scope decision
+covered "both E and F"; G/H are being checked in on before proceeding,
+consistent with the pattern this session has followed at each Part
+boundary.
