@@ -98,6 +98,9 @@ def _discovery_evidence_grade(
     refs = evidence_refs if isinstance(evidence_refs, dict) else {}
 
     if discovery_class == "retrodiction":
+        # F-148 pt.1: the cutoff/containment/event_type disclosure flags live once,
+        # in evidence_refs (mi_pariksha's own write), and are echoed here — never
+        # restated as a second hardcoded copy, which is how the two would drift.
         return _GRADE_STRUCTURAL, {
             "rule": "retrodiction_never_empirical",
             "n_support_means": "matched historical anchors (query LIMIT 3)",
@@ -107,6 +110,10 @@ def _discovery_evidence_grade(
                 "count of it can earn an empirical grade"
             ),
             "anchors_matched": n_support,
+            "cutoff_enforced": refs.get("cutoff_enforced"),
+            "window_containment_checked": refs.get("window_containment_checked"),
+            "event_type_compared": refs.get("event_type_compared"),
+            "n_adjudicated_hits": refs.get("n_adjudicated_hits"),
         }
 
     raw_scored = refs.get("n_scored_matches")

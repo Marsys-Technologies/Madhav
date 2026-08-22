@@ -702,9 +702,57 @@ def test_discovery_provenance_is_json_serializable_and_carries_class():
 
 
 def test_malformed_evidence_refs_does_not_crash_and_grades_down():
-    """evidence_refs is jsonb — a list (retrodiction's own shape), a string, or None
-    must all be tolerated without promoting the row."""
+    """evidence_refs is jsonb — a list, a string, or None must all be tolerated
+    without promoting the row. (Retrodiction's own shape was a bare list before
+    F-148 pt.1; it is now a dict carrying disclosure flags — see
+    test_retrodiction_grade_basis_echoes_disclosure_flags_from_evidence_refs
+    below — but malformed/legacy shapes must still fail safe.)"""
     for refs in (None, [], ["not", "a", "dict"], "{}", {"n_scored_matches": "6"},
                  {"n_scored_matches": True}):
         conn, _ = _run_discoveries([_discovery_row(n_support=41, evidence_refs=refs)])
         assert conn.inserted_rows[0][EVIDENCE_GRADE] == "assignment_only", refs
+
+
+def test_retrodiction_grade_basis_echoes_disclosure_flags_from_evidence_refs():
+    """F-148 pt.1: cutoff_enforced / window_containment_checked / event_type_compared /
+    n_adjudicated_hits must be ECHOED from evidence_refs (mi_pariksha's own write),
+    never a second hardcoded copy in mi_darshana — that duplication is exactly how
+    the two would drift (§N.7 item 3). Proven by echoing a value mi_pariksha would
+    never actually write (True) and observing it survive unchanged: a hardcoded
+    `False` in _discovery_evidence_grade would fail this test."""
+    conn, _ = _run_discoveries([
+        _discovery_row(
+            discovery_class="retrodiction",
+            n_support=2,
+            discovery_id="retro_ev_echo",
+            evidence_refs={
+                "top_k": [],
+                "cutoff_enforced": True,
+                "window_containment_checked": True,
+                "event_type_compared": True,
+                "n_adjudicated_hits": 2,
+                "n_support_semantics": "test sentinel",
+            },
+        )
+    ])
+    row = conn.inserted_rows[0]
+    assert row[EVIDENCE_GRADE] == "structural"
+    basis = _basis(row)
+    assert basis["cutoff_enforced"] is True
+    assert basis["window_containment_checked"] is True
+    assert basis["event_type_compared"] is True
+    assert basis["n_adjudicated_hits"] == 2
+
+
+def test_retrodiction_grade_basis_disclosure_flags_null_when_refs_missing_them():
+    """The honest default (evidence_refs absent or pre-F-148 shape): the echoed
+    keys must be None, never silently defaulted to a value that looks verified."""
+    conn, _ = _run_discoveries([
+        _discovery_row(discovery_class="retrodiction", n_support=0,
+                       discovery_id="retro_ev_legacy", evidence_refs=None)
+    ])
+    basis = _basis(conn.inserted_rows[0])
+    assert basis["cutoff_enforced"] is None
+    assert basis["window_containment_checked"] is None
+    assert basis["event_type_compared"] is None
+    assert basis["n_adjudicated_hits"] is None
