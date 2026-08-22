@@ -23,6 +23,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   CROSS_SENTENCE_WINDOW,
+  EXTENDED_DATE_SHAPE_WINDOW,
   MAX_CARRY_CONTEXT_CHARS,
   MAX_HOLDBACK_CHARS,
   StreamingMortalityScanner,
@@ -206,17 +207,47 @@ describe('M-3 — the header claim and the code cannot drift apart', () => {
     expect(MAX_CARRY_CONTEXT_CHARS).toBeGreaterThanOrEqual(MAX_HOLDBACK_CHARS)
   })
 
-  it('the window is demonstrably what the constant says — at 2, not at 3', () => {
-    // The honest residual, asserted rather than merely written down: a pair
-    // separated by an intervening third sentence is NOT detected. If a future
-    // change widens the window this test is the thing that says so.
+  it('the shared window is demonstrably what CROSS_SENTENCE_WINDOW says — at 2, not wider', () => {
+    // The honest residual, asserted rather than merely written down: a
+    // duration_to_end pairing separated by an intervening third sentence is
+    // NOT detected — CROSS_SENTENCE_WINDOW itself was deliberately NOT
+    // widened for this (DD-13 residual (a), Part F — see EXTENDED_DATE_SHAPE_
+    // WINDOW's own note for why). If a future change widens the SHARED
+    // window this test is the thing that says so.
     const spanned =
-      'The native will meet death. Saturn rules the tenth. The year is 2047.'
+      'The native faces mortality themes. Saturn rules the tenth. Within a few years this resolves.'
     const r = scanMortalityPhrasing(spanned)
     if (CROSS_SENTENCE_WINDOW >= 3) {
       expect(r.hits.length).toBeGreaterThan(0)
     } else {
       expect(r.hits).toEqual([])
     }
+  })
+
+  it('EXTENDED_DATE_SHAPE_WINDOW closes the third-sentence gap for a bare date, narrowly — not for duration_to_end', () => {
+    // DD-13 residual (a), Part F. The re-verifier's original reproduction for
+    // this residual, verbatim, with the term and date separated by one
+    // genuinely unrelated sentence.
+    const dateShaped =
+      'The native will meet death. Saturn rules the tenth. The year is 2047.'
+    const r = scanMortalityPhrasing(dateShaped)
+    if (EXTENDED_DATE_SHAPE_WINDOW >= 3) {
+      expect(r.scan_failed).toBe(false)
+      expect(r.hits.length).toBeGreaterThan(0)
+      expect(r.hits.every((h) => h.rule === 'mortality_term_x_date_shape')).toBe(true)
+      expect(r.clean).not.toContain('2047')
+      expect(r.clean).not.toMatch(/\bdeath\b/)
+    } else {
+      expect(r.hits).toEqual([])
+    }
+
+    // The SAME separation, but a duration_to_end phrase instead of a bare
+    // date, must NOT be caught — that residual stays open at this width,
+    // exactly as EXTENDED_DATE_SHAPE_WINDOW's own note discloses.
+    const durationShaped =
+      'The native will meet death. Saturn rules the tenth. Within a few years this comes to pass.'
+    const r2 = scanMortalityPhrasing(durationShaped)
+    expect(r2.hits).toEqual([])
+    expect(r2.clean).toContain('death')
   })
 })

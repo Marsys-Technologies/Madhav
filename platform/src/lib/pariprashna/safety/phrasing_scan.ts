@@ -64,11 +64,18 @@
  *   · A term and a date within CROSS_SENTENCE_WINDOW consecutive sentences of
  *     each other are BOTH redacted (non-streaming), or the later one is
  *     withheld (streaming). Two sentences, not one — a third sentence between
- *     them is out of scope and is a KNOWN residual, not a covered case.
- *   · Across a stream seam, that window reaches back at most
+ *     them is out of scope for BOTH mortality rules at this width.
+ *   · DD-13 residual (a), Part F: a term and a BARE DATE (year/age/calendar
+ *     date — `mortality_term_x_date_shape` specifically, never
+ *     `duration_to_end`) within `EXTENDED_DATE_SHAPE_WINDOW` (one sentence
+ *     wider) are also caught, via a SEPARATE narrower pass — see that
+ *     constant's own note for why the shared window itself was not widened.
+ *     A term and a `duration_to_end` phrase separated by an intervening
+ *     sentence remains a KNOWN residual, not a covered case.
+ *   · Across a stream seam, both windows reach back at most
  *     MAX_CARRY_CONTEXT_CHARS of already-emitted prose. Beyond that distance a
  *     pair is not detected. `phrasing_scan_round3.test.ts` sweeps the boundary
- *     and fails if either constant shrinks.
+ *     and fails if any of the three constants shrinks.
  *   · Nothing retracts a term already sent. The residual remains "a reader may
  *     see a mortality term whose date is then withheld", never "a reader may
  *     see a complete mortality claim" within the stated window.
@@ -171,10 +178,47 @@ export const FORCED_RELEASE_OVERLAP_CHARS = 200
  * the shape a leaked claim takes; at 4 or 5 an entire paragraph of legitimate
  * maraka analysis disappears because someone dated a dasha at the end of it.
  *
- * A pair separated by an intervening third sentence is therefore NOT detected.
- * That is a stated residual, not an oversight — see the module header.
+ * A pair separated by an intervening third sentence is therefore NOT detected
+ * by THIS constant. `EXTENDED_DATE_SHAPE_WINDOW` below closes that gap for
+ * the stricter `mortality_term_x_date_shape` rule only, via a separate pass —
+ * this constant itself stays at 2 and is unchanged. The duration_to_end
+ * residual at that separation is a stated residual, not an oversight — see
+ * the module header and `EXTENDED_DATE_SHAPE_WINDOW`'s own note.
  */
 export const CROSS_SENTENCE_WINDOW = 2
+
+/**
+ * The width of a SECOND, NARROWER window that closes the "third sentence
+ * between them" residual `CROSS_SENTENCE_WINDOW`'s own note names (DD-13
+ * residual (a), Part F). Deliberately NOT a bump of `CROSS_SENTENCE_WINDOW`
+ * itself — that was considered and rejected for exactly the reason the note
+ * above gives: widening the SHARED window redacts more legitimate maraka
+ * analysis with every increment, and at 3 it would apply to
+ * `mortality_term_x_duration_to_end` too, which is already the looser of
+ * the two rules and the more over-redaction-prone one even at width 2.
+ *
+ * The narrowing, concretely: this window is scanned SEPARATELY, after the
+ * `CROSS_SENTENCE_WINDOW` pass below, and its hits are filtered to
+ * `mortality_term_x_date_shape` ONLY — never `duration_to_end`. A bare year,
+ * an explicit age, or a calendar date is a categorically stronger signal
+ * than "a few years" / "the next dasha", and restricting the wider window to
+ * that stronger signal is what makes this a real narrowing rather than the
+ * same over-redaction trade in a second function. It is the same
+ * architectural move the token-continuity rejoin already makes for the
+ * extra-rule half of this file: add a SEPARATE, narrower mechanism rather
+ * than widen the one shared window for every rule uniformly.
+ *
+ * HONEST RESIDUAL, STATED PRECISELY: this does not eliminate over-redaction
+ * risk at width 3 — three sentences where the first mentions mortality/
+ * longevity in a general sense, the second is an unrelated technical aside,
+ * and the third happens to carry an unrelated year will still be redacted
+ * whole. It reduces the FREQUENCY of that risk relative to widening both
+ * rules (duration_to_end phrasing is far more common in ordinary prose than
+ * a bare date), not its existence. And the duration_to_end residual at a
+ * separation of exactly one intervening sentence remains open — disclosed
+ * here, not fixed by this constant.
+ */
+export const EXTENDED_DATE_SHAPE_WINDOW = CROSS_SENTENCE_WINDOW + 1
 
 /**
  * How much already-emitted prose the streaming scanner carries forward as
@@ -524,6 +568,30 @@ export function scanMortalityPhrasing(
       }
     }
 
+    // ── THE EXTENDED DATE-SHAPE WINDOW (DD-13 residual (a), Part F) ────────
+    // A SEPARATE pass at `EXTENDED_DATE_SHAPE_WINDOW`, not a widening of the
+    // loop above — see that constant's own note for why the two must stay
+    // apart. Filtered to `mortality_term_x_date_shape` only: a hit at this
+    // width is accepted ONLY when a bare year/age/calendar-date is what
+    // paired with the mortality term, never a duration_to_end match, which
+    // stays bounded at `CROSS_SENTENCE_WINDOW` and is a stated residual at
+    // this width (see `EXTENDED_DATE_SHAPE_WINDOW`'s own note).
+    for (
+      let i = 0;
+      mortalityRulesEnabled && i + EXTENDED_DATE_SHAPE_WINDOW <= sentences.length;
+      i++
+    ) {
+      let alreadyRedacted = false
+      for (let k = 0; k < EXTENDED_DATE_SHAPE_WINDOW; k++) {
+        if (ruleFor.has(i + k)) alreadyRedacted = true
+      }
+      if (alreadyRedacted) continue
+
+      const rule = sentenceHit(sentences.slice(i, i + EXTENDED_DATE_SHAPE_WINDOW).join(''))
+      if (rule !== 'mortality_term_x_date_shape') continue
+      for (let k = 0; k < EXTENDED_DATE_SHAPE_WINDOW; k++) ruleFor.set(i + k, rule)
+    }
+
     // ── THE EXTRA PATTERN CLASS (lane G1-G, PPR-13) ───────────────────────
     // Runs over the SAME sentence array, and — like the mortality rules — over
     // a sliding window of CROSS_SENTENCE_WINDOW consecutive sentences.
@@ -666,16 +734,20 @@ export function scanMortalityPhrasing(
 /**
  * The tail of already-emitted prose that the next scan sees as context.
  *
- * The last `CROSS_SENTENCE_WINDOW - 1` sentences, so the streaming window and
- * the non-streaming window are the SAME window — a term/date pair split across
- * a stream seam is treated exactly as one split across a sentence boundary in a
- * completed span. Hard-truncated to `MAX_CARRY_CONTEXT_CHARS` because in the
- * forced-release path there is no sentence boundary to slice at and "the last
- * sentence" would otherwise mean "everything emitted so far".
+ * The last `max(CROSS_SENTENCE_WINDOW, EXTENDED_DATE_SHAPE_WINDOW) - 1`
+ * sentences, so the streaming window and the non-streaming window are the
+ * SAME window for BOTH passes — a term/date pair split across a stream seam
+ * is treated exactly as one split across a sentence boundary in a completed
+ * span, whether the pairing needs `CROSS_SENTENCE_WINDOW` or the wider
+ * date-shape-only pass (DD-13 residual (a), Part F) to see it. Hard-truncated
+ * to `MAX_CARRY_CONTEXT_CHARS` because in the forced-release path there is no
+ * sentence boundary to slice at and "the last sentence" would otherwise mean
+ * "everything emitted so far".
  */
 function tailContext(emitted: string): string {
   const sentences = splitSentences(emitted)
-  const ctx = sentences.slice(-(CROSS_SENTENCE_WINDOW - 1)).join('')
+  const carry = Math.max(CROSS_SENTENCE_WINDOW, EXTENDED_DATE_SHAPE_WINDOW) - 1
+  const ctx = sentences.slice(-carry).join('')
   return ctx.length > MAX_CARRY_CONTEXT_CHARS ? ctx.slice(-MAX_CARRY_CONTEXT_CHARS) : ctx
 }
 
