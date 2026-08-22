@@ -33,7 +33,7 @@ beforeEach(() => {
   mockValidateServiceToken.mockReset()
   mockRegisterClient.mockReset()
   mockValidateServiceToken.mockReturnValue(true)
-  mockRegisterClient.mockResolvedValue({ client_id: 'mcp_client_new', client_secret: 'mcp_cs_new' })
+  mockRegisterClient.mockResolvedValue({ client_id: 'mcp_client_new', client_secret: 'mcp_cs_test' })
 })
 
 describe('POST /api/mcp/oauth/clients — SF-004 registration hygiene', () => {

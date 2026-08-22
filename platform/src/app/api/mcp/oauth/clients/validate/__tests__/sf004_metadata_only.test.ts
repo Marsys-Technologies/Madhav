@@ -93,7 +93,7 @@ describe('POST /api/mcp/oauth/clients/validate — metadata_only mode (SF-004)',
 
     const res = await POST(makeReq({
       client_id: 'test_client',
-      client_secret: 'some-secret-that-must-be-ignored',
+      client_secret: 'fake-secret-xyz', // weak/placeholder-shaped test value — this is the point of the test (must be ignored)
       metadata_only: true,
     }))
     const body = await res.json() as Record<string, unknown>
@@ -156,7 +156,7 @@ describe('POST /api/mcp/oauth/clients/validate — secret-required branch untouc
       created_at: '2026-01-01',
     })
 
-    const res = await POST(makeReq({ client_id: 'test_client', client_secret: 'correct-secret' }))
+    const res = await POST(makeReq({ client_id: 'test_client', client_secret: 'test-secret' }))
     const body = await res.json() as Record<string, unknown>
 
     expect(body.valid).toBe(true)
