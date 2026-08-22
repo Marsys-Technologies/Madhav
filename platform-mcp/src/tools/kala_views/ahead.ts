@@ -121,7 +121,15 @@ import {
 import { composeArgument } from '../../lib/argument_composer.js'
 // F-110 (CL-15): the promise-join helper's FIRST production caller. See the PromiseGate
 // block below and 00_ARCHITECTURE/briefs/parisesa/F110_PACT_GATING_DESIGN_CONTRACT_v1_0.md.
-import { interpretPactJoin, type SaraPromiseJoin } from '../../lib/promise_spine.js'
+// F-176 (PARISESA-V4): `computePromiseGate` + its types were extracted verbatim into
+// `promise_gate.ts` so `kala_windows_get`/`kala_projections_get` can share the SAME gate —
+// see that module's header for the full account. This file's behavior is byte-identical
+// pre/post extraction (kala_ahead_get_f110_promise_gate.test.ts mocks at the `fetch` layer,
+// so it exercises this exact code path unmodified).
+import {
+  computePromiseGate,
+  type PromiseGate,
+} from './promise_gate.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget } from '../../lib/response_budget.js'
 // ṢAḌ-DARŚANA W4 (Lane R, Elevation §6 D4): Mode-1 ritual-opportunity rows join the
 // 90-day digest. `fetchLatticeSubstrate` is the FROZEN engine's own fetcher and
@@ -1161,125 +1169,12 @@ interface ProjectionFamily {
 // Full investigation, rejected alternatives (tier downgrade / suppression), and the three
 // items escalated for a native ruling:
 // `00_ARCHITECTURE/briefs/parisesa/F110_PACT_GATING_DESIGN_CONTRACT_v1_0.md`.
-
-const PACT_CAPABILITY_URI = 'marsys://tool/L-PACT/pact_query'
-
-/** Which forward span a denial at this PACT stage may legitimately gate. */
-export type PromiseGateScope = 'horizon_invariant' | 'as_of_date_only' | 'none'
-
-export type PromiseGateState = 'checked' | 'unreachable' | 'not_applicable'
-
-export interface PromiseGate {
-  state: PromiseGateState
-  /** The domain whose PACT chain was consulted (null when none was). */
-  domain: string | null
-  as_of_date: string | null
-  /** `interpretPactJoin` output, verbatim. NEVER fabricated — null unless state==='checked' (§N.8). */
-  join: SaraPromiseJoin | null
-  /** Raw `pact_status`, verbatim from the capability. */
-  pact_status: string | null
-  gating_scope: PromiseGateScope
-  /**
-   * True ONLY when a horizon-invariant denial actually contradicts a served projection.
-   * This is the field a caller reads to know the served tier is disputed by this server.
-   */
-  contradicts_served_projections: boolean
-  /** §N.6: "vetted" and "not vetted" are never flattened into one undifferentiated claim. */
-  gated_projection_domains: string[]
-  ungated_projection_domains: string[]
-  reason: string
-}
-
-/** §4.2 stage-scope table. A denial's validity across a forward horizon depends on
- *  whether the stage that denied rests on timeless (natal/varga) or as-of-date facts. */
-function gatingScopeFor(pactStatus: string | null): PromiseGateScope {
-  if (!pactStatus) return 'none'
-  if (pactStatus === 'denied_at_promise' || pactStatus === 'denied_at_confirmation') return 'horizon_invariant'
-  if (pactStatus === 'denied_at_activation') return 'as_of_date_only'
-  return 'none'
-}
-
-/** Calls the SAME `pact_query` capability `kala_explain_get` consumes — no second chain
- *  implementation, no new astrological computation (§N.5/B.10) — and interprets it through
- *  the shared `interpretPactJoin` helper (promise_spine.ts), whose `denied_at_* →
- *  stance:'contradicts'` mapping has no override path (INV-1). */
-async function computePromiseGate(
-  chartId: string,
-  ayanamshaId: string,
-  asOfDate: string,
-  requestedDomain: string | undefined,
-  projectionFamilies: ProjectionFamily[],
-  principal: Principal,
-): Promise<PromiseGate> {
-  const projectionDomains = Array.from(
-    new Set(projectionFamilies.map((p) => p.domain).filter((d): d is string => typeof d === 'string' && d.length > 0)),
-  )
-  // Scope: the caller's explicit domain, else the LEADING projection's own domain (the
-  // one this tool's thesis names). §5.3: pact_query runs judgment_query's full checklist
-  // and is expensive — one call per response, never N parallel heavy calls.
-  const gateDomain = requestedDomain ?? projectionDomains[0] ?? null
-
-  const emptyGate = (state: PromiseGateState, reason: string): PromiseGate => ({
-    state, domain: gateDomain, as_of_date: gateDomain ? asOfDate : null, join: null, pact_status: null,
-    gating_scope: 'none', contradicts_served_projections: false,
-    gated_projection_domains: [], ungated_projection_domains: projectionDomains, reason,
-  })
-
-  if (!gateDomain) {
-    return emptyGate(
-      'not_applicable',
-      'No domain to consult: neither a `domain` filter was supplied nor did any served projection carry a domain label, ' +
-        'so there is no PACT chain for this response to be gated against. Not a clean bill of health — nothing was checked.',
-    )
-  }
-
-  const resp = await callRegistryCapability(
-    PACT_CAPABILITY_URI,
-    { chart_id: chartId, ayanamsha_id: ayanamshaId, domain: gateDomain, as_of_date: asOfDate },
-    principal,
-  )
-  // §N.8: a null join is reported as null, never smoothed into a permissive default.
-  const join = resp.ok ? interpretPactJoin(resp.content) : null
-  if (!join) {
-    return emptyGate(
-      'unreachable',
-      `The PACT promise chain for '${gateDomain}' could not be evaluated this call ` +
-        `(${resp.ok ? 'the capability answered but returned no pact_status' : 'the L-PACT capability was unreachable'}). ` +
-        'The served probability_tier(s) below have therefore NOT been checked against the classical promise chain — ' +
-        'unchecked, which is not the same as checked-and-clear. Re-run kala_explain_get or pact_query for this domain.',
-    )
-  }
-
-  const pactStatus = ((resp.content as Record<string, unknown> | null)?.['pact_status']
-    ?? ((resp.content as Record<string, unknown> | null)?.['content'] as Record<string, unknown> | undefined)?.['pact_status']
-    ?? null) as string | null
-  const scope = gatingScopeFor(pactStatus)
-  const gatedDomains = [gateDomain]
-  const ungated = projectionDomains.filter((d) => d !== gateDomain)
-  // A projection is contradicted only if the denial is horizon-invariant AND a served
-  // projection actually sits in the gated domain.
-  const contradicts =
-    join.stance === 'contradicts' &&
-    scope === 'horizon_invariant' &&
-    projectionFamilies.some((p) => p.domain === gateDomain)
-
-  const reason = contradicts
-    ? `${join.promise_verdict} This denial rests on natal/varga facts that do not change with the evaluation date, ` +
-      `so it bears on EVERY forward window served here for '${gateDomain}' — the probability_tier below is a measure of ` +
-      'temporal SIGNAL CONVERGENCE (how many activation signals point at the same window), not of classical promise, and ' +
-      'the two disagree on this chart. Both are served; neither is silently dropped. Drill: kala_explain_get / pact_query.'
-    : join.stance === 'contradicts' && scope === 'as_of_date_only'
-      ? `${join.promise_verdict} NOTE: an ACTIVATION-stage denial is evaluated as of ${asOfDate} only and says nothing ` +
-        'about a window years later — it is reported here for completeness but is NOT applied as a gate on these forward ' +
-        'projections (design contract §4.2).'
-      : join.promise_verdict
-
-  return {
-    state: 'checked', domain: gateDomain, as_of_date: asOfDate, join, pact_status: pactStatus,
-    gating_scope: scope, contradicts_served_projections: contradicts,
-    gated_projection_domains: gatedDomains, ungated_projection_domains: ungated, reason,
-  }
-}
+//
+// F-176 (PARISESA-V4): `computePromiseGate` + `PromiseGate` (and its scope/state types) now
+// live in `./promise_gate.js`, shared with `kala_windows_get`/`kala_projections_get`
+// (register_p1_aliases.ts) — see that module's header. This file calls it with its own local
+// `callRegistryCapability`, so the call below is byte-identical in behavior to the pre-
+// extraction inline version.
 
 const TIER_TO_STRENGTH: Record<string, ArgumentEvidence['strength']> = {
   tier_1_high: 'strong',
@@ -1942,7 +1837,7 @@ export async function computeKalaAhead(
   // is available — and awaited just before the reading is composed, so it overlaps every
   // subsequent join instead of adding a serial leg to the call.
   const promiseGatePromise = computePromiseGate(
-    chartId, ayanamshaId, dateFrom, args.domain, projectionFamilies, principal,
+    chartId, ayanamshaId, dateFrom, args.domain, projectionFamilies, principal, callRegistryCapability,
   )
 
   // item 32 join: extract the already-computed gulika_kalam Timing per day from the
