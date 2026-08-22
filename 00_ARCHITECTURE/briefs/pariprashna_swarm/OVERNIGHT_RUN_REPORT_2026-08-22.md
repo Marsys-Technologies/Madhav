@@ -266,6 +266,61 @@ P3's blocker was a credential, not money.
 
 ---
 
+## What the SECOND review wave caught — the rollback pin, and why it matters more than the lanes
+
+The last thing the run did before closing was review its own flip-preparation artifacts. That review
+produced the night's most consequential findings, because these are the documents someone will act on
+**under pressure, on production, after something has already gone wrong**.
+
+**1. The rollback pin's verification step is green-either-way for the rollback it is attached to.**
+§5.2 proposes an unauthenticated probe whose "rollback succeeded" outcome is producible *only* by
+`PARIPRASHNA_ENABLED` being false. But **PRIMARY** — the traffic shift the document lists first, calls
+"the standard one," and whose kill criterion says to fire without a second opinion — **does not change
+that flag.** The probe returns the same result before and after. So §5.2 verifies SECONDARY only, and
+**PRIMARY has no functional detector at all** — while the document states in writing that *"there's no
+plausible 'looks green either way' failure mode here."* That sentence is false, and it is §N.8's defect
+in the single worst place to put it.
+
+**2. A revision pin is a safety-configuration pin.** Found independently by the conductor and the
+reviewer, ninety minutes apart, from opposite directions. The pin records `amjis-web-01671-47n`, which
+**predates tonight's limits enablement**. Rolling back to it disarms the $2/turn and $40/day spend
+ceilings and the per-user rate limits on both doors, while the operator believes they only undid the
+flip. **That is a rollback command routing around a safety gate — what §9 prohibits — reached by
+accident.** The document's own §3 says "read fresh, not copied from §4," which is what saves it; but
+the literal revision name sits in a copy-paste table under a `<PRE_FLIP_REVISION>` placeholder, and a
+tired reader at speed reads the value, not the instruction. **The generalisable rule, worth a DD entry:
+a rollback runbook must diff the candidate revision's env against the current one and confirm no
+`MARSYS_FLAG_*` safety flag is lost, before any traffic shift.**
+
+**3. The "mechanism-independent kill switch" does not cover the MCP door.** `prashna_ask` has **zero**
+feature-flag gating; the web door 404s when the flag is off and the MCP door stays fully live. An
+operator pulling that flag believes they closed the surface; one door stays open. Worse, the plan to
+re-base `prashna_ask` "onto the shared loop with all gates" would **newly** flag-gate the MCP door,
+silently widening the rollback's blast radius — neither document had noticed. A fifth guard site was
+also unnamed anywhere: pulling the flag additionally takes down the SAMĪKṢĀ review tab.
+
+**4. A byte-equality headline resting on an identity invariant.** The wire↔persisted test survived
+**five independent sabotages** (key reorder, nested value change, field drop, whitespace-only, extra
+field), all RED, with a deep-clone control GREEN, and it runs in ordinary CI without skipping — the
+guard is real. But both operands trace to **one object reference**, so it cannot fail on a value
+divergence; only on a code change producing two objects. That makes it a genuine *single-source-of-
+receipt invariant guard* — the right guard to have — but not "byte agreement between two derivations."
+Since **CLAUDE.md §N.8 instance 3 is literally "a byte-equality claim with no byte comparison behind
+it,"** this artifact above all others could not be allowed to ship that headline. The test is sound and
+unchanged; the headline is being corrected.
+
+**5. The env-var hazard was understated 4× in the document that exists to name it.** The pin said 13
+`MARSYS_FLAG_PARIPRASHNA_*` vars and scoped `--set-env-vars`'s blast radius to feature flags. Measured:
+**11 flags, but 44 plain env vars total** — including `DB_NAME`, `DB_USER`,
+`INSTANCE_CONNECTION_NAME`, `WATCHDOG_SECRET` and all six `NEXT_PUBLIC_FIREBASE_*`. `gcloud`'s own help
+says *"All existing environment variables will be removed first."*
+
+All five are being corrected on their branches. **None of the five was a code defect** — every one was
+a document or a headline asserting something the machinery underneath does not do. That is the shape
+of nearly everything this night found.
+
+---
+
 # APPENDIX — the original in-progress skeleton follows
 
 ## End state
