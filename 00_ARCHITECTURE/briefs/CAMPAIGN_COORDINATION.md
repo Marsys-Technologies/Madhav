@@ -7669,3 +7669,64 @@ start at DD-31 specifically to avoid colliding with them.
 neither close happened tonight, and the DD register now says so plainly.
 
 Lease released.
+
+## 2026-08-23 — PARIPRASHNA-P4-H — lease CLOSED (written at run close; the lane never closed it itself)
+
+**Written by the conductor at the governance close, per charter §7 — *"missing lease-closing entries:
+write them."*** The P4-H builder opened its lease above and never closed it: the lane was REFUTED and
+then PARKED mid-flight, and its park pass produced its deliverables without returning to this log.
+That gap is the conductor's to close, not the builder's to be blamed for, and it is recorded here
+rather than quietly filled.
+
+**Scope released:** `platform/src/app/api/conversations/[id]/feedback/**` and its tests. No file
+outside that scope was touched by the lane or by its park pass — verified at close
+(`git diff --name-only origin/main...pariprashna/p4-h` lists four files: the DD register, the feedback
+route, and two test files).
+
+**Disposition: PARKED, not merged.** PR **#1496 remains OPEN and must not be merged as-is.** An
+independent refuter established that the dispute write lands and is then **erased by the very next
+ordinary conversation turn**, because two production writers replace `conversation_messages.
+metadata_json` wholesale — while `writeConversationMessages`' own read-after-write check reports
+`verified: true`, since it asserts row presence rather than metadata preservation.
+
+**What the park left behind, deliberately:** a **quarantined regression test that already reads red**
+(`feedback_dispute_survives_turn.db.test.ts`, `it.skip` with the blocker named in its skip reason), and
+**DD-28/29/30** filed in the swarm register on that branch. The root-cause fix — making the two turn
+writers merge `metadata_json` instead of replacing it — was **deliberately not attempted overnight**:
+it sits on the core turn write path of the live product, it is a semantic change for every existing
+consumer of that column, and it would not have closed the lane anyway, since no client in the codebase
+can transmit a dispute comment at all.
+
+**Note for whoever merges `pariprashna/p4-h` later:** its DD-28/29/30 were filed on the branch and are
+**not** on `main`. The run's own governance-close write therefore started at **DD-31** to avoid a
+collision. Do not renumber them.
+
+## 2026-08-23 — PARIPRAŚNA P3+P4 OVERNIGHT — RUN LEASE CLOSED (T-P3 / T-P4-REMEMBER / T-P4-RETIRE)
+
+The run lease opened at the top of this night's entries is released. **All three declared scopes are
+released; none is being held over.**
+
+- **T-P3** — released. Lanes A, C, E landed or parked with artifacts; B and D never opened (gated).
+- **T-P4-REMEMBER** — released. Lanes I, J, K landed or queued; G and H parked with written findings.
+- **T-P4-RETIRE** — **released, never opened.** No redirect, no deletion, no flag removal, no census
+  accepted as a warrant, no refuter panel convened. Its gate — seven consecutive green smokes — could
+  not start, because the CI credential the smoke needs is a one-character placeholder. **Nothing in the
+  legacy tree was touched by this run.**
+
+**One production change was made and is disclosed in full above** (X-6 announcement):
+`MARSYS_FLAG_PARIPRASHNA_LIMITS_ENABLED=true`, native-authorized unconditionally, verified on a
+0%-traffic canary before the shift, and **since observed surviving two independent deploys from
+`main`** with the flag intact and `/login` returning 200 throughout.
+
+**Correction posted during the run and repeated here** so it is not missed by anyone reading only the
+close: this run published a **false claim** to this log — that `platform/migrations/` and
+`platform/supabase/migrations/` are separate number spaces. **They share ONE sequence**, enforced by
+`platform/scripts/ci/migration_number_guard.ts`, which hard-fails cross-directory duplicates. The full
+retraction is above.
+
+**Still outstanding for the owning campaign, not this run's to fix:** the two untracked, applied,
+unrecorded migrations `588_remove_asset_build_protection.sql` / `589_drop_orphaned_protection_functions.sql`
+in the shared checkout. This run backed both up read-only (sha256 recorded, verified byte-identical at
+close) and touched nothing else about them.
+
+No Pariśeṣa file, branch, worktree, or dirty state was touched at any point tonight.
