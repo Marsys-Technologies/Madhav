@@ -191,6 +191,74 @@ def test_jupiter_favourable_houses_include_2_5_7_9_11():
     )
 
 
+# ── 6b. F-145: Venus unfavourable set (6th/7th/10th from Moon) ──────────────────
+
+def test_venus_unfavourable_houses_are_exactly_6_7_10():
+    """
+    F-145: Venus's unfavourable transit houses must be exactly {6, 7, 10} per
+    Phaladeepika Adh. XXVI Slokas 2, 8 & 21 (verified against the ingested corpus,
+    owner-ruled 2026-08-22). 11th and 12th are classically favourable — the writer
+    already carries those as favourable rows — and must NOT appear here.
+    """
+    from brahmagyan.l0_transit import BG_TRANSIT_RULES
+
+    venus_unfavourable = {
+        r["primary_house"]
+        for r in BG_TRANSIT_RULES
+        if r["graha"] == "venus" and r["rule_type"] == "unfavourable"
+    }
+    assert venus_unfavourable == {6, 7, 10}, (
+        f"Venus unfavourable houses must be exactly {{6, 7, 10}}; found {venus_unfavourable}"
+    )
+
+
+def test_venus_unfavourable_rows_cite_phaladeepika_not_bphs():
+    """
+    F-145: the three Venus unfavourable rows must cite the verified Phaladeepika
+    source (PD_ADH26_S2_8_21) — never 'BPHS Ch.29', which could not be verified
+    against the ingested corpus for this specific content.
+    """
+    from brahmagyan.l0_transit import BG_TRANSIT_RULES, PD_ADH26_S2_8_21
+
+    venus_unfavourable = [
+        r
+        for r in BG_TRANSIT_RULES
+        if r["graha"] == "venus" and r["rule_type"] == "unfavourable"
+    ]
+    assert len(venus_unfavourable) == 3
+    for row in venus_unfavourable:
+        assert row["classical_citation"] == PD_ADH26_S2_8_21
+        assert "BPHS" not in row["classical_citation"]
+        assert row["vedha_house"] is None
+
+
+def test_venus_unfavourable_houses_omitted_when_absent_from_source():
+    """
+    Constructed-state test: if a house is missing from a BG_TRANSIT_RULES-shaped
+    source list, the reconciliation logic must treat any corresponding DB row as
+    stale (to be retired/omitted); if present, it must not.
+    """
+    from brahmagyan.l0_transit import compute_stale_rule_ids
+
+    # Source list missing house 10 (only 6 and 7 present).
+    partial_source = [
+        {"rule_type": "unfavourable", "graha": "venus", "primary_house": 6},
+        {"rule_type": "unfavourable", "graha": "venus", "primary_house": 7},
+    ]
+    db_rows = [
+        (46, "venus", "unfavourable", 6),
+        (47, "venus", "unfavourable", 7),
+        (48, "venus", "unfavourable", 10),
+    ]
+    assert compute_stale_rule_ids(partial_source, db_rows) == [48]
+
+    # Full source list (6, 7, 10 all present) — nothing stale.
+    full_source = partial_source + [
+        {"rule_type": "unfavourable", "graha": "venus", "primary_house": 10},
+    ]
+    assert compute_stale_rule_ids(full_source, db_rows) == []
+
+
 # ── 7. dry_run returns 0 rows ─────────────────────────────────────────────────
 
 def test_bg_transit_rules_dry_run_returns_zero():
