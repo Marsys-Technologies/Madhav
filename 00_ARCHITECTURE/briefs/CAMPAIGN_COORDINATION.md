@@ -7293,3 +7293,22 @@ itself (no direct push to it).
 read for open leases — SALVAGE-RECONCILE closed 2026-08-22, no open lease covers
 `overnight_campaign_plans/**` or `sampurti/**`; PR #1490 state re-verified OPEN (not merged) at
 adjudication time; work in an isolated clone under `/tmp/n4-ruling-*`, not the shared checkout.
+
+## 2026-08-23 — N4-RULING — lease CLOSED, decision recorded, PR #1491 opened
+
+Lease opened above (`1ac42ac`) is released. Decision executed as declared: **N4 ruled
+SUPERSEDED/HISTORICAL** (native-delegated, Fable 5 agent, 2026-08-23). The ratified
+`briefs/sampurti/REBASE_PLAN_v1_0.md` was NOT modified. Resolution paragraph + §B.8
+version bump (1.0 → 1.1) landed on
+`00_ARCHITECTURE/briefs/overnight_campaign_plans/README.md` via branch
+`n4-ruling/mark-superseded`, **PR #1491**, based on `salvage/reconcile-1488-onto-main`
+(the only branch carrying that file; basing on main would add/add-conflict with open
+PR #1490 — deviation declared in the open entry and in the PR body). PR left OPEN for
+native review; no direct push to #1490's branch; no merge performed.
+
+drift_detector run post-change: 79 findings — exactly the known pre-existing baseline;
+zero findings reference the changed file. Adhoc report artifacts removed from the
+shared checkout.
+
+No file outside the declared scope was touched. Isolated clones under
+`/tmp/n4-ruling-*` removed at close.
