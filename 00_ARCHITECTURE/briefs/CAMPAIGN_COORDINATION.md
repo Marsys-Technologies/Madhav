@@ -6490,3 +6490,34 @@ directory scan, after the Part D collision lesson.
 every other active lease in this table. Worktree
 `.clone/worktrees/pariprashna-part-d`, branch
 `pariprashna/p3-preflight-part-e` (new branch off current `origin/main`).
+
+## 2026-08-22 — PARIPRASHNA-P3-PREFLIGHT-PART-E — correction: migration 584 collided at merge-queue time, renumbered 587
+
+PR #1462's merge-queue attempt failed CI 3x on the same real defect: another
+campaign's PR claimed `platform/supabase/migrations/584` (and 585, 586) in
+the window between this migration's reservation (verified free at the time,
+correctly checking both directories per the Part D lesson) and the queue
+actually reaching PR #1462's turn — the repo merged an unusually large
+number of PRs across multiple campaigns in this window tonight (merge queue
+depth peaked at 16). Not a repeat of Part D's incomplete-check mistake; a
+genuine race on a fast-moving shared number space.
+
+Diagnosed by reading the merge-queue's own speculative-branch CI run
+directly (`gh api .../actions/runs?...head_branch~"pr-1462"`) rather than
+continuing to blindly re-poll/re-enqueue against a real, repeating failure
+— the MIG-1 guard's own output named the exact collision.
+
+Dequeued PR #1462 (`dequeuePullRequest` GraphQL mutation — the branch is
+protected while queued, `git push` alone is rejected) before pushing the
+fix, then re-checked fresh `origin/main` (`c817223a8`) and renumbered to
+**587** (max across both directories + 1, confirmed at renumbering time).
+Re-enqueuing once CI is green on the corrected commit. Appended, not edited
+in place, per this log's own convention.
+
+**Lesson for future reservations, sharper than Part D's:** even a correctly
+cross-directory-checked reservation can be invalidated by a later PR
+claiming the same number before the reserving PR's own merge-queue turn —
+the number space is live, not reserved in any enforced sense (the
+coordination log is a courtesy record, not a lock). On a night with unusual
+merge-queue depth, re-verify the migration number is STILL free immediately
+before the merge-queue attempt succeeds, not only at authoring time.
