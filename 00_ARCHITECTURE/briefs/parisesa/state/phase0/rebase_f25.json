@@ -1,0 +1,9 @@
+{
+  "finding_id": "F-25",
+  "outcome": "PR_OPENED_FROZEN",
+  "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1371",
+  "branch": "parisesa/repair-F25-recovery",
+  "test_results": "npx vitest run src/__tests__/kala_dasha_sandhi_get_w3.test.ts: 16/16 passed. npx tsc --noEmit: clean.",
+  "review_notes": "Recovered dangling commit da0bb0de9f (never pushed to any branch) via cherry-pick onto current origin/main -- clean, no conflicts. IMPORTANT correction made during recovery: a related branch (par/s1-f25-dasha-sandhi-principal, head 030d7f624) also exists and was initially tried, but its tip bundled unrelated commits from other sibling findings (ekv b-08/b-09) as ancestors -- rejected that path and cherry-picked the isolated original commit instead to avoid scope contamination. Fix: registerDashaSandhiCalendar was the sole outlier among 9 sibling kala_views registrations that did not accept a Principal parameter -- it hardcoded role:'super_admin' for every call regardless of the real caller, so downstream X-MCP-User/X-MCP-Key-Id headers always carried a synthetic super-admin identity. Now takes and forwards the real principal, matching all sibling registrations. Single call site (register_all.ts) confirmed and already updated. New test asserts outbound headers carry the real caller identity. Independently confirmed via sibling campaign's own ratifier/verifier_v records (verdict COMPLETE, BUG-CONFIRMED-IN-MAIN-RO) as corroborating evidence, not relied on as a substitute for this session's own re-verification.",
+  "next_action": "owner reviews and merges PR #1371 at morning checkpoint"
+}

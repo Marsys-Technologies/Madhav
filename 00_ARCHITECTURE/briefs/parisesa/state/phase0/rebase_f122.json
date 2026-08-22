@@ -1,0 +1,9 @@
+{
+  "finding_id": "F-122",
+  "outcome": "PR_OPENED_FROZEN",
+  "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1368",
+  "branch": "parisesa/repair-F122-rebase",
+  "test_results": "elect_budget_trim_f122.test.ts + elect_sections_coverage.test.ts: 3/3 passing. npx tsc --noEmit: clean.",
+  "review_notes": "Clean rebase onto origin/main (43d8c8a05), no conflicts. Bug: handleKalaElectGet's budget-trim sections[] had no coverage for lattice_adjudication.ledgers[]/sub-arrays -- trimming candidates N->1 left all N pre-trim ledgers behind. Fix adds 7 TrimmableSection entries (A-G, all minKeep:0, bookkeeping) plus a setArray sync on the candidates section that filters lattice_adjudication.ledgers to surviving candidate IDs. Independently reviewed against SN.6 density-layering doctrine (bookkeeping before candidates, hardFloor:true on candidates) -- sound. Sibling campaign's own ratifier (COMPLETE, 3/3 spot-checks held) reviewed as background only, not relied on as a substitute for this session's own verification. Cross-lane check: lane_files.json/prior ratifier notes no other lane shares elect.ts; F-125 touches a different file (upaya.ts).",
+  "next_action": "owner reviews and merges PR #1368 at morning checkpoint"
+}
