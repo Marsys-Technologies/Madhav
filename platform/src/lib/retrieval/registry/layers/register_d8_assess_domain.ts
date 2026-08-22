@@ -49,6 +49,7 @@ import {
   DOMAIN_KP_CUSPS,
   DOMAIN_DIRECT_VARGAS,
   DOMAIN_INDU_LAGNA,
+  ensureDomainDirectVargasLoaded,
   type ChecklistUnit,
   type GocharaSweepWindow,
 } from './reading_checklist'
@@ -334,6 +335,12 @@ export async function buildVargaAnalysisDirect(
   ayanamsha_id: string,
   domain: string,
 ): Promise<Record<string, unknown>> {
+  // F-164: hydrate the live-read registry before the first synchronous read this request
+  // makes of it (this call also feeds the reading_checklist_units block further down this
+  // same handler, which reads DOMAIN_DIRECT_VARGAS[domain] again synchronously — safe
+  // because this await always runs first). Throws (fails loudly) if the constants row is
+  // missing — never silently degrades to an empty/stale varga set.
+  await ensureDomainDirectVargasLoaded()
   const vargas = DOMAIN_DIRECT_VARGAS[domain] ?? []
   if (vargas.length === 0) {
     return {

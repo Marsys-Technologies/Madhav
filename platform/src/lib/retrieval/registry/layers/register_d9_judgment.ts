@@ -80,6 +80,10 @@ import {
   DOMAIN_KP_CUSPS,
   DOMAIN_INDU_LAGNA,
   corroboratingVargasNotWeighted,
+  ensureDomainDirectVargasLoaded,
+  getOperativeVargaConstants,
+  fetchVargaRatification,
+  vargaConfirmedMark,
   type ChecklistUnit,
   type GocharaSweepWindow,
 } from './reading_checklist'
@@ -663,6 +667,12 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
     // instrument — see 00_ARCHITECTURE/briefs/parisesa/
     // F107_DIVISIONAL_MECHANISM_DESIGN_CONTRACT_v1_0.md. It states the real scope and hands
     // over live drill handles to the surfaces that DO serve those legs today.
+    // F-164: DOMAIN_DIRECT_VARGAS is now a live read of brahma_vichara_constants — hydrate it
+    // before the synchronous corroboratingVargasNotWeighted() call below (and before the
+    // reading_checklist_units block further down, which reads `crossVarga` computed here).
+    // Fails loudly (throws, caught nowhere in this handler — an honest 500) if the constants
+    // row is missing; never silently falls back to a stale literal (§N.7 item 3).
+    await ensureDomainDirectVargasLoaded()
     const crossVarga = corroboratingVargasNotWeighted(spec.signal_domain, spec.varga)
     const induLagnaUnjoined = DOMAIN_INDU_LAGNA.has(spec.signal_domain)
     if (crossVarga.length > 0 || induLagnaUnjoined) {
@@ -670,6 +680,21 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         ...crossVarga.map(v => `${v} (divisional)`),
         ...(induLagnaUnjoined ? ['Indu Lagna (special_lagna)'] : []),
       ]
+      // F-164: the wealth-set example quoted below used to be a hardcoded literal
+      // (['D1','D2','D9','D11']) — read live instead (§N.7 item 3). Degrades to an honest
+      // "(unavailable)" phrase rather than failing this orientation note specifically, since
+      // ensureDomainDirectVargasLoaded() above already failed loudly if the row were
+      // genuinely missing — this second read only ever fails on a transient error.
+      let wealthSetDisplay = "(unavailable — brahma_vichara_constants has no 'wealth' entry)"
+      try {
+        const constants = await getOperativeVargaConstants()
+        const wealthEntry = constants['wealth']
+        if (wealthEntry) {
+          wealthSetDisplay = `[${wealthEntry.vargas.map(v => `'${v}'`).join(',')}], domain_provisional=${wealthEntry.provisional}`
+        }
+      } catch {
+        // leave the honest "(unavailable)" phrase in place
+      }
       judgment_flags.push(
         judgmentFlag(
           'cross_varga_convergence_not_computed',
@@ -680,7 +705,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             `(family='varga_ratification', domain='${spec.signal_domain}') — a per-graha ` +
             'agree/oppose vote of the domain\'s RATIFIED operative-varga set against the D1 ' +
             'dignity direction, the one genuine cross-varga convergence primitive built here ' +
-            "(wealth's set is ['D1','D2','D9','D11'], domain_provisional=false); add " +
+            `(wealth's set is ${wealthSetDisplay}); add ` +
             "family='varga_ratification_divergence' for the vargas that CONTRADICT D1. " +
             `(2) assess_${spec.signal_domain} (varga_analysis.per_varga` +
             (induLagnaUnjoined ? ' + varga_analysis.indu_lagna' : '') + ') for the raw per-varga ' +
@@ -746,13 +771,13 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
 
       // ── Step 6: operative-varga confirmation (reuses get_divisionals — no parallel query) ──
       const vargaConfirmation: Record<string, unknown>[] = []
-      let vargaConfirmed = false
+      let vargaPlacementsPresent = false
+      const grahasToConfirm = [
+        { role: 'bhavesha' as const, name: lordCondition.graha, code: lordCondition.graha_code },
+        ...karakaConditions.map(k => ({ role: 'karaka' as const, name: k.graha, code: k.graha_code })),
+      ]
       try {
         const { getDivisionalsCapability } = await import('./L1_ganita/get_divisionals')
-        const grahasToConfirm = [
-          { role: 'bhavesha', name: lordCondition.graha },
-          ...karakaConditions.map(k => ({ role: 'karaka', name: k.graha })),
-        ]
         for (const { role, name } of grahasToConfirm) {
           // chart_divisionals.graha stores the classical display name ("Venus"), NOT a
           // 2-letter code — verified against both canonical charts before wiring this call
@@ -765,12 +790,47 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             const c = res.content as Record<string, unknown>
             const rows = (c['rows'] as Record<string, unknown>[]) ?? []
             for (const r of rows) vargaConfirmation.push({ role, ...r })
-            if (rows.length > 0) vargaConfirmed = true
+            if (rows.length > 0) vargaPlacementsPresent = true
           }
         }
       } catch (e) {
         judgment_flags.push(judgmentFlag('varga_confirmation_failed', String(e)))
       }
+
+      // ── F-160: varga_confirmed's REAL tri-state, from chart_vichara.varga_ratification ──
+      // The old `varga_confirmed` was a bare `vargaConfirmation.rows.length > 0` — "a
+      // placement row exists" against a near-always-populated table, never "the varga
+      // ratifies the D1 direction" (textbook §N.8: a signal with no real detector behind the
+      // claim it makes is null, not green). The real detector is the agree/oppose vote
+      // ga_vichara_writer.py already computes per (subject, domain) — fetchVargaRatification
+      // (reading_checklist.ts) reads it; extracted there so it is unit-testable against one
+      // mocked query, independent of this handler's dozen other DB calls.
+      const vargaRatification = await fetchVargaRatification(
+        chart_id, ayanamsha_id, spec.signal_domain, spec.varga,
+        grahasToConfirm.map(({ role, code }) => ({ role, code })),
+      )
+      if (!vargaRatification.ok) {
+        judgment_flags.push(judgmentFlag(
+          'varga_ratification_lookup_failed',
+          'the chart_vichara.varga_ratification lookup threw — varga_confirmed falls back to ' +
+          'the honest "did not vote" (?) state rather than a silently-wrong ✓/✗.',
+        ))
+      } else if (vargaRatification.relation === 'no_row' || vargaRatification.relation === 'abstain_missing') {
+        judgment_flags.push(judgmentFlag(
+          'varga_ratification_unavailable',
+          `no chart_vichara.varga_ratification row for domain '${spec.signal_domain}', varga ` +
+          `${spec.varga}, subject(s) ${grahasToConfirm.map(g => g.code).join('/')} — either this ` +
+          'domain is outside brahma_vichara_constants.operative_vargas\' scope, or ga_vichara has ' +
+          'not been built for this chart yet. An honest unknown, not an implicit ✓ or ✗.',
+        ))
+      }
+      const vargaRatificationRelation = vargaRatification.relation
+      const vargaRatificationPerSubject = vargaRatification.per_subject
+      const vargaRatificationDomainProvisional = vargaRatification.domain_provisional
+      // The served mark. 'oppose' gets a mark DISTINCT from a bare ✗ — it is itself a finding
+      // (the varga actively contradicts D1), not an absence of evidence. 'abstain'/
+      // 'abstain_missing'/'no_row' are an honest unknown, never defaulted to ✓ or ✗.
+      const vargaConfirmedMarkValue = vargaConfirmedMark(spec.varga, vargaRatificationRelation)
 
       // ── Step 7: bearing yogas/doshas (formed) — notably-absent is an honest gap (D3 unbuilt) ──
       // A3 (CR-92 residue, R-3): firings-authoritative source is ga_yoga_firings (real strength +
@@ -1158,7 +1218,19 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         bhavesha: true,
         karaka: karakaConditions.length > 0,
         from_moon: bhavaSignMoon !== null && lordConditionMoon !== null,
-        varga_confirmed: vargaConfirmed ? `${spec.varga}✓` : `${spec.varga}✗ (no divisional row found)`,
+        // F-160: varga_confirmed is now a REAL tri-state derived from chart_vichara.
+        // varga_ratification's agree/oppose vote — not a bare "a placement row exists" check.
+        varga_confirmed: vargaConfirmedMarkValue,
+        // F-160: kept as its OWN, honestly-labelled field — the OLD (defective) signal, never
+        // flattened into varga_confirmed above (§N.6 item 1: that flattening was the defect).
+        varga_placements_present: vargaPlacementsPresent,
+        // F-160: the raw per-subject (bhāveśa/kāraka) relation this call's varga_confirmed
+        // was aggregated from, plus whether the domain's operative-varga set is itself
+        // design-ratified (F-107/F-158) or still provisional — surfaced per the finding's
+        // "surface value_jsonb.domain_provisional" requirement.
+        varga_ratification_relation: vargaRatificationRelation,
+        varga_ratification_per_subject: vargaRatificationPerSubject,
+        varga_ratification_domain_provisional: vargaRatificationDomainProvisional,
         // R-46 (WP-1.8): distinct from varga_confirmed (placement rows exist) — this asserts the
         // operative-varga dignity actually ENTERED the verdict composite as a weighted term.
         varga_weighted_into_verdict: vargaTermApplied,
@@ -1329,7 +1401,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         { unit: 'bhava_bhavesha_from_lagna', state: 'served', detail: `bhāva ${spec.bhava} sign + lord + occupants + aspects (lagna frame)` },
         { unit: 'bhava_bhavesha_from_chandra', state: bhavaSignMoon !== null && lordConditionMoon !== null ? 'served' : 'not_computed', detail: 'Sudarshana (Moon-frame) leg' },
         { unit: 'karakas', state: karakaConditions.length > 0 ? 'served' : 'not_joined', count: karakaConditions.length, detail: karakaConditions.length > 0 ? spec.karakas.join(', ') : 'no kāraka defined for a bare-bhāva query', ...(karakaConditions.length === 0 ? { drill: 'ganita_chart_facts_get' } : {}) },
-        { unit: 'operative_varga', state: vargaConfirmed ? 'served' : 'empty_for_this_chart', detail: `${spec.varga} confirmation of bhāveśa/kāraka` },
+        { unit: 'operative_varga', state: vargaPlacementsPresent ? 'served' : 'empty_for_this_chart', detail: `${spec.varga} confirmation of bhāveśa/kāraka` },
         // F-107: the domain's OTHER classical vargas. SHASTRA_MAP weights exactly one
         // operative varga into the verdict; a domain like wealth classically carries two
         // (D2 dhana + D11 lābha). Named here as not_joined with a live drill rather than
