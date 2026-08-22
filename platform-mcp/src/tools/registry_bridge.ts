@@ -3064,6 +3064,44 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined))
   }
 
+  /**
+   * F-156: `varga_analysis` lives only in `evidence`, which `assembleSaraContent` drops
+   * ALL-OR-NOTHING under budget pressure (response_budget.ts) — one oversized sibling
+   * (`activating_dasha`, `verdict_skeleton`) took it down even when it would have fit alone.
+   * The kernel's `varga_grounding` clause cites the L1 divisional confirmation directly by
+   * fact_ids now (register_d8_assess_domain.ts), not by section name, so the claim itself is
+   * always true regardless of what ships. This slim projection additionally moves the grounding
+   * evidence for that claim — consumed_vargas + a per-varga dignity summary, no full
+   * Ashtakavarga arrays — into `grounding` (§N.6 item 2: grounding evidence for a served verdict
+   * belongs in the layer that is greedily included, not the layer dropped as a unit). The full
+   * `varga_analysis` object (with complete per-varga Ashtakavarga rows) still ships in `evidence`
+   * when budget allows.
+   */
+  function slimVargaAnalysis(vargaAnalysis: unknown): Record<string, unknown> | undefined {
+    if (!isRecord(vargaAnalysis) || vargaAnalysis['direct_consumption'] !== true) return undefined
+    const consumedVargas = Array.isArray(vargaAnalysis['consumed_vargas'])
+      ? vargaAnalysis['consumed_vargas'] as string[] : []
+    const perVarga = isRecord(vargaAnalysis['per_varga']) ? vargaAnalysis['per_varga'] : {}
+    const perVargaSummary: Record<string, unknown> = {}
+    for (const varga of consumedVargas) {
+      const entry = isRecord(perVarga[varga]) ? perVarga[varga] : undefined
+      if (!entry) continue
+      const dignityRows = Array.isArray(entry['graha_dignity']) ? entry['graha_dignity'] as Array<Record<string, unknown>> : []
+      perVargaSummary[varga] = {
+        varga_display: entry['varga_display'],
+        graha_dignity_summary: dignityRows.map(r => ({ graha: r['graha'], dignity: r['dignity'] })),
+        ashtakavarga_available: entry['ashtakavarga_available'] ?? false,
+      }
+    }
+    return {
+      direct_consumption: true,
+      consumed_vargas: consumedVargas,
+      per_varga_summary: perVargaSummary,
+      note: 'Slim grounding projection (§N.6 item 2) — full per-varga Ashtakavarga detail is in ' +
+        'evidence.varga_analysis when the response budget allows, or via the chart_facts_query drill.',
+    }
+  }
+
   function buildAssessResponse(
     response: Record<string, unknown>,
     toolName: keyof typeof MCP_RESPONSE_BUDGET_KB,
@@ -3203,6 +3241,10 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     if (normalized['domain_completeness_empty_reason'] !== undefined) grounding['domain_completeness_empty_reason'] = normalized['domain_completeness_empty_reason']
     // assess_wealth: leverage_index injected by attachLeverageIndex
     if (normalized['leverage_index'] !== undefined) grounding['leverage_index'] = normalized['leverage_index']
+    // F-156: slimmed grounding evidence for the kernel's varga_grounding clause (§N.6 item 2) —
+    // full varga_analysis (with complete per-varga Ashtakavarga) still ships in evidence below.
+    const vargaAnalysisSummary = slimVargaAnalysis(normalized['varga_analysis'])
+    if (vargaAnalysisSummary !== undefined) grounding['varga_analysis_summary'] = vargaAnalysisSummary
 
     // Evidence: the two large objects (F-56/F-111) + remaining heavy data.
     // Excluded at the 40KB configured budget; available for deep_dive/exhaustive.
