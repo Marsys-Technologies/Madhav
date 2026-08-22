@@ -44,15 +44,42 @@
  * out of scope for this lane (P4-J may only touch platform/src/lib/**, and
  * fixing this is an MSR-authoring change, not a reader-text change).
  *
- * SIG.MSR.157 (rank #24) carries its OWN internal contradiction: its
- * headline says "Joint Pressure on Sagittarius 9H (Jupiter+Venus)" from BOTH
- * Saturn and Mars, but its own `falsifier` field states plainly "Mars does
- * NOT reach 9H" (Mars's special aspect lands on the 10th, not the 9th). The
- * reader text below reports ONLY what the signal's own falsifier confirms —
- * Saturn's aspect on the 9th — and omits the unconfirmed Mars-joint-pressure
- * claim entirely (SS N.7 item 6: an honest omission over restating a headline
- * the source's own falsifier contradicts). `catalog_discrepancy_note` records
- * this for audit.
+ * ── THE CATALOG-DISCREPANCY RULE (applied uniformly, in ONE direction) ────
+ * Four of the 25 catalog entries below carry a `signal_name` headline (or, in
+ * SIG.MSR.415's case, a `classical_source` string) that the SAME signal's own
+ * `supporting_rules` and/or `falsifier` contradict. The rule this file applies
+ * to every such case, without exception and always in the same direction:
+ *
+ *   report ONLY what the signal's own falsifier / supporting_rules confirm,
+ *   never the broader headline, and record the divergence verbatim in
+ *   `catalog_discrepancy_note`.
+ *
+ * The four:
+ *   - SIG.MSR.157 — headline claims joint Saturn+Mars pressure on the 9th;
+ *     its falsifier states plainly "Mars does NOT reach 9H" (Mars's special
+ *     aspect lands on the 10th). Reader text reports Saturn's aspect alone.
+ *   - SIG.MSR.313 — headline says "ALL 9 Planets Except Jupiter and Moon"
+ *     (seven); the rules say "6 out of 9" and the falsifier names exactly six.
+ *     Reader text reports six.
+ *   - SIG.MSR.121 — headline says "Five Planets in Two Signs (Cap+Aqu+Lib+Sag)"
+ *     — four signs named while claiming two, and a five-planet count its own
+ *     rules contradict with three pairs across three signs. Reader text reports
+ *     the enumerated placements.
+ *   - SIG.MSR.415 — `classical_source` calls "1-7, 2-8, 3-9, 4-10" the four
+ *     kendra axes (2-8 and 3-9 are not kendras) and the headline counts three
+ *     kendra axes against four enumerated pairings. Reader text states no axis
+ *     count at all and reports only the falsifier-confirmed claim.
+ *
+ * This rule was applied by hand ONCE in the lane's first pass (157 only) and
+ * missed the other three — 313 was in fact resolved in the OPPOSITE direction,
+ * taking the headline over the narrower falsifier-confirmed claim, with no
+ * note. That inconsistency was found in adversarial review and is why the rule
+ * is written out here explicitly rather than left as authoring instinct. It is
+ * still a manual convention: no detector in this lane can read a headline and
+ * decide whether prose contradicts it. The mechanical property that IS
+ * code-enforced is the hedge band (see `hedge_bands.ts` and its test).
+ * (SS N.7 item 6: an honest omission over restating a headline the source's
+ * own falsifier contradicts.)
  */
 import type { ReaderTextEntry } from './types'
 
@@ -66,9 +93,9 @@ export const READER_TEXT_ENTRIES: readonly ReaderTextEntry[] = [
   },
   {
     signal_id: `SIG.MSR.500`,
-    reader_text: `Compare the sign each planet occupies at birth against the sign it occupies in the marriage-and-refinement chart (the ninth-harmonic division classical texts use to examine what a placement matures into), and six of the nine planets land in different signs across the two charts. Mercury alone repeats its exact sign in both, a rare, specific condition classical texts single out as a mark of the planet holding steady rather than shifting character as the chart deepens. This finding is well-established in the chart: the vargottama placement is a direct, checkable read of the birth data, not an inference.`,
+    reader_text: `Compare the sign each planet occupies at birth against the sign it occupies in the marriage-and-refinement chart (the ninth-harmonic division classical texts use to examine what a placement matures into). Of the seven classical planets, six land in a different sign across the two charts: the Sun, the Moon, Mars, Jupiter, Venus and Saturn all move. Mercury alone repeats its sign, Capricorn in both, and the two lunar nodes shift as well, which leaves Mercury as the single anchor in the whole set. Classical texts call that condition vargottama and read it as a planet holding its character steady rather than changing as the chart deepens. This finding is well-established in the chart: it is a direct, checkable read of the birth data, not an inference.`,
     grade: `primary`,
-    grounding_note: `Classical basis: "BPHS Ch.7 Sl.14 (Shodashavargas); Phaladeepika Ch.2 (Vargottama doctrine)". Falsifier: any second planet showing D1=D9 sign equality would invalidate the Mercury-sole-anchor framing, none does per the source data.`,
+    grounding_note: `Classical basis: "BPHS Ch.7 Sl.14 (Shodashavargas); Phaladeepika Ch.2 (Vargottama doctrine)". Counts taken from the signal's own supporting_rules: "Six of seven primary planets shift dignity state between D1 and D9 (Sun/Moon/Mars/Jupiter/Venus/Saturn); Mercury alone retains its Capricorn placement". The same rules' CSI ledger shows Rahu (Taurus to Gemini) and Ketu (Scorpio to Sagittarius) also shifting, hence "the two lunar nodes shift as well" rather than any nine-planet count. Falsifier: any second planet showing D1=D9 sign equality would invalidate the Mercury-sole-anchor framing; none does per the source data.`,
     catalog_discrepancy_note: ``,
   },
   {
@@ -115,9 +142,9 @@ export const READER_TEXT_ENTRIES: readonly ReaderTextEntry[] = [
   },
   {
     signal_id: `SIG.MSR.121`,
-    reader_text: `Five of the seven classical planets sit inside just two signs, Capricorn and Aquarius hold one cluster, Libra and Sagittarius the other, a concentration classical texts associate with focus, sometimes to the point of narrowness, in how energy gets applied across career, belief, and close relationships. This is a thematic reading rather than a strict, formally-named classical yoga (the traditional form of this pattern calls for five planets in a single sign, which is not the case here); read it as a real but softer echo of that theme. Confidence is reasonably supported, with that scoping caveat built in from the source itself.`,
+    reader_text: `Six of the seven classical planets sit in pairs rather than alone: the Sun with Mercury in Capricorn in the career house, Jupiter with Venus in Sagittarius in the house of belief and long journeys, and Mars with Saturn in Libra in the partnership house. No sign holds more than two of them, and four houses, the first, third, fourth and eighth, hold no classical planet at all. That is a concentrated chart, energy pooled into three signs rather than spread evenly, which classical texts read as intensity of expression in the occupied areas, sometimes to the point of narrowness. It is a thematic concentration rather than the strictly-named classical yoga, which calls for five planets in a single sign; read it as a real but softer echo of that theme. Confidence is reasonably supported, with that scoping caveat built in from the source itself.`,
     grade: `supporting`,
-    grounding_note: `Classical basis: "Phaladeepika Ch.12 (multi-planet sign concentrations)". Falsifier explicitly states the strict classical form requires 5 planets in ONE sign, not two, and this entry is scoped honestly as a thematic concentration rather than the named yoga.`,
+    grounding_note: `Classical basis: "Phaladeepika Ch.12 (multi-planet sign concentrations)". Placements taken verbatim from the signal's own supporting_rules ("Sun + Mercury in Capricorn (10H)", "Jupiter + Venus in Sagittarius (9H)", "Mars + Saturn in Libra (7H)", "Houses 8H, 1H, 4H, 3H are empty (of classical planets)"). Falsifier states the strict classical form requires 5 planets in ONE sign and that "this chart has max 2 per sign"; the entry is scoped honestly as a thematic concentration rather than the named yoga.`,
     catalog_discrepancy_note: ``,
   },
   {
@@ -129,9 +156,9 @@ export const READER_TEXT_ENTRIES: readonly ReaderTextEntry[] = [
   },
   {
     signal_id: `SIG.MSR.415`,
-    reader_text: `Classical chart-reading organizes the twelve houses into four axes running through the chart's center, and the tradition treats a chart where every one of those axes carries real planetary or sensitive-point activity, none of them quietly empty, as a fuller-spectrum, more whole-organism configuration than one where a whole axis goes untouched. That is the case here: the self-and-partnership axis, the career-and-roots axis, and the gains-and-creativity axis are all populated, several by more than one method of activation at once. This is a summary observation built on top of many already-confirmed individual placements rather than a new computation in its own right, and it is well-established as a description of the chart's overall shape.`,
+    reader_text: `Read as a whole rather than house by house, this chart has no dormant sector: every one of the twelve houses carries either a planet, a classical sensitive point, a special ascendant, or an aspect under the Jaimini sign-to-sign scheme. The fourth house is the clearest illustration. Empty of classical planets, it is still reached by two Jaimini aspects, from the Moon in Aquarius and from Ketu in Scorpio, both fixed signs whose gaze falls on Cancer. The first house is the same case from the other side: no planet in it, but the ascendant itself and three further sensitive points, while the partnership house opposite holds Saturn and Mars along with several sensitive points of its own. That absence of an empty sector is a description of the chart's overall shape, assembled from placements already confirmed one at a time, rather than a new computation in its own right. It is well-established as such.`,
     grade: `supporting`,
-    grounding_note: `Classical basis: "Parashari Bhava Chakra (the four kendra axes: 1-7, 2-8, 3-9, 4-10)". Falsifier notes this synthesizes confirmed individual house activations rather than introducing a new claim.`,
+    grounding_note: `Classical basis: "Parashari Bhava Chakra" (quoted from the catalog's own classical_source string; see catalog_discrepancy_note for the error inside that string's parenthetical). Falsifier confirms the full-spectrum-activation claim and walks the 4H derivation explicitly: "The 4H (Cancer, empty of natal planets) receives Jaimini aspects from Moon (Aquarius, Fixed, aspects Libra+Cancer+Aries) and Ketu (Scorpio, Fixed, aspects Aries+Cancer+Capricorn)". 1H and 7H contents taken from supporting_rules Kendra Axis 1.`,
     catalog_discrepancy_note: ``,
   },
   {
@@ -150,9 +177,9 @@ export const READER_TEXT_ENTRIES: readonly ReaderTextEntry[] = [
   },
   {
     signal_id: `SIG.MSR.313`,
-    reader_text: `The classical Krishnamurti timing technique identifies which planets are positioned to deliver results for a given house during their periods, based on layered rulership and sub-rulership. For the career house, that list here includes seven of the nine classical planets, nearly the full set, with only two planets excluded. A house with that many delivering planets tends to stay active across an unusually wide stretch of one's planetary periods, which reads as career being a theme that keeps resurfacing rather than one confined to a narrow window. This is well-established, read directly from the confirmed significator list.`,
+    reader_text: `The classical Krishnamurti timing technique identifies which planets are positioned to deliver results for a given house during their periods, based on layered rulership and constellation-rulership. For the career house, that list here holds six planets: the Sun and Mercury, which occupy the house itself; Venus, which sits in the constellation ruled by that occupying Sun; Mars and Ketu, which sit in the constellation ruled by Mercury; and Saturn, which rules the sign the house falls in. The Moon and Jupiter are not on the list. Six delivering planets for a single house is an unusually high count, and it reads as career being a theme that keeps resurfacing across a wide stretch of one's planetary periods rather than one confined to a narrow window. This is well-established, read directly from the confirmed significator list.`,
     grade: `primary`,
-    grounding_note: `Classical basis: "Krishnamurti Paddhati (H10 significators = planets that can deliver career results during their dashas/transits)". Falsifier lists the confirmed significators (Mercury, Venus, Mars, Ketu, Sun, Saturn) as a direct read from source data.`,
+    grounding_note: `Classical basis: "Krishnamurti Paddhati (H10 significators = planets that can deliver career results during their dashas/transits)". Falsifier names the confirmed significators exactly: Mercury, Venus, Mars, Ketu, Sun, Saturn, "a direct reading from L1 data". The supporting_rules give the same six ("6 out of 9 planets") and the same derivation chain quoted above.`,
     catalog_discrepancy_note: ``,
   },
   {
