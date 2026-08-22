@@ -2,9 +2,10 @@
  * pariprashna/reader_text/review.ts — lane P4-J review step.
  *
  * Runs every `ReaderTextEntry` through the THREE real gates the charter names
- * (§10.5): the register-leak lint, the voice lint, and the citation gate
- * (`citation_gate.ts`, this lane's own structural grounding check — see its
- * header comment for why a live-turn `CitationResolver` does not apply here),
+ * (§10.5): the register-leak lint, the voice lint, and the entry-structure
+ * gate (`entry_structure_gate.ts` — renamed from "citation gate", which
+ * promised a check it never performed; read its header for the exact,
+ * narrow list of what it does and does not verify),
  * plus a fourth gate the lane's own false safety claim earned it: the
  * hedge-band check (`hedge_bands.ts`), which recomputes the confidence band
  * each entry's catalog `confidence` licenses and fails any entry whose
@@ -27,7 +28,7 @@
  */
 import { lintReaderProse } from '../citations/register_leak_lint'
 import { lintVoiceProse } from '../voice/voice_lint'
-import { checkCitationGate } from './citation_gate'
+import { checkEntryStructure } from './entry_structure_gate'
 import { checkHedgeBand } from './hedge_bands'
 import type { MsrSignal, ReaderTextEntry, ReviewedEntry, ReviewFlag } from './types'
 
@@ -56,7 +57,7 @@ export function reviewEntry(entry: ReaderTextEntry, signal: MsrSignal | null): R
     })
   }
 
-  const gate = checkCitationGate(entry, signal)
+  const gate = checkEntryStructure(entry, signal)
   flags.push(...gate.flags)
 
   const hedge = checkHedgeBand(entry, signal)

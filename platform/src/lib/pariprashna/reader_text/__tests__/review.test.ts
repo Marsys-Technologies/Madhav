@@ -7,13 +7,14 @@
  * below first demonstrates the detector CAN fail (RED, a deliberately broken
  * fixture), then confirms a real, passing entry (GREEN). All three detectors
  * this pipeline relies on are exercised: the register-leak lint, the voice
- * lint, and this lane's own citation gate.
+ * lint, and this lane's own entry-structure gate.
  */
 import { describe, expect, it } from 'vitest'
 
 import { loadReaderFacingCatalog } from '../catalog'
 import { READER_TEXT_ENTRIES } from '../entries'
 import { reviewEntry } from '../review'
+import { READER_TEXT_MIN_CHARS } from '../entry_structure_gate'
 import type { MsrSignal, ReaderTextEntry } from '../types'
 
 const catalog = loadReaderFacingCatalog()
@@ -70,18 +71,21 @@ describe('reviewEntry — voice lint (RED then GREEN)', () => {
   })
 })
 
-describe('reviewEntry — citation gate (RED then GREEN)', () => {
+describe('reviewEntry — entry-structure gate (RED then GREEN)', () => {
   it('RED: fails when the signal_id does not exist in the reader-facing catalog', () => {
     const broken: ReaderTextEntry = {
       signal_id: 'SIG.MSR.999999',
-      reader_text: 'A perfectly clean, unrelated sentence about Saturn in the seventh house.',
+      reader_text:
+        'A perfectly clean, well-formed paragraph about Saturn in the seventh house, long enough to clear ' +
+        'the structural floor so that the unknown-signal check is what fails here rather than the length ' +
+        'check. It is well-established as prose, which is precisely the point.',
       grade: 'primary',
       grounding_note: 'Classical basis: "BPHS Ch.26"',
       catalog_discrepancy_note: '',
     }
     const result = reviewEntry(broken, null)
     expect(result.passed).toBe(false)
-    expect(result.flags.some((f) => f.source === 'citation_gate' && f.code === 'citation_gate_unknown_signal')).toBe(
+    expect(result.flags.some((f) => f.source === 'entry_structure' && f.code === 'entry_structure_unknown_signal')).toBe(
       true,
     )
   })
@@ -89,7 +93,10 @@ describe('reviewEntry — citation gate (RED then GREEN)', () => {
   it('RED: fails when grounding_note is empty', () => {
     const broken: ReaderTextEntry = {
       signal_id: 'SIG.MSR.001',
-      reader_text: 'Saturn is exalted in the seventh house, a classically strong placement.',
+      reader_text:
+        'Saturn is exalted in the seventh house, a placement classical texts read as authority and weight ' +
+        'arriving through the partnership axis rather than around it, and one of the more structurally ' +
+        'legible facts in the whole chart.',
       grade: 'primary',
       grounding_note: '',
       catalog_discrepancy_note: '',
@@ -97,14 +104,17 @@ describe('reviewEntry — citation gate (RED then GREEN)', () => {
     const result = reviewEntry(broken, realSignal('SIG.MSR.001'))
     expect(result.passed).toBe(false)
     expect(
-      result.flags.some((f) => f.source === 'citation_gate' && f.code === 'citation_gate_no_grounding_note'),
+      result.flags.some((f) => f.source === 'entry_structure' && f.code === 'entry_structure_no_grounding_note'),
     ).toBe(true)
   })
 
-  it('RED: fails when grounding_note is grounded in a DIFFERENT signal\'s source (copy-paste class error)', () => {
+  it('RED: fails when grounding_note comes from a DIFFERENT source family (copy-paste class error)', () => {
     const broken: ReaderTextEntry = {
       signal_id: 'SIG.MSR.001', // Sasha Mahapurusha, classical_basis references BPHS Ch.26/Phaladeepika Ch.6
-      reader_text: 'Saturn is exalted in the seventh house, a classically strong placement.',
+      reader_text:
+        'Saturn is exalted in the seventh house, a placement classical texts read as authority and weight ' +
+        'arriving through the partnership axis rather than around it, and one of the more structurally ' +
+        'legible facts in the whole chart.',
       grade: 'primary',
       // Wrong source entirely — belongs to a Krishnamurti-technique signal, not this one.
       grounding_note: 'Classical basis: "Krishnamurti Paddhati (H11 significators)"',
@@ -113,26 +123,87 @@ describe('reviewEntry — citation gate (RED then GREEN)', () => {
     const result = reviewEntry(broken, realSignal('SIG.MSR.001'))
     expect(result.passed).toBe(false)
     expect(
-      result.flags.some((f) => f.source === 'citation_gate' && f.code === 'citation_gate_grounding_mismatch'),
+      result.flags.some((f) => f.source === 'entry_structure' && f.code === 'entry_structure_grounding_source_family_mismatch'),
     ).toBe(true)
   })
 
-  it('GREEN: every real authored entry passes the citation gate against its own catalog signal', () => {
+  it('GREEN: every real authored entry passes the entry-structure gate against its own catalog signal', () => {
     for (const entry of READER_TEXT_ENTRIES) {
       const result = reviewEntry(entry, signalsById.get(entry.signal_id) ?? null)
-      const gateFlags = result.flags.filter((f) => f.source === 'citation_gate' && f.level === 'error')
+      const gateFlags = result.flags.filter((f) => f.source === 'entry_structure' && f.level === 'error')
       expect(gateFlags, `${entry.signal_id}: ${JSON.stringify(gateFlags)}`).toHaveLength(0)
     }
   })
 })
 
 describe('reviewEntry — full real batch', () => {
-  it('every entry in entries.ts passes review end to end (register-leak + voice + citation gate)', () => {
+  it('every entry in entries.ts passes review end to end (register-leak + voice + entry-structure gate)', () => {
     const failures: string[] = []
     for (const entry of READER_TEXT_ENTRIES) {
       const result = reviewEntry(entry, signalsById.get(entry.signal_id) ?? null)
       if (!result.passed) failures.push(`${entry.signal_id}: ${JSON.stringify(result.flags)}`)
     }
     expect(failures).toEqual([])
+  })
+})
+
+describe('entry-structure gate — reader_text presence and shape (the hole the rename exposed)', () => {
+  const realEntry = READER_TEXT_ENTRIES.find((e) => e.signal_id === 'SIG.MSR.198')!
+
+  it('RED: an EMPTY reader_text fails — it used to pass the pre-rename gate with zero flags', () => {
+    const empty: ReaderTextEntry = { ...realEntry, reader_text: '' }
+    const result = reviewEntry(empty, realSignal('SIG.MSR.198'))
+    expect(result.passed).toBe(false)
+    expect(
+      result.flags.some(
+        (f) => f.source === 'entry_structure' && f.code === 'entry_structure_empty_reader_text',
+      ),
+    ).toBe(true)
+  })
+
+  it('RED: a whitespace-only reader_text fails the same way', () => {
+    const blank: ReaderTextEntry = { ...realEntry, reader_text: '   \n\t  ' }
+    const result = reviewEntry(blank, realSignal('SIG.MSR.198'))
+    expect(result.passed).toBe(false)
+  })
+
+  it('RED: a too-short stub fails the length floor', () => {
+    const stub: ReaderTextEntry = { ...realEntry, reader_text: 'Saturn is exalted.' }
+    const result = reviewEntry(stub, realSignal('SIG.MSR.198'))
+    expect(result.passed).toBe(false)
+    expect(
+      result.flags.some((f) => f.code === 'entry_structure_reader_text_too_short'),
+    ).toBe(true)
+  })
+
+  it('RED: an unterminated fragment of adequate length fails the sentence check', () => {
+    const fragment: ReaderTextEntry = {
+      ...realEntry,
+      reader_text: 'a'.repeat(READER_TEXT_MIN_CHARS + 10),
+    }
+    const result = reviewEntry(fragment, realSignal('SIG.MSR.198'))
+    expect(result.passed).toBe(false)
+    expect(
+      result.flags.some((f) => f.code === 'entry_structure_reader_text_unterminated'),
+    ).toBe(true)
+  })
+
+  it('HONEST SCOPE: a well-formed reading about the WRONG PLANET still passes — this gate does not read meaning', () => {
+    // Recorded, not fixed. The gate never inspects what reader_text says, so a
+    // fluent, correctly-hedged reading attached to an unrelated signal passes.
+    // Documenting the hole as a live test is the point: if a future session
+    // ever DOES close it, this test fails loudly and must be rewritten as a RED
+    // case — it must never silently become a claim the gate catches meaning.
+    const wrongPlanet: ReaderTextEntry = {
+      ...realEntry,
+      reader_text:
+        'Jupiter sits debilitated in the second house, a placement classical texts read as strain around ' +
+        'accumulated resources and family speech, tempered here by the aspect it receives from its own sign. ' +
+        'The underlying count is solidly supported, though the source material itself flags one step for a ' +
+        'routine recheck, so hold this as well-argued rather than beyond question.',
+    }
+    const result = reviewEntry(wrongPlanet, realSignal('SIG.MSR.198'))
+    expect(result.passed).toBe(true)
+    expect(result.flags.filter((f) => f.level === 'error')).toHaveLength(0)
   })
 })

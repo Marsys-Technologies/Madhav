@@ -31,9 +31,11 @@
  *     Ashtakavarga, etc.) is the expected reader-facing vocabulary and is
  *     used freely; only this system's OWN internal taxonomy is forbidden.
  *   - `grounding_note` (audit-channel only, never reader-facing) quotes the
- *     catalog's `classical_basis` field verbatim so the citation gate
- *     (`citation_gate.ts`) can mechanically confirm the grounding traces to
- *     THIS signal's own source, not a plausible-sounding but disconnected one.
+ *     catalog's `classical_basis` field verbatim so the entry-structure gate
+ *     (`entry_structure_gate.ts`) can mechanically confirm the note shares a
+ *     key term with THIS signal's source. That check is a source-FAMILY
+ *     containment test with measured false-accept rates, not proof the note
+ *     belongs to this signal — the gate's header states the numbers.
  *
  * ── A FINDING SURFACED WHILE AUTHORING (worth a DD entry, not silently
  * fixed here) ─────────────────────────────────────────────────────────────

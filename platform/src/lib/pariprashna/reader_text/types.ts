@@ -53,7 +53,8 @@ export interface ReaderTextEntry {
   readonly signal_id: string
   /** The reader-facing prose. Must pass BOTH `lintReaderProse` (register-leak)
    *  and `lintVoiceProse` (voice) with zero leaks / zero error-level flags,
-   *  and the citation gate (see `citation_gate.ts`) before it may freeze. */
+   *  and the entry-structure gate (see `entry_structure_gate.ts`) before it
+   *  may freeze. */
   readonly reader_text: string
   readonly grade: ReaderTextGrade
   /** Short, human-auditable note on what grounds this text — e.g. the
@@ -69,7 +70,7 @@ export interface ReaderTextEntry {
 }
 
 export interface ReviewFlag {
-  readonly source: 'register_leak' | 'voice' | 'citation_gate' | 'hedge_band'
+  readonly source: 'register_leak' | 'voice' | 'entry_structure' | 'hedge_band'
   readonly code: string
   readonly level: 'info' | 'warn' | 'error'
   readonly detail: string
