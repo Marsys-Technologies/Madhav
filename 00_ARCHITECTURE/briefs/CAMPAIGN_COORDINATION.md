@@ -6865,3 +6865,77 @@ authorization's Parts A–H structure, Parts G (hygiene/bookkeeping) and H
 covered "both E and F"; G/H are being checked in on before proceeding,
 consistent with the pattern this session has followed at each Part
 boundary.
+
+## 2026-08-22 — PARIPRASHNA-P3-PREFLIGHT-PART-G / Claude Code — leased window: hygiene + bookkeeping (docs-only, no code change)
+
+Continuation authorized by the native directly in this session ("CONTINUE INTO
+PARTS G AND H NOW") after a fresh cold-start session verified the full
+`PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2.0` against `origin/main` before
+acting on it (Part G/H were not findable anywhere in the working tree or any
+existing worktree; the native supplied the master prompt text directly on
+request). Scope this window: `00_ARCHITECTURE/**` governance docs only — no
+`platform/**` file touched.
+
+**Items completed:**
+
+1. **DD-13 CLOSED.** The native ruled directly on residual (b)'s open
+   branch-(b) call (left unresolved by the PARIPRASHNA-P3-PREFLIGHT-PART-F
+   session, entries `fcf001c8c`/`6734`–`6811` above): **option (i) STATUS
+   QUO** selected. Full stated reasoning recorded in the DD register's DD-13
+   entry itself — (a) the harm is a reduction not an elimination and both
+   real production hits are benign; (b) defense-in-depth already covers the
+   adversarial path upstream (this session's own Part-F verification showed
+   the query classifier intercepting a deliberate maraka-dasha probe before
+   `phrasing_scan.ts` was ever reached); (c) option (ii)'s cost compounds
+   with adoption while its benefit does not, so waiting for a larger sample
+   makes the decision worse, not clearer. A standing review-trigger rider is
+   recorded (revisit if the serving population changes materially — cohort
+   subjects, or public access at P3-F) — **not** an open obligation. DD-13
+   is now closed in full: both residual (a) (Part F, code fix) and residual
+   (b) (this ruling) are resolved.
+2. **DD-27 filed** — the Part-F session's own "not filed as a DD, a
+   resource-efficiency observation" disposition on the `Build & Deploy Web`
+   docs-only-trigger finding is **superseded by native ruling this session**:
+   it is not cosmetic. Filed as its own dated-undated register entry with a
+   binding consequence for Part H — treat the Part H batched
+   governance-registry write as a real production deploy (check `main`
+   immediately before merging, announce the Cloud Run revision tag per X-6,
+   run the full canary discipline), not skip it as "only docs."
+3. **DD-23 checked** — already scoped as an undated investigation since the
+   P2-close session; confirmed no register change was needed for this item.
+4. **`PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md` committed** into
+   `00_ARCHITECTURE/briefs/pariprashna_swarm/` per the prompt's own §7 item 2
+   instruction — it had only existed outside the repo (delivered by chat)
+   until this session. Parts A–F's closure text folded in as historical
+   record at commit time.
+5. **A real drift_detector CI trap hit and fixed, not just avoided in
+   theory:** the first attempt registered the new master-prompt file as a
+   `CAPABILITY_MANIFEST.json` canonical entry, which added one more
+   `registry_disagreement` finding (`CANONICAL_ARTIFACTS_v1_0.md` doesn't
+   name it — a pre-existing, tolerated MEDIUM-severity class 78 other
+   entries already carry) and pushed the count from the CI-enforced baseline
+   of **79** to **80** — `Governance Gates` correctly failed the PR on this
+   (`drift_detector findings 80 EXCEEDS the 79 T0 baseline (DVA Ruling 4)`).
+   **Fix, matching the PURNATA/SAMĀPTI/NIḤŚEṢA precedent this document's own
+   §8 already warns about:** did not register the new file as a canonical
+   manifest entry; did not raise the ceiling. Amended the commit,
+   force-pushed the lane branch (safe — PR not yet merged, CI had already
+   failed the prior commit, no other work based on it), re-verified locally
+   at 79/exit 3. The DD register's own `CAPABILITY_MANIFEST` fingerprint
+   entry WAS rotated (that entry already existed and already disagreed with
+   `CANONICAL_ARTIFACTS_v1_0.md` before this session — rotating its
+   fingerprint value doesn't change the disagreement-count, only registering
+   a brand-new entry does).
+
+**PR:** #1475, branch `pariprashna/p3-preflight-part-g`, worktree
+`.clone/worktrees/pariprashna-part-g`. CI in flight at time of this entry;
+will be closed out with merge/deploy evidence once it lands, same pattern as
+every prior part.
+
+**Checked immediately before opening:** fresh `origin/main` fetch
+(`45d55659e`); fresh `campaign-coordination` fetch (tip unchanged at
+`ff217d6e6`, no collision); the three files touched
+(`00_ARCHITECTURE/CAPABILITY_MANIFEST.json`,
+`00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`,
+new file `00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md`)
+do not appear in any other currently open lease in this table.
