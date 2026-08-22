@@ -66,6 +66,22 @@ on:
   workflow_run:
     workflows: ['Deploy to Cloud Run']
     types: [completed]
+  # TEMPORARY, lane-authoring only — see PR #1494. GitHub will not let a brand
+  # new workflow_dispatch-only workflow be dispatched via API/CLI until it
+  # exists on the DEFAULT branch (confirmed live: `gh workflow run` 404s
+  # "not found on the default branch" for a workflow that only exists on a
+  # PR branch), and this lane's builder does not merge (only the INTEGRATOR
+  # does). This `pull_request` trigger, scoped to exactly this workflow's own
+  # two files, exists ONLY so the §N.8 demonstrated-can-fail red run and its
+  # green counterpart can be produced as REAL CI runs on THIS PR before merge
+  # — removed again in the commit that flips INDUCE_FAILURE_MODE back to
+  # false, so it never rides to `main` and never fires on unrelated PRs or
+  # costs anything after this lane closes.
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/pariprashna-post-deploy-smoke.yml'
+      - 'platform/scripts/probe/post_deploy_behavior_smoke.ts'
 
 concurrency:
   group: ${{ github.workflow }}
@@ -78,8 +94,9 @@ jobs:
     # For the workflow_run trigger, only follow through on a successful deploy
     # — a failed/cancelled deploy's smoke would just be re-testing whatever
     # revision was already live, which the 45-min dispatch cadence already
-    # covers. workflow_dispatch always runs regardless of this condition.
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    # covers. workflow_dispatch and the (temporary, see trigger comment above)
+    # pull_request trigger always run regardless of this condition.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     timeout-minutes: 10
     defaults:
       run:
