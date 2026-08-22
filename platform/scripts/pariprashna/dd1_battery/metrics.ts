@@ -292,18 +292,34 @@ export const METRICS: readonly MetricSpec[] = [
       'no artifact in this repo defines a "§J plainness" rubric. Rather than invent one, this ' +
       'check is scoped to the design plan\'s own enumerated, machine-checkable register rules ' +
       '(§7.1 rules 3 and 5, §7.3\'s banned list, §7.4\'s "a bare percentage never leads a ' +
-      'sentence") and is labelled as such. See BATTERY_REPORT for the honest gap.',
-    threshold: '0 banned §7.3 phrasings; 0 oracular second-person predictions; 0 hedging stacks',
+      'sentence") and is labelled as such. See BATTERY_REPORT for the honest gap. UNCOVERED ' +
+      'GAPS, disclosed at the same length as the §J provenance gap above rather than left ' +
+      'implicit (F-1, PR #1501 refutation): §7.3\'s "any apology" clause is a class ban, not a ' +
+      'literal-phrase ban — this check only matches the four NAMED §7.3 openers ("Unfortunately, ' +
+      'no data…", "I couldn\'t find…", "The system was unable…", "It is not for us to know…") and ' +
+      'has no detector for an apology of arbitrary phrasing ("I\'m sorry, but…", "My apologies…"). ' +
+      '§7.1 rule 2 (Sanskrit glossed-on-first-use discipline) and rule 4 (verdict-first ordering) ' +
+      'are not checked here at all — rule 2 needs semantic gloss-matching this battery does not ' +
+      'attempt, and rule 4 (verdict-first) is the density-layering claim §N.6/judgment_query\'s own ' +
+      'gate covers, not a prose-lint.',
+    threshold:
+      '0 banned §7.3 phrasings (the four named openers only — see the "uncovered gaps" note in ' +
+      '`definition`, NOT the general "any apology" class); 0 occurrences of the literal "you ' +
+      'will <verb>" construction (ONE surface form of §7.1 rule 3\'s oracular-second-person ban — ' +
+      '"you shall…", "you\'ll…", "you\'re going to…" are NOT matched by this detector and are not ' +
+      'claimed as covered); 0 hedging stacks',
     sourceRef: 'PARIPRASHNA_DESIGN_ENGINEERING_PLAN_v0_1.md §7.1 lines 656-660, §7.3 lines 671-676, §7.4 line 691',
     lane: 'prose',
     inDd1Enumeration: true,
     falsifier:
       'prose_checks.ts matches each delivered reading against (a) §7.3\'s literal banned openers ' +
       '("Unfortunately, no data", "I couldn\'t find", "The system was unable", "It is not for us ' +
-      'to know"), (b) §7.1 rule 3\'s oracular second-person future ("you will <verb>"), (c) §7.1 ' +
-      'rule 5\'s hedging stack (two or more of perhaps/possibly/maybe/it may be within one ' +
-      'sentence), (d) §7.4\'s "a bare percentage never leads a sentence". Any hit reports FAIL. ' +
-      'Red-proven against a corpus containing one instance of each (redProofKey plain_register).',
+      'to know") — NOT the full "any apology" class, (b) the literal "you will <verb>" surface ' +
+      'form of §7.1 rule 3\'s oracular second-person ban — NOT "you shall"/"you\'ll"/"you\'re going ' +
+      'to", (c) §7.1 rule 5\'s hedging stack (two or more of perhaps/possibly/maybe/it may be ' +
+      'within one sentence), (d) §7.4\'s "a bare percentage never leads a sentence". Any hit ' +
+      'reports FAIL. Red-proven against a corpus containing one instance of each (redProofKey ' +
+      'plain_register).',
     redProofKey: 'plain_register',
   },
   {
