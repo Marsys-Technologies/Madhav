@@ -6635,3 +6635,98 @@ already-merged Part E history into this PR). Worktree
 `.clone/worktrees/pariprashna-part-d` reused (Parts E/F share adjacent
 pariprashna scope, as previously noted); will be removed once Part F lands
 or on request.
+
+## 2026-08-22 — PARIPRASHNA-P3-PREFLIGHT-PART-F — residual (a) CLOSED, PR #1465 merged + deployed + live-verified (with an honest scope caveat on the live evidence)
+
+Lease opened above (residual (a) only) is released. Final account:
+
+- PR #1465: CI green (28/28 real checks, 10 skipped), merged via the merge
+  queue cleanly on the first attempt (queued at position 1,
+  `AWAITING_CHECKS` → `MERGED`, no ejection this time).
+- Deployed via the standing canary discipline: `Deploy to Cloud Run` run
+  32560036708 on `main@94e20a8c7` — `Apply DB Migrations` (no-op, no new
+  migration this Part), `Build & Deploy Web` succeeded.
+- `npx vitest run src/lib/pariprashna/safety/` — 672 passed, 12 skipped, 1
+  todo, 0 failed. `npx tsc --noEmit -p .` clean (only the 5 pre-existing
+  unrelated missing-type-declaration errors). `npx eslint` clean on both
+  changed files.
+
+**Live verification (DD-21) — real evidence gathered, with an honest,
+disclosed limit on what it could show:**
+
+Two real probe turns were run against the deployed production route
+(`probe/ask.sh`, synthetic chart `1c826d5a-…`), plus direct DB reads of
+`pariprashna_safety_decisions` for both:
+
+1. **Turn `b1721b96-…`** (a broad "career/dasha turning points" question,
+   no mortality wording): `enforced: true`, `action: 'proceed'` — the turn
+   reached synthesis with `mortalityRulesEnabled = true`, meaning the
+   **deployed code containing this Part's `EXTENDED_DATE_SHAPE_WINDOW`
+   pass actually executed against real, freshly-generated production
+   text.** The synthesized reading (10 citations, Mercury/Jupiter/Saturn/
+   Ketu dasha timeline with real years) contained no mortality-adjacent
+   phrasing, so nothing was redacted — a genuine confirmation the false-
+   positive floor holds on real content, but not a redaction event.
+2. **Turn `22e6ea33-…`** (an explicit "ayurdaya longevity / maraka-dasha
+   vulnerability periods, with approximate years" question): classified
+   `hs1_date_of_death` + `hs4_mortality_window` at the PRE-PLAN gate,
+   `action: 'seal_pending_signoff'` — the turn never reached synthesis at
+   all; the reader received the standing "held for review" acknowledgment,
+   not a generated reading.
+
+**The honest finding this surfaces, not smoothed over:** turn 2 is exactly
+why a live, on-demand reproduction of the SPECIFIC adversarial pattern this
+fix targets (a mortality term and a date-shaped value separated by one
+unrelated sentence, arising organically in otherwise-benign synthesis) could
+not be produced in this session. `phrasing_scan.ts`'s mortality redaction is
+a **defense-in-depth backstop for content the upstream query/output
+classifier does not itself flag** — a direct, explicitly-worded longevity/
+maraka question is exactly the kind of input the classifier is designed to
+(and, confirmed live, does) intercept before synthesis ever runs. The two
+controls are not redundant, but their live-observable behaviors are hard to
+exercise via a single natural-language turn: a query direct enough to
+organically produce mortality+date content is also direct enough to be
+sealed upstream first. This is disclosed as an honest evidentiary limit, in
+the same spirit as Part C's "not independently confirmed this pass" note —
+the fix's correctness rests on the unit-test suite (which DOES directly
+reproduce and assert the exact fixture, real code, real assertions, not
+mocked), and this pass adds confirmation the deployed code path runs live
+on real content, but does not add a live redaction event to the record.
+
+**Separate, disclosure-worthy discovery made while investigating this (not
+part of Part F's own change, found via direct live inspection, per the
+Earned-Signal discipline of checking a code comment's claim against actual
+state rather than trusting it):** `probe/ask.ts`'s own header (authored
+2026-08-20) states both `SUBJECT_CONSENT_ENFORCEMENT` and
+`PARIPRASHNA_SAFETY_GATE_ENABLED` are "flag-gated off in production as of
+this script's authoring." Confirmed via `gcloud run services describe
+amjis-web` that this is now STALE: `MARSYS_FLAG_PARIPRASHNA_SAFETY_GATE_ENABLED=true`
+is live on the deployed web service today (2026-08-22) — almost certainly
+flipped as part of the P1 FOUNDATION close two days ago (`#1356`/`#1357`/
+`#1358`, "safety gate, consent, roles/RLS, limits, injection containment").
+`SUBJECT_CONSENT_ENFORCEMENT` and `PARIPRASHNA_LIMITS_ENABLED` are both
+confirmed still OFF (no env override present; code-level default `false` for
+both) — the latter consistent with this authorization's own explicit hard
+stop never to enable it. Filed as a note for whoever next touches
+`probe/ask.ts` or plans further live probing of mortality/health-crisis/
+longevity-adjacent content: those turns now seal pending human sign-off in
+production, by design, and a probe script relying on the old "both gates are
+off" assumption will get a sealed acknowledgment, not a reading. Not filing
+a new DD for this — it is the safety gate behaving exactly as its own
+design comment says it should ("the correct fail-closed direction AND a
+real serving change... the flip is a deliberate act"), just newly observed
+live rather than a defect.
+
+No file outside this lease's declared scope was touched. Worktree
+`.clone/worktrees/pariprashna-part-d` retained (residual (b) is next,
+same file/adjacent scope); will be removed once residual (b) lands or on
+request.
+
+## 2026-08-22 — PARIPRASHNA-P3-PREFLIGHT-PART-F — residual (b) scoping note (streaming un-send asymmetry vs P2 first-paint-citations)
+
+Per the master prompt's own explicit instruction for this residual — evaluate
+a pre-display buffer for mortality-adjacent spans, weigh it against the P2
+first-paint-citation guarantee (`PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED`,
+confirmed live `true` above), and **report genuine tension rather than
+resolve it unilaterally** — this is being scoped as its own lease entry
+before any code is touched, not folded into residual (a)'s close.
