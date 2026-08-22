@@ -1,0 +1,35 @@
+{
+  "_note": "A-07 live evidence: SHASTRA_MAP domain charter expansion + unknown-domain early reject, probed against production (sha=9b09835033e5, morning session, interactive).",
+  "probe_time_utc": "2026-08-16T07:12Z",
+  "lane": "A-07",
+  "merged_sha": "9b09835033e5",
+  "probes": [
+    {
+      "call": "judgment_query(chart_id=482012f1, domain='family')",
+      "result": "SUCCESS — verdict_grade=convergent_strong, bhava=2, real fact_ids and yoga firings returned",
+      "confirms": "family domain resolves (not a stale-7-domain error)"
+    },
+    {
+      "call": "judgment_query(chart_id=482012f1, domain='general')",
+      "result": "SUCCESS — verdict_grade=convergent_moderate, bhava=1, real fact_ids and yoga firings returned",
+      "confirms": "general domain resolves"
+    },
+    {
+      "call": "intent_classify(query='Should I travel abroad this year?')",
+      "result": "SUCCESS — scope_tuple.domains=['travel'], matched_rules includes 'domain:travel'",
+      "confirms": "travel domain recognized by the classifier"
+    },
+    {
+      "call": "judgment_query(chart_id=482012f1, domain='totally_bogus_domain_xyz')",
+      "result": "ERROR (correct, by design): \"judgment_query: unrecognized domain 'totally_bogus_domain_xyz'. Recognized domains: buddhi, career, character, children, education, family, finance, general, health, home, liberation, marriage, moksha, partnership, progeny, property, relationship, residence, spirituality, transition, travel, vidya, vitality, vocation, wealth. Pass bhava (1-12) for any unlisted house question.\"",
+      "confirms": "unknown-domain early reject WORKS (structured error, not a crash or silent fallback) — AND the live recognized-domains list itself contains family/general/transition/travel, confirming all four new domains in one response"
+    },
+    {
+      "call": "judgment_query(chart_id=482012f1, domain='family') orientation_context.convergence_domains",
+      "result": "family: 5684 convergences, transition: 611 convergences — both present with real aggregated signal counts",
+      "confirms": "transition domain is wired into the broader convergence aggregation, not just judgment_query's own routing"
+    }
+  ],
+  "exit_test_result": "PASS",
+  "verdict": "All 4 claimed domains (family/general/transition/travel) confirmed live and functioning against production. Unknown-domain early reject confirmed working with a proper structured error, not a crash."
+}

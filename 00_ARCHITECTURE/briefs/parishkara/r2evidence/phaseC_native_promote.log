@@ -1,0 +1,16 @@
+[native] PLAN: 270 substeps
+[native] asset_throughput -> building (cockpit-visible)
+[native] 1/270 SKIP (already done, resume) key=achievement_recognition::g3_1984_1994
+[native] 2/270 SKIP (already done, resume) key=achievement_recognition::g3_1994_2004
+[native] 3/270 SKIP (already done, resume) key=achievement_recognition::g3_2004_2014
+[native] 30/270 SKIP (already done, resume) key=birth_anchor::g3_2074_2084
+[native] 60/270 SKIP (already done, resume) key=career_change::g3_2074_2084
+[native] 90/270 SKIP (already done, resume) key=childbirth::g3_2074_2084
+[native] 120/270 SKIP (already done, resume) key=exam_outcome::g3_2074_2084
+[native] 150/270 SKIP (already done, resume) key=illness_acute::g3_2074_2084
+[native] 180/270 SKIP (already done, resume) key=marriage::g3_2074_2084
+[native] 210/270 SKIP (already done, resume) key=psychological_arc::g3_2074_2084
+[native] 240/270 SKIP (already done, resume) key=separation::g3_2074_2084
+[native] 270/270 SKIP (already done, resume) key=travel_event::g3_2074_2084
+[native] PROMOTED to lit: 270/270 substeps (270 resumed, 0 run this pass), 0 rows
+[native] DONE committed=270/270 (resumed=270) ins=0 upd=0 wall=7.4m

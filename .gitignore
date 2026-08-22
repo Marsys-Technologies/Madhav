@@ -120,3 +120,13 @@ python-sidecar/venv/
 
 # Paripraśna probe harness — generated turn transcripts (may embed a real reading)
 platform/scripts/probe/out/
+
+# Browser-automation SSE captures (same rationale as the probe transcripts above —
+# they embed a real chart's interpreted reading, and ROOT_FILE_POLICY §2 does not
+# permit them at the project root)
+/browser_turn*
+*.network-response
+
+# Cowork context-upload bundles — re-tars of files already committed in this repo;
+# reproducible, never a source of truth
+/_cowork_tmp/
