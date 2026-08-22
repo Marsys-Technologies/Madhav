@@ -57,6 +57,10 @@
 import type { CapabilityDescriptor } from '../../src/lib/retrieval/registry/types'
 import { resolveType, buildMcpToolRegistration, type McpToolRegistration } from './projection_builders'
 import { SENSITIVE_CLASS_CAPABILITIES } from '../../src/lib/pariprashna/safety/sensitive_capabilities'
+import {
+  buildCapabilityPublicNameBridge,
+  type CapabilityPublicNameBridge,
+} from './extract_registrar_capability_bridge'
 
 export type McpProfileName = 'full' | 'compact' | 'consult'
 
@@ -115,6 +119,24 @@ export interface McpSurfaceProfile {
    * the currently-shipped surface unchanged.
    */
   excluded_sensitive_class: string[]
+  /**
+   * F-155 fix (PARIŚEṢA V4): cap.name list this profile's tag would otherwise have
+   * surfaced, but for which NO live `server.tool()` registration exists anywhere in
+   * `platform-mcp/src/tools/` under any name (see `extract_registrar_capability_bridge.ts`).
+   * Reported, never silently dropped: emitting one of these names into `tool_names`
+   * would be exactly the F-155 defect (an allowlist entry the serving gate can never
+   * match) reintroduced at the source. Empty in the common case.
+   */
+  excluded_unresolved_registration: string[]
+  /**
+   * F-155 fix: cap.name -> the real public `tool_name` this profile emitted instead,
+   * for every capability where the two differ (i.e. `cap.name` was NOT itself a live
+   * registration — see `extract_registrar_capability_bridge.ts`'s resolution algorithm).
+   * Populated so a diff/audit can see exactly which entries changed face without
+   * re-deriving the bridge. Empty when every eligible capability's own name was already
+   * correct.
+   */
+  internal_name_mismatches: Record<string, string>
 }
 
 interface RankableCapability {
@@ -169,10 +191,15 @@ const NOT_LLM_FACING_PATTERN = /not llm-facing/i
  */
 const KNOWN_INTERNAL_NOT_IN_OWN_DESCRIPTION = new Set(['maro_mcp_surface'])
 
-function eligibleForTag(caps: CapabilityDescriptor[], tag: 'mcp_full' | 'mcp_compact' | 'mcp_consult'): {
+function eligibleForTag(
+  caps: CapabilityDescriptor[],
+  tag: 'mcp_full' | 'mcp_compact' | 'mcp_consult',
+  bridge: CapabilityPublicNameBridge,
+): {
   eligible: CapabilityDescriptor[]
   excludedCalibrationContextOnly: string[]
   excludedNotLlmFacing: string[]
+  excludedUnresolvedRegistration: string[]
 } {
   const tagged = caps.filter((c) => resolveType(c) === 'tool' && (c.projection_tags ?? []).includes(tag))
   const excludedCalibration = tagged.filter((c) => c.calibration_context_only === true)
@@ -180,18 +207,40 @@ function eligibleForTag(caps: CapabilityDescriptor[], tag: 'mcp_full' | 'mcp_com
   const isInternal = (c: CapabilityDescriptor): boolean =>
     NOT_LLM_FACING_PATTERN.test(c.description ?? '') || KNOWN_INTERNAL_NOT_IN_OWN_DESCRIPTION.has(c.name)
   const excludedInternal = afterCalibration.filter(isInternal)
-  const eligible = afterCalibration.filter((c) => !isInternal(c))
+  const afterInternal = afterCalibration.filter((c) => !isInternal(c))
+  // F-155: a capability with no real server.tool() registration under any name is
+  // reported and excluded here — never carried forward to emit an unresolvable name.
+  const excludedUnresolved = afterInternal.filter((c) => !bridge.resolved.has(c.name))
+  const eligible = afterInternal.filter((c) => bridge.resolved.has(c.name))
   return {
     eligible,
     excludedCalibrationContextOnly: excludedCalibration.map((c) => c.name).sort(),
     excludedNotLlmFacing: excludedInternal.map((c) => c.name).sort(),
+    excludedUnresolvedRegistration: excludedUnresolved.map((c) => c.name).sort(),
   }
 }
 
-function buildFullProfile(caps: CapabilityDescriptor[]): McpSurfaceProfile {
-  const { eligible, excludedCalibrationContextOnly, excludedNotLlmFacing } = eligibleForTag(caps, 'mcp_full')
+function publicName(bridge: CapabilityPublicNameBridge, cap: CapabilityDescriptor): string {
+  // eligibleForTag already filtered to capabilities the bridge resolves — this fallback
+  // to cap.name is defensive only (should be unreachable given that filter).
+  return bridge.resolved.get(cap.name) ?? cap.name
+}
+
+function mismatchesFor(bridge: CapabilityPublicNameBridge, caps: CapabilityDescriptor[]): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const c of caps) {
+    const resolvedName = bridge.resolved.get(c.name)
+    if (resolvedName && resolvedName !== c.name) out[c.name] = resolvedName
+  }
+  return out
+}
+
+function buildFullProfile(caps: CapabilityDescriptor[], bridge: CapabilityPublicNameBridge): McpSurfaceProfile {
+  const { eligible, excludedCalibrationContextOnly, excludedNotLlmFacing, excludedUnresolvedRegistration } =
+    eligibleForTag(caps, 'mcp_full', bridge)
   const sorted = [...eligible].sort((a, b) => a.name.localeCompare(b.name))
-  const tools = sorted.map(buildMcpToolRegistration)
+  const tools = sorted.map((c) => buildMcpToolRegistration(c, publicName(bridge, c)))
+    .sort((a, b) => a.tool_name.localeCompare(b.tool_name))
   return {
     profile: 'full',
     max_tools: null,
@@ -204,31 +253,39 @@ function buildFullProfile(caps: CapabilityDescriptor[]): McpSurfaceProfile {
     // Empty by design: `full` is the expert surface a first-party/scoped caller
     // explicitly asked for. The G1-A exclusion targets the safe-default profile.
     excluded_sensitive_class: [],
+    excluded_unresolved_registration: excludedUnresolvedRegistration,
+    internal_name_mismatches: mismatchesFor(bridge, eligible),
   }
 }
 
-function buildCompactProfile(caps: CapabilityDescriptor[]): McpSurfaceProfile {
-  const { eligible, excludedCalibrationContextOnly, excludedNotLlmFacing } = eligibleForTag(caps, 'mcp_compact')
+function buildCompactProfile(caps: CapabilityDescriptor[], bridge: CapabilityPublicNameBridge): McpSurfaceProfile {
+  const { eligible, excludedCalibrationContextOnly, excludedNotLlmFacing, excludedUnresolvedRegistration } =
+    eligibleForTag(caps, 'mcp_compact', bridge)
   const ranked = eligible.map(toRankable).sort(compareRank)
   const surfaced = ranked.slice(0, COMPACT_MAX_TOOLS)
   const overflow = ranked.slice(COMPACT_MAX_TOOLS)
-  const tools = surfaced.map((r) => buildMcpToolRegistration(r.cap)).sort((a, b) => a.tool_name.localeCompare(b.tool_name))
+  const tools = surfaced
+    .map((r) => buildMcpToolRegistration(r.cap, publicName(bridge, r.cap)))
+    .sort((a, b) => a.tool_name.localeCompare(b.tool_name))
   return {
     profile: 'compact',
     max_tools: COMPACT_MAX_TOOLS,
     total: tools.length,
     tool_names: tools.map((t) => t.tool_name),
     tools,
-    overflow_tool_names: overflow.map((r) => r.cap.name).sort(),
+    overflow_tool_names: overflow.map((r) => publicName(bridge, r.cap)).sort(),
     excluded_calibration_context_only: excludedCalibrationContextOnly,
     excluded_not_llm_facing: excludedNotLlmFacing,
     // Empty by design — see `buildFullProfile`. `compact` is scope-gated too.
     excluded_sensitive_class: [],
+    excluded_unresolved_registration: excludedUnresolvedRegistration,
+    internal_name_mismatches: mismatchesFor(bridge, eligible),
   }
 }
 
-function buildConsultProfile(caps: CapabilityDescriptor[]): McpSurfaceProfile {
-  const { eligible, excludedCalibrationContextOnly, excludedNotLlmFacing } = eligibleForTag(caps, 'mcp_consult')
+function buildConsultProfile(caps: CapabilityDescriptor[], bridge: CapabilityPublicNameBridge): McpSurfaceProfile {
+  const { eligible, excludedCalibrationContextOnly, excludedNotLlmFacing, excludedUnresolvedRegistration } =
+    eligibleForTag(caps, 'mcp_consult', bridge)
   // P1 lane G1-A · architecture §2 · abuse case A6: "Sensitive-class
   // capabilities MUST be excluded from the `consult` profile." The list is
   // IMPORTED from the safety lane rather than restated here — a constant can
@@ -237,7 +294,8 @@ function buildConsultProfile(caps: CapabilityDescriptor[]): McpSurfaceProfile {
   const excludedSensitive = eligible.filter((c) => sensitive.has(c.name)).map((c) => c.name).sort()
   const afterSensitive = eligible.filter((c) => !sensitive.has(c.name))
   const sorted = [...afterSensitive].sort((a, b) => a.name.localeCompare(b.name))
-  const tools = sorted.map(buildMcpToolRegistration)
+  const tools = sorted.map((c) => buildMcpToolRegistration(c, publicName(bridge, c)))
+    .sort((a, b) => a.tool_name.localeCompare(b.tool_name))
   return {
     profile: 'consult',
     excluded_sensitive_class: excludedSensitive,
@@ -253,6 +311,8 @@ function buildConsultProfile(caps: CapabilityDescriptor[]): McpSurfaceProfile {
     overflow_tool_names: [],
     excluded_calibration_context_only: excludedCalibrationContextOnly,
     excluded_not_llm_facing: excludedNotLlmFacing,
+    excluded_unresolved_registration: excludedUnresolvedRegistration,
+    internal_name_mismatches: mismatchesFor(bridge, afterSensitive),
   }
 }
 
@@ -262,11 +322,21 @@ export interface McpSurfaceProfiles {
   consult: McpSurfaceProfile
 }
 
-export function buildMcpSurfaceProfiles(caps: CapabilityDescriptor[]): McpSurfaceProfiles {
+/**
+ * @param bridge F-155 fix: cap.name -> real public tool_name resolution
+ *   (`extract_registrar_capability_bridge.ts`). Optional so existing call sites (and unit
+ *   tests) keep working unchanged; when omitted, computed fresh from disk against the
+ *   real `platform-mcp/src/tools/` registrar surface — the same "no DB/network, pure
+ *   source-text read" contract `extract_registry_bridge_tools.ts` already established.
+ */
+export function buildMcpSurfaceProfiles(
+  caps: CapabilityDescriptor[],
+  bridge: CapabilityPublicNameBridge = buildCapabilityPublicNameBridge(caps),
+): McpSurfaceProfiles {
   return {
-    full: buildFullProfile(caps),
-    compact: buildCompactProfile(caps),
-    consult: buildConsultProfile(caps),
+    full: buildFullProfile(caps, bridge),
+    compact: buildCompactProfile(caps, bridge),
+    consult: buildConsultProfile(caps, bridge),
   }
 }
 
