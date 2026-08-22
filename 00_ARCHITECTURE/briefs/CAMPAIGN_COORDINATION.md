@@ -7568,3 +7568,63 @@ another campaign's audit trail. It is raised here only so the owning campaign se
 taken exactly one precaution: a read-only byte-preserving copy of both files to a location outside
 the repository, so that a routine `git clean` cannot destroy the only record of SQL whose effect is
 live. No git command was run against them; every reconciliation option remains open.
+
+## 2026-08-23 — PARIPRAŚNA P3 — X-6 REVISION ANNOUNCEMENT: `PARIPRASHNA_LIMITS_ENABLED` traffic shift
+
+**Announced before the traffic shift, per X-6.** This is the run's only production change tonight.
+
+- **Service:** `amjis-web` (asia-south1)
+- **Canary revision:** `amjis-web-02826-huf`, tag `limits-canary`, created at **0% traffic**
+- **Rollback target:** `amjis-web-01671-47n` (the revision serving 100% before this change, captured
+  2026-08-22T22:45:40Z)
+- **Change:** exactly one env var — `MARSYS_FLAG_PARIPRASHNA_LIMITS_ENABLED=true`. Applied with
+  **`--update-env-vars`, never `--set-env-vars`**: the service carries 15 live `MARSYS_FLAG_*` vars
+  (and 64 env vars total) that are not all declared in `deploy.yml`, so `--set-env-vars` would have
+  silently wiped them. Verified by enumeration before the command was run.
+
+**Authority:** native ruling §0.3 of the overnight charter — *"`PARIPRASHNA_LIMITS_ENABLED`: ENABLE
+UNCONDITIONALLY"* — plus a NATIVE-SURROGATE ruling (ledger D-012) requiring the verification package
+below. This arms NCD-8 spend caps ($2/turn, $40/day) and the 120 req/min door rate limit.
+
+**Verification performed on the 0%-traffic canary before any shift:**
+
+- **V1 (static, credential-free):** swept every model in `platform/src/lib/models/registry.ts` for
+  worst-case turn projection against the $2 ceiling. Exactly one model exceeds it —
+  `claude-opus-4-7` at $6.72 — and **`ANTHROPIC_API_KEY` was verified live to be entirely absent
+  from the production service**, so it cannot be dispatched. No model reachable in production is
+  blanket-refused.
+- **V2:** fail-open audit — `getDailySpendUsd` fails open, `checkSpendCeilings` does not breach on
+  `known:false`, and `projectTurnCostUsd` returns `null` (not `0`) for an unpriced model, so an
+  unpriced model cannot be refused. A DB outage or pricing gap does not refuse turns.
+- **V3 — ordering invariant, PASS.** Unauthenticated POST returns **401, not 429**, on
+  `/api/pariprashna` and `/api/chat/consult`, on both canary and production. The session gate
+  correctly precedes the rate limiter, so a refusal is never misreported as throttling.
+- **V4 — §N.8 demonstrated-can-fail, PASS, with a control.** 140 rapid POSTs to `/api/mcp/*`:
+
+  ```
+  CANARY (flag ON):   131 x 401,  9 x 429
+  PROD   (flag OFF):  140 x 401,  0 x 429
+  retry-after: 56
+  {"error":{"code":"LIMIT_RATE_LIMIT_EXCEEDED","message":"Too many requests. Please slow down.",
+   "retry":true,"detail":"Rate limit of 120 requests/minute exceeded. Retry in 56s."}}
+  ```
+
+  Same source, same burst, same window — the limiter engages only where the flag is on. This is a
+  real demonstrated-can-fail run on live infrastructure, performed with **no credential of any kind**.
+- **V5 (weak, recorded as weak):** no `[limits:spend_ceiling] … failing open` and no 5xx in the
+  canary's logs.
+
+**Owed and explicitly NOT claimed:** the authenticated end-to-end "a normal turn still succeeds"
+check, and §6.4's spend-ceiling reject demonstration. Both need the probe harness, which is blocked
+on a malformed CI credential (see this run's earlier disclosure). **This enable does not claim
+them**; they are carried to the native's morning sheet as owed.
+
+**Armed rollback triggers — any one executes the rollback without deliberation:** an unauthenticated
+web-door POST returning 429 instead of 401 · any `LIMIT_*_EXCEEDED` on the 100% revision from a
+non-probe request · `failing open` in production logs · a measurable 5xx increase on door paths ·
+the native reporting any refused or failed turn.
+
+**Rollback is a traffic/env command, not a build:**
+`gcloud run services update-traffic amjis-web --to-revisions=amjis-web-01671-47n=100 --region=asia-south1`
+
+Nothing else about this service was changed, and no other campaign's scope was touched.
