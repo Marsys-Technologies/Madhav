@@ -85,6 +85,13 @@ export const IMMUNE_HONESTY_FIELDS: ReadonlySet<string> = new Set<string>([
   // (currently health/relationship). Must never be silently trimmed away either.
   'domain_completeness_empty_reason',
   'coverage_map',
+  // F-179 (audit): the same "_empty_reason" honesty-disclosure convention as
+  // domain_completeness_empty_reason above, for register_p1_synthesis.ts's ranked-themes
+  // `weaknesses` array — a real, per-call-derived narrative (never a fixed template) that
+  // routinely exceeds MAX_STRING_CHARS (120) and would otherwise be mangled mid-sentence by
+  // truncateLongStringsInPlace's last-resort walk, which is exactly the "mangling an honesty
+  // field" failure mode this set exists to prevent.
+  'weaknesses_empty_reason',
   // — ŚODHANA T3 (MC-005/MC-023 regression check): the deterministic VERDICT layer —
   // assess_*'s `verdict.clauses[].text` (EL-44 grounded prose sentences) and
   // judgment_query's top-level `verdict` (verdictBlock + receipt + note, design §28.6) —
@@ -103,6 +110,39 @@ export const IMMUNE_HONESTY_FIELDS: ReadonlySet<string> = new Set<string>([
   // live in sibling `verdict_skeleton`/`checklist` keys, which remain fully trimmable).
   'verdict',
 ])
+
+// F-179 (audit) — non-flag disclosure fields AUDITED and DELIBERATELY LEFT OUT of the set
+// above (recorded so a future pass does not re-litigate from scratch):
+//   - `catalog_only_count` (register_p1_aliases.ts CategoryReceipt rows): always a NUMBER,
+//     never a string — `truncateLongStringsInPlace`'s only lever (string truncation) cannot
+//     act on it regardless of membership here. Its one containing array (`category_receipts`)
+//     is permanently capped at 3-4 elements by the tool's own zod enum, far under
+//     `autoDetectTrimmableSections`'s >10-length auto-detect threshold, so the array itself
+//     is never at real risk either. Adding the key here would protect nothing.
+//   - `gate_reason` (dossier.ts / kala_views): every observed value is a short, closed-
+//     vocabulary-like literal (e.g. 'slice_not_precomputed', 'bad_cursor') — never close to
+//     MAX_STRING_CHARS (120).
+//   - `resolution_disclosure` / `plateau_disclosure` (gochara sweep window rows): the real
+//     risk vector is the whole ROW being dropped when their containing array is sliced —
+//     key-name immunity cannot prevent array-element removal (only a `hardFloor`
+//     TrimmableSection on the containing array can, a heavier mechanism out of this audit's
+//     scope). Their own leaf string values are short closed-vocabulary tokens regardless.
+//   - `promise_gate` (assess_* grounding): DELIBERATELY droppable by F-175's own design —
+//     `grounding` is meant to fall all-or-nothing under budget pressure, with
+//     `promiseGateFlags` mirrored into the immune `kernel.flags` (via KERNEL_FLOOR_FLAG_CODES
+//     below) as the seam that survives instead. Immunizing the raw object here would fight
+//     the documented design rather than complete it.
+//   - `leverage_index_empty_reason` (registry_bridge.ts's attachLeverageIndex): currently NEVER
+//     reaches a served assess_wealth response at all — buildAssessResponse's `grounding`
+//     assembly reads `normalized['leverage_index']`, never `leverage_index_by_graha` or
+//     `leverage_index_empty_reason`. Protecting a field the response never carries is inert;
+//     this is a pre-existing key-mismatch wiring gap (same class as the F-14/F-124 fix
+//     elsewhere in this file), out of scope for F-179/F-181 and left as a follow-up note.
+//   - `unavailable_reason` / `withheld_reason`: `withheld_reason`'s live occurrences are in
+//     `pariprashna/safety` (a distinct subsystem never served through response_budget.ts).
+//     `unavailable_reason`'s occurrences in kala_views carry `String(err)`, whose UNBOUNDED
+//     length is F-174's own remit (sanitizing/clamping the source string), a separate
+//     question from this file's trim-eligibility audit — not fixed here.
 
 /** A single trimmable section of a tool's response content. */
 export interface TrimmableSection<T> {
@@ -872,6 +912,29 @@ export function assembleSaraContent<
     }
   }
 
+  // F-181: the loop above can exit with the kernel STILL over KERNEL_MAX_BYTES — every
+  // eligible (unprotected) pointer and flag is already gone, and what remains (verdict,
+  // promise, and every floor-protected flag) is, by design, never deleted to force a fit
+  // (the whole point of KERNEL_FLOOR_FLAG_CODES). That is a real, distinct invariant breach
+  // from the whole-envelope `budget_exceeded_after_trim` signal — the Sāra kernel has its
+  // OWN ≤2KB contract, checked and disclosed here regardless of whether the outer envelope
+  // ever hits its own ceiling. Disclose it explicitly rather than silently shipping an
+  // oversized kernel with no signal that its own invariant was breached (§N.8: a signal must
+  // exist for a condition this codebase already treats as load-bearing). This flag code is
+  // itself listed in KERNEL_FLOOR_FLAG_CODES so it can never be the casualty of a subsequent
+  // trim pass.
+  if (estimateBytes(kernel) > KERNEL_MAX_BYTES) {
+    mutableKernel['flags'] = [
+      ...(mutableKernel['flags'] as unknown[]),
+      judgmentFlag(
+        'kernel_ceiling_exceeded_for_disclosure',
+        `the Sāra kernel's own ${KERNEL_MAX_BYTES}B ceiling is still exceeded after trimming ` +
+        'every eligible pointer and flag — the surviving floor-protected disclosures (verdict, ' +
+        'promise, and/or floor-protected flags) were not deleted to force an artificial fit.',
+      ),
+    ]
+  }
+
   // Greedily include grounding if it fits within budget.
   const includedLayers: Array<'kernel' | 'grounding' | 'evidence'> = ['kernel']
   const omittedSections: string[] = []
@@ -923,6 +986,54 @@ export const KERNEL_FLOOR_FLAG_CODES: ReadonlySet<string> = new Set<string>([
   // The response could not be made to fit without loss — dropping THIS one would make the
   // overage itself invisible.
   'budget_exceeded_after_trim',
+  // F-179 (audit): the D1 significator-condition leg — the foundational dignity/ṣaḍbala
+  // read the kernel's own verdict headline cites — could not be assembled this call. "Was
+  // never checked" is exactly the membership bar above; without this flag surviving, a
+  // trimmed kernel's verdict text can read as fully grounded when this leg was silently
+  // absent (register_d8_assess_domain.ts's significator_condition_unavailable).
+  'significator_condition_unavailable',
+  // F-179 (audit): the assembled verdict itself is empty (no deterministic composition data
+  // was available to compose one) — the single most severe instance of "the reading you are
+  // about to trust is disputed": there is no reading. Losing this flag under trim pressure
+  // would leave a hollow kernel with nothing disclosing why (registry_bridge.ts's
+  // buildAssessResponse, hollow_envelope_no_data_rows).
+  'hollow_envelope_no_data_rows',
+  // F-181: this flag reports that the kernel itself could not be brought under its own 2KB
+  // ceiling without deleting a floor-protected disclosure. Dropping THIS one under further
+  // pressure would make that specific overage invisible — the kernel-scoped analogue of
+  // `budget_exceeded_after_trim` above, and it must never itself be trimmable.
+  'kernel_ceiling_exceeded_for_disclosure',
+  // F-179 (audit) — codes AUDITED and DELIBERATELY LEFT OUT of this floor (recorded so a
+  // future pass does not re-litigate from scratch; full classification table + reachability
+  // analysis in PR #<pending>/F-179 audit note):
+  //   - `catalog_only_rows_present` (F-174 item 2, ruled in-scope): doctrinally load-bearing
+  //     (§N.6 item 1 — a catalog-only label match must never be silently read as confirmed)
+  //     and emitted UNCONDITIONALLY on every assess_* call, but F-177's own shipped tests
+  //     (f177_kernel_flag_disclosure_protection.test.ts) deliberately pin it as a NORMAL,
+  //     per-call-nominable flag rather than a static floor member — `isProtectedKernelFlag`
+  //     is asserted `false` for it there absent an explicit per-call `protected_flags`
+  //     nomination. Statically flooring it would (a) silently overturn that intentional prior
+  //     decision and (b) unconditionally raise the floor's minimum footprint on every single
+  //     assess_* call (since it always fires), which is exactly the over-protection this
+  //     audit was warned against recreating (F-181's overflow as the normal case). The
+  //     existing per-call `protected_flags` mechanism (buildAssessResponse's
+  //     `disclosureFlags`) remains the correct lever for a caller that needs this specific
+  //     flag protected on a specific response.
+  //   - `domain_inference_requires_acharya_validation`: emitted UNCONDITIONALLY on every
+  //     assess_* call as a standing methodology disclaimer, not a per-call "disputed/never
+  //     checked" finding — exactly the "every caveat" case this set's own doctrine excludes.
+  //   - `bearing_yogas_empty` / `bearing_yogas_no_domain_match` / `gochara_top_window_
+  //     already_peaked`: real 'info'-severity coverage/context disclosures, but they do not
+  //     contradict or limit the verdict — a genuine coverage gap, left trimmable by design.
+  //   - `timing_anchored_forced_false`, `varga_confirmed_forced_false`, `pact_halted_at_*`,
+  //     `confirmation_graha_unrecognized`, `pact_trigger_infra_incomplete`,
+  //     `chart_header_unresolved`, `cursor_filter_mismatch`, `as_of_date_precedes_chart_
+  //     birth`, `hollow_envelope_shape_not_evaluated`: verified NOT reachable inside
+  //     `SaraKernel.flags` — each is emitted only by judgment_query/pact_query/get_dashas/
+  //     register_p1_synthesis.ts's own top-level `judgment_flags` field, which is already
+  //     wholesale-immune via `IMMUNE_HONESTY_FIELDS`'s key-name match on `'judgment_flags'`
+  //     (a stronger, field-level protection) and never flows into `assembleSaraContent`'s
+  //     kernel at all. Adding them here would be inert — a protection with no attack surface.
 ])
 
 function flagCodeOf(flag: unknown): string {

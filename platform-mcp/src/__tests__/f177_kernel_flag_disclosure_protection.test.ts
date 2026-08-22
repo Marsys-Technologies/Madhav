@@ -162,7 +162,17 @@ describe('F-177 — the kernel trim must not delete the domain-completeness disc
     const assembled = assembleSaraContent({
       kernel, budget_kb: 40, counts: COUNTS, protected_flags: [long(1), long(2)],
     })
-    expect(assembled.kernel.flags).toHaveLength(2)
+    // F-181 (post-dates this test): assembleSaraContent now ALSO appends
+    // `kernel_ceiling_exceeded_for_disclosure` whenever the kernel is still over its own
+    // ceiling after the trim loop — exactly this scenario — so the two original protected
+    // disclosures are joined by that third, itself-floor-protected flag, not silently gutted
+    // down to 2. Both original disclosures must still be present.
+    expect(assembled.kernel.flags).toHaveLength(3)
+    expect(assembled.kernel.flags).toContain(long(1))
+    expect(assembled.kernel.flags).toContain(long(2))
+    expect(assembled.kernel.flags).toContainEqual(
+      expect.objectContaining({ code: 'kernel_ceiling_exceeded_for_disclosure' }),
+    )
     expect(estimateBytes(assembled.kernel)).toBeGreaterThan(2048)
     // composition_report stays honest about the real post-trim size.
     expect(assembled.composition_report.kernel_bytes).toBe(estimateBytes(assembled.kernel))
