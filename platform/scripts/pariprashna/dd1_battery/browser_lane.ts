@@ -322,7 +322,19 @@ export async function runBrowserLane(opts: BrowserLaneOptions): Promise<BrowserL
  *                `runBrowserLane` above, which refuses PASS for any metric
  *                whose selector was never observed during the live run.
  */
-const SYNTH_PAGE = `<!doctype html><html><head><meta charset="utf-8"><style>
+// NOTE (bug found + fixed during the P4 overnight build): this fixture must
+// be genuinely axe-clean and must genuinely read back as a 390x844 mobile
+// viewport, or the m9_axe / m8_device_emulation "clean counterpart" proofs
+// fail for a reason that has nothing to do with the detector under test — see
+// the finding recorded in the PR description. <title>, <html lang>, a
+// <meta name="viewport"> (without it Chromium lays out an unstyled page at
+// its 980px desktop-compat default width even under isMobile emulation, so
+// window.innerWidth reads 980, not 390), and a real <label> for the composer
+// are all load-bearing for that, not decoration.
+const SYNTH_PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>DD-1 battery synthetic fixture</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
 body{margin:0;font:16px/1.5 sans-serif}#col{padding:12px}
 .pp-band{height:24px;background:#eee}
 [data-pp-caret]{display:inline-block;width:2px;height:1em;background:#000;vertical-align:text-bottom}
@@ -334,7 +346,8 @@ body{margin:0;font:16px/1.5 sans-serif}#col{padding:12px}
     <div data-committed="true" data-block-kind="paragraph"><p>The tenth house is tenanted rather than merely aspected.</p></div>
   </div>
   <p data-testid="pp-tail" data-pp-tail-live="true">Saturn is strong here<span data-pp-caret></span></p>
-  <textarea data-testid="pp-composer-textarea"></textarea>
+  <label for="dd1-composer">Ask the chart</label>
+  <textarea id="dd1-composer" data-testid="pp-composer-textarea"></textarea>
   <button data-testid="pp-composer-send">Send</button>
 </div></body></html>`
 
@@ -353,7 +366,23 @@ async function withSynthPage<T>(
     const ctx = await browser.newContext(mobile ? MOBILE_PROFILE : { viewport: { width: 1440, height: 900 } })
     await ctx.addInitScript(recorderSource())
     const page = await ctx.newPage()
-    await page.setContent(SYNTH_PAGE)
+    // NOTE (bug found + fixed during the P4 overnight build): `page.setContent()`
+    // internally does `document.open()/write()/close()` on an already-loaded
+    // `about:blank` document, which REPLACES the Document object per HTML spec.
+    // `addInitScript`'s listeners (e.g. the M3 submit-click hook in
+    // instrumentation.ts, registered via `document.addEventListener`) get bound
+    // to the pre-replacement Document and are silently orphaned — the click
+    // still happens, but the listener never sees it, so `rec.submitAt` stays
+    // null forever (this is why m3_ttfs's "clean" red-proof counterpart failed:
+    // it was genuinely unmeasurable, not a detector bug). The rAF-driven
+    // polling checks (M1/M2/M6) were unaffected because they re-resolve the
+    // live global `document` on every frame rather than binding to one Document
+    // instance. Mobile-emulation readback (M8-emu's `"ontouchstart" in window`)
+    // has the same failure mode. A real navigation avoids it entirely — there
+    // is exactly one Document, and it is the one addInitScript's listeners are
+    // bound to — so this loads the fixture via `page.goto('data:…')` instead of
+    // `page.setContent()`, matching how the real browser lane above navigates.
+    await page.goto(`data:text/html,${encodeURIComponent(SYNTH_PAGE)}`)
     const out = await fn(page)
     await ctx.close()
     return out
@@ -362,16 +391,26 @@ async function withSynthPage<T>(
   }
 }
 
+/**
+ * Advance `n` animation frames inside the page.
+ *
+ * IMPLEMENTATION NOTE (bug found + fixed during the P4 overnight build): the
+ * obvious recursive form — a `const step = () => … requestAnimationFrame(step)`
+ * closure passed to `page.evaluate` — breaks under `tsx`'s esbuild transform,
+ * which injects a `__name(step, "step")` call to preserve the function's
+ * `.name` for stack traces. Playwright serializes the callback via
+ * `Function.prototype.toString()` and evaluates the source INSIDE the page,
+ * where `__name` does not exist, so every call threw
+ * `ReferenceError: __name is not defined` before a single browser-lane red
+ * proof could run. The fix is structural, not a workaround: never bind an
+ * inner function to a name inside a closure that will be serialized into the
+ * page — one un-named `page.evaluate` call per frame, awaited from Node,
+ * carries no named binding for esbuild to wrap.
+ */
 async function frames(page: Page, n: number): Promise<void> {
-  await page.evaluate(
-    (count) =>
-      new Promise<void>((resolve) => {
-        let i = 0
-        const step = () => (++i >= count ? resolve() : requestAnimationFrame(step))
-        requestAnimationFrame(step)
-      }),
-    n,
-  )
+  for (let i = 0; i < n; i++) {
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())))
+  }
 }
 
 async function read(page: Page): Promise<Dd1Recording> {
