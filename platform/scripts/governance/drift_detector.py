@@ -10,10 +10,13 @@ Runs the eight cross-surface drift checks declared in protocol §H.3:
   H.3.2 — CANONICAL_ARTIFACTS ↔ filesystem fingerprint match
   H.3.3 — MACRO_PLAN ↔ PHASE_B_PLAN alignment
   H.3.4 — STEP_LEDGER internal consistency (rebuild era only)
-  H.3.5 — FILE_REGISTRY ↔ CANONICAL_ARTIFACTS agreement
+  H.3.5 — CAPABILITY_MANIFEST ↔ CANONICAL_ARTIFACTS_v1_0.md agreement (RC-1 repoint,
+          2026-08-22 — was FILE_REGISTRY ↔ CANONICAL_ARTIFACTS; FILE_REGISTRY_v1_14.md's
+          own frontmatter reads SUPERSEDED, see check_file_registry_agreement docstring)
   H.3.6 — GOVERNANCE_STACK ↔ CANONICAL_ARTIFACTS agreement
   H.3.7 — Phantom-reference scan (live pointers to files that do not exist on disk)
-  H.3.8 — Unreferenced canonical-artifact scan
+  H.3.8 — Unreferenced canonical-artifact scan (RC-1 repoint, 2026-08-22 — comparison
+          corpus is now CLAUDE.md + CAPABILITY_MANIFEST.json, was CLAUDE.md + FILE_REGISTRY)
 
 Exit codes (per §H.4):
   0  — no findings
@@ -44,10 +47,39 @@ from typing import Dict, List, Optional, Set, Tuple
 # Local import
 sys.path.insert(0, str(pathlib.Path(__file__).parent))
 from _ca_loader import CANONICAL_PATH, compute_sha256, load_canonical_artifacts  # noqa: E402
+from manifest_reader import MANIFEST_PATH  # noqa: E402
 
 # Feature flag: when true, reads from CAPABILITY_MANIFEST.json instead of CANONICAL_ARTIFACTS.
 # Default true (manifest path is production after Phase 1B cutover).
 _USE_MANIFEST = os.environ.get("DRIFT_DETECTOR_USE_MANIFEST", "true").lower() in ("true", "1", "yes")
+
+# RC-1/F-163 (2026-08-22): §H.3.5, §H.3.6, and §H.3.8 all compare a set of "CURRENT
+# rows" against a second surface. None of them filtered by status before this change
+# (F-163's finding: the §H.3.5 docstring always said "agreement on CURRENT rows" but
+# the loop had no status filter, so PREDECESSOR rows -- which are SUPPOSED to be
+# absent from a CURRENT registry -- were flagged as defects). _CURRENT_STATUSES is
+# pinned to the real CAPABILITY_MANIFEST.json status vocabulary, measured via:
+#   jq -r '..|.status?|select(type=="string")' 00_ARCHITECTURE/CAPABILITY_MANIFEST.json | sort -u
+# which returns exactly: CURRENT, CURRENT-FOR-EXECUTION, LIVING, PREDECESSOR,
+# PROPOSAL, READY, SUPERSEDED (128 entries, measured 2026-08-22). PREDECESSOR and
+# SUPERSEDED are explicitly historical/superseded rows. PROPOSAL is pre-ratification
+# (not yet adopted doctrine) and does not belong in a CURRENT-rows cross-check either.
+# CURRENT-FOR-EXECUTION and READY are both actively-governing statuses in current use
+# (e.g. PARISESA_V4_CLOSURE_FACTORY_PLAN, RESUME_BRIEFS_BOTH_CAMPAIGNS) and are
+# treated as current here. NOTE: earlier drafts of this fix guessed ARCHIVED/RETIRED/
+# GOVERNANCE_CLOSED as additional excluded values -- none of those three actually
+# occur in CAPABILITY_MANIFEST.json today; they are intentionally NOT in this set
+# because pinning to guessed-but-absent values would silently do nothing if they
+# never appear, and silently over-match if a differently-cased/spelled variant did.
+_CURRENT_STATUSES = frozenset({"CURRENT", "CURRENT-FOR-EXECUTION", "LIVING", "READY"})
+
+
+def _is_current(row: dict) -> bool:
+    """True if a manifest/CANONICAL_ARTIFACTS row's status counts as a live,
+    currently-governing artifact for the §H.3.5 / §H.3.6 / §H.3.8 cross-registry
+    agreement checks (F-163). See _CURRENT_STATUSES above for the vocabulary and
+    the exclusion rationale."""
+    return row.get("status") in _CURRENT_STATUSES
 
 
 # --------------------------------------------------------------------------------------
@@ -58,24 +90,29 @@ _USE_MANIFEST = os.environ.get("DRIFT_DETECTOR_USE_MANIFEST", "true").lower() in
 # history (WARN.N) for resolution by a named downstream step. Detector reports them
 # but labels them `whitelist_ticket: WARN.N` so they do NOT flip the exit code to 1.
 WHITELIST_TICKETS = {
-    # STEP_LEDGER Step 5 close — PHASE_B_PLAN §5 / §N.10 live MP v1.0 pointers
-    "WARN.2": {
-        "description": "PHASE_B_PLAN §5 header + §N.10 live MP v1.0 pointers",
-        "files": ["00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md"],
-        "booked_for": "PHASE_B_PLAN v1.0.3 amendment cycle",
-    },
+    # WARN.2 retired 2026-08-22 (RC-1 §7.3 tidy-up, PARISESA-V4): the finding it
+    # tagged (check_mp_pbp_alignment's "live MP v1.0 pointer" check) is confirmed
+    # dead -- 00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md no longer contains the
+    # "MACRO_PLAN_v1_0.md" string this check looks for (verified via grep,
+    # 2026-08-22), and the file was already removed from GOVERNANCE_SURFACES_GLOBS'
+    # separate §H.3.7 live-pointer scan by RC-2 (2026-08-21, see that list's own
+    # comment). check_mp_pbp_alignment's hardcoded `whitelist_ticket="WARN.2"`
+    # tag is retired to `None` in the same change (a Finding can still carry that
+    # string; it just no longer resolves to a WHITELIST_TICKETS entry, which was
+    # already true in practice since the check hasn't fired since the pointer was
+    # removed from the plan's text).
+    #
     # STEP_LEDGER Step 5 close — MARSYS_JIS_BOOTSTRAP_HANDOFF.md line 145 MP v1.0 pointer
     "WARN.4": {
         "description": "MARSYS_JIS_BOOTSTRAP_HANDOFF.md MP v1.0 pointer",
         "files": ["MARSYS_JIS_BOOTSTRAP_HANDOFF.md"],
         "booked_for": "Step 9 CLAUDE.md rebuild cycle",
     },
-    # STEP_LEDGER Step 5 close — B0_KICKOFF_PROMPT_FOR_CLAUDE_CODE.md MP v1.0 pointer
-    "WARN.5": {
-        "description": "B0_KICKOFF_PROMPT_FOR_CLAUDE_CODE.md MP v1.0 pointer",
-        "files": ["00_ARCHITECTURE/B0_KICKOFF_PROMPT_FOR_CLAUDE_CODE.md"],
-        "booked_for": "PHASE_B_PLAN v1.0.3 amendment cycle",
-    },
+    # WARN.5 retired 2026-08-22 (RC-1 §7.3 tidy-up, PARISESA-V4): its target file
+    # (00_ARCHITECTURE/B0_KICKOFF_PROMPT_FOR_CLAUDE_CODE.md) is not, and never
+    # was, a member of GOVERNANCE_SURFACES_GLOBS -- the only corpus
+    # check_phantom_references (§H.3.7, the sole consumer of this ticket via
+    # _is_whitelisted()) scans. No code path can produce a WARN.5-tagged finding.
     # WARN.6 removed 2026-06-16 (chore/governance-repoint): generated 0 findings post-v6.0
     # CLAUDE.md rebuild — 00_ARCHITECTURE/CLAUDE.md helper file exists on disk and the
     # phantom-reference check no longer fires on it.
@@ -142,12 +179,18 @@ GOVERNANCE_SURFACES_GLOBS = [
     # amendment cycle that cannot occur for a superseded plan, and acting on it would
     # rewrite an archived record in violation of ONGOING_HYGIENE_POLICIES §A
     # (archival retain-in-place). §H.3.3 check_mp_pbp_alignment still reads this file;
-    # only the §H.3.7 live-pointer scan is scoped off it. WARN.2 is retained in
-    # WHITELIST_TICKETS as audit trail and is now expected to match nothing.
+    # only the §H.3.7 live-pointer scan is scoped off it. WARN.2 (the ticket this
+    # produced) is retired 2026-08-22 (RC-1 §7.3) -- see WHITELIST_TICKETS.
     "00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md",
-    "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md",
+    # RC-1 §7.3 tidy-up (2026-08-22): FILE_REGISTRY_v1_14.md removed from this list.
+    # Its own frontmatter reads `status: "SUPERSEDED (2026-04-27 ...)"` -- by this
+    # list's own stated exclusion rule ("excludes closed/time-stamped artifacts")
+    # it never belonged here, the same defect class as the PHASE_B_PLAN removal
+    # above (RC-2).
+    # RC-1 §7.3 tidy-up (2026-08-22): STEP_LEDGER_v1_0.md removed from this list.
+    # Its own frontmatter reads `status: GOVERNANCE_CLOSED` (closed 2026-04-24) --
+    # same exclusion-rule violation as FILE_REGISTRY_v1_14.md above.
     "00_ARCHITECTURE/GOVERNANCE_STACK_v1_0.md",
-    "00_ARCHITECTURE/STEP_LEDGER_v1_0.md",
     "00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md",
     "00_ARCHITECTURE/CONVERSATION_NAMING_CONVENTION_v1_0.md",
     "00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md",
@@ -325,7 +368,11 @@ def check_mp_pbp_alignment(repo_root: pathlib.Path) -> List[Finding]:
         ))
         return findings
     pbp = pbp_path.read_text(encoding="utf-8")
-    # Live MP v1.0 pointer → WARN.2 whitelist
+    # Live MP v1.0 pointer. Formerly whitelist_ticket="WARN.2"; that ticket is
+    # retired (RC-1 §7.3, 2026-08-22, see WHITELIST_TICKETS) because this branch
+    # has not fired since PHASE_B_PLAN_v1_0.md stopped containing the
+    # "MACRO_PLAN_v1_0.md" string below. Left as a real (non-whitelisted) finding
+    # if it were ever to fire again, rather than tagging it with a retired ticket.
     if "MACRO_PLAN_v1_0.md" in pbp:
         findings.append(Finding(
             cls="macro_plan_phase_plan_drift",
@@ -334,7 +381,6 @@ def check_mp_pbp_alignment(repo_root: pathlib.Path) -> List[Finding]:
             surfaces_involved=["00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md", "00_ARCHITECTURE/MACRO_PLAN_v2_0.md"],
             evidence="PHASE_B_PLAN contains live pointer to superseded MACRO_PLAN_v1_0.md",
             suggested_remediation="PHASE_B_PLAN v1.0.3 amendment cycle",
-            whitelist_ticket="WARN.2",
         ))
     return findings
 
@@ -370,52 +416,80 @@ def check_step_ledger_consistency(repo_root: pathlib.Path) -> List[Finding]:
 
 
 def check_file_registry_agreement(repo_root: pathlib.Path, ca) -> List[Finding]:
-    """§H.3.5 — FILE_REGISTRY vs CANONICAL_ARTIFACTS agreement on CURRENT rows."""
+    """§H.3.5 — CAPABILITY_MANIFEST vs CANONICAL_ARTIFACTS_v1_0.md agreement on CURRENT rows.
+
+    RC-1 (2026-08-22, PARISESA-V4): repointed from FILE_REGISTRY_v1_14.md. That
+    file's own frontmatter reads `status: "SUPERSEDED (2026-04-27 — content
+    absorbed into CAPABILITY_MANIFEST.json; retained in place for historical
+    audit)"` -- comparing the live manifest against a document that has declared
+    itself superseded produced 84 of 128 manifest entries failing for that reason
+    alone (F94_GOVERNANCE_DRIFT_RECONCILIATION_PLAN_v1_0.md §4.1/§7.1). CLAUDE.md
+    §D already names CANONICAL_ARTIFACTS_v1_0.md as the tie-breaker surface for
+    canonical-path conflicts, so that is what this check now compares against
+    instead (Option (a) "Repoint" of the four options costed in the plan's §7.1).
+
+    F-163 (same PR, same hunk -- ruled to land together, never as a separate PR):
+    the docstring here always said "agreement on CURRENT rows" but the loop had
+    no status filter, so e.g. PREDECESSOR rows (which are SUPPOSED to be absent
+    from a CURRENT registry) were flagged as a defect. Filtered via _is_current().
+
+    Retired in this same change: the prior `row.get("status") in ("LIVE",
+    "LIVING") and cid in ("SESSION_LOG",)` carve-out. It is provably dead code
+    under the default manifest-mode configuration this check runs in in
+    production -- CAPABILITY_MANIFEST.json has no "SESSION_LOG" entry at all
+    (confirmed 2026-08-22) -- and would in any case now be fully subsumed by the
+    _is_current() status filter. Removed rather than left as a second,
+    overlapping filter.
+    """
     findings: List[Finding] = []
-    fr_path = repo_root / "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md"
-    if not fr_path.exists():
-        # Fall back to earlier versions if v1.14 not yet present
-        for ver in ("v1_13", "v1_12", "v1_11", "v1_3", "v1_2"):
-            candidate = repo_root / f"00_ARCHITECTURE/FILE_REGISTRY_{ver}.md"
-            if candidate.exists():
-                fr_path = candidate
-                break
-    if not fr_path.exists():
+    ca_path = repo_root / CANONICAL_PATH
+    if not ca_path.exists():
         findings.append(Finding(
             cls="registry_disagreement",
             severity="CRITICAL",
-            canonical_id="FILE_REGISTRY",
-            surfaces_involved=["00_ARCHITECTURE/"],
-            evidence="No FILE_REGISTRY found (v1.2 or v1.3)",
-            suggested_remediation="Publish FILE_REGISTRY_v1_3 per protocol §D.2",
+            canonical_id="CANONICAL_ARTIFACTS",
+            surfaces_involved=[CANONICAL_PATH],
+            evidence="No CANONICAL_ARTIFACTS_v1_0.md found",
+            suggested_remediation="Restore CANONICAL_ARTIFACTS_v1_0.md per protocol §E",
         ))
         return findings
-    fr_text = fr_path.read_text(encoding="utf-8")
+    ca_text = ca_path.read_text(encoding="utf-8")
     for cid, row in ca.artifacts.items():
+        if not _is_current(row):
+            continue
         path_rel = row.get("path", "")
         if not path_rel:
             continue
         basename = pathlib.Path(path_rel).name
-        # A minimal heuristic: if CANONICAL_ARTIFACTS names a file as CURRENT, its
-        # basename must appear in FILE_REGISTRY. We don't try to parse FILE_REGISTRY's
-        # table; we check basename presence.
-        if basename not in fr_text:
-            # Exclude rolling / LIVE surfaces that don't have a per-version row
-            if row.get("status") in ("LIVE", "LIVING") and cid in ("SESSION_LOG",):
-                continue
+        # A minimal heuristic: if the manifest names a file as a currently-governing
+        # artifact, its basename must appear in CANONICAL_ARTIFACTS_v1_0.md. We
+        # don't try to parse its §1 table; we check basename presence.
+        if basename not in ca_text:
             findings.append(Finding(
                 cls="registry_disagreement",
                 severity="MEDIUM",
                 canonical_id=cid,
-                surfaces_involved=[str(fr_path.relative_to(repo_root)), "CANONICAL_ARTIFACTS"],
-                evidence=f"FILE_REGISTRY does not name '{basename}'",
-                suggested_remediation=f"Add a row for {basename} in FILE_REGISTRY",
+                surfaces_involved=[str(ca_path.relative_to(repo_root)), "CAPABILITY_MANIFEST"],
+                evidence=f"CANONICAL_ARTIFACTS_v1_0.md does not name '{basename}'",
+                suggested_remediation=(
+                    f"Register {basename} in CANONICAL_ARTIFACTS_v1_0.md §1 "
+                    "(or correct its CAPABILITY_MANIFEST entry)"
+                ),
             ))
     return findings
 
 
 def check_governance_stack_agreement(repo_root: pathlib.Path, ca) -> List[Finding]:
-    """§H.3.6 — GOVERNANCE_STACK ↔ CANONICAL_ARTIFACTS agreement."""
+    """§H.3.6 — GOVERNANCE_STACK ↔ CANONICAL_ARTIFACTS agreement.
+
+    RC-4 (2026-08-22, PARISESA-V4, decided in the same RC-1/F-163 ruling): unlike
+    §H.3.5/§H.3.8, this check's comparison surface (GOVERNANCE_STACK_v1_0.md) is
+    genuinely `status: CURRENT` -- its real MSR_v5_0.md-missing finding is a
+    mutation of a live registry, not a false positive by construction. NOT
+    repointed. The same _is_current() status filter is applied for consistency
+    with §H.3.5/§H.3.8 and to defend this check the same way if a future
+    PREDECESSOR/SUPERSEDED/PROPOSAL row ever entered this fixed cid list.
+    """
     findings: List[Finding] = []
     gs_path = repo_root / "00_ARCHITECTURE/GOVERNANCE_STACK_v1_0.md"
     if not gs_path.exists():
@@ -435,6 +509,8 @@ def check_governance_stack_agreement(repo_root: pathlib.Path, ca) -> List[Findin
         if cid not in ca.artifacts:
             continue
         row = ca.artifacts[cid]
+        if not _is_current(row):
+            continue
         basename = pathlib.Path(row.get("path", "")).name
         if basename and basename.split(".")[0].upper() not in gs_text.upper():
             findings.append(Finding(
@@ -971,28 +1047,48 @@ def check_a3_categories_and_mvs(repo_root: pathlib.Path) -> List[Finding]:
 
 
 def check_unreferenced_canonical(repo_root: pathlib.Path, ca) -> List[Finding]:
-    """§H.3.8 — Unreferenced canonical-artifact scan."""
+    """§H.3.8 — Unreferenced canonical-artifact scan.
+
+    RC-1 (2026-08-22, PARISESA-V4): repointed the comparison corpus from
+    CLAUDE.md + FILE_REGISTRY_v1_14.md (SUPERSEDED, see
+    check_file_registry_agreement's docstring) to CLAUDE.md + CAPABILITY_MANIFEST.json
+    -- the doctrine-named single source of truth (CLAUDE.md §C item 2). Same
+    _is_current() status filter as §H.3.5/§H.3.6 (F-163), applied here because the
+    coupling ruling requires the two repointed checks (§H.3.5, §H.3.8) to agree on
+    what counts as a live row.
+
+    KNOWN RESIDUAL, flagged (not fixed) in this PR's own GA-5 self-review: under
+    the default DRIFT_DETECTOR_USE_MANIFEST=true configuration this check runs
+    under in production, `ca` is itself manifest-derived. Folding
+    CAPABILITY_MANIFEST.json's own raw JSON text into the corpus therefore means
+    every entry with a non-empty `path` field trivially satisfies "basename found
+    somewhere in (CLAUDE.md + the very manifest that produced this entry)" --
+    the manifest's own path field IS the basename. Measured against the real tree
+    2026-08-22: 0 findings post-repoint (down from 77 pre-repoint
+    false-positives-by-construction against the superseded FILE_REGISTRY), and 0
+    is now the only value this check can ever produce for a `_is_current()` row
+    while manifest mode is on -- a §N.8-class "signal without a real detector"
+    concern, introduced by this very change. This is what RC-1's ruling
+    specifies verbatim (repoint corpus to CAPABILITY_MANIFEST.json); giving this
+    check a corpus independent of `ca`'s own source is out of this standalone
+    PR's scope and is called out explicitly in the PR body as follow-up work.
+    """
     findings: List[Finding] = []
     # Governance surfaces that must mention each canonical artifact by path somewhere.
     # Note: .geminirules removed from corpus 2026-05-27 per ND.1 close-out.
     claude = (repo_root / "CLAUDE.md").read_text(encoding="utf-8")
     try:
-        fr_path = repo_root / "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md"
-        if not fr_path.exists():
-            for ver in ("v1_13", "v1_12", "v1_11", "v1_3", "v1_2"):
-                candidate = repo_root / f"00_ARCHITECTURE/FILE_REGISTRY_{ver}.md"
-                if candidate.exists():
-                    fr_path = candidate
-                    break
-        fr = fr_path.read_text(encoding="utf-8")
+        manifest_text = (repo_root / MANIFEST_PATH).read_text(encoding="utf-8")
     except (FileNotFoundError, AttributeError):
-        fr = ""
-    corpus = claude + "\n" + fr
+        manifest_text = ""
+    corpus = claude + "\n" + manifest_text
 
     # LEL was cited by Grounding Audit GA.9 as unreferenced in CLAUDE.md. That is
     # expected to be addressed at Step 9. We flag it here as a Step-9-deferred
     # known-residual.
     for cid, row in ca.artifacts.items():
+        if not _is_current(row):
+            continue
         path_rel = row.get("path", "")
         basename = pathlib.Path(path_rel).name if path_rel else ""
         if not basename:
@@ -1005,8 +1101,8 @@ def check_unreferenced_canonical(repo_root: pathlib.Path, ca) -> List[Finding]:
                     cls="canonical_unreferenced",
                     severity=severity,
                     canonical_id=cid,
-                    surfaces_involved=["CLAUDE.md", "FILE_REGISTRY"],
-                    evidence=f"Canonical {cid} ({basename}) not named in CLAUDE.md / FILE_REGISTRY",
+                    surfaces_involved=["CLAUDE.md", "CAPABILITY_MANIFEST"],
+                    evidence=f"Canonical {cid} ({basename}) not named in CLAUDE.md / CAPABILITY_MANIFEST",
                     suggested_remediation="Step 9 CLAUDE.md rebuild surfaces LEL (GA.9 resolution)",
                     whitelist_ticket="GA.9-deferred-to-step-9",
                 ))
@@ -1015,9 +1111,9 @@ def check_unreferenced_canonical(repo_root: pathlib.Path, ca) -> List[Finding]:
                     cls="canonical_unreferenced",
                     severity=severity,
                     canonical_id=cid,
-                    surfaces_involved=["CLAUDE.md", "FILE_REGISTRY"],
+                    surfaces_involved=["CLAUDE.md", "CAPABILITY_MANIFEST"],
                     evidence=f"Canonical {cid} ({basename}) not referenced in any surface",
-                    suggested_remediation=f"Register {basename} in CLAUDE.md / FILE_REGISTRY",
+                    suggested_remediation=f"Register {basename} in CLAUDE.md / CAPABILITY_MANIFEST",
                 ))
     return findings
 
