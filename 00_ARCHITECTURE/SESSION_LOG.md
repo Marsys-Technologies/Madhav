@@ -36975,3 +36975,215 @@ entry, to follow immediately as the last act of this same session.
 
 Open P3 per the master prompt's §9 dependency order (P3-A first; DD-22 already merged,
 satisfying P3-B's precondition). No other Paripraśna work is currently blocking.
+
+---
+
+## PARISESA-V4-CONDUCTOR-20260822T023000Z — Wave 1-5 implementation close-out; 6+1 final native-scoped batch closed
+
+*Note: this session began as a continuation of an earlier, longer-running PARISESA-V4
+conductor session after a context-window compaction, not a fresh interactive handshake.
+No `session_open` block was emitted at true session start; the block below is written
+retroactively at close, reconstructing the scope that was in fact observed throughout,
+for SESSION_LOG completeness (ONGOING_HYGIENE_POLICIES §D). Where a field cannot be
+honestly attested (e.g. exact fingerprints read at a start moment that already passed),
+it is marked `not_captured` rather than fabricated.*
+
+```yaml
+session_open:
+  session_id: PARISESA-V4-CONDUCTOR-20260822T023000Z
+  tool: "Claude Code"
+  opened_at: not_captured  # session began mid-compaction-continuation; see note above
+  declared_scope:
+    may_touch:
+      - "platform/**"
+      - "platform-mcp/**"
+      - "00_ARCHITECTURE/briefs/parisesa/**"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      - "00_ARCHITECTURE/SESSION_LOG.md"
+      - "(on branch parisesa/campaign-state) 00_ARCHITECTURE/briefs/parisesa/state/**"
+    must_not_touch:
+      - "any ka_gochara_* rebuild/rematerialization dispatch (code fixes only — standing owner policy, 2026-08-21)"
+      - "the 6 DATA_PARKED findings (F-104, F-151, F-189, F-23, F-35, F-63)"
+      - "the 4 EXTERNAL_HOLD findings (F-141, F-21, F-52, RATE-07-ENABLE)"
+      - "git stash / git stash pop (shared stack across concurrent worktrees)"
+  native_directive_obligations: []
+  red_team_due: false   # not independently re-derived this session; carried from prior session's declared state
+  notes: >
+    Implementation-wave execution session for the PARISESA-V4 remediation campaign: Opus-5
+    authored PARISESA_V4_FIX_PLAN.md, implemented across Waves 1-5 by dispatched Sonnet-5
+    high-effort implementer agents, no human review gate on the implementation batch (native
+    authorization given mid-session). Final scope for this session's close, per explicit
+    native instruction: close the 6 remaining MORNING_SHIP_READY findings plus the
+    F-75-batch OBSOLETE_MARKER row; leave DATA_PARKED/EXTERNAL_HOLD untouched.
+```
+
+*Honest handshake-validation disclosure (not glossed over): the retroactive `session_open`
+block above does not pass `schema_validator.py --handshake` (exit 1, 14 CRITICAL findings —
+missing `cowork_thread_name`, `agent_name`, `worktree_path`, live coordination-lease
+verification, CCD-register read confirmation, and several other fields the live-handshake
+schema requires). This is expected and disclosed rather than papered over: those fields
+describe a live pre-work handshake that genuinely did not happen this way, because this
+session began as a mid-campaign continuation after a context-window compaction, not a fresh
+interactive start. Fabricating plausible-looking values for them here would be worse than
+the honest gap — this project's own §N.7/§N.8 principles are exactly about not doing that.
+This is a repeat of the same retroactive-handshake pattern already precedented elsewhere in
+this log (see the PŪRṆA-VIRĀMA close-out entry's own equivalent disclosure).*
+
+```yaml
+session_close:
+  session_id: PARISESA-V4-CONDUCTOR-20260822T023000Z
+  closed_at: 2026-08-22T19:55:00+05:30
+  tool: "Claude Code"
+  files_touched:
+    - path: "00_ARCHITECTURE/briefs/parisesa/state/journal.ndjson (branch parisesa/campaign-state)"
+      mutation_type: modified
+      sha256_before: not_recomputed_full_file  # append-only hash-chained journal; integrity is per-event (event_sha256/prev_sha256 chain), not whole-file hash
+      sha256_after: not_recomputed_full_file
+      justification: "7 new events appended (seq 1091-1097): 6 finding_status closures (F-142-CANDIDATE, F-145, F-156, F-159, F-165, F-166 -> SERVICE_CLOSED) + 1 bookkeeping_delete_finding_row (F-75-batch)"
+      within_declared_scope: true
+    - path: "00_ARCHITECTURE/briefs/parisesa/state/ledger.json (branch parisesa/campaign-state)"
+      mutation_type: modified
+      sha256_before: not_recomputed_full_file
+      sha256_after: not_recomputed_full_file
+      justification: "Deterministically rebuilt from journal.ndjson via build_tracker.py; journal_head_seq 1090 -> 1097; MORNING_SHIP_READY count 6 -> 0"
+      within_declared_scope: true
+    - path: "00_ARCHITECTURE/briefs/parisesa/state/heartbeat.json (branch parisesa/campaign-state)"
+      mutation_type: modified
+      sha256_before: not_recomputed_full_file
+      sha256_after: not_recomputed_full_file
+      justification: "Refreshed to journal_head_seq 1097 and this session's real claude_session_id (c05567cd-3567-44c4-8eb2-bcb9bd488f74), repeatedly, in response to the watchdog's recurring heartbeat-staleness nudge throughout the session"
+      within_declared_scope: true
+    - path: "00_ARCHITECTURE/briefs/parisesa/state/RESUME.md (branch parisesa/campaign-state)"
+      mutation_type: modified
+      sha256_before: not_recomputed_full_file
+      sha256_after: not_recomputed_full_file
+      justification: "Rewritten to summarize this session's close-out and hand off the 6 DATA_PARKED / 4 EXTERNAL_HOLD / F-125-staged-WIP items to a future session"
+      within_declared_scope: true
+    - path: "RESUME.md (conductor-local mirror, this worktree, untracked)"
+      mutation_type: modified
+      sha256_before: not_recomputed_full_file
+      sha256_after: not_recomputed_full_file
+      justification: "Synced to match the authoritative campaign-state copy"
+      within_declared_scope: true
+    - path: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      mutation_type: modified
+      sha256_before: "cd135d548b708dd4108a0f843fe420bf7aae08f5553ca18d967872e9520ebeb4"
+      sha256_after: <computed-at-commit>
+      justification: "v6.65 changelog entry appended; last_session_id updated to this session's close"
+      within_declared_scope: true
+    - path: "00_ARCHITECTURE/SESSION_LOG.md"
+      mutation_type: modified
+      sha256_before: "b27175a33704edd3f31e1dec7197b25439da042b25935268cf5db8e363a024df"
+      sha256_after: <computed-at-commit>
+      justification: "This session_open + session_close entry appended"
+      within_declared_scope: true
+    - path: "(~15 platform/platform-mcp source + test files across PRs #1466, #1479, #1480, #1481, #1482, #1484, #1485, #1486, #1478, plus earlier-in-session Wave 1-4 PRs not re-enumerated here)"
+      mutation_type: modified
+      sha256_before: not_reconstructed
+      sha256_after: not_reconstructed
+      justification: >
+        Deliberate scope decision, disclosed rather than silently omitted: the substantive
+        code-level changes this session were each made by an independently-dispatched
+        Sonnet-5 implementer agent in its own isolated worktree/branch, merged into `main`
+        through the normal protected merge queue with full required CI (including the
+        "Governance Gates" job, which itself runs drift_detector.py + schema_validator.py +
+        edge-case + native-literal + py-sidecar checks) green on every merge. Per-file
+        before/after hashes for that work are not reconstructed here; the authoritative
+        provenance record is (a) each PR's own commit history on `main`, and (b) the
+        corresponding PARISESA-V4 ledger finding row's `evidence_summary` + `pr_url` field
+        on `parisesa/campaign-state` (journal head seq 1097).
+      within_declared_scope: true
+  registry_updates_made:
+    file_registry: []
+    canonical_artifacts:
+      - canonical_id: CURRENT_STATE
+        change: version_bumped
+        details: "v6.64 -> v6.65 changelog entry; last_session_id rotated"
+  mirror_updates_propagated: []  # Mirror Discipline (MP.1/ND.1) RETIRED 2026-05-27; not applicable
+  red_team_pass:
+    due: false
+    performed: false
+    verdict: n/a
+    artifact_path: null
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 3
+    report_path: /tmp/drift_report_close.md
+    divergences_found: 79
+    note: >
+      Run fresh against a clean clone of origin/main (post-PARISESA-V4-close, incl. this
+      SESSION_LOG/CURRENT_STATE PR) rather than the conductor worktree's local checkout,
+      which was stale (many merges behind) and carried an unrelated pre-existing staged
+      diff (F-125 requiresOrientation work, present before this session started) that a
+      fetch/reset could have disturbed. Breakdown: 0 CRITICAL, 0 HIGH, 77 MEDIUM, 2 LOW --
+      all pre-existing canonical-artifact/CAPABILITY_MANIFEST registration-gap findings,
+      unrelated to and not introduced by this session's PARISESA-V4 work. See
+      known_residuals below.
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 3
+    report_path: /tmp/schema_report_close2.md
+    violations_found: 43
+    note: >
+      Same fresh-clone run as drift_detector_run above. Breakdown: 0 CRITICAL, 0 HIGH,
+      MEDIUM/LOW only. See known_residuals below.
+  current_state_updated: true
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: []
+    work_order_outcome_recorded: true
+    work_order_surface: "00_ARCHITECTURE/briefs/parisesa/state/ledger.json (branch parisesa/campaign-state)"
+    lease_release_recorded: true   # no CCD lease was ever acquired this session (single-tool Claude Code work, no Codex handoff) -- nothing left unreleased
+    lease_release_verified_on_remote: true   # same rationale as above
+    next_session_can_resume_from:
+      - "00_ARCHITECTURE/briefs/parisesa/state/RESUME.md (branch parisesa/campaign-state)"
+      - "00_ARCHITECTURE/briefs/parisesa/state/ledger.json (branch parisesa/campaign-state)"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_overrides:
+    - override_id: "OVR-PARISESA-V4-20260822-NOREVIEW"
+      issued_at: "2026-08-22"
+      description: "Native authorized autonomous merge with no human review gate for the Wave 1-5 implementation batch, mid-session."
+      scope_effect: "Implementer-agent PRs were merged after green CI without an additional human review step; GA-5 adversarial-review discipline and independent orchestrator re-verification (postgres MCP, classical-text MCP, gh PR status) were still applied throughout as the substitute check."
+  halts_encountered: []
+  native_directive_per_step_verification: []
+  build_state_serialized:
+    serialized: false
+    output_path: null
+    uploaded: false
+    gcs_uri: null
+    schema_validated: false
+    serializer_version: null
+    note: "serialize_build_state.py not invoked this session -- out of scope for a PARISESA-V4 remediation-campaign close, which uses the campaign's own ledger/journal as its build-state record instead."
+  close_criteria_met: true
+  unblocks: "A future PARISESA-V4 session picking up the 6 DATA_PARKED + 4 EXTERNAL_HOLD findings, and independently investigating the pre-existing F-125 staged-but-uncommitted diff on platform-mcp/src/tools/register_p1_aliases.ts found in the conductor worktree at this session's start."
+  handoff_notes: >
+    All 6 MORNING_SHIP_READY findings this session was scoped to close (F-142-CANDIDATE,
+    F-145, F-156, F-159, F-165, F-166) are SERVICE_CLOSED with verified merged PRs; the
+    F-75-batch OBSOLETE_MARKER row is deleted. 0 MORNING_SHIP_READY findings remain in the
+    ledger. DATA_PARKED (6) and EXTERNAL_HOLD (4) findings are deliberately untouched, per
+    explicit native instruction -- their own ledger next_action fields carry the real
+    per-finding blocker for whoever picks them up next. Full narrative and evidence for
+    every closure this session made is in the PARISESA-V4 journal/ledger on
+    `parisesa/campaign-state` (seq 1091-1097) and in this conversation's own transcript.
+  known_residuals:
+    - finding_id: "GOVERNANCE-DRIFT-BASELINE-79-20260822"
+      finding: "79 pre-existing MEDIUM/LOW drift findings (0 CRITICAL, 0 HIGH) -- mostly canonical-artifact/CAPABILITY_MANIFEST cross-registration gaps"
+      severity: MEDIUM
+      booking_reference: "ONGOING_HYGIENE_POLICIES exit-code-3 known-residuals whitelist; /tmp/drift_report_close.md (fresh clean-clone run, this session's close, 2026-08-22); not introduced by this session's PARISESA-V4 remediation work"
+    - finding_id: "GOVERNANCE-SCHEMA-BASELINE-43-20260822"
+      finding: "43 pre-existing MEDIUM/LOW schema violations (0 CRITICAL, 0 HIGH)"
+      severity: MEDIUM
+      booking_reference: "ONGOING_HYGIENE_POLICIES exit-code-3 known-residuals whitelist; /tmp/schema_report_close2.md (fresh clean-clone run, this session's close, 2026-08-22); not introduced by this session's PARISESA-V4 remediation work"
+```
+
+### Next session objective
+
+Pick up the 6 `DATA_PARKED` findings (F-104, F-151, F-189, F-23, F-35, F-63) and/or the 4
+`EXTERNAL_HOLD` findings (F-141, F-21, F-52, RATE-07-ENABLE) from the PARISESA-V4 ledger —
+each carries its own specific blocker in its `next_action` field; read the ledger directly
+rather than assuming a common cause. Separately, investigate the provenance of the
+pre-existing staged-but-uncommitted diff on `platform-mcp/src/tools/register_p1_aliases.ts`
+(F-125 `requiresOrientation`/B.11 orientation-gate work) found in the conductor worktree at
+this session's start, before acting on it.

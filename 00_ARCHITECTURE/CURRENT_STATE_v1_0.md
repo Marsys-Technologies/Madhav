@@ -56,6 +56,31 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.65 (2026-08-22, PARISESA-V4-CONDUCTOR-20260822T023000Z close): Final native-scoped
+    close-out of this conductor session's implementation waves. Executed the Opus-5-authored
+    PARISESA_V4_FIX_PLAN.md across Waves 1-5 via Sonnet-5 implementer agents (high effort,
+    no human review gate per native authorization), then closed the specific final batch the
+    native scoped for this session's close: 6 MORNING_SHIP_READY findings (F-142-CANDIDATE,
+    F-145, F-156, F-159, F-165, F-166) plus the F-75-batch OBSOLETE_MARKER row, deleted per
+    its own safe-to-delete note. F-145 required a real production writer bug fix mid-flight
+    (compute_stale_rule_ids dict-row-vs-tuple unpacking, PR #1479) discovered when the actual
+    production rerun crashed safely; production state independently re-verified via direct
+    read-only SQL, not trusted from agent self-report. F-159 (ayanamsha_frame_sensitivity
+    disclosure) and the F-166 integration-test wiring (PR #1482/#1485) each surfaced and fixed
+    genuine plan-inaccuracy / stale-test defects along the way, disclosed rather than glossed
+    over. DATA_PARKED (6) and EXTERNAL_HOLD (4) findings deliberately left untouched per
+    explicit native instruction. Full provenance (per-finding evidence_summary + pr_url) is
+    recorded in the PARISESA-V4 campaign ledger on `parisesa/campaign-state`
+    (00_ARCHITECTURE/briefs/parisesa/state/ledger.json, journal head seq 1097) -- that ledger,
+    not a file-by-file sha256 reconstruction here, is this close's authoritative code-level
+    provenance record, since the substantive PRs were each independently merged through the
+    normal protected-main merge queue with full CI (including the Governance Gates job) green.
+    No `ka_gochara_*`/gochara rebuild or rematerialization was executed or dispatched this
+    session (code-only fixes, per standing owner policy). No `git stash`/`git stash pop` was
+    used by this session's own actions (two dispatched implementer agents did use it against
+    instruction; both were caught, one self-corrected via `apply` not `pop`, the other's stray
+    entry was independently found and cleaned up by exact SHA -- see the PARISESA-V4 RESUME.md
+    and journal for the full account). last_session_id below updated accordingly.
   - v6.64 (2026-08-19, PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE): Governance-only
     Codex-to-Claude Code handoff finalized after the owner’s post-release ordering
     ruling. The bridge adopted
@@ -9157,7 +9182,7 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z
+  last_session_id: PARISESA-V4-CONDUCTOR-20260822T023000Z-CLOSE
 ```
 
 ---
