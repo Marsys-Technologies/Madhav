@@ -1,0 +1,849 @@
+{
+  "_note": "Sole writer: SANGAMA-LEAD (Stream E). Never hand-edit. Gate reads this file from /Users/Dev/Vibe-Coding/Apps/Madhav/00_ARCHITECTURE/briefs/ekavakyata/ekv_manifest.json",
+  "_prod_sync_gate_note": "EKV-R-01 PENDING: gate PROD-SYNC check uses +r<sha12> as git sha12 but it is SHA256(tool_names).slice(0,12). Gate will report mismatch. Interim: deployed_main_sha is the authoritative PROD-SYNC field.",
+  "deployed_catalog_version": "catalog-1+t152+r653c2a1a98c8",
+  "deployed_main_sha": "b2dc6be8ebbbeb72b5bc5df70ac5b8b4fbcace9f",
+  "deployed_main_sha_note": "A-13 (FINAL drain) CONFIRMED DEPLOYED (run 31913806187, headSha=b2dc6be8ebbb, web+MCP success ~23:15Z). First MCP deploy (31913429332) transient 401 flap; retry SUCCESS. All W1 drain PRs (A-07/A-08/A-12/A-13/A-16/A-17) merged and deployed. origin/main=b2dc6be8ebbb. PROD-SYNC: PASS.",
+  "cl00_cheap_subset_last_run": {
+    "result": "PASS-AFTER-TRIAGE",
+    "raw": false,
+    "ran_at": "2026-08-16T~02:15-04:30Z (full battery, not --cheap)",
+    "controls_run": 27,
+    "counts": {
+      "PASS": 17,
+      "FAIL": 1,
+      "SKIP": 7,
+      "WARN": 2,
+      "CONTROL-BROKEN": 0
+    },
+    "triaged": {
+      "F-83": "was FAIL (script bug: wrong table name mimamsa_insight_records -> mimamsa_insight_units) \u2014 FIXED, PR #1311, re-verified PASS against production data",
+      "F-85": "was FAIL (script bug: hardcoded vocabulary drifted from brahmagyan/verification_vocab.py, the declared sole source per CLAUDE.md N.4) \u2014 FIXED to import ALL_STATUSES directly, self-maintaining now, re-verified PASS"
+    },
+    "substantive": {
+      "F-102": "FAIL, confirmed real and PRE-EXISTING \u2014 5 asset_throughput rows with state=lit + non-null last_error, all predating EKAVAKYATA T0 (4 rows Aug 2/7, 1 row ka_kshetra Aug 15 06:28Z from the earlier SAMPURTI campaign). This is the audit corpus F-141 finding, routed to lane D-06 (CLAIMED). Not a regression from last night."
+    },
+    "regressions_from_ekavakyata_21_commits": 0,
+    "disposition": "Native-authorized (interactive morning session, replacing PRATINIDHI for this ruling): F-102 accepted as a documented pre-existing failure, same shape as EKV-R-5. D-06 moves up the Wave-2/3 sequence to actually fix it."
+  },
+  "lanes": [
+    {
+      "lane": "A-01",
+      "wave": 0,
+      "branch": "ekv/a-01-timing-hooks-hardfloor",
+      "merged_sha": "55a476fbd28f16abfaae756633a4729a23016379",
+      "files_touched": [
+        "platform-mcp/src/tools/registry_bridge.ts"
+      ],
+      "lease_ok": true,
+      "exit_test": "judgment marriage timing non-empty at 12KB budget; no answer-bearing section floors to 0",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/a01_a05_deploy.json",
+      "status": "LIVE",
+      "pr": 1289
+    },
+    {
+      "lane": "A-02",
+      "wave": 0,
+      "branch": "ekv/a-02-whitelist-4-keys",
+      "merged_sha": "33dfb2ba1a2a900ef641d82755f8cc14426c2104",
+      "files_touched": [
+        "platform/src/lib/retrieval/registry/tool_name_bridge.ts",
+        "platform/src/lib/__tests__/mcp/primitives.test.ts",
+        "platform/src/lib/__tests__/mcp/red_team/whitelist.test.ts"
+      ],
+      "lease_ok": true,
+      "exit_test": "four tools return content live; every surgical contract callable",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/a02_deploy.json",
+      "status": "LIVE",
+      "pr": 1294,
+      "_count_gate_fix": "toHaveLength 56->60 in both test files; sha 47c7ec6e5"
+    },
+    {
+      "lane": "A-03",
+      "wave": 0,
+      "branch": "ekv/a-03-typed-unwrap",
+      "merged_sha": "12cbf5e14dd26b4a36ac44ffbe88efec67674f06",
+      "files_touched": [
+        "platform-mcp/src/tools/register_p1_synthesis.ts"
+      ],
+      "lease_ok": true,
+      "exit_test": "bodha_discoveries_get serves rows at top level",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/a03_a06_deploy.json",
+      "status": "LIVE",
+      "pr": 1293
+    },
+    {
+      "lane": "A-04",
+      "wave": 0,
+      "branch": "ekv/a-04-lel-calibration",
+      "merged_sha": "a2ce6dc37ef3f460cabefa7e76287750a565441c",
+      "files_touched": [
+        "platform-mcp/src/lib/kala_envelope.ts",
+        "platform-mcp/src/tools/kala_views/ahead.ts",
+        "platform-mcp/src/tools/kala_views/elect.ts",
+        "platform-mcp/src/tools/kala_views/explain.ts",
+        "platform-mcp/src/tools/kala_views/priority.ts",
+        "platform-mcp/src/tools/kala_views/upaya.ts"
+      ],
+      "lease_ok": true,
+      "exit_test": "facades serve n_events=14 for native",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/c01_a04_deploy.json",
+      "status": "LIVE",
+      "pr": 1292
+    },
+    {
+      "lane": "A-05",
+      "wave": 0,
+      "branch": "ekv/a-05-enum-fix",
+      "merged_sha": "3deb54180deeb2f6141f189899da29284638ac54",
+      "files_touched": [
+        "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts"
+      ],
+      "lease_ok": true,
+      "exit_test": "4 uppercase buckets served incl UNRESOLVED; golden distribution",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/a01_a05_deploy.json",
+      "status": "LIVE",
+      "pr": 1290
+    },
+    {
+      "lane": "A-06",
+      "wave": 0,
+      "branch": "ekv/a-06-gochara-disclosure",
+      "merged_sha": "cfc37fc381661fd2671b299978d28cb5a9f13aad",
+      "files_touched": [
+        "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
+        "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts"
+      ],
+      "lease_ok": true,
+      "exit_test": "zero temporal_shape=point rows without disclosure in assess_health",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/a03_a06_deploy.json",
+      "status": "LIVE",
+      "pr": 1291
+    },
+    {
+      "lane": "C-01",
+      "wave": 0,
+      "branch": "ekv/c-01-ledger-repair",
+      "merged_sha": "20266702ada941565569dac8fc76b0b89b5ae88d",
+      "files_touched": [
+        "platform/migrations/572_ekv_c01_ledger_empty_daterange_repair.sql",
+        "platform/python-sidecar/scripts/kala_admission/w45_post_fit_rebuild.py"
+      ],
+      "lease_ok": true,
+      "exit_test": "negative-insert rejected by CHECK + _migrations_applied shows migration applied",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/c01_a04_deploy.json",
+      "status": "LIVE",
+      "pratinidhi_signoff": "EKV-R-1",
+      "pratinidhi_signoff_note": "AUTHORIZED 2026-08-16T01:15+05:30; 4 post-deploy assertions required",
+      "pr": 1295,
+      "ekv_r1_assertions_passed": true,
+      "ekv_r1_assertions_note": "All 4 passed at 2026-08-15T20:50Z: migration=1, empty_rows=0, CHECK fires, open_count=29"
+    },
+    {
+      "lane": "C-02",
+      "wave": 0,
+      "branch": "ekv/c-02-writer-hunt",
+      "merged_sha": "20266702ada941565569dac8fc76b0b89b5ae88d",
+      "files_touched": [],
+      "lease_ok": true,
+      "exit_test": "negative-insert rejected AND writer files valid range in dry-run",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/c01_a04_deploy.json",
+      "status": "LIVE",
+      "pr": 1295,
+      "_note": "C-02 bundled into PR #1295 with C-01"
+    },
+    {
+      "lane": "C-03",
+      "wave": 0,
+      "branch": "fix/prospective-ledger-empty-daterange",
+      "merged_sha": "b1ea4cdab35393961837ad0af953b23195a623cf",
+      "files_touched": [
+        "platform/src/lib/lel/prospective_ledger.ts",
+        "platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts"
+      ],
+      "lease_ok": true,
+      "_lease_ok_note": "Files unique to C-03: no other EKV lane touches prospective_ledger.ts. lease_ok was null due to HANDOFF-era tracking gap; set true by E-LEAD after LIVE confirm (files verified isolated).",
+      "exit_test": "standing_predictions_read returns clean live",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/c03_standing_predictions.json",
+      "status": "LIVE",
+      "pr": 1287,
+      "_note": "PR#1287 queued by \u1e5aTA-LEAD at pos=10; CLEAN state; autoMerge=False (manually queued)",
+      "handoff_note": "PR#1287 ejected from merge queue after A-04/A-02 rebase changed base SHA. GitHub UNKNOWN mergeability at 21:06Z; re-queue pending MERGEABLE state. RTA-LEAD monitoring. Not blocking W0 gate (W0 core = 7 lanes, C-03 honest-park OK)."
+    },
+    {
+      "lane": "A-07",
+      "wave": 1,
+      "branch": "ekv/a-07-domain-charter",
+      "merged_sha": "9b09835033e5cdb4ddf7d68eed529a9f1efa0be9",
+      "files_touched": [
+        "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts"
+      ],
+      "lease_ok": true,
+      "exit_test": "SHASTRA_MAP +4 domains (family/general/transition/travel); unknown-domain early reject; stale 7-domain error fixed",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/a07_domain_charter.json",
+      "status": "LIVE",
+      "pr": 1304,
+      "_deploy_note": "co-deployed with A-16 in run 31911942143 (headSha=fb6e4185b197, success ~22:32Z)"
+    },
+    {
+      "lane": "A-08",
+      "wave": 1,
+      "branch": "ekv/a-08-promise-spine",
+      "merged_sha": "84c6d55867b43b7a9f44ec9d682591ef2dbc73a9",
+      "files_touched": [
+        "platform-mcp/src/lib/promise_spine.ts",
+        "platform-mcp/src/lib/promise_spine.test.ts"
+      ],
+      "lease_ok": null,
+      "exit_test": "interpretPactJoin pure mapper (pact_status\u2192SaraPromiseJoin); INV-1 enforced (denied\u2192contradicts); 20/20 tests",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/a08_one_voice.json",
+      "status": "LIVE",
+      "pr": 1305,
+      "_deploy_note": "run 31912688002 (headSha=84c6d55867b4, success ~22:45Z, web+MCP; also covers A-17 via cumulative deploy)"
+    },
+    {
+      "lane": "A-09",
+      "wave": 1,
+      "branch": "ekv/a-09-sara-kernel",
+      "merged_sha": "6a0f8c9d284118f9758eaaa1fd3f4b411b6ce1aa",
+      "files_touched": [
+        "platform-mcp/src/lib/response_budget.ts",
+        "platform-mcp/src/tools/registry_bridge.ts"
+      ],
+      "lease_ok": true,
+      "exit_test": "buildAssessResponse() verdict_skeleton+activating_dasha in evidence layer; SaraKernel API frozen",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/b04_a09_deploy.json",
+      "status": "MERGED",
+      "pr": 1301,
+      "_kernel_api_frozen_sha": "dcc2fb5a",
+      "_ekv_r8_carveout": "A-09 is originating lane of SC-17/18/19+TAP-5/7/S-13 failures. EKV-R-12 LIVE carve-out excludes originators. Status corrected to MERGED per CONDUCTOR 23:20Z ruling. Deployed (run 31909647552 success) but governance status = MERGED per EKV-R-8/R-12."
+    },
+    {
+      "lane": "A-10",
+      "wave": 1,
+      "branch": "ekv/a-10-middleware",
+      "merged_sha": null,
+      "files_touched": [],
+      "lease_ok": null,
+      "exit_test": "uniform chart-existence precondition; reading-family parity",
+      "exit_test_result": null,
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/a10_middleware.json",
+      "status": "CLAIMED"
+    },
+    {
+      "lane": "A-11",
+      "wave": 1,
+      "branch": "ekv/a-11-bundle-principal",
+      "merged_sha": "c75400b231f95b2933f736d1630cc5b920fee8e9",
+      "files_touched": [
+        "platform/src/lib/mcp/bundle_adapters.ts"
+      ],
+      "lease_ok": true,
+      "exit_test": "8/8 subsystems both charts; PrimitiveResult typed; upstream_status real",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/a11_bundle.json",
+      "status": "LIVE",
+      "pr": 1302,
+      "_ci_fix": "c423b4c15 \u2014 test stub unwrap { params } for F-127 body structure; CI re-running 20:22Z"
+    },
+    {
+      "lane": "A-12",
+      "wave": 1,
+      "branch": "ekv/a-12-inv2-determinism",
+      "merged_sha": "cd7653855d02111f742cc1bd9a4d059cb98bc773",
+      "files_touched": [
+        "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts",
+        "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts"
+      ],
+      "lease_ok": null,
+      "exit_test": "id PK tiebreaker SQL ORDER BY + localeCompare JS .sort(); judgment_query activation deterministic",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/a12_determinism.json",
+      "status": "LIVE",
+      "pr": 1306,
+      "_deploy_note": "run 31913055119 (headSha=cd7653855d02, success ~23:00Z, web-only; MCP unchanged by A-12)"
+    },
+    {
+      "lane": "A-13",
+      "wave": 1,
+      "branch": "ekv/a-13-error-boundary",
+      "merged_sha": "b2dc6be8ebbbeb72b5bc5df70ac5b8b4fbcace9f",
+      "files_touched": [
+        "platform-mcp/src/tools/register_p1_reference.ts"
+      ],
+      "lease_ok": null,
+      "exit_test": "looksInternal regex +2 Postgres encoding patterns; raw UTF8 sanitized to safe_message",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/a13_errors.json",
+      "status": "LIVE",
+      "pr": 1307,
+      "_deploy_note": "MCP flap on run 31913429332 (transient 401); retry run 31913806187 SUCCESS ~23:15Z (web+MCP; FINAL drain deploy)"
+    },
+    {
+      "lane": "A-15",
+      "wave": 1,
+      "branch": "ekv/a-15-ayanamsha-wire",
+      "merged_sha": "7a1c79bf4da000f1c09f5a468d24ce262afcfcc0",
+      "files_touched": [
+        "platform-mcp/src/tools/register_p1_aliases.ts"
+      ],
+      "lease_ok": true,
+      "exit_test": "10 resolveChartFactsAyanamsha() wires; local alias deleted; bogus id errors",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/a15_ayanamsha.json",
+      "status": "LIVE",
+      "pr": 1300
+    },
+    {
+      "lane": "A-17",
+      "wave": 1,
+      "branch": "ekv/a-17-upaya-graha-scope",
+      "merged_sha": "46e59ac990df67bb2ae8fc329dc9b853b6730b7f",
+      "files_touched": [
+        "platform-mcp/src/lib/kala_upaya_diagnosis.ts"
+      ],
+      "lease_ok": null,
+      "exit_test": "mitigation_map rows filtered by targetedGraha in-memory; Venus-targeted marriage: no Saturn rows",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/a17_upaya.json",
+      "status": "LIVE",
+      "pr": 1309,
+      "_deploy_note": "A-17 MCP flap on run 31912330035 (transient 401, same as A-15 pattern); covered by A-08 deploy run 31912688002 (headSha=84c6d55867b4, MCP success ~22:43Z)"
+    },
+    {
+      "lane": "B-01",
+      "wave": 1,
+      "branch": "ekv/b-01-dignity-oracle",
+      "merged_sha": null,
+      "files_touched": [
+        "platform/python-sidecar/brahmagyan/",
+        "platform/python-sidecar/ga_writers/ga_structural_writer.py",
+        "platform/python-sidecar/ga_writers/ga_vargas_writer.py",
+        "platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py"
+      ],
+      "lease_ok": true,
+      "exit_test": "Jup 9.79 Sag->moolatrikona; Jup 15->own; Sthana Bala 45/30 split; 30/30 goldens pass",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/b01_dignity.json",
+      "status": "CI_FAILED",
+      "pr": 1296,
+      "_sentinel_sample": "B-01 15% sample PASS (HB-005)",
+      "_ci_failure": "E-LEAD mechanical fix pushed (dfbdfe620): test_friend_sign+test_enemy_sign \u2192 \"Neutral\". BUT PR is DIRTY (mergeState): conflicts in ga_vargas_writer.py (B-02 Rahu/Ketu changes vs B-01 dignity oracle wiring) and brahmagyan/__tests__/test_dignity_oracle.py (semantic: exalted-vs-MT priority differs). SASTRA-LEAD must rebase ekv/b-01-dignity-oracle onto current main (bdc27ccdf) and resolve both conflicts."
+    },
+    {
+      "lane": "B-02",
+      "wave": 1,
+      "branch": "ekv/b-02-nodal-aspects",
+      "merged_sha": "33289b579a00f73e191d12964d285dea9bff2270",
+      "files_touched": [
+        "platform/python-sidecar/services/gochara_grammar/primitives.py",
+        "platform/python-sidecar/ga_writers/ga_yoga_writer.py"
+      ],
+      "lease_ok": true,
+      "exit_test": "Ketu-in-Leo casts 5th onto Venus-in-Sag; 14/14 goldens pass",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/b02_b03_deploy.json",
+      "status": "LIVE",
+      "pr": 1297
+    },
+    {
+      "lane": "B-03",
+      "wave": 1,
+      "branch": "ekv/b-03-yoga-predicate",
+      "merged_sha": "bdc27ccdfabdea33e4620a9b80de186f359171d7",
+      "files_touched": [
+        "platform/python-sidecar/ga_writers/ga_yoga_writer.py"
+      ],
+      "lease_ok": true,
+      "exit_test": "native 4-house cluster non-firing; Kedara fires; 4/4 goldens pass",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/b02_b03_deploy.json",
+      "status": "LIVE",
+      "pr": 1298
+    },
+    {
+      "lane": "B-04",
+      "wave": 1,
+      "branch": "ekv/b-04-mi-honesty",
+      "merged_sha": "44d5ff5a76094aac4deaa148f1f3f3b43bd7845e",
+      "files_touched": [
+        "platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py"
+      ],
+      "lease_ok": true,
+      "exit_test": "6x clean->not_assessed; mi_bhara guard active; 9/9 tests pass",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/b04_a09_deploy.json",
+      "status": "LIVE",
+      "pr": 1299
+    },
+    {
+      "lane": "B-05",
+      "wave": 1,
+      "branch": "ekv/b-05-spec-pack",
+      "merged_sha": "0a056aec841ad4be65714d1c2d2e3793a63861a3",
+      "files_touched": [
+        "platform/python-sidecar/brahmagyan/signal_register_glossary.py",
+        "platform/python-sidecar/pipeline/orchestrator/writers/B05_ASSESS_MARRIAGE_7TH_SPEC.md",
+        "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts"
+      ],
+      "lease_ok": true,
+      "exit_test": "7th-house spec present; checklist not_built units registered; F-107/F-108 documented",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/b05_classical_spec.json",
+      "status": "LIVE",
+      "pr": 1303,
+      "_lease_exception": "register_d8_assess_domain.ts is Stream A territory; pre-authorized by B-05 spec assignment"
+    },
+    {
+      "lane": "B-09",
+      "wave": 1,
+      "branch": "ekv/b-09-rebuild-prep",
+      "merged_sha": null,
+      "files_touched": [],
+      "lease_ok": null,
+      "exit_test": "E has runbook: canary + nodal + full dispatch + 35-min stall rule",
+      "exit_test_result": null,
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/b09_rebuild_runbook.json",
+      "status": "CLAIMED"
+    },
+    {
+      "lane": "C-04",
+      "wave": 1,
+      "branch": "ekv/c-04-outcomes-path",
+      "merged_sha": null,
+      "files_touched": [],
+      "lease_ok": null,
+      "exit_test": "synthetic prediction driven open->resolved->dismissed; DB clean after",
+      "exit_test_result": null,
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/c04_outcomes.json",
+      "status": "CLAIMED"
+    },
+    {
+      "lane": "D-01",
+      "wave": 1,
+      "branch": "ekv/lead-dharma",
+      "merged_sha": null,
+      "files_touched": [
+        "platform/scripts/governance/check_no_local_aspect_dict.py",
+        "platform/scripts/governance/check_no_local_dignity_table.py",
+        "platform/scripts/governance/check_no_local_ayanamsha_map.py",
+        "platform/scripts/governance/check_dualoutput_requires_toolname.py",
+        "platform/scripts/governance/check_no_raw_token_in_narrative.py",
+        ".github/workflows/ekv-lints.yml"
+      ],
+      "lease_ok": null,
+      "exit_test": "each lint has hermetic self-test passing; allowlist present for pre-fix sites",
+      "exit_test_result": null,
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/d01_lints.json",
+      "status": "BUILT"
+    },
+    {
+      "lane": "D-02",
+      "wave": 1,
+      "branch": "ekv/d-02-param-parity",
+      "merged_sha": null,
+      "files_touched": [],
+      "lease_ok": null,
+      "exit_test": "every declared param changes result_hash or is marked advisory",
+      "exit_test_result": null,
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/d02_param_parity.json",
+      "status": "CLAIMED"
+    },
+    {
+      "lane": "D-03",
+      "wave": 1,
+      "branch": "ekv/d-03-reachability-ci",
+      "merged_sha": null,
+      "files_touched": [],
+      "lease_ok": null,
+      "exit_test": "surgical contracts whitelist+live-callable; URIs resolve",
+      "exit_test_result": null,
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/d03_reachability.json",
+      "status": "CLAIMED"
+    },
+    {
+      "lane": "D-04",
+      "wave": 1,
+      "branch": "ekv/lead-dharma",
+      "merged_sha": null,
+      "files_touched": [
+        "platform/scripts/governance/ekv_controls.py"
+      ],
+      "lease_ok": null,
+      "exit_test": "27 CL-00 controls runnable; cheap subset flag works",
+      "exit_test_result": null,
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/d04_cl00_harness.json",
+      "status": "BUILT"
+    },
+    {
+      "lane": "E-03",
+      "wave": 2,
+      "branch": null,
+      "merged_sha": null,
+      "files_touched": [],
+      "lease_ok": true,
+      "exit_test": "canary marriage: nodal terms present; then full dispatch both charts",
+      "exit_test_result": null,
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/e03_rebuild.json",
+      "status": "CLAIMED",
+      "depends_on": [
+        "B-01",
+        "B-02",
+        "B-03"
+      ]
+    },
+    {
+      "lane": "A-18",
+      "wave": 2,
+      "branch": "ekv/a-18-gochara-uri",
+      "merged_sha": null,
+      "files_touched": [],
+      "lease_ok": null,
+      "exit_test": "L4 capability URI registered; transport-failure conversion forbidden",
+      "exit_test_result": null,
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/a18_gochara_uri.json",
+      "status": "CLAIMED"
+    },
+    {
+      "lane": "B-06",
+      "wave": 2,
+      "branch": "ekv/b-06-muhurta-honesty",
+      "merged_sha": null,
+      "files_touched": [
+        "platform/python-sidecar/brahmagyan/phala/muhurta.py"
+      ],
+      "lease_ok": null,
+      "exit_test": "no signal named for non-existent computation",
+      "exit_test_result": null,
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/b06_muhurta.json",
+      "status": "CLAIMED"
+    },
+    {
+      "lane": "B-07",
+      "wave": 2,
+      "branch": "ekv/b-07-phnimitta",
+      "merged_sha": null,
+      "files_touched": [],
+      "lease_ok": null,
+      "exit_test": "unified epistemic enum; cardinality_note stays",
+      "exit_test_result": null,
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/b07_phnimitta.json",
+      "status": "CLAIMED"
+    },
+    {
+      "lane": "C-05",
+      "wave": 2,
+      "branch": "ekv/c-05-auto-filing",
+      "merged_sha": null,
+      "files_touched": [],
+      "lease_ok": null,
+      "exit_test": "projections file ledger rows; dedupe by configuration_signature",
+      "exit_test_result": null,
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/c05_auto_filing.json",
+      "status": "CLAIMED"
+    },
+    {
+      "lane": "D-05",
+      "wave": 2,
+      "branch": "ekv/d-05-governance-record",
+      "merged_sha": null,
+      "files_touched": [
+        "00_ARCHITECTURE/"
+      ],
+      "lease_ok": null,
+      "exit_test": "drift/schema validators have explicit whitelists; CURRENT_STATE reconciled",
+      "exit_test_result": null,
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/d05_governance.json",
+      "status": "CLAIMED"
+    },
+    {
+      "lane": "D-06",
+      "wave": 2,
+      "branch": "ekv/d-06-build-state-honesty",
+      "merged_sha": null,
+      "files_touched": [],
+      "lease_ok": null,
+      "exit_test": "asset_throughput invariant detector; state=lit+last_error caught",
+      "exit_test_result": null,
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/d06_build_state.json",
+      "status": "CLAIMED"
+    },
+    {
+      "lane": "A-14",
+      "wave": 3,
+      "branch": "ekv/a-14-register-gloss",
+      "merged_sha": null,
+      "files_touched": [],
+      "lease_ok": null,
+      "exit_test": "zero raw tokens in *_text/*_thesis/*_statement across 125-tool sweep",
+      "exit_test_result": null,
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/a14_register_gloss.json",
+      "status": "CLAIMED"
+    },
+    {
+      "lane": "A-16",
+      "wave": 3,
+      "branch": "ekv/a-16-vocab-sync",
+      "merged_sha": "fb6e4185b197c248a460d259075c8a187c039e32",
+      "files_touched": [
+        "platform-mcp/src/tools/intent_scope_classifier.ts"
+      ],
+      "lease_ok": null,
+      "exit_test": "DOMAIN_RULES plural-safe patterns aligned with DEEP_DOMAIN_WORD; married/jobs/relationships resolve correctly",
+      "exit_test_result": "PASS",
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/a16_assess_marriage.json",
+      "status": "LIVE",
+      "pr": 1308,
+      "_deploy_note": "run 31911942143 (headSha=fb6e4185b197, success ~22:32Z; web+MCP)"
+    },
+    {
+      "lane": "B-08",
+      "wave": 3,
+      "branch": "ekv/b-08-salience-ranker",
+      "merged_sha": null,
+      "files_touched": [],
+      "lease_ok": null,
+      "exit_test": "no byte-identical top-10; marriage+progeny <=3 overlap",
+      "exit_test_result": null,
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/b08_salience.json",
+      "status": "CLAIMED"
+    },
+    {
+      "lane": "E-04",
+      "wave": 3,
+      "branch": null,
+      "merged_sha": null,
+      "files_touched": [],
+      "lease_ok": true,
+      "exit_test": "25 T1 reproduce_cmds + all W0 lanes + 20% sample + full CL-00 27",
+      "exit_test_result": null,
+      "live_probe_evidence": "00_ARCHITECTURE/briefs/ekavakyata/evidence/e04_battery.json",
+      "status": "CLAIMED"
+    }
+  ],
+  "_hot_file_lock": "registry_bridge.ts: A-09 lane merged; now frozen again. tool_name_bridge.ts: frozen after A-02.",
+  "_a02_count_gate_fix": {
+    "sha": "47c7ec6e5",
+    "change": "toHaveLength 56->60 in primitives.test.ts and whitelist.test.ts; added toContain for 4 new tools"
+  },
+  "merge_log": [
+    {
+      "lane": "A-01",
+      "pr": 1289,
+      "status": "MERGED",
+      "note": "CLEAN 19:38Z; CI on main in_progress",
+      "merged_sha": "55a476fbd28f16abfaae756633a4729a23016379"
+    },
+    {
+      "lane": "A-05",
+      "pr": 1290,
+      "status": "MERGED",
+      "note": "Merged ~20:00Z; CI queued on main",
+      "merged_sha": "3deb54180deeb2f6141f189899da29284638ac54"
+    },
+    {
+      "lane": "A-06",
+      "pr": 1291,
+      "status": "MERGED",
+      "note": "Merged ~20:18Z; deploy in_progress run 31906422500 (headSha=cfc37fc38; deploy-web running)",
+      "merged_sha": "cfc37fc381661fd2671b299978d28cb5a9f13aad"
+    },
+    {
+      "lane": "A-04",
+      "pr": 1292,
+      "status": "LIVE",
+      "note": "deploy run 31907248672 success; includes C-01+C-02",
+      "live_at": "2026-08-15T20:50Z"
+    },
+    {
+      "lane": "A-03",
+      "pr": 1293,
+      "status": "MERGED",
+      "note": "Merged ~20:10Z",
+      "merged_sha": "12cbf5e14dd26b4a36ac44ffbe88efec67674f06"
+    },
+    {
+      "lane": "A-02",
+      "pr": 1294,
+      "status": "LIVE",
+      "note": "Merged 20:55Z sha=33dfb2ba1; deploy run 31908358001 success (web+MCP, sha=33dfb2ba1, 21:03Z LIVE)",
+      "merged_sha": "33dfb2ba1",
+      "merged_at": "2026-08-15T20:55Z",
+      "live_at": "2026-08-15T21:03Z"
+    },
+    {
+      "lane": "C-01",
+      "pr": 1295,
+      "status": "LIVE",
+      "note": "Merged ~20:28Z; CI on 20266702a in_progress; C-01 deploy pending. 4 post-deploy assertions required (EKV-R-1).",
+      "merged_sha": "20266702ada941565569dac8fc76b0b89b5ae88d",
+      "live_at": "2026-08-15T20:50Z",
+      "ekv_r1": "PASS (4/4)"
+    },
+    {
+      "lane": "B-01",
+      "pr": 1296,
+      "status": "CI_FAILED",
+      "note": "BLOCKED: E-LEAD mechanical fix dfbdfe620 pushed to ekv/b-01-dignity-oracle. PR DIRTY: ga_vargas_writer.py conflict (B-02 Rahu/Ketu vs B-01 dignity wiring) + test_dignity_oracle.py semantic conflict (exaltation vs MT priority). SASTRA-LEAD must rebase onto main (bdc27ccdf) to resolve."
+    },
+    {
+      "lane": "B-02",
+      "pr": 1297,
+      "status": "LIVE",
+      "note": "Merged 21:05Z; deploy run 31908884289 SUCCESS (headSha=bdc27ccdf) LIVE 21:22Z",
+      "merged_sha": "33289b579a00f73e191d12964d285dea9bff2270",
+      "merged_at": "2026-08-15T21:05Z",
+      "live_at": "2026-08-15T21:22Z"
+    },
+    {
+      "lane": "B-03",
+      "pr": 1298,
+      "status": "LIVE",
+      "note": "Merged 21:11Z; deploy run 31908884289 SUCCESS LIVE 21:22Z",
+      "merged_sha": "bdc27ccdfabdea33e4620a9b80de186f359171d7",
+      "merged_at": "2026-08-15T21:11Z",
+      "live_at": "2026-08-15T21:22Z"
+    },
+    {
+      "lane": "B-04",
+      "pr": 1299,
+      "status": "LIVE",
+      "note": "Merged 21:20Z; deploy run 31909264034 SUCCESS (headSha=44d5ff5a7) LIVE 21:22Z",
+      "merged_sha": "44d5ff5a76094aac4deaa148f1f3f3b43bd7845e",
+      "merged_at": "2026-08-15T21:20Z",
+      "live_at": "2026-08-15T21:22Z"
+    },
+    {
+      "lane": "A-15",
+      "pr": 1300,
+      "status": "LIVE",
+      "note": "Merged 21:45Z sha=7a1c79bf4; deploy run 31910678712 MCP=SUCCESS (first run 31910398270 MCP smoke flap); web still in_progress",
+      "merged_sha": "7a1c79bf4da000f1c09f5a468d24ce262afcfcc0",
+      "merged_at": "2026-08-15T21:45Z",
+      "live_at": "2026-08-15T21:55Z"
+    },
+    {
+      "lane": "A-09",
+      "pr": 1301,
+      "status": "MERGED",
+      "note": "Merged 21:21Z; deploy run 31909647552 SUCCESS (headSha=6a0f8c9d2) 21:36Z. EKV-R-12: originating lane of SC/TAP failures; LIVE carve-out excluded. Governance status=MERGED per CONDUCTOR 23:20Z.",
+      "merged_sha": "6a0f8c9d284118f9758eaaa1fd3f4b411b6ce1aa",
+      "merged_at": "2026-08-15T21:21Z",
+      "live_at": "2026-08-15T21:36Z"
+    },
+    {
+      "lane": "A-11",
+      "pr": 1302,
+      "status": "LIVE",
+      "note": "Merged 21:55Z sha=c75400b23; co-deployed with C-03 (deploy 31911459360 SUCCESS)",
+      "merged_sha": "c75400b231f95b2933f736d1630cc5b920fee8e9",
+      "merged_at": "2026-08-15T21:55Z",
+      "live_at": "2026-08-15T22:22Z"
+    },
+    {
+      "lane": "B-05",
+      "pr": 1303,
+      "status": "LIVE",
+      "note": "Merged ~21:39Z; deploy run 31910024692 SUCCESS (headSha=0a056aec8, web+sidecar+pipeline) LIVE ~21:45Z",
+      "merged_sha": "0a056aec841ad4be65714d1c2d2e3793a63861a3",
+      "merged_at": "2026-08-15T21:39Z",
+      "live_at": "2026-08-15T21:45Z"
+    },
+    {
+      "lane": "A-07",
+      "pr": 1304,
+      "status": "LIVE",
+      "note": "Merged ~22:12Z sha=9b09835033e5; co-deployed with A-16 (run 31911942143 headSha=fb6e4185b197 success ~22:32Z)",
+      "merged_at": "2026-08-15T22:12Z",
+      "live_at": "2026-08-15T22:32Z",
+      "merged_sha": "9b09835033e5cdb4ddf7d68eed529a9f1efa0be9"
+    },
+    {
+      "lane": "A-08",
+      "pr": 1305,
+      "status": "LIVE",
+      "note": "Merged 22:37Z sha=84c6d5586; deploy run 31912688002 SUCCESS ~22:45Z (web+MCP; also covers A-17 MCP flap)",
+      "merged_sha": "84c6d55867b43b7a9f44ec9d682591ef2dbc73a9",
+      "merged_at": "2026-08-15T22:37:41Z",
+      "live_at": "2026-08-15T22:45Z"
+    },
+    {
+      "lane": "A-12",
+      "pr": 1306,
+      "status": "LIVE",
+      "note": "Merged 22:46Z sha=cd7653855d0; deploy run 31913055119 SUCCESS ~23:00Z (web-only; MCP unchanged)",
+      "merged_sha": "cd7653855d02111f742cc1bd9a4d059cb98bc773",
+      "merged_at": "2026-08-15T22:46:16Z",
+      "live_at": "2026-08-15T23:00Z"
+    },
+    {
+      "lane": "A-13",
+      "pr": 1307,
+      "status": "LIVE",
+      "note": "Merged 22:55Z sha=b2dc6be8e (FINAL drain); MCP flap 31913429332; retry deploy 31913806187 SUCCESS ~23:15Z (web+MCP)",
+      "merged_sha": "b2dc6be8ebbbeb72b5bc5df70ac5b8b4fbcace9f",
+      "merged_at": "2026-08-15T22:55:32Z",
+      "live_at": "2026-08-15T23:15Z"
+    },
+    {
+      "lane": "A-16",
+      "pr": 1308,
+      "status": "LIVE",
+      "note": "Merged 22:21Z sha=fb6e4185b197; deploy run 31911942143 SUCCESS ~22:32Z (web+MCP; headSha=fb6e4185b197)",
+      "merged_sha": "fb6e4185b197c248a460d259075c8a187c039e32",
+      "merged_at": "2026-08-15T22:21Z",
+      "live_at": "2026-08-15T22:32Z"
+    },
+    {
+      "lane": "A-17",
+      "pr": 1309,
+      "status": "LIVE",
+      "note": "Merged 22:30Z sha=46e59ac99; deploy 31912330035 MCP flap (transient 401); covered by A-08 deploy run 31912688002 (MCP success ~22:43Z)",
+      "merged_sha": "46e59ac990df67bb2ae8fc329dc9b853b6730b7f",
+      "merged_at": "2026-08-15T22:30:25Z",
+      "live_at": "2026-08-15T22:45Z"
+    },
+    {
+      "lane": "C-03",
+      "pr": 1287,
+      "status": "LIVE",
+      "note": "Merged 22:03Z; deploy run 31911459360 SUCCESS (retry after 31911149433 Google Fonts flap); A-11+C-03 co-deployed; LIVE ~22:22Z",
+      "merged_sha": "b1ea4cdab35393961837ad0af953b23195a623cf",
+      "merged_at": "2026-08-15T22:03Z",
+      "live_at": "2026-08-15T22:22Z"
+    }
+  ],
+  "ekv_rulings": {
+    "EKV-R-1": {
+      "title": "C-01 Migration DB Write Authorization",
+      "ruling": "AUTHORIZED",
+      "timestamp": "2026-08-16T01:15+05:30",
+      "issued_by": "PRATINIDHI",
+      "conditions": [
+        "4 post-deploy assertions in migration 572 header",
+        "Do not edit migration after applied",
+        "PR cites EKV-R-1"
+      ]
+    },
+    "EKV-R-2": {
+      "title": "Gate PROD-SYNC Check Fix",
+      "ruling": "APPROVED_OPTION_A",
+      "timestamp": "2026-08-16T01:15+05:30",
+      "issued_by": "PRATINIDHI",
+      "implementation": "CONDUCTOR fixes ekv_gate.py to compare deployed_main_sha vs origin/main",
+      "status": "PENDING_CONDUCTOR_FIX"
+    }
+  }
+}

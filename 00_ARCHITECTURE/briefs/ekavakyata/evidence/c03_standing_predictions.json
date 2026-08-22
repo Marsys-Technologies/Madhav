@@ -1,0 +1,20 @@
+{
+  "_note": "C-03 exit-test evidence: standing_predictions_read returns clean live. C-03 fix: handle Postgres EMPTY daterange literal in prospective_ledger.ts and query_prospective_ledger.ts.",
+  "probe_time_utc": "2026-08-15T22:08:30Z",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "tool": "standing_predictions_read",
+  "params": {"status": "open", "limit": 5},
+  "result": "PASS",
+  "evidence": {
+    "prediction_count_returned": 5,
+    "total_open_count": 5,
+    "no_crash": true,
+    "sample_predictions": [
+      {"event_class": "parental_event", "window": "2056-02-01/2056-02-28", "confidence": 0.698},
+      {"event_class": "psychological_arc", "window": "2068-09-01/2068-09-29", "confidence": 0.701}
+    ]
+  },
+  "note_c01_link": "C-01 migration (572_ekv_c01_ledger_empty_daterange_repair.sql) deleted the 6 EMPTY-daterange rows before C-03 code fix landed. C-03 adds the code-side guard so future empty-daterange inserts are also blocked (CHECK constraint) and the serving query handles the Postgres EMPTY literal without crashing.",
+  "deploy_run": "31911149433",
+  "merged_sha": "b1ea4cdab35393961837ad0af953b23195a623cf"
+}
