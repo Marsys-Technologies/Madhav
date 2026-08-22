@@ -781,19 +781,35 @@ jobs:
       # recorded ruling, not a quiet edit.
       - name: drift_detector — repo scan
         # Exit code policy: 0=clean, 3=baseline residuals, 1/2=regression (fail).
-        # Whitelist location: platform/scripts/governance/drift_detector.py known_residuals[]
-        # Current whitelisted tickets: WARN.2–WARN.8 (dead Gemini mirror pointers,
-        # historical PHASE_B_PLAN refs — booked for quarterly governance pass 2026-07-24)
+        # Whitelist location: platform/scripts/governance/drift_detector.py WHITELIST_TICKETS{}
+        # Current whitelisted tickets: WARN.4, WARN.9, WARN.10 (WARN.2 and WARN.5 retired
+        # 2026-08-21/22 as confirmed-dead, RC-2/RC-1 §7.3; WARN.6/7/8 removed 2026-06-16 —
+        # see WHITELIST_TICKETS' own comments for each retirement's evidence)
         # Use || to capture exit code without set -e aborting on non-zero exit.
         env:
-          # Ratcheted DOWN 216 → 165 on 2026-08-21 (F-94 narrow repair; the DVA Ruling 4
-          # comment above explicitly invites lowering after cleanup). Measured 164
-          # findings / exit=3 on the post-repair tree, matching CI's own last logged run
-          # (215 pre-fix, identical to the workstation) -- the +1 is plain slack, not an
-          # environment delta (GA-5 review corrected this comment's prior, unearned
-          # "environment delta" justification -- no such delta was ever measured).
-          # Lower freely; raise only by ruling.
-          DRIFT_BASELINE_MAX: '165'
+          # Ratcheted DOWN 165 → 79 on 2026-08-22 (RC-1 + F-163, PARISESA-V4).
+          # RC-1 repointed §H.3.5/§H.3.8 off the SUPERSEDED FILE_REGISTRY_v1_14.md
+          # onto CANONICAL_ARTIFACTS_v1_0.md / CAPABILITY_MANIFEST.json (the
+          # doctrine-named live surfaces); F-163 added the missing CURRENT-rows
+          # status filter in the same hunk (they are ruled to land as one PR,
+          # never separately). Measured 79 findings / exit=3 on the repointed
+          # tree: 77 real registry_disagreement gaps (CAPABILITY_MANIFEST.json
+          # CURRENT-status entries whose basename is not named anywhere in
+          # CANONICAL_ARTIFACTS_v1_0.md §1) + 2 pre-existing DB-unreachable LOW
+          # findings unrelated to this change (schema_db_unreachable,
+          # a3_schema_db_unreachable — this sandbox has no live DB). The F94 plan
+          # estimated "~3" real findings once the 161 FILE_REGISTRY false
+          # positives were removed; that estimate implicitly assumed the residual
+          # would resemble a "retire" outcome, not a "repoint against a second,
+          # independently-frozen registry" outcome. CANONICAL_ARTIFACTS_v1_0.md's
+          # own §1 table is frozen at ~33 rows (last grown 2026-04-27, per its own
+          # SUPERSEDED frontmatter) and never tracked most of
+          # CAPABILITY_MANIFEST.json's later growth to 128 entries, so the 77 is
+          # real, triaged drift, not a repeat of the FILE_REGISTRY false-positive
+          # class — see the PR body for the full triage and category breakdown.
+          # Prior: 216 → 165 on 2026-08-21 (F-94 narrow repair). Lower freely;
+          # raise only by ruling.
+          DRIFT_BASELINE_MAX: '79'
         run: |
           ec=0
           out=$(python platform/scripts/governance/drift_detector.py) || ec=$?
