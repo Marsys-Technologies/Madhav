@@ -1383,3 +1383,35 @@ The lease-close entries also carry two things forward deliberately: the DD-28/29
 numbering note (so a later merge does not renumber), and a repeat of this run's own published
 correction about the migration number spaces — repeated in the close because someone reading only the
 close would otherwise miss the retraction.
+
+---
+
+## F-N17 — D-013's merge-admission condition verified in what LANDED, not in what was promised
+
+D-013 made P4-I's admission conditional on **all three parts landing in one PR, or none**: the
+migration's new unique key, `hasSent`/`readByAsOf` scoping on `run_chart_id`, and the matching
+`ON CONFLICT`. A partial landing would have been a regression, not a partial fix — the migration alone
+would have made every write fail with SQLSTATE 42P10, and the read-path fix alone would have left the
+original defect intact.
+
+**Verified against `origin/main` after the merge, not against the builder's report:**
+
+```
+588_samiksha_digest_journal.sql:130   UNIQUE NULLS NOT DISTINCT (as_of, run_chart_id)
+digest_journal.ts:170                 WHERE as_of = $1::date AND run_chart_id IS NOT DISTINCT FROM $2::uuid
+digest_journal.ts:218                 WHERE as_of = $1::date AND run_chart_id IS NOT DISTINCT FROM $2::uuid
+digest_journal.ts:184                 ON CONFLICT (as_of, run_chart_id) DO UPDATE SET
+samiksha_daily_job.integration.test   'DEFAULT journal (no override)' — the one caller that omits it
+"Default production journal" caption  ABSENT (corrected)
+```
+
+All three present, plus the N8-WIRING detector that closes the "the lane's own thesis has no test"
+gap, plus the stale caption removed. **Admission was genuine rather than nominal.**
+
+**The remaining §N.4 obligation is not discharged and is being watched, not assumed.** The migration
+had **not** applied at the time of this check (`to_regclass=NULL`, no ledger row, `max_tracked=587`) —
+its deploy was still queued behind P3-E's. §N.4's named hazard, as re-scoped by DVA Ruling 58, is
+precisely *"migrations silently doing nothing while the deploy reports success."* A watcher is armed
+on the exact failure shapes: table present with **no** ledger row; ledger row with **no** table; and
+deploy-reports-success-while-588-remains-unapplied. **Whichever way it resolves, it resolves against an
+observation rather than an inference.**

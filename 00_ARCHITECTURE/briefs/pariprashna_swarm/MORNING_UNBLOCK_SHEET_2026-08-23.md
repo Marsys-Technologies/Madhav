@@ -170,5 +170,32 @@ changes** pointing at the campaign that made them. The second is the honest opti
 
 ---
 
+## Work that deliberately did NOT reach `main` — where to find it
+
+Two lanes were parked on rulings, so their branches carry real artifacts that are **not** on `main`.
+They are pushed and safe; you just won't find them by looking at `main`.
+
+**`pariprashna/p4-h`** (PR #1496, parked) carries:
+- **DD-28 / DD-29 / DD-30** in the swarm register — the two turn writers replacing `metadata_json`
+  wholesale; `writeConversationMessages` reporting `verified: true` while destroying it; and the
+  dedicated-`conversation_disputes`-table design note (recorded, **explicitly not built** — your call).
+- **A quarantined regression test that already reads red**,
+  `feedback_dispute_survives_turn.db.test.ts`, `it.skip` with the blocker named in its skip reason.
+  Un-skip it, fix the two writers to merge rather than replace `metadata_json`, and it goes green.
+  **The detector exists before the fix does — which is the order this campaign kept getting backwards.**
+
+Because those three DD numbers live on a branch, **the run's own governance write started at DD-31**
+to avoid colliding with them. **Do not renumber them when you merge that branch.**
+
+**`pariprashna/p4-g`** (PR #1500, parked) carries the server half of the window-opening ask — a
+DB-verified fire guard, deterministic composition, and a working SSE event — with three findings on
+the PR: the write-time re-verification is weaker than the read-time one (a not-yet-closed window was
+recorded as `happened`), the ask re-fires every turn with no exit, and **the dispute answer reaches
+nothing at all**. Its flag ships OFF, so none of this is live.
+
+*Resume commands for both are in the decision ledger.*
+
+---
+
 *Every claim on this page was verified by the run, not assumed. Where something was not verified, the
 morning report says so in the same sentence as the claim.*
