@@ -345,6 +345,66 @@ there concurrently. This run touched none of it.*
 
 ---
 
+## The governance close (§7)
+
+Performed as a batched registry write in one serialized step, under a lease announced in
+`campaign-coordination` **before** the write and closed after it (X-2).
+
+**DD-31 … DD-44 filed, plus an in-place amendment to DD-19.** Numbering was checked live rather than
+predicted: `main`'s register topped out at DD-27, and **DD-28/29/30 already exist on the parked
+`pariprashna/p4-h` branch** (confirmed by `git ls-remote` + `git show` that the branch has not merged),
+so DD-31 was the first genuinely free number. A note is recorded in DD-36 so that whoever later merges
+P4-H does not renumber them.
+
+What the entries record: the $400 budget outcome · **the seam-compression record** · the §6.4 reject
+demo · the DD-1 battery result · the deletion warrant · every surrogate park · every lane's honest
+state · and seven new findings.
+
+**The seam-compression record, quoted, because it is the one the charter singled out:**
+
+> *"The authorization stands as granted and unexercised, not withdrawn and not consumed… **AC-15
+> remains open, async, and never claimed** — no AC-15 verdict of any kind, positive or negative, was
+> recorded tonight… A later negative AC-15 verdict, whenever it arrives, has a clean record to act
+> against: nothing tonight forecloses it, and nothing tonight claims a compression that did not
+> occur."*
+
+Ruling 11 authorized the DD-1 battery to substitute for the native's week of use as P4's opening gate.
+**The seam was never compressed, because the gate was never reached.** That is a different outcome
+from the one the ruling anticipated, and the register says so rather than letting the authorization
+read as if it had been used.
+
+**The deletion warrant and its refuter panel: NEITHER EXISTS.** No deletion occurred, no census was
+accepted as a warrant, no refuter panel was convened — the RETIRE train never opened. Recorded plainly
+so that a later reader does not mistake the absence for an oversight.
+
+**No tag was pushed**, and four separate entries say why.
+
+---
+
+## Merge discipline, verified rather than asserted
+
+Every merge was preceded by an X-1 lease re-read against a freshly-fetched
+`origin/campaign-coordination`, including the automated tail of the queue, where the lease tip is
+recorded per enqueue.
+
+**This repository squash-merges**, so a branch commit is never an ancestor of `main` — "is the branch
+contained in main" is not a valid merged-check here, and was not used. Merge claims were verified by
+PR state **plus content presence on `main`**:
+
+```
+charter (#1493)                      PRESENT
+P4-K harness (#1498)                 PRESENT (4 files)
+P3-A plan_bridge (#1495)             PRESENT
+P3-A pinned-baseline detector        PRESENT (3 refs)
+P3-E park record (#1494)             PRESENT
+P3-E temporary diagnostic            ABSENT  (correct — it must not survive the merge)
+```
+
+That last line is the one worth having checked: a temporary secret-shape diagnostic, however carefully
+written, must not reach `main`, and "the builder said it removed it" is not the same as it being gone.
+
+---
+
 # APPENDIX — the original in-progress skeleton follows
 
 ## End state
