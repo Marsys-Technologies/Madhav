@@ -153,11 +153,13 @@ run('DbDigestJournal against a real migrated Postgres (migration 588)', () => {
     expect(rows[0].subject).toBe('updated subject line')
   })
 
-  it('the unique (as_of) constraint is real: a raw duplicate INSERT (bypassing the UPSERT) is rejected', async () => {
-    const j = new DbDigestJournal(exec)
+  it('the unique (as_of, run_chart_id) constraint is real, NULLS NOT DISTINCT: a raw duplicate all-charts INSERT (bypassing the UPSERT) is rejected', async () => {
+    const j = new DbDigestJournal(exec) // chartId undefined → run_chart_id NULL (all-charts row)
     await j.markSent(AS_OF, record(AS_OF))
     // §N.8 detector: this proves the constraint the whole idempotency story leans on actually
-    // exists in the schema, not just in application-code discipline.
+    // exists in the schema, not just in application-code discipline — AND that NULLS NOT
+    // DISTINCT really does treat two NULL run_chart_id rows as colliding (Postgres's default
+    // NULL semantics would NOT reject this without the explicit NULLS NOT DISTINCT clause).
     await expect(
       pool.query(
         `INSERT INTO ${DIGEST_JOURNAL_TABLE}
@@ -167,5 +169,49 @@ run('DbDigestJournal against a real migrated Postgres (migration 588)', () => {
         [AS_OF],
       ),
     ).rejects.toThrow(/duplicate key|unique constraint/i)
+  })
+
+  it('two DIFFERENT charts scoped to the SAME as_of do NOT collide — the live bug this migration/class fix closes', async () => {
+    // This is the exact scenario an independent refuter reproduced live against the pre-fix
+    // schema (UNIQUE (as_of) alone, hasSent() not scoped by run_chart_id): chart A's digest
+    // silently shadowed chart B's — B's window closed, B's digest was suppressed, nothing
+    // recorded it, exit code 0. Both migration 588's key and DbDigestJournal.hasSent/markSent/
+    // readByAsOf's chart-scoping were fixed together before either went live.
+    const CHART_A = '1c826d5a-41cb-4450-b4dc-59d440e5f75a' // synthetic chart (RF-5)
+    const CHART_B = '2c826d5a-41cb-4450-b4dc-59d440e5f75a' // distinct synthetic id, same as_of
+    await pool.query(`DELETE FROM ${DIGEST_JOURNAL_TABLE} WHERE as_of = $1::date`, [AS_OF])
+
+    const jA = new DbDigestJournal(exec, CHART_A)
+    const jB = new DbDigestJournal(exec, CHART_B)
+
+    expect(await jA.hasSent(AS_OF)).toBe(false)
+    expect(await jB.hasSent(AS_OF)).toBe(false)
+
+    const recA = record(AS_OF)
+    recA.subject = 'chart A digest'
+    await jA.markSent(AS_OF, recA)
+
+    // The defect this closes: pre-fix, jB.hasSent(AS_OF) would now read TRUE off chart A's row.
+    expect(await jA.hasSent(AS_OF)).toBe(true)
+    expect(await jB.hasSent(AS_OF)).toBe(false) // chart B's own send is still owed
+
+    const recB = record(AS_OF)
+    recB.subject = 'chart B digest'
+    await jB.markSent(AS_OF, recB)
+
+    expect(await jB.hasSent(AS_OF)).toBe(true)
+
+    // Both rows genuinely exist, independently, in the DB — not one shadowing the other.
+    const { rows } = await pool.query(
+      `SELECT run_chart_id, subject FROM ${DIGEST_JOURNAL_TABLE} WHERE as_of = $1::date ORDER BY subject`,
+      [AS_OF],
+    )
+    expect(rows).toHaveLength(2)
+    expect(rows.map((r) => r.subject)).toEqual(['chart A digest', 'chart B digest'])
+
+    expect((await jA.readByAsOf(AS_OF))?.subject).toBe('chart A digest')
+    expect((await jB.readByAsOf(AS_OF))?.subject).toBe('chart B digest')
+
+    await pool.query(`DELETE FROM ${DIGEST_JOURNAL_TABLE} WHERE as_of = $1::date`, [AS_OF])
   })
 })

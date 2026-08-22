@@ -55,7 +55,7 @@ function record(over: Partial<DigestSentRecord> = {}): DigestSentRecord {
 }
 
 describe('DbDigestJournal.hasSent', () => {
-  it('issues an EXISTS query scoped by as_of and returns the boolean it gets back', async () => {
+  it('issues an EXISTS query scoped by as_of AND run_chart_id and returns the boolean it gets back', async () => {
     const exec = vi.fn(async () => ({ rows: [{ exists: true }] })) as unknown as LedgerExecutor
     const j = new DbDigestJournal(exec)
     const result = await j.hasSent('2026-08-23')
@@ -64,7 +64,18 @@ describe('DbDigestJournal.hasSent', () => {
     const [sql, params] = (exec as ReturnType<typeof vi.fn>).mock.calls[0]
     expect(sql).toContain(DIGEST_JOURNAL_TABLE)
     expect(sql).toContain('EXISTS')
-    expect(params).toEqual(['2026-08-23'])
+    // run_chart_id is scoped too (NULL-safe), not just as_of — see the migration/class header
+    // for the chart-shadowing bug this closes: pre-fix, hasSent ignored run_chart_id entirely.
+    expect(sql).toContain('IS NOT DISTINCT FROM')
+    expect(params).toEqual(['2026-08-23', null]) // no chartId given → NULL scope
+  })
+
+  it('scopes to the given chartId when one was passed to the constructor', async () => {
+    const exec = vi.fn(async () => ({ rows: [{ exists: true }] })) as unknown as LedgerExecutor
+    const j = new DbDigestJournal(exec, '1c826d5a-41cb-4450-b4dc-59d440e5f75a')
+    await j.hasSent('2026-08-23')
+    const params = (exec as ReturnType<typeof vi.fn>).mock.calls[0][1]
+    expect(params).toEqual(['2026-08-23', '1c826d5a-41cb-4450-b4dc-59d440e5f75a'])
   })
 
   it('returns false when the query reports no row', async () => {
@@ -99,7 +110,9 @@ describe('DbDigestJournal.markSent', () => {
     expect(exec).toHaveBeenCalledTimes(1)
     const [sql, params] = (exec as ReturnType<typeof vi.fn>).mock.calls[0]
     expect(sql).toContain(`INSERT INTO ${DIGEST_JOURNAL_TABLE}`)
-    expect(sql).toContain('ON CONFLICT (as_of) DO UPDATE')
+    // ON CONFLICT target matches migration 588's (as_of, run_chart_id) NULLS NOT DISTINCT key —
+    // NOT as_of alone (the pre-fix shape, which let one chart's row silently shadow another's).
+    expect(sql).toContain('ON CONFLICT (as_of, run_chart_id) DO UPDATE')
     expect(params?.[0]).toBe('2026-08-23')
     expect(params?.[1]).toBe('1c826d5a-41cb-4450-b4dc-59d440e5f75a') // run_chart_id scope
     expect(params?.[7]).toBe(record().subject)
@@ -125,12 +138,15 @@ describe('DbDigestJournal.markSent', () => {
 })
 
 describe('DbDigestJournal.readByAsOf', () => {
-  it('returns the row when one exists', async () => {
+  it('returns the row when one exists, scoped by as_of AND run_chart_id (NULL-safe)', async () => {
     const row = { id: 1, run_chart_id: null, ...record(), created_at: '2026-08-23T03:00:02.000Z' }
     const exec = vi.fn(async () => ({ rows: [row] })) as unknown as LedgerExecutor
     const j = new DbDigestJournal(exec)
     const result = await j.readByAsOf('2026-08-23')
     expect(result).toEqual(row)
+    const [sql, params] = (exec as ReturnType<typeof vi.fn>).mock.calls[0]
+    expect(sql).toContain('IS NOT DISTINCT FROM')
+    expect(params).toEqual(['2026-08-23', null])
   })
 
   it('returns null when no digest was journalled for that date', async () => {
