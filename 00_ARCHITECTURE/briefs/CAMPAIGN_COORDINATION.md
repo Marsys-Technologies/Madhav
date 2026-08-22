@@ -7114,3 +7114,32 @@ Run` runs completed successfully against the identical `main@0cfe74821`
 `headSha` within an ~11-minute window. Consistent with DD-27's own finding
 that the deploy trigger isn't narrowly scoped; noted in the baseline's own
 §8.1, not investigated further here.
+
+## 2026-08-22 — PARIPRASHNA-P3-PREFLIGHT-PART-H (items 1-2) — lease CLOSED, PR #1477 merged + deployed
+
+Lease opened above (entry `7094e7c1c`) is released. Final account:
+
+- PR #1477: CI green, merged via merge queue. Merge commit `main@d3ee45e90`.
+- Deployed: `Deploy to Cloud Run` run completed success 2026-08-22T11:35:07Z.
+  Live revision confirmed via `gcloud run services describe amjis-web`:
+  **`amjis-web-01655-8wj`, 100% traffic** (superseded almost immediately by
+  the sibling PARIŚEṢA-RĀTRI-V4 campaign's own PRs #1479/#1480, which is
+  expected — this is a shared, actively-moving `main`, exactly why item 3
+  below will re-check `main` fresh immediately before merging).
+- DD-19, DD-20, DD-22, DD-25 register entries corrected; baseline bumped to
+  v1.3 with §8 addendum. No file outside this lease's declared scope was
+  touched.
+
+Worktrees `.clone/worktrees/pariprashna-part-h` and
+`.clone/worktrees/campaign-coord-part-h` retained — item 3 (the final,
+highest-stakes step: batched governance-registry write + close tag) is
+next, same worktrees, adjacent scope.
+
+---
+
+**Part H items 1-2 are closed.** Only **item 3 (batched registry write +
+close tag) + items 4-5 (tag, combined verification turn)** remain before
+P3 can open. Per DD-27 and the native's own instruction, item 3 will
+re-check `main` immediately before merging, announce the resulting Cloud
+Run revision tag per X-6, and run full canary discipline — main has moved
+twice already just in the time it took items 1-2 to land and deploy.
