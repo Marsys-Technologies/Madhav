@@ -1,24 +1,26 @@
 {
   "schema_version": "1.1",
   "session_id": "PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19",
-  "phase": "P2",
-  "phase_status": "P1_MERGED_AND_DEPLOYED_ENTERING_P2",
-  "wave": "P2-KICKOFF",
-  "heartbeat_ts": "2026-08-19T23:29:00Z",
-  "note_on_this_file": "This tracker JSON was only committed to main once (P0 ignition, PR #1349) and went stale through the rest of P0 and all of P1 -- lane-by-lane updates during those phases happened only in the conductor's local worktree state, never landed. This entry (P1 close) backfills phase/lane/deploy history from the authoritative narrative record, origin/campaign-coordination's 2026-08-19 entries, rather than replaying every intermediate state. Going forward this file should be updated and pushed at every phase boundary, not just accumulated locally.",
+  "phase": "P3-Preflight",
+  "phase_status": "P2_CLOSED_AND_TAGGED; P3_PREFLIGHT_PARTS_A_THROUGH_F_CLOSED_MERGED_DEPLOYED_LIVE_VERIFIED; PART_G_IN_FLIGHT_PR_1475_OPEN_UNMERGED; PART_H_NOT_STARTED",
+  "wave": "P3-PREFLIGHT-PART-G (in flight)",
+  "heartbeat_ts": "2026-08-22T09:58:53Z",
+  "note_on_this_file": "SUPERSEDES the 2026-08-19 P1-close backfill note below (retained for history). This entry (PARIPRASHNA-TRACKER-SYNC-2026-08-22) is a second reconstruction: this file went stale again after the P1-close backfill -- it was never updated through the entirety of P2 (15 lanes, gate battery, 7 must-fix lanes, close+tag) or P3-Preflight Parts A-F, all of which landed on `origin/main` via real merged/deployed/live-verified PRs. Rebuilt from the authoritative narrative record: `origin/campaign-coordination` (`00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md`, primarily its P1-close-through-P2-close entries at ~lines 4021-5838 and its P3-Preflight entries at ~lines 5839-6867, plus the just-surfaced Part G lease-open entry appended after this sync's own lease-open push, commit `e26627323`) cross-checked against `PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` (DD register) and `CURRENT_STATE_v1_0.md`, both on `origin/main` as of fetch `2b272a326e6107f8d604c8ebaf0f62bfd00ac068`. Per this file's own established convention (see the 2026-08-19 note below), the coordination log is the primary source; the DD register and CURRENT_STATE are used for cross-check, not overridden when they conflict -- two real conflicts were found this sync and are recorded honestly in `dd_register_snapshot` below rather than silently reconciled. Anything this session could not trace to a real commit/log entry is written as \"not verified from source\", never guessed. This file should be updated and pushed at every phase boundary going forward, per the same instruction the 2026-08-19 note already gave and which was not followed for all of P2/P3-Preflight -- restated here because it evidently needs restating twice now.",
+  "note_on_this_file_2026_08_19_prior": "This tracker JSON was only committed to main once (P0 ignition, PR #1349) and went stale through the rest of P0 and all of P1 -- lane-by-lane updates during those phases happened only in the conductor's local worktree state, never landed. This entry (P1 close) backfills phase/lane/deploy history from the authoritative narrative record, origin/campaign-coordination's 2026-08-19 entries, rather than replaying every intermediate state. Going forward this file should be updated and pushed at every phase boundary, not just accumulated locally.",
   "concurrency": {
     "n": 4,
     "cap": 10,
     "hard_cap": 24
   },
   "budget": {
-    "phase": "P0",
-    "ceiling_usd": 40,
-    "spent_usd": 0
+    "phase": "P3",
+    "ceiling_usd": 80,
+    "spent_usd": null,
+    "note": "Per-phase ceiling from DD-5 (P3: $80 API-cost equivalent). Actual spend not tracked in any source this sync read -- left null rather than guessed; this tracker's own README already discloses budget tracking is self-reported, not derived (see DD-12's own citation of that gap)."
   },
   "prior_attempt": {
     "session_id": "PARIPRASHNA-G0-CLOSE-2026-08-19",
-    "retired_reason": "Merged pariprashna/g0-close to main (PR #1341, 3fd40b61b) without a cross-campaign lease per origin/campaign-coordination. Retired 2026-08-19 under CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md \u00a77 (rules X-1..X-7).",
+    "retired_reason": "Merged pariprashna/g0-close to main (PR #1341, 3fd40b61b) without a cross-campaign lease per origin/campaign-coordination. Retired 2026-08-19 under CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md §7 (rules X-1..X-7).",
     "verified_findings_carried_forward": [
       "G0/PR #1341 merged 2026-08-19T08:46:16Z as 3fd40b61b; drift_detector 216/216 baseline, schema_validator 42/43 baseline, 26 required checks green.",
       "Two real governance-gate regressions were found and fixed pre-merge in G0: FILE_REGISTRY registry_disagreement (8 findings, drift 224->216) and SESSION_LOG level-3-heading schema break (schema 44->42, exit 2->3). Both pre-empted in Step 0 of the fresh-start (registered FILE_REGISTRY + CAPABILITY_MANIFEST in the same commit; used a level-2 SESSION_LOG heading from the start).",
@@ -126,6 +128,133 @@
     "G1-H": { "name": "PB-9 detector", "role_stage": "merged", "verifier_verdict": "conductor-reviewed, cherry-picked clean." },
     "G1-I": { "name": "PARIPRASHNA_ASBUILT_BASELINE live-verification pass", "role_stage": "merged", "verifier_verdict": "Live-verified ground truth against production: PITR still disabled, migrations 576/577 inert, serving revisions confirmed. Corrected a wrong scope assumption in G1-G round 1 (/api/chat/consult is the un-gated default, not retired)." }
   },
+  "p2_lanes": {
+    "_note": "15 lanes total, matching the coordination log's own count (\"This closes all 15 lanes of P2\"): P2-A..H = presentation-truth wave (PR #1360); G3-A..G = epistemic-truth wave (PRs #1363/#1364/#1365). Also referred to in the log as P2-I (== G3-A).",
+    "P2-A": { "name": "Semantic blocks on the wire (block.commit kind/role, prediction_card first-class event, wire-protocol v2, LogToSamiksha mounted after sitting unmounted since PB-3)", "role_stage": "merged", "verifier_verdict": "Merged clean, conductor-level fan-in review (8-way shared-file merge across the presentation-truth wave). PR #1360." },
+    "P2-B": { "name": "Citations at first paint (S-3 rewriter wired into the live stream, server-derived grounding summary, real fix to the P0C-R5 dead citation path)", "role_stage": "merged", "verifier_verdict": "Merged clean, conductor-level fan-in review. PR #1360." },
+    "P2-C": { "name": "Honest controls (model_id/length_tier plumbed or removed)", "role_stage": "merged", "verifier_verdict": "Found and fixed 3 real defects, not just documented: length_tier was a confirmed no-op per its own TODO; the model picker sent labels matching no real registry id and never wired its selection through; reading_depth was driven by the wrong signal. PR #1360." },
+    "P2-D": { "name": "Durable persistence (settled_visual/durably_persisted split, semantic-hash comparator replacing byte-equality, write-ahead outbox interface)", "role_stage": "merged", "verifier_verdict": "Merged clean; migration correctly NOT written by this lane (code gracefully degrades to direct-write when the outbox table is absent). PR #1360. Outbox migration (578) opened later, separately, under DD-16." },
+    "P2-E": { "name": "Observability (wiring the previously-dead llm_usage_events path)", "role_stage": "merged", "verifier_verdict": "Merged; discovered and disclosed (not fixed in-lane) that PARIPRASHNA_LIMITS_ENABLED's spend ceiling reads real zero spend because route.ts never passed the observability identity param persistence_stage.ts needs -- fixed later under P2-close item 6, PR #1402. PR #1360." },
+    "P2-F": { "name": "Mobile + a11y", "role_stage": "merged", "verifier_verdict": "Real axe-core red->green proof; honest \"not feasible here\" on VoiceOver/NVDA with a concrete human test plan instead of a fabricated pass. PR #1360." },
+    "P2-G": { "name": "Edge-state lexicon + second-error-classifier fold", "role_stage": "merged", "verifier_verdict": "Found the real §7.8 source doc after the roadmap's own pointer resolved to the wrong file; folded 3 duplicate error classifiers into 1 canonical module. PR #1360." },
+    "P2-H": { "name": "History sidebar / empty-state / Seal", "role_stage": "merged", "verifier_verdict": "Caught the shared repo's design-plan copy being stale v0.3 against the worktree's corrected v0.5 -- building from the stale doc would have shipped wrong Seal choreography. PR #1360." },
+    "G3-A": { "name": "Receipt emission (P2-I, PPR-01) -- AcharyaReadingReceipt v1, 11 fields, validator enforcing \"every field earned or null\", persisted into conversation_messages.metadata_json, flag-gated", "role_stage": "merged", "verifier_verdict": "Full verifier+adversary+hardening cycle (same rigor as G1-A). Verifier found 2 real defects (derivation_chains silently emptied when G2-B citation rewriter was on; calibration_disclosure missed query_insights as a second calibration-reading tool). Adversary found something more severe: the READ path only ran Zod safeParse, never the write path's own coherence validator -- store.ts's docstring claim \"cannot masquerade as a valid receipt\" was empirically false. All 3 fixed with red->green tests; full suite 1712/1712 after fix. PR #1363." },
+    "G3-B": { "name": "interpretation_sets -- three interpretations + falsifier (PPR-02)", "role_stage": "merged", "verifier_verdict": "Full verifier+adversary+hardening cycle. Adversary found the most severe defect of the wave: detection went silently BLIND (0 entries, no waiver) whenever PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED was off while PARIPRASHNA_RECEIPT_EMISSION_ENABLED was on -- an undeclared cross-flag dependency. Also found falsifier/candidate-distinctness checks were enforcement-by-prompt-language only (no structural check). Both hardened with real red->green fixes. PR #1364." },
+    "G3-C": { "name": "Typed confidence (PPR-03)", "role_stage": "merged", "verifier_verdict": "Full verifier+adversary+hardening cycle. Adversary found the T-8 precision scan was dead code against real production data (read a ToolBundleResult.confidence field neither calibration tool ever populates), empirically_calibrated summed sample sizes across unrelated calibration calls (false-clearing the activation threshold), and classical_prior typing was turn-scoped but undisclosed as such in the receipt's own output. All hardened with red->green fixes; engine_tier.ts capping logic built/tested/barrel-exported but disclosed as genuinely unwired into the live assembler (residual). PR #1364." },
+    "G3-D": { "name": "Voice enforcement (PPR-04)", "role_stage": "merged", "verifier_verdict": "Conductor-reviewed, clean merge, full independent re-verification (tsc/suite/drift/naming/earned-signal all clean). Own report disclosed an honest self-correction mid-build (a wrong-checkout investigation pass, caught and redone). PR #1364." },
+    "G3-E": { "name": "Reader affordances (PPR-05) -- \"read it another way\" / \"what would change my mind\", dock-resident", "role_stage": "merged", "verifier_verdict": "Conductor-reviewed, clean merge (zero conflicts, disjoint files). Placement test proves content never renders inline in prose, always in the dock. Disclosed residual: no live SSE producer wires interpretation_sets onto the client yet (server-side-only at persistence time). PR #1365." },
+    "G3-F": { "name": "Quality corpus (12 query classes, 13 scored dimensions)", "role_stage": "merged", "verifier_verdict": "Conductor-reviewed, clean merge (pure new files, zero conflicts). Verified its own \"sensitive\" fixture actually triggers the real safety classifier before committing; correctly left 3/13 dimensions as honest not_yet_measurable stubs rather than fabricating scores. PR #1364." },
+    "G3-G": { "name": "Model qualification (PPR-32) -- maps G3-F's 12 query classes to 4 work classes", "role_stage": "merged", "verifier_verdict": "Conductor-reviewed, clean merge. Unmeasurable dimensions correctly EXCLUDED from pass/fail (never silently counted passing), tested explicitly. Honestly disclosed as mechanism-only: no real model run against the corpus in this environment; wiring into live model selection correctly left undone. PR #1365." }
+  },
+  "p3_preflight_parts": {
+    "amendment": {
+      "name": "2026-08-21 P3-Preflight amendment (docs only, pre-flight for the master prompt)",
+      "pr": 1428,
+      "merge_commit": "bbb6a0a7078baedc9a25b43e3c5d0ea49aad4335",
+      "delivered": "DD-24 filed (parity-vs-correctness rule, BINDING ON P3, bounds P3-D's receipt-hash parity assertion to an enumerated web-door-gap baseline); DD-22 amended in place with the DD-22-before-P3-B sequencing ruling; DD-21's observed-delivery clause folded into P3's own gate criteria (companion doc edit, not this file); P3-D's receipt-hash parity subject named; tracker/PLAN.yaml P3-B/P3-D lane annotations added.",
+      "dd_numbers": ["DD-24", "DD-22", "DD-21"],
+      "residual_status": "None disclosed for this lease itself. No P3 lane opened by this PR; no model changed.",
+      "deploy_verified": "Not stated in source -- docs-only change (00_ARCHITECTURE/** files), drift_detector (164, exit=3) and schema_validator (42, exit=3) verified identical to pre-edit baseline, no platform/** touched so no Cloud Run deploy expected."
+    },
+    "model_tier_ruling": {
+      "name": "PARIPRASHNA-P3-PREFLIGHT-MODEL-TIER-RULING -- DD-25/DD-19 dating, registry fold-in, model catalog registration",
+      "pr": 1434,
+      "merge_commit": "9789fbf7d (confirmed as an ancestor of origin/main by Part A's own opening check; not independently re-derived by this sync)",
+      "delivered": "Registered gemini-3.1-pro-preview + gemini-3.7-flash as catalog-only MODELS[] entries (neither wired to any live CallType at this point); new interpretation_sets CallType + STACK_ROUTING entries across all 6 stacks (gemini's primary left unchanged); retired the INTERPRETATION_SETS_MODEL_ID bypass in worker.ts in favor of getEffectiveModel resolution (same default value -- plumbing only, no model moved); DD-25 filed (computed_cost_usd null on synthesize rows, DATED 2026-09-03, HARD PRECONDITION for public access); DD-19 amended in place (DATED 2026-09-03, non-launch-blocking). NO MODEL WAS MOVED in this lease -- that is Part B's job.",
+      "dd_numbers": ["DD-25", "DD-19"],
+      "residual_status": "Explicitly deferred model move to Part B.",
+      "deploy_verified": "Not verified from source -- no Deploy to Cloud Run run ID or revision stated for this PR in the coordination log entries this sync read."
+    },
+    "A": {
+      "name": "Part A -- adapter parameter-surface audit",
+      "pr": 1440,
+      "merge_commit": "8bb4d0cb6",
+      "delivered": "Built a fetch-boundary detector (real ai/@ai-sdk/google SDK, stubbed fetch) that captured the actual outbound Gemini HTTP body. Found and fixed 2 real defects wider than the master prompt's own framing assumed: (1) responseFormat/schema was dropped COMPLETELY by the pinned ai@6.0.197 (no such streamText() parameter exists) -- affected every live Gemini structured-output call including planner (73 calls/mo), not just the new gemini-3.x entries; fixed via output: Output.object({schema: jsonSchema(...)}). (2) thinking_level (Gemini 3.x) was never read from registry quirks -- fixed with a thinkingLevel vs thinkingBudget branch. A.5 (repair-retry fire rate) reported as UNMEASURABLE, not estimated -- no reliable denominator exists pending DD-19.",
+      "dd_numbers": ["DD-20 (closed entirely at the symptom layer by this fix, per the master prompt's own A.1 warning)"],
+      "residual_status": "A.4 (Interactions API migration) scoped but not attempted -- same-shape fix applied instead. No model moved (Part B's job).",
+      "deploy_verified": true,
+      "deploy_run": 32512500484,
+      "live_verification": "Two real probe turns via ask.sh against the synthetic chart post-deploy: one completed cleanly on gemini-2.5-pro with no repair-retry needed (direct evidence the fix reached production); a second timed out client-side after the planner hit its output-token ceiling and the pre-existing repair-retry recovered it normally -- disclosed as a pattern worth watching at scale, not a regression this lease caused."
+    },
+    "D": {
+      "name": "Part D -- DD-25 root-cause fix (computed_cost_usd null), executed ahead of Part B per B.4's own mutual-verification note",
+      "pr": 1441,
+      "merge_commit": "e99cc1e45",
+      "delivered": "Traced the real root cause, wider than DD-25's own original text: computed_cost_usd was null on EVERY llm_usage_events row, every provider, every pipeline_stage (not just synthesize) -- computeCost() reads a separate table, llm_pricing_versions, which had zero rows since its creation (migration 038); every call threw PricingNotFoundError, silently caught, logged, returned null. Fixed via migration 583 (llm_pricing_versions_seed.sql, originally reserved as 575 then correction-renumbered to 583 after a cross-directory collision with platform/supabase/migrations/ was caught by the MIG-1 guard) seeding flat rates from registry.ts's current values. Disclosed limitation: Google's real pricing is tiered by input size; this seed uses only the <=200K tier -- filed as DD-26, not fixed in this lease.",
+      "dd_numbers": ["DD-25 (root cause found and fix landed)", "DD-26 (filed, tiered-pricing gap, disclosed limitation)"],
+      "residual_status": "DD-26 open, no deadline set, native-scoped out of this Part's trace-and-fix brief.",
+      "migration": "583_llm_pricing_versions_seed.sql (renumbered from an initial, incomplete 575 reservation)",
+      "deploy_verified": true,
+      "deploy_run": 32519650838,
+      "live_verification": "Migration verified actually applied (SELECT count(*) FROM llm_pricing_versions = 52, matching the seed). Two distinct claims verified separately per §N.8: (1) populated -- a real probe turn produced a synthesize row with computed_cost_usd:0.060620, matching the seeded rate exactly; (2) ceiling read-path no longer inert -- spend_ceiling.ts's own getDailySpendUsd() query returned the same real value against production for that user_id. The actual reject path (deliberately exceeding the $2/turn or $40/day ceiling) was NOT tested in this pass -- disclosed as such, not claimed."
+    },
+    "B": {
+      "name": "Part B -- the model moves (STACK_ROUTING.gemini onto the ruled tier table)",
+      "pr": 1442,
+      "merge_commit": "a894fe1d6",
+      "delivered": "Moved synthesis and interpretation_sets to gemini-3.1-pro-preview, planner_fast to gemini-3.7-flash, and worker (NOT planner_deep -- a mid-edit self-correction, disclosed) to gemini-3.7-flash in STACK_ROUTING.gemini; removed the now-redundant STAGED_TIER_UPGRADE_ROUTING const. One-line adapter fix found by this Part's own live e2e re-run: gemini-3.1-pro-preview rejects thinkingLevel='minimal' with a real HTTP 400 -- fixed to 'low'. All B.2/B.4 preconditions independently re-verified before the edit, including a fresh (not the ruling session's older) dd20_e2e_verify.ts run against the real API.",
+      "dd_numbers": [],
+      "residual_status": "Disclosed, out of scope, not fixed: src/lib/conversations/title.ts bypasses STACK_ROUTING entirely via a hardcoded TITLE_MODEL_ID (Anthropic claude-haiku-4-5) -- the worker move does not change title generation. The title pipeline_stage has errored with 0 tokens on every probe turn across Parts A/D/B (3 independent live turns) -- flagged as a real signal, not chased, out of every Part's declared scope.",
+      "deploy_verified": true,
+      "deploy_run": 32524418679,
+      "live_verification": "Real probe turn produced both new models genuinely serving real traffic with cost correctly computed in the same production window: planner on gemini-3.7-flash (computed_cost_usd matching the seeded rate exactly), synthesize on gemini-3.1-pro-preview (computed_cost_usd matching exactly, under the 200K tier threshold so the migration-583 flat-rate approximation was exact this turn)."
+    },
+    "C": {
+      "name": "Part C -- DD-22 table-in-prose block promotion, approach (c) (\"annotate rather than split\")",
+      "pr": 1443,
+      "merge_commit": "1f2b7e443",
+      "delivered": "Implemented DD-22's approved approach (c): new detectTableSpans(text) scanning a block's raw text for embedded GFM tables that don't occupy the whole block; table_spans rides as new optional wire metadata alongside the unchanged paragraph kind; client ParagraphBlock.tsx slices text at the offsets and interleaves real <TableBlock>s. Zero change to committedBlocks cardinality, per the approved design.",
+      "dd_numbers": ["DD-22 (built, all 4 native-set acceptance criteria satisfied)"],
+      "residual_status": "Not independently confirmed this pass: the client actually rendering a real HTML <table> element in a browser DOM (only the wire/persistence layer was verified, which is what the 4 acceptance criteria are about).",
+      "deploy_verified": true,
+      "deploy_run": 32529067763,
+      "live_verification": "Real probe turn requesting a comparison table produced a genuine markdown table with 9 inline citations, committed as one kind=paragraph block (never split/reclassified, exactly the approved design). All 3 data-layer acceptance criteria verified against real production, not just unit tests: (1) byte-exact -- direct DB read of message_parts.body.text showed the full text unmutated; (2) citation regression -- 9 real citation.define events + 9 kind=citation rows persisted; (3) facts_consumed regression -- DB read showed exactly 9 correctly-ref'd entries matching the 9 citations. A disclosed mid-lane incident: an errant `git checkout main -- .` briefly overwrote uncommitted work; recovered via git reset --hard + full re-application, verified byte-for-byte identical to the original diff before committing -- no data lost, real time was."
+    },
+    "E": {
+      "name": "Part E -- DD-19, interpretation_sets usage/cost logging gap",
+      "pr": 1462,
+      "merge_commit": "47af1ad28",
+      "delivered": "worker.ts's callOnce now threads turnId, times the call, and fires a real persistObservation/computeCost block with pipeline_stage:'interpretation_sets' after runAdapter -- replicating the same OBS-S1 shape planner/title already used. Second, unanticipated finding: llm_usage_events.pipeline_stage has a live DB CHECK constraint that did not include 'interpretation_sets' -- without a migration, every write from this fix would have silently failed the constraint and been swallowed by persistObservation's never-throws discipline (the exact §N.8 defect class this campaign keeps finding). Migration widens the constraint.",
+      "dd_numbers": ["DD-19 (fix landed and live-verified in this Part; the DD register document on origin/main as fetched by this sync still reads its status field as OWNED -- see dd_register_snapshot below for the discrepancy this sync is flagging, not silently resolving)"],
+      "residual_status": "None disclosed beyond the migration-renumbering correction below.",
+      "migration": "587_llm_usage_events_interpretation_sets_stage.sql (reserved as 584 via the MIG-1 guard script directly, cross-directory-correct per the Part D lesson, but collided at merge-queue time with another campaign's PR claiming 584/585/586 during an unusually deep 16-PR merge-queue window -- dequeued, renumbered to 587, re-verified, re-enqueued; a genuine live-number-space race, not a repeat of Part D's incomplete-check mistake)",
+      "deploy_verified": true,
+      "deploy_run": 32549069821,
+      "live_verification": "Migration verified actually applied (constraint definition query confirms 'interpretation_sets' now included). Real probe turn produced, for the first time in this table's entire history, a real interpretation_sets row (provider gemini, model gemini-3.1-pro-preview, computed_cost_usd matching the seeded rate exactly) -- Parts B, D, and E's fixes all verified working together on the very first real turn since deploy."
+    },
+    "F": {
+      "name": "Part F -- DD-13's two open residuals (mortality phrasing-scan gate)",
+      "pr_residual_a": 1465,
+      "pr_residual_b": 1467,
+      "merge_commit_residual_a": "part of main@94e20a8c7",
+      "merge_commit_residual_b": "main@49209b067",
+      "delivered": "Residual (a) (third-sentence pairing gap) CLOSED via code fix: new EXTENDED_DATE_SHAPE_WINDOW = CROSS_SENTENCE_WINDOW + 1 as a separate, narrower detection pass scoped only to mortality_term_x_date_shape (a deliberate narrower-mechanism choice over widening the shared CROSS_SENTENCE_WINDOW constant itself, put to the native explicitly and approved). duration_to_end at the same 3-sentence separation remains an open, disclosed residual by design. Residual (b) (streaming un-send asymmetry vs. the P2 first-paint-citation guarantee) was INVESTIGATED AND REPORTED, per its own ticket's explicit instruction not to resolve the tension unilaterally: confirmed a real, measured tension (StreamingMortalityScanner sits downstream of CitationStreamRewriter in the same per-delta pipeline; a full pre-display buffer would close the term-leak residual but cost latency against the P2 first-paint guarantee on ~5.6% of a small real sample of persisted messages); three options laid out, none selected by this Part.",
+      "dd_numbers": ["DD-13 (residual (a) CLOSED 2026-08-22; residual (b) investigated-not-resolved 2026-08-22 -- per PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md as fetched fresh from origin/main by this sync, DD-13 remains OWNED at its 2026-09-03 deadline. See dd_register_snapshot below: a Part G lease-open entry appended to origin/campaign-coordination AFTER this Part F work, but not yet merged to origin/main via its own PR #1475, narrates a native ruling that closes DD-13 in full -- reported here as not-yet-true-of-main, not incorporated as fact.)"],
+      "residual_status": "See dd_register_snapshot for the live DD-13 status and the pending-PR caveat.",
+      "deploy_verified": true,
+      "deploy_run_residual_a": 32560036708,
+      "deploy_run_residual_b": 32563982121,
+      "live_verification": "Residual (a): a benign real probe turn confirmed the deployed EXTENDED_DATE_SHAPE_WINDOW code path executes on real production synthesis with no false positive; a second probe deliberately asking a maraka-dasha/longevity question was correctly intercepted upstream by the query classifier before synthesis ever ran -- real evidence the two controls compose correctly, disclosed as NOT itself a live redaction event of the exact adversarial pattern (an honest evidentiary limit, not a gap in the fix). Residual (b): docs-only, no code path to live-verify (the investigation itself is the deliverable). Also disclosed in this Part: probe/ask.ts's own header claim that PARIPRASHNA_SAFETY_GATE_ENABLED is flag-gated off in production was found STALE -- it is now live true (almost certainly flipped as part of the P1 FOUNDATION close), meaning mortality/health-crisis/longevity-adjacent probe turns now seal pending human sign-off rather than returning a reading."
+    }
+  },
+  "p3_preflight_part_g_in_flight": {
+    "status": "OPEN, NOT MERGED as of this sync's fetch (origin/main @ 2b272a326e6107f8d604c8ebaf0f62bfd00ac068)",
+    "pr": 1475,
+    "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1475",
+    "branch": "pariprashna/p3-preflight-part-g",
+    "mergeStateStatus_at_check": "BLOCKED (per gh pr view; mergeable: MERGEABLE)",
+    "narrated_scope_per_campaign_coordination_lease_open_entry": "Hygiene + bookkeeping (docs-only, no platform/** code): (1) DD-13 CLOSED in full via native ruling on residual (b)'s open branch-(b) call -- option (i) STATUS QUO selected, with stated reasoning; (2) DD-27 filed -- the Part F 'Build & Deploy Web triggers on docs-only 00_ARCHITECTURE/** changes' observation, originally disclosed as a non-DD resource-efficiency note, is SUPERSEDED by native ruling this session and filed as a real DD with a binding consequence for Part H (treat the Part H batched governance-registry write as a real production deploy, run full canary discipline); (3) DD-23 checked, no register change needed; (4) PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md committed into the repo for the first time (previously chat-delivered only); (5) a real drift_detector CI trap (registering the new master-prompt file as a canonical CAPABILITY_MANIFEST.json entry pushed the finding count from the 79 baseline to 80) was hit and fixed, not just avoided in theory -- did not register the file as canonical, did not raise the ceiling, matching the PURNATA/SAMAPTI/NIHSHESHA precedent.",
+    "files_touched_per_its_own_lease_declaration": [
+      "00_ARCHITECTURE/CAPABILITY_MANIFEST.json",
+      "00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md",
+      "00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md (new file)"
+    ],
+    "sourced_from": "origin/campaign-coordination commit e26627323424a1ceda43283cb79cfcc111d3b2fc, appended after this sync's own lease-open entry's fetch point -- discovered when this sync re-checked out origin/campaign-coordination immediately before pushing its own lease entry. Reported here as narrative-only: real, disclosed, pushed to the coordination log, but NOT YET reflected in PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md on origin/main pending PR #1475's merge. No scope collision with this sync's own SWARM_TRACKER.json-only lease -- disjoint files, confirmed twice (at this sync's lease-open check and again here)."
+  },
+  "p3_preflight_part_h": {
+    "status": "NOT STARTED",
+    "note": "Per the coordination log's own structure (Parts A-H per PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md), Part H (close + tag) is the final step and has not been taken up as of this sync. Part G's own lease-open entry states a binding consequence for Part H: its batched governance-registry write must be treated as a real production deploy (DD-27), not skipped as docs-only."
+  },
   "trains": [],
   "deploys": [
     {
@@ -154,6 +283,94 @@
       "migrations": ["574_ncd8_spend_ceilings_channel_attribution", "575_pariprashna_chart_subject_consent", "576_pariprashna_roles_rls_arm3", "577_pariprashna_safety_gate"],
       "feature_flags_all_default_false": ["PARIPRASHNA_LIMITS_ENABLED", "SUBJECT_CONSENT_ENFORCEMENT", "PARIPRASHNA_ROLE_SEPARATION", "PARIPRASHNA_LEDGER_OUT_OF_PROCESS", "PARIPRASHNA_SAFETY_GATE_ENABLED", "PARIPRASHNA_INJECTION_CONTAINMENT"],
       "coordination_ref": "origin/campaign-coordination @ 038f5fa32"
+    },
+    {
+      "phase": "P2",
+      "pr": 1412,
+      "title": "governance delta closing P2: DD-11 -> ADVISORY, DD-12/DD-20 -> CLOSED, new DD-21/DD-22/DD-23, Baseline v1.1 -> v1.2, new PARIPRASHNA_P2_CLOSE_REPORT_v1_0.md",
+      "merge_commit": "1ad8df05f",
+      "tag": "pariprashna/p2-close",
+      "tag_commit": "1ad8df05f (the governance-delta merge commit, which has every P2 item as an ancestor)",
+      "deploy_verified": "Not stated in source for PR #1412 specifically -- this PR is primarily a governance/docs change (DD register + close report); no \"Deploy to Cloud Run\" run ID is given for it in the coordination log entries this sync read.",
+      "note": "This is the single closing deploy/tag event for the whole P2 phase, per the task's own scope. It followed a long sequence of real, individually merged/deployed/live-verified P2 events not separately itemized here (see p2_lanes above for the 15-lane content; and, for the post-gate-battery must-fix wave immediately preceding this tag): PR #1398 (DD-20 real fix), #1399 (citation sentinel wiring), #1400 (receipt wire event), #1401 (mobile dock-collapse fix, live-verified via real CDP device metrics), #1402 (observability identity wiring, live-verified via a direct llm_usage_events DB read), #1403 (voice-lint anchor fix, live-verified via a live browser turn), #1404 (Lane K typed-confidence wiring, live-verified via a live browser observation), and #1405 (a disclosed, out-of-scope CI-unblocking fix for an unrelated campaign's D-08 comment false positive that was blocking every PR on main). Every one of #1398-1404 was individually merged, deployed, and live-verified per the DD-21 observed-delivery rule -- full account in PARIPRASHNA_P2_CLOSE_REPORT_v1_0.md §2, which this sync did not itself re-read (out of this sync's declared SWARM_TRACKER.json-only scope).",
+      "held_back_not_dropped": [
+        "Item 4 (table-in-prose block promotion) evaluated, approved as approach (c), NOT built at P2 close -- carried as DD-22, built later under P3-Preflight Part C.",
+        "DD-23 (remedial guidance under-governed) -- OWNED, UNDATED, scoped as an investigation, does not block P2 close.",
+        "P2-N (quality corpus) and P2-O (model qualification) never run against the live route -- carried not delivered, per DD-24's own seed enumeration.",
+        "H's Seal motion -- not observed, not inferred, never marked delivered, per DD-24's own seed enumeration."
+      ]
+    },
+    {
+      "phase": "P3-Preflight-amendment",
+      "pr": 1428,
+      "merge_commit": "bbb6a0a7078baedc9a25b43e3c5d0ea49aad4335",
+      "deploy_verified": "Not applicable -- docs-only (00_ARCHITECTURE/** only), no platform/** file touched, no Cloud Run deploy expected or stated."
+    },
+    {
+      "phase": "P3-Preflight-model-tier-ruling",
+      "pr": 1434,
+      "merge_commit": "9789fbf7d",
+      "deploy_verified": "Not verified from source."
+    },
+    {
+      "phase": "P3-Preflight-Part-A",
+      "pr": 1440,
+      "merge_commit": "8bb4d0cb6",
+      "deploy_run": 32512500484,
+      "deploy_verified": true,
+      "spot_check": "See p3_preflight_parts.A.live_verification above."
+    },
+    {
+      "phase": "P3-Preflight-Part-D",
+      "pr": 1441,
+      "merge_commit": "e99cc1e45",
+      "deploy_run": 32519650838,
+      "deploy_verified": true,
+      "migrations": ["583_llm_pricing_versions_seed"],
+      "spot_check": "See p3_preflight_parts.D.live_verification above."
+    },
+    {
+      "phase": "P3-Preflight-Part-B",
+      "pr": 1442,
+      "merge_commit": "a894fe1d6",
+      "deploy_run": 32524418679,
+      "deploy_verified": true,
+      "ci_note": "One flaky DB Integration Tests failure (migration-race on a fresh throwaway Postgres, unrelated to this PR's files), verified flaky via a clean re-run of the single job.",
+      "spot_check": "See p3_preflight_parts.B.live_verification above."
+    },
+    {
+      "phase": "P3-Preflight-Part-C",
+      "pr": 1443,
+      "merge_commit": "1f2b7e443",
+      "deploy_run": 32529067763,
+      "deploy_verified": true,
+      "spot_check": "See p3_preflight_parts.C.live_verification above."
+    },
+    {
+      "phase": "P3-Preflight-Part-E",
+      "pr": 1462,
+      "merge_commit": "47af1ad28",
+      "deploy_run": 32549069821,
+      "deploy_verified": true,
+      "migrations": ["587_llm_usage_events_interpretation_sets_stage (renumbered from an initial 584 reservation after a merge-queue-time collision)"],
+      "spot_check": "See p3_preflight_parts.E.live_verification above."
+    },
+    {
+      "phase": "P3-Preflight-Part-F-residual-a",
+      "pr": 1465,
+      "merge_commit": "part of main@94e20a8c7",
+      "deploy_run": 32560036708,
+      "deploy_verified": true,
+      "spot_check": "See p3_preflight_parts.F.live_verification above."
+    },
+    {
+      "phase": "P3-Preflight-Part-F-residual-b",
+      "pr": 1467,
+      "merge_commit": "main@49209b067",
+      "ci_run": 32563470129,
+      "deploy_run": 32563982121,
+      "deploy_verified": true,
+      "note": "Docs-only change (two files under 00_ARCHITECTURE/) still triggered a full Build & Deploy Web (no-op in effect) -- disclosed by the source entry as a resource-efficiency observation, not a defect, at the time; this same behavior is what DD-27 (filed later, Part G, not yet merged) reclassifies as something Part H must treat as a real deploy rather than skip."
     }
   ],
   "gate_results": {
@@ -173,6 +390,33 @@
         "PITR-enable / scratch Cloud SQL / restore drill / amjis_app credential rotation -- held per native's explicit P1-scoping decision (\"skip infra\"), no new authorization requested",
         "Pre-existing plaintext amjis_app DSN at platform/python-sidecar/tests/l5/test_mi_bhara_circularity_guard_w2.py:295 -- disclosed to native, not introduced this session, unrotated pending same authorization as above",
         "G1-A: HS-4 death-anniversary false positive and /api/chat/consult missing full post-plan reclassifyAfterPlan wiring -- gated on PARIPRASHNA_SAFETY_GATE_ENABLED ever flipping true, not on this merge"
+      ]
+    },
+    "P2_gate": {
+      "status": "PASSED (post-remediation) -- the phase-close gate battery, run against the live deployed route with the 7 P2 flags on, first found 6 real gaps/defects rather than passing clean; each was either fixed-and-live-verified before the tag, or explicitly carried forward as a named DD, per the DD-21 observed-delivery discipline this same battery motivated.",
+      "tag": "pariprashna/p2-close",
+      "tag_commit": "1ad8df05f",
+      "closed_at": "2026-08-21 (exact time-of-day not stated in the source entry for the tag itself)",
+      "original_criteria_per_phased_plan_section_2_phase_ii_gate": [
+        "a real reading on the deployed route renders a daśā table as a table and a verse as a verse with its gloss",
+        "receipts audit-clean",
+        "crash-kill-test / outbox recovery",
+        "a planted-contradiction fixture surfaced, not smoothed over",
+        "P1's safety assertions re-run green on the new artifact"
+      ],
+      "gate_battery_findings_and_disposition": [
+        "HS-4 death-anniversary false positive (classifier.ts) -- found live via the probe harness, fixed, merged, deployed, live-verified (DD-14, CLOSED). Not part of DD-13's own phrasing_scan.ts scope.",
+        "Citation-slot template leak (\"...provided in this, this, and this artifacts.\") -- new defect found during the gate battery, fixed (register_leak_lint.ts list-connective collapsing + a new no-sourcing-filler prompt clause), merged, deployed, live-reverified.",
+        "Block-kind rendering (daśā table/verse not rendering as structured blocks) -- real gap, live-confirmed, corroborating evidence for the already-closed MCP<->web namespace gap measurement (DD-15, cross-reference only, no new decision).",
+        "Crash-kill/outbox recovery -- honest split at gate-battery time (reducer-level state covered by existing tests; outbox-recovery itself untestable, flag off + migration never opened); RULED and CLOSED separately (DD-16): migration 578 opened, applied, and the real recovery replay verified against the live table.",
+        "Receipt B.4/waiver rate -- structurally audit-clean (no fabrication) but a 100% interpretation_sets waiver rate on a small live sample (DD-17); root-caused NOT to be a tier problem but a real structured-output schema-binding defect (DD-20, closed at P2 close via PR #1398).",
+        "Planted-contradiction fixture -- the corpus's own canonical Gate-3 fixture collided with the HS-3 safety gate as literally authored; closed via a one-line fixture wording fix preserving the actual planted tension (DD-18, CLOSED)."
+      ],
+      "held_back_not_dropped": [
+        "Item 4 / DD-22 (table-in-prose block promotion) -- approved approach (c), not built at P2 close; built later under P3-Preflight Part C (PR #1443).",
+        "DD-23 (remedial guidance under-governed) -- OWNED, UNDATED, scoped as investigation only.",
+        "P2-N (quality corpus) and P2-O (model qualification) -- built (G3-F/G3-G merged) but never run against the live route, per DD-24's own seed enumeration.",
+        "H's Seal motion -- never independently observed/confirmed delivered, per DD-24's own seed enumeration."
       ]
     }
   },
@@ -232,7 +476,8 @@
       "finding": "PRE-EXISTING (not introduced by this lane): citation markers are scrubbed by lintReaderProse before extractCitations ever sees the text, so citation.define wire events and canonical citation parts are structurally dead on this path. Same in the original 1179-line route.",
       "severity": "LOW",
       "recommendation": "Track alongside P0C-R4 for the same future citation/receipt lane.",
-      "blocking": false
+      "blocking": false,
+      "note_2026_08_20": "Real fix landed as part of the P2-B lane (S-3 rewriter wired into the live stream) -- see p2_lanes.P2-B above. Not independently re-confirmed closed by this sync; left as historical context on this residual's own entry, not edited."
     },
     {
       "id": "P0C-R6",
@@ -248,5 +493,32 @@
       "recommendation": "Add import 'server-only' to persistence_stage.ts and safety_gate.ts; consider an importer CI guard before P1 opens multiple lanes on these files.",
       "blocking": false
     }
-  ]
+  ],
+  "dd_register_snapshot": {
+    "_sourced_from": "PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md §2 as merged on origin/main (fetch 2b272a326e6107f8d604c8ebaf0f62bfd00ac068), cross-checked against origin/campaign-coordination's own entries. Only DD-13/DD-19/DD-24/DD-25/DD-26 are summarized here per this sync's scope; the full register (DD-1 through DD-26 as of this fetch) is the source of record, not this snapshot.",
+    "DD-13": {
+      "register_status_on_main": "OWNED -- deadline 2026-09-03. Residual (a) (third-sentence pairing gap) CLOSED 2026-08-22 via PR #1465 (P3-Preflight Part F), live-verified. Residual (b) (streaming un-send asymmetry vs. the P2 first-paint-citation guarantee) INVESTIGATED AND REPORTED, NOT RESOLVED, 2026-08-22 via PR #1467 (same Part F) -- a real, measured tension confirmed to exist, three options laid out, none selected by that session, per its own ticket's explicit instruction not to resolve unilaterally.",
+      "discrepancy_flagged_by_this_sync": "An origin/campaign-coordination lease-open entry (commit e26627323, appended AFTER Part F's own close, narrating PARIPRASHNA-P3-PREFLIGHT-PART-G) states a native ruling selected option (i) STATUS QUO for residual (b) and that DD-13 is now CLOSED in full. That entry is real, disclosed narrative on the coordination log (pushed directly, not a PR), but the underlying DD register document on origin/main -- the file this snapshot is sourced from -- has NOT been updated to reflect that ruling as of this sync's fetch: it is pending PR #1475 (OPEN, unmerged, mergeStateStatus BLOCKED at time of check). This sync reports DD-13 as OWNED, matching the merged register document, and separately records Part G's own narrated closure claim in p3_preflight_part_g_in_flight above as reported-but-not-yet-merged -- not folded into this field as if already true."
+    },
+    "DD-19": {
+      "register_status_on_main": "OWNED -- DEADLINE SET, due 2026-09-03 (per the register document's own status field, as fetched fresh by this sync).",
+      "discrepancy_flagged_by_this_sync": "origin/campaign-coordination's PARIPRASHNA-P3-PREFLIGHT-PART-E lease-closed entry (merged PR #1462) describes DD-19's fix as landed, deployed, and live-verified (a real interpretation_sets row appeared in llm_usage_events for the first time, with correct provider/model/cost). The DD register document's own DD-19 status FIELD on origin/main still reads OWNED / DEADLINE SET as of this sync's fetch -- it does not appear to have been bumped to CLOSED to reflect Part E's real, coordination-log-documented fix. Reported here as an honest discrepancy between the primary narrative record (coordination log) and the DD register document's own status field, not silently reconciled -- this sync does not touch PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md (out of its declared may_touch scope)."
+    },
+    "DD-24": {
+      "register_status_on_main": "BINDING ON P3. Parity proves sameness, not correctness -- P3-D's receipt-hash parity assertion between the web door and the MCP door is bounded to an enumerated baseline of the web door's known gaps (DD-23's remedial citation coverage gap, DD-22's table-in-prose promotion, P2-N/P2-O never run live, H's Seal motion never confirmed). No parity pass may be cited as delivery evidence (per DD-21) for any capability in that enumeration. The seed enumeration is explicitly stated as needing RE-DERIVATION at actual P3 open, not inheritance verbatim.",
+      "discrepancy_flagged_by_this_sync": "None found. Consistent between the coordination log and the register document as of this sync's fetch."
+    },
+    "DD-25": {
+      "register_status_on_main": "computed_cost_usd null on synthesize rows -- ROOT-CAUSED (scope corrected to ALL llm_usage_events rows, every provider/pipeline_stage, not only synthesize) via PARIPRASHNA-P3-PREFLIGHT-PART-D. Register's own status text reads \"FIX LANDED, pending merge + deploy + live re-verification that computed_cost_usd populates and the NCD-8 ceiling is no longer inert\" as of this sync's fetch.",
+      "discrepancy_flagged_by_this_sync": "origin/campaign-coordination's PARIPRASHNA-P3-PREFLIGHT-PART-D lease-closed entry (merged PR #1441) already reports BOTH of those live re-verifications as completed and successful (computed_cost_usd populated with the exact predicted value; the ceiling's own getDailySpendUsd() read-path confirmed non-inert against the same real value) -- the fix has, per the coordination log, already cleared the exact condition the register's own status text says is still pending. This sync does not edit the register document (out of scope) but flags the apparent staleness here rather than silently treating DD-25 as fully closed or as still-pending."
+    },
+    "DD-26": {
+      "register_status_on_main": "OWNED, no deadline set. Disclosed limitation of migration 583 (DD-25's fix): llm_pricing_versions holds one flat rate per model; Google's real Gemini pricing is tiered by input size; the seed uses only the <=200K tier, so any call exceeding that threshold is under-priced until this lands.",
+      "discrepancy_flagged_by_this_sync": "None found."
+    }
+  },
+  "known_related_items_not_in_scope_of_this_sync": {
+    "PARIPRASHNA_P2_CLOSE_REPORT_v1_0.md": "Cited repeatedly above as the fuller source for P2-close detail (DD-21's own evidence base, DD-22's approach-(c) viability finding, DD-23's finding, DD-24's seed enumeration). This sync did not itself re-read that report -- summaries above are drawn from the coordination log's own citations of it, not from a fresh read. A future sync wanting the full P2-close detail should read that report directly.",
+    "PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md": "Referenced by Parts A-H structure throughout this sync's p3_preflight_parts / part_g / part_h fields. Per Part G's own narration, this file was only committed into the repo by PR #1475 (still open/unmerged as of this sync) -- not verified from source by this sync directly (this sync did not read its contents; only the coordination log's own citations of its section numbers, e.g. §7 item 2, §8)."
+  }
 }
