@@ -1108,3 +1108,205 @@ Five triggers armed (D-012), any one executed without deliberation.
 **Falsifier:** if a model reaches production that is absent from `platform/src/lib/models/registry.ts`'s
 pricing, V1's sweep is incomplete by exactly that model — the sweep is only as complete as the
 registry. Re-run it whenever a model is added. On the unblock sheet.
+
+---
+
+## F-N10 — the limits enable is durable, but only by an UNDECLARED default (found while watching the next deploy)
+
+**Caught by asking whether the run's own production change would survive the next deploy — rather than
+assuming it would.**
+
+#1498's merge queued a `Deploy to Cloud Run` from `main`. That deploy re-deploys the web service, so
+the question is whether it would silently revert `MARSYS_FLAG_PARIPRASHNA_LIMITS_ENABLED=true`.
+
+**Answer: no — and the evidence is empirical, not doctrinal.** `deploy.yml` uses
+`google-github-actions/deploy-cloudrun@v2` with an `env_vars:` block and **does not declare
+`env_vars_update_strategy`**. Its runtime block names exactly four `MARSYS_FLAG_*` vars
+(`BUILD_TRIGGER`, `HISTORY_COMPRESSION`, `OBSERVATORY`, `VECTOR_SEARCH`). The live service carries
+**sixteen**, including eleven `MARSYS_FLAG_PARIPRASHNA_*` vars that appear nowhere in the workflow:
+
+```
+declared in deploy.yml : 4
+live on the service    : 16   (11 PARIPRASHNA_* undeclared)
+```
+
+Those eleven have survived many deploys. **That is proof by observation that the action merges rather
+than replaces**, and therefore that tonight's flag will carry forward.
+
+**But the property is unearned in exactly the §N.8 sense.** It holds because of an action's *default*
+that this repository never declared, never pinned, and does not test. Nothing would fail if the
+default changed in a future action release — eleven feature flags, including the safety gate, the
+voice enforcement, and now the spend limits, would silently revert on the next deploy, and the first
+symptom would be a behaviour change nobody could attribute. Ask §N.8's question: *what code path
+would have to run, and fail, for "the flags survived the deploy" to correctly read false?* There is
+none.
+
+**Recommended, not done tonight** (it edits the deploy pipeline, which is not this run's scope at
+05:00 with no human awake): declare `env_vars_update_strategy: merge` explicitly in `deploy.yml`, or
+promote the eleven undeclared flags into the workflow's own `env_vars:` block so their values are
+version-controlled rather than resident only in Cloud Run's mutable state. Either turns an incidental
+property into a pinned one.
+
+**What the run DID do about it:** treated the in-flight deploy as a live detector and verified the
+flag's survival against the post-deploy revision rather than asserting durability. Result recorded
+below.
+
+**Falsifier:** if the post-deploy revision does not carry the flag, then the limits enable was
+reverted by the deploy, "flip precondition 3 satisfied" is false as of that moment, and the morning
+report must say so. This is checked, not assumed.
+
+## F-N10 — RESULT: VERIFIED, the flag survived a real deploy — and the rollback target is now STALE IN A DANGEROUS DIRECTION
+
+**F-N10's falsifier was checked, not assumed.** `Deploy to Cloud Run` for `898f53c37` (main, from
+#1498's merge) completed **success**, created a new revision, and:
+
+```
+serving revision : amjis-web-01673-665   100%
+MARSYS_FLAG_PARIPRASHNA_LIMITS_ENABLED = true
+MARSYS_FLAG_* count on template        : 16
+```
+
+**The flag survived a genuine deploy from main.** `deploy-cloudrun@v2` merges. The limits enable is
+durable in practice — and the property is now confirmed by observation of an actual deploy rather
+than by inference from persistence. F-N10's recommendation stands unchanged: it is still an
+undeclared default, still unpinned, still worth declaring explicitly.
+
+**But the verification surfaced a second, sharper problem.** The serving revision has moved twice
+since the rollback pin was written:
+
+```
+amjis-web-01671-47n   <- the pin's recorded target (pre-limits)
+amjis-web-02826-huf   <- the limits canary this run shifted to
+amjis-web-01673-665   <- what is serving NOW, after main's deploy
+```
+
+`P3F_FLIP_ROLLBACK_PIN_v1_0.md` records `amjis-web-01671-47n` as the known-good target. **That
+revision predates the limits enable.** Rolling back to it would un-flip *and silently disarm the
+spend caps* — reverting a native-authorized change nobody asked to revert, as an invisible side
+effect of a rollback aimed at something else.
+
+The pin does label its captured revision **"illustrative only, must be re-read fresh at flip time,"**
+which is the right instruction and is what saves it. But an instruction is weaker than a correct
+value sitting on the page, and a tired reader at speed reads the value. **This is the exact trap a
+stale pin sets**, and it materialised within ninety minutes of the pin being written — which is
+itself the argument for the instruction.
+
+**Recorded, not silently patched:** the correction is carried into the morning unblock sheet, where
+someone reaching for a rollback will actually be looking. Amending the pin document itself is left
+for the morning, alongside its own §6 human-confirmation step — the pin is under review on PR #1503
+and rewriting a document mid-review would erase what the reviewer is currently reading.
+
+---
+
+## F-N11 — the rollback pin's verification is green-either-way for the rollback it is attached to (§N.8, in the flip's highest-stakes document)
+
+Found by the prep-PR reviewer, independently of the conductor's own stale-revision finding, and it is
+the sharper of the two.
+
+`P3F_FLIP_ROLLBACK_PIN_v1_0.md` §5.2 proposes an unauthenticated `curl -sI` against
+`/clients/<synthetic>/pariprashna`, with "rollback succeeded" = `307 → /clients/…/consult`. That
+outcome is producible **only** by `PARIPRASHNA_ENABLED` being false — `page.tsx:42–44` is the only
+code path that emits it. But **PRIMARY** (the traffic shift, which the document lists first, calls
+"the standard one," and whose §7 kill criterion tells the operator to fire without a second opinion)
+**does not change that flag**: both `amjis-web-01671-47n` and `amjis-web-02826-huf` carry
+`MARSYS_FLAG_PARIPRASHNA_ENABLED = true`. The flip changes *default routing*, not the pariprashna
+page's own guard.
+
+So the check returns `307 → /login` identically before and after PRIMARY. **§5.2 verifies SECONDARY
+only; PRIMARY has no functional detector at all.**
+
+And the document forecloses the possibility in writing:
+
+> *"What would make this check silently pass when the rollback failed: nothing obvious — the two
+> locations are textually distinct and the check requires no auth, so there's no plausible 'looks
+> green either way' failure mode here."*
+
+**That sentence is false.** It is §N.8's defect in its most dangerous location: the verification step
+of a rollback runbook, asserting its own unfalsifiability. Fix dispatched.
+
+---
+
+## F-N12 — a revision pin is a SAFETY-CONFIGURATION pin (DD entry; §9 reached by accident)
+
+The conductor and the prep reviewer found this independently, ninety minutes apart, from opposite
+directions — which is itself worth recording.
+
+```
+amjis-web-01671-47n  <- the pin's §4 recorded target   LIMITS_ENABLED  ABSENT
+amjis-web-02826-huf  <- the limits canary                              = true
+amjis-web-01673-665  <- serving now, post main-deploy                  = true
+```
+
+Rolling back to the recorded target **silently disarms the $2/turn and $40/day pre-dispatch spend
+ceilings and the per-user rate limits on both doors** (`enforceTurnLimits` short-circuits to allowed
+when the flag is off — `src/lib/limits/index.ts:53`), while the operator believes they only undid the
+flip. **That is a rollback command routing around a safety gate — the thing §9 prohibits — reached by
+accident rather than intent.**
+
+The document's §4 even records `LIMITS_ENABLED: absent` as *positive* evidence of a clean pre-flip
+state, and never notices that this is exactly what makes the revision unsafe to return to once limits
+are armed. Its §3 instruction — *"read fresh, not copied from §4"* — is what saves it and is correct;
+but the literal revision name sits in a bordered copy-paste table directly under a
+`<PRE_FLIP_REVISION>` placeholder, and **a tired reader at speed reads the value, not the
+instruction.**
+
+**Generalisable rule, worth a DD entry:** a rollback runbook must require an **env diff of the
+candidate revision against the current one, confirming no `MARSYS_FLAG_*` safety flag is lost**,
+before any traffic shift. A revision is not just a code pin — it pins the safety configuration that
+shipped with it.
+
+---
+
+## F-N13 — the byte-agreement test's two operands are one object reference (§N.8 sixth-instance candidate)
+
+The P3-D-prep byte-agreement test survived **five independent sabotages** (wire-side key reorder,
+persisted-side nested value change, wire-side field drop, whitespace-only change, extra field), each
+different from the lane's own, **all RED**, with a deep-clone control **GREEN**. It runs in ordinary
+CI with no DB and does not skip. The guard is real and the mocks are not hollow — editing the real
+`persistence_stage.ts` flipped the outcome in five of six runs.
+
+**But both sides trace to a single object reference** (`persistence_stage.ts:499` and `:507`;
+`receipt/store.ts:46` stores by reference). So it cannot fail on a *value* divergence — there is no
+second derivation to diverge — only on a *code* change that produces two objects, which is precisely
+why every sabotage had to edit source.
+
+**That makes it a single-source-of-receipt invariant guard — genuinely valuable, and the right guard
+to have — but not "byte agreement between two independently-assembled derivations,"** which is what
+its headline says. **CLAUDE.md §N.8 instance 3 is literally "a byte-equality claim with no byte
+comparison behind it,"** so this artifact above all others must not leave a byte-equality headline
+resting on an unstated identity invariant. Headline fix dispatched; the test itself is sound and
+unchanged.
+
+Also filed: its fourth assertion (*"receipt_hash identical on both sides"*) stayed GREEN under all
+five sabotages including a whole-field deletion — it can only fail under the lane's own sabotage and
+adds no detection the byte assertion doesn't already give. To be labelled a documentation assertion
+or dropped.
+
+---
+
+## F-N14 — the MCP door has NO feature-flag gating, and the "kill switch" does not cover it
+
+```
+grep -n "getFlag(" src/app/api/mcp/prashna_ask/route.ts src/lib/pipeline/prashna_ask_synthesis.ts
+  -> no matches
+grep -rn "getFlag('PARIPRASHNA_ENABLED')" src/
+  -> clients/[id]/pariprashna/page.tsx:42 · clients/[id]/samiksha/page.tsx:27
+     api/pariprashna/resume/route.ts:80   · lib/pariprashna/pipeline/safety_gate.ts:107
+```
+
+The web door **404s** when `PARIPRASHNA_ENABLED` is off; `prashna_ask` stays fully live. Two
+consequences neither document had noticed:
+
+1. **The flag the rollback pin calls a "mechanism-independent kill switch" does not cover the MCP
+   door at all.** An operator pulling it believes they have closed the surface; one door stays open.
+2. G3/G4 were marked `fixed-first` *"by construction once P3-B re-bases `prashna_ask` onto the shared
+   loop with all gates"* — but the shared gate **is** `safety_gate.ts`, so that re-base would
+   **newly flag-gate the MCP door**, silently expanding the rollback pin's SECONDARY blast radius.
+
+Being added to the DD-24 enumeration with the re-base consequence stated, before P3-B opens. Also
+being added: the auth/principal asymmetry (web = Firebase session; MCP = service token +
+`X-MCP-User`/`X-MCP-Key-Id`, rate limiting keyed on `keyId`, spend attributed to `userUid`) — adjacent
+to G8 but not covered by it, and it affects limits keying, which parity will touch.
+
+**Fifth guard site, also unnamed anywhere until now:** `clients/[id]/samiksha/page.tsx:27` reads the
+same flag, so pulling it also takes down the SAMĪKṢĀ review tab.

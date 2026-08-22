@@ -118,6 +118,32 @@ These are recorded so that a tired morning does not undo a careful night.
 
 ---
 
+## Before you roll anything back — the pin's recorded revision is stale
+
+`P3F_FLIP_ROLLBACK_PIN_v1_0.md` records **`amjis-web-01671-47n`** as the known-good rollback target.
+**That revision predates the limits enable.** The serving revision moved twice overnight:
+
+```
+amjis-web-01671-47n   <- the pin's recorded value (PRE-limits)
+amjis-web-02826-huf   <- the limits canary this run shifted to
+amjis-web-01673-665   <- serving now, after main's own deploy
+```
+
+**Rolling back to `01671-47n` would un-flip AND silently disarm the spend caps** — reverting a
+native-authorized change nobody asked to revert. The pin correctly labels its value *"illustrative
+only, re-read fresh at flip time"*, and that instruction is what saves it — but read the live value,
+do not read the page:
+
+```bash
+gcloud run services describe amjis-web --region=asia-south1 \
+  --format='value(status.traffic[0].revisionName)'
+```
+
+Verified good as of this writing: `amjis-web-01673-665` serves 100%, carries
+`MARSYS_FLAG_PARIPRASHNA_LIMITS_ENABLED=true`, and survived a real deploy from `main`.
+
+---
+
 ## The other thing that needs your decision today
 
 **Migrations 588 and 589 are applied to the production database with no rows in
