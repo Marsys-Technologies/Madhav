@@ -7028,3 +7028,50 @@ to merge it.
 
 No file outside this lease's declared scope (`SWARM_TRACKER.json` only,
 plus this coordination log itself) was touched.
+
+## 2026-08-22 — PARIPRASHNA-P3-PREFLIGHT-PART-G — lease CLOSED, PR #1475 merged + deployed
+
+Lease opened above (entry `e26627323`) is released. Final account:
+
+- PR #1475: CI green (all real checks including `Governance Gates` — after
+  one real fix mid-flight, see below), merged via the merge queue (queued
+  behind the sibling PARIŚEṢA-RĀTRI-V4 campaign's PR #1474, cleared normally,
+  no ejection). Merge commit `main@0cfe74821`.
+- **Real CI trap hit and fixed before merge, not just described in theory:**
+  first push registered the new master-prompt file as a
+  `CAPABILITY_MANIFEST.json` canonical entry, which pushed
+  `drift_detector`'s finding count from 79 to 80 — over the CI-enforced
+  T0 baseline ceiling (DVA Ruling 4) — and `Governance Gates` correctly
+  failed on it (`drift_detector findings 80 EXCEEDS the 79 T0 baseline`).
+  Fixed by NOT registering the file as canonical (matching the
+  PURNATA/SAMĀPTI/NIḤŚEṢA precedent), not raising the ceiling. Amended the
+  commit, force-pushed the still-unmerged lane branch, re-verified locally at
+  79/exit 3 before re-pushing. Second CI run: `Governance Gates` green.
+- **Deployed, per DD-27's own new binding rule (filed in this same PR) —
+  treated as a real production deploy despite being docs-only:** `main@
+  0cfe74821` → `CI — Ganga Quality Gate` succeeded → `Deploy to Cloud Run`
+  succeeded. Live revision confirmed via `gcloud run services describe
+  amjis-web`: **`amjis-web-01653-d2l`, 100% traffic**, no rollback
+  triggered — clean deploy, no red smoke. Announced here per X-6.
+- No file outside this lease's declared scope was touched.
+
+**What this lease delivered:** DD-13 closed in full (native ruling on
+residual (b)); DD-27 filed (deploy-trigger finding, binding on Part H);
+DD-23 confirmed already correctly scoped, no change needed;
+`PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md` committed to the repo,
+intentionally not registered as a `CAPABILITY_MANIFEST` canonical entry
+(see the file's own frontmatter for why). Worktrees
+`.clone/worktrees/pariprashna-part-g` and
+`.clone/worktrees/campaign-coord-part-g` will be removed now that this
+lease is closed.
+
+---
+
+**PARIPRASHNA-P3-PREFLIGHT-PART-G is now closed.** Per the master prompt's
+Parts A–H structure, only **Part H (close + tag)** remains before P3 can
+open. Per DD-27 and the native's own explicit instruction this session,
+Part H's batched governance-registry write must be run with full canary
+discipline and an announced Cloud Run revision tag, exactly as this
+docs-only deploy was — not skipped as "only docs." Checking in with the
+native before starting Part H, consistent with the pattern this campaign has
+followed at every Part boundary.
