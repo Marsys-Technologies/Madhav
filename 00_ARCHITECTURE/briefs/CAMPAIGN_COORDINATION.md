@@ -7235,3 +7235,30 @@ this note exists to prevent. After landing, PR #1488 will be commented as supers
 
 **Native-authorized** (2026-08-22, `CLAUDECODE_BRIEF_SWEEP_RESOLUTION_PLAN_v1_0.md` P0-1, "go
 ahead and execute as per your recommendation").
+
+## 2026-08-22 — SALVAGE-RECONCILE — lease CLOSED, PR #1490 opened, PR #1488 superseded
+
+Lease opened above (entry `353c4f88`) is released. While this lease was open,
+`salvage/wrapped-campaigns-clean` (PR #1489) merged to `main` via the merge queue
+(`6326cda7`) — the declared scope's target branch disappeared mid-lease. No push was
+attempted against the queued/protected branch (the first push attempt was rejected by
+branch protection, which is what surfaced the merge). Response: waited for #1489 to
+clear the queue, verified the squash-merge was content-identical to its pre-queue tip
+(`git diff --stat` empty), then rebuilt the 5 commits directly on the resulting `main`
+in the same isolated worktree.
+
+**One error, corrected before push:** the first rebuild used `git rebase --onto`, which
+replayed all 178 commits of the `parisesa/campaign-state` merge instead of the merge's
+net diff — reintroducing the exact history bloat #1489 existed to avoid. Caught by
+commit-count sanity check (183 ahead of `main`, expected 5) before anything was pushed.
+Reset to the pre-rebase state and rebuilt using `git merge --squash` instead, which
+computes the same 3-way diff without the history replay. Final result verified: 5
+commits, zero deletions in the squashed content, byte-identical to PR #1488's final
+tree for every rescued file group.
+
+**PR:** #1490, branch `salvage/reconcile-1488-onto-main`, opened against `main`.
+**PR #1488:** commented as superseded and closed (branch kept, not deleted, until #1490
+merges).
+
+No file outside this lease's declared scope was touched. Worktree
+`/tmp/reconcile-salvage-82560` will be removed now that the branch is pushed.
