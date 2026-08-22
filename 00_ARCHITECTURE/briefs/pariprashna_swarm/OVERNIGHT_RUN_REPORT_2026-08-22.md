@@ -321,6 +321,30 @@ of nearly everything this night found.
 
 ---
 
+## Independent corroboration, and the limits of it
+
+**§11.4 makes the pulse log — an agent-free record no agent may write to — the tie-breaker over this
+report.** A tie-breaker never consulted is not a tie-breaker, so it was consulted. **They agree:**
+`origin/main 5aeb24c20`, production revision `amjis-web-01673-665`, HTTP 307 on `/`. No discrepancy to
+file. The pulse log also **independently observed the production revision change this run caused**,
+without any agent writing to it — which is why the limits-enable record can be trusted against
+something other than the conductor's own word.
+
+**But the tie-breaker has a coverage gap, declared rather than quietly relied on.** Its earliest entry
+is **22:07Z — the moment the tmux session was recreated after the conductor crash.** It does not cover
+the run's first hours at all. For that window this report is **uncorroborated**, and §11.4's
+arbitration mechanism has nothing to arbitrate with. *Charter amendment worth making for a future run:
+the pulse log should survive a conductor crash, or the report must state the timestamp from which
+independent corroboration begins.*
+
+**X-7 verified at close:** the shared checkout is exactly as found — still `6326cda7a` on `main`, with
+its pre-existing untracked set intact. The two unrecorded migrations are present and byte-identical to
+the read-only backups taken at 03:53 (sha256 match on both). *Observed and not acted on: NIRMĀṆA
+elevation plans v3 and v4 appeared in that checkout during the night, so another campaign is writing
+there concurrently. This run touched none of it.*
+
+---
+
 # APPENDIX — the original in-progress skeleton follows
 
 ## End state

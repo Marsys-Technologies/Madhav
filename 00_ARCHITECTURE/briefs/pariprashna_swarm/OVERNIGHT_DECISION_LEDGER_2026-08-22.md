@@ -1310,3 +1310,43 @@ to G8 but not covered by it, and it affects limits keying, which parity will tou
 
 **Fifth guard site, also unnamed anywhere until now:** `clients/[id]/samiksha/page.tsx:27` reads the
 same flag, so pulling it also takes down the SAMĪKṢĀ review tab.
+
+---
+
+## F-N15 — §11.4 pulse-log cross-check: NO DISAGREEMENT — and the tie-breaker's own coverage gap, declared
+
+Charter §11.4 gives the pulse log authority over the morning report: *"if the morning report and the
+pulse log disagree, the pulse log wins and the discrepancy files as a finding."* A tie-breaker that is
+never consulted is not a tie-breaker, so it was consulted.
+
+**Result: they agree, on every fact the pulse log independently observed.**
+
+| fact | pulse log (agent-free) | this run's report |
+|---|---|---|
+| `origin/main` | `5aeb24c20` | `5aeb24c20` |
+| production revision | `amjis-web-01673-665` | `amjis-web-01673-665` |
+| production HTTP | `307` on `/` | `307` on `/`, `200` on `/login` |
+| disk | 965Gi free | not claimed |
+
+**No discrepancy to file.** Recorded as performed rather than assumed, because "the report and the
+pulse log agree" is itself a claim, and it is one nobody would have checked if the conductor had not
+gone and looked.
+
+**But the tie-breaker has a coverage gap, and it must be declared rather than quietly relied upon.**
+The pulse log holds **9 entries, the earliest timestamped 22:07Z** — the moment the tmux session was
+recreated after the conductor crash. **It therefore does not cover the run's first hours at all**: the
+entire pre-crash period, including the original Wave-1 dispatch and the work that produced the
+salvaged lanes, has **no independent agent-free record**. For that window the morning report is
+uncorroborated, and §11.4's arbitration mechanism simply has nothing to arbitrate with.
+
+This is not a defect in the pulse script — it is the mechanical consequence of the sentinel and pulse
+windows being recreated with the session. But it means the authority §11.4 grants is real only from
+22:07Z forward, and the report must not imply otherwise. **Worth a small charter amendment for a
+future run: the pulse log should survive a conductor crash (write to a path outside the tmux session's
+lifecycle), or the report must state the exact timestamp from which independent corroboration begins.**
+
+Also worth noting for the record: the pulse log correctly captured `prod revision:
+amjis-web-01671-47n` at 22:37Z and `amjis-web-01673-665` at 23:07Z — i.e. **it independently observed
+the production revision change this run caused**, without any agent writing to it. That is the
+mechanism working exactly as designed, and it is the reason the limits-enable record can be trusted
+against something other than the conductor's own word.
