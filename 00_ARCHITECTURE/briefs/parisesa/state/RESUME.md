@@ -1,8 +1,22 @@
 # PARISESA-V4 RESUME (authoritative — journal-derived)
 
-**Session:** PARISESA-V4-CONDUCTOR-20260820T191407Z (v3.1 "Full Closure" → owner-rulings execution wave, live)
-**Journal head:** seq 992
-**Phase:** Owner rulings (OWNER_RULINGS_20260821.md, R-1..R-9) being executed. 142/193 total terminal, 131/141 baseline.
+**Session:** PARISESA-V4-CONDUCTOR-20260822T023000Z (c05567cd) — CLOSED, native-scoped
+close-out. This session executed the Opus-authored `PARISESA_V4_FIX_PLAN.md` across
+Waves 1–5 (Sonnet-5 implementer agents, high effort, no human review gate per native
+authorization), then closed the final native-scoped batch: the 6 remaining
+`MORNING_SHIP_READY` findings (F-142-CANDIDATE, F-145, F-156, F-159, F-165, F-166) plus
+the `F-75-batch` `OBSOLETE_MARKER` row.
+
+**Journal head:** seq 1097
+**Phase:** Session closed per explicit native scope: "the morning ship ready six units
+... the other two [DATA_PARKED, EXTERNAL_HOLD] we do not touch ... after you finish
+these six plus one seven ... this session comes to a close."
+
+**Findings status at close:** 153 SERVICE_CLOSED, 29 CONTROL_CLOSED, 3
+HISTORICAL_STALE_CLOSED, 2 NOT_APPLICABLE_CLOSED, 6 DATA_PARKED (untouched, per native
+instruction), 4 EXTERNAL_HOLD (untouched, per native instruction). **0 MORNING_SHIP_READY
+remaining.** Re-derive from `ledger.json` directly rather than trusting this snapshot,
+which ages quickly.
 
 ## ⚠️ STANDING POLICY — READ BEFORE TOUCHING ANYTHING GOCHARA-RELATED
 **Direct owner instruction, 2026-08-21: for any `ka_gochara_*`-adjacent finding
@@ -25,69 +39,28 @@ pane really was dead: re-run `check_ledger_pr_sync.py` before trusting any
 finding's status, and re-derive the terminal count from `ledger.json` yourself
 rather than trusting this file's numbers, which age quickly.
 
-Also read `00_ARCHITECTURE/briefs/parisesa/state/OWNER_RULINGS_20260821.md`
+## What remains open for a future session
+- **6 `DATA_PARKED`** findings (F-104, F-151, F-189, F-23, F-35, F-63) — deliberately
+  left untouched this session per explicit native instruction. Their own ledger
+  `next_action` fields carry the real disposition/blocker for each; read those directly
+  rather than assuming a common cause.
+- **4 `EXTERNAL_HOLD`** findings (F-141, F-21, F-52, RATE-07-ENABLE) — same: deliberately
+  untouched, ledger entries carry the specific external blocker per finding.
+- One pre-existing staged-but-uncommitted diff on `platform-mcp/src/tools/register_p1_aliases.ts`
+  (F-125 `requiresOrientation`/B.11 orientation-gate work) was present in the conductor
+  worktree at this session's start and was NOT created or touched by this session — left
+  exactly as found. A future session should investigate its provenance/owner before
+  acting on it (commit, discard, or continue) rather than assuming it is either finished
+  or abandoned.
+- The pre-existing mandatory-reading backlog referenced by earlier RESUME.md revisions
+  (G0/Phase-0 reconciliation, `OWNER_RULINGS_20260821.md` R-9 queue tail) — re-check the
+  ledger and `OWNER_RULINGS_20260821.md` directly for current state; this session's scope
+  was the specific 6+1 closure above, not a general continuation of that queue.
+
+Also still relevant: `00_ARCHITECTURE/briefs/parisesa/state/OWNER_RULINGS_20260821.md`
 (canonical copy — a stub pointer exists at the old non-canonical path
 `00_ARCHITECTURE/briefs/parisesa/OWNER_RULINGS_20260821.md`) and
-`00_ARCHITECTURE/briefs/parisesa/HANDOFF_COWORK_SUPERVISOR_20260821.md` — the
-latter is the supervising Cowork conversation's own handoff after the owner's
-account switch lost its prior instance; it independently confirms the owner
-delegation these rulings rest on is genuine.
+`00_ARCHITECTURE/briefs/parisesa/HANDOFF_COWORK_SUPERVISOR_20260821.md`.
 
-## Where things stand in the R-9 execution queue
-- **R-1/R-2/R-3 (mantra transliteration + BPHS citation corrections)**: DONE
-  across all known locations found so far — PR #1429 (main corpus), #1436
-  (mantras.yaml + bphs_canon_batch_04.yaml), #1438 (F-182, corpus-wide sweep:
-  4 live-production rows + 8 more YAML files + 2 code files, migration 582 —
-  **not yet merged, needs a campaign-coordination migration-claim row and GA-5
-  review**). F-184 tracks a follow-up: F-180's citation fix doesn't actually
-  reach `_grounding_engine`'s served output yet.
-- **F-175** (assess_marriage false-clean): DONE, merged (reconciled with F-177
-  into PR #1435 after the two independently conflicted on the same trim
-  mechanism — see F-175/F-177 ledger entries for the reconciliation account).
-- **F-149** (streaming content-hash fix, gates F-141's rebuild): DONE, merged
-  (#1432). Two real follow-up gaps disclosed, NOT yet resolved: **F-185**
-  (spill directory is unconfigured anywhere in deploy config — Cloud Run's
-  `/tmp` is RAM-backed tmpfs, so the whole bounded-memory fix could silently
-  invert in production) and **F-186** (other eager-load functions in the same
-  writer aren't audited). F-141's rebuild gate is NOT fully cleared until both
-  land, per the GA-5 reviewer's own explicit assessment.
-- **6 DATA_PARKED GA-3 items**: **F-71** DONE (mi_bhara timeout 600→10800,
-  full verification coupled to F-141's own gated ka_kshetra rebuild). **F-52**
-  code-only per the standing gochara policy above — EXTERNAL_HOLD, do not
-  re-attempt the rebuild. **F-104/F-35/F-63** share one 10-asset L2→L4→L5
-  rebuild scope — packet-authoring was dispatched but not yet confirmed
-  complete at last check; re-verify before trusting a packet exists. **F-62**
-  not yet started this wave (moolatrikona D1 rebuild, packet already exists:
-  `F62_MOOLATRIKONA_REBUILD_PACKET_v1_0.md`).
-- **F-23 Lanes 2-3** (mantra column contract + attestation backfill): not yet
-  started as its own task; overlaps significantly with what F-182's sweep
-  already touched — check for overlap before dispatching fresh work here.
-- **F-183** (loader robustness): DONE, merged (#1437). Disclosed a further gap,
-  **F-187** (remedy_review_queue missing a unique constraint on remedy_id,
-  previously masked by F-183's own now-fixed crash) — not yet fixed.
-- **F-31** (assess_marriage/career/health depth asymmetry): R-8's synthetic-
-  session verification found the ORIGINAL claim moot but a more severe live
-  regression instead — **F-177 already covers the actual fix** (both F-175 and
-  F-177 landed via the reconciled #1435). F-31 itself is DECISION_PARKED,
-  pending confirmation the reconciled fix fully resolves its original concern.
-- **F-146/F-150** (PAR-R-9 process-integrity items): ruled by the owner (R-5/R-7)
-  and closed CONTROL_CLOSED — see their ledger entries, no further action.
-
-## New findings this wave, not yet actioned
-F-179 (systemic trim-audit follow-up), F-181 (kernel-ceiling honesty gap),
-F-185, F-186, F-187 — none are decisions needing the owner, all are mechanical
-engineering follow-through. Check the ledger for the full current non-terminal
-set rather than trusting this list, which ages fast.
-
-## Campaign state
-- Ledger/journal canonical at `00_ARCHITECTURE/briefs/parisesa/state/` on branch
-  `parisesa/campaign-state`, journal_head_seq 992 as of this write.
-- A prior agent this session briefly checked out a branch directly in this
-  shared worktree instead of its own scratch clone, moving this session's own
-  git HEAD off `parisesa/campaign-state` — caught and recovered with zero data
-  loss (origin was never touched). Every subagent dispatch since has been
-  explicitly instructed to clone to its own directory under
-  `/Users/Dev/.claude/jobs/<job>/tmp/` and never operate in
-  `/Users/Dev/par-night/parisesa-v4-conductor` or `-state` directly. Keep doing
-  this; verify `git branch --show-current` before every ledger write as cheap
-  insurance.
+STOP.flag: not present as of this write. Watchdog/heartbeat refreshed and healthy at
+session close (heartbeat.json points at this session's actual final journal_head_seq).
