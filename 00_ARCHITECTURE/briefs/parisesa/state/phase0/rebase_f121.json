@@ -1,0 +1,12 @@
+{
+  "finding_id": "F-121",
+  "outcome": "PR_OPENED_FROZEN",
+  "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1366",
+  "branch": "parisesa/repair-F121-rebase",
+  "original_branch": "origin/par/night-F-121",
+  "original_commit": "ce477ffdd23a4c602ba8851e3cfbfd24a2086a38",
+  "rebased_commit": "9c3927696",
+  "test_results": "npx vitest run src/__tests__/kala_now_get_sandhi_w1_joins.test.ts: 10/10 passing (includes 2 new regression-guard tests). npx tsc --noEmit: clean, exit 0.",
+  "review_notes": "Small, well-scoped diff (2 files, +41/-2): raises hardcoded max_level 2->4 in fetchVimshottariMdAdBoundaries (platform-mcp/src/tools/kala_views/now.ts), extends SANDHI_BAND_CONVENTION doc comment to state level 1-4 scope and that level 5/Prana-dasha is never computed by design. Clean rebase onto current origin/main, no conflicts. Cross-checked against F-123's cited now.ts region (triPlane, lines ~1752-1772) -- confirmed no overlap with this diff's lines (856-862, 883). Sibling campaign's own review/ratifier artifacts (results/ingested/F-121.*.json) already independently verified the mechanism and spot-checked source lines; this session's independent re-review found no issues on top of that.",
+  "next_action": "None required from this train. Owner reviews PR #1366 at morning checkpoint; merge-queue admission held per campaign scope."
+}

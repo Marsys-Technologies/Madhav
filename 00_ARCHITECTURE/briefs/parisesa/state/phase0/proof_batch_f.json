@@ -1,0 +1,100 @@
+[
+  {
+    "finding_id": "F-01",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Identified the actual fixing commit (missing from prior citations): fdc22efabb2 'fix(parisesa): bound standing ledger errors (#1322)' — changes platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts to replace `content: { error: String(err), chart_id }` with a bounded generic message `'Standing prospective predictions are currently unavailable.'` on catch, matching the 'malformed-source-data canary' claim (unbounded raw-error leak on malformed/failed source read). Confirmed content match on current HEAD (9b4f63669): grep shows the bounded message string present at query_prospective_ledger.ts:233; `git merge-base --is-ancestor fdc22efabb2 HEAD` = ancestor. Live canary: called mcp__marsys-jis-direct__standing_predictions_read(chart_id=482012f1-...) directly — returned a clean 18-row open-prediction ledger with governance/provenance blocks, no raw exception string anywhere in the payload. This is content-matched source evidence (not mere ancestry) plus a clean live service call, closing the ESC-001 gap.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-05",
+    "verdict": "UNKNOWN",
+    "terminal_status": null,
+    "evidence": "Original claim text for F-05 is not recoverable in this worktree — journal only ever records 'Cited commit bfd8976ef is an ancestor of current origin/main' with no content description of what the finding actually alleges, and no findings catalog/corpus (bundles.jsonl referenced by other findings) exists in either parisesa-v4-state or parisesa-v4-conductor. Checked commit bfd8976ef: still an ancestor of current HEAD (9b4f63669), but without the original claim text I cannot verify the diff's content matches F-05's specific allegation (the exact IF-001/IF-002 mis-citation failure mode this campaign is designed to catch). Declining to fabricate a content match. Could not spend a 5th action productively without the missing claim text.",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-100",
+    "verdict": "TERMINAL",
+    "terminal_status": "CONTROL_CLOSED",
+    "evidence": "CL-00 positive control on judgment_query's timing_anchored envelope honesty (re-derives from served timing-hook content, forces false + flag when empty). Live canary run: judgment_query(chart_id=482012f1-..., domain='career', response_format='v3') — receipt.timing_anchored=true, and timing_hooks.current/mahadasha_windows_by_graha carry 3+ real dasha rows with two_pass_verified citation_refs, i.e. the true-when-populated leg of the mechanism is directly demonstrated live today. (The forced-false-empty leg is independently demonstrated by the same call's sibling field varga_confirmed=false + judgment_flags.varga_confirmed_forced_false, confirming the shared re-derivation mechanism works in both directions on this exact chart/call.) Closes the previously-open 'run the canary' next_action.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-101",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Fixing commit 0e89f747b '#828' confirmed ancestor; registry_bridge.ts source read previously confirmed the re-derivation mechanism. Live canary in this pass directly reproduced the exact claimed behavior: judgment_query(domain='career', response_format='v3') returned receipt.varga_confirmed=false with checklist.varga_confirmation.rows=[] and judgment_flags containing {code:'varga_confirmed_forced_false', detail:'the served checklist.varga_confirmation.rows are empty on the wire (operative varga D10) — receipt.varga_confirmed downgraded ... CR-2/CR-63/R-38'} — a byte-for-byte live confirmation of the finding's exact claim on the canonical chart today.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-102",
+    "verdict": "TERMINAL",
+    "terminal_status": "CONTROL_CLOSED",
+    "evidence": "CONTROL claim re asset_runner.py's substep-completeness probe before no-op-completion promotion. Re-confirmed on current HEAD (9b4f63669) via targeted grep: platform/python-sidecar/pipeline/orchestrator/asset_runner.py:629 'SAVEPOINT noop_completeness_probe', :634 RELEASE, :636 ROLLBACK TO SAVEPOINT, :656 'asset.noop_completion', :676 'asset.noop_completion_rejected' — mechanism intact and unregressed. This is backend orchestrator logic with no live MCP surface to canary directly; independent source re-derivation (not corpus citation) is the correct verification method here per the finding's own next_action.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-103",
+    "verdict": "TERMINAL",
+    "terminal_status": "CONTROL_CLOSED",
+    "evidence": "CL-00 positive control: phala_predictive_anchors_get posterior provenance intact. Live canary: called mcp__marsys-jis-direct__phala_predictive_anchors_get(chart_id=482012f1-..., top_k=5) — every returned anchor carries a fully-populated posterior_provenance block (model='deterministic_product_lift', model_formula, cardinality/cardinality_note honestly null-with-explanation, base_rate_source, base_rate_value, promise_lift_source, promise_lift_value) plus lift_vector_jsonb. Directly reproduces the claimed 'posterior provenance intact' behavior live today, closing the ESC-001 gap with fresh content-matched evidence rather than a re-read of the prior record.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-108",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Claim: direct bodha_signals_get bhavat_bhavam_amplifier returns structured rows (34/34 tests + prior canary cited '12 structured rows'). Live canary re-run: mcp__marsys-jis-direct__bodha_signals_get(chart_id=482012f1-..., signal_type_class='bhavat_bhavam_amplifier') returned returned_count=12, total_matching_filters=12, truncated=false — exact match to the previously-recorded canary observation, reproduced fresh today. Closes the ESC-001 ancestry-only gap with a live content-matched result.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-11",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "kala_ritual_get / paddhati routing capability. Source-level: query_kala_paddhati_profile confirmed present in SURGICAL_TOOLS/TOOL_NAME_TO_URI/MCP_TO_RETRIEVAL_TOOL (tool_name_bridge.ts lines 138/507/608) via commit 7bf1bec1b (PR #1315), confirmed ancestor. Live canary this pass: called mcp__marsys-jis-direct__kala_ritual_get(chart_id=482012f1-..., horizon='30d') Mode 1 — returned a genuine ranked opportunity with a real 5-factor score vector (structural_resonance/election_quality/rite_specific_resonance computed, temporal_intensity/rarity honestly not_computed and dropped from the renormalized product), judgment_ledger with real doṣa/pariharas adjudication, cited_rite_count=200. The capability is demonstrably reachable and functioning end-to-end on the canonical chart today.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-111",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "CL-05 response-budget/trim defect on assess_marriage (historical oversized/trim-inversion repro). Live canary this pass: called mcp__marsys-jis-direct__assess_marriage(chart_id=482012f1-...) — kernel.flags contains only {domain_inference_requires_acharya_validation, bearing_yogas_no_domain_match, catalog_only_rows_present}; no budget_exceeded_after_trim flag present; composition_report shows kernel_bytes=1974 with a clean included_layers/omitted_sections disclosure (evidence omitted by design, not by overflow). Confirms the historical defect does not recur on the current service, directly (not via the prior bundles.jsonl citation alone).",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-115",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Mechanism fix (unwrapCapabilityContent, readRemediesFamily reading from the correctly-unwrapped content) previously confirmed by direct source read on origin/main. Live canary this pass: called bodha_remedies_get(chart_id=482012f1-..., domain='career') — narration.lead correctly names Ketu as #1 (resonance_score 0.138642, domain-filtered rank 1 of 7, chart-wide weakest_rank 2), internally consistent with resonances[] and prescriptions[] (both keyed off the same resonance_id). Note: assess_career's kernel-only envelope (default verbosity) does not itself surface a remedies section in this call, so a full byte-level A/B against bodha_remedies_get was not reachable within budget; closing on the unambiguous source-level fix (both paths now read the same unwrapped object by construction) plus the live confirmation that bodha_remedies_get itself now returns internally-consistent, non-divergent data.",
+    "confidence": "MEDIUM-HIGH"
+  },
+  {
+    "finding_id": "F-119",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Claim: assess_health/gochara_sweep top_windows rows lack probability/resolution_disclosure. Fixing commit cfc37fc38 (#1291) previously confirmed on origin/main with withSweepDisclosure() implementing the fix. Live canary this pass: judgment_query(domain='career', response_format='v3') gochara_sweep.top_windows rows each carry a resolution_disclosure object ({is_timing_window, timing_window_blocked_reason}) — e.g. a point-shaped career_advancement row disclosed is_timing_window=true/blocked_reason=null vs an interval-shaped career_setback row disclosed is_timing_window=false/blocked_reason='era_scale_context'. Directly reproduces the fix's exact behavior live today across two different row shapes.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-127",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Claim: bodha_bundle_get returns DEGRADED for the canonical chart (5/8 subsystems tool_error due to callPrimitive param-body mismatch dropping chart_id). Fixing commit c75400b23 (#1302) previously confirmed with root-cause match. Live canary this pass: called bodha_bundle_get(chart_id=482012f1-...) directly — envelope.status='ok', provenance.sub_tools_fired=[MSR,CGM,UCN,RM,CDLM,LEL,PANCHANG,DASHA] (all 8), provenance.sub_tools_errored=[] (zero errors). Direct, unambiguous live confirmation the DEGRADED failure mode does not recur today.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-128",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "CL-21 double-enveloping defect on bodha_discoveries_get (content['rows'] always undefined). Fixing commit 12cbf5e14 (#1293, unwrapCapabilityResult helper) previously confirmed present in register_p1_synthesis.ts. Live canary this pass: called bodha_discoveries_get(chart_id=482012f1-...) — returned real populated data: count=30, total_matching=856, content.rows/discoveries/discovery_families all populated with genuine discovery records (not empty/undefined). Directly confirms the double-wrap defect does not recur live today.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-131",
+    "verdict": "UNKNOWN",
+    "terminal_status": null,
+    "evidence": "Part of the F-43/F-59/F-131/F-139 cluster bundled into squash-merge commit 967f08da3 (#1319, 11 named sub-commits: D-08 pointer integrity gate, assessment composition payload normalization, kala calibration-maturity shared-authority routing, ganita fact-category-reduction pinning, yoga verdict-label pinning, graha aspect-authority centralization, migrated aspect-allowlist retirement, assessment drill-pointer seam closure, plus 2 test/governance-only commits). F-131's own original claim text is not recoverable anywhere in this worktree (journal.ndjson, ledger.json, and the pg2_diagnostic corpus in this state branch all lack it — pg2_findings*.jsonl is a different campaign, PARIPRASHNA grounding audit, not PARISESA F-series). Without the specific claim, isolating which of the 11 sub-commits (or which file diff) actually resolves F-131 cannot be done reliably, and I decline to guess-match one of the 11 candidates to avoid repeating the exact IF-001-class mis-citation this campaign exists to catch. Next round needs the original finding text recovered (external corpus/bundles.jsonl location, or ask native/prior-round agent) before a sub-commit isolation and live canary can be attempted.",
+    "confidence": "LOW"
+  }
+]

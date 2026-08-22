@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T14:29:00Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "continuation_owner": "/root",
+  "state": "waiting_external_with_safe_parallel_work",
+  "finding_id": "F-50",
+  "operation": {
+    "kind": "normal protected pull request",
+    "pr": 1347,
+    "url": "https://github.com/Marsys-Technologies/Madhav/pull/1347",
+    "head": "9b3beb6dc52cac615eb725e1faa23a72b035466e",
+    "base": "45f0ddf56793a23bf5881701ee6c184f6868f20a",
+    "auto_merge": false,
+    "initial_observation": "required contexts started; no candidate-caused failure observed"
+  },
+  "next_check": "inspect exact required jobs and steps rather than workflow updatedAt; admit only after all required PR contexts succeed",
+  "safe_ready_queue": [
+    "refresh F42 independently onto the same current main base",
+    "reconcile F47 aggregate deployment workflow after its affected sidecar proof"
+  ]
+}

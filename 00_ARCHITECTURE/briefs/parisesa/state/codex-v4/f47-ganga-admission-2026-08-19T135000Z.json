@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T13:50:00Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "origin_main": "a7136b467af204767a6f9b403785b84967136a84",
+  "pr": {"number": 1343, "head": "404030993ba6a8ad5cdc970d8843c5c302d37b33", "base": "a7136b467af204767a6f9b403785b84967136a84", "merge_state": "CLEAN"},
+  "required_contexts": {"TypeScript (src only)": "SUCCESS", "Unit Tests": "SUCCESS", "Secret Scan (unit 0b.2)": "SUCCESS", "Governance Gates (drift / schema / edge / native-literal / py-sidecar)": "SUCCESS", "TAP-6 — Method audit grep set": "SUCCESS"},
+  "candidate_evidence": {"finding_id": "F-47", "action_sensitive_scoring_review": "PASS", "per_window_dasha_boundary_review": "PASS", "focused_tests": "42 passed", "py_compile": "PASS", "rollback": "revert the two logical F47 commits after merge"},
+  "authorized_action": "normal Ganga auto-merge admission only; no bypass, force merge, deployment, rebuild, or data action",
+  "next_action": "observe exact synthetic merge-group contexts and reconcile the protected merge before starting service proof."
+}
