@@ -7201,3 +7201,37 @@ closed); DD-22 is already merged, satisfying P3-B's precondition whenever
 P3-B is picked up. No further action expected from this session; next
 session's objective is recorded in `SESSION_LOG.md`'s own entry for this
 close.
+
+## 2026-08-22 — SALVAGE-RECONCILE (Claude Code, Sonnet 5) — leased window: re-land rescued artifacts onto salvage/wrapped-campaigns-clean
+
+**Context.** Two independent sessions both worked the worktree/branch/stray-artifact hygiene sweep
+in parallel on `/Users/Dev/Vibe-Coding/Apps/Madhav` (a shared checkout). This session's earlier
+work landed 4 commits onto `salvage/wrapped-campaign-artifacts` (PR #1488, since grown to 100
+commits): SALVAGE_LEDGER.md (2026-08-05 production-DB session ledger, previously the only copy,
+lived outside the repo), SAMPURTI_SESSION_LOG_delta3.md, 35 codex-v4 evidence JSONs, 7 PARIŚEṢA-V4
+prompts, the sweep's own governing brief, a `.gitignore` fix (`.codex/config.toml` — was one
+`git add -A` from committing a live prod MCP key — and `.codex/worktrees/`), and the
+`parisesa/campaign-state` branch merged in full (130 files, +129,308, purely additive). A second,
+concurrent session independently rebuilt a cleaner version of the *original* 6 salvage commits as
+`salvage/wrapped-campaigns-clean` (PR #1489) — correctly avoiding the bloat #1488 had accumulated,
+but built without visibility into this session's 4 follow-on commits, none of which are present on
+#1489.
+
+**Scope this lease covers:** re-landing those 4 commits' content onto
+`salvage/wrapped-campaigns-clean`, as new commits (the `campaign-state` merge re-applied as one
+squashed tree-copy commit rather than replaying 179 commits of history). Files touched:
+`verification_artifacts/DEFECT_SALVAGE_2026-08-05/**`, `00_ARCHITECTURE/briefs/sampurti/**`,
+`00_ARCHITECTURE/briefs/parisesa/**`, `00_ARCHITECTURE/briefs/overnight_campaign_plans/**`,
+`00_ARCHITECTURE/briefs/CLAUDECODE_BRIEF_*.md` (two sweep-governance briefs), `.gitignore`. No
+`platform/**` file touched. No file already present on `salvage/wrapped-campaigns-clean` is
+modified — every change is a new path.
+
+**Pre-lease checks:** fresh fetch of `campaign-coordination` (tip `220aed2c`, no collision on these
+paths — grepped for "wrapped-campaigns-clean" and "salvage", only unrelated historical mentions);
+fresh fetch of `origin/salvage/wrapped-campaigns-clean` (tip `44ccf6661`); work done in an isolated
+worktree (`/tmp/reconcile-salvage-*`), not the shared checkout, to avoid the exact collision class
+this note exists to prevent. After landing, PR #1488 will be commented as superseded and closed
+(branch kept, not deleted, until #1489 merges — it is the fallback if this reconciliation is wrong).
+
+**Native-authorized** (2026-08-22, `CLAUDECODE_BRIEF_SWEEP_RESOLUTION_PLAN_v1_0.md` P0-1, "go
+ahead and execute as per your recommendation").
