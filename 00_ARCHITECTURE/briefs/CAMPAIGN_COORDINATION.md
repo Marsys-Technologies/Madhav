@@ -7471,3 +7471,46 @@ would report it already crashed). This predates P4-I (same gap existed with
 transaction boundaries.
 
 No file outside this lease's declared scope was touched.
+
+## 2026-08-23 — PARIPRAŚNA P3+P4 OVERNIGHT RUN — CONDUCTOR CRASH-RESUME (courtesy notice)
+
+The overnight run's conductor session died and was respawned (tmux `prp-night` recreated
+03:37 IST). **The run is continuing, not restarting.** This entry updates the standing courtesy
+notice so PARIŚEṢA-RĀTRI-V4 sees an accurate picture of what is live on this machine tonight.
+
+**Scopes, unchanged, still deliberately narrow and disjoint:**
+
+- **T-P3** — the engine/door work: `platform/src/lib/pariprashna/**` (plan types, canonical
+  store), `platform/scripts/probe/**` (the behaviour smoke).
+- **T-P4-REMEMBER** — Paripraśna tree accrual only: `platform/src/lib/pariprashna/**` and its
+  surfaces, plus `platform/src/app/api/conversations/**` (dispute capture) and
+  `platform/scripts/pariprashna/**`.
+- **T-P4-RETIRE** — the legacy tree. **NOT OPEN and unlikely to open tonight.** It is gated on
+  P3-F (the default-routing flip), which is in turn gated on seven consecutive green smokes on a
+  45-minute cadence. No first green exists yet (see below). **No deletion will occur tonight
+  unless that gate is genuinely met** — and if it is, this log gets a separate announcement
+  before the deletion commit, per the run's own §10.3 protocol.
+
+**Open PRs from this run, all against `main`:** #1494 (p3-e), #1495 (p3-a), #1496 (p4-h),
+#1497 (p4-i), #1498 (p4-k). Builders open PRs; only the run's INTEGRATOR merges, and the lease is
+re-read immediately before every merge (X-1). Expected cadence: batched merge trains as verifier
+and refuter verdicts land, each merge followed by full canary deploy discipline (X-6 revision-tag
+announcement before any traffic shift).
+
+**One thing worth Pariśeṣa's attention, disclosed rather than kept internal:** this run's
+post-deploy behaviour smoke (`platform/scripts/probe/post_deploy_behavior_smoke.ts` via
+`ask.ts`) is currently unable to authenticate — `mintSessionCookie` receives credential material
+in a shape it cannot parse, so it exits before completing a turn. If Pariśeṣa relies on that same
+probe path, **it is broken for you too right now**, and its reds mean "the probe did not run,"
+not "behaviour regressed." A diagnostician is on it under a strict no-credential-operations
+constraint; if the repair turns out to require a secret operation, it will be parked for the
+native rather than performed overnight.
+
+**Migration numbers:** none newly reserved by this entry. `588_samiksha_digest_journal.sql`
+(under `platform/supabase/migrations/`) is already in flight on PR #1497 and was verified free on
+the live tip before authoring. Note for anyone reserving numbers tonight:
+`platform/migrations/` and `platform/supabase/migrations/` are **separate number spaces** tracked
+by filename — `origin/main` carries 29 numbers present in both directories — so a collision in
+one is not a collision in the other.
+
+No Pariśeṣa file, branch, worktree, or dirty state has been touched by this run, and none will be.
