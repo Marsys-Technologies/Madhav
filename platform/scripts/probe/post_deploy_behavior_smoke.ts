@@ -129,6 +129,17 @@
  *     live CI-credential finding: the GH secret is currently a 1-character
  *     placeholder, so this mode is PARKED in CI until an operator fixes it —
  *     see the PR for the exact remediation command).
+ *
+ * THE SELFTEST IS NOT A GREEN. Read this before counting anything: a SELFTEST
+ * pass establishes ONLY that the assertion layer CAN fail, per-assertion and
+ * legibly. It makes no observation whatsoever about the deployed revision. It
+ * does NOT start the DD-7 / W-1 consecutive-green counter and does NOT count
+ * as a green. No green counts until one real, live, CI-produced
+ * `behaviour-smoke` green exists. (Charter §10.1 is the precedent for
+ * fixture-fed can-fail proof: a deliberately broken input is not something a
+ * live surface produces on demand — but the proof it yields is about the
+ * detector, never about the surface.)
+ *
  *   SELFTEST (`SMOKE_SELFTEST=1`): makes zero network calls, needs no
  *     secrets. Evaluates the exact same assertion function against a REAL
  *     captured turn record (`FIXTURE_GOOD`, taken verbatim — with the
