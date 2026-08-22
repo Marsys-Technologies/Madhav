@@ -6981,3 +6981,50 @@ the just-appended Part G lease-open entry) and
 `CURRENT_STATE_v1_0.md` (both `origin/main`) for cross-check — no invented
 status, PR number, or DD state; anything not traceable to a real entry is
 written into the tracker as "not verified from source" rather than guessed.
+
+## 2026-08-22 — PARIPRASHNA-TRACKER-SYNC-2026-08-22 — lease CLOSED, PR #1476 opened (not merged by this session)
+
+Lease opened above is released. Final account:
+
+`00_ARCHITECTURE/briefs/pariprashna_swarm/state/SWARM_TRACKER.json` reconstructed
+from this file's own entries (~lines 4021-6867, P1 close through P3-Preflight
+Part F) and `PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` on `origin/main`.
+Added `p2_lanes` (15 lanes: P2-A..H + G3-A..G), `p3_preflight_parts`
+(amendment PR #1428, model-tier-ruling PR #1434, Parts A/D/B/C/E/F — PRs
+#1440/#1441/#1442/#1443/#1462/#1465+#1467), `gate_results.P2_gate`, matching
+`deploys` entries, and a `dd_register_snapshot` for DD-13/19/24/25/26.
+`phase`/`phase_status`/`wave` updated to the real current state: P2 closed
++tagged, P3-Preflight Parts A-F closed, **Part G in flight** (PR #1475, still
+open/unmerged as of this close) — discovered live during this session's own
+pre-open collision check (this file's tip moved from `ff217d6e6` to
+`e26627323` between this session's first read and its lease-open push), not
+anticipated by the task's original "G/H pending" framing. Recorded as
+`p3_preflight_part_g_in_flight` / `p3_preflight_part_h` rather than folded
+into the closed-Parts narrative.
+
+**Two honest discrepancies flagged in the tracker itself, not silently
+resolved:** (1) DD-19's and (2) DD-25's status FIELDS in
+`PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` on `origin/main` still read
+`OWNED`/`FIX LANDED, pending... live re-verification` respectively, while
+this file's own Part E (#1462) and Part D (#1441) close entries already
+report the fixes shipped, deployed, and live-verified. Not edited here (out
+of this lease's declared `SWARM_TRACKER.json`-only scope) — recorded as a
+discrepancy in the tracker's own `dd_register_snapshot` for whoever next
+touches the register. DD-13 is reported as `OWNED` (matching the merged
+register), with Part G's own not-yet-merged closure claim (PR #1475)
+recorded separately as reported-but-not-yet-true-of-`main`.
+
+Governance checks run locally before commit: `drift_detector.py` 79
+findings/exit=3 (matches the documented baseline, 0 new, 0 mentions of the
+touched file), `schema_validator.py` 42 violations/exit=3 (matches the
+file's own original baseline, unchanged). Adhoc report artifacts removed
+before commit, per this repo's own `drift_reports/` convention.
+
+**PR:** #1476 (`pariprashna/tracker-p2-p3-preflight-sync` → `main`),
+https://github.com/Marsys-Technologies/Madhav/pull/1476. **Opened for owner
+review, not merged by this session** — the task that opened this lease was
+"bring the tracker up to date and open a PR so the owner can review it," not
+to merge it.
+
+No file outside this lease's declared scope (`SWARM_TRACKER.json` only,
+plus this coordination log itself) was touched.
