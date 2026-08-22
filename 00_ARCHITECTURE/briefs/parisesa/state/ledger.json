@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 1090,
+  "event_count": 1097,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -827,18 +827,18 @@
     },
     "F-142-CANDIDATE": {
       "confidence": "HIGH",
-      "disposition": "RULED",
-      "event_sha256": "07c1faf7335e0e7a690ec2a2ee0a036a538d6c08db46c8736d72c933120dfd6d",
+      "disposition": "PACKET_AUTHORED_GA3_QUEUED",
+      "event_sha256": "b525dd55d36220ecbfe70dc3a9efe5d4df005dd4fd2baa0cfc3de5851f30dc07",
       "event_type": "finding_status",
-      "evidence_summary": "FABLE-5 FINAL RULING (owner-delegated, 2026-08-22). Confirmed-live defect on the canonical chart: mi_darshana.py:224 grades emergent_law/discovery insights 'empirical' purely on mining-support n>=5 with no scored/opportunity gating - 20 rows live-verified 'empirical' on 482012f1 today per the record - the identical unearned-grade class F-35's fix closed for mi_sambandha. RULED: (1) the formal intake step stands as designed - the conductor assigns the real F-number at next intake (this ruling deliberately does not usurp the intake process; the placeholder id has done its job of not letting the finding vanish); (2) the fix is pre-authorized on assignment: apply the same scored/opp-threshold gating pattern F-35 established, and regrade the 20 affected live rows (targeted update or mi_darshana rerun under GA-3 discipline - a small, single-asset item, queueable independently of the F-104 batch).",
+      "evidence_summary": "Code defect (unearned 'empirical' grade on discovery insights) was already fixed by F-143 (PR #1414) and further strengthened by F-147/F-148 -- independently re-verified live against current HEAD, no code change needed here. What remains is a pure data regrade: 20 emergent_law rows on the canonical chart graded empirical under stale surface_formula_version='mi_darshana_v1.0'. A GA-3 execution packet was authored (PR #1478, docs-only, no production code or data changed) recommending option (a) rerun mi_darshana for the canonical chart, with both R-7-amended GA-3 template clauses addressed (no FK-connected child tables; before-image row counts measured live). Per standing GA-3 discipline, protected-data execution is never run by implementer/conductor agents -- the packet is queued for separate native-authorized execution, not performed in this campaign.",
       "finding_id": "F-142-CANDIDATE",
-      "next_action": "Next intake: assign formal F-number, then PR applying the F-35 gating pattern to mi_darshana.py:224 + GA-3 item to regrade the 20 live rows on the canonical chart. Priority: HIGH (unearned 'empirical' grades live on the native's own chart).",
-      "pr_url": null,
-      "prev_sha256": "3d1a571f47e4324f2cbb7c2f18a336e45c8fc8eccdde97591e66e7afbc29e964",
-      "seq": 1055,
-      "source_batch": "PARISESA-V4-FABLE5-FINAL-RULING-20260822",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "next_action": "GA-3 data regrade execution (mi_darshana single-asset rerun for the canonical chart) queued for separate native-authorized execution. Not performed here by design.",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1478",
+      "prev_sha256": "2c666d17b531ebefba68fc4c16bf932515d097a4f27f02d9f174e0aeac542d27",
+      "seq": 1091,
+      "source_batch": "PARISESA-V4-FINAL-CLOSEOUT-20260822",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-143": {
       "confidence": "HIGH",
@@ -871,19 +871,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-145": {
-      "confidence": "MEDIUM",
-      "disposition": "RULED",
-      "event_sha256": "431db9569f258e4e2c3ee71dc038df0150ee593e254b6b92319621a4619a0850",
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "44e762af7a756c7003298036030cad26d90937e81b9b96d0368d120a925cb372",
       "event_type": "finding_status",
-      "evidence_summary": "FABLE-5 FINAL RULING (owner-delegated, 2026-08-22), ruling the (a)-vs-(b) question the record left open. A naive delete-then-insert (option a) is REJECTED: the live table legitimately holds 7 double_transit rows from migration 397 that are NOT in l0_transit.py's source list - a blind replace would destroy real data of separate provenance (the exact NC-0/F-146 defect shape). ADOPTED: option (b) scoped as writer-owned reconciliation - l0_transit.py reconciles only the categories it owns (delete/supersede rows in its own categories absent from the current source list, preserving migration-owned rows), plus a one-time cleanup of the 5 stale Venus 'unfavourable' rows, plus a freshness assertion so silent re-accretion becomes detectable. The 5 stale rows demonstrably affect F-48's new Venus-significator scoring (marriage domain), so this is a correctness fix, not hygiene.",
+      "evidence_summary": "Owner-ruled disposition (two independent Fable-5 passes plus orchestrator classical-text re-verification) on Venus-unfavourable adoption + writer-owned category reconciliation in bg_transit_rules/l0_transit.py, shipped via PR #1466 (merged). During the real production rerun, compute_stale_rule_ids crashed safely on a dict-row-vs-tuple-unpacking bug (row_factory=dict_row rows were being iterated as tuples) -- root-caused precisely, a second instance of the identical defect class found and fixed in the same file's freshness check, shipped via PR #1479 (merged). Production verified byte-for-byte correct post-fix via direct read-only SQL against the real production DB (not trusted from agent self-report). Classical citation (Phaladeepika Adh. XXVI, Sloka 21) independently re-verified against the real ingested corpus via MCP classical-text tools.",
       "finding_id": "F-145",
-      "next_action": "Author the small contract (writer-owned category reconciliation + one-time stale-Venus cleanup + freshness check), independent review, implement. Priority: MEDIUM-HIGH (live marriage-domain scoring reads the stale rows).",
-      "pr_url": null,
-      "prev_sha256": "b19b98682c7c405b9a7a8ee5482f61fd4a8565a94c374e21731dd0f9906c780f",
-      "seq": 1014,
-      "source_batch": "PARISESA-V4-FABLE5-FINAL-RULING-20260822",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "next_action": "None -- terminal.",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1466",
+      "prev_sha256": "b525dd55d36220ecbfe70dc3a9efe5d4df005dd4fd2baa0cfc3de5851f30dc07",
+      "seq": 1092,
+      "source_batch": "PARISESA-V4-FINAL-CLOSEOUT-20260822",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-146": {
       "confidence": "HIGH",
@@ -1052,18 +1052,18 @@
     },
     "F-156": {
       "confidence": "HIGH",
-      "disposition": "RULED",
-      "event_sha256": "26826ae4ec026100f64a6293e0dd772770764bd6f4ee43f6aef67e04408f36dd",
+      "disposition": "LANDED",
+      "event_sha256": "e705965fec6f950f7b7705fa67f31b5b6e0315fbd47a539b61f7b2d09e3bc1d0",
       "event_type": "finding_status",
-      "evidence_summary": "FABLE-5 FINAL RULING (owner-delegated, 2026-08-22). The load-bearing overclaim behind DC-W-16's DARK grade, reproduced 3 ways: assess_wealth asserts D11 consumption citing varga_analysis.per_varga while that section is trimmed out of the actual response. RULED on the either/or the record poses: the claim must be made TRUE, not merely deleted - (1) make the D11-consumption sentence conditional on the cited section actually surviving into the shipped payload (SS N.7: narration restates what is served, never what was merely computed); (2) since per_varga here is grounding evidence for a served verdict claim, evaluate marking it hardFloor/minKeep per SS N.6 item 2 so the densest evidence survives trim ahead of catalog-grade sections - at 1839 bytes of a 40KB budget used, there is clearly room, which suggests the trim/omission logic, not genuine budget pressure, dropped it (investigate that as part of the fix).",
+      "evidence_summary": "assess_wealth's D11-consumption claim citing varga_analysis.per_varga is now conditional on that section actually surviving into the shipped payload (S N.7 item 4 class), and per_varga trim-protection addressed per S N.6 item 2. Shipped and merged via PR #1480 with a test asserting claim-iff-section-present. CI green.",
       "finding_id": "F-156",
-      "next_action": "PR: conditional claim emission + per_varga trim-protection (and diagnose why the section dropped at 1839B/40KB) + a test asserting claim-iff-section-present. Priority: HIGH (SS N.7 item 4 class, flagship wealth surface).",
-      "pr_url": null,
-      "prev_sha256": "9d5aa4cec5ff3b74332a7f23c1feabd3097490bb941b4e7dccebab0cf28016d2",
-      "seq": 1022,
-      "source_batch": "PARISESA-V4-FABLE5-FINAL-RULING-20260822",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "next_action": "None -- terminal.",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1480",
+      "prev_sha256": "44e762af7a756c7003298036030cad26d90937e81b9b96d0368d120a925cb372",
+      "seq": 1093,
+      "source_batch": "PARISESA-V4-FINAL-CLOSEOUT-20260822",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-157": {
       "confidence": "HIGH",
@@ -1096,19 +1096,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-159": {
-      "confidence": "LOW",
-      "disposition": "RULED",
-      "event_sha256": "f7899a518fb900219ea8384b6f858b7a4f70108b2441a00f59f3177453c10e59",
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "390aa6916d911c3dff74c5ea9174083780b6be12bda4dd3144f9a52165056b36",
       "event_type": "finding_status",
-      "evidence_summary": "FABLE-5 FINAL RULING (owner-delegated, 2026-08-22), ruling the design question in principle and bounding the first shippable step. Principle: YES - when a frame-determining body (here the Moon, whose sign fixes the entire Chandra-lagna reading frame) changes sign across the product's supported ayanamshas, that sensitivity must be disclosed wherever Chandra-lagna-based domain framing is served; silence overclaims frame stability (same disclosure doctrine as SS N.6/N.7). First shippable step, deliberately narrow: a deterministic ayanamsha_frame_sensitivity flag emitted when the Moon's (or the serving frame's reference body's) sign differs across supported ayanamshas per already-stored L1 positions - no new computation, no doctrine on which ayanamsha is right. The R-1..R-4 routing observations in F109_WEALTH_REPLAY SS4 stay LOW-confidence leads, not swept into this ruling.",
+      "evidence_summary": "ayanamsha_frame_sensitivity disclosure added at the single chandra-frame choke point (address_resolver.ts resolveFrameSign), using the existing ayanamsha_variation.ts cross-ayanamsha primitive -- no new computation (B.10 clean). Propagated through get_positions/get_strength/query_signals/register_d9_judgment (new closed judgment-flag code moon_frame_ayanamsha_sensitive) and updated prose surfaces. Scoped strictly to the Moon/chandra-frame case; no ruling on which ayanamsha is correct. Fire/no-fire/missing-data tests all present and passing. Shipped and merged via PR #1486, CI green, post-merge presence verified against real merged source (not just fixtures).",
       "finding_id": "F-159",
-      "next_action": "Low-priority PR: boundary-crossing disclosure flag on Chandra-lagna-framed surfaces, driven from stored per-ayanamsha L1 facts. Sequence behind F-156/F-157/F-164. R-1..R-4 leads remain unruled leads for future intake if they firm up.",
-      "pr_url": null,
-      "prev_sha256": "fb7ab982d285d97c305374eb6a77dfe7ce26c816848f69b74b214290d7c74894",
-      "seq": 1025,
-      "source_batch": "PARISESA-V4-FABLE5-FINAL-RULING-20260822",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "next_action": "None -- terminal.",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1486",
+      "prev_sha256": "e705965fec6f950f7b7705fa67f31b5b6e0315fbd47a539b61f7b2d09e3bc1d0",
+      "seq": 1094,
+      "source_batch": "PARISESA-V4-FINAL-CLOSEOUT-20260822",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-16": {
       "confidence": "HIGH",
@@ -1201,33 +1201,33 @@
     },
     "F-165": {
       "confidence": "HIGH",
-      "disposition": "RULED",
-      "event_sha256": "afef842bdea0a232315aee6ba0f134daf051ed36966a63a3e82434306d273baf",
+      "disposition": "LANDED",
+      "event_sha256": "fbeefe96ea530cb63b17099fb7a1b4fb5b2c52ab2ba4274f3a77398aefe01251",
       "event_type": "finding_status",
-      "evidence_summary": "FABLE-5 FINAL RULING (owner-delegated, 2026-08-22). F-57 is merged (PR #1417) and its disclosure pattern is established; the residual is exactly scoped: general-domain zero-match (afflictions_empty served with is_exact:true and no structural disclosure) plus affliction_mechanisms' 1-of-13-domain coverage being presented as if empties were genuine findings. Same defect class, same fix shape, two named places. RULED: ship the extension - structural-emptiness disclosure (this is a coverage gap, not a clean chart) wherever the match is structurally impossible rather than genuinely empty.",
+      "evidence_summary": "Structural-emptiness disclosure added for the 'general' domain plus affliction_mechanisms coverage. Shipped and merged via PR #1481. CI green.",
       "finding_id": "F-165",
-      "next_action": "Small PR extending F-57's pattern to the general domain and affliction_mechanisms coverage disclosure + tests. Priority: MEDIUM-HIGH (honest-empty vs structural-empty is core campaign doctrine).",
-      "pr_url": null,
-      "prev_sha256": "4c35b848fbedfc57c445229763dd430ab3bf5ef1a00739828c3b06d850d2beaf",
-      "seq": 1031,
-      "source_batch": "PARISESA-V4-FABLE5-FINAL-RULING-20260822",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "next_action": "None -- terminal.",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1481",
+      "prev_sha256": "390aa6916d911c3dff74c5ea9174083780b6be12bda4dd3144f9a52165056b36",
+      "seq": 1095,
+      "source_batch": "PARISESA-V4-FINAL-CLOSEOUT-20260822",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-166": {
-      "confidence": "MEDIUM",
-      "disposition": "RULED",
-      "event_sha256": "158cae8c7d88bd4b2b5bce9a54aa17207f7db322a381039294574cf58d02c7ad",
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "1f17f1140f2419f33c6ca1d24a1c7872e25bd0a2b33c864435f8411cc7572892",
       "event_type": "finding_status",
-      "evidence_summary": "FABLE-5 FINAL RULING (owner-delegated, 2026-08-22). Three small items, all confirmed real: assess_* lacks the domain_resolution disclosure block (assess_marriage silently reads 'relationship'), a dead test-file pointer in a comment, and F-57's 5 integration cases never running in CI (no workflow sets INTEGRATION=true - a pre-existing gate pattern). RULED: (1) ship the disclosure wiring + comment fix as one small PR; (2) on the broader CI question: the integration suite SHOULD run in CI at least as a scheduled/non-blocking job - a disclosure mechanism with zero automated enforcement is a SS N.8 soft spot - but standing up that job is its own hygiene item, authorized at LOW priority, not a blocker on (1).",
+      "evidence_summary": "All three F-166 lanes closed. (a+b) assess_* domain_resolution disclosure + two dead test pointers fixed, PR #1484 (merged, 13/13 new tests). (c) F-57's integration test suite (register_d9_judgment.integration.test.ts, previously never exercised in CI -- 20 files share this INTEGRATION=true gate, scope verified) wired into a new scheduled-only CI workflow (judgment-integration-nightly.yml), PR #1482 (merged); live run surfaced a real cross-region timeout tuning need plus two genuinely stale pre-existing test assertions (bhanga_checked, a bare numeric .sort()), fixed in PR #1485 (merged). Final verified run on main: 22/22 passing, 0 failures.",
       "finding_id": "F-166",
-      "next_action": "Small PR: domain_resolution block on the assess_* family + dead-pointer fix. Separate low-priority item: scheduled CI job for the integration suite. Priority: LOW-MEDIUM.",
-      "pr_url": null,
-      "prev_sha256": "afef842bdea0a232315aee6ba0f134daf051ed36966a63a3e82434306d273baf",
-      "seq": 1032,
-      "source_batch": "PARISESA-V4-FABLE5-FINAL-RULING-20260822",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "next_action": "None -- terminal.",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1484",
+      "prev_sha256": "fbeefe96ea530cb63b17099fb7a1b4fb5b2c52ab2ba4274f3a77398aefe01251",
+      "seq": 1096,
+      "source_batch": "PARISESA-V4-FINAL-CLOSEOUT-20260822",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-167": {
       "confidence": "HIGH",
@@ -2452,20 +2452,6 @@
       "status": "CONTROL_CLOSED",
       "terminal_status": "CONTROL_CLOSED"
     },
-    "F-75-batch": {
-      "confidence": "HIGH",
-      "disposition": "OBSOLETE_MARKER",
-      "event_sha256": "788dfe335b0e4beada505f477172903fcdb867e43f0163b7d7ef27b1879dab19",
-      "event_type": "finding_status",
-      "evidence_summary": "Obsolete bookkeeping marker -- all 6 underlying findings individually resolved. Safe to delete from the ledger; retained here only for journal audit-trail completeness.",
-      "finding_id": "F-75-batch",
-      "next_action": "none -- delete this row in a future cleanup pass",
-      "prev_sha256": "7b74f7bf24030ef4c2782c2b438bb8873ebd9122fd563562791091169e98a175",
-      "seq": 778,
-      "source_batch": "closure_sweep",
-      "status": "OBSOLETE_MARKER",
-      "terminal_status": null
-    },
     "F-76": {
       "confidence": "HIGH",
       "disposition": "LANDED",
@@ -2882,10 +2868,10 @@
       "terminal_status": "SERVICE_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 6,
-  "findings_terminal_count": 181,
-  "journal_head_seq": 1090,
-  "journal_head_sha256": "2c666d17b531ebefba68fc4c16bf932515d097a4f27f02d9f174e0aeac542d27",
+  "findings_morning_ship_ready_count": 0,
+  "findings_terminal_count": 187,
+  "journal_head_seq": 1097,
+  "journal_head_sha256": "9806aed71c9522809a83ec94e89dda0e8e4990ff70249770e2df48f3b4d44cdd",
   "p1_steps": {},
   "phases": {}
 }
