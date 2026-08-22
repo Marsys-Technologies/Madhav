@@ -1,0 +1,113 @@
+name: D9 Judgment — F-57 Integration Suite (nightly, non-blocking)
+
+# F-166(c): wires the F-57 integration test cases into a real CI workflow.
+#
+# THE GAP THIS CLOSES: platform/src/lib/retrieval/registry/layers/__tests__/
+# register_d9_judgment.integration.test.ts gates its whole suite on
+# `process.env.INTEGRATION === 'true'` (describeIf). No workflow in this repo ever set that
+# variable — `grep -rn INTEGRATION .github/workflows/` returned exactly one hit
+# (chat-v2-ci.yml's `echo "STAGE-2-INTEGRATION no-op"`, a literal no-op in an unrelated
+# workflow) — so the platform unit-test job (ci.yml) collected the file and it always
+# skipped. F-57's 5 `it` cases (the 3-domain loop, the marriage-aliasing case, the `bhava: 3`
+# fallback — each run for both canonical charts) never actually ran anywhere.
+#
+# SCOPE, DELIBERATELY NARROW (do not widen without re-reading this comment):
+# `INTEGRATION=true` also gates ~20 OTHER `*.integration.test.ts` files across `platform/`
+# (grounding.integration.test.ts, instrument.integration.test.ts,
+# date_tz_sweep_wp15.integration.test.ts, chart_query.integration.test.ts,
+# get_dasha_lord_capability.integration.test.ts, register_d10_pact.integration.test.ts, the
+# wp12a/wp12b/wp13/wp15/wp18 L1/L2/L3 suites, etc. — confirmed by
+# `grep -rln "process.env.INTEGRATION" platform platform-mcp --include='*.test.ts'`). Setting
+# the env var repo-wide in a blocking job would light all of them at once, with unknown
+# individual liveness/flakiness. This workflow does NOT do that: it sets INTEGRATION=true
+# only for a single `npx vitest run <one file>` invocation, so only
+# register_d9_judgment.integration.test.ts's suite is un-skipped. Widening this to the other
+# ~20 files is out of scope for F-166(c) — each would need its own liveness check first.
+#
+# WHY SCHEDULED + NON-BLOCKING, NOT A PULL_REQUEST GATE: the test asserts against the two
+# real canonical charts' live production data (chart_facts / chart_vichara / chart_divisionals
+# etc., via platform/src/lib/db/client.ts's normal DATABASE_URL / Cloud SQL Auth Proxy path) —
+# not a fixture. It is not something a typical PR's diff would move, and per the ruling this
+# ships as a scheduled, non-blocking job, not a required check. It is deliberately absent from
+# `on: pull_request` / `on: push` and is not added to branch protection.
+#
+# DB ACCESS PATTERN copied verbatim from verification-invariant.yml / samiksha-daily.yml (both
+# already-proven): WIF auth -> Cloud SQL Auth Proxy on 127.0.0.1:5432 -> DATABASE_URL pointed
+# at the loopback proxy. `judgment_query` is a read-only retrieval capability (SELECT-only
+# chart reads); this job performs no writes.
+
+on:
+  schedule:
+    - cron: '41 5 * * *'   # 05:41 UTC daily — off the hour, clear of the other nightly jobs
+  workflow_dispatch:
+
+concurrency:
+  group: judgment-integration-nightly
+  cancel-in-progress: false
+
+jobs:
+  d9-judgment-integration:
+    name: register_d9_judgment.integration.test.ts (F-57 cases, both canonical charts)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preflight — PROD_DATABASE_URL must be configured (fails before any setup cost)
+        working-directory: ${{ github.workspace }}
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "::error::[judgment-integration-nightly] PROD_DATABASE_URL secret not configured — failing loudly (a misconfigured run must never report green)."
+            exit 1
+          fi
+          echo "[judgment-integration-nightly] PROD_DATABASE_URL is configured; proceeding."
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions
+          service_account: github-actions@madhav-astrology.iam.gserviceaccount.com
+
+      - name: Start Cloud SQL Auth Proxy
+        working-directory: ${{ github.workspace }}
+        run: |
+          curl -fsSL \
+            "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" \
+            -o cloud-sql-proxy && chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 \
+            madhav-astrology:asia-south1:amjis-postgres >cloud-sql-proxy.log 2>&1 &
+          proxy_pid=$!
+          for _ in {1..20}; do
+            if kill -0 "$proxy_pid" 2>/dev/null && (echo >/dev/tcp/127.0.0.1/5432) 2>/dev/null; then
+              echo "[judgment-integration-nightly] Cloud SQL Auth Proxy is ready."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::[judgment-integration-nightly] Cloud SQL Auth Proxy did not become ready."
+          cat cloud-sql-proxy.log || true
+          exit 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+      - run: npm ci
+
+      - name: F-57 — run register_d9_judgment.integration.test.ts ONLY (explicit path filter)
+        # INTEGRATION=true is scoped to this single `vitest run <path>` invocation — see the
+        # file-header comment above for why this must never become a repo-wide/job-wide env var.
+        env:
+          NODE_ENV: test
+          INTEGRATION: 'true'
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: npx vitest run src/lib/retrieval/registry/layers/__tests__/register_d9_judgment.integration.test.ts --reporter=verbose
