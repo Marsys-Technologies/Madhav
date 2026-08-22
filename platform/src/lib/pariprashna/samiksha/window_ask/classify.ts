@@ -199,22 +199,49 @@ export function classifyWindowAnswer(text: string): AnswerReading {
     return { kind: 'not_an_answer', matched: [], rule: 'empty_message', actionable: false }
   }
 
-  const words = norm.split(' ')
-  const bareTokensAllowed = words.length <= BARE_TOKEN_MAX_WORDS
+  // Word count is taken from the ORIGINAL message: a long message stays long for the purpose
+  // of the bare-token rule even after spans are masked out below.
+  const bareTokensAllowed = norm.split(' ').length <= BARE_TOKEN_MAX_WORDS
 
   const matched: string[] = []
   const signals = new Set<Signal>()
 
-  for (const m of MARKERS) {
-    const hit = m.re.exec(norm)
-    if (!hit) continue
-    if (m.bareToken) {
-      // Allowed when the whole message is short, OR when the token opens the message.
-      const opensMessage = hit.index === 0 || norm.slice(0, hit.index).trim() === ''
-      if (!bareTokensAllowed && !opensMessage) continue
+  /**
+   * SPAN MASKING — the rule that stops one phrase being counted twice.
+   *
+   * Markers are matched in strength order (dispute → hedge → partial → deny → affirm), and
+   * each match is BLANKED OUT of the working string before the next, weaker class looks at it.
+   * A run of characters already accounted for by a stronger reading is simply not available to
+   * a weaker one.
+   *
+   * This is not tidiness. Without it, "no idea" reads as a hedge AND as a bare "no" denial,
+   * which the hedge-beside-outcome rule then correctly-but-uselessly calls `ambiguous` — so
+   * the plainest honest non-answer in English would have recorded nothing at all. The masking
+   * makes "no idea" what it obviously is: a can't-tell. The unit tests pin exactly that case.
+   */
+  const ORDER: readonly Signal[] = ['dispute', 'hedge', 'partial', 'deny', 'affirm']
+  let working = norm
+
+  for (const signal of ORDER) {
+    for (const m of MARKERS) {
+      if (m.signal !== signal) continue
+      const re = new RegExp(m.re.source, m.re.flags.includes('g') ? m.re.flags : `${m.re.flags}g`)
+      let hit: RegExpExecArray | null
+      const spans: Array<[number, number]> = []
+      while ((hit = re.exec(working)) !== null) {
+        if (hit[0].length === 0) { re.lastIndex += 1; continue }
+        if (m.bareToken) {
+          const opensMessage = working.slice(0, hit.index).trim() === ''
+          if (!bareTokensAllowed && !opensMessage) continue
+        }
+        matched.push(`${m.signal}:${hit[0]}`)
+        signals.add(m.signal)
+        spans.push([hit.index, hit.index + hit[0].length])
+      }
+      for (const [a, b] of spans) {
+        working = working.slice(0, a) + ' '.repeat(b - a) + working.slice(b)
+      }
     }
-    matched.push(`${m.signal}:${hit[0]}`)
-    signals.add(m.signal)
   }
 
   // ── RULE 1 — dispute wins outright. No blending, ever. ──
