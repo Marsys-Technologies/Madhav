@@ -111,6 +111,33 @@ export async function validateClient(
   }
 }
 
+/**
+ * SF-004 (PARIŚEṢA-V4): lookup-only client metadata for the /authorize
+ * redirect_uri allowlist check. `/authorize` runs before any client secret is
+ * available (it's a browser redirect, not a service-to-service call), so it
+ * cannot go through `validateClient` — which correctly (SF-002) rejects
+ * `clientSecret === undefined`. This function is the secretless sibling used
+ * ONLY to fetch the registered allowlist.
+ *
+ * The SQL projection itself never selects `owner_uid` or `client_secret_hash`
+ * — the omission is enforced here, not only by response shaping one layer up,
+ * so a careless edit to the caller cannot leak either field. See
+ * `SF004_OAUTH_BINDING_CONTRACT_v1_0.md` §4.
+ */
+export async function getClientMetadata(
+  clientId: string
+): Promise<{ redirect_uris: string[]; scopes: string[] } | null> {
+  const { rows } = await query<{ redirect_uris: string[]; scopes: string[] }>(
+    `SELECT redirect_uris, scopes
+     FROM mcp_oauth_clients
+     WHERE client_id = $1`,
+    [clientId]
+  )
+  const row = rows[0]
+  if (!row) return null
+  return { redirect_uris: row.redirect_uris, scopes: row.scopes }
+}
+
 // ── Auth code operations ──────────────────────────────────────────────────────
 
 export interface AuthCodeRecord {

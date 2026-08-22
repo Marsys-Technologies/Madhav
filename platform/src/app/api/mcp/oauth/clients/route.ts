@@ -21,6 +21,7 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import { registerClient } from '@/lib/mcp/oauth/store'
 import { validateServiceToken } from '@/lib/mcp/service_token'
+import { isRegistrableRedirectUri } from '@/lib/mcp/oauth/redirect_uri_policy'
 
 export async function POST(request: Request) {
   if (!validateServiceToken(request)) {
@@ -41,6 +42,19 @@ export async function POST(request: Request) {
 
   if (!Array.isArray(body.redirect_uris) || body.redirect_uris.length === 0) {
     return NextResponse.json({ error: 'redirect_uris required (non-empty array)' }, { status: 400 })
+  }
+
+  // SF-004 (PARIŚEṢA-V4): registration-time URI policy — require https:, or
+  // http: on a loopback host for dev; reject fragments and wildcards. See
+  // SF004_OAUTH_BINDING_CONTRACT_v1_0.md §5. Applied at both this route (the
+  // actual DB write path) and platform-mcp/src/server.ts's /mcp/oauth/register
+  // (the public-facing entry point that calls it) as defense in depth.
+  const badUri = body.redirect_uris.find(uri => !isRegistrableRedirectUri(uri))
+  if (badUri !== undefined) {
+    return NextResponse.json(
+      { error: 'invalid_redirect_uri', error_description: 'redirect_uris must be https: (or http: on localhost/127.0.0.1/::1), with no fragment and no wildcard' },
+      { status: 400 }
+    )
   }
 
   try {

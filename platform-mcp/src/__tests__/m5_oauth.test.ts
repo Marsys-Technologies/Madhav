@@ -229,6 +229,7 @@ describe('M5 OAuth — token.ts fail-closed (M0 behaviour preserved)', () => {
       body: {
         grant_type: 'authorization_code',
         client_id: 'test_client',
+        redirect_uri: 'https://example.com/cb',
         code: 'mcp_ac_nouid',
       },
     } as Parameters<typeof handleToken>[0]
@@ -265,6 +266,7 @@ describe('M5 OAuth — token.ts fail-closed (M0 behaviour preserved)', () => {
       body: {
         grant_type: 'authorization_code',
         client_id: 'test_client',
+        redirect_uri: 'https://example.com/cb',
         code: 'mcp_ac_anon',
       },
     } as Parameters<typeof handleToken>[0]
@@ -314,6 +316,7 @@ describe('M5 OAuth — token.ts fail-closed (M0 behaviour preserved)', () => {
       body: {
         grant_type: 'authorization_code',
         client_id: 'test_client',
+        redirect_uri: 'https://example.com/cb',
         code: 'mcp_ac_real',
       },
     } as Parameters<typeof handleToken>[0]
@@ -365,6 +368,7 @@ describe('M5 OAuth — token.ts fail-closed (M0 behaviour preserved)', () => {
       body: {
         grant_type: 'authorization_code',
         client_id: 'test_client',
+        redirect_uri: 'https://example.com/cb',
         code: 'mcp_ac_no_verifier',
         // code_verifier deliberately omitted — this is the exploit
       },
@@ -405,6 +409,7 @@ describe('M5 OAuth — token.ts fail-closed (M0 behaviour preserved)', () => {
       body: {
         grant_type: 'authorization_code',
         client_id: 'test_client',
+        redirect_uri: 'https://example.com/cb',
         code: 'mcp_ac_array_verifier',
         code_verifier: [PKCE_VERIFIER],   // type confusion: array, not string
       },
@@ -442,6 +447,7 @@ describe('M5 OAuth — token.ts fail-closed (M0 behaviour preserved)', () => {
       body: {
         grant_type: 'authorization_code',
         client_id: 'test_client',
+        redirect_uri: 'https://example.com/cb',
         code: 'mcp_ac_wrong_verifier',
         code_verifier: 'b'.repeat(43),   // wrong verifier, valid shape
       },
@@ -480,6 +486,7 @@ describe('M5 OAuth — token.ts fail-closed (M0 behaviour preserved)', () => {
       body: {
         grant_type: 'authorization_code',
         client_id: 'test_client',
+        redirect_uri: 'https://example.com/cb',
         code: 'mcp_ac_malformed_verifier',
         code_verifier: 'too-short',   // < 43 chars
       },
@@ -527,6 +534,7 @@ describe('M5 OAuth — token.ts fail-closed (M0 behaviour preserved)', () => {
       body: {
         grant_type: 'authorization_code',
         client_id: 'test_client',
+        redirect_uri: 'https://example.com/cb',
         code: 'mcp_ac_correct_verifier',
         code_verifier: PKCE_VERIFIER,
       },
@@ -575,6 +583,7 @@ describe('M5 OAuth — token.ts fail-closed (M0 behaviour preserved)', () => {
       body: {
         grant_type: 'authorization_code',
         client_id: 'test_client',
+        redirect_uri: 'https://example.com/cb',
         code: 'mcp_ac_no_pkce',
         // no code_verifier either
       },
