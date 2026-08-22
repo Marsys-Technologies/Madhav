@@ -390,3 +390,10 @@ disclosed, not hidden, same discipline as EKV-R-5/R-13). D-06 moved up the Wave-
 to fix the confirmed F-102/F-141 defect directly.
 
 Proceeding to Step 2: evidence + lease_ok backfill for the 10 W1 lanes.
+
+## CLOSE-DISPOSITION POINTER (appended 2026-08-22, wrapped-campaign close-out; append-only)
+
+The 18 unlanded lanes and morning items 3–7 now have a written disposition:
+`EKAVAKYATA_CLOSE_DISPOSITION_v1_0.md` (same directory). SUPERSEDED 8 · PARKED 3
+(B-09, E-03, B-07 — branch pointers recorded) · NEVER CODED 6 · PROCESS 1.
+Campaign disposition unchanged: CLOSED-PARTIAL. ekv_manifest.json not edited.
