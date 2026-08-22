@@ -1,0 +1,13 @@
+{
+  "_note": "Post-deploy probe evidence for C-03+A-11 co-deploy (run 31911149433, headSha=b1ea4cdab). C-03: fix(lel) standing_predictions_read crash — handle Postgres EMPTY daterange literal. A-11: bundle principal propagation + real upstream_status.",
+  "probe_time_utc": "2026-08-15T22:08:00Z",
+  "deployed_main_sha_target": "b1ea4cdab35393961837ad0af953b23195a623cf",
+  "deploy_run_id": "31911149433",
+  "deploy_head_sha": "b1ea4cdab35393961837ad0af953b23195a623cf",
+  "deploy_conclusion": "in_progress",
+  "lanes_in_batch": [
+    "A-11 (c75400b231f95b2933f736d1630cc5b920fee8e9) — merged 21:55Z",
+    "C-03 (b1ea4cdab35393961837ad0af953b23195a623cf) — merged 22:03Z"
+  ],
+  "note": "C-03 was previously HANDOFF (merge queue ejected after A-04/A-02 rebase). RTA-LEAD re-queued. Both A-11 and C-03 covered by single deploy 31911149433 — web only (no platform-mcp/ changes)."
+}

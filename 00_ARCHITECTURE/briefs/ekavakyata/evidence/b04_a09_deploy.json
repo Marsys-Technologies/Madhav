@@ -1,0 +1,22 @@
+{
+  "_note": "Post-deploy probe evidence for B-04+A-09 co-deploy (runs 31909264034+31909647552)",
+  "probe_time_utc": "2026-08-15T21:36:00Z",
+  "b04_deploy": {
+    "run_id": "31909264034",
+    "head_sha": "44d5ff5a76094aac4deaa148f1f3f3b43bd7845e",
+    "conclusion": "success",
+    "completed_at": "2026-08-15T21:22Z"
+  },
+  "a09_deploy": {
+    "run_id": "31909647552",
+    "head_sha": "6a0f8c9d284118f9758eaaa1fd3f4b411b6ce1aa",
+    "conclusion": "success",
+    "completed_at": "2026-08-15T21:36Z"
+  },
+  "deployed_main_sha_at_probe": "6a0f8c9d284118f9758eaaa1fd3f4b411b6ce1aa",
+  "prod_sync": "PASS (deployed_main_sha == origin/main tip)",
+  "lanes_deployed": [
+    "B-04 (44d5ff5a7)",
+    "A-09 (6a0f8c9d2)"
+  ]
+}

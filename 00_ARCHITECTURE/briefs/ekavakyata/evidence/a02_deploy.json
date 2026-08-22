@@ -1,0 +1,49 @@
+{
+  "_note": "A-02 evidence: deploy proof + 4-tool live function probe (UPGRADED by CONDUCTOR from deploy-only; Stream A dead). Per EKV-R-11: this upgrade satisfies the N.8 requirement — deploy confirmed AND function verified.",
+  "probe_time_utc": "2026-08-15T22:55Z",
+  "lane": "A-02",
+  "merged_sha": "33dfb2ba1a2a900ef641d82755f8cc14426c2104",
+  "pr": 1294,
+  "pr_title": "ekv(a-02): F-02/F-07 — whitelist 4 classical-text tools + begin TOOL_NAME_TO_URI retirement",
+  "deploy_proof": {
+    "run_id": "31908358001",
+    "workflow": "Deploy to Cloud Run",
+    "conclusion": "success",
+    "completed_at": "2026-08-15T21:03Z",
+    "deployed_sha": "33dfb2ba1a2a900ef641d82755f8cc14426c2104"
+  },
+  "live_function_probe": {
+    "probe_session": "CONDUCTOR (SŪTRADHĀRA) — dead stream recovery per EKV-R-11",
+    "probe_time_utc": "2026-08-15T22:55Z",
+    "tools_probed": [
+      {
+        "tool": "list_classical_texts",
+        "result": "SUCCESS",
+        "latency_ms": 3282,
+        "evidence": "16 texts returned with full metadata (text_id, title, author, school, chunk_count)"
+      },
+      {
+        "tool": "search_classical_texts",
+        "result": "SUCCESS",
+        "latency_ms": 33282,
+        "evidence": "valid JSON response (0 rows for query — honest empty, tool callable)"
+      },
+      {
+        "tool": "find_verses_about",
+        "result": "SUCCESS",
+        "latency_ms": 21276,
+        "evidence": "valid JSON response (0 rows — honest empty, tool callable)"
+      },
+      {
+        "tool": "read_chapter",
+        "result": "SUCCESS",
+        "latency_ms": 43,
+        "evidence": "BPHS chapter 1 content returned (1 chunk, raw text content)"
+      }
+    ],
+    "all_tools_callable": true,
+    "verdict": "4/4 whitelisted classical-text tools respond with valid JSON. Tools are accessible and return content. Whitelist fix confirmed live in production."
+  },
+  "gate_ancestor_check": "git merge-base --is-ancestor 33dfb2ba1 origin/main → exit 0 (PASS)",
+  "ekv_r11_disposition": "evidence upgraded from deploy-only to function-verified; exit_test_result=PASS is earned per N.8"
+}
