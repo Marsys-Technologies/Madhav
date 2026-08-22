@@ -30,6 +30,17 @@ import {
 import { autoDetectTrimmableSections, finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
 import { unwrapFailureReason, unwrapPrimitiveResult } from '../lib/primitive_unwrap.js'
 import { classifyScope } from './intent_scope_classifier.js'
+// F-176 (PARISESA-V4): `kala_windows_get` and `kala_projections_get` are the raw L3
+// primitives `kala_ahead_get` (F-110) already wraps and gates against `pact_query` — but
+// `grep -n "promise\|pact"` over both underlying capability files returns zero hits, so an
+// LLM caller reaching these two tools directly (rather than kala_ahead_get) never sees a
+// classical promise-chain denial that contradicts a served tier_1_high row. See
+// `./kala_views/promise_gate.js`'s header for the full verification transcript and design.
+import {
+  computePromiseGate,
+  type PromiseGate,
+  type PromiseGateProjection,
+} from './kala_views/promise_gate.js'
 
 // ── Infrastructure helpers ────────────────────────────────────────────────────
 
@@ -62,6 +73,26 @@ async function callRegistryCap(uri: string, args: Record<string, unknown>, princ
   const data = await res.json() as { ok: boolean; content?: unknown; error?: string }
   if (!data.ok) throw new Error(`[alias] capability error: ${data.error ?? 'unknown'}`)
   return data.content
+}
+
+/**
+ * F-176: adapts this file's own `callRegistryCap` (throws on any failure) to the
+ * `{content, ok}` never-throws shape `computePromiseGate` (promise_gate.ts) requires. A
+ * PACT outage must report `state:'unreachable'` on the gate, not take down the whole
+ * kala_windows_get/kala_projections_get response (§N.8 — unreachable is a value, not a crash).
+ */
+async function callCapabilityForGate(
+  uri: string, args: Record<string, unknown>, principal: Principal,
+): Promise<{ content: Record<string, unknown> | null; ok: boolean }> {
+  try {
+    const content = await callRegistryCap(uri, args, principal)
+    return {
+      content: content && typeof content === 'object' && !Array.isArray(content) ? (content as Record<string, unknown>) : null,
+      ok: true,
+    }
+  } catch {
+    return { content: null, ok: false }
+  }
 }
 
 // R5 W2 corpus lane fix (P7 — corpus search 401, still failing after the W0a
@@ -1068,8 +1099,9 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       void _offset // this primitive has no offset concept
       if (!chart_id) return errOut('kala_windows_get', 'chart_id is required')
       try {
+        const resolvedAyanamsha = resolveChartFactsAyanamsha(ayanamsha_id as string | undefined)
         const data = await callRegistryCap('marsys://tool/L3/query_temporal_activation', {
-          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolvedAyanamsha,
           ...(start_date ? { date_from: start_date } : {}),
           ...(end_date ? { date_to: end_date } : {}),
           ...(as_of ? { as_of } : {}),
@@ -1082,6 +1114,25 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         // the tool 'unknown_tool' instead of 'kala_windows_get' — a caller
         // trying to page through a trimmed result had no honest instrument
         // name to call back with.
+        //
+        // F-176 (PARISESA-V4): the primitive's `forward_windows` fallback (fired only when
+        // the primary `kala_activation` query returns zero rows — query_temporal_activation.ts
+        // :296-357) reads UNGATED `kala_bhavishya` rows, the SAME table kala_projections_get
+        // and kala_ahead_get read. Gate ONLY when that fallback actually served rows — the
+        // common case (dated activations covering the range) has nothing to gate, and
+        // pact_query is expensive (runs judgment_query's full checklist), so this tool — a
+        // broad-purpose primitive called far more often than it hits the empty-activation
+        // fallback — does not pay that cost on every call the way kala_projections_get does.
+        const contentPayload = (data as Record<string, unknown> | null)?.['content'] as Record<string, unknown> | undefined
+        const forwardWindows = (contentPayload?.['forward_windows'] as PromiseGateProjection[] | undefined) ?? []
+        if (forwardWindows.length > 0) {
+          const asOfDate = (as_of as string | undefined) ?? new Date().toISOString().slice(0, 10)
+          const promiseGate: PromiseGate = await computePromiseGate(
+            chart_id as string, resolvedAyanamsha, asOfDate, domain as string | undefined,
+            forwardWindows, principal, callCapabilityForGate,
+          )
+          return dualOutput({ ...(data as Record<string, unknown>), promise_gate: promiseGate }, 'kala_windows_get')
+        }
         return dualOutput(data, 'kala_windows_get')
       } catch (err) { return errOut('kala_windows_get', String(err), { chart_id }) }
     }
@@ -1118,8 +1169,9 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         params as Record<string, unknown>
       if (!chart_id) return errOut('kala_projections_get', 'chart_id is required')
       try {
+        const resolvedAyanamsha = resolveChartFactsAyanamsha(ayanamsha_id as string | undefined)
         const data = await callRegistryCap('marsys://tool/L3/query_projections', {
-          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolvedAyanamsha,
           ...(domain ? { domain } : {}),
           horizon_years: (horizon_years as number | undefined) ?? 5,
         }, principal)
@@ -1127,11 +1179,33 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         const projections = (projData['projections'] as unknown[]) ?? []
         const cap = (max_projections as number | undefined) ?? 20
         const boundedProjections = projections.slice(0, cap)
+        // F-176 (PARISESA-V4): this tool serves `kala_bhavishya.probability_tier` rows
+        // (verbatim, never re-graded — §N.5/§N.7) WITHOUT ever consulting `pact_query` —
+        // confirmed live: `kala_projections_get(domain:'relationship')` on the canonical
+        // chart serves 2 tier_1_high rows with no promise_gate, while `pact_query` on the
+        // SAME chart/domain independently returns `denied_at_promise`. Gate against the
+        // SAME `projection_families` this alias already reads (from `content`, not the
+        // top-level `projections` field this handler builds above — that top-level field
+        // is a pre-existing, separate defect unrelated to F-176: it reads
+        // `projData['projections']` where the primitive nests the real array under
+        // `projData['content']['projections']`, so it is always empty; left untouched here
+        // as out of this fix's scope). Computed unconditionally (matching kala_ahead_get's
+        // own F-110 precedent for this same "raw projections" semantic) — `domain` absent
+        // and no projection carries one ⇒ computePromiseGate's own `not_applicable` short
+        // circuit, no extra call.
+        const contentPayload = projData['content'] as Record<string, unknown> | undefined
+        const projectionFamilies = (contentPayload?.['projection_families'] as PromiseGateProjection[] | undefined) ?? []
+        const asOfDate = new Date().toISOString().slice(0, 10)
+        const promiseGate: PromiseGate = await computePromiseGate(
+          chart_id as string, resolvedAyanamsha, asOfDate, domain as string | undefined,
+          projectionFamilies, principal, callCapabilityForGate,
+        )
         return dualOutput({
           ...projData,
           projections: boundedProjections,
           projections_total: projections.length,
           projections_returned: boundedProjections.length,
+          promise_gate: promiseGate,
         }, 'kala_projections_get')
       } catch (err) { return errOut('kala_projections_get', String(err), { chart_id }) }
     }
