@@ -846,7 +846,7 @@ def _owned_categories(rules: list[dict[str, Any]]) -> tuple[set[str], set[str]]:
 
 def compute_stale_rule_ids(
     rules: list[dict[str, Any]],
-    owned_db_rows: list[tuple[int, str, str, int]],
+    owned_db_rows: list[dict[str, Any]],
 ) -> list[int]:
     """
     Pure reconciliation logic (F-145). Given the writer's current source-of-truth
@@ -856,15 +856,23 @@ def compute_stale_rule_ids(
     `(graha, rule_type, primary_house)` key is absent from `rules` and should be
     retired.
 
-    `owned_db_rows` must be `(id, graha, rule_type, primary_house)` tuples already
-    filtered to `rule_type` / `graha` values that are owned categories — callers must
+    `owned_db_rows` must be dict-shaped rows with keys `id`, `graha`, `rule_type`,
+    `primary_house` — the same shape `cur.fetchall()` returns on the orchestrator's
+    connection, which is opened via `pipeline.orchestrator.db.connect()` with
+    `row_factory=psycopg.rows.dict_row` (see `db.py`). A `seed_transit_rules` cursor
+    inherits that connection-level row_factory, so its `SELECT id, graha, rule_type,
+    primary_house FROM bg_transit_rules ...` rows arrive as dicts, never plain tuples
+    — unpacking them as a 4-tuple would silently bind `row_id` to the literal string
+    `"id"` (iterating the dict's keys) instead of the integer id, and the follow-on
+    `DELETE FROM bg_transit_rules WHERE id = %s` would then crash with
+    `invalid input syntax for type integer: "id"` (F-145 followup). Callers must
     never pass migration-owned or otherwise unowned rows into this function.
     """
     current_keys = {(r["graha"], r["rule_type"], r["primary_house"]) for r in rules}
     return [
-        row_id
-        for row_id, graha, rule_type, primary_house in owned_db_rows
-        if (graha, rule_type, primary_house) not in current_keys
+        row["id"]
+        for row in owned_db_rows
+        if (row["graha"], row["rule_type"], row["primary_house"]) not in current_keys
     ]
 
 
@@ -985,10 +993,18 @@ def seed_transit_rules(conn, *, dry_run: bool = False) -> dict[str, int]:
     # (CLAUDE.md §N.8: a signal without a real, currently-running check is null).
     if owned_types and owned_grahas:
         cur.execute(
-            "SELECT COUNT(*) FROM bg_transit_rules WHERE rule_type = ANY(%s) AND graha = ANY(%s)",
+            "SELECT COUNT(*) AS owned_row_count FROM bg_transit_rules "
+            "WHERE rule_type = ANY(%s) AND graha = ANY(%s)",
             (sorted(owned_types), sorted(owned_grahas)),
         )
-        (owned_row_count,) = cur.fetchone()
+        # `cur` inherits the connection's dict_row row_factory (see db.py / the
+        # compute_stale_rule_ids docstring above) — `cur.fetchone()` returns a dict,
+        # not a 1-tuple. `(owned_row_count,) = cur.fetchone()` would silently unpack
+        # to the dict's sole KEY ("count"/"owned_row_count", a string) rather than
+        # the count value, making this comparison always-true and this warning fire
+        # on every single build (the same defect class as compute_stale_rule_ids,
+        # F-145 followup).
+        owned_row_count = cur.fetchone()["owned_row_count"]
         if owned_row_count != len(BG_TRANSIT_RULES):
             logger.warning(
                 "[transit] F-145 freshness check failed: bg_transit_rules owned-category "

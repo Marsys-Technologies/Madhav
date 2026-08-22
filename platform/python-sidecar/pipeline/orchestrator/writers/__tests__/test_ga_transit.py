@@ -237,6 +237,12 @@ def test_venus_unfavourable_houses_omitted_when_absent_from_source():
     Constructed-state test: if a house is missing from a BG_TRANSIT_RULES-shaped
     source list, the reconciliation logic must treat any corresponding DB row as
     stale (to be retired/omitted); if present, it must not.
+
+    `db_rows` are dict-shaped (id/graha/rule_type/primary_house keys) — the real
+    shape `cur.fetchall()` returns on the orchestrator's `dict_row`-factory
+    connection (`pipeline/orchestrator/db.py`'s `connect()`), not plain tuples. A
+    tuple-shaped fixture here previously masked the F-145 followup dict-row-
+    unpacking bug in `compute_stale_rule_ids`.
     """
     from brahmagyan.l0_transit import compute_stale_rule_ids
 
@@ -246,9 +252,9 @@ def test_venus_unfavourable_houses_omitted_when_absent_from_source():
         {"rule_type": "unfavourable", "graha": "venus", "primary_house": 7},
     ]
     db_rows = [
-        (46, "venus", "unfavourable", 6),
-        (47, "venus", "unfavourable", 7),
-        (48, "venus", "unfavourable", 10),
+        {"id": 46, "graha": "venus", "rule_type": "unfavourable", "primary_house": 6},
+        {"id": 47, "graha": "venus", "rule_type": "unfavourable", "primary_house": 7},
+        {"id": 48, "graha": "venus", "rule_type": "unfavourable", "primary_house": 10},
     ]
     assert compute_stale_rule_ids(partial_source, db_rows) == [48]
 
