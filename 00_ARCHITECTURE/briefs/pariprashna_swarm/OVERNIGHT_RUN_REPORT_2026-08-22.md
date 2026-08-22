@@ -190,6 +190,19 @@ command, pinned, with five triggers armed (ledger D-016).
 
 ## Lanes — what each one honestly is this morning
 
+**On the merge column, read this first.** This report is itself one of the PRs in the queue, so its
+merge column was written while the train was still draining and **is a snapshot, not the truth**. The
+authoritative state is live:
+
+```bash
+gh pr list --state all --search "pariprashna in:head" --limit 20 \
+  --json number,title,state --jq '.[]|"\(.state) #\(.number) \(.title)"'
+```
+
+**The honest one-line claim per lane does not go stale — that is the column that matters**, and it is
+the one this table exists for. Where the two disagree about whether something merged, believe the
+command.
+
 | Lane | PR | State | The honest one-line claim |
 |---|---|---|---|
 | **P4-K** narration audit | #1498 | **MERGED** | Harness built, spec↔implementation verified 1:1; **not run** — its target surface does not exist yet |
