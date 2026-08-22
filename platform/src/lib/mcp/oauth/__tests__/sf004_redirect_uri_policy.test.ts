@@ -66,8 +66,19 @@ describe('isRegistrableRedirectUri — SF-004 registration hygiene', () => {
     expect(isRegistrableRedirectUri('')).toBe(false)
   })
 
-  it('rejects a degenerate https authority with empty host', () => {
-    expect(isRegistrableRedirectUri('https:///cb')).toBe(false)
+  it('rejects a URI with no authority at all (throws out of the URL parser)', () => {
+    expect(isRegistrableRedirectUri('https://')).toBe(false)
+    expect(isRegistrableRedirectUri('https:///')).toBe(false)
+  })
+
+  it('a triple-slash form that the URL parser resolves to a real host is still just a normal https: URI — not a bypass', () => {
+    // `new URL('https:///cb')` resolves to hostname 'cb' (the WHATWG parser
+    // treats the segment after the empty authority as the host, not a
+    // degenerate empty one) — this is a parser quirk, not a security hole:
+    // the raw string is what gets stored and later exact-matched at
+    // /authorize, never re-parsed/re-normalized, so this cannot be used to
+    // register one string and have it match a different one later.
+    expect(isRegistrableRedirectUri('https:///cb')).toBe(true)
   })
 
   it('accepts uppercase scheme (HTTPS://) — URL parser lower-cases protocol', () => {

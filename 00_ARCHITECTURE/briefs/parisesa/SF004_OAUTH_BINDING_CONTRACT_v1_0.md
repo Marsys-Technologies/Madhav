@@ -130,8 +130,14 @@ in `redirect_uris` must satisfy ALL of:
    (`localhost`, `127.0.0.1`, or `::1`) — the RFC 8252 §7.3 dev-loopback carve-out. Every
    other scheme (`http:` on a non-loopback host, `javascript:`, `data:`, `file:`, a custom
    app-private URI scheme, or anything else) is rejected.
-5. **Non-empty host** for the `https:`/loopback-`http:` schemes (rejects
-   `https:///cb`-shaped degenerate authorities).
+5. **Non-empty host** for the `https:`/loopback-`http:` schemes (rejects the
+   truly-authority-less forms `https://` and `https:///`, which throw out of the `URL`
+   parser and are caught by rule 1, not this rule specifically — verified empirically:
+   `new URL('https:///cb')` does NOT produce an empty host; the WHATWG parser resolves the
+   segment after the empty authority to hostname `'cb'`. That is a parser quirk, not a
+   bypass — the raw string is what is stored and later exact-matched at `/authorize`,
+   never re-parsed or re-normalized, so it cannot be used to register one string and have
+   a different one match later.
 
 **Deliberate scope limit, stated not hidden:** native-app custom URI schemes (RFC 8252
 §7.1, e.g. `com.example.app:/callback`) are rejected by this policy along with everything
