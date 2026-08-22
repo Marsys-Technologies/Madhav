@@ -1,0 +1,14 @@
+{
+  "turn_id": "broken-03-prioritize",
+  "question": "Of everything going on in my chart right now, what matters most?",
+  "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+  "conversation_id": "broken-conv-0001",
+  "partial": false,
+  "terminal_status": "ok",
+  "blocks": [{ "blockId": "b1", "kind": "paragraph", "role": "elaboration" }],
+  "prose": "",
+  "events": [
+    { "type": "block.commit", "raw": { "type": "block.commit", "block_id": "b1", "kind": "paragraph", "role": "elaboration", "text": "" }, "receivedAtMs": 100 },
+    { "type": "turn.close", "raw": { "type": "turn.close", "status": "ok" }, "receivedAtMs": 200 }
+  ]
+}
