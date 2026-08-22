@@ -61,7 +61,9 @@ usual suspects.
 
 Classical grounding (Whole-Chart-Read, B.11): a bhava judgment expects, at minimum,
 the bhava condition, the bhāveśa (lord) condition + placement + dignity + strength,
-the kāraka condition, the reading from BOTH lagna and chandra, operative-varga
+the kāraka condition, the reading from BOTH lagna and chandra (the chandra leg's own
+\`ayanamsha_frame_sensitivity\` — F-159 — discloses, never rules on, whether the Moon's
+sign itself agrees across the 5 real ayanamshas), operative-varga
 confirmation, bearing yogas/doshas, and timing hooks (dasha windows). Form the
 *whole* set up front; do not let the first tool's payload define the frame.
 

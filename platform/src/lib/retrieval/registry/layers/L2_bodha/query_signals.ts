@@ -628,7 +628,8 @@ export const querySignalsCapability: CapabilityDescriptor = {
       let frameContext: Record<string, unknown> | undefined
       if (frame !== 'lagna') {
         try {
-          const { sign: referenceSign } = await resolveFrameReferenceSign(chart_id, frame, { ayanamsha_id })
+          const { sign: referenceSign, ayanamsha_frame_sensitivity } =
+            await resolveFrameReferenceSign(chart_id, frame, { ayanamsha_id })
           const grahaCodes = Object.keys(GRAHA_CODE_TO_NAME)
           const signRes = await query<{ fact_subject: string; fact_value_text: string | null }>(
             `SELECT fact_subject, fact_value_text FROM chart_facts
@@ -648,6 +649,9 @@ export const querySignalsCapability: CapabilityDescriptor = {
             note: `Each graha's actual house counted from ${frame} (${referenceSign}). Signal rows ` +
               `and computed_salience are unaffected by frame (frozen build-time formula output) — ` +
               `use this to judge a returned signal's bhava relevance under ${frame} in this same call.`,
+            // F-159: frame="chandra" only — disclosure (never a correctness ruling) of whether
+            // the Moon's own sign, the frame-determining fact, agrees across the 5 real ayanamshas.
+            ...(ayanamsha_frame_sensitivity ? { ayanamsha_frame_sensitivity } : {}),
           }
         } catch (e) {
           frameContext = { frame, error: `could not resolve frame "${frame}": ${String(e)}` }

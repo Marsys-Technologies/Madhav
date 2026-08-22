@@ -3776,7 +3776,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'a bare `bhava` (1-12). Returns the COMPLETE classical checklist in ONE call: bhava condition ' +
     '(sign + occupants + aspecting grahas) · bhāveśa (lord) condition + placement + dignity + ' +
     'strength · kāraka condition (e.g. Venus for marriage) · judged from BOTH lagna AND chandra ' +
-    '(Sudarshana discipline) · operative-varga confirmation (e.g. D9 for marriage) · bearing yogas/' +
+    '(Sudarshana discipline; the chandra leg carries `ayanamsha_frame_sensitivity` — F-159\'s ' +
+    'disclosure, never a ruling, of whether the Moon\'s own sign agrees across the 5 real ' +
+    'ayanamshas) · operative-varga confirmation (e.g. D9 for marriage) · bearing yogas/' +
     'doshas · timing hooks (current + upcoming dasha windows for the lord/karaka) · a deterministic ' +
     'promise-register verdict (never an LLM judgment or a probability) · a classical-units ' +
     'completeness RECEIPT (design §28.6): {bhava, bhavesha, karaka, from_moon, varga_confirmed, ' +

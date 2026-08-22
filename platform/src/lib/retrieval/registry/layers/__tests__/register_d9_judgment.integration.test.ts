@@ -66,6 +66,14 @@ describeIf('judgment_query (marsys://tool/L-JUDGMENT/judgment_query) — live DB
       const fromChandra = bhavaCondition['from_chandra'] as Record<string, unknown> | null
       expect(fromChandra, 'Sudarshana from-Moon resolution must be present').toBeTruthy()
       expect(fromChandra!['sign']).toBeTruthy()
+      // F-159: the key is always present (structural), even if the cross-ayanamsha read itself
+      // came back null (e.g. real-ayanamsha rows missing) — never silently absent.
+      expect('ayanamsha_frame_sensitivity' in fromChandra!).toBe(true)
+      const sensitivity = fromChandra!['ayanamsha_frame_sensitivity'] as Record<string, unknown> | null
+      if (sensitivity !== null) {
+        expect(['ayanamsha_sensitive', 'stable_across_ayanamsha', null]).toContain(sensitivity['frame_sensitivity_class'])
+        expect(sensitivity['variation']).toBeTruthy()
+      }
 
       const bhaveshaCondition = checklist['bhavesha_condition'] as Record<string, unknown>
       const lordLagna = bhaveshaCondition['from_lagna'] as Record<string, unknown>
