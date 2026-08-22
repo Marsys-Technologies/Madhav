@@ -1,8 +1,13 @@
 ---
 canonical_id: OVERNIGHT_CAMPAIGN_PLANS_INDEX
-version: 1.0
+version: 1.1
 status: ARCHIVAL RECORD
 date_landed: 2026-08-22
+changelog:
+  - v1.1 (2026-08-23): N4 discrepancy RESOLVED as historical/superseded — resolution paragraph
+    added to the discrepancy section; ratified briefs/sampurti/REBASE_PLAN_v1_0.md deliberately
+    untouched. Native-delegated decision (Fable 5 agent).
+  - v1.0 (2026-08-22): initial archival landing.
 scope: governing plans, kickoff prompts, and orchestration harness for the overnight swarm campaigns
 ---
 
@@ -40,6 +45,33 @@ The repo's copy is otherwise byte-identical. **The in-repo `briefs/sampurti/REBA
 deliberately NOT modified by this landing** — amending a ratified governance document is a native
 decision (CLAUDE.md §L), not a hygiene sweep's call. If the ruling is genuine and should bind, fold
 it into the sampurti copy and supersede this one.
+
+**RESOLVED 2026-08-23 — N4 is HISTORICAL, SUPERSEDED; the ratified copy stays untouched**
+(native-delegated decision made by a Fable 5 agent on the native's explicit instruction, not by
+the native directly). Investigated on live evidence, not asserted:
+
+- **The ruling is genuine and its technical premise is real.** `ka_kshetra` checkpoint-resume
+  exists in code (`platform/python-sidecar/services/ka_kshetra/writer.py`: `_RESUME_VERSION`,
+  cross-attempt substep resumption via `build_substep_progress` per migration 436, and
+  partial-null-class replanning) and was exercised live: the sealed ledger's R10 entry
+  (2026-08-13) shows chart2's Run 6 resuming from 79 pre-committed substeps to LIT, and R40
+  (2026-08-14) shows "60 stage4 substeps preserved … stage4 SKIPPED entirely."
+- **But its operative content was discharged inside the same campaign, which then closed on
+  broader terms.** The per-class closure N4 authorized is recorded de facto in the sealed ledger
+  (R10 reconciliation: "R1 COMPLETE … 6,708 field windows"; Measurement #4: 6 event classes),
+  and the incremental completion it prescribed ran to its end two days later: the A8 27-class
+  build COMPLETED 2026-08-15 (snapshot `kfs_e23ba1ab`, 31,350 windows, 25 of 27 classes
+  populated; FIELD-INTEGRATED posted at `db77e48da`), and the arc sealed ARC-COMPLETE at
+  R44–R47. The campaign's record of record is the sealed `briefs/sampurti/SAMPURTI_STATE.md`
+  (status CLOSED, landed to main at `eccf15abc`), whose terminal-state tables restate the
+  field's closure on terms broader than GREEN-PER-CLASS(6/27). PARIŚEṢA F-78 (PR #1392) later
+  corrected `kala_field_snapshots.event_classes` disclosure (ATTEMPTED, not BUILT) on the same
+  terrain.
+- **Therefore:** retro-amending the ratified `briefs/sampurti/REBASE_PLAN_v1_0.md` now would
+  insert a spent, transient 6/27-era ruling into a CLOSED campaign's plan of record as if it
+  were the final disposition. The 10 lines in the copy here stand as the historical record of
+  the ruling; the superseding documents are the sealed `SAMPURTI_STATE.md` (R44–R47 terminal
+  state) and `briefs/sampurti/MEASUREMENT_4_BASELINE_v1_0.md`.
 
 ## What was excluded as duplicate
 
