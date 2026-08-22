@@ -31,7 +31,7 @@ from a running clock.
 
 ## The night in one paragraph, honestly
 
-Ten lanes were opened or resumed. **Four independent adversarial reviews returned REFUTED**, and every
+Ten lanes were opened or resumed. **Ten adversarial reviews were run. Five returned REFUTED. Five returned SURVIVES-WITH-FINDINGS. Not one returned a clean SURVIVES.**, and every
 one of them was right — they caught a dispute-capture path that a single follow-up turn silently
 erases, a coverage function that self-certified with a tautology and could be made to publish a
 fabricated 59/60 with the full suite green, and a reader-text pipeline whose "citation gate" never
@@ -415,6 +415,36 @@ P3-E temporary diagnostic            ABSENT  (correct — it must not survive th
 
 That last line is the one worth having checked: a temporary secret-shape diagnostic, however carefully
 written, must not reach `main`, and "the builder said it removed it" is not the same as it being gone.
+
+---
+
+## The number this night turns on
+
+Every verdict is posted on its own PR. The exact tally, counted from those comments rather than from
+memory:
+
+| verdict | count | PRs |
+|---|---|---|
+| **REFUTED** | **5** | #1495 P3-A · #1496 P4-H · #1499 P4-J · #1500 P4-G · #1501 DD-1 battery |
+| **SURVIVES-WITH-FINDINGS** | **5** | #1497 P4-I · #1498 P4-K · #1502 P3-C · #1503 rollback pin · #1504 P3-D prep |
+| **SURVIVES (clean)** | **0** | — |
+
+**Ten reviews, zero clean passes.** Every single artifact this run produced or touched carried at
+least one finding that a hostile reader could substantiate. That is not a statement about the
+builders, who were careful and who disclosed their own gaps honestly in almost every case — it is a
+statement about what adversarial review is worth, and about how far "merged, green, tested and
+flagged" sits from "true."
+
+**Earlier drafts of this report said "four of six" and "five of eight."** Both were understatements
+written mid-run from memory while reviews were still landing. The number above is counted from the
+posted verdicts and is the one to quote.
+
+**A related gap, caught at close and fixed:** five of these ten verdicts existed only in the decision
+ledger and had never been posted to the PRs where a reviewer would look — including P4-G's, whose
+comment attempt had **silently failed** earlier in the night and which nobody would have noticed. All
+ten are now posted. *A verdict that lives only in the conductor's own notes is a verdict the next
+reader does not get* — the same defect class as a body caveat under an over-claiming headline, one
+layer up.
 
 ---
 
