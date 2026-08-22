@@ -384,8 +384,24 @@ export async function runPersistenceStage(args: {
           // the turn, not only the assistant's. `historyMsgs` already carries
           // the SAME id the legacy write above used (both are built from the
           // same array — see its construction near the top of this
-          // function), so this is an additive UPDATE of the additive columns
-          // on an existing row, never a second row for the same message.
+          // function), so this reuses the existing row's id, never a second
+          // row for the same message — but `writeTurn`'s upsert
+          // (`store/writer.ts`) is a FULL-ROW `ON CONFLICT DO UPDATE`, NOT an
+          // additive update of only the additive columns: it also rewrites
+          // `conversation_id`, `parent_message_id`, `role`, and
+          // `metadata_json` from the values passed to this call, none of
+          // which are set here — so this call overwrites the row's
+          // `metadata_json` to `{}` and `parent_message_id` to `null`.
+          // `parts_json` survives untouched (the legacy write above is the
+          // only writer of that column; `writeTurn` never touches it).
+          // Latent, not live-breaking today: `conversation_writer.ts`'s own
+          // user-row write already sets `metadata_json = {}`, and no
+          // production path inserts a `parent_message_id` for a user row
+          // today (only `regenerate/route.ts` reads it) — but this is still
+          // a real gap for the day something does write one. Restricting
+          // `writeTurn`'s SET list to only the columns a caller intends to
+          // touch would close this properly; that is a behaviour change and
+          // is out of scope for this pass.
           // Best-effort and strictly non-fatal, same discipline as every
           // other splice in this file: a completeness-record fault must
           // never cost the reader their reading.

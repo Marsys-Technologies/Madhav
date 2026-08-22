@@ -46,6 +46,23 @@
  *     so `store/replay_paths.ts`'s wire-replay path covers `reasoning`
  *     (block.open/block.commit DO carry `role` on the wire) but not
  *     `tool_call`/`tool_result` — see that module's own header.
+ *   - PASS-1-ONLY: `buildCanonicalParts` (`reading_parts.ts`) is fed
+ *     `evidence_stage.ts`'s `validToolResults`, which is retrieval PASS 1
+ *     only. The synthesis stage runs its own agentic tool loop
+ *     (`synthesis_stage.ts`'s `useAgenticLoop`, true for every provider in
+ *     `AGENTIC_PROVIDERS` — which includes `'google'`, the production
+ *     default — for up to 8 iterations) that re-enters retrieval; passes
+ *     2..N's tool calls are real (observed re-entering `phase retrieve` at
+ *     `pass_id= 2`, `pass_id= 3`, …) but are never threaded back into
+ *     `validToolResults` and so never reach `tool_call`/`tool_result` parts —
+ *     no fixture exercises them. A persisted turn's tool_call/tool_result
+ *     rows are a first-pass-only account of the turn's retrieval, not a
+ *     complete one; a reader of the canonical store must not assume the
+ *     persisted set is exhaustive.
+ *   - `ToolResultFromDispatch.status` is typed `'done' | 'error'` but
+ *     `reading_parts.ts`'s only caller hardcodes `status: 'done'` — nothing
+ *     in this lane ever produces `'error'`, so that variant currently has no
+ *     producer and the field can never read false from this path.
  */
 
 import type { MessagePartInput } from './schema'

@@ -506,13 +506,22 @@ export function scrubToolArgs(invocationParams: object | undefined): {
 }
 
 /**
- * §N.8 earned-signal detector: which kinds a caller EXPECTS a persisted turn
- * to carry, given what that turn actually produced — never "every kind must
- * always fire" (a turn with no thinking block legitimately has no `reasoning`
- * part). A caller derives its own expectation from what it fed the builder
- * (see `checkPartKindCoverage`'s doc for the intended pairing) so the check
- * can genuinely fail when a kind that SHOULD be there is missing, rather than
- * trivially passing on "some parts exist."
+ * Kind-presence check: does a persisted turn's parts list contain each kind
+ * in `expectedKinds` at least once? A caller derives its own expectation from
+ * what it fed the builder — never "every kind must always fire" (a turn with
+ * no thinking block legitimately has no `reasoning` part) — so the check can
+ * genuinely fail when a kind that SHOULD be there is wholly absent, rather
+ * than trivially passing on "some parts exist."
+ *
+ * Scope, stated honestly (corrected — this was previously labeled a "§N.8
+ * earned-signal detector," which reads stronger than what it is): this
+ * function has ZERO production callers today; it is a test assertion helper
+ * (see `__tests__/reading_parts_full_coverage.test.ts`), not a live detector
+ * wired into a served surface. It compares PRESENCE ONLY — it cannot detect
+ * a partial loss (1 of 5 expected `tool_call` parts persisted still yields
+ * `missing: []`), a wrong order, an empty or malformed body, or any kind the
+ * caller never listed in `expectedKinds`. Do not cite a passing result here
+ * as evidence a turn's persisted parts are complete.
  */
 export function checkPartKindCoverage(
   parts: readonly MessagePartInput[],
