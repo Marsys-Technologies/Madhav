@@ -75,7 +75,7 @@
  */
 
 import { VIDHI_PRIMITIVES } from '@/lib/vidhi/registry_data'
-import { resolveLiveTool } from '@/lib/pipeline/compiled_floor_adapter'
+import { BAND_BUDGET, BAND_PRIORITY, resolveLiveTool } from '@/lib/pipeline/compiled_floor_adapter'
 import type { PipelinePlan, ToolCallItem } from '@/lib/pipeline/types'
 import type { CompiledFloorItem } from '@/lib/vidhi/types'
 
@@ -147,8 +147,11 @@ export function fromCompiledFloorItem(
     live_tool: item.live_tool,
     origin,
     params: item.tool_args,
-    token_budget: origin === 'vidhi_floor' ? 600 : 400, // mirrors compiled_floor_adapter.ts's BAND_BUDGET
-    priority: origin === 'vidhi_floor' ? 1 : 2, // mirrors compiled_floor_adapter.ts's BAND_PRIORITY
+    // REFERENCES compiled_floor_adapter.ts's exported BAND_BUDGET/BAND_PRIORITY
+    // (§N.7 item 3) rather than copying their values — a copied literal can
+    // drift from its source silently; a reference cannot.
+    token_budget: origin === 'vidhi_floor' ? BAND_BUDGET.acharya_floor : BAND_BUDGET.machine_band,
+    priority: origin === 'vidhi_floor' ? BAND_PRIORITY.acharya_floor : BAND_PRIORITY.machine_band,
     reason: `vidhi ${origin}: ${item.primitive_id}`,
   }
 }
