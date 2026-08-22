@@ -542,9 +542,16 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
     const vargas = (inputs.vargaAnalysis['consumed_vargas'] as string[] | undefined) ?? []
     const vargaFactIds = (inputs.vargaAnalysis['fact_ids'] as string[] | undefined) ?? []
     clauses.push({
+      // F-156: this clause is flattened into kernel.verdict (budget-immune) while
+      // varga_analysis itself is an all-or-nothing evidence/grounding-layer object that can
+      // be omitted under budget pressure (response_budget.ts assembleSaraContent). Citing the
+      // section by name produced an unfalsifiable claim — the citation always survived even
+      // when its referent did not. Cite what the clause carries directly (fact_ids, below)
+      // instead of naming a section that may not ship.
       text: `${vargas.map(displayVarga).join(' + ')} placements were consumed directly from L1 ` +
-        "to confirm this domain's operative-varga promise (see varga_analysis.per_varga for " +
-        'per-graha dignity and, where computed, per-varga Ashtakavarga).',
+        "to confirm this domain's operative-varga promise (per-graha dignity and, where " +
+        'computed, per-varga Ashtakavarga confirmed from L1 divisional placements — see ' +
+        'fact_ids below).',
       fact_ids: vargaFactIds,
       grounded: vargaFactIds.length > 0,
       clause_id: 'varga_grounding',
