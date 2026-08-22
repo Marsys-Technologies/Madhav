@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T13:48:00Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "finding_id": "F-46",
+  "deployment": {
+    "commit": "a7136b467af204767a6f9b403785b84967136a84",
+    "workflow_run": 32259877233,
+    "mcp_job": "Build & Deploy MCP",
+    "mcp_job_result": "SUCCESS",
+    "revision": "amjis-mcp-00575-pgx",
+    "traffic_percent": 100,
+    "label_commit_sha": "a7136b467af204767a6f9b403785b84967136a84"
+  },
+  "read_only_direct_mcp_canary": {
+    "tool": "ganita_planet_get",
+    "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "planet": "Saturn"},
+    "is_error": false,
+    "observed": {
+      "served_outer_envelope": true,
+      "budget_kb_applied": 40,
+      "trimmed_paths": ["content.dispositor.rows", "content.shadbala.rows", "content.yogas.firings_authoritative", "content.dignity.rows", "content.position.rows", "content.avasthas.rows"],
+      "recovery_pointer_instrument": "ganita_planet_get",
+      "matching_trim_report_and_drill_pointers": true
+    },
+    "no_write_assurance": "read-only retrieval call; no session selection, job, adoption, rebuild, or database mutation invoked."
+  },
+  "disposition": "SERVICE-PROVEN / closure-eligible pending normal tracker projection reconciliation"
+}
