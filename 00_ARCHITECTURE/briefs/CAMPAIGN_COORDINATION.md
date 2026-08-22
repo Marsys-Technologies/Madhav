@@ -111,7 +111,9 @@ this is RELEASED or expired.*
 | 570–573 | (various) | applied to main since this table was last updated — this row was stale at "570+ next free" and caused a real collision (see 574/575 below) | HISTORICAL |
 | 574 | PARIPRAŚNA | 574_ncd8_spend_ceilings_channel_attribution.sql (G1-D, adds `channel` col + 2 indexes to llm_usage_events) | CLAIMED — pariprashna/p1, PR not yet opened |
 | 575 | PARIPRAŚNA | 575_pariprashna_chart_subject_consent.sql (G1-B, chart_subject_consent + 4 related tables) | CLAIMED — pariprashna/p1, PR not yet opened. Renumbered from a 574 collision with G1-D (both lanes independently claimed 574 from a stale "570+" reading here — renumber-on-collision applied per this table's own rule) |
-| 576+ | — | next free; claim here before use — **the "next free" number drifts fast under concurrent campaigns; re-verify live via `ls platform/migrations/ platform/supabase/migrations/` before trusting this table** | — |
+| 576–587 | (various) | applied to main since this table was last updated (verified live via `git ls-tree -r --name-only origin/main -- platform/supabase/migrations platform/migrations` at claim time, tip `07ed2433f`) | HISTORICAL |
+| 588 | PARIPRAŚNA | 588_samiksha_digest_journal.sql (P4-I, digest-journal DB table — additive, expand-only) | CLAIMED — pariprashna/p4-i, PR not yet opened |
+| 589+ | — | next free; claim here before use — **the "next free" number drifts fast under concurrent campaigns; re-verify live via `git ls-tree -r --name-only origin/main -- platform/supabase/migrations platform/migrations` before trusting this table** | — |
 
 ## 3. TERRITORY MAP (edit-ownership during the concurrency window)
 
@@ -7361,4 +7363,29 @@ open (one pre-run blind window, 170s at 2026-08-22T20:44:27Z→20:47:17Z from th
 daemon restart, acknowledged by the conductor at run open and recorded here rather than left
 silent). Migration numbers: none reserved yet; any needed tonight will be reserved in this file
 before authoring.
+
+
+## 2026-08-23 — PARIPRASHNA-P4-I (Claude Code, BUILDER lane, T-P4-REMEMBER) — leased window: digest journal migration 588
+
+**Context.** P4-I filler lane per `PARIPRASHNA_P3_P4_OVERNIGHT_AUTONOMOUS_RUN_v2_0.md` §10.2/§10.5:
+wires the SAMĪKṢĀ daily-job digest transport to a real DB journal table (currently a W-5
+log-only stub + a per-day JSON marker file, `FileDigestJournal`). Scope: `platform/src/lib/**`
+(digest journal + daily_job wiring) plus one additive migration.
+
+**Migration claimed:** 588 (`588_samiksha_digest_journal.sql`) — see §2 table above. Verified live
+immediately before claiming: `git ls-tree -r --name-only origin/main -- platform/supabase/migrations
+platform/migrations` at `origin/main@07ed2433f` shows highest applied number 587
+(`587_llm_usage_events_interpretation_sets_stage.sql`); no in-flight worktree (p3-a/p3-c/p3-e/p4-h)
+carries an uncommitted migration above 587 at claim time. 588 is expand-only: one new table + two
+indexes + RLS policy, no drop/alter of any existing object, following the `578_pariprashna_persistence_outbox.sql`
+(DD-16) convention.
+
+**Scope this lease covers:** `platform/src/lib/pariprashna/samiksha/digest_journal.ts`,
+`platform/src/lib/pariprashna/samiksha/daily_job.ts`, `platform/scripts/samiksha/daily_job.ts`,
+`platform/supabase/migrations/588_samiksha_digest_journal.sql`, associated tests. No other file.
+
+**Pre-lease checks:** fresh fetch of `campaign-coordination` (tip `355458408`, no open lease
+touching migration numbering or `platform/src/lib/pariprashna/samiksha/**`); fresh fetch of `main`
+(`07ed2433f`, matches the overnight run's opening tip — no drift); worktree
+`.clone/worktrees/p4-i` (isolated, not the shared checkout), branch `pariprashna/p4-i`.
 
