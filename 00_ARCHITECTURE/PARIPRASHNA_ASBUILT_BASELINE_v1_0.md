@@ -1,9 +1,9 @@
 ---
 artifact: PARIPRASHNA_ASBUILT_BASELINE_v1_0
 canonical_id: PARIPRASHNA_ASBUILT_BASELINE
-version: 1.2
+version: 1.3
 status: LIVING — regenerated at every gate close; every row carries an evidence class + date
-produced_during: PARIPRASHNA-V012-PHASE1 (Cowork, Fable 5, 2026-08-18); P1-I addendum (Claude Code, 2026-08-19); P2-close addendum (Claude Code, 2026-08-21)
+produced_during: PARIPRASHNA-V012-PHASE1 (Cowork, Fable 5, 2026-08-18); P1-I addendum (Claude Code, 2026-08-19); P2-close addendum (Claude Code, 2026-08-21); P3-preflight-close addendum (Claude Code, 2026-08-22)
 date: 2026-08-18
 baseline_of: git HEAD dfbdfe620 (branch ekv/b-01-dignity-oracle-fix snapshot) + live MCP census 2026-08-18 + PB close corpus
 authoritative_side: claude
@@ -29,6 +29,18 @@ changelog:
     amjis-web-01585-g92 (built from 3d08d1c1a) plus the citation/receipt
     live evidence. See PARIPRASHNA_P2_CLOSE_REPORT_v1_0.md for the full
     account this addendum summarizes."
+  - "1.3 (2026-08-22): P3-preflight-close gate (Parts A-G of
+    PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md) — GAP-6's `table`
+    sub-case CLOSED at the data layer (client-rendering caveat carried
+    forward, not silently dropped); GAP-14 further narrowed (not closed —
+    TTFT/SLO baselining remain unbuilt). New §8 addendum carries the
+    serving-revision re-check plus per-part evidence pointers into the DD
+    register (`PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`), which is
+    now the more current source for anything this addendum summarizes.
+    This is an ADDITIVE, non-exhaustive addendum, not a full re-verification
+    of every row in §1-§4 — see §8.5 for exactly what was and was not
+    re-checked this gate, per this document's own regeneration protocol
+    (§5) and the honest-disclosure convention §6/§7 already established."
 ---
 
 # Paripraśna — As-Built Baseline (2026-08-18)
@@ -73,13 +85,13 @@ resolution; `mcp_predictions` retired (471) · fail-closed chart authz
 | GAP-3 | No middleware, no rate limit, no blocking spend cap on either chat tree | STATIC_VERIFIED · 2026-08-18 | G1 (PPR-25) |
 | GAP-4 | PITR disabled, no restore drill (last verified F-25t) | RE-VERIFIED — still disabled (`False`) — see §6.1 · 2026-08-19 | G1 (PPR-33) |
 | GAP-5 | `ANTHROPIC_API_KEY` unprovisioned in production (anthropic stack fails instantly, masked by Gemini default) | DOCUMENT_ASSERTED (PURNATA §5.1a) · 2026-08-01 | G1 |
-| GAP-6 | Live wire renders paragraphs only (FD-1): table/verse/gap-ribbon/heading/roles/prediction_card have no live producer | STATIC_VERIFIED | G2 (PPR-07) |
+| GAP-6 | Live wire renders paragraphs only (FD-1): table/verse/gap-ribbon/heading/roles/prediction_card have no live producer | STATIC_VERIFIED · 2026-08-18; **`table` sub-case CLOSED at the data layer 2026-08-22 — see §8.2 and DD-22 in the DD register.** verse/gap-ribbon/heading/roles/prediction_card remain open, unaffected by this partial closure | G2 (PPR-07) |
 | GAP-8 | Model/Length pickers cosmetic; `length_tier` nonfunctional; depth from picker not scope tuple (FD-3/FD-12) | STATIC_VERIFIED | G2 (PPR-09/16) |
 | GAP-9 | No durable-persistence protocol (settled_visual vs durably_persisted undistinguished); parity invariant unbuilt; capture flag OFF per Ruling 80 (FD-9 — apparatus repurposed per PPR-10) | STATIC_VERIFIED | G2 (PPR-10) |
 | GAP-11 | prashna_ask is single-pass without lint/sentinel/receipt; unified plan type unwritten; store covers assistant turns only | STATIC_VERIFIED / DOCUMENT_ASSERTED | G4 (PPR-30) |
 | GAP-12 | Recall built-unwired (FD-5); LogToSamiksha unmounted (FD-4); window-opening ask unbuilt; dispute capture absent; feedback endpoint still discards (F-25c); digest transport log-only (FD-10) | STATIC_VERIFIED | G8 (PPR-18/31) |
 | GAP-13 | Calibration sink (Rulings 55/79) unbuilt; `model_p` column absent; method-version column is a PROPOSED Ruling-79 amendment | STATIC_VERIFIED | G9 (PPR-28/29) |
-| GAP-14 | Cost/latency metrics schema exists with 0 rows (F-25o); no TTFT aggregates; SLOs unbaselined | STATIC_VERIFIED 2026-07-19 · presumed standing; **PARTIAL PROGRESS 2026-08-21 — see §7.3**: the `route.ts` synthesis call site now writes real `llm_usage_events` rows (was: 0 rows from this call site specifically) — the SCHEMA-has-0-rows claim as originally scoped is narrowed, not closed; TTFT aggregates and SLO baselining remain entirely unbuilt | G2 (PPR-33) |
+| GAP-14 | Cost/latency metrics schema exists with 0 rows (F-25o); no TTFT aggregates; SLOs unbaselined | STATIC_VERIFIED 2026-07-19 · presumed standing; **PARTIAL PROGRESS 2026-08-21 — see §7.3**: the `route.ts` synthesis call site now writes real `llm_usage_events` rows (was: 0 rows from this call site specifically) — the SCHEMA-has-0-rows claim as originally scoped is narrowed, not closed; TTFT aggregates and SLO baselining remain entirely unbuilt; **FURTHER NARROWED 2026-08-22 — see §8.3**: `computed_cost_usd` (DD-25) and `interpretation_sets` pipeline-stage logging (DD-19) are both now live-verified populating with real, non-null values across every observed provider/pipeline_stage combination, not only `synthesize`'s call site — the "0 rows"/"cost field empty" shape of the original finding no longer describes production. TTFT aggregates and SLO baselining are still entirely unbuilt; still not closed | G2 (PPR-33) |
 | GAP-15 | Two error classifiers (adapter bands live; `classify-error.ts` dead, zero importers) | STATIC_VERIFIED · 2026-08-18 | G7 sweep |
 | GAP-16 | PB-9-DETECTOR (no-auto-promotion CI detector) open — property true by inspection only | DOCUMENT_ASSERTED (REPORT_PB-3 §G.9) | G1/G2 |
 | GAP-17 | audience_tier residue: type/comment-level + two JSON-schema `required` fields (load-bearing sites excised) | STATIC_VERIFIED · 2026-08-18 | G7 sweep |
@@ -291,5 +303,92 @@ now receiving real rows from the synthesis call site is real, narrow
 progress on GAP-14, not a closure of it — TTFT aggregates and SLO
 baselining remain entirely unbuilt.
 
-*End PARIPRASHNA_ASBUILT_BASELINE v1.2 (2026-08-18; P1-I addendum
-2026-08-19; P2-close addendum 2026-08-21).*
+## §8 — P3-preflight-close addendum (2026-08-22)
+
+Parts A–G of `PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md` (committed
+this gate at `00_ARCHITECTURE/briefs/pariprashna_swarm/`). Per DD-21, every
+claim below rests on a real probe turn, a real browser observation, a
+direct database read, or a direct `gcloud`/`git` command against the real
+environment — never CI-green or code inspection alone. This addendum is
+additive and non-exhaustive (§8.5) — the DD register
+(`PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`) carries the full
+per-part evidence and is the more current source; this section summarizes
+only what changed this gate.
+
+### §8.1 — Serving revision
+
+```
+gcloud run services describe amjis-web --project=madhav-astrology --region=asia-south1 \
+  --format="value(status.latestReadyRevisionName,status.traffic)"
+```
+Run 2026-08-22T11:03:41Z. Result: **`amjis-web-01654-sql`, 100% traffic**,
+still built from `main@0cfe74821` (Part G's own merge; `git log
+origin/main` confirms `main` has not advanced past it). **Honest anomaly,
+disclosed not chased further:** two independent `Deploy to Cloud Run` runs
+both completed successfully against the same `headSha` within an ~11-minute
+window (`10:41:13Z` and `10:52:20Z`), producing two distinct revisions
+(`amjis-web-01653-d2l` then `amjis-web-01654-sql`) from identical code —
+consistent with DD-27's own observation that this repo's deploy trigger is
+not narrowly scoped, now observed a second, different way (same commit
+double-deployed, rather than a docs-only commit deploying at all). Not
+investigated further here — DD-27's own scope-of-fix item already covers
+determining the real trigger condition.
+
+### §8.2 — GAP-6 (`table` sub-case): CLOSED at the data layer
+
+Confirms and cross-references DD-22's closure in the DD register (full
+acceptance-criteria evidence there, not repeated here): a real probe turn
+produced a real markdown table with 9 inline citations, committed as one
+unsplit block; byte-exact reconstruction, citation regression, and
+`facts_consumed` regression all confirmed via direct DB read against real
+production. **Disclosed, not independently confirmed:** the client actually
+rendering a real HTML `<table>` element — verified at the wire/persistence
+layer only, not via a browser DOM check. GAP-6's other five sub-cases
+(verse, gap-ribbon, heading, roles, prediction_card) are untouched and
+remain open at their original scope.
+
+### §8.3 — GAP-14: further narrowed, not closed
+
+DD-19 and DD-25 (DD register) both closed this gate, live-verified:
+`computed_cost_usd` now populates with real, non-null, rate-matching values
+for both `synthesize` (`gemini-2.5-pro`, confirmed `$0.060620` against a
+real turn, matching the seeded rate exactly) and — for the first time in
+this table's history — `interpretation_sets` (`gemini-3.1-pro-preview`,
+`$0.009648`, also rate-matching). The NCD-8 spend-ceiling read-path
+(`spend_ceiling.ts`'s `getDailySpendUsd()`) is confirmed no longer
+structurally inert — it reads the same real, non-zero figure a direct
+query returns. **Not tested:** the actual reject path (deliberately
+exceeding $2/turn or $40/day) — disclosed as untested, not claimed. TTFT
+aggregates and SLO baselining remain entirely unbuilt; GAP-14 stands open
+at that narrower remaining scope.
+
+### §8.4 — DD-20 amendment: the adapter-wiring root cause, not only the symptom layer
+
+Not a Baseline gap in its own right (DD-20 was already CLOSED at the
+symptom layer in the P2-close gate), but material enough to note here: Part
+A found and fixed the deeper wiring defect DD-20's own entry had flagged as
+possibly still live — `responseFormat`/schema was being dropped completely
+by the pinned AI SDK version, affecting every live Gemini structured-output
+call site, not only the two new gemini-3.x catalog entries. Fixed via the
+SDK's `output`/`Output.object` primitives; a second, independent
+`thinking_level` wiring gap was found and fixed in the same lease. Live-
+verified per DD-21 (real probe turn, no repair-retry needed on the primary
+attempt). Full account in the DD register's amended DD-20 entry.
+
+### §8.5 — What this addendum does not claim
+
+This is an ADDITIVE, non-exhaustive addendum, consistent with the §6/§7
+pattern already established — it is **not** a full re-verification of every
+row in §1–§4, and does not claim to be. Rows this gate did NOT touch or
+re-check: GAP-1, GAP-2, GAP-3, GAP-4, GAP-5, GAP-8, GAP-9, GAP-11, GAP-12,
+GAP-13, GAP-15, GAP-16, GAP-17, GAP-18, and every §1/§2/§4 row not named in
+§8.1–§8.4 above — none are asserted to have changed, and none were
+re-derived this gate. Parts A–G's own scope was the adapter/model-tier/
+table-rendering/cost-observability/mortality-phrasing work named in the
+master prompt; a gate that touched a narrow, named set of systems produces
+an addendum with an equally narrow, named scope, not a blanket re-stamp of
+the whole document's date.
+
+*End PARIPRASHNA_ASBUILT_BASELINE v1.3 (2026-08-18; P1-I addendum
+2026-08-19; P2-close addendum 2026-08-21; P3-preflight-close addendum
+2026-08-22).*
