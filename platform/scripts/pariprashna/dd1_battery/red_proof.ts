@@ -190,10 +190,38 @@ export function applyRedProofGate(
   if (!entry) {
     return { status: 'NOT_IMPLEMENTED', gateNote: `no red-proof entry for key '${spec.redProofKey}'` }
   }
+  // FIX for the PR #1501 REFUTED finding: `entry.check` was never
+  // cross-validated against `spec.id` — a receipt entry filed under the right
+  // key but carrying the WRONG check's `check` field (a copy/paste or a
+  // future refactor slotting the wrong proof under a key) could mint a PASS
+  // for a metric that was never actually proven. The key alone is not enough
+  // provenance; the entry must self-identify as proof of THIS metric.
+  if (entry.check !== spec.id) {
+    return {
+      status: 'NOT_IMPLEMENTED',
+      gateNote:
+        `red-proof entry for key '${spec.redProofKey}' is filed under check '${entry.check}', ` +
+        `not '${spec.id}' — the receipt does not prove THIS metric, whatever it proves`,
+    }
+  }
   if (!entry.red_fired) {
     return {
       status: 'NOT_IMPLEMENTED',
       gateNote: `detector never demonstrated capable of failing (red_fired=false${entry.note ? `; ${entry.note}` : ''}) — §N.8: this signal is null, not green`,
+    }
+  }
+  // FIX for the PR #1501 REFUTED finding: `red_fired: true` with an EMPTY
+  // `red_findings` array used to mint a PASS. A detector that "fired" with
+  // nothing to show is the §N.8 shape one layer down — `ok: false` with no
+  // finding to back it is exactly as unearned as a flag with no detector
+  // behind it. Require at least one concrete finding from the seeded
+  // violation before the fire counts.
+  if (entry.red_findings.length === 0) {
+    return {
+      status: 'NOT_IMPLEMENTED',
+      gateNote:
+        'red_fired=true but red_findings is empty — a detector that "fired" with nothing to ' +
+        'show is null, not green (§N.8, one layer down from the missing-detector defect)',
     }
   }
   if (!entry.green_clean) {
