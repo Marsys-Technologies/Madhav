@@ -11,6 +11,12 @@
  * NEGATIVE claim is stated (`cross_varga_mechanisms_computed: false`) rather than asserting
  * any cross-varga finding exists — per CLAUDE.md §N.8, a signal with no detector behind it
  * must read null, not green, and this fix adds honesty, not a guessed detector.
+ *
+ * F-164 (GA-5 follow-up on #1419) update: the `note`'s wealth operative-varga set used to be
+ * a hardcoded `['D1','D2','D9','D11']` literal. It is now read live from
+ * brahma_vichara_constants — so the old literal-substring assertion on line 93 (pre-fix) is
+ * replaced with a mocked-constants-in / rendered-note-out assertion (a live read can never be
+ * pinned by a literal-substring check the way a hardcoded string could).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -21,14 +27,28 @@ import { queryMechanismsCapability } from '../query_mechanisms'
 
 const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 
+// F-164: the live operative_vargas constants row, mirroring migration
+// 435_ga_vichara.sql's seed exactly — used to mock getOperativeVargaConstants()'s
+// underlying query() call in every test below.
+const OPERATIVE_VARGAS_FIXTURE = {
+  wealth:   { vargas: ['D1', 'D2', 'D9', 'D11'], provisional: false, houses: [2, 11], karaka: 'Jupiter' },
+  career:   { vargas: ['D1', 'D10', 'D9'], provisional: true, houses: [10], karaka: 'Saturn' },
+  marriage: { vargas: ['D1', 'D9', 'D7'], provisional: true, houses: [7], karaka: 'Venus' },
+  health:   { vargas: ['D1', 'D6', 'D9'], provisional: true, houses: [6], karaka: 'Saturn' },
+  general:  { vargas: ['D1', 'D9'], provisional: true, houses: [1], karaka: 'Sun' },
+}
+
 /**
  * Route each stubbed result by inspecting the SQL, not by call order — the handler issues a
- * rows SELECT, a COUNT and a facet rollup, and an order-coupled stub silently breaks the
- * moment their order changes.
+ * rows SELECT, a COUNT, a facet rollup, and (F-164) a brahma_vichara_constants read, and an
+ * order-coupled stub silently breaks the moment their order changes.
  */
 function stubDb(rows: Record<string, unknown>[], facets: Record<string, unknown>[]) {
   queryMock.mockReset()
   queryMock.mockImplementation((sql: string) => {
+    if (/brahma_vichara_constants/i.test(sql)) {
+      return Promise.resolve({ rows: [{ value_jsonb: OPERATIVE_VARGAS_FIXTURE }] })
+    }
     if (/count\(\*\)/i.test(sql) && !/group by/i.test(sql)) {
       return Promise.resolve({ rows: [{ n: String(rows.length) }] })
     }

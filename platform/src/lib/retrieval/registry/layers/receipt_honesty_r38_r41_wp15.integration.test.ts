@@ -60,23 +60,45 @@ describeIf('WP-1.5 R-41 — ganita_yogas_get verdict counters == served rows', (
   }
 })
 
-describeIf('WP-1.5 R-38 — judgment_query varga_confirmed is NEVER ✓ while rows are empty', () => {
+describeIf('WP-1.5 R-38 / F-160 — judgment_query varga_confirmed never fabricates a ✓ or ✗', () => {
+  // F-160 (PARIŚEṢA-V4): the ORIGINAL R-38 invariant here — `varga_confirmed ✓ ⟺
+  // varga_confirmation.rows non-empty` — encoded the exact defect F-160 fixes: "a placement
+  // row exists" is NOT "the varga ratifies the D1 direction". varga_confirmed is now a real
+  // tri-state derived from chart_vichara.varga_ratification (agree/oppose/unknown), reported
+  // as its OWN field (`receipt.varga_ratification_relation`) alongside the OLD placement-
+  // presence signal (`receipt.varga_placements_present`, kept honestly separate — §N.6 item
+  // 1: flattening the two was the original defect). The invariant this test now proves is
+  // narrower and still real: `varga_confirmed` may show ✓ ONLY when the ratification vote
+  // actually agrees, and NEVER shows ✓ or the contradicted mark when the vote could not be
+  // determined.
   for (const domain of ['career', 'marriage', 'wealth', 'health']) {
-    it(`varga_confirmed ✓ ⟺ varga_confirmation.rows non-empty (${domain}, native)`, async () => {
+    it(`varga_confirmed's mark matches receipt.varga_ratification_relation honestly (${domain}, native)`, async () => {
       const { judgmentQueryCapability } = await import('./register_d9_judgment')
       const h = judgmentQueryCapability.handler as Handler
       const res = await h({ chart_id: NATIVE, ayanamsha_id: LAHIRI, domain })
       expect(res.is_error).toBeFalsy()
       const content = res.content as {
-        checklist?: { varga_confirmation?: { rows?: unknown[] } }
-        receipt?: { varga_confirmed?: string }
+        receipt?: {
+          varga_confirmed?: string
+          varga_placements_present?: boolean
+          varga_ratification_relation?: string
+        }
       }
-      const rows = content.checklist?.varga_confirmation?.rows ?? []
       const mark = String(content.receipt?.varga_confirmed ?? '')
-      const claimsConfirmed = mark.includes('✓')
-      // The R-38 lie: a "✓" receipt next to an empty rows array. Forbidden in both directions.
-      expect(claimsConfirmed).toBe(rows.length > 0)
-      if (rows.length === 0) expect(mark).toContain('✗')
+      const relation = content.receipt?.varga_ratification_relation
+      const claimsAgree = mark.includes('✓')
+      const claimsOppose = mark.includes('!') && !claimsAgree
+      // The mark must be driven by the REAL relation, never by placement presence alone.
+      expect(claimsAgree, `domain=${domain} relation=${relation} mark="${mark}"`).toBe(relation === 'agree')
+      expect(claimsOppose, `domain=${domain} relation=${relation} mark="${mark}"`).toBe(relation === 'oppose')
+      if (relation === 'abstain' || relation === 'abstain_missing' || relation === 'no_row') {
+        expect(mark, `domain=${domain}`).not.toContain('✓')
+        expect(claimsOppose, `domain=${domain}`).toBe(false)
+        expect(mark, `domain=${domain}`).toContain('?')
+      }
+      // varga_placements_present is real too, and independently reported — never silently
+      // dropped even though it is no longer what varga_confirmed means.
+      expect(typeof content.receipt?.varga_placements_present).toBe('boolean')
     })
   }
 })

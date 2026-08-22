@@ -1090,6 +1090,15 @@ export const JUDGMENT_FLAG_CODES = [
   // empty on the wire while receipt.varga_confirmed still carried an affirmative "✓" mark
   // (registry_bridge.ts's enforceVargaConfirmedHonesty).
   'varga_confirmed_forced_false',
+  // F-160 (PARIŚEṢA-V4): the chart_vichara.varga_ratification lookup that derives
+  // receipt.varga_confirmed's tri-state (agree/oppose/abstain) threw — the receipt falls
+  // back to the honest "did not vote" (?) state, never a silently-wrong ✓/✗.
+  'varga_ratification_lookup_failed',
+  // F-160: the lookup itself succeeded but genuinely found no varga_ratification row for
+  // this bhāva's bhāveśa/kāraka(s) + domain (e.g. a domain outside
+  // brahma_vichara_constants.operative_vargas' scope, or the ga_vichara asset not yet built
+  // for this chart) — distinct from a query exception (varga_ratification_lookup_failed).
+  'varga_ratification_unavailable',
   // PARIŚEṢA-V4 F-107 (CL-20): the domain has classical vargas and/or a special lagna
   // BEYOND the single operative varga this verdict weights (wealth = D2 dhana weighted,
   // D11 lābha + Indu Lagna not), and no cross-varga convergence analysis exists anywhere

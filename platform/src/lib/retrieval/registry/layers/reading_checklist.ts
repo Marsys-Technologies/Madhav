@@ -193,29 +193,214 @@ export const DOMAIN_KP_CUSPS: Record<string, number[]> = {
 // it undisclosed, so callers could read a D2-weighted verdict as a full cross-varga
 // wealth judgment (F-107).
 
+// ── F-164 (+ F-158) — live-read replacement for the wrapper-local operative-varga literal ──
+// DOMAIN_DIRECT_VARGAS (below) and two prose literals (query_mechanisms.ts's varga_scope
+// note, register_d9_judgment.ts's cross_varga_convergence_not_computed flag text) all
+// hand-copied a wealth ['D1','D2','D9','D11']-shaped literal that had drifted from the live
+// source (brahma_vichara_constants.operative_vargas, migrations/435_ga_vichara.sql) — and
+// the drift was not wealth-only: career was missing D9, health was missing D9, relationship
+// was missing D7, and wealth itself was missing D9 (F-107's GA-5 review finding on #1419).
+// Fixed by reading the constants row live and caching it — this is chart-agnostic global
+// config (same for every chart), safe to cache for the process lifetime — and FAILING LOUDLY
+// if the row is ever missing, never silently falling back to a stale literal (§N.7 item 3).
+export interface OperativeVargaEntry {
+  vargas: string[]
+  provisional: boolean
+  houses: number[]
+  karaka: string
+}
+
+// SHASTRA_MAP's signal_domain vocabulary (wealth, career, relationship, health) disagrees
+// with brahma_vichara_constants.operative_vargas' OWN domain-key vocabulary (wealth, career,
+// MARRIAGE, health, general) for exactly one domain. Translated here, once — never smuggled
+// into a second hand-copy again. Exported so F-160 (chart_vichara.varga_ratification's
+// `domain` column uses the SAME vocabulary) can reuse it rather than re-deriving.
+export const SIGNAL_DOMAIN_TO_VICHARA_DOMAIN: Record<string, string> = {
+  wealth: 'wealth',
+  career: 'career',
+  relationship: 'marriage',
+  health: 'health',
+}
+
+let operativeVargaConstantsCache: Record<string, OperativeVargaEntry> | null = null
+let operativeVargaConstantsLoading: Promise<Record<string, OperativeVargaEntry>> | null = null
+
+/**
+ * Live read of brahma_vichara_constants.operative_vargas — the RAW registry row, in ITS
+ * OWN domain-key vocabulary (wealth/career/marriage/health/general), each entry INCLUDING
+ * D1. Cached after the first successful read (global config, not per-chart — never varies
+ * by chart_id/ayanamsha_id). Throws if the constants row is missing rather than degrading
+ * to a stale hardcoded literal — an honest 500 beats a silently wrong varga set (§N.7 item 3).
+ */
+export async function getOperativeVargaConstants(): Promise<Record<string, OperativeVargaEntry>> {
+  if (operativeVargaConstantsCache) return operativeVargaConstantsCache
+  if (!operativeVargaConstantsLoading) {
+    operativeVargaConstantsLoading = (async () => {
+      const res = await query<{ value_jsonb: Record<string, unknown> }>(
+        `SELECT value_jsonb FROM brahma_vichara_constants WHERE constant_key = $1`,
+        ['operative_vargas'],
+      )
+      const row = res.rows[0]
+      if (!row?.value_jsonb) {
+        throw new Error(
+          "F-164: brahma_vichara_constants row 'operative_vargas' is missing — refusing to " +
+          'silently fall back to a stale hardcoded varga literal (CLAUDE.md §N.7 item 3). ' +
+          'Verify migration 435_ga_vichara.sql has been applied.',
+        )
+      }
+      operativeVargaConstantsCache = row.value_jsonb as unknown as Record<string, OperativeVargaEntry>
+      return operativeVargaConstantsCache
+    })().catch(err => {
+      // Do not cache a failure forever — the next call gets a fresh retry.
+      operativeVargaConstantsLoading = null
+      throw err
+    })
+  }
+  return operativeVargaConstantsLoading
+}
+
 /** Domain → the full classical varga set for that domain (superset of SHASTRA_MAP's
- *  single operative varga). Consumed directly from L1 by assess_* (EL-45); disclosed
- *  but NOT weighted by judgment_query (F-107). */
-export const DOMAIN_DIRECT_VARGAS: Record<string, string[]> = {
-  wealth: ['D2', 'D11'],
-  career: ['D10'],
-  relationship: ['D9'],
-  health: ['D6'],
+ *  single operative varga), MINUS D1 (D1 is the reference, never a voter — mirrors
+ *  ga_vichara_writer.py:582-583's rule). Consumed directly from L1 by assess_* (EL-45);
+ *  disclosed but NOT weighted by judgment_query (F-107).
+ *
+ *  F-164: this used to be a hand-copied literal. It now starts EMPTY and is populated
+ *  in place by `ensureDomainDirectVargasLoaded()` — every existing `DOMAIN_DIRECT_VARGAS
+ *  [domain]` read site keeps working unchanged, PROVIDED the request's handler awaits
+ *  `ensureDomainDirectVargasLoaded()` at least once before any synchronous read (both
+ *  `register_d8_assess_domain.ts`'s `buildVargaAnalysisDirect` and `register_d9_judgment.ts`'s
+ *  per-domain handler do this — see their call sites). An unloaded read honestly returns
+ *  `undefined`/`[]` rather than a stale value; it never silently ships wrong data. */
+export const DOMAIN_DIRECT_VARGAS: Record<string, string[]> = {}
+
+/**
+ * F-164 — hydrates DOMAIN_DIRECT_VARGAS in place from the live constants row. Cheap to call
+ * on every request (the underlying constants read is cached after the first success).
+ */
+export async function ensureDomainDirectVargasLoaded(): Promise<Record<string, string[]>> {
+  const constants = await getOperativeVargaConstants()
+  for (const [signalDomain, vicharaDomain] of Object.entries(SIGNAL_DOMAIN_TO_VICHARA_DOMAIN)) {
+    const entry = constants[vicharaDomain]
+    DOMAIN_DIRECT_VARGAS[signalDomain] = (entry?.vargas ?? []).filter(v => v !== 'D1')
+  }
+  return DOMAIN_DIRECT_VARGAS
 }
 
 /** Domains carrying a dedicated special-lagna leg. Indu Lagna (Jaimini; computed from
  *  the 9th-lord kalās of Lagna + Moon) is the wealth-strength lagna — a wealth indicator
  *  independent of the 2nd/11th house-and-lord reading. Stored two_pass_verified in
- *  chart_facts (fact_category='special_lagna', fact_subject='INDU_LAGNA'). */
+ *  chart_facts (fact_category='special_lagna', fact_subject='INDU_LAGNA'). Unrelated to
+ *  brahma_vichara_constants (a special lagna is not a varga and casts no ratification
+ *  vote — F-107) — left as a static registry, not part of this pass's live-read scope. */
 export const DOMAIN_INDU_LAGNA = new Set(['wealth'])
 
 /**
  * F-107 — which classical vargas a domain has that judgment_query does NOT weight into
  * its verdict, given the single operative varga SHASTRA_MAP assigns it. Empty array when
- * the operative varga already covers the domain's whole classical varga set.
+ * the operative varga already covers the domain's whole classical varga set. Reads
+ * DOMAIN_DIRECT_VARGAS synchronously — callers MUST await `ensureDomainDirectVargasLoaded()`
+ * at least once per request first (F-164).
  */
 export function corroboratingVargasNotWeighted(domain: string, operativeVarga: string): string[] {
   return (DOMAIN_DIRECT_VARGAS[domain] ?? []).filter(v => v !== operativeVarga)
+}
+
+// ── F-160 — the real varga_confirmed detector ─────────────────────────────────────────
+// `judgment_query`'s old `varga_confirmed` was a bare `chart_divisionals` placement-row
+// presence check — never "does the varga RATIFY the D1 direction". The real detector is
+// chart_vichara.varga_ratification's per-graha agree/oppose vote
+// (ga_vichara_writer.py::build_varga_ratification_rows). Extracted to its own function
+// (rather than inlined in register_d9_judgment.ts's giant handler) so it is unit-testable
+// against a single mocked query, independent of judgment_query's dozen other DB calls.
+export type VargaRatificationRelation = 'agree' | 'oppose' | 'abstain' | 'abstain_missing' | 'no_row'
+
+export interface VargaRatificationSubjectResult {
+  role: string
+  subject: string
+  relation: VargaRatificationRelation
+}
+
+export interface VargaRatificationResult {
+  /** Aggregated across all subjects: 'oppose' (any subject opposes) beats 'agree' (any
+   *  subject agrees) beats 'abstain' beats 'abstain_missing' beats 'no_row' — a genuine
+   *  contradiction is the most decisive finding and must never be masked by another
+   *  subject's agreement. */
+  relation: VargaRatificationRelation
+  per_subject: VargaRatificationSubjectResult[]
+  /** value_jsonb.domain_provisional from whichever row supplied one (all rows for a given
+   *  domain carry the same value) — null when no row was found at all. */
+  domain_provisional: boolean | null
+  /** false only when the query itself threw — distinct from a genuinely empty/no-vote
+   *  result (a domain outside brahma_vichara_constants' scope, e.g. 'character', is an
+   *  honest 'no_row' with ok:true, not a failure). */
+  ok: boolean
+}
+
+/**
+ * Live read of chart_vichara.varga_ratification for one bhāva's bhāveśa/kāraka(s) against
+ * ONE operative varga, for the given signal_domain (translated to
+ * brahma_vichara_constants' own domain-key vocabulary via SIGNAL_DOMAIN_TO_VICHARA_DOMAIN).
+ * Never throws — a query failure degrades to the honest 'no_row' state for every subject
+ * (the caller emits its own judgment_flag on catch; this function's job is just the read +
+ * aggregation, mirroring fetchKpCuspChain/fetchSensitiveDegreeFirings's non-fatal-degrade
+ * convention above).
+ */
+export async function fetchVargaRatification(
+  chart_id: string,
+  ayanamsha_id: string,
+  signalDomain: string,
+  varga: string,
+  subjects: Array<{ role: string; code: string }>,
+): Promise<VargaRatificationResult> {
+  const per_subject: VargaRatificationSubjectResult[] = subjects.map(s => ({
+    role: s.role, subject: s.code, relation: 'no_row' as VargaRatificationRelation,
+  }))
+  let domain_provisional: boolean | null = null
+  let ok = true
+  try {
+    const vicharaDomain = SIGNAL_DOMAIN_TO_VICHARA_DOMAIN[signalDomain] ?? signalDomain
+    const subjectCodes = Array.from(new Set(subjects.map(s => s.code)))
+    if (subjectCodes.length > 0) {
+      const res = await query<{ subject: string; value_jsonb: Record<string, unknown> | null }>(
+        `SELECT subject, value_jsonb FROM chart_vichara
+         WHERE chart_id = $1 AND ayanamsha_id = $2 AND vichara_family = 'varga_ratification'
+           AND domain = $3 AND subject = ANY($4)`,
+        [chart_id, ayanamsha_id, vicharaDomain, subjectCodes],
+      )
+      const bySubject = new Map(res.rows.map(r => [r.subject, r.value_jsonb]))
+      for (const entry of per_subject) {
+        const valueJsonb = bySubject.get(entry.subject)
+        const perVarga = (valueJsonb?.['per_varga'] as Record<string, unknown> | undefined)?.[varga] as
+          { relation?: string } | undefined
+        entry.relation = (perVarga?.relation as VargaRatificationRelation | undefined) ?? 'no_row'
+        if (typeof valueJsonb?.['domain_provisional'] === 'boolean') {
+          domain_provisional = valueJsonb['domain_provisional'] as boolean
+        }
+      }
+    }
+  } catch {
+    // Non-fatal: every subject stays 'no_row' (honest unknown) — `ok:false` lets the caller
+    // distinguish this genuine failure from a domain that legitimately has no ratification
+    // vote (out of brahma_vichara_constants' scope), which is also 'no_row' but ok:true.
+    ok = false
+  }
+  const relation: VargaRatificationRelation =
+    per_subject.some(s => s.relation === 'oppose') ? 'oppose'
+    : per_subject.some(s => s.relation === 'agree') ? 'agree'
+    : per_subject.some(s => s.relation === 'abstain') ? 'abstain'
+    : per_subject.some(s => s.relation === 'abstain_missing') ? 'abstain_missing'
+    : 'no_row'
+  return { relation, per_subject, domain_provisional, ok }
+}
+
+/** The served varga_confirmed mark for a VargaRatificationResult. 'oppose' gets a mark
+ *  DISTINCT from a bare ✗ — it is itself a finding (the varga actively contradicts D1), not
+ *  an absence of evidence. 'abstain'/'abstain_missing'/'no_row' are an honest unknown, never
+ *  defaulted to ✓ or ✗ (F-160). */
+export function vargaConfirmedMark(varga: string, relation: VargaRatificationRelation): string {
+  if (relation === 'agree') return `${varga}✓ (varga_ratification: agrees with D1)`
+  if (relation === 'oppose') return `${varga}✗! (varga_ratification: CONTRADICTS D1 — see varga_ratification_per_subject)`
+  return `${varga}? (varga did not vote)`
 }
 
 export interface KpCuspLink {

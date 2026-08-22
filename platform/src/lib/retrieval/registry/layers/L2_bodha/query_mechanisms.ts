@@ -40,6 +40,10 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+// F-164 (PARIŚEṢA-V4, GA-5 follow-up on #1419): the wealth operative-varga set quoted in
+// this note used to be a hand-copied literal (`['D1','D2','D9','D11']`) — read live instead,
+// same discipline as reading_checklist.ts's DOMAIN_DIRECT_VARGAS.
+import { getOperativeVargaConstants, type OperativeVargaEntry } from '../reading_checklist'
 
 const MAX_LIMIT = 50
 
@@ -75,62 +79,76 @@ const CHAIN_CIRCUIT_CLASSES = [
  * F107_DIVISIONAL_MECHANISM_DESIGN_CONTRACT_v1_0.md`). It states the real scope and points
  * at the surfaces where per-varga data genuinely IS served today.
  */
-const VARGA_SCOPE_DISCLOSURE = {
-  computed_over: ['D1'],
-  frame: 'rasi_d1_natal_graph_only',
-  cross_varga_mechanisms_computed: false,
-  divisional_charts_not_covered: 'ALL vargas other than D1 (D2 Horā, D9 Navāṃśa, D10 Daśāṃśa, D11 Rudrāṃśa/Ekādaśāṃśa, D12, …)',
-  special_lagnas_not_covered: 'ALL special lagnas (Indu, Ārūḍha, Horā, Ghaṭī, Śrī, Bhāva, Varṇada, Vighaṭī)',
-  note:
-    'Every row in this response is a mechanism detected on the RĀŚI (D1) natal graph. ' +
-    'bodha_mechanisms carries no varga dimension — bo_yantra_mechanism builds its ' +
-    'dispositor/lordship/aspect topology from D1 placements alone, and stamps every row ' +
-    "snapshot_type='static_natal'. No cross-varga (D2/D9/D10/D11/…) or special-lagna " +
-    '(Indu Lagna, Ārūḍha) MECHANISM — a named multi-node structure spanning divisional ' +
-    'charts — is computed anywhere in this instrument. If your question named a divisional ' +
-    'chart or a special lagna, THIS RESPONSE DOES NOT ANSWER THAT PART OF IT — read the ' +
-    'drill pointers below rather than reading these D1 rows as a cross-varga convergence ' +
-    'finding (F-107). The closest real answer is ganita_vichara_get\'s varga_ratification ' +
-    'family (a per-graha agree/oppose vote across a domain\'s ratified operative vargas); ' +
-    'it is genuine cross-varga convergence evidence, but per-graha, not a mechanism, and it ' +
-    'covers no special lagna.',
-  drill_pointers: [
-    {
-      // The ONE genuine cross-varga convergence primitive this instrument has. It is a
-      // per-graha agree/oppose vote across a domain's ratified operative-varga set, NOT a
-      // named multi-node mechanism — but for "does the divisional evidence converge or
-      // diverge on this domain?" it is the real, built, classically-grounded answer, and
-      // it is strictly closer to the question than any D1 mechanism row here.
-      instrument: 'ganita_vichara_get',
-      serves:
-        "family='varga_ratification' (+ 'varga_ratification_divergence'), domain='wealth'|'career'|'marriage'|'health'|'general' — " +
-        'per-graha ratification_factor ∈ [0.6,1.4] computed as an agree/oppose vote of each operative varga against the D1 ' +
-        'dignity direction, with a per_varga relation map and constituent_fact_ids resolving to chart_facts.',
-      note:
-        "The wealth entry's operative-varga set is ['D1','D2','D9','D11'] with domain_provisional=false — the only " +
-        'design-RATIFIED (non-provisional) domain set in brahma_vichara_constants.operative_vargas. D1 is the reference ' +
-        'and never votes. Note this covers vargas only: Indu Lagna is a special lagna, not a varga, and takes part in NO ' +
-        'ratification vote anywhere. Formula: varga_ratification_v1, DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §11.',
-    },
-    {
-      instrument: 'assess_wealth',
-      serves: 'D2 (Horā) + D11 (Rudrāṃśa/Ekādaśāṃśa) per-graha varga dignity AND Indu Lagna, consumed directly from L1 — see `varga_analysis.per_varga` and `varga_analysis.indu_lagna`.',
-      note: 'The only surface today that joins BOTH classical wealth vargas plus the Jaimini wealth lagna. It serves them as separate evidence layers — it does NOT compute a convergence mechanism across them either.',
-    },
-    {
-      instrument: 'ganita_chart_facts_get',
-      serves: 'divisional_chart="D2" | "D11" | any varga — full per-varga placements, dignity, house lords/occupants, per-varga Ashtakavarga (chart_divisionals-native EAV facts).',
-    },
-    {
-      instrument: 'ganita_special_lagnas_get',
-      serves: 'categories=["special_lagna"] — INDU_LAGNA (sign, sign_lord, house_d1, nakshatra) and the other special lagnas, two_pass_verified.',
-    },
-    {
-      instrument: 'bodha_signals_get',
-      serves: 'MSR signal class `varga_ratification_divergence` — whether a divisional chart confirms or contradicts the rāśi promise, per signal. This is per-signal ratification, NOT a cross-varga mechanism.',
-    },
-  ],
-} as const
+/**
+ * F-164 — was a static const with a hardcoded `['D1','D2','D9','D11']` wealth-set literal
+ * in the `note` field; now built per-call from a live read of
+ * brahma_vichara_constants.operative_vargas (§N.7 item 3 — never restate a computed/
+ * registry-managed value as a wrapper-local literal). `wealthEntry` is `undefined` only if
+ * the constants row somehow lacks a 'wealth' key — falls back to a generic (non-hardcoded)
+ * phrasing rather than inventing a set, per B.10.
+ */
+function buildVargaScopeDisclosure(wealthEntry: OperativeVargaEntry | undefined) {
+  const wealthVargasDisplay = wealthEntry
+    ? `[${wealthEntry.vargas.map(v => `'${v}'`).join(',')}]`
+    : '(unavailable — brahma_vichara_constants has no "wealth" entry)'
+  const wealthProvisionalDisplay = wealthEntry ? String(wealthEntry.provisional) : 'unknown'
+  return {
+    computed_over: ['D1'],
+    frame: 'rasi_d1_natal_graph_only',
+    cross_varga_mechanisms_computed: false,
+    divisional_charts_not_covered: 'ALL vargas other than D1 (D2 Horā, D9 Navāṃśa, D10 Daśāṃśa, D11 Rudrāṃśa/Ekādaśāṃśa, D12, …)',
+    special_lagnas_not_covered: 'ALL special lagnas (Indu, Ārūḍha, Horā, Ghaṭī, Śrī, Bhāva, Varṇada, Vighaṭī)',
+    note:
+      'Every row in this response is a mechanism detected on the RĀŚI (D1) natal graph. ' +
+      'bodha_mechanisms carries no varga dimension — bo_yantra_mechanism builds its ' +
+      'dispositor/lordship/aspect topology from D1 placements alone, and stamps every row ' +
+      "snapshot_type='static_natal'. No cross-varga (D2/D9/D10/D11/…) or special-lagna " +
+      '(Indu Lagna, Ārūḍha) MECHANISM — a named multi-node structure spanning divisional ' +
+      'charts — is computed anywhere in this instrument. If your question named a divisional ' +
+      'chart or a special lagna, THIS RESPONSE DOES NOT ANSWER THAT PART OF IT — read the ' +
+      'drill pointers below rather than reading these D1 rows as a cross-varga convergence ' +
+      'finding (F-107). The closest real answer is ganita_vichara_get\'s varga_ratification ' +
+      'family (a per-graha agree/oppose vote across a domain\'s ratified operative vargas); ' +
+      'it is genuine cross-varga convergence evidence, but per-graha, not a mechanism, and it ' +
+      'covers no special lagna.',
+    drill_pointers: [
+      {
+        // The ONE genuine cross-varga convergence primitive this instrument has. It is a
+        // per-graha agree/oppose vote across a domain's ratified operative-varga set, NOT a
+        // named multi-node mechanism — but for "does the divisional evidence converge or
+        // diverge on this domain?" it is the real, built, classically-grounded answer, and
+        // it is strictly closer to the question than any D1 mechanism row here.
+        instrument: 'ganita_vichara_get',
+        serves:
+          "family='varga_ratification' (+ 'varga_ratification_divergence'), domain='wealth'|'career'|'marriage'|'health'|'general' — " +
+          'per-graha ratification_factor ∈ [0.6,1.4] computed as an agree/oppose vote of each operative varga against the D1 ' +
+          'dignity direction, with a per_varga relation map and constituent_fact_ids resolving to chart_facts.',
+        note:
+          `The wealth entry's operative-varga set is ${wealthVargasDisplay} with domain_provisional=${wealthProvisionalDisplay} — the only ` +
+          'design-RATIFIED (non-provisional) domain set in brahma_vichara_constants.operative_vargas. D1 is the reference ' +
+          'and never votes. Note this covers vargas only: Indu Lagna is a special lagna, not a varga, and takes part in NO ' +
+          'ratification vote anywhere. Formula: varga_ratification_v1, DOCTRINE_CAMPAIGN_DESIGN_v1_0.md §11.',
+      },
+      {
+        instrument: 'assess_wealth',
+        serves: 'D2 (Horā) + D11 (Rudrāṃśa/Ekādaśāṃśa) per-graha varga dignity AND Indu Lagna, consumed directly from L1 — see `varga_analysis.per_varga` and `varga_analysis.indu_lagna`.',
+        note: 'The only surface today that joins BOTH classical wealth vargas plus the Jaimini wealth lagna. It serves them as separate evidence layers — it does NOT compute a convergence mechanism across them either.',
+      },
+      {
+        instrument: 'ganita_chart_facts_get',
+        serves: 'divisional_chart="D2" | "D11" | any varga — full per-varga placements, dignity, house lords/occupants, per-varga Ashtakavarga (chart_divisionals-native EAV facts).',
+      },
+      {
+        instrument: 'ganita_special_lagnas_get',
+        serves: 'categories=["special_lagna"] — INDU_LAGNA (sign, sign_lord, house_d1, nakshatra) and the other special lagnas, two_pass_verified.',
+      },
+      {
+        instrument: 'bodha_signals_get',
+        serves: 'MSR signal class `varga_ratification_divergence` — whether a divisional chart confirms or contradicts the rāśi promise, per signal. This is per-signal ratification, NOT a cross-varga mechanism.',
+      },
+    ],
+  }
+}
 
 export const queryMechanismsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L2/query_mechanisms',
@@ -254,6 +272,21 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
         query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM bodha_mechanisms WHERE ${where}`, filterParams),
       ])
 
+      // F-164: this is an ORIENTATION disclosure, not a scoring input — a genuine failure to
+      // reach brahma_vichara_constants degrades the note to an honest "(unavailable)" rather
+      // than failing the whole mechanisms query (B.10: never drop a real, otherwise-complete
+      // response over an ancillary annotation). Contrast register_d9_judgment.ts/
+      // register_d8_assess_domain.ts, where the operative-varga set gates real scoring/
+      // consumption decisions and a missing row is correctly fatal.
+      let wealthEntry: OperativeVargaEntry | undefined
+      try {
+        const constants = await getOperativeVargaConstants()
+        wealthEntry = constants['wealth']
+      } catch {
+        wealthEntry = undefined
+      }
+      const varga_scope = buildVargaScopeDisclosure(wealthEntry)
+
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
 
       const by_mechanism_class: Record<string, number> = {}
@@ -287,7 +320,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
           },
           empty_reason,
           // F-107: scope honesty — these rows are D1-only, and the envelope says so.
-          varga_scope: VARGA_SCOPE_DISCLOSURE,
+          varga_scope,
           scope_flags: ['d1_rasi_only', 'cross_varga_mechanisms_not_computed'],
           filters: { ayanamsha_id, mechanism_class, valence, chain_circuit_only, limit, offset },
           provenance: {

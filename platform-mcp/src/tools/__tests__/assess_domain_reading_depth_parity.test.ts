@@ -112,9 +112,14 @@ describe('unit: domain maps wired for all four assess_* domains', () => {
     }
   })
 
-  test('DOMAIN_READING_VARGAS health==[D6], relationship==[D9] (single-varga, not fabricated)', () => {
-    expect(DOMAIN_READING_VARGAS['health']).toEqual(['D6'])
-    expect(DOMAIN_READING_VARGAS['relationship']).toEqual(['D9'])
+  test('DOMAIN_READING_VARGAS carries the FULL corrected varga set per domain (F-164)', () => {
+    // F-164 (GA-5 follow-up on #1419): these were single-varga literals that had drifted
+    // from brahma_vichara_constants.operative_vargas (health/relationship were both missing
+    // their D9 rāśi-promise cross-check leg; relationship was also missing D7).
+    expect(DOMAIN_READING_VARGAS['health']).toEqual(['D6', 'D9'])
+    expect(DOMAIN_READING_VARGAS['relationship']).toEqual(['D9', 'D7'])
+    expect(DOMAIN_READING_VARGAS['wealth']).toEqual(['D2', 'D9', 'D11'])
+    expect(DOMAIN_READING_VARGAS['career']).toEqual(['D10', 'D9'])
   })
 
   test('attachDomainReading sets response[reading] for health domain (unit level)', async () => {

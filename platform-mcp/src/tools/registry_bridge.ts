@@ -1096,10 +1096,29 @@ export const DOMAIN_READING_FAMILIES: Record<AssessedDomain, readonly string[]> 
 // DOMAIN_DIRECT_VARGAS uses, read back here from `data.varga_analysis` (already fetched).
 // Type widened from the original [string, string] 2-tuple to readonly string[] so single-varga
 // domains (health: D6, relationship: D9) are structurally valid without a fabricated second
-// entry — buildDomainReading below guards every vargas[1] access accordingly.
+// entry — buildDomainReading below loops the FULL array rather than a fixed [0]/[1] index.
+//
+// F-164 (PARIŚEṢA-V4, GA-5 follow-up on #1419): this was a hand-copied literal that had
+// drifted from the live source (brahma_vichara_constants.operative_vargas,
+// platform/migrations/435_ga_vichara.sql — minus D1, the reference which never votes) —
+// wealth was missing D9, health was missing D9, relationship was missing D7. It ALSO
+// disagreed with the platform-side sibling registry (register_d8_assess_domain.ts's
+// DOMAIN_DIRECT_VARGAS, itself fixed the same way this pass — see reading_checklist.ts)
+// on career, a live GA.1-class registry disagreement (CLAUDE.md §B.8).
+//
+// platform-mcp is a separate Node package from platform (calls its HTTP API, holds no
+// direct DB connection of its own — see `platformQuery` below) and this constant is read
+// synchronously by a pure formatting function (buildDomainReading), not behind a request
+// that already awaits a DB round-trip the way register_d9_judgment.ts's checklist does — so
+// this is corrected to the true value as a maintained literal (mirrored, not re-derived) and
+// pinned against the real migration content by
+// `registry_bridge.domain_reading_varga_parity.test.ts` rather than converted to a live
+// per-request platformQuery() read (a schema-audited, deterministic fixed source of truth —
+// the DB row does not change without a new migration — makes a network round-trip on every
+// assess_* call disproportionate here; see that test file's header for the full reasoning).
 export const DOMAIN_READING_VARGAS: Record<string, readonly string[]> = {
-  wealth: ['D2', 'D11'], career: ['D10', 'D9'],
-  relationship: ['D9'], health: ['D6'],
+  wealth: ['D2', 'D9', 'D11'], career: ['D10', 'D9'],
+  relationship: ['D9', 'D7'], health: ['D6', 'D9'],
 }
 const DOMAIN_READING_HOUSES: Record<string, number[]> = { wealth: [2, 11], career: [10], relationship: [7], health: [1, 6, 8] }
 const DOMAIN_READING_KARAKA_CODE: Record<string, string> = { wealth: 'JUP', career: 'SAT', relationship: 'VEN', health: 'SUN' }
@@ -1269,7 +1288,7 @@ function readVargaFamily(vargaAnalysis: Record<string, unknown> | undefined, var
   }
 }
 
-function readAshtakavargaFamily(vargaAnalysis: Record<string, unknown> | undefined, vargas: [string, string]): ReadingFamilyEntry {
+function readAshtakavargaFamily(vargaAnalysis: Record<string, unknown> | undefined, vargas: readonly string[]): ReadingFamilyEntry {
   const perVarga = vargaAnalysis?.['per_varga'] as Record<string, unknown> | undefined
   const sentences: string[] = []
   const factIds: string[] = []
@@ -1590,20 +1609,29 @@ export async function buildDomainReading(
   const byFamily = new Map<string, ReadingFamilyEntry>()
   const add = (entry: ReadingFamilyEntry): void => { byFamily.set(entry.family, entry) }
 
-  // F-124: health/relationship carry a single primary varga (D6 / D9) rather than wealth/
-  // career's pair — vargas[1] is guarded rather than fabricated (the old unconditional
-  // vargas[1] access, plus the old domain==='wealth'?...:'<career label>' ternary, would have
-  // mislabeled health's D6 family as "Dasamsa — career/status" had the maps merely been
-  // widened without also fixing this call site).
-  add(readAshtakavargaFamily(vargaAnalysis, [vargas[0] ?? 'D1', vargas[1] ?? vargas[0] ?? 'D1']))
-  add(readVargaFamily(vargaAnalysis, vargas[0] ?? 'D1',
+  // F-164: DOMAIN_READING_VARGAS now carries every domain's FULL corrected varga set (up to
+  // 3 for wealth: D2+D9+D11), not a fixed 2-slot pair — loop it rather than hardcoding
+  // vargas[0]/vargas[1], so a 3rd (or Nth) varga is never silently dropped the way F-124's
+  // fixed-index version would have (that fix widened the MAP but kept a 2-slot consumer;
+  // this pass widens the consumer to match).
+  add(readAshtakavargaFamily(vargaAnalysis, vargas.length > 0 ? vargas : ['D1']))
+  const [primaryVarga, ...secondaryVargas] = vargas.length > 0 ? vargas : ['D1']
+  add(readVargaFamily(vargaAnalysis, primaryVarga!,
     domain === 'wealth'         ? 'Horā — liquid wealth'
     : domain === 'health'       ? 'Ṣaṣṭhāṃśa — health/vitality'
     : domain === 'relationship' ? 'Navāṃśa — relationship/dharma'
     : 'Daśāṃśa — career/status'))
-  if (vargas[1] != null) {
-    add(readVargaFamily(vargaAnalysis, vargas[1],
-      domain === 'wealth' ? 'Rudrāṃśa — gains/income' : 'Navāṃśa — dharma/marriage cross-check'))
+  // F-164: the OLD ternary here was hardcoded to a single "second varga" case
+  // (wealth->Rudrāṃśa, everything else->"dharma/marriage cross-check" regardless of domain —
+  // already a latent mislabel for career's pre-existing D9 corroborating varga, now also
+  // reachable for health/relationship as their newly-added D9/D7 legs). Labelled by the
+  // secondary varga's own classical identity instead of a domain guess.
+  for (const v of secondaryVargas) {
+    add(readVargaFamily(vargaAnalysis, v,
+      v === 'D11' ? 'Rudrāṃśa — gains/income'
+      : v === 'D9' ? 'Navāṃśa — rāśi-promise cross-check'
+      : v === 'D7' ? 'Saptāṃśa — children/marital continuity'
+      : `${v} — corroborating varga`))
   }
   if (domain === 'wealth') add(readInduLagnaFamily(vargaAnalysis))
   if (domain === 'career') add(readKarakamshaFamily(supplements.karakamsa))
