@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T14:37:00Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "finding_id": "F-28",
+  "merged_fix": {"commit": "6d1c4f1b6", "pr": 1335},
+  "deployed_mcp": {
+    "service": "amjis-mcp",
+    "revision": "amjis-mcp-00575-pgx",
+    "traffic_percent": 100,
+    "commit_label": "a7136b467af204767a6f9b403785b84967136a84",
+    "ancestry": "6d1c4f1b6 is an ancestor of the serving commit"
+  },
+  "direct_mcp_service_proof": {
+    "safety": "two read-only mimamsa_calibration_get calls; no session selection, build, adoption, job, database, or credential action",
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "default_budget": {
+      "is_error": false,
+      "inner_content_type": "object",
+      "qa_results_kept": 84,
+      "qa_summary_total": 168,
+      "budget_kb_applied": 40,
+      "trim": "result.results[0].content.qa_results 168->84 with callable mimamsa_calibration_get recovery hint",
+      "opaque_truncation_marker": false
+    },
+    "budget_200": {
+      "is_error": false,
+      "inner_content_type": "object",
+      "qa_results_kept": 168,
+      "qa_summary_total": 168,
+      "trim_report": null,
+      "opaque_truncation_marker": false
+    }
+  },
+  "disposition": "F28_CODE_AND_SERVICE_VERIFIED; eligible for normal closure-matrix reconciliation when the guardian-controlled state writer is restored"
+}

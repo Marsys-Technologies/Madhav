@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T14:33:00Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "finding_id": "F-42",
+  "candidate": {
+    "head": "c1b97b2cf",
+    "base": "45f0ddf56793a23bf5881701ee6c184f6868f20a",
+    "prior_head": "9184846ad",
+    "patch_identity": "range-diff exact; stable patch-id 9d96c58 unchanged",
+    "scope": [
+      "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
+      "platform/src/lib/retrieval/registry/layers/L1_ganita/__tests__/get_dashas_f42_ayanamsha.test.ts"
+    ],
+    "verification": {
+      "focused": "2/2 PASS",
+      "platform_typecheck": "PASS",
+      "independent_review": "PASS renewed on exact current base",
+      "upstream_overlap": "none"
+    },
+    "behavior": "rejects unknown and INVARIANT ayanamsha identifiers before constructing or issuing any database query",
+    "rollback": "git revert c1b97b2cf"
+  },
+  "next_action": "open a separate normal protected PR; it is disjoint from F50's remedy-serving scope and requires its own live PR and merge-group contexts"
+}
