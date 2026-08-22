@@ -124,6 +124,24 @@ jobs:
           fi
           echo "[p3-e-smoke] required secrets present."
 
+      # TEMPORARY DIAGNOSTIC — see PR #1494 discussion. The first live run hit
+      # `JSON.parse` failing inside ask.ts's mintSessionCookie with "No number
+      # after minus sign in JSON at position 1" — consistent with
+      # FIREBASE_ADMIN_CREDENTIALS not holding a full service-account JSON
+      # object. This step reveals ONLY a shape fact (byte length + whether the
+      # value starts with '{') — never the value itself, which GitHub also
+      # masks in logs regardless. Removed once diagnosed; not a credential
+      # operation (no value is read, rotated, or created here).
+      - name: Diagnostic — FIREBASE_ADMIN_CREDENTIALS shape (length + brace-prefix only, never content)
+        working-directory: .
+        run: |
+          len=${#FIREBASE_ADMIN_CREDENTIALS}
+          case "$FIREBASE_ADMIN_CREDENTIALS" in
+            \{*) prefix="starts with '{' (looks like JSON)" ;;
+            *) prefix="does NOT start with '{' (does not look like a JSON object)" ;;
+          esac
+          echo "[p3-e-smoke] FIREBASE_ADMIN_CREDENTIALS length=${len} chars; ${prefix}"
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
