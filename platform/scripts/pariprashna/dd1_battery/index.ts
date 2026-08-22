@@ -39,7 +39,7 @@ import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
 import { METRICS, PROXY_LABEL, type MetricSpec, type MetricStatus } from './metrics'
 import { PROSE_CHECKS, type ReadingRecord, type CheckOutcome } from './prose_checks'
-import { driveTurn, mintSessionCookie, SYNTHETIC_TEST_CHART_ID } from './live_turn'
+import { driveTurn, mintSessionCookie, SYNTHETIC_TEST_CHART_ID, REAL_NATIVE_CANONICAL_CHART_ID } from './live_turn'
 import { runBrowserLane, runBrowserRedProof } from './browser_lane'
 import {
   applyRedProofGate, detectorHash, loadReceipt, runProseRedProof, saveReceipt,
@@ -64,7 +64,7 @@ const PROBE_SET: Array<{ label: string; question: string }> = [
   { label: 'timing', question: 'When does the next favourable window for a change of role open?' },
 ]
 
-interface Args {
+export interface Args {
   baseUrl: string
   chartId: string
   redProof: boolean
@@ -77,7 +77,30 @@ interface Args {
   outDir: string
 }
 
-function parseArgs(argv: string[]): Args {
+/**
+ * THE ONE PLACE the native's-real-chart refusal lives (fix for the REFUTED
+ * PR #1501 finding: the guard used to live ONLY inside `driveTurn()`
+ * (live_turn.ts), which `--no-live` skips entirely — `browser_lane.ts` built
+ * its target URL from the raw `--chart-id` argument with no guard at all, so
+ * `--no-live --chart-id <native>` drove a real authenticated turn on the
+ * native's real chart against the live surface. Binding the refusal here, in
+ * argument parsing itself, means it fires before ANY lane (prose, browser, or
+ * fixture) sees the chart id, for every flag combination — there is no flag
+ * that reaches past this check. See COMMON_BRIEF hard-never + charter §9.
+ */
+function refuseRealNativeChart(chartId: string): void {
+  if (chartId !== REAL_NATIVE_CANONICAL_CHART_ID) return
+  console.error(
+    `dd1_battery refuses to run against the real native's canonical chart ` +
+      `(${REAL_NATIVE_CANONICAL_CHART_ID}). The battery probes the synthetic chart only ` +
+      `(${SYNTHETIC_TEST_CHART_ID}) — COMMON_BRIEF hard-never; charter §9. This refusal is ` +
+      'enforced in parseArgs() and binds every lane (prose/browser/fixture) and every flag ' +
+      'combination, including --no-live — there is no escape hatch.',
+  )
+  process.exit(1)
+}
+
+export function parseArgs(argv: string[]): Args {
   const a: Args = {
     baseUrl: DEFAULT_BASE_URL,
     chartId: SYNTHETIC_TEST_CHART_ID,
@@ -104,6 +127,7 @@ function parseArgs(argv: string[]): Args {
     else if (t === '--out') a.outDir = argv[++i]
     else if (t === '--help' || t === '-h') { printHelp(); process.exit(0) }
   }
+  refuseRealNativeChart(a.chartId)
   return a
 }
 
@@ -440,7 +464,20 @@ async function main(): Promise<void> {
   process.exit(0)
 }
 
-main().catch((err) => {
-  console.error('[dd1-battery] fatal:', err)
-  process.exit(3)
-})
+// Only auto-run when this file is the entry script (`npx tsx index.ts`), not
+// when imported — the `--no-live` refusal test imports `parseArgs` directly
+// and must not trigger a real `main()` run as a side effect of that import.
+const isDirectRun = (() => {
+  try {
+    return import.meta.url === `file://${process.argv[1]}`
+  } catch {
+    return false
+  }
+})()
+
+if (isDirectRun) {
+  main().catch((err) => {
+    console.error('[dd1-battery] fatal:', err)
+    process.exit(3)
+  })
+}

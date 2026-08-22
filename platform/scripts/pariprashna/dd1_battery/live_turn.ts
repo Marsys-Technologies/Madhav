@@ -13,10 +13,22 @@
  * done here): fold `ask.ts` onto this module so one auth implementation exists.
  *
  * SAFETY: the synthetic chart is the ONLY default and the real native's
- * canonical chart is REFUSED outright by this module — unlike `ask.ts`, which
- * permits it behind an explicit flag. The battery has no legitimate reason to
- * ever touch the native's chart, so the escape hatch simply does not exist
- * here (COMMON_BRIEF hard-never; charter §9).
+ * canonical chart is REFUSED outright — unlike `ask.ts`, which permits it
+ * behind an explicit flag. The battery has no legitimate reason to ever touch
+ * the native's chart, so the escape hatch does not exist (COMMON_BRIEF
+ * hard-never; charter §9).
+ *
+ * PRIMARY GATE LOCATION (fixed post-#1501 refutation): the refusal below in
+ * `driveTurn()` is defense-in-depth ONLY. The primary, binding gate is
+ * `refuseRealNativeChart()` in `index.ts`'s `parseArgs()` — it runs before
+ * ANY lane (prose/browser/fixture) is dispatched, for every flag combination.
+ * The original version of this module claimed "the escape hatch simply does
+ * not exist here" as if that were true of the whole battery; it was true only
+ * of this one function — `browser_lane.ts` built its target URL from the raw
+ * `--chart-id` argument with no guard at all, so `--no-live --chart-id
+ * <native>` (which never calls `driveTurn()`) drove a real turn on the
+ * native's real chart. Do not reason about battery-wide safety from this
+ * module alone; the binding gate is in `index.ts`.
  */
 import { execSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
