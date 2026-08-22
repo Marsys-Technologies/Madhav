@@ -141,7 +141,9 @@ interface DomainSpec {
    *  adverse) / 510 residence (220 adverse) plus 10/50/80 gochara windows respectively,
    *  and — worse — served the `afflictions_empty` flag as an all-clear over them (§N.8:
    *  a signal whose detector cannot ever read false). Every value here MUST now be a
-   *  member of CANONICAL_DOMAINS; `shastra_map_signal_domain.test.ts` asserts it. */
+   *  member of CANONICAL_DOMAINS; `register_d9_judgment.f57_domain_vocabulary.test.ts:40-44/
+   *  81-84` asserts it (F-166b: repointed from a stale filename that did not exist anywhere
+   *  in the repo — see the F-166 PR for the prior dead pointer). */
   signal_domain: CanonicalDomain
   /** D-1.5b Lane B-4 (CR-97) — Bhavat-Bhavam "house of the house" derivation, backfilled
    *  from the shared registry (`bhavat_bhavam_map.ts`) right after SHASTRA_MAP below is
