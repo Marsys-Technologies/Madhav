@@ -121,6 +121,31 @@ export async function handleToken(req: Request, res: Response): Promise<void> {
       return
     }
 
+    // Authorization-code binding (SF-004, PARIŚEṢA-V4).
+    //
+    // RFC 6749 §4.1.3: the token endpoint MUST ensure the authorization code
+    // was issued to the client identified by client_id, and — if redirect_uri
+    // was included in the authorization request — MUST ensure it matches
+    // exactly. `mcp_oauth_auth_codes.redirect_uri` is NOT NULL, so it was
+    // always included; it is therefore REQUIRED here, not merely checked when
+    // present. Exact string match only, same rule as /authorize — see
+    // SF004_OAUTH_BINDING_CONTRACT_v1_0.md §2–§3. Before this fix, nothing
+    // compared the redeeming request's client_id/redirect_uri against the
+    // values stamped on the code at issuance — no client authentication of
+    // any kind gated code redemption.
+    if (params.client_id !== authCode.client_id) {
+      res.status(400).json({ error: 'invalid_grant', error_description: 'client_id does not match the authorization code' })
+      return
+    }
+    if (typeof params.redirect_uri !== 'string' || params.redirect_uri.length === 0) {
+      res.status(400).json({ error: 'invalid_grant', error_description: 'redirect_uri required' })
+      return
+    }
+    if (params.redirect_uri !== authCode.redirect_uri) {
+      res.status(400).json({ error: 'invalid_grant', error_description: 'redirect_uri does not match the authorization code' })
+      return
+    }
+
     // PKCE verification (SF-003, PARIŚEṢA-V4).
     //
     // RFC 7636 §4.6: "the token endpoint MUST verify [code_verifier] ... if the

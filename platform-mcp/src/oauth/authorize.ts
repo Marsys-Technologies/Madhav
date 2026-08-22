@@ -25,6 +25,7 @@ import {
   createDbAuthCode,
   stampDbAuthCodeUid,
   consumeDbAuthCode,
+  fetchOAuthClientMetadata,
   type ConsumedAuthCode,
 } from './oauth_platform_client.js'
 import crypto from 'crypto'
@@ -124,6 +125,22 @@ export async function handleAuthorize(req: Request, res: Response): Promise<void
 
   if (!params.client_id || !params.redirect_uri) {
     res.status(400).json({ error: 'invalid_request', error_description: 'client_id and redirect_uri required' })
+    return
+  }
+
+  // SF-004 (PARIŚEṢA-V4): validate redirect_uri against the client's
+  // registered allowlist BEFORE anything else touches it. RFC 6749 §4.1.2.1:
+  // an invalid redirect_uri must never be redirected to — every failure
+  // branch below returns an error response, not a 302. Exact string match
+  // only against the registered redirect_uris — no prefix/startsWith/
+  // wildcard/normalization; see SF004_OAUTH_BINDING_CONTRACT_v1_0.md §2.
+  const clientMetadata = await fetchOAuthClientMetadata(params.client_id)
+  if (!clientMetadata.found) {
+    res.status(400).json({ error: 'invalid_request', error_description: 'unknown client_id' })
+    return
+  }
+  if (!clientMetadata.redirect_uris.includes(params.redirect_uri)) {
+    res.status(400).json({ error: 'invalid_request', error_description: 'redirect_uri not registered for this client' })
     return
   }
 

@@ -11,6 +11,12 @@
  *
  * No HTTP layer — handleAuthorize is called directly with hand-rolled req/res
  * mocks, mirroring the harness in m5_oauth.test.ts.
+ *
+ * SF-004 fold-in note: handleAuthorize now looks up the client's registered
+ * redirect_uris (fetchOAuthClientMetadata) BEFORE the PKCE method guard runs.
+ * Every fetchSpy sequence below therefore leads with a `{found: true,
+ * redirect_uris: [...]}` response so the PKCE guard is still the thing being
+ * exercised, not an incidental 400 from an unregistered redirect_uri.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -63,8 +69,15 @@ describe('SF-003 fold-in — /authorize rejects non-S256 code_challenge_method',
     vi.restoreAllMocks()
   })
 
+  const REGISTERED_METADATA = {
+    status: 200,
+    body: { found: true, redirect_uris: ['https://example.com/cb'], scopes: ['mcp:tools'] },
+  }
+
   it('code_challenge_method: plain -> 400, no auth code created, no redirect', async () => {
-    const fetchSpy = setupFetchSpy([{ status: 201, body: { code: 'should_not_be_created' } }])
+    // Metadata lookup succeeds (redirect_uri IS registered) — only the PKCE
+    // method guard should be what rejects this request.
+    const fetchSpy = setupFetchSpy([REGISTERED_METADATA])
     const { handleAuthorize } = await import('../oauth/authorize.js')
 
     const mockReq = {
@@ -84,12 +97,13 @@ describe('SF-003 fold-in — /authorize rejects non-S256 code_challenge_method',
     expect(mocked.statusCode).toBe(400)
     expect((mocked.jsonBody as { error: string }).error).toBe('invalid_request')
     expect(mocked.redirected).toBe(false)
-    // No auth-code-creation fetch call should have happened.
-    expect(fetchSpy).not.toHaveBeenCalled()
+    // Only the metadata lookup fetch call should have happened — no
+    // auth-code-creation call.
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
 
   it('code_challenge present, code_challenge_method omitted -> 400 (RFC 7636 default is plain, must not silently accept)', async () => {
-    const fetchSpy = setupFetchSpy([{ status: 201, body: { code: 'should_not_be_created' } }])
+    const fetchSpy = setupFetchSpy([REGISTERED_METADATA])
     const { handleAuthorize } = await import('../oauth/authorize.js')
 
     const mockReq = {
@@ -107,11 +121,11 @@ describe('SF-003 fold-in — /authorize rejects non-S256 code_challenge_method',
     await handleAuthorize(mockReq, mocked.res as unknown as Parameters<typeof handleAuthorize>[1])
 
     expect(mocked.statusCode).toBe(400)
-    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(fetchSpy).toHaveBeenCalledTimes(1)
   })
 
   it('code_challenge_method: S256 -> passes the guard (proceeds to auth-code creation)', async () => {
-    setupFetchSpy([{ status: 201, body: { code: 'mcp_ac_ok' } }])
+    setupFetchSpy([REGISTERED_METADATA, { status: 201, body: { code: 'mcp_ac_ok' } }])
     const { handleAuthorize } = await import('../oauth/authorize.js')
 
     const mockReq = {
@@ -134,7 +148,7 @@ describe('SF-003 fold-in — /authorize rejects non-S256 code_challenge_method',
   })
 
   it('no code_challenge at all -> guard does not fire (non-PKCE clients unaffected)', async () => {
-    setupFetchSpy([{ status: 201, body: { code: 'mcp_ac_ok' } }])
+    setupFetchSpy([REGISTERED_METADATA, { status: 201, body: { code: 'mcp_ac_ok' } }])
     const { handleAuthorize } = await import('../oauth/authorize.js')
 
     const mockReq = {

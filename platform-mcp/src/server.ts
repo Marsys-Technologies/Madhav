@@ -39,6 +39,7 @@ import { handleToken } from './oauth/token.js'
 import { handleOAuthDiscovery, handleOpenIDConfiguration } from './oauth/discovery.js'
 import { validateAccessToken } from './oauth/token_store.js'
 import { registerOAuthClient, validateOAuthClient } from './oauth/oauth_platform_client.js'
+import { isRegistrableRedirectUri } from './oauth/redirect_uri_policy.js'
 // W5 L2: per-family MCP surface profiles (full/compact≤20/consult), OAuth-scope-gated.
 import { resolveMcpProfile, applyProfileGate, type ToolRegisteringServer } from './lib/mcp_profile.js'
 import { applyDeprecatedToolGate } from './lib/deprecated_tool_gate.js'
@@ -215,6 +216,20 @@ app.post('/mcp/oauth/register', oauthRateLimit('oauth_register'), async (req: Re
   const body = req.body as { redirect_uris?: string[]; scope?: string }
   if (!Array.isArray(body.redirect_uris) || body.redirect_uris.length === 0) {
     res.status(400).json({ error: 'invalid_client_metadata', error_description: 'redirect_uris required' })
+    return
+  }
+
+  // SF-004 (PARIŚEṢA-V4): registration-time URI policy — require https:, or
+  // http: on a loopback host for dev; reject fragments and wildcards. See
+  // SF004_OAUTH_BINDING_CONTRACT_v1_0.md §5. Applied here (the public-facing
+  // RFC 7591 entry point) as well as at the platform API route this call
+  // proxies to, as defense in depth.
+  const badRedirectUri = body.redirect_uris.find(uri => !isRegistrableRedirectUri(uri))
+  if (badRedirectUri !== undefined) {
+    res.status(400).json({
+      error: 'invalid_redirect_uri',
+      error_description: 'redirect_uris must be https: (or http: on localhost/127.0.0.1/::1), with no fragment and no wildcard',
+    })
     return
   }
 
