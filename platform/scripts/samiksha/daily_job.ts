@@ -12,11 +12,17 @@
  *   --as-of YYYY-MM-DD      simulated clock ("now"); default = today (UTC). ESSENTIAL for tests.
  *   --chart <uuid>          restrict the sweep to one chart; default = all charts.
  *   --closing-soon-days N   runway for the closing-soon flag; default 14.
- *   --state-dir <path>      DigestJournal marker dir; default SAMIKSHA_STATE_DIR or ./.samiksha-state.
+ *   --file-journal          use FileDigestJournal (offline/no-DB dev fallback) instead of the
+ *                           default DbDigestJournal (migration 588,
+ *                           pariprashna_samiksha_digest_journal). Production runs never need this.
+ *   --state-dir <path>      FileDigestJournal marker dir (only with --file-journal); default
+ *                           SAMIKSHA_STATE_DIR or ./.samiksha-state.
  *   --json                  print the machine-readable DailyJobResult as JSON.
  *
  * Transport is the W-5 LOG-ONLY stub (no email transport exists in this codebase); a real
- * digest is logged, never emailed. Exit code 0 on success, 1 on failure.
+ * digest is logged, never emailed. The DIGEST ITSELF is now also journalled to a real DB row
+ * (P4-I, DD-21) — the log line is no longer the only durable record of what was sent. Exit code
+ * 0 on success, 1 on failure.
  */
 
 import { runDailyJob } from '@/lib/pariprashna/samiksha/daily_job'
@@ -43,20 +49,24 @@ async function main(): Promise<void> {
   const chartId = argValue(argv, '--chart')
   const closingSoonRaw = argValue(argv, '--closing-soon-days')
   const stateDir = argValue(argv, '--state-dir')
+  const useFileJournal = argv.includes('--file-journal')
   const asJson = argv.includes('--json')
 
   const closingSoonDays = closingSoonRaw === undefined ? 14 : Number(closingSoonRaw)
 
   console.info(
     `[samiksha:daily_job] start — as_of=${asOf} chart=${chartId ?? '(all)'} ` +
-      `closing_soon_days=${closingSoonDays}`,
+      `closing_soon_days=${closingSoonDays} ` +
+      `journal=${useFileJournal ? 'file (offline fallback)' : 'db (pariprashna_samiksha_digest_journal)'}`,
   )
 
   const result = await runDailyJob({
     asOf,
     chartId,
     closingSoonDays,
-    journal: new FileDigestJournal(stateDir),
+    // Omitting `journal` lets runDailyJob default to DbDigestJournal (migration 588) — the
+    // production path since P4-I. --file-journal is an explicit offline/no-DB opt-out only.
+    journal: useFileJournal ? new FileDigestJournal(stateDir) : undefined,
     transport: new LogOnlyTransport(),
   })
 
