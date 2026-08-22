@@ -7143,3 +7143,36 @@ P3 can open. Per DD-27 and the native's own instruction, item 3 will
 re-check `main` immediately before merging, announce the resulting Cloud
 Run revision tag per X-6, and run full canary discipline — main has moved
 twice already just in the time it took items 1-2 to land and deploy.
+
+## 2026-08-22 — PARIPRASHNA-P3-PREFLIGHT-PART-H (item 3) / Claude Code — leased window: batched governance-registry write + close (docs-only)
+
+Final PR before the P3-preflight close tag. Scope: `CURRENT_STATE_v1_0.md`
+(new §2/§3 entries, v6.64->6.65) + `SESSION_LOG.md` (full session entry,
+including item 5's real combined-verification-turn evidence, gathered
+before this write so the close record carries real evidence). No
+`platform/**` file touched.
+
+**Item 5 (combined live verification turn) performed before this lease
+opened**, so its real evidence could be written into SESSION_LOG.md rather
+than promised: a real production turn against the synthetic test chart
+(`1c826d5a-...`, never the native's own chart) via an actual browser
+(chrome-devtools MCP, 390x844x3 mobile/touch CDP device metrics — not the
+`g-mobile.spec.ts` fixture harness). All five required elements confirmed
+directly against the real request/response and live DOM: a real `<table>`
+DOM element (3 rows, closing DD-22's one previously-unconfirmed caveat), 6
+real `citation.define` events matching `facts_consumed`, 2 real
+`interpretation_sets` (0 waived), `confidence_type: "structural_prior"` on
+all citations, and real structured remedial guidance. Full detail in
+SESSION_LOG.md's own entry and PR #1483's body.
+
+**PR:** #1483, branch `pariprashna/p3-preflight-part-h-close`, worktree
+`.clone/worktrees/pariprashna-part-h`.
+
+**Checked immediately before opening (per DD-27 / native instruction —
+treat this as a real deploy):** fresh `origin/main` fetch (`2615832eb` —
+PARIŚEṢA-RĀTRI-V4's own PR #1481 landed since Part H items 1-2 merged,
+unrelated files, no collision); fresh `campaign-coordination` fetch (tip
+`8d64f1bdd`, no collision); the two files touched
+(`00_ARCHITECTURE/CURRENT_STATE_v1_0.md`,
+`00_ARCHITECTURE/SESSION_LOG.md`) do not appear in any other currently
+open lease.
