@@ -39,6 +39,22 @@
 -- invoked with `--chart <uuid>`, the one supported single-chart mode) so a future scoped run is
 -- still filterable, without forcing a false single-chart identity onto the common all-charts row.
 --
+-- ── THE UNIQUE KEY INCLUDES `run_chart_id` (fixed pre-apply; this table has never gone live) ──
+-- An earlier draft of this migration keyed the idempotency unit as `UNIQUE (as_of)` alone, on
+-- the reasoning that `as_of` is "the daily job's own idempotency unit". That is true for an
+-- all-charts sweep but WRONG the instant two `--chart`-scoped runs share an `as_of`: with
+-- `run_chart_id` outside the key, `hasSent(asOf)` for chart B reads true off chart A's row (an
+-- `EXISTS(... WHERE as_of = $1)` query cannot see which chart it was keyed to), so chart B's
+-- digest is silently skipped as `already_sent` — dispatched to no one, journalled nowhere, exit
+-- code 0. A live run reproduced exactly this (two `--chart`-scoped runs, same `as_of`; chart A's
+-- digest sent and journalled, chart B's silently suppressed, zero faults, both exits 0) before
+-- this migration was ever applied anywhere — caught pre-apply, so this is a one-line fix today
+-- instead of a follow-up migration tomorrow (§N.4). The key is now `(as_of, run_chart_id)` with
+-- `NULLS NOT DISTINCT` (PG15+): the common all-charts row (`run_chart_id IS NULL`) still gets
+-- exactly one row per `as_of` — two NULLs collide under `NULLS NOT DISTINCT`, same as a normal
+-- unique key would treat two equal non-NULL values — while two DIFFERENT charts' scoped runs on
+-- the same `as_of` are now distinct rows instead of one silently shadowing the other.
+--
 -- RLS is DELIBERATELY NOT ADDED here (disclosed, not silently skipped): this is an internal
 -- job-status/audit table (job runs, not a per-chart web-serve read surface), and the five-role
 -- chart-scoped RLS model (migration 576) has no natural predicate for a row that spans charts.
@@ -86,8 +102,9 @@ CREATE TABLE IF NOT EXISTS pariprashna_samiksha_digest_journal (
   id                  bigserial   PRIMARY KEY,
   as_of               date        NOT NULL,
   -- Populated only for a `--chart <uuid>`-scoped run; NULL means "swept all charts" (the
-  -- default and, today, only production mode). See header for why this is not the row's
-  -- identity, just an optional filter.
+  -- default and, today, only production mode). Part of the row's idempotency identity together
+  -- with as_of (see the unique constraint below) — NOT merely an optional filter; a chart-scoped
+  -- run and an all-charts (or a different chart's) run on the same as_of are distinct rows.
   run_chart_id        uuid,
   sent_at             timestamptz NOT NULL DEFAULT now(),
   closed_count        integer     NOT NULL CHECK (closed_count >= 0),
@@ -105,7 +122,12 @@ CREATE TABLE IF NOT EXISTS pariprashna_samiksha_digest_journal (
   body_text           text        NOT NULL,
   payload             jsonb       NOT NULL,
   created_at          timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT pariprashna_samiksha_digest_journal_as_of_unique UNIQUE (as_of)
+  -- NULLS NOT DISTINCT: two rows with the same as_of and BOTH NULL run_chart_id (the common
+  -- all-charts sweep) collide, same as any other equal-value duplicate would. Two rows with the
+  -- same as_of and DIFFERENT non-NULL run_chart_id (two distinct --chart-scoped runs on the same
+  -- day) do NOT collide — see header note above for the live-reproduced bug this closes.
+  CONSTRAINT pariprashna_samiksha_digest_journal_as_of_chart_unique
+    UNIQUE NULLS NOT DISTINCT (as_of, run_chart_id)
 );
 
 -- Read-back-by-date is the journal's primary access pattern (hasSent(asOf) + the digest history

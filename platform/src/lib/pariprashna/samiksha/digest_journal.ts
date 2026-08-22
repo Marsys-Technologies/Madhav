@@ -61,8 +61,11 @@ function assertAsOf(asOf: string): void {
 }
 
 /**
- * Default production journal: one JSON marker file per `as_of` date under a state directory.
- * The state dir defaults to `SAMIKSHA_STATE_DIR` env or `<cwd>/.samiksha-state` (gitignored).
+ * Offline/no-DB dev fallback journal (NOT the production default since P4-I — see
+ * `DbDigestJournal` below, which `daily_job.ts` now wires by default): one JSON marker file per
+ * `as_of` date under a state directory. The state dir defaults to `SAMIKSHA_STATE_DIR` env or
+ * `<cwd>/.samiksha-state` (gitignored). Reachable in production only via the CLI's explicit
+ * `--file-journal` opt-in (`scripts/samiksha/daily_job.ts`).
  */
 export class FileDigestJournal implements DigestJournal {
   private readonly dir: string
@@ -134,9 +137,15 @@ const defaultExecutor: LedgerExecutor = <T,>(sql: string, params?: unknown[]) =>
  * the journal agreeing with itself (the same PB-2 false-confidence-gate lesson `writer.ts`
  * documents).
  *
- * `markSent` is an UPSERT keyed on `as_of` (the table's own unique constraint) — a re-run for a
- * date that already has a row overwrites it, matching this interface's own documented contract
- * ("Idempotent (overwrite is fine)").
+ * `markSent` is an UPSERT keyed on `(as_of, run_chart_id)` (the table's own unique constraint,
+ * `NULLS NOT DISTINCT` so the common all-charts row — `run_chart_id IS NULL` — still collides
+ * with itself across re-runs) — a re-run for the same `(as_of, run_chart_id)` pair overwrites,
+ * matching this interface's own documented contract ("Idempotent (overwrite is fine)"). Keying
+ * on `as_of` ALONE was the original (pre-apply) design and was wrong: two `--chart`-scoped runs
+ * on the same `as_of` would then collide with EACH OTHER — the first chart's row would make
+ * `hasSent(asOf)` read true for every other chart too, silently swallowing their digests. See
+ * migration 588's header for the reproduction. This class was fixed together with the migration
+ * before either ever went live.
  */
 export class DbDigestJournal implements DigestJournal {
   constructor(
@@ -146,11 +155,21 @@ export class DbDigestJournal implements DigestJournal {
     private readonly chartId?: string,
   ) {}
 
+  /** `hasSent` is scoped to THIS journal's own chart scope (`this.chartId`, NULL = all-charts),
+   *  using NULL-safe equality (`IS NOT DISTINCT FROM`) so an all-charts journal instance
+   *  (`chartId` undefined) only ever matches the all-charts row, never a `--chart`-scoped row
+   *  for the same `as_of` and vice versa. Pre-fix this query ignored `run_chart_id` entirely — a
+   *  chart-A run's row made `hasSent(asOf)` read true for chart B too, silently swallowing
+   *  chart B's digest (the bug the migration 588 unique-key fix and this scoping fix close
+   *  together; neither alone is sufficient). */
   async hasSent(asOf: string): Promise<boolean> {
     assertAsOf(asOf)
     const { rows } = await this.exec<{ exists: boolean }>(
-      `SELECT EXISTS(SELECT 1 FROM ${DIGEST_JOURNAL_TABLE} WHERE as_of = $1::date) AS exists`,
-      [asOf],
+      `SELECT EXISTS(
+         SELECT 1 FROM ${DIGEST_JOURNAL_TABLE}
+          WHERE as_of = $1::date AND run_chart_id IS NOT DISTINCT FROM $2::uuid
+       ) AS exists`,
+      [asOf, this.chartId ?? null],
     )
     return rows[0]?.exists === true
   }
@@ -162,8 +181,7 @@ export class DbDigestJournal implements DigestJournal {
          (as_of, run_chart_id, sent_at, closed_count, closing_soon_count, transport_mode,
           real_delivery, subject, body_text, payload)
        VALUES ($1::date, $2::uuid, $3::timestamptz, $4, $5, $6, $7, $8, $9, $10::jsonb)
-       ON CONFLICT (as_of) DO UPDATE SET
-         run_chart_id       = EXCLUDED.run_chart_id,
+       ON CONFLICT (as_of, run_chart_id) DO UPDATE SET
          sent_at            = EXCLUDED.sent_at,
          closed_count       = EXCLUDED.closed_count,
          closing_soon_count = EXCLUDED.closing_soon_count,
@@ -187,8 +205,9 @@ export class DbDigestJournal implements DigestJournal {
     )
   }
 
-  /** Read a journal row back, for tests, ops tooling, and the DD-21 written-and-read-back
-   *  proof. Returns null when no digest has been journalled for `asOf`. */
+  /** Read a journal row back, for tests, ops tooling, and the DD-21 written-and-read-back proof.
+   *  Scoped to THIS journal's own chart scope, same NULL-safe rule as `hasSent`. Returns null
+   *  when no digest has been journalled for `(asOf, this.chartId)`. */
   async readByAsOf(asOf: string): Promise<DigestJournalRow | null> {
     assertAsOf(asOf)
     const { rows } = await this.exec<DigestJournalRow>(
@@ -196,8 +215,8 @@ export class DbDigestJournal implements DigestJournal {
               closing_soon_count, transport_mode, real_delivery, subject, body_text, payload,
               created_at::text AS created_at
          FROM ${DIGEST_JOURNAL_TABLE}
-        WHERE as_of = $1::date`,
-      [asOf],
+        WHERE as_of = $1::date AND run_chart_id IS NOT DISTINCT FROM $2::uuid`,
+      [asOf, this.chartId ?? null],
     )
     return rows[0] ?? null
   }
