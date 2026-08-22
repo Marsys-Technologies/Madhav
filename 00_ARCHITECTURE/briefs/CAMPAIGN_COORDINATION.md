@@ -7262,3 +7262,34 @@ merges).
 
 No file outside this lease's declared scope was touched. Worktree
 `/tmp/reconcile-salvage-82560` will be removed now that the branch is pushed.
+
+## 2026-08-23 — N4-RULING (Claude Code, Fable 5 agent, native-delegated) — leased window: adjudicate + record the N4 discrepancy disposition
+
+**Context.** PR #1490's `00_ARCHITECTURE/briefs/overnight_campaign_plans/README.md` flags one
+substantive discrepancy: the scratch copy `SAMPURTI_REBASE_PLAN_v1_0.md` carries 10 lines (the
+"N4 RULED" per-class P-G1 closure, native, 2026-08-13 00:5x IST) absent from the ratified
+`briefs/sampurti/REBASE_PLAN_v1_0.md` on main. The native delegated the ruling's disposition to
+a Fable 5 agent, verbatim: "Spin up a fable agent to take the call on my behalf for the N4
+ruling." This lease covers that adjudication and its recording.
+
+**Decision (made under delegation, dated 2026-08-23): SUPERSEDED / HISTORICAL — the ratified
+`briefs/sampurti/REBASE_PLAN_v1_0.md` stays UNTOUCHED.** N4 was genuine and its technical
+premise real (ka_kshetra checkpoint-resume exists — `services/ka_kshetra/writer.py`
+`_RESUME_VERSION`/`build_substep_progress` — and was exercised live per SAMPURTI_STATE R10), but
+its operative content was discharged inside the same campaign: the A8 27-class build COMPLETED
+2026-08-15 (kfs_e23ba1ab, 31,350 windows, 25 classes; FIELD-INTEGRATED db77e48da) and the arc
+sealed ARC-COMPLETE at R44–R47, with the sealed CLOSED `SAMPURTI_STATE.md` landed to main at
+eccf15abc as the record of record. Recording = one resolution paragraph appended to the README's
+discrepancy section, on a branch off `salvage/reconcile-1488-onto-main` (the only branch that
+file exists on; a PR against main would guarantee an add/add conflict with open PR #1490 —
+deliberate, declared deviation from the default branch-off-main step, for collision avoidance).
+
+**Scope this lease covers:** `00_ARCHITECTURE/briefs/overnight_campaign_plans/README.md` ONLY
+(on a new branch off `salvage/reconcile-1488-onto-main`, PR based on that branch). Explicitly
+NOT touched: `00_ARCHITECTURE/briefs/sampurti/**`, any `platform/**` file, PR #1490's branch
+itself (no direct push to it).
+
+**Pre-lease checks:** fresh fetch of `campaign-coordination` (this append's parent tip); tail
+read for open leases — SALVAGE-RECONCILE closed 2026-08-22, no open lease covers
+`overnight_campaign_plans/**` or `sampurti/**`; PR #1490 state re-verified OPEN (not merged) at
+adjudication time; work in an isolated clone under `/tmp/n4-ruling-*`, not the shared checkout.
