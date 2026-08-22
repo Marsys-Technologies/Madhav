@@ -13,70 +13,78 @@ name: Paripraśna Post-Deploy Behaviour Smoke (P3-E / PB-4 F-6)
 # (`/api/pariprashna`), which is the door THE FLIP (P3-F) makes the default
 # for everyone. This workflow is that missing check.
 #
-# WHAT IT DOES: runs `platform/scripts/probe/post_deploy_behavior_smoke.ts`,
-# which drives `probe/ask.ts` (the repo's existing, native-authorized
-# authenticated-turn harness — reused here, not reinvented) against the LIVE
-# deployed `/api/pariprashna` route on the SYNTHETIC test chart
-# (`1c826d5a-41cb-4450-b4dc-59d440e5f75a`, Abhinandan Mohanty — NEVER the
-# native's real chart), then asserts real engine behaviour on the response:
-# the turn closed 'ok', produced non-trivial prose, emitted a `receipt.define`
-# wire event with a non-null receipt (proof the synthesis -> receipt-assembly
-# -> validation -> persistence chain completed on the deployed revision, not
-# just that tokens streamed back), emitted zero stream-level `error` events,
-# and committed at least one block. See that script's own header for the
-# full assertion list and an honest account of what it does NOT assert
-# (citation presence, the safety gate) and why.
+# ── TWO JOBS, AND WHY THEY ARE NOT INTERCHANGEABLE ───────────────────────
 #
-# CREDENTIALS: FIREBASE_ADMIN_CREDENTIALS + NEXT_PUBLIC_FIREBASE_API_KEY are
-# already-provisioned GitHub Actions repo secrets (added 2026-05-18 / earlier)
-# — the exact two values `probe/ask.ts` needs to mint a fresh, single-use
-# Firebase session cookie for the fixed `probe-service-account` principal on
-# every run (see that script's header: the root secret never expires; no
-# cookie is ever cached). No GCP WIF auth step is needed here because the
-# script checks its env vars FIRST, before ever falling back to
-# `gcloud`/`firebase` CLI — and the CI-provisioned WIF identity
-# (github-actions@madhav-astrology.iam.gserviceaccount.com) does NOT hold
-# secretmanager.secretAccessor on `firebase-admin-credentials` in production
-# IAM (confirmed by reading the live IAM policy before authoring this
-# workflow — only the Cloud Run runtime SA holds that grant), so relying on
-# the CLI fallback here would have failed. The best-effort, non-fatal
-# harness-origin DB tag inside ask.ts is skipped in this job (no Cloud SQL
-# Proxy tunnel is opened) — that gap is disclosed, not hidden; it never
-# fails the run.
+# 1. `assertion-selftest` — runs `post_deploy_behavior_smoke.ts` with
+#    SMOKE_SELFTEST=1. Zero network calls, zero secrets, zero cost. It
+#    evaluates the SAME assertion function used by the live job against a
+#    REAL captured production turn record, then applies one targeted mutation
+#    per assertion and requires that assertion to go false while every other
+#    assertion stays exactly as it was. This is the CLAUDE.md §N.8
+#    demonstrated-can-fail evidence for the assertion LOGIC.
 #
-# TRIGGERING: workflow_dispatch is the REQUIRED interface — the overnight
-# conductor dispatches this on a 45-minute cadence and CI's own run history
-# (not any agent's word) is what counts green x7 toward DD-7 / W-1. A
-# workflow_run hook on deploy.yml is also wired as a bonus so the pipeline
-# gets one opportunistic run per real deploy, but it is purely additive and
-# never gates deploy.yml's own traffic-promotion step.
+#    IT IS NOT A BEHAVIOUR SMOKE. It observes nothing about the deployed
+#    revision. A green here must NEVER be counted toward the DD-7 / W-1
+#    green×7 cadence that gates THE FLIP (P3-F) — that counter is fed by the
+#    `behaviour-smoke` job below and by nothing else. The job name says so.
 #
-# COST: one real authenticated `/api/pariprashna` turn per run (one full
-# retrieval + synthesis pass on the small synthetic chart, i.e. the SAME
-# per-turn cost profile as a real user question) plus a `tsx`/npm-ci runner
-# cost. Cheap enough for the 8-12 dispatches the smoke hold needs tonight —
-# see the lane's PR description for the measured wall-clock/cost of the
-# first real run.
+# 2. `behaviour-smoke` — the real thing: one live authenticated turn against
+#    the deployed `/api/pariprashna` route on the SYNTHETIC test chart
+#    (`1c826d5a-41cb-4450-b4dc-59d440e5f75a`, Abhinandan Mohanty — NEVER the
+#    native's real chart), asserting real engine behaviour. This is the only
+#    job whose green counts toward green×7.
 #
-# ADDITIVE-ONLY: this file is new. It adds no trigger to, and modifies no
-# step of, any existing workflow.
+# ── CREDENTIAL STATUS (read before dispatching) ──────────────────────────
+#
+# `behaviour-smoke` needs the GitHub Actions repo secrets
+# FIREBASE_ADMIN_CREDENTIALS + NEXT_PUBLIC_FIREBASE_API_KEY, from which
+# `probe/ask.ts` mints a fresh single-use Firebase session cookie for the
+# fixed `probe-service-account` principal on every run.
+#
+# AS OF 2026-08-23 THIS JOB CANNOT PASS: the repo secret
+# FIREBASE_ADMIN_CREDENTIALS (set 2026-05-18) holds a ONE-CHARACTER
+# placeholder, not a service-account JSON object — proved live by a
+# shape-only diagnostic on run 32600417256 (`length=1 chars; does NOT start
+# with '{'`), which is exactly what produced ask.ts's
+# `SyntaxError: No number after minus sign in JSON at position 1`. No
+# workflow in this repo had ever consumed that secret before this one
+# (deploy.yml reads the real credential from Secret Manager via Cloud Run's
+# `--set-secrets firebase-admin-credentials:1`, never from GitHub), so the
+# placeholder had never been exercised and nothing detected it.
+#
+# Repairing it is a CREDENTIAL OPERATION and is therefore out of scope for
+# every agent in the overnight run (charter §9). The preflight below fails
+# LOUDLY and precisely rather than letting the job die in a JSON.parse stack
+# trace — but it does not, and must not, route around the gap.
+#
+# The GCP-side fallback is closed too, not merely unused: `ask.ts` would fall
+# back to `gcloud secrets versions access` if the env var were unset, but the
+# CI WIF identity `github-actions@madhav-astrology.iam.gserviceaccount.com`
+# holds NO secretmanager role at either resource or project level (verified
+# read-only, 2026-08-23: `firebase-admin-credentials` grants
+# secretAccessor to `938361928218-compute@…` only). Granting it would also be
+# a credential/IAM operation.
+#
+# ── TRIGGERING ───────────────────────────────────────────────────────────
+# `behaviour-smoke`: workflow_dispatch (the overnight conductor's 45-minute
+# cadence; CI's own run history, not any agent's word, is what counts
+# green×7) plus an opportunistic workflow_run hook on deploy.yml. It
+# deliberately does NOT run on pull_request — it costs one real
+# retrieval+synthesis turn against production per run, which is not something
+# every PR touching this file should spend.
+# `assertion-selftest`: runs on all three triggers including pull_request
+# (paths-scoped to this workflow's own two files), because editing the
+# assertion logic without re-proving it can still individually fail is
+# precisely the regression it exists to catch. It is free.
+#
+# ADDITIVE-ONLY: this file adds no trigger to, and modifies no step of, any
+# existing workflow.
 
 on:
   workflow_dispatch: {}
   workflow_run:
     workflows: ['Deploy to Cloud Run']
     types: [completed]
-  # TEMPORARY, lane-authoring only — see PR #1494. GitHub will not let a brand
-  # new workflow_dispatch-only workflow be dispatched via API/CLI until it
-  # exists on the DEFAULT branch (confirmed live: `gh workflow run` 404s
-  # "not found on the default branch" for a workflow that only exists on a
-  # PR branch), and this lane's builder does not merge (only the INTEGRATOR
-  # does). This `pull_request` trigger, scoped to exactly this workflow's own
-  # two files, exists ONLY so the §N.8 demonstrated-can-fail red run and its
-  # green counterpart can be produced as REAL CI runs on THIS PR before merge
-  # — removed again in the commit that flips INDUCE_FAILURE_MODE back to
-  # false, so it never rides to `main` and never fires on unrelated PRs or
-  # costs anything after this lane closes.
   pull_request:
     branches: [main]
     paths:
@@ -84,19 +92,47 @@ on:
       - 'platform/scripts/probe/post_deploy_behavior_smoke.ts'
 
 concurrency:
-  group: ${{ github.workflow }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  # ── §N.8 evidence for the assertion logic. Free. NOT a behaviour smoke. ──
+  assertion-selftest:
+    name: Assertion self-test (fixtures, no live turn — NOT countable toward green×7)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: platform
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Self-test — GOOD fixture all-pass, then one targeted mutation per assertion
+        env:
+          SMOKE_SELFTEST: '1'
+        run: npx tsx scripts/probe/post_deploy_behavior_smoke.ts
+
+  # ── The real behaviour smoke. The ONLY job whose green counts toward the
+  #    DD-7 / W-1 green×7 cadence that gates THE FLIP. ──────────────────────
   behaviour-smoke:
     name: Live authenticated turn — behaviour assertions
     runs-on: ubuntu-latest
-    # For the workflow_run trigger, only follow through on a successful deploy
-    # — a failed/cancelled deploy's smoke would just be re-testing whatever
-    # revision was already live, which the 45-min dispatch cadence already
-    # covers. workflow_dispatch and the (temporary, see trigger comment above)
-    # pull_request trigger always run regardless of this condition.
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    # Never on pull_request (see the trigger note above — a real paid turn).
+    # For workflow_run, only follow a SUCCESSFUL deploy; a failed deploy's
+    # smoke would just re-test whatever revision was already live, which the
+    # 45-minute dispatch cadence already covers.
+    if: >-
+      github.event_name != 'pull_request' &&
+      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     timeout-minutes: 10
     defaults:
       run:
@@ -110,37 +146,47 @@ jobs:
       # not exist yet pre-checkout. Confirmed live: the first version of this
       # workflow ran the preflight under `defaults.run.working-directory` and
       # failed with "No such file or directory" before ever reaching the
-      # secret check — a scaffolding bug this lane's own red-run proof caught
-      # and fixed, not the induced failure it was built to catch.
-      - name: Preflight — required secrets must be configured (fail loud, never a fabricated pass)
+      # secret check.
+      #
+      # SHAPE, NEVER CONTENT. Nothing below echoes, decodes, or otherwise
+      # exposes a secret value; only a boolean shape verdict and, on failure
+      # only (i.e. when the value is by definition not a real credential), its
+      # byte length. This exists because the FIRST live run of this workflow
+      # died inside ask.ts's `JSON.parse` with an opaque
+      # "No number after minus sign in JSON at position 1" — a
+      # misconfigured-secret condition wearing an engine-failure costume. A
+      # smoke that stands in front of a production flip must be able to tell
+      # those two apart (CLAUDE.md §N.8: a signal needs a detector that
+      # measures the specific claim it asserts).
+      - name: Preflight — required secrets present AND well-shaped (fail loud, never a fabricated pass)
         working-directory: .
         run: |
-          missing=""
-          [ -z "${FIREBASE_ADMIN_CREDENTIALS}" ] && missing="$missing FIREBASE_ADMIN_CREDENTIALS"
-          [ -z "${NEXT_PUBLIC_FIREBASE_API_KEY}" ] && missing="$missing NEXT_PUBLIC_FIREBASE_API_KEY"
-          if [ -n "$missing" ]; then
-            echo "::error::[p3-e-smoke] Missing required secret(s):$missing — failing loudly rather than skipping silently."
-            exit 1
+          fail=0
+          if [ -z "${FIREBASE_ADMIN_CREDENTIALS}" ]; then
+            echo "::error::[p3-e-smoke] FIREBASE_ADMIN_CREDENTIALS is not set."
+            fail=1
+          else
+            shaped=1
+            case "${FIREBASE_ADMIN_CREDENTIALS}" in
+              \{*) : ;;
+              *) shaped=0 ;;
+            esac
+            if [ "${#FIREBASE_ADMIN_CREDENTIALS}" -lt 500 ]; then shaped=0; fi
+            if [ "$shaped" -eq 0 ]; then
+              echo "::error::[p3-e-smoke] FIREBASE_ADMIN_CREDENTIALS is set but is NOT a plausible service-account JSON object (expected a value starting with '{' and at least 500 bytes long; the real credential is ~2300). Observed length: ${#FIREBASE_ADMIN_CREDENTIALS} bytes. This is a MISCONFIGURED SECRET, not an engine failure — do NOT read this run as a behavioural red against the deployed revision."
+              echo "::error::[p3-e-smoke] Repair (operator only — a credential operation, out of scope for automated agents): re-upload the same service-account JSON that Cloud Run already uses, e.g. 'gcloud secrets versions access 1 --secret=firebase-admin-credentials --project=madhav-astrology | gh secret set FIREBASE_ADMIN_CREDENTIALS --repo Marsys-Technologies/Madhav'"
+              fail=1
+            fi
           fi
-          echo "[p3-e-smoke] required secrets present."
-
-      # TEMPORARY DIAGNOSTIC — see PR #1494 discussion. The first live run hit
-      # `JSON.parse` failing inside ask.ts's mintSessionCookie with "No number
-      # after minus sign in JSON at position 1" — consistent with
-      # FIREBASE_ADMIN_CREDENTIALS not holding a full service-account JSON
-      # object. This step reveals ONLY a shape fact (byte length + whether the
-      # value starts with '{') — never the value itself, which GitHub also
-      # masks in logs regardless. Removed once diagnosed; not a credential
-      # operation (no value is read, rotated, or created here).
-      - name: Diagnostic — FIREBASE_ADMIN_CREDENTIALS shape (length + brace-prefix only, never content)
-        working-directory: .
-        run: |
-          len=${#FIREBASE_ADMIN_CREDENTIALS}
-          case "$FIREBASE_ADMIN_CREDENTIALS" in
-            \{*) prefix="starts with '{' (looks like JSON)" ;;
-            *) prefix="does NOT start with '{' (does not look like a JSON object)" ;;
-          esac
-          echo "[p3-e-smoke] FIREBASE_ADMIN_CREDENTIALS length=${len} chars; ${prefix}"
+          if [ -z "${NEXT_PUBLIC_FIREBASE_API_KEY}" ]; then
+            echo "::error::[p3-e-smoke] NEXT_PUBLIC_FIREBASE_API_KEY is not set."
+            fail=1
+          elif [ "${#NEXT_PUBLIC_FIREBASE_API_KEY}" -lt 30 ]; then
+            echo "::error::[p3-e-smoke] NEXT_PUBLIC_FIREBASE_API_KEY is set but is implausibly short (${#NEXT_PUBLIC_FIREBASE_API_KEY} bytes; a Firebase web API key is ~39). Likely a placeholder."
+            fail=1
+          fi
+          if [ "$fail" -ne 0 ]; then exit 1; fi
+          echo "[p3-e-smoke] required secrets present and well-shaped."
 
       - uses: actions/checkout@v4
 
@@ -160,4 +206,4 @@ jobs:
         if: failure()
         run: |
           echo "::error::[p3-e-smoke] Post-deploy behaviour smoke FAILED — see the step above for which assertion failed and why."
-          echo "::error::[p3-e-smoke] This is a real engine-behaviour check (receipt assembly / persistence chain, non-trivial prose, zero stream errors) — NOT a liveness ping. Do not count this toward green x7 (DD-7 / W-1) until it is understood."
+          echo "::error::[p3-e-smoke] This is a real engine-behaviour check (receipt assembly / persistence chain, facts_consumed grounding, citation pipeline, safety-gate execution, non-trivial prose, zero stream errors) — NOT a liveness ping. Do not count this toward green×7 (DD-7 / W-1) until it is understood."
