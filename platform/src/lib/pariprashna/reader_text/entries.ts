@@ -1,0 +1,235 @@
+/**
+ * pariprashna/reader_text/entries.ts — lane P4-J, the GENERATE step's output.
+ *
+ * Hand-authored reader text for the top-25 real-cited MSR signals (see
+ * `citation_ranking.ts` for how "top-cited" was derived). This is
+ * intentionally the GENERATE step's product for tonight's run, not a claim
+ * that all 568 reader-facing signals are covered — see the P4-J report for
+ * the exact, honest coverage boundary (25 of 568 reader-facing catalog
+ * entries; 568 = 573 total minus 5 internal §16 meta-statistics entries).
+ *
+ * AUTHORING DISCIPLINE FOLLOWED FOR EVERY ENTRY BELOW (manual convention,
+ * not yet code-enforced — a fair follow-up for a future session that wants
+ * to scale generation):
+ *   - Confidence hedging is a direct, consistent translation of the
+ *     catalog's own real `confidence` value — never invented per-entry:
+ *     >=0.90 "well-established in the chart"; 0.80-0.89 "solidly supported,
+ *     though not the chart's single strongest point"; 0.70-0.79 "reasonably
+ *     supported, with an open question or two"; <0.70 "worth naming, but
+ *     genuinely provisional." No entry below claims a stronger hedge than
+ *     its own catalog confidence licenses (SS N.7 item 6: honest null over
+ *     invented certainty).
+ *   - No internal register/table/signal-id vocabulary appears in
+ *     `reader_text` (enforced mechanically by `review.ts`'s register-leak
+ *     lint, not merely by this convention) — classical Sanskrit/astrological
+ *     terminology (yoga names, house/planet names, Jaimini, Tajika,
+ *     Ashtakavarga, etc.) is the expected reader-facing vocabulary and is
+ *     used freely; only this system's OWN internal taxonomy is forbidden.
+ *   - `grounding_note` (audit-channel only, never reader-facing) quotes the
+ *     catalog's `classical_basis` field verbatim so the citation gate
+ *     (`citation_gate.ts`) can mechanically confirm the grounding traces to
+ *     THIS signal's own source, not a plausible-sounding but disconnected one.
+ *
+ * ── A FINDING SURFACED WHILE AUTHORING (worth a DD entry, not silently
+ * fixed here) ─────────────────────────────────────────────────────────────
+ * SIG.MSR.172, SIG.MSR.327, and SIG.MSR.031 (ranks #3, #4, #8 below) are
+ * three SEPARATE catalog entries describing what is, on inspection, the SAME
+ * underlying astronomical fact: Rahu in Taurus casting a Jaimini rashi-drishti
+ * aspect onto the three non-adjacent movable signs, landing on Mars+Saturn
+ * (Libra) and Sun+Mercury (Capricorn) — a near-duplicate authored three times
+ * across different catalog sections (Nakshatra/Jaimini framing) rather than
+ * cross-referenced once. Reader text below is written to be non-repetitive
+ * (each takes a different honest angle on the same fact) rather than
+ * papering over the duplication — but the CATALOG's own de-duplication is
+ * out of scope for this lane (P4-J may only touch platform/src/lib/**, and
+ * fixing this is an MSR-authoring change, not a reader-text change).
+ *
+ * SIG.MSR.157 (rank #24) carries its OWN internal contradiction: its
+ * headline says "Joint Pressure on Sagittarius 9H (Jupiter+Venus)" from BOTH
+ * Saturn and Mars, but its own `falsifier` field states plainly "Mars does
+ * NOT reach 9H" (Mars's special aspect lands on the 10th, not the 9th). The
+ * reader text below reports ONLY what the signal's own falsifier confirms —
+ * Saturn's aspect on the 9th — and omits the unconfirmed Mars-joint-pressure
+ * claim entirely (SS N.7 item 6: an honest omission over restating a headline
+ * the source's own falsifier contradicts). `catalog_discrepancy_note` records
+ * this for audit.
+ */
+import type { ReaderTextEntry } from './types'
+
+export const READER_TEXT_ENTRIES: readonly ReaderTextEntry[] = [
+  {
+    signal_id: `SIG.MSR.198`,
+    reader_text: `Counting each planet's placement relative to the constellation your Moon was born under sorts every planet into one of nine classical relationship categories to the mind, some considered supportive, some cautionary. Taken across all nine planets at once, the picture here is genuinely mixed: no single category dominates strongly enough to call the whole configuration favorable or difficult on its own. That mixed verdict touches health, career, inner life, temperament, and finances alike, which is the honest shape of it rather than a single clean answer. The underlying count is solidly supported, though the source material itself flags one step for a routine recheck, so hold this as well-argued rather than beyond question.`,
+    grade: `primary`,
+    grounding_note: `Classical basis: "Phala Ratnamala Ch.5; Muhurta Chintamani S3" (tara/lunar-relationship classification). Falsifier field documents the counting method and flags one input pending recheck; confidence 0.82 reflects that open item honestly.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.500`,
+    reader_text: `Compare the sign each planet occupies at birth against the sign it occupies in the marriage-and-refinement chart (the ninth-harmonic division classical texts use to examine what a placement matures into), and six of the nine planets land in different signs across the two charts. Mercury alone repeats its exact sign in both, a rare, specific condition classical texts single out as a mark of the planet holding steady rather than shifting character as the chart deepens. This finding is well-established in the chart: the vargottama placement is a direct, checkable read of the birth data, not an inference.`,
+    grade: `primary`,
+    grounding_note: `Classical basis: "BPHS Ch.7 Sl.14 (Shodashavargas); Phaladeepika Ch.2 (Vargottama doctrine)". Falsifier: any second planet showing D1=D9 sign equality would invalidate the Mercury-sole-anchor framing, none does per the source data.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.172`,
+    reader_text: `Rahu sits in Taurus, a fixed sign, and in the Jaimini school of aspect-reading, a fixed sign's gaze reaches the three non-adjacent movable signs rather than the signs a planet's own house-count would suggest. Traced that way, Rahu's aspect lands on Libra, home to Mars and Saturn together, and on Capricorn, home to the Sun and Mercury: four planets drawn into Rahu's field of influence at once, spanning relationships and public standing together. This reading is well-established, treated in the source material as one of the more confidently confirmed aspect patterns in the chart.`,
+    grade: `primary`,
+    grounding_note: `Classical basis: "Jaimini Sutras 1.1.26-29 (fixed sign aspects movable); Neelakantha commentary; CGM v1.0 YOG.RAHU_JAIMINI_QUADRUPLE". Falsifier confirms Taurus is fixed, aspected movable signs are non-adjacent, and the four aspected planets in Libra/Capricorn are confirmed from source positions.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.327`,
+    reader_text: `The same Rahu-in-Taurus placement reads a second, corroborating way: a fixed sign's Jaimini aspect skips its immediate neighbor and reaches the three movable signs beyond it, which for Taurus means Cancer, Libra, and Capricorn. Cancer holds no planets, but Libra carries Mars and Saturn together and Capricorn carries the Sun and Mercury together, the same four-planet convergence confirmed from a second angle within the source material's own audit trail. Treat this as reinforcing rather than adding new information to the closely related reading above; confidence here is well-established.`,
+    grade: `primary`,
+    grounding_note: `Classical basis: "Jaimini Sutras (Fixed signs aspect Movable signs except adjacent; Taurus = fixed); CGP Audit Session 6". Falsifier walks the same movable-sign derivation and confirms the 4-planet total independently.`,
+    catalog_discrepancy_note: `Near-duplicate of SIG.MSR.172 (and thematically of SIG.MSR.031), same underlying Rahu Jaimini quadruple-aspect fact authored separately in the catalog; see entries.ts header comment.`,
+  },
+  {
+    signal_id: `SIG.MSR.195`,
+    reader_text: `Mars and Saturn share the seventh house, and each sits in its own lunar constellation: Mars in the segment ruled by Rahu, Saturn in the adjoining segment ruled by Jupiter. Classical nakshatra texts treat that specific neighboring pair as a meaningful opposition in its own right, layered on top of what the house placement already says about partnership and close relationships, and Rahu (itself placed in the sign of endurance and craft) and Jupiter (placed in the house of belief and long journeys) become quietly relevant to how that partnership house plays out. This reading is well-established, drawn directly from confirmed constellation and degree placements.`,
+    grade: `primary`,
+    grounding_note: `Classical basis: "Nakshatra Deepika S15+16 (Swati-Vishakha adjacent pair); Saravali Ch.21". Falsifier confirms Mars/Saturn nakshatra lordships and Rahu/Jupiter house placements directly from source degree data.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.427`,
+    reader_text: `Classical texts describe a small family of chart-shape patterns based purely on how many signs the planets are spread across, independent of which signs or houses those are. One of the gentler patterns in that family forms when the seven classical planets cluster into exactly four signs rather than scattering widely or bunching into just one or two, traditionally read as a life carrying a baseline of contentment, some material comfort, and a disposition toward helping others, without the extremity that a tighter or wider spread would suggest. This reading is solidly supported, drawn from a direct count of your birth positions.`,
+    grade: `primary`,
+    grounding_note: `Classical basis: "BPHS Ch.26 (Naabhasa Yogas, Aakruti groups); JHORA_TRANSCRIPTION_v8_0_SOURCE.md S6.1". Falsifier confirms the four-sign distribution and notes the pattern would not form at five-or-more signs.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.513`,
+    reader_text: `Classical wealth-timing technique divides each sign into two halves, ruled alternately by the Sun and the Moon, and looks at how the planets fall across that division. In this chart the split leans toward the Moon's half, five planets fall there against four in the Sun's half, a modest but real asymmetry the tradition reads as a lean toward fluctuating, responsive earning and saving patterns rather than the steadier, more fixed pattern a Sun-leaning chart would suggest. Treat this one as reasonably supported: real, but among the more modestly-confirmed readings in this set.`,
+    grade: `primary`,
+    grounding_note: `Classical basis: "BPHS Ch.7 Sl.14 (Hora, wealth division); Parashara hora rules". Falsifier notes the 5-4 split is a direct count and would only be undermined by an error in the underlying wealth-chart placements.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.031`,
+    reader_text: `A third way of naming the same Rahu pattern already described above: read planet-by-planet rather than sign-by-sign, Rahu's Jaimini aspect reaches Mars and Saturn together, and separately the Sun and Mercury together, four planets in total, the same convergence, framed here by which planets receive the aspect rather than which signs hold them. It is reasonably supported, though the source material notes this specific school of aspect-reading (fixed signs aspecting non-adjacent movable ones) is not universally accepted across every Jaimini lineage, which is the honest caveat to carry alongside it.`,
+    grade: `supporting`,
+    grounding_note: `Classical basis: "Jaimini Upadesa Sutras 1.3.1-1.3.5 (Rashi Drishti); CGP Audit Session 6". Falsifier explicitly notes an alternate school would not confirm this aspect, carried into the hedge above.`,
+    catalog_discrepancy_note: `Near-duplicate of SIG.MSR.172/SIG.MSR.327, same Rahu Jaimini quadruple-aspect fact, third independent authoring; see entries.ts header comment.`,
+  },
+  {
+    signal_id: `SIG.MSR.121`,
+    reader_text: `Five of the seven classical planets sit inside just two signs, Capricorn and Aquarius hold one cluster, Libra and Sagittarius the other, a concentration classical texts associate with focus, sometimes to the point of narrowness, in how energy gets applied across career, belief, and close relationships. This is a thematic reading rather than a strict, formally-named classical yoga (the traditional form of this pattern calls for five planets in a single sign, which is not the case here); read it as a real but softer echo of that theme. Confidence is reasonably supported, with that scoping caveat built in from the source itself.`,
+    grade: `supporting`,
+    grounding_note: `Classical basis: "Phaladeepika Ch.12 (multi-planet sign concentrations)". Falsifier explicitly states the strict classical form requires 5 planets in ONE sign, not two, and this entry is scoped honestly as a thematic concentration rather than the named yoga.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.225`,
+    reader_text: `Classical technique weighs a planet's dignity not just in the birth chart but across sixteen harmonic subdivisions, each illuminating a different life theme, then combines them into one composite strength score per planet. Read across the divisions checked here, some planets carry real weight in this composite while others are comparatively thin, a useful cross-check on career, wealth, spiritual leanings, and health that a single-chart view alone would not show. Treat this as solidly supported rather than fully exhaustive: the source notes the complete sixteen-division tally has not all been re-verified here, so this reflects the divisions that were checked.`,
+    grade: `supporting`,
+    grounding_note: `Classical basis: "BPHS Ch.6 (Vimsopaka Bala); Phala Ratnamala (divisional dignity weighting)". Falsifier notes only key divisional positions are included, not the full 16-division tally, carried into the hedge above.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.415`,
+    reader_text: `Classical chart-reading organizes the twelve houses into four axes running through the chart's center, and the tradition treats a chart where every one of those axes carries real planetary or sensitive-point activity, none of them quietly empty, as a fuller-spectrum, more whole-organism configuration than one where a whole axis goes untouched. That is the case here: the self-and-partnership axis, the career-and-roots axis, and the gains-and-creativity axis are all populated, several by more than one method of activation at once. This is a summary observation built on top of many already-confirmed individual placements rather than a new computation in its own right, and it is well-established as a description of the chart's overall shape.`,
+    grade: `supporting`,
+    grounding_note: `Classical basis: "Parashari Bhava Chakra (the four kendra axes: 1-7, 2-8, 3-9, 4-10)". Falsifier notes this synthesizes confirmed individual house activations rather than introducing a new claim.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.023`,
+    reader_text: `The partnership-and-self axis draws unusually concentrated attention in this chart: Mars and Saturn sit directly in the seventh house, Jupiter casts its aspect there from the fifth, and two further classical sensitive points (a life-accumulation point and a lunar-cycle marker) both fall on the same axis. Multiple independent classical techniques converging on one axis this way is itself notable, it suggests partnership and self-image are a genuinely load-bearing theme in the chart rather than one placement among many. This reading is reasonably supported; its strength depends in part on the precise degree of one of those sensitive points, which the source notes as the one input still worth double-checking.`,
+    grade: `supporting`,
+    grounding_note: `Classical basis: "BPHS Ch.16 (Graha Drishti); CVG.08". Falsifier notes the reading depends on the computed sign of a sensitive point (Bhrigu Bindu); if that recomputed to a different sign, the convergence claim weakens.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.262`,
+    reader_text: `Across the sub-periods of the current major planetary cycle examined here, the ruling planet of each sub-period lines up, domain for domain, with the life area your own recorded history shows was actually active during that stretch of time, a planet tied to career activating during a career-heavy stretch, one tied to relationships during a relationship-heavy stretch, and so on. That kind of consistent alignment across multiple periods, rather than just one lucky match, is what makes this pattern worth naming: it is evidence the classical timing framework is tracking real lived experience in this particular chart. This is well-established as a pattern, matched at the level of broad life-domain rather than precise event-by-event detail.`,
+    grade: `supporting`,
+    grounding_note: `Classical basis: "BPHS Ch.46 (AD lord delivers its signification during its sub-period); MARSYS-JIS MATRIX_DASHA_PERIODS S2.3 statistical analysis". Falsifier notes matching is domain-level, not event-level, which is the honest granularity carried into the reading above.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.313`,
+    reader_text: `The classical Krishnamurti timing technique identifies which planets are positioned to deliver results for a given house during their periods, based on layered rulership and sub-rulership. For the career house, that list here includes seven of the nine classical planets, nearly the full set, with only two planets excluded. A house with that many delivering planets tends to stay active across an unusually wide stretch of one's planetary periods, which reads as career being a theme that keeps resurfacing rather than one confined to a narrow window. This is well-established, read directly from the confirmed significator list.`,
+    grade: `primary`,
+    grounding_note: `Classical basis: "Krishnamurti Paddhati (H10 significators = planets that can deliver career results during their dashas/transits)". Falsifier lists the confirmed significators (Mercury, Venus, Mars, Ketu, Sun, Saturn) as a direct read from source data.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.350`,
+    reader_text: `Three separate Jaimini-school techniques, the relationship between the chart's two career-indicator planets, a soul-and-career loop running through Mercury, and a full convergence of aspects onto the career house, all point independently toward career and life-purpose as the chart's central achievement theme. Three separately-derived techniques agreeing is stronger evidence than any one of them alone would be; this entry is the summary of that convergence rather than a new calculation. Confidence is well-established, since it draws only from already-confirmed component readings.`,
+    grade: `supporting`,
+    grounding_note: `Classical basis: "Jaimini Sutras (Chart-level Jaimini analysis: AK+AmK Rajayoga + Karakamsa Mercury soul-loop + full-Jaimini-aspect convergence on 10H)". Falsifier confirms all three component mechanisms independently, introducing no new computation.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.501`,
+    reader_text: `Saturn tells three different stories depending on which classical lens is used: exalted and at its strongest in the birth chart itself, technically debilitated in the marriage-and-refinement chart (though classical texts note specific conditions that soften a debilitation like this one), and back to a position of authority, an angular house, in the career-and-status chart. Read together rather than in isolation, that arc suggests a planet whose strength is not static: it is tested in the more private, refining view of the chart before re-asserting itself where public authority and career are concerned. This is well-established, treated as one of the more solidly-confirmed multi-chart patterns in the set.`,
+    grade: `supporting`,
+    grounding_note: `Classical basis: "BPHS Ch.26 (Mahapurusha); BPHS Ch.7 (Vargas); Phaladeepika Ch.2 (Neecha Bhanga)". Falsifier requires Saturn confirmed inside an angular house in the career chart, which the source verifies directly.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.020`,
+    reader_text: `Saturn's exaltation in the seventh house is reinforced from several independent directions at once: it carries strong classical strength scores in its own right, it forms the specific great-soul combination classical texts reserve for an exalted planet in an angular house, and, for a defined stretch of the current planetary cycle, Saturn is also the ruling sub-period lord, meaning this placement is actively switched on for that window rather than simply a permanent background fact. That sub-period runs through a specific, known end date, after which this particular layer of activation recedes even though the underlying placement itself never changes. This is well-established, drawing on multiple independently-confirmed strength measures.`,
+    grade: `supporting`,
+    grounding_note: `Classical basis: "BPHS Ch.26 (Sasha); CVG.05". Falsifier states the Saturn sub-period activation window ends 2027-08-21, after which the dasha-windowed portion of this signal recedes.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.032`,
+    reader_text: `Two classical strength measures disagree about the seventh house in a specific, interesting way: one method, which weighs a house's overall built-up strength from several contributing factors, ranks it near the bottom of all twelve houses, while a separate method, which counts how many planets across the chart lend it silent support point by point, ranks it at the very top. That combination, a house structurally under pressure yet quietly the most broadly supported one in the chart, reads less as a flat contradiction than as a house that has to work harder for its results but is not left without help doing so. This is a genuinely interesting pattern worth sitting with; confidence is solidly supported, though as with any comparison between two different measurement methods, a recomputation of either could shift the framing.`,
+    grade: `supporting`,
+    grounding_note: `Classical basis: "BPHS Ch.27 (Bhavabala); BPHS Ch.66 (Ashtakavarga); MATRIX_HOUSES Session 7". Falsifier notes the paradox depends on both rankings holding under recomputation; framed as a genuine tension rather than resolved certainty.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.131`,
+    reader_text: `Put together, two things are true of the partnership house at once: it holds one of the chart's great-soul combinations (an exalted Saturn in an angular position) and it sits structurally under more pressure than most other houses by one classical strength measure. Classical technique reads that pairing as authority achieved through, rather than despite, structural tension, recognition or standing that has to be built against resistance rather than handed over easily. This entry combines two already-confirmed observations rather than introducing a new one; treat it as solidly supported, with the honest caveat that if the house's strength ranking were revised upward, the achieved-through-tension framing would soften toward a more straightforwardly favorable reading.`,
+    grade: `supporting`,
+    grounding_note: `Classical basis: "BPHS Ch.23, Ch.26; DA v1.2.1 S D.2". Falsifier notes the hidden-through-tension framing depends on the house strength ranking remaining low; a revision would shift the narrative toward direct expression.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.173`,
+    reader_text: `Libra, home to Mars and Saturn, is itself a movable sign, and in the Jaimini aspect framework a movable sign's gaze reaches the non-adjacent fixed signs, landing here on Taurus, home to Rahu, and on Aquarius, home to the Moon (which, in this chart, also carries the specific role of the mind's own significator). Two classically weightier, more challenging planets reaching both Rahu and the Moon's placement this way adds a layer worth being aware of around finances, temperament, and belief, without being an isolated or one-off configuration. This is well-established, drawn directly from confirmed sign placements on both ends of the aspect.`,
+    grade: `primary`,
+    grounding_note: `Classical basis: "Jaimini Sutras 1.1.26-29 (movable sign aspects fixed); Neelakantha commentary". Falsifier confirms Libra as movable, the non-adjacent fixed-sign targets, and Rahu/Moon placements directly.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.238`,
+    reader_text: `A classical sensitive point calculated as the midpoint between the lunar nodes' axis and the Moon itself, treated in certain lineages as a marker of where accumulated life-experience concentrates, falls in this chart within the seventh house, in the same lunar constellation segment as one of the classically significant marriage-timing points. That the point lands in the same house already carrying both Mars and Saturn together is a meaningful layering rather than a coincidence worth dismissing: it reinforces partnership and shared-resource themes as an area where experience compounds over time. This is reasonably supported, the exact placement depends on a precise lunar longitude the source itself flags as worth re-confirming to the arc-minute.`,
+    grade: `supporting`,
+    grounding_note: `Classical basis: "Bhrigu Nandi Nadi (Bhrigu Bindu = midpoint of Rahu and Moon)". Falsifier walks the midpoint calculation explicitly and flags the exact Moon longitude as needing confirmation for arc-minute precision.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.314`,
+    reader_text: `The classical Krishnamurti technique for the gains-and-income house names the Sun, Rahu, the Moon, and Saturn as its significators here, with the Moon carrying particular weight: it sits directly in that house and rules the sign it occupies, while the Sun and Rahu both fall in a lunar constellation ruled by the Moon, chaining their influence into the same house through the Moon. That kind of layered, mutually-reinforcing significator structure is read as a stronger-than-average gains signature rather than a loose or coincidental one. This is well-established, verified directly against the confirmed significator list and constellation lordships.`,
+    grade: `primary`,
+    grounding_note: `Classical basis: "Krishnamurti Paddhati (H11 significators = planets delivering income and gains during their periods)". Falsifier walks the nakshatra-lordship chain (Sun and Rahu both in Moon-ruled constellations) explicitly, correcting an initial mis-check in the source's own working.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.037`,
+    reader_text: `Saturn accumulates strength from four independent classical measures at once here: raw planetary strength, a weighted-influence score, its great-soul combination, and, for a defined window, its role as ruling sub-period lord. Multiple independent measures agreeing this consistently is unusual enough to be worth naming on its own, separate from any single one of them. The sub-period-linked layer recedes on a known date in the current cycle, but the other three, permanent components of Saturn's strength do not change afterward. This is well-established, built entirely from already-confirmed individual strength scores.`,
+    grade: `supporting`,
+    grounding_note: `Classical basis: "BPHS Ch.26-28; CVG.05 extension; MATRIX_PLANETS Session 8". Falsifier notes the dasha-windowed component recedes after the Saturn sub-period ends, while the natal structural components remain.`,
+    catalog_discrepancy_note: ``,
+  },
+  {
+    signal_id: `SIG.MSR.157`,
+    reader_text: `Saturn's special third-house-counted aspect reaches forward into the ninth house, the house of belief, higher learning, and long journeys, itself home to Jupiter and Venus, adding a layer of gravity and testing to a house that otherwise carries two naturally optimistic, expansive planets. Note that this is Saturn's aspect specifically: a nearby placement of Mars was checked as a possible second contributor to the same house, and the classical count places Mars's own special aspect one house over, on the career house, rather than reaching the ninth as well, so this reading names Saturn's influence alone, rather than a joint pressure from two planets, in the interest of only reporting what the count actually confirms. Confidence is well-established for the Saturn aspect itself.`,
+    grade: `primary`,
+    grounding_note: `Classical basis: "BPHS Ch.26 v.4-5 (special aspects); Phaladeepika Ch.6; Saravali Ch.17". Falsifier explicitly confirms Saturn 3rd-from-7H reaches 9H, and Mars 4th-from-7H reaches 10H, Mars does NOT reach 9H, contradicting the catalog headline's joint-pressure framing.`,
+    catalog_discrepancy_note: `Catalog headline claims joint Saturn+Mars pressure on the 9th house; the signal's own falsifier confirms only Saturn's aspect reaches the 9th (Mars's reaches the 10th instead). Reader text reports only the falsifier-confirmed Saturn aspect.`,
+  },
+  {
+    signal_id: `SIG.MSR.302`,
+    reader_text: `The second of the three classical seven-and-a-half-year Saturn transit phases through the signs around your Moon placed Saturn, during that window, in its own sign in the career house, a comparatively gentler placement for that particular transit than a debilitated or enemy-sign Saturn would have been. The source material notes this window lines up with a documented career founding in your own history, read as the transit expressing itself through career-building rather than through the health difficulties this transit phase is sometimes associated with. This is reasonably supported: a real, checkable transit-to-history alignment, though transit-to-event correlation is inherently a softer form of evidence than a natal placement.`,
+    grade: `supporting`,
+    grounding_note: `Classical basis: "Classical Jyotish (Rising phase = 12th from Moon; for Aquarius Moon = 12th from Aquarius = Capricorn)". Falsifier describes this as retrodict-verified against a specific historical founding event.`,
+    catalog_discrepancy_note: ``,
+  },
+]
