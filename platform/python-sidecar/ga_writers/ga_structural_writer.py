@@ -146,6 +146,19 @@ ALL_GRAHAS = CLASSICAL_GRAHAS + ["Rahu", "Ketu"]
 # coverage of the F-61 aggregate; it never fabricates a missing varga.
 SAPTAVARGA_EXPECTED_VARGAS = ("D1", "D2", "D3", "D7", "D9", "D12", "D30")
 
+# The 16-member Shodasavarga group used by the Vimsopaka ("twenty-point")
+# scheme, in classical (ascending-divisor) order. Mirrors
+# ga_vargas_writer.VIMSOPAKA_SHODA_WEIGHTS's key set and this project's own
+# L0 authority (brahmagyan/l0_reference.py: _VIMSHOPAKA["shodashavarga"] —
+# D1..D60, 16 members summing to 20; BPHS Ch.7). Kept as a module-local copy
+# — no cross-import between L1 writers, matching the SAPTAVARGA_EXPECTED_VARGAS
+# precedent above. Used only to report honest coverage of the F-167
+# aggregate; it never fabricates a missing varga.
+SHODASAVARGA_EXPECTED_VARGAS = (
+    "D1", "D2", "D3", "D4", "D7", "D9", "D10", "D12",
+    "D16", "D20", "D24", "D27", "D30", "D40", "D45", "D60",
+)
+
 # M-12: Deeptamsa (orb of light/influence) per graha, degrees — Tajika
 # Nilakanthi; mirrors PyJHora's jhora.const.deeptaamsa_of_planets (Sun,Moon,
 # Mars,Mercury,Jupiter,Venus,Saturn = 15,12,8,7,9,7,9) and ga_tajaka_writer's
@@ -1685,6 +1698,40 @@ def _build_anubindu_rows(
 
 # ── Group E: Vimsopaka bala (from GA6) ───────────────────────────────────────
 
+# vimsopaka_bala_per_graha (E): AGGREGATED score from GA6.
+#
+# F-167 fix (PARIŚEṢA-V4). This row was keyed `vimsopaka_total` but used to
+# be emitted with value_num=None on every graha of every chart — the only
+# payload was a JSONB pointer to the GA6 chart_divisionals rows, so a caller
+# asking for "the total" got a to-do list instead of a number. Same defect
+# shape as F-61's graha_saptavargaja_bala_component fix above; this copies
+# that playbook exactly.
+#
+# F-168 precondition (fixed in this same PR, in ga_vargas_writer.py's
+# VIMSOPAKA_SHODA_WEIGHTS): D40 and D45 were both wrongly 1.0, making the
+# 16-varga weight table that feeds varga_vimsopaka_contribution sum to 21.0
+# rather than the required 20 (Vimsopaka == "twenty-point", BPHS Ch.7).
+# Summing over the wrong weights before that fix would have manufactured a
+# confident wrong number — strictly worse than the honest NULL it replaces.
+# The weight fix ships first; this aggregate is only correct because of it.
+#
+# The aggregation is a plain SUM of the per-varga contributions GA6 already
+# writes, which is not a judgement call — this project's own L0 canonical
+# reference states the scheme verbatim:
+#   brahmagyan/l0_reference.py, _VIMSHOPAKA["shodashavarga"]:
+#     {"D1":3.5,"D2":1,"D3":1,"D4":0.5,"D7":0.5,"D9":3,"D10":0.5,"D12":0.5,
+#      "D16":2,"D20":0.5,"D24":0.5,"D27":0.5,"D30":1,"D40":0.5,"D45":0.5,"D60":4}
+#     unit="point", category="vimshopaka", source_citation="BPHS Ch.7"
+# (mirrored by ga_vargas_writer.VIMSOPAKA_SHODA_WEIGHTS, post-F-168 fix).
+#
+# HONEST COVERAGE (§N.7 item 6 / §N.8), the same three-way discipline as
+# F-61: zero constituent vargas -> value_num stays NULL (honest null, NOT
+# 0.0); partial coverage -> value_num carries the partial sum but
+# fact_value_text reads "partial_N_of_16" and the JSONB carries
+# coverage_complete=false plus the explicit vargas_missing list; full
+# coverage -> "complete_16_of_16", coverage_complete=true. A caller must
+# never be able to read the number without the coverage flag alongside it
+# (§N.6 item 1).
 def _build_vimsopaka_ext_rows(
     conn: Any,
     chart_output: dict[str, Any],
@@ -1696,28 +1743,73 @@ def _build_vimsopaka_ext_rows(
     GA3 already wrote graha_vimsopaka_shadvarga/saptavarga/dasavarga/shodasavarga.
     GA8 writes vimsopaka_bala_per_graha as the aggregated summary from GA6.
     constituent_fact_ids are resolvable chart_divisionals.id UUIDs (§N.5 L1-authority).
+
+    F-167: the aggregate is a plain sum of the per-varga
+    varga_vimsopaka_contribution rows across the 16-member shodasavarga
+    group (SHODASAVARGA_EXPECTED_VARGAS) — see _get_shodasavarga_components
+    for the honest-NULL / partial-coverage reader this mirrors from F-61.
     """
     rows: list[dict[str, Any]] = []
     for g_name in CLASSICAL_GRAHAS:
         subject = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
-        constituent_ids = _get_divisional_constituent_ids(
-            conn, chart_id, ayanamsha_id, "varga_vimsopaka_contribution", subject
+        components = (
+            _get_shodasavarga_components(conn, chart_id, ayanamsha_id, subject)
+            if conn is not None else []
         )
+        constituent_ids = [c["divisional_id"] for c in components]
+        vargas_present = [c["varga"] for c in components]
+        vargas_missing = [v for v in SHODASAVARGA_EXPECTED_VARGAS if v not in vargas_present]
+        coverage_complete = not vargas_missing
+
+        if components:
+            total_points = round(sum(c["score"] for c in components), 4)
+            coverage_text = (
+                "complete_16_of_16" if coverage_complete
+                else f"partial_{len(vargas_present)}_of_{len(SHODASAVARGA_EXPECTED_VARGAS)}"
+            )
+        else:
+            # No GA6 vimsopaka-contribution rows reachable for this graha.
+            # Emit an honest null rather than a plausible-looking 0.0.
+            total_points = None
+            coverage_text = "unavailable_0_of_16"
+
         rows.append(_base_row(
             "vimsopaka_bala_per_graha", subject, "vimsopaka_total",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
-            value_num=None,
+            value_num=total_points,
+            value_text=coverage_text,
+            unit="point" if total_points is not None else None,
             value_jsonb={
                 "source_table": "chart_divisionals",
                 "source_category": "varga_vimsopaka_contribution",
                 "constituent_fact_ids": constituent_ids,
+                "formula": "sum(per-varga vimsopaka contribution across the shodasavarga group)",
+                "formula_source": (
+                    "l0_reference._VIMSHOPAKA['shodashavarga'] "
+                    "(D1..D60, 16 members summing to 20); BPHS Ch.7"
+                ),
+                "unit": "point",
+                "vargas_expected": list(SHODASAVARGA_EXPECTED_VARGAS),
+                "vargas_present": vargas_present,
+                "vargas_missing": vargas_missing,
+                "coverage_complete": coverage_complete,
+                "per_varga": [
+                    {"varga": c["varga"], "score": c["score"]}
+                    for c in components
+                ],
                 "note": f"chart_divisionals rows for {subject} across shodasavarga set ({ayanamsha_id})",
             },
             verif=UNVERIFIED_DEFAULT,
-            source=f"pyjhora_adapter.ga6_vimsopaka_ref/{eng_ver}",
+            source=f"ga_structural.vimsopaka_aggregate/{eng_ver}",
             citation_human=(
-                f"{g_name} vimsopaka bala (shodasavarga): see chart_divisionals "
-                f"varga_vimsopaka_contribution ({ayanamsha_id})."
+                f"{g_name} Vimsopaka Bala (shodasavarga): "
+                + (f"{total_points} points" if total_points is not None
+                   else "unavailable (no GA6 constituent rows)")
+                + f" = sum over {coverage_text} of the shodasavarga group "
+                "(D1,D2,D3,D4,D7,D9,D10,D12,D16,D20,D24,D27,D30,D40,D45,D60); "
+                f"BPHS Ch.7 ({ayanamsha_id})."
+                + (f" INCOMPLETE — missing {', '.join(vargas_missing)}."
+                   if vargas_missing else "")
             ),
         ))
     return rows
@@ -1737,18 +1829,35 @@ def _get_divisional_constituent_ids(
     fact_subject in chart_divisionals uses the format '{VARGA}.{GRAHA}' (e.g. 'D1.SUN').
     This collects IDs across all vargas for a single graha — the resolvable L1-authority
     references for cross-table constituent_fact_ids (§N.5).
+
+    F-170: asserts a single build_id_uuid across the returned rows rather than
+    silently mixing rows across builds. Migration 218's unique index
+    deliberately excludes build_id on the stated invariant that "the data
+    plane holds one canonical build per chart" — this is the read-side
+    DETECTOR for that invariant breaking (§N.8), not a filter that would mask
+    it.
     """
     import psycopg.rows as _rows
     with conn.cursor(row_factory=_rows.tuple_row) as cur:
         cur.execute(
-            """SELECT id::text FROM chart_divisionals
+            """SELECT id::text, build_id_uuid FROM chart_divisionals
                WHERE chart_id = %s AND ayanamsha_id = %s
                  AND fact_category = %s
                  AND split_part(fact_subject, '.', 2) = %s
                ORDER BY fact_subject""",
             (chart_id, ayanamsha_id, fact_category, graha_suffix),
         )
-        return [row[0] for row in cur.fetchall()]
+        fetched = cur.fetchall()
+
+    builds = {row[1] for row in fetched}
+    if len(builds) > 1:
+        raise RuntimeError(
+            f"_get_divisional_constituent_ids: {len(builds)} distinct builds for "
+            f"(chart={chart_id}, ayanamsha={ayanamsha_id}, category={fact_category}, "
+            f"graha={graha_suffix}) — the migration-218 one-canonical-build "
+            f"invariant is violated"
+        )
+    return [row[0] for row in fetched]
 
 
 def _get_saptavargaja_components(
@@ -1773,6 +1882,11 @@ def _get_saptavargaja_components(
 
     Rows with a NULL score are skipped rather than coerced to 0.0 — a missing
     contribution is reported as missing coverage, never as "no strength".
+
+    F-170: asserts a single build_id_uuid across the returned rows rather
+    than silently summing rows across builds — see
+    _get_divisional_constituent_ids's docstring for the full invariant
+    rationale (migration 218).
     """
     import psycopg.rows as _rows
     with conn.cursor(row_factory=_rows.tuple_row) as cur:
@@ -1780,7 +1894,8 @@ def _get_saptavargaja_components(
             """SELECT id::text,
                       split_part(fact_subject, '.', 1) AS varga,
                       fact_value_num,
-                      fact_value_text
+                      fact_value_text,
+                      build_id_uuid
                FROM chart_divisionals
                WHERE chart_id = %s AND ayanamsha_id = %s
                  AND fact_category = 'varga_saptavargaja_bala_component'
@@ -1789,16 +1904,90 @@ def _get_saptavargaja_components(
                ORDER BY fact_subject""",
             (chart_id, ayanamsha_id, graha_suffix, list(SAPTAVARGA_EXPECTED_VARGAS)),
         )
-        out: list[dict[str, Any]] = []
-        for row_id, varga, value_num, value_text in cur.fetchall():
-            if value_num is None:
-                continue
-            out.append({
-                "divisional_id": row_id,
-                "varga": varga,
-                "score": float(value_num),
-                "relation": value_text,
-            })
+        fetched = cur.fetchall()
+
+    builds = {row[4] for row in fetched}
+    if len(builds) > 1:
+        raise RuntimeError(
+            f"_get_saptavargaja_components: {len(builds)} distinct builds for "
+            f"(chart={chart_id}, ayanamsha={ayanamsha_id}, graha={graha_suffix}) — "
+            f"the migration-218 one-canonical-build invariant is violated"
+        )
+
+    out: list[dict[str, Any]] = []
+    for row_id, varga, value_num, value_text, _build in fetched:
+        if value_num is None:
+            continue
+        out.append({
+            "divisional_id": row_id,
+            "varga": varga,
+            "score": float(value_num),
+            "relation": value_text,
+        })
+    return out
+
+
+def _get_shodasavarga_components(
+    conn: Any,
+    chart_id: str,
+    ayanamsha_id: str,
+    graha_suffix: str,
+) -> list[dict[str, Any]]:
+    """Return this graha's per-varga Vimsopaka (shodasavarga) contributions from GA6.
+
+    F-167: the GA8 `vimsopaka_bala_per_graha.<graha>.vimsopaka_total` row
+    needs the actual per-varga contribution VALUES to sum, not just the row
+    ids that `_get_divisional_constituent_ids` returns. Each element is
+    {divisional_id, varga, score}. Mirrors _get_saptavargaja_components
+    exactly (F-61's reader), one layer over the shodasavarga group instead
+    of the saptavarga group.
+
+    Restricted to the classical shodasavarga group
+    (SHODASAVARGA_EXPECTED_VARGAS) at read time — so the aggregate stays
+    correct-by-construction even if chart_divisionals ever holds a stray
+    varga outside the 16-member set.
+
+    Rows with a NULL score are skipped rather than coerced to 0.0 — a missing
+    contribution is reported as missing coverage, never as "no strength".
+
+    F-170: asserts a single build_id_uuid across the returned rows rather
+    than silently summing rows across builds (migration 218's invariant —
+    see _get_divisional_constituent_ids's docstring).
+    """
+    import psycopg.rows as _rows
+    with conn.cursor(row_factory=_rows.tuple_row) as cur:
+        cur.execute(
+            """SELECT id::text,
+                      split_part(fact_subject, '.', 1) AS varga,
+                      fact_value_num,
+                      build_id_uuid
+               FROM chart_divisionals
+               WHERE chart_id = %s AND ayanamsha_id = %s
+                 AND fact_category = 'varga_vimsopaka_contribution'
+                 AND split_part(fact_subject, '.', 2) = %s
+                 AND split_part(fact_subject, '.', 1) = ANY(%s)
+               ORDER BY fact_subject""",
+            (chart_id, ayanamsha_id, graha_suffix, list(SHODASAVARGA_EXPECTED_VARGAS)),
+        )
+        fetched = cur.fetchall()
+
+    builds = {row[3] for row in fetched}
+    if len(builds) > 1:
+        raise RuntimeError(
+            f"_get_shodasavarga_components: {len(builds)} distinct builds for "
+            f"(chart={chart_id}, ayanamsha={ayanamsha_id}, graha={graha_suffix}) — "
+            f"the migration-218 one-canonical-build invariant is violated"
+        )
+
+    out: list[dict[str, Any]] = []
+    for row_id, varga, value_num, _build in fetched:
+        if value_num is None:
+            continue
+        out.append({
+            "divisional_id": row_id,
+            "varga": varga,
+            "score": float(value_num),
+        })
     return out
 
 

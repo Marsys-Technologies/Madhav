@@ -149,12 +149,24 @@ SAPTAVARGA_SET = {1, 2, 3, 7, 9, 12, 30}
 # 7 classical grahas for shadbala (no Rahu/Ketu/Lagna)
 CLASSICAL_7_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
 
-# Vimsopaka weights per 16-varga Shodasavarga system (BPHS)
+# Vimsopaka weights per 16-varga Shodasavarga system (BPHS Ch.7).
+#
+# F-168 fix (PARIŚEṢA-V4): D40 and D45 were both wrongly 1.0, making this
+# table sum to 21.0 rather than the required 20 (Vimsopaka == "twenty-point").
+# L0 canonical authority — brahmagyan/l0_reference.py, _VIMSHOPAKA["shodashavarga"]
+# — and PyJHora (jhora.const.py:228-231) both agree D40 and D45 are 0.5. This
+# was simultaneously a wrapper-local constant shadowing an L0 value (§N.7
+# item 3) and an arithmetic error; fixed to match L0/PyJHora exactly.
 VIMSOPAKA_SHODA_WEIGHTS = {
     1: 3.5, 2: 1.0, 3: 1.0, 4: 0.5, 7: 0.5, 9: 3.0,
     10: 0.5, 12: 0.5, 16: 2.0, 20: 0.5, 24: 0.5,
-    27: 0.5, 30: 1.0, 40: 1.0, 45: 1.0, 60: 4.0,
+    27: 0.5, 30: 1.0, 40: 0.5, 45: 0.5, 60: 4.0,
 }
+assert sum(VIMSOPAKA_SHODA_WEIGHTS.values()) == 20.0, (
+    "F-168: VIMSOPAKA_SHODA_WEIGHTS must sum to exactly 20 (Vimsopaka == "
+    "'twenty-point', BPHS Ch.7) — got "
+    f"{sum(VIMSOPAKA_SHODA_WEIGHTS.values())}"
+)
 
 # Dignity table: sign-based dignity per graha
 # (exaltation_sign_idx, debilitation_sign_idx, moolatrikona_sign_idx, own_signs)

@@ -171,6 +171,24 @@ class TestConstants:
         m = _mod()
         assert m.VIMSOPAKA_SHODA_WEIGHTS[1] == 3.5
 
+    def test_vimsopaka_shoda_weights_sum_to_20(self):
+        """F-168: VIMSOPAKA_SHODA_WEIGHTS names itself for summing to twenty
+        (Vimsopaka == "twenty-point", BPHS Ch.7). D40 and D45 were both
+        wrongly 1.0 (should be 0.5 per L0 l0_reference._VIMSHOPAKA
+        ["shodashavarga"] and PyJHora jhora.const.py:228-231), making the
+        table sum to 21.0 — this is the detector that constant never had.
+        """
+        m = _mod()
+        assert sum(m.VIMSOPAKA_SHODA_WEIGHTS.values()) == 20.0
+
+    def test_vimsopaka_d40_and_d45_weights_match_l0(self):
+        """F-168: the specific fixed rows, pinned individually so a future
+        edit to either can't silently drift back to the wrong value even if
+        the aggregate sum happened to still check out some other way."""
+        m = _mod()
+        assert m.VIMSOPAKA_SHODA_WEIGHTS[40] == 0.5
+        assert m.VIMSOPAKA_SHODA_WEIGHTS[45] == 0.5
+
     def test_d7_karya_is_progeny_not_spouse(self):
         """Regression (PRE_DARPANA_READINESS A-4): D7 Saptamsha is the progeny/
         children significator, not spouse. The `progeny_deepdive` floor (VIDHI-
