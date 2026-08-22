@@ -6554,3 +6554,84 @@ Lease opened above is released. Final account:
 No file outside this lease's declared scope was touched. Worktree
 `.clone/worktrees/pariprashna-part-d` retained (Part F is next, adjacent
 pariprashna scope); will be removed once Part F lands or on request.
+
+## 2026-08-22 — PARIPRASHNA-P3-PREFLIGHT-PART-F / Claude Code — leased window: DD-13 residual (a), mortality-phrasing third-sentence date-shape gap
+
+Executing DD-13's two open residuals per the master prompt's Part F scope.
+This entry covers residual (a) only; residual (b) (streaming un-send
+asymmetry vs the P2 first-paint-citation guarantee) is explicitly scoped by
+the master prompt to be REPORTED, not unilaterally resolved, and is handled
+separately.
+
+**Residual (a):** `scanMortalityPhrasing()`'s cross-sentence pairing window
+(`CROSS_SENTENCE_WINDOW = 2`) does not catch a mortality term and a
+date-shaped value separated by one genuinely unrelated intervening
+sentence (3-sentence span) — e.g. "The native will meet death. Saturn
+rules the tenth. The year is 2047." reproduces zero hits.
+
+**Design choice, put to the native explicitly given the codebase's own
+extensive documented rationale against widening `CROSS_SENTENCE_WINDOW`
+itself:** narrower independent mechanism, selected over both "just widen
+the shared constant to 3" and "defer for more research time." Follows the
+established precedent in this same file (the `isTokenContinuous`/
+`tokenContinuityRuns` token-continuity rejoin mechanism, added earlier for
+a different narrow gap rather than widening a shared window).
+
+**Fix, scoped deliberately narrow — the `mortality_term_x_date_shape` rule
+only, NOT `duration_to_end`:**
+1. New exported constant `EXTENDED_DATE_SHAPE_WINDOW = CROSS_SENTENCE_WINDOW
+   + 1` (= 3), with an inline rationale comment cross-referenced from the
+   module header's "THE GUARANTEE" section and from `CROSS_SENTENCE_WINDOW`'s
+   own doc comment — the header and the code are not allowed to drift apart
+   (the M-3 sentinel test in `phrasing_scan_round3.test.ts` enforces this).
+2. A second detection pass in `scanMortalityPhrasing()`, run after the
+   existing `CROSS_SENTENCE_WINDOW` loop, sliding a 3-sentence window and
+   firing ONLY on `sentenceHit(...) === 'mortality_term_x_date_shape'` —
+   skips any span already covered by the width-2 pass.
+3. `tailContext()` widened to carry `max(CROSS_SENTENCE_WINDOW,
+   EXTENDED_DATE_SHAPE_WINDOW) - 1` sentences, so the streaming scanner's
+   cross-seam carry covers the wider window too (still capped at
+   `MAX_CARRY_CONTEXT_CHARS`).
+
+**Honest residual kept open, disclosed in the code and in tests, not
+smoothed over:** a `duration_to_end` phrasing at the same 3-sentence
+separation (e.g. "The native will meet death. Saturn rules the tenth.
+Within a few years this comes to pass.") is still NOT caught — the fix's
+scope is the bare-date-shape rule only, per the "narrower mechanism"
+choice. This is asserted directly in the test suite, not just described.
+
+**Verification before this lease opened:**
+- `npx tsc --noEmit -p .` — clean (only the 5 pre-existing, unrelated
+  missing-type-declaration errors: `json-schema`, `uuid`, `ajv-formats` —
+  none touch the changed files).
+- `npx vitest run src/lib/pariprashna/safety/` — 672 passed, 12 skipped, 1
+  todo, 0 failed (17 files). The one pre-existing sentinel test whose
+  fixture the new mechanism correctly reclassifies
+  (`phrasing_scan_round3.test.ts`'s former "at 2, not at 3" test) was
+  rewritten into two tests: one keeping the ORIGINAL sentinel scope intact
+  for `CROSS_SENTENCE_WINDOW` itself (now using a `duration_to_end`
+  fixture, still correctly empty), and a new test asserting
+  `EXTENDED_DATE_SHAPE_WINDOW` catches the bare-date-shape case while
+  confirming the `duration_to_end` residual at the same separation stays
+  open.
+- `npx eslint` on both changed files — clean.
+
+**Lease scope:**
+1. `platform/src/lib/pariprashna/safety/phrasing_scan.ts` — new
+   `EXTENDED_DATE_SHAPE_WINDOW` constant + detection pass + widened
+   `tailContext()` carry + updated header/constant doc comments.
+2. `platform/src/lib/pariprashna/safety/__tests__/phrasing_scan_round3.test.ts`
+   — import + the M-3 sentinel section's tests updated/added as above.
+
+**Checked immediately before opening:** fresh `origin/main` fetch
+(`b479c5a30`); no open PR touches `phrasing_scan.ts` or its test file
+(`gh pr list --search "phrasing_scan"` → empty); this file/scope does not
+appear in any prior lease entry in this log; disjoint from every other
+currently open lease. Fresh branch `pariprashna/p3-preflight-part-f` cut
+off current `origin/main` (not carried forward from the Part E branch —
+Part E's uncommitted Part F work-in-progress was stashed, the branch reset
+to `origin/main`, and the stash reapplied clean, to avoid dragging any
+already-merged Part E history into this PR). Worktree
+`.clone/worktrees/pariprashna-part-d` reused (Parts E/F share adjacent
+pariprashna scope, as previously noted); will be removed once Part F lands
+or on request.
