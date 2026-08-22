@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.64
+version: 6.65
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -5832,6 +5832,43 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟢 **PARIPRASHNA-P3-PREFLIGHT (Parts A–H) close (2026-08-22) — the pre-flight queue standing
+> in front of P3 (ONE ENGINE, ONE DOOR) is drained.** Full campaign ledger:
+> `00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md`; per-part evidence and the full DD register:
+> `00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`;
+> the executed plan: `00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md`.
+> **This §2 entry is scoped strictly to the Paripraśna arc — it does not attempt to backfill any
+> other campaign's activity in the days since the prior entry below (GOCHARA-UTKARSA, 2026-08-10);
+> those campaigns' own state surfaces (`campaign-coordination`, their own briefs) remain
+> authoritative for their own history.** Parts A (adapter parameter-surface audit — found and
+> fixed a deeper adapter-wiring defect than DD-20's original symptom-layer fix reached: Gemini
+> `responseFormat`/schema was being silently dropped by the pinned AI SDK across every live
+> structured-output call site, plus a separate `thinking_level` wiring gap), B (model moves —
+> `gemini-3.1-pro-preview`/`gemini-3.7-flash` live for synthesis/interpretation_sets and
+> planner/summarizer respectively, GA fallbacks), C (DD-22 — table-in-prose rendering, approach
+> (c), live-verified against real production including direct DB reads), D (DD-25 — root-caused
+> and fixed `computed_cost_usd` reading null on every `llm_usage_events` row project-wide; the
+> NCD-8 spend ceiling's read-path is no longer structurally inert), E (DD-19 — `interpretation_sets`
+> cost logging), F (DD-13 — mortality phrasing-scan residuals; residual (a) code-fixed, residual
+> (b) closed 2026-08-22 by direct native ruling: status quo, three stated reasons, a standing
+> population-change review trigger, not an open obligation), G (hygiene: missing lease-closing
+> entry appended, the master prompt itself committed to the repo, DD-27 filed for an observed
+> deploy-pipeline over-triggering on docs-only changes), and H (this entry, plus the DD-19/20/22/25
+> register-accuracy pass and a Baseline v1.3 regen) all closed, each with real production
+> deploys and DD-21 observed-delivery evidence (probe transcripts, live DB reads, or direct
+> `gcloud`/`git` verification) — never CI-green or code inspection alone. **P3 (ONE ENGINE, ONE
+> DOOR) has not yet opened** — it opens once this close's tag lands, per the master prompt's own
+> §9. Two real operational incidents surfaced and were fixed in-flight, not glossed over: a
+> `drift_detector` CI-baseline-ceiling trip (79→80 findings) from registering a new file as a
+> canonical manifest entry, fixed by not registering it rather than raising the ceiling (matching
+> the PURNATA/SAMĀPTI/NIḤŚEṢA precedent); and four DD register entries (DD-19/20/22/25) that had
+> already closed live in earlier Parts but whose register status lines were never updated to say
+> so — the same staleness pattern DD-13's own top-line status had before this arc's Part G fixed
+> it, now fixed for all four. This repo is shared with a second live autonomous campaign
+> (PARIŚEṢA-RĀTRI-V4, running in Codex) plus a standing tracker process; every merge this arc made
+> queued normally behind that campaign's own PRs with zero collision, per the cross-campaign
+> lease discipline in `CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md` §7 (rules X-1..X-7).
+
 > **GOCHARA-UTKARSA Wave 5 IN PROGRESS (2026-08-10) — serving elevation, DAG integration,
 > writer repoint, docs-of-record. Campaign ledger:
 > `00_ARCHITECTURE/llm_consumption_audit/briefs/gochara_elevation/GOCHARA_UTKARSHA_CAMPAIGN_PLAN_v1_0.md`.
@@ -9127,6 +9164,33 @@ current_state:
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
 
+At the close of **PARIPRASHNA-P3-PREFLIGHT-PART-H-2026-08-22**, a fresh Claude Code session with
+no memory of any prior conversation was handed a native ruling ("CONTINUE INTO PARTS G AND H
+NOW") referencing Parts of a plan it had never seen. Rather than guess at what "Parts G and H"
+meant, the session searched the whole repository and every relevant worktree, found nothing, and
+asked the native directly for the source document — which turned out to be
+`PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md`, authored outside the repo and never yet
+committed. Verified the plan's own factual claims (a specific commit hash, specific PR numbers,
+specific evidence) against real git/gh/gcloud state before acting on any of it. Part G: closed
+DD-13 per the native's own stated ruling on residual (b) (option (i), status quo, three reasons,
+a population-change review trigger); filed DD-27 after the native flagged that a docs-only PR had
+been observed triggering a full `Build & Deploy Web` job, and that Part H's own governance-write
+must therefore be treated as a real deploy; committed the master prompt into the repo. Hit a real
+CI trap doing so — registering the new file as a `CAPABILITY_MANIFEST` canonical entry tripped
+`drift_detector`'s CI-enforced baseline ceiling (79→80) — fixed by not registering it, matching
+the documented PURNATA/SAMĀPTI/NIḤŚEṢA precedent rather than raising the ceiling. Part H: found,
+while reading the DD register fresh rather than trusting the master prompt's own summary, that
+four entries (DD-19, DD-20, DD-22, DD-25) had already closed live in earlier Parts but never had
+their register status lines updated — traced each claim back to its real evidence in
+`campaign-coordination` before writing anything, and corrected all four. Regenerated the Baseline
+to v1.3 with a §8 addendum scoped honestly to what this gate actually touched (GAP-6's `table`
+sub-case closed at the data layer with the client-rendering caveat disclosed, not silently
+dropped; GAP-14 further narrowed, not closed). Every merge this arc made — including the
+docs-only ones — deployed for real, was checked against the live Cloud Run revision, and queued
+normally behind the sibling PARIŚEṢA-RĀTRI-V4 campaign's own concurrent PRs with zero collision.
+Full account: `campaign-coordination`'s own per-part entries; the DD register's amended DD-13/19/
+20/22/25/27 entries; `PARIPRASHNA_ASBUILT_BASELINE_v1_0.md` §8.
+
 At the close of **C4-CLOSE-2026-08-01 — the one item PŪRṆATĀ left open, closed**, this session
 picked up exactly where PŪRṆATĀ paused: a suspicious fragment (`⟐ injected`) inside a minted
 production session cookie. Diagnosed READ-ONLY first, per explicit instruction not to route
@@ -9787,3 +9851,10 @@ aiops_phase_1:
 *v5.70 2026-06-09: Gaṇita (L1) naming reconciliation COMPLETE. Migration 195 relabels all 8 `ganita.*` asset_registry ids → `ga_*` (ga_positions, ga_vargas, ga_dashas, ga_strength, ga_sensitive, ga_panchanga, ga_sade_sati, ga_tajaka). Physical tables unchanged. Cross-layer depends_on in kala.kalasutra / kala.vighnakara / phala.muhurta updated. Seed + 2 TS retrieve consumers + Python writer (graha_sthana_writer.py) + brahma_pipeline.py updated. L1_GANITA_BUILD_CAMPAIGN_HANDOFF_v1_0.md updated. Verified on prod: 8 ga_* rows, 0 ganita.* rows. Commit d0de442b (Phase 1); governance docs in Phase 2 commit on feature/ganita-naming-reconciliation. CLAUDE.md bumped v5.0 → v5.1.*
 
 *v5.71 2026-06-09: Panchanga Service and Registry (3-phase brief execution on `feature/panchanga-service-registry`). **P1** — asset_registry schema upgrade: migration 202 adds asset_type/layer_name/layer_index/provides_apis/health_probe/catalog_status columns + storage_type='service' CHECK; orchestrator service-health dispatch path; cockpit ServiceHealthPill + catalog_status badge; seed AssetDef interface upgraded. **P2** — panchanga engine re-arch: `panchanga_instant(instant,lat,lon,tz_offset)→PanchangaInstant` + `panchanga_day(date,lat,lon,tz_offset)→Panchang` APIs added to panchang_engine (version 2.0.0-P2); `muhurat/` sibling package created (finder.py + __init__.py); panchang_engine/muhurat.py converted to backward-compat shim; tz_offset_minutes default stripped from core; pyjhora_adapter/panchanga.py retired (single-engine rule); README relabelled L1.5→L0 Brahmagyan service. FORENSIC gate: `panchanga_instant(datetime(1984,2,5,10,43), 20.27, 85.84, 330)` → Shukla Tritiya/Purva Bhadrapada/Shiva/Garaja/Ravivara — PASS (test_native_panchanga_values). **P3** — L0 service asset registration (deliberate L0 seal reopen): migrations 202+203 author two new L0 service rows — `bg_panchanga` (sort_order=13) + `bg_ephemeris_engine` (sort_order=14); both added to seed + CAPABILITY_MANIFEST.json (entry_count 117→119); health-probe runners wired in service_probes.py; L0 Vimarśaka over both assets (see below). **L0 Vimarśaka (bg_panchanga):** (V1) Single canonical engine — confirmed: panchang_engine/ is the only panchang computation path; pyjhora_adapter/panchanga.py deleted; no duplicate path exists. (V2) Deterministic smoke — FORENSIC gate PASS 5/5 under Lahiri/swisseph. (V3) FORENSIC-consistent — test_native_panchanga_values green. (V4) Zero LLM — confirmed: panchang_engine/ imports only swisseph, not any LLM client. (V5) Supported domain declared — provides_apis JSON lists panchanga_instant + panchanga_day. VERDICT: GREEN. **L0 Vimarśaka (bg_ephemeris_engine):** (V1) Single canonical impl — pyswisseph with DE441; no duplicate ephemeris. (V2) Probe defined — probe_type=ephemeris_engine; 3 checks (swisseph import, DE441 position query, MEAN_NODE-Rahu invariant). (V3) FORENSIC-consistent — forensic_jd=2445701.948264; Sun in Makara (sign 10) sidereal Lahiri. (V4) Zero LLM — confirmed. (V5) Domain declared — swisseph.calc_ut + swisseph.houses_ex. VERDICT: GREEN. L0 Brahmagyan count: 12 data assets (CURRENT) → 12 data + 2 service = 14 total L0 assets. Branch feature/panchanga-service-registry; P1 commit 7f27c330; P2 commit 19903b8c; P3 commit pending. Operator pending: apply migrations 202+203 to prod via Cloud Console; re-seed; smoke cockpit service-health tiles.*
+
+*v6.65 2026-08-22: PARIPRASHNA-P3-PREFLIGHT (Parts A-H) close. New §2 top entry + §3 narrative
+entry, scoped strictly to the Paripraśna arc (not a backfill of other campaigns' activity since
+the prior §2 entry, 2026-08-10). DD-13 closed by direct native ruling; DD-27 filed; DD-19/20/22/25
+register-accuracy pass; Baseline v1.2->v1.3. Full account: campaign-coordination's per-part
+entries; PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md's amended DD entries. See §2/§3 above for
+the full close summary this footer line points to, not duplicates.*

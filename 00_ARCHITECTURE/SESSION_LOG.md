@@ -36837,3 +36837,141 @@ session_close:
 Verify the exact protected governance PR has merged, verify its resulting
 `origin/main` and the remotely released bridge lease, run the campaign-scoped process
 check, and issue the superseding safe-handoff receipt before any Claude Code §28 start.
+
+---
+
+## Session: PARIPRASHNA-P3-PREFLIGHT-PART-G-H-2026-08-22
+
+**Tool:** Claude Code. **Honest process note, not a formal `session_open` block:** this
+session did not begin with the fingerprint-audited SESSION_OPEN handshake this file's
+own recent entries model — it began mid-flight, handed a native ruling ("CONTINUE INTO
+PARTS G AND H NOW") that referenced a plan the session had never seen and could not find
+anywhere in the repository or its worktrees after a real search. Rather than fabricate a
+retroactive formal open (which would misrepresent what actually happened, against this
+project's own §N.7 item 6 discipline), this entry states plainly what did happen: the
+session asked the native directly for the missing document
+(`PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md`), verified its factual claims against
+real `git`/`gh`/`gcloud` state before acting on any of it, and proceeded from there.
+CLAUDE.md and the project's governing surfaces were read via the harness's own context
+injection at conversation start, not via an explicit per-file fingerprint audit.
+
+### Body
+
+Executed Parts G and H of `PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md` (committed to
+the repo this session, at `00_ARCHITECTURE/briefs/pariprashna_swarm/`). Full per-part
+evidence lives in `00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md`'s own dated entries
+and in the DD register's amended DD-13/19/20/22/25/27 rows
+(`PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`); this entry summarizes rather than
+duplicates.
+
+**Part G** — closed DD-13 per direct native ruling on residual (b) (option (i), status
+quo, three stated reasons, a standing population-change review trigger); filed DD-27
+after the native flagged that a docs-only PR had been observed triggering a full
+`Build & Deploy Web` job, making Part H's own registry write a real deploy; committed
+the master prompt. PR #1475, merged via merge queue, deployed (`amjis-web-01653-d2l`,
+100% traffic). A real `drift_detector` CI-baseline-ceiling trip (79→80, from registering
+a new file as a `CAPABILITY_MANIFEST` canonical entry) was hit and fixed by not
+registering it — matching the PURNATA/SAMĀPTI/NIḤŚEṢA precedent — not by raising the
+ceiling.
+
+**Part H items 1-2** — found, reading the DD register fresh rather than trusting the
+master prompt's own summary, that DD-19/20/22/25 had already closed live in earlier
+Parts but their register status lines were never updated; traced each claim to its real
+evidence in `campaign-coordination` and corrected all four. Regenerated
+`PARIPRASHNA_ASBUILT_BASELINE_v1_0.md` to v1.3 (new §8, scoped honestly to what this
+gate actually touched — GAP-6's `table` sub-case closed at the data layer, GAP-14
+further narrowed, neither over-claimed). PR #1477, merged, deployed
+(`amjis-web-01655-8wj`, 100% traffic).
+
+**Part H item 5 — combined live verification turn (performed before this close entry, so
+its real evidence could be included rather than promised):** a real production turn
+against the synthetic test chart (Abhinandan Mohanty, `1c826d5a-41cb-4450-b4dc-59d440e5f75a`
+— never the native's own chart), via an actual Chrome browser (chrome-devtools MCP, not
+the `g-mobile.spec.ts` fixture harness, which cannot render `RightDock`), true CDP device
+metrics `390x844x3, mobile, touch`. Query: "Give me a table comparing my top 3 planetary
+strengths by house and sign, and suggest one remedy I should consider for the weakest of
+the three." (A UI automation artifact duplicated the query text in the sent message —
+disclosed, not hidden; the query still parsed and answered correctly, confirmed by the
+response content.) The turn authenticated as the pre-existing `probe-service-account` QA
+identity already present in this browser profile (the same identity DD-13's own
+cross-tenant-denial verification used), not the native's own credentials, confirmed by
+inspecting the real request's `Cookie` payload — better-scoped than the session's own
+initial plan to mint a native-identity cookie via `mint_session_cookie.ts`, which turned
+out to be unnecessary. All five required elements independently confirmed, directly
+against the real request/response and the live DOM, not inferred from the model's own
+prose:
+  - **Table:** `document.querySelectorAll('table')` → exactly one real `<table>` element
+    with a proper `<thead><tr><th scope="col">` structure and 3 `<tbody>` rows — closes
+    the one caveat DD-22's own Part-C evidence had explicitly left unconfirmed (client
+    DOM rendering, as opposed to wire/persistence-layer only).
+  - **Citations:** 6 real `citation.define` SSE events (`signal_id`s `PLN.SATURN`,
+    `YGA.SASHA_MPY`, `PLN.SUN`, `RM.07`, `PLN.JUPITER`, `RM.03`), matching the receipt's
+    `facts_consumed` (6 entries, same refs) exactly.
+  - **interpretation_sets:** 2 real generated sets (`sig-domain_verdict-1`,
+    `sig-time_indexed-1`), each carrying 3 genuinely distinct candidates, a
+    `selected_index`, a `selected_rationale`, and a `falsifier` — `detected_count: 2,
+    covered_count: 2, waived_count: 0`.
+  - **Typed confidence:** `confidence_type: "structural_prior"` populated on all 6
+    citations; `confidence_typing.status: "measured"`.
+  - **Remedial guidance:** a real, structured Jupiter remedy (material: turmeric/yellow
+    lentils; mantra: *Om Brihaspataye Namah*, 108x; timing: Thursday morning Jupiter
+    Hora) rendered in the response, correctly targeted at the weakest of the three named
+    planets per the query.
+  - **Bonus, unrequested but real:** `safety_decision.enforced: true, action: "proceed"`;
+    a real `accumulated_text_sha256`; a single unsplit `paragraph`/`verdict` block
+    carrying the table via `table_spans` — exactly DD-22 approach (c)'s design, not a
+    split block. **Honest observation, not investigated further (out of this turn's
+    scope):** `evidence_grades` on this turn reports `grade_counts.unverified: 6,
+    hallucination_count: 6` — none of the 6 facts this turn cited reached a
+    two-pass-verified grade. This is the system's own honest-disclosure mechanism
+    reporting accurately, per §N.7 — not a defect this turn found or fixed, and not
+    claimed as verified when it plainly is not.
+  - Full raw evidence (screenshot, raw SSE response) saved to session scratchpad, not
+    committed to the repo (evidence artifacts, not code).
+
+**Registry updates this session:**
+```yaml
+registry_updates_made:
+  capability_manifest:
+    - {canonical_id: "PARIPRASHNA_SWARM_PLAN_AMENDMENTS", change: "fingerprint rotated twice (Part G, Part H items 1-2), reflecting the DD-13/19/20/22/25/27 edits"}
+    - {canonical_id: "PARIPRASHNA_ASBUILT_BASELINE", change: "version 1.2->1.3, fingerprint rotated"}
+    - {canonical_id: "PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT", change: "deliberately NOT registered — see the file's own frontmatter and campaign-coordination for why (drift_detector CI baseline ceiling)"}
+  file_registry: []  # FILE_REGISTRY is SUPERSEDED since 2026-04-28 (content absorbed into CAPABILITY_MANIFEST.json); not touched, correctly
+  native_directives: []  # no open ND named by this arc's work; NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md correctly not touched
+  current_state:
+    - {change: "v6.64->6.65; new §2 top entry + §3 narrative entry, scoped strictly to the Paripraśna P3-preflight arc"}
+```
+
+**drift_detector runs this session (all local, pre-commit; each PR's own CI re-ran and
+confirmed):** Part G first attempt 80/exit 1 (over baseline, fixed); Part G final
+79/exit 3 (at baseline); Part H items 1-2: 79/exit 3 (at baseline, zero new findings of
+any class). Real baseline ceiling this session worked against: **79** (not the older
+164/216 figures cited in earlier entries in this file — the ceiling has moved down over
+time as prior sessions fixed drift; read the live number at write time, never predict
+it, per this document's own §5-equivalent discipline).
+
+**native_overrides:**
+```yaml
+native_overrides:
+  - {override_id: "DD-13-RESIDUAL-B-RULING-20260822", issued_at: "2026-08-22", description: "Native ruled directly on DD-13 residual (b)'s open branch-(b) call: option (i) status quo, with three stated reasons and a standing population-change review trigger (not an open obligation). Recorded verbatim in the DD register's DD-13 entry.", scope_effect: "DD-13 fully CLOSED."}
+  - {override_id: "PART-H-DEPLOY-DISCIPLINE-20260822", issued_at: "2026-08-22", description: "Native instructed that Part H's batched governance-registry write, though docs-only, be treated as a real production deploy given the observed deploy-trigger over-scoping — check what is on main first, announce the Cloud Run revision tag, run full canary discipline.", scope_effect: "Filed as DD-27; binding on this and every future Part H-equivalent close."}
+```
+
+**halts_encountered:** none in the formal sense (no work was blocked mid-task), but one
+explicit scope check via `AskUserQuestion` at the Part-G/Part-H boundary, per this
+session's own established pattern of checking in at Part boundaries — the native chose
+to proceed immediately.
+
+**Cross-campaign:** every merge this session made queued normally in the shared merge
+queue behind the sibling PARIŚEṢA-RĀTRī-V4 campaign's own concurrent PRs (#1474, #1479,
+#1480 all interleaved with this session's #1475/#1477), zero collision, per
+`CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md` §7.
+
+**close_criteria_met:** true for Parts G and H. **P3 (ONE ENGINE, ONE DOOR) may now
+open**, per the master prompt's own §9 — its tag is the one item still pending after this
+entry, to follow immediately as the last act of this same session.
+
+### Next session objective
+
+Open P3 per the master prompt's §9 dependency order (P3-A first; DD-22 already merged,
+satisfying P3-B's precondition). No other Paripraśna work is currently blocking.
