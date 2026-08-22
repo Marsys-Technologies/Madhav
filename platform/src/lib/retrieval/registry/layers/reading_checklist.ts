@@ -23,6 +23,7 @@
  */
 import { query } from '@/lib/db/client'
 import { grahaCodeOf, GRAHA_CODE_TO_NAME } from '@/lib/retrieval/address_resolver'
+import { CANONICAL_DOMAINS } from '@/lib/domain_vocabulary'
 
 // ── The checklist vocabulary (design §28.6, generalized) ──────────────────────
 
@@ -591,6 +592,86 @@ export async function fetchGocharaSweep(
     }))
   } catch {
     // non-fatal: leg degrades to honest not-computed upstream.
+  }
+  return out
+}
+
+// ── F-165 (PARIŚEṢA-V4): domain-population structural-emptiness disclosure ──────────────
+//
+// F-57 fixed VOCABULARY correctness: is `resolved_signal_domain` a real member of the
+// canonical 13-domain vocabulary. This is a DIFFERENT axis, POPULATION: does either source
+// table that judgment_query's threat layer reads (bodha_msr_signals / bodha_mechanisms) carry
+// ANY row at all — of any valence — tagged with that domain, for this chart. 'general' is
+// vocabulary-exact and canonical, and (measured live against the canonical chart 482012f1 on
+// 2026-08-22) carries ZERO bodha_msr_signals rows; bodha_mechanisms carries rows for only 1 of
+// the 13 canonical domains ('wealth'). Neither fact is visible from is_exact/is_canonical
+// alone, so an `afflictions_empty` result for either domain reads as a genuine all-clear when
+// it is actually "this store has never been populated for this tag" — conflating the two axes
+// is exactly the flattening §N.6 forbids.
+//
+// The counts here are ALWAYS a real live query against the two source tables for this specific
+// chart_id/ayanamsha_id/signal_domain — never a hardcoded list of domains known (at plan time)
+// to be empty. A hardcoded list is a constant that drifts the moment either store gains rows
+// for a previously-empty domain (§N.7 item 3), and would itself be the §N.8 defect this finding
+// closes: a signal ("this domain is unpopulated") whose detector never actually re-measures the
+// claim it makes.
+export interface DomainStructuralCoverageResult {
+  /** Total bodha_msr_signals rows tagged with this domain, ANY valence (not just malefic/mixed). */
+  msr_signals: number
+  /** Total bodha_mechanisms rows tagged with this domain, ANY valence. */
+  mechanisms: number
+  /** How many of the 13 canonical domains bodha_mechanisms carries at least one row for, chart-wide. */
+  mechanisms_domain_coverage: number
+  /** Size of the canonical domain vocabulary (13) — the denominator for mechanisms_domain_coverage. */
+  total_canonical_domains: number
+  /** true iff BOTH source tables carry zero rows for this domain — the F-165 disclosure trigger. */
+  structurally_unpopulated: boolean
+  /** true iff the coverage query actually ran; false means "could not measure", not "measured zero". */
+  available: boolean
+}
+
+export async function fetchDomainStructuralCoverage(
+  chart_id: string,
+  ayanamsha_id: string,
+  signal_domain: string,
+): Promise<DomainStructuralCoverageResult> {
+  const out: DomainStructuralCoverageResult = {
+    msr_signals: 0,
+    mechanisms: 0,
+    mechanisms_domain_coverage: 0,
+    total_canonical_domains: CANONICAL_DOMAINS.length,
+    structurally_unpopulated: false,
+    available: false,
+  }
+  try {
+    const res = await query<{ msr_count: number; mech_count: number; mech_domain_coverage: number }>(
+      `WITH msr AS (
+         SELECT count(*)::int AS c FROM bodha_msr_signals
+          WHERE chart_id = $1 AND ayanamsha_id = $2 AND $3 = ANY(domains_affected_array)
+       ), mech AS (
+         SELECT count(*)::int AS c FROM bodha_mechanisms
+          WHERE chart_id = $1 AND ayanamsha_id = $2 AND $3 = ANY(domains_affected_array)
+       ), mech_domains AS (
+         SELECT count(DISTINCT d)::int AS c FROM (
+           SELECT unnest(domains_affected_array) AS d FROM bodha_mechanisms
+            WHERE chart_id = $1 AND ayanamsha_id = $2
+         ) s
+       )
+       SELECT msr.c AS msr_count, mech.c AS mech_count, mech_domains.c AS mech_domain_coverage
+         FROM msr, mech, mech_domains`,
+      [chart_id, ayanamsha_id, signal_domain],
+    )
+    const row = res.rows[0]
+    if (row) {
+      out.msr_signals = row.msr_count
+      out.mechanisms = row.mech_count
+      out.mechanisms_domain_coverage = row.mech_domain_coverage
+      out.structurally_unpopulated = row.msr_count === 0 && row.mech_count === 0
+      out.available = true
+    }
+  } catch {
+    // non-fatal: leg degrades to "could not measure" (available: false) — never a fabricated
+    // zero or a fabricated "populated" claim (B.10).
   }
   return out
 }

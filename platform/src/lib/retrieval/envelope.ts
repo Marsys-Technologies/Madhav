@@ -1123,6 +1123,13 @@ export const JUDGMENT_FLAG_CODES = [
   // against a named tag (CLAUDE.md §N.6 pt 3 / §N.7 pt 6 / §N.8).
   'domain_resolution_aliased',
   'domain_resolution_fallback',
+  // F-165 (PARIŚEṢA-V4): population, not vocabulary. A resolved signal_domain can be
+  // vocabulary-exact + canonical (is_exact/is_canonical true — e.g. 'general') and still carry
+  // ZERO rows in bodha_msr_signals/bodha_mechanisms for this chart — a different axis than
+  // domain_resolution's vocabulary check, disclosed separately so an empty threat layer is
+  // never misread as a clean-chart finding. Derived from a real live count each call, never a
+  // hardcoded known-empty-domain list (§N.7 item 3 / §N.8).
+  'domain_structurally_unpopulated',
   // ── D8 assess_domain (folds the former {claim, requires_acharya_validation} object shape) ──
   'domain_inference_requires_acharya_validation',
   // F-113 (PARIŚEṢA-V4): the D1 (rāśi) significator-condition leg could not be assembled for

@@ -76,6 +76,7 @@ import {
   fetchSensitiveDegreeFirings,
   fetchKpCuspChain,
   fetchGocharaSweep,
+  fetchDomainStructuralCoverage,
   checklistExhaustiveness,
   DOMAIN_KP_CUSPS,
   DOMAIN_INDU_LAGNA,
@@ -610,12 +611,26 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
     // chart. Every response now states the resolution, and flags it whenever the resolved
     // domain is not the requested one.
     const requestedDomainKey = domainKey ?? (domainInput ?? null)
+    // F-165: filled in below (Step "afflictions/mechanisms") from a REAL live count against
+    // bodha_msr_signals/bodha_mechanisms — never a hardcoded list of known-empty domains
+    // (§N.7 item 3 / §N.8). null until that query runs; distinguishes "not yet measured" from
+    // "measured zero" for any caller reading this object before the coverage query executes.
+    let signal_domain_row_coverage: { msr_signals: number; mechanisms: number } | null = null
     const domain_resolution = {
       requested: requestedDomainKey,
       requested_bhava: domainInput ? null : spec.bhava,
       resolved_signal_domain: spec.signal_domain,
       is_exact: requestedDomainKey === spec.signal_domain,
       is_canonical: isCanonicalDomain(spec.signal_domain),
+      // F-165: population, NOT vocabulary. is_exact/is_canonical above are correct about
+      // whether `resolved_signal_domain` is a real member of the 13-domain vocabulary — they
+      // say nothing about whether either source table has ever carried a row tagged with it.
+      // 'general' is vocabulary-exact AND canonical AND (on the canonical chart) carries ZERO
+      // bodha_msr_signals rows — a different axis entirely; conflating the two is the defect
+      // this finding closes (§N.6). get signal_domain_row_coverage.
+      get signal_domain_row_coverage() {
+        return signal_domain_row_coverage
+      },
       applies_to: [
         'bearing_yogas_corroboration (bodha_msr_signals.domains_affected_array)',
         'bearing_afflictions (bodha_msr_signals.domains_affected_array)',
@@ -627,7 +642,12 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         'The domain-scoped legs listed in applies_to are keyed by the CANONICAL 13-domain ' +
         'vocabulary (brahmagyan/domain_vocabulary.py), not by the shastra-map domain key. ' +
         'resolved_signal_domain is the tag those legs were actually queried with — read any ' +
-        'empty domain-scoped leg against THIS value, not against `requested` (F-57).',
+        'empty domain-scoped leg against THIS value, not against `requested` (F-57). ' +
+        'signal_domain_row_coverage (F-165) is the separate population axis: {msr_signals, ' +
+        'mechanisms} total row counts (any valence) for resolved_signal_domain, measured live ' +
+        'per call — a domain can be vocabulary-exact/canonical (is_exact/is_canonical true) ' +
+        'and still carry zero rows in either or both source tables, which the ' +
+        '`domain_structurally_unpopulated` judgment_flag discloses (see afflictions_empty).',
     }
     if (bareBhavaNoCanonicalDomain) {
       judgment_flags.push(judgmentFlag(
@@ -1255,6 +1275,15 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       // composite; supporting and threatening layers are served SEPARATELY.
       let bearing_afflictions: Record<string, unknown>[] = []
       let affliction_mechanisms: Record<string, unknown>[] = []
+      // F-165: the mechanisms store's actual domain coverage — reported on EVERY call,
+      // populated or not (§N.8: "nothing excluded" must not read as "never evaluated"). Never
+      // a hardcoded list of covered/uncovered domains; always a live count against
+      // bodha_mechanisms for THIS chart/ayanamsha (see fetchDomainStructuralCoverage below).
+      let affliction_mechanisms_coverage: {
+        covered_domains: number
+        total_canonical_domains: number
+        this_domain_covered: boolean
+      } | null = null
       try {
         const advRes = await query<{
           signal_id: string; signal_type_id: string; signal_summary_text: string | null
@@ -1300,6 +1329,37 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       } catch (e) {
         judgment_flags.push(judgmentFlag('afflictions_fetch_failed', String(e)))
       }
+
+      // F-165: structural-population coverage, ANY valence — a real live count each call,
+      // never a hardcoded list of known-empty domains (§N.7 item 3 / §N.8). Distinct from the
+      // malefic/mixed-only afflictions fetch above: this measures whether the source tables
+      // have EVER carried a row tagged with resolved_signal_domain at all, so a zero here
+      // cannot be read as "chart is clean" — it means the domain was never populated in this
+      // store. Runs independently of the afflictions fetch's own try/catch so a coverage-query
+      // failure never masks an otherwise-successful afflictions result (or vice versa).
+      const coverage = await fetchDomainStructuralCoverage(chart_id, ayanamsha_id, spec.signal_domain)
+      if (coverage.available) {
+        signal_domain_row_coverage = { msr_signals: coverage.msr_signals, mechanisms: coverage.mechanisms }
+        affliction_mechanisms_coverage = {
+          covered_domains: coverage.mechanisms_domain_coverage,
+          total_canonical_domains: coverage.total_canonical_domains,
+          this_domain_covered: coverage.mechanisms > 0,
+        }
+        if (coverage.structurally_unpopulated) {
+          judgment_flags.push(judgmentFlag(
+            'domain_structurally_unpopulated',
+            `canonical domain '${spec.signal_domain}' carries ZERO rows (any valence) in both ` +
+            'bodha_msr_signals and bodha_mechanisms for this chart — this is a DIFFERENT axis ' +
+            "from domain_resolution.is_exact/is_canonical (vocabulary correctness): 'general' " +
+            'IS a canonical, vocabulary-exact tag, but nothing in these stores has ever been ' +
+            `tagged with it (mechanisms store covers ${coverage.mechanisms_domain_coverage} of ` +
+            `${coverage.total_canonical_domains} canonical domains total). Read the ` +
+            'afflictions_empty flag below (if present) against THIS structural-emptiness, not ' +
+            'as a clean-chart finding (F-165) — measured live, never from a hardcoded ' +
+            'known-empty-domain list.',
+          ))
+        }
+      }
       if (bearing_afflictions.length === 0 && affliction_mechanisms.length === 0) {
         judgment_flags.push(judgmentFlag(
           'afflictions_empty',
@@ -1309,7 +1369,10 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           'F-57: this flag names the CANONICAL domain the threat layer was queried with, not the ' +
           'requested key — an empty threat layer is only an all-clear for that tag (see ' +
           '`domain_resolution`). Prior to F-57 eleven domains queried the dead literal ' +
-          "'other', which matches nothing, so this flag could not ever read false for them.",
+          "'other', which matches nothing, so this flag could not ever read false for them. " +
+          'F-165: if `domain_structurally_unpopulated` is ALSO present above, this emptiness is ' +
+          'structural non-coverage, not a clean-chart signal — see domain_resolution.' +
+          'signal_domain_row_coverage.',
         ))
       } else {
         judgment_flags.push(judgmentFlag(
@@ -1501,6 +1564,10 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             // DR-9 Part B: the threatening layer (signed partitioned serve).
             bearing_afflictions,
             affliction_mechanisms,
+            // F-165: the store's own coverage, always present (populated or not) — so a 0-row
+            // leg reads as "this store covers N of 13 canonical domains and not this one" when
+            // that is the truth, never as a clean-chart finding (§N.8).
+            affliction_mechanisms_coverage,
             timing_hooks: timing,
             // T5 (PŪRTI): the three computed-but-never-joined classical legs, now served inline.
             sensitive_degree_firings: sensitive.firings,
