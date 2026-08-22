@@ -1795,17 +1795,22 @@ class TestF61SaptavargajaScoreMaterialized:
         def cursor(self, row_factory=None):
             return TestF61SaptavargajaScoreMaterialized._Cur(self.calls, self._rows)
 
-    # GA6-shaped rows: (id, varga, fact_value_num, fact_value_text)
-    @staticmethod
-    def _full_seven():
+    # F-170: chart_divisionals also carries build_id_uuid; a fixture modeling
+    # a real single-canonical-build GA6 result uses the same value for every
+    # row.
+    BUILD_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+
+    # GA6-shaped rows: (id, varga, fact_value_num, fact_value_text, build_id_uuid)
+    @classmethod
+    def _full_seven(cls):
         return [
-            ("id-d1",  "D1",  45.0,  "Moolatrikona"),
-            ("id-d2",  "D2",  30.0,  "Own"),
-            ("id-d3",  "D3",  22.5,  "Adhi_Mitra"),
-            ("id-d7",  "D7",  15.0,  "Mitra"),
-            ("id-d9",  "D9",   7.5,  "Sama"),
-            ("id-d12", "D12",  3.75, "Shatru"),
-            ("id-d30", "D30",  1.875, "Adhi_Shatru"),
+            ("id-d1",  "D1",  45.0,  "Moolatrikona", cls.BUILD_UUID),
+            ("id-d2",  "D2",  30.0,  "Own", cls.BUILD_UUID),
+            ("id-d3",  "D3",  22.5,  "Adhi_Mitra", cls.BUILD_UUID),
+            ("id-d7",  "D7",  15.0,  "Mitra", cls.BUILD_UUID),
+            ("id-d9",  "D9",   7.5,  "Sama", cls.BUILD_UUID),
+            ("id-d12", "D12",  3.75, "Shatru", cls.BUILD_UUID),
+            ("id-d30", "D30",  1.875, "Adhi_Shatru", cls.BUILD_UUID),
         ]
 
     def _rows_for(self, div_rows):
@@ -1878,7 +1883,7 @@ class TestF61SaptavargajaScoreMaterialized:
 
     def test_null_scored_ga6_row_is_skipped_not_coerced(self):
         rows = [row for row in self._full_seven() if row[1] != "D30"]
-        rows.append(("id-d30", "D30", None, None))
+        rows.append(("id-d30", "D30", None, None, self.BUILD_UUID))
         for r in self._saptav(rows):
             assert r["fact_value_num"] == pytest.approx(125.625 - 1.875)
             assert r["fact_value_jsonb"]["vargas_missing"] == ["D30"]
@@ -1909,7 +1914,7 @@ class TestF61SaptavargajaScoreMaterialized:
         assert list(sut.SAPTAVARGA_EXPECTED_VARGAS) in [p for p in params if isinstance(p, list)]
 
         # And a D60 row handed to the aggregator is dropped, not summed.
-        rows = self._full_seven() + [("id-d60", "D60", 30.0, "Own")]
+        rows = self._full_seven() + [("id-d60", "D60", 30.0, "Own", self.BUILD_UUID)]
         # (the SQL filter excludes it upstream; this asserts the expected-group
         # contract the aggregate reports against does not grow a D60 entry)
         for r in self._saptav(rows):
@@ -1925,3 +1930,265 @@ class TestF61SaptavargajaScoreMaterialized:
         for r in saptav:
             assert r["fact_value_num"] is None
             assert r["fact_value_text"] == "unavailable_0_of_7"
+
+
+class TestF167VimsopakaTotalMaterialized:
+    """F-167: `vimsopaka_bala_per_graha.<graha>.vimsopaka_total` used to be
+    served with fact_value_num=NULL on every graha of every chart — a
+    fact_key literally named "...total" that carried no total, only a JSONB
+    pointer to GA6 rows a caller would have to re-derive the sum from
+    themselves. Same defect shape as F-61's saptavargaja_score
+    (TestF61SaptavargajaScoreMaterialized above); this class copies that
+    class's structure exactly, including the golden-value test.
+
+    F-168 precondition: ga_vargas_writer.VIMSOPAKA_SHODA_WEIGHTS (the table
+    that feeds the varga_vimsopaka_contribution rows this aggregate sums) is
+    fixed in the same PR — D40/D45 were both wrongly 1.0, now 0.5 per L0
+    (brahmagyan/l0_reference.py _VIMSHOPAKA["shodashavarga"]) — so the 16
+    weights sum to exactly 20 (Vimsopaka == "twenty-point", BPHS Ch.7). The
+    golden value below is exactly that sum.
+    """
+
+    class _Cur:
+        def __init__(self, calls, rows):
+            self._calls, self._rows = calls, rows
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def execute(self, sql, params=None):
+            self._calls.append((sql, params))
+        def fetchall(self): return self._rows
+
+    class _Conn:
+        def __init__(self, rows):
+            self.calls = []
+            self._rows = rows
+        def cursor(self, row_factory=None):
+            return TestF167VimsopakaTotalMaterialized._Cur(self.calls, self._rows)
+
+    BUILD_UUID = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+
+    # GA6-shaped rows: (id, varga, fact_value_num, build_id_uuid). Contribution
+    # is set equal to the (post-F-168) weight table itself — i.e. this graha
+    # is treated as fully exalted (dignity_factor=1.0) in every one of the 16
+    # vargas — so the hand-computed sum is exactly 20.0, the value the
+    # Vimsopaka ("twenty-point") scheme is named for.
+    @classmethod
+    def _full_sixteen(cls):
+        from ga_writers.ga_vargas_writer import VIMSOPAKA_SHODA_WEIGHTS as W
+        varga_by_n = {1: "D1", 2: "D2", 3: "D3", 4: "D4", 7: "D7", 9: "D9",
+                      10: "D10", 12: "D12", 16: "D16", 20: "D20", 24: "D24",
+                      27: "D27", 30: "D30", 40: "D40", 45: "D45", 60: "D60"}
+        return [
+            (f"id-{vid.lower()}", vid, W[n], cls.BUILD_UUID)
+            for n, vid in sorted(varga_by_n.items())
+        ]
+
+    def _rows_for(self, div_rows):
+        return sut._build_vimsopaka_ext_rows(
+            self._Conn(rows=div_rows), MOCK_CHART_OUTPUT,
+            CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER,
+        )
+
+    def _vimso(self, div_rows):
+        return [r for r in self._rows_for(div_rows)
+                if r["fact_category"] == "vimsopaka_bala_per_graha"]
+
+    # ── the regression itself ────────────────────────────────────────────────
+
+    def test_total_is_no_longer_null_when_ga6_rows_exist(self):
+        """The F-167 regression guard. Before the fix this was None for every graha."""
+        for r in self._vimso(self._full_sixteen()):
+            assert r["fact_value_num"] is not None, (
+                f"F-167 regression: {r['fact_subject']} vimsopaka_total is NULL "
+                "again despite GA6 constituent rows being present"
+            )
+
+    def test_score_equals_hand_computed_sum(self):
+        """Hand-computed: the 16 (post-F-168) shodasavarga weights sum to
+        exactly 20.0 — Vimsopaka literally means "twenty-point" (BPHS Ch.7).
+        This also pins that F-168's weight fix actually landed: if D40/D45
+        were still 1.0 each, this fixture (built straight from the live
+        weight table) would sum to 21.0, not 20.0.
+        """
+        from ga_writers.ga_vargas_writer import VIMSOPAKA_SHODA_WEIGHTS as W
+        expected = sum(W.values())
+        assert expected == 20.0
+        for r in self._vimso(self._full_sixteen()):
+            assert r["fact_value_num"] == pytest.approx(20.0), (
+                f"{r['fact_subject']}: expected 20.0 points, got {r['fact_value_num']}"
+            )
+
+    def test_unit_and_constituent_ids_preserved(self):
+        for r in self._vimso(self._full_sixteen()):
+            assert r["unit"] == "point"
+            # §N.5: the L1-authority references must survive the aggregation
+            assert len(r["fact_value_jsonb"]["constituent_fact_ids"]) == 16
+
+    # ── honest coverage (§N.7 item 6 / §N.8) ─────────────────────────────────
+
+    def test_full_coverage_reports_complete(self):
+        for r in self._vimso(self._full_sixteen()):
+            assert r["fact_value_text"] == "complete_16_of_16"
+            assert r["fact_value_jsonb"]["coverage_complete"] is True
+            assert r["fact_value_jsonb"]["vargas_missing"] == []
+
+    def test_partial_coverage_is_flagged_not_silently_summed(self):
+        """A partial sum must never present itself as a whole one."""
+        full = self._full_sixteen()
+        d60_weight = next(row[2] for row in full if row[1] == "D60")
+        partial = [row for row in full if row[1] != "D60"]
+        for r in self._vimso(partial):
+            assert r["fact_value_num"] == pytest.approx(20.0 - d60_weight)
+            assert r["fact_value_text"] == "partial_15_of_16"
+            assert r["fact_value_jsonb"]["coverage_complete"] is False
+            assert r["fact_value_jsonb"]["vargas_missing"] == ["D60"]
+            assert "INCOMPLETE" in r["citation_human"]
+
+    def test_no_ga6_rows_yields_honest_null_not_zero(self):
+        """0.0 would read as a real 'no strength' verdict. Absence is NULL."""
+        for r in self._vimso([]):
+            assert r["fact_value_num"] is None
+            assert r["fact_value_text"] == "unavailable_0_of_16"
+            assert r["fact_value_jsonb"]["coverage_complete"] is False
+
+    def test_null_scored_ga6_row_is_skipped_not_coerced(self):
+        full = self._full_sixteen()
+        rows = [row for row in full if row[1] != "D60"]
+        rows.append(("id-d60", "D60", None, self.BUILD_UUID))
+        for r in self._vimso(rows):
+            assert r["fact_value_jsonb"]["vargas_missing"] == ["D60"]
+
+    # ── the shodasavarga membership itself ───────────────────────────────────
+
+    def test_expected_varga_group_is_the_classical_sixteen(self):
+        """The 16-member group the Vimsopaka scheme sums over. Authority:
+        this repo's own l0_reference._VIMSHOPAKA["shodashavarga"] table."""
+        assert sut.SHODASAVARGA_EXPECTED_VARGAS == (
+            "D1", "D2", "D3", "D4", "D7", "D9", "D10", "D12",
+            "D16", "D20", "D24", "D27", "D30", "D40", "D45", "D60",
+        )
+        assert len(sut.SHODASAVARGA_EXPECTED_VARGAS) == 16
+
+    # ── conn=None must stay safe (the pre-existing no-DB test path) ──────────
+
+    def test_conn_none_still_emits_rows_with_honest_null(self):
+        rows = sut._build_vimsopaka_ext_rows(
+            None, MOCK_CHART_OUTPUT, CHART_ID, BUILD_ID, AY_ID, COMPUTED_AT, ENG_VER)
+        vimso = [r for r in rows if r["fact_category"] == "vimsopaka_bala_per_graha"]
+        assert len(vimso) == len(sut.CLASSICAL_GRAHAS)
+        for r in vimso:
+            assert r["fact_value_num"] is None
+            assert r["fact_value_text"] == "unavailable_0_of_16"
+
+
+class TestF170DistinctBuildAssertion:
+    """F-170: `_get_saptavargaja_components`, `_get_divisional_constituent_ids`,
+    and `_get_shodasavarga_components` (all in ga_structural_writer.py) each
+    read chart_divisionals rows across a varga group for one graha. Migration
+    218's unique index deliberately excludes build_id on the documented
+    invariant that "the data plane holds one canonical build per chart" — but
+    prior to this fix nothing DETECTED that invariant breaking; a violation
+    would have been silently summed into a wrong aggregate. This is the
+    read-side detector (§N.8): a distinct-build assertion, not a silent
+    filter.
+
+    Mutation-checked: reverting the `if len(builds) > 1: raise RuntimeError`
+    guard in any of the three functions makes its "raises_on_multiple_builds"
+    test below fail (the call returns normally instead of raising) — verified
+    by hand during implementation.
+    """
+
+    class _Cur:
+        def __init__(self, calls, rows):
+            self._calls, self._rows = calls, rows
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def execute(self, sql, params=None):
+            self._calls.append((sql, params))
+        def fetchall(self): return self._rows
+
+    class _Conn:
+        def __init__(self, rows):
+            self.calls = []
+            self._rows = rows
+        def cursor(self, row_factory=None):
+            return TestF170DistinctBuildAssertion._Cur(self.calls, self._rows)
+
+    BUILD_A = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
+    BUILD_B = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"
+
+    # ── _get_saptavargaja_components ─────────────────────────────────────────
+
+    def test_saptavargaja_components_raises_on_multiple_builds(self):
+        """The constructed-duplicate-build case. Must currently pass silently
+        on unfixed code (summing across builds) and only raise after the
+        F-170 fix."""
+        rows = [
+            ("id-d1", "D1", 45.0, "Moolatrikona", self.BUILD_A),
+            ("id-d2", "D2", 30.0, "Own", self.BUILD_B),
+        ]
+        conn = self._Conn(rows=rows)
+        with pytest.raises(RuntimeError, match="one-canonical-build invariant"):
+            sut._get_saptavargaja_components(conn, CHART_ID, AY_ID, "SUN")
+
+    def test_saptavargaja_components_single_build_does_not_raise(self):
+        rows = [
+            ("id-d1", "D1", 45.0, "Moolatrikona", self.BUILD_A),
+            ("id-d2", "D2", 30.0, "Own", self.BUILD_A),
+        ]
+        conn = self._Conn(rows=rows)
+        out = sut._get_saptavargaja_components(conn, CHART_ID, AY_ID, "SUN")
+        assert len(out) == 2
+
+    # ── _get_divisional_constituent_ids ──────────────────────────────────────
+
+    def test_divisional_constituent_ids_raises_on_multiple_builds(self):
+        rows = [
+            ("id-1", self.BUILD_A),
+            ("id-2", self.BUILD_B),
+        ]
+        conn = self._Conn(rows=rows)
+        with pytest.raises(RuntimeError, match="one-canonical-build invariant"):
+            sut._get_divisional_constituent_ids(
+                conn, CHART_ID, AY_ID, "varga_vimsopaka_contribution", "SUN")
+
+    def test_divisional_constituent_ids_single_build_does_not_raise(self):
+        rows = [
+            ("id-1", self.BUILD_A),
+            ("id-2", self.BUILD_A),
+        ]
+        conn = self._Conn(rows=rows)
+        out = sut._get_divisional_constituent_ids(
+            conn, CHART_ID, AY_ID, "varga_vimsopaka_contribution", "SUN")
+        assert out == ["id-1", "id-2"]
+
+    # ── _get_shodasavarga_components ─────────────────────────────────────────
+
+    def test_shodasavarga_components_raises_on_multiple_builds(self):
+        rows = [
+            ("id-d1", "D1", 3.5, self.BUILD_A),
+            ("id-d2", "D2", 1.0, self.BUILD_B),
+        ]
+        conn = self._Conn(rows=rows)
+        with pytest.raises(RuntimeError, match="one-canonical-build invariant"):
+            sut._get_shodasavarga_components(conn, CHART_ID, AY_ID, "SUN")
+
+    def test_shodasavarga_components_single_build_does_not_raise(self):
+        rows = [
+            ("id-d1", "D1", 3.5, self.BUILD_A),
+            ("id-d2", "D2", 1.0, self.BUILD_A),
+        ]
+        conn = self._Conn(rows=rows)
+        out = sut._get_shodasavarga_components(conn, CHART_ID, AY_ID, "SUN")
+        assert len(out) == 2
+
+    # ── zero-row edge case ────────────────────────────────────────────────────
+
+    def test_empty_rows_does_not_raise_in_any_of_the_three(self):
+        """No rows -> zero distinct builds -> must not raise (the assertion
+        is `> 1`, not `!= 1`)."""
+        conn = self._Conn(rows=[])
+        assert sut._get_saptavargaja_components(conn, CHART_ID, AY_ID, "SUN") == []
+        assert sut._get_divisional_constituent_ids(
+            conn, CHART_ID, AY_ID, "varga_vimsopaka_contribution", "SUN") == []
+        assert sut._get_shodasavarga_components(conn, CHART_ID, AY_ID, "SUN") == []
