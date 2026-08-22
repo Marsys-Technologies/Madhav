@@ -1,0 +1,107 @@
+[
+  {
+    "finding_id": "F-104",
+    "verdict": "DATA_PARKED",
+    "terminal_status": null,
+    "evidence": "Prior pass verified the source fix correct (mi_darshana.py commit 44d5ff5a7, PR #1299, 6x 'clean'->'not_assessed', confirmed ancestor of origin/main, merged 2026-08-15). This pass went further and checked the LIVE served data: `SELECT leakage_status, count(*) FROM mimamsa_insight_units WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' GROUP BY leakage_status` returns 115 rows, ALL leakage_status='clean' -- zero 'not_assessed' rows. `SELECT surface_formula_version, updated_at, count(*) ... GROUP BY ...` shows updated_at=2026-08-13T01:17:18Z for all 115 rows, i.e. written 2 days BEFORE the 2026-08-15 fix commit. Confirmed the file still writes 6 literal 'not_assessed' strings (grep, zero 'clean' literals remain) -- the source is genuinely fixed. But this chart's L5 mimamsa_insight_units data was never rebuilt since the fix, so it still SERVES the pre-fix fabricated-clean defect live today. Same defect class as F-116 (source fixed, chart data stale) -- needs an L5 rebuild for this chart before terminal closure.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-116",
+    "verdict": "DATA_PARKED",
+    "terminal_status": null,
+    "evidence": "Re-ran the exact prior-pass DB check: `SELECT computed_at, prescription_detail_jsonb->>'preamble_stripped', remedy_label_human FROM bodha_rm_remedy_prescriptions WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' ORDER BY computed_at DESC LIMIT 5` today (2026-08-20) -- unchanged from the prior finding: all rows still computed_at=2026-08-10, preamble_stripped still NULL on every row, and prescription de33ff2b-... still carries the raw unstripped preamble ('For Venus-related wealth affliction (...): recite Shri Sukta...') in remedy_label_human. No rebuild has occurred since the last pass. Code fix (bo_upaya.py _strip_conditional_preamble, PR #1316/f003bf3af) remains confirmed correct in source; only the served data for this chart is stale. Unchanged verdict, now DATA_PARKED per the campaign's terminal-status taxonomy (data materialization required, not code work).",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-36",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Corrected citation confirmed correct in the ledger (real fix = commit 7bf1bec1b, #1315, offset-clamp; the corpus's cfb6444c8 citation is unrelated -- already flagged by a prior pass). Ran a fresh live falsifiable canary against the canonical chart: ganita_chart_facts_get(chart_id=482012f1..., offset=999999, limit=5) returned offset_requested:999999, offset:100000, offset_clamped:true, total:5750 -- the exact disclosed-clamping behavior the finding asserts, reproduced live today, not just via source inspection.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-42",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "PR #1348 confirmed MERGED (mergedAt 2026-08-19, mergeCommit ab83d4fcc) and ancestor of origin/main -- already independently confirmed by a prior pass. Ran a fresh live falsifiable canary: ganita_dashas_get(chart_id=482012f1..., ayanamsha_id='bogus_fake_ayanamsha_xyz', level=1) returned an explicit error: {code:'invalid_ayanamsha_id', error:'get_dashas: ayanamsha_id is not one of the stored chart ayanamshas.', recognized_ayanamsha_ids:[krishnamurti, lahiri_chitrapaksha, raman, surya_siddhanta_classical, true_chitra]} -- unknown dasha ayanamshas are genuinely rejected live today, matching the finding's exact claim.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-44",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Prior pass matched commit 7bf1bec1 (#1315) source diff + dedicated test f44_recover_via_and_chapter_count.test.ts. This pass ran a live falsifiable canary: kala_story_get(chart_id=482012f1...) returned trim_report:[{path:'chapters', original_count:91, kept_count:5, recover_via:{instrument:'kala_story_get', hint:'call again with a larger budget_kb for the full chapter list'}}] and top-level chapter_count:5 -- chapter_count is genuinely resynced to the POST-trim array length (5), not the stale pre-trim original_count (91), and recover_via is a real populated instrument+hint, not null/fabricated. Exact live confirmation of the finding's claim.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-50",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Prior pass already ran a fresh worktree build (npm ci + vitest) -- 3/3 F-50 regression tests pass plus 202/202 broader L2_bodha suite pass -- and confirmed commit 877b75d12/PR #1347 merged to origin/main. This pass adds a live production canary: bodha_remedies_get(chart_id=482012f1..., graha='Venus') returned narration.lead = \"Venus leads this graha-filtered resonance result (graha 'Venus'): priority class critical (rank 1 of 9 chart-wide) -- resonance_score 0.173195.\" -- the exact honest filtered-scope wording the fix introduced (no bare '#1 remedy-priority target' superlative), reproduced live today against the canonical chart.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-52",
+    "verdict": "STILL_LANDED",
+    "terminal_status": null,
+    "evidence": "Re-ran the prior pass's exact check: `git grep -il 'fingerprint_invalidat\\|nodal_scor'` across HEAD (excluding the unrelated orchestrator substep-ledger fingerprinting hits) returns zero results -- no fingerprint-invalidation packet exists anywhere in the repo today. The underlying nodal-scoring defect remains only partially addressed. Correctly stays LANDED, not terminal; F-21 (gated on it) correctly cannot promote either.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-59",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "CAUGHT A MIS-CITATION (IF-class, per this campaign's own caution): all three ratify panels and the batch2/esc001 lineage cited commit 967f08da3 (PR #1319) as F-59's fix, sharing that commit with F-43/F-131/F-139. Independent verification shows 967f08da3 DOES touch register_p1_aliases.ts (54 lines, part of a 32-file commit) but its diff to that file is a `dualOutput()` signature change (D-08/assessment payload work) -- confirmed via `git show 967f08da3 -- register_p1_aliases.ts | grep resolveChartFactsAyanamsha` returning nothing. The REAL F-59 fix, found via LEDGER_SENTINEL.md HB-027 ('New merge: A-15 (7a1c79bf4...) -- PR #1300 F-59, 10 resolveChartFactsAyanamsha() wires + delete local alias map'), is commit 7a1c79bf4da000f1c09f5a468d24ce262afcfcc0. Verified: `git merge-base --is-ancestor 7a1c79bf4... origin/main` = ANCESTOR_YES; `gh pr view 1300` = MERGED, mergedAt 2026-08-15T21:45:47Z, mergeCommit matches; commit message 'ekv(a-15): F-59 -- wire resolveChartFactsAyanamsha at all 10 remaining sites, delete local alias map (#1300)' plus a same-PR follow-up fixing 2 missed na() calls. Current origin/main state (checked today): AYANAMSHA_MAP local constant absent (zero grep matches); resolveChartFactsAyanamsha has 13 call sites (473,585,663,728,780,998,1048,1170,1277,1322,1368,1425,2034), unchanged since the 2026-08-17 SENTINEL FM-09 count of 13 -- no drift. This is a genuine, content-matched, currently-stable fix; the campaign's own citation needs correcting from PR #1319 to PR #1300.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-65",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Prior pass matched source diff (commit 33289b579, PR #1297) adding 5th/7th/9th nodal aspect offsets to primitives.py and ga_yoga_writer.py. This pass ran a live falsifiable canary: ganita_structural_get(chart_id=482012f1..., facet='aspects') on the canonical chart, where dosha_fires already established natal Rahu=house 2, Ketu=house 8. Live aspects_given rows show RAH_MEAN casting to house_6, house_8, AND house_10 (=5th, 7th, 9th from house 2) and KET_MEAN casting to house_12, house_2, AND house_4 (=5th, 7th, 9th from house 8) -- all three special nodal aspects present live today, not truncated to the universal 7th. Direct falsification of the pre-fix defect on the actual canonical chart, beyond source inspection.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-71",
+    "verdict": "DATA_PARKED",
+    "terminal_status": null,
+    "evidence": "Re-checked ledger.json directly today: F-62 still status='DATA_PARKED' (evidence_summary: 'Confirmed protected-data item, not packet-complete (no 5-clause packet exists yet)', next_action: 'author full 5-clause protected-data packet') and F-141 still status='DATA_PARKED' (evidence_summary: 'Confirmed protected-data item, correctly held for morning checkpoint', next_action: 'morning checkpoint decision'). Neither gate has cleared since the prior pass. F-71 correctly remains blocked on both; no action taken per instructions -- matches the prior pass's own next_action of 'see evidence'.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-77",
+    "verdict": "TERMINAL",
+    "terminal_status": "CONTROL_CLOSED",
+    "evidence": "Positive control (CL-00), no defect asserted -- kala_field_snapshots.field_content_hash is genuinely stable and correctly computed. Re-ran a fresh live DB query today: `SELECT field_snapshot_id, field_content_hash FROM kala_field_snapshots WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa'` returns field_snapshot_id=kfs_e23ba1abdf1c6fd3a1cc5c08c7538aeb / field_content_hash=kfh_3a8d00db6577713f58206afc329c613a -- byte-identical to the value cited in the original claim and independently re-confirmed here (also cross-corroborated incidentally by kala_story_get's own freshness.field_hash returning the identical value in this same session). Stored hash unchanged since the prior pass; the control still holds.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-87",
+    "verdict": "TERMINAL",
+    "terminal_status": "CONTROL_CLOSED",
+    "evidence": "Positive control (CL-00): kala_field day-offset coverage spans exactly [0, 36525] for every (chart_id, event_class) on the canonical chart, no truncation. Re-ran the exact contiguity SQL live today against production: `SELECT chart_id, event_class, min(t_start), max(t_end) FROM kala_field WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' GROUP BY chart_id, event_class HAVING min(t_start)<>0 OR max(t_end)<>36525` returns 0 rows -- fully reconfirmed with no truncation anywhere, matching the prior pass's independent re-run.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-90",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "F-90 = registry_bridge.ts (register_p1_aliases.ts) sidecar-failure error sanitization, PR #1345/commit bc7390923, confirmed ancestor+merged by 3 independent ratify panels. Went beyond ancestry: read the actual diff -- a new `sidecarFailure()` helper replaces the old code that embedded up to 200 chars of the raw sidecar response body in the thrown error, with a fixed, non-disclosing 'sidecar service unavailable' message (raw detail only logged server-side via console.error, never returned to the caller); a dedicated test (f90_sidecar_error_sanitization.test.ts) asserts exactly this. Then ran a LIVE production canary today: `kala_muhurta_get(chart_id=482012f1..., activity_type='totally_bogus_activity_type_xyz')` genuinely triggered a downstream sidecar failure and returned `{ok:false, error:'Error: [alias] sidecar service unavailable', tool:'kala_muhurta_get', chart_id:'482012f1...'}` -- the sanitized generic message, with zero raw internal/DB detail disclosed. A real, falsifiable, live-triggered defect reproduction on the current deployed service, not just source/test inspection.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-97",
+    "verdict": "TERMINAL",
+    "terminal_status": "CONTROL_CLOSED",
+    "evidence": "Positive control (CL-00): ganita_yoga_firings_get is live and serves real, well-formed yoga-firing data with honest B.10 disclosure. Already independently re-run live by 2 of 3 ratify panels this campaign; this pass ran it again, fresh, today: ganita_yoga_firings_get(chart_id=482012f1...) returned 13 real fired-yoga rows with full provenance (constituent_fact_ids resolving to chart_facts, citation_ref/citation_human, grounds_jsonb). Specific, falsifiable, non-trivial content verified: sasa's bhanga_na_reason honestly states 'classical bhanga rule exists ... but is not evaluated by ga_yoga_writer ... to avoid fabrication -- B.10' (not silently omitted or fabricated), and neecha_bhanga_raja_yoga's grounds_jsonb carries a full rule-by-rule ledger (5 named rules each checked:true, with rule 5 explicitly floored/not-fired with an honest 'no confidently-verifiable classical citation' reason per B.10) -- a real detector's output, not a proxy. This is exactly the earned-signal bar the Opus review demanded.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-99",
+    "verdict": "TERMINAL",
+    "terminal_status": "CONTROL_CLOSED",
+    "evidence": "CL-00 control: ganita_structural_get treats D1 kala_sarpa_per_varga as authoritative over the generic dosha_label catalog row. Prior pass independently re-derived the source mechanism (register_p1_ganita.ts) and matching test coverage. This pass ran the exact cited live canary suggested as the 'cheap final confirmation': ganita_structural_get(chart_id=482012f1..., facet='dosha_fires', response_format='v3') today returned verdict.kala_sarpa_dosha.natal_verdict='not_formed' sourced from source_fact_id=d3dcd78d57e8fb0b (kala_sarpa_per_varga.D1_CHART), plus an explicit kala_sarpa_reconciliation block: {dosha_label_row_served:false, dosha_label_fires:false, per_varga_d1_fires:false, agrees:true, note:'dosha_label kala_sarpa verdict agrees with the computed kala_sarpa_per_varga D1 fact.'} -- live, specific, falsifiable confirmation that the per-varga computed fact (not the generic catalog label) is the served authority, exactly as the finding claims.",
+    "confidence": "HIGH"
+  }
+]

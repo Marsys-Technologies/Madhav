@@ -1,0 +1,61 @@
+{
+  "suspicious_commits": [
+    {
+      "commit": "cfb6444c8f00d1bdbb97b6c8cc4069fd24999e18",
+      "citing_finding_ids": ["F-09","F-10","F-11","F-14","F-15","F-17","F-18","F-19","F-20","F-24","F-29","F-30","F-32","F-34","F-36","F-37","F-41","F-42","F-44","F-45","F-46","F-48","F-52","F-54","F-55","F-56","F-57","F-60","F-61"],
+      "verdict": "MISCITED",
+      "note": "IF-001. Actual content is 'fix(mcp): filter undertaking elections by domain' (#1331), a single-tool domain->action-class filter in register_p1_synthesis.ts (prashna_undertaking_get only). Confirmed unrelated to most citing findings. Already caught for F-09/F-10/F-11/F-14/F-17/F-18/F-19/F-20/F-24/F-29/F-30/F-34/F-36/F-37/F-57/F-60/F-61 (ledger shows real content-checked downgrades/OPEN/STRANDED, not bare citations). F-41/F-44/F-45/F-46/F-52/F-54/F-55/F-56 cite it only as a SECONDARY commit alongside a genuinely specific/independently-verified primary commit or live proof, so the mis-citation is harmless noise there. NEW this pass: F-15 and F-32 were still resting on a bare ancestor-only check of this commit with no content match against their own claims (CL-14 cross-tool wiring parity for F-15; a health-domain judgment_query control for F-32) -- see new_bad_citations_found."
+    },
+    {
+      "commit": "967f08da33cedf622fdc37dc6a9f7aee52bf8806",
+      "citing_finding_ids": ["F-43","F-59","F-64","F-70","F-131","F-132","F-139","F-140"],
+      "verdict": "LEGITIMATE_SQUASH",
+      "note": "Known legitimate multi-sub-fix remediation squash (per task brief and independently re-confirmed for F-64/F-131 this pass). Not re-flagged."
+    },
+    {
+      "commit": "3fd40b61baade41862c7eecb871775d8917072f3",
+      "citing_finding_ids": ["F-23","F-107","F-109","F-124"],
+      "verdict": "MISCITED",
+      "note": "Commit is docs-only (PARIPRASNA G0 close lineage), not a defect fix. F-124 already correctly downgraded to UNKNOWN in ledger (real content check: primary commit docs-only, secondary b328e4aa also non-matching). F-107 already correctly STRANDED (ledger explicitly notes the commit is 'unrelated background lineage, not a fix'). F-109 already correctly left UNKNOWN/non-terminal (CL-00 control row, commit only proves underlying capability exists, not that the required fresh graded replay ran). F-23 is DECISION_PARKED on unrelated grounds (classical-content coverage gap, not a code defect) -- no citation issue there. No new discoveries in this group; all four already carry real, non-bare ledger reasoning."
+    },
+    {
+      "commit": "c3124c2bea931dd7deea189c5a1ca7f6f63fe360",
+      "citing_finding_ids": ["F-02","F-07","F-117"],
+      "verdict": "MISCITED",
+      "note": "Commit message is 'fix(parisesa): map L1 dosha graha codes in F117' (#1320) -- diff (bo_upaya.py graha-code normalization + test) is explicitly and solely about F-117's dosha-graha-code mapping defect. F-117 itself is correctly DATA_PARKED (does not rely on this commit alone). NEW this pass: F-02 and F-07 (both CL-01 'registered-but-unreachable capability / dispatch wiring gap') cite this same F-117-scoped commit as their sole evidence and were closed HISTORICAL_STALE_CLOSED on an ancestor-only check with no content match -- the commit never touches tool registration/dispatch code at all. Same IF-002-style pattern (a commit explicitly titled for one finding, mis-cited for unrelated others)."
+    },
+    {
+      "commit": "693a7bdc20edaf4da928cc768ee1024998f96f24",
+      "citing_finding_ids": ["F-03","F-16","F-128"],
+      "verdict": "MISCITED",
+      "note": "Commit is 'fix(parisesa): page remedies by category' (#1323, register_d7_channel.ts). F-16 and F-128 (CL-21 double-enveloping) already correctly caught and downgraded to UNKNOWN in this session (grepped diff for envelope/wrap content, zero matches). F-03 (CL-03 'parameter accepted but never applied') is a genuine content match -- the commit's own diff makes remedy category filtering actually apply where it was previously a no-op, which is exactly F-03's claimed defect class. Spot-checked and found fine; not a new discovery."
+    },
+    {
+      "commit": "3d15ea03b343376da42167146853c0e0ca5c943c",
+      "citing_finding_ids": ["F-08","F-62","F-141"],
+      "verdict": "LEGITIMATE",
+      "note": "Commit is 'fix(phala): apply mitigation domain filter' (#1329, query_phala_calibration.ts) -- genuine content match for F-08 (CL-03 parameter-accepted-but-never-applied domain filter). F-62 and F-141 are both DATA_PARKED protected-data items that do not rely on this commit as a closure proof (already correctly parked, not claimed-fixed via this citation). Spot-checked and found fine."
+    },
+    {
+      "commit": "33289b579a00f73e191d12964d285dea9bff2270",
+      "citing_finding_ids": ["F-21","F-52","F-65"],
+      "verdict": "MISCITED",
+      "note": "IF-002 (already known/confirmed): F-65's citation of this commit is wrong -- the commit's real content (EKAVAKYATA Rahu/Ketu aspects fix) belongs to F-109, not F-65's 'unserved helper' claim; already downgraded to UNKNOWN in ledger. F-21 and F-52, despite sharing this commit, are a genuine content match (both are literally CL-07 'Nodal (Rahu/Ketu) special-aspect truncation to the universal 7th', which is exactly what this commit's content addresses) -- ledger's LANDED-but-gated status for both (pending a fingerprint-invalidation packet) reflects real analysis, not a bare citation. No new discovery beyond the already-known F-65."
+    },
+    {
+      "commit": "9b09835033e5cdb4ddf7d68eed529a9f1efa0be9",
+      "citing_finding_ids": ["F-41","F-55"],
+      "verdict": "LEGITIMATE",
+      "note": "Below the 3+ threshold but checked for completeness since it co-occurs with the cfb6444c8 group in F-41/F-55. Commit title literally reads 'SHASTRA_MAP +4 canonical domains + unknown-domain early reject (F-55/F-41)' -- explicit, genuine dual-purpose fix for both findings. Fine."
+    }
+  ],
+  "new_bad_citations_found": ["F-02", "F-07", "F-15", "F-32"],
+  "random_sample_results": {
+    "sampled": 15,
+    "passed": 14,
+    "findings_with_issues": ["F-15"],
+    "sample_ids": ["F-96","F-22","F-04","F-109","F-48","F-44","F-41","F-26","F-21","F-101","F-131","F-84","F-15","F-90","F-69"],
+    "note": "Random-seeded sample (seed=42) drawn from the 141-row corpus excluding the ~16 already-known-bad finding_ids. 14/15 had reliable or already-correctly-handled citations (verified a subset directly via `git show --stat` against cited commits: F-22/f35debaab -> serve dasha systems catalog #1325, matches CL-02; F-26/9eaf1566f9 -> make life arc LEL contract honest, matches; F-04/3e20470d -> dedicated route test, matches). F-15 was the one failure, independently rediscovered here and cross-listed in new_bad_citations_found."
+  },
+  "summary": "Confirmed IF-001 (cfb6444c8, 29 citing findings, not ~16 as originally scoped) and IF-002 (33289b579a/F-65) as already comprehensively triaged in ledger.json with real content-checked dispositions for nearly every citing finding -- the session's prior citation-defect work already covers almost the entire corpus. Found one additional MISCITED commit group not previously reported: c3124c2bea9, titled 'map L1 dosha graha codes in F117' (#1320), correctly attributed only to F-117 (DATA_PARKED) but also bare-cited by F-02 and F-07 (both CL-01 dispatch/registration wiring gap, closed HISTORICAL_STALE_CLOSED on ancestor-only checks with zero content match -- the commit never touches registration/dispatch code). Also found F-15 and F-32 still resting on bare ancestor-only checks of the already-known-bad cfb6444c8 despite siblings with an identical citation pattern (F-14, F-18, F-19, F-20, F-24, etc.) already being correctly downgraded -- these two were evidently missed in the prior sweep. All other suspicious 3+ shared commits (3fd40b61b, 693a7bdc2, 33289b579a, 3d15ea03b) were spot-checked and found to already carry genuine, non-bare, content-verified dispositions in the ledger for every citing finding, with no further new discoveries. Net new scope: F-02, F-07, F-15, F-32 (4 findings, HIGH confidence) beyond the 16 already known/resolved. Random 15-finding sample: 14/15 citations reliable or already correctly handled; 1/15 (F-15) failed, consistent with the targeted findings above."
+}

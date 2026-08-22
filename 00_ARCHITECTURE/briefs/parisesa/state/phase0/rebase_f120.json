@@ -1,0 +1,9 @@
+{
+  "finding_id": "F-120",
+  "outcome": "ALREADY_LANDED_NO_PR_NEEDED",
+  "pr_url": null,
+  "branch": null,
+  "test_results": "Not independently re-run this pass (no local platform/ dependency install available in this worktree) -- but content-diffed line-for-line: buildDashaNarration(), LEVEL_NAMES map, the lvl<1-only bound (replacing the old lvl>3 cap), and the exact dedicated test file get_dashas_narration_F120.test.ts are all verbatim present on current origin/main.",
+  "review_notes": "CORRECTS THE PHASE 0 TRUTH CUT: F-120 was classified STRANDED (branch par/night-F-120, commit 03eec1421, never merged). Attempted a real rebase per the Wave REBASE procedure; `git rebase origin/main` immediately reported 'dropping 03eec1421 -- patch contents already upstream'. Investigated: commit f003bf3af ('batch-4 (night): F-116 preamble-strip + F-35 scored-count + F-63 yoga-key + F-120 dasha-narration + F-37 catalog-total', PR #1316, merged 2026-08-16) squash-merged this exact same fix under a different commit hash -- same author intent, same function, same test file, byte-identical logic. par/night-F-120 and PR #1316 were two independent attempts at the same finding; PR #1316 won the race and is what's live. The original reconciliation batch (batch7.json) checked ancestry of commit 03eec1421 specifically and correctly found it NOT an ancestor -- but did not check whether the *content* had landed under a different commit, which is exactly the doctrine violation the plan warns against (squash merges make commit-reachability meaningless; test by file/content presence).",
+  "next_action": "Correct F-120's ledger status from STRANDED to LANDED (content verified present on origin/main via PR #1316/f003bf3af). Recommend a follow-up proof pass (live MCP ganita_dashas_get spot-check against native chart 482012f1) before considering it terminal SERVICE_CLOSED -- no deployment/service-level re-verification done this pass."
+}
