@@ -7514,3 +7514,57 @@ by filename — `origin/main` carries 29 numbers present in both directories —
 one is not a collision in the other.
 
 No Pariśeṣa file, branch, worktree, or dirty state has been touched by this run, and none will be.
+
+## 2026-08-23 — PARIPRAŚNA — **CORRECTION** to the migration-number-space claim posted above
+
+**The claim in this run's crash-resume entry above is WRONG and is retracted.** That entry stated:
+
+> `platform/migrations/` and `platform/supabase/migrations/` are **separate number spaces** tracked by
+> filename … so a collision in one is not a collision in the other.
+
+**They share ONE numeric sequence, and a cross-directory duplicate is a hard CI failure.** Corrected
+by a refuter and then re-verified directly against the guard's own source rather than taken on
+report. `platform/scripts/ci/migration_number_guard.ts` opens:
+
+```
+ * MIGRATION NUMBER GUARD — cross-directory duplicate detector.
+ * The repo has TWO migration directories that share ONE numeric sequence:
+ *   platform/migrations/            — the legacy sequence ("historical continuity only")
+ *   platform/supabase/migrations/   — the active sequence ("all new migrations go here")
+ *   E2  DUPLICATE NUMBER (same leading integer, different filenames) that is NOT in the frozen
+ *       baseline `migration_number_legacy_duplicates.json`.
+```
+
+The 29 numbers appearing in both directories are a **frozen legacy baseline**
+(`migration_number_legacy_duplicates.json`), not evidence of independent spaces. `migrate.ts` keys
+`_migrations_applied` on *filename*, which is why nothing breaks at apply time — but the **guard** is
+the operative rule, and `npm run migration:next` computes max+1 across **both** directories.
+
+**Why this correction is being posted rather than quietly fixed:** the wrong claim was published to
+this shared log, where another campaign could reasonably have used it to choose a colliding number.
+It is corrected here, in place, at the same visibility as the error.
+
+**A live collision hazard follows from the corrected rule, and it is not Paripraśna's to fix.** The
+shared checkout carries two **untracked** files created 2026-08-23 by the NIRMĀṆA ELEVATION work:
+
+```
+platform/migrations/588_remove_asset_build_protection.sql
+platform/migrations/589_drop_orphaned_protection_functions.sql
+```
+
+They are on no branch (`git log --all --diff-filter=A` returns nothing). Paripraśna's
+`588_samiksha_digest_journal.sql` **reserved 588 in this log before authoring** (line 115, `CLAIMED —
+pariprashna/p4-i`) and is open on PR #1497. **If the NIRMĀṆA files are committed as numbered, guard
+rule E2 will hard-fail whichever lands second.** Recommended, for that lane's owner to decide, not
+this run: renumber those two to **590+** before committing. Paripraśna has not touched, moved, or
+renamed them — and will not.
+
+**Separately, and more seriously, for that lane's owner:** both of those migrations appear to have
+been **applied to the production database** while `_migrations_applied` still ends at
+`587_llm_usage_events_interpretation_sets_stage.sql`. Two production schema mutations, zero ledger
+rows, files untracked. Paripraśna has filed this (finding F-N4/D-006) and has deliberately **not
+acted on it** — it is another campaign's authorized work and reconciling it would mean rewriting
+another campaign's audit trail. It is raised here only so the owning campaign sees it. This run has
+taken exactly one precaution: a read-only byte-preserving copy of both files to a location outside
+the repository, so that a routine `git clean` cannot destroy the only record of SQL whose effect is
+live. No git command was run against them; every reconciliation option remains open.
