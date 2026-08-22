@@ -7389,3 +7389,56 @@ touching migration numbering or `platform/src/lib/pariprashna/samiksha/**`); fre
 (`07ed2433f`, matches the overnight run's opening tip — no drift); worktree
 `.clone/worktrees/p4-i` (isolated, not the shared checkout), branch `pariprashna/p4-i`.
 
+
+
+## 2026-08-23 — PARIPRASHNA-P4-H (Claude Code, BUILDER lane, T-P4-REMEMBER filler) — leased window: dispute/feedback capture restored, no migration needed
+
+**Context.** P4-H filler lane per `PARIPRASHNA_P3_P4_OVERNIGHT_AUTONOMOUS_RUN_v2_0.md`
+§10.2/§10.5: "Dispute capture + feedback endpoint restored (currently discards silently)."
+Investigated `platform/src/app/api/conversations/[id]/feedback/route.ts` — the exact discard
+was `POST`'s unconditional `return Response.json({ ok: true, rating: body?.rating ?? null })`,
+with no query call anywhere in the file (`message_feedback` table dropped in WS-0).
+
+**No migration claimed — none needed.** `platform/BRAHMA_DEFERRED_FEATURES.md` §4 itself names
+two rebuild options for this exact stub: "`conversation_messages` JSONB feedback field OR a new
+dedicated table." Took the JSONB option: `conversation_messages.metadata_json` already carries
+an established additive-sub-object convention (`provenance_stamp`, `acharya_reading_receipt` —
+see `platform/src/lib/pariprashna/receipt/store.ts`'s own docstring, "no migration, no new
+table"). A `feedback` sub-key follows the identical pattern. Zero schema changes; the narrowest
+capture-path fix available. No collision with migration 588 (P4-I) or any other in-flight
+reservation — this lane needed none.
+
+**Scope touched:** `platform/src/app/api/conversations/[id]/feedback/route.ts` (fixed) +
+`platform/src/app/api/conversations/__tests__/feedback.db.test.ts` (new DB-integration test,
+`.db.test.ts` convention, gated on `CONV_FEEDBACK_DB_TEST`). Also brought the route to
+ownership-check parity with every sibling `[id]/*` conversations route (it was the only one
+skipping `getConversation`'s ownership check — real defect, fixed in the same pass) and closed
+a residual silent-failure mode found while auditing: a POST against a `messageId` outside the
+conversation now 404s instead of the old unconditional `{ ok: true }`.
+
+**DD-21 / §N.8 evidence:** ran a real throwaway Postgres (`postgres:16-alpine` in Docker, not
+Cloud SQL, not mocked). §N.8 can-fail baseline: the verbatim pre-fix stub (git blob
+`07ed2433f`) accepts a dispute submission and returns `{ ok: true }` while
+`conversation_messages.metadata_json` is provably unchanged. Fix: same submission through the
+restored route persists to `metadata_json.feedback` and is read back both via the route's own
+GET and an independent `psql` `SELECT ... jsonb_pretty(metadata_json)` — full transcript in
+PR body. Synthetic chart `1c826d5a-41cb-4450-b4dc-59d440e5f75a` only; the native's real chart
+was never touched. 5/5 new tests pass; full `npm run test` — 851 passed / 50 skipped files,
+9705 tests passed, 0 failures; `eslint` 0 errors/warnings; `tsc --noEmit` 0 errors.
+
+**Residual finding, NOT fixed in-lane (recorded, not silently dropped):** the rating UI
+(`useFeedback`, `MessageActions`, `AdaptiveMessageList` under `src/components/chat/**`) is not
+mounted on any currently-live page (`consult` uses `ConsumeChat`, `pariprashna` uses
+`PariprashnaApp`; only the read-only `share/[slug]` surface renders the shared `MessageList`,
+without `onRate` wired). The capture path is now durable, but no reader-facing button exists
+yet to trigger it on the live Paripraśna surface — wiring that affordance is a larger UI task
+outside this lane's narrow scope, flagged here rather than left implicit in a green PR.
+
+**PR:** #1496, branch `pariprashna/p4-h`, opened against `main`, **NOT merged** (builder does
+not merge — INTEGRATOR's job). Worktree `.clone/worktrees/p4-h`.
+
+**Pre-lease checks:** fresh fetch of `campaign-coordination` (tip `3a0fa3bc7`, no open lease
+touching `platform/src/app/api/conversations/**`); fresh fetch of `main` (`0f57bfbf3`, one
+docs-only commit ahead of the overnight run's opening tip — rebased onto it before push, no
+platform/** drift); worktree `.clone/worktrees/p4-h` (isolated, not the shared checkout),
+branch `pariprashna/p4-h`.
