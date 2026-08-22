@@ -25,6 +25,7 @@ export type PipelineStage =
   | 'planner'
   | 'title'
   | 'history_summary'
+  | 'interpretation_sets'
 
 export type CallStatus = 'success' | 'error' | 'timeout'
 
