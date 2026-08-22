@@ -7312,3 +7312,53 @@ shared checkout.
 
 No file outside the declared scope was touched. Isolated clones under
 `/tmp/n4-ruling-*` removed at close.
+
+## 2026-08-23 — PARIPRAŚNA P3+P4 OVERNIGHT (Claude Code, Opus 5 conductor, tmux `prp-night`) — leased window: THREE narrow scopes, all night
+
+**Courtesy announcement, opened at run start per the charter's run-open sequence
+(`PARIPRASHNA_P3_P4_OVERNIGHT_AUTONOMOUS_RUN_v2_0.md` §1 "Live hazard, named").** Native-authorized
+2026-08-22 (§0 rulings 1–11, verbatim in the charter). The native is asleep; a NATIVE-SURROGATE
+agent (Opus 5, effort high) holds delegated authority within the charter's §3.3 matrix. Every
+decision it makes is appended to
+`00_ARCHITECTURE/briefs/pariprashna_swarm/OVERNIGHT_DECISION_LEDGER_2026-08-22.md`, labelled
+DELEGATED-OVERNIGHT / native review pending.
+
+**Window:** 2026-08-23 ~03:00 IST → morning (native's wake). Expected merge cadence: trains fire as
+batches fill, roughly hourly; each merge is preceded by a fresh re-read of THIS file (X-1) and
+followed by full canary discipline with the Cloud Run revision tag announced here before any
+traffic shift (X-6).
+
+**Three separate, deliberately narrow scopes (announced separately so a concurrent campaign sees
+three narrow claims, not one broad one):**
+
+- **T-P3 (engine/door)** — `platform/src/lib/pariprashna/**`, `platform/src/app/api/pariprashna/**`,
+  `platform/tests/**`, `.github/workflows/**` (post-deploy smoke), plus
+  `platform/src/lib/llm/interpretation/worker.ts` (DD-19's `pipeline_stage` fix only).
+  Lanes P3-A/B/C/D/E/F.
+- **T-P4-REMEMBER (Paripraśna tree accrual)** — `platform/src/lib/pariprashna/**` and its surfaces
+  under `platform/src/app/(app)/**` Paripraśna routes only. Lanes P4-E/F/G/H/I/J/K.
+- **T-P4-RETIRE (legacy tree)** — opens only after P3-F closes AND the DD-1 feel-proxy battery
+  passes; touches the condemned `consult`/`consume` legacy routes under `platform/src/app/**` and
+  the dead tree enumerated by a census refreshed AFTER the redirects land. Lanes P4-A/B/C/D.
+  **Strictly serial.** Contains the night's one irreversible act (the P4-B deletion), pre-authorized
+  by DD-4 only on its three simultaneous preconditions, with a `git revert` rollback pin committed
+  BEFORE the deletion commit.
+
+**Explicitly NOT touched by any scope above:** any PARIŚEṢA-RĀTRI-V4 file, worktree, branch or
+dirty state; `CLAUDECODE_BRIEF.md` (X-3); the shared checkout as a build surface (X-4 — all work in
+`.clone/worktrees/**`); governance registries mid-run (X-2 — batched at close under an announced
+lease); any destructive migration (expand-only tonight); any credential.
+
+**Deletion-specific courtesy, stated up front:** before T-P4-RETIRE deletes anything, the refreshed
+census must confirm that **no PARIŚEṢA-RĀTRI file imports from the condemned tree**. A single
+cross-campaign import parks the retirement train with a written finding rather than deleting under
+another campaign's feet.
+
+**Pre-lease checks:** `git fetch origin` at run open (`origin/main` @ `07ed2433f`); this file read
+from `origin/campaign-coordination` @ `47a715197` — tail reviewed, **no open lease**: SALVAGE-RECONCILE
+closed 2026-08-22, N4-RULING closed 2026-08-23. Observatory `tracker-health-check` HEALTHY at run
+open (one pre-run blind window, 170s at 2026-08-22T20:44:27Z→20:47:17Z from the environment-setup
+daemon restart, acknowledged by the conductor at run open and recorded here rather than left
+silent). Migration numbers: none reserved yet; any needed tonight will be reserved in this file
+before authoring.
+
