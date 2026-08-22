@@ -1,6 +1,6 @@
 {
   "campaign_id": "PARISESA-V4",
-  "event_count": 1089,
+  "event_count": 1090,
   "findings": {
     "F-01": {
       "confidence": "HIGH",
@@ -1379,19 +1379,19 @@
       "terminal_status": "SERVICE_CLOSED"
     },
     "F-176": {
-      "confidence": "MEDIUM",
-      "disposition": "RULED",
-      "event_sha256": "5f805ef65c688b4eef5dd0496b4b661fee239faea143f88c1c6206f03d1c600a",
+      "confidence": "HIGH",
+      "disposition": "LANDED",
+      "event_sha256": "2c666d17b531ebefba68fc4c16bf932515d097a4f27f02d9f174e0aeac542d27",
       "event_type": "finding_status",
-      "evidence_summary": "FABLE-5 FINAL RULING (owner-delegated, 2026-08-22). Plausible-but-unconfirmed lead, correctly held at MEDIUM: kala_windows_get and kala_projections_get identified (by the F-110 build agent, not yet independently confirmed) as reading PROMISE-stage composite/tier data without the promise_gate disclosure F-110's merged fix (PR #1426) added to ahead.ts. RULED: proceed verification-first as one work item - (1) run the same read-only confirmation method used for F-110 itself (pact_query / direct tool call against a built chart) for these two tools; (2) if confirmed, apply F-110's established fix pattern - mechanical; (3) if verification shows no defect, close NOT_APPLICABLE_CLOSED with the verification transcript. The fix pattern being established is what makes this ship-ready; the verification step is landing discipline, not an open decision.",
+      "evidence_summary": "Step 1 live verification confirmed the defect for kala_projections_get (ungated, no promise_gate key despite pact_query showing denied_at_promise) and found kala_windows_get latent-only for the canonical chart (dense forward activation coverage through 2034, contrary to the plans historical-data assumption -- corrected live rather than forced to match the prediction). Extracted F-110 computePromiseGate into a shared promise_gate.ts module; kala_projections_get gates unconditionally, kala_windows_get gates only when forward_windows actually serves rows. Golden test proves ahead.ts byte-identical post-extraction. Also found and correctly left out-of-scope an unrelated pre-existing bug in kala_projections_get capping logic.",
       "finding_id": "F-176",
-      "next_action": "One lane: read-only live verification of both tools, then either apply the F-110 pattern (PR) or close NOT_APPLICABLE with evidence. Priority: MEDIUM.",
-      "pr_url": null,
-      "prev_sha256": "f463da14b985a98191a23d4f730d811d31275134f9a7a3a53f52bd8a6f290b3b",
-      "seq": 1041,
-      "source_batch": "PARISESA-V4-FABLE5-FINAL-RULING-20260822",
-      "status": "MORNING_SHIP_READY",
-      "terminal_status": null
+      "next_action": "None -- terminal.",
+      "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1469",
+      "prev_sha256": "39efabd9071346462ca3020131cd9ac4240a656a9c88b629b344ed36bb91e321",
+      "seq": 1090,
+      "source_batch": "PARISESA-V4-WAVE2-CLOSEOUT-20260822",
+      "status": "SERVICE_CLOSED",
+      "terminal_status": "SERVICE_CLOSED"
     },
     "F-177": {
       "confidence": "HIGH",
@@ -2882,10 +2882,10 @@
       "terminal_status": "SERVICE_CLOSED"
     }
   },
-  "findings_morning_ship_ready_count": 7,
-  "findings_terminal_count": 180,
-  "journal_head_seq": 1089,
-  "journal_head_sha256": "39efabd9071346462ca3020131cd9ac4240a656a9c88b629b344ed36bb91e321",
+  "findings_morning_ship_ready_count": 6,
+  "findings_terminal_count": 181,
+  "journal_head_seq": 1090,
+  "journal_head_sha256": "2c666d17b531ebefba68fc4c16bf932515d097a4f27f02d9f174e0aeac542d27",
   "p1_steps": {},
   "phases": {}
 }
