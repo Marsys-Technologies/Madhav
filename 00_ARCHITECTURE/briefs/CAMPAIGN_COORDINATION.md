@@ -7646,3 +7646,26 @@ version numbers read at write time, never predicted).
 - **Worktree:** `.clone/worktrees/prp-gov`, branch `pariprashna/governance-close`, opened against
   `origin/main`. No production change, no credential operation, no merge (PR only).
 - **Lease holder:** SCRIBE (governance-close session). Will close this entry on completion.
+
+## 2026-08-23 — PARIPRAŚNA P3+P4 — GOVERNANCE CLOSE — LEASE CLOSED
+
+**Write complete.** Batched DD register update landed on branch
+`pariprashna/governance-close` (commit `e295beee4`), PR opened against `main`, not merged
+(SCRIBE does not merge). Contents: DD-19 amended in place (independent re-verification +
+one open morning check); new DD-31..DD-44 covering the §0 ruling 10 budget outcome, the
+§0 ruling 11 seam-compression record (authorized, NOT exercised), the §6.4 reject-demo
+result (NOT RUN, owed) alongside the separately-achieved `PARIPRASHNA_LIMITS_ENABLED`
+canary record, the DD-1 battery result (BUILT + CAN-FAIL PROVEN, NOT RUN, NO PASS
+RECORDED), the P4-B deletion warrant/refuter panel (NEITHER EXISTS), every surrogate
+park consolidated, the lane-state ledger, and new findings DD-38..DD-44 (F-N7/F-N10/
+F-N11/F-N12/F-N14 + F-N2/F-N8). Register version held at 1.1 (living append-only, no
+version bump) — verified live before and after write.
+
+**Numbering note for whoever merges `pariprashna/p4-h` later:** that branch carries
+DD-28/29/30, filed but not yet on `main` as of this write. This session's new entries
+start at DD-31 specifically to avoid colliding with them.
+
+**No tag pushed.** `pariprashna/p3-close`/`pariprashna/p4-close` were not pushed —
+neither close happened tonight, and the DD register now says so plainly.
+
+Lease released.
