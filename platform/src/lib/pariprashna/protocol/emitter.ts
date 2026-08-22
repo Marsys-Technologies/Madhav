@@ -37,6 +37,7 @@ import {
   type ErrorEvent,
   type SnapshotApplyEvent,
   type PredictionCardEvent,
+  type WindowAskEvent,
 } from './events'
 import { assertNoCalibrationLeak } from '../no_leakage/calibration_leak_guard'
 import { isSemanticBlocksEnabled } from '../semantics/flag'
@@ -240,6 +241,11 @@ export class PariprashnaEmitter {
 
   predictionCard(body: Body<PredictionCardEvent, 'prediction_card'>): void {
     this.write({ type: 'prediction_card', ...this.envelope(), ...body })
+  }
+
+  /** The window-opening ask (lane P4-G). See `WindowAskEventSchema` for the contract. */
+  windowAsk(body: Body<WindowAskEvent, 'window_ask'>): void {
+    this.write({ type: 'window_ask', ...this.envelope(), ...body })
   }
 
   /** Close the underlying controller exactly once. */

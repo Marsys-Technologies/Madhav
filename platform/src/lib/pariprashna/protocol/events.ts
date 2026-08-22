@@ -66,9 +66,10 @@ const EnvelopeShape = {
  * consumer can tell (from `turn.open.protocol_version`) which fields may be
  * present. v1 = the PB-1/S-1 baseline. v2 = lane P2-A / G2-A: `kind` /
  * `role` / `content` / `table` / `gap_text` on `block.commit`, plus the new
- * `prediction_card` event. A consumer that never checks this field is still
- * safe — every v2 addition is OPTIONAL/additive and ships flag-gated OFF by
- * default, so a v1 stream simply never carries the new fields, which decode
+ * `prediction_card` event. v3 = lane P4-G: the new `window_ask` event (the
+ * window-opening ask). A consumer that never checks this field is still
+ * safe — every v2 and v3 addition is OPTIONAL/additive and ships flag-gated
+ * OFF by default, so a v1 stream simply never carries the new fields, which decode
  * to "v1 behavior" (e.g. absent `kind` means "render as a plain paragraph",
  * exactly today's behavior).
  *
@@ -80,7 +81,7 @@ const EnvelopeShape = {
  * `isCompatibleProtocolVersion` below for the declared-compatibility check
  * this constant feeds.
  */
-export const PARIPRASHNA_PROTOCOL_VERSION = 2
+export const PARIPRASHNA_PROTOCOL_VERSION = 3
 
 // ---------------------------------------------------------------------------
 // Event schemas
@@ -567,6 +568,58 @@ export const PredictionCardEventSchema = z.object({
 export type PredictionCardEvent = z.infer<typeof PredictionCardEventSchema>
 
 // ---------------------------------------------------------------------------
+// `window_ask` — the window-opening ask (lane P4-G, protocol v3)
+// ---------------------------------------------------------------------------
+
+export const WindowAskOptionKeySchema = z.enum([
+  'happened',
+  'did_not_happen',
+  'partial',
+  'cant_tell',
+  'dispute',
+])
+export type WindowAskOptionKeyWire = z.infer<typeof WindowAskOptionKeySchema>
+
+export const WindowAskOptionSchema = z.object({
+  key: WindowAskOptionKeySchema,
+  label: z.string().min(1),
+})
+export type WindowAskOptionWire = z.infer<typeof WindowAskOptionSchema>
+
+/**
+ * `window_ask` — the instrument asking, unprompted, about a prediction window that has closed.
+ * Architecture authority: `PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md` A-42, "the single
+ * highest-leverage unbuilt feature in the architecture".
+ *
+ * Emitted from the PLAN stage, BEFORE the planner runs — A-42's "before I answer" ordering.
+ * The ask does not gate the reading: the turn proceeds and answers regardless of whether the
+ * reader replies to it. Because it is a wire event rather than a message, it never enters the
+ * synthesis prompt, so it cannot anchor the reading it precedes.
+ *
+ * `composition` is a Zod LITERAL, not an enum, and that is the point. `ask_text` is assembled
+ * from ledger facts by a pure function (`samiksha/window_ask/compose.ts`); a model-composed ask
+ * has no representation on this wire at all. A consumer may rely on that.
+ *
+ * `ledger_row_id` is MACHINE-ONLY — the handle a client echoes back with the reader's answer so
+ * the capture path knows which window was answered. It is never part of `ask_text` and must
+ * never be rendered.
+ */
+export const WindowAskEventSchema = z.object({
+  type: z.literal('window_ask'),
+  ...EnvelopeShape,
+  conversation_id: z.string(),
+  /** Opaque handle for the answer round-trip. Never rendered to the reader. */
+  ledger_row_id: z.string(),
+  /** The ask, exactly as the reader sees it. */
+  ask_text: z.string().min(1),
+  /** Offered answers. At least `cant_tell` and one outcome are always present. */
+  options: z.array(WindowAskOptionSchema).min(2),
+  /** Structural declaration: assembled from ledger facts, no model involved. */
+  composition: z.literal('deterministic'),
+})
+export type WindowAskEvent = z.infer<typeof WindowAskEventSchema>
+
+// ---------------------------------------------------------------------------
 // Discriminated union
 // ---------------------------------------------------------------------------
 
@@ -589,6 +642,7 @@ export const PariprashnaEventSchema = z.discriminatedUnion('type', [
   ErrorEventSchema,
   SnapshotApplyEventSchema,
   PredictionCardEventSchema,
+  WindowAskEventSchema,
 ])
 export type PariprashnaEvent = z.infer<typeof PariprashnaEventSchema>
 
@@ -612,6 +666,7 @@ export const PARIPRASHNA_EVENT_TYPES = [
   'error',
   'snapshot.apply',
   'prediction_card',
+  'window_ask',
 ] as const
 export type PariprashnaEventType = (typeof PARIPRASHNA_EVENT_TYPES)[number]
 
@@ -624,7 +679,8 @@ export type PariprashnaEventType = (typeof PARIPRASHNA_EVENT_TYPES)[number]
  * caller MUST refuse rather than silently misinterpret an old frame shape —
  * see `isCompatibleProtocolVersion`. Stays 1 (no prior version was ever
  * emitted before v1) even as `PARIPRASHNA_PROTOCOL_VERSION` bumps to 2 for
- * P2-A's additive `block.commit`/`prediction_card` vocabulary — a v1 frame
+ * P2-A's additive `block.commit`/`prediction_card` vocabulary and again to 3 for
+ * P4-G's additive `window_ask` event — a v1 frame
  * (protocol_version absent or 1) is still fully valid, just narrower. A
  * future version bump that drops v1 decoding entirely would raise this
  * constant instead.

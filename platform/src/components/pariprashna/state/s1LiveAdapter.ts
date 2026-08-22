@@ -369,6 +369,26 @@ export function makeS1LiveAdapter(
         ]
       }
 
+      case 'window_ask': {
+        // P4-G — the window-opening ask. The wire carries it; THIS CLIENT DOES NOT
+        // RENDER IT YET, and says so by dropping it rather than half-rendering it.
+        //
+        // The event's whole point is a reader-facing sentence plus a set of answer
+        // affordances that must POST the reader's reply back with `ledger_row_id`
+        // (body field `window_ask_answer`, bound in `pipeline/safety_gate.ts`). That
+        // is a real UI surface — transcript placement, the five options, the
+        // free-text path — and building it is a lane of its own, in a tree lane P4-G
+        // does not own (`may_touch: platform/src/lib/pariprashna/**`). The exact same
+        // sequencing was used for `prediction_card`, whose event landed one lane
+        // ahead of its `LogToSamiksha` mount.
+        //
+        // Returning [] is the honest state: the server-side loop is live and
+        // observable on the wire, the browser round-trip is not yet built. This case
+        // exists so the exhaustiveness guard below keeps doing its job for the NEXT
+        // event, rather than being silenced.
+        return []
+      }
+
       default: {
         // Exhaustiveness guard against S-1's real union — a new event type S-1
         // adds will surface here at compile time.
