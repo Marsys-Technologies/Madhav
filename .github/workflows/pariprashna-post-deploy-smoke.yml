@@ -1,0 +1,120 @@
+name: Paripraśna Post-Deploy Behaviour Smoke (P3-E / PB-4 F-6)
+
+# PARIPRASHNA_P3_P4_OVERNIGHT_AUTONOMOUS_RUN_v2_0.md §4, lane P3-E.
+#
+# THE GAP THIS CLOSES: `scripts/operator/end_to_end_smoke.sh` (run by
+# deploy.yml after every amjis-web deploy) says so in its own header —
+# "Honestly NOT covered, and deliberately not claimed: no DB round-trip, no
+# authenticated request, no chart render. Those need a web canary credential
+# that does not exist yet." That is PB-4 finding F-6. Every OTHER post-deploy
+# check in this repo (fresh_chart_smoke.yml, gochara-smoke-probe.yml,
+# elev-serving-gates.yml) either checks the DB directly or calls the MCP
+# door — none of them drive a real authenticated turn through the WEB door
+# (`/api/pariprashna`), which is the door THE FLIP (P3-F) makes the default
+# for everyone. This workflow is that missing check.
+#
+# WHAT IT DOES: runs `platform/scripts/probe/post_deploy_behavior_smoke.ts`,
+# which drives `probe/ask.ts` (the repo's existing, native-authorized
+# authenticated-turn harness — reused here, not reinvented) against the LIVE
+# deployed `/api/pariprashna` route on the SYNTHETIC test chart
+# (`1c826d5a-41cb-4450-b4dc-59d440e5f75a`, Abhinandan Mohanty — NEVER the
+# native's real chart), then asserts real engine behaviour on the response:
+# the turn closed 'ok', produced non-trivial prose, emitted a `receipt.define`
+# wire event with a non-null receipt (proof the synthesis -> receipt-assembly
+# -> validation -> persistence chain completed on the deployed revision, not
+# just that tokens streamed back), emitted zero stream-level `error` events,
+# and committed at least one block. See that script's own header for the
+# full assertion list and an honest account of what it does NOT assert
+# (citation presence, the safety gate) and why.
+#
+# CREDENTIALS: FIREBASE_ADMIN_CREDENTIALS + NEXT_PUBLIC_FIREBASE_API_KEY are
+# already-provisioned GitHub Actions repo secrets (added 2026-05-18 / earlier)
+# — the exact two values `probe/ask.ts` needs to mint a fresh, single-use
+# Firebase session cookie for the fixed `probe-service-account` principal on
+# every run (see that script's header: the root secret never expires; no
+# cookie is ever cached). No GCP WIF auth step is needed here because the
+# script checks its env vars FIRST, before ever falling back to
+# `gcloud`/`firebase` CLI — and the CI-provisioned WIF identity
+# (github-actions@madhav-astrology.iam.gserviceaccount.com) does NOT hold
+# secretmanager.secretAccessor on `firebase-admin-credentials` in production
+# IAM (confirmed by reading the live IAM policy before authoring this
+# workflow — only the Cloud Run runtime SA holds that grant), so relying on
+# the CLI fallback here would have failed. The best-effort, non-fatal
+# harness-origin DB tag inside ask.ts is skipped in this job (no Cloud SQL
+# Proxy tunnel is opened) — that gap is disclosed, not hidden; it never
+# fails the run.
+#
+# TRIGGERING: workflow_dispatch is the REQUIRED interface — the overnight
+# conductor dispatches this on a 45-minute cadence and CI's own run history
+# (not any agent's word) is what counts green x7 toward DD-7 / W-1. A
+# workflow_run hook on deploy.yml is also wired as a bonus so the pipeline
+# gets one opportunistic run per real deploy, but it is purely additive and
+# never gates deploy.yml's own traffic-promotion step.
+#
+# COST: one real authenticated `/api/pariprashna` turn per run (one full
+# retrieval + synthesis pass on the small synthetic chart, i.e. the SAME
+# per-turn cost profile as a real user question) plus a `tsx`/npm-ci runner
+# cost. Cheap enough for the 8-12 dispatches the smoke hold needs tonight —
+# see the lane's PR description for the measured wall-clock/cost of the
+# first real run.
+#
+# ADDITIVE-ONLY: this file is new. It adds no trigger to, and modifies no
+# step of, any existing workflow.
+
+on:
+  workflow_dispatch: {}
+  workflow_run:
+    workflows: ['Deploy to Cloud Run']
+    types: [completed]
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  behaviour-smoke:
+    name: Live authenticated turn — behaviour assertions
+    runs-on: ubuntu-latest
+    # For the workflow_run trigger, only follow through on a successful deploy
+    # — a failed/cancelled deploy's smoke would just be re-testing whatever
+    # revision was already live, which the 45-min dispatch cadence already
+    # covers. workflow_dispatch always runs regardless of this condition.
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: platform
+    env:
+      FIREBASE_ADMIN_CREDENTIALS: ${{ secrets.FIREBASE_ADMIN_CREDENTIALS }}
+      NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
+    steps:
+      - name: Preflight — required secrets must be configured (fail loud, never a fabricated pass)
+        run: |
+          missing=""
+          [ -z "${FIREBASE_ADMIN_CREDENTIALS}" ] && missing="$missing FIREBASE_ADMIN_CREDENTIALS"
+          [ -z "${NEXT_PUBLIC_FIREBASE_API_KEY}" ] && missing="$missing NEXT_PUBLIC_FIREBASE_API_KEY"
+          if [ -n "$missing" ]; then
+            echo "::error::[p3-e-smoke] Missing required secret(s):$missing — failing loudly rather than skipping silently."
+            exit 1
+          fi
+          echo "[p3-e-smoke] required secrets present."
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Live behaviour smoke — real authenticated turn on the synthetic chart
+        run: npx tsx scripts/probe/post_deploy_behavior_smoke.ts
+
+      - name: Annotate failure
+        if: failure()
+        run: |
+          echo "::error::[p3-e-smoke] Post-deploy behaviour smoke FAILED — see the step above for which assertion failed and why."
+          echo "::error::[p3-e-smoke] This is a real engine-behaviour check (receipt assembly / persistence chain, non-trivial prose, zero stream errors) — NOT a liveness ping. Do not count this toward green x7 (DD-7 / W-1) until it is understood."
