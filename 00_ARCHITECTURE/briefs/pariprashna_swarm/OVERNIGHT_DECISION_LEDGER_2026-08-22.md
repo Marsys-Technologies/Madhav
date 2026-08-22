@@ -1350,3 +1350,36 @@ amjis-web-01671-47n` at 22:37Z and `amjis-web-01673-665` at 23:07Z — i.e. **it
 the production revision change this run caused**, without any agent writing to it. That is the
 mechanism working exactly as designed, and it is the reason the limits-enable record can be trusted
 against something other than the conductor's own word.
+
+---
+
+## F-N16 — two leases were open at close, and the audit that caught them was nearly not run
+
+Charter §7's close checklist ends with a clause easy to read past: ***"Missing lease-closing entries:
+write them."*** It only means something if somebody audits the log for opens without closes. That
+audit was run, and it found two:
+
+1. **P4-H's lease** — opened by the builder, **never closed**. The lane was REFUTED and then PARKED
+   mid-flight, and its park pass produced its deliverables without returning to the coordination log.
+   Not the builder's failure to be blamed for: a lane that gets parked by a ruling from outside itself
+   has no natural moment to close its own lease. **That is a structural gap in the park path, not a
+   lapse** — and it is worth a charter note, because every parked lane will hit it.
+2. **The run's own conductor lease** — the three declared scopes (T-P3 / T-P4-REMEMBER /
+   T-P4-RETIRE), open since run-open and never released. The run would have ended holding a broad
+   lease over three trees while another campaign was actively writing in the same checkout.
+
+Both are now closed, with the closes written to say what actually happened rather than a formula:
+T-P4-RETIRE is recorded as **released, never opened** — no redirect, no deletion, no flag removal, no
+census accepted as a warrant, no refuter panel convened, nothing in the legacy tree touched.
+
+**Why this is worth its own finding.** An unreleased lease is not a documentation defect — it is a
+live claim on files that other campaigns read before they start work. PARIŚEṢA-RĀTRI-V4 is active in
+the same repository; a stale Paripraśna lease over three trees would have been a false signal
+constraining a campaign that had nothing to do with tonight. **The cost of the omission would have
+been paid by someone else, which is precisely the class of error a coordination log exists to
+prevent.**
+
+The lease-close entries also carry two things forward deliberately: the DD-28/29/30-on-a-branch
+numbering note (so a later merge does not renumber), and a repeat of this run's own published
+correction about the migration number spaces — repeated in the close because someone reading only the
+close would otherwise miss the retraction.
