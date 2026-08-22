@@ -1,6 +1,32 @@
 /**
  * P3-D PREP (Paripraśna P3+P4 overnight run, Wave P3-3 precondition) —
- * THE WIRE↔PERSISTED RECEIPT BYTE-AGREEMENT TEST for the WEB door.
+ * THE WIRE↔PERSISTED RECEIPT SINGLE-REFERENCE GUARD (byte-equality is the
+ * detection MECHANISM, not two independently-assembled derivations) for the
+ * WEB door.
+ *
+ * RENAMED 2026-08-23 (review finding, blocks-merge fix 2). The previous
+ * headline, "THE WIRE↔PERSISTED RECEIPT BYTE-AGREEMENT TEST," read as a
+ * claim that the wire copy and the persisted copy are two independently
+ * derived values which happen to agree byte-for-byte. They are not. Per
+ * `persistence_stage.ts` (its own comment at the call site, lines ~503–506):
+ * "the two copies (wire + persisted) are the same validated object, never
+ * two independently-assembled ones that could drift" — `metadataWithReceipt
+ * = withAcharyaReadingReceipt(metadataWithReceipt ?? {}, receipt)` (line
+ * 499) and `em.receiptDefine({ turn_id: turnId, receipt })` (line 507) both
+ * close over the SAME `receipt` object built once by
+ * `assembleAcharyaReadingReceipt`. Given CLAUDE.md §N.8 instance 3 is
+ * literally "a byte-equality claim with no byte comparison behind it," this
+ * file must not itself carry a byte-equality headline resting on an
+ * unstated identity invariant. What this file actually guards: that no
+ * FUTURE code change silently introduces a second, independent derivation
+ * on either side (a genuine two-copies bug) without a test going RED. The
+ * assertion mechanism is still real byte comparison — it cannot fail on a
+ * *value* divergence today because there is no second derivation to
+ * diverge; it fails only if the CODE changes to produce two objects, which
+ * is exactly why all five review sabotages (and this lane's own two
+ * §N.8-capable-of-failing cases below) had to edit source to go RED. That
+ * is a genuinely valuable regression guard — it is just not "independent
+ * derivations happened to agree."
  *
  * WHY IT EXISTS
  * ─────────────
@@ -38,6 +64,10 @@
  *  · The receipt lives at `metadata.acharya_reading_receipt`
  *    (`receipt/store.ts#RECEIPT_METADATA_KEY`) on the persisted side, and at
  *    `.receipt` on the wire event — both extracted before comparison.
+ *  · Both of the above trace to the SAME `receipt` object reference (see the
+ *    renamed-headline note above) — the wire/persisted split is real at the
+ *    protocol level (SSE frame vs. jsonb column, two different transports),
+ *    but not at the derivation level (one assembly, not two).
  *
  * §N.8 EARNED-SIGNAL COMPLIANCE
  * ──────────────────────────────
@@ -45,9 +75,14 @@
  * named defect in CLAUDE.md §N.8 (instance 3, the PB-2 gate). The first
  * `describe` block below proves this comparator is CAPABLE OF FAILING —
  * fed two receipts that differ in exactly one field, it must fail — BEFORE
- * the second block's real-route green run is allowed to mean anything.
+ * the second block's real-route green run is allowed to mean anything. That
+ * capability-of-failing is what makes this a real guard despite the single-
+ * object-reference fact above: the comparator itself is sound; what a
+ * reader must not conclude from a green run is "two independent
+ * assemblies agreed," because there are not two independent assemblies.
  *
- * CI SCOPE (disclosed honestly)
+ * CI SCOPE (disclosed honestly — corrected 2026-08-23, review finding,
+ * blocks-merge fix 2)
  * ──────────────────────────────
  * Every collaborator this test touches is either the REAL, unmocked
  * application code under test (`runPersistenceStage`, `PariprashnaEmitter`,
@@ -65,6 +100,19 @@
  * client received. A live DB-read confirmation of the persisted row is
  * P3-D/DD-21's job, not this lane's (P3-D is explicitly out of scope here —
  * see the P3-D-PREP builder brief).
+ *
+ * WHAT THIS TEST DOES **NOT** PROVE, STATED PLAINLY: it does not prove that
+ * two independently-assembled receipts happen to serialize identically —
+ * there is only ever one assembled `receipt` object per turn on the web
+ * door today (see the renamed-headline note). It proves (a) the byte
+ * comparator itself can fail on a real divergence (§N.8 block below), and
+ * (b) that object survives the wire-encode and the persisted-serialize
+ * paths unchanged end to end through REAL application code. A future
+ * refactor that gives the wire and the persisted paths two separate
+ * derivations would need this test to still catch drift between them —
+ * which it would, precisely because it is a byte comparison and not a
+ * reference-identity check — but today's green run is a single-source
+ * integrity guard, not evidence of independent-derivation agreement.
  *
  * Chart id used throughout is the SYNTHETIC probe chart
  * (`1c826d5a-41cb-4450-b4dc-59d440e5f75a`) per the overnight run's hard-never
@@ -84,11 +132,30 @@ const { writeTurnCalls } = vi.hoisted(() => ({
   writeTurnCalls: [] as Array<{ message: Record<string, unknown>; parts: unknown[] }>,
 }))
 
-// ── Feature flags. Only PARIPRASHNA_RECEIPT_EMISSION_ENABLED is armed — every
-//    other receipt-adjacent flag (interpretation sets, typed confidence,
-//    semantic blocks, durable-outbox persistence) stays at its real-world
-//    default (OFF), so this test exercises the SAME flag posture receipt
-//    emission actually ships under today, not a maximal-features fixture. ──
+// ── Feature flags. Only PARIPRASHNA_RECEIPT_EMISSION_ENABLED is armed here.
+//    CORRECTED 2026-08-23 (review finding, blocks-merge fix 1): this is NOT
+//    the flag posture receipt emission actually ships under today. Read live
+//    from the serving revision (`gcloud run services describe amjis-web`,
+//    read-only, no production change):
+//      MARSYS_FLAG_PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED     = true
+//      MARSYS_FLAG_PARIPRASHNA_TYPED_CONFIDENCE_ENABLED    = true
+//      MARSYS_FLAG_PARIPRASHNA_INTERPRETATION_SETS_ENABLED = true
+//    All three are read by the receipt path (`persistence_stage.ts:489
+//    typedConfidenceEnabled: isTypedConfidenceEnabled()`; `confidence/
+//    flag.ts:15`; `interpretation/flag.ts:17`) and production populates
+//    `interpretation_sets` / `confidence_typing` where this harness (with
+//    those flags OFF) gets `{"status": "unavailable"}` instead. Durable-
+//    outbox persistence has no corresponding env var set on the serving
+//    revision at all, so OFF is its real default here.
+//    NET: this test exercises a STRICTLY SMALLER receipt than production
+//    ships, not "the same posture." The wire↔persisted byte-agreement
+//    property under test does not depend on which optional receipt fields
+//    are populated — the invariant holds at any flag posture, because both
+//    sides trace to the same object reference (see the file header's FIX 2
+//    note) — so this narrower fixture does not weaken the guard. A
+//    maximal-flag variant exercising all four flags ON would be strictly
+//    more thorough and is left as follow-up, not required for this guard to
+//    be sound. ──
 vi.mock('@/lib/config/index', () => ({
   configService: {
     getFlag: vi.fn((key: string) => key === 'PARIPRASHNA_RECEIPT_EMISSION_ENABLED'),
@@ -304,7 +371,7 @@ beforeEach(() => {
 // first real pass counts. This is the "deliberately mismatched receipt" the
 // charter names explicitly (§4 Wave P3-3, §6.2).
 // ─────────────────────────────────────────────────────────────────────────────
-describe('wire↔persisted receipt byte agreement — the detector can fail (§N.8)', () => {
+describe('wire↔persisted receipt single-reference guard (byte-equality mechanism) — the detector can fail (§N.8)', () => {
   it('FAILS when the wire receipt and the persisted receipt diverge by one field', () => {
     const wireReceipt = {
       receipt_schema_version: 1,
@@ -349,7 +416,7 @@ describe('wire↔persisted receipt byte agreement — the detector can fail (§N
 // tonight), asserting the SSE `receipt.define` payload and the
 // `metadata_json` the writer would insert are byte-identical.
 // ─────────────────────────────────────────────────────────────────────────────
-describe('wire↔persisted receipt byte agreement — the real web-door persistence stage', () => {
+describe('wire↔persisted receipt single-reference guard (byte-equality mechanism) — the real web-door persistence stage', () => {
   it('emits a receipt.define wire event', async () => {
     const result = await runTurn(
       'The Moon in Pūrva Bhādrapada colors this turn toward introspection, restlessness, ' +
@@ -387,7 +454,20 @@ describe('wire↔persisted receipt byte agreement — the real web-door persiste
     expect(wireReceiptBytes).toBe(persistedReceiptBytes)
   })
 
-  it('the receipt_hash is present and identical on both sides (the field DD-24 parity will hash)', async () => {
+  // DOCUMENTATION ASSERTION (review finding, blocks-merge fix 2, disposition:
+  // labelled not dropped). This case adds NO detection beyond the full-object
+  // byte-equality assertion above — because both sides trace to the same
+  // `receipt` object reference (see file header), `receipt_hash` can only
+  // diverge here if the WHOLE receipt already diverged, which the assertion
+  // above already catches, field-by-field-inclusive. Verified under review:
+  // this case stayed GREEN under all five independent sabotages, including
+  // one that deleted a whole field — it can only fail if `receipt_hash`
+  // itself is perturbed on one side in isolation, which in this codebase
+  // today only this file's own §N.8 block above does deliberately. Kept, not
+  // dropped, because it documents in the test's own name which specific
+  // field DD-24's parity assertion will hash — a fact worth pinning even
+  // though the assertion mechanics add no independent coverage.
+  it('DOCUMENTATION: receipt_hash — the specific field DD-24 parity will hash — is present and identical on both sides', async () => {
     const result = await runTurn(
       'Rahu in the tenth house of career often reads as ambition first and clarity second — ' +
         'the drive arrives before the native fully knows what it is driving toward.',
