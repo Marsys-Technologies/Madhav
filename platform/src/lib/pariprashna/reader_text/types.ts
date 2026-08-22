@@ -69,7 +69,7 @@ export interface ReaderTextEntry {
 }
 
 export interface ReviewFlag {
-  readonly source: 'register_leak' | 'voice' | 'citation_gate'
+  readonly source: 'register_leak' | 'voice' | 'citation_gate' | 'hedge_band'
   readonly code: string
   readonly level: 'info' | 'warn' | 'error'
   readonly detail: string

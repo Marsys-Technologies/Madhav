@@ -8,17 +8,22 @@
  * the exact, honest coverage boundary (25 of 568 reader-facing catalog
  * entries; 568 = 573 total minus 5 internal §16 meta-statistics entries).
  *
- * AUTHORING DISCIPLINE FOLLOWED FOR EVERY ENTRY BELOW (manual convention,
- * not yet code-enforced — a fair follow-up for a future session that wants
- * to scale generation):
- *   - Confidence hedging is a direct, consistent translation of the
- *     catalog's own real `confidence` value — never invented per-entry:
- *     >=0.90 "well-established in the chart"; 0.80-0.89 "solidly supported,
- *     though not the chart's single strongest point"; 0.70-0.79 "reasonably
- *     supported, with an open question or two"; <0.70 "worth naming, but
- *     genuinely provisional." No entry below claims a stronger hedge than
- *     its own catalog confidence licenses (SS N.7 item 6: honest null over
- *     invented certainty).
+ * AUTHORING DISCIPLINE FOR EVERY ENTRY BELOW:
+ *   - Confidence hedging is a direct translation of the catalog's own
+ *     `confidence` value — never invented per-entry: >=0.90 "well-established
+ *     in the chart"; 0.80-0.89 "solidly supported, though not the chart's
+ *     single strongest point"; 0.70-0.79 "reasonably supported, with an open
+ *     question or two"; <0.70 "worth naming, but genuinely provisional."
+ *     THIS ONE IS CODE-ENFORCED, not a convention: `hedge_bands.ts`
+ *     recomputes each entry's licensed band from its catalog `confidence`,
+ *     `review.ts` runs it as a gate, and an entry whose hedge does not match
+ *     its licence FAILS review and never reaches the frozen artifact.
+ *     It is enforced because the earlier prose version of this same sentence
+ *     — "No entry below claims a stronger hedge than its own catalog
+ *     confidence licenses" — was asserted with no detector behind it and was
+ *     FALSE for 9 of the 25 entries, 4 of them overclaims (SS N.8: a status
+ *     claim with no code path that could read it false is null, not green).
+ *     The exact 9 are captured in this lane's remediation commit message.
  *   - No internal register/table/signal-id vocabulary appears in
  *     `reader_text` (enforced mechanically by `review.ts`'s register-leak
  *     lint, not merely by this convention) — classical Sanskrit/astrological
@@ -121,21 +126,21 @@ export const READER_TEXT_ENTRIES: readonly ReaderTextEntry[] = [
   },
   {
     signal_id: `SIG.MSR.427`,
-    reader_text: `Classical texts describe a small family of chart-shape patterns based purely on how many signs the planets are spread across, independent of which signs or houses those are. One of the gentler patterns in that family forms when the seven classical planets cluster into exactly four signs rather than scattering widely or bunching into just one or two, traditionally read as a life carrying a baseline of contentment, some material comfort, and a disposition toward helping others, without the extremity that a tighter or wider spread would suggest. This reading is solidly supported, drawn from a direct count of your birth positions.`,
+    reader_text: `Classical texts describe a small family of chart-shape patterns based purely on how many signs the planets are spread across, independent of which signs or houses those are. One of the gentler patterns in that family forms when the seven classical planets cluster into exactly four signs rather than scattering widely or bunching into just one or two, traditionally read as a life carrying a baseline of contentment, some material comfort, and a disposition toward helping others, without the extremity that a tighter or wider spread would suggest. This reading is well-established, drawn from a direct count of your birth positions.`,
     grade: `primary`,
     grounding_note: `Classical basis: "BPHS Ch.26 (Naabhasa Yogas, Aakruti groups); JHORA_TRANSCRIPTION_v8_0_SOURCE.md S6.1". Falsifier confirms the four-sign distribution and notes the pattern would not form at five-or-more signs.`,
     catalog_discrepancy_note: ``,
   },
   {
     signal_id: `SIG.MSR.513`,
-    reader_text: `Classical wealth-timing technique divides each sign into two halves, ruled alternately by the Sun and the Moon, and looks at how the planets fall across that division. In this chart the split leans toward the Moon's half, five planets fall there against four in the Sun's half, a modest but real asymmetry the tradition reads as a lean toward fluctuating, responsive earning and saving patterns rather than the steadier, more fixed pattern a Sun-leaning chart would suggest. Treat this one as reasonably supported: real, but among the more modestly-confirmed readings in this set.`,
+    reader_text: `Classical wealth-timing technique divides each sign into two halves, ruled alternately by the Sun and the Moon, and looks at how the planets fall across that division. In this chart the split leans toward the Moon's half, five planets fall there against four in the Sun's half, a modest but real asymmetry the tradition reads as a lean toward fluctuating, responsive earning and saving patterns rather than the steadier, more fixed pattern a Sun-leaning chart would suggest. Treat this one as worth naming, but genuinely provisional: the five-four count itself is a direct read, while the source rates this signal's confidence lower than any other reading in this set.`,
     grade: `primary`,
     grounding_note: `Classical basis: "BPHS Ch.7 Sl.14 (Hora, wealth division); Parashara hora rules". Falsifier notes the 5-4 split is a direct count and would only be undermined by an error in the underlying wealth-chart placements.`,
     catalog_discrepancy_note: ``,
   },
   {
     signal_id: `SIG.MSR.031`,
-    reader_text: `A third way of naming the same Rahu pattern already described above: read planet-by-planet rather than sign-by-sign, Rahu's Jaimini aspect reaches Mars and Saturn together, and separately the Sun and Mercury together, four planets in total, the same convergence, framed here by which planets receive the aspect rather than which signs hold them. It is reasonably supported, though the source material notes this specific school of aspect-reading (fixed signs aspecting non-adjacent movable ones) is not universally accepted across every Jaimini lineage, which is the honest caveat to carry alongside it.`,
+    reader_text: `A third way of naming the same Rahu pattern already described above: read planet-by-planet rather than sign-by-sign, Rahu's Jaimini aspect reaches Mars and Saturn together, and separately the Sun and Mercury together, four planets in total, the same convergence, framed here by which planets receive the aspect rather than which signs hold them. It is solidly supported, though not the chart's single strongest point: the source material notes this specific school of aspect-reading (fixed signs aspecting non-adjacent movable ones) is not universally accepted across every Jaimini lineage, which is the honest caveat to carry alongside it.`,
     grade: `supporting`,
     grounding_note: `Classical basis: "Jaimini Upadesa Sutras 1.3.1-1.3.5 (Rashi Drishti); CGP Audit Session 6". Falsifier explicitly notes an alternate school would not confirm this aspect, carried into the hedge above.`,
     catalog_discrepancy_note: `Near-duplicate of SIG.MSR.172/SIG.MSR.327, same Rahu Jaimini quadruple-aspect fact, third independent authoring; see entries.ts header comment.`,
@@ -163,14 +168,14 @@ export const READER_TEXT_ENTRIES: readonly ReaderTextEntry[] = [
   },
   {
     signal_id: `SIG.MSR.023`,
-    reader_text: `The partnership-and-self axis draws unusually concentrated attention in this chart: Mars and Saturn sit directly in the seventh house, Jupiter casts its aspect there from the fifth, and two further classical sensitive points (a life-accumulation point and a lunar-cycle marker) both fall on the same axis. Multiple independent classical techniques converging on one axis this way is itself notable, it suggests partnership and self-image are a genuinely load-bearing theme in the chart rather than one placement among many. This reading is reasonably supported; its strength depends in part on the precise degree of one of those sensitive points, which the source notes as the one input still worth double-checking.`,
+    reader_text: `The partnership-and-self axis draws unusually concentrated attention in this chart: Mars and Saturn sit directly in the seventh house, Jupiter casts its aspect there from the fifth, and two further classical sensitive points (a life-accumulation point and a lunar-cycle marker) both fall on the same axis. Multiple independent classical techniques converging on one axis this way is itself notable, it suggests partnership and self-image are a genuinely load-bearing theme in the chart rather than one placement among many. This reading is solidly supported, though not the chart's single strongest point; its strength depends in part on the precise degree of one of those sensitive points, which the source notes as the one input still worth double-checking.`,
     grade: `supporting`,
     grounding_note: `Classical basis: "BPHS Ch.16 (Graha Drishti); CVG.08". Falsifier notes the reading depends on the computed sign of a sensitive point (Bhrigu Bindu); if that recomputed to a different sign, the convergence claim weakens.`,
     catalog_discrepancy_note: ``,
   },
   {
     signal_id: `SIG.MSR.262`,
-    reader_text: `Across the sub-periods of the current major planetary cycle examined here, the ruling planet of each sub-period lines up, domain for domain, with the life area your own recorded history shows was actually active during that stretch of time, a planet tied to career activating during a career-heavy stretch, one tied to relationships during a relationship-heavy stretch, and so on. That kind of consistent alignment across multiple periods, rather than just one lucky match, is what makes this pattern worth naming: it is evidence the classical timing framework is tracking real lived experience in this particular chart. This is well-established as a pattern, matched at the level of broad life-domain rather than precise event-by-event detail.`,
+    reader_text: `Across the sub-periods of the current major planetary cycle examined here, the ruling planet of each sub-period lines up, domain for domain, with the life area your own recorded history shows was actually active during that stretch of time, a planet tied to career activating during a career-heavy stretch, one tied to relationships during a relationship-heavy stretch, and so on. That kind of consistent alignment across multiple periods, rather than just one lucky match, is what makes this pattern worth naming: it is evidence the classical timing framework is tracking real lived experience in this particular chart. This is solidly supported as a pattern, matched at the level of broad life-domain rather than precise event-by-event detail.`,
     grade: `supporting`,
     grounding_note: `Classical basis: "BPHS Ch.46 (AD lord delivers its signification during its sub-period); MARSYS-JIS MATRIX_DASHA_PERIODS S2.3 statistical analysis". Falsifier notes matching is domain-level, not event-level, which is the honest granularity carried into the reading above.`,
     catalog_discrepancy_note: ``,
@@ -226,14 +231,14 @@ export const READER_TEXT_ENTRIES: readonly ReaderTextEntry[] = [
   },
   {
     signal_id: `SIG.MSR.238`,
-    reader_text: `A classical sensitive point calculated as the midpoint between the lunar nodes' axis and the Moon itself, treated in certain lineages as a marker of where accumulated life-experience concentrates, falls in this chart within the seventh house, in the same lunar constellation segment as one of the classically significant marriage-timing points. That the point lands in the same house already carrying both Mars and Saturn together is a meaningful layering rather than a coincidence worth dismissing: it reinforces partnership and shared-resource themes as an area where experience compounds over time. This is reasonably supported, the exact placement depends on a precise lunar longitude the source itself flags as worth re-confirming to the arc-minute.`,
+    reader_text: `A classical sensitive point calculated as the midpoint between the lunar nodes' axis and the Moon itself, treated in certain lineages as a marker of where accumulated life-experience concentrates, falls in this chart within the seventh house, in the same lunar constellation segment as one of the classically significant marriage-timing points. That the point lands in the same house already carrying both Mars and Saturn together is a meaningful layering rather than a coincidence worth dismissing: it reinforces partnership and shared-resource themes as an area where experience compounds over time. This is solidly supported, though not the chart's single strongest point: the exact placement depends on a precise lunar longitude the source itself flags as worth re-confirming to the arc-minute.`,
     grade: `supporting`,
     grounding_note: `Classical basis: "Bhrigu Nandi Nadi (Bhrigu Bindu = midpoint of Rahu and Moon)". Falsifier walks the midpoint calculation explicitly and flags the exact Moon longitude as needing confirmation for arc-minute precision.`,
     catalog_discrepancy_note: ``,
   },
   {
     signal_id: `SIG.MSR.314`,
-    reader_text: `The classical Krishnamurti technique for the gains-and-income house names the Sun, Rahu, the Moon, and Saturn as its significators here, with the Moon carrying particular weight: it sits directly in that house and rules the sign it occupies, while the Sun and Rahu both fall in a lunar constellation ruled by the Moon, chaining their influence into the same house through the Moon. That kind of layered, mutually-reinforcing significator structure is read as a stronger-than-average gains signature rather than a loose or coincidental one. This is well-established, verified directly against the confirmed significator list and constellation lordships.`,
+    reader_text: `The classical Krishnamurti technique for the gains-and-income house names the Sun, Rahu, the Moon, and Saturn as its significators here, with the Moon carrying particular weight: it sits directly in that house and rules the sign it occupies, while the Sun and Rahu both fall in a lunar constellation ruled by the Moon, chaining their influence into the same house through the Moon. That kind of layered, mutually-reinforcing significator structure is read as a stronger-than-average gains signature rather than a loose or coincidental one. This is solidly supported, verified directly against the confirmed significator list and constellation lordships.`,
     grade: `primary`,
     grounding_note: `Classical basis: "Krishnamurti Paddhati (H11 significators = planets delivering income and gains during their periods)". Falsifier walks the nakshatra-lordship chain (Sun and Rahu both in Moon-ruled constellations) explicitly, correcting an initial mis-check in the source's own working.`,
     catalog_discrepancy_note: ``,
@@ -254,7 +259,7 @@ export const READER_TEXT_ENTRIES: readonly ReaderTextEntry[] = [
   },
   {
     signal_id: `SIG.MSR.302`,
-    reader_text: `The second of the three classical seven-and-a-half-year Saturn transit phases through the signs around your Moon placed Saturn, during that window, in its own sign in the career house, a comparatively gentler placement for that particular transit than a debilitated or enemy-sign Saturn would have been. The source material notes this window lines up with a documented career founding in your own history, read as the transit expressing itself through career-building rather than through the health difficulties this transit phase is sometimes associated with. This is reasonably supported: a real, checkable transit-to-history alignment, though transit-to-event correlation is inherently a softer form of evidence than a natal placement.`,
+    reader_text: `The second of the three classical seven-and-a-half-year Saturn transit phases through the signs around your Moon placed Saturn, during that window, in its own sign in the career house, a comparatively gentler placement for that particular transit than a debilitated or enemy-sign Saturn would have been. The source material notes this window lines up with a documented career founding in your own history, read as the transit expressing itself through career-building rather than through the health difficulties this transit phase is sometimes associated with. This is solidly supported: a real, checkable transit-to-history alignment, though transit-to-event correlation is inherently a softer form of evidence than a natal placement.`,
     grade: `supporting`,
     grounding_note: `Classical basis: "Classical Jyotish (Rising phase = 12th from Moon; for Aquarius Moon = 12th from Aquarius = Capricorn)". Falsifier describes this as retrodict-verified against a specific historical founding event.`,
     catalog_discrepancy_note: ``,
