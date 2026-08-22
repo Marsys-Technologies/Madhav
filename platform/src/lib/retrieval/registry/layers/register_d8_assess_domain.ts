@@ -39,6 +39,9 @@ import { query } from '@/lib/db/client'
 import { deriveDefect001Note } from '../../provenance/freshness_notes'
 import { resolveAddress } from '../../address_resolver'
 import { SHASTRA_MAP } from './register_d9_judgment'
+// F-166a: domain-resolution disclosure, mirroring judgment_query's F-57 mechanism (see
+// register_d9_judgment.ts's own domain_resolution block for the full rationale).
+import { isCanonicalDomain } from '@/lib/domain_vocabulary'
 // ŚODHANA T5 (PŪRTI) — the computed-but-never-joined classical legs + the served
 // reading_checklist receipt, shared with judgment_query (MC-030/031/033).
 import {
@@ -132,6 +135,12 @@ interface AssessDomainArgs {
   domain: string
   domain_label: string
   judgment_flag_note: string
+  /** F-166a: the tool-name domain word the caller actually invoked (e.g. `marriage` for
+   *  assess_marriage), which can differ from `domain` above — `domain` is already the
+   *  canonical signal-domain tag (e.g. `relationship`) that every domain-scoped leg below
+   *  is keyed by. Carried through so the response can disclose the mapping rather than
+   *  applying it silently, exactly like judgment_query's `domain_resolution` (F-57). */
+  requested_domain_key: string
 }
 
 // F-021R bounding defaults for assess_* tools.
@@ -164,8 +173,10 @@ const ASSESS_MAX_PREDICATES = 50
 // so a consumer knows the stage is pending, not genuinely quiet. (Item-0 R-45 triage,
 // AUDIT_STATE.md 2026-07-12.) No chart-specific row counts are embedded here — this string is
 // served to every caller regardless of chart context (GT-32/GT-54). Exported so its regression
-// protection (checkTextForNativeLeak scan, see register_d8_assess_domain.test.ts /
+// protection (checkTextForNativeLeak scan, see register_d8_assess_domain.gate.test.ts:76-77 /
 // chart_agnostic_gate.test.ts) can import the REAL constant rather than a synthetic copy.
+// (F-166b: repointed from a stale filename — this file's own basename + `.test.ts` — that
+// did not exist anywhere in the repo; see the F-166 PR for the prior dead pointer.)
 export const TEMPORAL_EMPTY_REASON =
   'kala_activation returned no dated windows in range. Known L3 writer defect (R-45/R-40 ' +
   'shared root): ~99% of kala_activation rows have NULL activation_start/end for the ' +
@@ -612,7 +623,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
 
 async function runAssessDomain(
   args: Record<string, unknown>,
-  opts: Pick<AssessDomainArgs, 'domain' | 'domain_label' | 'judgment_flag_note'>
+  opts: Pick<AssessDomainArgs, 'domain' | 'domain_label' | 'judgment_flag_note' | 'requested_domain_key'>
 ): Promise<{ content: object; is_error: boolean }> {
   const chart_id = args['chart_id'] as string | undefined
   if (!chart_id) {
@@ -620,7 +631,32 @@ async function runAssessDomain(
   }
 
   const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'lahiri_chitrapaksha'
-  const { domain, domain_label, judgment_flag_note } = opts
+  const { domain, domain_label, judgment_flag_note, requested_domain_key } = opts
+
+  // ── F-166a: domain-resolution disclosure (mirrors judgment_query's F-57 block) ──────
+  // `domain` above is already the canonical signal-domain tag every domain-scoped leg in
+  // this response is keyed by; `requested_domain_key` is the tool-name word the caller
+  // actually invoked (e.g. `marriage`). For assess_marriage the two differ (the silent
+  // `relationship` alias); for assess_career/health/wealth they happen to coincide. Before
+  // this fix the mapping was invisible on the wire for all four tools — the file imports
+  // SHASTRA_MAP but never disclosed which canonical domain it actually queried with.
+  const domain_resolution = {
+    requested: requested_domain_key,
+    resolved_signal_domain: domain,
+    is_exact: requested_domain_key === domain,
+    is_canonical: isCanonicalDomain(domain),
+    applies_to: [
+      'house_analysis / karaka_analysis (bodha_question_lenses + bodha_cdlm_cells via query_domain_reading, domain param)',
+      'bearing_yoga_firings (ga_yoga_firings domain_match against this domain\'s bhāveśa/kāraka(s))',
+      'gochara_sweep (brahma_event_ontology.domain)',
+      'contradictions (bodha_contradictions dissent surface, scoped via query_contradictions)',
+    ],
+    note:
+      'The domain-scoped legs listed in applies_to are keyed by the CANONICAL 13-domain ' +
+      'vocabulary (brahmagyan/domain_vocabulary.py). resolved_signal_domain is the tag those ' +
+      'legs were actually queried with — read any empty domain-scoped leg against THIS value, ' +
+      'not against `requested` (F-166, mirroring judgment_query\'s F-57).',
+  }
 
   // F-021R caps: bound signals per lens + contradictions in the assembled bundle.
   const max_signals_per_lens = Math.min(
@@ -1255,6 +1291,8 @@ async function runAssessDomain(
         domain_label,
         chart_id,
         ayanamsha_id,
+        // F-166a: which canonical domain the domain-scoped legs were ACTUALLY queried with.
+        domain_resolution,
         ranking_basis: p2RankingBasis,
         verdict,
         // T5 (PŪRTI): the served completeness receipt — which classical units this
@@ -1344,6 +1382,19 @@ async function runAssessDomain(
         },
         judgment_flags: [
           judgmentFlag('domain_inference_requires_acharya_validation', judgment_flag_note, 'warning'),
+          // F-166a: fires exactly when the tool-name domain word is a classical/colloquial
+          // alias for the canonical signal domain (e.g. assess_marriage -> 'relationship'),
+          // mirroring judgment_query's domain_resolution_aliased flag (F-57).
+          ...(domain_resolution.is_exact
+            ? []
+            : [judgmentFlag(
+                'domain_resolution_aliased',
+                `domain '${domain_resolution.requested}' resolves to the canonical signal domain ` +
+                `'${domain_resolution.resolved_signal_domain}' for the domain-scoped legs ` +
+                `(${domain_resolution.applies_to.join('; ')}) — a deliberate vocabulary mapping, ` +
+                'disclosed rather than applied silently (F-166, mirroring F-57).',
+                'info',
+              )]),
           // F-113: disclose the D1 significator leg's state at the flag seam — a `not_computed`
           // leg is a stated limit on the verdict, never a silent gap. §N.8: the flag has a real
           // detector behind it (buildSignificatorCondition's own empty_reason), not a proxy.
@@ -1498,6 +1549,7 @@ const assessMarriageCapability: CapabilityDescriptor = {
   async handler(args: Record<string, unknown>, _ctx?: unknown) {
     return runAssessDomain(args, {
       domain: 'relationship',
+      requested_domain_key: 'marriage',
       domain_label: 'Marriage / Partnership',
       judgment_flag_note:
         'Marriage domain synthesis reconciles 7th lord + Venus kāraka + D9 from L1 chart_facts (via drill). CDLM cell reconciliation and affliction assessment require acharya review of the assembled bundle.',
@@ -1571,6 +1623,7 @@ const assessCareerCapability: CapabilityDescriptor = {
   async handler(args: Record<string, unknown>, _ctx?: unknown) {
     return runAssessDomain(args, {
       domain: 'career',
+      requested_domain_key: 'career',
       domain_label: 'Career / Vocation',
       judgment_flag_note:
         'Career domain synthesis reconciles 10th lord + Saturn kāraka + D10 from L1 chart_facts (via drill). Yoga detection and dasha activation windows require acharya review of the assembled bundle.',
@@ -1644,6 +1697,7 @@ const assessHealthCapability: CapabilityDescriptor = {
   async handler(args: Record<string, unknown>, _ctx?: unknown) {
     return runAssessDomain(args, {
       domain: 'health',
+      requested_domain_key: 'health',
       domain_label: 'Health / Vitality',
       judgment_flag_note:
         'Health domain synthesis reconciles 1st/6th/8th lords + Sun kāraka from L1 chart_facts (via drill). Affliction assessment and maraka timing require acharya review of the assembled bundle.',
@@ -1716,6 +1770,7 @@ const assessWealthCapability: CapabilityDescriptor = {
   async handler(args: Record<string, unknown>, _ctx?: unknown) {
     return runAssessDomain(args, {
       domain: 'wealth',
+      requested_domain_key: 'wealth',
       domain_label: 'Wealth / Prosperity',
       judgment_flag_note:
         'Wealth domain synthesis reconciles 2nd/11th lords + Jupiter kāraka from L1 chart_facts (via drill). Dhana yoga identification and dasha timing require acharya review of the assembled bundle.',
