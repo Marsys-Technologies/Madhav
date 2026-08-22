@@ -98,6 +98,10 @@ test-results/
 
 # Git worktrees
 .worktrees/
+.codex/worktrees/
+
+# agent runtime state — never commit (config.toml can carry a live MCP key)
+.codex/config.toml
 
 # Local dev scripts with hardcoded DB credentials — never commit
 console-full.txt
