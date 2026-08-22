@@ -108,7 +108,10 @@ export const getPositionsCapability: CapabilityDescriptor = {
       description: 'Reference frame to re-base house counts onto (default: lagna). ' +
         'chandra=from Moon, surya=from Sun, arudha=from Arudha Lagna, karakamsha=from Karakamsha. ' +
         'When set to a non-lagna frame, each row gains a `house_from_frame` field alongside the ' +
-        'stored lagna-relative `house_d1` (fact_key) value.',
+        'stored lagna-relative `house_d1` (fact_key) value. F-159: frame="chandra" additionally ' +
+        'carries `ayanamsha_frame_sensitivity` — a disclosure (never a correctness ruling) of ' +
+        'whether the Moon\'s own sign, the frame-determining fact, agrees across the 5 real ' +
+        'ayanamshas.',
       enum: FRAME_VALUES,
       default: 'lagna',
     },
@@ -201,9 +204,13 @@ export const getPositionsCapability: CapabilityDescriptor = {
       let rows = result.rows ?? []
 
       let frameNote: string | undefined
+      // F-159: populated only for frame:'chandra' — see resolveFrameReferenceSign's own doc.
+      let ayanamshaFrameSensitivity: unknown
       if (frame !== 'lagna' && rows.length > 0) {
         try {
-          const { sign: referenceSign } = await resolveFrameReferenceSign(chartId, frame, { ayanamsha_id: frameAyanamsha })
+          const { sign: referenceSign, ayanamsha_frame_sensitivity } =
+            await resolveFrameReferenceSign(chartId, frame, { ayanamsha_id: frameAyanamsha })
+          ayanamshaFrameSensitivity = ayanamsha_frame_sensitivity
 
           const houseRows = rows.filter(r => r.fact_key === 'house_d1')
           if (houseRows.length === 0) {
@@ -265,6 +272,9 @@ export const getPositionsCapability: CapabilityDescriptor = {
           chart_id: chartId, categories, frame, planet: planet ?? null, rows, total: rows.length,
           include_upagrahas: includeUpagrahas,
           ...(frameNote ? { frame_note: frameNote } : {}),
+          // F-159: disclosure-only — the chandra frame's OWN Moon-sign agreement across the 5
+          // real ayanamshas, never a ruling on which ayanamsha is correct.
+          ...(ayanamshaFrameSensitivity ? { ayanamsha_frame_sensitivity: ayanamshaFrameSensitivity } : {}),
         },
         is_error: false,
       }

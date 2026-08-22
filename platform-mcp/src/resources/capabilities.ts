@@ -127,7 +127,9 @@ shape.
 Pass \`domain\` (marriage/relationship/career/wealth/health/progeny/education/spirituality) or a
 bare \`bhava\` (1-12). One call returns the COMPLETE classical checklist: bhava condition (sign +
 occupants + aspecting grahas) · bhāveśa (lord) condition + placement + dignity + strength ·
-kāraka condition · judged from BOTH lagna AND chandra (Sudarshana discipline) · operative-varga
+kāraka condition · judged from BOTH lagna AND chandra (Sudarshana discipline; the chandra leg
+discloses \`ayanamsha_frame_sensitivity\` — F-159, never a correctness ruling — whenever the
+Moon's own sign disagrees across the 5 real ayanamshas) · operative-varga
 confirmation (e.g. D9 for marriage) · bearing yogas/doshas · timing hooks (dasha windows) · a
 deterministic promise-register verdict · a classical-units completeness **receipt**:
 \`{bhava, bhavesha, karaka, from_moon, varga_confirmed, yogas_checked, bhanga_checked, timing_anchored}\`.
@@ -302,7 +304,9 @@ Estate consolidation (design §5/§29): ~70 legacy names → 15 substrate instru
 for ANY bhava-question ("how is the marriage?", "how is my career?", or a bare house number).
 Pass \`domain\` (marriage/relationship/career/wealth/health/progeny/education/spirituality — the
 shastra map, design §28.5) or \`bhava\` (1-12). Returns the full classical checklist — bhava
-condition, bhāveśa condition, kāraka condition, judged from lagna AND chandra, operative-varga
+condition, bhāveśa condition, kāraka condition, judged from lagna AND chandra (the chandra leg
+discloses \`ayanamsha_frame_sensitivity\` — F-159 — when the Moon's own sign disagrees across
+the 5 real ayanamshas), operative-varga
 confirmation, bearing yogas, timing hooks, a deterministic verdict, a completeness receipt
 (\`{bhava, bhavesha, karaka, from_moon, varga_confirmed, yogas_checked, bhanga_checked, timing_anchored}\`),
 and astrologically typed \`drill_pointers\` (design §28.4).

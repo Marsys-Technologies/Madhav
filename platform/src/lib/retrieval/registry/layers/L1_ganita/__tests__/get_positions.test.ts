@@ -51,3 +51,53 @@ describe('getPositionsCapability (ganita_positions_get) — CR-50', () => {
     expect(sql).toMatch(/WHEN 'aprakasha_position' THEN 2/)
   })
 })
+
+// ── F-159: ayanamsha_frame_sensitivity passes through get_positions unchanged ────────────────
+// The primitive itself (positive/negative/missing-data) is exhaustively unit-tested against
+// resolveFrameSign/resolveFrameReferenceSign directly in address_resolver.test.ts — this test
+// only pins that get_positions.ts's frame:'chandra' branch is a faithful, additive pass-through
+// of whatever resolveFrameReferenceSign returns, per the finding's "one choke point, then
+// propagate" design (no re-derivation here).
+describe('getPositionsCapability — F-159 ayanamsha_frame_sensitivity pass-through', () => {
+  beforeEach(() => {
+    mockQuery.mockReset()
+  })
+
+  it('surfaces ayanamsha_frame_sensitivity in the response when frame="chandra" and the cross-ayanamsha read fires', async () => {
+    // Row 1: the default graha_position page (one house_d1 row so the frame re-base path runs).
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ ayanamsha_id: 'lahiri_chitrapaksha', fact_subject: 'MAR', fact_key: 'house_d1', fact_value_num: '7' }],
+    })
+    // Row 2: resolveFrameReferenceSign's single-ayanamsha MOON sign lookup (chandra frame).
+    mockQuery.mockResolvedValueOnce({ rows: [{ fact_id: 'f1', fact_value_text: 'Pisces' }] })
+    // Row 3: computeChandraFrameSensitivity's cross-ayanamsha MOON sign widened read — one
+    // divergent ayanamsha, exercising the fire case end-to-end through this consumer.
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { ayanamsha_id: 'krishnamurti', fact_value_text: 'Pisces' },
+        { ayanamsha_id: 'lahiri_chitrapaksha', fact_value_text: 'Pisces' },
+        { ayanamsha_id: 'raman', fact_value_text: 'Pisces' },
+        { ayanamsha_id: 'surya_siddhanta_classical', fact_value_text: 'Aquarius' },
+        { ayanamsha_id: 'true_chitra', fact_value_text: 'Pisces' },
+      ],
+    })
+    // Row 4: the un-paginated `sign` lookup get_positions.ts issues to re-base house_from_frame.
+    mockQuery.mockResolvedValueOnce({
+      rows: [{ ayanamsha_id: 'lahiri_chitrapaksha', fact_subject: 'MAR', fact_value_text: 'Libra' }],
+    })
+
+    const result = await getPositionsCapability.handler({ chart_id: CHART_ID, frame: 'chandra' }, undefined)
+    expect(result.is_error).toBe(false)
+    const content = result.content as Record<string, unknown>
+    const sensitivity = content['ayanamsha_frame_sensitivity'] as Record<string, unknown>
+    expect(sensitivity).toBeTruthy()
+    expect(sensitivity['frame_sensitivity_class']).toBe('ayanamsha_sensitive')
+  })
+
+  it('never surfaces ayanamsha_frame_sensitivity for the default (lagna) frame', async () => {
+    mockQuery.mockResolvedValue({ rows: [] })
+    const result = await getPositionsCapability.handler({ chart_id: CHART_ID }, undefined)
+    const content = result.content as Record<string, unknown>
+    expect('ayanamsha_frame_sensitivity' in content).toBe(false)
+  })
+})

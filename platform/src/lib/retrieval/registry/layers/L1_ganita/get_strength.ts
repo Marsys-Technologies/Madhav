@@ -182,7 +182,8 @@ export const getStrengthCapability: CapabilityDescriptor = {
       let activeHouseByGraha: Record<string, number> | undefined
       let frameContext: Record<string, unknown> | undefined
       try {
-        const { sign: referenceSign } = await resolveFrameReferenceSign(chartId, frame, { ayanamsha_id: frameAyanamsha })
+        const { sign: referenceSign, ayanamsha_frame_sensitivity } =
+          await resolveFrameReferenceSign(chartId, frame, { ayanamsha_id: frameAyanamsha })
         const grahaCodes = Object.keys(GRAHA_CODE_TO_NAME)
         const signRes = await query<{ fact_subject: string; fact_value_text: string | null }>(
           `SELECT fact_subject, fact_value_text FROM chart_facts
@@ -206,6 +207,9 @@ export const getStrengthCapability: CapabilityDescriptor = {
               `graha's strength "from ${frame}", select its graha_in_house_composite_strength row for ` +
               `fact_subject = "<GRAHA>_IN_HOUSE_<active_house_by_graha[GRAHA]>" from the rows above. ` +
               `Strength VALUES are frozen build-time output — only which row is "active" changes with frame.`,
+            // F-159: frame="chandra" only — disclosure (never a correctness ruling) of whether
+            // the Moon's own sign, the frame-determining fact, agrees across the 5 real ayanamshas.
+            ...(ayanamsha_frame_sensitivity ? { ayanamsha_frame_sensitivity } : {}),
           }
         }
       } catch (e) {

@@ -1074,6 +1074,10 @@ export const JUDGMENT_FLAG_CODES = [
   // ── D9 judgment_query checklist legs ──
   'karaka_unresolved',
   'from_moon_resolution_failed',
+  // F-159 (PARIŚEṢA-V4): the from-chandra leg resolved, but the frame-determining fact itself
+  // (the Moon's sign) disagrees across the 5 real ayanamshas — disclosure only, never a ruling
+  // on which ayanamsha is correct. See address_resolver.ts's `AyanamshaFrameSensitivity`.
+  'moon_frame_ayanamsha_sensitive',
   'varga_confirmation_failed',
   'yoga_firings_fetch_failed',
   'bearing_yogas_empty',

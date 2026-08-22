@@ -787,6 +787,22 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         bhavaSignMoon.fact_ids.forEach(f => fact_ids.add(f))
         occupantsMoon.fact_ids.forEach(f => fact_ids.add(f))
         lordConditionMoon.fact_ids.forEach(f => fact_ids.add(f))
+        // F-159 (PARIŚEṢA-V4): the chandra frame's own frame-determining fact (the Moon's sign)
+        // can disagree across the 5 real ayanamshas — disclose it, never silently pick one.
+        // Fires ONLY on a genuine observed disagreement (never on missing-data alone — see
+        // AyanamshaFrameSensitivity's `null` case, an honest "insufficient data" that this flag
+        // deliberately does NOT surface as either sensitive or stable).
+        const sensitivity = bhavaSignMoon.ayanamsha_frame_sensitivity
+        if (sensitivity?.frame_sensitivity_class === 'ayanamsha_sensitive') {
+          judgment_flags.push(judgmentFlag(
+            'moon_frame_ayanamsha_sensitive',
+            `the chandra (from-Moon) frame used for this bhāva's Sudarshana leg is itself ` +
+            `ayanamsha-sensitive: the Moon's sign agrees on only ${sensitivity.variation.ayanamsha_agreement} ` +
+            `across the 5 real ayanamshas (divergent: ${sensitivity.variation.divergent_ayanamshas.join(', ')}). ` +
+            'A disclosure of frame instability, not a ruling on which ayanamsha is correct.',
+            'info',
+          ))
+        }
       } catch (e) {
         judgment_flags.push(judgmentFlag('from_moon_resolution_failed', String(e)))
       }
@@ -1546,7 +1562,12 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           checklist: {
             bhava_condition: {
               from_lagna: { sign: bhavaSignLagna.sign, house_number: bhavaSignLagna.house_number, frame: 'lagna' },
-              from_chandra: bhavaSignMoon ? { sign: bhavaSignMoon.sign, house_number: bhavaSignMoon.house_number, frame: 'chandra' } : null,
+              from_chandra: bhavaSignMoon ? {
+                sign: bhavaSignMoon.sign, house_number: bhavaSignMoon.house_number, frame: 'chandra',
+                // F-159: disclosure-only (never a correctness ruling) — null when the cross-
+                // ayanamsha Moon-sign read itself failed (additive; never blocks this leg).
+                ayanamsha_frame_sensitivity: bhavaSignMoon.ayanamsha_frame_sensitivity ?? null,
+              } : null,
             },
             bhavesha_condition: { from_lagna: lordCondition, from_chandra: lordConditionMoon },
             karaka_condition: karakaConditions,
