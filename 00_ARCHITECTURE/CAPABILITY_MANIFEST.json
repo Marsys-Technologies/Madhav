@@ -1668,7 +1668,7 @@
     {
       "canonical_id": "PARIPRASHNA_ASBUILT_BASELINE",
       "path": "00_ARCHITECTURE/PARIPRASHNA_ASBUILT_BASELINE_v1_0.md",
-      "version": "1.2",
+      "version": "1.3",
       "status": "LIVING",
       "layer": "governance",
       "expose_to_chat": false,
@@ -1676,9 +1676,9 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "32bd2b7d457391d60ed0507c23b5573f61ff34a06a9562dc960bad486ae4eec3",
+      "fingerprint": "b30bc39e3135de3a3e7d5d4cd3a3a5843c0a485972a0af95295bf87a661a4e84",
       "native_id": "project",
-      "last_verified_session": "PARIPRASHNA-P2-CLOSE-2026-08-21"
+      "last_verified_session": "PARIPRASHNA-P3-PREFLIGHT-PART-H-2026-08-22"
     },
     {
       "canonical_id": "PARIPRASHNA_DECISION_REGISTER",
@@ -1796,8 +1796,8 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "fb40748790a23e4346b22c0b8e7fdd8e697f83caf521ef058b70ad3664f0fb0d",
-      "last_verified_session": "PARIPRASHNA-P3-PREFLIGHT-PART-G",
+      "fingerprint": "40a7f19f89a6994775d44a860072bbe45df7d0b3fcdf4ce8a938af4c9002b9f2",
+      "last_verified_session": "PARIPRASHNA-P3-PREFLIGHT-PART-H",
       "last_verified_on": "2026-08-22",
       "native_id": "project"
     },
