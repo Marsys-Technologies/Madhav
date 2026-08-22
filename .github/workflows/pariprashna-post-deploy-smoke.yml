@@ -105,7 +105,15 @@ jobs:
       FIREBASE_ADMIN_CREDENTIALS: ${{ secrets.FIREBASE_ADMIN_CREDENTIALS }}
       NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
     steps:
+      # NOTE: this step must run BEFORE checkout and must NOT inherit the
+      # job-level `working-directory: platform` default — that directory does
+      # not exist yet pre-checkout. Confirmed live: the first version of this
+      # workflow ran the preflight under `defaults.run.working-directory` and
+      # failed with "No such file or directory" before ever reaching the
+      # secret check — a scaffolding bug this lane's own red-run proof caught
+      # and fixed, not the induced failure it was built to catch.
       - name: Preflight — required secrets must be configured (fail loud, never a fabricated pass)
+        working-directory: .
         run: |
           missing=""
           [ -z "${FIREBASE_ADMIN_CREDENTIALS}" ] && missing="$missing FIREBASE_ADMIN_CREDENTIALS"
