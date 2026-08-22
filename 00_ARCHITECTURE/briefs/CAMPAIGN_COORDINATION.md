@@ -7442,3 +7442,32 @@ touching `platform/src/app/api/conversations/**`); fresh fetch of `main` (`0f57b
 docs-only commit ahead of the overnight run's opening tip — rebased onto it before push, no
 platform/** drift); worktree `.clone/worktrees/p4-h` (isolated, not the shared checkout),
 branch `pariprashna/p4-h`.
+
+## 2026-08-23 — PARIPRASHNA-P4-I — lease CLOSED, PR #1497 opened (not merged by this session)
+
+Lease opened above (entry for migration 588) is released. Migration 588
+(`588_samiksha_digest_journal.sql`) authored, verified applied against a genuinely provisioned,
+isolated local Postgres (never the shared dev DB — RF-5), and read back for real: `DbDigestJournal`
+is now `daily_job.ts`'s default `DigestJournal`, retiring log-only-transport-is-the-only-record of
+the SAMĪKṢĀ digest. Full DD-21 evidence (before/after SQL, a live failure-injection proving the
+write path is not fire-and-forget, and the real production CLI run end-to-end against a seeded
+ledger row) is in PR #1497's body.
+
+**PR:** #1497, branch `pariprashna/p4-i`, worktree `.clone/worktrees/p4-i`. Left OPEN per the
+overnight charter (BUILDER opens, does not merge).
+
+**Checked immediately before opening:** fresh `origin/main` fetch (`0f57bfbf3` — PR #1491 landed
+since this lease opened, unrelated docs file, no collision); fresh `campaign-coordination` fetch
+(tip `d75fb360b`, P4-H closed concurrently in the interim — no overlap, disjoint scopes); re-verified
+588 still free on the new `origin/main` tip via `git ls-tree`.
+
+**One honest finding filed for the DD register, not fixed in this lane (pre-existing, out of
+P4-I's minimal scope):** the window-close transition and the digest dispatch/journal write are not
+atomic. A crash between them (reproduced live during this lease's failure-injection test) leaves
+the ledger row correctly transitioned but the digest for that item journalled for no `as_of` at
+all — it can no longer be re-detected as closing-soon (no longer `open`) or as closed (the run that
+would report it already crashed). This predates P4-I (same gap existed with
+`FileDigestJournal`/`LogOnlyTransport`); worth a DD entry for whoever next touches `daily_job.ts`'s
+transaction boundaries.
+
+No file outside this lease's declared scope was touched.
