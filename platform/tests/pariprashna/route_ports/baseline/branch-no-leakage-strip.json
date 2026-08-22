@@ -459,6 +459,27 @@
     {
       "fn": "writeTurn",
       "message": {
+        "id": "00000000-0000-4000-8000-000000000004",
+        "conversation_id": "00000000-0000-4000-8000-000000000001",
+        "role": "user",
+        "schema_version": 1,
+        "model_id": "n/a",
+        "provider": "user"
+      },
+      "parts": [
+        {
+          "seq": 0,
+          "kind": "text",
+          "body": {
+            "text": "How does my career unfold?"
+          },
+          "model_visible": true
+        }
+      ]
+    },
+    {
+      "fn": "writeTurn",
+      "message": {
         "id": "00000000-0000-4000-8000-000000000005",
         "conversation_id": "00000000-0000-4000-8000-000000000001",
         "role": "assistant",
@@ -497,6 +518,27 @@
       "parts": [
         {
           "seq": 0,
+          "kind": "tool_call",
+          "body": {
+            "call_id": "tb-msr_sql",
+            "tool_name": "Reading the whole chart",
+            "args": {}
+          },
+          "model_visible": false
+        },
+        {
+          "seq": 1,
+          "kind": "tool_result",
+          "body": {
+            "call_id": "tb-msr_sql",
+            "status": "done",
+            "count": 3,
+            "ms": "<ms>"
+          },
+          "model_visible": false
+        },
+        {
+          "seq": 2,
           "kind": "text",
           "body": {
             "text": "Saturn occupies the tenth from the Ascendant with directional strength, and the current period lord aspects it from the fourth.",

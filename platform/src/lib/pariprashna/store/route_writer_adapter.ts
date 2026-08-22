@@ -12,21 +12,40 @@
  * output agrees, byte-for-byte after `serializeCanonical`, with an
  * independently-coded client-side reducer simulation.
  *
- * SCOPE (three kinds only — a disclosed, deliberate narrowing):
- *   text                 <- a committed prose block (block.commit where the
+ * SCOPE, as of lane P3-C (SMṚTI completion):
+ *   text                 <- a committed 'prose' block (block.commit where the
  *                            originating block.open carried role:'prose')
+ *   reasoning             <- a committed 'thinking' block (same block.commit
+ *                            machinery, role:'thinking' — see reading_parts.ts)
+ *   tool_call             <- a successful evidence-stage retrieval dispatch
+ *                            (`evidence_stage.ts`'s `validToolResults`)
+ *   tool_result           <- the outcome of that SAME dispatch
  *   citation              <- a citation.define event / detection
  *   prediction_candidate  <- a server-side prediction-candidate detection
  *                            (`detectPredictionCandidates`, PPL γ3)
  *
- * `tool_call` / `tool_result` / `reasoning` / `attachment` are NOT mapped
- * here. The real wire (`@/lib/pariprashna/protocol/events`) does not carry
- * enough client-visible data to reconstruct them without either (a)
- * violating gate 11 [integrity]'s no-leakage discipline (activity.upsert
- * deliberately carries a resolved reader-safe `label_key`, never the raw
- * `tool_name`/args a `tool_call` body requires) or (b) inventing data not
- * actually available (B.10). This is a disclosed residual for a future lane,
- * not an oversight — see the M-2 report.
+ * `attachment` is still NOT mapped here — no wire event and no in-memory
+ * turn data carries one today (B.10: nothing to map without inventing it).
+ *
+ * `tool_call`/`tool_result` DISCLOSED NARROWING (still real, not closed by
+ * this lane):
+ *   - only SUCCESSFUL dispatches are representable — `evidence_stage.ts`
+ *     filters a failed dispatch out of `validToolResults` before this module
+ *     ever sees it (the failure is only visible in that stage's local
+ *     `toolEventLog`, which is not threaded through to persistence yet);
+ *   - `tool_result.body.result` (the actual retrieved content) is
+ *     intentionally omitted — only call/outcome metadata (status/count/ms)
+ *     is persisted. `tool_name`/`args` on `tool_call` MUST already be
+ *     resolved to the reader-safe label and leak-scrubbed by the CALLER
+ *     (`reading_parts.ts`'s `resolveActivityLabel`/`scrubToolArgs`) — these
+ *     two mapping functions stay pure and do not re-derive either, matching
+ *     every other function in this file.
+ *   - `reasoning`/`tool_call`/`tool_result` are NOT reconstructable from the
+ *     wire alone the way `text`/`citation` are (activity.upsert carries only
+ *     the resolved label, never raw tool_name/args — gate 11 [integrity]),
+ *     so `store/replay_paths.ts`'s wire-replay path covers `reasoning`
+ *     (block.open/block.commit DO carry `role` on the wire) but not
+ *     `tool_call`/`tool_result` — see that module's own header.
  */
 
 import type { MessagePartInput } from './schema'
@@ -129,6 +148,94 @@ export function predictionCandidatePartFromDetection(
       confidence: Math.max(0, Math.min(1, c.score)),
       ...(c.horizon !== null && c.horizon !== undefined ? { window: c.horizon } : {}),
       source_flag_code: 'prediction_candidate',
+    },
+    model_visible: false,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// reasoning — from a committed 'thinking' block (lane P3-C)
+// ---------------------------------------------------------------------------
+
+export interface CommittedThinkingBlock {
+  block_id: string
+  text: string
+}
+
+/**
+ * Map one committed 'thinking' block to a canonical `reasoning` part.
+ *
+ * `model_visible: false` — mirrors the live route's own discipline for
+ * thinking text: `ReadingPartsAssembler.accumulatedText` (reading_parts.ts)
+ * deliberately EXCLUDES thinking deltas, so thinking text never re-enters
+ * future model context as the assistant's own prior utterance; persisting it
+ * as `model_visible: false` keeps that same boundary on the canonical record.
+ *
+ * `signature`/`provider_opaque` (see schema.ts's `ReasoningBodySchema`) are
+ * left unset — this codebase has no provider-native reasoning metadata
+ * plumbed to this layer today. Leaving them unset is the honest choice
+ * (B.10): a fabricated signature would be worse than an absent one.
+ */
+export function reasoningPartFromBlock(block: CommittedThinkingBlock, seq: number): MessagePartInput {
+  return {
+    seq,
+    kind: 'reasoning',
+    body: { text: block.text, block_id: block.block_id },
+    model_visible: false,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// tool_call / tool_result — from a successful evidence-stage dispatch
+// (lane P3-C). See this file's header for the disclosed narrowing.
+// ---------------------------------------------------------------------------
+
+export interface ToolCallFromDispatch {
+  call_id: string
+  /** MUST already be the resolved, reader-safe label (gate 11 [integrity]) —
+   *  this function does not call `resolveActivityLabel` itself. */
+  tool_name: string
+  /** MUST already be leak-scrubbed by the caller (`reading_parts.ts`'s
+   *  `scrubToolArgs`) — this function does not lint it itself. */
+  args: Record<string, unknown>
+}
+
+/**
+ * Map one successful evidence-stage tool dispatch to a canonical `tool_call`
+ * part. `model_visible: false` — an internal audit annotation (what was
+ * asked of a tool), not reader prose the model replays verbatim.
+ */
+export function toolCallPartFromBundle(input: ToolCallFromDispatch, seq: number): MessagePartInput {
+  return {
+    seq,
+    kind: 'tool_call',
+    body: { call_id: input.call_id, tool_name: input.tool_name, args: input.args },
+    model_visible: false,
+  }
+}
+
+export interface ToolResultFromDispatch {
+  call_id: string
+  status: 'done' | 'error'
+  count?: number
+  ms?: number
+}
+
+/**
+ * Map one evidence-stage dispatch OUTCOME to a canonical `tool_result` part.
+ * `result` (schema.ts's `ToolResultBodySchema.result`) is deliberately left
+ * unset — see this file's header "disclosed narrowing" note; only
+ * status/count/ms are populated. `model_visible: false`, matching `tool_call`.
+ */
+export function toolResultPartFromBundle(input: ToolResultFromDispatch, seq: number): MessagePartInput {
+  return {
+    seq,
+    kind: 'tool_result',
+    body: {
+      call_id: input.call_id,
+      status: input.status,
+      ...(input.count !== undefined ? { count: input.count } : {}),
+      ...(input.ms !== undefined ? { ms: input.ms } : {}),
     },
     model_visible: false,
   }

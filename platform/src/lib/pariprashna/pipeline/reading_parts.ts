@@ -31,13 +31,18 @@ import {
 } from '@/lib/pariprashna/safety/phrasing_scan'
 import { classifyCommittedBlock, type BlockClassification } from '@/lib/pariprashna/semantics/block_classifier'
 import { lintVoiceProse } from '@/lib/pariprashna/voice/voice_lint'
-import type { MessagePartInput } from '@/lib/pariprashna/store/schema'
+import type { MessagePartInput, MessagePartKind } from '@/lib/pariprashna/store/schema'
 import {
   textPartFromBlock,
   citationPartFromDetection,
   predictionCandidatePartFromDetection,
+  reasoningPartFromBlock,
+  toolCallPartFromBundle,
+  toolResultPartFromBundle,
 } from '@/lib/pariprashna/store/route_writer_adapter'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
+import type { ToolBundle } from '@/lib/retrieval/shared_types'
+import { resolveActivityLabel } from './stage_context'
 
 export type BlockRole = 'prose' | 'thinking'
 
@@ -414,12 +419,108 @@ export interface CanonicalPartsInput {
    * to `detectTurnCitations(accumulatedText)`, the pre-existing behavior.
    */
   preResolvedCitations?: readonly DetectedCitationRow[]
+  /**
+   * Lane P3-C (SMṚTI completion). The evidence stage's own successful
+   * retrieval dispatches for this turn (`evidence_stage.ts`'s
+   * `validToolResults`) — the real record of what actually ran, in the SAME
+   * order the evidence stage dispatched them. See `route_writer_adapter.ts`'s
+   * header for the disclosed narrowing (successful dispatches only; no
+   * retrieved content persisted, only call/outcome metadata). Omitted →
+   * behaves exactly as before this lane (no tool_call/tool_result parts).
+   */
+  validToolResults?: readonly ToolBundle[]
 }
 
 export interface CanonicalPartsOutput {
   parts: MessagePartInput[]
   citations: readonly DetectedCitationRow[]
   predictionCandidates: DetectedPredictionRow[]
+  /**
+   * Lane P3-C. Count of `validToolResults` entries whose `invocation_params`
+   * tripped the register-leak lint (see `scrubToolArgs`) and were therefore
+   * persisted as a redacted marker instead of the real params. Surfaced so
+   * the caller (which owns the emitter — this function is pure, no I/O) can
+   * raise a reader-facing flag, mirroring every other redaction in this file.
+   */
+  toolArgsRedactedCount: number
+}
+
+/**
+ * Recursively lint every STRING LEAF of a value through the SAME
+ * register-leak backstop `commitBlock()` runs over reader prose — never the
+ * object's own KEYS. This distinction matters: `invocation_params`'s keys are
+ * OUR OWN schema vocabulary (`chart_id`, `signal_type`, …), not model-composed
+ * prose, and several of them collide with the lint's table-name pattern by
+ * pure coincidence (`chart_id` starts with the `chart_` prefix the lint
+ * watches for in PROSE). Scrubbing the whole object as one JSON string would
+ * therefore false-positive on nearly every real call (every tool call carries
+ * a `chart_id`). Scrubbing only string VALUES avoids that false-positive
+ * entirely while still catching the real risk: a value that is itself
+ * leak-shaped (e.g. a planner-composed note that quotes an internal id).
+ */
+function scrubValue(value: unknown): { value: unknown; redacted: boolean } {
+  if (typeof value === 'string') {
+    const lint = lintReaderProse(value)
+    return { value: lint.clean, redacted: lint.leakCount > 0 }
+  }
+  if (Array.isArray(value)) {
+    let redacted = false
+    const out = value.map((v) => {
+      const r = scrubValue(v)
+      if (r.redacted) redacted = true
+      return r.value
+    })
+    return { value: out, redacted }
+  }
+  if (value !== null && typeof value === 'object') {
+    let redacted = false
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      const r = scrubValue(v)
+      if (r.redacted) redacted = true
+      out[k] = r.value
+    }
+    return { value: out, redacted }
+  }
+  return { value, redacted: false }
+}
+
+/**
+ * Scrub a tool dispatch's invocation params before they are persisted as a
+ * canonical `tool_call.args` object. `args` is internal (never reader-visible
+ * — `model_visible: false`), but a canonical row is a durable, replayable
+ * record (P3-C's own charter), so the same no-leakage discipline gate 11
+ * [integrity] applies to prose applies here too: an internal identifier that
+ * would never survive to the wire must not survive into the durable store
+ * either. On a hit, ONLY the offending string leaf is rewritten/redacted
+ * (see `scrubValue`) — the rest of the params structure, including every key
+ * name, is preserved verbatim; never throws (matches `lintReaderProse`'s own
+ * never-throws contract).
+ */
+export function scrubToolArgs(invocationParams: object | undefined): {
+  args: Record<string, unknown>
+  redacted: boolean
+} {
+  const { value, redacted } = scrubValue(invocationParams ?? {})
+  return { args: value as Record<string, unknown>, redacted }
+}
+
+/**
+ * §N.8 earned-signal detector: which kinds a caller EXPECTS a persisted turn
+ * to carry, given what that turn actually produced — never "every kind must
+ * always fire" (a turn with no thinking block legitimately has no `reasoning`
+ * part). A caller derives its own expectation from what it fed the builder
+ * (see `checkPartKindCoverage`'s doc for the intended pairing) so the check
+ * can genuinely fail when a kind that SHOULD be there is missing, rather than
+ * trivially passing on "some parts exist."
+ */
+export function checkPartKindCoverage(
+  parts: readonly MessagePartInput[],
+  expectedKinds: readonly MessagePartKind[],
+): { ok: boolean; missing: MessagePartKind[] } {
+  const present = new Set(parts.map((p) => p.kind))
+  const missing = expectedKinds.filter((k) => !present.has(k))
+  return { ok: missing.length === 0, missing }
 }
 
 /** Citations detected in the turn's prose (pre-snippet-resolution). */
@@ -437,20 +538,46 @@ export function detectTurnPredictionCandidates(accumulatedText: string): Detecte
 }
 
 /**
- * Build the canonical `message_parts` for the assistant turn, in the route's
- * own kind-grouped order: every prose text part, then every citation, then
- * every prediction candidate — with `seq` contiguous from 0.
+ * Build the canonical `message_parts` for the assistant turn, in a
+ * chronology-honest, kind-grouped order — `seq` contiguous from 0:
  *
- * Only 'prose' blocks become `text` parts (`reasoning` kind is left for a
- * future lane — see route_writer_adapter.ts's header).
+ *   1. tool_call + tool_result pairs (one pair per successful evidence-stage
+ *      dispatch, lane P3-C) — retrieval runs BEFORE synthesis in the real
+ *      pipeline (`route.ts`: evidence_stage then synthesis_stage), so placing
+ *      these first makes the persisted seq order itself honest evidence that
+ *      evidence-gathering preceded the prose it grounds.
+ *   2. every committed block, IN BLOCK ORDER: a 'prose' block becomes a
+ *      `text` part, a 'thinking' block becomes a `reasoning` part (lane
+ *      P3-C — previously dropped entirely; see route_writer_adapter.ts's
+ *      header for what is still NOT captured about a thinking block).
+ *   3. every citation.
+ *   4. every prediction candidate.
  */
 export function buildCanonicalParts(input: CanonicalPartsInput): CanonicalPartsOutput {
   const parts: MessagePartInput[] = []
   let partSeq = 0
+  let toolArgsRedactedCount = 0
+
+  for (const tb of input.validToolResults ?? []) {
+    const readerSafeName = resolveActivityLabel(tb.tool_name)
+    const { args, redacted } = scrubToolArgs(tb.invocation_params)
+    if (redacted) toolArgsRedactedCount++
+    parts.push(
+      toolCallPartFromBundle({ call_id: tb.tool_bundle_id, tool_name: readerSafeName, args }, partSeq++),
+    )
+    parts.push(
+      toolResultPartFromBundle(
+        { call_id: tb.tool_bundle_id, status: 'done', count: tb.results.length, ms: tb.latency_ms },
+        partSeq++,
+      ),
+    )
+  }
 
   for (const b of input.committedBlocks) {
     if (b.role === 'prose') {
       parts.push(textPartFromBlock({ block_id: b.id, text: b.text }, partSeq++))
+    } else if (b.role === 'thinking') {
+      parts.push(reasoningPartFromBlock({ block_id: b.id, text: b.text }, partSeq++))
     }
   }
 
@@ -476,5 +603,5 @@ export function buildCanonicalParts(input: CanonicalPartsInput): CanonicalPartsO
     )
   }
 
-  return { parts, citations, predictionCandidates }
+  return { parts, citations, predictionCandidates, toolArgsRedactedCount }
 }

@@ -264,6 +264,23 @@ export type CanonicalMessage = z.infer<typeof CanonicalMessageSchema>
 export const CANONICAL_SCHEMA_VERSION = 1
 
 /**
+ * Lane P3-C (SMṚTI completion — history/user turns). `CanonicalMessage.model_id`
+ * / `.provider` are REQUIRED fields (this schema is `.strict()`), because every
+ * canonical row written until this lane was an ASSISTANT turn, where a real
+ * model/provider always exists. A user-authored turn has neither — there is no
+ * model to name — so a canonical user-turn row stamps these two honest
+ * sentinels rather than either (a) fabricating a model/provider that did not
+ * answer (B.10), or (b) leaving the fields unset, which would make
+ * `readCanonicalMessage` misclassify the row as a pre-M-1 legacy blob row (its
+ * canonical-ness test is exactly `model_id == null || provider == null` — see
+ * reader.ts). `role: 'user'` on the row is what actually distinguishes it;
+ * these constants exist so every writer of a user-turn row uses the SAME
+ * sentinel pair rather than each inventing its own string.
+ */
+export const USER_TURN_MODEL_ID = 'n/a'
+export const USER_TURN_PROVIDER = 'user'
+
+/**
  * Declared compatibility (P2-D, PPR-10 versioning clause). The oldest
  * `schema_version` a reader in THIS build is willing to interpret. Equal to
  * `CANONICAL_SCHEMA_VERSION` today (v1 is the only version ever written); a
