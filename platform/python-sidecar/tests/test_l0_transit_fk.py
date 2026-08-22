@@ -94,27 +94,77 @@ def test_compute_stale_rule_ids_retires_owned_absent_rows():
     F-145 fixture: ids 49/50 (venus/unfavourable houses 11/12) are absent from the
     corrected source list and must be flagged; ids 46/47 (houses 6/7) are present and
     must not be.
+
+    Rows are dict-shaped (id/graha/rule_type/primary_house keys) — the real shape
+    `cur.fetchall()` returns on the orchestrator's `dict_row`-factory connection, not
+    plain tuples (see the F-145 followup dict-row-unpacking defect fixed in
+    `compute_stale_rule_ids`).
     """
     fake_rules = [
         {"rule_type": "unfavourable", "graha": "venus", "primary_house": 6},
         {"rule_type": "unfavourable", "graha": "venus", "primary_house": 7},
     ]
     db_rows = [
-        (46, "venus", "unfavourable", 6),
-        (47, "venus", "unfavourable", 7),
-        (49, "venus", "unfavourable", 11),
-        (50, "venus", "unfavourable", 12),
+        {"id": 46, "graha": "venus", "rule_type": "unfavourable", "primary_house": 6},
+        {"id": 47, "graha": "venus", "rule_type": "unfavourable", "primary_house": 7},
+        {"id": 49, "graha": "venus", "rule_type": "unfavourable", "primary_house": 11},
+        {"id": 50, "graha": "venus", "rule_type": "unfavourable", "primary_house": 12},
     ]
     stale = compute_stale_rule_ids(fake_rules, db_rows)
     assert set(stale) == {49, 50}
+    assert all(isinstance(i, int) for i in stale), (
+        "Retired ids must be real integers, not dict keys (e.g. the literal string "
+        "'id') — a tuple-unpacking-a-dict-row bug binds the loop variable to the "
+        "dict's keys instead of its values."
+    )
 
 
 def test_compute_stale_rule_ids_empty_when_source_matches_db():
     """No stale ids when every owned DB row's key is present in the source list —
     the sweep must not retire rows that are still current."""
     fake_rules = [{"rule_type": "favourable", "graha": "sun", "primary_house": 1}]
-    db_rows = [(1, "sun", "favourable", 1)]
+    db_rows = [{"id": 1, "graha": "sun", "rule_type": "favourable", "primary_house": 1}]
     assert compute_stale_rule_ids(fake_rules, db_rows) == []
+
+
+def test_compute_stale_rule_ids_accepts_dict_rows_from_real_connect_factory():
+    """
+    Regression test for the F-145 followup bug (dict-row unpacking).
+
+    `pipeline.orchestrator.db.connect()` opens the DB connection with
+    `row_factory=psycopg.rows.dict_row`; `seed_transit_rules`'s `cur =
+    conn.cursor()` inherits that connection-level factory, so `cur.fetchall()` on
+    the F-145 candidate-select returns a **list of dicts**, e.g.
+    `[{"id": 47, "graha": "venus", "rule_type": "unfavourable", "primary_house": 7}, ...]`
+    — never plain 4-tuples.
+
+    The pre-fix `compute_stale_rule_ids` unpacked each row as
+    `for row_id, graha, rule_type, primary_house in owned_db_rows:` — unpacking a
+    4-key dict with 4 loop variables does NOT raise; it silently iterates the dict's
+    KEYS in insertion order, so `row_id` was bound to the literal string `"id"`
+    instead of the integer id. This test constructs rows in exactly that real
+    dict-row shape and asserts the returned stale ids are real integers matching the
+    input `id` values — it fails on the pre-fix tuple-unpacking code (which would
+    return the string `"id"` for every stale row instead of its integer id).
+    """
+    fake_rules = [
+        {"rule_type": "unfavourable", "graha": "venus", "primary_house": 6},
+    ]
+    # Simulates `SELECT id, graha, rule_type, primary_house FROM bg_transit_rules ...`
+    # on a dict_row cursor — real production shape, not a test convenience.
+    owned_db_rows = [
+        {"id": 46, "graha": "venus", "rule_type": "unfavourable", "primary_house": 6},
+        {"id": 49, "graha": "venus", "rule_type": "unfavourable", "primary_house": 11},
+        {"id": 50, "graha": "venus", "rule_type": "unfavourable", "primary_house": 12},
+    ]
+
+    stale = compute_stale_rule_ids(fake_rules, owned_db_rows)
+
+    assert set(stale) == {49, 50}, (
+        f"Expected real integer stale ids {{49, 50}}, got {stale!r} — if this is "
+        "['id', 'id'] or similar, the dict-row-as-tuple unpacking bug has regressed."
+    )
+    assert all(isinstance(i, int) for i in stale)
 
 
 def test_migration_owned_rows_never_classified_as_owned():
@@ -142,13 +192,20 @@ def test_reconciliation_sweep_deletes_owned_absent_row_scoped_by_id():
     returns one owned-but-absent row, seed_transit_rules must issue exactly one
     scoped `DELETE FROM bg_transit_rules WHERE id = %s` for that row's id. Revert the
     sweep in seed_transit_rules and this test fails (no delete call at all).
+
+    Mock return shapes are dicts (fetchall) / a dict (fetchone) — the real shape a
+    `dict_row`-factory cursor returns (see `pipeline/orchestrator/db.py`'s
+    `connect()`), not plain tuples. A tuple-shaped mock here would have let the
+    F-145 followup dict-row-unpacking bug pass this test undetected.
     """
     mock_cursor = MagicMock()
     # Candidate fetch: one owned row (venus/unfavourable/house=99) absent from the
     # real BG_TRANSIT_RULES — must be retired.
-    mock_cursor.fetchall.return_value = [(9999, "venus", "unfavourable", 99)]
+    mock_cursor.fetchall.return_value = [
+        {"id": 9999, "graha": "venus", "rule_type": "unfavourable", "primary_house": 99}
+    ]
     # Freshness count matches, so the freshness WARNING path is not exercised here.
-    mock_cursor.fetchone.return_value = (len(BG_TRANSIT_RULES),)
+    mock_cursor.fetchone.return_value = {"owned_row_count": len(BG_TRANSIT_RULES)}
 
     mock_conn = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
@@ -162,7 +219,10 @@ def test_reconciliation_sweep_deletes_owned_absent_row_scoped_by_id():
     ]
     assert len(delete_calls) == 1, f"Expected exactly one scoped DELETE, got {delete_calls}"
     assert delete_calls[0].args[0].strip() == "DELETE FROM bg_transit_rules WHERE id = %s"
-    assert delete_calls[0].args[1] == (9999,)
+    assert delete_calls[0].args[1] == (9999,), (
+        f"Expected the real integer id 9999 to be deleted, got {delete_calls[0].args[1]!r} "
+        "— if this is ('id',), the dict-row-as-tuple unpacking bug has regressed."
+    )
 
 
 def test_reconciliation_sweep_no_delete_when_no_stale_rows():
@@ -170,7 +230,7 @@ def test_reconciliation_sweep_no_delete_when_no_stale_rows():
     source list, no DELETE FROM bg_transit_rules is issued at all."""
     mock_cursor = MagicMock()
     mock_cursor.fetchall.return_value = []
-    mock_cursor.fetchone.return_value = (len(BG_TRANSIT_RULES),)
+    mock_cursor.fetchone.return_value = {"owned_row_count": len(BG_TRANSIT_RULES)}
 
     mock_conn = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
@@ -197,7 +257,8 @@ def test_freshness_assertion_warns_on_mismatch(caplog):
     mock_cursor = MagicMock()
     mock_cursor.fetchall.return_value = []  # nothing to retire
     # Freshness COUNT deliberately wrong — one short of len(BG_TRANSIT_RULES).
-    mock_cursor.fetchone.return_value = (len(BG_TRANSIT_RULES) - 1,)
+    # Dict-shaped (matches the real dict_row cursor), not a bare tuple.
+    mock_cursor.fetchone.return_value = {"owned_row_count": len(BG_TRANSIT_RULES) - 1}
 
     mock_conn = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
@@ -215,7 +276,7 @@ def test_freshness_assertion_silent_when_matching(caplog):
     len(BG_TRANSIT_RULES), no freshness WARNING is logged."""
     mock_cursor = MagicMock()
     mock_cursor.fetchall.return_value = []
-    mock_cursor.fetchone.return_value = (len(BG_TRANSIT_RULES),)
+    mock_cursor.fetchone.return_value = {"owned_row_count": len(BG_TRANSIT_RULES)}
 
     mock_conn = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
