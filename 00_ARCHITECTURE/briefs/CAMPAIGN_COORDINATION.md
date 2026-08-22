@@ -7075,3 +7075,42 @@ discipline and an announced Cloud Run revision tag, exactly as this
 docs-only deploy was — not skipped as "only docs." Checking in with the
 native before starting Part H, consistent with the pattern this campaign has
 followed at every Part boundary.
+
+## 2026-08-22 — PARIPRASHNA-P3-PREFLIGHT-PART-H (items 1-2) / Claude Code — leased window: DD register accuracy pass + baseline v1.3 regen (docs-only)
+
+Starting Part H per the master prompt, native-authorized to proceed after
+Part G's close. Splitting Part H into two PRs: this one covers items 1-2
+(baseline regen, DD register update); a second, final PR will cover item 3
+(the batched CURRENT_STATE/SESSION_LOG/FILE_REGISTRY/CAPABILITY_MANIFEST/
+NATIVE_DIRECTIVES write) + items 4-5 (tag, combined verification turn),
+run separately with its own announced canary discipline per DD-27 and the
+native's explicit instruction this session, since that step is the one
+with real production-traffic stakes.
+
+**Real discrepancy found while reading the DD register fresh (not assumed
+from the master prompt's own narrative):** four DD entries — DD-19, DD-20,
+DD-22, DD-25 — had already closed live in Parts A/C/D/E per this very log's
+own prior entries, but their register status lines were never updated to
+reflect it (the same lag pattern DD-13's own top-line status had before
+Part G fixed it). Traced each claim back to its real evidence in this log
+before writing anything, rather than restating from the master prompt's own
+summary. Full detail in PR body.
+
+**PR:** #1477, branch `pariprashna/p3-preflight-part-h`, worktree
+`.clone/worktrees/pariprashna-part-h`.
+
+**Checked immediately before opening:** fresh `origin/main` fetch
+(`0cfe74821`, unchanged since Part G's own merge — confirmed via `git log
+origin/main`); fresh `campaign-coordination` fetch (tip unchanged at
+`466f51560`, no collision); the three files touched
+(`00_ARCHITECTURE/CAPABILITY_MANIFEST.json`,
+`00_ARCHITECTURE/PARIPRASHNA_ASBUILT_BASELINE_v1_0.md`,
+`00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`)
+do not appear in any other currently open lease. **Also observed, disclosed
+not chased:** `amjis-web`'s live revision advanced from `amjis-web-01653-d2l`
+to `amjis-web-01654-sql` between Part G's close and this check, with `git
+log origin/main` showing NO new commit — two independent `Deploy to Cloud
+Run` runs completed successfully against the identical `main@0cfe74821`
+`headSha` within an ~11-minute window. Consistent with DD-27's own finding
+that the deploy trigger isn't narrowly scoped; noted in the baseline's own
+§8.1, not investigated further here.
