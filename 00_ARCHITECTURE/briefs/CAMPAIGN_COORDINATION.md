@@ -7176,3 +7176,28 @@ unrelated files, no collision); fresh `campaign-coordination` fetch (tip
 (`00_ARCHITECTURE/CURRENT_STATE_v1_0.md`,
 `00_ARCHITECTURE/SESSION_LOG.md`) do not appear in any other currently
 open lease.
+
+## 2026-08-22 — PARIPRASHNA-P3-PREFLIGHT-PART-H (item 3) — lease CLOSED, PR #1483 merged + deployed. TAG PUSHED. P3-PREFLIGHT ARC CLOSED.
+
+Lease opened above (entry `00464e434`) is released. Final account:
+
+- PR #1483: CI green, merged via merge queue. Merge commit `main@a10201d8c`.
+- Deployed: `Deploy to Cloud Run` completed success. Live revision confirmed
+  via `gcloud run services describe amjis-web`: **`amjis-web-01659-xs5`,
+  100% traffic**, clean, no rollback.
+- **Tag pushed:** `pariprashna/p3-preflight-close` @ `a10201d8c`, annotated
+  with the full arc summary (Parts A-H) and the live revision at tag time.
+- No file outside this lease's declared scope was touched.
+
+**PARIPRASHNA-P3-PREFLIGHT is now fully closed** (Parts A through H, all
+with real production deploys and DD-21 observed-delivery evidence). Worktrees
+`.clone/worktrees/pariprashna-part-h`, `.clone/worktrees/campaign-coord-part-h`,
+and `.clone/worktrees/campaign-coord-part-h-2` will be removed as part of
+this close.
+
+**P3 (ONE ENGINE, ONE DOOR) may now open**, per the master prompt's §9
+dependency order — P3-A first (its only dependency, P2-I, is already
+closed); DD-22 is already merged, satisfying P3-B's precondition whenever
+P3-B is picked up. No further action expected from this session; next
+session's objective is recorded in `SESSION_LOG.md`'s own entry for this
+close.
