@@ -7628,3 +7628,21 @@ the native reporting any refused or failed turn.
 `gcloud run services update-traffic amjis-web --to-revisions=amjis-web-01671-47n=100 --region=asia-south1`
 
 Nothing else about this service was changed, and no other campaign's scope was touched.
+
+## 2026-08-23 — PARIPRAŚNA P3+P4 — GOVERNANCE CLOSE — LEASE OPEN
+
+**SCRIBE, §7 governance close of the overnight run.** Announced before write, per X-2 (live
+version numbers read at write time, never predicted).
+
+- **Target file:** `00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md` §2
+  (DD register) — one batched serialized write, new DD entries + one in-place amendment to DD-19
+  (living append-only register, no version bump).
+- **Scope:** the §0 ruling 10 budget outcome, the §0 ruling 11 seam-compression record, DD-19's
+  disposition addendum, the ceiling reject-demo result + limits-enablement record, the DD-1 battery
+  result, the deletion-warrant/refuter-panel non-existence, every surrogate park, the lane-state
+  table, and new DD entries for F-N7/F-N10/F-N11/F-N12/F-N14 (+F-N2, F-N8).
+- **No tag pushed.** `pariprashna/p3-close`/`pariprashna/p4-close` are for closes that actually
+  happened; neither did tonight.
+- **Worktree:** `.clone/worktrees/prp-gov`, branch `pariprashna/governance-close`, opened against
+  `origin/main`. No production change, no credential operation, no merge (PR only).
+- **Lease holder:** SCRIBE (governance-close session). Will close this entry on completion.
