@@ -31,12 +31,28 @@ import type { MetricSpec, MetricStatus } from './metrics'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-/** Sources whose bytes the banked proof is valid FOR. */
+/**
+ * Sources whose bytes the banked proof is valid FOR.
+ *
+ * FIX for the PR #1501 REFUTED finding: `instrumentation.ts` was missing.
+ * `browser_lane.ts` only READS counters off `Dd1Recording` — the actual
+ * detector logic (the rAF loop, `SETTLED_DRIFT_TOLERANCE_PX`, the caret
+ * invariant, the committed-block mutation counter) lives in
+ * `instrumentation.ts`'s `recorderSource()`. Without it in this list, editing
+ * `instrumentation.ts` to neuter a detector left the banked receipt's hash
+ * unchanged, so a detector demonstrated incapable of failing could still mint
+ * a PASS off a stale receipt — the exact §N.8 defect this gate exists to
+ * prevent. `index.ts` is included too: it owns the raw→gated status mapping
+ * for all 13 checks (`applyRedProofGate` call sites, `record()`), so a defect
+ * there would also silently mint PASSes the receipt never proved.
+ */
 const DETECTOR_SOURCES = [
   join(__dirname, 'prose_checks.ts'),
   join(__dirname, 'broken_reading.ts'),
   join(__dirname, 'browser_lane.ts'),
+  join(__dirname, 'instrumentation.ts'),
   join(__dirname, 'metrics.ts'),
+  join(__dirname, 'index.ts'),
 ]
 
 export interface RedProofEntry {
