@@ -173,6 +173,77 @@ describe('getPlanBridgeCoverage — live, honest measurement', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+// §4b. Pinned-baseline detector (§N.8 remediation, RC-10 pattern).
+//
+// `getPlanBridgeCoverage()` is a pure, total function of the live registry — it
+// has no failure mode of its own; comparing its output to itself (the defect
+// an independent adversarial review found in a prior version of this file's
+// module comment) can never go red. The REAL detector is here: an explicit,
+// literal enumeration of the 19 `live_tool` names known uncovered as of this
+// writing, asserted with `toEqual` (order- and count-sensitive) against the
+// live computation. `toEqual` on two arrays fails if EITHER side has an entry
+// the other lacks, so this catches a name silently:
+//   - REMOVED from uncovered (i.e. force-mapped to a tool_name, plausible or
+//     not — this is the exact M3c mutation an adversarial review used to
+//     prove the old comment's claim false: force-mapping 18 of 19 uncovered
+//     tools to a plausible-but-wrong URI made `getPlanBridgeCoverage()`
+//     report a fabricated 59/60 and 39/40 with the old self-referential
+//     "detector" still green);
+//   - ADDED to uncovered (a previously-covered tool's mapping broke, or a new
+//     primitive was registered with no binding).
+// Either direction fails this test and forces a conscious, recorded update to
+// the pin — never a silent number move. This is the RC-10 pinned-baseline
+// pattern the remediation brief specifies.
+//
+// When this test goes red because the registry legitimately grew or a real
+// mapping was added/removed, the fix is: re-run `getPlanBridgeCoverage()`,
+// verify the new list is honest (no force-map), update
+// `KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE` to match, and note why in the commit
+// message. That update IS the "conscious, recorded disposition" this pin
+// exists to force — it is not a reason to weaken or delete the assertion.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE: readonly string[] = [
+  'bodha_chart_digest_get',
+  'dossier',
+  'ganita_ayurdaya_get',
+  'ganita_condition_get',
+  'ganita_kp_cusps_get',
+  'ganita_structural_get',
+  'gochara_activation_get',
+  'gochara_election_avoidance_get',
+  'gochara_forecast_get',
+  'kala_ahead_get',
+  'kala_bundle_get',
+  'kala_elect_get',
+  'kala_explain_get',
+  'kala_now_get',
+  'kala_priority_get',
+  'kala_ritual_get',
+  'kala_story_get',
+  'kala_upaya_get',
+  'synth_tail_divergence_get',
+]
+
+describe('getPlanBridgeCoverage — pinned-baseline detector (§N.8: a real code path that can fail)', () => {
+  it('uncovered_live_tools matches the pinned 19-name baseline exactly — fails loudly if a name is added OR removed', () => {
+    const c = getPlanBridgeCoverage()
+    // Sanity: the baseline itself must be sorted/deduped the same way the live
+    // value is, or this assertion would be comparing apples to a typo.
+    expect(KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE).toEqual([...KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE].sort())
+    expect(new Set(KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE).size).toBe(KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE.length)
+    expect(c.uncovered_live_tools).toEqual(KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE)
+  })
+
+  it('covered_live_tools count matches the baseline-implied count (21 of 40)', () => {
+    const c = getPlanBridgeCoverage()
+    expect(c.total_distinct_live_tools - KNOWN_UNCOVERED_LIVE_TOOLS_BASELINE.length).toBe(c.covered_live_tools)
+    expect(c.covered_live_tools).toBe(21)
+    expect(c.total_distinct_live_tools).toBe(40)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 // §5. UnifiedPlanStep — both vocabularies lift into the same shape.
 // ─────────────────────────────────────────────────────────────────────────────
 

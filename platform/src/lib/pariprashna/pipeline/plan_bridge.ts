@@ -268,9 +268,24 @@ export interface PlanBridgeCoverage {
 /**
  * Live coverage summary, always computed (never cached/stale) from the current
  * `PRIMITIVE_TOOL_BINDINGS`. This is the number a CI assertion or a future
- * observability surface reads — it can only report what the map above actually
- * computed, so it cannot drift from it (§N.8: the signal and its detector are
- * the same code path).
+ * observability surface reads.
+ *
+ * Descriptive-only — NOT itself a §N.8-earned signal. This function has no
+ * failure mode of its own: it reports whatever `PRIMITIVE_TOOL_BINDINGS`
+ * computed, by construction, so an assertion phrased only as "this function's
+ * output equals this function's output" can never go red (a prior version of
+ * this comment claimed the opposite — that self-agreement WAS the §N.8
+ * detector — which is precisely backwards: "the signal and its detector are
+ * the same code path" is the absence of a detector, not one). The real §N.8
+ * detector lives in `plan_bridge.test.ts`'s "pinned baseline" block: an
+ * explicit, literal, enumerated snapshot of `uncovered_live_tools` that the
+ * live computation is asserted against, so a name silently added to or
+ * removed from coverage (e.g. by a resolver change or an `resolveLiveTool`
+ * mapping that quietly force-maps an uncovered tool to a plausible-but-wrong
+ * URI) fails that test loudly in both directions, forcing a conscious,
+ * recorded disposition of the pin rather than letting the number move
+ * unnoticed. `getPlanBridgeCoverage()` itself remains a pure, honest
+ * measurement — just not a self-certifying one.
  */
 export function getPlanBridgeCoverage(): PlanBridgeCoverage {
   const distinctLiveTools = new Set(PRIMITIVE_TOOL_BINDINGS.map((b) => b.live_tool))
