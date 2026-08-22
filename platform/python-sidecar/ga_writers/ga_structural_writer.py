@@ -5086,6 +5086,14 @@ def _build_varga_relationship_rows(
         lord1 = SIGN_LORDS.get(sign1)
         if not lord1 or lord1 not in CLASSICAL_GRAHAS:
             continue
+        # F-157: a graha in its own sign has lord1 == g1, which makes the
+        # OWN_SIGNS test below trivially true against itself (e.g. Jupiter in
+        # Sagittarius would emit a self-paired "JUPITER_JUPITER" row).
+        # Classically this is svakshetra (own-sign placement), not
+        # parivartana — an exchange requires two DIFFERENT grahas each
+        # sitting in the other's sign. Guard before the OWN_SIGNS test.
+        if lord1 == g1:
+            continue
         sign_lord1 = get_sign(lord1)
         if not sign_lord1:
             continue
