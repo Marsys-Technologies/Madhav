@@ -1,0 +1,46 @@
+=== stash@{2} ===
+stash@{2}: On pratijna-v4/lane-b1-chart-reader: WIP on siddhanta/lane-p1-pratijna-v3: 66fde446c campaign(siddhanta): initialize campaign ledger — SIDDHANTA_STATE.md
+
+--- stat ---
+ .../briefs/siddhanta/SIDDHANTA_STATE.md            | 25 +++++++++++-----------
+ 1 file changed, 12 insertions(+), 13 deletions(-)
+
+--- full diff ---
+diff --git a/00_ARCHITECTURE/briefs/siddhanta/SIDDHANTA_STATE.md b/00_ARCHITECTURE/briefs/siddhanta/SIDDHANTA_STATE.md
+index 53a26230c..db34a29c8 100644
+--- a/00_ARCHITECTURE/briefs/siddhanta/SIDDHANTA_STATE.md
++++ b/00_ARCHITECTURE/briefs/siddhanta/SIDDHANTA_STATE.md
+@@ -9,20 +9,19 @@ Awaiting PR #1100 merge + deploy + rebuild → MEASUREMENT #3.
+ 
+ ---
+ 
+-## Baselines (carried from PRATIJÑA-SATYA RUN-TERMINAL)
++## Baselines (VERIFIED LIVE 2026-08-08 01:35 IST — R16 scoped)
+ 
+-| Metric | Value | Scope |
+-|---|---|---|
+-| bodha_pratijna marriage grade (482012f1/lahiri) | 1.169 (= separation grade) | chart 482012f1 |
+-| bodha_pratijna status distribution | marriage=denied, separation=denied, childbirth=conditional(2.386) | chart 482012f1/lahiri |
+-| asset_throughput error rows (482012f1) | 3 (mi_adhilepa, mi_darshana, mi_seva) | chart 482012f1 |
+-| asset_throughput error rows (1c826d5a) | 13 | chart 1c826d5a |
+-| asset_throughput error rows (cb73cd3d) | 14 | chart cb73cd3d |
+-| asset_throughput error rows (GLOBAL) | 1 | global |
+-| total error rows across ALL charts+global | 31 across 16 assets | all 3 charts + global (R16) |
+-| kala_field rows (482012f1) | 60 | chart 482012f1 |
+-| kala_field_skill baseline | all classes underpowered(n), aggregate n=6 | chart 482012f1, R14 permanent |
+-| phala_anchors (482012f1) | 93 rows / 6 domains | chart 482012f1 |
++| Metric | Value | Scope | Verified |
++|---|---|---|---|
++| bodha_pratijna marriage grade | 1.169 (= separation = romantic_start EXACTLY) | 482012f1/lahiri | live query |
++| bodha_pratijna marriage n_supporting | 2710 (= separation = romantic_start EXACTLY) | 482012f1/lahiri | live query |
++| bodha_pratijna childbirth grade | 2.386 conditional | 482012f1/lahiri | live query |
++| error rows (482012f1) | 3: mi_adhilepa, mi_darshana, mi_seva | chart 482012f1 | live query |
++| error rows (1c826d5a) | 13: bo_pramana_mapa bo_samvada bo_upaya ka_avadhi ka_bhavishya_lekha ka_kshetra ka_taranga ka_yojaka mi_adhilepa mi_darshana mi_pariksha ph_nimitta ph_phaladesa | chart 1c826d5a | live query |
++| error rows (cb73cd3d) | 14: bo_pramana_mapa bo_samvada bo_upaya ka_avadhi ka_bhavishya_lekha ka_gochara_sweep ka_kshetra ka_taranga ka_yojaka mi_adhilepa mi_darshana mi_pariksha ph_nimitta ph_phaladesa | chart cb73cd3d | live query |
++| error rows (GLOBAL) | 1: bg_ephemeris_engine | global | live query |
++| total error rows | 31 rows across 16 distinct assets across all 3 charts + global | ALL (R16) | live query |
++| R14 baseline skill | all 6 classes underpowered, aggregate n=6, snapshot kfs_87484404af9d6fe9dc66a3d78812f8bc | 482012f1 | live query |
+ 
+ ---
+ 
+
