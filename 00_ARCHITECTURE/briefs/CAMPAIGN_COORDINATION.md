@@ -6730,3 +6730,80 @@ first-paint-citation guarantee (`PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED`,
 confirmed live `true` above), and **report genuine tension rather than
 resolve it unilaterally** — this is being scoped as its own lease entry
 before any code is touched, not folded into residual (a)'s close.
+
+## 2026-08-22 — PARIPRASHNA-P3-PREFLIGHT-PART-F / Claude Code — leased window: DD-13 residual (b) investigation (docs-only, no code change)
+
+Executing DD-13 residual (b) per the scoping note above: investigate the
+streaming un-send asymmetry vs. the P2 first-paint-citation guarantee,
+report the tension rather than resolve it unilaterally.
+
+**This is a governance-doc-only change.** No source file is touched — the
+investigation is written into DD-13's own entry in
+`00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`
+(also recording residual (a)'s close, which had not yet been folded into
+the DD register itself), with the registered `CAPABILITY_MANIFEST.json`
+fingerprint for that doc rotated to match (old
+`1f9ef2d47291a42029616c70e42e9308065a2fd9f04b188afc8c9dd89cde8c7e` → new
+`a4cdf7b055b00d78393f92102ad9ba861ffd19bcf48f74633dda1f706e67e676`,
+confirmed against the file's own live SHA256 before and after the edit).
+
+**Investigation findings, condensed (full text in the DD-13 amendment
+itself):**
+- Read `synthesis_stage.ts` directly: `StreamingMortalityScanner` sits
+  DOWNSTREAM of `CitationStreamRewriter` in the same per-delta pipeline
+  (`mortalityScanner.push(rewritten)` / `push(cleanDelta)`) — the mortality
+  gate is the last thing between citation-resolved prose and the wire, and
+  already forces sentence-wise delivery once armed (a pre-existing,
+  disclosed trade, not new).
+- A "pre-display buffer for mortality-adjacent spans" (this ticket's own
+  scope-of-fix language) would be a NEW mechanism, categorically different
+  from the current one: hold back ANY sentence merely containing a
+  `MORTALITY_OUTPUT_TERMS` match, before knowing whether a pairing follows,
+  rather than only holding back a sentence once a match is already
+  confirmed. This closes the term-leak residual completely within the
+  existing window widths.
+- Real cost, measured rather than guessed: `MORTALITY_OUTPUT_TERMS`
+  includes common, legitimate classical-Jyotish vocabulary (`maraka`,
+  `ayurdaya`, `longevity`, `life ?span`, `life expectancy`, among others). A
+  direct read-only production query (`message_parts` ×
+  `conversation_messages`) found 2 of 36 real persisted assistant messages
+  (~5.6%; small sample, early-stage instrument, stated as such) contain at
+  least one such term — both ordinary, benign Saturn/Rahu dasha-and-career
+  readings, not near-miss leaks. A pre-display buffer would delay part of
+  that ~5.6% (and any future turn matching the vocabulary) by an
+  unpredictable multi-sentence generation lag before any of the qualifying
+  sentence reaches the client — directly against the premise
+  `PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED` was built for (a 64-byte/
+  400ms citation-resolution budget specifically so content reaches the
+  reader fast; the mortality gate already sits downstream of that
+  resolution in the same chain).
+- Three options laid out in the DD-13 amendment, none selected: (i) status
+  quo (zero further cost, residual stays open on stated grounds), (ii) full
+  pre-display buffer (closes the residual, at the measured latency cost),
+  (iii) a narrower middle-ground buffer, sketched but not designed past
+  that sketch. Per the ticket's own instruction, this session is not
+  choosing between them.
+
+**Verification before this lease opened:**
+- `shasum -a 256` on the doc confirmed it matched its registered
+  fingerprint BEFORE the edit (no undetected prior drift), and the new hash
+  was computed AFTER the edit and cross-checked against what was written
+  into the manifest.
+- `python3 platform/scripts/governance/drift_detector.py` run locally:
+  164 findings, exit 3 (the documented known-residuals pattern per
+  `ONGOING_HYGIENE_POLICIES_v1_0.md` §CI cadence) — grepped the report for
+  `PARIPRASHNA_SWARM_PLAN_AMENDMENTS`/`fingerprint_mismatch` and confirmed
+  ZERO hits, i.e. the rotation is internally consistent and did not
+  introduce a new HIGH-severity finding. The adhoc report artifact was
+  removed locally (not committed — matches this repo's own
+  `drift_reports/` convention of not checking in adhoc runs).
+
+**Checked immediately before opening:** fresh `origin/main` fetch
+(`992d2784c`); the only two files touched
+(`00_ARCHITECTURE/CAPABILITY_MANIFEST.json`,
+`00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`)
+do not appear in any other currently open lease in this table; no open PR
+touches either file (`gh pr list --search` on both paths → empty). Fresh
+branch `pariprashna/p3-preflight-part-f-residual-b` cut off current
+`origin/main`. Worktree `.clone/worktrees/pariprashna-part-d` reused;
+will be removed once this lands or on request.
