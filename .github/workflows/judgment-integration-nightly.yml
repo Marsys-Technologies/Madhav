@@ -106,8 +106,18 @@ jobs:
       - name: F-57 — run register_d9_judgment.integration.test.ts ONLY (explicit path filter)
         # INTEGRATION=true is scoped to this single `vitest run <path>` invocation — see the
         # file-header comment above for why this must never become a repo-wide/job-wide env var.
+        #
+        # --testTimeout=30000: vitest's own default (5000ms, unoverridden in vitest.config.ts)
+        # is sized for
+        # local dev, where the developer machine is typically much closer to the Cloud SQL
+        # instance (asia-south1) than a GitHub-hosted runner. The first real run on this
+        # workflow (2026-08-22, run 32573212019) proved this: every case failed with
+        # "Test timed out in 5000ms", not a real assertion failure — cross-region Cloud SQL
+        # Auth Proxy round-trip latency alone exceeded the default budget. Raised here, not in
+        # the shared vitest.config.ts, because this is a CI-environment-specific constraint on
+        # one workflow's one file, not a change to the test's own local-dev contract.
         env:
           NODE_ENV: test
           INTEGRATION: 'true'
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
-        run: npx vitest run src/lib/retrieval/registry/layers/__tests__/register_d9_judgment.integration.test.ts --reporter=verbose
+        run: npx vitest run src/lib/retrieval/registry/layers/__tests__/register_d9_judgment.integration.test.ts --reporter=verbose --testTimeout=30000 --hookTimeout=30000

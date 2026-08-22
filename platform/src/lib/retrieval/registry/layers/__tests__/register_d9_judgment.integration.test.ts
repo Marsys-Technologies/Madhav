@@ -110,7 +110,14 @@ describeIf('judgment_query (marsys://tool/L-JUDGMENT/judgment_query) — live DB
       expect(receipt['from_moon']).toBe(true)        // Sudarshana leg completed
       expect(typeof receipt['varga_confirmed']).toBe('string')
       expect(typeof receipt['yogas_checked']).toBe('number')
-      expect(receipt['bhanga_checked']).toBe(false)  // honest gap (D3 unbuilt) — never fabricated
+      // F-166c/A3-R-3 (2026-08-22): this assertion was stale — bhanga_checked was `false`
+      // when this test was written (D3 near-miss detection unbuilt), but A3/R-3 later wired
+      // ga_yoga_firings.bhanga_active into the verdict's yoga_term, so
+      // register_d9_judgment.ts:1263 now honestly reports `true` unconditionally (it is
+      // never fabricated — see that line's own comment). This is the first time this
+      // integration file has ever run in CI (F-166c: it was gated on INTEGRATION=true with
+      // no workflow ever setting it), so the drift went undetected until now.
+      expect(receipt['bhanga_checked']).toBe(true)
       expect(receipt['timing_anchored']).toBe(true)
 
       // ── grounding — real fact_id references back to chart_facts (§N.5) ──
@@ -134,7 +141,12 @@ describeIf('judgment_query (marsys://tool/L-JUDGMENT/judgment_query) — live DB
       expect(kp).toBeTruthy()
       expect(Array.isArray(kp['cusps'])).toBe(true)
       // wealth → KP cusps 2 + 11 (MC-031)
-      const kpHouses = (kp['cusps'] as Record<string, unknown>[]).map(c => c['house']).sort()
+      // F-166c (2026-08-22): bare `.sort()` compares elements as strings, so [2, 11] sorted
+      // to [11, 2] ('1' < '2' lexically) — a pre-existing test bug, invisible until this file
+      // ran in CI for the first time (F-166c). Numeric comparator fixes it.
+      const kpHouses = (kp['cusps'] as Record<string, unknown>[])
+        .map(c => c['house'] as number)
+        .sort((a, b) => a - b)
       expect(kpHouses).toEqual([2, 11])
       const gochara = checklist['gochara_sweep'] as Record<string, unknown>
       expect(gochara).toBeTruthy()
