@@ -6521,3 +6521,36 @@ the number space is live, not reserved in any enforced sense (the
 coordination log is a courtesy record, not a lock). On a night with unusual
 merge-queue depth, re-verify the migration number is STILL free immediately
 before the merge-queue attempt succeeds, not only at authoring time.
+
+## 2026-08-22 — PARIPRASHNA-P3-PREFLIGHT-PART-E — lease CLOSED, PR #1462 merged + deployed + live-verified
+
+Lease opened above is released. Final account:
+
+- PR #1462's first merge-queue attempt failed CI 3x on a real
+  cross-directory migration collision (migration 584 claimed by another
+  campaign's PR mid-queue, on an unusually deep queue — peaked at 16).
+  Diagnosed by reading the merge-queue's own speculative-branch CI logs
+  directly rather than continuing to blindly re-poll a repeating failure.
+  Dequeued (`dequeuePullRequest` GraphQL mutation — the branch is protected
+  while queued), renumbered to 587, re-verified fresh, re-pushed. Second
+  merge-queue attempt: CI green, merged (`47af1ad28`).
+- Deployed via the standing canary discipline: `Deploy to Cloud Run` run
+  32549069821 — `Apply DB Migrations` succeeded, `Build & Deploy Web`
+  succeeded (no-traffic deploy → post-deploy smoke → promote to 100%).
+- **Migration verified actually applied**, not trusted blind:
+  `llm_usage_events_pipeline_stage_check`'s live definition now includes
+  `'interpretation_sets'` (confirmed by direct constraint-definition query).
+- **Live-verified per DD-21** — real probe turn ("What does the current
+  dasha suggest about my career, and what should I be cautious about?")
+  produced, in the same production window: `planner` (gemini-3.7-flash),
+  `synthesize` (gemini-3.1-pro-preview), and — for the first time in this
+  table's entire history — a real `interpretation_sets` row: `provider:
+  gemini`, `model: gemini-3.1-pro-preview` (correctly resolved via the
+  shared CallType, consistent with Part B's model move), 1,800 in / 504
+  out, `computed_cost_usd: 0.009648` — matches the seeded rate exactly
+  (1,800×$2.00/1M + 504×$12.00/1M). Both this fix and migration 587 working
+  together, live, on the very first real turn since deploy.
+
+No file outside this lease's declared scope was touched. Worktree
+`.clone/worktrees/pariprashna-part-d` retained (Part F is next, adjacent
+pariprashna scope); will be removed once Part F lands or on request.
