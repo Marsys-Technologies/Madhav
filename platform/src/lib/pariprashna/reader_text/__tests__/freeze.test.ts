@@ -8,11 +8,22 @@
  * serialized form, and show `verifyFreeze` reports `intact: false` with a
  * mismatched hash (RED) — then show the untampered serialization verifies
  * clean (GREEN).
+ *
+ * That proof runs on an IN-MEMORY fixture, and adversarial review pointed out
+ * what it therefore does not establish: nothing anywhere opened the two
+ * COMMITTED files and checked one against the other. The recorded sha256 was a
+ * number in a file with no code path that could read it false — §N.8 exactly.
+ * The final describe block below is that missing detector: it reads
+ * `frozen/msr_reader_text_v1.json` and `frozen/msr_reader_text_v1.freeze.json`
+ * off disk and runs `verifyFreeze` on the real pair.
  */
 import { describe, expect, it } from 'vitest'
 
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+
 import { buildFreezeRecord, buildFrozenArtifact, canonicalSerialize, computeArtifactHash, verifyFreeze } from '../freeze'
-import type { ReviewedEntry, RankedMsrEntry, MsrSignal } from '../types'
+import type { FreezeRecord, FrozenArtifact, ReaderTextEntry, ReviewedEntry, RankedMsrEntry, MsrSignal } from '../types'
 
 function fixtureSignal(id: string): MsrSignal {
   return {
@@ -42,6 +53,27 @@ function fixtureReviewed(): ReviewedEntry[] {
   ]
 }
 
+function fixtureAuthored(): Map<string, ReaderTextEntry> {
+  return new Map(
+    (
+      [
+        ['SIG.MSR.001', 'primary'],
+        ['SIG.MSR.002', 'supporting'],
+        ['SIG.MSR.003', 'primary'],
+      ] as const
+    ).map(([id, grade]) => [
+      id,
+      {
+        signal_id: id,
+        reader_text: 'fixture reader text',
+        grade,
+        grounding_note: `fixture grounding note for ${id}`,
+        catalog_discrepancy_note: '',
+      } as ReaderTextEntry,
+    ]),
+  )
+}
+
 function fixtureRanked(): RankedMsrEntry[] {
   return [
     { signal: fixtureSignal('SIG.MSR.001'), citation_weight: 10, matched_entities: ['PLN.SATURN'] },
@@ -51,11 +83,7 @@ function fixtureRanked(): RankedMsrEntry[] {
 
 describe('freeze — buildFrozenArtifact + canonicalSerialize', () => {
   it('includes only passed entries, ranked and weighted from the real ranking input', () => {
-    const gradeById = new Map<string, 'primary' | 'supporting'>([
-      ['SIG.MSR.001', 'primary'],
-      ['SIG.MSR.002', 'supporting'],
-    ])
-    const artifact = buildFrozenArtifact(fixtureReviewed(), fixtureRanked(), gradeById, 573)
+    const artifact = buildFrozenArtifact(fixtureReviewed(), fixtureRanked(), fixtureAuthored(), 573)
     expect(artifact.signals_covered).toBe(2)
     expect(artifact.entries[0].signal_id).toBe('SIG.MSR.001')
     expect(artifact.entries[0].rank).toBe(1)
@@ -68,22 +96,13 @@ describe('freeze — buildFrozenArtifact + canonicalSerialize', () => {
       ...fixtureReviewed(),
       { signal_id: 'SIG.MSR.003', clean_text: 'should not appear', passed: false, flags: [] },
     ]
-    const gradeById = new Map<string, 'primary' | 'supporting'>([
-      ['SIG.MSR.001', 'primary'],
-      ['SIG.MSR.002', 'primary'],
-      ['SIG.MSR.003', 'primary'],
-    ])
-    const artifact = buildFrozenArtifact(reviewed, fixtureRanked(), gradeById, 573)
+    const artifact = buildFrozenArtifact(reviewed, fixtureRanked(), fixtureAuthored(), 573)
     expect(artifact.entries.map((e) => e.signal_id)).not.toContain('SIG.MSR.003')
   })
 })
 
 describe('freeze — verifyFreeze mutate-and-catch proof (§N.8)', () => {
-  const gradeById = new Map<string, 'primary' | 'supporting'>([
-    ['SIG.MSR.001', 'primary'],
-    ['SIG.MSR.002', 'supporting'],
-  ])
-  const artifact = buildFrozenArtifact(fixtureReviewed(), fixtureRanked(), gradeById, 573)
+  const artifact = buildFrozenArtifact(fixtureReviewed(), fixtureRanked(), fixtureAuthored(), 573)
   const serialized = canonicalSerialize(artifact)
   const record = buildFreezeRecord(artifact, 'fixture/path.json')
 
@@ -110,16 +129,81 @@ describe('freeze — verifyFreeze mutate-and-catch proof (§N.8)', () => {
   })
 
   it('sanity: computeArtifactHash is a pure, deterministic function of the artifact content', () => {
-    const gradeById2 = new Map<string, 'primary' | 'supporting'>([
-      ['SIG.MSR.001', 'primary'],
-      ['SIG.MSR.002', 'supporting'],
-    ])
-    const artifact2 = buildFrozenArtifact(fixtureReviewed(), fixtureRanked(), gradeById2, 573)
+    const artifact2 = buildFrozenArtifact(fixtureReviewed(), fixtureRanked(), fixtureAuthored(), 573)
     // generated_at differs by wall-clock time between the two builds, so hashes
     // legitimately differ unless we pin generated_at — confirm the CONTENT
     // (entries) hashes identically when generated_at is held fixed.
     const pinned1 = { ...artifact, generated_at: 'FIXED' }
     const pinned2 = { ...artifact2, generated_at: 'FIXED' }
     expect(computeArtifactHash(pinned1)).toBe(computeArtifactHash(pinned2))
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The detector the lane was missing: the COMMITTED artifact vs the COMMITTED
+// record. Everything above this line runs on fixtures.
+// ─────────────────────────────────────────────────────────────────────────────
+const FROZEN_DIR = path.join(__dirname, '..', 'frozen')
+const COMMITTED_ARTIFACT_PATH = path.join(FROZEN_DIR, 'msr_reader_text_v1.json')
+const COMMITTED_RECORD_PATH = path.join(FROZEN_DIR, 'msr_reader_text_v1.freeze.json')
+
+/** `generate_and_freeze.ts` writes `canonicalSerialize(artifact) + '\n'` but
+ *  hashes the string WITHOUT that trailing newline, so the on-disk bytes are
+ *  the hashed payload plus exactly one '\n'. Stripping precisely one newline
+ *  (not `.trim()`, which would also swallow real content whitespace and hide a
+ *  whole class of tampering) reconstructs what was hashed. */
+function readHashedPayload(): string {
+  const raw = readFileSync(COMMITTED_ARTIFACT_PATH, 'utf8')
+  return raw.endsWith('\n') ? raw.slice(0, -1) : raw
+}
+
+describe('freeze — the COMMITTED artifact against the COMMITTED record (§N.8)', () => {
+  const record = JSON.parse(readFileSync(COMMITTED_RECORD_PATH, 'utf8')) as FreezeRecord
+
+  it('GREEN: the committed artifact hashes to the committed sha256', () => {
+    const result = verifyFreeze(readHashedPayload(), record)
+    expect(
+      result.intact,
+      `committed artifact does not match its committed freeze record.\n` +
+        `  recorded:   ${result.recorded_sha256}\n` +
+        `  recomputed: ${result.recomputed_sha256}\n` +
+        `  If this is an intentional re-freeze, re-run generate_and_freeze.ts ` +
+        `(see its header for the exact command) and commit BOTH files.`,
+    ).toBe(true)
+  })
+
+  it('RED: a one-byte mutation of the committed artifact is caught', () => {
+    const payload = readHashedPayload()
+    const idx = payload.indexOf('"reader_text"')
+    expect(idx).toBeGreaterThan(-1)
+    const tampered = payload.slice(0, idx + 2) + 'X' + payload.slice(idx + 3)
+    expect(tampered).not.toBe(payload)
+    expect(tampered.length).toBe(payload.length)
+
+    const result = verifyFreeze(tampered, record)
+    expect(result.intact).toBe(false)
+    expect(result.recomputed_sha256).not.toBe(result.recorded_sha256)
+  })
+
+  it('the record\'s entry_count agrees with the committed artifact it describes', () => {
+    const artifact = JSON.parse(readFileSync(COMMITTED_ARTIFACT_PATH, 'utf8')) as FrozenArtifact
+    expect(record.entry_count).toBe(artifact.entries.length)
+    expect(artifact.signals_covered).toBe(artifact.entries.length)
+    expect(record.frozen_at).toBe(artifact.generated_at)
+  })
+
+  it('the disclosures are INSIDE the freeze: every committed entry carries its grounding_note', () => {
+    // grounding_note and catalog_discrepancy_note used to sit outside
+    // FrozenArtifactEntry, unhashed and free to drift from the text they
+    // explain. Four entries' honest-omission disclosures depend on them.
+    const artifact = JSON.parse(readFileSync(COMMITTED_ARTIFACT_PATH, 'utf8')) as FrozenArtifact
+    for (const entry of artifact.entries) {
+      expect(entry.grounding_note, `${entry.signal_id} grounding_note`).toBeTruthy()
+      expect(typeof entry.catalog_discrepancy_note, `${entry.signal_id} discrepancy note`).toBe('string')
+    }
+    const withDiscrepancy = artifact.entries.filter((e) => e.catalog_discrepancy_note.length > 0)
+    expect(withDiscrepancy.map((e) => e.signal_id).sort()).toEqual(
+      ['SIG.MSR.031', 'SIG.MSR.121', 'SIG.MSR.157', 'SIG.MSR.313', 'SIG.MSR.327', 'SIG.MSR.415'].sort(),
+    )
   })
 })

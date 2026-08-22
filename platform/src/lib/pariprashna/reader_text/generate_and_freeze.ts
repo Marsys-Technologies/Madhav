@@ -21,7 +21,18 @@
  *      with no concurrent writers.
  *
  * Run with:
- *   npx tsx platform/src/lib/pariprashna/reader_text/generate_and_freeze.ts
+ *   cd platform && npx tsx --conditions=react-server \\
+ *     src/lib/pariprashna/reader_text/generate_and_freeze.ts
+ *
+ * The `--conditions=react-server` flag is REQUIRED and is not decoration: this
+ * module tree imports `server-only` (a real guard — the pipeline reads the repo
+ * filesystem and must never bundle to a client), and a plain `npx tsx` throws
+ * "This module cannot be imported from a Client Component module" before a line
+ * of the pipeline runs. The documented command previously omitted the flag, so
+ * the published regeneration instruction could not work. `--conditions=
+ * react-server` is this repo's established pattern for exactly this case (see
+ * `pipeline:test`, `codegen:projections`, `tap:*` in platform/package.json);
+ * the guard is kept and the instruction fixed, not the other way round.
  *
  * Writes `frozen/msr_reader_text_v1.json` (the artifact) and
  * `frozen/msr_reader_text_v1.freeze.json` (the hash record) — both committed,
@@ -51,13 +62,13 @@ export function runPipeline(): {
 } {
   const catalog = loadReaderFacingCatalog()
   const ranked = rankMsrSignals(catalog)
-  const gradeById = new Map(READER_TEXT_ENTRIES.map((e) => [e.signal_id, e.grade]))
+  const authoredById = new Map(READER_TEXT_ENTRIES.map((e) => [e.signal_id, e]))
   const signalsById = new Map<string, MsrSignal>(catalog.map((s) => [s.signal_id, s]))
 
   const reviewed = reviewAll(READER_TEXT_ENTRIES, signalsById)
   const failed = reviewed.filter((r) => !r.passed)
 
-  const artifact = buildFrozenArtifact(reviewed, ranked, gradeById, catalog.length)
+  const artifact = buildFrozenArtifact(reviewed, ranked, authoredById, catalog.length)
   const serialized = canonicalSerialize(artifact)
   const record = buildFreezeRecord(artifact, path.relative(process.cwd(), ARTIFACT_PATH))
 

@@ -89,6 +89,16 @@ export interface FrozenArtifactEntry {
   readonly citation_weight: number
   readonly reader_text: string
   readonly grade: ReaderTextGrade
+  /** Audit-channel grounding, INSIDE the freeze. `grounding_note` and
+   *  `catalog_discrepancy_note` used to live only on `ReaderTextEntry` and so
+   *  sat outside the hashed artifact entirely — the honest-omission
+   *  disclosures this lane leans on hardest were the one part of it nothing
+   *  could detect drift in. Four entries (SIG.MSR.157/313/121/415) carry a
+   *  discrepancy note that is the whole reason their reader_text says what it
+   *  says; a disclosure that can drift from the text it explains is not a
+   *  disclosure. Both fields are now serialized and hashed with the rest. */
+  readonly grounding_note: string
+  readonly catalog_discrepancy_note: string
 }
 
 export interface FrozenArtifact {

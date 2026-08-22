@@ -15,7 +15,7 @@
  */
 import { createHash } from 'node:crypto'
 
-import type { FreezeRecord, FrozenArtifact, FrozenArtifactEntry, ReaderTextGrade, ReviewedEntry } from './types'
+import type { FreezeRecord, FrozenArtifact, FrozenArtifactEntry, ReaderTextEntry, ReviewedEntry } from './types'
 import type { RankedMsrEntry } from './types'
 
 export const READER_TEXT_ARTIFACT_VERSION = '1.0.0'
@@ -37,20 +37,35 @@ export const RANKING_METHOD_DESCRIPTION =
 export function buildFrozenArtifact(
   reviewed: readonly ReviewedEntry[],
   ranked: readonly RankedMsrEntry[],
-  gradeById: ReadonlyMap<string, ReaderTextGrade>,
+  authoredById: ReadonlyMap<string, ReaderTextEntry>,
   totalCatalogSignals: number,
 ): FrozenArtifact {
   const rankById = new Map(ranked.map((r, i) => [r.signal.signal_id, { rank: i + 1, weight: r.citation_weight }]))
   const entries: FrozenArtifactEntry[] = reviewed
     .filter((r) => r.passed)
     .map((r) => {
+      // Both lookups THROW rather than defaulting. A reviewed entry with no
+      // authored source, or with no rank, is a caller bug; the previous
+      // `?? 'primary'` and `?? -1` fallbacks would have shipped an invented
+      // grade and a nonsense rank into a hashed artifact under a green build
+      // (SS N.7 item 6 / SS N.8 — a plausible-looking default standing in for
+      // "I don't know" is the defect, not the guard against it).
+      const authored = authoredById.get(r.signal_id)
+      if (!authored) {
+        throw new Error(`buildFrozenArtifact: reviewed entry ${r.signal_id} has no authored ReaderTextEntry`)
+      }
       const rankInfo = rankById.get(r.signal_id)
+      if (!rankInfo) {
+        throw new Error(`buildFrozenArtifact: reviewed entry ${r.signal_id} has no rank in the citation ranking`)
+      }
       return {
         signal_id: r.signal_id,
-        rank: rankInfo?.rank ?? -1,
-        citation_weight: rankInfo?.weight ?? 0,
+        rank: rankInfo.rank,
+        citation_weight: rankInfo.weight,
         reader_text: r.clean_text,
-        grade: gradeById.get(r.signal_id) ?? 'primary',
+        grade: authored.grade,
+        grounding_note: authored.grounding_note,
+        catalog_discrepancy_note: authored.catalog_discrepancy_note,
       }
     })
     .sort((a, b) => a.rank - b.rank)
@@ -79,6 +94,8 @@ export function canonicalSerialize(artifact: FrozenArtifact): string {
       citation_weight: e.citation_weight,
       reader_text: e.reader_text,
       grade: e.grade,
+      grounding_note: e.grounding_note,
+      catalog_discrepancy_note: e.catalog_discrepancy_note,
     }))
   const canonical = {
     artifact: artifact.artifact,
