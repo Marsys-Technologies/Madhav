@@ -25,6 +25,7 @@ import {
   type WriteAheadEntryInput,
 } from '../../src/lib/pariprashna/store/durable_outbox'
 import type { CanonicalMessage, MessagePartInput } from '../../src/lib/pariprashna/store/schema'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 const SYNTHETIC_TEST_CHART_ID = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
 
@@ -146,7 +147,9 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('[dd16-test] FAIL:', err)
-  process.exitCode = 1
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('[dd16-test] FAIL:', err)
+    process.exitCode = 1
+  })
+}

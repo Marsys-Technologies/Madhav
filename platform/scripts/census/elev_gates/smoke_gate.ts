@@ -34,6 +34,7 @@
 import { collectRegisteredTools } from './_tool_enumeration'
 import { ElevMcpClient, resolveMcpTarget, CANONICAL_CHART_ID, envOrDefault, DEFAULT_TOOL_TIMEOUT_MS } from './_mcp_client'
 import { printGateReport, type GateResult } from './_report'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 const AYANAMSHA_ID = 'lahiri_chitrapaksha'
 const TOOL_TIMEOUT_MS = Number(envOrDefault('SMOKE_TOOL_TIMEOUT_MS', String(DEFAULT_TOOL_TIMEOUT_MS)))
@@ -152,7 +153,9 @@ async function main(): Promise<void> {
   process.exit(printGateReport('smoke_gate (LIVE)', results))
 }
 
-main().catch((err) => {
-  console.error('smoke_gate FATAL:', err)
-  process.exit(2)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('smoke_gate FATAL:', err)
+    process.exit(2)
+  })
+}

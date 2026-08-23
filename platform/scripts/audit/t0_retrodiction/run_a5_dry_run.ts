@@ -39,6 +39,7 @@ import type { CurveEvent, EventShape, DateConfidence } from './lib/a3_scoring_ha
 import type { DashaPeriod } from './lib/curve'
 import { DOMAIN_LORDS, domainForCategory } from './lib/mechanisms'
 import { parseDate } from './lib/dates'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const AYANAMSHA = 'lahiri_chitrapaksha'
@@ -199,7 +200,9 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('d4a_a5_dry_run FATAL:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('d4a_a5_dry_run FATAL:', err)
+    process.exit(1)
+  })
+}

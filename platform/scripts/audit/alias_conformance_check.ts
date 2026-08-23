@@ -33,6 +33,7 @@
  */
 
 import { McpClient, envOrDefault, type McpToolDescriptor } from './doctrine_harness/lib/mcp_client.js'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 const PROBE_CHART_ID = envOrDefault('PROBE_CHART_ID', '482012f1-710e-4a25-994a-93821f5871aa')!
 
@@ -181,7 +182,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err) => {
-  console.error(err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error(err)
+    process.exit(1)
+  })
+}

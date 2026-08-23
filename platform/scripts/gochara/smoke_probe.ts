@@ -50,6 +50,8 @@
  * the real probe calls the deployed product.
  */
 
+import { isDirectEntrypoint } from '../lib/entrypoint'
+
 // ── TDD skeleton: hardcoded always-fail path ──────────────────────────────────
 // Was true in commit 1 to prove the failure-detection path works before real
 // logic was wired. Now false — real probe is live (commit 2).
@@ -414,7 +416,9 @@ async function main(): Promise<void> {
   process.exit(hasFail ? 1 : 0)
 }
 
-main().catch((err) => {
-  console.error('[gochara/smoke_probe] FATAL:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('[gochara/smoke_probe] FATAL:', err)
+    process.exit(1)
+  })
+}

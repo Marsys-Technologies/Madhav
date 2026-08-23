@@ -28,6 +28,7 @@
 import { runDailyJob } from '@/lib/pariprashna/samiksha/daily_job'
 import { FileDigestJournal } from '@/lib/pariprashna/samiksha/digest_journal'
 import { LogOnlyTransport } from '@/lib/pariprashna/samiksha/digest'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 function argValue(argv: string[], flag: string): string | undefined {
   const i = argv.indexOf(flag)
@@ -85,7 +86,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err) => {
-  console.error('[samiksha:daily_job] FAILED:', err instanceof Error ? err.stack ?? err.message : err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('[samiksha:daily_job] FAILED:', err instanceof Error ? err.stack ?? err.message : err)
+    process.exit(1)
+  })
+}

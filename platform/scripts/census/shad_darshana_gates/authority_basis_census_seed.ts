@@ -54,6 +54,7 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs'
 import path from 'node:path'
 import { printGateReport, type GateResult } from './_report'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 const REPO_ROOT = path.join(__dirname, '..', '..', '..', '..')
 const MCP_TOOLS_ROOT = path.join(REPO_ROOT, 'platform-mcp/src/tools')
@@ -341,4 +342,6 @@ function main(): void {
   process.exit(printGateReport('authority_basis_census_seed', validate()))
 }
 
-main()
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main()
+}

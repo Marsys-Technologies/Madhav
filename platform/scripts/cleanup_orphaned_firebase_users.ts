@@ -12,6 +12,7 @@
 
 import { adminAuth } from '../src/lib/firebase/server'
 import { query } from '../src/lib/db/client'
+import { isDirectEntrypoint } from './lib/entrypoint'
 
 const DRY_RUN = process.argv.includes('--dry-run')
 
@@ -66,7 +67,9 @@ async function main() {
   console.log(DRY_RUN ? 'Dry run complete. Re-run without --dry-run to apply.' : 'Done.')
 }
 
-main().catch((err) => {
-  console.error('Fatal:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('Fatal:', err)
+    process.exit(1)
+  })
+}

@@ -24,6 +24,7 @@ import {
   type LifecycleState,
   type SourceLayer,
 } from '../../src/lib/retrieval/concept_ledger/ledger'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 // Repo root is two levels up from platform/scripts/manifest/
 // __dirname = .../platform/scripts/manifest
@@ -86,7 +87,9 @@ async function main(): Promise<void> {
   console.log(`[generate_concept_projections] Wrote ${OUTPUT_PATH}`)
 }
 
-main().catch((err) => {
-  console.error('[generate_concept_projections] FAILED:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('[generate_concept_projections] FAILED:', err)
+    process.exit(1)
+  })
+}

@@ -22,6 +22,7 @@
 import path from 'node:path'
 import { readFileSync } from 'node:fs'
 import { connectTapDb, printReport, NATIVE_CHART_ID, type LawResult } from './lib/tap_db'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 const COVERAGE_MATRIX_PATH = path.join(
   __dirname,
@@ -84,7 +85,9 @@ async function main() {
   process.exit(printReport('S-13 live coverage matrix', results))
 }
 
-main().catch((err) => {
-  console.error('s13_coverage_matrix_live FATAL:', err)
-  process.exit(4)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('s13_coverage_matrix_live FATAL:', err)
+    process.exit(4)
+  })
+}

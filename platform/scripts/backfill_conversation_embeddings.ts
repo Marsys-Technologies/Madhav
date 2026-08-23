@@ -66,6 +66,7 @@
 import { Pool } from 'pg'
 import { GoogleAuth } from 'google-auth-library'
 import { readTurnParts } from '../src/lib/pariprashna/store/reader'
+import { isDirectEntrypoint } from './lib/entrypoint'
 
 const GCP_PROJECT      = process.env.GCP_PROJECT         ?? 'madhav-astrology'
 const VERTEX_LOCATION  = process.env.VERTEX_AI_LOCATION  ?? 'asia-south1'
@@ -324,7 +325,9 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.error('Fatal:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch(err => {
+    console.error('Fatal:', err)
+    process.exit(1)
+  })
+}
