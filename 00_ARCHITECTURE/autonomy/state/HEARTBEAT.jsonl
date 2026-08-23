@@ -1227,3 +1227,4 @@
 {"ts":"2026-08-23T19:56:56Z","agent":"PARIKSAKA","status":"working","detail":"V-66-ADDENDUM: D-101 assertion (iii) baseline measured pre-build (0 stale of 71); can-fail proof declared mandatory"}
 {"ts":"2026-08-23T19:58:41Z","agent":"KARAKA-M0-T73","status":"working","detail":"starting: reading D-100 and Wave1 report before editing"}
 {"ts":"2026-08-23T19:59:39Z","agent":"SUTRADHARA","status":"working","detail":"tick 59 [session:eb4320db]: absorbed D-99..D-102, F-DUPE resolved (incumbent=me), T71 salvaged+committed, dispatched T73 (D-100 urgent guard-the-three)"}
+{"ts":"2026-08-23T20:00:02Z","agent":"KARAKA-M0-T73","status":"working","detail":"confirmed RED: ratchet names exactly the 3 target files as new_violations, exit=1. now applying guard"}
