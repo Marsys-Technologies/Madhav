@@ -827,3 +827,5 @@
 {"ts":"2026-08-23T14:55:59Z","agent":"KARAKA-M0-T52","status":"working","detail":"live before/after on throwaway PG 15.17: NOTICE + both F-A warnings now on stderr; stdout byte-identical. now simulating deploy sentinel grep"}
 {"ts":"2026-08-23T14:56:13Z","agent":"KARAKA-M0-T53","status":"working","detail":"starting M0-T53: measure escalation false-positive rate + implement D-60 §5 pane-capture precondition"}
 {"ts":"2026-08-23T14:56:44Z","agent":"KARAKA-M0-T53","status":"working","detail":"read _common/karaka/CHARTER/D-60/SQ-21/threads; now enumerating escalations from HEARTBEAT + mailboxes"}
+{"ts":"2026-08-23T14:57:49Z","agent":"KARAKA-M0-T53","status":"working","detail":"half (a): built PRAHARI event timeline from HEARTBEAT; now reading escalation/restart mailbox messages verbatim + per-agent gap analysis"}
+{"ts":"2026-08-23T14:58:09Z","agent":"PARIKSAKA","status":"working","detail":"V-33/V-34/V-35 written (timestamp self-correction, 591 apply verified live, T49 attacked 5 ways + D-54 part 8 discharged). Material finding F-G routed. T50/T51 next."}
