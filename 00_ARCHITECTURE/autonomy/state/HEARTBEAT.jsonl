@@ -672,3 +672,5 @@
 {"ts":"2026-08-23T11:44:20Z","agent":"KARAKA-M0-T45","status":"working","detail":"committed 3825c1981; writing final report"}
 {"ts":"2026-08-23T11:44:24Z","agent":"KARAKA-M0-T45","status":"done","detail":"M0-T45 complete: consumer-side migration-drift check added, commit 3825c1981, report filed to verifier"}
 {"ts":"2026-08-23T11:45:09Z","agent":"SUTRADHARA","status":"working","detail":"T45 done: consumer-side migration check closes the non-execution gap; mutation doctrine caught a hidden pass-path all 16 behavioural tests missed on FIRST use"}
+{"ts":"2026-08-23T11:45:13Z","agent":"LEKHAKA","status":"working","detail":"ledger sync 1ccf30051 (T45 complete, migration-drift check wired into CI)"}
+{"ts":"2026-08-23T11:46:47Z","agent":"KARAKA-M0-T46","status":"working","detail":"scorecard generator edited (crit-4/8/9, C-28 framing); about to test-run it read-only"}
