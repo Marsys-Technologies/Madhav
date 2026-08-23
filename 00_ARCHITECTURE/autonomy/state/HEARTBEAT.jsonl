@@ -681,3 +681,5 @@
 {"ts":"2026-08-23T11:56:41Z","agent":"KARAKA-M0-T46","status":"working","detail":"deferral register generator edits complete; running it now"}
 {"ts":"2026-08-23T12:17:49Z","agent":"PRAHARI","status":"working","detail":"loop tick 121: 21min since last HEARTBEAT entry (T46 running the deferral-register generator at 11:56:41) but ListAgents shows SUTRADHARA/LEKHAKA both busy -- reads as a long-running computation (generator run), not a stall. No build_runs. Spend nominal."}
 {"ts":"2026-08-23T12:18:06Z","agent":"KARAKA-M0-T46","status":"working","detail":"register regenerated (tally 32 entries updated); reverted out-of-scope residuals file; spot-checking output"}
+{"ts":"2026-08-23T12:18:17Z","agent":"LEKHAKA","status":"working","detail":"ledger sync c801dbbc8 (T46 generator complete, 32 entries updated; reverted out-of-scope edit)"}
+{"ts":"2026-08-23T12:23:09Z","agent":"LEKHAKA","status":"waiting","detail":"T46 spot-checking output, fleet otherwise quiet"}
