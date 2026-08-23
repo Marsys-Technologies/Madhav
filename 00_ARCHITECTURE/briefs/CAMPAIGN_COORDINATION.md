@@ -7730,3 +7730,37 @@ in the shared checkout. This run backed both up read-only (sha256 recorded, veri
 close) and touched nothing else about them.
 
 No Pariśeṣa file, branch, worktree, or dirty state was touched at any point tonight.
+
+## 2026-08-23 — WORKTREE-CENSUS-LAND (Claude Code, Sonnet 5, native-delegated) — leased window: land 8 branches' stranded PARIŚEṢA-V4 records onto main
+
+**Context.** This session executed the second half of a completed hygiene-sweep investigation:
+(A) deleted 89 of 90 branches confirmed safe by evidence (1 — `gh-readonly-queue/main/pr-1501-…` —
+was already gone from origin, no action needed); (B) this entry. Eight branches
+(`par/S4-coordination`, `par/coordination`, `par/night-F-06`, `par/night-F-14`, `par/night-F-70`,
+`par/night-bundle-p1-multi`, `par/s5-mula-lead`, `par/verifier-work`) are automated `wt-close:
+preserve uncommitted worktree state` commits from a 2026-08-22 worktree census, confirmed (earlier
+this session, before this lease) at 0% file-presence-on-main — genuinely stranded PARIŚEṢA-V4
+campaign records, never landed.
+
+**Scope this lease covers:** `00_ARCHITECTURE/briefs/parisesa/**` (274 files, the true union across
+all 8 branches — `.codex/config.toml`, present on `par/coordination`, is deliberately excluded per
+this session's standing instruction: it can carry live credentials, every other landing this
+session has excluded it). No `platform/**` file touched. Purely additive relative to `main` — zero
+deletions.
+
+**Conflict handling:** 26 of the 274 files had differing content across the branches that carried
+them. Resolved per the declared rule (latest branch last-commit date wins); 2 of those 26
+(`LEDGER_S4.md`, `lanes/F-135/REVIEW.md`) hit a true timestamp tie (`par/S4-coordination` vs.
+`par/coordination`/`par/verifier-work`, both at unix ts 1787417741) and were resolved by the
+"more complete content" fallback named alongside the timestamp rule — larger file won in both
+cases (both were `par/S4-coordination`). `BOARD.md` (the one conflict named explicitly in this
+session's brief) resolved cleanly by timestamp alone: `par/verifier-work` (ts 741) over
+`par/coordination` (ts 739).
+
+**Pre-lease checks:** fresh fetch of `campaign-coordination` (tip `f34ee3eba`, tail read — no open
+lease covers `parisesa/**`; the most recent PARIPRAŚNA close explicitly states "No Pariśeṣa file,
+branch, worktree, or dirty state was touched at any point tonight"). Work done in an isolated
+worktree/clone under `/tmp/madhav-sweep-b*`, not the shared checkout.
+
+**Native-delegated implementation**, per the native's standing instruction dated 2026-08-23 that a
+Sonnet 5 agent implements sweep-confirmed cleanup autonomously.
