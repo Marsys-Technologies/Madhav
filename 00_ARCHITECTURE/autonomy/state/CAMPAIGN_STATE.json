@@ -27,6 +27,18 @@
             "value": "COHORT_SIZE",
             "introduced_by": "PR #887 2026-07-29"
           }
+        ],
+        "additional_findings": [
+          {
+            "source": "KARAKA M0-T6",
+            "asset": "bg_sky_calendar",
+            "finding": "target_table='bg_sky_events' names a relation ABSENT from the live database — the only such case of 128. Rows actually live in bg_sky_calendar (31,059). Every count and every integrity check authored for this asset would inherit the phantom pointer."
+          },
+          {
+            "source": "KARAKA M0-T7",
+            "asset": "bg_vidhi_* serving path",
+            "finding": "the vidhi serving path reads a hand-synchronized TS constant rather than the DB rows, while registry_data.ts states the opposite. §N.7 item 3: a wrapper-local constant shadowing the computed value."
+          }
         ]
       }
     },
@@ -113,6 +125,13 @@
             "ratio": 1.4,
             "tier": "H"
           }
+        ],
+        "additional_findings": [
+          {
+            "source": "KARAKA M0-T6 consumer map",
+            "asset": "ka_kshetra",
+            "finding": "kala_ritual_resonance.ts:19 serves the literal string 'field empty — ka_kshetra has written no rows' while kala_field holds 8,599,775 rows on chart 482012f1 — the native's own chart. A hardcoded claim contradicted by production on a SERVED surface: §N.8's founding defect in the serving layer. NOT TOUCHED (I13, R3 not open). ADHIKARIN asked whether serving-layer code about one asset waits for that asset's rung or is Track M."
+          }
         ]
       }
     },
@@ -167,18 +186,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T6",
-      "what": "consumer map + zero-consumer evidence packets",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
-      "id": "M0-T7",
-      "what": "DRAFT-but-served reachability + DAG edge audit",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "T3-ESCALATION",
       "what": "M0-T3 flagged 2 of D-6's conditions as not clean passes (orphans COMPLETED — the promotion died, not the run; and medians/estimated_seconds live outside asset_throughput) plus T-2 parked: M0's 'zero throughput rows on inactive assets' collides with P1 (ka_gochara_sweep)",
       "owner": "ADHIKARIN",
@@ -215,12 +222,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T14",
-      "what": "disclose the 588 collision via the guard's own disclosed_additions route (D-10 part 3), with the requirement to PROVE the detector stays armed for other numbers, not assert it",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "PHANTOM-DRYRUN",
       "what": "DRY_RUN=1 is documented for asset_registry_seed.ts in two archived L0/cockpit briefs and is NOT IMPLEMENTED. An operator following the documentation performs a full live upsert against asset_registry in production. §N.8 inverted: a SAFETY MECHANISM with no implementation, failing in the direction that does damage, and harming the careful operator rather than the careless one. Two defensible repairs (implement it / strike the claim) so the choice is a scope decision, not a KARAKA's. Escalated, not dispatched",
       "owner": "ADHIKARIN",
@@ -233,20 +234,74 @@
       "state": "certified"
     },
     {
-      "id": "M0-T12+T13",
-      "what": "migration wave CLEARED by V-3; hold lifted. Dispatching as one task, sequenced 589 -> 588 -> 590 so the no-ops rehearse --target before the schema change uses it. Waiting on a KARAKA slot (cap 4: T6/T7/T8/T14 running)",
-      "owner": "SUTRADHARA",
-      "state": "cleared_waiting_slot"
-    },
-    {
       "id": "RES-1",
       "what": "PARIKSAKA residual: a deploy-time migration run that silently no-ops has no detector behind it. Raised during V-3, not blocking",
       "owner": "ADHIKARIN",
       "state": "raised"
+    },
+    {
+      "id": "M0-T7",
+      "what": "COMPLETE c9d13c7ec — 47 DRAFT assets on a four-fact matrix (registry-active / rows-exist / surface-reads / caller-reachable): 38 reachable, 5 built-but-unread, 4 UNKNOWN. 284 edges, 0 dangling, 0 cycles, 3 CURRENT->DRAFT. The 138-vs-128 id gap is NOT in the DAG (6 test fixtures, 4 migration-only tombstones). It corrected two of its own scans before reporting",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T14",
+      "what": "COMPLETE 8f7ca503 — 588 disclosed, detector proved still armed by fixture not assertion, and a correct test left red rather than edited (H3)",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T12+T13",
+      "what": "RUNNING — the campaign's first authorized production write. Sequenced 589 -> 588 -> 590, each --target pinned, halting at the first precondition that does not hold",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "M0-T16",
+      "what": "merge origin/main (24 behind / 35 ahead) — deferred until the tree is quiet, not skipped",
+      "owner": "SUTRADHARA",
+      "state": "queued_blocked"
+    },
+    {
+      "id": "G1-BLOCKED",
+      "what": "M0-T7 found ADHIKARIN's own G1 disposition power is currently UNEXERCISABLE for two of its three outcomes: catalog_status CHECK permits only CURRENT|DRAFT|RETIRED (no SOURCE), asset_kind only data|service|artifact, and data_disposition does not exist as a column (migration 590 staged, verified NOT applied). 590 supplies data_disposition; the SOURCE reclassification additionally needs a CHECK constraint change, which 590 does NOT contain and which may be charter P5",
+      "owner": "ADHIKARIN",
+      "state": "asked"
+    },
+    {
+      "id": "F-VIDHI-CONSTANT",
+      "what": "M0-T7: the vidhi serving path reads a hand-synchronized TS constant rather than the DB rows, while registry_data.ts states the opposite. §N.7 item 3 class — a wrapper-local constant shadowing an L1-computed value. bg_* assets, so R0, not open",
+      "owner": "ADHIKARIN",
+      "state": "raised"
+    },
+    {
+      "id": "M0-T6",
+      "what": "COMPLETE b1b1966e6 — consumer map from code over 3,585 files and 7,563 import edges: 105 with a serving consumer, 16 writer-only, 23 zero-serving with an evidence packet each. It threw away its own first version (a depth-6 reverse walk attributing 178 consumers to chart_facts) and traded recall for precision, saying so",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T17",
+      "what": "M0 exit-criteria scorecard — the 12 conditions measured as a SET with a detector each, re-runnable so T10 can re-measure at freeze rather than trust today",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "M0-T18",
+      "what": "plan figure reconciliation — every quantitative claim in §1/§1.5/the defect register measured against live. Three have been refuted so far, each caught incidentally; this checks the rest deliberately. Instructed NOT to manufacture findings if the diagnosis is sound",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "SOURCE-BLOCKED",
+      "what": "Phase 0.5b (lel_events -> SOURCE) cannot close: catalog_status and asset_kind CHECKs permit no source value and migration 590 contains no CHECK change. Reads as P5 to me; not queued, ADHIKARIN's",
+      "owner": "ADHIKARIN",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T04:48:14Z",
+  "last_updated_ts": "2026-08-23T04:54:41Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
