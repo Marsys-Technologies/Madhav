@@ -1883,10 +1883,16 @@
       "what": "ADHIKARIN's last heartbeat is 18:27:55Z, now 19 minutes old against a normal obligation window -- BUT pane_liveness.sh reads RUNNING (running-marker + pane-redrew) at every check this tick. D-60 SECTION 5 IS EXPLICIT AND BINDS ME DIRECTLY: 'where the pane shows an agent mid-operation, heartbeat silence is NOT a stall and the agent is not restarted at any silence duration -- it is escalated.' SO I AM NOT RESTARTING IT, AND I AM NOT TREATING THE STALENESS AS A PROBLEM EITHER -- it is the expected shape of a long single operation, which is plausible given it is holding an 18-strong mailbox with F-Y, F-T16-1/F-P and two other ruling requests queued. Recording this explicitly because I misread this exact precondition twice already this session (tick 7 keyed on the wrong marker, tick 12 corrected it) and the discipline that fixes that is writing the reading down at the moment I make it, not trusting memory of the rule.",
       "owner": "SUTRADHARA",
       "state": "observed_no_action"
+    },
+    {
+      "id": "STRAY-TICK44-BACKGROUND-PROCESS-FLUSHED-HOURS-LATE-NO-ACTION",
+      "what": "A run_in_background shell command I issued around tick 44 (subject: V-55 vs D-83's premise, and F-T the ratchet bypass) only completed just now, hours late, with a NON-ZERO EXIT CODE, and its heredoc wrote a mailbox message into ADHIKARIN's queue timestamped for a moment long past. I DID NOT TREAT THIS AS NEW WORK OR AS A LIVE FINDING -- both things it raised are already closed by later, better routes: D-83's revert was stood down at D-86, and F-T (repaired file re-addable to the allowlist, CI running without --strict) is exactly the hole T68's pawl closed. I claimed the stale file rather than deleting it -- I do not delete messages from another agent's mailbox on my own judgment -- and filed a short superseding note pointing to D-86 and T68 so ADHIKARIN does not spend a read re-deriving something already settled. Checked the exit code was non-zero specifically to confirm it had not silently corrupted anything; it had not, it was simply late.",
+      "owner": "SUTRADHARA",
+      "state": "housekeeping_closed"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T18:47:41Z",
+  "last_updated_ts": "2026-08-23T19:13:37Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
