@@ -121,6 +121,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as _dt
+import inspect
 import json
 import pathlib
 import re
@@ -1832,6 +1833,7 @@ def self_test(max_rows: int) -> int:
                   f"not_checkable={summary['not_checkable']})")
     failures += c23_code_derivation_probe()
     failures += rule_disclosure_probe()
+    failures += c28_population_probe()
     failures += snapshot_staleness_probe()
 
     if failures:
@@ -2228,6 +2230,171 @@ def rule_disclosure_probe() -> int:
         print(f"      [OK  ] all {demoting_entries} shipped demotion(s) are inside the "
               f"`authorised_covers` grant of the decision they cite")
     return bad
+
+
+def c28_population_probe() -> int:
+    """SQ-11 / D-43 part 6 — C-28's POPULATION is pinned, and the trap is shown red.
+
+    THE TRAP, MEASURED BY PARĪKṢAKA AT V-27 AND NOT HYPOTHETICAL. Re-point C-28 so it
+    enumerates FROM `build_run_assets` — "assets with a completed run whose
+    `estimated_seconds` is NULL" — and it returns **0 violations**. The BLOCKING
+    failure passes, and all 32 unearned `lit` states survive untouched. It is the most
+    natural-looking way to "apply D-42", which is exactly what makes it dangerous:
+    nothing about the diff looks like weakening a gate, and the number it produces is
+    the number everybody wants.
+
+    WHY IT IS WRONG, IN ONE SENTENCE: the defect C-28 looks for is an asset CLAIMING a
+    built state with NO run behind it, and `build_run_assets` is by construction the
+    table such an asset is ABSENT from. A table that cannot contain a row for the
+    defect being sought is not a population — it is a place the defect goes to hide.
+    C-28 must enumerate the assets making the CLAIM (registry × `asset_throughput`) and
+    join outward to find the ABSENCE.
+
+    Doing that re-pointing to clear the gate is charter H3 (D-43 part 6). This probe is
+    the detector against it, not an instance of it: nothing here changes c28.
+
+    FOUR PARTS, following the campaign's standing mutation-proof doctrine (D-41):
+      1. BEHAVIOURAL, POSITIVE — the shipped rule finds the unwitnessed asset.
+      2. BEHAVIOURAL, PAIRED NEGATIVES — three assets that must NOT fire, so a rule
+         that simply flagged everything would not pass part 1 by accident.
+      3. BEHAVIOURAL, SEEDED DEFECT — the re-pointed rule is BUILT HERE and run over
+         the same snapshot; it must return 0. That is what makes part 1 capable of
+         going red, and it re-measures V-27's finding rather than citing it.
+      4. STRUCTURAL — over c28's own source, because a behavioural test only reaches
+         the paths its author imagined. The population loop must iterate `s.assets`,
+         and the rule must carry no reference to a run table at all. Applied to the
+         seeded-defect function as a paired positive, so the structural assertion is
+         not vacuously satisfied by any function whatsoever.
+
+    WHAT PART 4 DOES NOT ESTABLISH, stated rather than assumed: it is a source-text
+    assertion, so it catches a re-pointing written in the obvious way and would not
+    catch one that reached `build_run_assets` through an indirection, a helper in
+    another module, or a renamed snapshot key. Parts 1–3 are the behavioural backstop
+    for that, and they bind whatever the source looks like.
+
+    Returns the number of probe failures (0 = every part behaved).
+    """
+    print("\n  C-28 population probe (SQ-11: the rule enumerates the assets CLAIMING a "
+          "built state and joins OUTWARD to find absence):")
+    bad = 0
+
+    def asset(aid: str, kind: str, est) -> dict:
+        return {"asset_id": aid, "layer": "brahmagyan", "asset_kind": kind,
+                "asset_type": "data" if kind != "service" else "service",
+                "catalog_status": "CURRENT", "is_active": True, "scope": "global",
+                "estimated_seconds": est, "depends_on": []}
+
+    # THE DEFECT: `lit`, no estimate, and no run record of any kind — V-27's Class A,
+    # which is all 32 of them. The paired negatives cover the three ways an asset can
+    # look similar and not be this defect.
+    raw = {
+        "assets": [
+            asset("bg_probe_unwitnessed", "data", None),        # ← the one violation
+            asset("bg_probe_witnessed", "data", 12.5),          # ran, and has an estimate
+            asset("bg_probe_unlit", "data", None),              # never claimed a built state
+            asset("bg_probe_service", "service", None),         # not a DATA kind (V-22)
+        ],
+        "throughput": [
+            {"asset_id": "bg_probe_unwitnessed", "states": ["lit"]},
+            {"asset_id": "bg_probe_witnessed", "states": ["lit"]},
+            {"asset_id": "bg_probe_unlit", "states": ["planned"]},
+            {"asset_id": "bg_probe_service", "states": ["lit"]},
+        ],
+        # The run table, populated exactly as production's is: it holds rows for the
+        # assets that DID run, and therefore structurally cannot hold one for the
+        # asset whose missing run is the defect.
+        "build_run_assets": [
+            {"asset_id": "bg_probe_witnessed", "state": "complete"},
+            {"asset_id": "bg_probe_service", "state": "complete"},
+        ],
+    }
+    snap = Snapshot(raw)
+
+    def c28_repointed_at_build_run_assets(s: Snapshot) -> Result:
+        """THE SEEDED DEFECT — the trap, written the way it would really be written.
+
+        Enumerates the population FROM `build_run_assets` (assets with a completed
+        run) instead of from the registry. Every line of it looks reasonable. It is
+        never called by the guard; it exists so the assertion above can be shown to
+        fail.
+        """
+        runs = s.raw.get("build_run_assets") or []
+        ran = {r["asset_id"] for r in runs if r.get("state") == "complete"}
+        v = []
+        for aid in sorted(ran):
+            a = s.by_id.get(aid)
+            if not a or a.get("asset_kind") not in DATA_KINDS:
+                continue
+            if a.get("estimated_seconds") is None:
+                v.append({"asset_id": aid})
+        return verdict(v)
+
+    # ── 1 + 2 — behavioural, both directions ────────────────────────────────────
+    shipped = c28(snap).as_dict()
+    got_ids = sorted(violation_identity(x) for x in shipped["violations"])
+    want_ids = ["bg_probe_unwitnessed"]
+    ok = shipped["status"] == FAIL and got_ids == want_ids
+    print(f"      [{'OK  ' if ok else 'BAD '}] shipped C-28 over a registry claiming "
+          f"4 assets built / 2 witnessed by a run: status={shipped['status']} "
+          f"violations={got_ids}")
+    if not ok:
+        bad += 1
+        print(f"           expected status={FAIL} violations={want_ids} — the "
+              f"unwitnessed asset is the whole point of the rule, and the three "
+              f"paired negatives (has an estimate / never lit / service kind) must "
+              f"not fire")
+
+    # ── 3 — the seeded defect must go red ───────────────────────────────────────
+    trapped = c28_repointed_at_build_run_assets(snap).as_dict()
+    ok = trapped["status"] == PASS and trapped["violation_count"] == 0
+    print(f"      [{'OK  ' if ok else 'BAD '}] the SAME snapshot through a C-28 "
+          f"re-pointed at build_run_assets: status={trapped['status']} "
+          f"violations={trapped['violation_count']} — V-27's measurement reproduced; "
+          f"the defect vanishes and the gate would pass")
+    if not ok:
+        bad += 1
+        print(f"           expected status={PASS} violations=0. If this stops "
+              f"holding, the fixture no longer DISCRIMINATES between the correct "
+              f"population and the trap, and the assertion above is no longer earned "
+              f"— rebuild the fixture, do not delete this case.")
+
+    # ── 4 — structural, with a paired positive ──────────────────────────────────
+    def structural(fn, label: str) -> list[str]:
+        src = inspect.getsource(fn)
+        body = "\n".join(ln for ln in src.splitlines()
+                         if not ln.lstrip().startswith("#"))
+        problems = []
+        if "for a in s.assets" not in body:
+            problems.append(f"{label}: does not iterate `s.assets` — its population is "
+                            f"not the set of assets making the claim")
+        if "build_run" in body:
+            problems.append(f"{label}: references `build_run*` — C-28 must not read "
+                            f"the run table at all; absence is found by the assets it "
+                            f"does NOT contain")
+        return problems
+
+    shipped_problems = structural(c28, "c28")
+    trap_problems = structural(c28_repointed_at_build_run_assets, "the re-pointed rule")
+    if shipped_problems:
+        bad += 1
+        print("      [BAD ] structural: c28's population has been re-pointed")
+        for p in shipped_problems:
+            print(f"               - {p}")
+    else:
+        print("      [OK  ] structural: c28 iterates `s.assets` and contains no "
+              "reference to a run table")
+    if trap_problems:
+        print(f"      [OK  ] structural, paired positive: the same assertion applied "
+              f"to the seeded defect reports {len(trap_problems)} problem(s) — so a "
+              f"clean result above is a measurement, not a vacuous one")
+    else:
+        bad += 1
+        print("      [BAD ] structural, paired positive: the assertion found NOTHING "
+              "wrong with a function that is the defect by construction — the "
+              "structural check is inert and proves nothing about c28")
+    return bad
+
+
 def snapshot_staleness_probe() -> int:
     """Prove the freshness detector is real, and prove it CAN fail (F-T36-2)."""
     print("\n  Snapshot-freshness probe (the age of the data a gate judges is itself "
