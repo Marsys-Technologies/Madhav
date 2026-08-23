@@ -1,7 +1,17 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import fs from 'fs'
 import path from 'path'
 import YAML from 'js-yaml'
+
+// The opt-out this file's subject is keyed on (Nirmāṇa R-28.1 / D-49 / SQ-17). `dispatch_gate.ts`
+// now RUNS BY DEFAULT and only stays silent when a caller explicitly says `IMPORT_ONLY=1`; the
+// guard used to key on `NODE_ENV !== 'test'`, which made a silent no-op the default in every
+// environment CI already sets `NODE_ENV: test` for. This test imports the module for its pure
+// exports, so it is the caller that must opt out — and it must do so BEFORE the import below
+// executes, which is what `vi.hoisted` is for (vitest lifts it above the import block).
+vi.hoisted(() => {
+  process.env.IMPORT_ONLY = '1'
+})
 
 import {
   evaluateDispatchGate,
@@ -182,4 +192,68 @@ describe('deploy.yml wiring', () => {
       ['force_all', 'mcp', 'pipeline', 'sidecar'].sort()
     )
   })
+})
+
+/**
+ * ── Entrypoint-guard detector (Nirmāṇa R-28.1 / V-28 / D-49 / SQ-17) ─────────────────────────
+ *
+ * Until this repair, `dispatch_gate.ts` ended with `if (process.env.NODE_ENV !== 'test')`, so a
+ * gate placed in any workflow job that exports `NODE_ENV: test` — which `.github/workflows/ci.yml`
+ * already does for unit-tests, db-integration-tests and planner-regression — exited 0 with no
+ * output, having evaluated nothing. Nothing in this file could see that: every test above imports
+ * the pure decision function and never executes the CLI, so the guard had no detector at all.
+ *
+ * These two cases are that detector. They spawn the real script, and they are paired: the first
+ * proves the gate RUNS and BLOCKS under `NODE_ENV=test`, the second proves the explicit
+ * `IMPORT_ONLY=1` opt-out still silences it (which is what lets this file import the module at the
+ * top). Flipping the guard's polarity, or reverting it to the NODE_ENV form, fails the first.
+ *
+ * WHAT THESE DO NOT ESTABLISH (stated per D-41's requirement, not assumed): they exercise the
+ * guard and `main()`'s wiring only. The decision logic itself is covered by the pure-function
+ * tests above; a defect in `evaluateDispatchGate` that still produced a non-zero exit on this
+ * input would leave these two green.
+ */
+describe('entrypoint guard — the gate runs by default and is silent only on an explicit opt-out', () => {
+  const platformDir = path.resolve(__dirname, '..', '..')
+  const BLOCKING_ENV = {
+    GATE_EVENT_NAME: 'workflow_dispatch',
+    GATE_CI_GATE: REQUIRE_CI_GREEN,
+    GATE_EMERGENCY_REASON: '',
+    GATE_CI_CONCLUSION: 'failure',
+    GATE_SHA: 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
+  }
+
+  async function runGate(extraEnv: Record<string, string>) {
+    const { execFileSync } = await import('child_process')
+    let out = ''
+    let status = 0
+    try {
+      out = execFileSync('npx', ['tsx', 'scripts/ci/dispatch_gate.ts'], {
+        cwd: platformDir,
+        env: { ...process.env, ...BLOCKING_ENV, ...extraEnv },
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 60_000,
+      })
+    } catch (err) {
+      const e = err as { status?: number; stdout?: string; stderr?: string }
+      status = e.status ?? -1
+      out = `${e.stdout ?? ''}${e.stderr ?? ''}`
+    }
+    return { out, status }
+  }
+
+  it('CAN-FAIL: under NODE_ENV=test with no opt-out, a blocked dispatch still exits 1 and says why', async () => {
+    // IMPORT_ONLY is cleared deliberately: this test process sets it to '1' so it can import the
+    // module, and `...process.env` would otherwise hand that opt-out to the child.
+    const { out, status } = await runGate({ NODE_ENV: 'test', IMPORT_ONLY: '' })
+    expect(out).toContain('BLOCKED: CI concluded "failure"')
+    expect(status).toBe(1)
+  }, 60_000)
+
+  it('the explicit IMPORT_ONLY=1 opt-out still suppresses the CLI (what lets this file import it)', async () => {
+    const { out, status } = await runGate({ NODE_ENV: 'test', IMPORT_ONLY: '1' })
+    expect(out).toBe('')
+    expect(status).toBe(0)
+  }, 60_000)
 })

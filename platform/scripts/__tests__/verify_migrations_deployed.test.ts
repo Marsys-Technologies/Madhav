@@ -18,10 +18,21 @@
  *       comparison were flipped, not only one that would make it wrongly fail;
  *   (4) this file states what the structural test does NOT establish, at the bottom.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
+
+// The opt-out this file's subject is keyed on (Nirmāṇa R-28.1 / D-49 / SQ-17 — the residual
+// PARĪKṢAKA raised against this very script at V-28). `verify_migrations_deployed.ts` now RUNS BY
+// DEFAULT and only stays silent when a caller explicitly says `IMPORT_ONLY=1`; the guard used to
+// key on `NODE_ENV !== 'test'`, which made a silent exit-0 the default in every environment CI
+// already sets `NODE_ENV: test` for. This test imports the module for its pure exports, so it is
+// the caller that must opt out — and it must do so BEFORE the import below executes, which is what
+// `vi.hoisted` is for (vitest lifts it above the import block).
+vi.hoisted(() => {
+  process.env.IMPORT_ONLY = '1'
+})
 
 import {
   evaluateMigrationDrift,
@@ -256,7 +267,17 @@ describe('main() CLI wiring — never exits 0 on an unreachable database', () =>
         cwd: platformDir,
         // Explicitly unreachable — this test must be incapable of touching a live database
         // even if one happens to be configured in the ambient environment.
-        env: { ...process.env, DATABASE_URL: 'postgresql://nobody@127.0.0.1:1/nodb', NODE_ENV: 'production' },
+        // IMPORT_ONLY is cleared deliberately: this test process sets it to '1' above so it can
+        // import the module, and `...process.env` would otherwise hand that opt-out to the child
+        // and silence the very CLI this case exists to exercise. The assertions below are the
+        // proof it did not — an ECONNREFUSED in the child's output and a non-zero exit are only
+        // producible by a `main()` that actually ran.
+        env: {
+          ...process.env,
+          DATABASE_URL: 'postgresql://nobody@127.0.0.1:1/nodb',
+          NODE_ENV: 'production',
+          IMPORT_ONLY: '',
+        },
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'pipe'],
         timeout: 60_000,
@@ -271,5 +292,78 @@ describe('main() CLI wiring — never exits 0 on an unreachable database', () =>
     // … and only then does the non-zero exit / absence of a PASS claim mean anything.
     expect(status).not.toBe(0)
     expect(stdout).not.toContain('PASS —')
+  }, 60_000)
+
+  /**
+   * ── Entrypoint-guard detector (Nirmāṇa R-28.1 / V-28 / D-49 / SQ-17) ───────────────────────
+   *
+   * The case above pins NODE_ENV=production in the child, so it was structurally incapable of
+   * seeing the residual PARĪKṢAKA found against this script at V-28: the guard used to read
+   * `if (process.env.NODE_ENV !== 'test')`, so under `NODE_ENV=test` — which .github/workflows/
+   * ci.yml already exports job-wide on unit-tests, db-integration-tests and planner-regression —
+   * this gate exited 0 with no stdout and no stderr, having compared nothing. The guard now keys
+   * on an explicit `IMPORT_ONLY=1` opt-out instead, so the gate RUNS BY DEFAULT.
+   *
+   * These two cases are the detector for that, and they are paired so neither is vacuous: the
+   * first proves the gate still runs (and still refuses to report a pass) under NODE_ENV=test,
+   * the second proves the explicit opt-out is what silences it. Reverting the guard to the
+   * NODE_ENV form, or flipping its polarity, fails the first.
+   */
+  it('CAN-FAIL: under NODE_ENV=test with no opt-out, the check still runs and refuses a pass', async () => {
+    const { execFileSync } = await import('child_process')
+    const platformDir = path.resolve(__dirname, '../..')
+    let out = ''
+    let status = 0
+    try {
+      out = execFileSync('npx', ['tsx', 'scripts/ci/verify_migrations_deployed.ts'], {
+        cwd: platformDir,
+        // NODE_ENV=test is the point of this case. IMPORT_ONLY is cleared deliberately: this test
+        // process sets it to '1' so it can import the module, and `...process.env` would otherwise
+        // hand that opt-out to the child and silence the gate under test.
+        env: {
+          ...process.env,
+          DATABASE_URL: 'postgresql://nobody@127.0.0.1:1/nodb',
+          NODE_ENV: 'test',
+          IMPORT_ONLY: '',
+        },
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 60_000,
+      })
+    } catch (err) {
+      const e = err as { status?: number; stdout?: string; stderr?: string }
+      status = e.status ?? -1
+      out = `${e.stdout ?? ''}${e.stderr ?? ''}`
+    }
+    expect(out).toContain('NOT CHECKABLE')
+    expect(status).toBe(2)
+    expect(out).not.toContain('PASS —')
+  }, 60_000)
+
+  it('the explicit IMPORT_ONLY=1 opt-out still suppresses the CLI (what lets this file import it)', async () => {
+    const { execFileSync } = await import('child_process')
+    const platformDir = path.resolve(__dirname, '../..')
+    let out = ''
+    let status = 0
+    try {
+      out = execFileSync('npx', ['tsx', 'scripts/ci/verify_migrations_deployed.ts'], {
+        cwd: platformDir,
+        env: {
+          ...process.env,
+          DATABASE_URL: 'postgresql://nobody@127.0.0.1:1/nodb',
+          NODE_ENV: 'test',
+          IMPORT_ONLY: '1',
+        },
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 60_000,
+      })
+    } catch (err) {
+      const e = err as { status?: number; stdout?: string; stderr?: string }
+      status = e.status ?? -1
+      out = `${e.stdout ?? ''}${e.stderr ?? ''}`
+    }
+    expect(out).toBe('')
+    expect(status).toBe(0)
   }, 60_000)
 })

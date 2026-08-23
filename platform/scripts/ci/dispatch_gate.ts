@@ -171,7 +171,25 @@ function main(): void {
   console.log(`[dispatch-gate] ${result.mode}: ${result.reason}`)
 }
 
-// Guard: only execute when run directly, not when imported by tests.
-if (process.env.NODE_ENV !== 'test') {
+// Guard: this gate RUNS BY DEFAULT. Non-execution requires a caller to say so explicitly, with
+// `IMPORT_ONLY=1`, which is what `scripts/__tests__/dispatch_gate.test.ts` sets so it can import
+// the pure decision function without the CLI firing.
+//
+// This used to read `if (process.env.NODE_ENV !== 'test')` — Nirmāṇa R-28.1 (PARĪKṢAKA V-28,
+// ADHIKĀRIN D-49, Standing Queue SQ-17). That asks the wrong question of the wrong actor. It made
+// NON-EXECUTION the default in any environment that happens to export NODE_ENV=test, and
+// `.github/workflows/ci.yml` already sets job-level `NODE_ENV: test` on unit-tests,
+// db-integration-tests and planner-regression. Placed in one of those jobs, this gate would have
+// exited 0 with no stdout and no stderr, having checked nothing — a silent pass inside the one
+// program whose entire job is to refuse a silent pass (CLAUDE.md §N.8). PARĪKṢAKA ran exactly that
+// no-op against the sibling script at V-28.
+//
+// Note the deliberate asymmetry with `scripts/migrate.ts` and `scripts/seed/asset_registry_seed.ts`,
+// which were repaired (M0-T11 / M0-T15, finding F-2 / ruling D-9) with a real
+// `isDirectEntrypoint()` check instead. There the hazard runs the OTHER way: those modules mutate
+// production on import, so their safe default is DO NOT RUN. A gate's hazard is failing to run, so
+// its safe default is RUN, and an entrypoint check — which is silent whenever the module is loaded
+// any way other than directly — would reintroduce the same silent-pass class this repair removes.
+if (process.env.IMPORT_ONLY !== '1') {
   main()
 }

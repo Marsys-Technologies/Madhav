@@ -227,8 +227,28 @@ async function main(): Promise<void> {
   process.exit(2)
 }
 
-// Guard: only execute when run directly, not when imported by tests — same convention as
-// scripts/ci/dispatch_gate.ts.
-if (process.env.NODE_ENV !== 'test') {
+// Guard: this gate RUNS BY DEFAULT. Non-execution requires a caller to say so explicitly, with
+// `IMPORT_ONLY=1`, which is what `scripts/__tests__/verify_migrations_deployed.test.ts` sets so it
+// can import `evaluateMigrationDrift` and friends without the CLI firing. Same convention as
+// `scripts/ci/dispatch_gate.ts`, repaired in the same pass.
+//
+// This used to read `if (process.env.NODE_ENV !== 'test')` — Nirmāṇa R-28.1, the residual
+// PARĪKṢAKA raised against this very file at V-28 while verifying M0-T45, ruled Track-M-now by
+// ADHIKĀRIN at D-49 and issued as Standing Queue SQ-17. PARĪKṢAKA's own probe:
+// `DATABASE_URL=… NODE_ENV=test npx tsx scripts/ci/verify_migrations_deployed.ts` → exit 0, no
+// stdout, no stderr. `.github/workflows/ci.yml` already sets job-level `NODE_ENV: test` on
+// unit-tests, db-integration-tests and planner-regression, which is the natural future home for a
+// check like this one — so the trap was pre-laid at the destination, and would have armed itself
+// the moment someone did the obvious right thing. A migration-drift gate that returns green
+// without ever comparing disk against `_migrations_applied` is CLAUDE.md §N.8's exact defect:
+// a signal with no detector behind it, and nothing saying so.
+//
+// Note the deliberate asymmetry with `scripts/migrate.ts` and `scripts/seed/asset_registry_seed.ts`,
+// which were repaired (M0-T11 / M0-T15, finding F-2 / ruling D-9) with a real
+// `isDirectEntrypoint()` check instead. There the hazard runs the OTHER way: those modules mutate
+// production on import, so their safe default is DO NOT RUN. A gate's hazard is failing to run, so
+// its safe default is RUN, and an entrypoint check — which is silent whenever the module is loaded
+// any way other than directly — would reintroduce the same silent-pass class this repair removes.
+if (process.env.IMPORT_ONLY !== '1') {
   main()
 }
