@@ -467,12 +467,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "F-ARGV-DRYRUN",
-      "what": "M0-T19's F-1: SIX sibling scripts spell dry-run as an ARGV flag (--dry-run) — migrate.ts:691, cleanup_orphaned_firebase_users.ts:16, observatory/smoke_test.ts:53, three bootstrap scripts, icr_pr_gate.ts:175. Typed at the seeder, --dry-run is silently ignored and the live upsert proceeds. So the hazard D-17 closed is only half closed: it returns by the spelling the codebase ITSELF taught the operator. The KARAKA declined to widen D-17 on its own and recommends ADHIKARIN extend it. I agree and have not queued it",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
       "id": "M0-T12+T13",
       "what": "DONE — all three applied, ledger +1 per run, corpus intact, D-4 detector PASS 4/4 both pre-flight and against the actual applied rows. Two honest uncertainties recorded: each migration's effect and its ledger row are not atomic with each other (pre-existing runner behaviour, didn't bite), and run 2 witnesses THIS execution of 589, not the earlier inferred one — DROP IF EXISTS is silent either way",
       "owner": "PARIKSAKA",
@@ -587,12 +581,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T35",
-      "what": "seed divergence report + target_floor — D-27/D-28 GRANTED",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "RULINGS-D26-D28",
       "what": "All three major escalations ruled. D-26: the deriveState green is H4 IN ITS PUREST FORM — not a green with no detector, but a green OVERRIDING a detector that already ran and returned the opposite answer, which ADHIKARIN rates worse than every prior instance because in the others nobody had looked. D-27: D-19 refined into THREE classes, the missed one being DECLARED-BUT-VERIFIABLE (count_sql, depends_on) — which is why the register was right to refuse to pick a surface, since the error would have been picking. D-28: the deliberate-NULL category named and folded into D-27's report rather than special-cased; the restore drill made a STANDING requirement for this repair class, converting I2 from a ritual into a detector",
       "owner": "closed",
@@ -635,14 +623,26 @@
       "state": "adopted"
     },
     {
-      "id": "T35-59-NULLS",
-      "what": "EARLY SIGNAL from M0-T35's live demo, flagged before its report lands: the divergence report finds 59 NULL->value transitions, not the one lel_events case D-28 was written about. Whatever gate ADHIKARIN settles on will fire on a great deal more than expected",
+      "id": "M0-T35",
+      "what": "DONE 326e4cb37 — seed divergence report + gate, target_floor removed",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T37",
+      "what": "argv half of the DRY_RUN hazard (D-28 part 3)",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "GATE-FIRES-ON-59",
+      "what": "The NULL-fill gate is faithful to D-28 and blocks the first real seed run behind a 59-cell acknowledgement list. The KARAKA raised it and DID NOT NARROW IT, on the grounds that choosing which NULLs are 'deliberate' is the judgment D-28 reserved and ADHIKARIN's word was 'any'. It suggests a column-level allowance may be worth a ruling. I agree it was right not to decide. CONDUCTOR-VERIFIED SEPARATELY: the live NULL distribution across seed-written columns is 621 cells over 11 columns (provides_apis 126, health_probe 126, estimated_seconds 119, expected_volume_formula 108, size_sql 51, volume_explanation 44, target_floor 25, target_table 14, count_sql 6, layer_name 1, layer_index 1). I did NOT verify the per-column breakdown of the 59 TRANSITIONS and said so — that needs the seed projection joined against the live NULLs",
       "owner": "ADHIKARIN",
-      "state": "flagged_early"
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T07:56:57Z",
+  "last_updated_ts": "2026-08-23T08:01:04Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
