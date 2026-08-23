@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import ast
 import datetime
+import importlib.util
 import json
 import pathlib
 import re
@@ -50,6 +51,8 @@ import psycopg.rows
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 CONTROL = ROOT / "00_ARCHITECTURE" / "control"
 OUT_JSON = CONTROL / "m0_exit_scorecard.json"
+CATALOGUE_CONTRACT_MODULE = (ROOT / "platform" / "scripts" / "governance" /
+                             "check_asset_catalogue_contract.py")
 OUT_MD = CONTROL / "M0_EXIT_SCORECARD_v1_0.md"
 
 PASS, FAIL, NM, BLOCKED = "PASS", "FAIL", "NOT-MEASURABLE", "BLOCKED"
@@ -72,6 +75,69 @@ def _rel(p: pathlib.Path) -> str:
         return str(p.relative_to(ROOT))
     except ValueError:
         return str(p)
+
+
+def _load_catalogue_contract_module():
+    """D-94 part 7 — the ONE AUTHORITATIVE IMPLEMENTATION of C-28 lives in
+    `check_asset_catalogue_contract.py`; this file must never carry a second
+    hand-written copy of what a BLOCKING rule counts. Loaded by file path
+    (importlib), matching the established cross-directory import pattern used by
+    `00_ARCHITECTURE/control/test_m0_deferral_register_scope.py`, since the two
+    files are not siblings in a package."""
+    spec = importlib.util.spec_from_file_location(
+        "check_asset_catalogue_contract", CATALOGUE_CONTRACT_MODULE)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _c28_via_contract_module() -> dict:
+    """C-28, IMPORTED rather than re-implemented (D-94 part 7).
+
+    Opens its own READ-ONLY connection via the contract module's `read_live()` —
+    the same pattern this file already uses for its own numbers, and consistent with
+    this file's own stated design rule "INHERITS NO NUMBER": it does not trust a
+    report artifact, it calls the SAME live-measuring code the authoritative
+    implementation calls, so the two surfaces can no longer hand-type diverging SQL.
+    A failure to import or to measure is NOT-MEASURABLE, never a silent skip (§N.8).
+    """
+    try:
+        mod = _load_catalogue_contract_module()
+    except Exception as e:                                   # noqa: BLE001
+        return {"assertion": "estimated_seconds NOT NULL where a successful build "
+                             "exists (DATA_KINDS-scoped — see D-94)",
+                "severity": "BLOCKING", "status": NM,
+                "blocked_by": f"could not import {_rel(CATALOGUE_CONTRACT_MODULE)}: "
+                              f"{type(e).__name__}: {e}",
+                "violations": None, "sql": None, "rows": None}
+    try:
+        raw = mod.read_live()
+        snap = mod.Snapshot(raw)
+        res = mod.c28(snap)
+    except Exception as e:                                    # noqa: BLE001
+        return {"assertion": "estimated_seconds NOT NULL where a successful build "
+                             "exists (DATA_KINDS-scoped — see D-94)",
+                "severity": "BLOCKING", "status": NM,
+                "blocked_by": f"imported c28() raised {type(e).__name__}: {e}",
+                "violations": None, "sql": None, "rows": None}
+    d = res.as_dict()
+    status = {mod.PASS: PASS, mod.FAIL: FAIL, mod.NOT_CHECKABLE: NM}[d["status"]]
+    return {
+        "assertion": "estimated_seconds NOT NULL where a successful build exists "
+                     "(DATA_KINDS-scoped estimate rule; D-94 defines this as the "
+                     "authoritative C-28 — the all-asset-kind question is "
+                     "check_asset_catalogue_contract.py's X-06, not this rule)",
+        "severity": "BLOCKING",
+        "status": status,
+        "violations": d["violation_count"] if status != NM else None,
+        "rows": d["violations"][:60] if status != NM else None,
+        "sql": None,
+        "note": f"IMPORTED from {_rel(CATALOGUE_CONTRACT_MODULE)}::c28() over that "
+               f"module's own read_live() snapshot — this file no longer hand-types "
+               f"C-28's SQL (D-94 part 7; F-Y found the two hand-written copies had "
+               f"silently disagreed since 05:51:46Z on 2026-08-23).",
+        "blocked_by": d["reason"] if status == NM else None,
+    }
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -789,21 +855,23 @@ RULES = [
         UNION ALL
         SELECT asset_id, target_table FROM asset_registry
         WHERE clear_tables IS NOT NULL AND NOT (target_table = ANY(clear_tables))"""),
-    ("C-28", "estimated_seconds NOT NULL where a successful build exists "
-             "(NOTE — D-42, 2026-08-23: asset_throughput.state='lit' is a CLAIM about a build, "
-             "not evidence of one; build_run_assets is the authoritative source wherever 'was "
-             "this asset built' is asked. The 31-row R0 residual this rule cannot backfill is "
-             "therefore not '31 assets missing an estimate' but '31 assets read lit with no "
-             "completed build_run_assets record behind them' — the missing estimate is a "
-             "symptom, the unearned lit is the finding. This SQL is UNCHANGED by D-42: D-42 "
-             "explicitly forbids re-pointing this detector at build_run_assets to close it, "
-             "since that would make the BLOCKING failure pass while the 31 unearned lit states "
-             "remain exactly as they are — a weakening under D-41 part 2, presumptively H3.)",
-     "BLOCKING", [], """
-        SELECT r.asset_id FROM asset_registry r
-        WHERE r.estimated_seconds IS NULL AND EXISTS
-          (SELECT 1 FROM asset_throughput t
-           WHERE t.asset_id=r.asset_id AND t.state='lit') ORDER BY 1"""),
+    # C-28 is DELIBERATELY ABSENT FROM THIS LIST — see the block below the RULES loop
+    # in main(). D-94 (ADHIKĀRIN, F-Y): this file used to carry its OWN hand-typed,
+    # UNFILTERED copy of C-28's SQL (no asset_kind predicate, 32 rows) that silently
+    # disagreed with check_asset_catalogue_contract.py's c28() (DATA_KINDS-filtered,
+    # 31 rows) from 05:51:46Z on 2026-08-23, when M0-T21's correct bg_panchanga
+    # asset_kind repair (data -> service, D-24 part 2) walked it out of the FILTERED
+    # implementation's population while this file's UNFILTERED copy still saw it. D-94
+    # ruled: (a) the DATA_KINDS-filtered definition (about `estimated_seconds`, a
+    # data-build concept) is the AUTHORITATIVE C-28; (b) a NEW rule, X-06 in
+    # check_asset_catalogue_contract.py, covers ALL asset_kind for D-42's actual
+    # question (state='lit' with zero completed build_run_assets records) so the
+    # narrowing never again drops an asset from EVERY rule's coverage; and (c) "ONE
+    # RULE ID, ONE AUTHORITATIVE IMPLEMENTATION" (D-94 part 7, F-2's doctrine applied
+    # to governance rules) — this file must never again carry a second hand-written
+    # copy of what C-28 counts. It now IMPORTS c28() from that module instead (see
+    # `_c28_via_contract_module()`), so a future edit to the rule's definition cannot
+    # silently diverge between the two surfaces the way it just did.
 ]
 
 # Rules the contract itself declares undetectable. NEVER reported as PASS.
@@ -914,6 +982,10 @@ def main() -> int:
                     "assertion": assertion, "severity": sev, "status": NM,
                     "blocked_by": f"query error: {str(e).splitlines()[0][:200]}",
                     "violations": None, "sql": " ".join(sql.split()), "rows": None}
+
+        # C-28 — IMPORTED, not hand-typed (D-94 part 7). See _c28_via_contract_module
+        # and the comment left in place of the RULES tuple above for the full history.
+        rec["contract_rules"]["C-28"] = _c28_via_contract_module()
 
         for rid, assertion, reason in UNDETECTABLE:
             rec["undetectable_rules"][rid] = {"assertion": assertion, "reason": reason,
@@ -1038,13 +1110,24 @@ def main() -> int:
                 ([f"rules {', '.join(never_green)} have NO detector at all (contract §8) "
                   "and must never read green"] if never_green else []))
             ) if (blocked_rules or never_green) else None,
-            "note": ("D-42 (ADHIKĀRIN, 2026-08-23T11:04:17Z) reclassifies C-28's framing within "
-                     "this rule's 'data' violations: see the C-28 rule's own text above — "
-                     "asset_throughput.state='lit' is a claim, not evidence, and build_run_assets "
-                     "is authoritative for 'was this asset built'. This does not change the "
-                     "measured_value here; D-42 forbids using its own ranking to re-point C-28's "
-                     "detector, which would silently shrink this criterion's count without "
-                     "earning it.")}
+            "note": ("D-42 (ADHIKĀRIN, 2026-08-23T11:04:17Z) reclassified C-28's framing: "
+                     "asset_throughput.state='lit' is a claim, not evidence, and "
+                     "build_run_assets is authoritative for 'was this asset built'. D-94 "
+                     "(2026-08-23T18:46:28Z) SUPERSEDES D-42 part 3 and confirms the "
+                     "DATA_KINDS-scoped `estimated_seconds` question is the authoritative "
+                     "C-28 (31 rows, imported from check_asset_catalogue_contract.py::c28() "
+                     "per D-94 part 7 — see _c28_via_contract_module). measured_value HERE "
+                     "changed accordingly (was 32 under this file's own now-removed "
+                     "unfiltered SQL; is 31 under the imported, narrowed, authoritative "
+                     "definition) — that narrowing is authorised ONLY because D-94 requires "
+                     "it to land atomically with a NEW all-asset-kind rule (X-06 in "
+                     "check_asset_catalogue_contract.py) that covers exactly what the "
+                     "narrowing drops. THIS criterion's measured_value does NOT include "
+                     "X-06's count — X-06 is reported by that module's own --live run, not "
+                     "folded into this file's contract_violations total. A reader treating "
+                     "this criterion's number as 'all unearned-lit assets, every kind' would "
+                     "be wrong in exactly the way D-94 found; the cross-kind figure is "
+                     "check_asset_catalogue_contract.py --live's X-06 row.")}
 
         # ── criterion 3 — prefix mismatches ──────────────────────────────────
         c01 = rec["contract_rules"]["C-01"]
@@ -1447,7 +1530,22 @@ def main() -> int:
         # ── M0-T27 · falsifiability of every PASSing rule ────────────────────
         mut: dict = {}
         for rid, r in rec["contract_rules"].items():
-            if r["status"] != PASS or not r.get("sql"):
+            if r["status"] != PASS:
+                continue
+            if not r.get("sql"):
+                # D-94 part 7: C-28 is now IMPORTED, not local SQL, so this file's
+                # SQL-mutation harness cannot reach it. §N.8: a rule going PASS with
+                # no falsifiability check behind it must be reported as such, not
+                # silently omitted from `mut` — see check_asset_catalogue_contract.py's
+                # OWN mutation/differential probes (c28_population_probe,
+                # x06_ratchet_probe) for C-28's earned-signal coverage instead.
+                mut[rid] = {"proved": None,
+                            "why": "this rule is IMPORTED (D-94 part 7), not local "
+                                   "SQL — this file's mutation harness re-executes "
+                                   "local SQL and cannot reach an imported Python "
+                                   "detector. Its falsifiability is proved instead by "
+                                   "check_asset_catalogue_contract.py --self-test "
+                                   "(c28_population_probe / x06_ratchet_probe)."}
                 continue
             spec = MUTATIONS.get(rid)
             if not spec:

@@ -120,12 +120,14 @@ Exit codes
 from __future__ import annotations
 
 import argparse
+import ast
 import datetime as _dt
 import inspect
 import json
 import pathlib
 import re
 import sys
+import tempfile
 from typing import Any, Callable
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[3]
@@ -136,6 +138,7 @@ FIXTURES = HERE / "asset_catalogue_fixtures"
 RESIDUALS_PATH = HERE / "asset_catalogue_disclosed_residuals.json"
 COWRITERS_PATH = HERE / "asset_catalogue_declared_cowriters.json"
 BASELINE_SNAPSHOT = HERE / "asset_catalogue_baseline_20260823.json"
+UNEARNED_LIT_FLOOR_PATH = HERE / "unearned_lit_floor.json"
 DECISIONS_PATH = REPO_ROOT / "00_ARCHITECTURE" / "autonomy" / "state" / "DECISIONS.jsonl"
 MIGRATIONS_DIR = REPO_ROOT / "platform" / "migrations"
 
@@ -1280,6 +1283,90 @@ def c28(s: Snapshot) -> Result:
     return verdict(v)
 
 
+def x06(s: Snapshot) -> Result:
+    """D-94 (ADHIKĀRIN, F-Y) — THE ALL-ASSET-KIND UNEARNED-LIT RATCHET.
+
+    D-42's actual question, asked directly and across EVERY asset_kind, not only
+    DATA_KINDS: `asset_throughput.state='lit'` (a CLAIM a build happened) with ZERO
+    completed `build_run_assets` records (the EVIDENCE a build happened) behind it.
+    c28() above asks a DIFFERENT, narrower, and independently defensible question —
+    whether `estimated_seconds` is set on a DATA/artifact asset that was ever marked
+    `lit` — and D-94 part 4 confirms both questions are real and neither is wrong.
+
+    THIS rule exists because D-94 found that a CORRECT asset_kind repair
+    (bg_panchanga: data -> service, M0-T21, fully authorised under D-24 part 2) walked
+    that asset OUT of c28()'s DATA_KINDS-scoped population without c28() itself ever
+    changing — "EXIT BY RECATEGORIZATION". D-42 part 3's old protection was conditioned
+    on HOW that might happen ("if c28() is ever re-pointed"); D-94 part 9 replaces it
+    with an outcome condition: COVERAGE is the invariant, and any row leaving ANY
+    blocking rule's population, by ANY mechanism including a correct repair, is an
+    event requiring an explanation — never silence. This rule is that coverage: it
+    carries NO asset_kind predicate at all, so a future category change cannot walk an
+    asset out of it the way one walked bg_panchanga out of c28().
+
+    RATCHET SHAPE — D-87's pawl, WITH D-95's correction applied from the start rather
+    than discovered the hard way (D-95 found D-87's shipped pawl compared against
+    HEAD^, which releases one commit after a growth; the correct reference is a
+    COMMITTED, MONOTONE FLOOR). The population is compared against
+    `unearned_lit_floor.json` — itemised, machine-generated, NEVER HAND-TYPED (D-67
+    part 4). This rule BLOCKS ONLY ON GROWTH: a live asset_id that is unearned-lit
+    today and is NOT a member of the committed floor. It does NOT, and must NEVER,
+    block on the floor's own residual population — I13 forbids repairing asset build
+    state while R0 is shut, so blocking on the residual would be a PERMANENT RED no
+    one may clear (H3 by attrition, D-73 / D-39 part 2). The floor itself may only
+    SHRINK, enforced at regeneration time
+    (`--regenerate-unearned-lit-floor`), never at read time and never automatically —
+    see `regenerate_unearned_lit_floor()`.
+
+    D-84 (set-not-count) applies directly and is why `growth` below is a SET
+    difference naming asset_ids, never a length comparison: a population that shrinks
+    by one and regrows a DIFFERENT one stays the same SIZE and must still be caught.
+    """
+    if s.throughput is None:
+        return Result(NOT_CHECKABLE, [], (
+            "no asset_throughput section in this snapshot — 'state=lit with zero "
+            "completed runs' cannot be evaluated"))
+    if s.raw.get("build_run_assets") is None:
+        return Result(NOT_CHECKABLE, [], (
+            "no build_run_assets section in this snapshot — the only table that can "
+            "hold EVIDENCE a build actually ran is absent, so 'zero completed runs' "
+            "cannot be evaluated"))
+    floor_doc = _load_json(UNEARNED_LIT_FLOOR_PATH)
+    if floor_doc is None:
+        return Result(NOT_CHECKABLE, [], f"floor file unreadable: "
+                                         f"{UNEARNED_LIT_FLOOR_PATH.name}")
+    floor_ids = {e["asset_id"] for e in (floor_doc.get("floor") or [])}
+
+    ran = {r["asset_id"] for r in s.raw["build_run_assets"] if r.get("state") == "complete"}
+    current_ids: set[str] = set()
+    for a in s.assets:
+        aid = a["asset_id"]
+        t = s.throughput.get(aid)
+        lit = bool(t and any(st == "lit" for st in (t.get("states") or [])))
+        if lit and aid not in ran:
+            current_ids.add(aid)
+
+    growth = sorted(current_ids - floor_ids)
+    paid_down = sorted(floor_ids - current_ids)
+    v = [{"asset_id": aid, "class": "unearned_lit_not_in_committed_floor"}
+         for aid in growth]
+    return verdict(v, detail={
+        "current_population_ids": sorted(current_ids),
+        "current_population_count": len(current_ids),
+        "committed_floor_count": len(floor_ids),
+        "growth": growth,
+        "paid_down_since_floor": paid_down,
+        "r0_intake_named_items": sorted(
+            e["asset_id"] for e in (floor_doc.get("floor") or []) if e.get("r0_intake")),
+        "why_not_blocking_on_the_residual_itself": (
+            "I13 forbids repairing asset build state while R0 is shut (D-94 parts 6 "
+            "and 7); blocking on the residual would be a permanent red, H3 by "
+            "attrition (D-73 / D-39 part 2). Regenerate the floor with "
+            "--regenerate-unearned-lit-floor to record real pay-down; the floor may "
+            "only shrink."),
+    })
+
+
 def _counts(rows: list[dict]) -> dict:
     out: dict[str, int] = {}
     for r in rows:
@@ -1560,6 +1647,12 @@ EXTENSION_RULES: list[Rule] = [
          x04, origin="plan §11 (CI shape guard addition)"),
     Rule("X-05", BLOCKING, "no unresolved zero-consumer finding",
          x05, origin="plan §14.1 M0 exit criteria; packets from M0-T7"),
+    Rule("X-06", BLOCKING,
+         "no growth in the cross-kind unearned-lit population (asset_throughput."
+         "state='lit' with zero completed build_run_assets records, ALL asset_kind) "
+         "beyond the committed floor",
+         x06, origin="D-94 (ADHIKĀRIN, F-Y — exit by recategorization); floor-not-"
+                     "HEAD^ pattern D-95"),
 ]
 
 ALL_RULES = CONTRACT_RULES + EXTENSION_RULES
@@ -1639,6 +1732,14 @@ def read_live() -> dict:
                               sum(COALESCE(rows_written,0)) AS rows_written_total
                        FROM asset_throughput GROUP BY asset_id ORDER BY asset_id""")
         snap["throughput"] = [dict(r) for r in cur.fetchall()]
+        # X-06 (D-94): the ONLY table that can hold EVIDENCE a build actually ran.
+        # Distinct asset_ids with at least one COMPLETE run — the exact shape
+        # c28_population_probe's synthetic fixture already uses, so a live and a
+        # synthetic Snapshot agree on what this key means.
+        cur.execute("""SELECT DISTINCT asset_id, 'complete' AS state
+                       FROM build_run_assets WHERE state='complete'
+                       ORDER BY asset_id""")
+        snap["build_run_assets"] = [dict(r) for r in cur.fetchall()]
     # The census FILE is carried into the snapshot for provenance and for C-23's
     # stale-artifact report ONLY. Since M0-T25 it is NOT C-23's truth source: C-23
     # derives the writer-class truth from source at run time, so a census file that
@@ -1834,6 +1935,7 @@ def self_test(max_rows: int) -> int:
     failures += c23_code_derivation_probe()
     failures += rule_disclosure_probe()
     failures += c28_population_probe()
+    failures += x06_ratchet_probe()
     failures += snapshot_staleness_probe()
 
     if failures:
@@ -2457,6 +2559,294 @@ def snapshot_staleness_probe() -> int:
     return bad
 
 
+def x06_ratchet_probe() -> int:
+    """D-94 / D-84 — X-06 blocks on GROWTH (a SET, never a count) and never on the
+    committed floor's own residual, and preserves the DIFFERENTIAL that is the only
+    reason bg_panchanga's gap was ever found (D-94 part 8).
+
+    FOUR PARTS, mirroring c28_population_probe's discipline:
+      1. BEHAVIOURAL, POSITIVE — an unwitnessed SERVICE-kind asset (bg_panchanga's
+         shape exactly: c28() cannot see it, X-06 must) is reported as growth when it
+         is absent from the floor.
+      2. BEHAVIOURAL, PAIRED NEGATIVE — the SAME asset, present in the floor, must NOT
+         be reported: the rule blocks on growth, never on the carried residual (I13).
+      3. SET-NOT-COUNT (D-84) — a population that shrinks by one member and grows a
+         DIFFERENT one is the SAME SIZE as the floor. A count-only comparison would
+         pass; the shipped rule must still catch it by name.
+      4. THE DIFFERENTIAL, PRESERVED AS A TEST (D-94 part 8) — c28() (DATA_KINDS-
+         scoped, by `estimated_seconds`) and X-06 (all-kind, by `build_run_assets`)
+         are DIFFERENT questions that happen to agree on today's live population
+         (independently confirmed: all 32 measured 2026-08-23 have estimated_seconds
+         NULL). This part builds a fixture where they are DESIGNED to agree exactly
+         as they do live, and structurally proves X-06 carries no asset_kind
+         predicate — the one property that let bg_panchanga escape c28() and must
+         never be reintroduced here.
+
+    Returns the number of probe failures (0 = every part behaved).
+    """
+    print("\n  X-06 ratchet probe (D-94: growth-only, set-not-count, and the "
+          "differential that found bg_panchanga survives consolidation):")
+    bad = 0
+
+    def asset(aid: str, kind: str, est=None) -> dict:
+        return {"asset_id": aid, "layer": "brahmagyan", "asset_kind": kind,
+                "asset_type": "data" if kind != "service" else "service",
+                "catalog_status": "CURRENT", "is_active": True, "scope": "global",
+                "estimated_seconds": est, "depends_on": []}
+
+    # bg_panchanga's exact shape: SERVICE kind, lit, never a completed run.
+    raw = {
+        "assets": [
+            asset("bg_probe_service_unwitnessed", "service", None),
+            asset("bg_probe_data_unwitnessed", "data", None),
+            asset("bg_probe_witnessed", "data", 12.5),
+        ],
+        "throughput": [
+            {"asset_id": "bg_probe_service_unwitnessed", "states": ["lit"]},
+            {"asset_id": "bg_probe_data_unwitnessed", "states": ["lit"]},
+            {"asset_id": "bg_probe_witnessed", "states": ["lit"]},
+        ],
+        "build_run_assets": [
+            {"asset_id": "bg_probe_witnessed", "state": "complete"},
+        ],
+    }
+    snap = Snapshot(raw)
+
+    # D-77: NO live mutation window on the real committed floor. Every write this
+    # probe makes lands in an isolated temp directory; the module-global path is
+    # repointed there for the probe's duration and restored in `finally`, exactly
+    # like T62/T69's sandboxing precedent — the real file at UNEARNED_LIT_FLOOR_PATH
+    # is never opened for writing by this function.
+    global UNEARNED_LIT_FLOOR_PATH
+    real_path = UNEARNED_LIT_FLOOR_PATH
+    tmpdir = tempfile.TemporaryDirectory(prefix="x06_ratchet_probe_")
+    UNEARNED_LIT_FLOOR_PATH = pathlib.Path(tmpdir.name) / "unearned_lit_floor.json"
+
+    def with_floor(floor_ids: list[str]) -> None:
+        UNEARNED_LIT_FLOOR_PATH.write_text(json.dumps({
+            "floor": [{"asset_id": a} for a in floor_ids]}), encoding="utf-8")
+
+    try:
+        # ── 1 — empty floor: BOTH unwitnessed assets are growth, service INCLUDED ──
+        with_floor([])
+        r1 = x06(snap).as_dict()
+        got1 = sorted(violation_identity(x) for x in r1["violations"])
+        want1 = ["bg_probe_data_unwitnessed", "bg_probe_service_unwitnessed"]
+        ok = r1["status"] == FAIL and got1 == want1
+        print(f"      [{'OK  ' if ok else 'BAD '}] empty floor: status={r1['status']} "
+              f"growth={got1}")
+        if not ok:
+            bad += 1
+            print(f"           expected status={FAIL} growth={want1} — X-06 must see "
+                  f"the SERVICE-kind unwitnessed asset that c28() structurally cannot "
+                  f"(F-Y / bg_panchanga)")
+
+        # ── 2 — both in the floor: neither is growth; I13's residual is carried, ──
+        # ── never blocked on ──────────────────────────────────────────────────────
+        with_floor(["bg_probe_service_unwitnessed", "bg_probe_data_unwitnessed"])
+        r2 = x06(snap).as_dict()
+        ok = r2["status"] == PASS and r2["violation_count"] == 0
+        print(f"      [{'OK  ' if ok else 'BAD '}] both members of the committed "
+              f"floor: status={r2['status']} violations={r2['violation_count']}")
+        if not ok:
+            bad += 1
+            print(f"           expected status={PASS} violations=0 — I13 forbids "
+                  f"repairing asset build state while R0 is shut; a residual must "
+                  f"never be blocking")
+
+        # ── 3 — set-not-count (D-84): floor has ONE member, live population has a ──
+        # ── DIFFERENT single member — same SIZE, must still be caught by NAME ─────
+        with_floor(["bg_probe_witnessed"])   # wrong member entirely, same count (1)
+        # re-point the floor to a single member that is NOT in the live population,
+        # while the live population also has exactly one growth-eligible member
+        # (data_unwitnessed) once the service one is excluded for this sub-check
+        raw_one = dict(raw)
+        raw_one["assets"] = [asset("bg_probe_data_unwitnessed", "data", None),
+                             asset("bg_probe_witnessed", "data", 12.5)]
+        raw_one["throughput"] = [
+            {"asset_id": "bg_probe_data_unwitnessed", "states": ["lit"]},
+            {"asset_id": "bg_probe_witnessed", "states": ["lit"]},
+        ]
+        snap_one = Snapshot(raw_one)
+        r3 = x06(snap_one).as_dict()
+        got3 = sorted(violation_identity(x) for x in r3["violations"])
+        ok = r3["status"] == FAIL and got3 == ["bg_probe_data_unwitnessed"]
+        print(f"      [{'OK  ' if ok else 'BAD '}] floor size 1, live growth-eligible "
+              f"size 1, DIFFERENT member: status={r3['status']} growth={got3}")
+        if not ok:
+            bad += 1
+            print("           a count-only comparison (len(current)==len(floor)) "
+                  "would have passed this case silently — D-84 requires the SET be "
+                  "reconciled, never the count")
+    finally:
+        UNEARNED_LIT_FLOOR_PATH = real_path
+        tmpdir.cleanup()
+        assert UNEARNED_LIT_FLOOR_PATH == real_path, (
+            "probe must restore the real committed-floor path exactly (D-77)")
+
+    # ── 4 — the differential, preserved as a structural test (D-94 part 8) ──────
+    # c28() and X-06 ask different questions; they are DESIGNED to agree on this
+    # fixture the way they are independently confirmed to agree on today's live
+    # population, so the fixture re-derives the OLD unfiltered scorecard behaviour
+    # (lit AND estimated_seconds IS NULL, ALL kinds — no build_run_assets involved)
+    # and checks it against BOTH new pieces together.
+    def independent_all_kinds_null_estimate_and_lit(s: Snapshot) -> set[str]:
+        """Re-implementation of the OLD, unfiltered m0_exit_scorecard.py C-28 SQL —
+        `estimated_seconds IS NULL AND EXISTS (throughput.state='lit')`, no kind
+        filter — written independently of c28()/x06() so it anchors both."""
+        out = set()
+        for row in s.raw.get("throughput") or []:
+            aid = row["asset_id"]
+            a = s.by_id.get(aid)
+            if a is None or a.get("estimated_seconds") is not None:
+                continue
+            if "lit" in (row.get("states") or []):
+                out.add(aid)
+        return out
+
+    fixture4 = {
+        "assets": [asset("bg_probe_service_unwitnessed", "service", None),
+                   asset("bg_probe_data_unwitnessed", "data", None),
+                   asset("bg_probe_witnessed", "data", 12.5)],
+        "throughput": raw["throughput"],
+        "build_run_assets": raw["build_run_assets"],
+    }
+    snap4 = Snapshot(fixture4)
+    independent = independent_all_kinds_null_estimate_and_lit(snap4)
+    c28_ids = {violation_identity(x) for x in c28(snap4).as_dict()["violations"]}
+    non_data_kind_members = {aid for aid in independent
+                             if snap4.by_id[aid].get("asset_kind") not in DATA_KINDS}
+    reconstructed = c28_ids | non_data_kind_members
+    ok = independent == reconstructed and independent == {
+        "bg_probe_service_unwitnessed", "bg_probe_data_unwitnessed"}
+    print(f"      [{'OK  ' if ok else 'BAD '}] differential preserved: old-unfiltered "
+          f"independent set {sorted(independent)} == narrowed-C-28 "
+          f"{sorted(c28_ids)} ∪ non-DATA_KINDS-members {sorted(non_data_kind_members)}")
+    if not ok:
+        bad += 1
+        print("           the narrowing of C-28 to DATA_KINDS must NEVER be shipped "
+              "without something else covering exactly the members it drops (D-94 "
+              "part 5) — this is that invariant, re-measured, not just cited")
+
+    # Structural anchor (D-89 shape, one-sided by construction — X-06's whole point is
+    # having NO asset_kind predicate; a future edit adding one recreates the exact gap
+    # F-Y found and must fail this line): x06's EXECUTABLE body must not reference
+    # DATA_KINDS. Parsed via AST over the body only (the docstring above names
+    # DATA_KINDS in prose to explain the contrast with c28() — a substring scan over
+    # raw source text would false-positive on that prose, which is not a predicate).
+    fn_ast = ast.parse(inspect.getsource(x06)).body[0]
+    body_stmts = fn_ast.body
+    if body_stmts and isinstance(body_stmts[0], ast.Expr) and \
+            isinstance(getattr(body_stmts[0], "value", None), ast.Constant) and \
+            isinstance(body_stmts[0].value.value, str):
+        body_stmts = body_stmts[1:]          # drop the docstring statement
+    names_referenced = {n.id for node in body_stmts for n in ast.walk(node)
+                        if isinstance(n, ast.Name)}
+    ok = "DATA_KINDS" not in names_referenced
+    print(f"      [{'OK  ' if ok else 'BAD '}] x06() executable body carries no "
+          f"DATA_KINDS reference")
+    if not ok:
+        bad += 1
+        print("           X-06 exists specifically because bg_panchanga (a SERVICE) "
+              "escaped a DATA_KINDS-scoped rule by recategorization — a DATA_KINDS "
+              "reference here would reintroduce that exact gap")
+
+    return bad
+
+
+def regenerate_unearned_lit_floor() -> int:
+    """MAINTENANCE ONLY. Never run automatically; never part of a CI read path.
+
+    Measures the LIVE cross-kind unearned-lit population (asset_throughput.state=
+    'lit' AND zero completed build_run_assets records, ALL asset_kind) and writes it
+    as X-06's new committed floor — ITEMISED, GENERATED FROM THIS MEASUREMENT, NEVER
+    HAND-TYPED (D-67 part 4).
+
+    REFUSES to write if the measured population is not a SUBSET of the existing
+    committed floor (when one already exists): the floor may only SHRINK (D-95's
+    correction to D-87's pawl, applied here from the outset). If growth is ever
+    genuinely authorised, D-96 governs: a new, explicitly-ruled baseline recorded as a
+    dated decision, never a silent regeneration through this command.
+
+    A first-ever run (no committed floor on disk) is a BOOTSTRAP, not growth, and is
+    always permitted — there is nothing yet to have grown past.
+    """
+    raw = read_live()
+    snap = Snapshot(raw)
+    if snap.throughput is None or raw.get("build_run_assets") is None:
+        print("GUARD ERROR — live snapshot missing asset_throughput or "
+              "build_run_assets; refusing to regenerate the floor from partial data.",
+              file=sys.stderr)
+        return 3
+
+    ran = {r["asset_id"] for r in raw["build_run_assets"] if r.get("state") == "complete"}
+    current = []
+    for a in snap.assets:
+        aid = a["asset_id"]
+        t = snap.throughput.get(aid)
+        lit = bool(t and any(st == "lit" for st in (t.get("states") or [])))
+        if lit and aid not in ran:
+            current.append(a)
+    current_ids = {a["asset_id"] for a in current}
+
+    bootstrap = not UNEARNED_LIT_FLOOR_PATH.exists()
+    old = {} if bootstrap else (_load_json(UNEARNED_LIT_FLOOR_PATH) or {})
+    old_ids = {e["asset_id"] for e in (old.get("floor") or [])}
+    old_r0_intake = {e["asset_id"] for e in (old.get("floor") or []) if e.get("r0_intake")}
+
+    if not bootstrap:
+        growth = sorted(current_ids - old_ids)
+        if growth:
+            print("GUARD ERROR — the measured population is NOT a subset of the "
+                  f"committed floor; the floor may only shrink (D-95). New, "
+                  f"uncommitted asset_id(s): {growth}. If this growth is real and "
+                  f"authorised, it needs an explicit, dated ruling widening the floor "
+                  f"(D-96 — never a silent regeneration); refusing to write.",
+                  file=sys.stderr)
+            return 3
+
+    new_floor = []
+    for a in sorted(current, key=lambda x: x["asset_id"]):
+        aid = a["asset_id"]
+        entry = {"asset_id": aid, "asset_kind": a.get("asset_kind"),
+                 "estimated_seconds": a.get("estimated_seconds")}
+        if aid in old_r0_intake or aid == "bg_panchanga":
+            entry["r0_intake"] = True
+            entry["r0_intake_note"] = (
+                "D-94 parts 6-7: asset build state, R0 shut, I13 binds. Not "
+                "repaired by this rule layer; carried openly until R0 opens.")
+        new_floor.append(entry)
+
+    doc = {
+        "schema_version": "1.0",
+        "$comment": (
+            "Committed floor for X-06 (check_asset_catalogue_contract.py). ITEMISED, "
+            "GENERATED FROM A LIVE MEASUREMENT, NEVER HAND-TYPED (D-67 part 4). The "
+            "gate asserts the CURRENT live population is a SUBSET of this floor "
+            "(growth is BLOCKING, D-84: the SET is compared, never the count); this "
+            "file may only SHRINK, enforced at regeneration time by "
+            "regenerate_unearned_lit_floor() — a measured population that is not a "
+            "subset of the existing committed floor makes that function refuse to "
+            "write, never silently widen (D-95 pattern, D-96: no exemption fields, "
+            "ever). Regenerate with `python "
+            "platform/scripts/governance/check_asset_catalogue_contract.py "
+            "--regenerate-unearned-lit-floor` ONLY after a real repair has paid one "
+            "of these down."),
+        "rule_id": "X-06",
+        "generated_by": "check_asset_catalogue_contract.py --regenerate-unearned-lit-floor",
+        "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(),
+        "authority": "D-94 (ADHIKĀRIN, F-Y); floor-not-HEAD^ pattern D-95",
+        "floor_count": len(new_floor),
+        "floor": new_floor,
+    }
+    UNEARNED_LIT_FLOOR_PATH.write_text(
+        json.dumps(doc, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print(f"wrote {UNEARNED_LIT_FLOOR_PATH.relative_to(REPO_ROOT)}: "
+          f"{len(new_floor)} item(s) (was {len(old_ids)}); "
+          f"paid down since last commit: {sorted(old_ids - current_ids) or 'none'}")
+    return 0
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
@@ -2468,6 +2858,10 @@ def main(argv: list[str]) -> int:
                      help="Run the rules over a committed registry snapshot JSON.")
     src.add_argument("--live", action="store_true",
                      help="Run the rules over production, READ-ONLY (needs psycopg).")
+    src.add_argument("--regenerate-unearned-lit-floor", action="store_true",
+                     help="MAINTENANCE ONLY: measure the live X-06 population and "
+                          "rewrite its committed floor (never widens it; see "
+                          "regenerate_unearned_lit_floor()).")
     ap.add_argument("--baseline", action="store_true",
                     help=f"Shorthand for --snapshot {BASELINE_SNAPSHOT.name}.")
     ap.add_argument("--snapshot-out", metavar="PATH",
@@ -2488,6 +2882,9 @@ def main(argv: list[str]) -> int:
         if args.self_test:
             return self_test(args.max_rows)
 
+        if args.regenerate_unearned_lit_floor:
+            return regenerate_unearned_lit_floor()
+
         if args.live:
             raw = read_live()
             if args.snapshot_out:
@@ -2498,7 +2895,8 @@ def main(argv: list[str]) -> int:
         else:
             p = pathlib.Path(args.snapshot) if args.snapshot else BASELINE_SNAPSHOT
             if not args.snapshot and not args.baseline:
-                ap.error("one of --self-test / --snapshot / --live / --baseline required")
+                ap.error("one of --self-test / --snapshot / --live / --baseline / "
+                        "--regenerate-unearned-lit-floor required")
             if not p.exists():
                 print(f"snapshot not found: {p}", file=sys.stderr)
                 return 2

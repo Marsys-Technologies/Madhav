@@ -1,0 +1,173 @@
+{
+  "schema_version": "1.0",
+  "$comment": "Committed floor for X-06 (check_asset_catalogue_contract.py). ITEMISED, GENERATED FROM A LIVE MEASUREMENT, NEVER HAND-TYPED (D-67 part 4). The gate asserts the CURRENT live population is a SUBSET of this floor (growth is BLOCKING, D-84: the SET is compared, never the count); this file may only SHRINK, enforced at regeneration time by regenerate_unearned_lit_floor() — a measured population that is not a subset of the existing committed floor makes that function refuse to write, never silently widen (D-95 pattern, D-96: no exemption fields, ever). Regenerate with `python platform/scripts/governance/check_asset_catalogue_contract.py --regenerate-unearned-lit-floor` ONLY after a real repair has paid one of these down.",
+  "rule_id": "X-06",
+  "generated_by": "check_asset_catalogue_contract.py --regenerate-unearned-lit-floor",
+  "generated_at": "2026-08-23T19:30:52.833884+00:00",
+  "authority": "D-94 (ADHIKĀRIN, F-Y); floor-not-HEAD^ pattern D-95",
+  "floor_count": 32,
+  "floor": [
+    {
+      "asset_id": "bg_class_lifetime_counts",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_cohort",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_compendium_index",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_concordance",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_dasha_systems",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_dignity_reference",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_doshas",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_ephemeris",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_gochara_arcs",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_kota_chakra_rings",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_medical_mappings",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_muhurta_lattice",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_nakshatra",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_nakshatra_medical",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_ontology",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_panchanga",
+      "asset_kind": "service",
+      "estimated_seconds": null,
+      "r0_intake": true,
+      "r0_intake_note": "D-94 parts 6-7: asset build state, R0 shut, I13 binds. Not repaired by this rule layer; carried openly until R0 opens."
+    },
+    {
+      "asset_id": "bg_parihara_rules",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_phaladeepika_latta",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_prashna_rules",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_reference",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_remedies",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_rules",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_sarvatobhadra_grid",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_sign_medical",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_sky_calendar",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_text_index",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_texts",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_transit_engine",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_transit_rules",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_vastu_directions",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_vedha_malefic_scale",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    },
+    {
+      "asset_id": "bg_yogas",
+      "asset_kind": "data",
+      "estimated_seconds": null
+    }
+  ]
+}
