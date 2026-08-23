@@ -1070,10 +1070,28 @@
       "what": "Raised by M0-T49 against its own work and NOT discharged by it: D-54 part 8 requires an INDEPENDENT two-source comparison of the shipped covers lists against the guard's live output. T49's field-by-field diff is its own script reading its own output, which it says plainly is not that. So the covers lists are gate-passed (three programmatic gates, both directions, 109/109) but NOT independently two-source compared. Belongs to PARIKSAKA (I16 -- T49 may not close it) or to a KARAKA that is not T49.",
       "owner": "PARIKSAKA",
       "state": "outstanding"
+    },
+    {
+      "id": "Q-109-VS-110",
+      "what": "OPEN QUESTION, raised by the conductor at tick 5, answer pending from KARAKA-M0-T51. M0-T49 measured 109 violations at 14:05:22Z post-591; M0-T51's pre-edit reading at 14:12:16Z on the same schema reads '110 rows' with IDENTICAL exit 0 / blocking 0 / disclosed 15 / fail 16. WORKING HYPOTHESIS (not assumed): two denominators, both right -- T49's 109 is across the 15 DISCLOSED BLOCKING rules and matches D-54's authorised_covers exactly 109/109, while T51's 110 is all failing rows INCLUDING X-02, which fails live and is declared RESIDUAL rather than BLOCKING. 109 + 1 = 110. THE ALTERNATIVE IS MATERIALLY WORSE and is why this is recorded rather than waved through: if a genuine 110th violation appeared between 14:05 and 14:12 and sits OUTSIDE D-54's itemised covers, the mechanism should have returned that rule to BLOCKING, and T51 reads blocking 0 -- meaning the un-gating would be covering a violation ADHIKARIN never authorised, exactly what D-39 part 1's 'violation outside covers => gates again' fixture exists to prevent. T51 asked to state what its 110 counts and, if it is 110 across the SAME 15 rules, to HALT and escalate rather than proceed. Conductor did NOT re-measure independently: running the guard --live while T51 is mid-edit would produce a mixed reading, which is the instrument error PARIKSAKA catalogued six times today.",
+      "owner": "KARAKA-M0-T51",
+      "state": "asked"
+    },
+    {
+      "id": "HOTSPOT-RESIDUALS-JSON-SERIALIZE",
+      "what": "DISPATCH HAZARD, recorded so the next tick does not walk into it. platform/scripts/governance/asset_catalogue_disclosed_residuals.json is currently a hot spot and THREE queued items all reach it: SQ-11 edits check_asset_catalogue_contract.py, whose --self-test READS this JSON; SQ-14 requires RUNNING m0_deferral_register.py; and SQ-12 records that m0_deferral_register.py WRITES this very JSON AS AN UNDECLARED SIDE EFFECT -- so running the generator to test SQ-14 would CLOBBER the fix M0-T51 is landing right now. Correct order: (1) let T51 land; (2) SQ-12 first, to remove the undeclared side effect; (3) then SQ-14, which is safe to run only once the generator no longer writes this file; (4) SQ-11 whenever the guard is not mid-verification. Dispatching SQ-14 before SQ-12 would silently revert authorised disclosure work and the revert would look like a clean generator run.",
+      "owner": "SUTRADHARA",
+      "state": "recorded"
+    },
+    {
+      "id": "M0-T50-PROGRESS",
+      "what": "IN FLIGHT, healthy. Baseline proved (HEAD=6692c5daf == campaign tip, both target blobs == HEAD blobs -- R2 both clauses). Residue MEASURED not presumed: exactly 2 NODE_ENV-keyed entrypoint guards under platform/scripts/ci/, which is what SQ-17 demanded be established rather than assumed. Both re-keyed to IMPORT_ONLY=1 with both directions proven by direct run (blocked input now exits 1 under NODE_ENV=test where it was previously a silent exit 0). scripts/__tests__ 14 files / 177 tests pass. Notably it ADDED A CAN-FAIL DETECTOR for the defect class itself to dispatch_gate.test.ts (19/19) rather than only fixing the two instances -- a test that would catch a future NODE_ENV-keyed guard, which is the earned-signal discipline applied forward.",
+      "owner": "KARAKA-M0-T50",
+      "state": "in_flight"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T14:11:35Z",
+  "last_updated_ts": "2026-08-23T14:14:51Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
