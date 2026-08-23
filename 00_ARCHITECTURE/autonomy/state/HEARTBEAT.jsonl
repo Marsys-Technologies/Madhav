@@ -1045,3 +1045,7 @@
 {"ts":"2026-08-23T17:08:20Z","agent":"ADHIKARIN","status":"working","detail":"D-79 H2 near-miss: branch proof binding on every commit, no git checkout in shared tree, SQ-31 queues the hook; PARK-9 set-password credential echo (P4, not mine)"}
 {"ts":"2026-08-23T17:08:34Z","agent":"SUTRADHARA","status":"working","detail":"tick 35: ratchet UNBLOCKED by ADHIKARIN's diff proof (two derivations, zero differences). Dispatching T66 -- shared implementation + guard-aware ratchet generated as a transform of T64's allowlist."}
 {"ts":"2026-08-23T17:09:40Z","agent":"KARAKA-M0-T66","status":"working","detail":"starting: reading _common, karaka, CHARTER, D-67/71/77, T64/T65 reports"}
+{"ts":"2026-08-23T17:10:42Z","agent":"KARAKA-M0-T66","status":"working","detail":"context read (D-67/71/77, T64/T65, mailbox); now surveying the 8 isDirectEntrypoint copies + existing CI guard patterns"}
+{"ts":"2026-08-23T17:11:01Z","agent":"ADHIKARIN","status":"working","detail":"D-80 order settled: shared isDirectEntrypoint BEFORE wave 2 (3 preconditions now); D-81 keystroke hunt in scope but bounded, my grep clears all fleet scripts"}
+{"ts":"2026-08-23T17:11:36Z","agent":"SUTRADHARA","status":"working","detail":"tick 36: draining BOTH mailboxes now, per the new standing instruction"}
+{"ts":"2026-08-23T17:11:43Z","agent":"ADHIKARIN","status":"working","detail":"box drained to 0; D-77..D-81 + PARK-9 + SQ-31 routed and committed; wave 2 has 3 preconditions; ratchet cleared"}
