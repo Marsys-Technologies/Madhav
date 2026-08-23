@@ -9,6 +9,7 @@
    "count_sql",
    "created_at",
    "data_disposition",
+   "dead_flag",
    "depends_on",
    "domain",
    "english_description",
@@ -26,6 +27,7 @@
    "layer",
    "layer_index",
    "layer_name",
+   "natural_key_partition",
    "provides_apis",
    "rebuild_on_probe_fail",
    "rung",
@@ -60,12 +62,16 @@
   "built_by_task": "M0-T17",
   "artifact": "M0_EXIT_SCORECARD_v1_0",
   "generator": "00_ARCHITECTURE/control/m0_exit_scorecard.py",
-  "measured_at_start": "2026-08-23T12:26:00.850058+00:00",
-  "measured_at_end": "2026-08-23T12:26:07.136461+00:00",
+  "measured_at_start": "2026-08-23T21:08:30.785302+00:00",
+  "measured_at_end": "2026-08-23T21:08:40.089548+00:00",
   "git_branch": "campaign/nirmana-autonomous",
-  "git_sha": "ac16535d1b67b715d061897084fcedeb0b40f8fb",
+  "git_sha": "68cb017d69dabcce54be7ddeed0fdd223d75ba16",
   "db_access": "READ-ONLY (default_transaction_read_only=on; SELECT only)",
   "recent_migrations_applied": [
+   {
+    "filename": "591_nirmana_m0_partition_and_dead_flag_columns.sql",
+    "applied_at": "2026-08-23 13:58:56.247380+00:00"
+   },
    {
     "filename": "590_nirmana_m0_catalogue_contract_columns.sql",
     "applied_at": "2026-08-23 05:36:13.833986+00:00"
@@ -81,10 +87,6 @@
    {
     "filename": "588_samiksha_digest_journal.sql",
     "applied_at": "2026-08-22 23:42:20.550183+00:00"
-   },
-   {
-    "filename": "587_llm_usage_events_interpretation_sets_stage.sql",
-    "applied_at": "2026-08-22 03:31:21.363948+00:00"
    }
   ],
   "re_measurement_at_end_of_run": {
@@ -104,6 +106,7 @@
    "count_sql",
    "created_at",
    "data_disposition",
+   "dead_flag",
    "depends_on",
    "domain",
    "english_description",
@@ -121,6 +124,7 @@
    "layer",
    "layer_index",
    "layer_name",
+   "natural_key_partition",
    "provides_apis",
    "rebuild_on_probe_fail",
    "rung",
@@ -138,32 +142,21 @@
    "writer_timeout_seconds"
   ],
   "delta_vs_previous_run": {
-   "previous_run": "2026-08-23T08:00:26.645600+00:00",
+   "previous_run": "2026-08-23T12:26:07.136461+00:00",
    "changed": [
     {
      "criterion": "2_contract_violations_per_kind",
      "was": {
       "status": "NOT-MEASURABLE",
-      "measured_value": 165
+      "measured_value": 85
      },
      "now": {
       "status": "NOT-MEASURABLE",
-      "measured_value": 85
-     }
-    },
-    {
-     "criterion": "9_unresolved_zero_consumer",
-     "was": {
-      "status": "FAIL",
-      "measured_value": 23
-     },
-     "now": {
-      "status": "PASS",
-      "measured_value": 0
+      "measured_value": 84
      }
     }
    ],
-   "note": "2 change(s) since the previous run"
+   "note": "1 change(s) since the previous run"
   },
   "reading_history": [
    {
@@ -1046,6 +1039,185 @@
       "violations": 32
      }
     }
+   },
+   {
+    "label": "reading 6 \u2014 M0-T46 (re-measurement 5 \u2014 applies D-38/D-39/D-40/D-41/D-42)",
+    "task": "M0-T46 (re-measurement 5 \u2014 applies D-38/D-39/D-40/D-41/D-42)",
+    "measured_at_end": "2026-08-23T21:08:40.089548+00:00",
+    "git_sha": "68cb017d69da",
+    "tally": {
+     "PASS": 2,
+     "FAIL": 6,
+     "NOT-MEASURABLE": 3,
+     "BLOCKED": 1
+    },
+    "criteria": {
+     "1_three_way_diff": {
+      "status": "FAIL",
+      "measured_value": 5,
+      "durability": "n/a \u2014 not passing"
+     },
+     "2_contract_violations_per_kind": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": 84,
+      "durability": "n/a \u2014 not passing"
+     },
+     "3_prefix_mismatches": {
+      "status": "FAIL",
+      "measured_value": 1,
+      "durability": "n/a \u2014 not passing"
+     },
+     "4_dangling_or_draft_edges": {
+      "status": "FAIL",
+      "measured_value": 3,
+      "durability": "n/a \u2014 not passing"
+     },
+     "5_multi_producer_partitions": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": null,
+      "durability": "n/a \u2014 not passing"
+     },
+     "6_throughput_on_inactive_assets": {
+      "status": "BLOCKED",
+      "measured_value": 3,
+      "durability": "n/a \u2014 not passing"
+     },
+     "7_retired_without_disposition": {
+      "status": "FAIL",
+      "measured_value": 1,
+      "durability": "n/a \u2014 not passing"
+     },
+     "8_active_without_coverage_or_dead_flag": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": null,
+      "durability": "n/a \u2014 not passing"
+     },
+     "9_unresolved_zero_consumer": {
+      "status": "PASS",
+      "measured_value": 0,
+      "durability": "durable"
+     },
+     "10_ci_guard_merged_and_blocking": {
+      "status": "FAIL",
+      "measured_value": {
+       "guard_scripts_found": 2,
+       "workflow_invocations_found": 3,
+       "merged_to_default_branch": false,
+       "invocation_is_blocking": false
+      },
+      "durability": "n/a \u2014 not passing"
+     },
+     "11_domain_and_rung_present": {
+      "status": "PASS",
+      "measured_value": 0,
+      "durability": "NON-DURABLE"
+     },
+     "12_ci_domain_coherence_green": {
+      "status": "FAIL",
+      "measured_value": {
+       "assertion_exists": true,
+       "assertion_wired_to_a_workflow": true,
+       "invocation_is_blocking": false,
+       "merged_to_default_branch": false,
+       "live_violations": 0
+      },
+      "durability": "n/a \u2014 not passing"
+     }
+    },
+    "contract_rules": {
+     "C-01": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-02": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-03": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-04": {
+      "status": "FAIL",
+      "violations": 9
+     },
+     "C-05": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-06": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-07": {
+      "status": "FAIL",
+      "violations": 4
+     },
+     "C-08": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-09": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-10": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-11": {
+      "status": "FAIL",
+      "violations": 3
+     },
+     "C-12": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-13a": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-14": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-15": {
+      "status": "FAIL",
+      "violations": 6
+     },
+     "C-16": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-17": {
+      "status": "FAIL",
+      "violations": 4
+     },
+     "C-18": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-19": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-20": {
+      "status": "FAIL",
+      "violations": 3
+     },
+     "C-21": {
+      "status": "FAIL",
+      "violations": 19
+     },
+     "C-24": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-28": {
+      "status": "FAIL",
+      "violations": 31
+     }
+    }
    }
   ],
   "baseline_reading": {
@@ -1251,11 +1423,11 @@
   "2_contract_violations_per_kind": {
    "detector": "this script: every \u00a78 detection SQL of 00_ARCHITECTURE/control/ASSET_CATALOGUE_CONTRACT_v1_0.md, run live; plus C-13b (DFS) and C-23 (AST) implemented here.",
    "status": "NOT-MEASURABLE",
-   "measured_value": 85,
+   "measured_value": 84,
    "violations_by_asset_kind": {
     "data": 69,
     "artifact": 0,
-    "service": 16,
+    "service": 15,
     "source": 0
    },
    "failing_rules": [
@@ -1271,7 +1443,7 @@
     "C-17=4",
     "C-20=3",
     "C-21=19",
-    "C-28=32"
+    "C-28=31"
    ],
    "blocked_rules": [],
    "never_checkable_rules": [
@@ -1280,7 +1452,7 @@
     "C-27"
    ],
    "blocked_by": "rules C-25, C-26, C-27 have NO detector at all (contract \u00a78) and must never read green",
-   "note": "D-42 (ADHIK\u0100RIN, 2026-08-23T11:04:17Z) reclassifies C-28's framing within this rule's 'data' violations: see the C-28 rule's own text above \u2014 asset_throughput.state='lit' is a claim, not evidence, and build_run_assets is authoritative for 'was this asset built'. This does not change the measured_value here; D-42 forbids using its own ranking to re-point C-28's detector, which would silently shrink this criterion's count without earning it.",
+   "note": "D-42 (ADHIK\u0100RIN, 2026-08-23T11:04:17Z) reclassified C-28's framing: asset_throughput.state='lit' is a claim, not evidence, and build_run_assets is authoritative for 'was this asset built'. D-94 (2026-08-23T18:46:28Z) SUPERSEDES D-42 part 3 and confirms the DATA_KINDS-scoped `estimated_seconds` question is the authoritative C-28 (31 rows, imported from check_asset_catalogue_contract.py::c28() per D-94 part 7 \u2014 see _c28_via_contract_module). measured_value HERE changed accordingly (was 32 under this file's own now-removed unfiltered SQL; is 31 under the imported, narrowed, authoritative definition) \u2014 that narrowing is authorised ONLY because D-94 requires it to land atomically with a NEW all-asset-kind rule (X-06 in check_asset_catalogue_contract.py) that covers exactly what the narrowing drops. THIS criterion's measured_value does NOT include X-06's count \u2014 X-06 is reported by that module's own --live run, not folded into this file's contract_violations total. A reader treating this criterion's number as 'all unearned-lit assets, every kind' would be wrong in exactly the way D-94 found; the cross-kind figure is check_asset_catalogue_contract.py --live's X-06 row.",
    "durability": "n/a \u2014 not passing"
   },
   "3_prefix_mismatches": {
@@ -1748,6 +1920,7 @@
     ".github/workflows/judgment-integration-nightly.yml",
     ".github/workflows/nirmana-m0-guards.yml",
     ".github/workflows/pariprashna-ci.yml",
+    ".github/workflows/pariprashna-post-deploy-smoke.yml",
     ".github/workflows/reconciliation-cadence.yml",
     ".github/workflows/samiksha-daily.yml",
     ".github/workflows/shad-darshana-ci-skeletons.yml",
@@ -2300,109 +2473,201 @@
    "rows": []
   },
   "C-28": {
-   "assertion": "estimated_seconds NOT NULL where a successful build exists (NOTE \u2014 D-42, 2026-08-23: asset_throughput.state='lit' is a CLAIM about a build, not evidence of one; build_run_assets is the authoritative source wherever 'was this asset built' is asked. The 31-row R0 residual this rule cannot backfill is therefore not '31 assets missing an estimate' but '31 assets read lit with no completed build_run_assets record behind them' \u2014 the missing estimate is a symptom, the unearned lit is the finding. This SQL is UNCHANGED by D-42: D-42 explicitly forbids re-pointing this detector at build_run_assets to close it, since that would make the BLOCKING failure pass while the 31 unearned lit states remain exactly as they are \u2014 a weakening under D-41 part 2, presumptively H3.)",
+   "assertion": "estimated_seconds NOT NULL where a successful build exists (DATA_KINDS-scoped estimate rule; D-94 defines this as the authoritative C-28 \u2014 the all-asset-kind question is check_asset_catalogue_contract.py's X-06, not this rule)",
    "severity": "BLOCKING",
    "status": "FAIL",
-   "violations": 32,
-   "sql": "SELECT r.asset_id FROM asset_registry r WHERE r.estimated_seconds IS NULL AND EXISTS (SELECT 1 FROM asset_throughput t WHERE t.asset_id=r.asset_id AND t.state='lit') ORDER BY 1",
+   "violations": 31,
    "rows": [
     {
-     "asset_id": "bg_class_lifetime_counts"
+     "asset_id": "bg_class_lifetime_counts",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_cohort"
+     "asset_id": "bg_cohort",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_compendium_index"
+     "asset_id": "bg_compendium_index",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_concordance"
+     "asset_id": "bg_concordance",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_dasha_systems"
+     "asset_id": "bg_dasha_systems",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_dignity_reference"
+     "asset_id": "bg_dignity_reference",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_doshas"
+     "asset_id": "bg_doshas",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_ephemeris"
+     "asset_id": "bg_ephemeris",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_gochara_arcs"
+     "asset_id": "bg_gochara_arcs",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_kota_chakra_rings"
+     "asset_id": "bg_kota_chakra_rings",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_medical_mappings"
+     "asset_id": "bg_medical_mappings",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_muhurta_lattice"
+     "asset_id": "bg_muhurta_lattice",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_nakshatra"
+     "asset_id": "bg_nakshatra",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_nakshatra_medical"
+     "asset_id": "bg_nakshatra_medical",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_ontology"
+     "asset_id": "bg_ontology",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_panchanga"
+     "asset_id": "bg_parihara_rules",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_parihara_rules"
+     "asset_id": "bg_phaladeepika_latta",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_phaladeepika_latta"
+     "asset_id": "bg_prashna_rules",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_prashna_rules"
+     "asset_id": "bg_reference",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_reference"
+     "asset_id": "bg_remedies",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_remedies"
+     "asset_id": "bg_rules",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_rules"
+     "asset_id": "bg_sarvatobhadra_grid",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_sarvatobhadra_grid"
+     "asset_id": "bg_sign_medical",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_sign_medical"
+     "asset_id": "bg_sky_calendar",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_sky_calendar"
+     "asset_id": "bg_text_index",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_text_index"
+     "asset_id": "bg_texts",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_texts"
+     "asset_id": "bg_transit_engine",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_transit_engine"
+     "asset_id": "bg_transit_rules",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_transit_rules"
+     "asset_id": "bg_vastu_directions",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_vastu_directions"
+     "asset_id": "bg_vedha_malefic_scale",
+     "states": [
+      "lit"
+     ]
     },
     {
-     "asset_id": "bg_vedha_malefic_scale"
-    },
-    {
-     "asset_id": "bg_yogas"
+     "asset_id": "bg_yogas",
+     "states": [
+      "lit"
+     ]
     }
-   ]
+   ],
+   "sql": null,
+   "note": "IMPORTED from platform/scripts/governance/check_asset_catalogue_contract.py::c28() over that module's own read_live() snapshot \u2014 this file no longer hand-types C-28's SQL (D-94 part 7; F-Y found the two hand-written copies had silently disagreed since 05:51:46Z on 2026-08-23).",
+   "blocked_by": null
   }
  },
  "undetectable_rules": {
@@ -2507,6 +2772,7 @@
     ".github/workflows/judgment-integration-nightly.yml",
     ".github/workflows/nirmana-m0-guards.yml",
     ".github/workflows/pariprashna-ci.yml",
+    ".github/workflows/pariprashna-post-deploy-smoke.yml",
     ".github/workflows/reconciliation-cadence.yml",
     ".github/workflows/samiksha-daily.yml",
     ".github/workflows/shad-darshana-ci-skeletons.yml",
@@ -2766,12 +3032,14 @@
    "clear_tables",
    "created_at",
    "data_disposition",
+   "dead_flag",
    "domain",
    "has_substeps",
    "has_writer",
    "integrity_check_sql",
    "last_invoked_at",
    "last_selftest_at",
+   "natural_key_partition",
    "rebuild_on_probe_fail",
    "rung",
    "selftest_detail",
@@ -3291,11 +3559,8 @@
    },
    "C-28": {
     "status": "FAIL",
-    "violations": 32,
-    "columns_referenced": [
-     "asset_id",
-     "estimated_seconds"
-    ],
+    "violations": 31,
+    "columns_referenced": [],
     "seed_overwritable_columns": [],
     "seed_divergent_assets_among_them": [],
     "durability": "n/a \u2014 not passing",
@@ -3328,7 +3593,6 @@
      "data_disposition",
      "depends_on",
      "domain",
-     "estimated_seconds",
      "health_probe",
      "layer",
      "layer_index",

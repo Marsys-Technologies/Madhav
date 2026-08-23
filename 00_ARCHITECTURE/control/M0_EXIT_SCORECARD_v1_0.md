@@ -4,15 +4,15 @@ version: 1.0
 status: LIVE-MEASUREMENT
 task: M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42)
 built_by_task: M0-T17
-readings: 5
-generated: 2026-08-23T12:26:07.136461+00:00
+readings: 6
+generated: 2026-08-23T21:08:40.089548+00:00
 generator: 00_ARCHITECTURE/control/m0_exit_scorecard.py
 ---
 
 # NIRMĀṆA M0 — Exit-Criteria Scorecard v1.0
 
-**Measured:** 2026-08-23T12:26:00.850058+00:00 → 2026-08-23T12:26:07.136461+00:00 (UTC)  
-**Branch / commit:** `campaign/nirmana-autonomous` @ `ac16535d1b67`  
+**Measured:** 2026-08-23T21:08:30.785302+00:00 → 2026-08-23T21:08:40.089548+00:00 (UTC)  
+**Branch / commit:** `campaign/nirmana-autonomous` @ `68cb017d69da`  
 **Database access:** READ-ONLY (default_transaction_read_only=on; SELECT only)  
 **Regenerate:** `python3 00_ARCHITECTURE/control/m0_exit_scorecard.py`  
 **Status:** measurement only. This document certifies nothing and closes nothing (I16 / charter H7). PARĪKṢAKA decides; M0-T10 re-runs the generator at freeze time rather than trusting this snapshot.
@@ -20,7 +20,7 @@ generator: 00_ARCHITECTURE/control/m0_exit_scorecard.py
 ## 0 — Tally, then and now
 
 **then** = `reading 1 — M0-T17 first measurement`, 2026-08-23T05:05:59.484414+00:00 @ `01397f9216de`  
-**now** = `reading 5 — M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42)`, 2026-08-23T12:26:07.136461+00:00 @ `ac16535d1b67`
+**now** = `reading 6 — M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42)`, 2026-08-23T21:08:40.089548+00:00 @ `68cb017d69da`
 
 | status | then | now | Δ | meaning |
 |---|--:|--:|--:|---|
@@ -38,7 +38,7 @@ generator: 00_ARCHITECTURE/control/m0_exit_scorecard.py
 | # | criterion | then | now | measured | durability | blocker |
 |---|---|---|---|--:|---|---|
 | 1 | three-way diff (registry vs `@register` vs seed) = 0 | FAIL | **FAIL** | `5` | n/a — not passing | — |
-| 2 | contract violations per kind = 0 | NOT-MEASURABLE | **NOT-MEASURABLE** | `85` | n/a — not passing | rules C-25, C-26, C-27 have NO detector at all (contract §8) and must never read green |
+| 2 | contract violations per kind = 0 | NOT-MEASURABLE | **NOT-MEASURABLE** | `84` | n/a — not passing | rules C-25, C-26, C-27 have NO detector at all (contract §8) and must never read green |
 | 3 | prefix mismatches = 0 | FAIL | **FAIL** | `1` | n/a — not passing | — |
 | 4 | dangling or DRAFT-targeted edges = 0 | FAIL | **FAIL** | `3` | n/a — not passing | — |
 | 5 | multi-producer partitions = 0 | NOT-MEASURABLE | **NOT-MEASURABLE** | `—` | n/a — not passing | NO DETECTOR EXISTS. The criterion asserts that no two producers write the same (table × generati… |
@@ -59,6 +59,7 @@ Every reading this generator has taken is retained in `m0_exit_scorecard.json` u
 | reading 3 — M0-T32 (re-measurement 3) | M0-T32 (re-measurement 3) | 2026-08-23T07:23:54.296317+00:00 | `df78d1aa3aa4` | 1 | 7 | 3 | 1 |
 | reading 4 — M0-T36 (re-measurement 4 — post V-8/V-9/V-10/V-11, post D-29/D-30/D-31) | M0-T36 (re-measurement 4 — post V-8/V-9/V-10/V-11, post D-29/D-30/D-31) | 2026-08-23T08:00:26.645600+00:00 | `326e4cb372b5` | 1 | 7 | 3 | 1 |
 | reading 5 — M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42) | M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42) | 2026-08-23T12:26:07.136461+00:00 | `ac16535d1b67` | 2 | 6 | 3 | 1 |
+| reading 6 — M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42) | M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42) | 2026-08-23T21:08:40.089548+00:00 | `68cb017d69da` | 2 | 6 | 3 | 1 |
 
 ### Did anything move while this ran?
 
@@ -74,7 +75,7 @@ A migration wave was running concurrently, so every load-bearing quantity was re
 
 ### What changed since the previous run of this generator
 
-Previous run: `2026-08-23T08:00:26.645600+00:00`. 2 change(s) since the previous run.
+Previous run: `2026-08-23T12:26:07.136461+00:00`. 1 change(s) since the previous run.
 
 ```json
 [
@@ -82,22 +83,11 @@ Previous run: `2026-08-23T08:00:26.645600+00:00`. 2 change(s) since the previous
   "criterion": "2_contract_violations_per_kind",
   "was": {
    "status": "NOT-MEASURABLE",
-   "measured_value": 165
+   "measured_value": 85
   },
   "now": {
    "status": "NOT-MEASURABLE",
-   "measured_value": 85
-  }
- },
- {
-  "criterion": "9_unresolved_zero_consumer",
-  "was": {
-   "status": "FAIL",
-   "measured_value": 23
-  },
-  "now": {
-   "status": "PASS",
-   "measured_value": 0
+   "measured_value": 84
   }
  }
 ]
@@ -107,11 +97,11 @@ Filesystem-sourced criteria (10 and 12) can move between runs without any databa
 
 Most recent rows of `_migrations_applied`:
 
+- `591_nirmana_m0_partition_and_dead_flag_columns.sql` — 2026-08-23 13:58:56.247380+00:00
 - `590_nirmana_m0_catalogue_contract_columns.sql` — 2026-08-23 05:36:13.833986+00:00
 - `589_drop_orphaned_protection_functions.sql` — 2026-08-23 05:34:38.787119+00:00
 - `588_remove_asset_build_protection.sql` — 2026-08-23 05:33:15.527766+00:00
 - `588_samiksha_digest_journal.sql` — 2026-08-22 23:42:20.550183+00:00
-- `587_llm_usage_events_interpretation_sets_stage.sql` — 2026-08-22 03:31:21.363948+00:00
 
 ---
 
@@ -170,7 +160,7 @@ this script: SELECT asset_id FROM asset_registry  ×  AST scan of @register('<id
 ### 2 · contract violations per kind = 0
 
 **Status: NOT-MEASURABLE → NOT-MEASURABLE**  
-**Measured value:** `227` → `85`  
+**Measured value:** `227` → `84`  
 
 **Detector**
 
@@ -180,7 +170,7 @@ this script: every §8 detection SQL of 00_ARCHITECTURE/control/ASSET_CATALOGUE_
 
 **Blocked by / why this is not a pass:** rules C-25, C-26, C-27 have NO detector at all (contract §8) and must never read green
 
-**Note:** D-42 (ADHIKĀRIN, 2026-08-23T11:04:17Z) reclassifies C-28's framing within this rule's 'data' violations: see the C-28 rule's own text above — asset_throughput.state='lit' is a claim, not evidence, and build_run_assets is authoritative for 'was this asset built'. This does not change the measured_value here; D-42 forbids using its own ranking to re-point C-28's detector, which would silently shrink this criterion's count without earning it.
+**Note:** D-42 (ADHIKĀRIN, 2026-08-23T11:04:17Z) reclassified C-28's framing: asset_throughput.state='lit' is a claim, not evidence, and build_run_assets is authoritative for 'was this asset built'. D-94 (2026-08-23T18:46:28Z) SUPERSEDES D-42 part 3 and confirms the DATA_KINDS-scoped `estimated_seconds` question is the authoritative C-28 (31 rows, imported from check_asset_catalogue_contract.py::c28() per D-94 part 7 — see _c28_via_contract_module). measured_value HERE changed accordingly (was 32 under this file's own now-removed unfiltered SQL; is 31 under the imported, narrowed, authoritative definition) — that narrowing is authorised ONLY because D-94 requires it to land atomically with a NEW all-asset-kind rule (X-06 in check_asset_catalogue_contract.py) that covers exactly what the narrowing drops. THIS criterion's measured_value does NOT include X-06's count — X-06 is reported by that module's own --live run, not folded into this file's contract_violations total. A reader treating this criterion's number as 'all unearned-lit assets, every kind' would be wrong in exactly the way D-94 found; the cross-kind figure is check_asset_catalogue_contract.py --live's X-06 row.
 
 **Where the number came from:** this script's own live measurement. No sibling artifact states a figure for this quantity.
 
@@ -190,7 +180,7 @@ this script: every §8 detection SQL of 00_ARCHITECTURE/control/ASSET_CATALOGUE_
 {
  "data": 69,
  "artifact": 0,
- "service": 16,
+ "service": 15,
  "source": 0
 }
 ```
@@ -213,7 +203,7 @@ this script: every §8 detection SQL of 00_ARCHITECTURE/control/ASSET_CATALOGUE_
  "C-17=4",
  "C-20=3",
  "C-21=19",
- "C-28=32"
+ "C-28=31"
 ]
 ```
 
@@ -1091,7 +1081,7 @@ rule `X-04` in platform/scripts/governance/check_asset_catalogue_contract.py —
 | `C-20` | CURRENT data/artifact carries a floor | BLOCKING | FAIL | **FAIL** | 5 → 3 | n/a — not passing |
 | `C-21` | target_floor = 0 => volume_explanation | BLOCKING | FAIL | **FAIL** | 19 → 19 | n/a — not passing |
 | `C-24` | clear_tables exist and include target_table | BLOCKING | PASS | **PASS** | 0 → 0 | durable |
-| `C-28` | estimated_seconds NOT NULL where a successful build exists (NOTE — D-42, 2026-08-23: asset_throughput.state='lit' is a CLAIM about a build, not evidence of one; build_run_assets is the authoritative source wherever 'was this asset built' is asked. The 31-row R0 residual this rule cannot backfill is therefore not '31 assets missing an estimate' but '31 assets read lit with no completed build_run_assets record behind them' — the missing estimate is a symptom, the unearned lit is the finding. This SQL is UNCHANGED by D-42: D-42 explicitly forbids re-pointing this detector at build_run_assets to close it, since that would make the BLOCKING failure pass while the 31 unearned lit states remain exactly as they are — a weakening under D-41 part 2, presumptively H3.) | BLOCKING | FAIL | **FAIL** | 112 → 32 | n/a — not passing |
+| `C-28` | estimated_seconds NOT NULL where a successful build exists (DATA_KINDS-scoped estimate rule; D-94 defines this as the authoritative C-28 — the all-asset-kind question is check_asset_catalogue_contract.py's X-06, not this rule) | BLOCKING | FAIL | **FAIL** | 112 → 31 | n/a — not passing |
 | `C-13b` | depends_on graph acyclic | — | — | **PASS** | — → 0 | — |
 | `C-22` | rung-frozen data assets carry integrity_check_sql | — | — | **NOT-MEASURABLE** | — → — | — |
 | `C-23` | has_substeps equals the writer-class truth | — | — | **PASS** | — → 0 | — |
@@ -1196,6 +1186,7 @@ Where another artifact states a figure for a quantity measured here, both are sh
    ".github/workflows/judgment-integration-nightly.yml",
    ".github/workflows/nirmana-m0-guards.yml",
    ".github/workflows/pariprashna-ci.yml",
+   ".github/workflows/pariprashna-post-deploy-smoke.yml",
    ".github/workflows/reconciliation-cadence.yml",
    ".github/workflows/samiksha-daily.yml",
    ".github/workflows/shad-darshana-ci-skeletons.yml",
@@ -1239,7 +1230,7 @@ Parsed from `platform/scripts/seed/asset_registry_seed.ts` **as text** (never im
 | question | answer |
 |---|---|
 | columns the seed **overwrites** on every re-run (`DO UPDATE SET`) | `asset_kind, asset_type, catalog_status, count_sql, depends_on, english_description, english_name, expected_volume_formula, expected_volume_inputs, health_probe, is_active, layer, layer_index, layer_name, provides_apis, sanskrit_name, scope, size_sql, sort_order, storage_type, target_table, volume_explanation` |
-| columns the seed **never inserts** (a new seed row lands NULL/default) | `clear_tables, created_at, data_disposition, domain, has_substeps, has_writer, integrity_check_sql, last_invoked_at, last_selftest_at, rebuild_on_probe_fail, rung, selftest_detail, service_health, superseded_by, target_floor, writer_timeout_seconds` |
+| columns the seed **never inserts** (a new seed row lands NULL/default) | `clear_tables, created_at, data_disposition, dead_flag, domain, has_substeps, has_writer, integrity_check_sql, last_invoked_at, last_selftest_at, natural_key_partition, rebuild_on_probe_fail, rung, selftest_detail, service_health, superseded_by, target_floor, writer_timeout_seconds` |
 | live cells that already differ from what the seed would write | **9** across 9 asset(s) |
 
 **Divergence detector**
@@ -1465,12 +1456,14 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
   "clear_tables",
   "created_at",
   "data_disposition",
+  "dead_flag",
   "domain",
   "has_substeps",
   "has_writer",
   "integrity_check_sql",
   "last_invoked_at",
   "last_selftest_at",
+  "natural_key_partition",
   "rebuild_on_probe_fail",
   "rung",
   "selftest_detail",
@@ -1990,11 +1983,8 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
   },
   "C-28": {
    "status": "FAIL",
-   "violations": 32,
-   "columns_referenced": [
-    "asset_id",
-    "estimated_seconds"
-   ],
+   "violations": 31,
+   "columns_referenced": [],
    "seed_overwritable_columns": [],
    "seed_divergent_assets_among_them": [],
    "durability": "n/a \u2014 not passing",
@@ -2027,7 +2017,6 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
     "data_disposition",
     "depends_on",
     "domain",
-    "estimated_seconds",
     "health_probe",
     "layer",
     "layer_index",
