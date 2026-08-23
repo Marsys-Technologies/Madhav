@@ -739,18 +739,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T42",
-      "what": "the parity guard returns a GREEN from a fossil — worse than the one just fixed",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
-      "id": "F-T40-3-BASELINE-REGEN",
-      "what": "The shared baseline needs an operator regeneration and M0-T40 DELIBERATELY did not do it, for three reasons I am not overriding: it would erase the new staleness signal on day one, move a figure FOUR in-flight documents cite, and snapshot a registry a sibling is actively writing to. A sequencing decision rather than a technical one",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
       "id": "M0-T41",
       "what": "DONE — cherry-picked to the campaign branch as 37d87a278; verified M0-T35's SET-clause removal survived intact",
       "owner": "PARIKSAKA",
@@ -767,10 +755,34 @@
       "what": "M0-T41's flagged uncertainty: ~100 target_floor literals remain in the seed entries and are now a DECLARATION WITH NO CONSUMER. Probably R0 Conform's question. Also flagged: whether target_floor should leave SeedRow entirely is a judgement ADHIKARIN could reasonably rule differently",
       "owner": "ADHIKARIN",
       "state": "raised"
+    },
+    {
+      "id": "M0-T42",
+      "what": "DONE — cherry-picked as 98832297c. Its own mutation testing found TWO REAL HOLES IN ITS OWN PROBE: M4 and M5 SURVIVED the first pass, because every case it had written reached 'stale' via the AGE route — and the shipped baseline is only 3.7 hours old, inside the 24h default, so THE ONE DETECTOR THAT ACTUALLY CATCHES THE REAL FOSSIL WAS THE ONE IT HAD NOT TESTED. §N.8's defect class inside a fix built for §N.8's defect class, and it would have shipped as a clean 6/6 had it stopped at 'self-test passes'",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "WORKTREE-READS-NOT-PROTECTED",
+      "what": "M0-T42: worktree isolation protects the file you EDIT, not the files you READ. It caught the main-branched worktree itself at open and reset, so its own baseline was sound — but adopting the second R2 clause caught something a file-level check never would: MID-TASK a sibling changed asset_registry_seed.ts, which is the S3 leg of its own guard's diff. Its proofs had been run against the older seed. It rebased and re-ran every BEFORE and AFTER measurement; results unchanged, but now unchanged AS A MEASUREMENT rather than by assumption",
+      "owner": "SUTRADHARA",
+      "state": "recorded"
+    },
+    {
+      "id": "F-WORKTREE-CREDENTIAL-HAZARD",
+      "what": "M0-T42, P4-adjacent: platform/.env.local does not exist in any worktree, so --live cannot be invoked from one at all. It read the credential IN PLACE via REPO_ROOT and never copied it — but flags that the next agent might copy it into its worktree, 'a P4 accident waiting'. MITIGATED by the isolation reversal. CONDUCTOR-VERIFIED NOW: no credential is in git — the only tracked match is platform/.env.local.example (a template), and the real file is untracked and ignored at platform/.gitignore:35",
+      "owner": "ADHIKARIN",
+      "state": "raised"
+    },
+    {
+      "id": "F-BASELINE-REGEN",
+      "what": "The shared baseline needs an operator regeneration, and TWO agents have now deliberately declined to do it. M0-T40 gave three reasons: it would erase the new staleness signal on day one, move a figure four in-flight documents cite, and snapshot a registry a sibling is actively writing to. M0-T42 adds a FOURTH the first could not have had: that file is now load-bearing for TWO guards, so ONE regeneration commit flips both from refusing to certifying at once",
+      "owner": "ADHIKARIN",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T08:49:05Z",
+  "last_updated_ts": "2026-08-23T09:00:28Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
