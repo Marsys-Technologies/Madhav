@@ -49,6 +49,7 @@ import path from 'node:path'
 import { execSync } from 'node:child_process'
 import { connectTapDb, printReport, NATIVE_CHART_ID, type LawResult } from './lib/tap_db'
 import { runPointerValidation, runLiveCatalogParity } from './sc_pointer_validation'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 const REPO_ROOT = path.join(__dirname, '../../../..')
 
@@ -320,7 +321,9 @@ async function main() {
   process.exit(printReport('TAP-5 Seam Conservation (7 laws)', results))
 }
 
-main().catch((err) => {
-  console.error('tap5_seam_conservation FATAL:', err)
-  process.exit(4)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('tap5_seam_conservation FATAL:', err)
+    process.exit(4)
+  })
+}

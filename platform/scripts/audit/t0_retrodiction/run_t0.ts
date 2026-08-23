@@ -41,6 +41,7 @@ import { buildCurve } from './lib/curve'
 import { LOSS_SIGNIFICATORS, WINDFALL_SIGNIFICATORS, significatorsForCategory } from './lib/mechanisms'
 import { scoreEvent, runBlindBattery, runShuffledControls, checkCurveNotDegenerate, PROXIMITY_DAYS } from './lib/checks'
 import { parseDate } from './lib/dates'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 const ABHISEK_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const AYANAMSHA = 'lahiri_chitrapaksha'
@@ -184,7 +185,9 @@ async function main() {
   process.exit(0)
 }
 
-main().catch((err) => {
-  console.error('t0_retrodiction_gate FATAL:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('t0_retrodiction_gate FATAL:', err)
+    process.exit(1)
+  })
+}

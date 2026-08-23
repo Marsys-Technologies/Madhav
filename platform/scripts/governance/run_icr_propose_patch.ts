@@ -21,6 +21,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { buildProposePatchArtifact } from '../../src/lib/icr/propose_patch';
 import type { ConflictRecord } from '../../src/lib/icr/types';
+import { isDirectEntrypoint } from '../lib/entrypoint';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Paths
@@ -164,7 +165,9 @@ async function main(): Promise<void> {
   console.log('[run_icr_propose_patch] NATIVE_REVIEW_REQUIRED — patches must not be auto-applied.');
 }
 
-main().catch((err) => {
-  console.error('[run_icr_propose_patch] Unhandled error:', err);
-  process.exit(1);
-});
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('[run_icr_propose_patch] Unhandled error:', err);
+    process.exit(1);
+  });
+}

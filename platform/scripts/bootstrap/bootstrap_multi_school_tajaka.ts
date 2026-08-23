@@ -23,6 +23,7 @@
  */
 
 import { Pool } from 'pg';
+import { isDirectEntrypoint } from '../lib/entrypoint';
 
 const DATABASE_URL = process.env.DATABASE_URL_PROD;
 if (!DATABASE_URL) {
@@ -573,7 +574,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(err => {
-  console.error('FATAL:', err);
-  process.exit(1);
-});
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch(err => {
+    console.error('FATAL:', err);
+    process.exit(1);
+  });
+}

@@ -42,6 +42,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execSync } from 'node:child_process'
 import { openHarvestClient } from './_db'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const REPO_ROOT = join(__dirname, '..', '..', '..')
@@ -210,7 +211,9 @@ async function main(): Promise<void> {
   console.log('[E3] real counts from all sources:', sourceCounts)
 }
 
-main().catch((err) => {
-  console.error('[E3] failed:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('[E3] failed:', err)
+    process.exit(1)
+  })
+}

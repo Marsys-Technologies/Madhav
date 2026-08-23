@@ -31,6 +31,7 @@ import {
   applyResponseBudget,
   type TrimmableSection,
 } from '../../../../platform-mcp/src/lib/response_budget'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 const REPO_ROOT = join(__dirname, '../../../..')
 
@@ -232,4 +233,6 @@ function main(): void {
   process.exit(red.length > 0 ? 1 : 0)
 }
 
-main()
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main()
+}

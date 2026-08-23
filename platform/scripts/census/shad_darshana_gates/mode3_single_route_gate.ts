@@ -47,6 +47,7 @@
 import { ShadDarshanaMcpClient, resolveMcpTarget, unwrapToolPayload, envOrDefault, DEFAULT_TOOL_TIMEOUT_MS, CANONICAL_CHART_ID } from './_mcp_client'
 import { printGateReport, type GateResult } from './_report'
 import { isKalaToolRegistered, collectShadDarshanaRegistration } from './_kala_tool_registration'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 const TOOL_TIMEOUT_MS = Number(envOrDefault('MODE3_GATE_TOOL_TIMEOUT_MS', String(DEFAULT_TOOL_TIMEOUT_MS)))
 
@@ -174,7 +175,9 @@ async function main(): Promise<void> {
   process.exit(printGateReport('mode3_single_route_gate (LIVE)', [await liveResult(client)]))
 }
 
-main().catch((err) => {
-  console.error('mode3_single_route_gate FATAL:', err)
-  process.exit(2)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('mode3_single_route_gate FATAL:', err)
+    process.exit(2)
+  })
+}

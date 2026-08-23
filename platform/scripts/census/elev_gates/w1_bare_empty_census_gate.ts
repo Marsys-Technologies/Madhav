@@ -44,6 +44,7 @@
  */
 import { ElevMcpClient, resolveMcpTarget, unwrapToolPayload, envOrDefault, DEFAULT_TOOL_TIMEOUT_MS } from './_mcp_client'
 import { printGateReport, type GateResult } from './_report'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 const PRIMARY_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const CROSS_CHECK_CHART_ID = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
@@ -273,7 +274,9 @@ async function main(): Promise<void> {
   process.exit(printGateReport('w1_bare_empty_census_gate (LIVE)', [...primary, ...crossCheck]))
 }
 
-main().catch((err) => {
-  console.error('w1_bare_empty_census_gate FATAL:', err)
-  process.exit(2)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('w1_bare_empty_census_gate FATAL:', err)
+    process.exit(2)
+  })
+}

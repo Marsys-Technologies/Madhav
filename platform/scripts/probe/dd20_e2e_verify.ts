@@ -6,6 +6,7 @@
  */
 import { generateInterpretationSets } from '../../src/lib/pariprashna/interpretation/worker'
 import type { SignificantJudgment } from '../../src/lib/pariprashna/interpretation/detect'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 const REAL_PROSE_EXCERPT =
   'Based on the synthesis of your astrological chart, the current Vimshottari dasha period is ' +
@@ -46,7 +47,9 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('[dd20-e2e] FAIL:', err)
-  process.exitCode = 1
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('[dd20-e2e] FAIL:', err)
+    process.exitCode = 1
+  })
+}

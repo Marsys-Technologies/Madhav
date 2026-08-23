@@ -36,6 +36,7 @@ import { GoogleAuth } from 'google-auth-library'
 import { createHash } from 'crypto'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 // ── Config (mirrors backfill_conversation_embeddings.ts) ───────────────────────
 
@@ -315,7 +316,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(err => {
-  console.error('Fatal error:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch(err => {
+    console.error('Fatal error:', err)
+    process.exit(1)
+  })
+}

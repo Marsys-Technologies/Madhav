@@ -36,6 +36,7 @@ import { chromium } from '@playwright/test'
 import { Pool } from 'pg'
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 // ── Env loader ────────────────────────────────────────────────────────────────
 
@@ -277,26 +278,28 @@ async function main() {
 
 // ── Report ────────────────────────────────────────────────────────────────────
 
-main()
-  .then(() => {
-    console.log('\n══════════════════════════════════════════════════')
-    const failed = results.filter(r => !r.pass)
-    if (failed.length === 0) {
-      console.log(`  ✅  ALL ${results.length} CHECKS PASSED`)
-    } else {
-      console.log(`  ✗   ${failed.length}/${results.length} CHECKS FAILED`)
-      failed.forEach(r => console.log(`      ✗ ${r.id}: ${r.label}`))
-    }
-    console.log('══════════════════════════════════════════════════\n')
-    process.exit(failed.length > 0 ? 1 : 0)
-  })
-  .catch(err => {
-    console.error('\n══════════════════════════════════════════════════')
-    console.error('  SMOKE TEST ABORTED:', err.message)
-    console.error('══════════════════════════════════════════════════\n')
-    const failed = results.filter(r => !r.pass)
-    const passed = results.filter(r => r.pass)
-    console.log(`  Passed before abort: ${passed.length}/${results.length + 1}`)
-    pool.end().catch(() => {})
-    process.exit(1)
-  })
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main()
+    .then(() => {
+      console.log('\n══════════════════════════════════════════════════')
+      const failed = results.filter(r => !r.pass)
+      if (failed.length === 0) {
+        console.log(`  ✅  ALL ${results.length} CHECKS PASSED`)
+      } else {
+        console.log(`  ✗   ${failed.length}/${results.length} CHECKS FAILED`)
+        failed.forEach(r => console.log(`      ✗ ${r.id}: ${r.label}`))
+      }
+      console.log('══════════════════════════════════════════════════\n')
+      process.exit(failed.length > 0 ? 1 : 0)
+    })
+    .catch(err => {
+      console.error('\n══════════════════════════════════════════════════')
+      console.error('  SMOKE TEST ABORTED:', err.message)
+      console.error('══════════════════════════════════════════════════\n')
+      const failed = results.filter(r => !r.pass)
+      const passed = results.filter(r => r.pass)
+      console.log(`  Passed before abort: ${passed.length}/${results.length + 1}`)
+      pool.end().catch(() => {})
+      process.exit(1)
+    })
+}

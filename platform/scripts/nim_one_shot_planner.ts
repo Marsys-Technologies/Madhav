@@ -16,6 +16,7 @@
  * CHART_ID defaults to "test-native". PLANNER_MODEL_ID defaults to
  * nvidia/llama-3.3-nemotron-super-49b-v1.
  */
+import { isDirectEntrypoint } from './lib/entrypoint'
 
 const modelId = process.env.PLANNER_MODEL_ID ?? 'nvidia/llama-3.3-nemotron-super-49b-v1'
 const chartId  = process.env.CHART_ID ?? 'test-native'
@@ -56,7 +57,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(err => {
-  process.stderr.write(`[one-shot] fatal: ${err}\n`)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch(err => {
+    process.stderr.write(`[one-shot] fatal: ${err}\n`)
+    process.exit(1)
+  })
+}

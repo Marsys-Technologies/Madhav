@@ -35,6 +35,7 @@ loadEnv('.env.rag')
 import { Pool } from 'pg'
 import type { AuditLogRow } from '../../src/lib/audit/types'
 import type { PredictionRow } from '../../src/lib/prediction/types'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 // ── CLI arg parsing ───────────────────────────────────────────────────────────
 
@@ -159,7 +160,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(err => {
-  console.error('replay failed:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch(err => {
+    console.error('replay failed:', err)
+    process.exit(1)
+  })
+}
