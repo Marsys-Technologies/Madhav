@@ -134,6 +134,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # `fetch-depth: 2` IS LOAD-BEARING FOR THE PAWL (ruling D-87), not tidiness.
+          # The guard's second assertion is "the committed allowlist ⊆ ITS OWN PREVIOUS
+          # COMMITTED VALUE", and on a clean checkout — which every CI run is — the previous
+          # value is `HEAD^`. actions/checkout@v4 defaults to fetch-depth 1: one commit, NO
+          # PARENT, so `git show HEAD^:…` cannot resolve. Two things follow, and the second is
+          # why this line is safe to rely on rather than merely necessary:
+          #   1. Depth 2 is the minimum that makes the previous value readable. On a
+          #      `pull_request` run HEAD is the ephemeral merge commit and HEAD^ is the BASE
+          #      BRANCH's tip, so the assertion made is exactly "this change may not grow the
+          #      allowlist relative to the branch it merges into".
+          #   2. If this line were ever removed, the guard does NOT go quietly green — the pawl
+          #      reports UNDETERMINED and EXITS 1, naming fetch-depth as the likely cause. An
+          #      unavailable baseline is UNKNOWN, never clean (CLAUDE.md §N.8). The verification
+          #      of this checkout is therefore in the script, not in a comment here.
+          # Verified against THIS job's own checkout step (M0-T68), not inherited from another
+          # workflow's: it had no `with:` block at all, i.e. the shallow default.
+          fetch-depth: 2
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -158,9 +176,13 @@ jobs:
         run: python platform/scripts/governance/check_entrypoint_guard_ratchet.py --self-test
 
       - name: Ratchet — repo scan against the generated allowlist
-        # Exits 1 on (a) any unguarded top-level main() that is not on the allowlist, (b) any
-        # allowlist entry that is not in M0-T64's settled 76-file baseline — so the list can
-        # only ever SHRINK, and cannot be widened by editing the file it gates on — or (c) any
-        # file whose brace structure the scanner could not resolve, which is UNKNOWN and must
-        # never be reported as clean (§N.8).
+        # Exits 1 on (a) any unguarded top-level main() that is not on the allowlist —
+        # assertion (i), which catches a NEW unguarded file; (b) any allowlist entry that is not
+        # in M0-T64's settled 76-file baseline; (c) THE PAWL, ruling D-87 — any allowlist entry
+        # that is not in the allowlist's OWN PREVIOUS COMMITTED VALUE, which is what catches an
+        # already-REPAIRED file being put back, the one thing (b) structurally cannot see
+        # because a repaired file stays a member of the settled baseline forever; (d) a previous
+        # committed value that could not be READ; or (e) any file whose brace structure the
+        # scanner could not resolve. (d) and (e) are both UNKNOWN, and UNKNOWN must never be
+        # reported as clean (§N.8).
         run: python platform/scripts/governance/check_entrypoint_guard_ratchet.py
