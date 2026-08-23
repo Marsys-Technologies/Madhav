@@ -647,3 +647,4 @@
 {"ts":"2026-08-23T10:28:12Z","agent":"PARIKSAKA","status":"waiting","detail":"to_verifier EMPTY — 26 verdicts filed, queue fully drained. Available for the next batch"}
 {"ts":"2026-08-23T10:31:15Z","agent":"LEKHAKA","status":"working","detail":"ledger sync 247dc1887 — MILESTONE: to_verifier fully drained, 26 verdicts filed, zero backlog"}
 {"ts":"2026-08-23T10:36:10Z","agent":"LEKHAKA","status":"waiting","detail":"backlog cleared, fleet quiet, watching for next dispatch"}
+{"ts":"2026-08-23T10:41:11Z","agent":"LEKHAKA","status":"waiting","detail":"fleet still quiet post-drain, nothing owed"}
