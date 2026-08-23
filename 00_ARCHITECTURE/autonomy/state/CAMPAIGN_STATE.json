@@ -217,7 +217,46 @@
           "significance": "SATYA-DIPA's §N.8 instance 4 is no longer inert. For these 12 assets the substep-plan-completeness probe had never run, so lit was written on a basis that was not its detector's verdict — H4 verbatim. The 2026-07-29 code fix now applies to the assets it was built for.",
           "aftermath_binding": "Twelve assets CAN now fail to reach lit that previously always did. That is CORRECT and is NOT a regression — an asset that stops reaching lit was never entitled to it. No agent may revert has_substeps to clear a resulting incomplete; refused as H3, not debated. Current asset_throughput across the 12: lit=27, error=5, stale=1.",
           "evidence": "Independent from-scratch AST count of 12 (deliberately NOT reusing the proposal's script), with the MRO trap included as a printed NEGATIVE CONTROL — 'plan_substeps in the MRO' returns true for all 123. Discriminator bo_laksana true AND bo_laksana_rerank false: PASS after, and it did NOT pass before, which is the defect. 0 true->false transitions verified against the snapshot rather than inferred. The two plan-phantom extras were NOT repaired — reaching 14 would be H6."
+        },
+        "kind_0_6b": {
+          "ts": "2026-08-23T06:03:06Z",
+          "by": "KARAKA M0-T21",
+          "authority": "D-24 part 2",
+          "commit": "46d2faecf",
+          "rows": {
+            "asset_kind->service": 2,
+            "asset_type->service": 4,
+            "storage_type": 0
+          },
+          "trap_avoided": "both bg_* rows read service/service — applying the plan's wording literally as a repair rule would have written 'data' over a correct 'service'",
+          "DURABILITY_WARNING": "THIS REPAIR IS NOT DURABLE. asset_registry_seed.ts's ON CONFLICT DO UPDATE overwrites asset_kind and asset_type from EXCLUDED, and both default to 'data' when omitted — each of the six rows declares one of the pair and omits the other. The next seed run reverts all six. Correct in the database today; not correct after a re-seed."
         }
+      },
+      "seed_revert_blast_radius": {
+        "measured_by": "SUTRADHARA, reading asset_registry_seed.ts directly after M0-T21's F-1",
+        "overwritten_from_EXCLUDED": [
+          "asset_type",
+          "layer_name",
+          "layer_index",
+          "provides_apis",
+          "health_probe",
+          "asset_kind"
+        ],
+        "guarded_by_CASE": [
+          "catalog_status",
+          "is_active"
+        ],
+        "at_risk": {
+          "M0-T21 asset_kind/asset_type": "REVERTED by next seed run",
+          "Phase 0.5a layer_index/layer_name": "WOULD BE reverted — not yet dispatched, and now gated on this"
+        },
+        "safe": {
+          "M0-T20 has_substeps": "not in the update list at all",
+          "M0-T22 has_writer": "seed does not emit it",
+          "590 domain/rung/data_disposition/superseded_by": "not emitted"
+        },
+        "note": "The campaign's two landed repairs are in OPPOSITE states and I would not have known which without checking. The file already contains the correct pattern: catalog_status and is_active use a CASE that preserves the DB value, with a comment saying a RETIRED asset must never be resurrected by a re-seed. The precedent, the reasoning and the comment style are already there.",
+        "accidental_protection": "The seeder currently cannot complete a run at all — the bg_cohort formula abort. A third defect is holding this line, the same way it held the DRY_RUN line, for the same accidental reason."
       }
     },
     "M1": {
@@ -427,12 +466,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T21",
-      "what": "0.6b kind repair, values-first then authoritative — the registry is free again now T20 landed",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "M0-T25",
       "what": "regenerate the workbook (stale by 12 rows since the repair) and fix C-23's stale truth source",
       "owner": "KARAKA",
@@ -449,10 +482,22 @@
       "what": "M0-T20: bg_gochara_citation_resolution and bg_sarvatobhadra_grid are CURRENT/active/data with NO writer, so their has_substeps=false is unearned rather than derived — true by accident, not by measurement. L0, R0 not open, untouched",
       "owner": "ADHIKARIN",
       "state": "raised"
+    },
+    {
+      "id": "M0-T21",
+      "what": "DONE 46d2faecf — 6 rows, trap avoided",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "SEED-OWNERSHIP",
+      "what": "URGENT: the seed reverts asset_kind/asset_type (landed repair) and would revert layer_index/layer_name (not yet dispatched). Escalated with the measured column list. Editing the seed's upsert semantics decides WHICH SURFACE OWNS registry metadata — the subject of D-19 — so not mine to settle from a repair ticket. Phase 0.5a is HELD on it",
+      "owner": "ADHIKARIN",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T05:52:04Z",
+  "last_updated_ts": "2026-08-23T06:03:06Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
