@@ -686,6 +686,154 @@ export async function runMigrations(
   return ran
 }
 
+/**
+ * The one token a deploy step can grep for to assert the migrator reached the end of its work.
+ *
+ * It is deliberately a distinctive constant rather than prose: a log-scraping assertion that
+ * matches on wording breaks the first time the wording is improved, and the temptation is then
+ * to relax the assertion rather than fix it.
+ */
+export const MIGRATE_COMPLETION_SENTINEL = 'MIGRATE_RUNNER_COMPLETE'
+
+/** What one run did, MEASURED after the run rather than inferred from the absence of output. */
+export interface MigrationRunSummary {
+  mode: 'apply' | 'dry-run'
+  /** `.sql` files found across the configured migration directories. */
+  filesOnDisk: number
+  /** Rows in `_migrations_applied` — includes rows for files no longer on disk. */
+  ledgerRows: number
+  /** On-disk files the ledger records as applied. `filesOnDisk - pending`, by construction. */
+  onDiskApplied: number
+  pending: number
+  pendingNames: string[]
+  appliedThisRun: number
+  appliedNames: string[]
+}
+
+/**
+ * Measure the post-run state so the run can state its result instead of implying it.
+ *
+ * Everything here is queried or counted after the fact — nothing is derived by arithmetic from
+ * what the run *thought* it was doing, because that arithmetic is exactly the inference this
+ * exists to replace (a reconciled-not-executed row, for instance, never appears in `ran`).
+ * Read-only: one directory scan and one SELECT.
+ */
+export async function summarizeMigrationRun(
+  client: PoolClient,
+  dirs: string[],
+  ran: string[],
+  options: { dryRun?: boolean } = {}
+): Promise<MigrationRunSummary> {
+  const dryRun = options.dryRun ?? false
+  const files = collectMigrationFiles(dirs)
+  const applied = await getApplied(client)
+  const pendingNames = files.filter(f => !applied.has(f.name)).map(f => f.name)
+  return {
+    mode: dryRun ? 'dry-run' : 'apply',
+    filesOnDisk: files.length,
+    ledgerRows: applied.size,
+    onDiskApplied: files.length - pendingNames.length,
+    pending: pendingNames.length,
+    pendingNames,
+    appliedThisRun: dryRun ? 0 : ran.length,
+    appliedNames: dryRun ? [] : [...ran],
+  }
+}
+
+/** Keep a name list readable in a CI log without hiding that it was truncated. */
+function nameList(names: string[], limit = 10): string {
+  if (names.length <= limit) return names.join(', ')
+  return `${names.slice(0, limit).join(', ')}, … and ${names.length - limit} more`
+}
+
+/**
+ * Render the summary as the lines a run prints unconditionally on its success path.
+ *
+ * Nirmāṇa M0-T44 / SQ-08, from V-3's residual RES-1 and ruling D-18 part 2. Before this, the
+ * success path printed NOTHING when nothing was pending — `ran.forEach(...)` over an empty
+ * array — so `.github/workflows/deploy.yml`'s unasserted `npx tsx scripts/migrate.ts` produced
+ * byte-identical output (none, exit 0) for two different states: "everything was already
+ * applied" and "the migrator never ran". CLAUDE.md §N.4 names the second as the real hazard
+ * behind its own doctrine; §N.8 names the shape — a success signal whose detector cannot tell
+ * "the work was unnecessary" from "the work never happened".
+ *
+ * So the counts here are not decoration. They are the claim's evidence, and they are
+ * self-checking: `files_on_disk - on_disk_applied` must equal `pending`, and a reader who
+ * distrusts the sentence can count the `.sql` files and the ledger rows themselves.
+ */
+export function formatMigrationSummary(s: MigrationRunSummary): string[] {
+  const lines: string[] = [
+    `[migrate] ${s.filesOnDisk} migration file(s) on disk; ${s.onDiskApplied} of them recorded ` +
+    `in _migrations_applied (${s.ledgerRows} ledger row(s) in total, including any whose file ` +
+    `is no longer on disk); ${s.pending} pending; ${s.appliedThisRun} applied by this run.`,
+  ]
+
+  if (s.filesOnDisk === 0) {
+    // Never dress up "I looked at nothing" as "everything is applied".
+    lines.push(
+      '[migrate] No migration files were found in the configured directories. This is a ' +
+      'configuration result, not an up-to-date result — nothing was checked.'
+    )
+  } else if (s.mode === 'dry-run') {
+    lines.push(
+      s.pending === 0
+        ? '[migrate] Dry run: nothing would be applied — every migration on disk is already ' +
+          'recorded as applied.'
+        : `[migrate] Dry run: ${s.pending} migration(s) would be applied — ${nameList(s.pendingNames)}.`
+    )
+  } else if (s.appliedThisRun === 0 && s.pending === 0) {
+    lines.push(
+      '[migrate] Nothing to apply — every migration on disk is already recorded as applied. ' +
+      'This run reached the end of its work; the result is asserted here rather than inferred ' +
+      'from an absence of output.'
+    )
+  } else if (s.pending === 0) {
+    lines.push(`[migrate] Applied ${s.appliedThisRun} migration(s); nothing left pending.`)
+  } else {
+    lines.push(
+      `[migrate] Applied ${s.appliedThisRun} migration(s); ${s.pending} still pending ` +
+      `(${nameList(s.pendingNames)}) — expected only when --target stopped the run early.`
+    )
+  }
+
+  // Terminal, and last: a log cut short before this line cannot show it.
+  lines.push(
+    `[migrate] ${MIGRATE_COMPLETION_SENTINEL} mode=${s.mode} files_on_disk=${s.filesOnDisk} ` +
+    `ledger_rows=${s.ledgerRows} on_disk_applied=${s.onDiskApplied} pending=${s.pending} ` +
+    `applied_this_run=${s.appliedThisRun}`
+  )
+  return lines
+}
+
+/**
+ * Everything `main()` does once it holds a client: run the migrations, then report.
+ *
+ * Extracted from `main()` so the reporting has a real detector behind it — `main()` builds its
+ * own Pool from DATABASE_URL and is therefore untestable without a database, which is precisely
+ * how the silent success path went unnoticed. This throws on failure exactly as `runMigrations`
+ * does; the sentinel is printed only after the run returns, so a failed run cannot emit it.
+ */
+export async function runCli(
+  client: PoolClient,
+  dirs: string[],
+  options: RunOptions = {},
+  log: (line: string) => void = console.log
+): Promise<MigrationRunSummary> {
+  const dryRun = options.dryRun ?? false
+  const ran = await runMigrations(client, dirs, options)
+
+  if (dryRun) {
+    log('Dry run — would apply:')
+    ran.forEach(name => log(`  ${name}`))
+  } else {
+    ran.forEach(name => log(`Applied: ${name}`))
+  }
+
+  const summary = await summarizeMigrationRun(client, dirs, ran, { dryRun })
+  for (const line of formatMigrationSummary(summary)) log(line)
+  return summary
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2)
   const dryRun = args.includes('--dry-run')
@@ -701,13 +849,7 @@ async function main(): Promise<void> {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
   const client = await pool.connect()
   try {
-    const ran = await runMigrations(client, dirs, { dryRun, target })
-    if (dryRun) {
-      console.log('Dry run — would apply:')
-      ran.forEach(name => console.log(`  ${name}`))
-    } else {
-      ran.forEach(name => console.log(`Applied: ${name}`))
-    }
+    await runCli(client, dirs, { dryRun, target })
   } catch (err) {
     console.error('Migration failed:', err)
     process.exit(1)

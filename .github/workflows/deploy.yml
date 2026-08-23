@@ -326,12 +326,31 @@ jobs:
       - name: Run database migrations
         env:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        # The sentinel grep is the point of this step, not belt-and-braces around it.
+        #
+        # `migrate.ts` used to print NOTHING on its success path when nothing was pending, so
+        # this step's silence-and-exit-0 was BYTE-IDENTICAL between "every migration was already
+        # applied" (fine) and "the migrator never executed at all" (ships an unmigrated schema)
+        # — CLAUDE.md §N.4's named hazard verbatim, with `deploy-web` shipping on
+        # `needs: [migrate]`. Nirmāṇa V-3 residual RES-1, ruling D-18 part 2, task M0-T44.
+        #
+        # migrate.ts now prints a terminal `MIGRATE_RUNNER_COMPLETE` line unconditionally on its
+        # success path, and from exactly one place that a failed run never reaches, so this step
+        # can ASSERT the migrator ran to completion instead of inferring it from silence.
+        #
+        # `pipefail` is load-bearing: without it `tee`'s exit 0 would mask a migrator failure,
+        # which would swap one silent-success defect for another.
         run: |
+          set -o pipefail
           if [ -z "$DATABASE_URL" ]; then
             echo "::error::PROD_DATABASE_URL secret not set — migrations NOT applied. Failing build."
             exit 1
-          else
-            cd platform && npx tsx scripts/migrate.ts
+          fi
+          cd platform
+          npx tsx scripts/migrate.ts 2>&1 | tee /tmp/migrate.log
+          if ! grep -q 'MIGRATE_RUNNER_COMPLETE' /tmp/migrate.log; then
+            echo "::error::migrate.ts exited 0 but never printed its MIGRATE_RUNNER_COMPLETE completion line — the migrator did not run to completion. Refusing to let the deploy proceed against a schema whose state is unknown."
+            exit 1
           fi
       # ── /A-S8: migrations ─────────────────────────────────────────────────────
   # ── /Schema barrier ─────────────────────────────────────────────────────────
