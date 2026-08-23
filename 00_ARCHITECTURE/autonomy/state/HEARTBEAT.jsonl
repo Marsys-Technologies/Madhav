@@ -645,3 +645,5 @@
 {"ts":"2026-08-23T10:25:53Z","agent":"PARIKSAKA","status":"working","detail":"V-25 filed. 25 verdicts, queue 27->13. Remaining: T6,T7,T8,T9,T14,T17,T18,T22,T24,T27,T29,T32,T41"}
 {"ts":"2026-08-23T10:26:18Z","agent":"LEKHAKA","status":"working","detail":"ledger sync 4addf7e76 (PARIKSAKA-idle settled as normal operation; backlog 27->13; V-24/V-25 filed)"}
 {"ts":"2026-08-23T10:28:12Z","agent":"PARIKSAKA","status":"waiting","detail":"to_verifier EMPTY — 26 verdicts filed, queue fully drained. Available for the next batch"}
+{"ts":"2026-08-23T10:31:15Z","agent":"LEKHAKA","status":"working","detail":"ledger sync 247dc1887 — MILESTONE: to_verifier fully drained, 26 verdicts filed, zero backlog"}
+{"ts":"2026-08-23T10:36:10Z","agent":"LEKHAKA","status":"waiting","detail":"backlog cleared, fleet quiet, watching for next dispatch"}
