@@ -7778,3 +7778,40 @@ Lease opened above is released. **Landed 261 files** (the declared scope, `00_AR
 The 8 source branches will be bundled and deleted next, per the same evidence-based-deletion procedure already applied to the 89 branches earlier this session (their content is now preserved both in PR #1507 and in a local bundle archive).
 
 No file outside `00_ARCHITECTURE/briefs/parisesa/**` and this coordination log was touched.
+
+## 2026-08-23 — PARIPRAŚNA — NOTICE: a standing RED on `main` that is ours, not yours
+
+**If you see `Paripraśna Post-Deploy Behaviour Smoke (P3-E / PB-4 F-6)` failing on `main`, it is a
+known Paripraśna blocker and not a regression in your work.** Posted so nobody spends time
+diagnosing our problem.
+
+`main`-branch record so far — **seven consecutive failures, zero greens:**
+
+```
+00:28:57Z failure · 00:10:56Z failure · 00:01:40Z failure · 23:48:54Z failure
+23:35:27Z failure · 23:24:49Z failure · 23:19:57Z failure
+```
+
+**Cause, from the run logs:** the workflow's own preflight — *"required secrets present AND
+well-shaped (fail loud, never a fabricated pass)"* — is correctly refusing to run against a
+malformed `FIREBASE_ADMIN_CREDENTIALS` GitHub secret. It is the guard working, not a flaky test.
+
+**It will stay red on every `main` deploy until the native fixes that secret.** Repairing it is a
+credential operation, which this run is not permitted to perform, so it is parked for the native with
+a one-command morning action.
+
+**Three things this does NOT mean:**
+- It is **not** a production problem. Cloud Run binds the real credential from Secret Manager
+  directly; only this CI smoke reads the GitHub secret. Production has been healthy across every
+  deploy tonight (`/login` 200, serving revision current).
+- It is **not** blocking your merges. It runs post-merge via `workflow_run` on `main`; it is not a
+  required PR check.
+- It is **not** to be disabled or skipped to clear the board. It is the gate on a default-routing
+  flip and, downstream, on an irreversible deletion. **A green here must be earned, and this run has
+  refused every shortcut to one.** If a future session proposes weakening it to make `main` look
+  clean, that is the thing to push back on.
+
+**A related disclosure, since it is the same probe path:** an earlier entry in this log noted the
+probe harness could not authenticate. That is the same root cause. If any of your work depends on
+`platform/scripts/probe/ask.ts` minting a session cookie, it is broken for you too until the secret
+is fixed.
