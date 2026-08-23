@@ -38,6 +38,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const FIXTURES_DIR = join(__dirname, 'fixtures', 'p4k')
@@ -373,4 +374,22 @@ function main(): number {
   return report.result === 'PASS' ? 0 : 1
 }
 
-process.exit(main())
+// Guard: only execute when this module IS the entrypoint — never as an import side effect.
+//
+// Nirmāṇa WORK_QUEUE M0-T73, ruling D-100 (F-T16-1 + F-P): this file arrived unguarded via
+// origin/main's merge (M0-T16, commit 016b0ccdc) and tripped the entrypoint guard ratchet's
+// population-growth assertion for the whole fleet. D-100's disposition: guard it — the same
+// repair Wave 1 (M0-T65) already performed five times, via the shared
+// `scripts/lib/entrypoint.ts` module (T66's consolidation).
+//
+// This is the `isDirectEntrypoint` contract (Nirmāṇa M0-T60 / A3.4 operator rule 5), NOT the
+// `IMPORT_ONLY !== '1'` contract the two CI gates use (M0-T50 / ruling D-49, documented at
+// `scripts/audit/A3_env_matrix.md` Addendum A3.4). A gate's hazard is FAILING to run, so its
+// safe default is RUN. This file's hazard is RUNNING on incidental import — `main()` reads
+// `--self-test`/`--manifest` off `process.argv` at call time, so an importer whose OWN argv
+// happened to carry either flag would have this file read/write files under
+// `fixtures/p4k/**` (or an arbitrary manifest path) as a side effect of being imported — so
+// its safe default is DO NOT RUN.
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  process.exit(main())
+}

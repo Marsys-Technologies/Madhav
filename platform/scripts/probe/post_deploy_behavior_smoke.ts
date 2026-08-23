@@ -162,6 +162,7 @@ import { execFileSync } from 'node:child_process'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const OUT_DIR = join(__dirname, 'out')
@@ -543,4 +544,22 @@ function main(): void {
   printReportAndExit(input, out)
 }
 
-main()
+// Guard: only execute when this module IS the entrypoint — never as an import side effect.
+//
+// Nirmāṇa WORK_QUEUE M0-T73, ruling D-100 (F-T16-1 + F-P): this file arrived unguarded via
+// origin/main's merge (M0-T16, commit 016b0ccdc) and tripped the entrypoint guard ratchet's
+// population-growth assertion for the whole fleet. D-100's disposition: guard it — the same
+// repair Wave 1 (M0-T65) already performed five times, via the shared
+// `scripts/lib/entrypoint.ts` module (T66's consolidation).
+//
+// This is the `isDirectEntrypoint` contract (Nirmāṇa M0-T60 / A3.4 operator rule 5), NOT the
+// `IMPORT_ONLY !== '1'` contract the two CI gates use (M0-T50 / ruling D-49, documented at
+// `scripts/audit/A3_env_matrix.md` Addendum A3.4). A gate's hazard is FAILING to run, so its
+// safe default is RUN. THIS file's hazard is RUNNING on incidental import: unless
+// `SMOKE_SELFTEST=1` is set in the importing process's own environment, `main()` calls
+// `runLive()`, which `execFileSync`s `ask.ts` against a REAL deployed `/api/pariprashna`
+// service (`SMOKE_WEB_URL`, defaulting to a live Cloud Run URL) — a real authenticated
+// network turn, as a side effect of being imported. Its safe default is DO NOT RUN.
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main()
+}
