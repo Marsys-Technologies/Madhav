@@ -149,74 +149,62 @@
   },
   "open_threads": [
     {
-      "id": "M0-T1",
-      "what": "six-source census",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
-      "id": "M0-T2",
-      "what": "catalogue contract + domain/rung migration authored not applied",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
-      "id": "M0-T3",
-      "what": "asset_throughput snapshot + repair proposal, no writes",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
-      "id": "Q1",
-      "what": "ADHIKARIN ruling: may the domain/rung/lifecycle migration be APPLIED under M0 (charter P5 boundary)",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
-      "id": "Q2",
-      "what": "ADHIKARIN ruling: may mig 588/589 registration + asset_throughput telemetry repair EXECUTE",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
-      "id": "V-1",
-      "what": "§19 efficiency ledger has no emitter; M0 completion claim FAILed by PARIKSAKA; M0 note corrected; ADHIKARIN to rule land-in-M0 vs G7 deferral",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
-      "id": "D-1",
-      "what": "heartbeat.sh script-relative root fix applied by SUTRADHARA (at KARAKA cap); verified by resolution from 3 cwds; awaiting PARIKSAKA independent check (I16)",
-      "owner": "PARIKSAKA",
-      "state": "awaiting_verification"
-    },
-    {
-      "id": "V-2",
-      "what": "L-12/D-28 evidence false (timeouts non-default on 107/128, not 2); real defect is 7 assets timed out below their own measured worst. Carry-forward recorded on R1/R2/R3. ADHIKARIN to rule whether D-28's evidence cell is corrected now or per-rung",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
-      "id": "M0-T4",
-      "what": "COMPLETE, no writes executed: 588 APPLIED (objects inspected), 589 APPLIED BY INFERENCE (DROP IF EXISTS leaves no positive trace — chain of four facts, not a witnessed event). Neither has a _migrations_applied row; they are the only 2 of 441 on-disk files the runner considers unapplied. Awaiting PARIKSAKA + ADHIKARIN Q2",
-      "owner": "PARIKSAKA",
-      "state": "awaiting_verification"
-    },
-    {
       "id": "M0-T11",
       "what": "migrate.ts entrypoint guard (F-2 live hazard) — dispatched into T4's freed slot",
       "owner": "KARAKA",
       "state": "running"
     },
     {
-      "id": "F-1",
-      "what": "migration number 588 claimed twice: this branch's 588_remove_asset_build_protection.sql and 588_samiksha_digest_journal.sql (applied to prod from an unmerged pariprashna/p4-i worktree, ledger id 447). migration_number_guard E2 hard-fails whichever PR merges second. Cross-campaign coordination — ADHIKARIN's",
+      "id": "M0-T1..T4",
+      "what": "all four COMPLETE, none executed a write. Rulings D-4..D-6 granted the three gated writes; D-8 upheld V-1 and refused a deferral",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T5",
+      "what": "§19 efficiency ledger emitter — D-8 makes this mandatory inside M0; blocks every rung freeze",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "M0-T6",
+      "what": "consumer map + zero-consumer evidence packets",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "M0-T7",
+      "what": "DRAFT-but-served reachability + DAG edge audit",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "M0-T11",
+      "what": "migrate.ts entrypoint guard (F-2, D-9 binding precedent) — GATES T12/T13",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "M0-T12/T13",
+      "what": "migration apply + registration wave — deliberately HELD until T11 lands, so the runner is fixed before a KARAKA runs it with DATABASE_URL live",
+      "owner": "SUTRADHARA",
+      "state": "blocked_by_design"
+    },
+    {
+      "id": "T3-ESCALATION",
+      "what": "M0-T3 flagged 2 of D-6's conditions as not clean passes (orphans COMPLETED — the promotion died, not the run; and medians/estimated_seconds live outside asset_throughput) plus T-2 parked: M0's 'zero throughput rows on inactive assets' collides with P1 (ka_gochara_sweep)",
+      "owner": "ADHIKARIN",
+      "state": "asked"
+    },
+    {
+      "id": "F-service-health",
+      "what": "3 service assets read service_health='healthy' with NO health_probe — an undetected green (H4/§N.8) found by M0-T2. Needs a rung owner or a Track-M home",
       "owner": "ADHIKARIN",
       "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T04:16:53Z",
+  "last_updated_ts": "2026-08-23T04:24:45Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
