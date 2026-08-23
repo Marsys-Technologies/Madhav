@@ -454,12 +454,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T25",
-      "what": "regenerate the workbook (stale by 12 rows since the repair) and fix C-23's stale truth source",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "F2-EVENT-REGISTER",
       "what": "M0-T20: orchestrator_event_register holds 0 rows TABLE-WIDE. That is equally consistent with 'rare path' and with 'the recorder is off', and a count of 0 cannot distinguish them. The KARAKA explicitly declined to claim the second. It matters because that table is the durable artifact by which a verifier would see the repaired probe actually FIRE",
       "owner": "ADHIKARIN",
@@ -512,10 +506,28 @@
       "what": "integrity_check_sql NULL on 128/128 AND rebuild_on_probe_fail false on 128/128 — the integrity gate is switched off at two independent columns, neither with a detector. Tier B (no code-derived truth exists), so not the D-25 shape, but it is the condition M3's integrity-gate engine will be built to read",
       "owner": "ADHIKARIN",
       "state": "raised"
+    },
+    {
+      "id": "M0-T25",
+      "what": "COMPLETE 60aba2e51 — workbook now matches live, and C-23 derives its truth at run time instead of trusting a checked-in census file. The proof was the deliverable: in a shadow tree with a deliberately stale census, the OLD guard passed and the NEW one failed naming the stale asset",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T28",
+      "what": "fix the two generator-source defects M0-T25 found but correctly did not fix",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "F-PHASE0-QUEUE-CELL",
+      "what": "M0-T25 F-1's downstream effect: the Phase 0 Queue's 0.6a cell now reads '2' because the file-granular code scanner still diverges on bg_reference and bo_laksana_rerank. Three independent derivations say the registry's false is CORRECT for both — so the '2' is a defect count manufactured by a defective scanner, and a later reader would take it as two unrepaired false negatives. Being fixed by M0-T28",
+      "owner": "KARAKA",
+      "state": "in_progress"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T06:05:15Z",
+  "last_updated_ts": "2026-08-23T06:11:52Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
