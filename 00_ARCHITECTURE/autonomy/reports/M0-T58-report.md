@@ -316,3 +316,58 @@ This is the third independent instance today of the same shared-ledger concurren
 M0-T55, now mine). It may be worth someone deciding whether that is acceptable-by-design for an
 append-only ledger — I think it probably is — rather than each KĀRAKA rediscovering it and writing
 its own addendum about it. Not my call; noted, not acted on.
+
+### 9.2 — CORRECTION: I was wrong about M0-T56, and the error was mine
+
+Appended 2026-08-23T15:33Z. **§9 above contains a claim that is false, and I am correcting it in
+place rather than leaving it standing.**
+
+§9 said of KĀRAKA-M0-T56: *"it still wrote its primary artifact into the gitignored mailbox —
+because `prompts/karaka.md` still tells it to… Its report is durable now only because I happened
+to still be running and looked twice."*
+
+**That is wrong.** My second commit reported `2 files changed` where I had named three. I checked
+rather than shrugged, and found why:
+
+```
+842e1484c  Nirmana M0-T58 addendum: a sixth report arrived mid-task...     (mine)
+080d4cce7  Nirmana KARAKA M0-T56: report (tracked, per D-63) + WORK_QUEUE completion line
+ce21e90e5  Nirmana M0-T58: sweep the surviving KARAKA reports...           (mine)
+```
+
+**M0-T56 committed its own report to the tracked path itself**, at 15:32:04Z, between my two
+commits, with a commit message citing D-63 and explaining that the mailbox copy is byte-identical
+and stays as mail. My `git add` of that path was a no-op against an already-identical blob, which
+is exactly why my commit carried two files instead of three.
+
+All three copies agree:
+
+```
+4c279d0fced5e5c0f23b5534a216a261dd5e295e94385b4ac2dd5974bca67d58  git show 080d4cce7:...reports/M0-T56-report.md
+4c279d0fced5e5c0f23b5534a216a261dd5e295e94385b4ac2dd5974bca67d58  reports/M0-T56-report.md (my copy)
+4c279d0fced5e5c0f23b5534a216a261dd5e295e94385b4ac2dd5974bca67d58  mailbox/to_verifier/20260823T152817Z-M0-T56-report.md
+```
+
+**What this changes.**
+
+1. T56's report was never at risk. It did not need rescuing and I did not rescue it. My copy was
+   redundant, not load-bearing. It cost nothing and I am leaving it (it is the same blob), but the
+   claim "durable only because I was still running" was false when I wrote it.
+2. **The practice is reaching agents faster than I assumed** — through the dispatch brief, not
+   through `prompts/karaka.md`. T56 was dispatched with the tracked-path instruction and followed
+   it, exactly as I was. So the forward convention is partly live already, by conductor practice
+   rather than by prompt.
+3. **§6 and my second finding to the conductor are therefore overstated on one point and still
+   correct on the other.** Overstated: I implied the next KĀRAKA *will* lose its report. Wrong —
+   the next KĀRAKA whose *dispatch brief* carries the instruction will not. Still correct: the
+   durable channel currently depends on each dispatch remembering to say so, and
+   `prompts/karaka.md` — the thing a KĀRAKA reads when its brief does *not* mention it — still
+   points only at the mailbox. SQ-22's second half is still open and still worth doing; it is
+   belt-and-braces on a working practice rather than the only thing standing between the campaign
+   and another 51 lost reports.
+
+**Why I made the error.** I inferred T56's behaviour from a file appearing in the mailbox and did
+not check the git log before characterising it. The mailbox copy was real evidence of what T56
+wrote *to the mailbox* and no evidence at all about what it did *besides*. That is the same shape
+as the defect this campaign keeps finding — reading a proxy and reporting it as the claim — and I
+did it inside a report about evidence discipline. Recorded rather than quietly amended.
