@@ -437,7 +437,9 @@ def snapshot_staleness(raw: dict, mode: str, max_age_hours: float,
 # THE DEFECT. `asset_catalogue_disclosed_residuals.json` grew a `deferred_rule_disclosures`
 # block (M0-T36) to satisfy ADHIKĀRIN D-30 part 4, which amends D-24 part 3 so the CI
 # blocking flip additionally requires every DEFERRED rule to carry an itemised, dated
-# disclosure. Sixteen entries were written. NOTHING READ THEM: `disclosed_additions` is
+# disclosure. Sixteen entries were written AT THAT TIME (the file has grown since —
+# for the current state read a run's own `disclosure` blocks, not this paragraph).
+# NOTHING READ THEM: `disclosed_additions` is
 # keyed by asset_id and read in exactly one function (`x02`), `zero_consumer_dispositions`
 # in exactly one other (`x05`), and severity was a constant typed into the RULES table.
 # A disclosure could therefore be written, look correct, and change no outcome — so
@@ -460,19 +462,36 @@ def snapshot_staleness(raw: dict, mode: str, max_age_hours: float,
 #     `migration_number_legacy_duplicates.json` is held to.
 #   * A KĀRAKA CANNOT DEMOTE A GATE BY WRITING A FILE. Severity is no longer a bare
 #     constant, but nor is it a free-text field: a demotion takes effect only when the
-#     entry names a decision id that ACTUALLY EXISTS in `state/DECISIONS.jsonl` and was
-#     authored by ADHIKĀRIN, because catalogue-gate disposition is a charter G-power and
-#     an entry any agent can type is not an authority record. The honest limit of that
-#     detector, stated: it verifies such a ruling EXISTS and who authored it; it cannot
-#     verify the ruling says what the entry claims. That is a real check with a stated
-#     boundary, not a green with nothing behind it.
+#     entry names a decision id that ACTUALLY EXISTS in `state/DECISIONS.jsonl`, was
+#     authored by ADHIKĀRIN, AND ITSELF AUTHORISES THIS RULE FOR THESE IDENTITIES —
+#     because catalogue-gate disposition is a charter G-power and an entry any agent
+#     can type is not an authority record. That last conjunct arrived with D-61 and it
+#     replaced a stated limit that had become the hole: until 2026-08-23 this comment
+#     read "it verifies such a ruling EXISTS and who authored it; it cannot verify the
+#     ruling says what the entry claims", and ADHIKĀRIN's own probe showed that limit
+#     was not a boundary anyone could live inside — a real ruling about
+#     `fleet/heartbeat.sh` demoted C-01, as did the same citation carrying an invented,
+#     WIDER `covers` list. The check now reads the cited decision's own
+#     `authorised_covers`, requires an entry keyed by this RULE ID, and requires the
+#     shipped `covers` to be a SUBSET of it (see decision_grant /
+#     apply_rule_disclosures). The honest limit that REMAINS, stated: the ledger is an
+#     append-only file in this repository, so this detector is exactly as trustworthy
+#     as the ledger's own integrity — it proves the warrant was written, never that it
+#     was wise.
 #
-# CONSEQUENCE TODAY, MEASURED NOT ASSUMED: all sixteen shipped entries lack both
-# `gating_effect` and `authorised_by`, so every one of them reports `effect: "none"` and
-# NOT ONE BLOCKING GATE IS DEMOTED by this change. The disclosure precondition becomes
-# honest — the guard now reports, per rule, whether a disclosure exists and whether it
-# has any effect — rather than satisfied. Flipping the switch is ADHIKĀRIN's act and
-# remains unflipped; this task did not touch `.github/`.
+# CONSEQUENCE, RE-MEASURED 2026-08-23T15:21Z (M0-T56) AND DELIBERATELY NOT RESTATED AS A
+# FROZEN COUNT: this block used to assert that "all sixteen shipped entries lack both
+# `gating_effect` and `authorised_by` … NOT ONE BLOCKING GATE IS DEMOTED", which was
+# true when M0-T14 wrote it and was falsified by M0-T49 at 14:06Z. Shipped entries now
+# DO claim `gating_effect: non_gating` under an ADHIKĀRIN authority, and rules are
+# demoted in fact. THE LIVE NUMBER IS THE GUARD'S OWN SUMMARY FIELD
+# (`disclosed_non_gating`, plus each rule's `disclosure` block) — read it from a run,
+# never from this comment, which is how the previous count came to be false. What has
+# not changed: a demoted rule still FAILS, still reports every violation, and a
+# violation outside `covers` brings the gate straight back. Flipping the CI job's
+# blocking switch remains ADHIKĀRIN's act and is still unflipped — the
+# `nirmana-m0-guards.yml` conformance job is `continue-on-error` as of this edit, and
+# this task did not touch `.github/`.
 DISCLOSED_NON_GATING = "DISCLOSED_NON_GATING"
 
 # Fields every rule disclosure must carry. An incomplete disclosure is not a
@@ -488,7 +507,19 @@ _DECISION_INDEX: dict | None = None           # test-injection point (self-test 
 
 
 def decision_index(force: bool = False) -> dict:
-    """{decision_id: {"agent":…, "power":…}} parsed from state/DECISIONS.jsonl."""
+    """{decision_id: {"agent":…, "power":…, "authorised_covers":…}} from DECISIONS.jsonl.
+
+    `authorised_covers` IS RETAINED DELIBERATELY (D-61 part 4). Until 2026-08-23 this
+    index kept only agent/power/ts and discarded the decision body, so the authority
+    check downstream could authenticate the AUTHOR of a cited decision and could not,
+    structurally, ask whether that decision authorises anything at all. ADHIKĀRIN
+    re-ran the attack through this guard's own injection point and found the covers
+    list entirely self-asserted: `authorised_by=D-1` (a real G9 ruling about
+    fleet/heartbeat.sh, carrying no `authorised_covers`) demoted C-01, and so did the
+    same citation carrying an INVENTED, WIDER covers list naming assets D-1 never
+    mentions. Dropping the body here was what made that possible; keeping it is half
+    the fix, and apply_rule_disclosures() is the other half.
+    """
     global _DECISION_INDEX
     if _DECISION_INDEX is not None and not force:
         return _DECISION_INDEX
@@ -504,9 +535,39 @@ def decision_index(force: bool = False) -> dict:
                 continue
             if isinstance(d, dict) and d.get("id"):
                 idx[str(d["id"])] = {"agent": d.get("agent"), "power": d.get("power"),
-                                     "ts": d.get("ts")}
+                                     "ts": d.get("ts"),
+                                     "authorised_covers": d.get("authorised_covers")}
     _DECISION_INDEX = idx
     return idx
+
+
+def decision_grant(auth: dict | None, rid: str) -> tuple[set[str] | None, str]:
+    """The identities decision `auth` actually authorises for rule `rid`.
+
+    Returns (granted_identities, why_not). `granted_identities is None` means THE
+    DECISION AUTHORISES NOTHING FOR THIS RULE and the caller must refuse the demotion —
+    fail closed on every gap, per D-61 part 4: no `authorised_covers` field at all, no
+    entry keyed by this rule id, or an entry with no `covers` list.
+
+    Note the key is the RULE ID (`C-28`), not the disclosure entry's own key
+    (`C-28_residual`): a disclosure may be filed under any key it likes, but it can
+    only ever be authorised for the rule it declares.
+    """
+    if not isinstance(auth, dict):
+        return None, "no such decision"
+    ac = auth.get("authorised_covers")
+    if not isinstance(ac, dict):
+        return None, ("carries no `authorised_covers` field — a decision authorises a "
+                      "demotion in a machine-readable field or it authorises nothing, "
+                      "whatever its prose says (D-61 part 6)")
+    grant = ac.get(rid)
+    if not isinstance(grant, dict):
+        return None, (f"carries `authorised_covers`, but no entry for {rid} — it "
+                      f"authorises {sorted(ac) or 'nothing'}")
+    covers = grant.get("covers")
+    if not isinstance(covers, list):
+        return None, f"`authorised_covers[{rid}]` carries no `covers` list"
+    return {str(c) for c in covers}, ""
 
 
 def load_rule_disclosures(doc: dict | None = None) -> dict[str, list[dict]]:
@@ -593,8 +654,33 @@ def apply_rule_disclosures(rid: str, declared_severity: str, result: dict,
             notes.append(f"{key}: claims non_gating under '{auth_id}', authored by "
                          f"{auth.get('agent')!r} and not ADHIKĀRIN — no effect")
             continue
+        # ── D-61 part 4 — THE CITED DECISION MUST ACTUALLY AUTHORISE THIS DEMOTION ──
+        # Everything above authenticates the AUTHOR of a decision. It never asks
+        # whether that decision authorises this rule, or bounds what the entry may
+        # claim to cover. Both gaps were exploited by ADHIKĀRIN's own probe (D-61
+        # part 1): a real ruling about heartbeat.sh demoted C-01, and the same
+        # citation carrying an invented, WIDER `covers` list demoted it too. So the
+        # grant is now read from the decision itself and the entry's `covers` must be
+        # a SUBSET of it. Fail closed on every gap — an unauthorised entry buys
+        # nothing and the rule gates at its declared severity.
+        granted, why_not = decision_grant(auth, rid)
+        if granted is None:
+            notes.append(f"{key}: claims non_gating under '{auth_id}', which {why_not} "
+                         f"— no effect")
+            continue
+        claimed = {str(c) for c in (ent.get("covers") or [])}
+        outside = sorted(claimed - granted)
+        if outside:
+            notes.append(
+                f"{key}: claims non_gating under '{auth_id}' for {len(claimed)} "
+                f"identity/identities, but {len(outside)} of them are OUTSIDE what "
+                f"that decision authorises for {rid} {outside[:8]} — no effect. A "
+                f"`covers` list wider than its grant PRE-AUTHORISES a future violation "
+                f"(D-54 part 5(a)); the subset rule is what makes that a detector "
+                f"instead of an honour system")
+            continue
         demoting.append(key)
-        covered |= {str(c) for c in (ent.get("covers") or [])}
+        covered |= claimed
 
     ids = [violation_identity(v) for v in result.get("violations") or []]
     uncovered = sorted({i for i in ids if i not in covered})
@@ -1661,8 +1747,9 @@ def emit_text(results: dict, summary: dict, header: str, max_rows: int,
     print(f"  ADVISORY failures : {summary['advisory_failures'] or 'none'}")
     print(f"  DISCLOSED non-gating failures : "
           f"{summary['disclosed_non_gating_failures'] or 'none'} "
-          f"(REPORTED IN FULL above; demoted only by an ADHIKĀRIN-authorised, itemised "
-          f"disclosure that covers every one of their violations)")
+          f"(REPORTED IN FULL above; demoted only by an itemised disclosure whose "
+          f"`covers` includes every one of their violations AND lies inside the "
+          f"`authorised_covers` grant of the ADHIKĀRIN decision it cites)")
     print(f"  not_checkable     : {summary['not_checkable_rules'] or 'none'}")
     print(f"  failing rules WITHOUT a disclosure entry : "
           f"{summary['failing_rules_without_disclosure'] or 'none'}")
@@ -1856,14 +1943,24 @@ def rule_disclosure_probe() -> int:
     that — sixteen disclosure entries that no code read, so no observation could ever
     have distinguished a correct disclosure from a decorative one.
 
-    Six cases. Case 2 is the mechanism working; cases 3, 4 and 5 are the three ways it
-    must REFUSE to work, and they are the reason this is not a way to silence a gate.
+    Case 2 is the mechanism working; every other case is a way it must REFUSE to work,
+    and they are the reason this is not a way to silence a gate.
 
-    Returns the number of probe failures (0 = all six behaved).
+    CASES 8–11 ARE NEW AT M0-T56 AND CLOSE FINDING F-G (D-61). Until then this probe's
+    own positive case cited `D-1` — a real ADHIKĀRIN ruling about `fleet/heartbeat.sh`
+    which authorises no demotion of anything — and PASSED, because the check
+    authenticated the AUTHOR of a decision and never asked whether the decision
+    authorised the rule. ADHIKĀRIN reproduced that through this file's own injection
+    point and found it worse: the same citation carrying an INVENTED, WIDER `covers`
+    list was accepted too, so the `covers` list was entirely self-asserted. Cases 8–11
+    are those probes, run here as must-refuse cases, plus the subset conjunct's own
+    positive control.
+
+    Returns the number of probe failures (0 = every case behaved).
     """
     global _RULE_DISCLOSURE_DOC
     print("\n  Rule-disclosure probe (severity is computed from the disclosure, and a "
-          "disclosure can only demote what it names, under an authority that exists):")
+          "disclosure can only demote what its own cited decision authorises):")
     bad = 0
     decisions = decision_index(force=True)
     adhikarin = sorted(k for k, v in decisions.items() if v.get("agent") == "ADHIKARIN")
@@ -1872,15 +1969,53 @@ def rule_disclosure_probe() -> int:
               f"{DECISIONS_PATH}. The ledger ships in this repository, so a probe that "
               f"cannot read one means a broken checkout, not an excusable skip (§N.8).")
         return 1
-    real_decision = adhikarin[0]
+
+    # The positive case must cite a decision that REALLY grants C-01, for identities it
+    # REALLY names — no injected authority, because the thing under test is precisely
+    # whether a citation is checked against the ledger. Chosen programmatically so the
+    # probe follows the ledger rather than a hardcoded id that will rot.
+    real_decision = probe_asset = None
+    for k in adhikarin:
+        granted, _why = decision_grant(decisions.get(k), "C-01")
+        if not granted:
+            continue
+        # …and the identity has to be one that C-01 would actually flag in the probe
+        # registry below, or the "fully covering" case would be vacuous.
+        cand = sorted(i for i in granted
+                      if i[:3] not in set(LAYER_PREFIX.values())
+                      or i[:3] != LAYER_PREFIX["ganita"])
+        if cand:
+            real_decision, probe_asset = k, cand[0]
+            break
+    if real_decision is None:
+        print(f"      - PROBE NOT CHECKABLE: no ADHIKĀRIN decision in "
+              f"{DECISIONS_PATH.name} carries an `authorised_covers` grant for C-01 "
+              f"naming an identity C-01 would flag. Since D-61 a demotion requires "
+              f"exactly that, so the mechanism's positive case cannot be built and the "
+              f"probe reports a failure rather than skipping (§N.8).")
+        return 1
+
+    # A real ADHIKĀRIN ruling that authorises NOTHING — the F-G attack's warrant.
+    # `D-1` by preference because that is the id ADHIKĀRIN's own probe used; any
+    # `authorised_covers`-less ruling reproduces it, so the probe does not depend on
+    # one line surviving in the ledger.
+    bare = [k for k in adhikarin
+            if not isinstance(decisions[k].get("authorised_covers"), dict)]
+    bare_primary = "D-1" if "D-1" in bare else (bare[0] if bare else None)
+    bare_second = next((k for k in ["D-60", *reversed(bare)]
+                        if k in bare and k != bare_primary), None)
+
     other_agent = next((k for k, v in decisions.items()
                         if v.get("agent") and v.get("agent") != "ADHIKARIN"), None)
     print(f"      authority ledger: {len(decisions)} decisions, "
-          f"{len(adhikarin)} by ADHIKĀRIN; probe cites {real_decision}")
+          f"{len(adhikarin)} by ADHIKĀRIN, {len(bare)} of those carrying no "
+          f"`authorised_covers` at all")
+    print(f"      probe cites {real_decision} (grants C-01 → {probe_asset!r}); "
+          f"un-authorising controls: {bare_primary}, {bare_second}")
 
     def snap(extra_c01: bool = False) -> dict:
         assets = [
-            {"asset_id": "zz_probe_one", "layer": "ganita", "asset_kind": "data",
+            {"asset_id": probe_asset, "layer": "ganita", "asset_kind": "data",
              "asset_type": "data", "count_sql": None, "catalog_status": "CURRENT",
              "is_active": True, "scope": "global", "depends_on": []},
             {"asset_id": "ga_probe_two", "layer": "ganita", "asset_kind": "data",
@@ -1900,7 +2035,7 @@ def rule_disclosure_probe() -> int:
                "reason": "probe fixture", "disclosed_at": "2026-08-23",
                "disclosed_by": "self-test probe",
                "gating_effect": "non_gating", "authorised_by": real_decision,
-               "covers": ["zz_probe_one"]}
+               "covers": [probe_asset]}
         ent.update(over)
         return {"deferred_rule_disclosures": {"C-01": ent}}
 
@@ -1929,6 +2064,9 @@ def rule_disclosure_probe() -> int:
             print(f"           expected {want}")
             print(f"           notes: {c01r['disclosure']['notes']}")
 
+    REFUSED = {"c01_status": FAIL, "c01_effective": BLOCKING, "c01_gates": True,
+               "c05_gates": True}
+
     # 1 — no disclosure at all: both rules gate. The control.
     check("no disclosure ⇒ both BLOCKING rules gate", {}, snap(),
           {"c01_status": FAIL, "c01_violations": 1, "c01_effective": BLOCKING,
@@ -1936,8 +2074,8 @@ def rule_disclosure_probe() -> int:
     # 2 — THE MECHANISM. Authorised, itemised, fully covering: C-01 still FAILS and
     #     still reports its violation; it stops gating. C-05 is untouched — a
     #     disclosure for one rule may not silence another.
-    check("authorised + itemised + fully covering ⇒ C-01 reported, non-gating; "
-          "C-05 STILL GATES", disclosure(), snap(),
+    check("authorised + itemised + fully covering + inside the cited decision's own "
+          "grant ⇒ C-01 reported, non-gating; C-05 STILL GATES", disclosure(), snap(),
           {"c01_status": FAIL, "c01_violations": 1,
            "c01_effective": DISCLOSED_NON_GATING,
            "c01_gates": False, "c05_gates": True})
@@ -1950,9 +2088,7 @@ def rule_disclosure_probe() -> int:
     # 4 — THE AUTHORITY DETECTOR IS REAL. A decision id nobody ever recorded buys
     #     nothing, however well-written the entry.
     check("authorised_by names a decision that does not exist ⇒ no effect",
-          disclosure(authorised_by="D-NO-SUCH-RULING"), snap(),
-          {"c01_status": FAIL, "c01_effective": BLOCKING, "c01_gates": True,
-           "c05_gates": True})
+          disclosure(authorised_by="D-NO-SUCH-RULING"), snap(), REFUSED)
     # 5 — and it checks WHO. Only ADHIKĀRIN holds the charter power; an entry citing
     #     any other agent's line is inert.
     # The real ledger is currently 100% ADHIKĀRIN, so the "who authored it" conjunct
@@ -1961,21 +2097,18 @@ def rule_disclosure_probe() -> int:
     global _DECISION_INDEX
     saved_idx = _DECISION_INDEX
     injected = "D-PROBE-NOT-ADHIKARIN"
-    globals()["_DECISION_INDEX"] = dict(decisions,
-                                        **{injected: {"agent": "KARAKA"}})
+    globals()["_DECISION_INDEX"] = dict(
+        decisions, **{injected: {"agent": "KARAKA",
+                                 "authorised_covers": {"C-01": {"covers": [probe_asset]}}}})
     try:
         check(f"authorised_by names a real but non-ADHIKĀRIN line ({injected}, "
-              f"agent=KARAKA) ⇒ no effect",
-              disclosure(authorised_by=injected), snap(),
-              {"c01_status": FAIL, "c01_effective": BLOCKING, "c01_gates": True,
-               "c05_gates": True})
+              f"agent=KARAKA) ⇒ no effect — even carrying a perfectly-formed grant",
+              disclosure(authorised_by=injected), snap(), REFUSED)
     finally:
         globals()["_DECISION_INDEX"] = saved_idx
     if other_agent:
         check(f"ledger's own non-ADHIKĀRIN line ({other_agent}) ⇒ no effect",
-              disclosure(authorised_by=other_agent), snap(),
-              {"c01_status": FAIL, "c01_effective": BLOCKING, "c01_gates": True,
-               "c05_gates": True})
+              disclosure(authorised_by=other_agent), snap(), REFUSED)
     # 6 — an incomplete demotion is refused loudly, not applied partially.
     saved = _RULE_DISCLOSURE_DOC
     globals()["_RULE_DISCLOSURE_DOC"] = disclosure(covers=None)
@@ -1988,6 +2121,62 @@ def rule_disclosure_probe() -> int:
               f"({str(e)[:60]}…)")
     finally:
         globals()["_RULE_DISCLOSURE_DOC"] = saved
+
+    # ── 8–11 — F-G (D-61). The three ADHIKĀRIN probes, plus the subset conjunct's own
+    #    positive control. Each of 8, 9 and 10 was ACCEPTED before this task.
+    print("      ── F-G (D-61): the cited decision must itself authorise the rule ──")
+    if bare_primary:
+        # 8 — ADHIKĀRIN's reproduction: a REAL ruling of ADHIKĀRIN's, about something
+        #     else entirely, carrying no `authorised_covers` at all.
+        check(f"authorised_by names a real ADHIKĀRIN ruling that authorises nothing "
+              f"({bare_primary}, no `authorised_covers`) ⇒ REFUSED",
+              disclosure(authorised_by=bare_primary), snap(), REFUSED)
+        # 9 — the extension nobody had run: the same wrong warrant, plus an invented,
+        #     WIDER covers list naming identities that are not even violating.
+        check(f"…the same ruling with an INVENTED, WIDER `covers` list ⇒ REFUSED "
+              f"(the list is no longer self-asserted)",
+              disclosure(authorised_by=bare_primary,
+                         covers=[probe_asset, "bg_reference", "ga_positions"]),
+              snap(), REFUSED)
+    else:
+        print("      [BAD ] no ADHIKĀRIN ruling WITHOUT `authorised_covers` exists in "
+              "the ledger, so F-G's own warrant cannot be reproduced here")
+        bad += 1
+    if bare_second:
+        # 10 — ADHIKĀRIN's fourth probe: a different unrelated ruling of its own.
+        check(f"a second unrelated ADHIKĀRIN ruling ({bare_second}) ⇒ REFUSED",
+              disclosure(authorised_by=bare_second), snap(), REFUSED)
+    # 11 — the grant exists but is for ANOTHER RULE. Fail closed on the rule key too,
+    #      not only on the field's absence.
+    saved_idx = _DECISION_INDEX
+    wrong_rule = "D-PROBE-GRANTS-ANOTHER-RULE"
+    globals()["_DECISION_INDEX"] = dict(
+        decisions, **{wrong_rule: {"agent": "ADHIKARIN",
+                                   "authorised_covers": {
+                                       "C-04": {"covers": [probe_asset]}}}})
+    try:
+        check(f"ADHIKĀRIN grant exists but is keyed to another rule (C-04, not C-01) "
+              f"⇒ REFUSED", disclosure(authorised_by=wrong_rule), snap(), REFUSED)
+    finally:
+        globals()["_DECISION_INDEX"] = saved_idx
+    # 12 — POSITIVE CONTROL FOR THE SUBSET RULE, so 8–11 are not passing merely because
+    #      everything now refuses. A grant WIDER than the entry still demotes: the rule
+    #      is `covers ⊆ grant`, not `covers == grant`.
+    saved_idx = _DECISION_INDEX
+    wider = "D-PROBE-GRANT-WIDER-THAN-ENTRY"
+    globals()["_DECISION_INDEX"] = dict(
+        decisions, **{wider: {"agent": "ADHIKARIN",
+                              "authorised_covers": {
+                                  "C-01": {"covers": [probe_asset,
+                                                      "zz_never_claimed"]}}}})
+    try:
+        check("grant is WIDER than the entry's `covers` ⇒ still demotes (subset, not "
+              "equality)", disclosure(authorised_by=wider), snap(),
+              {"c01_status": FAIL, "c01_violations": 1,
+               "c01_effective": DISCLOSED_NON_GATING,
+               "c01_gates": False, "c05_gates": True})
+    finally:
+        globals()["_DECISION_INDEX"] = saved_idx
 
     # 7 — the SHIPPED file must parse and validate. If someone hand-edits it into an
     #     invalid state, the self-test says so DB-free, before CI ever reads a snapshot.
@@ -2002,9 +2191,43 @@ def rule_disclosure_probe() -> int:
     except GuardError as e:
         print(f"      [BAD ] shipped {RESIDUALS_PATH.name} does not validate: {e}")
         bad += 1
+        live_disc = {}
+
+    # 7b — AND EVERY SHIPPED DEMOTION MUST SURVIVE THE NEW SUBSET CHECK, DB-FREE.
+    #      D-61 part 5 makes this the condition on the fix: prove the shipped entries
+    #      still demote after it. This states that per entry, in the guard itself, so
+    #      it is a detector rather than a claim in a report. It reports the refusal
+    #      reason if one ever appears; it must NEVER be answered by widening a grant.
+    unauthorised = []
+    for rid, ents in sorted(live_disc.items()):
+        for e in ents:
+            if e.get("gating_effect") != "non_gating":
+                continue
+            auth = decisions.get(str(e.get("authorised_by")))
+            granted, why = decision_grant(auth, rid)
+            if granted is None:
+                unauthorised.append(f"{e.get('_key', rid)} → {e.get('authorised_by')}: "
+                                    f"{why}")
+                continue
+            outside = sorted({str(c) for c in (e.get("covers") or [])} - granted)
+            if outside:
+                unauthorised.append(f"{e.get('_key', rid)} → {e.get('authorised_by')}: "
+                                    f"{len(outside)} identity/identities outside the "
+                                    f"grant {outside[:6]}")
+    demoting_entries = sum(1 for ents in live_disc.values() for e in ents
+                           if e.get("gating_effect") == "non_gating")
+    if unauthorised:
+        print(f"      [BAD ] {len(unauthorised)} of {demoting_entries} shipped "
+              f"demotion(s) are NOT authorised by the decision they cite:")
+        for u in unauthorised:
+            print(f"               - {u}")
+        print("               This is a FINDING to report, never a reason to widen a "
+              "grant or relax the subset rule (D-61 part 5).")
+        bad += 1
+    else:
+        print(f"      [OK  ] all {demoting_entries} shipped demotion(s) are inside the "
+              f"`authorised_covers` grant of the decision they cite")
     return bad
-
-
 def snapshot_staleness_probe() -> int:
     """Prove the freshness detector is real, and prove it CAN fail (F-T36-2)."""
     print("\n  Snapshot-freshness probe (the age of the data a gate judges is itself "
