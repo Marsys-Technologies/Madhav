@@ -25,11 +25,9 @@
  */
 
 import * as path from 'node:path'
-import { realpathSync } from 'node:fs'
-import { resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import * as dotenv from 'dotenv'
 import { Pool, PoolClient } from 'pg'
+import { isDirectEntrypoint } from './lib/entrypoint'
 
 dotenv.config({ path: path.join(process.cwd(), '.env.local') })
 
@@ -268,44 +266,21 @@ async function main(): Promise<void> {
   await pool.end()
 }
 
-/**
- * Is THIS module the process entrypoint, or was it merely imported by something else?
- *
- * Exported so the question has a real, directly-testable detector behind it rather than an
- * inline expression nothing can exercise (CLAUDE.md §N.8).
- *
- * Compares the module's own URL against `process.argv[1]`, the path the runtime was told to
- * execute. Both sides are normalised through `realpathSync` where possible, so a symlinked
- * checkout, a `./`-prefixed spelling, or a `/tmp` → `/private/tmp` style realpath difference
- * does not make a direct run look like an import. Any failure to resolve either side answers
- * `false`: the safe direction is "assume imported", because a wrongly-false answer makes the
- * documented direct invocation exit having done nothing — loud, and recoverable — while a
- * wrongly-true answer runs this deduplicator as an import side effect — and with `--apply`
- * present anywhere in the importing process's argv, that means `DELETE FROM charts`.
- *
- * MIRRORED, NOT IMPORTED, from `scripts/migrate.ts`, `scripts/seed/asset_registry_seed.ts` and
- * `scripts/pariprashna/ledger_writer_worker.ts`, which carry the same function. Deliberately a
- * copy: Nirmāṇa ruling D-9 standing-instructs agents not to import from `scripts/migrate.ts`,
- * and this file must not acquire a module graph it did not have before. Behaviour is intended to
- * stay identical to those copies; `scripts/__tests__/destructive_entrypoint_guards.test.ts`
- * asserts the bodies agree.
- */
-export function isDirectEntrypoint(moduleUrl: string, argv1: string | undefined): boolean {
-  if (!argv1) return false
-  let modulePath: string
-  try {
-    modulePath = fileURLToPath(moduleUrl)
-  } catch {
-    return false
-  }
-  const entryPath = resolve(argv1)
-  if (modulePath === entryPath) return true
-  try {
-    return realpathSync(modulePath) === realpathSync(entryPath)
-  } catch {
-    return false
-  }
-}
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// `isDirectEntrypoint` is THE ONE SHARED IMPLEMENTATION, in `scripts/lib/entrypoint.ts`.
+//
+// It used to be a private copy of that function in this file. Nirmāṇa finding F-2 (M0-T60,
+// re-filed by M0-T65 at EIGHT copies) is that a security-relevant predicate duplicated N times
+// with no detector asserting the bodies agree is a defect on its own terms; ruling D-67 part 3
+// granted the shared implementation. Task M0-T66.
+//
+// Imported, not mirrored, and that is safe here for the reason ruling D-9 actually gives:
+// `scripts/lib/entrypoint.ts` imports only the three node builtins this file already imported
+// for its own copy, and has no module-scope effect at all. This module's graph gains nothing.
+//
+// Re-exported so this module's public surface is exactly what it was.
+export { isDirectEntrypoint }
+// ─────────────────────────────────────────────────────────────────────────────────────────────
 
 // Guard: only execute when this module IS the entrypoint — never as an import side effect.
 //

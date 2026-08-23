@@ -41,12 +41,10 @@
  */
 
 import { Pool } from 'pg'
-import { realpathSync } from 'fs'
-import { resolve } from 'path'
-import { fileURLToPath } from 'url'
 
 import { drainOutbox } from '../../src/lib/pariprashna/arm3/drain'
 import { outboxDepth, type OutboxDb } from '../../src/lib/pariprashna/arm3/outbox'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 interface Args {
   once: boolean
@@ -158,46 +156,21 @@ async function main(): Promise<void> {
   await pool.end()
 }
 
-/**
- * Is THIS module the process entrypoint, or was it merely imported by something else?
- *
- * Exported so the question has a real, directly-testable detector behind it rather than an
- * inline expression nothing can exercise (CLAUDE.md §N.8). It is also this module's FIRST
- * export — the old guard's comment invited a test to import this file while the file exported
- * nothing at all, so the invitation could only ever be taken up as a side-effect import.
- *
- * Compares the module's own URL against `process.argv[1]`, the path the runtime was told to
- * execute. Both sides are normalised through `realpathSync` where possible, so a symlinked
- * checkout, a `./`-prefixed spelling, or a `/tmp` → `/private/tmp` style realpath difference
- * does not make a direct run look like an import. Any failure to resolve either side answers
- * `false`: the safe direction is "assume imported", because a wrongly-false answer makes the
- * documented `npx tsx platform/scripts/pariprashna/ledger_writer_worker.ts --once` exit having
- * drained nothing — recoverable, and visible in `pariprashna_ledger_outbox`'s depth — while a
- * wrongly-true answer drains the outbox and writes `brahma_mimamsa_prediction_ledger` as an
- * import side effect, holding the only `role_ledger_write` credential while it does so.
- *
- * MIRRORED, NOT IMPORTED, from `scripts/migrate.ts` and `scripts/seed/asset_registry_seed.ts`,
- * which carry the same function. Deliberately a copy: Nirmāṇa ruling D-9 standing-instructs
- * agents not to import from `scripts/migrate.ts`, and this worker's whole design premise is that
- * it stays OUT of other module graphs (see the header — it does not import `@/lib/db/client`
- * either). Behaviour is intended to stay identical to those copies; each has its own tests.
- */
-export function isDirectEntrypoint(moduleUrl: string, argv1: string | undefined): boolean {
-  if (!argv1) return false
-  let modulePath: string
-  try {
-    modulePath = fileURLToPath(moduleUrl)
-  } catch {
-    return false
-  }
-  const entryPath = resolve(argv1)
-  if (modulePath === entryPath) return true
-  try {
-    return realpathSync(modulePath) === realpathSync(entryPath)
-  } catch {
-    return false
-  }
-}
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// `isDirectEntrypoint` is THE ONE SHARED IMPLEMENTATION, in `scripts/lib/entrypoint.ts`.
+//
+// It used to be a private copy of that function in this file. Nirmāṇa finding F-2 (M0-T60,
+// re-filed by M0-T65 at EIGHT copies) is that a security-relevant predicate duplicated N times
+// with no detector asserting the bodies agree is a defect on its own terms; ruling D-67 part 3
+// granted the shared implementation. Task M0-T66.
+//
+// Imported, not mirrored, and that is safe here for the reason ruling D-9 actually gives:
+// `scripts/lib/entrypoint.ts` imports only the three node builtins this file already imported
+// for its own copy, and has no module-scope effect at all. This module's graph gains nothing.
+//
+// Re-exported so this module's public surface is exactly what it was.
+export { isDirectEntrypoint }
+// ─────────────────────────────────────────────────────────────────────────────────────────────
 
 // Guard: only execute when this module IS the entrypoint — never as an import side effect.
 //

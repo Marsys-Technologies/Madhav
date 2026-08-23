@@ -21,9 +21,11 @@
  *
  *   STRUCTURAL, over the five real files' source text (§1). Proves the guard is present, that it
  *   is the exact `isDirectEntrypoint(import.meta.url, process.argv[1])` form, that the ONLY
- *   top-level `main()` invocation sits inside it, and that each file's `isDirectEntrypoint` body
- *   is identical to the certified one in `scripts/seed/asset_registry_seed.ts` (itself identical,
- *   modulo namespace qualifiers, to `scripts/migrate.ts`'s original). These assertions are proven
+ *   top-level `main()` invocation sits inside it, and — since M0-T66 (ruling D-67 part 3) — that
+ *   the file defines NO private `isDirectEntrypoint` at all but imports and re-exports THE shared
+ *   one in `scripts/lib/entrypoint.ts`. That replaces the original text-equality assertion
+ *   against `scripts/seed/asset_registry_seed.ts`'s copy with an identity assertion, which is
+ *   what finding F-2 asked for: eight copies that CAN diverge, versus one that cannot. Proven
  *   non-vacuous by paired fixtures in §3: an unguarded sample — including an INDENTED one — must
  *   be rejected by the same helpers that accept the repaired files.
  *
@@ -59,25 +61,64 @@ import {
 const PLATFORM_DIR = path.resolve(__dirname, '../..')
 const TSX = path.join(PLATFORM_DIR, 'node_modules', '.bin', 'tsx')
 
-/** The five files repaired by M0-T65. NEVER executed by this suite. */
-const TARGETS = [
-  'scripts/probe/ask.ts',
-  'scripts/dedupe_charts.ts',
-  'scripts/_archived/seed-abhisek.ts',
-  'scripts/dev/mint_session_cookie.ts',
-  'scripts/set-password.ts',
-] as const
-
-/** The certified copy this repair mirrors (M0-T15; its own guard tests live alongside). */
-const REFERENCE = 'scripts/seed/asset_registry_seed.ts'
-/** The original the reference itself mirrors (M0-T11 / ruling D-9), in namespace-qualified form. */
-const ORIGINAL = 'scripts/migrate.ts'
-
 const GUARD_LINE = 'if (isDirectEntrypoint(import.meta.url, process.argv[1])) {'
 
 function read(rel: string): string {
   return fs.readFileSync(path.join(PLATFORM_DIR, rel), 'utf8')
 }
+
+/**
+ * ── `TARGETS` IS DERIVED FROM THE MEASUREMENT, NEVER HAND-TYPED (M0-T66, finding F-O) ────────
+ *
+ * This used to be a five-element string literal — the files M0-T65 repaired. PARĪKṢAKA's
+ * V-45..V-52 drain filed **F-O** against exactly that: *"If Wave 2 guards 53 files without
+ * extending it, the repo ends with 58 files carrying a guard of which 5 are checked — coverage
+ * silently drops from 100% of guarded files to 9%. Hand-extending a 53-entry literal is itself
+ * an unverified step."*
+ *
+ * So the list is now computed, from the same artefact D-67 part 4 makes the ratchet's baseline:
+ * `00_ARCHITECTURE/autonomy/reports/M0-T64-triage.json`'s tier-1 records (58 files), FILTERED
+ * to those that actually carry the guard today.
+ *
+ * The filter is what keeps this a pay-down list rather than a permanently-red one (D-39 part 2):
+ * an unrepaired tier-1 file carries no guard, so it is not yet asserted about; the instant Wave 2
+ * guards it, it enters this set and every assertion below applies to it with no edit here. The
+ * set can therefore only GROW, and `COVERAGE_FLOOR` makes a shrink fail.
+ */
+const TRIAGE = JSON.parse(
+  fs.readFileSync(
+    path.resolve(PLATFORM_DIR, '..', '00_ARCHITECTURE/autonomy/reports/M0-T64-triage.json'),
+    'utf8',
+  ),
+) as { records: Array<{ file: string; tier: number }> }
+
+/** Repo-relative (`platform/scripts/...`) → platform-relative (`scripts/...`). */
+const toPlatformRel = (repoRel: string): string => repoRel.replace(/^platform\//, '')
+
+const TIER1 = TRIAGE.records.filter((r) => r.tier === 1).map((r) => toPlatformRel(r.file))
+
+/** The exact guard form this contract mandates (M0-T60 / A3.4 operator rule 5). */
+const carriesGuard = (rel: string): boolean => read(rel).includes(GUARD_LINE)
+
+const TARGETS = TIER1.filter((rel) => fs.existsSync(path.join(PLATFORM_DIR, rel)) && carriesGuard(rel))
+
+/**
+ * Coverage may be paid UP, never down. 5 is M0-T65's wave 1; after wave 2 this is 58 and the
+ * floor should be raised to match. A derivation that silently returned [] would make every
+ * assertion below vacuous, which is the failure mode this constant exists to catch.
+ */
+const COVERAGE_FLOOR = 5
+
+/**
+ * THE one shared implementation (M0-T66, ruling D-67 part 3). Until M0-T66 this constant named
+ * `scripts/seed/asset_registry_seed.ts` and the five carried textual COPIES of its predicate,
+ * which this suite compared for equality. Finding F-2 was that eight copies of a
+ * security-relevant predicate can silently diverge; the copies are gone, so the assertion is
+ * now IDENTITY rather than equality — strictly stronger, and it cannot drift by construction.
+ */
+const REFERENCE = 'scripts/lib/entrypoint.ts'
+/** The two files that carried the predicate before M0-T66; both now import it. */
+const FORMER_COPIES = ['scripts/migrate.ts', 'scripts/seed/asset_registry_seed.ts'] as const
 
 /**
  * The `isDirectEntrypoint` body, normalised so that a namespace-qualified copy
@@ -105,6 +146,17 @@ function predicateBody(src: string): string | null {
     }
   }
   return null
+}
+
+/**
+ * True when the file gets `isDirectEntrypoint` from THE shared module rather than defining its
+ * own copy — an `import` of the symbol from a `lib/entrypoint` specifier, plus a re-export so
+ * the module's public surface is unchanged. (M0-T66 / ruling D-67 part 3.)
+ */
+function importsSharedPredicate(src: string): boolean {
+  const imports = /import\s*\{[^}]*\bisDirectEntrypoint\b[^}]*\}\s*from\s*'[^']*lib\/entrypoint'/.test(src)
+  const reexports = /export\s*\{[^}]*\bisDirectEntrypoint\b[^}]*\}/.test(src)
+  return imports && reexports
 }
 
 /** Lines that INVOKE `main()` (not the declaration) at column 0 — i.e. unguarded top level. */
@@ -137,10 +189,28 @@ function everyMainCallIsAfterGuard(src: string): boolean {
 describe('M0-T65 §1 — structural: the five destructive scripts carry the guard', () => {
   const referenceBody = predicateBody(read(REFERENCE))
 
-  it('the reference predicate is readable, and the original agrees with it', () => {
+  it('the derived TARGETS list is non-vacuous and has not shrunk (F-O)', () => {
+    // Without this, a broken derivation would empty the list and every per-file block below
+    // would simply not exist — a green suite asserting nothing, which is the exact shape
+    // §N.8 calls an unearned signal.
+    expect(TIER1.length).toBe(58) // M0-T64's measured tier-1 population
+    expect(TARGETS.length).toBeGreaterThanOrEqual(COVERAGE_FLOOR)
+    // Every guarded tier-1 file is covered: coverage is 100% of guarded files by construction,
+    // not a list somebody remembered to extend.
+    expect(TIER1.filter((rel) => fs.existsSync(path.join(PLATFORM_DIR, rel)) && carriesGuard(rel)))
+      .toEqual(TARGETS)
+  })
+
+  it('the shared predicate is readable, and NOBODY else defines one', () => {
     // Anchors the whole section: if this fails, every per-file comparison below is vacuous.
+    // (This test is the one that caught M0-T66's own rewire: when the predicate moved out of
+    // `asset_registry_seed.ts`, `referenceBody` went null and every per-file `toBe(null)`
+    // would have passed vacuously. Keep it first and keep it truthy-asserting.)
     expect(referenceBody).toBeTruthy()
-    expect(predicateBody(read(ORIGINAL))).toBe(referenceBody)
+    for (const rel of FORMER_COPIES) {
+      expect(predicateBody(read(rel))).toBeNull()
+      expect(importsSharedPredicate(read(rel))).toBe(true)
+    }
   })
 
   for (const rel of TARGETS) {
@@ -165,8 +235,12 @@ describe('M0-T65 §1 — structural: the five destructive scripts carry the guar
         expect(src).not.toMatch(/^\s*if \(process\.env\.NODE_ENV/m)
       })
 
-      it('exports an isDirectEntrypoint body identical to the certified copy', () => {
-        expect(predicateBody(src)).toBe(referenceBody)
+      it('defines NO private predicate — it imports and re-exports the shared one', () => {
+        // M0-T66 / D-67 part 3. Was "body identical to the certified copy"; identity of
+        // implementation replaces equality of text, so divergence is now impossible rather
+        // than merely detected.
+        expect(predicateBody(src)).toBeNull()
+        expect(importsSharedPredicate(src)).toBe(true)
       })
 
       it('the guard block closes at end of file (nothing runs after it)', () => {
@@ -283,6 +357,21 @@ describe('M0-T65 §3 — the structural detectors are non-vacuous', () => {
   it('predicateBody returns null when there is no predicate, and differs when a body differs', () => {
     expect(predicateBody(UNGUARDED_SAMPLE)).toBeNull()
     expect(predicateBody(GUARDED_SAMPLE)).not.toBe(predicateBody(read(REFERENCE)))
+  })
+
+  it('importsSharedPredicate rejects a private copy and a bare import (M0-T66)', () => {
+    // Without these, "defines NO private predicate" could pass on a file that has neither the
+    // predicate NOR the import — i.e. on a file with no guard at all.
+    expect(importsSharedPredicate(GUARDED_SAMPLE)).toBe(false)
+    expect(importsSharedPredicate(UNGUARDED_SAMPLE)).toBe(false)
+    expect(
+      importsSharedPredicate("import { isDirectEntrypoint } from './lib/entrypoint'\n"),
+    ).toBe(false) // imported but NOT re-exported: public surface would have changed
+    expect(
+      importsSharedPredicate(
+        "import { isDirectEntrypoint } from '../lib/entrypoint'\nexport { isDirectEntrypoint }\n",
+      ),
+    ).toBe(true)
   })
 
   it('F — under vitest the stand-in module is never the entrypoint', () => {
