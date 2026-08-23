@@ -36,8 +36,43 @@ contract methods it defines, resolving inheritance through the collected
 class graph. NO imports are executed (D-9: never import the migrations tree
 or run module-level code); this is pure ast.parse over source text.
 """
-import ast, json, pathlib, sys
-ROOT = pathlib.Path('/Users/Dev/Vibe-Coding/Apps/Madhav')
+import ast, json, os, pathlib, sys
+
+
+def repo_root() -> pathlib.Path:
+    """The repository root, DERIVED FROM THIS FILE'S OWN LOCATION.
+
+    Nirmāṇa M0-T28 / F-2. This module used to pin
+    `ROOT = pathlib.Path('/Users/Dev/Vibe-Coding/Apps/Madhav')` — one developer's
+    absolute path, baked in when it was a run-once script. On any other machine (CI,
+    a second checkout, a container) that directory does not exist, so `BASE.rglob`
+    yielded nothing and `census()` returned `files_scanned=0, n_registrations=0`
+    while `registered_asset_ids()` handed back an EMPTY SET WITHOUT RAISING. Every
+    consumer tests membership (`aid in code_writers`), so an empty set reads as
+    "no asset has a registered writer" — which makes `_bound_class()` return
+    `not-a-build` for all 128 assets and EXEMPTS THE ENTIRE CATALOGUE from the
+    §8.3 item 5 efficiency gate, silently and looking entirely normal.
+
+    This is the same defect shape the campaign already fixed once in D-1
+    (`heartbeat.sh` hard-required `NIRMANA_REPO`, which the launcher never provided,
+    so every heartbeat aborted and the fleet's liveness detector was disarmed), and
+    it takes the same remedy D-1 prescribed: derive the root from the script's own
+    location, and keep the environment variable as an OVERRIDE ONLY, never a
+    requirement. `__file__` is `<root>/00_ARCHITECTURE/control/writer_substep_census.py`,
+    so the root is `parents[2]`.
+
+    `NIRMANA_REPO` is honoured when set, for the one legitimate case of pointing the
+    census at a checkout other than the one this file lives in. It cannot reintroduce
+    the silent failure: a root that does not contain the writer tree produces an empty
+    scan, and an empty scan is now LOUD (see `_assert_trustworthy`).
+    """
+    env = os.environ.get('NIRMANA_REPO')
+    if env:
+        return pathlib.Path(env).expanduser().resolve()
+    return pathlib.Path(__file__).resolve().parents[2]
+
+
+ROOT = repo_root()
 BASE = ROOT/'platform/python-sidecar'
 
 EXCLUDE_PARTS = {'__pycache__', 'node_modules', '.clone', 'tests', '__tests__', 'venv', '.venv', 'site-packages', 'build', 'dist'}
@@ -191,8 +226,61 @@ def census(force: bool = False) -> dict:
     _CACHE = {'unresolved_registrations': unresolved_registrations, 'files_scanned': files_scanned,
               'parse_errors': parse_errors,
               'n_registrations': len(registrations), 'n_distinct_asset_ids': len(results),
-              'duplicate_asset_ids': dupes, 'writers': results}
+              'duplicate_asset_ids': dupes, 'writers': results,
+              # M0-T28 / F-2: WHAT WAS SCANNED, recorded alongside what was found. An
+              # empty census is indistinguishable from a healthy one unless the record
+              # says where it looked. `census()` itself does NOT raise — it is the raw
+              # measurement, and "I scanned 0 files under <path>" is a true and useful
+              # thing for it to report (the C-23 guard writes exactly these fields into
+              # its `not_checkable` provenance). The refusal to emit a value from an
+              # empty census lives in the DERIVED accessors below, which have no channel
+              # for "I don't know" and must therefore raise.
+              'scan_root': str(ROOT), 'scan_base': str(BASE), 'base_exists': BASE.exists()}
     return _CACHE
+
+
+def _assert_trustworthy(c: dict, what: str) -> dict:
+    """Refuse to hand back a DERIVED value from a census that does not know the answer.
+
+    H4/§N.8, and D-25 part 3 in its sharpest form: a value that can turn a detector off
+    must never arrive by accident. Every condition below means the parser did not see the
+    writer tree, or saw it incompletely — and in each case the natural return value
+    (a short set, a short map) is silently indistinguishable from a true measurement of a
+    codebase that has no writers. There is no in-band way to say "I don't know" in a
+    `set` or a `dict[str, bool]` whose consumers test membership, so this raises.
+
+    THE EMPTY CASE IS THE ONE M0-T28 ADDED, and it is the reason F-2 was dangerous rather
+    than merely wrong: the two pre-existing guards (unresolved args, parse errors) both
+    require something to have been parsed, and neither can fire when there is nothing to
+    parse at all. An absent writer tree therefore sailed through both.
+
+    `census()` itself deliberately does NOT raise — see the note on its record. Callers
+    that want the diagnostic detail rather than an exception (the C-23 guard) call
+    `census()` and inspect `files_scanned` / `n_registrations` / `base_exists` themselves.
+    """
+    if not c.get('base_exists'):
+        raise SystemExit(
+            f'writer_substep_census: the writer tree does not exist at {c.get("scan_base")!r} '
+            f'(scan root {c.get("scan_root")!r}) — {what} CANNOT be derived and no value may '
+            f'be emitted from an empty scan. Set NIRMANA_REPO to a checkout that contains '
+            f'platform/python-sidecar, or run this module from inside one.')
+    if c['unresolved_registrations']:
+        raise SystemExit(
+            f'writer_substep_census: UNRESOLVED @register argument(s) — {what} is NOT '
+            'trustworthy and no value may be emitted from it: '
+            + repr(c['unresolved_registrations']))
+    if c['parse_errors']:
+        raise SystemExit(
+            f'writer_substep_census: source files failed to parse — {what} is incomplete: '
+            + repr(c['parse_errors']))
+    if not c['files_scanned'] or not c['n_registrations']:
+        raise SystemExit(
+            f'writer_substep_census: scanned {c["files_scanned"]} file(s) under '
+            f'{c.get("scan_base")!r} and found {c["n_registrations"]} @register decorator(s). '
+            f'{what} would be EMPTY, and an empty writer set does not read as "unknown" '
+            f'downstream — it reads as "nothing builds any asset", which exempts every asset '
+            f'from the §8.3 item 5 efficiency gate (§19 / D-25 part 3). Refusing to emit it.')
+    return c
 
 
 def registered_asset_ids(force: bool = False) -> set:
@@ -206,21 +294,41 @@ def registered_asset_ids(force: bool = False) -> set:
     not per-class.
 
     H4/§N.8: this signal is only earned if the parser actually resolved everything it
-    saw. An unresolved @register argument, or a file the parser could not read, means
-    the census does NOT know the writer set — so it raises rather than returning a
-    quietly-short set that would read as "no writer" for the assets it missed.
+    saw — and, since M0-T28/F-2, if it saw anything at all. See `_assert_trustworthy`.
     """
-    c = census(force=force)
-    if c['unresolved_registrations']:
-        raise SystemExit(
-            'writer_substep_census: UNRESOLVED @register argument(s) — the code-derived '
-            'has_writer set is NOT trustworthy and no value may be emitted from it: '
-            + repr(c['unresolved_registrations']))
-    if c['parse_errors']:
-        raise SystemExit(
-            'writer_substep_census: source files failed to parse — the code-derived '
-            'has_writer set is incomplete: ' + repr(c['parse_errors']))
-    return set(c['writers'])
+    return set(_assert_trustworthy(census(force=force), 'the code-derived has_writer set')['writers'])
+
+
+def substep_truth_by_asset(force: bool = False) -> dict:
+    """The code-derived truth for `has_substeps`: `{asset_id: bool}`, one entry per
+    registered asset, `True` iff the @register'd class **OVERRIDES BOTH** `plan_substeps`
+    AND `run_substep` (the FROZEN contract's HEAVY shape, CLAUDE.md §N.2).
+
+    Nirmāṇa M0-T28 / F-1. Added so the workbook's `Substeps (code)` column can stop being
+    a file-granular regex (`'def plan_substeps' in txt` over the whole file, attributed to
+    every `@register` in it) and read the same AST override test the registry repair was
+    measured against. THREE traps this exists to avoid, all of which have caught agents in
+    this campaign:
+
+      · a regex counts docstring mentions of `@register(` / `def plan_substeps` and misses
+        real writers;
+      · a naive AST pass silently drops the `@register(ASSET_ID)` module-constant form
+        (4 of 123 registrations use it);
+      · **"has plan_substeps in the MRO" is a CONSTANT, not a detector** — `WriterBase`
+        defines both methods itself, so that test is true for all 123. The census resolves
+        the class graph WITHOUT WriterBase (`resolve()` appends `WriterBase(frozen base)`
+        to the chain and contributes none of its methods), so what is measured is a genuine
+        OVERRIDE by the writer or one of its project-local ancestors.
+
+    D-24 condition (b)'s discriminating pair is the check that this is file-granular no
+    longer: `bo_laksana` True and `bo_laksana_rerank` False, from the SAME source file.
+
+    Same §N.8 refusal as `registered_asset_ids()`: an empty or incomplete census raises
+    rather than returning a map in which every asset reads False.
+    """
+    c = _assert_trustworthy(census(force=force), 'the code-derived has_substeps map')
+    return {aid: bool(recs[0]['writer_truth_has_substeps'])
+            for aid, recs in c['writers'].items() if recs}
 
 
 if __name__ == '__main__':
