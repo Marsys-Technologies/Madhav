@@ -674,3 +674,6 @@
 {"ts":"2026-08-23T11:45:09Z","agent":"SUTRADHARA","status":"working","detail":"T45 done: consumer-side migration check closes the non-execution gap; mutation doctrine caught a hidden pass-path all 16 behavioural tests missed on FIRST use"}
 {"ts":"2026-08-23T11:45:13Z","agent":"LEKHAKA","status":"working","detail":"ledger sync 1ccf30051 (T45 complete, migration-drift check wired into CI)"}
 {"ts":"2026-08-23T11:46:47Z","agent":"KARAKA-M0-T46","status":"working","detail":"scorecard generator edited (crit-4/8/9, C-28 framing); about to test-run it read-only"}
+{"ts":"2026-08-23T11:50:15Z","agent":"LEKHAKA","status":"working","detail":"ledger sync 7e0850877 (T45 mutation doctrine caught hidden pass-path; T46 editing scorecard generator)"}
+{"ts":"2026-08-23T11:51:56Z","agent":"KARAKA-M0-T46","status":"working","detail":"deferral register D-38/D-39/D-42 application layer written; syntax OK, testing tally"}
+{"ts":"2026-08-23T11:53:14Z","agent":"PRAHARI","status":"working","detail":"loop tick 120: fleet fully productive -- T45 complete (consumer-side migration-drift check wired into CI, mutation doctrine caught a hidden pass-path all 16 behavioural tests missed on first use), T46 progressing (scorecard generator edit for crit-4/8/9 + C-28 framing, deferral register D-38/39/42 applied, testing tally). No stalls, no build_runs. Spend nominal."}
