@@ -1,0 +1,52 @@
+{
+  "ok": true,
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "horizon_months": 18,
+  "query_window": { "start": "2026-08-16", "end": "2028-02-07" },
+  "anchors": [
+    { "anchor_id": "acdce3e1-376c-4781-bf71-54a669a2f188", "window": { "start": "2025-03-29", "end": "2027-09-12" }, "domain": "relationship", "event_type": "marriage" },
+    { "anchor_id": "30fe8756-3341-40fc-94fd-a2e1cc1b395d", "window": { "start": "2025-03-29", "end": "2027-09-12" }, "domain": "career", "event_type": "career_entry" },
+    { "anchor_id": "8674627d-134c-4302-8253-21ee66313a0a", "window": { "start": "2025-10-18", "end": "2026-10-14" }, "domain": "transition", "event_type": "transition_convergence_event" },
+    { "anchor_id": "5f64e035-3af3-4446-863e-cc0a9b64d3cb", "window": { "start": "2026-06-01", "end": "2027-05-28" }, "domain": "transition", "event_type": "transition_convergence_event" },
+    { "anchor_id": "5ab5b95b-c6fe-4dd2-b4f1-dfd608e203c7", "window": { "start": "2026-08-12", "end": "2026-11-10" }, "domain": "health", "event_type": "health_discovery_event" }
+  ],
+  "anchors_note": "All 5 served anchors overlap query_window [2026-08-16, 2028-02-07]. trim_report shows anchors floored 27->5 (hard-cap), not a windowing defect.",
+  "mitigations": [
+    { "mitigation_id": "9877c64a-1f0b-4141-8c14-6cf65a1f60da", "obstruction_id": 32491, "window_start": "2022-07-12", "window_end": "2024-12-25", "overlaps_query_window": false },
+    { "mitigation_id": "25307b6d-9d58-4c6d-a6bc-e92058a2600a", "obstruction_id": 32608, "window_start": "1996-02-16", "window_end": "1998-08-01", "overlaps_query_window": false },
+    { "mitigation_id": "61c1d01d-0377-4192-880e-a79f33caabfc", "obstruction_id": 32584, "window_start": "1995-06-02", "window_end": "1997-11-14", "overlaps_query_window": false },
+    { "mitigation_id": "f433e590-e182-490e-9b1f-7253f2fc5d0d", "obstruction_id": 32586, "window_start": "1996-02-16", "window_end": "1998-08-01", "overlaps_query_window": false },
+    { "mitigation_id": "d1b43d85-a4af-4ba4-846b-451f02dbef3f", "obstruction_id": 32604, "window_start": "2022-07-12", "window_end": "2024-12-25", "overlaps_query_window": false },
+    { "mitigation_id": "00db03db-e05a-4e84-a032-77cca4764c2c", "obstruction_id": 32529, "window_start": "2025-03-29", "window_end": "2027-09-12", "overlaps_query_window": true },
+    { "mitigation_id": "47e7fcdf-9f86-4de4-bbb7-9fbd7b8db8bf", "obstruction_id": 32489, "window_start": "1966-04-08", "window_end": "1968-09-21", "overlaps_query_window": false, "predates_native_birth_1984-02-05_by_years": 17.8 },
+    { "mitigation_id": "5ed8845a-f12e-4cf0-94e3-cfdc47889ee3", "obstruction_id": 32581, "window_start": "1993-10-15", "window_end": "1996-03-29", "overlaps_query_window": false },
+    { "mitigation_id": "f0c447d9-0fce-42fb-b3a1-cd1d061d10c9", "obstruction_id": 32487, "window_start": "1996-02-16", "window_end": "1998-08-01", "overlaps_query_window": false },
+    { "mitigation_id": "aa3cad77-ea86-4b5d-8380-6e4c434974c8", "obstruction_id": 32545, "window_start": "2025-03-29", "window_end": "2027-09-12", "overlaps_query_window": true }
+  ],
+  "mitigations_summary": {
+    "served_count": 10,
+    "overlapping_query_window_count": 2,
+    "not_overlapping_count": 8,
+    "predates_birth_count": 1
+  },
+  "trim_report": [
+    { "path": "mitigations", "original_count": 100, "kept_count": 10, "reason": "mitigations: trimmed to 10", "recover_via_hint": "call phala_outlook_get again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of \"mitigations\" -- MISLEADING: mitigation_map() accepts no date_range/horizon parameter at all; this hint promises a recovery path that does not exist in the underlying function signature." },
+    { "path": "anchors", "original_count": 27, "kept_count": 5, "reason": "anchors: floored to 5 (hard-cap)" },
+    { "path": "auspicious_windows", "original_count": 30, "kept_count": 10, "reason": "auspicious_windows: trimmed to 10" }
+  ],
+  "provenance_envelope_PH-4-2": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "anchor_id_filter": null,
+    "mitigation_type_filter_requested": null,
+    "mitigation_type_filter_applied": false,
+    "mitigation_type_filter_note": null,
+    "asset": "phala.mitigation",
+    "asset_version": "1.0",
+    "build_tag": "PH-4-2",
+    "source": "phala.mitigation",
+    "computed_at": "2026-08-16T07:44:47.693678+00:00",
+    "note": "No horizon_months / date_range / query_window field anywhere in this layer_provenance block. No disclosure that served rows fall outside the requested horizon."
+  },
+  "reproduce_cmd": "mcp__marsys-jis-direct__phala_outlook_get(chart_id='482012f1-710e-4a25-994a-93821f5871aa', horizon_months=18)",
+  "reproduced_at": "2026-08-16 (live session, worktree par-s5-lead)"
+}

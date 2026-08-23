@@ -1,0 +1,61 @@
+{
+  "artifact": "F-141_pre_write",
+  "purpose": "PAR-R-9 mandated snapshot: full pre-write state of every asset_throughput row matching the F-141 invariant violation, captured BEFORE any future write touches them. Preserve, do not repair.",
+  "ruling": "PAR-R-9 (LEDGER_PRATINIDHI.md, par/pratinidhi-ledger) — NO DB WRITE authorized. This file is disclosure evidence only.",
+  "captured_by": "ADHARA-LEAD (S6), via mcp__postgres__query, read-only",
+  "captured_at": "2026-08-16T (this session, live production query, independently re-derived — not copied from PAR-R-9's table)",
+  "query": "SELECT chart_id, asset_id, state, rows_written, last_built_at, last_error FROM asset_throughput WHERE state IN ('lit','mature') AND last_error IS NOT NULL AND last_error <> '' ORDER BY chart_id NULLS FIRST, asset_id;",
+  "row_count": 5,
+  "cross_check": {
+    "matches_PAR-R-9_table": true,
+    "note": "Independently re-run this session against live production; chart_id/asset_id/state/rows_written/last_built_at all match PAR-R-9's table exactly. rows_written(11069325) - last_error's stated present-row-count(8599775) = 2469550, matching PAR-R-9's corrected overstatement figure exactly."
+  },
+  "rows": [
+    {
+      "chart_id": null,
+      "asset_id": "bg_ghatana",
+      "state": "lit",
+      "rows_written": 22,
+      "last_built_at": "2026-08-02T13:49:13.963838+00:00",
+      "last_error": "NotNullViolation: null value in column \"temporal_shape\" of relation \"brahma_event_ontology\" violates not-null constraint\nDETAIL:  Failing row contains (career_entry, Career Entry, career, career, {\"lords\": [\"10L\", \"6L\"], \"houses\": [\"10\", \"6\", \"1\"], \"vargas\": [..., moderate, [\"career_change\"], {\"band_0_12\": 0.0, \"band_13_25\": 0.55, \"band_26_40\": 0.2, \"band_..., null, {\"BPHS ch.10 (karma-bhava)\",\"Phaladeepika ch.10\"}, 1.1, 2026-08-02 13:49:13.927863+00, null, null, null, null, {}, f, []).",
+      "candidate_mechanism": "PAR-R-9 prime suspect (unverified, next-trace): asset_runner.py:587's forced-'lit' path for chart_id IS NULL global service singletons. This session traced the immediately-surrounding code (asset_runner.py ~575-660, the D-1.6 no-op-completion / zero_rows_is_complete logic) and did NOT find an explicit last_error=NULL clear guaranteed on this specific promotion branch for the zero_rows_is_complete/global-singleton case -- consistent with (but not proof of) the suspicion that this path can promote to 'lit' while leaving a stale last_error from an earlier failed run untouched. Not confirmed as the mechanism; further tracing needed (see DIAGNOSIS.md addendum)."
+    },
+    {
+      "chart_id": null,
+      "asset_id": "bg_reference",
+      "state": "lit",
+      "rows_written": 1485,
+      "last_built_at": "2026-08-07T17:43:37.313275+00:00",
+      "last_error": "KeyError: 0",
+      "candidate_mechanism": "Same class as bg_ghatana (global singleton, raw exception trace, ~2 weeks old)."
+    },
+    {
+      "chart_id": null,
+      "asset_id": "bg_transit_engine",
+      "state": "lit",
+      "rows_written": 9,
+      "last_built_at": "2026-08-02T13:50:01.777737+00:00",
+      "last_error": "ForeignKeyViolation: update or delete on table \"bg_transit_rules\" violates foreign key constraint \"gochara_resonance_map_source_rule_id_fkey\" on table \"gochara_resonance_map\"\nDETAIL:  Key (id)=(133) is still referenced from table \"gochara_resonance_map\".",
+      "candidate_mechanism": "Same class as bg_ghatana. Same last_built_at second (13:50:01) as bg_transit_rules below and near-identical FK error referencing the same key(133) -- these two look like the same failed build event, not independent failures."
+    },
+    {
+      "chart_id": null,
+      "asset_id": "bg_transit_rules",
+      "state": "lit",
+      "rows_written": 50,
+      "last_built_at": "2026-08-02T13:50:01.821982+00:00",
+      "last_error": "ForeignKeyViolation: update or delete on table \"bg_transit_rules\" violates foreign key constraint \"gochara_resonance_map_source_rule_id_fkey\" on table \"gochara_resonance_map\"\nDETAIL:  Key (id)=(133) is still referenced from table \"gochara_resonance_map\".",
+      "candidate_mechanism": "Same class as bg_transit_engine -- see note there."
+    },
+    {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "asset_id": "ka_kshetra",
+      "state": "lit",
+      "rows_written": 11069325,
+      "last_built_at": "2026-08-15T06:28:11.690022+00:00",
+      "last_error": "orphan-watchdog: heartbeat went stale while a substep plan was in flight. 301 substep(s) committed and 8599775 data row(s) are present, but this route cannot prove the plan finished, so the asset was NOT promoted to 'lit'. Re-run the build to complete the plan (substep progress is resumable).",
+      "candidate_mechanism": "PAR-R-9 confirmed: none of the three orchestrator promote paths (asset_runner.py:335, :517-518, :696 -- all set last_error=NULL) nor the watchdog route's own promote path (route.ts:235-237, also last_error=NULL under AND state='building') can produce this row as it stands. Genuinely untraced -- a different mechanism than the four global singletons above (per-chart, watchdog-authored prose text vs. raw exception traces; ~13 days more recent). rows_written overstates the actual present-row sum (10,502,780 across the 7 field tables, verified this session) by 566,545, and overstates the last_error's own stated 8,599,775 present-row figure by 2,469,550 -- two different overstatement figures depending which baseline is used; both are real and both need explanation, not reconciliation."
+    }
+  ],
+  "explicitly_not_done": "No UPDATE, no DELETE, no repair, no rebuild. This file is read-only disclosure per PAR-R-9. Do not treat its presence as authorization for any future write beyond what PAR-R-9 itself authorizes."
+}

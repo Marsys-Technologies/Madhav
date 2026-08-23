@@ -1,0 +1,46 @@
+{
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "without_domain": {
+    "type": "object",
+    "object": {
+      "ok": true,
+      "trace_id": "9b8c9ecb-0850-4f2d-9ed4-cd5407829b4c",
+      "result": {
+        "tool_name": "query_calibration",
+        "tool_version": "1.0",
+        "invocation_params": { "chart_id": "482012f1-710e-4a25-994a-93821f5871aa" },
+        "result_hash": "sha256:8e64ba7d16a7a2aa6f1155a250acafcaa717397aa6927fe90b496f33e1e833b5",
+        "served_from_cache": false,
+        "latency_ms": 91
+      }
+    }
+  },
+  "with_domain_career": {
+    "type": "object",
+    "object": {
+      "ok": true,
+      "trace_id": "1070d146-1ffb-42e2-b7cb-8ecede01a594",
+      "result": {
+        "tool_name": "query_calibration",
+        "tool_version": "1.0",
+        "invocation_params": { "chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "career" },
+        "result_hash": "sha256:8e64ba7d16a7a2aa6f1155a250acafcaa717397aa6927fe90b496f33e1e833b5",
+        "served_from_cache": false,
+        "latency_ms": 10
+      }
+    }
+  },
+  "hash_comparison": "IDENTICAL - domain param confirmed no-op",
+  "db_verification": {
+    "table": "mimamsa_calibration",
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "verdict_distribution": [
+      { "composite_verdict": "CONFIRMED", "n": 2 },
+      { "composite_verdict": "PARTIAL", "n": 23 },
+      { "composite_verdict": "REFUTED", "n": 7 },
+      { "composite_verdict": "UNRESOLVED", "n": 25 }
+    ],
+    "total_rows": 57,
+    "note": "mimamsa_calibration table has NO domain column; domain lives on mimamsa_predictions, joinable via prediction_id"
+  }
+}

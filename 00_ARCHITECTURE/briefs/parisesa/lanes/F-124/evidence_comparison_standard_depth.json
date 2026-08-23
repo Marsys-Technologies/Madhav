@@ -1,0 +1,39 @@
+{
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "calls": "assess_career, assess_marriage, assess_health, assess_wealth -- all at default (standard) reading_depth, same chart",
+  "results": {
+    "assess_career": {
+      "composition_report.included_layers": ["kernel", "grounding", "evidence"],
+      "composition_report.counts.reading_families": 12,
+      "grounding_keys": ["orientation_context", "orientation_ok", "reading"],
+      "has_reading": true,
+      "has_domain_completeness": false,
+      "has_completeness_directive": false
+    },
+    "assess_wealth": {
+      "composition_report.included_layers": ["kernel", "grounding", "evidence"],
+      "composition_report.counts.reading_families": 13,
+      "grounding_keys": ["orientation_context", "orientation_ok", "reading"],
+      "has_reading": true,
+      "has_domain_completeness": false,
+      "has_completeness_directive": false
+    },
+    "assess_marriage": {
+      "composition_report.included_layers": ["kernel", "grounding", "evidence"],
+      "composition_report.counts.reading_families": 0,
+      "grounding_keys": ["orientation_context", "orientation_ok"],
+      "has_reading": false,
+      "has_domain_completeness": false,
+      "has_completeness_directive": false
+    },
+    "assess_health": {
+      "composition_report.included_layers": ["kernel", "grounding", "evidence"],
+      "composition_report.counts.reading_families": 0,
+      "grounding_keys": ["orientation_context", "orientation_ok"],
+      "has_reading": false,
+      "has_domain_completeness": false,
+      "has_completeness_directive": false
+    }
+  },
+  "note": "Confirms F-124's 'reading' asymmetry exactly (career/wealth populated, marriage/health absent). Also shows a defect the finding's own evidence files predate: NONE of the four tools return domain_completeness or completeness_directive today, even career/wealth -- see F-14 DIAGNOSIS.md section 3.4 (buildAssessResponse key-mismatch at registry_bridge.ts:2925). Full raw JSON for all four calls is in the parent session transcript; this file is the extracted structural diff Stage D's contract requires."
+}

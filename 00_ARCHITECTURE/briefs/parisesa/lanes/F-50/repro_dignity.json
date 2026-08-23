@@ -1,0 +1,16 @@
+{
+  "call": "ganita_condition_get(chart_id='482012f1-710e-4a25-994a-93821f5871aa', facet='dignity')",
+  "captured_at": "2026-08-16 (Stage-D DIAGNOSE lane, F-50)",
+  "relevant_row": {
+    "fact_id": "355fe607160e1d76",
+    "fact_category": "graha_dignity_per_varga",
+    "fact_subject": "D1_SAT",
+    "ayanamsha_id": "lahiri_chitrapaksha",
+    "fact_key": "dignity_state",
+    "fact_value_text": "exalted",
+    "fact_value_jsonb": {"sign": "Libra", "house": 7, "varga": "D1"},
+    "verification_pass_status": "single",
+    "citation_ref": "graha_dignity_per_varga.D1_SAT.dignity_state@chart=482012f1-710e-4a25-994a-93821f5871aa:ay=lahiri_chitrapaksha:eng=pyjhora/1.0.0"
+  },
+  "confirms": "D1 Saturn is exalted in Libra house 7 — consistent with the claim's premise that Saturn is one of the chart's structurally STRONGER planets, in tension with the remedy layer calling it the '#1 remedy-priority target' under the graha filter."
+}

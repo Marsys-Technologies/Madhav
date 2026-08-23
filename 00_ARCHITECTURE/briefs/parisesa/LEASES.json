@@ -1,0 +1,104 @@
+{
+  "_meta": {
+    "artifact": "PARISESA_LEASES",
+    "version": "0.1",
+    "sole_writer": "SUTRADHARA",
+    "rule": "One file, one writer, always. A lane whose mechanism lives outside its stream's lease posts PAR-<F-nn>-NEEDS-LEASE and does not edit; conductor re-leases or routes the spec to the owning stream."
+  },
+  "streams": {
+    "S1_DVARA": {
+      "findings": ["F-11", "F-25", "F-67", "F-73", "F-09", "F-17", "F-18", "F-43", "F-123", "F-38"],
+      "owns": [
+        "platform/src/lib/retrieval/registry/tool_name_bridge.ts",
+        "platform-mcp/src/server.ts",
+        "platform-mcp/src/tools/*register*.ts (registration files)",
+        "platform/src/lib/mcp/bundle_adapters.ts",
+        "platform/src/app/api/mcp/primitives/**"
+      ],
+      "notes": "dualOutput/pointer helpers. CORRECTED (S1 Stage-S): F-38's real mechanism is NOT platform/src/app/api/mcp/primitives/** as originally planned — both candidate HTTP routes already have a working entitlement gate. The actual gap is now.ts never calling the existing remoteAuthorize helper 7+ sibling tools already use. now.ts is S4's lease — F-38 ROUTES to S4 to build: S1 keeps the finding, specs (documents only), S4's builder applies once VERIFIED-COMPLETE. Original primitives/** framing retired. ROUTED (conductor, post-Stage-D): F-09's mechanism lives in S2's HOT response_budget.ts — S1 keeps the finding, diagnoses/specs (documents only), S2's single hot-file builder applies once VERIFIED-COMPLETE, same pattern as F-38. F-123's mechanism lives in S4's kala_views/{now.ts,explain.ts} — same pattern, S1 specs, S4 builds. F-28 (S2's finding) ROUTES here: mechanism is tool_name_bridge.ts's toToolBundleResults (already S1's lease) — S2 diagnoses/specs, S1 builds once VERIFIED-COMPLETE. F-46 (S2's finding) partial route here: register_p1_ganita.ts piece (covered by S1's existing *register*.ts lease) builds here; the register_p1_synthesis.ts piece follows that file's existing ordered-handoff state (currently S5, later S4)."
+    },
+    "S2_MATRA": {
+      "findings": ["F-13", "F-28", "F-56", "F-111", "F-112", "F-122", "F-12", "F-36", "F-37", "F-45", "F-44", "F-14", "F-15", "F-46", "F-124", "F-125"],
+      "owns": [
+        "platform-mcp/src/lib/response_budget.ts",
+        "platform-mcp/src/tools/registry_bridge.ts",
+        "platform-mcp/src/tools/kala_views/elect.ts",
+        "platform-mcp/src/tools/kala_views/story.ts",
+        "platform-mcp/src/tools/kala_views/ritual.ts",
+        "platform-mcp/src/tools/kala_views/priority.ts",
+        "platform-mcp/src/tools/kala_views/shared.ts"
+      ],
+      "hot_single_builder_files": ["platform-mcp/src/lib/response_budget.ts", "platform-mcp/src/tools/registry_bridge.ts"],
+      "notes": "response_budget.ts + registry_bridge.ts belong to ONE builder all day, no exceptions. registry_bridge.ts: S1's F-38 and S3's disclosure lanes must NOT touch it directly — S1 builds middleware instead; S3 posts a spec if a bridge flip is needed and S2's builder applies it. Also incoming from S3: F-31's registry_bridge.ts piece (VERIFIER-COMPLETE spec gate, same pattern). CORRECTED (post Stage-D): BOARD.md's original 'ekv/a-09-sara-kernel BRANCH-EXISTS' note for F-12/F-36/F-37/F-45 was wrong — that branch's diff never touches these findings' files. ROUTED: F-12, F-37, F-45 build-route to S5 (mechanism in L1_ganita/register_p1_aliases.ts/register_p1_synthesis.ts/L3_kala/L2_bodha, all S5 lease) — S2 keeps the finding, specs, S5 builds once VERIFIED-COMPLETE. F-36 stays S2's own build (mechanism confirmed in register_d7_channel.ts, now added to S5's lease per below — actually routes to S5 too, S2 diagnoses/specs only)."
+    },
+    "S3_SATYA": {
+      "findings": ["F-31", "F-33", "F-34", "F-35", "F-78", "F-134", "F-68", "F-69", "F-117", "F-126", "F-47", "F-48"],
+      "owns": [
+        "platform/src/lib/retrieval/registry/layers/L4_phala/**",
+        "platform/src/lib/retrieval/registry/layers/L5_mimamsa/**",
+        "platform/python-sidecar/services/ph_nimitta/**",
+        "platform/python-sidecar/brahmagyan/phala/muhurta.py",
+        "platform-mcp/src/tools/retrieval/register_gochara_windows.ts — GRANTED post Stage-R, see notes (F-34 exemplar)",
+        "platform/src/lib/retrieval/registry/layers/reading_checklist.ts — ADDED post-Phase-0 for F-134, unowned at Phase 0, S3 already specced it",
+        "platform-mcp/src/tools/register_d9_judgment.ts — ADDED post-Phase-0 for F-134 passthrough",
+        "platform-mcp/src/tools/register_d8_assess_domain.ts — ADDED post-Phase-0 for F-134 passthrough"
+      ],
+      "notes": "GRANTED (conductor, post VERIFIER wave-1 catch): platform-mcp/src/tools/retrieval/register_gochara_windows.ts added to S3's OWNS above — F-34's SPEC.md incorrectly claimed this was already S3's exclusive lease per plan; it was actually unowned by any stream. Since S3 is already the working owner (F-34 diagnosed/specced there, F-34 is the CL-13 exemplar all of F-35/F-78/F-134 depend on), granting formally rather than disrupting the exemplar chain. CL-13's six findings (F-31,F-33,F-34,F-35,F-78,F-134) share one predicate — exemplar F-34, then replicate. If a registry_bridge.ts flip is needed, post spec to S2, do not edit directly. ROUTED (conductor): F-08 (S5's finding) is inbound to S3 to BUILD once S5 posts a VERIFIED-COMPLETE spec against L4_phala — S3 does not diagnose it, just applies. F-117: CONFIRMED by S3 as bodha_writers/formulas.py + pipeline/orchestrator/writers/bo_upaya.py, both under S5's L2_bodha lease — S3 keeps the finding, specs, S5's builder applies once VERIFIED-COMPLETE. F-48's real-transit-computation-vs-disclosure fork resolved directly per the same standing tie-breaker as F-31 (disclose more): real Swiss Ephemeris integration doesn't exist in this codebase, out of scope; disclosure of the lunar-phase approximation is the in-scope fix, same reasoning PRATINIDHI applied to F-31/PAR-R-8. No fresh PRATINIDHI ruling needed, direct precedent application."
+    },
+    "S4_VACA": {
+      "findings": ["F-50", "F-63", "F-93", "F-116", "F-120", "F-121", "F-135", "F-129", "F-130", "F-132"],
+      "owns": [
+        "narration/template composers (synth_chart_brief, kala_views reading+thesis composers, bodha_remedies narration, prashna_ask synthesis)",
+        "v3 register/reading_contract glossing module",
+        "platform-mcp/src/tools/kala_views/now.ts",
+        "platform-mcp/src/tools/kala_views/explain.ts",
+        "platform-mcp/src/tools/kala_views/ahead.ts",
+        "platform-mcp/src/tools/kala_views/upaya.ts"
+      ],
+      "ordered_handoff_pending": {
+        "register_p1_synthesis.ts": "S5 holds first (small CL-03 predicate fixes); re-lease to S4 the moment S5's lanes in this file are VERIFIED. S4 may diagnose/spec (documents only) meanwhile."
+      },
+      "notes": "kala_views split by file vs S2: S4 owns now.ts/explain.ts/ahead.ts/upaya.ts; S2 owns elect.ts/story.ts/ritual.ts/priority.ts/shared.ts. F-38 (S1's finding) ROUTES here for build: real mechanism is now.ts missing a remoteAuthorize call, not primitives/** as originally planned — S1 specs, S4 builds once VERIFIED-COMPLETE. F-73 (S1's finding) ROUTES here too: now.ts calls a phantom URI for gochara_forecast_get instead of an in-process call to computeGocharaForecast — same file as F-38, S1 specs, S4 builds once VERIFIED-COMPLETE. F-125 (S2's finding) ROUTES here for its upaya.ts piece — S2 diagnoses/specs, S4 builds that piece once VERIFIED-COMPLETE; the register_p1_aliases.ts piece routes to S5 (see S5's ordered_handoff_owed). F-63 (S4's own finding) ROUTES OUT to S6: mechanism is ga_panchanga_writer.py, under S6's ga_writers/** lease — S4 diagnoses/specs (documents only), S6's builder applies once VERIFIED-COMPLETE. RS-A (writer-layer, needs the batched rebuild per ND-PARISESA-1/PAR-R-10)."
+    },
+    "S5_MULA": {
+      "findings": ["F-03", "F-06", "F-08", "F-10", "F-26", "F-27", "F-133", "F-04", "F-05", "F-22", "F-61", "F-70"],
+      "owns": [
+        "platform-mcp/src/tools/register_p1_aliases.ts",
+        "platform-mcp/src/tools/register_p1_synthesis.ts",
+        "capability SQL under layers/L0_*",
+        "platform (L1_ganita/** query files)",
+        "platform (L2_bodha/** query files)",
+        "platform (L3_kala/** query files) — ADDED post-Phase-0 for F-26, see notes",
+        "platform-mcp/src/lib/kala_envelope.ts — ADDED post-Phase-0 for F-70, see notes",
+        "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts — ADDED post-Phase-0, resolves F-36's lease gap + F-03's query_mantras/query_remedies_by_planet siblings + S5's own F-05, all confirmed live in this file"
+      ],
+      "ordered_handoff_owed": {
+        "register_p1_aliases.ts": "S1 goes FIRST on this file (dualOutput toolName mechanical sweep, ~19 sites, one commit); re-leased to S5 once S1's sweep lands. Both streams diagnose in parallel meanwhile. F-125's register_p1_aliases.ts piece (S2's finding) also queues here behind S1's sweep, alongside S5's own CL-03 work."
+      },
+      "notes": "register_p1_synthesis.ts: S5 holds first for its small CL-03 predicate fixes, then hands to S4 once VERIFIED (see S4 ordered_handoff_pending). LEASE EXPANSION (conductor call, 2026-08-16 T+~1h): L3_kala/** query files added to S5's OWNS below — F-26's real mechanism lives there and no stream previously covered it; S5 already owns 4 of 5 sibling CL-02 dead-backend findings (F-04,F-05,F-22,F-61,F-70), natural fit, not a contested two-stream conflict so no PRATINIDHI ruling needed. F-08 (S5 finding) ROUTES to S3: mechanism lives in S3's L4_phala lease — S5 diagnoses/specs (documents only), S3's builder applies once VERIFIED-COMPLETE. F-70 (S5's own finding): recommended fix is ONE shared helper in platform-mcp/src/lib/kala_envelope.ts (unowned by any stream at Phase 0, same gap class as L3_kala) — added to S5's OWNS since it's S5's finding. Once S5's kala_envelope.ts spec is VERIFIED-COMPLETE: S2's builder wires the corrected call at its 4 sites (elect/story/ritual/priority.ts), S4's builder wires its 4 sites (now/explain/ahead/upaya.ts) — each stream applies the call-site fix in files it already owns, S5 only owns the shared helper itself."
+    },
+    "S6_ADHARA": {
+      "findings": ["F-62", "F-01", "F-23", "F-54", "F-136", "F-79", "F-81", "F-94", "F-95", "F-139", "F-141"],
+      "owns": [
+        "platform/python-sidecar/ga_writers/**",
+        "platform/python-sidecar/pipeline/orchestrator/writers/**",
+        "platform/scripts/governance/**",
+        "00_ARCHITECTURE/** (governance docs)",
+        "platform/python-sidecar/services/ka_kshetra/** — ADDED post-Phase-0 for F-78 build routing, see notes",
+        "platform/python-sidecar/brahmagyan/ganita/l1_strength.py — ADDED post-Phase-0, 4th dignity-oracle consumer site found during F-62 build, kept with the same team already touching the other 3 sites"
+      ],
+      "notes": "F-01 already LIVE, dropped from work list. F-62: adopt ekv/b-01-dignity-oracle (see BOARD.md PAR-R-1 correction — NOT the -fix variant, both point to the same commit) into a fresh worktree — must land before any Ṣaḍbala-consuming lane re-tests. F-141 is confirmed-live CL-00 red, build early so baseline goes green by fixing. F-78 (S3's finding) ROUTES build to S6: real mechanism is in services/ka_kshetra/** (L3 Kāla writer), unowned at Phase 0, added here since S6 is already working this exact subsystem for F-141 — S3 diagnoses/specs (documents only), S6's builder applies once VERIFIED-COMPLETE."
+    }
+  },
+  "conductor_reserved": {
+    "owns": [
+      "00_ARCHITECTURE/briefs/parisesa/BOARD.md",
+      "00_ARCHITECTURE/briefs/parisesa/LEASES.json"
+    ],
+    "notes": "Sole writer: SUTRADHARA. parisesa_manifest.json is INTEGRATOR's sole-write file, not conductor's."
+  },
+  "hot_files_single_writer_enforced": [
+    "platform-mcp/src/lib/response_budget.ts",
+    "platform-mcp/src/tools/registry_bridge.ts"
+  ]
+}
