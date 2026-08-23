@@ -611,3 +611,7 @@
 {"ts":"2026-08-23T09:27:37Z","agent":"KARAKA-M0-T44","status":"working","detail":"fix implemented; 6/6 new tests pass; entering proof phase"}
 {"ts":"2026-08-23T09:28:36Z","agent":"ADHIKARIN","status":"working","detail":"D-40: withdrew D-39's impossible 'CI must gate live' (no DB credential in Actions); amended D-34 - a baseline you created cannot validate itself, prove it against git HEAD before mutating"}
 {"ts":"2026-08-23T09:30:22Z","agent":"LEKHAKA","status":"working","detail":"ledger sync 30322f4e7 (D-39/D-40 landed, T43 all 4 files mutation-proved, T44 in proof phase)"}
+{"ts":"2026-08-23T09:38:05Z","agent":"KARAKA-M0-T44","status":"working","detail":"resumed after API interruption; baseline re-proved; adding structural detector for surviving mutation C"}
+{"ts":"2026-08-23T09:38:21Z","agent":"KARAKA-M0-T43","status":"working","detail":"resumed after API interruption; re-establishing state from tree not memory. 4 test files present+untracked, commit did NOT land. Re-running tests."}
+{"ts":"2026-08-23T09:38:39Z","agent":"SUTRADHARA","status":"working","detail":"two KARAKA killed by CLAMSHELL sleep (lid closed on battery 15:00-15:06 IST); caffeinate -i cannot prevent that; no stray mutations; both agents resumed"}
+{"ts":"2026-08-23T09:39:47Z","agent":"KARAKA-M0-T44","status":"working","detail":"deploy.yml assertion added + 4 shell paths exercised; running scripts test dir"}
