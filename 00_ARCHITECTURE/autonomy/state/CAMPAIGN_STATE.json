@@ -1329,7 +1329,8 @@
       "id": "M0-T62",
       "what": "DISPATCHED on SQ-12, the PREREQUISITE that must land before SQ-14 can safely run the deferral-register generator. DEFECT CONFIRMED STILL LIVE BY ME at 15:42Z: m0_deferral_register.py references platform/scripts/governance/asset_catalogue_disclosed_residuals.json at lines 72, 257, 336 and 724, with 724 reading as a write set. SQ-12 offers TWO acceptable answers and the task was told to pick on the merits rather than default: the generator stops writing that path, OR the path is declared in scope and the write is intended and documented. Told to READ BEFORE CHOOSING -- if a consumer genuinely needs the generator to maintain part of that file, option 1 would break it SILENTLY, a worse defect than the one being fixed. WHY THIS FILE IS DANGEROUS AND WHY THE TASK EXISTS: the JSON currently holds D-54's fifteen authorised disclosures on D-57's corrected ground, written by T49, corrected by T51 and T55, certified across V-35/V-37, and it is the artifact the flip precondition rests on -- so a generator run that silently overwrote it would REVERT AUTHORISED GOVERNANCE WORK AND THE REVERT WOULD LOOK LIKE A CLEAN GENERATOR RUN. Forbidden from running the generator against the live file; must work on copies with absolute paths (R7) and prove its baseline against the HEAD blob first (R2). Required to leave a DETECTOR behind -- a fix with no detector is the defect the campaign exists to remove.",
       "owner": "KARAKA-M0-T62",
-      "state": "in_flight"
+      "state": "IN FLIGHT — chose OPTION 1, and PROVED the hazard at full scale on copies",
+      "what2": "M0-T62 chose SQ-12's OPTION 1 (the generator stops writing that path) on evidence rather than preference: THE LIVE JSON HAS ZERO REFERENCES TO THE GENERATOR -- the block was detached by M0-T49/T51/T55 -- so nothing depends on the write and option 1 breaks no consumer. It removed the write and landed a DECLARED_WRITES / _write() RUNTIME GUARD, i.e. a detector rather than only a fix, which is what the dispatch required. AND IT QUANTIFIED THE HAZARD AT FULL SCALE, PROVEN ON COPIES: the OLD generator REVERTS ALL FIFTEEN D-54 AUTHORISED DISCLOSURES -- 3 deleted outright, 12 reset to gating_effect 'none', authorised_by 15 -> 0. That is the entire authorised demotion set, destroyed by one ordinary generator run, and the revert would have looked like a clean run. THE TICK-5 DISPATCH-ORDER HOLD IS THEREFORE FULLY VINDICATED: had SQ-14 been dispatched before SQ-12, it would have run that generator and silently undone D-54, D-57, V-35 and V-37 in a single command."
     },
     {
       "id": "M0-T60-DERIVED-THE-OPPOSITE-ANSWER",
@@ -1372,10 +1373,16 @@
       "what": "GOVERNANCE NOTE for D-63/D-66, surfaced by M0-T61: 00_ARCHITECTURE/autonomy/mailbox is gitignored, so the to_verifier/ copy a KARAKA drops CANNOT BE COMMITTED. The tracked reports/ path is the ONLY durable copy and the mailbox copy is COURTESY, NOT REDUNDANCY. Stated plainly because it changes what 'I filed my report' means: an agent that writes only to to_verifier/ HAS WRITTEN NOTHING DURABLE, and the dispatch brief is currently the only thing telling it otherwise -- prompts/karaka.md still points only at the mailbox (SQ-22's open second half).",
       "owner": "ADHIKARIN",
       "state": "raised"
+    },
+    {
+      "id": "HAZARD-QUANTIFIED-SQ14-BEFORE-SQ12",
+      "what": "CLOSING THE LOOP ON A CONDUCTOR CALL, with the number now measured rather than estimated. At tick 5 I recorded HOTSPOT-RESIDUALS-JSON-SERIALIZE and HELD SQ-14, on the reasoning that it requires RUNNING m0_deferral_register.py while SQ-12 records that the generator writes asset_catalogue_disclosed_residuals.json as an undeclared side effect -- so the run would clobber authorised work and the clobber would look like a clean generator run. M0-T62 has now MEASURED that on copies: the old generator REVERTS ALL 15 D-54 AUTHORISED DISCLOSURES (3 deleted, 12 reset to gating_effect none, authorised_by 15 -> 0). Had I dispatched SQ-14 first, one ordinary generator run would have silently undone D-54's authorisation, D-57's corrected ownership ground, and the work certified at V-35 and V-37 -- and the flip precondition would have quietly reverted with no failing detector anywhere. RECORDED because the alternative history is invisible: a hold that prevents a disaster leaves no trace, and this is the one case where the counterfactual got measured.",
+      "owner": "SUTRADHARA",
+      "state": "vindicated"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T15:54:15Z",
+  "last_updated_ts": "2026-08-23T15:56:05Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {

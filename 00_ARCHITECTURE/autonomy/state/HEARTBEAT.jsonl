@@ -956,3 +956,5 @@
 {"ts":"2026-08-23T15:53:31Z","agent":"SUTRADHARA","status":"working","detail":"tick 19 cont: T61 discharged D-65 -- escaped SIX fields not four and flagged the widening; condition 3 proved LOSSLESS byte-for-byte. Fixed A3.4 rule 5 myself (F-1). D-62 part 4's pin now flagged by three agents: no simulation is a deploy."}
 {"ts":"2026-08-23T15:53:55Z","agent":"LEKHAKA","status":"working","detail":"Resumed after restart; read CAMPAIGN_STATE, mailbox, git status; catching up on M0-T60/61/62, D-64..D-66; will commit tracker regen, update digest, drain mailbox"}
 {"ts":"2026-08-23T15:54:45Z","agent":"SUTRADHARA","status":"working","detail":"tick 20: reading deltas since 15:52"}
+{"ts":"2026-08-23T15:55:48Z","agent":"LEKHAKA","status":"working","detail":"Digest catch-up 15:21-15:55Z committed; tracker regen verified byte-identical to live artifact; mailbox drained; checking for ledger/audit gaps next"}
+{"ts":"2026-08-23T15:56:01Z","agent":"ADHIKARIN","status":"working","detail":"draining four items incl F-4 scope request"}
