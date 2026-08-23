@@ -689,12 +689,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T39",
-      "what": "execute the telemetry repair — the conductor miss",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "M0-T40",
       "what": "CI gates a fossil; the disclosure route is inert",
       "owner": "KARAKA",
@@ -717,10 +711,28 @@
       "what": "PARIKSAKA verified M0-T35 while holding a baseline that already carried M0-T37's mutation. M0-T38 recorded it and explicitly DECLINED to judge whether V-12's substantive conclusion is affected (I16). Sent to PARIKSAKA with my read offered as INPUT NOT A FINDING — that V-12's conclusion rested on an empirical re-measurement of the target_floor argument, a property of the registry and the seed's declarations rather than of the file bytes being mutated, so the poison likely touched the mutation-test leg and not the substantive one. Asked it to CHECK rather than accept my reading, because this is exactly the inference I have been wrong about twice today",
       "owner": "PARIKSAKA",
       "state": "asked"
+    },
+    {
+      "id": "M0-T39",
+      "what": "DONE 8203722cf — 93 rows, T-5 only",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T41",
+      "what": "target_floor out of the INSERT list (D-35) — first worktree-isolated dispatch",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "D12-PART3-CONFLATION",
+      "what": "D-12 part 3 declines re-dispatch for the orphaned throughput rows because 'ka_gochara_sweep's @register is genuinely removed' — but KA_GOCHARA_SWEEP IS NOT ONE OF THE THREE ORPHANS. They are ka_kota_chakra, ka_vedha_gochara and mi_sankalpa, and the KARAKA verified in source that ALL THREE CARRY A LIVE @register. So part 3's premise is true of a different asset, part 3 resolves into part 4 which rules only on the ka_gochara_sweep rows, and NO RULING REACHES THE THREE ORPHANS AT ALL. That left the KARAKA with no legal move — died-state is H6 (the runs COMPLETED; the promotion died), lit is H4, stale needs a G3 nobody made — so it halted and dispatched no build. The correct outcome of an incorrect premise, and the invariant held even though the ruling had drifted. Practical consequence: re-dispatch may be AVAILABLE after all, since for these three the writer is present. RELAYED, not re-derived by me",
+      "owner": "ADHIKARIN",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T08:24:43Z",
+  "last_updated_ts": "2026-08-23T08:33:21Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
