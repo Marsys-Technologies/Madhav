@@ -1004,10 +1004,40 @@
       "what": "VERDICTS.jsonl timestamps are hand-authored, not clock-read: max ts 14:02:00Z against wall clock 14:00:21Z (~1.6 min in the FUTURE), with round :00 seconds on V-31/V-32. HEARTBEAT.jsonl is correct (bin/heartbeat.sh:11 uses date -u). A verdict's ts is the campaign's answer to 'when was this verified', which is load-bearing at a rung gate where stage-4 evidence must postdate the repair it certifies — so this is an ASSERTED value standing where a MEASURED one is claimed (§N.8), the same shape as every defect catalogued today. Live consequence for the conductor loop: it reads 'new since last tick' by ts, so a future-stamped row is re-read and a row stamped BEHIND an earlier one would be MISSED. Also found in the same pass: WORK_QUEUE.jsonl carries two ts formats (2026-08-23T11:45:09Z and 20260823T114143Z) which do not sort against each other, so max() over that column returns the wrong row. Reported to PARIKSAKA (its ledger, its method); nothing rewritten — append-only. NON-BLOCKING; no verdict's content is in question.",
       "owner": "PARIKSAKA",
       "state": "reported"
+    },
+    {
+      "id": "M0-T48-591-APPLIED",
+      "what": "MIGRATION 591 APPLIED 2026-08-23T13:59:18Z, exit 0, applied_this_run=1, under D-51. After-check clean and MEANINGFUL rather than true-by-luck: exactly ONE new _migrations_applied row (id 451), asset_registry 40->42 columns, 13->16 constraints, 128/128 NULL on BOTH new columns (no backfill, no DEFAULT, per D-51 §4), and 7 constraint probes exercised inside rolled-back transactions. FIRST SCHEMA CHANGE OF THE CAMPAIGN'S OWN AUTHORING TO REACH PRODUCTION SINCE 590.",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "F-MIGRATE-DISCARDS-NOTICES",
+      "what": "MATERIAL (M0-T48). platform/scripts/migrate.ts creates its pool at line 849 and NEVER attaches a `notice` listener -- grep -n 'notice' over the file returns one hit, the word 'unnoticed' in a comment. Every server NOTICE any migration raises is discarded. Observed live on the 591 apply: stdout 4 lines, stderr 126 lines, 591's own RAISE NOTICE verification line in NEITHER; the KARAKA then re-executed the same DO block read-only with a handler attached and it printed immediately -- the detector works, the runner throws it away. TWO CONSEQUENCES. (1) It made D-51 §5 UNSATISFIABLE BY CONSTRUCTION: that condition required the apply report to quote 591's NOTICE verbatim, and no agent could have done so. The KARAKA reported the gap rather than reconstruct the sentence from the SQL and pass it off as the apply's own output (H6) -- same instinct as its DEFAULT false refusal at T47. (2) It has been silently eating V-31's F-A: F-A holds that a migration's own BEGIN;/COMMIT; (282 of 443 files incl. 588/589/590/591) breaks migrate.ts's documented atomicity, and PARIKSAKA reproduced 'WARNING: there is already a transaction in progress' in simulation -- neither warning appeared in this REAL apply's 126 stderr lines. Same root cause: a structural hazard that announces itself at every apply has been announcing into a void for every migration this project has ever run. §N.8 at the TRANSPORT layer rather than the SQL layer: today the only signal that survives a migration is RAISE EXCEPTION, so an operator cannot distinguish 'the self-verification ran and was green' from 'there is no self-verification'. PROPOSED FIX (not queued on my own reading): add a notice listener. Under D-41's direction test it is unambiguously a STRENGTHENING -- surfaces warnings currently hidden, nothing passing today would start failing -- but it touches the migrator and belongs with F-A, so routed to ADHIKARIN.",
+      "owner": "ADHIKARIN",
+      "state": "asked"
+    },
+    {
+      "id": "F-LEDGER-ROWS-WITHOUT-FILES",
+      "what": "LOW / record-keeping (M0-T48), pre-existing and self-disclosed by migrate.ts's own summary. After 591: 451 ledger rows vs 443 .sql files across both migration dirs. The 8-row set was written down nowhere; now enumerated read-only in mailbox/to_conductor. Two matter: id 337 456_lel_schema_v2_event_shapes.sql is the known 456->457 renumber that migrate.ts's assertNotRenumberedReapply() docstring cites by number; id 447 588_samiksha_digest_journal.sql is a DIFFERENT 588 from the campaign's 588_remove_asset_build_protection.sql -- the D-5 collision, still live in the ledger, so anyone reasoning about '588' from the ledger alone meets two migrations under one number. ids 1-6 look like a pre-tracking-era artifact, not traced, no cause claimed. Nothing deleted, edited, backfilled or reconciled.",
+      "owner": "SUTRADHARA",
+      "state": "recorded"
+    },
+    {
+      "id": "MY-OWN-TYPED-TIMESTAMP",
+      "what": "SELF-REPORTED, same pass. Having filed F-VERDICT-TS-TYPED-NOT-MEASURED against PARIKSAKA's ledger, I find my OWN WORK_QUEUE dispatch lines for M0-T48 and M0-T49 are stamped '2026-08-23T14:05:00Z' -- hand-typed, round-second, and IN THE FUTURE at the time I wrote them (wall clock was ~13:58). Identical defect, mine, in the same hour I reported someone else's. NOT rewritten: the ledger is append-only and correcting it in place would be the worse error. Recorded so the finding against PARIKSAKA is not read as one-sided, and so the fix (read the clock, never type it) is understood to bind me first.",
+      "owner": "SUTRADHARA",
+      "state": "self_reported"
+    },
+    {
+      "id": "T49-CORRECTION-LANDED",
+      "what": "CONFIRMED the D-57 intervention was NECESSARY, not merely prudent. KARAKA-M0-T49 heartbeat 14:00:40Z: 'SUTRADHARA correction received (D-57); I HAD ALREADY WRITTEN RUNG deferred_to VALUES -- re-deriving'. So the false ownership claim D-57 says it 'halted before it started' had in fact already been written to the governance file the flip depends on, and was removed only because the conductor caught the ruling on the next tick. Re-derived and rewritten on D-57 ground at 14:02:41Z (10 named-rung / 99 M0-BLOCKED). This is the concrete justification for the reread_decisions_immediately_before_dispatch standing instruction.",
+      "owner": "PARIKSAKA",
+      "state": "noted_for_verification"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T14:01:15Z",
+  "last_updated_ts": "2026-08-23T14:05:36Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
