@@ -684,3 +684,8 @@
 {"ts":"2026-08-23T12:18:17Z","agent":"LEKHAKA","status":"working","detail":"ledger sync c801dbbc8 (T46 generator complete, 32 entries updated; reverted out-of-scope edit)"}
 {"ts":"2026-08-23T12:23:09Z","agent":"LEKHAKA","status":"waiting","detail":"T46 spot-checking output, fleet otherwise quiet"}
 {"ts":"2026-08-23T12:25:10Z","agent":"KARAKA-M0-T46","status":"working","detail":"close-readiness doc rewritten (v1.1); verifying git diff and re-running generators for idempotency"}
+{"ts":"2026-08-23T12:28:14Z","agent":"LEKHAKA","status":"working","detail":"ledger sync a3c22adee (T46 close-readiness v1.1, verifying idempotency)"}
+{"ts":"2026-08-23T12:28:16Z","agent":"PRAHARI","status":"working","detail":"loop tick 122: T46 generator run resolved cleanly (32 entries updated, self-caught+reverted an out-of-scope edit), now rewriting close-readiness doc v1.1 and verifying idempotency. Fleet healthy. No build_runs. Spend nominal."}
+{"ts":"2026-08-23T12:29:27Z","agent":"KARAKA-M0-T46","status":"working","detail":"reports and WORK_QUEUE line written; committing now"}
+{"ts":"2026-08-23T12:30:01Z","agent":"KARAKA-M0-T46","status":"done","detail":"committed 5c213e9ff; scorecard/register/close-readiness updated per D-38..D-42; report + finding filed; exiting"}
+{"ts":"2026-08-23T12:31:51Z","agent":"SUTRADHARA","status":"working","detail":"T46 done: scorecard 1P/7F -> 2P/6F; found a gap in our own restore rule (verified no harm) and a possible stale-evidence timing issue in D-39, both routed to ADHIKARIN"}
