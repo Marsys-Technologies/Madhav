@@ -191,18 +191,6 @@
       "state": "asked"
     },
     {
-      "id": "M0-T11",
-      "what": "COMPLETE (1089db9b6): NODE_ENV sentinel replaced with a realpath-normalised entrypoint check, proven failing-then-passing AND mutation-tested. Gaps the builder named itself: --target unexercised, CI-runner behaviour inferred, tsconfig excludes scripts/, test A cannot prove 'nothing applied to a reachable DB'",
-      "owner": "PARIKSAKA",
-      "state": "awaiting_verification_PRIORITY"
-    },
-    {
-      "id": "M0-T12/T13",
-      "what": "migration wave — hold EXTENDED from 'T11 lands' to 'T11 certified'. The T12/T13 KARAKA would be the first real exercise of the fixed guard and of --target; certifying after that run would be certifying too late. PARIKSAKA asked to prioritise",
-      "owner": "SUTRADHARA",
-      "state": "blocked_by_design"
-    },
-    {
       "id": "M0-T5",
       "what": "COMPLETE a864672d7 — the §19 ledger emitter that gated every rung freeze. Uncertainties the builder named: rows/sec null on all 128 (the only available quotient mixes this chart's rows with a cross-chart median — called an inference, not a measurement); p50/p90 pooled across all charts inside a single-chart workbook",
       "owner": "PARIKSAKA",
@@ -237,10 +225,28 @@
       "what": "DRY_RUN=1 is documented for asset_registry_seed.ts in two archived L0/cockpit briefs and is NOT IMPLEMENTED. An operator following the documentation performs a full live upsert against asset_registry in production. §N.8 inverted: a SAFETY MECHANISM with no implementation, failing in the direction that does damage, and harming the careful operator rather than the careless one. Two defensible repairs (implement it / strike the claim) so the choice is a scope decision, not a KARAKA's. Escalated, not dispatched",
       "owner": "ADHIKARIN",
       "state": "asked"
+    },
+    {
+      "id": "M0-T11",
+      "what": "CERTIFIED PASS (V-3, 10 angles). Residual RES-1 raised separately: silent deploy no-op has no detector. Does not block the wave",
+      "owner": "closed",
+      "state": "certified"
+    },
+    {
+      "id": "M0-T12+T13",
+      "what": "migration wave CLEARED by V-3; hold lifted. Dispatching as one task, sequenced 589 -> 588 -> 590 so the no-ops rehearse --target before the schema change uses it. Waiting on a KARAKA slot (cap 4: T6/T7/T8/T14 running)",
+      "owner": "SUTRADHARA",
+      "state": "cleared_waiting_slot"
+    },
+    {
+      "id": "RES-1",
+      "what": "PARIKSAKA residual: a deploy-time migration run that silently no-ops has no detector behind it. Raised during V-3, not blocking",
+      "owner": "ADHIKARIN",
+      "state": "raised"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T04:43:17Z",
+  "last_updated_ts": "2026-08-23T04:48:14Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
