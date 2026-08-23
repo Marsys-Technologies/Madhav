@@ -22,19 +22,87 @@
       "layer": "L1",
       "domain": "chart",
       "assets": 19,
-      "status": "not_open"
+      "status": "not_open",
+      "stage2_carry_forward": {
+        "source": "PARIKSAKA V-2 (live-measured, D-13 POLLUTED rows excluded)",
+        "finding": "writer_timeout_seconds set BELOW the asset's own measured worst run. Set-but-too-low is worse than unset: it reads as deliberate configuration while reliably killing the longest builds. Raise under §8.6 stage 2 when this rung opens — NOT before (I13).",
+        "assets": [
+          {
+            "asset": "ga_strength",
+            "timeout_h": 3.0,
+            "measured_worst_h": 13.1,
+            "ratio": 4.4,
+            "tier": "H"
+          },
+          {
+            "asset": "ga_sensitive",
+            "timeout_h": 3.0,
+            "measured_worst_h": 6.4,
+            "ratio": 2.1,
+            "tier": "H"
+          }
+        ]
+      }
     },
     "R2": {
       "layer": "L2",
       "domain": "chart",
       "assets": 22,
-      "status": "not_open"
+      "status": "not_open",
+      "stage2_carry_forward": {
+        "source": "PARIKSAKA V-2 (live-measured, D-13 POLLUTED rows excluded)",
+        "finding": "writer_timeout_seconds set BELOW the asset's own measured worst run. Set-but-too-low is worse than unset: it reads as deliberate configuration while reliably killing the longest builds. Raise under §8.6 stage 2 when this rung opens — NOT before (I13).",
+        "assets": [
+          {
+            "asset": "bo_laksana",
+            "timeout_h": 3.0,
+            "measured_worst_h": 19.2,
+            "ratio": 6.4,
+            "tier": "H"
+          },
+          {
+            "asset": "bo_laksana_rerank",
+            "timeout_h": 0.17,
+            "measured_worst_h": 0.35,
+            "ratio": 2.1,
+            "tier": "H",
+            "note": "timeout is under its own p90 — expected to be killed more than 1 run in 10, not merely in the tail"
+          }
+        ]
+      }
     },
     "R3": {
       "layer": "L3",
       "domain": "chart+shared",
       "assets": 23,
-      "status": "not_open"
+      "status": "not_open",
+      "stage2_carry_forward": {
+        "source": "PARIKSAKA V-2 (live-measured, D-13 POLLUTED rows excluded)",
+        "finding": "writer_timeout_seconds set BELOW the asset's own measured worst run. Set-but-too-low is worse than unset: it reads as deliberate configuration while reliably killing the longest builds. Raise under §8.6 stage 2 when this rung opens — NOT before (I13).",
+        "assets": [
+          {
+            "asset": "ka_gochara",
+            "timeout_h": 0.5,
+            "measured_worst_h": 6.5,
+            "ratio": 13.0,
+            "tier": "X"
+          },
+          {
+            "asset": "ka_gochara_sweep",
+            "timeout_h": 6.0,
+            "measured_worst_h": 35.6,
+            "ratio": 5.9,
+            "tier": "X"
+          },
+          {
+            "asset": "ka_kshetra",
+            "timeout_h": 24.0,
+            "measured_worst_h": 33.8,
+            "ratio": 1.4,
+            "tier": "H"
+          }
+        ]
+      }
     },
     "R4": {
       "layer": "L4",
@@ -127,10 +195,16 @@
       "what": "heartbeat.sh script-relative root fix applied by SUTRADHARA (at KARAKA cap); verified by resolution from 3 cwds; awaiting PARIKSAKA independent check (I16)",
       "owner": "PARIKSAKA",
       "state": "awaiting_verification"
+    },
+    {
+      "id": "V-2",
+      "what": "L-12/D-28 evidence false (timeouts non-default on 107/128, not 2); real defect is 7 assets timed out below their own measured worst. Carry-forward recorded on R1/R2/R3. ADHIKARIN to rule whether D-28's evidence cell is corrected now or per-rung",
+      "owner": "ADHIKARIN",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T04:11:27Z",
+  "last_updated_ts": "2026-08-23T04:13:13Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
