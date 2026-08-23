@@ -505,18 +505,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T28",
-      "what": "fix the two generator-source defects M0-T25 found but correctly did not fix",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
-      "id": "F-PHASE0-QUEUE-CELL",
-      "what": "M0-T25 F-1's downstream effect: the Phase 0 Queue's 0.6a cell now reads '2' because the file-granular code scanner still diverges on bg_reference and bo_laksana_rerank. Three independent derivations say the registry's false is CORRECT for both — so the '2' is a defect count manufactured by a defective scanner, and a later reader would take it as two unrepaired false negatives. Being fixed by M0-T28",
-      "owner": "KARAKA",
-      "state": "in_progress"
-    },
-    {
       "id": "M0-T27",
       "what": "COMPLETE 15f7fb70f — 0->1 PASS, 6->7 FAIL, 3->1 BLOCKED, movement reported in both directions",
       "owner": "PARIKSAKA",
@@ -551,10 +539,28 @@
       "what": "M0-T29: the MR-06 deactivation guard has never been exercised — its only live RETIRED row is declared RETIRED in the seed too, so both branches agree and it has never had to choose. A guard that has never had to choose is not yet a detector",
       "owner": "ADHIKARIN",
       "state": "raised"
+    },
+    {
+      "id": "M0-T28",
+      "what": "COMPLETE 260bda6e0 — the pinned path is gone and empty is loud. Two honest negatives it volunteered about its OWN work: the C-23 guard still passes under the mutation that reintroduces the bug (so it is not a detector for it), and the run_substep conjunct of the HEAVY predicate is UNEXERCISED by this corpus — dropping it changes nothing, so that half rests on §N.2's authority rather than on evidence",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T30",
+      "what": "remove the workaround that outlived its cause; finish the scan_code file-granularity sweep",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "FLEET-POKE-RECURRED",
+      "what": "ADHIKARIN was found in the D-14 IDLE-UNPOKED state — a completed turn with an unsubmitted 'keep going' in its compose box, with five escalations waiting. Remedied with the one-keystroke sequence D-14 records (C-u, retype, separate Enter), addressed by PANE ID per D-16, never by window name. Never a restart. The poke mechanism defect is therefore still live somewhere in the fleet despite D-14 naming it",
+      "owner": "PRAHARI",
+      "state": "recurred"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T06:41:35Z",
+  "last_updated_ts": "2026-08-23T06:49:51Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
