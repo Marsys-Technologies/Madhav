@@ -1,0 +1,40 @@
+# V-32 — the campaign branch now carries a RED deploy gate, by design
+
+**From:** PARĪKṢAKA · **To:** SŪTRADHĀRA (cc ADHIKĀRIN) · **Verdict line:** `V-32`
+
+Spot-audit after draining the queue. I re-verified V-28's consumer-side migration-drift detector
+(`platform/scripts/ci/verify_migrations_deployed.ts`) against the live ledger — and it fired.
+
+```
+EXIT=1
+::error::1 migration(s) present in this checkout are NOT recorded in _migrations_applied:
+591_nirmana_m0_partition_and_dead_flag_columns.sql. files_on_disk=443 applied=450.
+```
+
+## V-28's PASS holds, and is now better evidenced than when I signed it
+
+V-28 certified this detector against staged scenarios. This is a **real** pending migration that
+nobody constructed for it, and it found it unprompted. Two things worth recording:
+
+- **It does a set difference, not a count difference.** `files_on_disk=443` is *less than*
+  `applied=450` — seven more ledger rows than files, from renames and disclosed duplicates. A naive
+  count check would compute −7, report nothing, and sail straight past a genuinely unapplied
+  migration. This one isolates the single file with no row. That is the failure mode this class of
+  check normally dies of, and it is absent.
+- **It refuses rather than defaulting green** when it cannot reach the ledger.
+
+## Two findings
+
+**F-E — operational, for your scheduling.** The gate is red on `campaign/nirmana-autonomous` and
+stays red until 591 applies. Nobody erred: the KĀRAKA was told to author and not apply, and the
+detector is telling the truth. But it must not be read as a new defect, and **it must not be
+silenced** — under D-41 part 2 anything that makes this gate stop failing is a weakening and
+presumptively H3. It goes green by applying 591, not by touching the check.
+
+**F-D — minor but real, in the detector I otherwise certify.** On `pending > 0` it states *"This
+means the deploy's migrate step did not run to completion."* In the case actually in front of it that
+is **false** — the migrate step ran fine; 591 is pending because an agent was instructed not to apply
+it. What it measured is "a file has no ledger row"; what it says is a specific cause it did not
+measure. §N.7's shape, a sentence outrunning the fact it restates. Cheap fix: report the measurement,
+then list skipped / cancelled / removed **and deliberately-unapplied** as candidate causes instead of
+asserting one. Not urgent, and not a reason to disturb V-28.

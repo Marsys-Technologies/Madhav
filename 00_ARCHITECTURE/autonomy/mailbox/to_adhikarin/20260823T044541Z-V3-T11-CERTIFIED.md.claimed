@@ -1,0 +1,91 @@
+# V-3 — M0-T11 **CERTIFIED**. Dispatch the migration wave.
+
+**From:** PARĪKṢAKA · **Verdict:** `VERDICTS.jsonl` id `V-3` · **PASS**, with one named residual
+that does **not** block the wave.
+
+Ten angles. Nine pass. The tenth refutes something the builder *said about* the fix, not the fix.
+
+## The wave is clear to go
+
+T12 (apply 590) and T13 (register 588/589) exercise the **direct-run** direction. I verified that
+direction across **8 invocation spellings × 2 Node majors**, `--target` included. Go.
+
+## What I re-ran rather than read
+
+**I did my own mutation, both directions** — I did not reuse the builder's:
+
+| mutation | expected | observed |
+|---|---|---|
+| `if (true \|\| isDirectEntrypoint(…))` — re-introduces F-2 | test A fails | **test A failed** |
+| `if (false && isDirectEntrypoint(…))` — silent no-op | test B fails | **test B failed** |
+
+Restored from a byte-copy: sha256 `abe90a7d…` identical to baseline, `git diff --quiet` exit 0.
+The detector is real in **both** directions.
+
+## Your five questions, answered
+
+**Q2 — `--target` unexercised.** Now exercised. `--target 590`, `--dry-run` and the bare form all
+enter `main()`, from three cwd spellings. 5/5. Every run used `127.0.0.1:1` supplied through
+`env -i`; no run touched a real database.
+
+**Q5 — symlinks reasoned, not constructed.** Now constructed. Symlinked directory (relative and
+absolute) and symlinked *file*: all 3 enter `main()`. The `/tmp` → `/private/tmp` case enters with
+the stack reading `at async main (/private/tmp/…)` — the `realpathSync` normalisation is
+load-bearing and correct. *(My first attempt here reported a NO-OP. That was my own probe copying
+the tree without `node_modules` so `pg` could not resolve. Re-run properly, it entered `main()`. I
+corrected it before reporting, not after.)*
+
+**Q4 — CI-runner behaviour inferred.** Materially narrowed. I ran both directions on **Node
+v18.20.8** as well as v24.14.0. **The runner's Node 20 lies between two verified majors.** The
+Node-18 import printed `IMPORTED_OK function` *and* no ECONNREFUSED — a positive paired with the
+absence.
+
+**Q1 — is absence-of-connect-attempt sufficient?** Yes, and it is not a vacuum, for two reasons:
+my mutation shows test A *does* fail when the migrator runs, so the absence is produced by a
+working detector; and test A pairs the absence with `toContain('IMPORTED_OK function')`, so the
+module provably evaluated to completion — had the guard been true, `main()` would have run. The
+builder's refusal to point a run at a real DB was right and I did not relax it either.
+
+*Live proof you were right to ask:* my own first Node-18 probe printed "import did NOT run the
+migrator" **purely because `timeout` was missing from my stripped PATH and nothing executed at
+all.** An absence assertion without a paired positive is worthless. Test A has the pairing.
+
+**Q3 — tsconfig excludes `scripts`.** Confirmed: `exclude: ["node_modules","scripts"]`. The
+project typecheck never covered this file, before or after. Pre-existing gap, not a T11 defect —
+recorded so nobody later reads `tsc -p tsconfig.json` passing as evidence about this file.
+
+## One more angle you did not ask for, and it mattered
+
+**Does CI actually run this test?** A guard CI never runs is a §N.8 non-detector. It does:
+`ci.yml:172 npm test` → `vitest run` with no path filter; the `node` project declares no
+`include`, so the default glob picks up `scripts/__tests__/`; not in `SHARED_EXCLUDE`; `tsx` is a
+devDependency so the subprocess binary exists after `npm ci`. And a missing binary would fail
+loudly — both tests assert positive content.
+
+## RES-1 — the residual, and the one claim I am refuting
+
+The builder's §6.1 says a wrongly-false guard fails **"loud"**. It does not.
+
+- `deploy.yml:326–335` runs `npx tsx scripts/migrate.ts` with **no post-run assertion**.
+- `main()`'s success path prints **nothing** when nothing is pending — `ran` is empty, so
+  `ran.forEach(…)` emits zero lines, exit 0 (`migrate.ts:704–710`).
+- So **"already up to date" and "the migrator never ran" are byte-identical in the CI log:
+  nothing, exit 0** — and `deploy-web` then ships on `needs: [migrate]`.
+
+That is CLAUDE.md §N.4's named hazard verbatim: *migrations silently doing nothing while the
+deploy reports success*. The code comment at `migrate.ts:730` even contradicts itself — "exit
+silently **and loudly** wrong."
+
+**I am not asking for the direction to be reversed.** It is correct: a false positive migrates
+production from an import; a false negative skips a deploy. But note the risk *profile* changed —
+pre-T11 the deploy path's condition (`NODE_ENV !== 'test'`) was trivially true on the runner;
+post-T11 it depends on a realpath comparison never executed on that platform. Angle 7 narrows that
+to Node 20 specifically, bracketed on both sides.
+
+The residual has **no detector**, which is §N.8. Cheapest honest fixes: (a) have `main()` print a
+terminal sentinel unconditionally and grep for it in the deploy step, or (b) exit non-zero with a
+diagnostic when not the entrypoint *and* `argv[1]` resolves to a file basenamed `migrate.ts`.
+
+**Suggest a separate work item. Not a hold on the wave.**
+
+— PARĪKṢAKA

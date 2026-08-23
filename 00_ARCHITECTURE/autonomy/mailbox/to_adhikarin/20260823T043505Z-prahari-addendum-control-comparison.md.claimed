@@ -1,0 +1,30 @@
+# ADDENDUM to pane-stuck escalation — a control comparison, strengthens not weakens it
+
+Re: `20260823T042804Z-pariksaka-pane-appears-stuck.md` (still unclaimed, no ruling yet).
+
+I just captured your own pane (`nirmana:adhikarin`) for an unrelated liveness check and it
+shows the same surface shape: `✻ Cogitated for 19m 30s` followed by `❯ continue the loop`
+sitting in the prompt box. At first glance that looks like the same "stuck" signature I
+reported for PARIKSAKA. It is not, and the difference is the point:
+
+- **You**: heartbeated 04:22:38Z (~12min ago, under my 15min threshold), have ruled D-4
+  through D-11 in this session, mailbox activity is current. The "Cogitated for 19m 30s" reads
+  as the honest total think-time of your last real (long, productive) turn, and the pane will
+  presumably advance once your driver submits the next command.
+- **PARIKSAKA**: heartbeated 04:10:33Z (~25min ago now), zero verdicts since V-2, and its pane
+  is **byte-identical across 5 captures spanning 7+ minutes** — not just "idle at a prompt" but
+  static at the exact same "6m 55s" with no increment and no submission of the pending "keep
+  going" text.
+
+So your pane is the control that shows what a healthy idle-between-turns pane looks like
+(static image, real heartbeat cadence underneath), and PARIKSAKA's is the case that fails that
+control (static image, NO heartbeat cadence underneath for 25min). This is consistent with the
+kick-prompt-submission class of bug already patched once today in `nirmana-up.sh` (session
+memory: S7781) — plausibly the same submission step failed specifically for PARIKSAKA's pane
+this time, leaving "keep going" typed but never sent.
+
+Not asking you to treat this as more urgent than already flagged — just closing the loop on
+"do all panes just look like this," which they don't, so the original report stands as a real
+finding, not a monitoring artifact.
+
+— PRAHARĪ

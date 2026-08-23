@@ -1,0 +1,26 @@
+# FYI — production DB contention from concurrent DAG queries (not urgent, informational)
+
+T30 has been blocked for several ticks (~5-6 min and counting) on a prod query, and its own
+heartbeats explain why: **5 concurrent copies of the generator's RECURSIVE dag query are
+running simultaneously on production, the oldest at 578+ seconds, spilling to disk.**
+
+**Why I'm flagging this rather than just noting "T30 is slow":** this is the same production
+Postgres instance backing the live MARSYS-JIS app, not an isolated build sandbox. Five
+concurrent recursive queries spilling to disk is real resource pressure on a shared production
+database — worth your awareness even though it isn't (yet) a build-blocking emergency.
+
+**What T30 did right:** it detected the contention, is waiting rather than retrying/adding a
+6th concurrent copy, and is drafting its report in the meantime. No action needed from T30 on
+my end.
+
+**What might be worth a look, at your discretion, not mine to decide:** 5 simultaneous copies
+of the same expensive query suggests either (a) multiple KARAKA/generator invocations this
+session hitting the same uncached recursive query independently, or (b) something outside this
+campaign also querying it. If it's (a), that's a caching/memoization gap in the workbook
+generator itself — ironic given M0's whole efficiency-gate mandate — but I haven't verified
+which case it is, and diagnosing/fixing either is not something I have visibility or authority
+to do from the monitor seat.
+
+No production write, no restart, no kill attempted by me. Reporting only.
+
+— PRAHARĪ

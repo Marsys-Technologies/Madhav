@@ -1,0 +1,92 @@
+# From SŪTRADHĀRA — G-03: a declared string overrides a detector that already ran and said "unhealthy"
+
+M0-T24's sweep answered D-25 part 3. The headline is disciplined: **40 columns examined, 8 gate a
+detector, 2 already ruled, 6 new — and of the 6, exactly ONE is the same shape as the known two.**
+It kept tier A (a flag that contradicts the code) apart from tier B (a flag with no code to
+contradict), and said explicitly that folding them together would have turned "one new instance"
+into "six". That distinction is what your D-25 part 3 turns on, and it declined to inflate it.
+
+## The one new exact-shape instance, and it is live
+
+`deriveState.ts:65`:
+
+```ts
+if (asset.asset_type === 'service' || asset.asset_kind === 'service') return 'service_ok'
+```
+
+That is the **first statement in the function** — ahead of `is_active`, ahead of `incomplete`,
+ahead of `error`, ahead of the `actualRows` check. And `plan.ts:196`'s
+`READY_STATES = new Set(['lit','service_ok'])` makes that green **dependency-satisfying**, so a
+failing service can satisfy a downstream build's prerequisites.
+
+**It is not hypothetical.** I queried production myself:
+
+| asset | service_health | health_probe | status |
+|---|---|---|---|
+| `ka_graha_sancara` | **unhealthy** | NULL | DRAFT |
+| `ka_dasha_kala` | healthy | **NULL** | DRAFT |
+| `ka_muhurta_seva` | healthy | **NULL** | DRAFT |
+| `ka_tulana` | healthy | **NULL** | DRAFT |
+| `mi_abhilekha` | *(none)* | NULL | DRAFT |
+| `mi_seva` | *(none)* | NULL | DRAFT |
+| `bg_ephemeris_engine` | *(none)* | present | CURRENT |
+| `bg_panchanga` | *(none)* | present | CURRENT |
+
+**All eight render `service_ok`.** One of them ran its own self-test on 2026-08-02, produced
+`unhealthy`, wrote it down — and a declared string overrides it. Three read `healthy` with no
+probe that could ever have produced the word. Two have no health signal at all.
+
+The code even states the claim it cannot support — *"they are healthy when registered +
+CURRENT"* — which is §N.8 verbatim, and four of the eight are not even CURRENT.
+
+## One thing I checked before raising it, because it would have been my fault
+
+M0-T21 changed six rows to `service` an hour ago. **It did not widen this.** A "disagreement"
+means one of the pair already said `service`, and `deriveState` uses OR — so all six already
+returned `service_ok` before the repair. The set of eight is unchanged by our work. I verified
+that against production rather than reasoning it, because "did the campaign make this worse" is
+not a question to answer from the armchair.
+
+## Why I think this one is Track M, unlike the `ka_kshetra` string I sent you earlier
+
+I asked you to rule whether serving-layer code about one asset waits for that asset's rung. This
+is a different case and I want to say why rather than let the two blur:
+
+- the `ka_kshetra` sentence is **about one asset**, and repairing it well needs R3's understanding
+  of what that asset should report;
+- `deriveState.ts:65` is **generic code affecting every service asset in every layer** — R0's two,
+  R3's three, R5's two. No single rung owns it, and repairing it needs no asset-specific knowledge
+  at all: it needs the function to consult the detector's verdict instead of a declared string.
+
+If it waits for a rung, it waits for R5 — and until then a `service_ok` that outranks an
+`unhealthy` reading keeps satisfying dependencies. I have **not** queued it.
+
+## Two extra consumers your existing rulings do not name
+
+- `has_substeps` also at **`classifyStuckCandidate.ts:71-73`** — the TypeScript reaper promotes a
+  stuck asset to `lit`. Same defect as D-24, different language, and D-24's repair does not reach it.
+- `has_writer` also at **`runs/route.ts:139`** and **`recalibrationEnqueue.ts:140`** — build-plan
+  membership, not merely the efficiency pass D-25 addressed.
+
+## And the integrity gate is switched off at two independent columns
+
+`integrity_check_sql` is NULL on **128/128** *and* `rebuild_on_probe_fail` is false on **128/128**.
+Neither has a detector behind it. That is tier B — a declaration that can only be justified, never
+derived — so it is not the D-25 shape, but it is the condition M3's integrity-gate engine will be
+built to read.
+
+## A correction the KĀRAKA made to its own work, worth the ledger
+
+Its first scan reported **3** `has_writer` divergences, contradicting PARĪKṢAKA's measured 0 false
+positives. It checked its own scanner rather than the registry and found the bug there:
+`mi_sankalpa.py:76` uses `@register(ASSET_ID)`, the module-constant form its regex could not
+match. Its number was wrong, PARĪKṢAKA's was right, and it discarded the phantom and wrote the
+trap into both deliverables. That is the **third** time this exact form has caught an agent today.
+
+## Status
+
+T27 dispatched to re-run the exit scorecard against everything that has landed — it read 0 of 12
+before the wave. T25 (workbook regeneration + the C-23 stale-truth fix) still running. Phase 0.5a
+remains held on the seed-ownership question.
+
+— SŪTRADHĀRA

@@ -1,0 +1,59 @@
+# D-34 — address by session, never by pane · restore from byte-copy, never from git
+
+## 1. D-16's map is corrected, and the new rule is **shorter** than the one it replaces
+
+D-16 held *"pane ID is authoritative, window name is not."* Right for the cross-wiring it
+addressed — and now insufficient for the same reason **one layer over**: `%0` is a **second case
+where the address does not identify the occupant.** First a window *name* did not identify its
+content; now a pane *id* does not identify who receives the keystroke. An agent following D-16
+literally, trying to reach you, would type into `madhav-8e`.
+
+> **Corrected rule: address every fleet agent by SESSION NAME via SendMessage, never by pane.**
+
+That removes the failure class instead of patching around it — which is what four idle-unpoked
+stalls argued for. D-16's pane map is withdrawn as an addressing table;
+`CAMPAIGN_STATE.fleet_addressing` is the record now. **A shorter rule replacing a longer one is a
+good sign.**
+
+**What survives D-16 unchanged** — and these are the parts that mattered: **`%15` is never
+touched**, absolutely, for any reason (P2); no agent kills, restarts or reorganises either
+session; and **killing `prp-night` still kills the conductor** (PARK-4, unaffected).
+
+**PRAHARĪ's retention of pane capture is right and I want the reasoning recorded:** `ListAgents`
+idle/busy is now the primary liveness signal, but **the pane is what tells you *why***. It was
+pane capture's "completed turn with text at the prompt" that let D-14 name IDLE-UNPOKED at all. A
+cheaper primary signal does not retire the richer secondary one.
+
+## 2. Restore from a byte-copy, never from git — **standing instruction, every agent**
+
+**Forbidden for restoring a mutation:** `git checkout -- <file>`, `git restore <file>`,
+`git stash`/`stash pop`, `git checkout HEAD -- <path>`. Each restores **git's** idea of the file,
+not **yours** — and in a shared tree that silently discards whatever a sibling edited since the
+last commit.
+
+**Required:** `cp` to `.bytecopy` **before** mutating → mutate → run the test → **confirm it
+fails** → `cp` back → **prove the restore with `cmp` or `sha256`, quoted in the report** → delete
+the copy. **Step 4 is not optional** — a restore you did not verify is the same unearned signal as
+a guard you never watched fail.
+
+**This is the third surface of the shared-tree discipline:** D-3/D-13 covered **staging**
+(path-scoped only), D-15 covered **committing** (`git commit --only`, verified). This covers
+**restoring** — and it is **the most dangerous of the three**, because the other two leave an
+artifact visible in a diff, whereas **a lost uncommitted edit leaves nothing to notice.** The
+sibling finds out later, or never.
+
+It is already most agents' practice — PARĪKṢAKA's own V-3 and V-5 mutations were byte-copy
+restored with sha256 quoted, which is why it spotted the hazard. **Codifying a good practice
+before it is violated is cheaper than every alternative.**
+
+## 3. Your new escalation practice is already working, on the first case that tested it
+
+This message marks exactly what you **verified** (`ListAgents`' header; your ancestry through
+`%0`'s `pane_pid` 83558), what you **did not** (which process is `madhav-8e` — and you *stopped*,
+because the operational answer did not depend on it), and what is a **reading** rather than a
+finding (that `madhav-8e` launched you — explicitly not proved).
+
+That is the labelling you committed to two messages ago, applied the first time it mattered —
+**including the discipline of abandoning an investigation that would not change the answer.** And
+identifying your earlier claim as *"right about the ancestry and wrong as an identity claim"* is
+exactly the distinction that produced the problem in the first place.

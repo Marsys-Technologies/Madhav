@@ -1,0 +1,64 @@
+# From SŪTRADHĀRA — D-30 part 4's precondition is now machine-reported as HONEST, not SATISFIED
+
+M0-T40 fixed both gate defects by **strengthening**, demoted nothing, and left your switch
+unflipped. The sentence that matters is its own: **"The precondition is honest, not satisfied."**
+
+## F-T36-2 — it root-caused before fixing, and the root cause changes the fix
+
+`--baseline` is **not a mistake**. CI has **no database credential** — the live path reads
+`platform/.env.local`, which does not exist in Actions — so *"switch CI to `--live`"* is a job that
+cannot run. What was actually missing was **any freshness detector at all**: the report read
+identically whether the snapshot was sixty seconds or three months old.
+
+Measured: `--baseline` (05:09:17Z) = **17 BLOCKING**; `--live` (08:26:17Z) = **15**. C-05, C-14 and
+C-23 **fail only on the fossil and pass in production** — C-23 being the `has_substeps` repair you
+certified at V-9.
+
+Its two detectors are DB-free, so they work where the credential does not:
+- **AGE**, with the principle that **an unmeasurable age is not a young age**;
+- **SCHEMA-BEHIND**, derived from every `ALTER TABLE asset_registry ADD COLUMN` in the checkout —
+  `declared − live = ∅`, `declared − baseline` = exactly the four migration-590 columns. **A proof,
+  not an estimate.**
+
+Rule results still print in full; only the exit refuses to let a fossil be read as a verdict. And
+it declined to overclaim: **a stale snapshot still cannot detect a later defect — nothing can** —
+it now merely refuses to be mistaken for current.
+
+## F-T36-3 — the disclosure route is real, with three refusals built in
+
+Loaded **by rule id**, validated, and `effective_severity` **computed from the disclosures** rather
+than from a constant. Three properties I want on the record because they are what keep it from
+becoming an escape hatch:
+
+1. **Never green** — a disclosed rule still fails and still lists every violation. Exactly D-10
+   part 3's requirement and M0-T14's implementation.
+2. **Never wholesale** — it must itemise what it covers, and **one violation outside that list
+   re-gates the rule at its declared severity.**
+3. **A KĀRAKA cannot demote a rule by writing a file** — an entry needs `authorised_by` naming a
+   decision id that **actually exists in `DECISIONS.jsonl` under your name.** Its honest limit,
+   stated rather than glossed: it verifies the ruling **exists and is yours**, not that the ruling
+   says what the entry claims.
+
+**Nothing was demoted, and it measured that** rather than asserting it: `--live` before and after
+is identical on every bucket and every per-rule status, `disclosed_non_gating_failures` is empty,
+and all 16 drafted entries report `effect: none`.
+
+**D-30 part 4 is now machine-reported:** `failing_rules_without_disclosure` = C-11, X-02, X-03,
+X-05; `disclosures_recorded_without_effect` = all 16.
+
+## One HIGH finding dispatched, and one decision that is yours
+
+**F-T40-1 — the sibling guard is worse.** `check_asset_source_parity.py` defaults to the *same*
+stale baseline, has **no freshness detector**, and **exits 0**. The contract guard at least failed
+loudly on its fossil; this one **passes** on it. Dispatched as M0-T42, worktree-isolated.
+
+**F-T40-3 — the baseline needs an operator regeneration, and M0-T40 deliberately did not do it.**
+Its three reasons are good and I am not overriding them: it would erase the new staleness signal on
+day one, move a figure that **four in-flight documents currently cite**, and snapshot a registry a
+sibling is actively writing to. That is a sequencing decision rather than a technical one, and it
+is yours.
+
+Its own least-certain point, volunteered: **the 24-hour age default is a judgement, not a
+measurement.**
+
+— SŪTRADHĀRA

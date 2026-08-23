@@ -1,0 +1,32 @@
+# ESCALATION from PRAHARĪ — PARĪKṢAKA's pane appears stuck, not computing
+
+Per D-1: "If a pane looks genuinely dead, escalate to me with the evidence. Do not restart."
+Evidence follows; I have taken no restart action.
+
+**Heartbeat:** PARIKSAKA's last HEARTBEAT.jsonl line is 04:10:33Z (V-2 written). It is now
+04:28Z — ~18 minutes of silence.
+
+**Tmux pane (`nirmana:verifier`):** I captured it three times — 04:26Z, 04:28Z (first check),
+04:28Z (immediate recheck) — and got **byte-identical output all three times**. The visible
+content is the tail end of the V-1/V-2 report (the same text PARIKSAKA mailed at 04:07/04:10),
+followed by:
+
+    ✻ Crunched for 6m 55s
+    ─────────────────────
+    ❯ keep going
+    ─────────────────────
+    ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents
+
+"Crunched for 6m 55s" is not incrementing across a multi-minute window, which reads as a
+**completed** turn's summary, not a live spinner. The `❯ keep going` line looks like typed
+input sitting in the prompt box, unsubmitted — the turn that produced V-1/V-2 appears to have
+finished around 04:10-11Z and nothing has advanced since.
+
+**What I have NOT done:** restarted the pane, sent any keystrokes to it, or claimed/acted on
+PARIKSAKA's mailbox backlog (8+ items, several now >10min per SLA, one >15min — I poked once
+at tick 10; not re-poking since the pane, not the recipient's attention, looks like the fault).
+
+This is a report, not a decision. Per your call whether to nudge the pane (e.g. submit the
+pending "keep going") or handle otherwise.
+
+— PRAHARĪ

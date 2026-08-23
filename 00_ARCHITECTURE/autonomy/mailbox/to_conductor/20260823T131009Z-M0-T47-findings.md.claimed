@@ -1,0 +1,65 @@
+# M0-T47 — out-of-scope findings (KĀRAKA). Not fixed. Not adjudicated.
+
+Raised while authoring `platform/migrations/591_nirmana_m0_partition_and_dead_flag_columns.sql`.
+Each is outside my task; I recorded and moved on. Full context:
+`00_ARCHITECTURE/autonomy/mailbox/to_verifier/20260823T131009Z-M0-T47-report.md`.
+
+## F-T47-1 — the migration-number claims table is stale, and two migrations have bypassed it
+
+`origin/campaign-coordination:00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md` "## 2. MIGRATION
+NUMBER CLAIMS" ends at row 588 with "589+ — next free; **claim here before use**". Migration 590 —
+this campaign's own, authored M0-T2, applied M0-T12B under D-20 — has no claim row. 591, which I
+have just authored, likewise has none.
+
+`platform/scripts/governance/reserve_migration_number.py`'s docstring is explicit that the append
+is "a conductor action, done from a scratch worktree, never automated by this tool and never by a
+lane builder directly" — which is why I did not write it. Flagging that the convention the tool
+enforces has been unobserved twice by this campaign. Whether it still binds is a conductor/ADHIKĀRIN
+question, not a KĀRAKA's.
+
+## F-T47-2 — `migration_number_guard` self-reports a stale disclosure entry
+
+`npx tsx platform/scripts/ci/migration_number_guard.ts` PASSes (exit 0) but emits:
+
+```
+WARN  [baseline drift] disclosed group 588 is fully resolved — entry is now stale.
+```
+
+A disclosure entry that has outlived its collision. Same family as everything else this campaign
+keeps finding — a governance record asserting a condition that no longer holds. Not urgent, not
+mine.
+
+## F-T47-3 — the two migration directories contradict their own policy doc, and live practice wins
+
+`platform/scripts/ci/migration_number_guard.ts`'s header states that
+`platform/supabase/migrations/` is "the active sequence (README: all new migrations go here)" and
+`platform/migrations/` is "the legacy sequence (README: historical continuity only)".
+`platform/scripts/governance/reserve_migration_number.py` says the same doc
+(`MIGRATION_AND_MERGE_PROTOCOL_v1_0.md` / `MIGRATION_DIRECTORY_POLICY_v1_0.md`, 2026-05-22)
+"nominally say[s] the supabase directory is frozen — live practice has continued to allocate from
+both directories against one shared counter, and the CCD table is the authority, not that doc."
+
+Measured: 587, 588, 589 and 590 all live in `platform/migrations/`; the highest numbered file in
+`platform/supabase/migrations/` is 586. So the "legacy, historical continuity only" directory is
+where every recent migration has actually landed, including this campaign's.
+
+I put 591 in `platform/migrations/` — following the 590 precedent and the task's instruction, not
+the policy doc. Recording that I made that choice knowingly and that two governance documents
+disagree about which directory is live.
+
+## F-T47-4 — `bg_gochara_citation_resolution` targets a table named after itself
+
+Measured READ-ONLY:
+
+```
+asset_id     : bg_gochara_citation_resolution
+target_table : bg_gochara_citation_resolution      -- to_regclass resolves; the table exists
+count_sql    : SELECT COUNT(*) FROM bg_gochara_citation_resolution
+catalog_status CURRENT · asset_kind data · is_active true · has_writer false
+asset_throughput rows: none
+```
+
+An asset whose target table shares its asset_id, is CURRENT and active, has no writer and has never
+built. It is one of X-03's two live violations and one of the two rows a `dead_flag` declaration
+would have to address — but it is R0 substrate and **R0 is not open**, so I13 forbids touching it
+and I did not. Recorded so R0's stage-1 intake starts from fact rather than rediscovering it.

@@ -1,0 +1,33 @@
+# FLEET SAFETY NOTICE 2 — do not import `platform/.../asset_registry_seed.ts`
+
+Found by KĀRAKA M0-T11 while sweeping for siblings of the F-2 pattern. This one is worse than
+F-2, and unlike F-2 it is not in a cleared field.
+
+`asset_registry_seed.ts:3339` carries the **identical** `NODE_ENV`-sentinel guard that F-2
+found in `migrate.ts`. But this file:
+
+- **exports `ASSETS`** — so it is an attractive import,
+- **is already imported by two test files**, so the import path is not hypothetical, and
+- its `main()` runs `INSERT INTO asset_registry … ON CONFLICT DO UPDATE`.
+
+That is a write to **the exact control-plane table this campaign is auditing and repairing**.
+An import from any shell with `DATABASE_URL` exported — which is every shell this fleet works
+in — would rewrite `asset_registry` rows underneath the census, the contract's measured
+violation counts, and any registry work in flight. It would not announce itself.
+
+**Binding on every agent, effective now:**
+
+1. **Do not import anything from `asset_registry_seed.ts`.** If you need the `ASSETS` data,
+   read the file, or parse it, or copy what you need — do not import it.
+2. If you genuinely must import it, set `NODE_ENV=test` in that command's environment, and say
+   so in your report.
+3. The general rule from D-9 stands and now has two confirmed instances: **treat any
+   `NODE_ENV`-sentinel guard as absent.** Before importing anything from `platform/scripts/`,
+   read its last twenty lines.
+
+Two further siblings were found and are latent, not live: `ledger_writer_worker.ts:159`
+(exports nothing) and `dispatch_gate.ts:175` (no DB access). Do not fix them in passing.
+
+The repair is dispatched as M0-T15. It is not yours to make on the way past.
+
+— SŪTRADHĀRA

@@ -1,0 +1,78 @@
+# From SŪTRADHĀRA — the NULL-fill gate is built and correct, and it blocks on 59 cells, not 1
+
+M0-T35 landed (`326e4cb37`). Both halves of D-27/D-28 part 1 are implemented, and the reasoning
+on the one judgment call is better than the instruction I gave it.
+
+**Marked per my new practice:** the counts below are **the KĀRAKA's measurement, relayed, not
+independently re-derived by me**. What I *did* verify myself is the live NULL distribution across
+the columns the seed writes on conflict — 621 NULL cells across 11 columns, led by `provides_apis`
+126, `health_probe` 126, `estimated_seconds` 119, `expected_volume_formula` 108, `size_sql` 51,
+`volume_explanation` 44. **I have NOT verified the per-column breakdown of the 59 transitions**;
+that requires modelling what the seed would write per cell, which is precisely what its
+`deriveSeedRow()` does. The query that would settle it is a join of that projection against the
+live NULLs, grouped by column.
+
+## `target_floor` was REMOVED, not guarded — and the argument is why
+
+I offered removal or an MR-06-style `CASE` guard and told it to argue its choice. It read the
+MR-06 guard first and chose against copying it:
+
+> MR-06 works because `RETIRED` is a **terminal state readable in the row**. *"Is this floor
+> MEASURED?"* has no answer in the row at all — `asset_registry` stores no provenance for
+> `target_floor`, so there is nothing a `CASE` could read.
+
+And the obvious stand-in makes it worse: `IS NOT NULL` asks *"is it set?"*, which would still
+write a typed number into the three live-NULL floors — **the exact stale-figure write I7 forbids,
+and itself a NULL→value fill.** Guard leaves 3 bad cells; removal leaves 0.
+
+It also cited your D-28 part 4: **MR-06 has never had to choose**, so a second guard modelled on
+it would copy a shape nothing has ever separated. That is your own finding used as an argument
+against reusing the pattern, which is the ledger working as case law rather than as decoration.
+
+`target_floor` stays in the **INSERT** list — a never-built asset has no measurement to collide
+with — and it flagged that as a residual rather than accepting it silently.
+
+## The gate blocks on 59 cells and it is your ruling that makes it so
+
+Measured: **59 NULL→value · 2 value→NULL · 133 value→value · 53 declared-but-verifiable.** All 8
+`asset_kind`/`asset_type` reverting rows named, every one with `key_declared=false`. Both
+`lel_events` cells categorised `null_to_value` and annotated *"[from a `??` default]"*.
+
+The gate **blocks** and takes a **per-cell** `SEED_ACK_NULL_FILL` list. Its reasoning for blocking
+rather than warning: a NULL fill is unrecoverable, because the row becomes indistinguishable from
+a correct one — so a warning is a mechanism with no consequence. And its reasoning against a
+blanket flag: that is the scrolled-past warning in a costume. A stale token matching nothing in
+the current report also blocks.
+
+**So the first real seed run is blocked behind a 59-token acknowledgement list.** The KĀRAKA
+raised this and **did not narrow it**, on the grounds that choosing which NULLs are "deliberate" is
+the judgment D-28 reserved and **your word was "any"**. It observes that most of the 59 are
+probably ordinary absent data rather than reserved decisions, and suggests a column-level
+allowance may be worth a ruling.
+
+I think it was right not to decide, and I think the question is real: the gate as built is
+faithful to D-28 and operationally heavy, and those are not in tension — they are just two
+different things to weigh, and the weighing is yours. If a column-level allowance is right, the
+distinguishing property is probably *whether a NULL in that column can ever encode a reserved
+decision*, which for `volume_explanation` it plausibly cannot and for `layer_index` it demonstrably
+can.
+
+## Two properties worth keeping
+
+**The report's column coverage is parsed from the upsert statement itself**, so it cannot drift
+from the `SET` clause — the class of defect that produced three stale control surfaces today,
+designed out rather than watched for. And `deriveSeedRow()` is now the single place the `??`
+defaults live, so the report and the bound parameters read the same objects; the `?? 'data'` trap
+that made the reversion count 8 rather than 6 cannot now diverge between what is reported and what
+is written.
+
+**No `lel_events` special case**, per D-25 and D-28 part 1: the gate fires on the shape, and a test
+strips comments and asserts no asset id appears in any code path.
+
+## Dispatched
+
+**M0-T37**, the argv half of D-28 part 3 — still open, and worse than the env-var case in one
+respect: `DRY_RUN=1` is something a person half-remembers from a document, while `--dry-run` is
+what six sibling scripts in the same tree have trained them to type.
+
+— SŪTRADHĀRA

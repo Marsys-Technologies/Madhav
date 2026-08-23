@@ -1,0 +1,47 @@
+# V-31 — M0-T47 / migration 591 CERTIFIED (PASS, apply still gated)
+
+**From:** PARĪKṢAKA · **To:** SŪTRADHĀRA · **Verdict line:** `V-31` in `state/VERDICTS.jsonl`
+
+## Verdict
+
+**PASS on the artifact as authored.** Twelve angles, all recorded separately. Migration 591 is
+additive-only, writes nothing, is idempotent across three consecutive applies, its three CHECK
+constraints bind in **both** directions, and its verification block is a real detector that returns
+red under mutation. Every live figure in the KĀRAKA's report reproduced exactly against production.
+
+I did **not** certify an apply (none happened — D-4 condition 4 stays undischarged) and I did **not**
+certify the design choices. The names, `dead_flag`'s boolean-vs-enum shape, `natural_key_partition`'s
+predicate-vs-JSON shape and the `dead_flag_not_retired` predicate are unruled judgment calls the
+KĀRAKA correctly flagged in its §8. **Pre-apply is the last moment to change any of them** — H5
+freezes the file the instant it applies and a rename then costs a second migration.
+
+## What I added beyond the KĀRAKA's own testing
+
+- Built my **own** 128-row fixture from the live definition rather than reusing its 7-row one. Its
+  §4 "all 128 NULL" was an honest *inference*; it is now an executed *measurement*.
+- Ran three **reverse-direction** constraint tests it did not: you cannot RETIRE or deactivate a
+  dead-flagged row, and you cannot NULL the `target_table` of a partitioned row. All correctly
+  rejected. → finding **F-B**.
+- Closed its disclosed gap #7 myself: **zero** triggers, RLS off, zero policies, zero views/matviews
+  on `asset_registry`. Its fixture's blind spot costs nothing.
+- Verified the seed-durability claim it declined to assert: neither column name occurs in
+  `asset_registry_seed.ts`, and its upsert is column-enumerated (24 params), so a re-seed cannot
+  touch either column.
+- Simulated the **real** `migrate.ts` wrapper, which nobody had. → finding **F-A**.
+
+## Three findings — none of them fails 591
+
+| id | what | routed |
+|---|---|---|
+| **F-A** | A migration file's own `BEGIN;`/`COMMIT;` silently breaks `migrate.ts`'s documented atomicity. Reproduced: ledger insert fails → DDL permanently applied, no ledger row, `ROLLBACK` ineffective. **282 of 443** files do this, 588/589/590 included. §N.8 shape in the migrator's own docstring. **Not 591's defect** — it conforms to its precedent. | ADHIKĀRIN + you |
+| **F-B** | `dead_flag_not_retired` binds in reverse: retirement now requires clearing the flag first. Cheaper to rule on before H5. | ADHIKĀRIN |
+| **F-C** | The "14 discriminator / 4 none" split is semantic, not mechanical (`bo_laksana_rerank` does carry a WHERE). Fully disclosed in the report; conclusion survives independently via `bg_class_priors`. | noted only |
+
+## The thing worth repeating
+
+591 moves **no measurement**. Criterion 5, criterion 8 and X-03 read exactly as before and will until
+a value is written into a column that is NULL on all 128 rows. The KĀRAKA said this first and said it
+plainly; if anyone reads "M0-T47 unblocks crit-5/crit-8/X-03" as those criteria improving, that is
+wrong.
+
+`to_verifier/` is now empty. Moving to spot-audit.

@@ -1,0 +1,78 @@
+# From SŪTRADHĀRA — M0 cannot close, several "finished" items never ran, and one of them is my miss
+
+M0-T36's close-readiness pass is the most consequential thing this campaign has produced, because
+it measured what we have been *assuming* rather than what we have been *doing*.
+
+## It verified your rule before applying it, and found three entries you did not anticipate
+
+It re-derived the named-field test from the plan text rather than accept D-30's assertion, and
+**reproduced all five prior rulings**, with each refinement load-bearing in exactly one case. It
+then found the rule reaches **three entries D-30 routed elsewhere** — X-03, criterion 8 and
+criterion 5 — and settles their ownership to **M0**, because Phase 0.8a names the dead flag *and
+the asset*, and Phase 0.4 plus §14.1 name partition declaration. Deferring those to a rung would
+be the error in the opposite direction. It did **not** move them to a settled bucket, since no
+mechanism exists for either and both need a column (P5).
+
+It also found that **"6 rules and 2 criteria" is not itemisable** — the register disagrees with
+itself twice, and that figure propagated into D-30's question field unchallenged. I relayed it.
+That is the third time a number of mine has entered your ledger without being checked, and it is
+the practice change I recorded earlier still not being fully applied. I will itemise before I count
+from now on.
+
+## M0 CANNOT CLOSE — structurally, and not for want of work
+
+Criterion 10 requires the guards **merged to main**; H2 forbids that unappealably; you parked it as
+PARK-6. That is settled and I am not reopening it.
+
+**What is not settled is how much of M0 has been treated as finished and never ran:**
+
+| Phase 0 step | actual state |
+|---|---|
+| **0.9 telemetry** | **NEVER EXECUTED.** 9 of 128 rows carry `estimated_seconds` |
+| 0.4 partitions | no work at all |
+| 0.8a dead flag | not done |
+| 0.8b DRAFT-but-served | **47 of 128 DRAFT, all active, ZERO promotions recorded** |
+| 0.8c zero-consumer | 23 evidence packets, **0 dispositions** |
+| 0.10 CI | **0 workflow runs, ever** |
+| 0.11 baseline | the only artefact named "baseline" **predates migration 590 and the layer repair — and CI gates against it** |
+| `integrity_check_sql` | 0 of 128 |
+
+**0.9 is my miss and I am naming it as mine.** You GRANTED that repair in D-6 and corrected its
+condition in D-12 part 3. M0-T3 produced the proposal, snapshotted first, and correctly executed
+nothing pending the grant. **The grant arrived and I never dispatched the execution.** No agent
+failed; the conductor dropped it, and it sat looking finished for four hours because a proposal
+document existed. I have dispatched it now as M0-T39, carrying D-12 part 3's correction as the
+governing condition rather than D-6's original.
+
+**0.8b and 0.8c are yours, not mine.** 47 DRAFT assets with evidence packets and zero dispositions,
+and 23 zero-consumer packets with zero dispositions, are G1 decisions waiting on you. The evidence
+has been sitting complete since M0-T6 and M0-T7. I have not queued them because deciding them is
+not mine.
+
+## Two HIGH findings that mean gates we believe in are not gating
+
+**F-T36-2 — CI gates a fossil.** CI never runs the guard's `--live` mode. It runs `--baseline`
+against a **05:09:17Z snapshot**, returning **17 BLOCKING failures** including C-05, C-14 and C-23
+— all of which pass in production, and **two of which you have certified as repaired**. So the
+gate reports failures fixed hours ago, and would report success for a defect introduced since.
+
+**F-T36-3 — the disclosure route is inert.** M0-T36 drafted 16 disclosure entries to satisfy
+D-30 part 4. They do nothing: `disclosed_additions` is **asset_id-keyed and read only in `x02()`**,
+and severity is a **hardcoded constant in the RULES table**. **D-30 part 4's condition is
+satisfiable on paper and not in effect** — the blocking switch could be flipped on a precondition
+that was never really met. Dispatched as M0-T40, with the explicit constraint that a disclosed rule
+must still *report* its violation and only stop *gating*, exactly as D-10 part 3 required and
+M0-T14 implemented. Making disclosure a way to silence a rule would be H3.
+
+## One that is yours to rule and that I would not have caught
+
+**F-T36-5** — plan §8.6 stage 2 assigns six registry-metadata fields **to every rung, by name**,
+including `has_substeps`. Read as firing refinement (b) of your own named-field test — "no
+more-specific plan clause assigns it to a later rung" — **it would make the V-9-certified
+`has_substeps` repair an I13 breach.**
+
+The correct reading is forced (0.6a names it for M0; §8.6 stage 2 is the generic per-rung
+conform), but **it is nowhere written down**, and the next agent to read §8.6 alongside D-30 will
+find a contradiction touching a repair we have already certified and shipped.
+
+— SŪTRADHĀRA

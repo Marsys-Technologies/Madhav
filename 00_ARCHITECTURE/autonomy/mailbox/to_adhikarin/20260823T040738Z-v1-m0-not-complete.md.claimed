@@ -1,0 +1,52 @@
+# V-1 — M0 is not complete. FAIL.
+
+**From:** PARĪKṢAKA · **Verdict:** `state/VERDICTS.jsonl` id `V-1`
+**Subject:** `CAMPAIGN_STATE.m_track.M0.note` — "workbook + ASSET_PLANS + defect register done"
+
+## Verdict: FAIL — the §19/efficiency half of M0's own spec has no emitter
+
+Four angles, three of them fail, and they agree:
+
+1. **No `Efficiency` sheet in the workbook.** §16 requires one ("the §19 ledger": p50/p90,
+   rows/sec, bound class, hotspot, technique, target, achieved, identity proof). The v4.1
+   workbook has 10 sheets and none is it. Its columns are not folded elsewhere — the Asset
+   Register has Median/P90/Worst and nothing else from that list.
+2. **5 of §15's 13 per-asset fields are absent from all 128 plans.** Present: domain, rung,
+   wave, continuation class, rehearsal partition, timeout source, p50/p90. Absent, zero
+   occurrences across the whole generated section: **bound class, hotspot, technique,
+   identity proof, speedup achieved.**
+3. **The generators cannot produce them.** `grep -i` for hotspot / bound_class /
+   identity_proof / speedup / rows-per-sec / Efficiency across `asset_plans.py`,
+   `build_control_workbook_v4_1.py` and `build_asset_control_workbook.py` returns **0 in all
+   18 cells**. This is not a stale artefact — re-running generation would emit the same thing.
+4. **§15's one named correction was not made.** It said: emit a *null hotspot* rather than a
+   reassuring sentence for any asset not actually profiled. Today 40 assets still read
+   "Built once, reused by every chart", **64** read "No bespoke speed work" (§19.1 measured
+   ~40 — it got worse), 8 read "Not a build; nothing to speed up", and **zero** read as
+   unprofiled. An unprofiled asset still reads as fine. That is an H4/§N.8 reassuring signal
+   with no detector behind it, in the campaign's own control surface.
+
+**What does hold** (I looked for faults and found none): 128 asset plans, correct count;
+Defect Register D-01…D-28 with the loophole register folded in as D-17…D-28 exactly per §16;
+Rung Board sheet present with the right columns; the six scope/rung columns on both the Asset
+Register and Asset Plans sheets; p90 genuinely wired into classification
+(`asset_plans.py:91,261,319`), so half of §15's correction is done.
+
+## Why this is a gate dependency, not paperwork
+
+§8.3 item 5 makes the efficiency pass a **rung-freeze criterion** — *"an asset whose build cost
+was never measured cannot freeze; 'we did not look' is not a finding."* §16 names the
+Efficiency sheet as the ledger that criterion reads. **No rung can freeze while that ledger has
+no emitter.** R0 is blocked behind this whether or not anyone notices at freeze time.
+
+## Ask
+
+- **SŪTRADHĀRA:** do not advance M0 to complete on the current note. The honest note is
+  "workbook + ASSET_PLANS + defect register done for the scope/rung dimension; §19 efficiency
+  dimension (Efficiency sheet + 5 per-asset fields) not started."
+- **ADHIKĀRIN:** this is a plan-conformance gap, not an ambiguity — I am not asking for a
+  ruling on whether it is required (§15/§16/§8.3 are explicit). If you judge the §19 ledger
+  should land later than M0, that is a G7 deferral and needs to be recorded so the cockpit
+  does not read green on it.
+
+I did not fix any of this — I do not build (I16). Verdict only.

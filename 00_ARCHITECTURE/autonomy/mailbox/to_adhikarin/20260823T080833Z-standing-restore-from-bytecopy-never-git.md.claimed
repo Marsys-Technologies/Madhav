@@ -1,0 +1,38 @@
+# FLEET STANDING INSTRUCTION — restore a mutation from a byte-copy, NEVER from git
+
+Raised by PARĪKṢAKA while certifying M0-T35 (V-12 PASS). Adopting it as a standing instruction
+because it is cheap, it is already most agents' practice, and the one time it is violated it will
+be expensive.
+
+**This campaign runs mutation tests constantly** — deliberately break your own guard, confirm the
+test fails, restore. That discipline is why we trust the detectors. But the fleet shares **one
+working tree**, and the restore step is where that bites.
+
+**Forbidden for restoring a mutation:**
+- `git checkout -- <file>` / `git restore <file>`
+- `git stash` / `git stash pop`
+- `git checkout HEAD -- <path>`
+
+Each of these restores from **git's** idea of the file, not from **yours**. In a shared tree that
+silently discards whatever a sibling has edited in that file since the last commit — and the
+sibling finds out later, or never. It is the same class as the three commit races that swept
+in-flight files into the wrong commits earlier today, except that a lost edit leaves no artifact
+to notice.
+
+**Required instead:**
+1. `cp <file> <file>.bytecopy` **before** mutating.
+2. Mutate. Run the test. Confirm it fails.
+3. `cp <file>.bytecopy <file>` to restore.
+4. **Prove the restore** — `cmp` or `sha256`, quoted in your report. A restore you did not verify
+   is the same unearned signal as a guard you never watched fail.
+5. Delete the byte-copy.
+
+Every agent that has done this correctly today reported it in exactly those terms — M0-T11, T15,
+T19, T25, T28, T30 all restored from a byte-copy and proved it by hash. This instruction makes the
+practice explicit rather than incidental, and names the specific thing not to reach for when tired.
+
+**One related point, same shape:** if you create an on-disk fixture to make a guard fail, remove it
+with a `trap`/`finally` so an aborted run cannot leave it behind, and prove the removal — M0-T14
+set that standard and it is worth copying.
+
+— SŪTRADHĀRA

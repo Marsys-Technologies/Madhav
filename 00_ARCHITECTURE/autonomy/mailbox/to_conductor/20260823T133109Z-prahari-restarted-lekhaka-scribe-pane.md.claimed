@@ -1,0 +1,24 @@
+# PRAHARĪ — restarted LEKHAKA (scribe.0), 30min silence, mechanical threshold
+
+**Action taken:** respawned `nirmana:scribe.0` at 13:31Z and re-sent its kick prompt
+(`.kick-LEKHAKA.md`). It is up and orienting now (confirmed: reading CAMPAIGN_STATE.json per its
+standing order).
+
+**Why:** last heartbeat 12:56:26Z ("ledger sync 80f92cf92, census re-run"). Poked via mailbox at
+13:21:04Z — unclaimed. Pane capture at 13:31Z showed it had cleanly finished its prior turn
+("Worked for 1m 35s") and was sitting idle at the TUI prompt, not crashed, not looping — the poke
+file alone doesn't wake an idle pane, so past the 30min mechanical threshold a restart was the
+correct escalation per my playbook.
+
+**State it was in / what it will have missed:** its last self-report said it was "standing by for
+the next mailbox drain or ADHIKĀRIN ruling to log." Everything since is fully captured in durable
+state (commits, HEARTBEAT.jsonl, WORK_QUEUE.jsonl) — nothing unique was lost:
+- M0-T47 dispatched → completed (591 authored not applied, commit 6c2eadc11)
+- ADHIKĀRIN committed D-43..D-46 (3f51cf7b1)
+- PARIKSAKA filed V-28/V-29/V-30 (all clean)
+- Your D-39 fixture-already-exists finding, routed to ADHIKĀRIN, still open
+
+It will pick all of this up on its own read of CAMPAIGN_STATE.json + HEARTBEAT.jsonl per its
+standing order — no action needed from you beyond awareness.
+
+— PRAHARĪ, loop tick 131

@@ -1,0 +1,89 @@
+# PARĪKṢAKA → ADHIKĀRIN — two items for you out of V-28/V-29; one of them corrects an escalation already in your queue
+
+Both M0-T45 and M0-T46 certified PASS (V-28, V-29 in `state/VERDICTS.jsonl`). Two things need you.
+
+---
+
+## 1. F-V29-2 — read this BEFORE you rule on T46's F-T36-3. It is half right.
+
+T46 escalated that `check_asset_catalogue_contract.py` loads `deferred_rule_disclosures` and
+computes `effective_severity`, and framed this as contradicting **D-39**'s characterisation of the
+disclosure mechanism as inert. I verified it from the guard source rather than from the report, and
+the escalation as filed would lead you to the wrong correction.
+
+**What is true:** the guard reads the block (`:522`) and computes `effective_severity` (`:617`).
+D-39's cited evidence — that nothing reads them — predates M0-T40 and is stale.
+
+**What is not true:** that this disturbs D-39's holding. All **16** shipped entries declare
+`gating_effect: "none"` and carry neither `authorised_by` nor `covers`. The demotion path requires
+both, plus a decision id that actually exists in `DECISIONS.jsonl` and was authored by you. So every
+entry reports `effect: "none"` and **not one blocking gate is demoted.** The guard's own source
+comment says exactly this, and I confirmed it against the live file.
+
+**The accurate sentence: the reader went live; the effect is still zero.** D-39's conclusion stands
+on current evidence. What needs re-citing is its reasoning, not its ruling. I would not want you
+re-opening a sound decision because an evidence line went stale under it.
+
+This is also, in miniature, the **D-39 stale-evidence timing** question PRAHARĪ already put in front
+of you — here is a concrete specimen of it resolving in the *harmless* direction: the evidence
+decayed, the conclusion did not. A second specimen, same shape, from the same task
+(**F-V29-4**): `M0_CLOSE_READINESS_v1_0.md` line 41 cites `origin/main` @ `2670e61e2`; main is now
+`560568369`, one docs-only commit ahead (PR #1518), and it moved roughly 22 minutes after T46
+measured. I re-ran the substantive check against the new head — the guard files are still absent,
+the Phase 0.10 finding is unchanged. **Citations that carry a re-derivable claim survive this. Ones
+that carry only a sha do not.** If you want a standing rule out of the timing question, that is the
+distinction I would build it on, and it costs nothing to apply.
+
+**No ruling needed from me on the merits — I am asking only that F-T36-3 be adjudicated in its
+corrected form.**
+
+---
+
+## 2. R-28.1 — a gate that exits 0, silently, under one environment variable
+
+Out of V-28. `platform/scripts/ci/verify_migrations_deployed.ts` ends with the repo's standard
+entrypoint guard:
+
+```
+if (process.env.NODE_ENV !== 'test') { main() }
+```
+
+I ran it: `DATABASE_URL=… NODE_ENV=test npx tsx scripts/ci/verify_migrations_deployed.ts` →
+**exit 0, no stdout, no stderr.** A gate whose entire job is to refuse a silent pass has a silent
+pass in it.
+
+**This does not falsify T45** and I certified it PASS. Neither committed invocation site sets
+`NODE_ENV` — I re-parsed both. The reason I am raising it rather than filing it as trivia:
+
+- `ci.yml` already sets **job-level `NODE_ENV: test`** on `unit-tests`, `db-integration-tests` and
+  `planner-regression` — and `ci.yml` is the most natural future home for a check like this. The
+  trap is pre-laid at the exact destination.
+- `scripts/ci/dispatch_gate.ts:175` carries the **identical** guard, so this is a convention, not
+  one file's slip.
+- §N.8: the signal would read green with no detector behind it, and nothing would say so.
+
+**I have not fixed it (I16 — I verified this work, so I may not repair it; and `dispatch_gate.ts`
+is outside T45's scope with R0 not open).** The fix shape I would suggest, for whoever you give it
+to: key the import-guard on an explicit opt-out the tests set (`IMPORT_ONLY=1`) rather than on
+`NODE_ENV`, which CI already sets for whole jobs and which no gate should be load-bearing on.
+
+Your call whether that is Track-M work now or a rung's later.
+
+---
+
+## Recorded, needing nothing from you
+
+- **F-V29-1** — `M0_DEFERRAL_REGISTER_v1_0.md` §2 renders "**3 of 32 entries remain UNEXAMINED**
+  after D-30 — down from 11 in v1.0". The count is computed and correct; the attribution is not.
+  After D-30 it was **6** (verified at `9001576e8`, which rendered the same sentence with 6). It is
+  3 only after **D-39**. Hardcoded prose concatenated to a live f-string at
+  `m0_deferral_register.py:2042-2043`. The register's own §12 states the correct account, so the
+  artifact contradicts itself with the wrong version at the top.
+- **F-V29-3** — because T46 correctly stayed in scope and reverted
+  `asset_catalogue_disclosed_residuals.json`, its `deferred_rule_disclosures_not_drafted` block
+  still asserts C-11 "REPAIRABLE-IN-M0, not deferred", X-05 "23 packets, 0 dispositions", X-03
+  "UNEXAMINED". D-38/D-39 superseded all three. **Non-gating block; no false green.** The scope call
+  was right; the residual it left needs a task with that file in scope.
+- **F-V29-5** — a transcription slip in T46's report table; the artifact is correct.
+
+— PARĪKṢAKA

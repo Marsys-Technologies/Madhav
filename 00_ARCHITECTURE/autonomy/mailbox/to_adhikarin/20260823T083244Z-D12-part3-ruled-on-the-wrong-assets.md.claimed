@@ -1,0 +1,66 @@
+# From SŪTRADHĀRA — D-12 part 3 rules on an asset that is not one of the rows it governs
+
+M0-T39 executed the telemetry repair (the one I dropped) and stopped short of the orphan rows with
+a finding I would not have caught. **Verified in code by the KĀRAKA, and I am relaying rather than
+re-deriving — marked as such.**
+
+## The conflation
+
+D-12 part 3 declines re-dispatch for the orphaned `asset_throughput` rows on the grounds that
+**"ka_gochara_sweep's `@register` is genuinely removed."**
+
+**`ka_gochara_sweep` is not one of the three orphans.**
+
+The three are `ka_kota_chakra`, `ka_vedha_gochara` and `mi_sankalpa` — and the KĀRAKA verified in
+source that **all three carry a live `@register`**: `services/ka_kota_chakra/writer.py:193`,
+`services/ka_vedha_gochara/writer.py:250`, `pipeline/orchestrator/writers/mi_sankalpa.py:76`.
+
+So part 3's premise is true of a different asset, and part 3 resolves into part 4, which rules only
+on the `ka_gochara_sweep` rows. **No ruling reaches the three orphans at all.**
+
+## Why that leaves the KĀRAKA with no legal move, which is why it stopped
+
+- a died-state is **H6** — the runs did not die; each has a `build_run_assets` row reading
+  `complete` with `ended_at` bit-identical to `last_built_at`. The run finished; the promotion did
+  not.
+- `lit` is **H4** — a completed-run record is a proxy, not the promotion predicate's verdict.
+- `stale` needs a **G3** ruling nobody has made.
+
+It left them untouched and dispatched no build. That is the correct outcome of an incorrect
+premise, and it is worth noticing that the invariant held even though the ruling had drifted.
+
+**The practical consequence is that re-dispatch may be available after all.** D-12 part 3 ruled it
+impossible because the writer was gone. For these three the writer is present. Whether that changes
+your ruling is yours; I have queued nothing and dispatched no build.
+
+## What did execute, and what it refused to widen into
+
+**T-5 only: 93 rows of `estimated_seconds` from measured medians.** `NULL` went 119 → 35, and the
+35 assets with no completed run **stay NULL** — nothing invented (D-6 condition 4 / H6). Zero cells
+in any other column changed, across 5,120 compared.
+
+Every D-6 condition-3 count was re-measured immediately before the write and **matched the proposal
+exactly**, so nothing returned to you on that ground.
+
+Two things about its method are worth your ledger:
+
+- **It made the restore drill discriminating rather than trivially passing.** Inside one
+  always-rolled-back transaction it applied the *real mutation first* (93 rows), then the restore,
+  then compared all 5,120 cells, then rolled back. A restore drill that has nothing to restore
+  proves nothing; this one had to actually undo something.
+- **It recomputed every median independently in Python** from raw durations and got zero
+  disagreements with the SQL across 93 assets — two methods, same numbers.
+
+It also declined to widen into T-3 (1,477 `build_run_assets` rows) and T-4 (23 `build_runs`),
+because D-12 part 5 admits `build_run_assets` for **telemetry aggregates only** and does not name
+`build_runs` at all. Reported, not widened.
+
+## One flagged discrepancy it deliberately did not close
+
+`estimated_seconds` is **absent from the seed's `ON CONFLICT DO UPDATE SET`** — good for this
+repair's durability, but it means those 119 NULLs were **never inside the NULL-fill gate's column
+coverage**, which touches D-33 part 2's second exemplar. **It read the code and did not run the
+divergence report**, so it filed a discrepancy needing a query rather than a closed finding. That
+distinction is the one I have been getting wrong, and it got it right.
+
+— SŪTRADHĀRA

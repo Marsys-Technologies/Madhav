@@ -1,0 +1,75 @@
+# From SŪTRADHĀRA — the seed-ownership question is no longer an argument. It is a measurement.
+
+Adding to my earlier escalation, because M0-T27 changed the evidence available for that ruling.
+
+## It built a post-reseed projection
+
+Rather than reasoning about what a re-seed would do, it **modelled it**: a CTE shadowing
+`asset_registry` with the values `asset_registry_seed.ts` would write, then re-ran every passing
+rule against that shadow. Durability stopped being an argument and became a number.
+
+What it found:
+
+- **Criterion 11 — one of M0's own v4.1 acceptance criteria — has a NON-DURABLE PASS.** One cell
+  causes it: `mi_jivanaghatana` is live `scope=per_chart` / `domain=chart`, and the seed declares
+  `scope:'global'`. `scope` is seed-overwritten; `domain` is not. So a re-seed moves **one half of
+  the pair** and leaves the row internally inconsistent — a `domain` that no longer matches the
+  `scope` it was derived from.
+- **M0-T21's `asset_kind`/`asset_type` repair is reverted on all 8 divergent rows.** Confirms my
+  reading of the upsert, by projection rather than by inspection.
+- **M0-T20's `has_substeps` repair is durable** — that column is in neither the seed's INSERT nor
+  its DO UPDATE list. It verified this rather than inheriting my claim.
+
+It reported the non-durable criterion **as PASS with the durability stated on the row**, rather
+than downgrading it — the honest reading, since the criterion is genuinely satisfied today and
+the risk is about tomorrow.
+
+## And it found another detector that could not fail
+
+**Criterion 10's own detector could not fail on the word "blocking."** It computed
+`PASS if (guard file exists) AND (a workflow names it)` — run the *unmodified* generator against
+today's tree and it reports **PASS**, while both jobs are `continue-on-error: true`, neither guard
+nor workflow is on `main`, and `gh` reports zero runs. It now parses `continue-on-error` per job
+and per step and checks `origin/main`. Result: **FAIL**, correctly. It did not flip the switch.
+
+That is the fifth constant-wearing-a-detector's-clothes found today, and the third found *inside
+the campaign's own instruments* rather than in the codebase they audit.
+
+It also ran a falsifiability probe over every rule now reading zero — each one mutated
+deliberately, **all ten fired**. So no PASS in this scorecard comes from a query that could not
+have returned non-zero.
+
+## The tally moved in both directions, and it graded against itself
+
+| | first reading | now |
+|---|--:|--:|
+| PASS | 0 | **1** |
+| FAIL | 6 | **7** |
+| NOT-MEASURABLE | 3 | 3 |
+| BLOCKED | 3 | **1** |
+
+FAIL went **up**, and that is progress: criterion 7 moved BLOCKED → FAIL because migration 590
+gave it a detector and **the detector immediately returned 1**. Not a new defect — a newly visible
+one. Its offender is `ka_gochara_sweep`, so it is flagged and not resolved.
+
+The KĀRAKA noted that grading it FAIL rather than BLOCKED is genuinely arguable, and said it
+**chose the reading that does not flatter the tally**. I would rather it kept doing that.
+
+## What I have dispatched, and what I am still holding
+
+**M0-T29** extends the projection to **all** the seed's overwritten columns. M0-T27 modelled 4 of
+23 and declared itself a lower bound, which is exactly why its result can be trusted — but a
+ruling on seed-vs-DB ownership should rest on the full picture, not on four columns.
+
+**Phase 0.5a stays held.** `layer_index` and `layer_name` are both in the overwritten set, so
+dispatching that repair now would spend a KĀRAKA writing 21 rows the next seed run reverts, and
+would put a green in the scorecard that production would later contradict. That is the campaign
+manufacturing its own stale signal, which I am not willing to do while the question is open in
+front of you.
+
+One thing that keeps this from being urgent in wall-clock terms: the seeder still cannot complete
+a run at all, because of the `bg_cohort` formula abort. As with `DRY_RUN`, an unrelated defect is
+holding the line — and as with `DRY_RUN`, it is one line from being fixed by someone who knows
+nothing about any of this.
+
+— SŪTRADHĀRA

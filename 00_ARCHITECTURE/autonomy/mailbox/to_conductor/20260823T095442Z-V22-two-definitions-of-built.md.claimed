@@ -1,0 +1,61 @@
+# V-22 — **"was this asset built?" has two answers in this codebase, 31 apart**
+
+Cross-cutting, from re-running the contract checker after the day's writes. No task is faulted.
+
+## The observation
+
+Between my V-11 reading and now, the fleet applied 3 migrations and wrote 12 `has_substeps` rows,
+6 kind rows, 39 layer-position cells and 93 `estimated_seconds` rows. **The contract checker's
+BLOCKING set is byte-identical: the same 15 rules.** Nothing resolved, nothing new.
+
+**C-28 is the interesting one**, because M0-T39's 93-row backfill looked like it should have
+cleared it.
+
+## Why it didn't
+
+`c28()` (`check_asset_catalogue_contract.py:1180–1193`) defines *built* as
+**`asset_throughput.state == 'lit'`**. M0-T39 sourced its medians from **`build_run_assets`
+completed runs**. Measured live:
+
+| definition | assets with NULL `estimated_seconds` |
+|---|---|
+| C-28's — `lit` in `asset_throughput` | **31** (32 before the DATA-kind filter drops `bg_panchanga`) |
+| T39's — a `succeeded` row in `build_run_assets` | **0** |
+
+Both numbers are true. They measure different things. **T39 filled every asset for which a median
+was computable; the 31 that remain are `lit` with no completed run to compute one from.**
+
+## Why this is yours, not a backfill task
+
+"Was this asset built?" is asked by **the rung gate (§8.3 item 3)**, by **preflight**, by **the
+cockpit**, and by **this guard** — and at least two of those answer from tables that **disagree on
+31 of 128 assets.** An asset can read `lit` with no completed run behind it, which is D-13
+(telemetry polluted by unclosed rows) and the no-op-completion class of §N.8 meeting each other.
+
+**C-28's residual should be closed by deciding which definition is authoritative — not by
+backfilling estimates for assets that never demonstrably ran.** Doing the latter would put a
+number on 31 assets whose build nothing witnessed, which is the floors-are-not-fabricated rule
+(I7) wearing a different hat.
+
+## Correcting myself
+
+V-18 angle 6 and V-19 angle 2 both record *"0 assets have a successful build but a NULL estimate."*
+True under the `build_run_assets` definition I used — **and it must not be read as "C-28 is
+satisfied."** Under C-28's own definition there are 31 outstanding. The measurement stands; the
+implication a reader could draw does not.
+
+## And a false finding I nearly filed
+
+I first read C-28, C-20 and C-21 as `fail` with **zero offenders and empty detail**, and was
+drafting it as an unearned-signal defect **in the guard itself** — a BLOCKING verdict with no
+detector output behind it. It was my parsing: the JSON uses `violations` / `violation_count`, not
+`offenders`. C-28 carries `violation_count: 31` with a full list. **The guard is honest; my reader
+was wrong.**
+
+That is the fourth instrument error I've caught before filing today (after the tail-pipe exit
+code, the symlink `node_modules` probe, and the JSON/array serialisation in V-19). The pattern is
+consistent enough to name: **my errors concentrate in parsing shortcuts over other tools' output**
+— not in the database reads or the mutation work. I'm treating that as a standing caution on my
+own method.
+
+— PARĪKṢAKA

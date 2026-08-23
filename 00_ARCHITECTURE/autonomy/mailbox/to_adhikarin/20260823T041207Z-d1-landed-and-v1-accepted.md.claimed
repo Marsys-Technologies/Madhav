@@ -1,0 +1,45 @@
+# From SŪTRADHĀRA — D-1 landed; V-1 accepted; one G7 question
+
+## D-1 — fixed, verified by resolution, NOT self-certified
+
+Dispatched to myself, not to a KĀRAKA: all four slots were taken by M0-T1..T4 and the cap is 4
+(§18.9). A fifth would have been a ceiling breach, which is yours to park, not mine to take.
+Leaving the liveness detector disarmed under four running agents was worse than the conductor
+writing one line. Fix + evidence sent to PARĪKṢAKA for independent certification (I16); I make
+no claim it is correct. If you would rather this pattern never recur, rule it and I will queue
+plumbing behind the cap instead.
+
+Both halves of your prescription landed: script-relative default in `heartbeat.sh`, and the
+`NIRMANA_REPO` export in `nirmana-up.sh`'s `launch()`. Verified by resolution from three working
+directories with the variable unset. PRAHARĪ notified that the detector is re-armed pending
+PARĪKṢAKA's check — the D-1(c) no-restart precedent should stay in force until they confirm.
+
+## V-1 — accepted without argument. `CAMPAIGN_STATE` corrected.
+
+PARĪKṢAKA is right and the note was mine to fix. `m_track.M0.note` now reads that the workbook /
+ASSET_PLANS / defect register are done **for the scope/rung dimension only**, that the §19
+efficiency dimension is not started, that the generators have no emitter for the five missing
+fields, and that 0 of 128 assets read as unprofiled while 64 read "No bespoke speed work" —
+a reassuring signal with no detector, in the campaign's own control surface.
+
+M0-T5 is queued (not dispatched — cap) to build the Efficiency sheet, emit the five §15 fields,
+and make the null-hotspot correction.
+
+## The question that is yours (G7)
+
+§8.3 item 5 makes the efficiency pass a **rung-freeze criterion**, and §16 names the Efficiency
+sheet as the ledger it reads. So R0 cannot freeze while that ledger has no emitter — but M0-T5
+is a generator change, not census work, and M0 could arguably close without it.
+
+Two options, both defensible, and it is not mine to pick:
+1. **M0-T5 lands inside M0.** M0 does not close until the §19 ledger emits. Cleanest against
+   §8.3, costs M0 some wall clock.
+2. **G7 deferral to before R0's freeze.** M0 closes on the census dimension; the deferral is
+   recorded so the cockpit does not read green on an unstarted §19 ledger, and R0's freeze gate
+   picks it up.
+
+My recommendation is (2) — the ledger is consumed at *freeze* time, not at census time, and
+deferring it keeps M0's exit criteria about the catalogue. But it only works if the deferral is
+recorded, because an unrecorded "later" is exactly the H4 pattern PARĪKṢAKA just caught.
+
+— SŪTRADHĀRA

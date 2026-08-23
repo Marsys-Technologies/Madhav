@@ -1,0 +1,70 @@
+# From SŪTRADHĀRA — a re-seed would fill a NULL you deliberately left open. And one action I want ruled.
+
+M0-T26 repaired the layer position: **20 `layer_index` + 19 `layer_name` rows**. It verified my
+corrected premise from source before writing rather than inheriting it, and **found no second
+error** — the seed's lexicon maps are byte-identical to §N.1's, and on all 39 cells the seed's
+value equals the value written.
+
+The pre-flight detector earned its place. Before the write it was proved able to fail: four
+discriminators differed, two negative controls already matched and never moved, and **the
+codepoint pin came back FALSE** — the live database held `Ganita` (6 chars / 6 bytes) and `Kala`
+(4/4), ASCII-folded, where §N.1's locked lexicon has `Gaṇita` (6/8) and `Kāla` (4/5). That is
+exactly the silent mangling the pin was built to catch, and it caught it **before** the write
+rather than after. It now reads TRUE.
+
+## The finding: a re-seed would resolve, by accident, a question you declined to decide
+
+D-23 ruled the SOURCE reclassification is **R5's, not M0's**. Following that, both M0-T2 and
+M0-T8 deliberately held `lel_events`'s `layer_index` and `layer_name` at **NULL**, because the
+correct value is NULL-if-`source` but `L5`/`Mīmāṃsā`-if-`data` — not mechanically derivable, so
+writing either would be H6.
+
+**A re-seed fills that NULL with `L5` / `Mīmāṃsā`.**
+
+The deliberate NULL is not absence of data. It is a *record that a question is open*, and it is
+the only place that openness is written down in the registry itself. An automated process would
+overwrite it with one of the two candidate answers — not maliciously, not even visibly, and the
+resulting row would look exactly like a correctly-derived one. Nothing downstream could tell that
+a reserved decision had been answered by a default.
+
+I think this is a category worth naming in the ledger, because it is not the same as the
+durability problem: a repair that gets reverted is a *correct* value replaced by a *stale* one,
+and the register can measure it. This is a *deliberate NULL encoding an undecided question*
+replaced by a *plausible answer*, and no measurement of value-drift would flag it, because
+nothing was "wrong" before or after.
+
+Filed by the KĀRAKA as its F-1. **Not acted on**, correctly — it is R5's asset, R5 is not open,
+and the question is yours in any case.
+
+## The action I want ruled, because I set the constraint it may have exceeded
+
+I instructed the KĀRAKA to "write only `layer_index` and `layer_name`, only on the measured rows",
+and to state honestly whether its snapshot restore was proven-by-execution or merely authored.
+
+**It executed the restore drill** — ran `restore.sql` inside a transaction (0 of 128 rows differed
+from the snapshot), rolled it back, and re-ran its post-checks afterwards, which still pass. It
+disclosed this unprompted and said it is "the one action here I'd expect to be challenged."
+
+My reading is that it was right, and that it closes the gap **you** named in D-7: a snapshot whose
+restore was never verified is not a snapshot, and every prior repair in this campaign has left
+that verification authored-but-unexercised. Nothing was net-written; the drill is the only way the
+claim becomes a measurement rather than an assertion.
+
+But I set the constraint, so my reading of it is self-serving, and the KĀRAKA asked rather than
+assumed. **If you agree, it is worth making the drill a standing requirement for repairs of this
+class** — it is cheap, and it converts I2 from a ritual into a detector. If you disagree, say so
+and I will tighten the instruction for the remaining repairs.
+
+## One more disclosure, its own
+
+Its first seed-text parser also matched `downstream_asset_id:` and mis-modelled 8 assets. **None
+is in either repair set**, and an independent check proved all 39 written cells landed on the
+seed's value, so the repair is unaffected. It fixed the parser, re-ran, and retained the
+pre-repair artifact unmodified. It also checked whether the sibling durability register shared
+the defect and found it does not, raising no finding against it rather than banking a free one.
+
+That is the **fourth** distinct parser trap this campaign has hit — after the docstring match, the
+module-constant `@register` form, and the MRO constant. Every one was caught by the agent that
+wrote it, before shipping.
+
+— SŪTRADHĀRA

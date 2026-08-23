@@ -1,0 +1,66 @@
+# From SŪTRADHĀRA — M0-T34 landed, and it corrects both D-26 and my own escalation
+
+The operator-surface fix is in (`344254c64`). `ka_graha_sancara` now renders `service_down`
+instead of `service_ok`; exactly one of the eight assets changes, and a test asserts that count.
+`service_down` was not invented — it already existed in `plan.ts`'s `AssetState` union outside
+`READY_STATES`, was already styled in the blocked-build modal and already mapped to `failed` in
+the node renderer. Only the cockpit's union lagged.
+
+Two corrections it made rather than working around. Both matter more than the fix.
+
+## 1 — The causal claim in D-26 is partly wrong, and mine was too
+
+D-26 says the green satisfies downstream build prerequisites via `READY_STATES`. **It does not,
+because `service_ok` is unstorable**: `asset_throughput.state`'s CHECK allows only
+`dormant|building|lit|stale|error|incomplete`, and zero rows hold `service_ok`. `deriveState`'s
+only consumer is `cockpit/stats/route.ts`. **So the fix closes the operator-surface H4 and leaves
+the build-gate one untouched** — the build path is satisfied by `asset_throughput.state = 'lit'`
+instead.
+
+I passed D-26's reading of `plan.ts:196`/`:250` on to the KĀRAKA as established. It checked
+rather than inherited, and found the two halves are different defects with different mechanisms.
+The fix is real but narrower than either of us said, and I would rather that be on the record than
+have the campaign believe the build gate was closed today.
+
+**And it found the actual build-gate root cause, which is worse than the serving one.**
+`ka_graha_sancara.py:82` computes `status = "success" if health == "healthy" else "error"` — and
+**never uses it.** `WriterResult` has nowhere to carry it. So the writer ran its own probe, got
+`unhealthy`, wrote that verdict to the registry, computed the correct status from it — and the
+orchestrator lit the asset **32 milliseconds later**, because nothing in the contract could carry
+the answer from the writer to the promotion.
+
+That is the same shape as `has_substeps`, one layer further in: a detector that runs, produces the
+right answer, and has no channel to the thing that decides. The KĀRAKA correctly did **not** fix
+it — carrying a status out of a writer is a change to the FROZEN writer contract, which is **P3**,
+reserved. It is filed as its F-1 and I have queued nothing.
+
+## 2 — My "healthy with no probe" claim was wrong
+
+I told you three assets read `healthy` with `health_probe` NULL and that "no probe could ever have
+produced the word." **That was wrong.** `health_probe` is a probe **specification**, not a verdict.
+The verdict lives in `service_health` + `last_selftest_at` + `selftest_detail` — and all three
+`healthy` values are **earned**, with real self-test records behind them.
+
+The correct figure: the never-probed bucket is **four**, not five, and it **includes both `bg_*`
+assets** — which D-26 and I both credited with real probes on the strength of a non-null
+`health_probe`. We each read a specification column as evidence of a verdict, which is the same
+error the campaign keeps cataloguing, made by the two agents cataloguing it.
+
+## One more, and it connects to R0's headline defect
+
+`bg_ephemeris_engine` has sat in `error` since **2026-06-18** with a real diagnosis recorded — a
+damaged Swiss Ephemeris file — that nobody acted on. That is the 66-day red the plan names as
+R0's very first P0, and the KĀRAKA notes it is plausibly the **same root cause** as
+`ka_graha_sancara`'s failure. R0 territory, untouched, filed as F-4.
+
+If that connection holds, R0's first repair and R3's service probe share a cause, and finding that
+out before R0 opens is worth more than it cost.
+
+## Also worth recording
+
+The KĀRAKA pinned M3's half of your ruling with an explicitly `M3-DEFERRED` **test**, so a
+never-probed service continuing to render `service_ok` is now held by an assertion rather than by
+a comment — M3 has to change it on purpose. One of its three mutations was specifically designed
+to pre-decide M3's question, and killed the test. That boundary is test-held, not prose-held.
+
+— SŪTRADHĀRA

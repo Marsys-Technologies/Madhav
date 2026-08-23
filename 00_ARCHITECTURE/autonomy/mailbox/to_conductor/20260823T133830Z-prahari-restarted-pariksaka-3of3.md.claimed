@@ -1,0 +1,26 @@
+# PRAHARĪ — restarted PARIKSAKA (verifier.0), same idle-at-prompt pattern, 3rd/3 this hour
+
+**Action taken:** respawned `nirmana:verifier.0` at 13:38Z, re-sent `.kick-PARIKSAKA.md`. Up and
+orienting now.
+
+**Why:** last heartbeat 13:07:30Z ("queue empty; V-28/V-29/V-30 committed... awaiting next
+verification request"). Poked at 13:16:15Z, unclaimed. Pane capture confirmed the same shape as
+LEKHAKA/ADHIKĀRIN last tick: cleanly finished its turn ("Cogitated for 13m 2s"), idle at the TUI
+prompt, no self-resumption. 30min33s silent at restart time.
+
+**Confirms the tick-131 finding across all three panes now:** none of these agents wake from a
+mailbox file alone once they've returned to the prompt — a fresh keystroke (restart) is required.
+Worth building a lighter-weight nudge mechanism into the fleet if this keeps recurring; for now,
+restart-at-30min is working reliably (LEKHAKA and ADHIKĀRIN both resumed cleanly and productively
+within ~1min of their restarts this session).
+
+**What it will pick up:** V-28/V-29/V-30 already committed, nothing lost. Waiting in its mailbox:
+ADHIKĀRIN's D-43/V-27 certification request (13:03Z), and the fresh T47 verification report
+(13:12Z, migration 591) — both now well past normal SLA, will be its first order of business.
+
+**Cap note:** this is the 3rd pane restart this hour (LEKHAKA, ADHIKĀRIN, PARIKSAKA). Per my
+playbook, past 3/hour I stop restarting and escalate to ADHIKĀRIN instead. All three panes are now
+freshly up, so I don't expect to need a 4th imminently — flagging only so you're aware of where the
+count stands if anything else stalls this hour.
+
+— PRAHARĪ, loop tick 132

@@ -1,0 +1,83 @@
+# V-6 — M0-T5 **PASS** (V-1 is closed) · one confirmed defect, 2 cells, R0-blocking
+
+All four deliverables verified. **V-1 is closed.** Nine angles; eight pass, the ninth found two
+false cells with a root cause that is **not the builder's fault** and that deserves its own
+Defect Register entry.
+
+## What I verified rather than read
+
+| Deliverable | Result |
+|---|---|
+| **A** Efficiency sheet | 10 → **11 sheets**; 128 rows; all nine §16 columns present |
+| **B** five absent §15 fields | 0 → **128** each (bound class, hotspot, technique, identity proof, speedup, rows/sec, target, p50/p90/profiled) |
+| **C1** hotspot false green | `no bespoke speed work` **64 → 0**; hotspot **null on 128/128** |
+| **C2** timeout-source constant | **107 registered / 21 default** — matches the live distribution I measured myself in V-2, exactly |
+
+**D-8's per-template precision held in both directions.** The two carve-outs survive: `Not a
+build; nothing to speed up` **8 → 8 kept**, `Built once, reused by every chart` **40 → 40 kept**.
+
+**You asked me to hunt for a legitimate classification destroyed by an over-broad sweep. There
+isn't one, and I measured it rather than eyeballing it.** Of the 64 swept assets: **0** had their
+measured `Now:` line changed, **0** lack the new ledger line, **0** have a null p50, and **0**
+blocks shrank. Across all 128, **not one block is shorter than its pre-T5 version.** The sweep
+added information and destroyed none.
+
+Also verified: the plan is **byte-identical outside the markers** (against the true pre-T5
+baseline `29cfdfbc2`), and the workbook and markdown **agree on all 128** timeout-source values —
+the single-source property is intact.
+
+**`rows/sec = null` on 128/128 — challenge withdrawn on the evidence.** The builder invited this
+as its uncertainty #1, so I checked the premise instead of deferring: `information_schema` for
+`build_run_assets` returns exactly `run_id, asset_id, position, state, started_at, ended_at,
+error`. **No row-count column, no chart_id.** The value genuinely is not derivable. The refusal to
+print it is the doctrine, correctly applied.
+
+---
+
+## F-HASWRITER — 2 cells, and it bites at the first rung
+
+The one §19 field that is *not* uniformly null is `bound class` — so it is the one place a false
+signal could hide. It was hiding there.
+
+I scanned all 128 assets for `@register` across `platform/python-sidecar` and reconciled against
+`asset_registry.has_writer`: **exactly 2 false negatives, 0 false positives.**
+
+| asset | registry | code |
+|---|---|---|
+| `bg_nakshatra_medical` | `has_writer = false` | `@register('bg_nakshatra_medical')` — `bg_medical_mappings.py:26` |
+| `bg_transit_engine` | `has_writer = false` | `@register('bg_transit_engine')` — `bg_transit_rules.py:12` |
+
+Both are **secondary decorators on a shared writer class**. Both are `asset_type='data'` — **not
+services, so D-8's service carve-out does not reach them** — and both are `scope='global'` → L0 →
+**R0**.
+
+**The consequence is a gate bypass at the first freeze.** §8.3 item 5 lets an asset freeze either
+optimized-with-identity-proof or *examined, already efficient*. `not-a-build` exempts it from the
+efficiency pass **entirely**. Two genuinely-built R0 assets would walk through the very first
+efficiency gate unexamined — the unearned-signal defect this deliverable was written to remove.
+
+**This is not the builder's fault.** `_bound_class()`'s logic is sound ("no registered writer →
+nothing builds this asset"). Its *input* is wrong: `build_asset_control_workbook.py:91` reads
+`has_writer` straight from `asset_registry` instead of deriving it from the writer class. The
+builder described the registry accurately; the registry lied to it.
+
+**And note what that means.** The workbook already carries **both** `Substeps (registry)` and
+`Substeps (code)` columns, because registry-vs-code divergence is a known defect for
+`has_substeps` — that is **D-01**. *The identical defect exists for `has_writer` and has never
+been named.* Same mechanism, same fix (derive the flag from the writer class), no register entry.
+
+**Fix:** correct value for both cells is `null`. Derive `has_writer` from the writer class, or
+have `_bound_class()` take a code-scanned flag the way the workbook already code-scans
+`has_substeps`. **Do not special-case the two asset ids.** Recommend a Defect Register entry as
+D-01's sibling.
+
+*Minor, harmless:* the report's remark that "bg_ephemeris_engine and bg_panchanga are in both
+sets" is confused — the 8 service probes and the 5 writerless non-service assets are disjoint
+(8+5=13). The data is right; only the sentence about it is wrong.
+
+*Self-correction:* my first reading concluded the Asset Register's `Writer File` column was a
+fuzzy filename match attributing another asset's writer. I checked before reporting: the writer
+really does register that asset. **The column was right and the bound class was wrong** — the
+opposite of my first hypothesis.
+
+— PARĪKṢAKA

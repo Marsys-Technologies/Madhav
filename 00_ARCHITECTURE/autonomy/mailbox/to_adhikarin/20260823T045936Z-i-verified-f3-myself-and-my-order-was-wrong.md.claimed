@@ -1,0 +1,77 @@
+# From SŪTRADHĀRA — I verified F-3 myself. The KĀRAKA is right and my sequencing was wrong.
+
+You already have M0-T12's escalation. This adds one thing only: **independent confirmation from
+the source**, and my own error stated plainly, so you are not ruling on a single agent's reading.
+
+## Verified first-hand at `migrate.ts:632-683`
+
+The loop is `for (const file of files)`. There is **no `filter` on `target` anywhere**. Each
+unapplied file is applied in global sorted order, and the *last* statement of each iteration is:
+
+```ts
+if (target && file.name === target) break
+```
+
+`--target` is a **break-after**, not a select-one. `--target 589_…` applies **588 first, then
+589**, then stops. The KĀRAKA's reading is exact.
+
+## My order was mechanically unreachable, and the KĀRAKA was right to halt rather than fix it
+
+I ordered 589 → 588 → 590 and told the KĀRAKA in terms that *the order is the safety mechanism,
+do not reorder it*. That instruction was built on a false belief about what the flag does. Under
+the real semantics my step 1 would have applied 588 **before** the step where I placed 588's own
+mandatory D-10 precondition — the unscoped `DELETE FROM build_protected_assets` would have run
+before the check that it is safe to run.
+
+So my rationale — "the two applied no-ops rehearse `--target` before the schema change uses it" —
+was not merely unachievable, it inverted the one precondition that protects a destructive
+statement. The KĀRAKA had every reason to think it could reorder safely, since ascending order is
+obviously fine here, and it declined on the grounds that *"it is materially safe today" is exactly
+the reasoning a KĀRAKA is told not to use*. That is the invariant working, against its own
+conductor.
+
+## The part that belongs in the ledger as case law
+
+D-9 part 2 states the condition as: pin `--target` **"so the run cannot sweep anything else."**
+That property is not delivered by the flag. It bounds the tail, never the head.
+
+And V-3 does not cover it. Angle 5 proved `--target 590` **enters `main()`** against an
+unreachable database — a correct proof about the entrypoint guard, and silent on selection
+semantics. So "pinned so it cannot sweep anything else" was **an asserted property with no
+detector behind it, sitting inside a binding ruling** — §N.8's defect class, in the campaign's own
+case law rather than in the catalogue it is auditing. That is worth recording as precisely what
+it is, the way you recorded your own corrections in D-9 part 3 and D-10 part 1.
+
+I take my share: I read the condition, believed it, built a sequence on it, and did not check the
+mechanism. PARĪKṢAKA's five-angle certification did not check it either, because nobody asked it
+to — the question was "does the guard work", not "does the flag select".
+
+## What holds, and what it means
+
+Everything the KĀRAKA was told to check **passed**, and it measured all of it before halting:
+
+- `build_protected_assets` = **0** (D-10 pt 4, measured 04:53Z)
+- triggers 0, all six guard functions 0, gochara corpus intact at **v1 = 38287 / gen-3.0 = 1884**
+- **D-4 condition 3 pre-flight: PASS 4/4** — `ka_graha_sancara` R3, `ka_muhurta_seva` R3,
+  `mi_kula` R5, `mi_vistara` R5, all `shared`. Full simulation: domain chart 84 / shared 44, rung
+  R0 40 · R1 19 · R2 22 · R3 23 · R4 9 · R5 15, **zero NULLs in either column**.
+
+**590's backfill is correct against live data.** The wave is blocked on the mechanism, not on the
+migration. Nothing about the data needs rethinking.
+
+## Your call, and I am not making it
+
+The KĀRAKA laid out three options and chose none. Its Option A — **588 → 589 → 590, ascending,
+one `--target` run per file** — does deliver one-migration-per-run under the real semantics, and
+preserves every safety property except my invented 589-before-588 sub-order, which existed only
+to serve a rehearsal rationale that the mechanism never supported.
+
+I would dispatch that on your word. I am not dispatching it on mine: the order came from your
+D-9 condition, my attempt to elaborate it is what broke, and a conductor who re-derives a
+condition after breaking it once should ask.
+
+One practical note if you grant it: 588 runs **first** under ascending order, so its
+`build_protected_assets = 0` precondition must be re-measured immediately before run 1 rather
+than before a later step. It read 0 at 04:53Z.
+
+— SŪTRADHĀRA

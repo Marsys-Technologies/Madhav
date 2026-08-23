@@ -1,0 +1,51 @@
+# CRITICAL — the `nirmana:conductor` / `prp-night:conductor` tmux windows are cross-wired
+
+While checking SŪTRADHĀRA's liveness (a routine spot-check after the idle-unpoked fixes),
+I found the two "conductor" windows across our two active tmux sessions are NOT running the
+sessions their names suggest.
+
+**Evidence, by content, not just title (title alone is self-reported and I no longer trust it
+for this pair):**
+
+- **`nirmana:conductor` (pane `%15`)** is running **Pariprashna** work: merging PR #1517,
+  verifying smoke-workflow head_sha attribution for PR #1515, DD-1 battery receipt, governance
+  gates for an unrelated campaign. Its footer literally reads "Pariprashna overnight autonomous
+  run" and task `night-report`, `PR #1499`.
+- **`prp-night:conductor` (pane `%0`)** is running **our real SŪTRADHĀRA**: its recap explicitly
+  says "Nirmāṇa is reconciling the asset catalogue (M0)... four KĀRAKA are running the consumer
+  map, DRAFT audit, derived-field proposal, and 588 disclosure" — matches everything in
+  HEARTBEAT.jsonl/WORK_QUEUE.jsonl exactly. Its footer reads "Nirmana autonomous campaign
+  conductor" and shows the 4 live general-purpose subagents SUTRADHARA is running (KP cusps,
+  DRAFT_INVENTORY review, timestamp fetch, migration_number_legacy_duplicates.json bump).
+
+**So the window names are swapped relative to their actual session content.** I do not know
+whether this happened at launch (nirmana-up.sh attached the wrong session to the wrong tmux
+window) or later. I have not investigated the launcher — that's KARAKA/SUTRADHARA territory,
+not mine, and diagnosing it further risks touching a live session.
+
+**Why this matters immediately:** SUTRADHARA's own heartbeats and mailbox activity have been
+completely reliable throughout (heartbeat.sh self-declares agent name; mailbox is filesystem-
+addressed — neither depends on tmux window identity), so nothing SUTRADHARA has done or
+reported is in question. But **any tmux-window-name-addressed liveness check or restart I
+perform is unsafe until this is resolved.** If I had judged "nirmana:conductor" stalled at any
+point this session and restarted it per my standing silence-threshold rule, I would have killed
+a live, unrelated Pariprashna session mid-merge (PR #1517 was actively running a background
+`gh pr merge` + poll loop when I captured it) — collateral damage to a campaign that isn't even
+mine to touch.
+
+**What I did:** Nothing to the Pariprashna pane. I found SUTRADHARA's REAL pane (`%0`) also had
+the same idle-unpoked signature (completed recap, "❯ keep going" unsubmitted) as PARIKSAKA/
+ADHIKARIN earlier — I fixed that using the pane ID directly (`%0`, not the window name) with the
+now-documented C-u/retype/Enter recipe, and confirmed recovery (active spinner, 4 subagents
+visible). I did not touch `%15` (the Pariprashna pane) in any way.
+
+**What I have NOT done:** renamed any window, restarted anything, or attempted to "correct" the
+swap myself. That's a fleet-plumbing question like D-1 and belongs to you/SUTRADHARA to decide
+whether it needs fixing, is safe to leave as-is (since mailbox/heartbeat addressing is
+unaffected), or needs a KARAKA dispatched to investigate nirmana-up.sh's window-creation order.
+
+**Going forward on my end:** I will address SUTRADHARA and ADHIKARIN's panes by verified pane ID
+(`%0`, `%11`) rather than window name for any future tmux-level liveness/poke action, until this
+is resolved or confirmed intentional.
+
+— PRAHARĪ

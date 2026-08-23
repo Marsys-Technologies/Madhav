@@ -1,0 +1,68 @@
+# From SŪTRADHĀRA — M0-T8 closed. One finding needs a G-ruling, one needs your P5 call.
+
+## 1 — `has_substeps` is not bookkeeping. It is SATYA-DĪPA's defect, still live, on 12 assets.
+
+M0-T8 verified the mechanism in source rather than accepting the plan's description.
+`asset_runner.py:620` reads `has_substeps` **from `asset_registry`**, and `plan_complete` is
+initialised **`True`** and only recomputed inside `if has_substeps:`.
+
+So a row that reads `has_substeps = false` while its writer genuinely plans substeps means the
+substep-plan-completeness re-probe **never runs**, and a partial build is promoted **`lit`**.
+
+That is precisely §N.8's fourth named instance — the orchestrator's no-op-completion predicate,
+which SATYA-DĪPA fixed in `asset_runner.py` on 2026-07-29 so the predicate asks the
+substep-plan-completeness question directly. The code fix landed. **The registry rows that
+switch the question off were never repaired**, so for these 12 assets the fix is inert. The
+detector exists and is being told not to run.
+
+**Measured: 12 false negatives, 0 false positives. Eight of the twelve are CURRENT.** The plan
+says 14; it is high by 2, and M0-T8 explains both extras (`bg_reference` is a 51-line LIGHT
+writer with no `plan_substeps` at all; `bo_laksana_rerank` shares a file with the genuinely-heavy
+`BoLaksanaWriter`, which explains the misclassification but not `bg_reference`).
+
+**What I want from you.** Phase 0.6a names this as M0 content, so the *scope* is clear — but
+applying it is a **write to `asset_registry`**, and every previous such write in this campaign
+(590's columns, the telemetry repair, the 588/589 registration) came to you first. I have not
+queued a repair. Two things make me want your explicit word rather than an inference from D-4:
+
+- it is the one M0 write that changes **build-promotion behaviour** rather than metadata — after
+  it, twelve assets can fail to reach `lit` that currently always do, which is the *correct*
+  outcome and will still look like a regression to anything watching;
+- eight are CURRENT, so the blast radius is live serving assets, not drafts.
+
+M0-T8's proposal derives each value from the writer class by AST and ships discriminating
+detectors — including `bo_laksana` true **AND** `bo_laksana_rerank` false, which catches
+file-granularity scoping, the exact error that produced two of the plan's phantom extras.
+
+## 2 — The SOURCE reclassification: M0-T8 recommends P5 park, and I agree
+
+`asset_registry_asset_kind_check` = `CHECK (asset_kind = ANY (ARRAY['data','service','artifact']))`.
+Confirmed live. A CHECK change is required for Phase 0.5b and **590 does not contain one**.
+
+M0-T8's reasoning for why D-4's grant does not transfer is better than mine and I pass it on
+rather than restate it: M0's acceptance criterion names `domain` and `rung`, not `source`; the
+plan schedules the reclassification for **R5**; and no rung is open. It therefore held
+`lel_events`'s `layer_index`/`layer_name` **NULL** rather than guess, since the correct value is
+NULL-if-source but `L5`/`Mīmāṃsā`-if-data — not mechanically derivable, so D-4 condition 2 and H6
+both bite. That follows M0-T2's `data_disposition` precedent exactly, which is what precedent
+working looks like.
+
+## 3 — A trap in the plan's own wording for 0.6b, worth a note in the ledger
+
+The plan says make `asset_kind` authoritative over `asset_type`/`storage_type`. Applied literally
+**as a repair rule**, that would write `data` over a **correct** `service` on
+`bg_ephemeris_engine` and `bg_panchanga`. All six disagreements resolve to `service`, but by two
+different routes: 2 need `asset_kind` corrected, 4 need `asset_type` corrected.
+
+**Repair the values first, then make the column authoritative.** Doing it in the stated order
+corrupts two rows. Both live consumers read the pair as an OR, so the repair is a runtime no-op
+today — which is why nothing has broken and why nothing would have noticed.
+
+## Status
+
+T9 dispatched (the CI guards) with the instruction that every guard ships a fixture proving it
+can fail, that `not_checkable` is a distinct outcome from `pass`, and that the guards are NOT
+wired blocking — several criteria are legitimately non-zero right now and flipping the switch is
+yours. T12+T13 (the wave), T17 (exit scorecard) and T18 (plan-figure reconciliation) running.
+
+— SŪTRADHĀRA

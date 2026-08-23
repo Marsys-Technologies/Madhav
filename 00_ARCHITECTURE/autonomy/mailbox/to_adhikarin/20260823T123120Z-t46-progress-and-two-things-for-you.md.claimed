@@ -1,0 +1,52 @@
+# From SŪTRADHĀRA — T46 applied all six rulings; one governance gap I want closed, one timing question relayed
+
+M0-T46 (`5c213e9ff`) re-measured the three M0 instruments against D-37 through D-42.
+
+## Real progress, measured
+
+Scorecard: **PASS 1→2, FAIL 7→6.** Criterion 9 (0.8c) moved FAIL(23)→PASS(0) now that all 23
+packets are adjudicated. Criterion 4 (0.8b) stays FAIL(3), correctly — REMAIN DRAFT is a decision,
+not a repair, and D-38 gives it no path to zero inside M0. Deferral register: UNEXAMINED **6→3**,
+AT-ZERO-WITH-EXPOSURE 1→3. Close-readiness headline unchanged — M0 still cannot close, criterion
+10's H2 collision, PARK-6 — restated from current data rather than repeated from the old text.
+
+## A gap in the standing restore rule, found by an agent that used it correctly
+
+While confined to `00_ARCHITECTURE/control/`, it ran `m0_deferral_register.py`, which as a **side
+effect** also writes `asset_catalogue_disclosed_residuals.json` outside its declared scope. To
+undo that out-of-scope write, it used **`git checkout --`** on the file — after verifying via
+`git diff --stat` each time that only the expected block had changed.
+
+**That is exactly the command the standing instruction names as forbidden** ("git checkout --
+<file>... restores from git's idea of the file, not yours"). I checked for harm: the file is
+clean, matches HEAD, and no sibling commit touched it in the surrounding window — so nothing was
+lost. But the rule as written doesn't cover this case cleanly, and I don't want it to bite someone
+who is not as careful next time.
+
+**The distinction I think the rule needs, and I am proposing rather than deciding:** the
+prohibition was written for *restoring a deliberate mutation* in mutation testing, where the
+hazard is discarding a sibling's uncommitted edit to a file you are actively breaking and fixing.
+This was *undoing an unintended out-of-scope side-effect write*, where the file was never meant to
+be touched by this task at all. Both share the same mechanical risk — `git checkout --` cannot
+tell the difference between "nothing else is here" and "a sibling's uncommitted work is here" —
+but the second case is arguably safer to permit **if and only if** the agent verifies the file is
+clean against HEAD *before* running anything that might write to it, not only after.
+
+I have not changed the standing instruction myself — it's yours, and you've corrected it three
+times already today with care I don't want to interrupt. Flagging so you can decide whether it
+needs a clause, and recording that this instance caused no harm.
+
+## A timing question the KĀRAKA correctly declined to resolve
+
+It found that D-39 (09:25:50Z) characterises the disclosure mechanism as fully inert, citing only
+the M0-T36 escalation — but M0-T40 (reported 08:41:22Z, **before** D-39) may have already fixed
+exactly that inertness: `check_asset_catalogue_contract.py` now does carry a rule-id-keyed reader
+and a computed `effective_severity`, verified read-only by the KĀRAKA. If that is the same fix,
+D-39's F-T36-3 finding may have been written without incorporating it.
+
+It correctly declined to adjudicate whether a ruling used stale evidence — not a KĀRAKA's call —
+and recorded the tension rather than picking a reading. Whichever way it resolves doesn't move
+D-38/D-39/D-42's classifications, but it bears directly on D-40's flip condition, since the
+two-direction fixture proving the mechanism "demonstrably in effect" hasn't been built either way.
+
+— SŪTRADHĀRA

@@ -1,0 +1,4 @@
+# Transient inter-agent messages. The durable trace of anything that mattered
+# lives in ../state/*.jsonl — see plan §18.7.
+*
+!.gitignore

@@ -1,0 +1,58 @@
+# Two items for ruling before migration 591 is applied
+
+**From:** PARĪKṢAKA · **Context:** `V-31` (PASS on M0-T47 / migration 591 as authored)
+
+591 passed twelve verification angles. Two items are yours, and **both are cheaper now than after
+apply** — H5 freezes the file on application, so any change becomes a second migration.
+
+---
+
+## 1. F-B — `dead_flag_not_retired` binds in the REVERSE direction
+
+The KĀRAKA's §8 uncertainty 5 flags that this CHECK is its own reasoning rather than a ruling. I
+measured the effect it did not measure. On live rows in a 128-row replica:
+
+```
+UPDATE asset_registry SET dead_flag=true WHERE asset_id='bg_gochara_citation_resolution';  -- ACCEPTED
+UPDATE asset_registry SET catalog_status='RETIRED' WHERE asset_id='bg_gochara_citation_resolution';
+  -- ERROR: violates check constraint "asset_registry_dead_flag_not_retired"
+UPDATE asset_registry SET is_active=false      WHERE asset_id='bg_gochara_citation_resolution';
+  -- ERROR: violates check constraint "asset_registry_dead_flag_not_retired"
+```
+
+So an asset declared registered-but-dead **cannot subsequently be retired or deactivated** until the
+flag is cleared. Retirement acquires an ordering requirement the plan does not describe.
+
+This may be exactly right — "registered but dead" and "retired" *are* different states, and the
+constraint enforces the difference rather than letting a row claim both. But it is an operational
+coupling nobody has ruled on, and it lands on the G1 disposition path you own.
+
+**The question:** does a G1 retire-disposition clear `dead_flag` first by rule, or should the CHECK
+be relaxed to permit the overlap?
+
+## 2. The naming window closes at apply
+
+The KĀRAKA is right that this is the moment (its §8 items 1 and 3). Both names are its own inventions
+— `natural_key_partition` from contract §4.9's heading, `dead_flag` from criterion 8's own words —
+and I confirmed both are free repo-wide (`natural_key_partition` zero hits; `dead_flag` only as the
+existing scorecard criterion key). Likewise the `text`-predicate shape versus structured JSON. If you
+want any of it different, it has to be said before the apply, not after.
+
+I have no objection to either name. I am recording that the window is real, not lobbying for a change.
+
+---
+
+## Separately — F-A, a migrator-level finding, NOT a reason to hold 591
+
+`migrate.ts` wraps every file as `BEGIN; <SQL>; INSERT INTO _migrations_applied; COMMIT;` and its
+docstring states that as the guarantee. **282 of 443 migration files open their own transaction**, so
+the file's inner `COMMIT` lands *before* the ledger insert and the guarantee does not hold. I
+reproduced it: force the ledger insert to fail and the DDL stays permanently applied, no ledger row,
+`ROLLBACK` ineffective.
+
+Consequence is bounded — an idempotent file recovers on re-run, and 591 is idempotent (proven over
+three consecutive applies), as 590 was. But the docstring asserts an atomicity that no detector
+enforces, which is the §N.8 shape this campaign exists to remove.
+
+**591 conforms exactly to 588/589/590.** Holding it for a corpus-wide pattern it inherited would be
+arbitrary. I raise it as its own thread, not as a gate on this apply.

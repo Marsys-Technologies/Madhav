@@ -1,0 +1,99 @@
+# V-12 · V-13 · V-14 — your three, in your order. All PASS. Three corrections inside them.
+
+## V-12 · T35 — the `target_floor` reasoning you asked me to attack **holds**
+
+I tested it empirically rather than logically.
+
+- **"No CASE can express MEASURED"** — enumerated all **40** `asset_registry` columns. Nothing
+  records how a floor was set. The only name-match is `provides_apis`, an API list. MR-06's pattern
+  works because RETIRED is readable *in the row*; "is this MEASURED?" has no in-row answer.
+  **Not a rationalisation.**
+- **"The IS NOT NULL stand-in would fill three cells"** — I derived the number independently by
+  parsing the seed as **text** (never importing it) and joining to live. **25** rows have a
+  live-NULL floor; exactly **3** of those carry a seed-declared value: `bg_class_priors` 164,
+  `bg_formula_constants` 14, `bg_ghatana` 34. **The number 3 is exactly right** — not understated,
+  not inflated. Guard = 3 bad cells, removal = 0.
+- **My own mutation:** I re-added `target_floor = EXCLUDED.target_floor` to the SET clause. 3 tests
+  failed. Restored byte-exact. The gate is a real detector.
+
+**The flagged residual is real but currently latent.** `target_floor` does remain in the INSERT
+list — and of the seed's 127 ids, **zero** are absent from the live registry, so nothing would be
+INSERTed today. It fires the first time someone adds a new asset, which is a normal future act.
+Worth a ruling: the builder's counter-argument is about *collision*, but I7's harm is the
+unmeasured number **existing at all**. It was right not to exceed D-27's scope.
+
+## ⚠ A fleet hazard I hit while doing that
+
+When I mutated `asset_registry_seed.ts`, it **already carried another KĀRAKA's uncommitted work** —
+M0-T37's ARGV channel, ~111 lines. My restore was byte-exact from a copy taken before mutating, and
+I verified it. **But had I restored the conventional way — `git checkout -- <file>` — I would have
+silently destroyed an in-flight sibling's uncommitted work.**
+
+With four KĀRAKA in one shared worktree this is live for anyone doing mutation verification.
+**The rule that makes it safe: restore from a byte-copy taken immediately before the mutation,
+never from git.** Worth telling the fleet.
+
+## V-13 · T33 — I re-ran the I18 proof myself; **and one claimed win isn't one**
+
+Per I16/I18 I did not read the builder's digests. I executed both forms of both queries against
+live in one session: **dag and wave both tuple-equal and digest-equal.** dag **70.890s → 0.117s**
+(606×) — my old-form baseline lands with their *lower* reading, corroborating their decision to
+report both rather than the flattering one.
+
+**The correction: the `wave` half is not an optimization.** In my run `wave_new` measured
+**1.047s vs `wave_old` 0.529s** — slower. They measured them near-equal. Both readings agree there
+is **no speedup**, and they never claimed one (they justified it as removing the same latent
+defect). But **the §19 Efficiency ledger must record it as defect-removal with speedup = null**,
+or it will later credit a gain no measurement supports.
+
+### Your precedent question — answered as a test, not a precedent
+
+**Sufficient here**, and the reason generalises. I checked the argument by reading both CTEs
+myself: `dag`'s recursive term selects exactly `(asset_id, depth)` and the outer query is
+`max(depth) GROUP BY asset_id` — `UNION` dedups on *precisely* the tuple the aggregate consumes,
+and `max` is duplicate-insensitive. That holds for **any** graph, cycles included. It is a
+**closed-form algebraic equivalence decidable from the query text**, which never mentions today's
+graph.
+
+**The test to apply at every rung's §19 stage:**
+
+> *Can I state, from the code alone, a reason the outputs MUST match that does not mention the
+> current data?*
+
+**Yes** → the measurement confirms an argument; one run suffices.
+**No** → the measurement *is* the whole proof, and covers exactly the inputs it saw. I18 then
+needs the input space characterised or a tolerance declared.
+
+This does **not** license "a plausible-sounding argument plus one green run" — the argument must be
+checkable by the verifier from source, and I checked it.
+
+## V-14 · T34 — **the KĀRAKA was right and both of you were wrong**
+
+You asked me to confirm this independently. Confirmed, and leg (c) is decisive:
+
+```
+asset_throughput_state_check =>
+  CHECK (state = ANY (ARRAY['dormant','building','lit','stale','error','incomplete']))
+rows holding service_ok/service_down: 0
+```
+
+**`service_ok` is not storable in the column `preflight` reads.** So *no* change to `deriveState`
+could ever have moved a build gate. Also confirmed: `deriveState` has exactly one import site
+(`cockpit/stats/route.ts`, the badge) — the two other grep hits are **comments**, which I checked
+rather than counted — and `plan.ts` reads `throughput.get(dep)?.state`, never `deriveState`.
+
+**The hole is still open, measured:** `ka_graha_sancara` is `service_health='unhealthy'` with
+`asset_throughput.state='lit'`, so it still satisfies `ka_muhurta_seva` → `ka_sangam`,
+`ka_vighnakara`. Root cause is P3 (FROZEN contract); correctly not acted on.
+
+It volunteered a correction that made its own work look smaller. That is the behaviour worth
+rewarding.
+
+*Also confirmed reachable, as flagged:* `plan.ts`'s `depState === undefined → continue` is
+loophole **L-08 verbatim**. It doesn't explain the six measured edges (all resolve to real `lit`),
+but it's a second independent way a never-built upstream passes the plan-time gate — same open
+question as F-1, not this task's.
+
+Taking T36 when it lands; draining the rest meanwhile.
+
+— PARĪKṢAKA
