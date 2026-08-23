@@ -522,6 +522,27 @@ def regenerate(root: Path, scan_roots: Sequence[str], out: Path) -> int:
     results = scan(root, scan_roots)
     measured = sorted(rel for rel, r in results.items() if r.unguarded)
 
+    # A SCAN THAT COULD NOT ANSWER MAY NOT WRITE THE LIST. The repo scan already treats an
+    # unparsed file as UNKNOWN and fails; regeneration did not, and it is the more dangerous of
+    # the two — a file the scanner mis-reads produces NO occurrences, so it drops OUT of the
+    # measured set and the written allowlist SHRINKS. A shrink is the good direction, so neither
+    # the subset check nor the pawl objects, and the pay-down would be recorded as real (§N.8:
+    # the detector that cannot answer must not write the answer that looks like progress). This
+    # is the exact failure mode M0-T66's F-Q found in this scanner: twelve of the settled 76
+    # reported clean by a desynchronised blanker.
+    unparsed = sorted(rel for rel, r in results.items() if r.analysis_error)
+    if unparsed:
+        print(
+            f"check_entrypoint_guard_ratchet: REFUSING to regenerate — {len(unparsed)} file(s) "
+            "did NOT PARSE. Their result is UNKNOWN, and a file the scanner cannot read looks "
+            "exactly like a file that was repaired, so regenerating would record a pay-down "
+            "that did not happen:",
+            file=sys.stderr,
+        )
+        for f in unparsed:
+            print(f"  ? {f}", file=sys.stderr)
+        return 1
+
     added = [f for f in measured if f not in baseline]
     if added:
         print(
@@ -733,11 +754,52 @@ def _nearest_existing(repo: Path, start_ref: str, rel: str) -> Tuple[Optional[st
     return None, None
 
 
+def read_current_side(allowlist_path: Path) -> Optional[List[str]]:
+    """The CURRENT side of the pawl's comparison — or **None**, meaning it could not be read.
+
+    Deliberately NOT `load_allowlist`, which substitutes an empty `files` for a missing file so
+    that the rest of a run can still report. An empty list is a well-formed operand, so handing
+    that substitution to the pawl would make DELETING the allowlist compare ∅ ⊆ previous and
+    PASS — the empty-operand pass of ruling D-89. The distinction between "absent" and "empty"
+    lives here, in one function, with a self-test case on it."""
+    if not allowlist_path.exists():
+        return None
+    try:
+        data = json.loads(allowlist_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, ValueError, OSError):
+        return None
+    files = data.get("files") if isinstance(data, dict) else None
+    if not isinstance(files, list) or not all(isinstance(f, str) for f in files):
+        return None
+    return list(files)
+
+
 def pawl_check(
-    allowlist_path: Path, current_files: Iterable[str], current_raw: Optional[str], mode: str
+    allowlist_path: Path,
+    current_files: Optional[Iterable[str]],
+    current_raw: Optional[str],
+    mode: str,
 ) -> PawlResult:
     """Assertion (ii): the value about to stand may not be a SUPERSET of the previous committed
-    one. `mode` is 'scan' (the gate) or 'regenerate' (the writer's own precondition)."""
+    one. `mode` is 'scan' (the gate) or 'regenerate' (the writer's own precondition).
+
+    `current_files=None` means the CURRENT side could not be read, and that is UNDETERMINED —
+    never a pass. Ruling **D-89**, issued while this check was being built and general by its
+    own terms: *"a two-sided comparison requires an anchor on EACH side independently … the
+    test asserts BOTH extractions SUCCEEDED — non-null, well-formed — BEFORE it compares
+    them."* Without this anchor, DELETING the allowlist yields ∅ ⊆ previous and the pawl passes
+    on an empty operand — the `null == null` shape D-89 was ruled on, one file away."""
+    if current_files is None:
+        return PawlResult(
+            determined=False,
+            ok=False,
+            comparison="none",
+            reason=(
+                "the CURRENT allowlist could not be read (missing, unparsable, or carrying no "
+                "well-formed `files` list). A comparison whose current side is absent CANNOT "
+                "RETURN FALSE (D-89), so it is UNDETERMINED and fatal — not a pass."
+            ),
+        )
     current = set(current_files)
     repo = _git_toplevel(allowlist_path.parent)
     if repo is None:
@@ -989,6 +1051,47 @@ def run_pawl_self_test() -> Tuple[List[str], int]:
                     "carried it"
                 )
 
+        # ── CASE 6 — THE CURRENT SIDE IS ABSENT. Must FAIL, not compare ∅ to anything. ────
+        # D-89, general by its own terms: a two-sided comparison needs an anchor on EACH side.
+        # Deleting the allowlist must not read as "it shrank to nothing".
+        target = _pawl_fixture_repo(tmp / "nocurrent", [["a.ts", "b.ts"], ["a.ts"]])
+        checks += 1
+        if target is None:
+            failures.append("pawl self-test could not build the ABSENT-CURRENT fixture repo")
+        else:
+            target.unlink()
+            r = pawl_check(target, None, None, "scan")
+            if r.determined or r.ok:
+                failures.append(
+                    "ABSENT-CURRENT: with the current allowlist unreadable the pawl must be "
+                    f"UNDETERMINED and FATAL, got determined={r.determined} ok={r.ok}. An "
+                    "empty operand cannot make a comparison return false (D-89)."
+                )
+
+        # ── CASE 7 — the DERIVATION of the current side, which is where the defect was. ───
+        # Case 6 proves pawl_check REACTS to a None current side. It cannot prove that a
+        # deleted allowlist PRODUCES one — and the first draft's did not: it produced the empty
+        # list `load_allowlist` substitutes, and the gate passed. Assert the derivation itself.
+        checks += 1
+        probe = tmp / "current_side"
+        probe.mkdir(parents=True, exist_ok=True)
+        f = probe / "entrypoint_ratchet_allowlist.json"
+        f.write_text(json.dumps({"files": ["a.ts"]}), encoding="utf-8")
+        if read_current_side(f) != ["a.ts"]:
+            failures.append("CURRENT-SIDE: a well-formed allowlist must read back as its files")
+        f.unlink()
+        if read_current_side(f) is not None:
+            failures.append(
+                "CURRENT-SIDE: a DELETED allowlist must read as None (absent), never as an "
+                "empty list — an empty operand cannot make the comparison return false (D-89)"
+            )
+        f.write_text(json.dumps({"count": 0}), encoding="utf-8")
+        if read_current_side(f) is not None:
+            failures.append("CURRENT-SIDE: an allowlist with no `files` key must read as None")
+        f.write_text("{not json", encoding="utf-8")
+        if read_current_side(f) is not None:
+            failures.append("CURRENT-SIDE: an unparsable allowlist must read as None")
+
     return failures, checks
 
 _EXPECT_RE = re.compile(r"EXPECT-VIOLATIONS:\s*(\d+)")
@@ -1118,6 +1221,10 @@ def main(argv: List[str]) -> int:
     allowed = set(allowlist.get("files", []))
     baseline = set(allowlist.get("baseline_files") or load_baseline())
     allowlist_raw = ALLOWLIST_PATH.read_text(encoding="utf-8") if ALLOWLIST_PATH.exists() else None
+    # THE CURRENT SIDE'S ANCHOR (D-89) — see `read_current_side`, which is where "absent" is
+    # kept distinct from "empty". The first draft of this anchor collapsed the two and a DELETED
+    # allowlist still passed; it was found by deleting the file end to end, not by reading it.
+    current_side = read_current_side(ALLOWLIST_PATH)
 
     # ── ASSERTION (i): a NEW name in the allowlist. Static-baseline membership. ──────────────
     hand_added = sorted(allowed - baseline)
@@ -1125,7 +1232,7 @@ def main(argv: List[str]) -> int:
     # ── ASSERTION (ii): THE PAWL. The allowlist ⊆ its own PREVIOUS COMMITTED value. ──────────
     # (i) cannot see this one: a repaired file is still a member of the settled baseline, so
     # putting it back passes (i) forever. See the PAWL section above and ruling D-87.
-    pawl = pawl_check(ALLOWLIST_PATH, allowed, allowlist_raw, mode="scan")
+    pawl = pawl_check(ALLOWLIST_PATH, current_side, allowlist_raw, mode="scan")
     history_growth = pawl_history(ALLOWLIST_PATH)
 
     results = scan(root, scan_roots)
