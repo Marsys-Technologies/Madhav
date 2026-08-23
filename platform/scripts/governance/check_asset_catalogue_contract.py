@@ -1321,6 +1321,46 @@ def x06(s: Snapshot) -> Result:
     D-84 (set-not-count) applies directly and is why `growth` below is a SET
     difference naming asset_ids, never a length comparison: a population that shrinks
     by one and regrows a DIFFERENT one stays the same SIZE and must still be caught.
+
+    ANCHOR DECLARATION (D-103, ADHIKĀRIN, closing PARIKSAKA V-67 / F-V67-1) —
+    stated explicitly per D-103 part 6, whether or not a lineage manifest exists,
+    because "a floor that moves for a reason nobody wrote down is the same shape as
+    the pawl defect we just spent two tasks on": THIS RULE ANCHORS ON
+    `asset_registry` (via `s.assets`), NEVER on `build_run_assets` directly.
+    `build_run_assets` is consulted only to ask, for an asset_id ALREADY present in
+    `s.assets`, whether that id has a completed run — an asset_id that exists only in
+    `build_run_assets` and not in `asset_registry` can never enter `current_ids` and
+    is correctly outside this rule's population (you cannot have an unearned lit on
+    an asset that does not exist).
+
+    KNOWN-AFFECTED IDS, NAMED RATHER THAN SILENTLY ABSORBED (D-103 part 6): four
+    asset_ids live in `build_run_assets` with no matching `asset_registry` row today
+    (`platform/scripts/governance/asset_id_lineage_manifest.json` has the full,
+    migration/live-DB-derived evidence trail for each):
+      - `ga_pyjhora_engine`            — DELETED, migration 342 (no successor id)
+      - `ka_gochara_v2_materialize`    — RENAMED to `ka_gochara`, migration 563
+      - `chart_dashas`                 — legacy_never_registered (never a valid
+                                          asset_id; likely caller confusion with
+                                          `ga_dashas`'s target_table of the same name)
+      - `ga_chart_service`             — legacy_never_registered (a real, live
+                                          service; by design never carried in
+                                          asset_registry — see the manifest and
+                                          RETRIEVAL_STRATEGY_v1_0.md §5.3)
+    Because this rule anchors on `asset_registry`, none of the four can ever be
+    flagged BY this rule (correct — they are not assets). The risk D-103 raised is
+    narrower and still real: `ka_gochara_v2_materialize`'s completed builds are
+    evidence that belongs to the CURRENT id `ka_gochara`, and this rule's `ran` set
+    is keyed by the literal `build_run_assets.asset_id` string, so it does not credit
+    `ka_gochara` with builds recorded under its pre-rename name. This rule does NOT
+    currently read the lineage manifest to resolve that — D-103 part 5 asks this to
+    be considered and stated, not necessarily built in the same pass, and wiring it
+    in was judged more than a small, clearly-scoped change to a function that already
+    carries five rulings' worth of invariants (see the manifest's
+    `not_yet_wired_for_resolution` field for the full reasoning and a scoped
+    follow-up recommendation). Today this is a live gap, not a silent one: if
+    `ka_gochara` is ever independently flagged unearned-lit, this doc-comment and the
+    manifest are the pointer to why that reading needs rename-awareness before it is
+    trusted at face value.
     """
     if s.throughput is None:
         return Result(NOT_CHECKABLE, [], (
