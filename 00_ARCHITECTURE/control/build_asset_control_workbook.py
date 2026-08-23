@@ -125,6 +125,15 @@ def fetch():
     d = {}
     with psycopg.connect(db_url(), row_factory=psycopg.rows.dict_row) as conn:
         c = conn.cursor()
+        # M0-T33 / F-13 — killing this Python client does NOT cancel the server-side query.
+        # Before this line, every interrupted or retried generator run left its query burning
+        # production CPU indefinitely, with no error and no log; on 2026-08-23 five such
+        # abandoned copies of the DAG-depth CTE below wedged the shared database for ~25
+        # minutes and had to be cleared by hand with pg_cancel_backend. A foreground timeout
+        # on the client is not a stop — only the server can stop the server. 45s matches the
+        # campaign's convention for read-only control-plane tooling and is ~130x the slowest
+        # statement in this function (DAG depth, measured 0.338s after the UNION fix below).
+        c.execute("SET statement_timeout = '45s'")
         c.execute("""SELECT asset_id, layer, layer_index, layer_name, sanskrit_name, english_name,
             scope, asset_type, asset_kind, catalog_status, is_active, has_writer, has_substeps,
             storage_type, target_table, (count_sql IS NOT NULL) AS has_count_sql, target_floor,
@@ -145,10 +154,24 @@ def fetch():
         d['tp'] = collections.defaultdict(dict)
         for r in c.fetchall():
             d['tp'][r['asset_id']][r['chart_id']] = r['state']
+        # M0-T33 / F-13 — `UNION`, not `UNION ALL`, and the distinction is the whole cost.
+        # What this needs is one integer per asset: the length of the LONGEST root-to-asset
+        # path (`max(depth)`), i.e. a property of the (asset, depth) PAIR. What `UNION ALL`
+        # computed was every distinct root-to-asset PATH — the same pair re-derived once per
+        # route that reaches it. On the live graph (127 active assets, 283 edges, 0 cycles,
+        # max depth 25) that is 3,022,346 paths for 127 answers, worst node mi_darshana at
+        # 1,139,325; and because each recursive step re-joins the working table against the
+        # whole registry with `= ANY(depends_on)`, the cost is O(paths x registry).
+        # `UNION` de-duplicates the recursive term against everything already produced, so
+        # the working table can only ever hold DISTINCT (asset_id, depth) pairs — at most
+        # nodes x depths (<= 3,302 here), which is exactly the set `max()` aggregates over.
+        # The final result is therefore unchanged by construction, and was additionally
+        # proved cell-by-cell equal across all 127 rows before this edit landed (M0-T33
+        # report §3). Measured: 75.553s -> 0.338s.
         c.execute("""WITH RECURSIVE dag AS (
             SELECT asset_id, 0 AS depth FROM asset_registry
              WHERE (depends_on IS NULL OR cardinality(depends_on)=0) AND is_active
-            UNION ALL
+            UNION
             SELECT r.asset_id, g.depth+1 FROM asset_registry r JOIN dag g ON g.asset_id = ANY(r.depends_on)
              WHERE r.is_active AND g.depth < 40)
             SELECT asset_id, max(depth)::int AS depth FROM dag GROUP BY asset_id""")
@@ -166,13 +189,20 @@ def fetch():
         # the SAME layer_index (cross-layer deps are satisfied by rung sequencing, not this).
         # Mirrors the DAG-depth CTE above, style-for-style; NOT EXISTS handles both a NULL
         # depends_on and a depends_on with no same-layer member as wave 0 uniformly.
+        # M0-T33 / F-13, second instance: mirroring it style-for-style also inherited its
+        # `UNION ALL`, so this carried the identical path-enumeration defect. It did not
+        # explode, but only because the same-layer subgraph is shallow — 503 paths for 127
+        # answers, worst node bo_samvada at 48, measured 0.105s. That is a property of
+        # today's edges, not of the query, and it would grow exactly as the DAG-depth one
+        # did the moment intra-layer dependencies deepen. Same one-word fix, and likewise
+        # proved cell-by-cell equal across all 127 rows before landing.
         c.execute("""WITH RECURSIVE wave AS (
             SELECT r.asset_id, r.layer_index, 0 AS w FROM asset_registry r
              WHERE r.is_active AND NOT EXISTS (
                  SELECT 1 FROM asset_registry dep
                   WHERE dep.asset_id = ANY(r.depends_on) AND dep.layer_index = r.layer_index
                     AND dep.is_active)
-            UNION ALL
+            UNION
             SELECT r.asset_id, r.layer_index, g.w + 1 FROM asset_registry r
              JOIN wave g ON g.asset_id = ANY(r.depends_on) AND g.layer_index = r.layer_index
              WHERE r.is_active AND g.w < 40)
