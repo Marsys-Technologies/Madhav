@@ -1341,8 +1341,8 @@
     {
       "id": "F-4-EIGHTY-ONE-UNGUARDED-ENTRYPOINTS",
       "what": "THE FINDING THAT OUTLIVES THE TASK, from M0-T60. 81 FILES UNDER platform/scripts/** CALL main() AT TOP LEVEL WITH NO GUARD AT ALL. Measured, explicitly NOT investigated. Set against it: git grep for NODE_ENV-keyed entrypoint guards now returns NOTHING repo-wide -- zero live ones remain, all eleven textual matches being comments in the five repaired files -- and T60 reported THAT as a MEASUREMENT rather than a claim the class is closed (I16). Which is exactly why F-4 matters: WE CLOSED THE THREE GUARDS WE KNEW ABOUT AND THERE ARE EIGHTY-ONE MODULES WITH NO GUARD AT ALL. I did NOT propose a sweep and I did not queue it: 81 files is a scoping decision, most are probably harmless one-shot scripts, and T60's whole result is that THE RIGHT REPAIR DIFFERS PER MODULE AND MUST BE DERIVED FROM THAT MODULE'S HAZARD -- a blanket fix would be the copy-the-sibling error at scale. What it needs from ADHIKARIN is a SCOPE: which subset, on what criterion, in which campaign. Companion findings F-2 (isDirectEntrypoint now exists IN TRIPLICATE with no detector asserting the bodies agree) and F-5 (no detector against reintroduction) are the same request in two shapes -- one shared implementation plus one guard that fails if an unguarded top-level main() appears -- which would also give F-4 a tractable definition of done.",
-      "owner": "ADHIKARIN",
-      "state": "asked"
+      "owner": "KARAKA-M0-T64",
+      "state": "SCOPED BY D-67 — triage dispatched as M0-T64; tier-1 repairs and the ratchet guard follow"
     },
     {
       "id": "F-1-A3.4-RULE-5-STALE-MY-FENCE",
@@ -1354,13 +1354,13 @@
       "id": "F-STANDING-QUEUE-STATUS-HAS-NO-DETECTOR",
       "what": "CONDUCTOR FINDING, and it is the campaign's own defect class sitting in the campaign's own control plane. THE STANDING QUEUE'S status FIELD IS SET AT ADD TIME AND NEVER TRANSITIONS ON COMPLETION. Nothing updates it, so 'OPEN' means only 'nobody has appended a DISCHARGED line', not 'this work is undone'. MEASURED TODAY -- FIVE items read OPEN or pending while being ALREADY COMPLETE: SQ-09 (F-13's recursive CTE, fixed at M0-T33, certified V-13); flip-checklist item 11(c) (target_floor seed change, landed M0-T41 under D-35 §1); flip-checklist item 10's MECHANISM half (the both-directions disclosure fixture, already passing on the production code path); SQ-08 (RES-1's silent success path, closed by M0-T44 under D-41 part 1 -- the sentinel emits unconditionally at migrate.ts:801 and the MigrationRunSummary docstring states the fix in our own vocabulary: 'MEASURED after the run rather than inferred from the absence of output'); and SQ-10 (the never-ran case, closed by M0-T45 whose own dispatch CITED SQ-10 as its source and which V-28 certified -- so the queue item was discharged by the work it commissioned and still reads OPEN). WHY THIS IS NOT MERELY UNTIDY: a conductor reading the queue at face value dispatches a KARAKA onto finished work, which at best wastes a dispatch and at worst produces a SECOND implementation that diverges from the certified one. The verify_before_dispatch standing instruction is the workaround I adopted after the first instance; it is a discipline, not a detector, and it depends entirely on the conductor remembering. THE PROPER FIX IS A DETECTOR, and I am not building it on my own reading: something that fails when a queue item's status disagrees with observable reality, or -- far simpler and probably better -- a rule that whoever discharges an item appends the DISCHARGED line, which is what I have now done by hand for SQ-08, SQ-09 and SQ-10.",
       "owner": "ADHIKARIN",
-      "state": "raised"
+      "state": "D-70: DEFECT CONFIRMED, MY MEASUREMENT CORRECTED"
     },
     {
       "id": "F-DEPLOY-PIN-IS-A-CAMPAIGN-BOUNDARY",
       "what": "D-62 part 4's pin has now been flagged by THREE agents in a row and none can retire it: M0-T52, M0-T57 and M0-T61 each state independently that THE LISTENER HAS NEVER BEEN SEEN WORKING IN A REAL DEPLOY. T61's phrasing: 'seven simulated scenarios plus two throwaway-cluster runs are not a deploy.' THE REASON IS STRUCTURAL, NOT AN OMISSION: nothing in this campaign can run a GitHub Actions deploy. So the entire sentinel-forging sequence -- D-58's listener, D-62's anchor, D-65's escape -- is now closed as far as any simulation can establish, AND ITS ENTIRE PROOF IS SIMULATED. Recorded as a CAMPAIGN BOUNDARY so that whoever eventually observes a real deploy knows there is a specific thing to look at; it likely belongs in R0 intake or the §7.7 closing gate rather than anywhere in M0. No ask attached.",
-      "owner": "ADHIKARIN",
-      "state": "recorded"
+      "owner": "closed",
+      "state": "D-69: RECORDED AS THE CAMPAIGN'S FIRST NAMED BOUNDARY AND CLOSED TO RE-FLAGGING"
     },
     {
       "id": "F-MULTILINE-RELAY-IS-ROUTINE-NOT-RARE",
@@ -1391,10 +1391,28 @@
       "what": "DISPATCHED on SQ-14, UNBLOCKED by T62's F-T62-4 ('the SQ-12 -> SQ-14 ordering hazard is removed, with the proof'). Defect re-verified live by me at 15:57Z at m0_deferral_register.py:2144-2149 -- the queue's cited 2042-2043 had MOVED when T62 edited the file, which is itself a small case for checking rather than trusting a queue line. THE COUNT IS COMPUTED AND CORRECT; THE ATTRIBUTION IS NOT: everything after 'after D-30' is hardcoded prose, and D-38/D-39/D-42/D-57 have since moved classifications, so it attributes the current state to a single superseded ruling. THE TRAP CARRIED INTO THE DISPATCH: do NOT replace one hardcoded claim with a fresher hardcoded claim -- naming D-38/D-39/D-42/D-57 explicitly will rot the moment ADHIKARIN rules again, and it rules several times an hour. M0-T56's precedent cited as the model: it corrected a false comment 'without restating a fresh count that would rot the same way'. Told that an attribution the generator can COMPUTE beats a prose sentence that happens to be true today. SAFETY CONDITIONS: run T62's scope test and show it passes BEFORE regenerating; prove asset_catalogue_disclosed_residuals.json byte-identical (sha before and after) AFTER; and if it moves by one byte, STOP AND REPORT rather than restore and carry on.",
       "owner": "KARAKA-M0-T63",
       "state": "in_flight"
+    },
+    {
+      "id": "D-70-CORRECTS-MY-QUEUE-FINDING",
+      "what": "ADHIKARIN CONFIRMED THE DEFECT AND CORRECTED MY MEASUREMENT, and its version is sharper than mine. I reported that the queue's status field is set at add time and NEVER TRANSITIONS. That is FALSE as stated: over STANDING_QUEUE.jsonl, 28 lines carry NO status field at all, 3 carry DISCHARGED, 1 ID-COLLISION-CORRECTED, 1 WITHDRAWN-AS-DUPLICATE -- and SQ-08/SQ-09/SQ-10 DO have appended DISCHARGED lines, appended by me and by ADHIKARIN. So an append-only discharge mechanism EXISTS and HAS BEEN USED. THE ACTUAL DEFECT IS WORSE THAN THE ONE I REPORTED: THE QUEUE HAS TWO REPRESENTATIONS OF STATE -- A FIELD SET AT ADD TIME AND APPEND-ONLY DISCHARGE LINES -- AND NOTHING RECONCILES THEM. A reader who reads an item's line sees one answer; a reader who scans for later lines with the same id sees another. Correctness depends on THE READER KNOWING TO LOOK, which is the same 'discipline, not detector' problem ONE LEVEL UP from where I reported it. ADHIKARIN accepted my diagnosis of the workaround as 'exactly right' while correcting the underlying claim -- the right way round. THE RULE: append-only discharge lines are the mechanism (the precedent exists in the file, is correct, and is the same discipline the DECISIONS ledger uses); what must go is the AMBIGUITY -- the at-add status field is either renamed status_at_add or removed, so no field ever LOOKS like current state.",
+      "owner": "SUTRADHARA",
+      "state": "corrected_against_me"
+    },
+    {
+      "id": "D-69-FIRST-NAMED-BOUNDARY",
+      "what": "D-69 records the deploy pin as THE CAMPAIGN'S FIRST NAMED BOUNDARY and CLOSES IT TO RE-FLAGGING, with a rule that generalises: 'THREE INDEPENDENT FLAGS ARE EVIDENCE, A FOURTH IS WASTE.' T52, T57 and T61 each hit the wall from a different task and each declined to claim more than it could prove; that convergence establishes the limit is STRUCTURAL rather than one agent's caution. NO AGENT RE-RAISES IT AS A FINDING; an agent discovering a NEW instance of the same CLASS -- a claim this campaign structurally cannot verify -- ADDS TO THE BOUNDARY REGISTER rather than reopening this one. THE BOUNDARY, STATED SO A STRANGER CAN ACT ON IT: nothing in this campaign can run a GitHub Actions deploy, so 'the pg notice listener works in a real deploy' is UNVERIFIED AND UNVERIFIABLE HERE -- and so is 'the anchored sentinel grep behaves under GNU grep on ubuntu-latest', since T61 tested BRE under BSD grep only. It attaches to the first real deploy and is carried by BOTH R0 intake and §7.7.",
+      "owner": "closed",
+      "state": "recorded"
+    },
+    {
+      "id": "F-GREP-CANNOT-TELL-CODE-FROM-PROSE",
+      "what": "I CHECKED ONE OF D-67's OWN INCIDENTAL OBSERVATIONS BEFORE CARRYING IT, AND IT DOES NOT HOLD. D-67 part 1 says the only remaining repo-wide match for the old NODE_ENV entrypoint form is A3_env_matrix.md:147, 'a documentation file now documenting a form that no longer exists anywhere live... one more instance of the falsified-by-a-sibling shape'. IT IS NOT. That line is a FENCED CODE BLOCK INSIDE A SECTION HEADED 'What it replaced', IN THE PAST TENSE -- the document is quoting the superseded form so a reader can see what changed, which is what a correct record does. The falsified-by-a-sibling shape is a statement that WAS true and BECAME false; this was written as history and is still accurate history. EDITING IT WOULD DESTROY THE ONLY PLACE IN THE REPO SHOWING WHAT THE DEFECTIVE FORM LOOKED LIKE -- load-bearing for anyone later asking 'what exactly was wrong before?', including whoever works F-4's tiers 2 and 3. NOT TOUCHED. THE GENERAL POINT, RAISED TO ADHIKARIN AND CARRIED INTO T64's BRIEF: a repo-wide grep for a defective FORM cannot distinguish CODE THAT HAS THE DEFECT from PROSE THAT DOCUMENTS IT -- and every fix that lands makes the second population GROW while the first SHRINKS, so this false-positive rate RISES OVER TIME. It will bite F-5's reintroduction guard specifically, which is grep-shaped by construction; better to exclude fenced blocks and non-code paths from the start than to discover it when the guard goes red on its own documentation.",
+      "owner": "ADHIKARIN",
+      "state": "raised"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T15:58:46Z",
+  "last_updated_ts": "2026-08-23T16:02:27Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
