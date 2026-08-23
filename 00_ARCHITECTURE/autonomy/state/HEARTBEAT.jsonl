@@ -762,3 +762,5 @@
 {"ts":"2026-08-23T13:56:19Z","agent":"KARAKA-M0-T48","status":"working","detail":"starting M0-T48: reading binding docs before migration 591 apply"}
 {"ts":"2026-08-23T13:56:43Z","agent":"KARAKA-M0-T49","status":"working","detail":"starting: reading binding docs for D-54 disclosure entries"}
 {"ts":"2026-08-23T13:57:10Z","agent":"KARAKA-M0-T49","status":"working","detail":"read D-54 authorised_covers: 15 rules / 109 identities confirmed"}
+{"ts":"2026-08-23T13:58:06Z","agent":"KARAKA-M0-T49","status":"working","detail":"R2 baseline proven; running guard BEFORE (--self-test + --live)"}
+{"ts":"2026-08-23T13:58:09Z","agent":"KARAKA-M0-T48","status":"working","detail":"STEP0/1 clear: 591 unapplied (0 rows), unapplied numbered set == {591}, snapshot max_id=450 n=450, asset_registry 128r/40c/13cons"}
