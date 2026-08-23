@@ -294,6 +294,28 @@
         "V-9": "M0-T20 — asset_registry.has_substeps repair",
         "V-10": "M0-T26 — asset_registry.layer_index / layer_name repair",
         "V-11": "M0-T31 — the deferral register"
+      },
+      "close_readiness": {
+        "by": "KARAKA M0-T36, commit 9001576e8",
+        "verdict": "M0 CANNOT CLOSE — structurally, not for want of work",
+        "structural_blocker": "Criterion 10 requires the guards MERGED TO MAIN; H2 forbids that unappealably; parked as PARK-6",
+        "treated_as_finished_but_never_ran": {
+          "0.9 telemetry": "NEVER EXECUTED — 9 of 128 rows carry estimated_seconds. CONDUCTOR MISS: granted in D-6, corrected in D-12 part 3, proposal complete since 04:16Z, never dispatched until now (M0-T39)",
+          "0.4 partitions": "no work at all",
+          "0.8a dead flag": "not done",
+          "0.8b DRAFT-but-served": "47 of 128 DRAFT, all active, ZERO promotions recorded — G1, ADHIKARIN's",
+          "0.8c zero-consumer": "23 evidence packets, 0 dispositions — G1, ADHIKARIN's",
+          "0.10 CI": "0 workflow runs, ever",
+          "0.11 baseline": "the only artefact named 'baseline' PREDATES migration 590 and the layer repair — AND CI GATES AGAINST IT",
+          "integrity_check_sql": "0 of 128"
+        },
+        "HIGH_findings": {
+          "F-T36-2": "CI NEVER RUNS --live. It runs --baseline against a 05:09:17Z snapshot returning 17 BLOCKING failures including C-05/C-14/C-23, all of which PASS in production and two of which PARIKSAKA certified as repaired. The gate reports failures fixed hours ago and would report success for a defect introduced since. Dispatched as M0-T40",
+          "F-T36-3": "The disclosure route is INERT. disclosed_additions is asset_id-keyed and read ONLY in x02(), and severity is a hardcoded RULES-table constant — so D-30 part 4's condition is satisfiable on paper and not in effect, and the blocking switch could be flipped on a precondition never really met. Dispatched as M0-T40 with the constraint that a disclosed rule must still REPORT and only stop GATING (H3)",
+          "F-T36-5": "plan §8.6 stage 2 assigns six registry-metadata fields TO EVERY RUNG BY NAME, including has_substeps. Read as firing refinement (b) of the named-field test it would make the V-9-CERTIFIED has_substeps repair an I13 breach. The correct reading is forced but NOWHERE WRITTEN DOWN"
+        },
+        "unanticipated_by_D30": "The named-field test reaches three entries D-30 routed elsewhere (X-03, criteria 8 and 5) and settles their ownership to M0 — deferring them to a rung would be the error in the opposite direction. Left UNEXAMINED-narrowed since no mechanism exists and both need a column (P5).",
+        "figure_not_itemisable": "'6 rules + 2 criteria' is not itemisable — the register disagrees with itself twice and the figure propagated into D-30's question field unchallenged, relayed by me. Third time one of my numbers entered the ledger unchecked; itemise before counting."
       }
     },
     "M1": {
@@ -599,12 +621,6 @@
       "state": "raised"
     },
     {
-      "id": "M0-T36",
-      "what": "apply D-30's named-field test, re-measure, and produce the ordered flip checklist + M0 close-readiness",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "CONDUCTOR-PRACTICE-CHANGE",
       "what": "D-29 part 2 named the cause of its own wrong-rung ruling as MY hedged claim, adopted without checking: 'A hedge is an invitation to verify and I treated it as a finding.' The other half is mine — I hedged INSTEAD of checking, and the check was one query. It has happened twice in an hour (the rung claim; the health_probe-as-verdict reading), both caught by agents below me. CHANGED, effective now: I verify a factual claim before it goes into an escalation or I send it as an explicit question with the query that would settle it; a hedge from me IS a request for verification and I say so in those words; and when relaying a sibling's finding I state whether I verified it or am passing it through. The difference in the two cases was not difficulty — one FELT like it needed checking and the other FELT obvious, and feeling obvious is exactly when this fails",
       "owner": "SUTRADHARA",
@@ -671,10 +687,34 @@
       "what": "M0-T30 re-reported on cleanup: its commit is an ancestor of HEAD with all three changes intact, its background notifications were its OWN leftover waiters dying to its cleanup pkill (exit 144 is signal death, not failure), and 0 DAG-CTE backends remain server-side so the contention it caused is fully cleared. It also told the verifier that its own report's F-13 caveats are now SUPERSEDED BY M0-T33's evidence rather than by its own — an agent retiring its own uncertainty on a sibling's better proof, which is exactly the behaviour I16 is for",
       "owner": "closed",
       "state": "clean"
+    },
+    {
+      "id": "M0-T36",
+      "what": "DONE 9001576e8 — M0 cannot close; 8 Phase-0 steps treated as finished that never ran",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T39",
+      "what": "execute the telemetry repair — the conductor miss",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "M0-T40",
+      "what": "CI gates a fossil; the disclosure route is inert",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "G1-DISPOSITIONS-WAITING",
+      "what": "47 DRAFT assets with complete evidence packets and ZERO promotions; 23 zero-consumer packets with ZERO dispositions. The evidence has been complete since M0-T6/T7 hours ago. These are G1 decisions and I have not queued them because deciding them is not mine",
+      "owner": "ADHIKARIN",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T08:12:38Z",
+  "last_updated_ts": "2026-08-23T08:22:44Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
