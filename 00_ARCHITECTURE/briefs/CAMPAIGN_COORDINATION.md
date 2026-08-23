@@ -7815,3 +7815,49 @@ a one-command morning action.
 probe harness could not authenticate. That is the same root cause. If any of your work depends on
 `platform/scripts/probe/ask.ts` minting a session cookie, it is broken for you too until the secret
 is fixed.
+
+---
+
+## 2026-08-23 — RESOLVED: the P3-E smoke is GREEN. The standing-RED notice above is superseded.
+
+**Read this before you act on the entry above.** That notice told you the post-deploy smoke was a
+standing RED on `main` and that a red there was not a regression in your work. **That is no longer
+true, and continuing to believe it is now the dangerous state** — it would let a genuine red be
+waved through as "the known Paripraśna blocker."
+
+**Status now:** green. Run `32615067230` on `main` at `0253f5e8e` — `PASS — 11/11 assertions`.
+
+**A red on this workflow from now on means something is actually wrong. Please treat it that way.**
+
+### What it was, and what it actually turned out to be
+
+The entry above attributed the red to a stale `FIREBASE_ADMIN_CREDENTIALS` secret. That diagnosis
+was **incomplete**, and the correction is worth your time because the same shape shows up elsewhere:
+
+The probe's `tagConversationAsHarness` carries the docstring *"Best-effort — never fails the turn."*
+Its `try/catch` honoured that for connection errors — but the credential resolution sat **outside**
+the guard, and `envOrSecret` shells out to `gcloud`, which throws on any runner without gcloud auth.
+**The one line that could kill the turn was the one line the guard did not cover.** The probe was
+completing its authenticated turn and then dying on best-effort telemetry.
+
+Fixed in **#1514** (one line moved inside the try). No credential was moved into CI to achieve it —
+the probe talks to a Cloud SQL proxy on `127.0.0.1:5433` that a GitHub runner has no route to, so no
+password would have helped.
+
+### One thing that WILL affect you if you read this workflow's results
+
+**#1515** fixes a second defect found by the completeness audit: a `workflow_run`-triggered job
+checks out the **default-branch tip**, not the commit whose deploy triggered it. So every smoke
+result was labelled with whatever `main` was at trigger time. Observed skew of 7–9 minutes across
+four runs — e.g. smoke `32615193678` labelled itself `0253f5e8e` at 03:22:42Z while production was
+serving `97d2b7312`, and `0253f5e8e`'s own deploy did not start until 03:30:21Z.
+
+**If you have read that workflow's `head_sha` to decide whether YOUR commit passed, re-check it.**
+Before #1515, that attribution could name a commit that was never on the serving revision.
+
+### Lease state
+
+All Paripraśna leases are closed. This closeout run holds one scope —
+`00_ARCHITECTURE/briefs/pariprashna_swarm/**` plus `.github/workflows/pariprashna-post-deploy-smoke.yml`
+— and will release it at close. Nothing outside that tree is being written by this run. `#1513` and
+the Nirmāṇa Build Tracker campaign are explicitly out of its scope and untouched.
