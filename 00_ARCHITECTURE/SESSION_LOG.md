@@ -37187,3 +37187,47 @@ rather than assuming a common cause. Separately, investigate the provenance of t
 pre-existing staged-but-uncommitted diff on `platform-mcp/src/tools/register_p1_aliases.ts`
 (F-125 `requiresOrientation`/B.11 orientation-gate work) found in the conductor worktree at
 this session's start, before acting on it.
+
+## NIRMANA-LEKHAKA-20260823T091500Z — status entry, campaign IN PROGRESS, not a close
+
+*Note: this is not a session-close entry. The NIRMĀṆA ELEVATION campaign is a continuously-running,
+six-agent autonomous fleet (SŪTRADHĀRA, ADHIKĀRIN, PARĪKṢAKA, PRAHARĪ, LEKHAKA, plus dispatched
+KĀRAKA workers), launched 2026-08-23T03:19Z on its own branch (`campaign/nirmana-autonomous`)
+under its own charter (`00_ARCHITECTURE/autonomy/CHARTER.md`), and does not operate on the
+single-interactive-session open/close handshake this log's schema was built around. There is no
+`session_open`/`session_close` YAML pair here, and none is fabricated — per this project's own
+§N.7/§N.8 discipline, an honest gap beats a plausible-looking invented one. This entry exists
+because the campaign's own conductor identified (SQ-06) that neither this file nor
+`CURRENT_STATE_v1_0.md` had been touched in ~6 hours of real work, which is exactly the class of
+control-surface staleness this campaign has spent its day removing everywhere else. LEKHAKA
+(the campaign's scribe agent) is filing this as the closest honest equivalent this log's format
+allows: a dated status entry, not a close.*
+
+**What is true as of this entry:** Track M sub-phase M0 (machinery repair, data-neutral) is open
+and NOT closed — measured by a real exit scorecard, most recent reading 2 pass / 6 fail / 3
+not-measurable / 1 blocked, improved from an initial 0/12. One exit criterion (C-10) is
+structurally unsatisfiable by the fleet itself (requires a merge to `main`, forbidden absolutely
+by charter rule H2) and is parked as PARK-6 for the native. Three production writes so far, each
+independently certified by PARĪKṢAKA rather than trusted from the executing agent's own report:
+the migration wave (588/589/590), a `has_substeps` repair (12 rows), and a `layer_index`/
+`layer_name` repair (39 cells). Further non-schema registry repairs: `estimated_seconds` (93
+rows), `asset_kind`/`asset_type` (6 rows, confirmed non-durable against the seed). A real,
+user-facing correctness bug (`ka_kshetra` served as "no data" while holding 8.6M real rows for
+this chart) was found and deliberately left unrepaired on scope discipline, parked as PARK-5 for
+the native's own timing decision. Six parked items total (PARK-1 through PARK-6) await the
+native at his convenience; none are currently blocking campaign progress. No R0–R5 rung has
+opened.
+
+**Full account, updated continuously (not just at milestones):**
+`00_ARCHITECTURE/autonomy/state/DIGEST-2026-08-23.md`. Live machine state:
+`00_ARCHITECTURE/autonomy/state/CAMPAIGN_STATE.json`, `state/DECISIONS.jsonl`,
+`state/VERDICTS.jsonl`, `state/PARKED.jsonl`. `CURRENT_STATE_v1_0.md` §2/§3 updated in the same
+pass as this entry (v6.65 → v6.66).
+
+### Next entry objective
+
+When M0 actually closes (or when a natural pause in the fleet's own cadence occurs), LEKHAKA
+writes a proper close-shaped entry for that boundary, following the same disclosure discipline
+as this one — an honest `not_captured`/schema-gap note rather than a fabricated handshake, for
+whichever fields a continuously-running fleet genuinely cannot attest to a single-session
+schema.

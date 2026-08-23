@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.65
+version: 6.66
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -5857,6 +5857,51 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟡 **NIRMĀṆA ELEVATION campaign IN PROGRESS (started 2026-08-23T03:19Z) — a fully autonomous,
+> six-agent fleet (SŪTRADHĀRA conductor, ADHIKĀRIN decision authority, PARĪKṢAKA independent
+> verifier, PRAHARĪ watchdog, LEKHAKA scribe, plus dispatched KĀRAKA workers) repairing the
+> Nirmāṇa Build Tracker's own machinery and data, for one chart only
+> (`482012f1`, Abhisek Mohanty). Governing plan: `00_ARCHITECTURE/NIRMANA_ELEVATION_PLAN_v4_0.md`
+> (internal version 5.0). Charter: `00_ARCHITECTURE/autonomy/CHARTER.md`. Branch:
+> `campaign/nirmana-autonomous`. Live state: `00_ARCHITECTURE/autonomy/state/CAMPAIGN_STATE.json`
+> + `DECISIONS.jsonl`/`VERDICTS.jsonl`/`PARKED.jsonl`/`RUN_LEDGER.jsonl`. Native-facing digest:
+> `00_ARCHITECTURE/autonomy/state/DIGEST-2026-08-23.md`.
+>
+> **As of this entry (~2026-08-23T09:15Z, ~6h in): Track M / M0 (machinery-only,
+> data-neutral) is NOT closed, and cannot close yet** — an exit scorecard exists precisely so
+> this is measured rather than asserted, and it still reads far from clean (early readings:
+> 0/12 criteria passing; most recent reading before this entry: 2 pass / 6 fail / 3
+> not-measurable / 1 blocked, with several criteria structurally deferred). One exit criterion
+> (C-10, CI catalogue guards "merged and blocking") is parked as **PARK-6**: it requires a
+> merge to `main`, which the charter's H2 rule forbids the fleet from ever doing itself — it
+> needs the native to merge one PR whenever convenient. No rung (R0–R5, the actual per-layer
+> asset-repair work) has opened; that starts only after M0 freezes.
+>
+> **What M0 has actually done, each independently certified by PARĪKṢAKA (not
+> self-reported) rather than assumed:** three production writes to `asset_registry`/
+> `kala_gochara_windows` — the migration wave (588/589/590, removing stale per-asset build
+> protection and adding domain/rung/lifecycle columns), a `has_substeps` repair (12 rows), and
+> a `layer_index`/`layer_name` repair (39 cells, catching an ASCII-folded duplicate before it
+> could write bad data) — plus further non-production-schema repairs to `estimated_seconds`
+> (93 rows) and `asset_kind`/`asset_type` (6 rows, confirmed non-durable against the seed and
+> tracked accordingly). A real, user-facing correctness bug was found and deliberately left
+> unfixed rather than repaired out-of-scope: `ka_kshetra` (an L3/Kāla asset) has written
+> 8,599,775 rows for this chart, but a served surface still hard-codes "field empty" —
+> parked as **PARK-5**, awaiting the native's own call on when to fix it, since ADHIKĀRIN
+> judged that fixing it now would itself be the kind of scope-creep this campaign exists to
+> prevent (I13). The fleet also found and fixed several instances of a recurring defect class
+> — a check or status field that can never emit its own unfavorable value (the same shape as
+> ND/§N.8's existing catalogue) — including in its own exit-scorecard generator and its own
+> mutation-testing safety net, the latter caught mid-use via a real inter-agent race in the
+> shared working tree (fully diagnosed, zero data lost, safety mechanism revised twice same
+> day as its own defects surfaced).
+>
+> **Full, current, honest account (updated by LEKHAKA as the campaign proceeds, not only at
+> close):** `00_ARCHITECTURE/autonomy/state/DIGEST-2026-08-23.md`. This §2 entry is a snapshot,
+> not the live source — read the digest and `CAMPAIGN_STATE.json` for anything more recent
+> than the timestamp above. Nirmāṇa runs concurrently with, and does not touch, any other
+> campaign's files or branches.
+
 > 🟢 **PARIPRASHNA-P3-PREFLIGHT (Parts A–H) close (2026-08-22) — the pre-flight queue standing
 > in front of P3 (ONE ENGINE, ONE DOOR) is drained.** Full campaign ledger:
 > `00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md`; per-part evidence and the full DD register:
@@ -9188,6 +9233,34 @@ current_state:
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+**As of ~2026-08-23T09:15Z, the NIRMĀṆA ELEVATION campaign is IN PROGRESS, not closed.** A
+six-agent autonomous fleet launched at 03:19Z to repair the Nirmāṇa Build Tracker's own
+machinery and, later, its per-layer chart data for `482012f1` alone. The first ~6 hours were
+spent entirely on Track M (machinery, data-neutral) sub-phase M0, and M0 is still open: its own
+exit scorecard — a real detector, not an assertion — reads far from clean, and one exit
+criterion is structurally unsatisfiable by the fleet itself (it requires a merge to `main`,
+which the charter forbids every agent absolutely; parked as PARK-6 for the native). Within
+that scope the fleet did real, independently-certified work rather than claim completion early:
+three production writes (a migration wave removing stale build-protection and adding
+domain/rung columns; a `has_substeps` repair; a `layer_index`/`layer_name` repair that caught a
+data-quality defect — an ASCII-folded duplicate — before it could write), plus further registry
+repairs to `estimated_seconds` and `asset_kind`/`asset_type`. Nothing was marked done on the
+strength of the agent that built it — PARĪKṢAKA independently re-derived and certified each
+write before it counted as landed, and when its own mutation-testing baseline was
+found to have been poisoned by a genuine race with a sibling agent (both individually-honest
+checks, the check's *shape* was the defect), the fleet re-verified every affected verdict under
+a corrected procedure rather than assume the earlier work was still safe. A real, user-facing
+correctness bug was found and deliberately left unrepaired, on discipline rather than oversight:
+`ka_kshetra` has written 8.6M real rows for this chart, but a served surface still tells the
+native "no data" — the fleet's own scope discipline (never touch an asset outside the currently
+open rung) forbids fixing it out of order, so it is parked as PARK-5 for the native's own
+decision on timing, not silently repaired. Full, continuously-updated account:
+`00_ARCHITECTURE/autonomy/state/DIGEST-2026-08-23.md`; live machine state:
+`00_ARCHITECTURE/autonomy/state/CAMPAIGN_STATE.json`. This paragraph will be superseded by a
+proper close-out narrative once M0 — and later the R0–R5 rungs — actually close; it is written
+now, mid-campaign, specifically so this file does not go stale the way it had for the prior six
+hours (SQ-06, self-identified by the campaign's own conductor).
 
 At the close of **PARIPRASHNA-P3-PREFLIGHT-PART-H-2026-08-22**, a fresh Claude Code session with
 no memory of any prior conversation was handed a native ruling ("CONTINUE INTO PARTS G AND H
