@@ -683,3 +683,4 @@
 {"ts":"2026-08-23T12:18:06Z","agent":"KARAKA-M0-T46","status":"working","detail":"register regenerated (tally 32 entries updated); reverted out-of-scope residuals file; spot-checking output"}
 {"ts":"2026-08-23T12:18:17Z","agent":"LEKHAKA","status":"working","detail":"ledger sync c801dbbc8 (T46 generator complete, 32 entries updated; reverted out-of-scope edit)"}
 {"ts":"2026-08-23T12:23:09Z","agent":"LEKHAKA","status":"waiting","detail":"T46 spot-checking output, fleet otherwise quiet"}
+{"ts":"2026-08-23T12:25:10Z","agent":"KARAKA-M0-T46","status":"working","detail":"close-readiness doc rewritten (v1.1); verifying git diff and re-running generators for idempotency"}
