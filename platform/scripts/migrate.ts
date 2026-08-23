@@ -35,6 +35,7 @@
 import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
+import { fileURLToPath } from 'url'
 import { Pool, type PoolClient } from 'pg'
 
 export const TRACKER_DDL = `
@@ -716,9 +717,52 @@ async function main(): Promise<void> {
   }
 }
 
-// Guard: only execute when run directly, not when imported by tests.
-// Unguarded main() caused an unhandled rejection (ECONNREFUSED) in vitest
-// because there is no database in the CI test environment.
-if (process.env.NODE_ENV !== 'test') {
+/**
+ * Is THIS module the process entrypoint, or was it merely imported by something else?
+ *
+ * Exported so the question has a real, directly-testable detector behind it rather than an
+ * inline expression nothing can exercise (CLAUDE.md §N.8).
+ *
+ * Compares the module's own URL against `process.argv[1]`, the path the runtime was told to
+ * execute. Both sides are normalised through `fs.realpathSync` where possible, so a symlinked
+ * checkout, a `./`-prefixed spelling, or a `/tmp` → `/private/tmp` style realpath difference
+ * does not make a direct run look like an import. Any failure to resolve either side answers
+ * `false`: the safe direction is "assume imported", because a wrongly-false answer makes an
+ * explicit `npx tsx scripts/migrate.ts` exit silently and loudly wrong, while a wrongly-true
+ * answer applies migrations to production as an import side effect.
+ */
+export function isDirectEntrypoint(moduleUrl: string, argv1: string | undefined): boolean {
+  if (!argv1) return false
+  let modulePath: string
+  try {
+    modulePath = fileURLToPath(moduleUrl)
+  } catch {
+    return false
+  }
+  const entryPath = path.resolve(argv1)
+  if (modulePath === entryPath) return true
+  try {
+    return fs.realpathSync(modulePath) === fs.realpathSync(entryPath)
+  } catch {
+    return false
+  }
+}
+
+// Guard: only execute when this module IS the entrypoint — never as an import side effect.
+//
+// This used to read `if (process.env.NODE_ENV !== 'test')`, which asks the wrong question
+// (Nirmāṇa finding F-2, WORK_QUEUE M0-T11). An environment sentinel says nothing about how the
+// module was loaded: in ANY shell with NODE_ENV unset — which is every ordinary developer and
+// agent shell — importing one of this module's pure helpers (`sqlIdentityOf`,
+// `normalizeSqlForIdentity`, `collectMigrationFiles`; `scripts/ci/migration_renumber_disclosed.json`
+// documents exactly such an import as the supported way to compute a sql_identity) ran the whole
+// migrator. With DATABASE_URL exported, an `import` applied every unapplied migration to
+// production. A KĀRAKA agent tripped this; nothing was applied only because that shell happened
+// to have no DATABASE_URL and the fallback connection was refused.
+//
+// The entrypoint check answers the actual question and is environment-independent, so the test
+// suite no longer relies on vitest happening to set NODE_ENV either. Both directions are covered
+// by `scripts/__tests__/migrate_entrypoint_guard.test.ts`.
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
   main()
 }
