@@ -406,12 +406,6 @@
       "state": "certified"
     },
     {
-      "id": "RES-1",
-      "what": "PARIKSAKA residual: a deploy-time migration run that silently no-ops has no detector behind it. Raised during V-3, not blocking",
-      "owner": "ADHIKARIN",
-      "state": "raised"
-    },
-    {
       "id": "M0-T7",
       "what": "COMPLETE c9d13c7ec — 47 DRAFT assets on a four-fact matrix (registry-active / rows-exist / surface-reads / caller-reachable): 38 reachable, 5 built-but-unread, 4 UNKNOWN. 284 edges, 0 dangling, 0 cycles, 3 CURRENT->DRAFT. The 138-vs-128 id gap is NOT in the DAG (6 test fixtures, 4 migration-only tombstones). It corrected two of its own scans before reporting",
       "owner": "PARIKSAKA",
@@ -804,20 +798,26 @@
       "state": "landed_with_one_correction"
     },
     {
-      "id": "CURRENT-STATE-WRONG-TALLY",
-      "what": "CONDUCTOR-VERIFIED AGAINST THE SOURCE, not relayed. CURRENT_STATE now states 'most recent reading before this entry: 2 pass / 6 fail / 3 not-measurable / 1 blocked'. THE SCORECARD SAYS 1/7/3/1: m0_exit_scorecard.json's reading_history holds 4 readings with the last three all 1/7/3/1, its top-level tally is 1/7/3/1, and the MD's own table reads PASS 0->1 and FAIL 6->7. No 2/6/3/1 reading exists anywhere. TWO REASONS THIS IS NOT AN ORDINARY TYPO: it errs in the FLATTERING direction, in the authoritative state pointer, at the exact spot I flagged as the failure mode to avoid; and it ERASES THE BEST THING THE SCORECARD SHOWS — FAIL went UP because migration 590 gave criterion 7 a detector and the detector immediately returned 1, which is a newly VISIBLE defect rather than a new one. Correction requested, with the instruction to re-read the figure from the JSON at edit time rather than from my message: the fix for unchecked numbers is not to trust a more careful colleague, it is for each surface to read its own source",
-      "owner": "LEKHAKA",
-      "state": "correction_requested"
+      "id": "CURRENT-STATE-CORRECTED",
+      "what": "CONDUCTOR-VERIFIED at afdb40c90: 2/6/3/1 is gone from both CURRENT_STATE and SESSION_LOG, 1/7/3/1 is present, and LEKHAKA folded in MORE than the correction — a clause recording that FAIL rising 6->7 is progress rather than regression, because a criterion moved BLOCKED->FAIL once a migration gave it a working detector that immediately found a real defect it could not see before. It also re-read the JSON itself rather than take my number, which was the instruction",
+      "owner": "closed",
+      "state": "verified"
     },
     {
-      "id": "ADHIKARIN-PULL-CADENCE",
-      "what": "PRAHARI found a PULL-CADENCE GAP, not a stall: ADHIKARIN's pane shows a cleanly completed turn and its own last message said 'nothing new needs you', which was true when written — but five items have since arrived in to_adhikarin/, oldest ~1h, because the mailbox is a pull channel it does not poll between turns. Closed by sending the queue through the SESSION-MESSAGE channel instead. GOING FORWARD: anything blocking goes by session message; the mailbox keeps the durable record. Same lesson as the poke defect one layer up — a channel that fails silently is worse than one that fails loudly",
-      "owner": "SUTRADHARA",
-      "state": "resolved"
+      "id": "ADHIKARIN-RESUMED",
+      "what": "The session-message channel worked: ADHIKARIN resumed, acknowledged the cadence gap, and is verifying D-12 part 3's subject rows — the ruling that names an asset which is not one of the three orphans it governs",
+      "owner": "ADHIKARIN",
+      "state": "working"
+    },
+    {
+      "id": "M0-T44",
+      "what": "SQ-08 / RES-1 — the runner's silent success path",
+      "owner": "KARAKA",
+      "state": "running"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T09:20:02Z",
+  "last_updated_ts": "2026-08-23T09:21:35Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
