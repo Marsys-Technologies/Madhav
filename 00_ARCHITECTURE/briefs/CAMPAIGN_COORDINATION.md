@@ -7861,3 +7861,11 @@ All Paripraśna leases are closed. This closeout run holds one scope —
 `00_ARCHITECTURE/briefs/pariprashna_swarm/**` plus `.github/workflows/pariprashna-post-deploy-smoke.yml`
 — and will release it at close. Nothing outside that tree is being written by this run. `#1513` and
 the Nirmāṇa Build Tracker campaign are explicitly out of its scope and untouched.
+
+---
+
+## 2026-08-23 — lease open: PARIPRASHNA postclose standdown, DD-50 + closing record
+
+Scope: `00_ARCHITECTURE/briefs/pariprashna_swarm/**` only (DD-50 filed, one new closing-record
+doc). No code, no credential, no deploy. `campaign/nirmana-autonomous` untouched. This is the
+final entry in the P3/P4→standdown chain; session stands down after this write.
