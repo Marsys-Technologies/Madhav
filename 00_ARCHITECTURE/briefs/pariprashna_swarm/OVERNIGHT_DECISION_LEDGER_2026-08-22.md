@@ -1415,3 +1415,74 @@ precisely *"migrations silently doing nothing while the deploy reports success."
 on the exact failure shapes: table present with **no** ledger row; ledger row with **no** table; and
 deploy-reports-success-while-588-remains-unapplied. **Whichever way it resolves, it resolves against an
 observation rather than an inference.**
+
+---
+
+## F-N17b — §N.4 DISCHARGED: migration 588 applied AND ledgered, verified by observation
+
+The watcher armed on §N.4's named hazard fired clean. Independently re-read afterward rather than
+taken from the watcher:
+
+```
+table      = pariprashna_samiksha_digest_journal
+ledger row = 588_samiksha_digest_journal.sql   (present in _migrations_applied)
+```
+
+**Both halves true.** The hazard §N.4 names — *"migrations silently doing nothing while the deploy
+reports success"* — did not fire, and neither did its inverse (a ledger row with no table). The
+obligation is discharged **against an observation, not an inference**, which is the whole point of
+having watched it rather than assumed it.
+
+Worth noting what this proves in context: earlier tonight the run found **two other migrations (588
+and 589 under `platform/migrations/`) whose effects are live in production with no ledger rows at
+all** (F-N4 / D-009). That is the same repository, the same database, and the opposite outcome — and
+the difference is entirely that one went through the tracked path and the others went through raw
+`psql`. **Tonight's own migration is now the control case that shows the tracked path works**, which
+makes the two unrecorded ones a clearer anomaly rather than an ambient condition. That comparison is
+worth having in the morning when deciding how to reconcile them.
+
+---
+
+## F-N18 — the project's own governance gate caught the run's governance close (and it was right)
+
+**The most fitting finding of the night, and it was found by the machinery rather than by an agent.**
+
+PR #1506 — the §7 governance close, the artifact whose entire purpose is recording what happened —
+**failed CI**. `Governance Gates`:
+
+```
+DRIFT_BASELINE_MAX: 79
+drift_detector: 80 findings; exit=2
+##[error]drift_detector exit=2 (expected 0 or 3)
+```
+
+**One new drift finding, one over the T0 baseline ceiling.** The gate's own message states the rule:
+*"New drift must be fixed, not absorbed into the whitelist"* (DVA Ruling 4).
+
+**Root cause, isolated by reproducing locally rather than guessing:** the DD-31…DD-44 write changed
+`PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`, so the `fingerprint` recorded for it in
+`CAPABILITY_MANIFEST.json` went stale — `declared=40a7f19f… observed=9562cd12…`. A `HIGH`-severity
+`fingerprint_mismatch`. The other 79 findings are the pre-existing baseline (77 registry
+disagreements plus two DB-unreachable LOWs) and were untouched.
+
+**Fixed at the root, exactly as the detector prescribed:** fingerprint rotated to the observed
+sha256, `last_verified_session` / `last_verified_on` updated to this run. Six lines changed, all
+inside the one entry, verified line-by-line against the original so no other manifest row was
+silently reformatted. **drift_detector after: 79 findings, exit=3 — the accepted state.**
+
+**What was NOT done, and why it matters more than what was:** `DRIFT_BASELINE_MAX` was not raised,
+and no whitelist ticket was created. Raising the ceiling would have made the PR merge in one line and
+would have been **the exact class of act this run spent the entire night refusing** — weakening a
+gate so an artifact can pass. That it would have been the *close artifact* doing it, in a document
+whose subject is other people's unearned signals, makes it the one place the temptation had to be
+named and declined out loud.
+
+**Also worth recording:** the adhoc drift reports the diagnosis generated were deleted rather than
+committed. They are run artifacts, not deliverables, and a governance close that quietly commits its
+own scratch output into the governance directory is adding noise to the surface it exists to keep
+clean.
+
+**§B.8, restated in the form this incident teaches it:** *changing a canonical artifact is not
+finished until its registry fingerprint moves with it.* The gate is what makes that true rather than
+aspirational.
+
