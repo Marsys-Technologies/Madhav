@@ -854,15 +854,43 @@ export interface ServerNoticeLike {
   where?: string | undefined
 }
 
+/**
+ * Render the line breaks inside one server-controlled string as their two-character escapes,
+ * so relayed text CANNOT SYNTHESISE A LINE BOUNDARY in the log it is relayed into.
+ *
+ * Why this is not cosmetic (Nirmāṇa D-65, demonstrated at M0-T57): the deploy step tees this
+ * runner's combined output to `/tmp/migrate.log` and asserts the run completed by grepping for
+ * `^\[migrate\] MIGRATE_RUNNER_COMPLETE`. `message`/`detail`/`hint`/`where` are written by
+ * whoever wrote the migration's `RAISE NOTICE`, and were relayed verbatim — so a notice
+ * containing a newline emitted a SECOND PHYSICAL LINE beginning with the runner's own prefix,
+ * byte-shaped exactly like the runner's own completion claim. Anchoring the grep (M0-T57) closed
+ * the single-line case only: an anchor pins the start of a line, it cannot tell you who created
+ * the line boundary. This is the emitter-side close of that residual.
+ *
+ * ESCAPE, NOT STRIP, and deliberately so: F-A's `there is already a transaction in progress`
+ * warnings are the reason the relay exists at all (D-58), PostgreSQL genuinely emits multi-line
+ * `detail` and `where` (PL/pgSQL context stacks especially), and a warning truncated at its first
+ * newline would trade a forgery hole for an observability one. Every byte of the server's text
+ * survives; only its ability to end a log line does not.
+ *
+ * Pure and total — no I/O, no throw — so it has a real unit-level detector (CLAUDE.md §N.8).
+ */
+export function escapeRelayedLineBreaks(value: string): string {
+  return value.replace(/\r/g, '\\r').replace(/\n/g, '\\n')
+}
+
 /** One log line for one server notice. Pure — no I/O, so it has a real unit-level detector. */
 export function formatServerNotice(notice: ServerNoticeLike | null | undefined): string {
-  const severity = notice?.severity ?? 'NOTICE'
-  const message = notice?.message ?? '(no message)'
+  // EVERY interpolated field below is server-controlled, so every one of them is escaped —
+  // escaping `message` alone would leave the same hole open one field to the right.
+  const esc = (value: string): string => escapeRelayedLineBreaks(value)
+  const severity = esc(notice?.severity ?? 'NOTICE')
+  const message = esc(notice?.message ?? '(no message)')
   const extras: string[] = []
-  if (notice?.code) extras.push(`code=${notice.code}`)
-  if (notice?.detail) extras.push(`detail=${notice.detail}`)
-  if (notice?.hint) extras.push(`hint=${notice.hint}`)
-  if (notice?.where) extras.push(`where=${notice.where}`)
+  if (notice?.code) extras.push(`code=${esc(notice.code)}`)
+  if (notice?.detail) extras.push(`detail=${esc(notice.detail)}`)
+  if (notice?.hint) extras.push(`hint=${esc(notice.hint)}`)
+  if (notice?.where) extras.push(`where=${esc(notice.where)}`)
   const tail = extras.length > 0 ? ` (${extras.join('; ')})` : ''
   return `${PG_NOTICE_PREFIX} ${severity}: ${message}${tail}`
 }
