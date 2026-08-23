@@ -3172,6 +3172,118 @@ export function dryRunRequested(env: NodeJS.ProcessEnv): boolean {
   return Object.prototype.hasOwnProperty.call(env, 'DRY_RUN')
 }
 
+// ── The ARGV channel (Nirmāṇa M0-T37, ruling D-28 part 3) ────────────────────
+//
+// M0-T19 closed the ENVIRONMENT half above. ADHIKĀRIN then measured the other half directly
+// (D-28 part 3): "asset_registry_seed.ts HAS NO ARGV PARSING WHATSOEVER … so
+// `npx tsx scripts/seed/asset_registry_seed.ts --dry-run` does not error on an unrecognised
+// flag — IT IGNORES IT AND RUNS A FULL LIVE UPSERT, exactly as the DRY_RUN env var does."
+//
+// That is the WORSE half. `DRY_RUN=1` is a spelling an operator half-remembers from a document;
+// `--dry-run` is the spelling THIS CODEBASE TAUGHT THEM — six sibling scripts in this same tree
+// parse it (migrate.ts:691, cleanup_orphaned_firebase_users.ts:16, observatory/smoke_test.ts:53,
+// governance/icr_pr_gate.ts:175, and the bootstrap scripts), every one of them via a bare
+// `argv.includes('--dry-run')`. An operator reaching for the flag form is the same careful
+// operator D-17 exists to protect, and "a refusal that covers only the channel we happened to
+// find first is half a guard".
+
+/**
+ * Reduce an argv token to a comparable shape: drop any `=value` tail, drop leading dashes, drop
+ * internal `-`/`_`, lowercase. So `--dry-run`, `--dryrun`, `--dry_run`, `--DRY-RUN`,
+ * `--dry-run=true` and a stray positional `DRY_RUN=1` all normalise to `dryrun`.
+ *
+ * Exported for the same reason as `dryRunRequested`: a classifier nothing can call directly is a
+ * claim, not a detector.
+ */
+export function normaliseArgToken(token: string): string {
+  const beforeValue = token.split('=', 1)[0]
+  return beforeValue.replace(/^-+/, '').replace(/[-_]/g, '').toLowerCase()
+}
+
+/**
+ * Words that, normalised, mean "show me what you would do; do not do it".
+ *
+ * `n` is dry-run in make(1), rsync(1) and others. `check`, `preview`, `simulate`, `whatif`,
+ * `noop`, `nowrite`, `plan`, `pretend` are the words operators reach for when the tool they are
+ * holding is not the one they last used.
+ *
+ * D-28 part 3 says "`--dry-run` (and its obvious spellings)" without enumerating them, so the
+ * membership of this list is judgement. D-17's own asymmetry decides it, and it holds unchanged
+ * here: refusing an operator who meant something else costs ONE ERROR MESSAGE; missing a
+ * spelling an operator typed expecting a preview costs a LIVE UPSERT to `asset_registry` — the
+ * control-plane table this campaign exists to repair.
+ *
+ * NOTE WHAT THIS LIST IS AND IS NOT. It is not what makes the guard safe — `refuseIfDryRunRequested`
+ * refuses EVERY argument, listed or not (see its docstring). This list only decides WHICH
+ * DIAGNOSTIC the operator reads. A spelling nobody imagined therefore still fails safe; it just
+ * gets the generic message instead of the specific one. That is deliberate: an allowlist of
+ * spellings, load-bearing for safety, would reproduce the original defect for the next word
+ * nobody thought of.
+ */
+const DRY_RUN_SYNONYMS_NORMALISED: ReadonlySet<string> = new Set([
+  'n', 'check', 'preview', 'simulate', 'whatif', 'noop', 'nowrite', 'nowrites', 'plan', 'pretend',
+])
+
+/** Does this argv token read as a request for a dry run? */
+export function isDryRunArgToken(token: string): boolean {
+  const normalised = normaliseArgToken(token)
+  // `dryrun`, `dryrunonly`, `dryrunmode`… anything an operator built around the root word.
+  if (normalised.startsWith('dryrun')) return true
+  return DRY_RUN_SYNONYMS_NORMALISED.has(normalised)
+}
+
+/**
+ * The arguments the OPERATOR typed: `process.argv` minus the runtime and the script path.
+ * Exported so the slice is testable rather than an inline `.slice(2)` nobody can exercise.
+ */
+export function seedArgs(argv: readonly string[]): string[] {
+  return argv.slice(2)
+}
+
+/** Diagnostic for an argv token that reads as a dry-run request. */
+export function dryRunArgvRefusalMessage(dryRunTokens: readonly string[], allTokens: readonly string[]): string {
+  return [
+    `REFUSING TO RUN — ${dryRunTokens.join(' ')} was passed on the command line, but this seeder has no dry-run and no preview mode of any kind. The flag is not implemented.`,
+    '',
+    `Arguments received: ${allTokens.join(' ')}`,
+    '',
+    'Until now this script parsed NO arguments at all, so a `--dry-run` was silently ignored and',
+    'the run proceeded to a LIVE `INSERT INTO asset_registry … ON CONFLICT DO UPDATE` (and the',
+    'same upsert against `asset_coefficients`) against whatever DATABASE_URL points at. Six other',
+    'scripts in this tree DO implement `--dry-run`, which is exactly why reaching for it here was',
+    'reasonable — and exactly why it was dangerous. Refusing is the honest answer; proceeding',
+    'silently was not.',
+    '',
+    'NOTHING HAS BEEN READ OR WRITTEN. No database connection was attempted.',
+    '',
+    'To see what is in the registry now, read it directly, e.g.',
+    "  psql \"$DATABASE_URL\" -c 'SELECT asset_id, catalog_status, is_active, target_floor FROM asset_registry ORDER BY asset_id'",
+    'To actually seed, re-run with NO arguments — after confirming DATABASE_URL is the database',
+    'you intend to write to.',
+  ].join('\n')
+}
+
+/** Diagnostic for any other argument. This seeder takes none, so every one of them is unknown. */
+export function unknownArgvRefusalMessage(tokens: readonly string[]): string {
+  return [
+    `REFUSING TO RUN — this seeder accepts no command-line arguments, and ${tokens.length === 1 ? 'one was' : `${tokens.length} were`} given: ${tokens.join(' ')}`,
+    '',
+    'It parses no arguments whatsoever. Before this guard existed it did not reject an argument',
+    'it did not understand — it IGNORED it and ran the full live upsert anyway. That silence is',
+    'precisely how a documented `--dry-run` became invisible here, so an unrecognised argument',
+    'is now refused rather than dropped: if the argument meant something,',
+    'this script was never going to honour it, and you are entitled to find that out BEFORE the',
+    'write rather than afterwards.',
+    '',
+    'In particular there is no `--dry-run` and no DRY_RUN preview mode here. Neither is implemented.',
+    '',
+    'NOTHING HAS BEEN READ OR WRITTEN. No database connection was attempted.',
+    '',
+    'To actually seed, re-run with NO arguments — after confirming DATABASE_URL is the database',
+    'you intend to write to.',
+  ].join('\n')
+}
+
 /**
  * Refuse, loudly and before anything else happens, rather than silently ignoring a safety flag.
  *
@@ -3184,15 +3296,40 @@ export function dryRunRequested(env: NodeJS.ProcessEnv): boolean {
  * know about — a refusal at the point of danger protects the operator whichever document sent
  * them, including ones nobody has found).
  *
+ * TWO INPUT CHANNELS, ONE REFUSAL (ruling D-28 part 3 extends D-17). The environment variable
+ * `DRY_RUN` and an argv `--dry-run` are the same request typed two ways, so they are refused in
+ * the same place, in the same call, at the same point in the run. They are deliberately NOT two
+ * guards in two locations: the reason the argv half went missing for a whole ruling cycle is
+ * that nothing tied the two spellings together.
+ *
+ * THE ARGV RULE IS "REFUSE EVERY ARGUMENT", NOT "REFUSE THE DRY-RUN SPELLINGS". This script
+ * parses no arguments, so there is no argument it can honour. A guard that refused only a list
+ * of known dry-run spellings would silently ignore the next word nobody thought of — which is
+ * the exact mechanism of the original defect, rebuilt one word later. `isDryRunArgToken` therefore
+ * selects only which DIAGNOSTIC is printed; both branches refuse.
+ *
  * MUST be called before the `DATABASE_URL` check, before `validateFormulas()`, and therefore
  * before any `pg.Client` can exist. It deliberately does NOT depend on the seeder's current
  * inability to complete a run (`validateFormulas()` aborts on `bg_cohort`'s `COHORT_SIZE`): that
  * unrelated defect is the only thing standing between the documented DRY_RUN command and a live
  * production upsert today, and repairing it — pinned to R0 carry-forward — ARMS this script.
  * D-17 §2: the refusal lands now, not after R0.
+ *
+ * `argv` is REQUIRED, with no default. A defaulted `argv = []` would let a caller silently
+ * disable half the guard by forgetting an argument, which is the same shape of defect again.
  */
-export function refuseIfDryRunRequested(env: NodeJS.ProcessEnv): void {
+export function refuseIfDryRunRequested(env: NodeJS.ProcessEnv, argv: readonly string[]): void {
   if (dryRunRequested(env)) throw new Error(DRY_RUN_NOT_IMPLEMENTED_MESSAGE)
+
+  const args = seedArgs(argv)
+  if (args.length === 0) return
+
+  const dryRunTokens = args.filter(isDryRunArgToken)
+  throw new Error(
+    dryRunTokens.length > 0
+      ? dryRunArgvRefusalMessage(dryRunTokens, args)
+      : unknownArgvRefusalMessage(args),
+  )
 }
 
 // ── The registry upsert ──────────────────────────────────────────────────────
@@ -3310,8 +3447,9 @@ const DEFAULTABLE_KEYS = ['asset_type', 'asset_kind', 'layer_name', 'layer_index
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  // FIRST, before anything at all — see refuseIfDryRunRequested's docstring (ruling D-17).
-  refuseIfDryRunRequested(process.env)
+  // FIRST, before anything at all — see refuseIfDryRunRequested's docstring (rulings D-17,
+  // D-28 part 3). BOTH channels, one call: the DRY_RUN env var and any command-line argument.
+  refuseIfDryRunRequested(process.env, process.argv)
 
   const dbUrl = process.env.DATABASE_URL
   if (!dbUrl) throw new Error('DATABASE_URL env var required')
