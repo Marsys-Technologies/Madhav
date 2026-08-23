@@ -246,3 +246,73 @@ Two further things I did not do and want visible:
 - No report content edited (H6 — a tidied report would be a fabricated one).
 - No `state/*.jsonl` line rewritten; my WORK_QUEUE line is an append.
 - I certify nothing (I16/H7). Every claim above has a command behind it that can be re-run.
+
+---
+
+## 9 — ADDENDUM, written after the first commit: a sixth report arrived mid-task
+
+Appended 2026-08-23T15:31Z, after commit `ce21e90e5`. I am appending rather than rewriting §1–§2
+so the record shows what I knew when I committed.
+
+**What happened.** My post-commit check counted `mailbox/to_verifier/` and got 8 visible files
+where 7 were expected (the 6 I started with plus my own). The extra was
+`20260823T152817Z-M0-T56-report.md`, 24822 bytes — **KĀRAKA-M0-T56's report, written at 15:28:17Z
+while I was writing mine.** My §2 counts were correct at the moment they were taken and are now
+one short; this is the correction.
+
+I checked stability rather than copying a file that might still be open:
+
+```
+15:30:xxZ  4c279d0fced5e5c0f23b5534a216a261dd5e295e94385b4ac2dd5974bca67d58
+15:31:14Z  4c279d0fced5e5c0f23b5534a216a261dd5e295e94385b4ac2dd5974bca67d58   STABLE
+```
+
+The file also reads as complete — it ends with a numbered uncertainty list in the standard KĀRAKA
+report shape, item 7 of which is itself about sibling concurrency.
+
+Copied on the same terms as the other five: `cp -p`, verbatim, source left in place.
+
+```
+IDENTICAL  24822 bytes  4c279d0fced5e5c0f23b5534a216a261dd5e295e94385b4ac2dd5974bca67d58
+           mailbox/to_verifier/20260823T152817Z-M0-T56-report.md -> reports/M0-T56-report.md
+```
+
+**Revised counts:** 6 report/addendum files swept (T53, T54, T55, T55-addendum, T56, T57), plus
+this one = **7 files in `reports/`**. 6 copied, 0 dropped. Excluded set is unchanged at 1 of 7
+in `to_verifier` (SŪTRADHĀRA's F-H note) and all of the other six directories.
+
+**This is the practice gap in §6, demonstrated live rather than argued.** T56 is a KĀRAKA that
+finished its task 25 minutes after D-63 was written, and it still wrote its primary artifact into
+the gitignored mailbox — because `prompts/karaka.md` still tells it to, and because M0-T53 already
+established that prompt edits do not reach running agents. Its report is durable now only because
+I happened to still be running and looked twice. **The next one will not have that luck.** Until
+SQ-22's second half lands, every report is one PARĪKṢAKA completion-delete from gone, exactly as
+T1–T52's were.
+
+**Uncertainty this adds:** if KĀRAKA-M0-T56 appends an addendum after 15:31:14Z, my copy is a
+point-in-time snapshot and will need re-copying. Same caveat as T57 in §7 item 4. I did not
+coordinate with either sibling; I only measured.
+
+### 9.1 — My second commit carries one ledger line I did not author
+
+Same disclosure M0-T55 made in its own addendum, for the same reason: you will see it in the diff
+and I would rather you heard it from me.
+
+`git diff --numstat` on `state/WORK_QUEUE.jsonl` before my second commit showed `2 insertions(+),
+0 deletions(-)` where my own append accounts for 1. I checked rather than shrugged:
+
+```
+ADDED id= M0-T56  agent= KARAKA-M0-T56  ts= 2026-08-23T15:30:59Z
+ADDED id= M0-T58  agent= KARAKA-M0-T58  ts= 2026-08-23T15:31:53Z  (mine)
+```
+
+KĀRAKA-M0-T56 appended its own completion line at 15:30:59Z — after my first commit
+(`ce21e90e5`) and before my second. Git commits whole files, so committing my line necessarily
+carries T56's. **Zero deletions and zero modifications: nothing of T56's was altered, only
+carried.** I am disclosing it rather than avoiding it, because the alternative (index surgery to
+split a shared append-only ledger) is more likely to damage a sibling's line than to protect it.
+
+This is the third independent instance today of the same shared-ledger concurrency shape (M0-T53,
+M0-T55, now mine). It may be worth someone deciding whether that is acceptable-by-design for an
+append-only ledger — I think it probably is — rather than each KĀRAKA rediscovering it and writing
+its own addendum about it. Not my call; noted, not acted on.
