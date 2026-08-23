@@ -7764,3 +7764,17 @@ worktree/clone under `/tmp/madhav-sweep-b*`, not the shared checkout.
 
 **Native-delegated implementation**, per the native's standing instruction dated 2026-08-23 that a
 Sonnet 5 agent implements sweep-confirmed cleanup autonomously.
+
+## 2026-08-23 — WORKTREE-CENSUS-LAND — lease CLOSED, PR #1507 opened (not merged by this session)
+
+Lease opened above is released. **Landed 261 files** (the declared scope, `00_ARCHITECTURE/briefs/parisesa/**` only) onto branch `parisesa/land-worktree-census-records`, PR **#1507** opened against `main`, not merged (this session does not merge).
+
+**Confirmed purely additive:** 261 files changed, 56,525 insertions(+), 0 deletions — checked both before and after a rebase onto an intervening `main` commit (`0758ca60e`, unrelated — DD-24 gap enumeration) that landed while this lease was open.
+
+**Scope actually touched matches what was declared**, with one narrowing versus the raw computed union: the true `git diff --name-only origin/main...origin/<branch>` union across all 8 source branches came to 274 files, of which 13 were `platform-mcp/`/`platform/` TypeScript source files (from `par/night-F-14` and `par/night-bundle-p1-multi`) — unrelated in-flight code WIP swept up by the worktree-close mechanism, not PARIŚEṢA-V4 records. Excluded per this lease's own declared scope (`parisesa/**` only, "No `platform/** file touched`); not landed anywhere. `.codex/config.toml` also excluded, as declared, for the same credential-risk reason as every other landing this session.
+
+**Note for anyone reviewing #1507 or revisiting this branch set:** the excluded 13 code files still exist uncommitted on origin at `par/night-F-14`/`par/night-bundle-p1-multi` until those branches are deleted (next in this session's queue). If that WIP has independent value it should be assessed and landed separately, on its own merits, before those branches go — this lease did not evaluate it either way.
+
+The 8 source branches will be bundled and deleted next, per the same evidence-based-deletion procedure already applied to the 89 branches earlier this session (their content is now preserved both in PR #1507 and in a local bundle archive).
+
+No file outside `00_ARCHITECTURE/briefs/parisesa/**` and this coordination log was touched.
