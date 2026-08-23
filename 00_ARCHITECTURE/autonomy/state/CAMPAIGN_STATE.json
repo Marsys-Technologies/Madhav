@@ -1050,8 +1050,8 @@
     {
       "id": "SQ-11-HELD-ON-COLLISION",
       "what": "SQ-11 (pin C-28's population source so V-27's trap cannot be sprung politely) is READY and I13/I14-clear, but I am HOLDING it rather than dispatching: it edits check_asset_catalogue_contract.py, which KARAKA-M0-T49 is CURRENTLY RUNNING for its both-directions disclosure verification. Editing a guard mid-verification would race and could invalidate T49's evidence — or worse, produce evidence that looks valid and is not. Dispatch the moment T49 reports. Recording the reason so the delay is not read as an oversight.",
-      "owner": "SUTRADHARA",
-      "state": "held_pending_T49"
+      "owner": "closed",
+      "state": "STALE THREAD, CLOSED. SQ-11 was NOT still waiting -- it was dispatched as PART 2 of M0-T56 under D-61 part 9's paired grant and CERTIFIED AT V-41. Verified rather than assumed: c28_population_probe appears twice in check_asset_catalogue_contract.py. THE HOLD WAS CORRECT WHEN MADE (T49 was mid-verification on the guard) AND I THEN LEFT THE THREAD OPEN FOR TWO HOURS AFTER THE WORK LANDED BY ANOTHER ROUTE. That is the same defect I filed against the STANDING QUEUE at tick 19 -- a status set at one moment and never transitioned -- occurring in my own thread list, which is exactly where I would not have gone looking for it."
     },
     {
       "id": "M0-T49-BLOCKING-FAILURES-ZERO",
@@ -1445,8 +1445,8 @@
     {
       "id": "F-T63-2-CROSSCHECK-HAS-NO-DETECTOR",
       "what": "READY TO DISPATCH, DELIBERATELY NOT DISPATCHED WHILE THE VERIFY BACKLOG IS THE CONSTRAINT. M0-T63's sharpest self-directed finding: the 15/15 cross-check that validates its own work -- origin_tally() reconstructed from per-entry stamps versus M0-T31's independent v1.0 snapshot, agreeing in all 15 bucket cells with UNEXAMINED 11/11 -- HAS NO DETECTOR. It ran it BY HAND. So the strongest corroboration produced today is currently a one-off human-run comparison that nothing would re-run and nothing would notice failing. T63 estimates ~6 lines in test_m0_deferral_register_scope.py would fix it, which is §N.8 applied to the campaign's own validation step. Small, high-value, and it goes out the moment the backlog is draining rather than now -- adding a twelfth item to a queue that is already the binding constraint would be exactly the motion-for-its-own-sake I recorded against myself at tick 22.",
-      "owner": "SUTRADHARA",
-      "state": "ready_held_on_backlog"
+      "owner": "KARAKA-M0-T69",
+      "state": "RELEASED AND DISPATCHED as M0-T69 — the backlog it was held on is now genuinely 28-of-28"
     },
     {
       "id": "SWEEPING-CLASS-FOURTH-INSTANCE",
@@ -1796,10 +1796,22 @@
       "what": "D-77 part 3 requires that A SWEEPER READS THE HEARTBEAT TAIL BEFORE COMMITTING and does not commit files inside an open mutation window. LEKHAKA adopted it at 17:20. I HAVE NOW ADOPTED IT FOR MY OWN COMMITS, and applied it this tick: a scan of the heartbeat tail shows KARAKA-M0-T68's window OPEN since 18:06:57Z on platform/scripts/governance/check_entrypoint_guard_ratchet.py and the allowlist. MY COMMIT SCOPE IS state/CAMPAIGN_STATE.json AND state/HEARTBEAT.jsonl BY EXPLICIT PATH, so neither file is touched -- but the point is that I CHECKED RATHER THAN RELIED ON MY SCOPE HAPPENING TO EXCLUDE THEM. That is the same distinction as D-79's branch proof: a property that holds by accident today is not a property, and the conductor that puts a rule in every dispatch and exempts its own commits is a shape I have already been caught in twice (the --only directory argument, and the tsc caution).",
       "owner": "SUTRADHARA",
       "state": "adopted"
+    },
+    {
+      "id": "M0-T69",
+      "what": "DISPATCHED on F-T63-2, held since 16:14Z on the verify backlog and released now that the backlog is genuinely 28-of-28. VERIFIED STILL UNDONE at 18:19Z rather than assumed: test_m0_deferral_register_scope.py (13,467 bytes, M0-T62's) contains ZERO references to origin_tally, origin_bucket or reading_history. THE POINT: M0-T63's corroboration was the strongest single result of the session -- origin_tally() reconstructed from per-entry stamps versus M0-T31's own v1.0 snapshot BY A COMPLETELY DIFFERENT MECHANISM, agreeing in all 15 bucket cells with UNEXAMINED 11/11 and the arithmetic closing unaided -- AND ITS OWN FINDING AGAINST ITSELF WAS THAT THE CROSS-CHECK HAS NO DETECTOR: 'I ran it by hand.' So the strongest corroboration produced today is a one-off nothing would re-run and nothing would notice failing. D-89 CARRIED AS THE HARDEST CONSTRAINT, because this task is exactly the shape D-89 was written about: BOTH SIDES CAN EVAPORATE -- origin_tally() can return empty if the stamps are missing, reading_history[0] can be absent -- AND A COMPARISON OF TWO EMPTY THINGS PASSES. Told to anchor BOTH sides on shape (15 cells across both splits) rather than truthiness, and to prove EACH anchor fires independently with a mutation control, since an anchor that catches only one side is the precise defect D-89 exists to prevent. Also told to VERIFY T63's ~6-line estimate rather than inherit it, citing T66's 'three-line change' that was ~47 lines across 3 hunks.",
+      "owner": "KARAKA-M0-T69",
+      "state": "in_flight"
+    },
+    {
+      "id": "T68-APPLIED-A-RULING-THAT-LANDED-MID-TASK",
+      "what": "WORTH KEEPING: M0-T68 CLOSED its D-77 mutation window at 18:15:51Z, then RE-OPENED it at 18:17:34Z with the reason stated -- 'D-89 LANDED MID-TASK AND BINDS MY PAWL: a two[-sided anchor]'. So a KARAKA noticed a ruling issued while it was working, recognised that it applied to its OWN in-flight work, and re-entered a mutation window under D-77 rather than quietly continuing or finishing under the superseded requirement. THAT IS THE reread_decisions_immediately_before_dispatch DISCIPLINE I ADOPTED AT TICK 2 AFTER MISSING D-57, ARRIVED AT INDEPENDENTLY BY AN AGENT APPLYING IT TO ITSELF MID-TASK RATHER THAN AT A DISPATCH BOUNDARY. Also from the same task: its proofs ran in an ISOLATED REPO doing A/B against T66's shipped script (F-T attack commit -> OLD exit 0, NEW exit 1), and it found the ratchet job's OWN checkout had NO fetch-depth -- so a previous-commit comparison would have had nothing to compare against, and the pawl would have been unimplementable as specified without noticing.",
+      "owner": "closed",
+      "state": "recorded"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T18:15:47Z",
+  "last_updated_ts": "2026-08-23T18:21:26Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
