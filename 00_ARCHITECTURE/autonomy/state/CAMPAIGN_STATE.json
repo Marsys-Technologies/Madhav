@@ -1609,7 +1609,8 @@
       "id": "D-81-HUNT-IS-IN-SCOPE-AND-BOUNDED",
       "what": "D-81: the hunt for the unidentified keystroke-writer is IN SCOPE AND BOUNDED, and ADHIKARIN endorsed the instinct behind how I raised it -- 'ASKING ME TO SIZE IT RATHER THAN OPENING IT WAS THE RIGHT INSTINCT, BECAUSE AN UNBOUNDED HUNT IS HOW A CAMPAIGN QUIETLY STOPS BEING a campaign'. Its first step ALREADY CLEARED EVERY FLEET SCRIPT, which narrows the search materially. The lead I supplied stands: the stranded string is 'continue the loop' CHARACTER-FOR-CHARACTER ON TWO PANES -- LEKHAKA at 16:50Z and ADHIKARIN at 17:02Z -- so the question is not 'what sends keystrokes without a submit' but 'what sends THIS EXACT STRING', which is searchable rather than open-ended.",
       "owner": "ADHIKARIN",
-      "state": "bounded"
+      "state": "NEW EVIDENCE SUPPLIED — TWO VARIANTS, NOT ONE STRING, AND A ~3-MINUTE CYCLE",
+      "what2": "MEASURED AT 17:21Z, and it changes the shape of the hunt. ADHIKARIN AND LEKHAKA WERE STRANDED SIMULTANEOUSLY WITH DIFFERENT STRINGS: ADHIKARIN's box read 'continue the loop', LEKHAKA's read 'continue your loop'. SO THE WRITER IS NOT REPLAYING A SINGLE CONSTANT -- IT COMPOSES A SHORT PER-AGENT IMPERATIVE. That kills the 'one hardcoded string somewhere' hypothesis I supplied at tick 34 and replaces it with something narrower and stranger. THE CYCLE IS ABOUT THREE MINUTES: PRAHARI recovered LEKHAKA at 17:18 and it was stranded again by 17:21; I recovered ADHIKARIN at 17:03 and it was stranded again by 17:21. IT IS NEITHER PRAHARI NOR ME: we both send long contextual messages and both submit with a separate C-m, and neither of us has ever sent a bare 'continue'. Combined with D-81's own first step -- which ALREADY CLEARED EVERY FLEET SCRIPT -- the two-variant shape points OUTSIDE the fleet: a cron, a launcher, or another session. RECOVERED BOTH with the documented C-u sequence and verified RUNNING afterwards. NOTE THE ASYMMETRY WORTH ACTING ON: a three-minute re-strand cycle means recovery is not a fix, it is a treadmill -- every recovery buys about three minutes, and the AUTHORITY pane is one of the two targets."
     },
     {
       "id": "F-O-TARGETS-IS-A-LITERAL-NOT-A-TRANSFORM",
@@ -1628,10 +1629,22 @@
       "what": "CORROBORATED FROM TWO SIDES, WHICH IS THE ONLY NOTEWORTHY PART. PARIKSAKA verified from git that M0-T53 REWROTE ITS OWN WORK_QUEUE.jsonl LINE IN PLACE, which _common.md forbids: index 143, 6475 -> 7457 chars, key commit_note added, 146 other lines byte-identical. M0-T53 HAD ALREADY SELF-REPORTED THIS at 17:47Z in its own completion report, saying plainly that it 'verified nothing was lost' and that 'THE VERIFICATION RAN AFTER THE FACT AND DOES NOT MAKE IT SAFE'. So the agent disclosed it before the verifier found it, and the verifier found it independently rather than reading the disclosure. Nothing lost either way; recording the pair because a self-report that survives independent verification is worth more than either alone.",
       "owner": "ADHIKARIN",
       "state": "recorded"
+    },
+    {
+      "id": "BACKLOG-RESIDUAL-IS-TWO-BY-CHOICE",
+      "what": "THE TWO ITEMS LEFT IN to_verifier ARE DELIBERATE, NOT LEFTOVER, and PARIKSAKA said so when it reported the drain: 'Nothing was softened to get there -- two items remain deliberately.' They are M0-T53's report and M0-T55's addendum. RELEVANT TO M0's CLOSE POSTURE: those are now the ONLY uncertified KARAKA outputs in the campaign, everything from T55 through T65 having been certified across V-42..V-52 plus V-45/V-46. Recorded so that a later reader does not mistake a deliberate residual for a drain that stalled at 2 -- which is exactly the misreading M0-T64 defused in its own tier-3 count, and the same discipline applied to a queue rather than a tally.",
+      "owner": "SUTRADHARA",
+      "state": "recorded"
+    },
+    {
+      "id": "M0-T66-PART-A-LANDED",
+      "what": "IN FLIGHT AND MOVING WELL. Part (a) DONE at 17:16:46Z: shared scripts/lib/entrypoint.ts created and ALL EIGHT COPIES REWIRED, with lint and tsc showing only pre-existing errors. That closes F-2 at its root rather than detecting divergence after the fact -- eight independent copies of a security-relevant predicate become one, and Wave 2's 53 files will IMPORT rather than COPY, which is precisely why D-80 ordered it first. F-O ACCEPTED at 17:18:49Z, three minutes after I routed it mid-flight: it is deriving TARGETS and CONSUMERS from the M0-T64 triage tier-1 set plus a tree scan, WITH NO LITERALS -- so the drift-coverage collapse PARIKSAKA predicted (100% -> 9% at 58 files) is being closed by construction rather than by a hand-extended list. Part (b), the brace-depth ratchet guard recognising all five guard idioms, is in progress.",
+      "owner": "KARAKA-M0-T66",
+      "state": "in_flight"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T17:18:02Z",
+  "last_updated_ts": "2026-08-23T17:23:40Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
