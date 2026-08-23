@@ -1,0 +1,71 @@
+{
+ "task": "M0-T39",
+ "agent": "KARAKA-M0-T39",
+ "taken_at_db_now": "2026-08-23 08:24:03.437715+00:00",
+ "snapshot_ts": "20260823T082402Z",
+ "table": "asset_registry",
+ "select_full": "SELECT * FROM asset_registry ORDER BY asset_id",
+ "select_key": "SELECT asset_id, estimated_seconds FROM asset_registry ORDER BY asset_id",
+ "row_count": 128,
+ "column_count": 40,
+ "columns": [
+  "asset_id",
+  "layer",
+  "sort_order",
+  "sanskrit_name",
+  "english_name",
+  "english_description",
+  "storage_type",
+  "target_table",
+  "count_sql",
+  "size_sql",
+  "target_floor",
+  "expected_volume_formula",
+  "expected_volume_inputs",
+  "volume_explanation",
+  "depends_on",
+  "scope",
+  "is_active",
+  "estimated_seconds",
+  "created_at",
+  "clear_tables",
+  "asset_type",
+  "layer_name",
+  "layer_index",
+  "provides_apis",
+  "health_probe",
+  "catalog_status",
+  "rebuild_on_probe_fail",
+  "integrity_check_sql",
+  "has_substeps",
+  "asset_kind",
+  "service_health",
+  "last_invoked_at",
+  "last_selftest_at",
+  "selftest_detail",
+  "has_writer",
+  "writer_timeout_seconds",
+  "domain",
+  "rung",
+  "superseded_by",
+  "data_disposition"
+ ],
+ "estimated_seconds_null_count": 119,
+ "estimated_seconds_notnull_count": 9,
+ "files": {
+  "asset_registry.csv": {
+   "sha256": "45ea2c264453b53a4fcae1c3a362f5f1bbc0e50ba2acd7e13c6d886ee2790c2d",
+   "bytes": 107419
+  },
+  "restore_estimated_seconds.sql": {
+   "sha256": "4688834003f47255380c130f80220f9daefccb89d9138f165a962e5ef43da942",
+   "bytes": 4620
+  }
+ },
+ "verification": {
+  "method": "full re-read of live asset_registry compared cell-by-cell to the written CSV",
+  "cells_compared": 5120,
+  "mismatches": 0,
+  "mismatch_detail": []
+ }
+}

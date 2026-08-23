@@ -1,0 +1,21 @@
+{
+ "cells_compared": 5120,
+ "estimated_seconds_cells_changed_vs_snapshot": 93,
+ "other_cells_changed_vs_snapshot": 0,
+ "other_detail": [],
+ "post_null_estimated_seconds": 35,
+ "expected_post_null": 35,
+ "values_disagreeing_with_independent_median": [],
+ "UNTOUCHED_asset_throughput_rows": 267,
+ "UNTOUCHED_asset_throughput_states": {
+  "dormant": 3,
+  "error": 27,
+  "incomplete": 1,
+  "lit": 213,
+  "stale": 23
+ },
+ "UNTOUCHED_orphan_rows_still_present": 3,
+ "UNTOUCHED_t3_queued_under_terminal_runs": 1477,
+ "UNTOUCHED_t4_terminal_runs_no_ended_at": 31
+}
+POSTCHECK OK

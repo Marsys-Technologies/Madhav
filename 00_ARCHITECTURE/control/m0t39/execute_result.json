@@ -1,0 +1,105 @@
+{
+ "pre_registry_rows": 128,
+ "pre_null": 119,
+ "nonterminal_runs_at_write": 0,
+ "rowcount": 93,
+ "post_null": 35,
+ "values_not_matching_independent_median": [],
+ "nulls_wrong": [],
+ "non_estimated_seconds_cells_changed": [],
+ "non_estimated_seconds_cells_changed_count": 0,
+ "discriminators": [
+  {
+   "asset_id": "ga_dashas",
+   "pre": 2400,
+   "expected_post": 564,
+   "n_runs": 56,
+   "differs_pre": true,
+   "observed_post": 564,
+   "ok": true
+  },
+  {
+   "asset_id": "ga_panchanga",
+   "pre": 60,
+   "expected_post": 3,
+   "n_runs": 50,
+   "differs_pre": true,
+   "observed_post": 3,
+   "ok": true
+  },
+  {
+   "asset_id": "ga_vargas",
+   "pre": 600,
+   "expected_post": 94,
+   "n_runs": 48,
+   "differs_pre": true,
+   "observed_post": 94,
+   "ok": true
+  },
+  {
+   "asset_id": "ga_sensitive",
+   "pre": 120,
+   "expected_post": 246,
+   "n_runs": 45,
+   "differs_pre": true,
+   "observed_post": 246,
+   "ok": true
+  },
+  {
+   "asset_id": "bo_laksana_rerank",
+   "pre": null,
+   "expected_post": 398,
+   "n_runs": 14,
+   "differs_pre": true,
+   "observed_post": 398,
+   "ok": true
+  },
+  {
+   "asset_id": "mi_sankalpa",
+   "pre": null,
+   "expected_post": 2,
+   "n_runs": 5,
+   "differs_pre": true,
+   "observed_post": 2,
+   "ok": true
+  }
+ ],
+ "negative_controls": [
+  {
+   "asset_id": "bg_class_lifetime_counts",
+   "estimated_seconds": null,
+   "target_floor": 0,
+   "writer_timeout_seconds": 600,
+   "ok": true
+  },
+  {
+   "asset_id": "bg_cohort",
+   "estimated_seconds": null,
+   "target_floor": 10000,
+   "writer_timeout_seconds": 600,
+   "ok": true
+  },
+  {
+   "asset_id": "bg_compendium_index",
+   "estimated_seconds": null,
+   "target_floor": 9538,
+   "writer_timeout_seconds": 10800,
+   "ok": true
+  },
+  {
+   "asset_id": "bg_concordance",
+   "estimated_seconds": null,
+   "target_floor": 800,
+   "writer_timeout_seconds": 10800,
+   "ok": true
+  },
+  {
+   "asset_id": "bg_dasha_systems",
+   "estimated_seconds": null,
+   "target_floor": 18,
+   "writer_timeout_seconds": 10800,
+   "ok": true
+  }
+ ],
+ "committed": true
+}

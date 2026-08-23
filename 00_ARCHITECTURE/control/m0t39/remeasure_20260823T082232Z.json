@@ -1,0 +1,240 @@
+{
+ "now": [
+  {
+   "now": "2026-08-23 08:22:33.575670+00:00"
+  }
+ ],
+ "at_state_dist": [
+  {
+   "state": "dormant",
+   "n": 3
+  },
+  {
+   "state": "error",
+   "n": 27
+  },
+  {
+   "state": "incomplete",
+   "n": 1
+  },
+  {
+   "state": "lit",
+   "n": 213
+  },
+  {
+   "state": "stale",
+   "n": 23
+  }
+ ],
+ "at_total": [
+  {
+   "n": 267
+  }
+ ],
+ "orphans": [
+  {
+   "asset_id": "ka_kota_chakra",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "state": "dormant",
+   "last_built_at": "2026-08-10 06:31:50.205106+00",
+   "rows_written": 585,
+   "last_error": null
+  },
+  {
+   "asset_id": "ka_vedha_gochara",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "state": "dormant",
+   "last_built_at": "2026-08-10 06:31:50.294612+00",
+   "rows_written": 178,
+   "last_error": null
+  },
+  {
+   "asset_id": "mi_sankalpa",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "state": "dormant",
+   "last_built_at": "2026-08-13 01:02:38.387443+00",
+   "rows_written": 0,
+   "last_error": null
+  }
+ ],
+ "inactive_rows": [
+  {
+   "asset_id": "ka_gochara_sweep",
+   "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+   "state": "error",
+   "is_active": false,
+   "catalog_status": "RETIRED"
+  },
+  {
+   "asset_id": "ka_gochara_sweep",
+   "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+   "state": "error",
+   "is_active": false,
+   "catalog_status": "RETIRED"
+  },
+  {
+   "asset_id": "ka_gochara_sweep",
+   "chart_id": "cb73cd3d-9eba-4220-9902-0de91566e980",
+   "state": "error",
+   "is_active": false,
+   "catalog_status": "RETIRED"
+  }
+ ],
+ "reg_total": [
+  {
+   "n": 128
+  }
+ ],
+ "est_notnull": [
+  {
+   "n": 9
+  }
+ ],
+ "est_null": [
+  {
+   "n": 119
+  }
+ ],
+ "t5_affected": [
+  {
+   "n": 93
+  }
+ ],
+ "t5_computable": [
+  {
+   "n": 93
+  }
+ ],
+ "t5_no_run": [
+  {
+   "n": 35
+  }
+ ],
+ "t5_null_and_measurable": [
+  {
+   "n": 84
+  }
+ ],
+ "t5_stored_and_diff": [
+  {
+   "n": 9
+  }
+ ],
+ "t3": [
+  {
+   "n": 1477
+  }
+ ],
+ "t4_derivable": [
+  {
+   "n": 23
+  }
+ ],
+ "t4_not": [
+  {
+   "n": 8
+  }
+ ],
+ "run_states": [
+  {
+   "state": "completed",
+   "n": 267
+  },
+  {
+   "state": "failed",
+   "n": 376
+  },
+  {
+   "state": "stopped",
+   "n": 22
+  }
+ ],
+ "bra_states": [
+  {
+   "state": "aborted",
+   "n": 847
+  },
+  {
+   "state": "complete",
+   "n": 3255
+  },
+  {
+   "state": "error",
+   "n": 1565
+  },
+  {
+   "state": "queued",
+   "n": 1477
+  }
+ ],
+ "nonterminal_runs": [
+  {
+   "n": 0
+  }
+ ],
+ "stored_9": [
+  {
+   "asset_id": "ga_dashas",
+   "stored": 2400,
+   "runs": 56,
+   "median_s": "563.46",
+   "proposed": 564
+  },
+  {
+   "asset_id": "ga_panchanga",
+   "stored": 60,
+   "runs": 50,
+   "median_s": "2.87",
+   "proposed": 3
+  },
+  {
+   "asset_id": "ga_positions",
+   "stored": 60,
+   "runs": 54,
+   "median_s": "4.02",
+   "proposed": 5
+  },
+  {
+   "asset_id": "ga_sade_sati",
+   "stored": 120,
+   "runs": 51,
+   "median_s": "64.77",
+   "proposed": 65
+  },
+  {
+   "asset_id": "ga_sensitive",
+   "stored": 120,
+   "runs": 45,
+   "median_s": "245.20",
+   "proposed": 246
+  },
+  {
+   "asset_id": "ga_strength",
+   "stored": 60,
+   "runs": 49,
+   "median_s": "96.92",
+   "proposed": 97
+  },
+  {
+   "asset_id": "ga_structural",
+   "stored": 120,
+   "runs": 52,
+   "median_s": "98.34",
+   "proposed": 99
+  },
+  {
+   "asset_id": "ga_tajaka",
+   "stored": 60,
+   "runs": 52,
+   "median_s": "13.96",
+   "proposed": 14
+  },
+  {
+   "asset_id": "ga_vargas",
+   "stored": 600,
+   "runs": 48,
+   "median_s": "93.02",
+   "proposed": 94
+  }
+ ]
+}
