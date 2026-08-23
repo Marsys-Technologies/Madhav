@@ -508,12 +508,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "G-03",
-      "what": "URGENT and LIVE: deriveState.ts:65 returns service_ok as the FIRST statement for anything with asset_type OR asset_kind == 'service', ahead of is_active, incomplete, error and the row check — and plan.ts:196 makes service_ok DEPENDENCY-SATISFYING, so a failing service satisfies downstream builds. CONDUCTOR-VERIFIED against production: 8 assets render service_ok; ka_graha_sancara carries service_health='unhealthy' written by its OWN self-test on 2026-08-02 and renders green anyway; three read 'healthy' with health_probe NULL; two have no health signal at all; four are not even CURRENT while the code's comment claims 'healthy when registered + CURRENT'. I VERIFIED M0-T21's repair did NOT widen this — a disagreement means one of the pair already said service and deriveState uses OR, so the set of 8 is unchanged by our work. Recommended as TRACK M (generic code across every layer, needs no asset-specific knowledge), unlike the ka_kshetra string which is about one asset. NOT queued",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
       "id": "G-EXTRA-CONSUMERS",
       "what": "M0-T24: both ruled instances have consumers the rulings do not name. has_substeps also at classifyStuckCandidate.ts:71-73, where the TypeScript reaper promotes a stuck asset to lit — same defect, different language, and D-24's repair does not reach it. has_writer also at runs/route.ts:139 and recalibrationEnqueue.ts:140 — build-plan membership, not merely the efficiency pass",
       "owner": "ADHIKARIN",
@@ -544,18 +538,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "SEED-OWNERSHIP",
-      "what": "Now evidenced rather than argued: 80 cells of count_sql/target_floor/depends_on move on a re-seed with no basis to say which side is right. Sharpened by two structural facts — measured floors live in a seed-owned column so I7 collides with seed ownership at every rung, and there is no DB-side fix available for seed-owned columns",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
-      "id": "F-SKY-CALENDAR-DEACTIVATES",
-      "what": "M0-T29: a routine re-seed would DEACTIVATE bg_sky_calendar. Live is_active=true, but its declared target_table bg_sky_events does not exist in production and the seed's pre-flight forces is_active=false for a missing table. The MR-06 guard is RETIRED-keyed and does not cover it. Second consequence of the phantom target_table M0-T6 found; the first was that every count and integrity check would inherit a pointer to nothing. R0's, untouched — but now a defect with a trigger, not a latent one",
-      "owner": "ADHIKARIN",
-      "state": "raised"
-    },
-    {
       "id": "F-MR06-NEVER-EXERCISED",
       "what": "M0-T29: the MR-06 deactivation guard has never been exercised — its only live RETIRED row is declared RETIRED in the seed too, so both branches agree and it has never had to choose. A guard that has never had to choose is not yet a detector",
       "owner": "ADHIKARIN",
@@ -574,38 +556,14 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "F-DELIBERATE-NULL-FILLED",
-      "what": "A NEW CATEGORY, distinct from the durability problem. D-23 ruled the SOURCE question is R5's, and two KARAKA deliberately held lel_events's layer_index and layer_name at NULL because the value is not mechanically derivable. A RE-SEED FILLS THAT NULL with L5/Mimamsa — answering by default a question ADHIKARIN declined to decide. The deliberate NULL is not absent data; it is the only place in the registry where that openness is written down. No value-drift measurement would flag it, because nothing is 'wrong' before or after — the row would look correctly derived",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
-      "id": "RESTORE-DRILL-RULING",
-      "what": "M0-T26 EXECUTED its restore drill (transaction, 0 rows differed, rolled back) and disclosed it unprompted as the one action it expected to be challenged. My read: it closes the gap D-7 named — a snapshot whose restore was never verified is not a snapshot, and every prior repair left that authored-but-unexercised. But I set the constraint it may have exceeded, so my reading is self-serving. Asked ADHIKARIN whether to make the drill a STANDING requirement for this repair class",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
       "id": "M0-T31",
       "what": "DONE 0c02dea5c — the blocking-switch precondition is now a checklist rather than a judgement",
       "owner": "PARIKSAKA",
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T32",
-      "what": "control-surface truth pass — our own artifacts have drifted while we worked",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "CRIT-10-H2-COLLISION",
       "what": "M0's exit criterion 10 requires the guards MERGED to main; charter H2 prohibits any write to main. An exit criterion the charter forbids satisfying. Nobody had asked this; the KARAKA surfaced it and said correctly it was not a KARAKA's to answer. Charter's own clause makes it a PARK",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
-      "id": "NAMED-FIELD-TEST",
-      "what": "the one ruling that reclassifies 6 rules and 2 criteria at once",
       "owner": "ADHIKARIN",
       "state": "asked"
     },
@@ -638,10 +596,34 @@
       "what": "M0-T30 flagged for a second opinion: removing the C-23 ROOT workaround exposes NIRMANA_REPO to the guard, and rather than restore a coercion it added a root-mismatch DETECTOR that fails with both paths named. Verified on a constructed second checkout: EXIT=3 after, EXIT=0 before, because the re-point silently swallowed it. It asked for review rather than assuming",
       "owner": "PARIKSAKA",
       "state": "asked"
+    },
+    {
+      "id": "M0-T32",
+      "what": "DONE 5333933ce — four MORE stale claims found by looking on purpose, eight artifacts clean",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T34",
+      "what": "deriveState service_ok — D-26 GRANTED as Track M",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "M0-T35",
+      "what": "seed divergence report + target_floor — D-27/D-28 GRANTED",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "RULINGS-D26-D28",
+      "what": "All three major escalations ruled. D-26: the deriveState green is H4 IN ITS PUREST FORM — not a green with no detector, but a green OVERRIDING a detector that already ran and returned the opposite answer, which ADHIKARIN rates worse than every prior instance because in the others nobody had looked. D-27: D-19 refined into THREE classes, the missed one being DECLARED-BUT-VERIFIABLE (count_sql, depends_on) — which is why the register was right to refuse to pick a surface, since the error would have been picking. D-28: the deliberate-NULL category named and folded into D-27's report rather than special-cased; the restore drill made a STANDING requirement for this repair class, converting I2 from a ritual into a detector",
+      "owner": "closed",
+      "state": "ruled"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T07:38:12Z",
+  "last_updated_ts": "2026-08-23T07:40:21Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
