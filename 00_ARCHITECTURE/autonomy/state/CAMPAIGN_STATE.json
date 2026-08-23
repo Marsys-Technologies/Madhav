@@ -38,6 +38,10 @@
             "source": "KARAKA M0-T7",
             "asset": "bg_vidhi_* serving path",
             "finding": "the vidhi serving path reads a hand-synchronized TS constant rather than the DB rows, while registry_data.ts states the opposite. §N.7 item 3: a wrapper-local constant shadowing the computed value."
+          },
+          {
+            "source": "KARAKA M0-T18 claim C12",
+            "finding": "The plan's unearned-lit LABELS ARE SWAPPED. ga_prashna, named as THE specimen, actually carries a by-design volume_explanation. bg_sarvatobhadra_grid — parenthesised as 'by design' — has NO explanation, NO writer, and is CURRENT. mi_vistara is an unnamed third, and five more assets read lit with no count_sql at all. The specimen and the exoneration are the wrong way round."
           }
         ]
       }
@@ -91,6 +95,20 @@
             "ratio": 2.1,
             "tier": "H",
             "note": "timeout is under its own p90 — expected to be killed more than 1 run in 10, not merely in the tail"
+          }
+        ],
+        "additional_findings": [
+          {
+            "source": "KARAKA M0-T18 claim C15 (plan §1.5)",
+            "finding": "A LIVE §N.5 VIOLATION HIDDEN BY SAMPLING. §1.5 says 2,000/2,000 sampled constituent_facts_array ids resolve, and calls it sound. Full population: 49 of 71,967 DO NOT RESOLVE, and every one belongs to build_id 6479bb56 — exactly the accretion the NEXT §1.5 row inspects and exonerates. Two adjacent rows of the plan contradict each other. §N.5 says an L2+ signal never restates an L1 value as its own truth and the constituent_facts_array MUST resolve; 49 do not. bodha_msr_signals is L2, R2 is not open, NOT TOUCHED.",
+            "assets": [
+              {
+                "asset": "bo_* MSR signals",
+                "unresolved": 49,
+                "population": 71967,
+                "build_id": "6479bb56"
+              }
+            ]
           }
         ]
       }
@@ -167,6 +185,18 @@
           "7": "migration 590 never applied (wave halted 0/3)",
           "11": "migration 590 never applied"
         }
+      },
+      "plan_reconciliation": {
+        "measured_by": "KARAKA M0-T18, commit c4350b10d, re-runnable via control/plan_figure_reconciliation.py",
+        "tally": {
+          "claims": 115,
+          "CONFIRMED": 99,
+          "REFUTED": 13,
+          "DRIFTED": 2,
+          "UNMEASURABLE": 1
+        },
+        "headline": "THE DIAGNOSIS IS SUBSTANTIALLY SOUND — 86% reproduce against live production, including ALL 23 of §1.2's census/state figures and ALL 28 code citations in the L-01..L-12 register (every file:line lands on the code it claims). The three-for-three failure rate that motivated this task DOES NOT extrapolate, and saying so is the point: the task was told not to manufacture findings.",
+        "pattern": "The failures CLUSTER. 12 of 13 refutations are counts of code artefacts or catalogue metadata; NOT ONE is a live throughput or row-count measurement. Figures obtained by querying the database are right; figures obtained by counting things in the codebase, or by sampling, are what broke. Six of thirteen come from a detector whose predicate did not match its own sentence — §N.8, turned on the campaign's own plan."
       }
     },
     "M1": {
@@ -286,12 +316,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T18",
-      "what": "plan figure reconciliation — every quantitative claim in §1/§1.5/the defect register measured against live. Three have been refuted so far, each caught incidentally; this checks the rest deliberately. Instructed NOT to manufacture findings if the diagnosis is sound",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "SOURCE-BLOCKED",
       "what": "Phase 0.5b (lel_events -> SOURCE) cannot close: catalog_status and asset_kind CHECKs permit no source value and migration 590 contains no CHECK change. Reads as P5 to me; not queued, ADHIKARIN's",
       "owner": "ADHIKARIN",
@@ -304,12 +328,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T9",
-      "what": "CI guards — built and proven, but NOT wired blocking; that switch is ADHIKARIN's and several criteria are legitimately non-zero today",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "HAS-SUBSTEPS-LIVE",
       "what": "SATYA-DIPA's §N.8 instance 4, still live on 12 assets, 8 of them CURRENT. asset_runner.py:620 reads has_substeps FROM asset_registry and plan_complete is initialised True, only recomputed inside `if has_substeps:`. So a false-negative row means the substep-plan-completeness re-probe NEVER RUNS and a partial build is promoted lit. The 2026-07-29 code fix landed; the registry rows that switch the question off were never repaired, so for these 12 the fix is inert — the detector exists and is being told not to run. Repair NOT queued: it is the one M0 write that changes build-promotion behaviour rather than metadata. ADHIKARIN asked",
       "owner": "ADHIKARIN",
@@ -320,12 +338,6 @@
       "what": "the plan's 0.6b wording, applied literally as a repair rule, corrupts two rows: all 6 kind disagreements resolve to service, but 2 need asset_kind corrected and 4 need asset_type. Repair values FIRST, then make the column authoritative. A runtime no-op today because both live consumers read the pair as an OR — which is why nothing broke and why nothing would have noticed",
       "owner": "ADHIKARIN",
       "state": "raised"
-    },
-    {
-      "id": "M0-T12+T13",
-      "what": "HALTED, 0 of 3 steps executed, nothing applied. --target is a BREAK-AFTER, not a SELECT-ONE: migrate.ts:632-683 iterates every file in sorted order, applies each unapplied one, and only then breaks on the target. CONDUCTOR-VERIFIED at source. My prescribed order 589->588->590 was mechanically unreachable AND would have run 588's unscoped DELETE before the step carrying that DELETE's own precondition. The KARAKA refused to reorder because 'it is materially safe today' is the reasoning a KARAKA is told not to use — the invariant working against its own conductor. Awaiting ADHIKARIN on the KARAKA's Option A (588->589->590 ascending, one --target run per file)",
-      "owner": "ADHIKARIN",
-      "state": "halted_awaiting_ruling"
     },
     {
       "id": "F-3-CASELAW",
@@ -356,10 +368,40 @@
       "what": "ASSET_CATALOGUE_CONTRACT_v1_0.md's prose counts disagree with its own detection SQL in two rules: §6 C-04 says 10, its §8 SQL returns 11 (extra is bg_sky_calendar, target_table names a nonexistent relation); §6 C-17 says 3, SQL returns 4 (extra is ka_graha_sancara). The contract is M0's specification, so a contract that disagrees with itself propagates into every guard written from it",
       "owner": "ADHIKARIN",
       "state": "raised"
+    },
+    {
+      "id": "M0-T9",
+      "what": "COMPLETE c88a7e206 — 2 guards, 39 assertions, 39/39 with a PROVEN failing fixture. 12 green, 18 would fail if flipped blocking, 9 not_checkable. NOT wired blocking (ADHIKARIN's switch). It heeded the C-23 warning: returns 12, not the 109 the MRO trap produces. Its own first draft of X-03 was ALSO a constant — it exempted has_writer=false, the exact flag both detectable assets carry, so it could never fire. Second constant-trap of the day, caught by its author",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T18",
+      "what": "COMPLETE c4350b10d — 115 claims, 99 CONFIRMED / 13 REFUTED / 2 DRIFTED / 1 UNMEASURABLE",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T19",
+      "what": "make the seeder REFUSE when DRY_RUN is set (D-17's third option, better than either I proposed)",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "WAVE-F3",
+      "what": "wave still HELD. D-18 part 1 cleared it on V-3, but was written BEFORE M0-T12 found F-3 and still instructs '--target pinned' as though the flag selects one migration. Dispatching on D-18's letter would repeat the exact error that halted the wave. Awaiting the F-3 ruling; ADHIKARIN told it can say D-18 already covers it and I dispatch Option A immediately",
+      "owner": "ADHIKARIN",
+      "state": "held_pending_ruling"
+    },
+    {
+      "id": "D16-COMPLIANCE",
+      "what": "I verified my own pane from process ancestry: I am %0 in prp-night:conductor, NOT the window named nirmana:conductor (%15, another campaign, live). DISCLOSED: I did take three tmux send-keys addressed by WINDOW NAME (nirmana:verifier) before D-16 existed. It reached the right agent — %12 — but by luck of that name matching its content, which is exactly what D-16 says may not be relied on. I never touched %15. A failed 'scribe-' capture earlier was my first evidence the naming was wrong and I treated it as a typo; it was a signal. All tmux actions now pane-ID addressed, re-verified at use",
+      "owner": "SUTRADHARA",
+      "state": "disclosed"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T05:07:35Z",
+  "last_updated_ts": "2026-08-23T05:21:26Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
