@@ -23,7 +23,8 @@ import json
 import psycopg
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from asset_plans import derive, derive_v41_columns
-from writer_substep_census import registered_asset_ids, substep_truth_by_asset
+from writer_substep_census import (registered_asset_ids, resume_mechanism_by_asset,
+                                   substep_truth_by_asset, writer_file_by_asset)
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
@@ -61,8 +62,7 @@ THESIS = {
           'leverage in the system — a no-op L1 rebuild currently invalidates the entire DAG above it. Several '
           'writers carry substep plans and none of them can resume.',
     'L2': 'Broad, shallow and cheap per asset, but deep in fan-out. The win is early cutoff: most L2 rebuilds '
-          'produce identical rows and should stop propagating. Three writers here have their completeness gate '
-          'silently disabled.',
+          'produce identical rows and should stop propagating.',
     'L3': 'Where the wall-clock lives. Two assets have individually exceeded 33 hours. Partition receipts and '
           'shared resumability convert interruption from total loss into bounded rework, and the '
           'generation/authority model belongs here.',
@@ -71,6 +71,43 @@ THESIS = {
     'L5': 'The deepest and most cascade-prone layer: eight of its assets were recently blocked by a single '
           'upstream fault. Cascade-root collapse and honest partial states matter more here than raw speed.',
 }
+
+
+def layer_thesis(lx, sub):
+    """The layer's durable narrative, plus any MEASURED clause, derived at render time.
+
+    Nirmana M0-T30 / F-4. `THESIS` is hand-written prose living inside a generator whose
+    whole premise (section 16) is "generated, never hand-edited" -- and a hardcoded claim
+    cannot drift-detect itself. `THESIS['L2']` used to end "Three writers here have their
+    completeness gate silently disabled." That was true when it was written; after the
+    Phase 0.6a `has_substeps` repair (D-24) and M0-T28's `Substeps (code)` fix, the
+    measured registry-vs-code divergence is 0 in EVERY layer, so the sentence had become a
+    hardcoded claim contradicting the generated columns two sheets away.
+
+    The sentence is NOT re-worded with a fresh hardcoded number -- that only resets the
+    same clock (the reasoning DVA Ruling 16 applied to CLAUDE.md's row counts). It is
+    DERIVED from the rows the Layer Map is already counting, and emitted ONLY when the
+    count is non-zero, so a clean layer says nothing rather than carrying a permanent
+    "0 defects" boast. The claim can no longer outlive its cause: if the divergence
+    returns -- in L2 or in any other layer -- the thesis says so, with the measured count
+    and the asset ids.
+
+    A count of 0 here is a real detector's real verdict, not an unearned green (section
+    N.8): `Substeps (registry)` and `Substeps (code)` are both populated per asset by
+    detectors that CAN disagree, and M0-T28 proved by mutation that they do. Saying
+    nothing is the honest rendering of "nothing to report", not a silent pass.
+    """
+    t = THESIS[lx]
+    bad = [x['Asset ID'] for x in sub
+           if x['Substeps (code)'] == 'yes' and x['Substeps (registry)'] == 'no']
+    if bad:
+        t += (f" Measured this run: {len(bad)} writer(s) here have their completeness "
+              f"gate silently disabled -- asset_registry.has_substeps is false while the "
+              f"writer class overrides both plan_substeps and run_substep "
+              f"({', '.join(sorted(bad))}).")
+    return t
+
+
 # Known supersession pointers (Phase 0.3 seeds these into the registry itself).
 SUPERSEDED_BY = {'ka_gochara_sweep': 'ka_gochara_v3_century_materialize (gen 3.0 authority)'}
 DATA_DISPOSITION = {'ka_gochara_sweep': 'RETAINED_AS_CAPITAL — 38,287 v1 rows; no registered writer can rebuild them'}
@@ -156,13 +193,14 @@ def code_registered_asset_ids():
     unexamined. That is what V-6 caught on two R0 assets.
 
     Reuses `writer_substep_census.registered_asset_ids()` — the same AST parser that
-    also produces the `Substeps (code)` truth — rather than adding a parser. The regex
-    in `scan_code()` below is now retained ONLY for `writer_file` / `resume_mechanism`;
-    it is not the authority for has_writer, because a regex counts docstring mentions of
-    `@register(` and a naive AST pass drops `@register(ASSET_ID)`. (M0-T28 / F-1 removed
-    its `code_has_plan_substeps` key too, for the same reason one column over — the
-    docstring `@register('bg_reference')` at `writers/__init__.py:172` was being read as
-    a real registration and picking up `WriterBase`'s own `plan_substeps`.)
+    also produces the `Substeps (code)`, `Writer File` and `Resume` truths — rather than
+    adding a parser. A regex is not the authority for any of them, because it counts
+    docstring mentions of `@register(` and a naive AST pass drops `@register(ASSET_ID)`.
+    (M0-T28 / F-1 removed `scan_code()`'s `code_has_plan_substeps` key for the first of
+    those reasons — the docstring `@register('bg_reference')` at `writers/__init__.py:172`
+    was being read as a real registration and picking up `WriterBase`'s own
+    `plan_substeps`. M0-T30 / F-5 removed the regex ITSELF, the last text match in the
+    generator's asset-level derivations; see `scan_code()`.)
 
     NO ASSET ID IS SPECIAL-CASED here or anywhere downstream (D-25 part 2c): the two
     known cases are secondary decorators stacked on a shared writer class, which is the
@@ -214,52 +252,43 @@ def code_substep_truth():
 
 
 def scan_code():
-    """asset_id -> {writer_file, resume_mechanism}
+    """asset_id -> {writer_file, resume_mechanism} — BOTH DERIVED FROM THE AST CENSUS.
 
-    NOTE (M0-T28 / F-1): this regex no longer produces `code_has_plan_substeps`. That
-    key was removed rather than left unread, so nothing can pick the coarse proxy back
-    up by accident — `Substeps (code)` is `code_substep_truth()` above, the AST override
-    test. What is left here is deliberately file-granular and honest about it:
-    `writer_file` is a file path, and `resume_mechanism` is a search for machinery that
-    may legitimately live anywhere in the writer's module or its service package.
+    NO TEXT MATCH REMAINS IN THIS FUNCTION (Nirmāṇa M0-T30 / F-5). It is now a thin
+    projection of `writer_substep_census`, kept under its original name and shape so
+    `build_rows()` and its `cf.get(...)` callers are untouched.
+
+    THE SWEEP M0-T28 STARTED, FINISHED. M0-T28 moved `Substeps (code)` off the regex
+    and said plainly that `resume_mechanism` was the same defect in the same function,
+    one column over. It is — and measurement showed it was not merely capable of going
+    wrong, it WAS wrong, in both of its outputs:
+
+      · `writer_file` was the LAST file `rglob` happened to visit whose text matched
+        an `@register(...)` pattern — a test file for 3 assets, a shim's docstring for 11, and
+        for `ka_gochara` the tombstone of a DIFFERENT retired asset. 14 of 123 wrong.
+      · `resume_mechanism` was a substring search over the whole writer file PLUS every
+        `.py` in the first `services/<pkg>` package it imports, attributed to every
+        `@register` the regex found in that file. `ka_gochara` read
+        `substep_fingerprint` from RETIRED `ka_gochara_sweep`'s service package;
+        `bg_gochara_arcs` read `delta_fingerprint` from a module its writer never calls.
+
+    Three traps, all previously paid for by this campaign, and this function had all
+    three: the DOCSTRING trap (a retired shim naming `@register('ka_gochara')` in prose
+    was read as a registration), FILE GRANULARITY (one answer per file, applied to every
+    registration in it), and — one this function had beyond M0-T28's list — NO EXCLUDE
+    LIST AT ALL, so `writers/tests/` was scanned and produced three phantom asset ids
+    (`bad_infra_writer`, `test_infra_asset_1`, `test_infra_asset_dup`) alongside the real
+    ones. The census has always excluded test trees.
+
+    ONE PARSER, REUSED (D-25 part 2c): the derivations live in the census next to the
+    `has_writer` and `has_substeps` ones, not here, so there is still exactly one AST
+    parser for `@register` in the control plane.
     """
-    sidecar = ROOT / 'platform/python-sidecar'
-    reg_re = re.compile(r"@register\(\s*(?:['\"]([a-z0-9_]+)['\"]|([A-Z_][A-Z0-9_]*))\s*\)")
-    out = {}
-    for p in sidecar.rglob('*.py'):
-        try:
-            txt = p.read_text(errors='ignore')
-        except Exception:
-            continue
-        ids = []
-        for m in reg_re.finditer(txt):
-            if m.group(1):
-                ids.append(m.group(1))
-            else:
-                cm = re.search(rf"^{m.group(2)}\s*=\s*['\"]([a-z0-9_]+)['\"]", txt, re.M)
-                if cm:
-                    ids.append(cm.group(1))
-        if not ids:
-            continue
-        blob = txt
-        sm = re.search(r"from\s+services\.([a-z0-9_]+)[\. ]", txt)
-        svc = sidecar / 'services' / sm.group(1) if sm else None
-        if svc and svc.exists():
-            for q in svc.rglob('*.py'):
-                try:
-                    blob += q.read_text(errors='ignore')
-                except Exception:
-                    pass
-        resume = 'none'
-        if '_RESUME_VERSION' in blob or 'build_fingerprint' in blob:
-            resume = 'substep_fingerprint'
-        if any(k in blob for k in ('compute_substep_fingerprint', 'class_fingerprint', 'scoring_signature')):
-            resume = 'delta_fingerprint'
-        for a in ids:
-            prev = out.get(a, {})
-            out[a] = {'writer_file': str(p.relative_to(ROOT)),
-                      'resume_mechanism': resume if resume != 'none' else prev.get('resume_mechanism', 'none')}
-    return out
+    files = writer_file_by_asset()
+    resume = resume_mechanism_by_asset()
+    return {aid: {'writer_file': files[aid],
+                  'resume_mechanism': resume.get(aid, 'none')}
+            for aid in files}
 
 
 def consumer_map(registry):
@@ -685,7 +714,7 @@ def main():
                    sum(1 for x in sub if x['Consumers'] == '0' and x['Target Table']),
                    round(max([x['Worst (h)'] or 0 for x in sub] or [0]), 1) or '',
                    f"{nat.get('lit',0)} / {nat.get('stale',0)} / {nat.get('error',0)+nat.get('incomplete',0)}",
-                   THESIS[lx]])
+                   layer_thesis(lx, sub)])
     for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
         for c in row:
             c.alignment = Alignment(wrap_text=True, vertical='top')
@@ -995,7 +1024,7 @@ def emit_plan_markdown(rows, plan_path=None, extra_cols=False, generator_note=No
         n_p0 = sum(1 for x in sub if x['Priority'].startswith('P0'))
         heavy = [x for x in sub if x['Tier'].startswith('H')]
         out.append(f'\n### {lx} · {names[lx]} — {len(sub)} assets · {n_bad} non-conformant · {n_p0} P0 · {len(heavy)} heavy\n')
-        out.append(f'*{LAYER_ROLE[lx]}.* {THESIS[lx]}\n')
+        out.append(f'*{LAYER_ROLE[lx]}.* {layer_thesis(lx, sub)}\n')
         for x in sorted(sub, key=lambda r: ({'P0':0,'P1':1,'P2':2,'P3':3}[r['Priority'][:2]], r['Asset ID'])):
             out.append(f"\n#### `{x['Asset ID']}` — {x['Tier']} · {x['Priority']} · {x['Lifecycle']}\n")
             out.append(f"**What:** {x['What'] or '—'}  \n**Now:** {x['Now']}\n")

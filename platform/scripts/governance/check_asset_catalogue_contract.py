@@ -695,14 +695,19 @@ def code_writer_substep_truth(force: bool = False) -> tuple[dict[str, bool] | No
             return _null("could not load the writer-class census module")
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        # The census module pins ROOT to an absolute developer path (it was authored as
-        # a run-once script). Re-point it at THIS checkout so the derivation is a
-        # function of the tree the guard is actually running over — otherwise on any
-        # other machine it would scan nothing and hand back an empty set, which would
-        # read as "no writer has substeps" and make C-23 unfalsifiable. Set here rather
-        # than edited there because that file is the control plane's, not the guard's.
-        mod.ROOT = REPO_ROOT
-        mod.BASE = sidecar
+        # THE CENSUS'S OWN ROOT DERIVATION IS EXERCISED, NOT OVERRIDDEN (Nirmāṇa
+        # M0-T30 / F-6). Until M0-T28 the census pinned `ROOT` to one developer's
+        # absolute path, so this function re-pointed `mod.ROOT`/`mod.BASE` at
+        # REPO_ROOT before calling `census()`. That workaround was correct when it
+        # was written and became a MASK the moment the root was fixed: with the
+        # re-point in place, mis-deriving the census root (e.g. `parents[1]`) left
+        # this guard's `--self-test` reporting `579 files, 123 @register decorators`
+        # and exit 0, because the guard never ran the derivation it was standing in
+        # front of. A guard that cannot go red on a defect is not a detector for it
+        # (charter H3/H4, CLAUDE.md §N.8, D-24 part 3). The re-point is therefore
+        # gone: the census resolves its own root, and if that resolution is wrong the
+        # scan comes back empty and C-23 goes not_checkable below — which the
+        # code-derivation probe counts as a self-test FAILURE.
         c = mod.census(force=True)
     except Exception as e:                                   # noqa: BLE001
         return _null(f"the writer-class census raised {type(e).__name__}: {e}")
@@ -711,6 +716,12 @@ def code_writer_substep_truth(force: bool = False) -> tuple[dict[str, bool] | No
         "files_scanned": c.get("files_scanned"),
         "registrations": c.get("n_registrations"),
         "distinct_asset_ids": c.get("n_distinct_asset_ids"),
+        # WHERE it looked, not only WHAT it found (M0-T28 added these to the census
+        # record for exactly this reason: an empty census is indistinguishable from a
+        # healthy one unless the provenance says which tree was scanned).
+        "scan_root": c.get("scan_root"),
+        "scan_base": c.get("scan_base"),
+        "base_exists": c.get("base_exists"),
     })
     # §N.8 applied to the derivation itself: every one of these means the census does
     # NOT know the writer set, so the truth is null rather than quietly short. A short
@@ -727,6 +738,21 @@ def code_writer_substep_truth(force: bool = False) -> tuple[dict[str, bool] | No
         return _null(f"the census scanned {c.get('files_scanned')} file(s) and found "
                      f"{c.get('n_registrations')} @register decorator(s) — an empty "
                      f"writer set cannot falsify anything, so it is null, not green")
+    # …and, having exercised the derivation rather than overridden it, CHECK ITS
+    # ANSWER instead of coercing it. A census that resolved a DIFFERENT checkout
+    # scans a real writer tree and comes back full, so the emptiness branch above
+    # cannot see it — yet C-23 would then be comparing THIS repo's registry against
+    # ANOTHER tree's writer classes. `NIRMANA_REPO` is the live way to reach that
+    # state (the census honours it as an override). This is a DETECTOR, not the
+    # re-point returning: it makes the guard go null with the two paths named,
+    # where the re-point silently made the mismatch impossible to observe.
+    scanned_root = str(c.get("scan_root") or "")
+    if scanned_root and pathlib.Path(scanned_root) != REPO_ROOT:
+        return _null(f"the census derived its own repo root as {scanned_root!r}, which "
+                     f"is not the checkout this guard is running over "
+                     f"({str(REPO_ROOT)!r}) — C-23 would be comparing this registry "
+                     f"against another tree's writer classes. Unset NIRMANA_REPO (or "
+                     f"point it here) rather than reading this as a pass")
 
     truth = {aid: bool(recs[0].get("writer_truth_has_substeps"))
              for aid, recs in (c.get("writers") or {}).items() if recs}

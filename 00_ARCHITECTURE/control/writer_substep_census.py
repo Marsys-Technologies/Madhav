@@ -85,6 +85,65 @@ def dotted(node):
     return None
 
 
+# ── resume-mechanism vocabulary ──────────────────────────────────────────────
+# Nirmāṇa M0-T30 / F-5. These token sets are CARRIED OVER UNCHANGED from
+# `build_asset_control_workbook.scan_code()`, deliberately: M0-T30's task was the
+# ATTRIBUTION mechanism (which code the tokens are looked for in), not the
+# vocabulary (which tokens count as a resume protocol). Changing both at once would
+# make any value change unattributable, which is the same discipline §19 imposes on
+# optimizations. Widening the vocabulary is a content decision and is NOT taken here
+# — see the M0-T30 report on `bg_gochara_arcs`, whose class calls `arc_fingerprint`,
+# a delta mechanism no token names.
+RESUME_SUBSTEP_TOKENS = ('_RESUME_VERSION', 'build_fingerprint')
+RESUME_DELTA_TOKENS = ('compute_substep_fingerprint', 'class_fingerprint', 'scoring_signature')
+
+
+def class_identifiers(node: ast.ClassDef) -> set:
+    """Every IDENTIFIER appearing anywhere in a class's own subtree.
+
+    Deliberately NOT a text scan of the class's source lines, and deliberately NOT
+    including string constants — those two exclusions are the whole point:
+
+      · **comments and docstrings are invisible to `ast.walk`.** This is the docstring
+        trap that produced M0-T28's `bg_reference` false positive one column over, and
+        it is live in this very column: `writers/ka_gochara_sweep.py` is a RETIRED
+        tombstone (`__all__ = []`, no executable `@register` at all) whose docstring
+        names `@register('ka_gochara')` and `@register('ka_gochara_sweep')`. A regex
+        read both of those as registrations.
+      · **string constants are excluded** because `build_fingerprint` occurs mostly
+        inside SQL text. A writer that merely SELECTs a column named
+        `build_fingerprint` from someone else's table has not thereby implemented a
+        resume protocol; a writer that *maintains* one names it as an identifier
+        (`_RESUME_VERSION`, `_compute_build_fingerprint`, `class_fingerprint(...)`).
+
+    Method names are included, so `_compute_build_fingerprint` matches the
+    `build_fingerprint` token by substring exactly as it did before.
+    """
+    out = set()
+    for n in ast.walk(node):
+        if isinstance(n, ast.Name): out.add(n.id)
+        elif isinstance(n, ast.Attribute): out.add(n.attr)
+        elif isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)): out.add(n.name)
+        elif isinstance(n, ast.ClassDef): out.add(n.name)
+        elif isinstance(n, ast.arg): out.add(n.arg)
+        elif isinstance(n, ast.keyword) and n.arg: out.add(n.arg)
+        elif isinstance(n, ast.alias): out.add((n.asname or n.name).split('.')[-1])
+    return out
+
+
+def resume_from_identifiers(idents) -> str:
+    """`none` | `substep_fingerprint` | `delta_fingerprint`, from a class's identifiers.
+
+    Same precedence the file-granular version used: a delta token outranks a substep
+    token when both are present.
+    """
+    joined = '\n'.join(sorted(idents))
+    out = 'none'
+    if any(tok in joined for tok in RESUME_SUBSTEP_TOKENS): out = 'substep_fingerprint'
+    if any(tok in joined for tok in RESUME_DELTA_TOKENS): out = 'delta_fingerprint'
+    return out
+
+
 _CACHE = None
 
 
@@ -96,6 +155,7 @@ def census(force: bool = False) -> dict:
         return _CACHE
 
     classes = {}      # (module, classname) -> record
+    class_idents = {}  # (module, classname) -> set of identifiers in the class subtree
     unresolved_registrations = []
     registrations = []  # {asset_id, module, classname, lineno}
     by_name = {}      # classname -> [ (module, classname) ]
@@ -145,6 +205,9 @@ def census(force: bool = False) -> dict:
             classes[key] = {'module': mod, 'classname': node.name, 'bases': bases,
                             'methods': sorted(methods), 'has_substeps_attr': has_substeps_attr,
                             'asset_id_attr': asset_id_attr, 'lineno': node.lineno}
+            # Kept OUT of `classes[key]` on purpose: identifier sets are large, they are
+            # an internal intermediate, and `classes` is what __main__ serialises.
+            class_idents[key] = class_identifiers(node)
             by_name.setdefault(node.name, []).append(key)
             for dec in node.decorator_list:
                 fn = dec.func if isinstance(dec, ast.Call) else dec
@@ -167,13 +230,23 @@ def census(force: bool = False) -> dict:
 
     def resolve(key, seen=None):
         """Walk the class's own methods then its bases (by simple name) within the
-        collected graph. Returns (defines_map, chain)."""
+        collected graph. Returns (defines_map, chain, identifiers).
+
+        `identifiers` (M0-T30 / F-5) is the union of the class's own identifiers and
+        those of its PROJECT-LOCAL ancestors, resolved by the same base-picking rule
+        the method map uses — one traversal, one set of tie-breaks, so the resume
+        signal and the substep signal can never be attributed differently.
+        `WriterBase` contributes nothing here for the same reason it contributes no
+        methods: it is the FROZEN base every writer has, so anything it defined would
+        be a CONSTANT across all 123 registrations, not a discriminator.
+        """
         seen = seen or set()
-        if key in seen: return {}, []
+        if key in seen: return {}, [], set()
         seen.add(key)
         rec = classes[key]
         out = {m: key for m in rec['methods']}
         chain = [f"{rec['module']}::{rec['classname']}"]
+        idents = set(class_idents.get(key, ()))
         attr = rec['has_substeps_attr']
         for b in rec['bases']:
             if not b: continue
@@ -188,19 +261,20 @@ def census(force: bool = False) -> dict:
             if pick is None and len(cands) == 1: pick = cands[0]
             if pick is None:
                 chain.append(f'UNRESOLVED_BASE:{b}'); continue
-            sub, subchain = resolve(pick, seen)
+            sub, subchain, subids = resolve(pick, seen)
             for m, k in sub.items(): out.setdefault(m, k)
             chain.extend(subchain)
+            idents |= subids
             if attr is None and classes[pick]['has_substeps_attr'] is not None:
                 attr = classes[pick]['has_substeps_attr']
         rec['_inherited_has_substeps'] = attr
-        return out, chain
+        return out, chain, idents
 
     results = {}
     dupes = {}
     for r in registrations:
         key = (r['module'], r['classname'])
-        defines, chain = resolve(key)
+        defines, chain, idents = resolve(key)
         rec = classes[key]
         plan = 'plan_substeps' in defines
         runsub = 'run_substep' in defines
@@ -218,6 +292,9 @@ def census(force: bool = False) -> dict:
             'inherited_has_substeps': rec.get('_inherited_has_substeps'),
             'mro_chain': chain,
             'writer_truth_has_substeps': truth,
+            # M0-T30 / F-5: attributed to the CLASS, not to the file it happens to
+            # share with other registrations, and not to a neighbouring service package.
+            'resume_mechanism': resume_from_identifiers(idents),
             'shape': 'HEAVY' if truth else ('LIGHT' if runm else ('PARTIAL_plan_only' if plan else ('PARTIAL_runsubstep_only' if runsub else 'NEITHER'))),
         })
     for a, v in results.items():
@@ -329,6 +406,65 @@ def substep_truth_by_asset(force: bool = False) -> dict:
     c = _assert_trustworthy(census(force=force), 'the code-derived has_substeps map')
     return {aid: bool(recs[0]['writer_truth_has_substeps'])
             for aid, recs in c['writers'].items() if recs}
+
+
+def writer_file_by_asset(force: bool = False) -> dict:
+    """`{asset_id: path}` — the file that contains the @register'd WRITER CLASS.
+
+    Nirmāṇa M0-T30 / F-5. `scan_code()` used to derive this by regex over whole files
+    and attribute it to whichever matching file `rglob` happened to visit LAST, which
+    produced three distinct wrong answers, all measured on 2026-08-23 against this tree:
+
+      · **a test file** — `bg_cohort`, `bg_sky_calendar` and `mi_sankalpa` were
+        attributed to `writers/tests/test_*.py`, because `scan_code()` had no exclude
+        list at all and scanned the test tree this module has always skipped;
+      · **a registration shim's DOCSTRING** — eleven `ka_*` assets were attributed to
+        `writers/ka_*.py`, files which in several cases contain no executable
+        `@register` whatsoever and merely NAME it in prose;
+      · **an unrelated retired writer** — `ka_gochara` was attributed to
+        `writers/ka_gochara_sweep.py`, a tombstone for a DIFFERENT, retired asset.
+
+    Fourteen of 123 wrong is not a rounding error, and none of the three shapes is
+    detectable from the column itself, which is why this is derived and not scanned.
+    """
+    c = _assert_trustworthy(census(force=force), 'the code-derived writer_file map')
+    return {aid: recs[0]['module'] for aid, recs in c['writers'].items() if recs}
+
+
+def resume_mechanism_by_asset(force: bool = False) -> dict:
+    """`{asset_id: 'none'|'substep_fingerprint'|'delta_fingerprint'}`, per WRITER CLASS.
+
+    Nirmāṇa M0-T30 / F-5, the sweep M0-T28 started. `Substeps (code)` stopped being a
+    whole-file text match in M0-T28; `resume_mechanism` was the same defect in the same
+    function one column over, and unlike the substep column it was ALREADY WRONG on live
+    data rather than merely capable of going wrong:
+
+      · `scan_code()` searched a blob of the WHOLE FILE **plus every `.py` in the first
+        `services/<pkg>` package the file imports**, then attributed the single answer to
+        EVERY `@register` the regex found in that file — docstring mentions included.
+      · `ka_gochara` therefore read `substep_fingerprint`, sourced from the service
+        package of `ka_gochara_sweep` — a RETIRED asset it is merely the successor to —
+        reached through a docstring mention in a tombstone shim. Its own writer class
+        uses `class_fingerprint`, i.e. `delta_fingerprint`.
+      · `bg_gochara_arcs` read `delta_fingerprint` because `services/w2g/fingerprint.py`
+        — a module its writer class never calls — sits in the package it imports
+        `arc_fingerprint` from. Its own docstring says it "never writes
+        `build_substep_progress`".
+
+    The class-scoped derivation asks the narrower and answerable question: does THIS
+    writer class (or a project-local ancestor) NAME resume machinery? See
+    `class_identifiers` for why that is an AST identifier scan rather than a text search,
+    and `RESUME_SUBSTEP_TOKENS` for why the vocabulary was deliberately left alone.
+
+    HONEST LIMIT, stated because it is the weak half of this signal: unlike
+    `has_substeps` there is no `asset_registry` column for `resume_mechanism`, so this
+    map has NOTHING TO BE PAIRED AGAINST and no registry-vs-code divergence detector can
+    exist for it (F-5 named this, and it is unchanged). What can be falsified is the
+    ATTRIBUTION — that two registrations in one file get different answers when their
+    classes differ — and that is what M0-T30's constructed fixture exercises.
+    """
+    c = _assert_trustworthy(census(force=force), 'the code-derived resume_mechanism map')
+    return {aid: recs[0]['resume_mechanism'] for aid, recs in c['writers'].items() if recs}
 
 
 if __name__ == '__main__':
