@@ -668,3 +668,7 @@
 {"ts":"2026-08-23T11:32:26Z","agent":"KARAKA-M0-T46","status":"working","detail":"reading D-37..D-42 and the three instruments; starting generator review"}
 {"ts":"2026-08-23T11:35:18Z","agent":"LEKHAKA","status":"working","detail":"ledger sync 9d5b133e7 (fleet resumed, SUTRADHARA self-disclosed heartbeat lapse, V-27 consolidates L-03 in R0, T46 dispatched)"}
 {"ts":"2026-08-23T11:37:27Z","agent":"KARAKA-M0-T45","status":"working","detail":"script + tests written and passing (16/16); wiring into deploy.yml and fresh_chart_smoke.yml next"}
+{"ts":"2026-08-23T11:40:16Z","agent":"LEKHAKA","status":"working","detail":"ledger sync 05aa2958d (T45 16/16 tests green, wiring into CI; T46 reading context)"}
+{"ts":"2026-08-23T11:44:20Z","agent":"KARAKA-M0-T45","status":"working","detail":"committed 3825c1981; writing final report"}
+{"ts":"2026-08-23T11:44:24Z","agent":"KARAKA-M0-T45","status":"done","detail":"M0-T45 complete: consumer-side migration-drift check added, commit 3825c1981, report filed to verifier"}
+{"ts":"2026-08-23T11:45:09Z","agent":"SUTRADHARA","status":"working","detail":"T45 done: consumer-side migration check closes the non-execution gap; mutation doctrine caught a hidden pass-path all 16 behavioural tests missed on FIRST use"}
