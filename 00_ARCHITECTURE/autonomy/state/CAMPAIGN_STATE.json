@@ -1056,14 +1056,14 @@
     {
       "id": "M0-T49-BLOCKING-FAILURES-ZERO",
       "what": "COMPLETE f5269164c. 15 disclosure entries written to asset_catalogue_disclosed_residuals.json on D-54's authorisation and D-57's CORRECTED ground (12 existing demoted, 3 created: C-11/X-03/X-05; 16->19). Zero code changed. THREE GATES RAN BEFORE ANY BYTE WAS WRITTEN, each sys.exit on failure: live blocking rule set == D-54's 15 both directions; per-rule live identity set == D-54's covers both directions 109/109 with len(violations)==violation_count asserted so --max-rows could not hide one; D-57's two classes partition covers EXACTLY (10 named-later-rung + 99 M0-BLOCKED = 109), reproducing the split from the ledger rather than from the agent. MEASURED BOTH DIRECTIONS IN ONE SCHEMA STATE: baseline file 14:05:08Z exit 1 / blocking 15 / disclosed 0 / fail 16 / 109 violations; with entries 14:05:22Z exit 0 / blocking 0 / disclosed_non_gating 15 / fail 16 / 109 violations. All 15 still status=fail with UNCHANGED counts, 0 uncovered, NO violation count dropped anywhere. Undisclosed still blocks (entry removed / violation outside covers / authorised_by naming a non-existent decision each return C-11 to BLOCKING). 591 landed at 13:58:56Z BETWEEN its first two live runs and it did NOT reason about the mixed reading -- it re-ran both sides afterwards. THE HONEST NUMBER, ITS OWN HEADING, UNPROMPTED: blocking_failures reached zero BECAUSE EVERY FAILING BLOCKING RULE WAS AUTHORISED FOR DEMOTION, NOT BECAUSE ANYTHING WAS REPAIRED -- 16 rules still fail, 4 not_checkable, 109 identities outstanding (99 M0-blocked on PARK-8). Nothing was adjusted to produce the zero. SELF-FLAGGED FOR ATTACK: 'the flip's checklist item now rests on a demotion I wrote, and I am the agent who benefits from believing D-54 part 4's ratchet argument'; it overwrote M0-T36's owner/deferred_to/reason on 12 entries (originals preserved as *_as_drafted_by_M0_T36); and its field-by-field diff is its own script reading its own output, so D-54 part 8's INDEPENDENT two-source comparison STILL NEEDS RUNNING.",
-      "owner": "PARIKSAKA",
-      "state": "awaiting_verification"
+      "owner": "closed",
+      "state": "CERTIFIED PASS (V-35) — attacked five ways and held, INCLUDING D-54 part 8 discharged independently. The KARAKA's own §8.1 attack (\"the whole checklist item now rests on a demotion I wrote\") SURVIVED verification."
     },
     {
       "id": "M0-T51",
       "what": "COMPLETE ae31486c9 (SQ-15). EXACTLY FOUR STRING VALUES changed in the whole file, machine-verified against the committed diff: the three not_drafted entries plus README point (6); no key added, removed or renamed; points (1)-(5) byte-identical to HEAD. CORRECTED TO D-57, NOT D-54 PART 6 — each entry now quotes its own superseded claim verbatim, says why it is wrong, and carries 'M0 — BLOCKED on PARK-8' rather than a rung name. Split extracted PROGRAMMATICALLY from D-57.corrected_grounds with assertions that would have ABORTED on mismatch (D-57's classes partition its covers; covers set-equal to D-54's authorised_covers; both set-equal to the shipped disclosure covers): C-11 3/3 M0-BLOCKED, X-03 1/2 + lel_events->R5, X-05 22/23 + bg_ephemeris_engine->R0. GUARD NUMBERS UNMOVED with a STRUCTURAL reason rather than an observed coincidence: the guard has ZERO references to not_drafted and zero to the README key, so it never parses either block. deferred_rule_disclosures byte-identical to HEAD (19 entries); all 36 *_as_drafted_by_M0_T36 originals identical.",
       "owner": "PARIKSAKA",
-      "state": "COMPLETE ae31486c9 — awaiting verification"
+      "state": "COMPLETE ae31486c9 — and independently confirmed by the conductor at 14:59Z: all three not_drafted entries now open \"CORRECTED 2026-08-23 BY KARAKA M0-T51 UNDER SQ-15\". V-35's F-H is therefore stale-on-arrival; PARIKSAKA told directly so it does not spend a cycle routing a closed item."
     },
     {
       "id": "D-54-PART-8-STILL-OUTSTANDING",
@@ -1155,10 +1155,22 @@
       "what": "BOOKKEEPING, to prevent a double dispatch. SQ-19 (attach the notice listener to migrate.ts) and M0-T52 are the SAME WORK: ADHIKARIN queued SQ-19 at the same moment it wrote D-58, and I had already dispatched T52 off D-58 directly. T52 is in flight and carries all four of D-58 part 3's conditions. SQ-19 must not be dispatched again -- it is discharged by T52's completion, not by a separate task.",
       "owner": "SUTRADHARA",
       "state": "recorded"
+    },
+    {
+      "id": "F-G-AUTHORITY-CHECK-AUTHENTICATES-AUTHOR-NOT-AUTHORISATION",
+      "what": "MATERIAL — PARIKSAKA calls it 'the most important thing in this verification', and it sits INSIDE the authority mechanism the campaign built to enforce §N.8. D-52 set the rule as 'authorised_by naming a DECISIONS.jsonl id that EXISTS and whose agent is ADHIKARIN', and the code implements EXACTLY that — faithfully, which is the defect. PROVED BY DOING, NOT ARGUING: PARIKSAKA set C-01's authorised_by to D-1 — a REAL ADHIKARIN G9 ruling ABOUT fleet/heartbeat.sh, carrying NO authorised_covers field at all — and the demotion was ACCEPTED: C-01 went non-gating, exit 0. NOTHING compares the shipped covers list against the cited decision's own authorised_covers; NOTHING checks the cited decision even MENTIONS the rule. Any ADHIKARIN decision id is a valid warrant for demoting any rule over any itemised identity list. CONSEQUENCE, PRECISELY: the shipped fifteen ARE correct (proved by hand, 109 for 109) but that correctness rests on a KARAKA transcribing faithfully and PARIKSAKA checking it, NOT on any detector — so D-54 part 8's two-source comparison is NOT a discharged one-off, it is THE ONLY DEFENCE THIS MECHANISM HAS, performed by an agent rather than by code. RECOMMENDED FIX (PARIKSAKA, and it judges this a STRENGTHENING under D-41 part 2, hence machinery not a ruling): make the guard load the cited decision's own authorised_covers and require the entry's covers to be a SUBSET of it, FAILING CLOSED when the cited decision has no authorised_covers at all. That converts the manual A1 check into a detector and makes part 8 self-discharging. ROUTED TO ADHIKARIN, NOT DISPATCHED — it changes the authority mechanism itself and 'unsure whether authority is granted -> it is not'. Capacity is available the moment ADHIKARIN says go.",
+      "owner": "ADHIKARIN",
+      "state": "asked_urgent"
+    },
+    {
+      "id": "MY-OVERSTATED-AUTHORITY-CLAIM",
+      "what": "CORRECTION AGAINST MY OWN REPORTING, prompted by F-G. At 13:45Z I reported the disclosure fixture to the NATIVE as proving 'the authority is checked — an authorised_by naming a nonexistent decision, OR a real decision line written by a non-ADHIKARIN agent, has NO EFFECT. A KARAKA cannot disclose its own way past a gate.' Every clause is TRUE and the framing was STRONGER THAN THE CHECK. It stops an agent INVENTING an authority; it does not stop one CITING THE WRONG REAL ONE — and the wrong-real-citation is the LIKELIER error, because it requires no bad intent at all, only a copy-paste. I presented a shallow check as a deep one. Recorded rather than left to stand, and stated to both ADHIKARIN and PARIKSAKA in the same pass.",
+      "owner": "SUTRADHARA",
+      "state": "self_corrected"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T14:56:45Z",
+  "last_updated_ts": "2026-08-23T15:01:26Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
