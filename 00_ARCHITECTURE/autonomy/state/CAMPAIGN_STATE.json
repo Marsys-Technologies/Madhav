@@ -16,7 +16,19 @@
       "layer": "L0",
       "domain": "shared",
       "assets": 40,
-      "status": "not_open"
+      "status": "not_open",
+      "stage2_carry_forward": {
+        "source": "KARAKA M0-T15 (found while replacing the asset_registry_seed.ts entrypoint guard)",
+        "finding": "bg_cohort carries expected_volume_formula='COHORT_SIZE', an identifier absent from the seeder's DEFAULTS (introduced PR #887, 2026-07-29). asset_registry_seed.ts's main() aborts inside validateFormulas() on it, BEFORE constructing a pg.Client — so the seeder cannot complete a run today at all. Not touched: bg_cohort is L0 and R0 is not open (I13). NOTE THE INTERACTION: while this bug stands the seeder is inert; the moment anyone fixes it the seeder becomes runnable, and the separately-reported phantom DRY_RUN=1 (see open_threads) turns from an inert documented lie into an actively dangerous operator instruction. These two defects are only safe in combination, and only by accident.",
+        "assets": [
+          {
+            "asset": "bg_cohort",
+            "field": "expected_volume_formula",
+            "value": "COHORT_SIZE",
+            "introduced_by": "PR #887 2026-07-29"
+          }
+        ]
+      }
     },
     "R1": {
       "layer": "L1",
@@ -203,20 +215,32 @@
       "state": "running"
     },
     {
-      "id": "M0-T15",
-      "what": "asset_registry_seed.ts guard",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "FLEET-POKE-DEFECT",
       "what": "PARIKSAKA was NOT stalled — it was idle with an unsubmitted poke sitting in its compose box. tmux send-keys without a submit key writes to the box and stops, so PRAHARI's pokes never landed and the resulting silence read as a worsening stall: the detector manufactured the condition it detected. Same class as the launcher kick-prompt bug fixed earlier; that fix never covered the poke path. Recovered by C-u + retype + separate Enter — a bare C-m on the stranded text did NOT work. Root cause sent to PRAHARI and ADHIKARIN",
       "owner": "PRAHARI",
       "state": "reported"
+    },
+    {
+      "id": "M0-T15",
+      "what": "COMPLETE 7dd559678 — seed guard replaced, mutation-proved, and its observable is EARLIER in the code path and database-independent (Validating formulas... rather than a connect attempt), so it proves more than M0-T11's test could",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T14",
+      "what": "disclose the 588 collision via the guard's own disclosed_additions route (D-10 part 3), with the requirement to PROVE the detector stays armed for other numbers, not assert it",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "PHANTOM-DRYRUN",
+      "what": "DRY_RUN=1 is documented for asset_registry_seed.ts in two archived L0/cockpit briefs and is NOT IMPLEMENTED. An operator following the documentation performs a full live upsert against asset_registry in production. §N.8 inverted: a SAFETY MECHANISM with no implementation, failing in the direction that does damage, and harming the careful operator rather than the careless one. Two defensible repairs (implement it / strike the claim) so the choice is a scope decision, not a KARAKA's. Escalated, not dispatched",
+      "owner": "ADHIKARIN",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T04:39:53Z",
+  "last_updated_ts": "2026-08-23T04:43:17Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
