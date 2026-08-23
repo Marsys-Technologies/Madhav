@@ -974,10 +974,22 @@
       "what": "OBSERVATION (not a verdict -- I16, PARIKSAKA to confirm). D-39 part 1's amended flip condition requires the disclosure mechanism be DEMONSTRABLY IN EFFECT, PROVEN BY A FIXTURE SHOWING BOTH DIRECTIONS. That fixture exists and passes: check_asset_catalogue_contract.py --self-test's rule-disclosure probe shows (a) no disclosure => both BLOCKING rules gate; (b) authorised+itemised+fully covering => C-01 still status:fail with violation_count 1, effective_severity DISCLOSED_NON_GATING, NOT gating, while C-05 STILL GATES; (c) a violation outside `covers` => gates again at BLOCKING; (d) authorised_by naming a nonexistent decision OR a real decision line written by a non-ADHIKARIN agent => NO EFFECT; (e) non_gating with no `covers` => GuardError. I VERIFIED IT IS THE PRODUCTION PATH, not a lookalike: the probe calls run_rules()/summarise() and reads blocking_failures from the real summary, swapping only the disclosure document. CONSEQUENCE: flip-checklist item 10's headline ('THIS IS THE STEP THAT ACTUALLY STOPS THE FLIP, AND IT IS MECHANICAL') is now false -- the mechanical half is done and what remains is AUTHORISATION ONLY, ADHIKARIN's alone, for the 8 BLOCKING deferred rules (C-01,C-02,C-03,C-08,C-20,C-21,C-25,C-26). T46's suspicion that D-39 ruled on stale evidence was CORRECT. V-29's F-V29-2 is right about today's state but answers a different question than D-39 part 1 asks: 16 entries reading gating_effect:none is not the mechanism being inert, it is the mechanism correctly reporting that nobody has authorised a demotion yet. NO KARAKA DISPATCHED -- there is nothing to build, and drafting disclosure entries for ADHIKARIN's signature would be an agent manufacturing its own authority, which the guard is built to refuse.",
       "owner": "ADHIKARIN",
       "state": "reported_awaiting_ruling"
+    },
+    {
+      "id": "FLIP-CHECKLIST-ITEM-11-AUDITED",
+      "what": "Applied verify_before_dispatch to flip-checklist item 11 ('execute the repairs that are already authorised') before dispatching any of its three parts. RESULT: 11(c) IS ALREADY DONE -- D-19 part 2 / D-27 part 2a's target_floor seed change landed at M0-T41 under D-35 §1; platform/scripts/seed/asset_registry_seed.ts now documents at lines 3347/3379/3425 that target_floor is absent from BOTH `DO UPDATE SET` AND the INSERT column list, with D-35 §1 cited in the comment. 11(b) IS DISCHARGED -- D-38 adjudicated the 3 C-11 dispositions (0.8b REMAIN DRAFT) and all 23 zero-consumer packets, criterion 9 moved FAIL(23)->PASS(0) at T46 and V-29 certified the move as earned. 11(a) REMAINS, and is BLOCKED not idle: the telemetry repair T-1..T-5 is a production write under D-6, and M0-T3 flagged 2 of D-6's own conditions as not clean passes -- that escalation (T3-ESCALATION) is still open with ADHIKARIN. So no part of item 11 is dispatchable. THIRD instance in one session of a queued item already being complete.",
+      "owner": "SUTRADHARA",
+      "state": "audited_nothing_dispatchable"
+    },
+    {
+      "id": "CAMPAIGN-IS-ADHIKARIN-BOUND",
+      "what": "CONDUCTOR ASSESSMENT, measured not asserted: 22 open threads await ADHIKARIN (asked/raised/awaiting_ruling), and after auditing the M0 flip checklist end to end, EVERY remaining M0 execution path routes through one of them. Item 4/5 -> ruled, executed at T47, apply gated on ADHIKARIN. Item 7 -> ruled (D-38), discharged. Item 10 -> mechanical half PROVEN DONE, authorisation half is ADHIKARIN's alone and the guard refuses any non-ADHIKARIN authorised_by by fixture. Item 11 -> (b),(c) already done, (a) blocked on T3-ESCALATION. Item 12 -> needs main (item 8, H2 reach) plus ADHIKARIN's own hand on the continue-on-error lines (G9, explicitly not a KARAKA's). Items 1,2,3,6,8,9 -> pure rulings. CONSEQUENCE: KARAKA capacity is 0/4 used and that is CORRECT, not a stall. Dispatching work to look busy would mean either duplicating finished work (three near-misses today) or an agent manufacturing authority it does not have. The campaign is decision-bound, not work-bound, and the honest conductor action is to say so rather than generate motion.",
+      "owner": "SUTRADHARA",
+      "state": "assessed"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T13:18:49Z",
+  "last_updated_ts": "2026-08-23T13:19:55Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
