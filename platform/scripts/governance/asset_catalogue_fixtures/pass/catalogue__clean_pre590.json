@@ -1,0 +1,409 @@
+{
+ "_README": "Fixture for check_asset_catalogue_contract.py. Hand-authored, not generated from the guard's own output: the _expect block states what the rule set MUST say about this snapshot, so a partial regression (five of six rules still firing) fails instead of passing quietly. CLEAN registry as it would look BEFORE migration 590: the four contract columns domain/rung/superseded_by/data_disposition are absent, so C-08/C-09/C-10/C-18/C-19 must report not_checkable — NOT pass. That distinction is the whole point of the fixture.",
+ "_meta": {
+  "fixture": "clean_pre590",
+  "authored_by": "KĀRAKA M0-T9",
+  "authored_at": "2026-08-23"
+ },
+ "registry_columns": [
+  "asset_id",
+  "layer",
+  "sort_order",
+  "sanskrit_name",
+  "english_name",
+  "english_description",
+  "storage_type",
+  "target_table",
+  "count_sql",
+  "size_sql",
+  "target_floor",
+  "expected_volume_formula",
+  "expected_volume_inputs",
+  "volume_explanation",
+  "depends_on",
+  "scope",
+  "is_active",
+  "estimated_seconds",
+  "created_at",
+  "clear_tables",
+  "asset_type",
+  "layer_name",
+  "layer_index",
+  "provides_apis",
+  "health_probe",
+  "catalog_status",
+  "rebuild_on_probe_fail",
+  "integrity_check_sql",
+  "has_substeps",
+  "asset_kind",
+  "service_health",
+  "last_invoked_at",
+  "last_selftest_at",
+  "selftest_detail",
+  "has_writer",
+  "writer_timeout_seconds"
+ ],
+ "public_tables": [
+  "t_bg_alpha",
+  "t_bg_beta",
+  "t_ga_gamma",
+  "t_bo_delta"
+ ],
+ "assets": [
+  {
+   "asset_id": "bg_alpha",
+   "layer": "brahmagyan",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_bg_alpha",
+   "count_sql": "SELECT count(*) FROM t_bg_alpha",
+   "size_sql": null,
+   "target_floor": 10,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [],
+   "scope": "global",
+   "is_active": true,
+   "estimated_seconds": 5,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Brahmagyan",
+   "layer_index": "L0",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "bg_beta",
+   "layer": "brahmagyan",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_bg_beta",
+   "count_sql": "SELECT count(*) FROM t_bg_beta",
+   "size_sql": null,
+   "target_floor": 4,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [
+    "bg_alpha"
+   ],
+   "scope": "global",
+   "is_active": true,
+   "estimated_seconds": 6,
+   "created_at": null,
+   "clear_tables": [
+    "t_bg_beta"
+   ],
+   "asset_type": "data",
+   "layer_name": "Brahmagyan",
+   "layer_index": "L0",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": true,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "ga_gamma",
+   "layer": "ganita",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_ga_gamma",
+   "count_sql": "SELECT count(*) FROM t_ga_gamma WHERE chart_id = $1",
+   "size_sql": null,
+   "target_floor": 0,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": "Zero by design: this chart has no applicable rows.",
+   "depends_on": [
+    "bg_alpha"
+   ],
+   "scope": "per_chart",
+   "is_active": true,
+   "estimated_seconds": 3,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Gaṇita",
+   "layer_index": "L1",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "bo_delta",
+   "layer": "bodha",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_bo_delta",
+   "count_sql": "SELECT count(*) FROM t_bo_delta WHERE chart_id = $1",
+   "size_sql": null,
+   "target_floor": 7,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [
+    "ga_gamma"
+   ],
+   "scope": "per_chart",
+   "is_active": true,
+   "estimated_seconds": 2,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Bodha",
+   "layer_index": "L2",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "artifact",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "ka_svc",
+   "layer": "kala",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "service",
+   "target_table": null,
+   "count_sql": null,
+   "size_sql": null,
+   "target_floor": null,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [],
+   "scope": "global",
+   "is_active": true,
+   "estimated_seconds": null,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "service",
+   "layer_name": "Kāla",
+   "layer_index": "L3",
+   "provides_apis": [
+    "ka_now_get"
+   ],
+   "health_probe": {
+    "kind": "http",
+    "path": "/healthz"
+   },
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "service",
+   "service_health": "healthy",
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  }
+ ],
+ "throughput": [
+  {
+   "asset_id": "bg_alpha",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "bg_beta",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "ga_gamma",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "bo_delta",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "ka_svc",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  }
+ ],
+ "writer_substep_truth": {
+  "bg_alpha": false,
+  "bg_beta": true,
+  "ga_gamma": false,
+  "bo_delta": false,
+  "ka_svc": false
+ },
+ "zero_consumer_packets": {},
+ "frozen_rungs": [],
+ "_expect": {
+  "C-01": {
+   "status": "pass"
+  },
+  "C-02": {
+   "status": "pass"
+  },
+  "C-03": {
+   "status": "pass"
+  },
+  "C-04": {
+   "status": "pass"
+  },
+  "C-05": {
+   "status": "pass"
+  },
+  "C-06": {
+   "status": "pass"
+  },
+  "C-07": {
+   "status": "pass"
+  },
+  "C-08": {
+   "status": "not_checkable"
+  },
+  "C-09": {
+   "status": "not_checkable"
+  },
+  "C-10": {
+   "status": "not_checkable"
+  },
+  "C-11": {
+   "status": "pass"
+  },
+  "C-12": {
+   "status": "pass"
+  },
+  "C-13": {
+   "status": "pass"
+  },
+  "C-14": {
+   "status": "pass"
+  },
+  "C-15": {
+   "status": "pass"
+  },
+  "C-16": {
+   "status": "pass"
+  },
+  "C-17": {
+   "status": "pass"
+  },
+  "C-18": {
+   "status": "not_checkable"
+  },
+  "C-19": {
+   "status": "not_checkable"
+  },
+  "C-20": {
+   "status": "pass"
+  },
+  "C-21": {
+   "status": "pass"
+  },
+  "C-22": {
+   "status": "not_checkable"
+  },
+  "C-23": {
+   "status": "pass"
+  },
+  "C-24": {
+   "status": "pass"
+  },
+  "C-25": {
+   "status": "not_checkable"
+  },
+  "C-26": {
+   "status": "not_checkable"
+  },
+  "C-27": {
+   "status": "not_checkable"
+  },
+  "C-28": {
+   "status": "pass"
+  },
+  "X-01": {
+   "status": "pass"
+  },
+  "X-02": {
+   "status": "pass"
+  },
+  "X-03": {
+   "status": "pass"
+  },
+  "X-04": {
+   "status": "pass"
+  },
+  "X-05": {
+   "status": "pass"
+  }
+ }
+}

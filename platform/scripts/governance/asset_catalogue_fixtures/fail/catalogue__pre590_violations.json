@@ -1,0 +1,941 @@
+{
+ "_README": "Fixture for check_asset_catalogue_contract.py. Hand-authored, not generated from the guard's own output: the _expect block states what the rule set MUST say about this snapshot, so a partial regression (five of six rules still firing) fails instead of passing quietly. EVERY expectation below was written BEFORE the guard was run against this file. THIS FIXTURE EXISTS TO MAKE RULES FAIL. Registry as it would look BEFORE migration 590. Every C-* rule that has a detector and a live input fires here at a declared count; C-08/C-09/C-10/C-18/C-19 report not_checkable because their columns are absent; C-22/C-25/C-26/C-27 report not_checkable for the reasons the contract itself gives. X-02 carries TWO violations on purpose — one undisclosed (`bg_dead`) and one disclosed (`ka_gochara_sweep`) — to prove that a disclosure attaches to the row and lowers the severity WITHOUT turning the rule green (ADHIKĀRIN D-12 part 4: never silently green). FIXTURE-AUTHORING NOTE, recorded rather than quietly fixed: the first draft of this file reused target_table 't_ok' across five assets, which created a SECOND, unintended multi-producer collision. The hand-declared X-01 expectation (1) therefore disagreed with the guard (2). Investigation showed the FIXTURE was wrong and the guard was right — X-01 had correctly found a collision the author had not meant to create. The four incidental assets were given distinct tables so X-01 fires only on the one collision this fixture intends (t_shared_undeclared).",
+ "_meta": {
+  "fixture": "pre590_violations",
+  "authored_by": "KĀRAKA M0-T9",
+  "authored_at": "2026-08-23"
+ },
+ "registry_columns": [
+  "asset_id",
+  "layer",
+  "sort_order",
+  "sanskrit_name",
+  "english_name",
+  "english_description",
+  "storage_type",
+  "target_table",
+  "count_sql",
+  "size_sql",
+  "target_floor",
+  "expected_volume_formula",
+  "expected_volume_inputs",
+  "volume_explanation",
+  "depends_on",
+  "scope",
+  "is_active",
+  "estimated_seconds",
+  "created_at",
+  "clear_tables",
+  "asset_type",
+  "layer_name",
+  "layer_index",
+  "provides_apis",
+  "health_probe",
+  "catalog_status",
+  "rebuild_on_probe_fail",
+  "integrity_check_sql",
+  "has_substeps",
+  "asset_kind",
+  "service_health",
+  "last_invoked_at",
+  "last_selftest_at",
+  "selftest_detail",
+  "has_writer",
+  "writer_timeout_seconds"
+ ],
+ "public_tables": [
+  "t_a",
+  "t_b",
+  "t_mi1",
+  "t_mi2",
+  "t_ok",
+  "t_ok2",
+  "t_ok3",
+  "t_ok4",
+  "t_ok5",
+  "t_ok6",
+  "t_ph",
+  "t_shared_undeclared",
+  "t_svc"
+ ],
+ "assets": [
+  {
+   "asset_id": "xx_bad",
+   "layer": "mimamsa",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": null,
+   "count_sql": null,
+   "size_sql": null,
+   "target_floor": null,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [],
+   "scope": "global",
+   "is_active": true,
+   "estimated_seconds": null,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": null,
+   "layer_index": null,
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "bg_wrong",
+   "layer": "ganita",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_missing",
+   "count_sql": "SELECT count(*) FROM t_missing",
+   "size_sql": null,
+   "target_floor": 5,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [],
+   "scope": "global",
+   "is_active": true,
+   "estimated_seconds": null,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Ganita",
+   "layer_index": "1",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "ga_nodollar",
+   "layer": "ganita",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_ok",
+   "count_sql": "SELECT count(*) FROM t_ok",
+   "size_sql": null,
+   "target_floor": 0,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [],
+   "scope": "per_chart",
+   "is_active": true,
+   "estimated_seconds": 4,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Gaṇita",
+   "layer_index": "L3",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "bo_draftdep",
+   "layer": "bodha",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_shared_undeclared",
+   "count_sql": "SELECT count(*) FROM t_shared_undeclared WHERE chart_id = $1",
+   "size_sql": null,
+   "target_floor": 3,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [
+    "bo_isdraft",
+    "bo_ghost"
+   ],
+   "scope": "per_chart",
+   "is_active": true,
+   "estimated_seconds": 1,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Bodha",
+   "layer_index": "L2",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "bo_isdraft",
+   "layer": "bodha",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_shared_undeclared",
+   "count_sql": "SELECT count(*) FROM t_shared_undeclared WHERE chart_id = $1",
+   "size_sql": null,
+   "target_floor": 2,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [],
+   "scope": "per_chart",
+   "is_active": true,
+   "estimated_seconds": 1,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Bodha",
+   "layer_index": "L2",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "DRAFT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "ka_cycle_a",
+   "layer": "kala",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_a",
+   "count_sql": "SELECT count(*) FROM t_a WHERE chart_id = $1",
+   "size_sql": null,
+   "target_floor": 1,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [
+    "ka_cycle_b"
+   ],
+   "scope": "per_chart",
+   "is_active": true,
+   "estimated_seconds": 1,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Kāla",
+   "layer_index": "L3",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "DRAFT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "ka_cycle_b",
+   "layer": "kala",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_b",
+   "count_sql": "SELECT count(*) FROM t_b WHERE chart_id = $1",
+   "size_sql": null,
+   "target_floor": 1,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [
+    "ka_cycle_a"
+   ],
+   "scope": "per_chart",
+   "is_active": true,
+   "estimated_seconds": 1,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Kāla",
+   "layer_index": "L3",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "DRAFT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "ka_self",
+   "layer": "kala",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_ok6",
+   "count_sql": "SELECT count(*) FROM t_ok6 WHERE chart_id = $1",
+   "size_sql": null,
+   "target_floor": 1,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [
+    "ka_self"
+   ],
+   "scope": "per_chart",
+   "is_active": true,
+   "estimated_seconds": 1,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Kāla",
+   "layer_index": "L3",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "DRAFT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "ka_svc_bad",
+   "layer": "kala",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "service",
+   "target_table": "t_svc",
+   "count_sql": null,
+   "size_sql": null,
+   "target_floor": 9,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [],
+   "scope": "global",
+   "is_active": true,
+   "estimated_seconds": null,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Kāla",
+   "layer_index": "L3",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "service",
+   "service_health": "healthy",
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "ph_health",
+   "layer": "phala",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_ph",
+   "count_sql": "SELECT count(*) FROM t_ph WHERE chart_id = $1",
+   "size_sql": null,
+   "target_floor": 4,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [],
+   "scope": "per_chart",
+   "is_active": true,
+   "estimated_seconds": 2,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Phala",
+   "layer_index": "L4",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": "unknown",
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "mi_substep_fn",
+   "layer": "mimamsa",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_mi1",
+   "count_sql": "SELECT count(*) FROM t_mi1 WHERE chart_id = $1",
+   "size_sql": null,
+   "target_floor": 1,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [],
+   "scope": "per_chart",
+   "is_active": true,
+   "estimated_seconds": 1,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Mīmāṃsā",
+   "layer_index": "L5",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "mi_substep_fp",
+   "layer": "mimamsa",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_mi2",
+   "count_sql": "SELECT count(*) FROM t_mi2 WHERE chart_id = $1",
+   "size_sql": null,
+   "target_floor": 1,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [],
+   "scope": "per_chart",
+   "is_active": true,
+   "estimated_seconds": 1,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Mīmāṃsā",
+   "layer_index": "L5",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": true,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "bg_clear",
+   "layer": "brahmagyan",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_ok2",
+   "count_sql": "SELECT count(*) FROM t_ok2",
+   "size_sql": null,
+   "target_floor": 1,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [],
+   "scope": "global",
+   "is_active": true,
+   "estimated_seconds": 1,
+   "created_at": null,
+   "clear_tables": [
+    "t_gone"
+   ],
+   "asset_type": "data",
+   "layer_name": "Brahmagyan",
+   "layer_index": "L0",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "bg_shared_bad",
+   "layer": "brahmagyan",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_ok3",
+   "count_sql": "SELECT count(*) FROM t_ok3",
+   "size_sql": null,
+   "target_floor": 1,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [
+    "ga_nodollar"
+   ],
+   "scope": "global",
+   "is_active": true,
+   "estimated_seconds": 1,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Brahmagyan",
+   "layer_index": "L0",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "bg_dead",
+   "layer": "brahmagyan",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_ok4",
+   "count_sql": "SELECT count(*) FROM t_ok4",
+   "size_sql": null,
+   "target_floor": 1,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [],
+   "scope": "global",
+   "is_active": false,
+   "estimated_seconds": 1,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Brahmagyan",
+   "layer_index": "L0",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600
+  },
+  {
+   "asset_id": "ka_gochara_sweep",
+   "layer": "kala",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_ok5",
+   "count_sql": "SELECT count(*) FROM t_ok5 WHERE chart_id = $1",
+   "size_sql": null,
+   "target_floor": null,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [],
+   "scope": "per_chart",
+   "is_active": false,
+   "estimated_seconds": null,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Kāla",
+   "layer_index": "L3",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "RETIRED",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": false,
+   "writer_timeout_seconds": 600
+  }
+ ],
+ "throughput": [
+  {
+   "asset_id": "bg_clear",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "bg_dead",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "bg_shared_bad",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "bg_wrong",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "bo_draftdep",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "bo_isdraft",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "ga_nodollar",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "ka_cycle_a",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "ka_cycle_b",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "ka_self",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "ka_svc_bad",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "mi_substep_fn",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "mi_substep_fp",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "ph_health",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "ka_gochara_sweep",
+   "throughput_rows": 3,
+   "states": [
+    "error"
+   ],
+   "rows_written_total": 10
+  }
+ ],
+ "writer_substep_truth": {
+  "mi_substep_fn": true,
+  "mi_substep_fp": false,
+  "bg_clear": false
+ },
+ "zero_consumer_packets": {
+  "bg_orphan_one": true,
+  "bg_orphan_two": true
+ },
+ "frozen_rungs": [],
+ "_expect": {
+  "C-01": {
+   "status": "fail",
+   "violation_count": 2
+  },
+  "C-02": {
+   "status": "fail",
+   "violation_count": 3
+  },
+  "C-03": {
+   "status": "fail",
+   "violation_count": 2
+  },
+  "C-04": {
+   "status": "fail",
+   "violation_count": 2
+  },
+  "C-05": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "C-06": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "C-07": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "C-08": {
+   "status": "not_checkable"
+  },
+  "C-09": {
+   "status": "not_checkable"
+  },
+  "C-10": {
+   "status": "not_checkable"
+  },
+  "C-11": {
+   "status": "fail",
+   "violation_count": 2
+  },
+  "C-12": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "C-13": {
+   "status": "fail",
+   "violation_count": 2
+  },
+  "C-14": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "C-15": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "C-16": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "C-17": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "C-18": {
+   "status": "not_checkable"
+  },
+  "C-19": {
+   "status": "not_checkable"
+  },
+  "C-20": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "C-21": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "C-22": {
+   "status": "not_checkable"
+  },
+  "C-23": {
+   "status": "fail",
+   "violation_count": 2
+  },
+  "C-24": {
+   "status": "fail",
+   "violation_count": 2
+  },
+  "C-25": {
+   "status": "not_checkable"
+  },
+  "C-26": {
+   "status": "not_checkable"
+  },
+  "C-27": {
+   "status": "not_checkable"
+  },
+  "C-28": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "X-01": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "X-02": {
+   "status": "fail",
+   "violation_count": 2
+  },
+  "X-03": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "X-04": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "X-05": {
+   "status": "fail",
+   "violation_count": 2
+  }
+ }
+}

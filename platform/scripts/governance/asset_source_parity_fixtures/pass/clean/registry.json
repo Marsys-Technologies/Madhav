@@ -1,0 +1,16 @@
+{
+ "_meta": {
+  "fixture": "parity_clean"
+ },
+ "registry_columns": [
+  "asset_id"
+ ],
+ "assets": [
+  {
+   "asset_id": "bg_one"
+  },
+  {
+   "asset_id": "bg_two"
+  }
+ ]
+}

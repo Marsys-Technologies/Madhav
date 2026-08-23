@@ -1,0 +1,49 @@
+{
+  "_README": "DECLARED CO-WRITER GROUPS for check_asset_catalogue_contract.py rule X-01. The contract's de-duplication invariant (ASSET_CATALOGUE_CONTRACT_v1_0.md §4.9) is one authoritative producer per (target_table × generation × natural-key partition) — NOT one per table. Several tables legitimately carry more than one writer. This file records those groups, measured from the live registry on the dated baseline below, so that X-01 can distinguish a DECLARED co-writer set from an UNDECLARED collision. WHAT A GROUP HERE DOES *NOT* ASSERT: that the co-writers' natural-key partitions are disjoint. Nothing in the schema records a partition today, so that assertion has no detector and stays contract rule C-25, permanently `not_checkable` until a column exists (§10.3). Listing a table here means 'these producers are known and expected', never 'these producers are correct'. X-01 fails on (a) any multi-producer table absent from this file and (b) any NEW producer appearing in a table that IS here — the group is frozen at its measured membership, the same discipline as migration_number_legacy_duplicates.json: the backlog can be paid down, never silently grown.",
+  "measured_at": "2026-08-23",
+  "measured_from": "live public.asset_registry, READ-ONLY (M0-T1 census finding `target_table_collisions`; 00_ARCHITECTURE/control/census.json)",
+  "authored_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T9)",
+  "certified_by": null,
+  "declared_cowriter_tables": {
+    "bodha_msr_signals": {
+      "producers": ["bo_arudha", "bo_laksana", "bo_laksana_rerank", "bo_nakshatra_semantic", "bo_special_lagna", "bo_sudarshana", "bo_vargottama_dhana"],
+      "producer_count": 7,
+      "layer": "bodha",
+      "source": "ASSET_CATALOGUE_CONTRACT_v1_0.md §4.9 (v3.0 §3.3); census target_table_collisions",
+      "partition_declared": false,
+      "partition_note": "No partition column exists. C-25 remains not_checkable for every producer in this group."
+    },
+    "chart_facts": {
+      "producers": ["ga_ayurdaya", "ga_nakshatra", "ga_panchanga", "ga_positions", "ga_sensitive_degree"],
+      "producer_count": 5,
+      "layer": "ganita",
+      "source": "ASSET_CATALOGUE_CONTRACT_v1_0.md §4.9; census target_table_collisions",
+      "partition_declared": false,
+      "partition_note": "No partition column exists. C-25 remains not_checkable for every producer in this group."
+    },
+    "brahma_class_priors": {
+      "producers": ["bg_class_lifetime_counts", "bg_class_priors"],
+      "producer_count": 2,
+      "layer": "brahmagyan",
+      "source": "ASSET_CATALOGUE_CONTRACT_v1_0.md §4.9; census target_table_collisions",
+      "partition_declared": false,
+      "partition_note": "No partition column exists. C-25 remains not_checkable for every producer in this group."
+    },
+    "classical_text_chunks": {
+      "producers": ["bg_text_index", "bg_texts"],
+      "producer_count": 2,
+      "layer": "brahmagyan",
+      "source": "ASSET_CATALOGUE_CONTRACT_v1_0.md §4.9; census target_table_collisions",
+      "partition_declared": false,
+      "partition_note": "No partition column exists. C-25 remains not_checkable for every producer in this group."
+    },
+    "kala_gochara_windows": {
+      "producers": ["ka_gochara", "ka_gochara_sweep"],
+      "producer_count": 2,
+      "layer": "kala",
+      "source": "census target_table_collisions. NOTE: `ka_gochara_sweep` is is_active=false / RETIRED, so under X-01's active-producer filter this table currently presents ONE active producer, not two, and would not be reported as a collision even if it were absent from this file. It is declared anyway so that an un-retirement of the sweep writer does not read as a brand-new undeclared collision. This is also the generation-bearing table of contract §4.11 / rule C-26 — which likewise has no column and stays not_checkable.",
+      "partition_declared": false,
+      "partition_note": "No partition column exists. C-25 and C-26 both remain not_checkable for this table."
+    }
+  }
+}

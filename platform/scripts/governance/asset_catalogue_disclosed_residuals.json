@@ -1,0 +1,20 @@
+{
+  "_README": "DISCLOSED RESIDUALS for check_asset_catalogue_contract.py. Two blocks, two different jobs. (1) `disclosed_additions` — itemized, dated, attributed disclosures for rule X-02 (asset_throughput rows on inactive/RETIRED assets), following the route migration_number_legacy_duplicates.json's `disclosed_additions` established (Dvārapāla RULING 70): one entry per item, every required field present, and the guard ERRORS on an incomplete entry rather than accepting it. CRITICAL DIFFERENCE FROM THAT PRECEDENT, and it is deliberate: a disclosure here does NOT turn X-02 green. ADHIKĀRIN ruling D-12 part 4 states that M0 'CLOSES WITH THIS CRITERION EXPLICITLY UNMET AND RECORDED AS DEFERRED-TO-R3 — never silently green'. So the disclosed rows are still reported by X-02 as violations, with their disclosure attached; what the disclosure buys is that X-02 carries severity RESIDUAL and therefore does not gate. Making it gate would force a later agent to touch charter-P1 asset `ka_gochara_sweep` to get CI green — which is how a gate becomes a reason to break a prohibition (charter H3's inverse failure mode). (2) `zero_consumer_dispositions` — rule X-05's resolution register for the 23 zero-consumer evidence packets (00_ARCHITECTURE/control/ZERO_CONSUMER_EVIDENCE_v1_0.md, M0-T7). A packet is resolved ONLY by an entry here carrying a `decision_ref` into state/DECISIONS.jsonl, because catalogue disposition is charter power G1 — ADHIKĀRIN's alone. No KĀRAKA, and no author of this file, may resolve a packet by writing a justification into it. The block is EMPTY at authoring because no such ruling had been made; X-05 therefore reports 23 unresolved findings, which is the true state, not a guard defect.",
+  "authored_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T9)",
+  "authored_at": "2026-08-23",
+  "certified_by": null,
+  "disclosed_additions_count": 1,
+  "disclosed_additions": {
+    "ka_gochara_sweep": {
+      "rule": "X-02",
+      "owner": "R3 (Kāla rung) — NOT M0",
+      "landed_at": "2026-08-12T16:30:19Z",
+      "disclosed_via": "00_ARCHITECTURE/autonomy/state/DECISIONS.jsonl D-12 part 4 (ADHIKĀRIN, 2026-08-23T04:46:23Z)",
+      "deferred_to": "R3",
+      "reason": "3 asset_throughput rows (all state='error', 4389 rows_written total, last built 2026-08-12) on a RETIRED, is_active=false asset. NIRMANA_ELEVATION_PLAN_v4_0.md §14.2 assigns these exact rows to R3 by name ('the zombie throughput rows behind its standing no-writer-registered red, and its data_disposition, are still outstanding'). D-12 verified that neither available repair is legitimate: the @register is genuinely removed (writers/ka_gochara_sweep.py:23-40) so there is no writer to re-dispatch and no substep plan to be complete about, and the M3 integrity-gate engine that could earn a state does not exist yet — so writing a died/failed state would fabricate a failure that did not happen (H6) and writing 'lit' would assert a promotion verdict from a completed-run proxy (H4, CLAUDE.md §N.8 instance 4). The asset is also charter P1's named unrecoverable asset (38,287 v1 gochara rows recoverable only from the 2026-08-23 snapshot). Leave the rows exactly as they are; state='error' is at least not a false green.",
+      "measured": {"throughput_rows": 3, "states": ["error"], "rows_written_total": 4389, "catalog_status": "RETIRED", "is_active": false},
+      "does_not_turn_the_rule_green": true
+    }
+  },
+  "zero_consumer_dispositions": {}
+}

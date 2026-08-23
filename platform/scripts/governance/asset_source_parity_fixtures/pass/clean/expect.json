@@ -1,0 +1,18 @@
+{
+ "_README": "Hand-declared BEFORE the guard was run. Clean case: all six rules pass and, critically, decorators_production is 2 \u2014 proving the module-constant @register(ASSET_ID) form in w_const.py IS resolved. A parser that dropped it would report 1 here and the fixture would fail.",
+ "counts": {
+  "registry": 2,
+  "decorators_production": 2,
+  "seed": 2,
+  "unresolved_register_args": 0
+ },
+ "unresolved_register_args": 0,
+ "rules": {
+  "P-01": "pass",
+  "P-02": "pass",
+  "P-03": "pass",
+  "P-04": "pass",
+  "P-05": "pass",
+  "P-06": "pass"
+ }
+}

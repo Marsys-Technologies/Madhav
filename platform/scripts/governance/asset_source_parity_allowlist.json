@@ -1,0 +1,16 @@
+{
+  "_README": "Disclosed divergences for check_asset_source_parity.py. One entry per asset_id; every entry must carry `class`, `owner`, `reason`, `disclosed_via` and `dated`, and the guard raises a GUARD ERROR (exit 3) on an entry missing any of them — an incomplete disclosure is not a disclosure, the discipline migration_number_guard.ts's `disclosed_additions` established (error E4). `class` must equal the violation class the entry excuses, so an entry can never excuse a different finding than the one it was written for. This file records divergences that are KNOWN and OWNED; it is not a place to silence a new one.",
+  "authored_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T9)",
+  "authored_at": "2026-08-23",
+  "certified_by": null,
+  "measured_from": "00_ARCHITECTURE/control/census.json findings.three_way_diff (M0-T1) re-measured live 2026-08-23",
+  "disclosed_divergences": {
+    "bg_gochara_citation_resolution": {
+      "class": "registry_only",
+      "owner": "R0 (Brahmagyan rung) — NOT M0",
+      "reason": "CURRENT, is_active, has_writer=false, present in NEITHER the writer tree NOR the seed, never built. ASSET_CATALOGUE_CONTRACT_v1_0.md §7 records it as a provision / demote / retire decision, which is charter power G1 (ADHIKĀRIN) and belongs to the rung that owns L0 — not to a CI guard and not to M0. It is disclosed here so that P-03 does not gate on a decision nobody is authorised to make yet; it is STILL reported by rule X-03 of check_asset_catalogue_contract.py (active asset with no build coverage), so it does not disappear from the campaign's view.",
+      "disclosed_via": "ASSET_CATALOGUE_CONTRACT_v1_0.md §7; 00_ARCHITECTURE/control/census.json findings.registered_but_dead",
+      "dated": "2026-08-23"
+    }
+  }
+}

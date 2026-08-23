@@ -1,0 +1,37 @@
+{
+ "_README": "Hand-declared BEFORE the guard was run. THIS CASE EXISTS TO MAKE EVERY RULE FAIL \u2014 one violation each, so a partial regression (five of six still firing) fails the self-test instead of passing quietly. w_ok.py and writers/tests/test_fixture_ids.py are controls that must NOT fire: a detector that reports everything as broken is as useless as one that reports nothing.",
+ "counts": {
+  "registry": 4,
+  "decorators_production": 4,
+  "decorators_test_only": 1,
+  "seed": 4,
+  "unresolved_register_args": 1
+ },
+ "unresolved_register_args": 1,
+ "rules": {
+  "P-01": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "P-02": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "P-03": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "P-04": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "P-05": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "P-06": {
+   "status": "fail",
+   "violation_count": 1
+  }
+ }
+}

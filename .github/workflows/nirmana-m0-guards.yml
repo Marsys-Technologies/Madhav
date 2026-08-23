@@ -1,0 +1,110 @@
+name: Nirmāṇa M0 Catalogue Guards (NON-BLOCKING)
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T9.
+#
+# Registers the two M0 catalogue guards in CI **non-blocking**, deliberately and on
+# instruction. Flipping them to blocking is ADHIKĀRIN's call (charter G9) and that call
+# HAS NOT BEEN MADE. Several conformance criteria are legitimately non-zero right now —
+# 21 `layer_index` metadata gaps, 20 `layer_name` gaps, 3 CURRENT→DRAFT edges, 12
+# `has_substeps` disagreements, 23 unresolved zero-consumer findings — and every one of
+# them is scheduled repair work that M0 has not yet been authorised to perform. Making
+# these jobs required today would red the branch for defects nobody is allowed to fix,
+# which is how a gate stops being a signal and becomes an obstacle to route around.
+#
+# NON-BLOCKING IS ACHIEVED BY `continue-on-error: true` ON THE JOBS — NOT BY WEAKENING
+# THE GUARDS. The scripts keep their honest exit codes (1 on a real BLOCKING failure);
+# the workflow simply declines to gate on them for now. Nothing here disables, relaxes
+# or bypasses a check (charter H3). To flip to blocking: delete the two
+# `continue-on-error: true` lines and add these jobs to branch protection.
+#
+# TRIGGERS follow ci.yml's own documented DUPLICATE-TRIGGER FIX to the letter: a branch
+# that can be a PR head must NOT also appear in `push.branches`, or every commit fires
+# the workflow twice (push and pull_request land in different concurrency groups and
+# cannot dedupe). So: pull_request into main, push on main after merge, and
+# workflow_dispatch for on-demand runs on any branch — including
+# campaign/nirmana-autonomous, which is deliberately NOT in push.branches for exactly
+# that reason.
+# ══════════════════════════════════════════════════════════════════════════════
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: nirmana-m0-guards-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  asset-catalogue-contract:
+    name: Asset Catalogue Contract conformance (C-01…C-28 + X-01…X-05)
+    runs-on: ubuntu-latest
+    continue-on-error: true          # NON-BLOCKING — see header. Not a weakened guard.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Contract conformance — self-test (fixtures + spec cross-check)
+        # Two proofs in one step.
+        # (1) THE SPEC CROSS-CHECK. The guard parses ASSET_CATALOGUE_CONTRACT_v1_0.md's
+        #     own §6 table and asserts every C-* rule in the document is implemented,
+        #     every rule implemented is in the document, the severities agree, and every
+        #     rule the document marks "not checkable" (C-25/C-26/C-27) is hard-wired
+        #     NOT_CHECKABLE. The guard and the spec therefore cannot drift apart without
+        #     this step going red.
+        # (2) FOUR FIXTURES, TWO OF WHICH EXIST TO MAKE RULES FAIL. Each declares an
+        #     exact per-rule expected status AND violation count, so a partial regression
+        #     (five of six rules still firing) fails rather than passing quietly. The two
+        #     pass-fixtures pin the other boundary — a detector that reports everything as
+        #     broken is as useless as one that reports nothing.
+        # Stdlib-only: no psycopg, no DB, no network.
+        run: python platform/scripts/governance/check_asset_catalogue_contract.py --self-test
+
+      - name: Contract conformance — dated live baseline (report only)
+        # Runs the full rule set over asset_catalogue_baseline_20260823.json, a READ-ONLY
+        # snapshot of production's asset_registry + asset_throughput taken 2026-08-23.
+        # This is what makes the CI job informative rather than merely self-referential:
+        # it reports the real conformance state, including which rules are
+        # `not_checkable` because migration 590's four columns are still absent.
+        # It EXITS 1 today (17 BLOCKING rules fail on the real catalogue) and the job is
+        # continue-on-error, so the log tells the truth without gating.
+        run: python platform/scripts/governance/check_asset_catalogue_contract.py --baseline
+
+  asset-source-parity:
+    name: Asset source parity — registry × @register × seed (P-01…P-06)
+    runs-on: ubuntu-latest
+    continue-on-error: true          # NON-BLOCKING — see header. Not a weakened guard.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Source parity — self-test (fixture writer trees)
+        # Two fixture cases with hand-declared expectations. The FAIL case fires all six
+        # rules at one violation each and carries two controls that must NOT fire; the
+        # PASS case pins that `@register(MODULE_CONSTANT)` resolves — the exact form
+        # M0-T8's first AST pass silently dropped, losing four writers.
+        run: python platform/scripts/governance/check_asset_source_parity.py --self-test
+
+      - name: Source parity — repo scan against the dated registry baseline
+        # Scans the real writer tree and the real seed, diffed against the same
+        # 2026-08-23 registry baseline. Rule P-01 asserts the UNRESOLVED @register list is
+        # EMPTY: a parser that silently drops what it cannot resolve under-counts the
+        # writer census by an unknown amount, and an unknown-sized gap that looks green is
+        # worse than a loud failure.
+        run: python platform/scripts/governance/check_asset_source_parity.py

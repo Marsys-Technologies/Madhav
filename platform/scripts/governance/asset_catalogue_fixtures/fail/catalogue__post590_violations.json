@@ -1,0 +1,316 @@
+{
+ "_README": "Fixture for check_asset_catalogue_contract.py. Hand-authored, not generated from the guard's own output: the _expect block states what the rule set MUST say about this snapshot, so a partial regression (five of six rules still firing) fails instead of passing quietly. EVERY expectation below was written BEFORE the guard was run against this file. THIS FIXTURE EXISTS TO MAKE RULES FAIL. It is the sibling of pre590_violations and covers exactly the rules that fixture CANNOT reach: the five whose columns arrive with migration 590 (C-08/C-09/C-10/C-18/C-19), plus C-22, whose precondition is a frozen rung and which is exercised here by declaring frozen_rungs = ['R0']. Its purpose is to prove those six detectors are real — that their not_checkable in the sibling fixture is a missing COLUMN, not a missing DETECTOR.",
+ "_meta": {
+  "fixture": "post590_violations",
+  "authored_by": "KĀRAKA M0-T9",
+  "authored_at": "2026-08-23"
+ },
+ "registry_columns": [
+  "asset_id",
+  "layer",
+  "sort_order",
+  "sanskrit_name",
+  "english_name",
+  "english_description",
+  "storage_type",
+  "target_table",
+  "count_sql",
+  "size_sql",
+  "target_floor",
+  "expected_volume_formula",
+  "expected_volume_inputs",
+  "volume_explanation",
+  "depends_on",
+  "scope",
+  "is_active",
+  "estimated_seconds",
+  "created_at",
+  "clear_tables",
+  "asset_type",
+  "layer_name",
+  "layer_index",
+  "provides_apis",
+  "health_probe",
+  "catalog_status",
+  "rebuild_on_probe_fail",
+  "integrity_check_sql",
+  "has_substeps",
+  "asset_kind",
+  "service_health",
+  "last_invoked_at",
+  "last_selftest_at",
+  "selftest_detail",
+  "has_writer",
+  "writer_timeout_seconds",
+  "domain",
+  "rung",
+  "superseded_by",
+  "data_disposition"
+ ],
+ "public_tables": [
+  "t_ok",
+  "t_ok2",
+  "t_ok3"
+ ],
+ "assets": [
+  {
+   "asset_id": "bg_ok",
+   "layer": "brahmagyan",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_ok",
+   "count_sql": "SELECT count(*) FROM t_ok",
+   "size_sql": null,
+   "target_floor": 1,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [],
+   "scope": "global",
+   "is_active": true,
+   "estimated_seconds": 1,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Brahmagyan",
+   "layer_index": "L0",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600,
+   "domain": "shared",
+   "rung": "R0",
+   "superseded_by": null,
+   "data_disposition": null
+  },
+  {
+   "asset_id": "ga_retired_nodisp",
+   "layer": "ganita",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_ok2",
+   "count_sql": "SELECT count(*) FROM t_ok2 WHERE chart_id = $1",
+   "size_sql": null,
+   "target_floor": null,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [],
+   "scope": "per_chart",
+   "is_active": false,
+   "estimated_seconds": null,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Gaṇita",
+   "layer_index": "L1",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "RETIRED",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": false,
+   "writer_timeout_seconds": 600,
+   "domain": "chart",
+   "rung": "R1",
+   "superseded_by": null,
+   "data_disposition": null
+  },
+  {
+   "asset_id": "bo_badsup",
+   "layer": "bodha",
+   "sort_order": 0,
+   "sanskrit_name": "x",
+   "english_name": "x",
+   "english_description": "x",
+   "storage_type": "postgres_table",
+   "target_table": "t_ok3",
+   "count_sql": "SELECT count(*) FROM t_ok3 WHERE chart_id = $1",
+   "size_sql": null,
+   "target_floor": 1,
+   "expected_volume_formula": null,
+   "expected_volume_inputs": null,
+   "volume_explanation": null,
+   "depends_on": [],
+   "scope": "per_chart",
+   "is_active": true,
+   "estimated_seconds": 1,
+   "created_at": null,
+   "clear_tables": null,
+   "asset_type": "data",
+   "layer_name": "Bodha",
+   "layer_index": "L2",
+   "provides_apis": null,
+   "health_probe": null,
+   "catalog_status": "CURRENT",
+   "rebuild_on_probe_fail": false,
+   "integrity_check_sql": null,
+   "has_substeps": false,
+   "asset_kind": "data",
+   "service_health": null,
+   "last_invoked_at": null,
+   "last_selftest_at": null,
+   "selftest_detail": null,
+   "has_writer": true,
+   "writer_timeout_seconds": 600,
+   "domain": "shared",
+   "rung": "R9",
+   "superseded_by": "bo_nonexistent",
+   "data_disposition": "DROPPABLE"
+  }
+ ],
+ "throughput": [
+  {
+   "asset_id": "bg_ok",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  },
+  {
+   "asset_id": "bo_badsup",
+   "throughput_rows": 1,
+   "states": [
+    "lit"
+   ],
+   "rows_written_total": 10
+  }
+ ],
+ "writer_substep_truth": {
+  "bg_ok": false,
+  "bo_badsup": false
+ },
+ "zero_consumer_packets": {},
+ "frozen_rungs": [
+  "R0"
+ ],
+ "_expect": {
+  "C-01": {
+   "status": "pass"
+  },
+  "C-02": {
+   "status": "pass"
+  },
+  "C-03": {
+   "status": "pass"
+  },
+  "C-04": {
+   "status": "pass"
+  },
+  "C-05": {
+   "status": "pass"
+  },
+  "C-06": {
+   "status": "pass"
+  },
+  "C-07": {
+   "status": "pass"
+  },
+  "C-08": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "C-09": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "C-10": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "C-11": {
+   "status": "pass"
+  },
+  "C-12": {
+   "status": "pass"
+  },
+  "C-13": {
+   "status": "pass"
+  },
+  "C-14": {
+   "status": "pass"
+  },
+  "C-15": {
+   "status": "pass"
+  },
+  "C-16": {
+   "status": "pass"
+  },
+  "C-17": {
+   "status": "pass"
+  },
+  "C-18": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "C-19": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "C-20": {
+   "status": "pass"
+  },
+  "C-21": {
+   "status": "pass"
+  },
+  "C-22": {
+   "status": "fail",
+   "violation_count": 1
+  },
+  "C-23": {
+   "status": "pass"
+  },
+  "C-24": {
+   "status": "pass"
+  },
+  "C-25": {
+   "status": "not_checkable"
+  },
+  "C-26": {
+   "status": "not_checkable"
+  },
+  "C-27": {
+   "status": "not_checkable"
+  },
+  "C-28": {
+   "status": "pass"
+  },
+  "X-01": {
+   "status": "pass"
+  },
+  "X-02": {
+   "status": "pass"
+  },
+  "X-03": {
+   "status": "pass"
+  },
+  "X-04": {
+   "status": "pass"
+  },
+  "X-05": {
+   "status": "pass"
+  }
+ }
+}

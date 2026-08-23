@@ -1,0 +1,22 @@
+{
+ "_meta": {
+  "fixture": "parity_divergent"
+ },
+ "registry_columns": [
+  "asset_id"
+ ],
+ "assets": [
+  {
+   "asset_id": "bg_ok"
+  },
+  {
+   "asset_id": "bg_dup"
+  },
+  {
+   "asset_id": "zz_bad"
+  },
+  {
+   "asset_id": "bg_orphan"
+  }
+ ]
+}
