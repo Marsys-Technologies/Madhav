@@ -298,6 +298,292 @@ def scan_ci_guards() -> dict:
             "workflows_scanned": [_rel(p) for p in workflows]}
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# M0-T27 additions — durability of a repair, and a criterion-10 detector that
+# can actually return false on the word "blocking".
+#
+# WHY THESE EXIST. The first run of this generator (M0-T17) read 0 PASS. Several
+# criteria have since moved, and two of the movements are not what they look like:
+#
+#   (a) A repair written directly to `asset_registry` is only durable if the
+#       column it wrote is NOT in `asset_registry_seed.ts`'s
+#       `ON CONFLICT (asset_id) DO UPDATE SET` list. Columns in that list are
+#       overwritten from EXCLUDED on the next seed run, so a green that rests on
+#       one of them is a green the next re-seed silently undoes. That is exactly
+#       the class of signal this campaign exists to remove, so the scorecard now
+#       measures it instead of assuming it.
+#   (b) Criterion 10's own detector asserted "merged AND blocking" while only
+#       ever checking "a guard file exists" AND "some workflow names it". The
+#       word `blocking` had NO code path behind it — a constant that could not
+#       return false, i.e. the §N.8 defect this scorecard was built to catch,
+#       inside the scorecard. Fixed below: blocking is now parsed, and `merged`
+#       now means merged to the default branch, not present in the worktree.
+#
+# Both are read-only, and neither imports the seed or migrate.ts (D-9 / D-13).
+# ─────────────────────────────────────────────────────────────────────────────
+# M0-T27 · falsifiability probes.
+#
+# A rule that returns zero is only evidence if the query COULD have returned
+# non-zero against this database. Two of this campaign's detectors have already
+# turned out to be constants that could not fail, so a zero is no longer taken on
+# trust: for every rule that reads PASS, the shipped SQL is re-run with ONE
+# deliberate mutation that must make it fire. If the mutant still returns zero,
+# the zero is not evidence of conformance and is reported as such.
+#
+# The mutations are read-only text substitutions on the rule's own SQL. Nothing
+# is written; the mutant query is never used for a verdict.
+MUTATIONS: dict[str, tuple[list[tuple[str, str]], str]] = {
+    "C-05": ([("count_sql IS NULL", "count_sql IS NOT NULL")],
+             "invert the NULL test: every data/artifact row that HAS a count_sql must fire"),
+    "C-09": ([("a.superseded_by IS NOT NULL", "a.superseded_by IS NULL")],
+             "invert the NOT NULL test: rows with no supersession must fire, since "
+             "NOT EXISTS(... = NULL) is true for all of them"),
+    "C-10": ([("data_disposition IS NOT NULL", "data_disposition IS NULL")],
+             "invert the NULL test: non-RETIRED rows without a disposition must fire"),
+    "C-14": ([("NOT IN (('data','data')", "IN (('data','data')")],
+             "invert the membership test: every LEGAL (kind,type) pair must fire"),
+    "C-18": ([("WHEN 'global' THEN 'shared'", "WHEN 'global' THEN 'chart'"),
+              ("WHEN 'per_chart' THEN 'chart'", "WHEN 'per_chart' THEN 'shared'")],
+             "swap the scope→domain mapping: with the expectation inverted every row "
+             "must fire"),
+    "C-19": ([("WHEN 'brahmagyan' THEN 'R0'", "WHEN 'brahmagyan' THEN 'R5'")],
+             "mis-map one layer: every brahmagyan row must fire"),
+    "C-12": ([("WHERE NOT EXISTS (SELECT 1 FROM asset_registry b WHERE b.asset_id=d)",
+               "WHERE EXISTS (SELECT 1 FROM asset_registry b WHERE b.asset_id=d)")],
+             "invert the existence test: every edge that DOES resolve must fire"),
+    "C-13a": ([("WHERE asset_id = ANY(depends_on)", "WHERE NOT (asset_id = ANY(depends_on))")],
+              "invert the self-edge test: every row without a self-edge must fire"),
+    "C-16": ([("service_health IS NOT NULL", "service_health IS NULL")],
+             "invert the NULL test: non-service rows with no service_health must fire"),
+    "C-24": ([("NOT EXISTS (SELECT 1 FROM information_schema.tables i "
+               "WHERE i.table_schema='public' AND i.table_name=t)",
+               "EXISTS (SELECT 1 FROM information_schema.tables i "
+               "WHERE i.table_schema='public' AND i.table_name=t)")],
+             "invert the first arm's existence test: every clear_tables entry that DOES "
+             "name a real table must fire"),
+}
+
+
+SEED_LITERAL_FIELDS = {
+    # field -> default the seed applies when the key is absent from an entry.
+    # Verified against asset_registry_seed.ts's own
+    #   `const assetType  = asset.asset_type ?? 'data'`
+    #   `const assetKind  = asset.asset_kind ?? 'data'`
+    "asset_kind": "data",
+    "asset_type": "data",
+    "scope": None,      # required per entry; no default to model
+    "layer": None,
+}
+
+
+def scan_seed_upsert() -> dict:
+    """Which asset_registry columns does the seed WRITE on a re-run?
+
+    Read as TEXT (never imported — D-9/D-13). Returns the INSERT column list and
+    the `ON CONFLICT ... DO UPDATE SET` column list. A column in `do_update` is
+    reverted to the seed's value on the next seed run; a column absent from
+    `insert_columns` is left NULL/default on any row the seed newly inserts.
+    """
+    out = {"ok": False, "reason": None, "insert_columns": [], "do_update_columns": [],
+           "path": _rel(SEED_TS)}
+    try:
+        txt = SEED_TS.read_text(errors="replace")
+    except OSError as e:
+        out["reason"] = str(e)
+        return out
+    m = re.search(r"INSERT\s+INTO\s+asset_registry\s*\((.*?)\)\s*VALUES", txt,
+                  re.S | re.I)
+    if not m:
+        out["reason"] = "no `INSERT INTO asset_registry ( ... ) VALUES` block found"
+        return out
+    out["insert_columns"] = sorted({c.strip() for c in m.group(1).split(",") if c.strip()})
+    u = re.search(r"ON\s+CONFLICT\s*\(\s*asset_id\s*\)\s*DO\s+UPDATE\s+SET(.*?)`", txt,
+                  re.S | re.I)
+    if not u:
+        out["reason"] = "no `ON CONFLICT (asset_id) DO UPDATE SET` block found"
+        return out
+    body = u.group(1)
+    body = re.sub(r"--[^\n]*", "", body)          # strip SQL line comments
+    cols = re.findall(r"(?m)^\s*([a-z_][a-z0-9_]*)\s*=", body)
+    out["do_update_columns"] = sorted(set(cols))
+    out["ok"] = bool(out["insert_columns"] and out["do_update_columns"])
+    if not out["ok"]:
+        out["reason"] = "parsed, but one of the two column lists came back empty"
+    return out
+
+
+def scan_seed_literals() -> dict:
+    """Per-asset literal values the seed would write for the fields in
+    SEED_LITERAL_FIELDS, including the seed's own `?? 'data'` defaults.
+
+    Parsed from the text of the seed's `ASSETS` entries — same discipline as
+    scan_seed(): each entry is delimited by its own `asset_id:` line.
+    """
+    out: dict[str, dict] = {}
+    try:
+        txt = SEED_TS.read_text(errors="replace")
+    except OSError:
+        return out
+    idxs = [(m.start(), m.group(1))
+            for m in re.finditer(r"^\s*asset_id:\s*['\"]([A-Za-z0-9_.]+)['\"]", txt, re.M)]
+    for i, (pos, aid) in enumerate(idxs):
+        end = idxs[i + 1][0] if i + 1 < len(idxs) else len(txt)
+        blk = txt[pos:end]
+        rowvals = {}
+        for field, default in SEED_LITERAL_FIELDS.items():
+            hit = re.search(rf"(?<![A-Za-z_]){field}:\s*['\"]([A-Za-z0-9_]+)['\"]", blk)
+            rowvals[field] = hit.group(1) if hit else default
+            rowvals[field + "_declared"] = bool(hit)
+        out[aid] = rowvals
+    return out
+
+
+def columns_referenced(sql: str | None, cols: set[str]) -> list[str]:
+    """asset_registry columns a detector SQL names. Word-boundary match against
+    the LIVE column set, so a column that does not exist cannot be 'referenced'."""
+    if not sql:
+        return []
+    toks = set(re.findall(r"[a-z_][a-z0-9_]*", sql.lower()))
+    return sorted(toks & {c.lower() for c in cols})
+
+
+NONBLOCKING_MARKERS = ("continue-on-error", "|| true", "|| exit 0", "|| :")
+
+
+def analyse_ci_blocking(ci: dict) -> dict:
+    """Is each guard invocation actually BLOCKING?
+
+    A job (or the step running the guard) carrying `continue-on-error: true`, or
+    a run line ending `|| true`, does not gate anything. Parsed with PyYAML where
+    available and by line-scan otherwise; when neither can decide, the answer is
+    `null` and the criterion does NOT pass on it.
+    """
+    res = {"parser": None, "invocations": [], "any_blocking": None,
+           "all_blocking": None, "undecidable": []}
+    try:
+        import yaml  # noqa: PLC0415  — optional; absence is reported, not assumed away
+        res["parser"] = "pyyaml"
+    except Exception:
+        yaml = None
+        res["parser"] = "line-scan (PyYAML unavailable)"
+
+    wanted = {pathlib.Path(g).name for g in ci["guard_scripts"]}
+    for wf_rel in {inv["workflow"] for inv in ci["workflow_invocations"]}:
+        p = ROOT / wf_rel
+        try:
+            txt = p.read_text(errors="replace")
+        except OSError as e:
+            res["undecidable"].append({"workflow": wf_rel, "why": str(e)})
+            continue
+        if yaml is not None:
+            try:
+                doc = yaml.safe_load(txt) or {}
+            except Exception as e:
+                doc = None
+                res["undecidable"].append({"workflow": wf_rel,
+                                           "why": f"YAML parse error: {str(e)[:120]}"})
+            if isinstance(doc, dict):
+                for job_id, job in (doc.get("jobs") or {}).items():
+                    if not isinstance(job, dict):
+                        continue
+                    job_coe = bool(job.get("continue-on-error") is True)
+                    for step in (job.get("steps") or []):
+                        if not isinstance(step, dict):
+                            continue
+                        run = str(step.get("run") or "")
+                        hit = [g for g in wanted if g in run]
+                        if not hit:
+                            continue
+                        step_coe = bool(step.get("continue-on-error") is True)
+                        swallow = any(mk in run for mk in ("|| true", "|| exit 0", "|| :"))
+                        res["invocations"].append({
+                            "workflow": wf_rel, "job": job_id,
+                            "step": step.get("name") or run[:60],
+                            "scripts": sorted(hit),
+                            "job_continue_on_error": job_coe,
+                            "step_continue_on_error": step_coe,
+                            "run_line_swallows_exit_code": swallow,
+                            "blocking": not (job_coe or step_coe or swallow)})
+                continue
+        # line-scan fallback
+        nonblocking = any(f"{mk}: true" in txt or mk in txt for mk in ("continue-on-error",))
+        res["invocations"].append({
+            "workflow": wf_rel, "job": None, "step": None,
+            "scripts": sorted(g for g in wanted if g in txt),
+            "job_continue_on_error": None, "step_continue_on_error": None,
+            "run_line_swallows_exit_code": None,
+            "blocking": (None if nonblocking else None),
+            "note": "line-scan could not attribute continue-on-error to a job/step; "
+                    "answer left null rather than guessed"})
+    decided = [i["blocking"] for i in res["invocations"] if i["blocking"] is not None]
+    res["any_blocking"] = (any(decided) if decided else None)
+    res["all_blocking"] = (all(decided) if decided else None)
+    return res
+
+
+def default_branch_presence(paths: list[str]) -> dict:
+    """Is the guard/workflow actually MERGED — i.e. present on the default branch?
+
+    `git ls-tree origin/main` is the detector. Present in the worktree on a
+    campaign branch is not merged, and criterion 10 says merged.
+    """
+    out = {"ref": "origin/main", "ok": False, "present": {}, "reason": None}
+    try:
+        r = subprocess.run(["git", "ls-tree", "-r", "--name-only", "origin/main"],
+                           cwd=ROOT, capture_output=True, text=True, timeout=60)
+        if r.returncode != 0:
+            out["reason"] = (r.stderr or "git ls-tree failed").splitlines()[0][:160]
+            return out
+        tree = set(r.stdout.splitlines())
+        out["ok"] = True
+        out["present"] = {p: (p in tree) for p in paths}
+    except Exception as e:
+        out["reason"] = str(e).splitlines()[0][:160]
+    return out
+
+
+def github_run_evidence(workflow_files: list[str]) -> dict:
+    """Has the workflow ever actually RUN on GitHub? Best-effort via `gh`.
+
+    If `gh` is missing or unauthenticated the answer is null — never assumed
+    green, never assumed red. The criterion's verdict does not depend on this
+    field; it is corroborating evidence for the reader.
+    """
+    out = {"available": False, "reason": None, "workflows": {}}
+    try:
+        probe = subprocess.run(["gh", "auth", "status"], cwd=ROOT,
+                               capture_output=True, text=True, timeout=60)
+        if probe.returncode != 0:
+            out["reason"] = "gh present but not authenticated"
+            return out
+    except Exception as e:
+        out["reason"] = f"gh unavailable: {str(e).splitlines()[0][:120]}"
+        return out
+    out["available"] = True
+    for wf in workflow_files:
+        name = pathlib.Path(wf).name
+        entry = {"registered_on_default_branch": None, "run_count": None, "detail": None}
+        try:
+            r = subprocess.run(["gh", "run", "list", "--workflow", name, "--limit", "1"],
+                               cwd=ROOT, capture_output=True, text=True, timeout=120)
+            combined = (r.stdout or "") + (r.stderr or "")
+            if "not found on the default branch" in combined:
+                entry["registered_on_default_branch"] = False
+                entry["run_count"] = 0
+                entry["detail"] = combined.strip().splitlines()[0][:200]
+            elif r.returncode == 0:
+                entry["registered_on_default_branch"] = True
+                entry["run_count"] = len([l for l in r.stdout.splitlines() if l.strip()])
+                entry["detail"] = "gh run list returned rows" if entry["run_count"] else \
+                    "gh run list returned no rows"
+            else:
+                entry["detail"] = combined.strip().splitlines()[0][:200] if combined else None
+        except Exception as e:
+            entry["detail"] = str(e).splitlines()[0][:160]
+        out["workflows"][wf] = entry
+    return out
+
+
 def zero_consumer_state() -> dict:
     """Criterion 9's detector: packets asserted, minus packets with a recorded
     ADHIKĀRIN disposition in DECISIONS.jsonl."""
@@ -678,11 +964,12 @@ def main() -> int:
             "failing_rules": sorted(failing_rules),
             "blocked_rules": sorted(blocked_rules),
             "never_checkable_rules": never_green,
-            "blocked_by": ("rules " + ", ".join(sorted(blocked_rules)) +
-                           " cannot run (migration 590 columns absent); rules "
-                           + ", ".join(never_green) +
-                           " have NO detector at all (contract §8) and must never read green")
-            if (blocked_rules or never_green) else None}
+            "blocked_by": ("; ".join(
+                ([f"rules {', '.join(sorted(blocked_rules))} cannot run "
+                  "(asset_registry columns they need are absent)"] if blocked_rules else []) +
+                ([f"rules {', '.join(never_green)} have NO detector at all (contract §8) "
+                  "and must never read green"] if never_green else []))
+            ) if (blocked_rules or never_green) else None}
 
         # ── criterion 3 — prefix mismatches ──────────────────────────────────
         c01 = rec["contract_rules"]["C-01"]
@@ -848,22 +1135,74 @@ def main() -> int:
                 "asset_ids": zc["asset_ids"]}
 
         # ── criterion 10 — CI guard merged and BLOCKING ─────────────────────
-        merged = bool(ci["guard_scripts"])
+        # M0-T27 REPAIR. The previous detector asserted "merged AND blocking" and
+        # computed `PASS if (guard file exists) and (some workflow names it)`. The
+        # word BLOCKING had no code path: no input could make that half false, so
+        # the moment M0-T9 landed a deliberately NON-blocking workflow the criterion
+        # flipped green on a claim nothing checked (CLAUDE.md §N.8, charter H4).
+        # It now measures three things, each of which can independently read false:
+        #   (a) merged  — present on the DEFAULT BRANCH, not merely in this worktree;
+        #   (b) wired   — invoked from a workflow job;
+        #   (c) blocking— that job/step carries no `continue-on-error: true` and the
+        #                 run line does not swallow the exit code.
+        # A null on (c) is not a pass. GitHub run history is carried as corroborating
+        # evidence and never as the verdict.
+        exists = bool(ci["guard_scripts"])
         wired = bool(ci["workflow_invocations"])
+        blocking = analyse_ci_blocking(ci)
+        wf_files = sorted({i["workflow"] for i in ci["workflow_invocations"]})
+        merged_check = default_branch_presence(sorted(set(ci["guard_scripts"]) | set(wf_files)))
+        gh_ev = github_run_evidence(wf_files)
+        merged = bool(merged_check["ok"] and merged_check["present"]
+                      and all(merged_check["present"].get(g) for g in ci["guard_scripts"]))
+        is_blocking = blocking["all_blocking"] is True
+        c10_pass = bool(exists and wired and merged and is_blocking)
+        shortfall = []
+        if not exists:
+            shortfall.append("no guard script implementing the contract exists")
+        if not wired:
+            shortfall.append("no workflow invokes a guard")
+        if not merged:
+            shortfall.append(
+                "the guard/workflow is NOT on the default branch (`origin/main`) — "
+                "'merged' means merged, and present-on-the-campaign-branch is not that"
+                if merged_check["ok"] else
+                f"merged-to-default-branch could not be determined: {merged_check['reason']}")
+        if not is_blocking:
+            shortfall.append(
+                "the invocation is NOT blocking"
+                if blocking["all_blocking"] is False else
+                "whether the invocation blocks could not be determined; a null is not a pass")
         rec["criteria"]["10_ci_guard_merged_and_blocking"] = {
-            "detector": ("filesystem scan: does a guard implementing the Asset Catalogue "
-                         "Contract exist under platform/scripts/{governance,ci}; is it invoked "
-                         "from a .github/workflows job; is that step blocking"),
-            "status": PASS if (merged and wired) else FAIL,
+            "detector": ("(a) does a guard implementing the Asset Catalogue Contract exist "
+                         "under platform/scripts/{governance,ci}; (b) is it invoked from a "
+                         ".github/workflows job; (c) is that job/step BLOCKING — no "
+                         "`continue-on-error: true`, no `|| true` on the run line; and is the "
+                         "guard MERGED, i.e. present on `origin/main` per `git ls-tree`. "
+                         "PASS requires all four. GitHub run history is corroboration, not "
+                         "the verdict."),
+            "status": PASS if c10_pass else FAIL,
             "measured_value": {"guard_scripts_found": len(ci["guard_scripts"]),
-                               "workflow_invocations_found": len(ci["workflow_invocations"])},
+                               "workflow_invocations_found": len(ci["workflow_invocations"]),
+                               "merged_to_default_branch": merged,
+                               "invocation_is_blocking": blocking["all_blocking"]},
             "guard_scripts": ci["guard_scripts"],
             "workflow_invocations": ci["workflow_invocations"],
             "workflows_scanned": ci["workflows_scanned"],
-            "note": ("WORK_QUEUE id M0-T9 ('CI guards, merged and BLOCKING (0.10)') is "
-                     "queued_not_dispatched. Nothing has been built yet, so this reads FAIL "
-                     "— a real detector returning a real non-zero-shortfall, not a block.")
-            if not (merged and wired) else None}
+            "blocking_analysis": blocking,
+            "merged_to_default_branch_check": merged_check,
+            "github_run_evidence": gh_ev,
+            "shortfall": shortfall,
+            "note": ("WORK_QUEUE id M0-T9 shipped the two guard scripts and a workflow that "
+                     "invokes them, and shipped it NON-BLOCKING on purpose: "
+                     ".github/workflows/nirmana-m0-guards.yml carries "
+                     "`continue-on-error: true` on both jobs and says so in its own header. "
+                     "Flipping it to blocking is ADHIKĀRIN's call (charter G9) and has not "
+                     "been made. So the merged-and-wired halves have genuinely moved and the "
+                     "BLOCKING half has not, which is why this stays FAIL rather than "
+                     "becoming green on two of its three clauses. "
+                     "Shortfall: " + "; ".join(shortfall))
+            if not c10_pass else None}
 
         # ── criterion 11 — every asset carries domain and rung ──────────────
         c18, c19 = rec["contract_rules"]["C-18"], rec["contract_rules"]["C-19"]
@@ -920,6 +1259,290 @@ def main() -> int:
             "domain_coherence_ci_scripts": ci["domain_coherence_scripts"],
             "domain_coherence_workflow_invocations":
                 ci["domain_coherence_workflow_invocations"]}
+
+        # ── M0-T27 · falsifiability of every PASSing rule ────────────────────
+        mut: dict = {}
+        for rid, r in rec["contract_rules"].items():
+            if r["status"] != PASS or not r.get("sql"):
+                continue
+            spec = MUTATIONS.get(rid)
+            if not spec:
+                mut[rid] = {"proved": None,
+                            "why": "no mutation declared for this rule — its zero is "
+                                   "NOT proven falsifiable by this script"}
+                continue
+            subs, why = spec
+            sql = r["sql"]
+            applied = []
+            for find, repl in subs:
+                if find not in sql:
+                    applied.append({"find": find, "applied": False})
+                    continue
+                sql = sql.replace(find, repl)
+                applied.append({"find": find, "applied": True})
+            if not all(a["applied"] for a in applied):
+                mut[rid] = {"proved": None, "why": "mutation text did not match the shipped "
+                                                   "SQL; nothing proved", "substitutions": applied}
+                continue
+            try:
+                c.execute(sql)
+                n = len(c.fetchall())
+                mut[rid] = {"proved": n > 0, "mutant_rows": n, "why": why,
+                            "mutant_sql": " ".join(sql.split()),
+                            "verdict": ("the shipped query CAN return non-zero against this "
+                                        "database, so its zero is a measurement"
+                                        if n > 0 else
+                                        "THE MUTANT ALSO RETURNED ZERO — this rule's zero is "
+                                        "NOT evidence of conformance")}
+            except Exception as e:
+                mut[rid] = {"proved": None, "why": f"mutant query error: "
+                                                   f"{str(e).splitlines()[0][:160]}"}
+        rec["falsifiability_probe"] = {
+            "what_it_is": ("for every contract rule reading PASS, the shipped SQL re-run with "
+                           "one deliberate mutation that must make it fire. A zero from a "
+                           "query that cannot return non-zero is not evidence "
+                           "(CLAUDE.md §N.8). Read-only; the mutant is never used for a "
+                           "verdict."),
+            "rules": mut,
+            "passing_rules_proved_falsifiable": sorted(k for k, v in mut.items()
+                                                       if v.get("proved") is True),
+            "passing_rules_NOT_proved": sorted(k for k, v in mut.items()
+                                               if v.get("proved") is not True)}
+
+        # ── M0-T27 · durability of every green ───────────────────────────────
+        # A criterion can go green two ways: because the defect was fixed, or
+        # because a column was hand-written that the next `asset_registry_seed.ts`
+        # run overwrites from EXCLUDED. The second kind of green is worse than a
+        # red, because nothing announces its expiry. This block measures which
+        # kind each green is, from three live inputs: the seed's own DO UPDATE
+        # column list, the seed's per-asset literals, and the live row values.
+        seed_upsert = scan_seed_upsert()
+        seed_lits = scan_seed_literals()
+        overwritten = set(seed_upsert["do_update_columns"])
+        never_inserted = sorted(cols - set(seed_upsert["insert_columns"]) - {"asset_id"})
+
+        c.execute("SELECT asset_id, asset_kind, asset_type, scope, layer "
+                  "FROM asset_registry ORDER BY asset_id")
+        live_lits = {r["asset_id"]: r for r in c.fetchall()}
+
+        divergent_rows = []
+        for aid, live in live_lits.items():
+            s = seed_lits.get(aid)
+            if not s:
+                continue  # no seed entry — the seed cannot revert what it does not write
+            for field in SEED_LITERAL_FIELDS:
+                if field not in overwritten:
+                    continue
+                want = s.get(field)
+                if want is None:
+                    continue  # unmodelled (no literal, no default) — not claimed either way
+                if str(live.get(field)) != str(want):
+                    divergent_rows.append({
+                        "asset_id": aid, "column": field,
+                        "live_value": live.get(field), "seed_would_write": want,
+                        "seed_declares_it": s.get(field + "_declared")})
+        divergent_assets = sorted({r["asset_id"] for r in divergent_rows})
+        divergent_by_col: dict[str, set] = {}
+        for r in divergent_rows:
+            divergent_by_col.setdefault(r["column"], set()).add(r["asset_id"])
+
+        prev_rules = {}
+        if previous:
+            for src in ("contract_rules", "undetectable_rules"):
+                for rid, v in (previous.get(src) or {}).items():
+                    prev_rules[rid] = v
+
+        per_rule = {}
+        for rid, r in list(rec["contract_rules"].items()):
+            refs = columns_referenced(r.get("sql"), cols)
+            exposed = sorted(set(refs) & overwritten)
+            at_risk = sorted({a for cn in exposed for a in divergent_by_col.get(cn, set())})
+            attribution = None
+            pv = prev_rules.get(rid)
+            if pv and r["status"] == PASS and pv.get("status") == FAIL and pv.get("rows"):
+                removed = sorted({x.get("asset_id") for x in pv["rows"] if x.get("asset_id")})
+                if removed and set(removed) <= set(divergent_assets):
+                    attribution = {
+                        "previous_status": pv.get("status"),
+                        "previous_violations": pv.get("violations"),
+                        "rows_that_stopped_violating": removed,
+                        "verdict": ("EVERY row that stopped violating this rule is a row "
+                                    "whose live value now differs from what the seed would "
+                                    "write. This rule's PASS rests on a repair the next "
+                                    "seed run reverts.")}
+                elif removed:
+                    attribution = {
+                        "previous_status": pv.get("status"),
+                        "previous_violations": pv.get("violations"),
+                        "rows_that_stopped_violating": removed,
+                        "rows_also_seed_divergent": sorted(set(removed) & set(divergent_assets)),
+                        "verdict": "improvement only PARTLY attributable to seed-divergent rows"}
+            per_rule[rid] = {
+                "status": r["status"], "violations": r.get("violations"),
+                "columns_referenced": refs,
+                "seed_overwritable_columns": exposed,
+                "seed_divergent_assets_among_them": at_risk,
+                "durability": ("n/a — not passing" if r["status"] != PASS else
+                               ("NON-DURABLE" if attribution and
+                                attribution.get("verdict", "").startswith("EVERY")
+                                else ("EXPOSED" if at_risk else "durable"))),
+                "attribution": attribution}
+
+        CRIT_RULES = {
+            "2_contract_violations_per_kind": sorted(rec["contract_rules"]),
+            "3_prefix_mismatches": ["C-01"],
+            "4_dangling_or_draft_edges": ["C-11", "C-12"],
+            "7_retired_without_disposition": ["C-08"],
+            "11_domain_and_rung_present": ["C-18", "C-19"],
+        }
+        per_crit = {}
+        for k, v in rec["criteria"].items():
+            rules = CRIT_RULES.get(k, [])
+            refs = set()
+            for rid in rules:
+                refs |= set(per_rule.get(rid, {}).get("columns_referenced", []))
+            refs |= set(columns_referenced(v.get("sql") or v.get("detector_sql"), cols))
+            exposed = sorted(refs & overwritten)
+            at_risk = sorted({a for cn in exposed for a in divergent_by_col.get(cn, set())})
+            nondurable_rules = [rid for rid in rules
+                                if per_rule.get(rid, {}).get("durability") == "NON-DURABLE"]
+            if v["status"] != PASS:
+                dur, why = "n/a — not passing", None
+            elif nondurable_rules:
+                dur = "NON-DURABLE"
+                why = (f"constituent rule(s) {nondurable_rules} pass only because of a repair "
+                       f"the seed's ON CONFLICT DO UPDATE reverts")
+            elif at_risk:
+                dur = "EXPOSED"
+                why = (f"passes on columns the seed overwrites ({exposed}); "
+                       f"{len(at_risk)} live row(s) already differ from the seed's value, so a "
+                       f"seed run would move this criterion's inputs")
+            else:
+                dur = "durable"
+                why = ("no column this criterion reads is in the seed's ON CONFLICT DO UPDATE "
+                       "list" if refs else
+                       "criterion is not sourced from asset_registry columns the seed writes")
+            # coverage durability: a column the seed NEVER inserts is NULL on any row
+            # the seed newly creates, regardless of what is true of today's rows.
+            coverage = sorted(refs & set(never_inserted))
+            per_crit[k] = {"status": v["status"], "columns_read": sorted(refs),
+                           "seed_overwritable_columns": exposed,
+                           "seed_divergent_assets_among_them": at_risk,
+                           "constituent_rules": rules,
+                           "non_durable_constituent_rules": nondurable_rules,
+                           "columns_the_seed_never_inserts": coverage,
+                           "durability": dur, "why": why}
+            v["durability"] = dur
+            if why:
+                v["durability_note"] = why
+            if coverage and v["status"] == PASS:
+                v["durability_coverage_note"] = (
+                    f"Columns {coverage} are absent from the seed's INSERT column list and "
+                    f"have no NOT NULL / DEFAULT / trigger behind them, so any asset the seed "
+                    f"newly inserts lands with them NULL and re-breaks this criterion. "
+                    f"Today's rows are safe; the criterion's coverage of FUTURE rows is not "
+                    f"enforced by anything.")
+
+        # ── post-reseed projection ───────────────────────────────────────────
+        # "EXPOSED" says a criterion reads a column the seed overwrites. It does
+        # not say the criterion would BREAK. This answers that directly and
+        # read-only: re-run each PASSing rule against a CTE that SHADOWS
+        # asset_registry with the values the seed would write for the columns
+        # this script can model, and see which rules start firing. Nothing is
+        # written; the projection is never used as the reported status.
+        projection: dict = {}
+        model_cols = sorted(set(SEED_LITERAL_FIELDS) & overwritten)
+        proj_rows = [(aid, *(seed_lits[aid].get(f) for f in model_cols))
+                     for aid in sorted(seed_lits)
+                     if aid in live_lits
+                     and any(seed_lits[aid].get(f) is not None for f in model_cols)]
+        if proj_rows and model_cols:
+            ordered_cols = sorted(cols)
+            sel = ", ".join(
+                (f"COALESCE(s.{cn}, r.{cn}) AS {cn}" if cn in model_cols else f"r.{cn}")
+                for cn in ordered_cols)
+            vals = ", ".join(
+                "(" + ", ".join(("NULL::text" if v is None else "'" + str(v).replace("'", "''") + "'::text")
+                                for v in row) + ")"
+                for row in proj_rows)
+            prefix = (f"WITH s(asset_id, {', '.join(model_cols)}) AS (VALUES {vals}), "
+                      f"asset_registry AS (SELECT {sel} FROM public.asset_registry r "
+                      f"LEFT JOIN s ON s.asset_id = r.asset_id) ")
+            for rid, r in rec["contract_rules"].items():
+                if r["status"] != PASS or not r.get("sql"):
+                    continue
+                try:
+                    c.execute(prefix + r["sql"])
+                    n = len(c.fetchall())
+                    projection[rid] = {
+                        "violations_now": r.get("violations"),
+                        "violations_after_a_reseed": n,
+                        "would_break": n > 0,
+                        "verdict": ("this rule STOPS PASSING once the seed restores its "
+                                    "columns" if n > 0 else
+                                    "this rule still passes after the seed restores its "
+                                    "columns")}
+                except Exception as e:
+                    projection[rid] = {"violations_now": r.get("violations"),
+                                       "violations_after_a_reseed": None,
+                                       "would_break": None,
+                                       "verdict": f"projection query error: "
+                                                  f"{str(e).splitlines()[0][:160]}"}
+        for k, v in per_crit.items():
+            rules = v["constituent_rules"]
+            breaks = [rid for rid in rules
+                      if (projection.get(rid) or {}).get("would_break") is True]
+            unknown = [rid for rid in rules
+                       if rid in projection and projection[rid].get("would_break") is None]
+            v["rules_that_break_after_a_reseed"] = breaks
+            v["rules_whose_projection_failed"] = unknown
+            if v["status"] == PASS and breaks:
+                v["durability"] = "NON-DURABLE"
+                v["why"] = (f"projected forward: constituent rule(s) {breaks} start firing "
+                            f"once asset_registry_seed.ts restores the columns it owns")
+                rec["criteria"][k]["durability"] = "NON-DURABLE"
+                rec["criteria"][k]["durability_note"] = v["why"]
+            elif v["status"] == PASS and v["durability"] == "EXPOSED" and rules and not unknown:
+                v["why"] = ((v.get("why") or "") +
+                            " — projected forward, however, none of its constituent rules "
+                            f"({', '.join(rules)}) starts firing after a re-seed, so the "
+                            "exposure is real but does not by itself break this criterion")
+                rec["criteria"][k]["durability_note"] = v["why"]
+
+        rec["durability"] = {
+            "post_reseed_projection": {
+                "what_it_is": ("each PASSing rule re-run against a CTE that shadows "
+                               "asset_registry with the values asset_registry_seed.ts would "
+                               "write, for the columns this script can model "
+                               f"({model_cols}). Read-only; never used as a reported status. "
+                               "Columns the script cannot model are left at their live values, "
+                               "so this is a LOWER BOUND on what a re-seed would break."),
+                "modelled_columns": model_cols,
+                "seed_rows_projected": len(proj_rows),
+                "rules": projection,
+                "rules_that_would_break": sorted(k for k, v in projection.items()
+                                                 if v.get("would_break") is True)},
+            "why_this_exists": (
+                "A repair written straight to asset_registry survives only if its column is "
+                "absent from asset_registry_seed.ts's `ON CONFLICT (asset_id) DO UPDATE SET` "
+                "list. Columns in that list are restored from EXCLUDED on the next seed run. "
+                "A green resting on such a column is a green a re-seed silently undoes, which "
+                "is strictly worse than a red."),
+            "seed_upsert_parse": seed_upsert,
+            "columns_the_seed_overwrites_on_reseed": sorted(overwritten),
+            "columns_the_seed_never_inserts": never_inserted,
+            "live_vs_seed_divergence": {
+                "detector": ("for each seed-overwritten column this script can model "
+                             f"({sorted(SEED_LITERAL_FIELDS)}), compare the LIVE value against "
+                             "the literal the seed declares for that asset (or the seed's own "
+                             "`?? 'data'` default when the key is absent). A difference means "
+                             "the next seed run changes that cell."),
+                "modelled_columns": sorted(set(SEED_LITERAL_FIELDS) & overwritten),
+                "divergent_cells": len(divergent_rows),
+                "divergent_assets": divergent_assets,
+                "rows": divergent_rows},
+            "per_rule": per_rule,
+            "per_criterion": per_crit}
 
         # ── re-measure at the end (a migration wave is running concurrently) ─
         c.execute("""SELECT column_name FROM information_schema.columns
@@ -1016,8 +1639,14 @@ def main() -> int:
         n_assets != n_after or \
         moved["criterion_6_inactive_throughput_rows_start"] != n6_after
 
+    tally = {PASS: 0, FAIL: 0, NM: 0, BLOCKED: 0}
+    for _k, _v in rec["criteria"].items():
+        tally[_v["status"]] = tally.get(_v["status"], 0) + 1
+
     rec["_meta"].update({
-        "task": "M0-T17", "artifact": "M0_EXIT_SCORECARD_v1_0",
+        "tally": tally,
+        "task": "M0-T27 (re-measurement)", "built_by_task": "M0-T17",
+        "artifact": "M0_EXIT_SCORECARD_v1_0",
         "generator": _rel(pathlib.Path(__file__)),
         "measured_at_start": started.isoformat(), "measured_at_end": finished.isoformat(),
         "git_branch": git_branch, "git_sha": git_sha,
@@ -1056,11 +1685,35 @@ def main() -> int:
         delta["note"] = "no previous m0_exit_scorecard.json — this is a first run"
     rec["_meta"]["delta_vs_previous_run"] = delta
 
-    # tally
-    tally = {PASS: 0, FAIL: 0, NM: 0, BLOCKED: 0}
-    for k, v in rec["criteria"].items():
-        tally[v["status"]] = tally.get(v["status"], 0) + 1
-    rec["_meta"]["tally"] = tally
+    # ── M0-T27 · reading history ─────────────────────────────────────────────
+    # This file is regenerated in place, so before M0-T27 each run ERASED the
+    # reading it replaced and kept only a compact diff. The delta is the point of
+    # the artifact — M0-T10 re-runs this at freeze time and needs to see movement
+    # in BOTH directions — so every reading is now retained here, oldest first.
+    # A run that bootstraps history from a previous JSON with no history block
+    # (the M0-T17 first reading) reconstructs that entry from the file it read.
+    def _snapshot(r: dict, label: str) -> dict:
+        return {
+            "label": label,
+            "task": r.get("_meta", {}).get("task"),
+            "measured_at_end": r.get("_meta", {}).get("measured_at_end"),
+            "git_sha": (r.get("_meta", {}).get("git_sha") or "")[:12],
+            "tally": r.get("_meta", {}).get("tally"),
+            "criteria": {k: {"status": v.get("status"),
+                             "measured_value": v.get("measured_value"),
+                             "durability": v.get("durability")}
+                         for k, v in (r.get("criteria") or {}).items()},
+            "contract_rules": {rid: {"status": v.get("status"),
+                                     "violations": v.get("violations")}
+                               for rid, v in (r.get("contract_rules") or {}).items()},
+        }
+
+    history = list((previous or {}).get("_meta", {}).get("reading_history") or [])
+    if previous and not history:
+        history = [_snapshot(previous, "reading 1 — M0-T17 first measurement")]
+    history.append(_snapshot(rec, f"reading {len(history) + 1} — {rec['_meta']['task']}"))
+    rec["_meta"]["reading_history"] = history
+    rec["_meta"]["baseline_reading"] = history[0] if history else None
 
     OUT_JSON.write_text(json.dumps(rec, indent=1, default=str))
     render_md(rec)
@@ -1117,7 +1770,9 @@ def render_md(rec: dict) -> None:
     w("artifact: M0_EXIT_SCORECARD")
     w("version: 1.0")
     w("status: LIVE-MEASUREMENT")
-    w("task: M0-T17")
+    w(f"task: {m.get('task', 'M0-T17')}")
+    w(f"built_by_task: {m.get('built_by_task', 'M0-T17')}")
+    w(f"readings: {len(m.get('reading_history') or [])}")
     w(f"generated: {m['measured_at_end']}")
     w(f"generator: {m['generator']}")
     w("---")
@@ -1132,32 +1787,95 @@ def render_md(rec: dict) -> None:
       "(I16 / charter H7). PARĪKṢAKA decides; M0-T10 re-runs the generator at freeze time "
       "rather than trusting this snapshot.")
     w("")
-    w("## 0 — Tally")
+    hist = m.get("reading_history") or []
+    base = m.get("baseline_reading") or {}
+    bt = (base.get("tally") or {}) if base else {}
+    w("## 0 — Tally, then and now")
     w("")
-    w("| status | count | meaning |")
-    w("|---|--:|---|")
-    w(f"| PASS | {t.get(PASS,0)} | a detector ran and returned zero |")
-    w(f"| FAIL | {t.get(FAIL,0)} | a detector ran and returned non-zero |")
-    w(f"| NOT-MEASURABLE | {t.get(NM,0)} | **no detector exists that could return non-zero. "
-      "Not a pass** (CLAUDE.md §N.8) |")
-    w(f"| BLOCKED | {t.get(BLOCKED,0)} | a detector exists but cannot run yet; the blocker is "
-      "named per row |")
+    if base and len(hist) > 1:
+        w(f"**then** = `{base.get('label')}`, {base.get('measured_at_end')} @ "
+          f"`{base.get('git_sha')}`  ")
+        w(f"**now** = `{(hist[-1] or {}).get('label')}`, {m['measured_at_end']} @ "
+          f"`{m['git_sha'][:12]}`")
+        w("")
+        w("| status | then | now | Δ | meaning |")
+        w("|---|--:|--:|--:|---|")
+        for st, meaning in ((PASS, "a detector ran and returned zero"),
+                            (FAIL, "a detector ran and returned non-zero"),
+                            (NM, "**no detector exists that could return non-zero. "
+                                 "Not a pass** (CLAUDE.md §N.8)"),
+                            (BLOCKED, "a detector exists but cannot run yet; the blocker "
+                                      "is named per row")):
+            a, b = bt.get(st, 0), t.get(st, 0)
+            d = b - a
+            w(f"| {st} | {a} | {b} | {'+' if d > 0 else ''}{d if d else '—'} | {meaning} |")
+    else:
+        w("| status | count | meaning |")
+        w("|---|--:|---|")
+        w(f"| PASS | {t.get(PASS,0)} | a detector ran and returned zero |")
+        w(f"| FAIL | {t.get(FAIL,0)} | a detector ran and returned non-zero |")
+        w(f"| NOT-MEASURABLE | {t.get(NM,0)} | **no detector exists that could return "
+          "non-zero. Not a pass** (CLAUDE.md §N.8) |")
+        w(f"| BLOCKED | {t.get(BLOCKED,0)} | a detector exists but cannot run yet; the "
+          "blocker is named per row |")
     w("")
+    dur = rec.get("durability") or {}
+    pc = dur.get("per_criterion") or {}
+    nondur = sorted(k for k, v in pc.items() if v.get("durability") == "NON-DURABLE")
+    expo = sorted(k for k, v in pc.items() if v.get("durability") == "EXPOSED")
+    ndrules = sorted(rid for rid, v in ((rec.get("durability") or {}).get("per_rule") or {}).items()
+                     if v.get("durability") == "NON-DURABLE")
+    brkrules = ((rec.get("durability") or {}).get("post_reseed_projection") or {}).get(
+        "rules_that_would_break") or []
     w(f"**{t.get(PASS,0)} of 12 criteria are satisfied by a detector's output.** The other "
       f"{12-t.get(PASS,0)} are not, and none of them is green.")
+    if dur:
+        w("")
+        w(f"**Criteria whose PASS rests on a NON-DURABLE repair: {len(nondur)}"
+          + (f" ({', '.join(nondur)})" if nondur else "") + ". "
+          f"Criteria passing on inputs a re-seed would move (EXPOSED): {len(expo)}"
+          + (f" ({', '.join(expo)})" if expo else "") + ".** "
+          "A repair is *durable* only if the column it wrote is absent from "
+          "`asset_registry_seed.ts`'s `ON CONFLICT (asset_id) DO UPDATE SET` list; columns in "
+          "that list are restored from `EXCLUDED` on the next seed run. "
+          + (f"Contract rules resting on such a repair: `{', '.join(ndrules)}`. "
+             if ndrules else "")
+          + (f"Rules that a projected re-seed makes start firing again: "
+             f"`{', '.join(brkrules)}`. " if brkrules else "")
+          + "§3b measures all of this, projects each PASSing rule forward through a "
+            "simulated re-seed, and names every cell that would move.")
     w("")
-    w("### At a glance")
+    w("### At a glance — then → now")
     w("")
-    w("| # | criterion | measured | status | blocker |")
-    w("|---|---|--:|---|---|")
+    w("| # | criterion | then | now | measured | durability | blocker |")
+    w("|---|---|---|---|--:|---|---|")
+    bc = (base.get("criteria") or {}) if base else {}
     for k, v in rec["criteria"].items():
         mv = v.get("measured_value")
         mv = "—" if mv is None else (json.dumps(mv) if isinstance(mv, dict) else str(mv))
+        mv = (mv[:52] + "…") if len(mv) > 52 else mv
         blk = (v.get("blocked_by") or "")
-        blk = (blk[:110] + "…") if len(blk) > 110 else blk
-        w(f"| {k.split('_')[0]} | {CRIT_TITLES[k].split('·',1)[1].strip()} | `{mv}` | "
-          f"**{v['status']}** | {blk or '—'} |")
+        blk = (blk[:96] + "…") if len(blk) > 96 else blk
+        then = (bc.get(k) or {}).get("status", "—")
+        arrow = "" if then == v["status"] else " *(moved)*"
+        d = (pc.get(k) or {}).get("durability", "—")
+        d = f"**{d}**" if d in ("NON-DURABLE", "EXPOSED") else d
+        w(f"| {k.split('_')[0]} | {CRIT_TITLES[k].split('·',1)[1].strip()} | {then} | "
+          f"**{v['status']}**{arrow} | `{mv}` | {d} | {blk or '—'} |")
     w("")
+    if len(hist) > 1:
+        w("Every reading this generator has taken is retained in "
+          "`m0_exit_scorecard.json` under `_meta.reading_history` (oldest first), so a "
+          "re-run adds a reading rather than erasing the one it replaces:")
+        w("")
+        w("| reading | task | measured | commit | PASS | FAIL | NOT-MEASURABLE | BLOCKED |")
+        w("|---|---|---|---|--:|--:|--:|--:|")
+        for h in hist:
+            ht = h.get("tally") or {}
+            w(f"| {h.get('label')} | {h.get('task')} | {h.get('measured_at_end')} | "
+              f"`{h.get('git_sha')}` | {ht.get(PASS,0)} | {ht.get(FAIL,0)} | "
+              f"{ht.get(NM,0)} | {ht.get(BLOCKED,0)} |")
+        w("")
     mv = m["re_measurement_at_end_of_run"]
     w("### Did anything move while this ran?")
     w("")
@@ -1205,9 +1923,20 @@ def render_md(rec: dict) -> None:
     for k, v in rec["criteria"].items():
         w(f"### {CRIT_TITLES[k]}")
         w("")
-        w(f"**Status: {v['status']}**  ")
-        mvv = v.get("measured_value")
-        w(f"**Measured value:** `{json.dumps(mvv) if isinstance(mvv,dict) else mvv}`  ")
+        was = (bc.get(k) or {}) if base else {}
+        if was:
+            wv = was.get("measured_value")
+            w(f"**Status: {was.get('status')} → {v['status']}**  ")
+            w(f"**Measured value:** `{json.dumps(wv) if isinstance(wv,dict) else wv}` → "
+              f"`{json.dumps(v.get('measured_value')) if isinstance(v.get('measured_value'),dict) else v.get('measured_value')}`  ")
+        else:
+            w(f"**Status: {v['status']}**  ")
+            mvv = v.get("measured_value")
+            w(f"**Measured value:** `{json.dumps(mvv) if isinstance(mvv,dict) else mvv}`  ")
+        if v.get("durability") and v["durability"] != "n/a — not passing":
+            w(f"**Durability of this reading: {v['durability']}** — {v.get('durability_note','')}  ")
+        if v.get("durability_coverage_note"):
+            w(f"**Coverage caveat:** {v['durability_coverage_note']}  ")
         det = v.get("detector") or v.get("detector_sql")
         if det:
             w("")
@@ -1241,7 +1970,9 @@ def render_md(rec: dict) -> None:
             w("")
             w("**Where the number came from:** this script's own live measurement. No sibling "
               "artifact states a figure for this quantity.")
-        for key in ("counts", "buckets", "components", "measured_components",
+        for key in ("shortfall", "blocking_analysis", "merged_to_default_branch_check",
+                    "github_run_evidence",
+                    "counts", "buckets", "components", "measured_components",
                     "measurable_proxy", "violations_by_asset_kind", "failing_rules",
                     "blocked_rules", "never_checkable_rules", "rows",
                     "rows_on_inactive", "rows_with_no_registry_row", "offending_assets",
@@ -1264,15 +1995,23 @@ def render_md(rec: dict) -> None:
         w("")
     w("## 2 — Contract rule detail (criterion 2's constituents)")
     w("")
-    w("| rule | assertion | severity | status | violations |")
-    w("|---|---|---|---|--:|")
+    br = (base.get("contract_rules") or {}) if base else {}
+    w("| rule | assertion | severity | then | now | violations then → now | durability |")
+    w("|---|---|---|---|---|--:|---|")
+    prule = (rec.get("durability") or {}).get("per_rule") or {}
     for rid, r in rec["contract_rules"].items():
         vio = r["violations"]
-        w(f"| `{rid}` | {r['assertion']} | {r['severity']} | **{r['status']}** | "
-          f"{'—' if vio is None else vio} |")
+        b = br.get(rid) or {}
+        d = (prule.get(rid) or {}).get("durability", "—")
+        d = f"**{d}**" if d in ("NON-DURABLE", "EXPOSED") else d
+        w(f"| `{rid}` | {r['assertion']} | {r['severity']} | {b.get('status','—')} | "
+          f"**{r['status']}** | {b.get('violations','—') if b else '—'} → "
+          f"{'—' if vio is None else vio} | {d} |")
     for rid, r in rec["undetectable_rules"].items():
-        w(f"| `{rid}` | {r['assertion']} | — | **{r.get('status')}** | "
-          f"{r.get('violations','—')} |")
+        b = br.get(rid) or {}
+        w(f"| `{rid}` | {r['assertion']} | — | {b.get('status','—')} | "
+          f"**{r.get('status')}** | {b.get('violations','—') if b else '—'} → "
+          f"{r.get('violations','—')} | — |")
     w("")
     w("### Rules that must NEVER read green")
     w("")
@@ -1307,6 +2046,128 @@ def render_md(rec: dict) -> None:
     w("")
     w("---")
     w("")
+    fp = rec.get("falsifiability_probe") or {}
+    if fp:
+        w("## 3a — Falsifiability: could each PASSing detector have returned non-zero?")
+        w("")
+        w(fp["what_it_is"])
+        w("")
+        w("| rule | mutation | mutant rows | proved falsifiable |")
+        w("|---|---|--:|:-:|")
+        for rid, v in fp["rules"].items():
+            pr = v.get("proved")
+            mark = "**yes**" if pr is True else ("**NO**" if pr is False else "—")
+            w(f"| `{rid}` | {v.get('why','')} | {v.get('mutant_rows','—')} | {mark} |")
+        w("")
+        notp = fp["passing_rules_NOT_proved"]
+        if notp:
+            w(f"**Not proved falsifiable: `{', '.join(notp)}`.** Their zero is reported as "
+              "measured but this script did not demonstrate the query can fire. That is a gap "
+              "in the evidence, stated rather than papered over.")
+        else:
+            w("**Every PASSing rule fired under its mutant.** No zero in this reading comes "
+              "from a query that could not have returned non-zero.")
+        w("")
+        w("---")
+        w("")
+    w("## 3b — Durability: which greens a re-seed would undo")
+    w("")
+    if not dur:
+        w("_(not measured in this reading)_")
+    else:
+        w(dur["why_this_exists"])
+        w("")
+        su = dur["seed_upsert_parse"]
+        w(f"Parsed from `{su['path']}` **as text** (never imported — D-9 / D-13): "
+          f"parse ok = `{su['ok']}`"
+          + (f", reason `{su['reason']}`" if su.get("reason") else "") + ".")
+        w("")
+        w("| question | answer |")
+        w("|---|---|")
+        w(f"| columns the seed **overwrites** on every re-run (`DO UPDATE SET`) | "
+          f"`{', '.join(dur['columns_the_seed_overwrites_on_reseed'])}` |")
+        w(f"| columns the seed **never inserts** (a new seed row lands NULL/default) | "
+          f"`{', '.join(dur['columns_the_seed_never_inserts'])}` |")
+        lvd = dur["live_vs_seed_divergence"]
+        w(f"| live cells that already differ from what the seed would write | "
+          f"**{lvd['divergent_cells']}** across {len(lvd['divergent_assets'])} asset(s) |")
+        w("")
+        w("**Divergence detector**")
+        w("")
+        w("```")
+        w(lvd["detector"])
+        w("```")
+        w("")
+        if lvd["rows"]:
+            w("| asset | column | live now | seed would write | seed declares it? |")
+            w("|---|---|---|---|:-:|")
+            for r in lvd["rows"]:
+                w(f"| `{r['asset_id']}` | `{r['column']}` | `{r['live_value']}` | "
+                  f"`{r['seed_would_write']}` | "
+                  f"{'yes' if r['seed_declares_it'] else 'no — seed default'} |")
+        else:
+            w("_No modelled cell diverges: on the columns this script can model, the live "
+              "values and the seed's values agree, so a re-seed would not move them._")
+        w("")
+        w("### Rules whose improvement rests on a reverted repair")
+        w("")
+        rows = [(rid, v) for rid, v in prule.items() if v.get("attribution")]
+        if not rows:
+            w("_None: no rule that newly passes had all of its former violating rows land in "
+              "the seed-divergent set._")
+        else:
+            w("| rule | then | now | rows that stopped violating | verdict |")
+            w("|---|---|---|---|---|")
+            for rid, v in rows:
+                a = v["attribution"]
+                w(f"| `{rid}` | {a['previous_status']} ({a['previous_violations']}) | "
+                  f"{v['status']} ({v['violations']}) | "
+                  f"{', '.join('`'+x+'`' for x in a['rows_that_stopped_violating'])} | "
+                  f"{a['verdict']} |")
+        w("")
+        prj = dur.get("post_reseed_projection") or {}
+        if prj:
+            w("### Projected forward: what a re-seed would actually break")
+            w("")
+            w(prj["what_it_is"])
+            w("")
+            if prj["rules"]:
+                w("| rule | violations now | violations after a re-seed | breaks? |")
+                w("|---|--:|--:|:-:|")
+                for rid, v in prj["rules"].items():
+                    wb = v.get("would_break")
+                    w(f"| `{rid}` | {v.get('violations_now')} | "
+                      f"{'—' if v.get('violations_after_a_reseed') is None else v['violations_after_a_reseed']} | "
+                      f"{'**YES**' if wb else ('—' if wb is None else 'no')} |")
+                w("")
+                brk = prj["rules_that_would_break"]
+                w(f"**Rules that stop passing after a re-seed: "
+                  f"{('`' + ', '.join(brk) + '`') if brk else 'none'}.**")
+            else:
+                w("_No PASSing rule could be projected._")
+            w("")
+        w("### Per-criterion durability")
+        w("")
+        w("| # | status | durability | columns read that the seed overwrites | why |")
+        w("|---|---|---|---|---|")
+        for k, v in pc.items():
+            why = (v.get("why") or "—")
+            why = (why[:180] + "…") if len(why) > 180 else why
+            dd = v["durability"]
+            dd = f"**{dd}**" if dd in ("NON-DURABLE", "EXPOSED") else dd
+            w(f"| {k.split('_')[0]} | {v['status']} | {dd} | "
+              f"`{', '.join(v['seed_overwritable_columns']) or '—'}` | {why} |")
+        w("")
+        w("<details><summary><code>durability — full record</code></summary>")
+        w("")
+        w("```json")
+        w(json.dumps(dur, indent=1, default=str)[:24000])
+        w("```")
+        w("")
+        w("</details>")
+    w("")
+    w("---")
+    w("")
     w("## 4 — What this scorecard does NOT establish")
     w("")
     w("- It does not certify M0. It measures. Certification is PARĪKṢAKA's (I16 / H7), and "
@@ -1320,7 +2181,20 @@ def render_md(rec: dict) -> None:
       "campaign exists to remove.")
     w("- Criterion 6 is neither PASS nor FAIL. Its single offender is the charter's named "
       "unrecoverable asset; resolving it is a reserved power (P1) and rung R3's work. This "
-      "task recorded the collision and did not touch it.")
+      "task recorded the collision and did not touch it. **Criterion 7 has the same single "
+      "offender** (`ka_gochara_sweep`, the one RETIRED row, now measurably missing a "
+      "`data_disposition`): it reads FAIL because a detector ran and returned 1, and that is "
+      "the honest status, but the row behind it is equally reserved and equally untouched.")
+    w("- A **durable** green in §3b means only that no column the criterion reads is "
+      "overwritten by the seed. It is not a guarantee: the seed is one write path among "
+      "several, and a migration or a writer can still move the same cell.")
+    w("- Criterion 10's detector was REPAIRED in this reading. Its predecessor computed "
+      "`PASS if a guard file exists and some workflow names it` while asserting 'merged AND "
+      "blocking' — the word *blocking* had no code path, so no input could make that half "
+      "false. Against the current tree that constant would have reported PASS. It now parses "
+      "`continue-on-error` / `|| true` and checks presence on `origin/main`, and reads FAIL. "
+      "The correction is recorded here rather than quietly applied, because a detector that "
+      "changed its own answer is exactly the thing a reader must be able to audit.")
     w("- The decorator scan follows no imports: a writer base class defined outside "
       "`platform/python-sidecar` is invisible to the C-23 derivation. Stated, not hidden.")
     w("- The seed `.ts` is regex-parsed as text, never imported (D-9 / D-13). A seed entry "

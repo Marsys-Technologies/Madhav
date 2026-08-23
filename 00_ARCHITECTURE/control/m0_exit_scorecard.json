@@ -8,7 +8,9 @@
    "clear_tables",
    "count_sql",
    "created_at",
+   "data_disposition",
    "depends_on",
+   "domain",
    "english_description",
    "english_name",
    "estimated_seconds",
@@ -26,6 +28,7 @@
    "layer_name",
    "provides_apis",
    "rebuild_on_probe_fail",
+   "rung",
    "sanskrit_name",
    "scope",
    "selftest_detail",
@@ -33,28 +36,48 @@
    "size_sql",
    "sort_order",
    "storage_type",
+   "superseded_by",
    "target_floor",
    "target_table",
    "volume_explanation",
    "writer_timeout_seconds"
   ],
   "contract_columns": {
-   "domain": false,
-   "rung": false,
-   "data_disposition": false,
-   "superseded_by": false
+   "domain": true,
+   "rung": true,
+   "data_disposition": true,
+   "superseded_by": true
   },
   "asset_registry_rows": 128,
   "asset_registry_active_rows": 127,
-  "task": "M0-T17",
+  "tally": {
+   "PASS": 1,
+   "FAIL": 7,
+   "NOT-MEASURABLE": 3,
+   "BLOCKED": 1
+  },
+  "task": "M0-T27 (re-measurement)",
+  "built_by_task": "M0-T17",
   "artifact": "M0_EXIT_SCORECARD_v1_0",
   "generator": "00_ARCHITECTURE/control/m0_exit_scorecard.py",
-  "measured_at_start": "2026-08-23T05:05:53.330487+00:00",
-  "measured_at_end": "2026-08-23T05:05:59.484414+00:00",
+  "measured_at_start": "2026-08-23T06:20:06.814859+00:00",
+  "measured_at_end": "2026-08-23T06:20:44.013647+00:00",
   "git_branch": "campaign/nirmana-autonomous",
-  "git_sha": "01397f9216de61d506e664d5fdae55b53c74df87",
+  "git_sha": "ee93b76e8a57a4db75124f37c4c902570aeb8f54",
   "db_access": "READ-ONLY (default_transaction_read_only=on; SELECT only)",
   "recent_migrations_applied": [
+   {
+    "filename": "590_nirmana_m0_catalogue_contract_columns.sql",
+    "applied_at": "2026-08-23 05:36:13.833986+00:00"
+   },
+   {
+    "filename": "589_drop_orphaned_protection_functions.sql",
+    "applied_at": "2026-08-23 05:34:38.787119+00:00"
+   },
+   {
+    "filename": "588_remove_asset_build_protection.sql",
+    "applied_at": "2026-08-23 05:33:15.527766+00:00"
+   },
    {
     "filename": "588_samiksha_digest_journal.sql",
     "applied_at": "2026-08-22 23:42:20.550183+00:00"
@@ -62,18 +85,6 @@
    {
     "filename": "587_llm_usage_events_interpretation_sets_stage.sql",
     "applied_at": "2026-08-22 03:31:21.363948+00:00"
-   },
-   {
-    "filename": "586_f152_asset_throughput_state_audit.sql",
-    "applied_at": "2026-08-22 02:29:47.385503+00:00"
-   },
-   {
-    "filename": "585_mi_gunanaka_count_sql_accretion_fix.sql",
-    "applied_at": "2026-08-22 01:16:12.777849+00:00"
-   },
-   {
-    "filename": "584_remedy_review_queue_remedy_id_unique.sql",
-    "applied_at": "2026-08-21 23:28:39.856003+00:00"
    }
   ],
   "re_measurement_at_end_of_run": {
@@ -92,7 +103,9 @@
    "clear_tables",
    "count_sql",
    "created_at",
+   "data_disposition",
    "depends_on",
+   "domain",
    "english_description",
    "english_name",
    "estimated_seconds",
@@ -110,6 +123,7 @@
    "layer_name",
    "provides_apis",
    "rebuild_on_probe_fail",
+   "rung",
    "sanskrit_name",
    "scope",
    "selftest_detail",
@@ -117,21 +131,593 @@
    "size_sql",
    "sort_order",
    "storage_type",
+   "superseded_by",
    "target_floor",
    "target_table",
    "volume_explanation",
    "writer_timeout_seconds"
   ],
   "delta_vs_previous_run": {
-   "previous_run": "2026-08-23T05:05:31.301710+00:00",
-   "changed": [],
-   "note": "no criterion changed status or value since the previous run"
+   "previous_run": "2026-08-23T05:05:59.484414+00:00",
+   "changed": [
+    {
+     "criterion": "2_contract_violations_per_kind",
+     "was": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": 227
+     },
+     "now": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": 204
+     }
+    },
+    {
+     "criterion": "7_retired_without_disposition",
+     "was": {
+      "status": "BLOCKED",
+      "measured_value": null
+     },
+     "now": {
+      "status": "FAIL",
+      "measured_value": 1
+     }
+    },
+    {
+     "criterion": "10_ci_guard_merged_and_blocking",
+     "was": {
+      "status": "FAIL",
+      "measured_value": {
+       "guard_scripts_found": 1,
+       "workflow_invocations_found": 0
+      }
+     },
+     "now": {
+      "status": "FAIL",
+      "measured_value": {
+       "guard_scripts_found": 2,
+       "workflow_invocations_found": 3,
+       "merged_to_default_branch": false,
+       "invocation_is_blocking": false
+      }
+     }
+    },
+    {
+     "criterion": "11_domain_and_rung_present",
+     "was": {
+      "status": "BLOCKED",
+      "measured_value": null
+     },
+     "now": {
+      "status": "PASS",
+      "measured_value": 0
+     }
+    },
+    {
+     "criterion": "10_ci_guard_merged_and_blocking",
+     "guard_scripts_added": [
+      "platform/scripts/governance/check_asset_source_parity.py"
+     ],
+     "guard_scripts_removed": []
+    }
+   ],
+   "note": "5 change(s) since the previous run"
   },
-  "tally": {
-   "PASS": 0,
-   "FAIL": 6,
-   "NOT-MEASURABLE": 3,
-   "BLOCKED": 3
+  "reading_history": [
+   {
+    "label": "reading 1 \u2014 M0-T17 first measurement",
+    "task": "M0-T17",
+    "measured_at_end": "2026-08-23T05:05:59.484414+00:00",
+    "git_sha": "01397f9216de",
+    "tally": {
+     "PASS": 0,
+     "FAIL": 6,
+     "NOT-MEASURABLE": 3,
+     "BLOCKED": 3
+    },
+    "criteria": {
+     "1_three_way_diff": {
+      "status": "FAIL",
+      "measured_value": 5,
+      "durability": null
+     },
+     "2_contract_violations_per_kind": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": 227,
+      "durability": null
+     },
+     "3_prefix_mismatches": {
+      "status": "FAIL",
+      "measured_value": 1,
+      "durability": null
+     },
+     "4_dangling_or_draft_edges": {
+      "status": "FAIL",
+      "measured_value": 3,
+      "durability": null
+     },
+     "5_multi_producer_partitions": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": null,
+      "durability": null
+     },
+     "6_throughput_on_inactive_assets": {
+      "status": "BLOCKED",
+      "measured_value": 3,
+      "durability": null
+     },
+     "7_retired_without_disposition": {
+      "status": "BLOCKED",
+      "measured_value": null,
+      "durability": null
+     },
+     "8_active_without_coverage_or_dead_flag": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": null,
+      "durability": null
+     },
+     "9_unresolved_zero_consumer": {
+      "status": "FAIL",
+      "measured_value": 23,
+      "durability": null
+     },
+     "10_ci_guard_merged_and_blocking": {
+      "status": "FAIL",
+      "measured_value": {
+       "guard_scripts_found": 1,
+       "workflow_invocations_found": 0
+      },
+      "durability": null
+     },
+     "11_domain_and_rung_present": {
+      "status": "BLOCKED",
+      "measured_value": null,
+      "durability": null
+     },
+     "12_ci_domain_coherence_green": {
+      "status": "FAIL",
+      "measured_value": null,
+      "durability": null
+     }
+    },
+    "contract_rules": {
+     "C-01": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-02": {
+      "status": "FAIL",
+      "violations": 21
+     },
+     "C-03": {
+      "status": "FAIL",
+      "violations": 20
+     },
+     "C-04": {
+      "status": "FAIL",
+      "violations": 11
+     },
+     "C-05": {
+      "status": "FAIL",
+      "violations": 2
+     },
+     "C-06": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-07": {
+      "status": "FAIL",
+      "violations": 4
+     },
+     "C-08": {
+      "status": "BLOCKED",
+      "violations": null
+     },
+     "C-09": {
+      "status": "BLOCKED",
+      "violations": null
+     },
+     "C-10": {
+      "status": "BLOCKED",
+      "violations": null
+     },
+     "C-11": {
+      "status": "FAIL",
+      "violations": 3
+     },
+     "C-12": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-13a": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-14": {
+      "status": "FAIL",
+      "violations": 6
+     },
+     "C-15": {
+      "status": "FAIL",
+      "violations": 6
+     },
+     "C-16": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-17": {
+      "status": "FAIL",
+      "violations": 4
+     },
+     "C-18": {
+      "status": "BLOCKED",
+      "violations": null
+     },
+     "C-19": {
+      "status": "BLOCKED",
+      "violations": null
+     },
+     "C-20": {
+      "status": "FAIL",
+      "violations": 5
+     },
+     "C-21": {
+      "status": "FAIL",
+      "violations": 19
+     },
+     "C-24": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-28": {
+      "status": "FAIL",
+      "violations": 112
+     }
+    }
+   },
+   {
+    "label": "reading 2 \u2014 M0-T27 (re-measurement)",
+    "task": "M0-T27 (re-measurement)",
+    "measured_at_end": "2026-08-23T06:20:44.013647+00:00",
+    "git_sha": "ee93b76e8a57",
+    "tally": {
+     "PASS": 1,
+     "FAIL": 7,
+     "NOT-MEASURABLE": 3,
+     "BLOCKED": 1
+    },
+    "criteria": {
+     "1_three_way_diff": {
+      "status": "FAIL",
+      "measured_value": 5,
+      "durability": "n/a \u2014 not passing"
+     },
+     "2_contract_violations_per_kind": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": 204,
+      "durability": "n/a \u2014 not passing"
+     },
+     "3_prefix_mismatches": {
+      "status": "FAIL",
+      "measured_value": 1,
+      "durability": "n/a \u2014 not passing"
+     },
+     "4_dangling_or_draft_edges": {
+      "status": "FAIL",
+      "measured_value": 3,
+      "durability": "n/a \u2014 not passing"
+     },
+     "5_multi_producer_partitions": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": null,
+      "durability": "n/a \u2014 not passing"
+     },
+     "6_throughput_on_inactive_assets": {
+      "status": "BLOCKED",
+      "measured_value": 3,
+      "durability": "n/a \u2014 not passing"
+     },
+     "7_retired_without_disposition": {
+      "status": "FAIL",
+      "measured_value": 1,
+      "durability": "n/a \u2014 not passing"
+     },
+     "8_active_without_coverage_or_dead_flag": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": null,
+      "durability": "n/a \u2014 not passing"
+     },
+     "9_unresolved_zero_consumer": {
+      "status": "FAIL",
+      "measured_value": 23,
+      "durability": "n/a \u2014 not passing"
+     },
+     "10_ci_guard_merged_and_blocking": {
+      "status": "FAIL",
+      "measured_value": {
+       "guard_scripts_found": 2,
+       "workflow_invocations_found": 3,
+       "merged_to_default_branch": false,
+       "invocation_is_blocking": false
+      },
+      "durability": "n/a \u2014 not passing"
+     },
+     "11_domain_and_rung_present": {
+      "status": "PASS",
+      "measured_value": 0,
+      "durability": "NON-DURABLE"
+     },
+     "12_ci_domain_coherence_green": {
+      "status": "FAIL",
+      "measured_value": null,
+      "durability": "n/a \u2014 not passing"
+     }
+    },
+    "contract_rules": {
+     "C-01": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-02": {
+      "status": "FAIL",
+      "violations": 21
+     },
+     "C-03": {
+      "status": "FAIL",
+      "violations": 20
+     },
+     "C-04": {
+      "status": "FAIL",
+      "violations": 9
+     },
+     "C-05": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-06": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-07": {
+      "status": "FAIL",
+      "violations": 4
+     },
+     "C-08": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-09": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-10": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-11": {
+      "status": "FAIL",
+      "violations": 3
+     },
+     "C-12": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-13a": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-14": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-15": {
+      "status": "FAIL",
+      "violations": 6
+     },
+     "C-16": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-17": {
+      "status": "FAIL",
+      "violations": 4
+     },
+     "C-18": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-19": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-20": {
+      "status": "FAIL",
+      "violations": 3
+     },
+     "C-21": {
+      "status": "FAIL",
+      "violations": 19
+     },
+     "C-24": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-28": {
+      "status": "FAIL",
+      "violations": 112
+     }
+    }
+   }
+  ],
+  "baseline_reading": {
+   "label": "reading 1 \u2014 M0-T17 first measurement",
+   "task": "M0-T17",
+   "measured_at_end": "2026-08-23T05:05:59.484414+00:00",
+   "git_sha": "01397f9216de",
+   "tally": {
+    "PASS": 0,
+    "FAIL": 6,
+    "NOT-MEASURABLE": 3,
+    "BLOCKED": 3
+   },
+   "criteria": {
+    "1_three_way_diff": {
+     "status": "FAIL",
+     "measured_value": 5,
+     "durability": null
+    },
+    "2_contract_violations_per_kind": {
+     "status": "NOT-MEASURABLE",
+     "measured_value": 227,
+     "durability": null
+    },
+    "3_prefix_mismatches": {
+     "status": "FAIL",
+     "measured_value": 1,
+     "durability": null
+    },
+    "4_dangling_or_draft_edges": {
+     "status": "FAIL",
+     "measured_value": 3,
+     "durability": null
+    },
+    "5_multi_producer_partitions": {
+     "status": "NOT-MEASURABLE",
+     "measured_value": null,
+     "durability": null
+    },
+    "6_throughput_on_inactive_assets": {
+     "status": "BLOCKED",
+     "measured_value": 3,
+     "durability": null
+    },
+    "7_retired_without_disposition": {
+     "status": "BLOCKED",
+     "measured_value": null,
+     "durability": null
+    },
+    "8_active_without_coverage_or_dead_flag": {
+     "status": "NOT-MEASURABLE",
+     "measured_value": null,
+     "durability": null
+    },
+    "9_unresolved_zero_consumer": {
+     "status": "FAIL",
+     "measured_value": 23,
+     "durability": null
+    },
+    "10_ci_guard_merged_and_blocking": {
+     "status": "FAIL",
+     "measured_value": {
+      "guard_scripts_found": 1,
+      "workflow_invocations_found": 0
+     },
+     "durability": null
+    },
+    "11_domain_and_rung_present": {
+     "status": "BLOCKED",
+     "measured_value": null,
+     "durability": null
+    },
+    "12_ci_domain_coherence_green": {
+     "status": "FAIL",
+     "measured_value": null,
+     "durability": null
+    }
+   },
+   "contract_rules": {
+    "C-01": {
+     "status": "FAIL",
+     "violations": 1
+    },
+    "C-02": {
+     "status": "FAIL",
+     "violations": 21
+    },
+    "C-03": {
+     "status": "FAIL",
+     "violations": 20
+    },
+    "C-04": {
+     "status": "FAIL",
+     "violations": 11
+    },
+    "C-05": {
+     "status": "FAIL",
+     "violations": 2
+    },
+    "C-06": {
+     "status": "FAIL",
+     "violations": 1
+    },
+    "C-07": {
+     "status": "FAIL",
+     "violations": 4
+    },
+    "C-08": {
+     "status": "BLOCKED",
+     "violations": null
+    },
+    "C-09": {
+     "status": "BLOCKED",
+     "violations": null
+    },
+    "C-10": {
+     "status": "BLOCKED",
+     "violations": null
+    },
+    "C-11": {
+     "status": "FAIL",
+     "violations": 3
+    },
+    "C-12": {
+     "status": "PASS",
+     "violations": 0
+    },
+    "C-13a": {
+     "status": "PASS",
+     "violations": 0
+    },
+    "C-14": {
+     "status": "FAIL",
+     "violations": 6
+    },
+    "C-15": {
+     "status": "FAIL",
+     "violations": 6
+    },
+    "C-16": {
+     "status": "PASS",
+     "violations": 0
+    },
+    "C-17": {
+     "status": "FAIL",
+     "violations": 4
+    },
+    "C-18": {
+     "status": "BLOCKED",
+     "violations": null
+    },
+    "C-19": {
+     "status": "BLOCKED",
+     "violations": null
+    },
+    "C-20": {
+     "status": "FAIL",
+     "violations": 5
+    },
+    "C-21": {
+     "status": "FAIL",
+     "violations": 19
+    },
+    "C-24": {
+     "status": "PASS",
+     "violations": 0
+    },
+    "C-28": {
+     "status": "FAIL",
+     "violations": 112
+    }
+   }
   }
  },
  "criteria": {
@@ -159,48 +745,42 @@
     ],
     "decorator+seed_not_registry": []
    },
-   "detector": "this script: SELECT asset_id FROM asset_registry  \u00d7  AST scan of @register('<id>') under platform/python-sidecar (production files only, asset-shaped ids only)  \u00d7  regex `^\\s*asset_id:` over platform/scripts/seed/asset_registry_seed.ts read as TEXT. Violations = ids not present in all three."
+   "detector": "this script: SELECT asset_id FROM asset_registry  \u00d7  AST scan of @register('<id>') under platform/python-sidecar (production files only, asset-shaped ids only)  \u00d7  regex `^\\s*asset_id:` over platform/scripts/seed/asset_registry_seed.ts read as TEXT. Violations = ids not present in all three.",
+   "durability": "n/a \u2014 not passing"
   },
   "2_contract_violations_per_kind": {
    "detector": "this script: every \u00a78 detection SQL of 00_ARCHITECTURE/control/ASSET_CATALOGUE_CONTRACT_v1_0.md, run live; plus C-13b (DFS) and C-23 (AST) implemented here.",
    "status": "NOT-MEASURABLE",
-   "measured_value": 227,
+   "measured_value": 204,
    "violations_by_asset_kind": {
-    "data": 144,
+    "data": 136,
     "artifact": 0,
-    "service": 19,
+    "service": 16,
     "source": 0
    },
    "failing_rules": [
     "C-01=1",
     "C-02=21",
     "C-03=20",
-    "C-04=11",
-    "C-05=2",
+    "C-04=9",
     "C-06=1",
     "C-07=4",
+    "C-08=1",
     "C-11=3",
-    "C-14=6",
     "C-15=6",
     "C-17=4",
-    "C-20=5",
+    "C-20=3",
     "C-21=19",
-    "C-23=12",
     "C-28=112"
    ],
-   "blocked_rules": [
-    "C-08",
-    "C-09",
-    "C-10",
-    "C-18",
-    "C-19"
-   ],
+   "blocked_rules": [],
    "never_checkable_rules": [
     "C-25",
     "C-26",
     "C-27"
    ],
-   "blocked_by": "rules C-08, C-09, C-10, C-18, C-19 cannot run (migration 590 columns absent); rules C-25, C-26, C-27 have NO detector at all (contract \u00a78) and must never read green"
+   "blocked_by": "rules C-25, C-26, C-27 have NO detector at all (contract \u00a78) and must never read green",
+   "durability": "n/a \u2014 not passing"
   },
   "3_prefix_mismatches": {
    "detector": "C-01 detection SQL (asset_id prefix vs layer), run live",
@@ -212,7 +792,8 @@
      "layer": "mimamsa"
     }
    ],
-   "sql": "SELECT asset_id, layer FROM asset_registry WHERE asset_kind <> 'source' AND left(asset_id,3) IS DISTINCT FROM (CASE layer WHEN 'brahmagyan' THEN 'bg_' WHEN 'ganita' THEN 'ga_' WHEN 'bodha' THEN 'bo_' WHEN 'kala' THEN 'ka_' WHEN 'phala' THEN 'ph_' WHEN 'mimamsa' THEN 'mi_' END) ORDER BY asset_id"
+   "sql": "SELECT asset_id, layer FROM asset_registry WHERE asset_kind <> 'source' AND left(asset_id,3) IS DISTINCT FROM (CASE layer WHEN 'brahmagyan' THEN 'bg_' WHEN 'ganita' THEN 'ga_' WHEN 'bodha' THEN 'bo_' WHEN 'kala' THEN 'ka_' WHEN 'phala' THEN 'ph_' WHEN 'mimamsa' THEN 'mi_' END) ORDER BY asset_id",
+   "durability": "n/a \u2014 not passing"
   },
   "4_dangling_or_draft_edges": {
    "detector": "C-12 (dangling: dep with no registry row) + C-11 (CURRENT depending on a non-CURRENT, non-source asset), both run live",
@@ -242,7 +823,8 @@
       "dep_status": "DRAFT"
      }
     ]
-   }
+   },
+   "durability": "n/a \u2014 not passing"
   },
   "5_multi_producer_partitions": {
    "detector": null,
@@ -331,7 +913,8 @@
      }
     ],
     "sql": "SELECT target_table, count(*), array_agg(asset_id) FROM asset_registry WHERE target_table IS NOT NULL GROUP BY target_table HAVING count(*)>1"
-   }
+   },
+   "durability": "n/a \u2014 not passing"
   },
   "6_throughput_on_inactive_assets": {
    "detector": "SELECT ... FROM asset_throughput t JOIN asset_registry r USING(asset_id) WHERE r.is_active = false  (+ throughput rows with no registry row)",
@@ -352,20 +935,22 @@
     }
    ],
    "rows_with_no_registry_row": [],
-   "blocked_by": "CHARTER \u00a72 P1 COLLISION \u2014 the only offender is `ka_gochara_sweep`, the charter's named unrecoverable asset. Any operation on it is a RESERVED power: parked, never decided by an agent. Plan \u00a714.2 assigns its lifecycle exit to rung R3, which has not opened. This criterion is therefore NOT PASS and NOT FAIL: it is blocked on a reserved decision, and this task neither marks it green nor resolves it."
+   "blocked_by": "CHARTER \u00a72 P1 COLLISION \u2014 the only offender is `ka_gochara_sweep`, the charter's named unrecoverable asset. Any operation on it is a RESERVED power: parked, never decided by an agent. Plan \u00a714.2 assigns its lifecycle exit to rung R3, which has not opened. This criterion is therefore NOT PASS and NOT FAIL: it is blocked on a reserved decision, and this task neither marks it green nor resolves it.",
+   "durability": "n/a \u2014 not passing"
   },
   "7_retired_without_disposition": {
    "detector": "SELECT asset_id FROM asset_registry WHERE catalog_status='RETIRED' AND data_disposition IS NULL ORDER BY asset_id",
-   "status": "BLOCKED",
-   "measured_value": null,
-   "blocked_by": "column(s) ['data_disposition'] do not exist in asset_registry (migration 590 not applied)",
+   "status": "FAIL",
+   "measured_value": 1,
+   "blocked_by": null,
    "retired_assets_live": [
     {
      "asset_id": "ka_gochara_sweep",
      "catalog_status": "RETIRED"
     }
    ],
-   "note": "`data_disposition` does not exist as a column; migration 590 (platform/migrations/590_nirmana_m0_catalogue_contract_columns.sql) introduces it. Until it applies this criterion has no detector that could return non-zero. An unmeasurable criterion is not a satisfied one."
+   "note": null,
+   "durability": "n/a \u2014 not passing"
   },
   "8_active_without_coverage_or_dead_flag": {
    "detector": null,
@@ -381,7 +966,7 @@
      {
       "asset_id": "bg_ephemeris_engine",
       "catalog_status": "CURRENT",
-      "asset_kind": "data",
+      "asset_kind": "service",
       "has_writer_flag": false
      },
      {
@@ -393,7 +978,7 @@
      {
       "asset_id": "bg_panchanga",
       "catalog_status": "CURRENT",
-      "asset_kind": "data",
+      "asset_kind": "service",
       "has_writer_flag": false
      },
      {
@@ -423,7 +1008,8 @@
     ],
     "why_the_candidate_flag_is_not_trustworthy": "2 rows have has_writer disagreeing with the live decorator scan, so even reading has_writer=false as 'dead' would be reading a flag that is itself wrong on those rows."
    },
-   "detector_sql": "SELECT asset_id, catalog_status, asset_kind, has_writer FROM asset_registry WHERE is_active  -- minus the AST @register set"
+   "detector_sql": "SELECT asset_id, catalog_status, asset_kind, has_writer FROM asset_registry WHERE is_active  -- minus the AST @register set",
+   "durability": "n/a \u2014 not passing"
   },
   "9_unresolved_zero_consumer": {
    "detector": "count of zero-consumer packets in 00_ARCHITECTURE/control/zero_consumer_evidence.json, minus those with a recorded ADHIK\u0100RIN G1 disposition naming them in 00_ARCHITECTURE/autonomy/state/DECISIONS.jsonl",
@@ -455,19 +1041,36 @@
     "ka_muhurta_seva",
     "ka_tulana",
     "mi_jivanaghatana"
-   ]
+   ],
+   "durability": "n/a \u2014 not passing"
   },
   "10_ci_guard_merged_and_blocking": {
-   "detector": "filesystem scan: does a guard implementing the Asset Catalogue Contract exist under platform/scripts/{governance,ci}; is it invoked from a .github/workflows job; is that step blocking",
+   "detector": "(a) does a guard implementing the Asset Catalogue Contract exist under platform/scripts/{governance,ci}; (b) is it invoked from a .github/workflows job; (c) is that job/step BLOCKING \u2014 no `continue-on-error: true`, no `|| true` on the run line; and is the guard MERGED, i.e. present on `origin/main` per `git ls-tree`. PASS requires all four. GitHub run history is corroboration, not the verdict.",
    "status": "FAIL",
    "measured_value": {
-    "guard_scripts_found": 1,
-    "workflow_invocations_found": 0
+    "guard_scripts_found": 2,
+    "workflow_invocations_found": 3,
+    "merged_to_default_branch": false,
+    "invocation_is_blocking": false
    },
    "guard_scripts": [
-    "platform/scripts/governance/check_asset_catalogue_contract.py"
+    "platform/scripts/governance/check_asset_catalogue_contract.py",
+    "platform/scripts/governance/check_asset_source_parity.py"
    ],
-   "workflow_invocations": [],
+   "workflow_invocations": [
+    {
+     "workflow": ".github/workflows/nirmana-m0-guards.yml",
+     "script": "platform/scripts/governance/check_asset_catalogue_contract.py"
+    },
+    {
+     "workflow": ".github/workflows/nirmana-m0-guards.yml",
+     "script": "platform/scripts/governance/check_asset_source_parity.py"
+    },
+    {
+     "workflow": ".github/workflows/nirmana-m0-guards.yml",
+     "script": "(inline marker)"
+    }
+   ],
    "workflows_scanned": [
     ".github/workflows/chat-v2-ci.yml",
     ".github/workflows/ci.yml",
@@ -479,6 +1082,7 @@
     ".github/workflows/iac-apply.yml",
     ".github/workflows/icr_weekly_scan.yml",
     ".github/workflows/judgment-integration-nightly.yml",
+    ".github/workflows/nirmana-m0-guards.yml",
     ".github/workflows/pariprashna-ci.yml",
     ".github/workflows/reconciliation-cadence.yml",
     ".github/workflows/samiksha-daily.yml",
@@ -487,26 +1091,114 @@
     ".github/workflows/tap-ci.yml",
     ".github/workflows/verification-invariant.yml"
    ],
-   "note": "WORK_QUEUE id M0-T9 ('CI guards, merged and BLOCKING (0.10)') is queued_not_dispatched. Nothing has been built yet, so this reads FAIL \u2014 a real detector returning a real non-zero-shortfall, not a block."
+   "blocking_analysis": {
+    "parser": "pyyaml",
+    "invocations": [
+     {
+      "workflow": ".github/workflows/nirmana-m0-guards.yml",
+      "job": "asset-catalogue-contract",
+      "step": "Contract conformance \u2014 self-test (fixtures + spec cross-check)",
+      "scripts": [
+       "check_asset_catalogue_contract.py"
+      ],
+      "job_continue_on_error": true,
+      "step_continue_on_error": false,
+      "run_line_swallows_exit_code": false,
+      "blocking": false
+     },
+     {
+      "workflow": ".github/workflows/nirmana-m0-guards.yml",
+      "job": "asset-catalogue-contract",
+      "step": "Contract conformance \u2014 dated live baseline (report only)",
+      "scripts": [
+       "check_asset_catalogue_contract.py"
+      ],
+      "job_continue_on_error": true,
+      "step_continue_on_error": false,
+      "run_line_swallows_exit_code": false,
+      "blocking": false
+     },
+     {
+      "workflow": ".github/workflows/nirmana-m0-guards.yml",
+      "job": "asset-source-parity",
+      "step": "Source parity \u2014 self-test (fixture writer trees)",
+      "scripts": [
+       "check_asset_source_parity.py"
+      ],
+      "job_continue_on_error": true,
+      "step_continue_on_error": false,
+      "run_line_swallows_exit_code": false,
+      "blocking": false
+     },
+     {
+      "workflow": ".github/workflows/nirmana-m0-guards.yml",
+      "job": "asset-source-parity",
+      "step": "Source parity \u2014 repo scan against the dated registry baseline",
+      "scripts": [
+       "check_asset_source_parity.py"
+      ],
+      "job_continue_on_error": true,
+      "step_continue_on_error": false,
+      "run_line_swallows_exit_code": false,
+      "blocking": false
+     }
+    ],
+    "any_blocking": false,
+    "all_blocking": false,
+    "undecidable": []
+   },
+   "merged_to_default_branch_check": {
+    "ref": "origin/main",
+    "ok": true,
+    "present": {
+     ".github/workflows/nirmana-m0-guards.yml": false,
+     "platform/scripts/governance/check_asset_catalogue_contract.py": false,
+     "platform/scripts/governance/check_asset_source_parity.py": false
+    },
+    "reason": null
+   },
+   "github_run_evidence": {
+    "available": true,
+    "reason": null,
+    "workflows": {
+     ".github/workflows/nirmana-m0-guards.yml": {
+      "registered_on_default_branch": false,
+      "run_count": 0,
+      "detail": "HTTP 404: workflow nirmana-m0-guards.yml not found on the default branch (https://api.github.com/repos/Marsys-Technologies/Madhav/actions/workflows/nirmana-m0-guards.yml)"
+     }
+    }
+   },
+   "shortfall": [
+    "the guard/workflow is NOT on the default branch (`origin/main`) \u2014 'merged' means merged, and present-on-the-campaign-branch is not that",
+    "the invocation is NOT blocking"
+   ],
+   "note": "WORK_QUEUE id M0-T9 shipped the two guard scripts and a workflow that invokes them, and shipped it NON-BLOCKING on purpose: .github/workflows/nirmana-m0-guards.yml carries `continue-on-error: true` on both jobs and says so in its own header. Flipping it to blocking is ADHIK\u0100RIN's call (charter G9) and has not been made. So the merged-and-wired halves have genuinely moved and the BLOCKING half has not, which is why this stays FAIL rather than becoming green on two of its three clauses. Shortfall: the guard/workflow is NOT on the default branch (`origin/main`) \u2014 'merged' means merged, and present-on-the-campaign-branch is not that; the invocation is NOT blocking",
+   "durability": "n/a \u2014 not passing"
   },
   "11_domain_and_rung_present": {
    "detector": "C-18 + C-19 detection SQL",
-   "status": "BLOCKED",
-   "measured_value": null,
-   "blocked_by": "columns `domain` and/or `rung` do not exist in asset_registry (migration 590 not applied). Present: {'domain': False, 'rung': False, 'data_disposition': False, 'superseded_by': False}",
-   "would_be_derived_from": {
-    "domain": "scope: global->shared, per_chart->chart (contract \u00a75.1)",
-    "rung": "layer: brahmagyan->R0 ... mimamsa->R5 (contract \u00a75.2)"
-   }
+   "status": "PASS",
+   "measured_value": 0,
+   "components": {
+    "C-18_domain": 0,
+    "C-19_rung": 0
+   },
+   "rows": {
+    "C-18": [],
+    "C-19": []
+   },
+   "durability": "NON-DURABLE",
+   "durability_note": "projected forward: constituent rule(s) ['C-18'] start firing once asset_registry_seed.ts restores the columns it owns",
+   "durability_coverage_note": "Columns ['domain', 'rung'] are absent from the seed's INSERT column list and have no NOT NULL / DEFAULT / trigger behind them, so any asset the seed newly inserts lands with them NULL and re-breaks this criterion. Today's rows are safe; the criterion's coverage of FUTURE rows is not enforced by anything."
   },
   "12_ci_domain_coherence_green": {
    "detector": null,
    "status": "FAIL",
    "measured_value": null,
-   "blocked_by": "THE ASSERTION DOES NOT EXIST. Plan \u00a711 requires the CI shape guard to assert domain coherence (a shared asset may depend only on shared assets). No CI job asserts it: 0 workflow invocations found. 'Green' cannot be read off a check that does not run \u2014 CLAUDE.md \u00a7N.8. Status FAIL is the honest reading of 'the assertion is green': it is not, because it is not.",
+   "blocked_by": "THE ASSERTION DOES NOT EXIST. Plan \u00a711 requires the CI shape guard to assert domain coherence (a shared asset may depend only on shared assets). No CI job asserts it: 1 workflow invocations found. 'Green' cannot be read off a check that does not run \u2014 CLAUDE.md \u00a7N.8. Status FAIL is the honest reading of 'the assertion is green': it is not, because it is not.",
    "underlying_condition_measured_here": {
     "what": "shared-domain asset depending on a chart-domain asset",
-    "measured_via": "`scope` column (pre-590 equivalent: global<->shared, per_chart<->chart, contract \u00a75.1 is 1:1)",
+    "measured_via": "`domain` column",
     "violations": 0,
     "rows": []
    },
@@ -519,7 +1211,13 @@
    "domain_coherence_ci_scripts": [
     "platform/scripts/governance/check_asset_catalogue_contract.py"
    ],
-   "domain_coherence_workflow_invocations": []
+   "domain_coherence_workflow_invocations": [
+    {
+     "workflow": ".github/workflows/nirmana-m0-guards.yml",
+     "script": "platform/scripts/governance/check_asset_catalogue_contract.py"
+    }
+   ],
+   "durability": "n/a \u2014 not passing"
   }
  },
  "contract_rules": {
@@ -763,19 +1461,9 @@
    "assertion": "data/artifact => target_table exists",
    "severity": "BLOCKING",
    "status": "FAIL",
-   "violations": 11,
+   "violations": 9,
    "sql": "SELECT a.asset_id, a.asset_kind, a.target_table FROM asset_registry a WHERE a.asset_kind IN ('data','artifact') AND (a.target_table IS NULL OR NOT EXISTS (SELECT 1 FROM information_schema.tables t WHERE t.table_schema='public' AND t.table_name=a.target_table)) ORDER BY a.asset_id",
    "rows": [
-    {
-     "asset_id": "bg_ephemeris_engine",
-     "asset_kind": "data",
-     "target_table": null
-    },
-    {
-     "asset_id": "bg_panchanga",
-     "asset_kind": "data",
-     "target_table": null
-    },
     {
      "asset_id": "bg_prashna_rules",
      "asset_kind": "data",
@@ -826,19 +1514,10 @@
   "C-05": {
    "assertion": "data/artifact => count_sql NOT NULL",
    "severity": "BLOCKING",
-   "status": "FAIL",
-   "violations": 2,
+   "status": "PASS",
+   "violations": 0,
    "sql": "SELECT asset_id, asset_kind FROM asset_registry WHERE asset_kind IN ('data','artifact') AND count_sql IS NULL ORDER BY asset_id",
-   "rows": [
-    {
-     "asset_id": "bg_ephemeris_engine",
-     "asset_kind": "data"
-    },
-    {
-     "asset_id": "bg_panchanga",
-     "asset_kind": "data"
-    }
-   ]
+   "rows": []
   },
   "C-06": {
    "assertion": "chart-domain count_sql is chart-scoped ($1)",
@@ -884,29 +1563,30 @@
   "C-08": {
    "assertion": "RETIRED => data_disposition NOT NULL",
    "severity": "BLOCKING",
-   "status": "BLOCKED",
-   "blocked_by": "column(s) ['data_disposition'] do not exist in asset_registry (migration 590 not applied)",
-   "violations": null,
+   "status": "FAIL",
+   "violations": 1,
    "sql": "SELECT asset_id FROM asset_registry WHERE catalog_status='RETIRED' AND data_disposition IS NULL ORDER BY asset_id",
-   "rows": null
+   "rows": [
+    {
+     "asset_id": "ka_gochara_sweep"
+    }
+   ]
   },
   "C-09": {
    "assertion": "superseded_by resolves",
    "severity": "BLOCKING",
-   "status": "BLOCKED",
-   "blocked_by": "column(s) ['superseded_by'] do not exist in asset_registry (migration 590 not applied)",
-   "violations": null,
+   "status": "PASS",
+   "violations": 0,
    "sql": "SELECT a.asset_id, a.superseded_by FROM asset_registry a WHERE a.superseded_by IS NOT NULL AND NOT EXISTS (SELECT 1 FROM asset_registry b WHERE b.asset_id=a.superseded_by) ORDER BY 1",
-   "rows": null
+   "rows": []
   },
   "C-10": {
    "assertion": "data_disposition only on RETIRED rows",
    "severity": "BLOCKING",
-   "status": "BLOCKED",
-   "blocked_by": "column(s) ['data_disposition'] do not exist in asset_registry (migration 590 not applied)",
-   "violations": null,
+   "status": "PASS",
+   "violations": 0,
    "sql": "SELECT asset_id FROM asset_registry WHERE data_disposition IS NOT NULL AND catalog_status<>'RETIRED' ORDER BY asset_id",
-   "rows": null
+   "rows": []
   },
   "C-11": {
    "assertion": "CURRENT depends only on CURRENT/source",
@@ -951,41 +1631,10 @@
   "C-14": {
    "assertion": "asset_kind / asset_type coherent",
    "severity": "BLOCKING",
-   "status": "FAIL",
-   "violations": 6,
+   "status": "PASS",
+   "violations": 0,
    "sql": "SELECT asset_id, asset_kind, asset_type FROM asset_registry WHERE (asset_kind, asset_type) NOT IN (('data','data'),('artifact','data'),('service','service'),('source','data')) ORDER BY asset_id",
-   "rows": [
-    {
-     "asset_id": "bg_ephemeris_engine",
-     "asset_kind": "data",
-     "asset_type": "service"
-    },
-    {
-     "asset_id": "bg_panchanga",
-     "asset_kind": "data",
-     "asset_type": "service"
-    },
-    {
-     "asset_id": "ka_graha_sancara",
-     "asset_kind": "service",
-     "asset_type": "data"
-    },
-    {
-     "asset_id": "ka_muhurta_seva",
-     "asset_kind": "service",
-     "asset_type": "data"
-    },
-    {
-     "asset_id": "mi_abhilekha",
-     "asset_kind": "service",
-     "asset_type": "data"
-    },
-    {
-     "asset_id": "mi_seva",
-     "asset_kind": "service",
-     "asset_type": "data"
-    }
-   ]
+   "rows": []
   },
   "C-15": {
    "assertion": "service => health_probe AND provides_apis",
@@ -1050,42 +1699,34 @@
   "C-18": {
    "assertion": "domain present and derived from scope",
    "severity": "BLOCKING",
-   "status": "BLOCKED",
-   "blocked_by": "column(s) ['domain'] do not exist in asset_registry (migration 590 not applied)",
-   "violations": null,
+   "status": "PASS",
+   "violations": 0,
    "sql": "SELECT asset_id, scope, domain FROM asset_registry WHERE domain IS DISTINCT FROM (CASE scope WHEN 'global' THEN 'shared' WHEN 'per_chart' THEN 'chart' END) ORDER BY asset_id",
-   "rows": null
+   "rows": []
   },
   "C-19": {
    "assertion": "rung present and derived from layer",
    "severity": "BLOCKING",
-   "status": "BLOCKED",
-   "blocked_by": "column(s) ['rung'] do not exist in asset_registry (migration 590 not applied)",
-   "violations": null,
+   "status": "PASS",
+   "violations": 0,
    "sql": "SELECT asset_id, layer, rung FROM asset_registry WHERE asset_kind <> 'source' AND rung IS DISTINCT FROM (CASE layer WHEN 'brahmagyan' THEN 'R0' WHEN 'ganita' THEN 'R1' WHEN 'bodha' THEN 'R2' WHEN 'kala' THEN 'R3' WHEN 'phala' THEN 'R4' WHEN 'mimamsa' THEN 'R5' END) ORDER BY asset_id",
-   "rows": null
+   "rows": []
   },
   "C-20": {
    "assertion": "CURRENT data/artifact carries a floor",
    "severity": "BLOCKING",
    "status": "FAIL",
-   "violations": 5,
+   "violations": 3,
    "sql": "SELECT asset_id FROM asset_registry WHERE catalog_status='CURRENT' AND asset_kind IN ('data','artifact') AND target_floor IS NULL ORDER BY asset_id",
    "rows": [
     {
      "asset_id": "bg_class_priors"
     },
     {
-     "asset_id": "bg_ephemeris_engine"
-    },
-    {
      "asset_id": "bg_formula_constants"
     },
     {
      "asset_id": "bg_ghatana"
-    },
-    {
-     "asset_id": "bg_panchanga"
     }
    ]
   },
@@ -1369,70 +2010,9 @@
   "C-23": {
    "assertion": "has_substeps equals the writer-class truth",
    "reason": "measured here by AST: the writer class, or an ancestor OTHER THAN the frozen `WriterBase`, defines `plan_substeps` or sets `has_substeps = True`. WriterBase's OWN default plan_substeps is excluded deliberately \u2014 every writer inherits it, so counting it would make the detector a constant (CLAUDE.md \u00a7N.8). Inheritance is resolved by class NAME inside platform/python-sidecar; imports are not followed, so a base defined outside that tree is invisible.",
-   "status": "FAIL",
-   "violations": 12,
-   "rows": [
-    {
-     "asset_id": "bg_muhurta_lattice",
-     "registry_has_substeps": false,
-     "writer_class_truth": true
-    },
-    {
-     "asset_id": "bo_laksana",
-     "registry_has_substeps": false,
-     "writer_class_truth": true
-    },
-    {
-     "asset_id": "bo_samskara",
-     "registry_has_substeps": false,
-     "writer_class_truth": true
-    },
-    {
-     "asset_id": "ga_ayurdaya",
-     "registry_has_substeps": false,
-     "writer_class_truth": true
-    },
-    {
-     "asset_id": "ga_nakshatra",
-     "registry_has_substeps": false,
-     "writer_class_truth": true
-    },
-    {
-     "asset_id": "ga_sensitive",
-     "registry_has_substeps": false,
-     "writer_class_truth": true
-    },
-    {
-     "asset_id": "ga_sensitive_degree",
-     "registry_has_substeps": false,
-     "writer_class_truth": true
-    },
-    {
-     "asset_id": "ga_structural",
-     "registry_has_substeps": false,
-     "writer_class_truth": true
-    },
-    {
-     "asset_id": "ka_sangam",
-     "registry_has_substeps": false,
-     "writer_class_truth": true
-    },
-    {
-     "asset_id": "mi_darshana",
-     "registry_has_substeps": false,
-     "writer_class_truth": true
-    },
-    {
-     "asset_id": "mi_pariksha",
-     "registry_has_substeps": false,
-     "writer_class_truth": true
-    },
-    {
-     "asset_id": "mi_pramana",
-     "registry_has_substeps": false,
-     "writer_class_truth": true
-    }
-   ],
+   "status": "PASS",
+   "violations": 0,
+   "rows": [],
    "assets_compared": 123
   },
   "C-25": {
@@ -1477,13 +2057,32 @@
   },
   "ci": {
    "guard_scripts": [
-    "platform/scripts/governance/check_asset_catalogue_contract.py"
+    "platform/scripts/governance/check_asset_catalogue_contract.py",
+    "platform/scripts/governance/check_asset_source_parity.py"
    ],
-   "workflow_invocations": [],
+   "workflow_invocations": [
+    {
+     "workflow": ".github/workflows/nirmana-m0-guards.yml",
+     "script": "platform/scripts/governance/check_asset_catalogue_contract.py"
+    },
+    {
+     "workflow": ".github/workflows/nirmana-m0-guards.yml",
+     "script": "platform/scripts/governance/check_asset_source_parity.py"
+    },
+    {
+     "workflow": ".github/workflows/nirmana-m0-guards.yml",
+     "script": "(inline marker)"
+    }
+   ],
    "domain_coherence_scripts": [
     "platform/scripts/governance/check_asset_catalogue_contract.py"
    ],
-   "domain_coherence_workflow_invocations": [],
+   "domain_coherence_workflow_invocations": [
+    {
+     "workflow": ".github/workflows/nirmana-m0-guards.yml",
+     "script": "platform/scripts/governance/check_asset_catalogue_contract.py"
+    }
+   ],
    "workflows_scanned": [
     ".github/workflows/chat-v2-ci.yml",
     ".github/workflows/ci.yml",
@@ -1495,6 +2094,7 @@
     ".github/workflows/iac-apply.yml",
     ".github/workflows/icr_weekly_scan.yml",
     ".github/workflows/judgment-integration-nightly.yml",
+    ".github/workflows/nirmana-m0-guards.yml",
     ".github/workflows/pariprashna-ci.yml",
     ".github/workflows/reconciliation-cadence.yml",
     ".github/workflows/samiksha-daily.yml",
@@ -1505,10 +2105,1106 @@
    ]
   }
  },
+ "falsifiability_probe": {
+  "what_it_is": "for every contract rule reading PASS, the shipped SQL re-run with one deliberate mutation that must make it fire. A zero from a query that cannot return non-zero is not evidence (CLAUDE.md \u00a7N.8). Read-only; the mutant is never used for a verdict.",
+  "rules": {
+   "C-05": {
+    "proved": true,
+    "mutant_rows": 120,
+    "why": "invert the NULL test: every data/artifact row that HAS a count_sql must fire",
+    "mutant_sql": "SELECT asset_id, asset_kind FROM asset_registry WHERE asset_kind IN ('data','artifact') AND count_sql IS NOT NULL ORDER BY asset_id",
+    "verdict": "the shipped query CAN return non-zero against this database, so its zero is a measurement"
+   },
+   "C-09": {
+    "proved": true,
+    "mutant_rows": 128,
+    "why": "invert the NOT NULL test: rows with no supersession must fire, since NOT EXISTS(... = NULL) is true for all of them",
+    "mutant_sql": "SELECT a.asset_id, a.superseded_by FROM asset_registry a WHERE a.superseded_by IS NULL AND NOT EXISTS (SELECT 1 FROM asset_registry b WHERE b.asset_id=a.superseded_by) ORDER BY 1",
+    "verdict": "the shipped query CAN return non-zero against this database, so its zero is a measurement"
+   },
+   "C-10": {
+    "proved": true,
+    "mutant_rows": 127,
+    "why": "invert the NULL test: non-RETIRED rows without a disposition must fire",
+    "mutant_sql": "SELECT asset_id FROM asset_registry WHERE data_disposition IS NULL AND catalog_status<>'RETIRED' ORDER BY asset_id",
+    "verdict": "the shipped query CAN return non-zero against this database, so its zero is a measurement"
+   },
+   "C-12": {
+    "proved": true,
+    "mutant_rows": 284,
+    "why": "invert the existence test: every edge that DOES resolve must fire",
+    "mutant_sql": "SELECT a.asset_id, d AS dep FROM asset_registry a CROSS JOIN LATERAL unnest(a.depends_on) AS d WHERE EXISTS (SELECT 1 FROM asset_registry b WHERE b.asset_id=d) ORDER BY 1,2",
+    "verdict": "the shipped query CAN return non-zero against this database, so its zero is a measurement"
+   },
+   "C-13a": {
+    "proved": true,
+    "mutant_rows": 128,
+    "why": "invert the self-edge test: every row without a self-edge must fire",
+    "mutant_sql": "SELECT asset_id FROM asset_registry WHERE NOT (asset_id = ANY(depends_on)) ORDER BY 1",
+    "verdict": "the shipped query CAN return non-zero against this database, so its zero is a measurement"
+   },
+   "C-14": {
+    "proved": true,
+    "mutant_rows": 128,
+    "why": "invert the membership test: every LEGAL (kind,type) pair must fire",
+    "mutant_sql": "SELECT asset_id, asset_kind, asset_type FROM asset_registry WHERE (asset_kind, asset_type) IN (('data','data'),('artifact','data'),('service','service'),('source','data')) ORDER BY asset_id",
+    "verdict": "the shipped query CAN return non-zero against this database, so its zero is a measurement"
+   },
+   "C-16": {
+    "proved": true,
+    "mutant_rows": 120,
+    "why": "invert the NULL test: non-service rows with no service_health must fire",
+    "mutant_sql": "SELECT asset_id, asset_kind, service_health FROM asset_registry WHERE asset_kind<>'service' AND service_health IS NULL ORDER BY asset_id",
+    "verdict": "the shipped query CAN return non-zero against this database, so its zero is a measurement"
+   },
+   "C-18": {
+    "proved": true,
+    "mutant_rows": 128,
+    "why": "swap the scope\u2192domain mapping: with the expectation inverted every row must fire",
+    "mutant_sql": "SELECT asset_id, scope, domain FROM asset_registry WHERE domain IS DISTINCT FROM (CASE scope WHEN 'global' THEN 'chart' WHEN 'per_chart' THEN 'shared' END) ORDER BY asset_id",
+    "verdict": "the shipped query CAN return non-zero against this database, so its zero is a measurement"
+   },
+   "C-19": {
+    "proved": true,
+    "mutant_rows": 40,
+    "why": "mis-map one layer: every brahmagyan row must fire",
+    "mutant_sql": "SELECT asset_id, layer, rung FROM asset_registry WHERE asset_kind <> 'source' AND rung IS DISTINCT FROM (CASE layer WHEN 'brahmagyan' THEN 'R5' WHEN 'ganita' THEN 'R1' WHEN 'bodha' THEN 'R2' WHEN 'kala' THEN 'R3' WHEN 'phala' THEN 'R4' WHEN 'mimamsa' THEN 'R5' END) ORDER BY asset_id",
+    "verdict": "the shipped query CAN return non-zero against this database, so its zero is a measurement"
+   },
+   "C-24": {
+    "proved": true,
+    "mutant_rows": 15,
+    "why": "invert the first arm's existence test: every clear_tables entry that DOES name a real table must fire",
+    "mutant_sql": "SELECT a.asset_id, t AS listed FROM asset_registry a CROSS JOIN LATERAL unnest(a.clear_tables) AS t WHERE a.clear_tables IS NOT NULL AND EXISTS (SELECT 1 FROM information_schema.tables i WHERE i.table_schema='public' AND i.table_name=t) UNION ALL SELECT asset_id, target_table FROM asset_registry WHERE clear_tables IS NOT NULL AND NOT (target_table = ANY(clear_tables))",
+    "verdict": "the shipped query CAN return non-zero against this database, so its zero is a measurement"
+   }
+  },
+  "passing_rules_proved_falsifiable": [
+   "C-05",
+   "C-09",
+   "C-10",
+   "C-12",
+   "C-13a",
+   "C-14",
+   "C-16",
+   "C-18",
+   "C-19",
+   "C-24"
+  ],
+  "passing_rules_NOT_proved": []
+ },
+ "durability": {
+  "post_reseed_projection": {
+   "what_it_is": "each PASSing rule re-run against a CTE that shadows asset_registry with the values asset_registry_seed.ts would write, for the columns this script can model (['asset_kind', 'asset_type', 'layer', 'scope']). Read-only; never used as a reported status. Columns the script cannot model are left at their live values, so this is a LOWER BOUND on what a re-seed would break.",
+   "modelled_columns": [
+    "asset_kind",
+    "asset_type",
+    "layer",
+    "scope"
+   ],
+   "seed_rows_projected": 127,
+   "rules": {
+    "C-05": {
+     "violations_now": 0,
+     "violations_after_a_reseed": 2,
+     "would_break": true,
+     "verdict": "this rule STOPS PASSING once the seed restores its columns"
+    },
+    "C-09": {
+     "violations_now": 0,
+     "violations_after_a_reseed": 0,
+     "would_break": false,
+     "verdict": "this rule still passes after the seed restores its columns"
+    },
+    "C-10": {
+     "violations_now": 0,
+     "violations_after_a_reseed": 0,
+     "would_break": false,
+     "verdict": "this rule still passes after the seed restores its columns"
+    },
+    "C-12": {
+     "violations_now": 0,
+     "violations_after_a_reseed": 0,
+     "would_break": false,
+     "verdict": "this rule still passes after the seed restores its columns"
+    },
+    "C-13a": {
+     "violations_now": 0,
+     "violations_after_a_reseed": 0,
+     "would_break": false,
+     "verdict": "this rule still passes after the seed restores its columns"
+    },
+    "C-14": {
+     "violations_now": 0,
+     "violations_after_a_reseed": 8,
+     "would_break": true,
+     "verdict": "this rule STOPS PASSING once the seed restores its columns"
+    },
+    "C-16": {
+     "violations_now": 0,
+     "violations_after_a_reseed": 0,
+     "would_break": false,
+     "verdict": "this rule still passes after the seed restores its columns"
+    },
+    "C-18": {
+     "violations_now": 0,
+     "violations_after_a_reseed": 1,
+     "would_break": true,
+     "verdict": "this rule STOPS PASSING once the seed restores its columns"
+    },
+    "C-19": {
+     "violations_now": 0,
+     "violations_after_a_reseed": 0,
+     "would_break": false,
+     "verdict": "this rule still passes after the seed restores its columns"
+    },
+    "C-24": {
+     "violations_now": 0,
+     "violations_after_a_reseed": 0,
+     "would_break": false,
+     "verdict": "this rule still passes after the seed restores its columns"
+    }
+   },
+   "rules_that_would_break": [
+    "C-05",
+    "C-14",
+    "C-18"
+   ]
+  },
+  "why_this_exists": "A repair written straight to asset_registry survives only if its column is absent from asset_registry_seed.ts's `ON CONFLICT (asset_id) DO UPDATE SET` list. Columns in that list are restored from EXCLUDED on the next seed run. A green resting on such a column is a green a re-seed silently undoes, which is strictly worse than a red.",
+  "seed_upsert_parse": {
+   "ok": true,
+   "reason": null,
+   "insert_columns": [
+    "asset_id",
+    "asset_kind",
+    "asset_type",
+    "catalog_status",
+    "count_sql",
+    "depends_on",
+    "english_description",
+    "english_name",
+    "estimated_seconds",
+    "expected_volume_formula",
+    "expected_volume_inputs",
+    "health_probe",
+    "is_active",
+    "layer",
+    "layer_index",
+    "layer_name",
+    "provides_apis",
+    "sanskrit_name",
+    "scope",
+    "size_sql",
+    "sort_order",
+    "storage_type",
+    "target_floor",
+    "target_table",
+    "volume_explanation"
+   ],
+   "do_update_columns": [
+    "asset_kind",
+    "asset_type",
+    "catalog_status",
+    "count_sql",
+    "depends_on",
+    "english_description",
+    "english_name",
+    "expected_volume_formula",
+    "expected_volume_inputs",
+    "health_probe",
+    "is_active",
+    "layer",
+    "layer_index",
+    "layer_name",
+    "provides_apis",
+    "sanskrit_name",
+    "scope",
+    "size_sql",
+    "sort_order",
+    "storage_type",
+    "target_floor",
+    "target_table",
+    "volume_explanation"
+   ],
+   "path": "platform/scripts/seed/asset_registry_seed.ts"
+  },
+  "columns_the_seed_overwrites_on_reseed": [
+   "asset_kind",
+   "asset_type",
+   "catalog_status",
+   "count_sql",
+   "depends_on",
+   "english_description",
+   "english_name",
+   "expected_volume_formula",
+   "expected_volume_inputs",
+   "health_probe",
+   "is_active",
+   "layer",
+   "layer_index",
+   "layer_name",
+   "provides_apis",
+   "sanskrit_name",
+   "scope",
+   "size_sql",
+   "sort_order",
+   "storage_type",
+   "target_floor",
+   "target_table",
+   "volume_explanation"
+  ],
+  "columns_the_seed_never_inserts": [
+   "clear_tables",
+   "created_at",
+   "data_disposition",
+   "domain",
+   "has_substeps",
+   "has_writer",
+   "integrity_check_sql",
+   "last_invoked_at",
+   "last_selftest_at",
+   "rebuild_on_probe_fail",
+   "rung",
+   "selftest_detail",
+   "service_health",
+   "superseded_by",
+   "writer_timeout_seconds"
+  ],
+  "live_vs_seed_divergence": {
+   "detector": "for each seed-overwritten column this script can model (['asset_kind', 'asset_type', 'layer', 'scope']), compare the LIVE value against the literal the seed declares for that asset (or the seed's own `?? 'data'` default when the key is absent). A difference means the next seed run changes that cell.",
+   "modelled_columns": [
+    "asset_kind",
+    "asset_type",
+    "layer",
+    "scope"
+   ],
+   "divergent_cells": 9,
+   "divergent_assets": [
+    "bg_ephemeris_engine",
+    "bg_panchanga",
+    "ka_dasha_kala",
+    "ka_graha_sancara",
+    "ka_muhurta_seva",
+    "ka_tulana",
+    "mi_abhilekha",
+    "mi_jivanaghatana",
+    "mi_seva"
+   ],
+   "rows": [
+    {
+     "asset_id": "bg_ephemeris_engine",
+     "column": "asset_kind",
+     "live_value": "service",
+     "seed_would_write": "data",
+     "seed_declares_it": false
+    },
+    {
+     "asset_id": "bg_panchanga",
+     "column": "asset_kind",
+     "live_value": "service",
+     "seed_would_write": "data",
+     "seed_declares_it": false
+    },
+    {
+     "asset_id": "ka_dasha_kala",
+     "column": "asset_type",
+     "live_value": "service",
+     "seed_would_write": "data",
+     "seed_declares_it": false
+    },
+    {
+     "asset_id": "ka_graha_sancara",
+     "column": "asset_type",
+     "live_value": "service",
+     "seed_would_write": "data",
+     "seed_declares_it": false
+    },
+    {
+     "asset_id": "ka_muhurta_seva",
+     "column": "asset_type",
+     "live_value": "service",
+     "seed_would_write": "data",
+     "seed_declares_it": false
+    },
+    {
+     "asset_id": "ka_tulana",
+     "column": "asset_type",
+     "live_value": "service",
+     "seed_would_write": "data",
+     "seed_declares_it": false
+    },
+    {
+     "asset_id": "mi_abhilekha",
+     "column": "asset_type",
+     "live_value": "service",
+     "seed_would_write": "data",
+     "seed_declares_it": false
+    },
+    {
+     "asset_id": "mi_jivanaghatana",
+     "column": "scope",
+     "live_value": "per_chart",
+     "seed_would_write": "global",
+     "seed_declares_it": true
+    },
+    {
+     "asset_id": "mi_seva",
+     "column": "asset_type",
+     "live_value": "service",
+     "seed_would_write": "data",
+     "seed_declares_it": false
+    }
+   ]
+  },
+  "per_rule": {
+   "C-01": {
+    "status": "FAIL",
+    "violations": 1,
+    "columns_referenced": [
+     "asset_id",
+     "asset_kind",
+     "layer"
+    ],
+    "seed_overwritable_columns": [
+     "asset_kind",
+     "layer"
+    ],
+    "seed_divergent_assets_among_them": [
+     "bg_ephemeris_engine",
+     "bg_panchanga"
+    ],
+    "durability": "n/a \u2014 not passing",
+    "attribution": null
+   },
+   "C-02": {
+    "status": "FAIL",
+    "violations": 21,
+    "columns_referenced": [
+     "asset_id",
+     "layer",
+     "layer_index"
+    ],
+    "seed_overwritable_columns": [
+     "layer",
+     "layer_index"
+    ],
+    "seed_divergent_assets_among_them": [],
+    "durability": "n/a \u2014 not passing",
+    "attribution": null
+   },
+   "C-03": {
+    "status": "FAIL",
+    "violations": 20,
+    "columns_referenced": [
+     "asset_id",
+     "layer",
+     "layer_name"
+    ],
+    "seed_overwritable_columns": [
+     "layer",
+     "layer_name"
+    ],
+    "seed_divergent_assets_among_them": [],
+    "durability": "n/a \u2014 not passing",
+    "attribution": null
+   },
+   "C-04": {
+    "status": "FAIL",
+    "violations": 9,
+    "columns_referenced": [
+     "asset_id",
+     "asset_kind",
+     "target_table"
+    ],
+    "seed_overwritable_columns": [
+     "asset_kind",
+     "target_table"
+    ],
+    "seed_divergent_assets_among_them": [
+     "bg_ephemeris_engine",
+     "bg_panchanga"
+    ],
+    "durability": "n/a \u2014 not passing",
+    "attribution": null
+   },
+   "C-05": {
+    "status": "PASS",
+    "violations": 0,
+    "columns_referenced": [
+     "asset_id",
+     "asset_kind",
+     "count_sql"
+    ],
+    "seed_overwritable_columns": [
+     "asset_kind",
+     "count_sql"
+    ],
+    "seed_divergent_assets_among_them": [
+     "bg_ephemeris_engine",
+     "bg_panchanga"
+    ],
+    "durability": "NON-DURABLE",
+    "attribution": {
+     "previous_status": "FAIL",
+     "previous_violations": 2,
+     "rows_that_stopped_violating": [
+      "bg_ephemeris_engine",
+      "bg_panchanga"
+     ],
+     "verdict": "EVERY row that stopped violating this rule is a row whose live value now differs from what the seed would write. This rule's PASS rests on a repair the next seed run reverts."
+    }
+   },
+   "C-06": {
+    "status": "FAIL",
+    "violations": 1,
+    "columns_referenced": [
+     "asset_id",
+     "count_sql",
+     "scope"
+    ],
+    "seed_overwritable_columns": [
+     "count_sql",
+     "scope"
+    ],
+    "seed_divergent_assets_among_them": [
+     "mi_jivanaghatana"
+    ],
+    "durability": "n/a \u2014 not passing",
+    "attribution": null
+   },
+   "C-07": {
+    "status": "FAIL",
+    "violations": 4,
+    "columns_referenced": [
+     "asset_id",
+     "asset_kind",
+     "clear_tables",
+     "count_sql",
+     "target_floor",
+     "target_table"
+    ],
+    "seed_overwritable_columns": [
+     "asset_kind",
+     "count_sql",
+     "target_floor",
+     "target_table"
+    ],
+    "seed_divergent_assets_among_them": [
+     "bg_ephemeris_engine",
+     "bg_panchanga"
+    ],
+    "durability": "n/a \u2014 not passing",
+    "attribution": null
+   },
+   "C-08": {
+    "status": "FAIL",
+    "violations": 1,
+    "columns_referenced": [
+     "asset_id",
+     "catalog_status",
+     "data_disposition"
+    ],
+    "seed_overwritable_columns": [
+     "catalog_status"
+    ],
+    "seed_divergent_assets_among_them": [],
+    "durability": "n/a \u2014 not passing",
+    "attribution": null
+   },
+   "C-09": {
+    "status": "PASS",
+    "violations": 0,
+    "columns_referenced": [
+     "asset_id",
+     "superseded_by"
+    ],
+    "seed_overwritable_columns": [],
+    "seed_divergent_assets_among_them": [],
+    "durability": "durable",
+    "attribution": null
+   },
+   "C-10": {
+    "status": "PASS",
+    "violations": 0,
+    "columns_referenced": [
+     "asset_id",
+     "catalog_status",
+     "data_disposition"
+    ],
+    "seed_overwritable_columns": [
+     "catalog_status"
+    ],
+    "seed_divergent_assets_among_them": [],
+    "durability": "durable",
+    "attribution": null
+   },
+   "C-11": {
+    "status": "FAIL",
+    "violations": 3,
+    "columns_referenced": [
+     "asset_id",
+     "asset_kind",
+     "catalog_status",
+     "depends_on"
+    ],
+    "seed_overwritable_columns": [
+     "asset_kind",
+     "catalog_status",
+     "depends_on"
+    ],
+    "seed_divergent_assets_among_them": [
+     "bg_ephemeris_engine",
+     "bg_panchanga"
+    ],
+    "durability": "n/a \u2014 not passing",
+    "attribution": null
+   },
+   "C-12": {
+    "status": "PASS",
+    "violations": 0,
+    "columns_referenced": [
+     "asset_id",
+     "depends_on"
+    ],
+    "seed_overwritable_columns": [
+     "depends_on"
+    ],
+    "seed_divergent_assets_among_them": [],
+    "durability": "durable",
+    "attribution": null
+   },
+   "C-13a": {
+    "status": "PASS",
+    "violations": 0,
+    "columns_referenced": [
+     "asset_id",
+     "depends_on"
+    ],
+    "seed_overwritable_columns": [
+     "depends_on"
+    ],
+    "seed_divergent_assets_among_them": [],
+    "durability": "durable",
+    "attribution": null
+   },
+   "C-14": {
+    "status": "PASS",
+    "violations": 0,
+    "columns_referenced": [
+     "asset_id",
+     "asset_kind",
+     "asset_type"
+    ],
+    "seed_overwritable_columns": [
+     "asset_kind",
+     "asset_type"
+    ],
+    "seed_divergent_assets_among_them": [
+     "bg_ephemeris_engine",
+     "bg_panchanga",
+     "ka_dasha_kala",
+     "ka_graha_sancara",
+     "ka_muhurta_seva",
+     "ka_tulana",
+     "mi_abhilekha",
+     "mi_seva"
+    ],
+    "durability": "NON-DURABLE",
+    "attribution": {
+     "previous_status": "FAIL",
+     "previous_violations": 6,
+     "rows_that_stopped_violating": [
+      "bg_ephemeris_engine",
+      "bg_panchanga",
+      "ka_graha_sancara",
+      "ka_muhurta_seva",
+      "mi_abhilekha",
+      "mi_seva"
+     ],
+     "verdict": "EVERY row that stopped violating this rule is a row whose live value now differs from what the seed would write. This rule's PASS rests on a repair the next seed run reverts."
+    }
+   },
+   "C-15": {
+    "status": "FAIL",
+    "violations": 6,
+    "columns_referenced": [
+     "asset_id",
+     "asset_kind",
+     "health_probe",
+     "provides_apis"
+    ],
+    "seed_overwritable_columns": [
+     "asset_kind",
+     "health_probe",
+     "provides_apis"
+    ],
+    "seed_divergent_assets_among_them": [
+     "bg_ephemeris_engine",
+     "bg_panchanga"
+    ],
+    "durability": "n/a \u2014 not passing",
+    "attribution": null
+   },
+   "C-16": {
+    "status": "PASS",
+    "violations": 0,
+    "columns_referenced": [
+     "asset_id",
+     "asset_kind",
+     "service_health"
+    ],
+    "seed_overwritable_columns": [
+     "asset_kind"
+    ],
+    "seed_divergent_assets_among_them": [
+     "bg_ephemeris_engine",
+     "bg_panchanga"
+    ],
+    "durability": "EXPOSED",
+    "attribution": null
+   },
+   "C-17": {
+    "status": "FAIL",
+    "violations": 4,
+    "columns_referenced": [
+     "asset_id",
+     "health_probe",
+     "service_health"
+    ],
+    "seed_overwritable_columns": [
+     "health_probe"
+    ],
+    "seed_divergent_assets_among_them": [],
+    "durability": "n/a \u2014 not passing",
+    "attribution": null
+   },
+   "C-18": {
+    "status": "PASS",
+    "violations": 0,
+    "columns_referenced": [
+     "asset_id",
+     "domain",
+     "scope"
+    ],
+    "seed_overwritable_columns": [
+     "scope"
+    ],
+    "seed_divergent_assets_among_them": [
+     "mi_jivanaghatana"
+    ],
+    "durability": "EXPOSED",
+    "attribution": null
+   },
+   "C-19": {
+    "status": "PASS",
+    "violations": 0,
+    "columns_referenced": [
+     "asset_id",
+     "asset_kind",
+     "layer",
+     "rung"
+    ],
+    "seed_overwritable_columns": [
+     "asset_kind",
+     "layer"
+    ],
+    "seed_divergent_assets_among_them": [
+     "bg_ephemeris_engine",
+     "bg_panchanga"
+    ],
+    "durability": "EXPOSED",
+    "attribution": null
+   },
+   "C-20": {
+    "status": "FAIL",
+    "violations": 3,
+    "columns_referenced": [
+     "asset_id",
+     "asset_kind",
+     "catalog_status",
+     "target_floor"
+    ],
+    "seed_overwritable_columns": [
+     "asset_kind",
+     "catalog_status",
+     "target_floor"
+    ],
+    "seed_divergent_assets_among_them": [
+     "bg_ephemeris_engine",
+     "bg_panchanga"
+    ],
+    "durability": "n/a \u2014 not passing",
+    "attribution": null
+   },
+   "C-21": {
+    "status": "FAIL",
+    "violations": 19,
+    "columns_referenced": [
+     "asset_id",
+     "target_floor",
+     "volume_explanation"
+    ],
+    "seed_overwritable_columns": [
+     "target_floor",
+     "volume_explanation"
+    ],
+    "seed_divergent_assets_among_them": [],
+    "durability": "n/a \u2014 not passing",
+    "attribution": null
+   },
+   "C-24": {
+    "status": "PASS",
+    "violations": 0,
+    "columns_referenced": [
+     "asset_id",
+     "clear_tables",
+     "target_table"
+    ],
+    "seed_overwritable_columns": [
+     "target_table"
+    ],
+    "seed_divergent_assets_among_them": [],
+    "durability": "durable",
+    "attribution": null
+   },
+   "C-28": {
+    "status": "FAIL",
+    "violations": 112,
+    "columns_referenced": [
+     "asset_id",
+     "estimated_seconds"
+    ],
+    "seed_overwritable_columns": [],
+    "seed_divergent_assets_among_them": [],
+    "durability": "n/a \u2014 not passing",
+    "attribution": null
+   }
+  },
+  "per_criterion": {
+   "1_three_way_diff": {
+    "status": "FAIL",
+    "columns_read": [],
+    "seed_overwritable_columns": [],
+    "seed_divergent_assets_among_them": [],
+    "constituent_rules": [],
+    "non_durable_constituent_rules": [],
+    "columns_the_seed_never_inserts": [],
+    "durability": "n/a \u2014 not passing",
+    "why": null,
+    "rules_that_break_after_a_reseed": [],
+    "rules_whose_projection_failed": []
+   },
+   "2_contract_violations_per_kind": {
+    "status": "NOT-MEASURABLE",
+    "columns_read": [
+     "asset_id",
+     "asset_kind",
+     "asset_type",
+     "catalog_status",
+     "clear_tables",
+     "count_sql",
+     "data_disposition",
+     "depends_on",
+     "domain",
+     "estimated_seconds",
+     "health_probe",
+     "layer",
+     "layer_index",
+     "layer_name",
+     "provides_apis",
+     "rung",
+     "scope",
+     "service_health",
+     "superseded_by",
+     "target_floor",
+     "target_table",
+     "volume_explanation"
+    ],
+    "seed_overwritable_columns": [
+     "asset_kind",
+     "asset_type",
+     "catalog_status",
+     "count_sql",
+     "depends_on",
+     "health_probe",
+     "layer",
+     "layer_index",
+     "layer_name",
+     "provides_apis",
+     "scope",
+     "target_floor",
+     "target_table",
+     "volume_explanation"
+    ],
+    "seed_divergent_assets_among_them": [
+     "bg_ephemeris_engine",
+     "bg_panchanga",
+     "ka_dasha_kala",
+     "ka_graha_sancara",
+     "ka_muhurta_seva",
+     "ka_tulana",
+     "mi_abhilekha",
+     "mi_jivanaghatana",
+     "mi_seva"
+    ],
+    "constituent_rules": [
+     "C-01",
+     "C-02",
+     "C-03",
+     "C-04",
+     "C-05",
+     "C-06",
+     "C-07",
+     "C-08",
+     "C-09",
+     "C-10",
+     "C-11",
+     "C-12",
+     "C-13a",
+     "C-14",
+     "C-15",
+     "C-16",
+     "C-17",
+     "C-18",
+     "C-19",
+     "C-20",
+     "C-21",
+     "C-24",
+     "C-28"
+    ],
+    "non_durable_constituent_rules": [
+     "C-05",
+     "C-14"
+    ],
+    "columns_the_seed_never_inserts": [
+     "clear_tables",
+     "data_disposition",
+     "domain",
+     "rung",
+     "service_health",
+     "superseded_by"
+    ],
+    "durability": "n/a \u2014 not passing",
+    "why": null,
+    "rules_that_break_after_a_reseed": [
+     "C-05",
+     "C-14",
+     "C-18"
+    ],
+    "rules_whose_projection_failed": []
+   },
+   "3_prefix_mismatches": {
+    "status": "FAIL",
+    "columns_read": [
+     "asset_id",
+     "asset_kind",
+     "layer"
+    ],
+    "seed_overwritable_columns": [
+     "asset_kind",
+     "layer"
+    ],
+    "seed_divergent_assets_among_them": [
+     "bg_ephemeris_engine",
+     "bg_panchanga"
+    ],
+    "constituent_rules": [
+     "C-01"
+    ],
+    "non_durable_constituent_rules": [],
+    "columns_the_seed_never_inserts": [],
+    "durability": "n/a \u2014 not passing",
+    "why": null,
+    "rules_that_break_after_a_reseed": [],
+    "rules_whose_projection_failed": []
+   },
+   "4_dangling_or_draft_edges": {
+    "status": "FAIL",
+    "columns_read": [
+     "asset_id",
+     "asset_kind",
+     "catalog_status",
+     "depends_on"
+    ],
+    "seed_overwritable_columns": [
+     "asset_kind",
+     "catalog_status",
+     "depends_on"
+    ],
+    "seed_divergent_assets_among_them": [
+     "bg_ephemeris_engine",
+     "bg_panchanga"
+    ],
+    "constituent_rules": [
+     "C-11",
+     "C-12"
+    ],
+    "non_durable_constituent_rules": [],
+    "columns_the_seed_never_inserts": [],
+    "durability": "n/a \u2014 not passing",
+    "why": null,
+    "rules_that_break_after_a_reseed": [],
+    "rules_whose_projection_failed": []
+   },
+   "5_multi_producer_partitions": {
+    "status": "NOT-MEASURABLE",
+    "columns_read": [],
+    "seed_overwritable_columns": [],
+    "seed_divergent_assets_among_them": [],
+    "constituent_rules": [],
+    "non_durable_constituent_rules": [],
+    "columns_the_seed_never_inserts": [],
+    "durability": "n/a \u2014 not passing",
+    "why": null,
+    "rules_that_break_after_a_reseed": [],
+    "rules_whose_projection_failed": []
+   },
+   "6_throughput_on_inactive_assets": {
+    "status": "BLOCKED",
+    "columns_read": [],
+    "seed_overwritable_columns": [],
+    "seed_divergent_assets_among_them": [],
+    "constituent_rules": [],
+    "non_durable_constituent_rules": [],
+    "columns_the_seed_never_inserts": [],
+    "durability": "n/a \u2014 not passing",
+    "why": null,
+    "rules_that_break_after_a_reseed": [],
+    "rules_whose_projection_failed": []
+   },
+   "7_retired_without_disposition": {
+    "status": "FAIL",
+    "columns_read": [
+     "asset_id",
+     "catalog_status",
+     "data_disposition"
+    ],
+    "seed_overwritable_columns": [
+     "catalog_status"
+    ],
+    "seed_divergent_assets_among_them": [],
+    "constituent_rules": [
+     "C-08"
+    ],
+    "non_durable_constituent_rules": [],
+    "columns_the_seed_never_inserts": [
+     "data_disposition"
+    ],
+    "durability": "n/a \u2014 not passing",
+    "why": null,
+    "rules_that_break_after_a_reseed": [],
+    "rules_whose_projection_failed": []
+   },
+   "8_active_without_coverage_or_dead_flag": {
+    "status": "NOT-MEASURABLE",
+    "columns_read": [
+     "asset_id",
+     "asset_kind",
+     "catalog_status",
+     "has_writer",
+     "is_active"
+    ],
+    "seed_overwritable_columns": [
+     "asset_kind",
+     "catalog_status",
+     "is_active"
+    ],
+    "seed_divergent_assets_among_them": [
+     "bg_ephemeris_engine",
+     "bg_panchanga"
+    ],
+    "constituent_rules": [],
+    "non_durable_constituent_rules": [],
+    "columns_the_seed_never_inserts": [
+     "has_writer"
+    ],
+    "durability": "n/a \u2014 not passing",
+    "why": null,
+    "rules_that_break_after_a_reseed": [],
+    "rules_whose_projection_failed": []
+   },
+   "9_unresolved_zero_consumer": {
+    "status": "FAIL",
+    "columns_read": [],
+    "seed_overwritable_columns": [],
+    "seed_divergent_assets_among_them": [],
+    "constituent_rules": [],
+    "non_durable_constituent_rules": [],
+    "columns_the_seed_never_inserts": [],
+    "durability": "n/a \u2014 not passing",
+    "why": null,
+    "rules_that_break_after_a_reseed": [],
+    "rules_whose_projection_failed": []
+   },
+   "10_ci_guard_merged_and_blocking": {
+    "status": "FAIL",
+    "columns_read": [],
+    "seed_overwritable_columns": [],
+    "seed_divergent_assets_among_them": [],
+    "constituent_rules": [],
+    "non_durable_constituent_rules": [],
+    "columns_the_seed_never_inserts": [],
+    "durability": "n/a \u2014 not passing",
+    "why": null,
+    "rules_that_break_after_a_reseed": [],
+    "rules_whose_projection_failed": []
+   },
+   "11_domain_and_rung_present": {
+    "status": "PASS",
+    "columns_read": [
+     "asset_id",
+     "asset_kind",
+     "domain",
+     "layer",
+     "rung",
+     "scope"
+    ],
+    "seed_overwritable_columns": [
+     "asset_kind",
+     "layer",
+     "scope"
+    ],
+    "seed_divergent_assets_among_them": [
+     "bg_ephemeris_engine",
+     "bg_panchanga",
+     "mi_jivanaghatana"
+    ],
+    "constituent_rules": [
+     "C-18",
+     "C-19"
+    ],
+    "non_durable_constituent_rules": [],
+    "columns_the_seed_never_inserts": [
+     "domain",
+     "rung"
+    ],
+    "durability": "NON-DURABLE",
+    "why": "projected forward: constituent rule(s) ['C-18'] start firing once asset_registry_seed.ts restores the columns it owns",
+    "rules_that_break_after_a_reseed": [
+     "C-18"
+    ],
+    "rules_whose_projection_failed": []
+   },
+   "12_ci_domain_coherence_green": {
+    "status": "FAIL",
+    "columns_read": [],
+    "seed_overwritable_columns": [],
+    "seed_divergent_assets_among_them": [],
+    "constituent_rules": [],
+    "non_durable_constituent_rules": [],
+    "columns_the_seed_never_inserts": [],
+    "durability": "n/a \u2014 not passing",
+    "why": null,
+    "rules_that_break_after_a_reseed": [],
+    "rules_whose_projection_failed": []
+   }
+  }
+ },
  "disagreements": [
   {
    "quantity": "C-04 \u2014 data/artifact rows failing the target_table rule",
-   "this_script": 11,
+   "this_script": 9,
    "other_source": "ASSET_CATALOGUE_CONTRACT_v1_0.md \u00a76, rule C-04",
    "other_value": 10,
    "reconciliation": "Both are right about different things. 10 is the count of data/artifact rows with target_table NULL. The rule as written (and as its own \u00a78 SQL executes) ALSO fails a row whose target_table names a table that does not exist \u2014 `bg_sky_calendar` \u2192 `bg_sky_events`, which is absent from information_schema.tables. The contract's \u00a76 count reported the NULL half only. 11 is the rule's full result.",
@@ -1524,7 +3220,7 @@
   },
   {
    "quantity": "0.6a \u2014 has_substeps false negatives (C-23)",
-   "this_script": 12,
+   "this_script": 0,
    "other_source": "NIRMANA_ELEVATION_PLAN v3.0 \u00a70.6a / v4.0 (states 14) vs DERIVED_FIELD_REPAIR_PROPOSAL_v1_0.md \u00a74 (M0-T8, states 12)",
    "other_value": "plan 14 \u00b7 M0-T8 12",
    "reconciliation": "This script's detector and M0-T8's are INDEPENDENT and differ in rule \u2014 M0-T8 uses (defines plan_substeps AND defines run_substep); this one uses (overrides plan_substeps OR sets the class attribute has_substeps=True), in both cases EXCLUDING WriterBase's own default. Two independent detectors returning 12 against the plan's 14 is corroboration; the plan's figure is the outlier and is not measured.",
