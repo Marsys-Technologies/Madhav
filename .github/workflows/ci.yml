@@ -311,6 +311,72 @@ jobs:
           F152_AUDIT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/f152_audit_test
         run: npx vitest run tests/integration/asset_throughput_state_audit.db.test.ts --reporter=verbose
 
+      # ── P3-C (SMṚTI) pipeline persistence — cold completeness audit fix ──────
+      # `src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts`
+      # is P3-C's only DB round-trip detector for the claim "tool_call/tool_result/
+      # reasoning are persisted": it self-skips (`describe.skipIf`) unless
+      # PARIPRASHNA_STORE_DB_TEST=1 AND DATABASE_URL are both set, and neither had
+      # ever been wired into any CI workflow — a §N.8 null wearing a green's
+      # clothes (the claim had no detector that had ever run anywhere but an
+      # author's laptop). Wired here rather than in a new job, per the pattern
+      # this job already established for RATE-07/F-152 above: a THIRD throwaway
+      # database against the SAME `postgres:16` service container, no new
+      # container.
+      #
+      # Unlike RATE-07/F-152 (one self-contained migration each), this test needs
+      # the real `profiles`/`charts`/`conversations`/`conversation_messages`
+      # tables (0001_brahma_baseline.sql, the full squashed schema) plus the real
+      # `message_parts` table (migration 467) — `writeTurn`/`readTurnParts`
+      # (store/writer.ts, store/reader.ts) round-trip through all five. Applying
+      # 0001_brahma_baseline.sql via psql -f (the SAME `-f <file>` mechanism this
+      # job already uses for 470/580 above) produces ~10 EXPECTED, IDENTIFIED
+      # errors — `bodha_signal_embeddings`/`conversation_message_embeddings` and
+      # their indexes need the `vector` type, and vanilla `postgres:16` has no
+      # pgvector extension available (`CREATE EXTENSION vector` errors
+      # "extension \"vector\" is not available" — confirmed live, not a guess).
+      # Neither embeddings table is on this test's read/write path. Rather than
+      # trust that silently, the next step's own SELECT to_regclass() checks are
+      # the real gate (§N.4 "surgical migrations, verified") — if any of the five
+      # tables this test actually touches is missing, the step fails loudly
+      # before the test ever runs, instead of the test failing later with a
+      # confusing "relation does not exist".
+      - name: P3-C — provision the pipeline persistence test DB (full baseline schema + migration 467)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE p3c_persistence_test;"
+          psql -h localhost -U postgres -d p3c_persistence_test -v ON_ERROR_STOP=1 -c \
+            'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"; CREATE EXTENSION IF NOT EXISTS pgcrypto; CREATE EXTENSION IF NOT EXISTS pg_trgm;'
+          # Tolerant apply — see the comment block above for exactly which errors
+          # are expected (pgvector-only) and why. ON_ERROR_STOP is deliberately
+          # NOT set here; the verification query below is the real gate.
+          psql -h localhost -U postgres -d p3c_persistence_test -f supabase/migrations/0001_brahma_baseline.sql || true
+          psql -h localhost -U postgres -d p3c_persistence_test -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/467_pariprashna_canonical_message_parts.sql
+          psql -h localhost -U postgres -d p3c_persistence_test -v ON_ERROR_STOP=1 -c "
+            DO \$\$
+            DECLARE missing text;
+            BEGIN
+              SELECT string_agg(t, ', ') INTO missing FROM unnest(ARRAY[
+                'profiles', 'charts', 'conversations', 'conversation_messages', 'message_parts'
+              ]) AS t WHERE to_regclass('public.' || t) IS NULL;
+              IF missing IS NOT NULL THEN
+                RAISE EXCEPTION 'P3-C persistence test DB provisioning incomplete — missing table(s): %', missing;
+              END IF;
+            END \$\$;"
+
+      - name: P3-C — pipeline persistence DB round-trip (tool_call/tool_result/reasoning), real detector
+        # §N.8: this is the detector for the claim "a real turn's tool_call/
+        # tool_result/reasoning parts persist and read back" — previously an
+        # unrun null. Also carries its own can-fail proof (the third `it` block
+        # withholds the thinking block and asserts `reasoning` comes back
+        # missing while the other kinds still persist) — a regression here fails
+        # this step, not silently.
+        env:
+          PARIPRASHNA_STORE_DB_TEST: '1'
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/p3c_persistence_test
+        run: npx vitest run src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts --reporter=verbose
+
   pratijna-v4-fixture-property-tests:
     # PRATIJÑĀ v4 Lane B3 — the CI tier of the campaign's three-tier
     # verification plan (00_ARCHITECTURE/briefs/adhisthana/MASTER_PLAN_v1_0.md

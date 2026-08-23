@@ -204,6 +204,7 @@ jobs:
 
       - name: Annotate failure
         if: failure()
+        working-directory: .
         run: |
           echo "::error::[p3-e-smoke] Post-deploy behaviour smoke FAILED — see the step above for which assertion failed and why."
           echo "::error::[p3-e-smoke] This is a real engine-behaviour check (receipt assembly / persistence chain, facts_consumed grounding, citation pipeline, safety-gate execution, non-trivial prose, zero stream errors) — NOT a liveness ping. Do not count this toward green×7 (DD-7 / W-1) until it is understood."
