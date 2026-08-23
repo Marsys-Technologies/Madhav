@@ -61,7 +61,22 @@
         "count_note": "32 vs C-28's 31 is bg_panchanga (asset_kind='service'), dropped by the DATA-kind filter - established at V-22.",
         "absorbed_by": "SUTRADHARA 2026-08-23 session restart",
         "status": "BINDING ON R0 INTAKE - carry into §8.6 stage 1"
-      }
+      },
+      "freeze_preconditions": [
+        {
+          "id": "R0-FP-1",
+          "source": "ADHIKARIN D-43 (on PARIKSAKA V-27), 2026-08-23",
+          "precondition": "L-03 closure — runner unification, plan:334 / M1 (plan:1051) — must land, and every R0 asset carrying a lit state must carry a build_run_assets record of the run that earned it. ADHIKARIN will not countersign R0's freeze under G8 until then.",
+          "measured": "is_active assets with any build_run_assets record, live 2026-08-23T12:58Z: R0 6/40 · R1 19/19 · R2 22/22 · R3 22/22 · R4 9/9 · R5 14/15. The 32 C-28 residual assets are ONE structural gap with 32 instances, not 32 findings.",
+          "constraints": [
+            "R0 MAY OPEN before M1 closes — intake, census, registry-metadata repair and all non-rebuild work proceed normally.",
+            "NO rebuild of any of the 34 unwitnessed assets may run on global_runner.py: a rebuild that produces no witness spends the rung's most expensive operation and leaves the state exactly as unearnable as it found it.",
+            "UNEARNED MEANS UNWITNESSED, NOT HOLLOW. bg_muhurta_lattice holds 164,886 real rows with no run record (ADHIKARIN-verified). An R0 instrument that reads these assets as EMPTY is exactly as wrong as one that reads them as EARNED — same defect class, opposite direction. Report both facts or neither: rows present, provenance absent.",
+            "AT R0 INTAKE, census which of the 34 have NO @register writer at all (bg_sarvatobhadra_grid is a known instance, KARAKA M0-T18 claim C12). An asset that cannot be rebuilt can never earn its state by any means; that subset routes to ADHIKARIN and is expected to PARK (P1-adjacent), not to be decided at the gate.",
+            "H3 STANDING REFUSAL: re-pointing C-28's population at build_run_assets returns 0 violations and preserves every unearned lit state (PARIKSAKA-measured). C-28 enumerates the assets CLAIMING a built state and JOINS to build_run_assets to find ABSENCE. Pinned by SQ-11."
+          ]
+        }
+      ]
     },
     "R1": {
       "layer": "L1",
