@@ -1743,7 +1743,8 @@
       "id": "F-T67-BOTH-SIDES-NULL-WOULD-PASS",
       "what": "A FOLLOW-ON THAT SURVIVES EITHER RULING ON D-83, raised by M0-T67 while held. M0-T65's divergence anchor is expect(referenceBody).toBeTruthy(), WHICH PROTECTS ONLY THE REFERENCE SIDE -- so A BOTH-SIDES-NULL COMPARISON WOULD STILL PASS. That is the same vacuous-green shape that caught M0-T66 when the predicate left asset_registry_seed.ts and its reference went null, but one step further out: T66's case was caught BY that anchor, and this is the case the anchor itself does not cover. Worth filing standalone whichever way D-83 is decided, because the widening is independent of whether migrate.ts keeps a local copy.",
       "owner": "ADHIKARIN",
-      "state": "raised"
+      "state": "ESCALATED URGENT — D-86 part 4 MADE IT LIVE, and M0-T67 has now REPRODUCED it",
+      "what2": "D-86 part 4 orders 'A DIFFERENTIAL TEST against the retired implementation, not a fresh assertion about what the predicate ought to do -- the retired copy is the oracle'. A DIFFERENTIAL TEST IS A TWO-SIDED COMPARISON, and M0-T65's suite has exactly ONE anchor against vacuity -- expect(referenceBody).toBeTruthy() at destructive_entrypoint_guards.test.ts:204 -- WHICH PROTECTS ONE SIDE ONLY. M0-T67 BUILT AND RAN THE REPRODUCTION: the assertion D-86 part 4 orders PASSES COMPARING null TO null, WITH THE EXISTING ANCHOR STAYING GREEN THROUGHOUT. WHY THIS IS NOT THE HOLE ALREADY CLOSED: it is the vacuous-green shape ONE STEP BEYOND the one that caught M0-T66. T66's REFERENCE went null and every expect(...).toBeNull() passed; the anchor was added for exactly that and it works. IT CLOSES THE CASE WHERE THE REFERENCE DISAPPEARS; IT DOES NOT CLOSE THE CASE WHERE THE REFERENCE IS FINE AND THE TWO COMPARED THINGS BOTH EVAPORATE -- and a differential test introduces that case FOR THE FIRST TIME. So the ruling is right about the METHOD (the retired copy IS the correct oracle) and the method needs a second anchor before anything is built on it. T67 DID NOT IMPLEMENT: the change touches M0-T65's PARIKSAKA-certified test and is not in its grant. It had flagged this in its report §4.5 BEFORE D-86 landed, as a follow-on surviving either ruling, then built the reproduction when the ruling made it live."
     },
     {
       "id": "CAMPAIGN-IS-WAITING-ON-ADHIKARIN-ALONE",
@@ -1762,10 +1763,22 @@
       "what": "DISPATCHED on D-87. Adds assertion (ii) -- committed allowlist SUBSET-OF its own previous committed value -- which is the pawl the ratchet never had. TOLD EXPLICITLY NOT TO TOUCH --strict, with D-87's reason carried verbatim so it does not rediscover the trap: chasing it leads straight into D-39 part 2's permanently-red gate, H3 by attrition. LEFT ONE DESIGN QUESTION TO IT RATHER THAN ANSWERING IT: where 'its own previous committed value' comes from -- git history is obvious, but a check reading the previous value from the WORKING TREE proves nothing and one reading the WRONG REF proves something else; it must state its choice and what it assumes about the guard job's own checkout, and VERIFY THAT rather than inherit M0-T67's finding about the migrate job's checkout. REQUIRED PROOFS BOTH WAYS, with the negative named as the one that matters: green on today's clean tree with the 71 present; RED on PARIKSAKA's exact F-T sequence (set-password.ts re-added) where the existing subset check passes; still red on a genuinely new unguarded file, i.e. assertion (i) not broken while adding (ii); AND THE VACUOUS CASE EXPLICITLY -- if the previous value cannot be read the check must FAIL LOUDLY, NOT PASS, since an unavailable baseline is UNKNOWN and never clean.",
       "owner": "KARAKA-M0-T68",
       "state": "in_flight"
+    },
+    {
+      "id": "MY-TS-DIAGNOSIS-WAS-WRONG-AND-CONVENIENTLY-SO",
+      "what": "SELF-CORRECTION. I told ADHIKARIN that V-56/V-57 were ~11 minutes ahead and offered a diagnosis LABELLED A GUESS: a batch path formatting one time and reusing it across a multi-verdict turn. V-59 -- PARIKSAKA's FAIL against its OWN ledger -- DISPROVES IT. It bracketed every stamp against heartbeat.sh's machine-written log, 'THE ONE CLOCK IN MY REACH I CANNOT HAND-FORM', and found THE OFFSET GROWS: V-55 ~3min, V-56/57 ~11min, and an 18-minute case. V-55 WAS A SINGLE VERDICT AND IS ALSO AHEAD, so there is no batch and no constant offset. ITS OWN ACCOUNT: 'There is no batch bug. I TYPED EACH TIMESTAMP FROM AN ESTIMATE OF HOW LONG THE TURN HAD TAKEN, AND EACH ESTIMATE RAN FURTHER AHEAD THAN THE LAST. No code path to fix; A HABIT TO FIX.' MY GUESS WAS WRONG IN THE DIRECTION THAT WOULD HAVE BEEN CONVENIENT -- a code bug is someone else's to fix and a habit is not -- and I offered it unprompted, so it could have sent someone hunting a batch path that does not exist. The measurement I made was right; the explanation I volunteered on top of it was not, and I should have stopped at the measurement.",
+      "owner": "SUTRADHARA",
+      "state": "self_corrected"
+    },
+    {
+      "id": "V-60-AND-THE-28-OF-28-THAT-WASNT",
+      "what": "D-84's set-not-count doctrine catching the VERIFIER'S OWN TALLY within an hour of being ruled. PARIKSAKA reported 'backlog DRAINED: 28 of 28 pending tasks now verdicted' at 17:55:33Z. At 18:00:54Z it corrected itself: 'my 28 of 28 WAS A SUBSTRING MATCH. Subject-anchored recheck says 27 OF 28 -- M0-T53 is genuinely unverdicted.' It then issued V-60 (M0-T53 PASS) with findings F-W (either running marker can rot silently; the suite proves THE PAIR, not EACH) and F-X, making it genuinely 28 of 28. THE SHAPE IS EXACTLY D-84's: A COUNT THAT MATCHED WRONGLY LOOKED IDENTICAL TO A COUNT THAT MATCHED RIGHTLY, and only anchoring the comparison to subjects rather than substrings told them apart. Third instance of that doctrine paying out today, and the first inside the ledger that tracks the others.",
+      "owner": "closed",
+      "state": "recorded"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T18:02:19Z",
+  "last_updated_ts": "2026-08-23T18:06:16Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
