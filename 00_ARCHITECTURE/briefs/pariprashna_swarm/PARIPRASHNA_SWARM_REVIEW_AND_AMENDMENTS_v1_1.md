@@ -405,5 +405,46 @@ record, not deleted, not updated further.
 *End addendum. §1–§6 above remain the historical record of the P0-era
 review — unedited except for this pointer.*
 
+### DD-45 — the drift gate caught this very governance close, and the ceiling was NOT raised
+
+**Filed 2026-08-23 by the PARIPRAŚNA P3+P4 overnight run, about itself.**
+
+The PR carrying DD-31…DD-44 **failed CI**. `Governance Gates`:
+
+```
+DRIFT_BASELINE_MAX: 79
+drift_detector: 80 findings; exit=2
+```
+
+One new drift finding, one over the T0 baseline ceiling. The gate's own error text states the rule it
+was enforcing: *"New drift must be fixed, not absorbed into the whitelist"* (DVA Ruling 4).
+
+**Root cause**, isolated by reproducing locally rather than inferring: writing DD-31…DD-44 changed
+this file, so the `fingerprint` declared for `PARIPRASHNA_SWARM_PLAN_AMENDMENTS` in
+`CAPABILITY_MANIFEST.json` went stale — `declared=40a7f19f… observed=9562cd12…`, a HIGH-severity
+`fingerprint_mismatch`. The remaining 79 findings are the pre-existing baseline (77
+registry-disagreements + 2 DB-unreachable LOWs) and were untouched.
+
+**Remediation applied, exactly as the detector prescribed:** fingerprint rotated to the observed
+sha256; `last_verified_session` / `last_verified_on` updated to this run. Six lines changed, all
+inside the single entry, diffed line-by-line against the original so no other manifest row was
+silently reformatted. **drift_detector after: 79 findings, exit=3 — the accepted state.**
+
+**What was deliberately NOT done, recorded because it is the point of the entry:**
+`DRIFT_BASELINE_MAX` was **not** raised and **no whitelist ticket was filed**. Either would have made
+the PR merge in one line, and either would have been the exact class of act — weakening a gate so an
+artifact can pass — that this run spent the night documenting in other people's work. That the
+offending artifact was *the governance close itself* is why the temptation is written down and
+declined here rather than quietly avoided.
+
+The adhoc drift reports the diagnosis generated were deleted rather than committed: run artifacts, not
+deliverables, and a governance close that commits its own scratch output into the governance directory
+is adding noise to the surface it exists to keep clean.
+
+**The rule this incident teaches, in the form it should be remembered (§B.8):** *changing a canonical
+artifact is not finished until its registry fingerprint moves with it.* The gate is what makes that
+true rather than aspirational — and it earned its keep against the one document least likely to be
+suspected.
+
 *End SWARM_REVIEW_AND_AMENDMENTS v1.1 — this file binds execution; v1.0
 remains the narrative plan of record beneath it.*
