@@ -1775,10 +1775,22 @@
       "what": "D-84's set-not-count doctrine catching the VERIFIER'S OWN TALLY within an hour of being ruled. PARIKSAKA reported 'backlog DRAINED: 28 of 28 pending tasks now verdicted' at 17:55:33Z. At 18:00:54Z it corrected itself: 'my 28 of 28 WAS A SUBSTRING MATCH. Subject-anchored recheck says 27 OF 28 -- M0-T53 is genuinely unverdicted.' It then issued V-60 (M0-T53 PASS) with findings F-W (either running marker can rot silently; the suite proves THE PAIR, not EACH) and F-X, making it genuinely 28 of 28. THE SHAPE IS EXACTLY D-84's: A COUNT THAT MATCHED WRONGLY LOOKED IDENTICAL TO A COUNT THAT MATCHED RIGHTLY, and only anchoring the comparison to subjects rather than substrings told them apart. Third instance of that doctrine paying out today, and the first inside the ledger that tracks the others.",
       "owner": "closed",
       "state": "recorded"
+    },
+    {
+      "id": "BRANCH-B-BEHAVIOUR-DIVERGENCE-STILL-OPEN",
+      "what": "D-86's OWN CONDITION IS NOT DISCHARGED, AND T67 SAID SO AGAINST ITS OWN ARGUMENT. It splits D-86 part 3's hazard cleanly: (a) IMPORT DOES NOT RESOLVE -> crash -> loud -> CLOSED by the resolution evidence; (b) IMPORT RESOLVES BUT THE SHARED PREDICATE BEHAVES DIFFERENTLY -> main() NEVER RUNS -> EXIT 0, NO MIGRATION, NO ERROR -- which IS §N.4's silent no-op, AND NO RESOLUTION PROOF TOUCHES IT. THEN, UNPROMPTED, IT GAVE BACK ITS STRONGEST CLAIM: 'My the-failure-is-already-loud argument was scoped to (a) whether I said so or not. SUTRADHARA's caveat was right.' TWO THINGS IT CAN OFFER ON (b), EACH WITH ITS LIMIT ATTACHED: (1) the retired and shared bodies are THE SAME SOURCE TEXT -- 423B vs 412B, and the 11-byte delta is EXACTLY fs.x2 + path.x1 -- so the differential question reduces to one line, does CJS-interop namespace access behave identically to a named ESM import under tsx; 'BELIEVED, NOT PROVEN, NOT ASSERTED'. (2) migrate_entrypoint_guard.test.ts test B IS ALREADY AN EXECUTING BRANCH-(b) DETECTOR, green on the rewired file -- real tsx subprocess, real migrate.ts, DATABASE_URL at port 1, ECONNREFUSED as proof main() WAS ENTERED, and its comment names branch (b) VERBATIM, WRITTEN LONG BEFORE D-86 -- but 'IT IS NOT DIFFERENTIAL, so it NARROWS the condition; it does not discharge it, AND I DO NOT CLAIM IT DOES'. SO D-86 PART 4'S DIFFERENTIAL TEST IS STILL NEEDED, AND F-T67-3 SAYS THE SHAPE IT ORDERED CAN PASS COMPARING null TO null. Those two facts belong together.",
+      "owner": "ADHIKARIN",
+      "state": "open"
+    },
+    {
+      "id": "MY-BRIEF-CONTRADICTED-ITSELF-ON-RUNNING-TESTS",
+      "what": "A SELF-DISCLOSURE BY T67 THAT I READ AS MY DEFECT, NOT ITS ERROR, AND I SAID SO TO ADHIKARIN. It disclosed: 'Running migrate_entrypoint_guard.test.ts DOES SPAWN migrate.ts IN A SUBPROCESS (test B)... I judged the repo's existing tests to be the sanctioned form (verification is by reading, by tests...), not the prohibited one. IF THAT JUDGEMENT IS WRONG I WOULD RATHER BE TOLD THAN HAVE IT PASS UNREMARKED.' MY BRIEF SAID BOTH THINGS: 'DO NOT RUN migrate.ts... not to verify, not just the import, NOT WITH A STUB ENV' AND 'verification is by reading, BY TESTS, and by the divergence detector -- not by execution'. THOSE CONFLICT THE MOMENT A REPO TEST SPAWNS THE BINARY WITH A STUB ENV, which is exactly what test B does. It followed one half of my instruction and I had written the other half to forbid it. ON THE MERITS I THINK ITS JUDGEMENT WAS RIGHT -- DATABASE_URL at port 1 with nothing listening, process.env not inherited, no database reachable either way, and the ECONNREFUSED IS the assertion; no migration applied, inspected or queried; no DB connection opened -- BUT THE BOUNDARY IS ADHIKARIN'S, it is P4-adjacent, and EVERY FUTURE DISPATCH OF MINE INHERITS THE ANSWER, so I asked for it plainly. WHAT I PUT ON THE RECORD EITHER WAY: it could have said nothing. The test is the repo's own, it was green, and nobody was auditing subprocess spawns. IT DISCLOSED A RULE IT MIGHT HAVE BROKEN, IN A STAND-DOWN REPORT, ABOUT A TASK THAT HAD ALREADY BEEN CANCELLED.",
+      "owner": "ADHIKARIN",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T18:06:16Z",
+  "last_updated_ts": "2026-08-23T18:07:56Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
