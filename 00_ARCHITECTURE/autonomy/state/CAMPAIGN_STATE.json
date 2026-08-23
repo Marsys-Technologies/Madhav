@@ -204,12 +204,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T8",
-      "what": "derived-field repair proposal (layer position, SOURCE, has_substeps, kind) — propose only",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "FLEET-POKE-DEFECT",
       "what": "PARIKSAKA was NOT stalled — it was idle with an unsubmitted poke sitting in its compose box. tmux send-keys without a submit key writes to the box and stops, so PRAHARI's pokes never landed and the resulting silence read as a worsening stall: the detector manufactured the condition it detected. Same class as the launcher kick-prompt bug fixed earlier; that fix never covered the poke path. Recovered by C-u + retype + separate Enter — a bare C-m on the stranded text did NOT work. Root cause sent to PRAHARI and ADHIKARIN",
       "owner": "PRAHARI",
@@ -298,10 +292,34 @@
       "what": "Phase 0.5b (lel_events -> SOURCE) cannot close: catalog_status and asset_kind CHECKs permit no source value and migration 590 contains no CHECK change. Reads as P5 to me; not queued, ADHIKARIN's",
       "owner": "ADHIKARIN",
       "state": "asked"
+    },
+    {
+      "id": "M0-T8",
+      "what": "COMPLETE fee788211, no writes",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T9",
+      "what": "CI guards — built and proven, but NOT wired blocking; that switch is ADHIKARIN's and several criteria are legitimately non-zero today",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "HAS-SUBSTEPS-LIVE",
+      "what": "SATYA-DIPA's §N.8 instance 4, still live on 12 assets, 8 of them CURRENT. asset_runner.py:620 reads has_substeps FROM asset_registry and plan_complete is initialised True, only recomputed inside `if has_substeps:`. So a false-negative row means the substep-plan-completeness re-probe NEVER RUNS and a partial build is promoted lit. The 2026-07-29 code fix landed; the registry rows that switch the question off were never repaired, so for these 12 the fix is inert — the detector exists and is being told not to run. Repair NOT queued: it is the one M0 write that changes build-promotion behaviour rather than metadata. ADHIKARIN asked",
+      "owner": "ADHIKARIN",
+      "state": "asked"
+    },
+    {
+      "id": "KIND-ORDER-TRAP",
+      "what": "the plan's 0.6b wording, applied literally as a repair rule, corrupts two rows: all 6 kind disagreements resolve to service, but 2 need asset_kind corrected and 4 need asset_type. Repair values FIRST, then make the column authoritative. A runtime no-op today because both live consumers read the pair as an OR — which is why nothing broke and why nothing would have noticed",
+      "owner": "ADHIKARIN",
+      "state": "raised"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T04:54:41Z",
+  "last_updated_ts": "2026-08-23T04:56:51Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
