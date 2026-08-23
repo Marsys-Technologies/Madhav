@@ -1,8 +1,14 @@
 ---
 artifact: P3_P4_COMPLETENESS_AUDIT
 canonical_id: PARIPRASHNA_P3_P4_COMPLETENESS_AUDIT
-version: 1.0
-status: PHASE 1 COMPLETE — gap ledger delivered; Phase 2 remediation partially in flight (see §0.1)
+version: 1.1
+status: >
+  PHASE 2 CLOSED to the limit of what is verifiable. Both BLOCKING gaps closed (#1508 landed the
+  census; BLOCKING-2 fixed by #1515). MATERIAL-1/2/5 closed by #1511, MATERIAL-4 by #1512,
+  MATERIAL-6 by #1516. MATERIAL-3 dissolved: the smoke is GREEN as of run 32615067230 — the fix was
+  #1514 (unguarded credential resolution), not the secret everyone was waiting on. RETIRE train
+  PARKED: the closeout charter's hard gate named a fix that does not exist (DD-47). See
+  PRE_PHASE5_CLOSEOUT_REPORT_v1_0.md for the full disposition.
 authority: PARIPRASHNA_P3_P4_COMPLETENESS_AUDIT_AND_CLOSE_v1_0 (native-authored, 2026-08-23)
 audits: PARIPRASHNA_P3_P4_OVERNIGHT_AUTONOMOUS_RUN_v2_0.md and everything it produced
 role: >
