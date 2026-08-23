@@ -1,0 +1,408 @@
+{
+ "artifact": "GATING_FIELD_SWEEP",
+ "version": "1.0",
+ "status": "DRAFT",
+ "task": "WORK_QUEUE M0-T24",
+ "agent": "KARAKA-M0-T24",
+ "authored_at": "2026-08-23",
+ "certified_by": null,
+ "discharges": "DECISIONS.jsonl D-25 part 3 (standing rule: any registry field that gates whether a check runs must be derived from code, never trusted as declared, and surfaced as a registry-vs-code pair)",
+ "database_access": "READ-ONLY. No write was issued against asset_registry or any other table.",
+ "schema_baseline": {
+  "table": "asset_registry",
+  "columns": 40,
+  "rows": 128,
+  "read_at": "2026-08-23T05:50:16Z",
+  "note": "40 columns confirmed post-migration 590 (ledger id 450, applied 2026-08-23T05:36:13.833986Z), which added domain, rung, superseded_by, data_disposition."
+ },
+ "concurrency_note": {
+  "column": "has_substeps",
+  "reason": "A sibling KARAKA was repairing this column concurrently (D-24). Both readings are reported rather than one being chosen.",
+  "reading_a": {
+   "source": "D-24 ruling / M0-T8 measurement",
+   "ts": "2026-08-23T05:04:21Z",
+   "registry_true": 14,
+   "code_true": 26,
+   "false_negatives": 12,
+   "false_positives": 0
+  },
+  "reading_b": {
+   "source": "this sweep, live",
+   "ts": "2026-08-23T05:54:42Z",
+   "registry_true": 26,
+   "code_true": 26,
+   "false_negatives": 0,
+   "false_positives": 0
+  }
+ },
+ "headline": {
+  "fields_examined": 40,
+  "fields_in_scope": 8,
+  "already_ruled": 2,
+  "new_instances_total": 6,
+  "new_instances_of_the_exact_D25_shape": 1,
+  "exact_shape_definition": "a declared registry value that (a) can switch a detector off or short-circuit its verdict, (b) has a code-derived truth it can diverge from, and (c) fails OPEN (toward an unearned green)",
+  "the_one_exact_new_instance": "asset_kind / asset_type == 'service'",
+  "honest_statement": "The sweep did not find five more has_substeps. It found ONE more field of the identical shape (asset_kind/asset_type='service') and FIVE fields that gate a check but have no code-derived counterpart to be reconciled against — those are declarations that must be JUSTIFIED, not DERIVED, and they are reported as a distinct tier rather than inflated into the same finding."
+ },
+ "tiers": {
+  "A": "IN SCOPE — exact D-25 shape: gates a detector, code-derived truth exists, divergence is measurable, fails open.",
+  "B": "IN SCOPE — gates a detector, but NO code-derived truth exists. The declaration is the only source there is; it can only be justified, never derived. Reported plainly rather than invented into tier A.",
+  "C": "EXAMINED — NOT in scope. Field supplies a value to a check, or its null-ness fails CLOSED (conservative), or no check depends on it."
+ },
+ "findings": [
+  {
+   "id": "G-01",
+   "tier": "A",
+   "field": "has_substeps",
+   "type": "boolean",
+   "status": "ALREADY RULED — D-24 (not a new finding)",
+   "gates": "the substep-plan-completeness probe on the no-op-completion promotion path, AND the watchdog's stuck-asset promotion predicate",
+   "consumers": [
+    {
+     "file_line": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py:619-641",
+     "effect": "plan_complete initialised True at :626; recomputed only inside `if has_substeps:` at :628. false => the writer's own plan_substeps(ctx) is never re-invoked and 'lit' is written on a basis that is not its detector's verdict."
+    },
+    {
+     "file_line": "platform/src/app/api/cockpit/watchdog/classifyStuckCandidate.ts:71-73",
+     "effect": "`if (candidate.has_substeps === true) return 'withhold-incomplete'; return 'rescue-lit'`. false => the TypeScript reaper promotes a stuck 'building' asset straight to 'lit'. THIS SECOND CONSUMER IS NOT NAMED IN D-24 and is the same defect on a different code path."
+    },
+    {
+     "file_line": "platform/src/app/api/cockpit/stats/deriveState.ts:79",
+     "effect": "`if (asset.has_substeps && substepsCommitted > 0) return 'partial'` — false collapses 'partial' into 'error'. Badge honesty, not a promotion."
+    }
+   ],
+   "code_derived_truth": "YES — writer-class census (00_ARCHITECTURE/control/writer_substep_census.json, key `writers`, field `writer_truth_has_substeps`), 123 registrations over 579 files scanned.",
+   "divergence": "See concurrency_note. 12 false negatives at D-24's measurement; 0 false negatives / 0 false positives when re-measured at 2026-08-23T05:54:42Z.",
+   "fail_direction": "OPEN (unearned lit)",
+   "already_paired_in_workbook": true
+  },
+  {
+   "id": "G-02",
+   "tier": "A",
+   "field": "has_writer",
+   "type": "boolean",
+   "status": "ALREADY RULED — D-25 parts 1-2 (not a new finding)",
+   "gates": "the plan §8.3 item-5 efficiency pass (via the workbook's bound-class), AND build-plan membership",
+   "consumers": [
+    {
+     "file_line": "00_ARCHITECTURE/control/build_asset_control_workbook.py:91",
+     "effect": "has_writer read straight from asset_registry rather than derived; _bound_class() then reads false as 'not-a-build', which exempts the asset from the §8.3 item 5 efficiency pass ALTOGETHER."
+    },
+    {
+     "file_line": "platform/src/app/api/cockpit/runs/route.ts:139",
+     "effect": "`WHERE is_active = true AND has_writer = true` — a false row is absent from the build plan the runs route resolves, so it is never dispatched. NOT NAMED IN D-25."
+    },
+    {
+     "file_line": "platform/src/lib/build/recalibrationEnqueue.ts:140",
+     "effect": "same predicate; a false row is absent from the LEL-recalibration plan. NOT NAMED IN D-25."
+    }
+   ],
+   "code_derived_truth": "YES — @register decorator scan / the same writer census.",
+   "divergence": "2 false negatives, 0 false positives, measured 2026-08-23T05:54:42Z: bg_nakshatra_medical, bg_transit_engine. UNREPAIRED, correctly — D-25 part 2b pins the row repair to R0 stage 2.",
+   "note_registry_false_total": "7 rows carry has_writer=false: bg_ephemeris_engine, bg_gochara_citation_resolution, bg_nakshatra_medical, bg_panchanga, bg_sarvatobhadra_grid, bg_transit_engine, lel_events. Only 2 of the 7 are code-contradicted.",
+   "derivation_trap": "A naive `@register\\(['\\\"]...\\\"\\)` regex MIS-DERIVES. 4 of 123 registrations use `@register(ASSET_ID)` with a module-level constant (census field register_arg='module_const:ASSET_ID'); mi_sankalpa is one. This sweep's own first-pass scanner produced mi_sankalpa as a phantom false positive for exactly this reason and was corrected against the census before reporting. Any generator implementing D-25 part 2a must resolve module constants or it will re-manufacture this error.",
+   "fail_direction": "OPEN (gate bypass: exempted from the efficiency pass)",
+   "already_paired_in_workbook": "YES as of build_control_workbook_v4_1.py:263-267, 372, 405-407 — the D-25 part 2a generator fix has landed."
+  },
+  {
+   "id": "G-03",
+   "tier": "A",
+   "field": "asset_kind / asset_type (value 'service')",
+   "type": "text pair",
+   "status": "NEW — the one new instance of the exact D-25 shape",
+   "gates": "the ENTIRE data-asset verification path in the cockpit, as the FIRST branch, ahead of every other check",
+   "consumers": [
+    {
+     "file_line": "platform/src/app/api/cockpit/stats/deriveState.ts:65",
+     "effect": "`if (asset.asset_type === 'service' || asset.asset_kind === 'service') return 'service_ok'` — the first statement in the function. Ahead of the is_active check (:67), the 'incomplete' branch (:73), the error branch (:74), the 'building' branch, and the actualRows check. Nothing downstream of it can ever run for a service-declared row."
+    },
+    {
+     "file_line": "platform/src/app/api/cockpit/stats/route.ts:74-88",
+     "effect": "fetchAllCounts returns state 'service_ok' without executing count_sql at all."
+    },
+    {
+     "file_line": "platform/src/lib/build/plan.ts:196",
+     "effect": "`const READY_STATES = new Set(['lit','service_ok'])` — service_ok SATISFIES a downstream dependency. The unearned green is not cosmetic; it unblocks dependants."
+    },
+    {
+     "file_line": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py:884-886, 940-949",
+     "effect": "is_service = (asset_kind=='service' or asset_type=='service') routes the asset away from the data-writer path to the service path."
+    }
+   ],
+   "the_evidence_that_makes_this_not_hypothetical": "ka_graha_sancara carries service_health='unhealthy' — a real verdict its own writer self-test wrote (last_selftest_at 2026-08-02T13:50:52Z). deriveState nonetheless returns 'service_ok' for it, and plan.ts:196 counts it as a satisfied dependency. A live row exists where the detector's verdict and the served signal disagree, and the declared string is what overrides the detector.",
+   "the_code_says_the_quiet_part": "deriveState.ts:61-64 comment: 'Service assets have no count_sql/target_table by design — they are healthy when registered + CURRENT.' 'Healthy when registered' is a status with no detector behind it: CLAUDE.md §N.8 verbatim.",
+   "code_derived_truth": "PARTIAL, and that is the point. Three code-side facts exist and none is consulted: (1) whether a WriterBase writer is registered for the asset; (2) whether service_probes.py can answer for it; (3) whether health_probe is non-null. Measured: all 6 asset_kind='service' rows have health_probe NULL and provides_apis NULL; the 2 asset_type='service'-only rows (bg_ephemeris_engine, bg_panchanga) have both.",
+   "assets_currently_in_this_state": {
+    "count": 8,
+    "ids": [
+     "bg_ephemeris_engine",
+     "bg_panchanga",
+     "ka_dasha_kala",
+     "ka_graha_sancara",
+     "ka_muhurta_seva",
+     "ka_tulana",
+     "mi_abhilekha",
+     "mi_seva"
+    ],
+    "service_health_graded": {
+     "ka_dasha_kala": "healthy",
+     "ka_graha_sancara": "unhealthy",
+     "ka_muhurta_seva": "healthy",
+     "ka_tulana": "healthy"
+    },
+    "service_health_null": [
+     "bg_ephemeris_engine",
+     "bg_panchanga",
+     "mi_abhilekha",
+     "mi_seva"
+    ]
+   },
+   "fail_direction": "OPEN (unconditional service_ok; dependency-satisfying)",
+   "already_paired_in_workbook": false,
+   "related_open_guard_signal": "check_asset_catalogue_contract.py C-15 ('service => health_probe and provides_apis NOT NULL') and C-17 ('graded service_health => health_probe NOT NULL') both have live violating populations on this data (6 and 4 rows respectively). That is the guard working, not a new finding; disposition is ADHIKARIN's."
+  },
+  {
+   "id": "G-04",
+   "tier": "B",
+   "field": "rebuild_on_probe_fail",
+   "type": "boolean",
+   "status": "NEW",
+   "gates": "whether _probe_asset() executes AT ALL — the entire verify-then-conditionally-regenerate primitive",
+   "consumers": [
+    {
+     "file_line": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py:887, 893",
+     "effect": "`rebuild_policy = bool(registry_row.get('rebuild_on_probe_fail'))` then `if has_check and rebuild_policy:`. false => _probe_asset is never called on this path, for services and data assets alike."
+    }
+   ],
+   "current_value": "false on 128 of 128 rows. NOT NULL, DEFAULT false. There is no row on which this primitive can fire.",
+   "code_derived_truth": "NO. This is a genuine policy declaration; nothing in code can say what an asset's rebuild policy ought to be. It cannot be derived, only justified.",
+   "consequence": "The probe/regenerate primitive is dead code in production today. Nothing is silently wrong as a result — the primitive is a skip-if-green OPTIMISATION, so its absence means writers always run, which is the conservative branch. It is listed because its ON/OFF switch is a declared boolean with no detector, which is the shape D-25 asked to be swept for, and because a future row setting it true would activate a path with zero current production coverage.",
+   "fail_direction": "CLOSED today (writer always runs). Would fail OPEN if set true on an asset whose integrity_check_sql were weak.",
+   "ranked": "low consequence today, high consequence the day it is switched on"
+  },
+  {
+   "id": "G-05",
+   "tier": "B",
+   "field": "integrity_check_sql",
+   "type": "text (null-ness is the gate)",
+   "status": "NEW — and it is the field the task singled out; confirmed",
+   "gates": "whether a data asset has any integrity verdict available at all",
+   "consumers": [
+    {
+     "file_line": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py:494-508",
+     "effect": "`integrity_sql = registry_row.get('integrity_check_sql'); if integrity_sql: ... ` — falls through to `return False, 'no check defined'`."
+    },
+    {
+     "file_line": "platform/python-sidecar/pipeline/orchestrator/asset_runner.py:886",
+     "effect": "`has_check = is_service or bool(registry_row.get('integrity_check_sql'))` — a NULL makes a data asset has_check=False, which (with rebuild_policy) skips the primitive entirely."
+    },
+    {
+     "file_line": "platform/scripts/governance/check_asset_catalogue_contract.py:578-605 (C-22)",
+     "effect": "'frozen rung data/artifact => integrity_check_sql NOT NULL' — severity RUNG. Currently NOT_CHECKABLE on two independent grounds, both reported: no rung is frozen, and the rule's precondition set is therefore empty."
+    }
+   ],
+   "current_value": "NULL on 128 of 128 rows. 0 assets carry an integrity check.",
+   "code_derived_truth": "NO. There is no code artefact from which the correct integrity invariant for an asset could be read; writing one is an authoring act (charter G3).",
+   "consequence": "The double-gate is the finding: even if an integrity_check_sql were authored tomorrow, rebuild_on_probe_fail=false (G-04) would still keep _probe_asset from running. The integrity-gate engine is switched off at TWO independent registry columns, and neither switch has a detector behind it. C-22 is honest about this (it returns not_checkable rather than a vacuous pass), which is the correct handling and is worth citing as the standard.",
+   "fail_direction": "CLOSED at the probe (`no check defined` returns False), OPEN at the freeze gate (an asset with no invariant can be frozen with nothing having verified it, once a rung freezes and C-22 becomes checkable).",
+   "ranked": "highest of tier B — it is the campaign's own freeze evidence that is missing"
+  },
+  {
+   "id": "G-06",
+   "tier": "B",
+   "field": "target_floor (value 0)",
+   "type": "integer (the value 0 is the gate)",
+   "status": "NEW",
+   "gates": "the 'is this asset's data actually present' check — a declared 0 substitutes a PASS for the measurement",
+   "consumers": [
+    {
+     "file_line": "platform/src/app/api/cockpit/watchdog/classifyStuckCandidate.ts:69-73",
+     "effect": "`dataConfirmedComplete = actualRows != null && (actualRows > 0 || candidate.target_floor === 0)`. With target_floor=0 and 0 rows and has_substeps=false, the verdict is 'rescue-lit' — a stuck 'building' asset with ZERO rows is promoted to lit."
+    },
+    {
+     "file_line": "platform/src/app/api/cockpit/stats/deriveState.ts:88",
+     "effect": "`if (throughputState === 'lit' && actualRows === 0 && asset.target_floor === 0) return 'lit'`."
+    },
+    {
+     "file_line": "platform/scripts/governance/check_asset_catalogue_contract.py:571-576 (C-21)",
+     "effect": "target_floor=0 requires a non-empty volume_explanation. Measured: 19 of the 35 target_floor=0 rows have no volume_explanation — i.e. 19 assets assert 'zero rows is correct' with no written reason."
+    }
+   ],
+   "current_value": "35 rows carry target_floor=0; 25 rows carry NULL.",
+   "measured_live_exposure": {
+    "target_floor_0_rows": 35,
+    "with_0_or_unmeasurable_rows_on_native_chart": 7,
+    "of_those_also_has_substeps_false_so_watchdog_would_rescue_lit": [
+     "bg_sarvatobhadra_grid (CURRENT)",
+     "mi_abhilekha (DRAFT)",
+     "mi_seva (DRAFT)",
+     "mi_vistara (DRAFT)"
+    ],
+    "measurement_source": "00_ARCHITECTURE/control/asset_measurements.json, measured_at 2026-08-23T00:11:55Z"
+   },
+   "code_derived_truth": "NO code artefact declares an asset's correct floor. But CLAUDE.md §N.4 supplies the discipline that plays the same role: target_floor is to be SET TO THE MEASURED ACHIEVED COUNT AFTER A BUILD. Under that rule target_floor=0 means 'a build ran and honestly produced 0'; it cannot distinguish that from 'never built'. The volume_explanation requirement (C-21) is the mechanism intended to carry that distinction, and it is absent on 19 of 35.",
+   "doctrine_tension_reported_not_resolved": "CLAUDE.md §N.4 says floors are ASPIRATIONAL, NOT GATES. In classifyStuckCandidate and deriveState, target_floor=0 IS a gate — the only one of its values that is. This sweep reports the tension and does not resolve it; the disposition is ADHIKARIN's.",
+   "fail_direction": "OPEN (zero rows promoted to lit)",
+   "ranked": "highest measured live exposure in tier B"
+  },
+  {
+   "id": "G-07",
+   "tier": "B",
+   "field": "is_active",
+   "type": "boolean",
+   "status": "NEW",
+   "gates": "membership in EVERY check population the campaign and the product run",
+   "consumers": [
+    {
+     "file_line": "platform/src/app/api/cockpit/stats/route.ts:214",
+     "effect": "`WHERE is_active = true` — an inactive row is never counted, never state-derived."
+    },
+    {
+     "file_line": "platform/src/app/api/cockpit/stats/deriveState.ts:67",
+     "effect": "`if (asset.is_active === false) return 'not_migrated'` — second branch, ahead of every evidence check."
+    },
+    {
+     "file_line": "platform/python-sidecar/pipeline/orchestrator/runner.py:499",
+     "effect": "excluded from the staleness-propagation registry."
+    },
+    {
+     "file_line": "platform/python-sidecar/pipeline/orchestrator/dag_edge_guard.py:101",
+     "effect": "excluded from the DAG edge guard's registry."
+    },
+    {
+     "file_line": "platform/python-sidecar/pipeline/orchestrator/global_runner.py:88",
+     "effect": "excluded from the global-scope build walk."
+    },
+    {
+     "file_line": "platform/src/app/api/cockpit/runs/route.ts:139 and platform/src/lib/build/recalibrationEnqueue.ts:140",
+     "effect": "excluded from both build plans."
+    },
+    {
+     "file_line": "platform/scripts/governance/check_asset_catalogue_contract.py:712 (x01), :770-773 (x02), :813 (x03)",
+     "effect": "exempt from the multi-producer collision rule, and reported-but-non-blocking / skipped in the coverage rules."
+    }
+   ],
+   "current_value": "false on exactly 1 row: ka_gochara_sweep (also catalog_status RETIRED).",
+   "code_derived_truth": "NO. Activity is a lifecycle declaration.",
+   "consequence": "One declared boolean removes an asset from every detector in the system at once. On the single current row it is arguably correct (the asset is RETIRED). It is reported because the shape is the strongest instance of D-25's concern in the whole table — the widest blast radius per bit — and because nothing cross-checks it.",
+   "honest_qualifier": "x03 in the campaign's own guard already refuses to let has_writer=false become a similar exemption, and documents why (check_asset_catalogue_contract.py:794-808). is_active=false REMAINS an exemption there, deliberately and with a stated reason.",
+   "fail_direction": "OPEN (total exemption)",
+   "ranked": "widest blast radius, smallest current population"
+  },
+  {
+   "id": "G-08",
+   "tier": "B",
+   "field": "catalog_status (value 'RETIRED')",
+   "type": "text",
+   "status": "NEW — governance tier only",
+   "gates": "exemption from the campaign's own coverage rules",
+   "consumers": [
+    {
+     "file_line": "platform/scripts/governance/check_asset_catalogue_contract.py:771, :813",
+     "effect": "RETIRED rows are exempted from x03 (active asset with no build coverage) and flagged-but-RESIDUAL in x02."
+    },
+    {
+     "file_line": "platform/scripts/governance/check_asset_catalogue_contract.py:411-415 (C-08)",
+     "effect": "RETIRED => data_disposition NOT NULL. Measured: data_disposition is NULL on 128 of 128 rows, so the one RETIRED asset violates C-08."
+    }
+   ],
+   "current_value": "RETIRED on 1 row (ka_gochara_sweep); CURRENT 80; DRAFT 47.",
+   "no_runtime_consumer": "catalog_status is NOT read by any orchestrator or cockpit code path as a gate — only by the governance checker and as an MCP filter. Verified by grep across platform/src, platform-mcp/src, platform/python-sidecar/pipeline.",
+   "code_derived_truth": "NO.",
+   "fail_direction": "OPEN (exemption from coverage rules)",
+   "ranked": "lowest — 1 row, governance tier only, and the guard already reports it"
+  }
+ ],
+ "tier_C_examined_not_in_scope": [
+  {
+   "field": "count_sql",
+   "why": "Null-ness DOES stop _data_rows_present (asset_runner.py:197) from answering and stops the cockpit count (stats/route.ts:119). Both fail CLOSED: the no-op-completion rescue does not fire (asset stays 'dormant') and the cockpit reports error 'missing_table'. A NULL here produces a false ALARM, never an unearned green. 6 rows NULL (all 8 service-declared rows minus the 2 with count_sql); 3 per_chart rows carry a count_sql with no $1 (ka_dasha_kala, ka_tulana, mi_seva), which C-06 already detects."
+  },
+  {
+   "field": "health_probe",
+   "why": "NULL => run_health_probe returns status 'down' (service_probes.py:82). Fails CLOSED. It is a C-15/C-17 trigger, not a gate. 126 NULL."
+  },
+  {
+   "field": "provides_apis",
+   "why": "Read as data by the service manifest and as a C-15 trigger. No check's execution depends on it. 126 NULL."
+  },
+  {
+   "field": "clear_tables",
+   "why": "C-24 skips a row with no clear_tables (`if not ct: continue`, :637), but the clear path itself never reads the column — cockpit/clear/route.ts and clear/execute/route.ts resolve tables from EXPLICIT_CLEAR_OPS, then count_sql, then target_table. The column is genuinely optional and the checker reports rows_setting_clear_tables honestly. 127 NULL, 1 set (bg_reference)."
+  },
+  {
+   "field": "expected_volume_formula",
+   "why": "108 NULL. Grep across platform/src, platform-mcp/src, python-sidecar/pipeline, scripts/governance found only SELECT-and-display consumers (cockpit/registry/route.ts:47, atlas/page.tsx:13, asset_registry_all.ts:158). No conditional. Not a gate."
+  },
+  {
+   "field": "expected_volume_inputs",
+   "why": "124 NULL. No consumer found outside the seed. Not a gate."
+  },
+  {
+   "field": "writer_timeout_seconds",
+   "why": "NOT NULL, DEFAULT 600. runner.py:513 selects `WHERE writer_timeout_seconds IS NOT NULL` and :317 does `int(_budgets.get(a) or _WRITER_TIMEOUT_SECONDS)`. The watchdog ALWAYS runs; the column supplies its budget. A value, not a gate. Noted only: the `or` is falsy-zero, so a literal 0 would silently fall back to the global default rather than mean 'no budget' — no row currently holds 0."
+  },
+  {
+   "field": "size_sql",
+   "why": "51 NULL. `if (asset.size_sql)` (stats/route.ts:143) skips a SIZE measurement, which feeds no verdict and gates no promotion. Informational."
+  },
+  {
+   "field": "depends_on",
+   "why": "34 rows carry an empty array. An empty deps list makes the dag_edge_guard's transitive closure SMALLER, so MORE reads are flagged as ungated. Fails CLOSED. C-11/C-12/C-13 iterate declared edges; an empty list simply has no edges to violate."
+  },
+  {
+   "field": "scope",
+   "why": "scope='per_chart' enables the stats route's rows_written fast path (route.ts:100), which skips a live count_sql in favour of a stored number — but with an explicit ?mode=live escape and a documented reason, and 'global' takes the SLOWER, live-count branch. scope=global also makes _data_rows_present return None (chart_id is None) — fail CLOSED. Borderline, deliberately not counted."
+  },
+  {
+   "field": "storage_type",
+   "why": "Only conditional found: atlas/sample/route.ts:25 `if (asset.storage_type === 'postgres_view') return null` — a sample-rows display path, no verdict."
+  },
+  {
+   "field": "target_table",
+   "why": "14 NULL. Feeds clear-op and sample resolution as one fallback among three. A value, not a gate."
+  },
+  {
+   "field": "service_health",
+   "why": "Written BY the probe (asset_runner.py:345-352) and read as a C-16/C-17 trigger and a cockpit display value. It is a detector OUTPUT. Nothing gates on it — which is precisely G-03's finding, from the other direction."
+  },
+  {
+   "field": "last_invoked_at / last_selftest_at / selftest_detail",
+   "why": "Probe telemetry. No conditional consumer found anywhere in platform/src, platform-mcp/src, python-sidecar/pipeline, scripts/governance."
+  },
+  {
+   "field": "estimated_seconds",
+   "why": "119 NULL. plan.ts:321 returns null for the ETA when absent — the plan still resolves and still builds. C-28 flags a built asset with no estimate. An ETA is not a check."
+  },
+  {
+   "field": "domain",
+   "why": "Added by migration 590, 0 NULL. C-18 asserts the column; c06 uses s.domain_of() which derives from scope with recorded provenance. Feeds a check, does not gate one."
+  },
+  {
+   "field": "rung",
+   "why": "Added by migration 590, 0 NULL. C-19 asserts it; C-22's precondition is the SNAPSHOT-level frozen_rungs list, not this column, and C-22 returns NOT_CHECKABLE rather than a vacuous pass when the list is empty (:587-598) — the correct handling, cited here as the standard the other fields should meet."
+  },
+  {
+   "field": "superseded_by / data_disposition",
+   "why": "Added by migration 590, NULL on 128/128. Both gate C-08/C-09/C-10 via Snapshot.missing(), which returns NOT_CHECKABLE rather than passing. Honest by construction."
+  },
+  {
+   "field": "asset_id / layer / layer_name / layer_index / sort_order / sanskrit_name / english_name / english_description / volume_explanation / created_at",
+   "why": "Identity, ordering, prose. No conditional consumer that decides whether a check runs. volume_explanation is a C-21 REQUIREMENT (its absence is the violation), never an exemption."
+  }
+ ],
+ "what_this_sweep_did_not_do": [
+  "It did not repair anything. No write of any kind was issued against the database (I13/I14).",
+  "It did not resolve the CLAUDE.md §N.4 tension G-06 surfaces (floors aspirational vs target_floor=0 as a gate). That is ADHIKARIN's.",
+  "It did not audit non-asset_registry gating fields (asset_throughput.state, build_run_assets.state, build_protected_assets). D-25 part 3 is scoped to the registry.",
+  "It did not verify that the 8 service-declared rows in G-03 are WRONGLY declared. Several may be correct services. The finding is that the declaration alone produces the green, not that the declaration is false.",
+  "It did not re-run the writer census; it consumed 00_ARCHITECTURE/control/writer_substep_census.json (M0-T8) as the code-side truth for G-01 and G-02, and cross-checked has_writer with an independent @register scan whose one disagreement (mi_sankalpa) it traced to its own regex and discarded."
+ ],
+ "uncertainties": [
+  "has_substeps was being repaired concurrently. Both readings are recorded; neither is asserted as final.",
+  "G-03's severity depends on how a reader weighs 'service_ok'. It is in plan.ts's READY_STATES, so it is load-bearing for dependency resolution — but whether an always-green service badge is a defect or a deliberate simplification is a judgment this KARAKA does not make.",
+  "G-04's consequence assessment ('dead code today') rests on rebuild_on_probe_fail being false on all 128 rows AT THE TIME OF READING. Nothing prevents a row from being set true later.",
+  "The tier-C dispositions rest on grep coverage over platform/src, platform-mcp/src, platform/python-sidecar, platform/scripts and 00_ARCHITECTURE/control. A consumer outside those trees, or one that reads the column through a SELECT * into a generic record, would not have been seen."
+ ]
+}

@@ -1,14 +1,47 @@
 ---
 title: Migrations 588/589 — applied-state verification and proposed ledger registration
 version: 1.0
-status: PROPOSAL — NO WRITE EXECUTED
+status: SUPERSEDED BY EVENTS — the proposal was subsequently APPLIED (see §0)
 task: WORK_QUEUE M0-T4
 agent: KARAKA-M0-T4
 date: 2026-08-23
 gated_on: ADHIKARIN ruling (requested, not returned at time of writing)
+status_corrected_by: KARAKA-M0-T24, 2026-08-23T05:57Z — status line only; §A–§F analysis untouched
 ---
 
 # Migrations 588 / 589 — applied-state verification and proposed registration
+
+---
+
+## 0 — DATED CORRECTION (2026-08-23T05:57Z, KĀRAKA-M0-T24)
+
+**This document's `status` line said `PROPOSAL — NO WRITE EXECUTED`. That was true when it was
+written and is now false.** All three migrations were applied roughly two hours later. A control
+document asserting a state that production contradicts is this campaign's own defect class, so the
+status line is corrected here rather than left to be tripped over.
+
+What actually happened, read live from `_migrations_applied` at 2026-08-23T05:55Z (read-only):
+
+| ledger id | filename | applied_at (UTC) |
+|---|---|---|
+| 448 | `588_remove_asset_build_protection.sql` | 2026-08-23T05:33:15.527766Z |
+| 449 | `589_drop_orphaned_protection_functions.sql` | 2026-08-23T05:34:38.787119Z |
+| 450 | `590_nirmana_m0_catalogue_contract_columns.sql` | 2026-08-23T05:36:13.833986Z |
+
+The ledger now holds **450 rows**, up from the **447** this document verified. Row 447 remains
+`588_samiksha_digest_journal.sql` (applied 2026-08-22T23:42:20Z) — the *other* 588, which is F-1's
+subject and is not evidence of anything about these migrations.
+
+**Nothing below this section has been rewritten.** §A–§F were accurate as analysis and as a record
+of what M0-T4 itself did and did not do — including its statement that M0-T4 executed no write,
+which remains true of M0-T4. The write was performed later, by a different agent, under the
+ADHIKĀRIN ruling this document was waiting on. Read §A–§F as a proposal-plus-evidence document
+whose proposal was subsequently accepted and carried out, not as a description of current state.
+
+This correction touched the frontmatter `status` line and added this section. No other edit was
+made, and no `.sql` file was touched (H5).
+
+---
 
 **Nothing in this document has been executed.** No INSERT was made into the migration
 ledger, neither migration was run, and neither `.sql` file was edited (H5 / CLAUDE.md §N.4).
