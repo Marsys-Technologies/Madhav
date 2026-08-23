@@ -1,0 +1,1601 @@
+{
+ "_meta": {
+  "generated_at": "2026-08-23T04:45:12.456753Z",
+  "native_chart": "482012f1-710e-4a25-994a-93821f5871aa",
+  "source_map": "00_ARCHITECTURE/control/CONSUMER_MAP.json",
+  "assets": 23,
+  "certifies": "nothing; no disposition proposed or taken (G1 is ADHIKARIN)"
+ },
+ "assets": {
+  "bg_cohort": {
+   "registry": {
+    "english_description": "Synthetic (not real-person) reference population of ~10,000 birth charts' Lahiri-sidereal graha + Lagna positions (sign/nakshatra grain) \u2014 the statistical base-rate population later waves compare a real chart against for rarity scoring. \u1e62A\u1e0c-DAR\u015aANA campaign item 22.",
+    "volume_explanation": "10,000 synthetic birth charts, uniform-random over 1900-2099, fixed RNG seed. See bg_cohort.py module docstring for full sampling methodology.",
+    "count_sql": "SELECT COUNT(*) FROM bg_synthetic_cohort",
+    "size_sql": "SELECT pg_total_relation_size('bg_synthetic_cohort')",
+    "integrity_check_sql": null,
+    "target_floor": 10000,
+    "depends_on": [],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [
+    "ka_kshetra"
+   ],
+   "asset_throughput_rows": [
+    {
+     "chart_id": null,
+     "state": "lit",
+     "rows_written": null,
+     "last_built_at": "2026-08-02 13:49:30.695627+00",
+     "last_error": null
+    }
+   ],
+   "tables": {
+    "bg_synthetic_cohort": {
+     "columns": [
+      "id:bigint",
+      "synthetic_id:integer",
+      "birth_datetime_utc:timestamp with time zone",
+      "birth_lat:numeric(7,4)",
+      "birth_lon:numeric(7,4)",
+      "ayanamsha_key:text",
+      "positions:jsonb",
+      "sampling_method:text",
+      "source_citation:text",
+      "build_id:uuid",
+      "computed_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 10000,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    }
+   },
+   "registry_count_sql_result": 10000
+  },
+  "bg_concordance": {
+   "registry": {
+    "english_description": "Cross-school chunk-pointer index per (topic, school) \u2014 chunk refs for L1+ synthesis at query-time",
+    "volume_explanation": "800 = topic\u00d7school concordance rows. Cross-product metric: cardinality is topic_count \u00d7 school_count, not chunk-proportional. Chunk-pointer index per (topic, school); synthesis at L1+ query-time.",
+    "count_sql": "SELECT count(*) FROM classical_attributions",
+    "size_sql": "SELECT pg_total_relation_size('classical_attributions')",
+    "integrity_check_sql": null,
+    "target_floor": 800,
+    "depends_on": [
+     "bg_rules"
+    ],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [],
+   "asset_throughput_rows": [
+    {
+     "chart_id": null,
+     "state": "lit",
+     "rows_written": 720,
+     "last_built_at": "2026-08-07 18:10:05.22357+00",
+     "last_error": null
+    }
+   ],
+   "tables": {
+    "classical_attributions": {
+     "columns": [
+      "attribution_id:bigint",
+      "topic_id:text",
+      "topic_canonical_name:text",
+      "topic_category:text",
+      "school:text",
+      "source_text_ids:text[]",
+      "source_chunk_ids:bigint[]",
+      "rule_ids:uuid[]",
+      "match_method:text",
+      "match_confidence:numeric(4,3)",
+      "created_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 720,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    }
+   },
+   "registry_count_sql_result": 720
+  },
+  "bg_ephemeris_engine": {
+   "registry": {
+    "english_description": "Swiss Ephemeris (pyswisseph) with DE441 JPL file providing sidereal planetary positions from 9999 BCE to 9999 CE. Foundation for all computational Jyotish in MARSYS-JIS. Lahiri ayanamsha canonical. MEAN_NODE convention: Rahu (ascending node).",
+    "volume_explanation": null,
+    "count_sql": null,
+    "size_sql": null,
+    "integrity_check_sql": null,
+    "target_floor": null,
+    "depends_on": [],
+    "clear_tables": null,
+    "health_probe": {
+     "note": "JD = 1984-02-05 10:43 IST \u2192 UTC. Sun in Makara (sign 10) sidereal Lahiri.",
+     "probe_type": "ephemeris_engine",
+     "forensic_jd": 2445701.948264,
+     "expected_sun_approximate_sign": 10
+    },
+    "provides_apis": [
+     {
+      "api": "swisseph.calc_ut",
+      "description": "Planetary longitude at Julian Day (UT) \u2014 wraps pyswisseph swe.calc_ut"
+     },
+     {
+      "api": "swisseph.houses_ex",
+      "description": "House cusps + Lagna at JD with geographic coordinates"
+     }
+    ],
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [],
+   "asset_throughput_rows": [
+    {
+     "chart_id": null,
+     "state": "error",
+     "rows_written": null,
+     "last_built_at": "2026-06-18 18:47:04.905434+00",
+     "last_error": "service health: degraded \u2014 ephemeris position query failed: swisseph.calc_ut: Ephemeris file /app/ephe/sepl_18.se1 is damaged (0). ; MEAN_NODE check failed: unsupported operand type(s) for /: 'tuple' and 'int'"
+    }
+   ],
+   "tables": {}
+  },
+  "bg_gochara_arcs": {
+   "registry": {
+    "english_description": "W2G (GOCHARA-2.0, item 19). Chart-independent decomposition of every graha's ecliptic-longitude history over the stored 1900-2150 ephemeris epoch into MONOTONE ARCS: maximal intervals on which longitude is strictly monotone in time and confined to a single 360-degree band, cut at real stations (sign-change-confirmed roots of the interpolated velocity) and at 360-degree wrap boundaries. Turns \"when does body B reach degree L\" from a day-stepping ephemeris scan into a range predicate plus one bracketed bisection -- which is what removes the ~110-120ms-per-contact-primitive-call cost measured in the v1 sweep. Carries a per-body arc_fingerprint so an invalidation is exactly as wide as the change that caused it. Geometry only: no grammar, no orbs, no astrology -- those stay frozen at v1 per GOCHARA_SWEEP_2_0_DESIGN section 5.",
+    "volume_explanation": null,
+    "count_sql": "SELECT COUNT(*) FROM bg_gochara_arcs",
+    "size_sql": "SELECT pg_total_relation_size('bg_gochara_arcs')",
+    "integrity_check_sql": null,
+    "target_floor": 34553,
+    "depends_on": [],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": true,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [
+    "ka_gochara"
+   ],
+   "asset_throughput_rows": [
+    {
+     "chart_id": null,
+     "state": "lit",
+     "rows_written": 34553,
+     "last_built_at": "2026-08-09 23:55:23.508937+00",
+     "last_error": null
+    }
+   ],
+   "tables": {
+    "bg_gochara_arcs": {
+     "columns": [
+      "substrate_version:text",
+      "body:text",
+      "arc_index:integer",
+      "start_jd:double precision",
+      "end_jd:double precision",
+      "start_lon_unwrapped_deg:double precision",
+      "end_lon_unwrapped_deg:double precision",
+      "lon_lo_deg:double precision",
+      "lon_hi_deg:double precision",
+      "direction:smallint",
+      "wrap_index:integer",
+      "arc_fingerprint:text",
+      "engine_version:text",
+      "ayanamsha_id:text",
+      "build_id:text",
+      "computed_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 34553,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    }
+   },
+   "registry_count_sql_result": 34553
+  },
+  "bg_kota_chakra_rings": {
+   "registry": {
+    "english_description": "ADJUDICATION-9: the Kota-Chakra fort-chakra ring partition (stambha/durgantara/prakara/bahya, 1-indexed distance from janma nakshatra), moved from an inline writer-code dict to a versioned L0 global reference table. Tier-(iii) secondary-source transcription; corpus_status='not_in_corpus' on every row; ingestion work item filed for the primary source, not attempted here. Consumed by ka_kota_chakra.",
+    "volume_explanation": null,
+    "count_sql": "SELECT COUNT(*) FROM bg_kota_chakra_rings",
+    "size_sql": "SELECT pg_total_relation_size('bg_kota_chakra_rings')",
+    "integrity_check_sql": null,
+    "target_floor": 27,
+    "depends_on": [],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [
+    "ka_kota_chakra"
+   ],
+   "asset_throughput_rows": [
+    {
+     "chart_id": null,
+     "state": "lit",
+     "rows_written": null,
+     "last_built_at": "2026-08-02 13:50:51.873724+00",
+     "last_error": null
+    }
+   ],
+   "tables": {
+    "bg_kota_chakra_rings": {
+     "columns": [
+      "table_version:text",
+      "ring_position:smallint",
+      "ring_name:text",
+      "ring_index:smallint",
+      "dvara_assignment:text",
+      "citation:text",
+      "corpus_status:text",
+      "ratified_by:text",
+      "created_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 27,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    }
+   },
+   "registry_count_sql_result": 27
+  },
+  "bg_kp_sublord_division": {
+   "registry": {
+    "english_description": "ADJUDICATION-7 Part 1: the canonical 249-fold Krishnamurti Paddhati sub-lord division of the sidereal zodiac. 243 Vimshottari-proportional sub segments (sub arc = lord_years/9 degrees, sequence starting from the nakshatra lord) cut at the 12 rashi boundaries; 6 boundaries fall strictly inside a sub and split it, so 243 + 6 = 249 \u2014 derived by exact rational arithmetic, not hard-coded. Stored in sidereal longitude with NO ayanamsha key (the sidereal division is ayanamsha-invariant). AUTHORITY for every KP sub-lord boundary: ga_nakshatra REFERENCES it (\u00a7N.5) rather than re-deriving. Verified 9/9 star lord + 9/9 sub lord against the committed FORENSIC \u00a74.2 fixture in 05_TEMPORAL_ENGINES/kp/CROSSCHECK_v1_0.md \u00a72.",
+    "volume_explanation": null,
+    "count_sql": "SELECT COUNT(*) FROM bg_kp_sublord_division",
+    "size_sql": "SELECT pg_total_relation_size('bg_kp_sublord_division')",
+    "integrity_check_sql": null,
+    "target_floor": 249,
+    "depends_on": [],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [
+    "ga_nakshatra"
+   ],
+   "asset_throughput_rows": [
+    {
+     "chart_id": null,
+     "state": "lit",
+     "rows_written": 249,
+     "last_built_at": "2026-08-05 11:37:13.734628+00",
+     "last_error": null
+    }
+   ],
+   "tables": {
+    "bg_kp_sublord_division": {
+     "columns": [
+      "table_version:text",
+      "division_index:smallint",
+      "start_longitude_deg:numeric(18,15)",
+      "end_longitude_deg:numeric(18,15)",
+      "span_arcmin:numeric(18,12)",
+      "nakshatra_number:smallint",
+      "star_lord:text",
+      "sub_lord:text",
+      "sign_number:smallint",
+      "pada_at_start:smallint",
+      "pada_at_end:smallint",
+      "split_by_sign_boundary:boolean",
+      "source_citation:text",
+      "created_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 249,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    }
+   },
+   "registry_count_sql_result": 249
+  },
+  "bg_panchanga": {
+   "registry": {
+    "english_description": "Deterministic panchang computation service (swisseph DE441, Lahiri ayanamsha, Drik-parity). Exposes panchanga_instant(instant,lat,lon,tz_offset) and panchanga_day(date,lat,lon,tz_offset). Zero LLM. Floor: 5 angas + timing windows + 9 graha states.",
+    "volume_explanation": null,
+    "count_sql": null,
+    "size_sql": null,
+    "integrity_check_sql": null,
+    "target_floor": null,
+    "depends_on": [],
+    "clear_tables": null,
+    "health_probe": {
+     "probe_type": "panchanga_engine",
+     "forensic_lat": 20.27,
+     "forensic_lon": 85.84,
+     "forensic_instant": "1984-02-05T10:43:00",
+     "forensic_expected": {
+      "vara": "Ravivara",
+      "yoga": "Shiva",
+      "tithi": "Shukla Tritiya",
+      "karana": "Garaja",
+      "nakshatra": "Purva Bhadrapada"
+     },
+     "forensic_tz_offset": 330
+    },
+    "provides_apis": [
+     {
+      "api": "panchanga_instant",
+      "signature": "panchanga_instant(instant: datetime, lat: float, lon: float, tz_offset: int) -> PanchangaInstant",
+      "description": "Anga state at exact moment \u2014 birth chart / event instant"
+     },
+     {
+      "api": "panchanga_day",
+      "signature": "panchanga_day(date: date, lat: float, lon: float, tz_offset: int) -> Panchang",
+      "description": "Full sunrise-based daily panchang including timings and graha states"
+     }
+    ],
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [],
+   "asset_throughput_rows": [
+    {
+     "chart_id": null,
+     "state": "lit",
+     "rows_written": 0,
+     "last_built_at": "2026-06-18 18:47:04.719866+00",
+     "last_error": null
+    }
+   ],
+   "tables": {}
+  },
+  "bg_phaladeepika_latta": {
+   "registry": {
+    "english_description": "ADJUDICATION-11 Part 4: Phaladeepika Adh. XXVI PG338-339 Sloka 42-44's Latt\u0101 (obstruction-point) rule, REAL and cited, transcribed verbatim, 8 grahas (Ketu deliberately absent \u2014 its counting rule was not found in the retrieved passage). Consumed by ka_vedha_gochara as vedha_kind='latta' rows, uncited_extension=false.",
+    "volume_explanation": null,
+    "count_sql": "SELECT COUNT(*) FROM bg_phaladeepika_latta",
+    "size_sql": "SELECT pg_total_relation_size('bg_phaladeepika_latta')",
+    "integrity_check_sql": null,
+    "target_floor": 8,
+    "depends_on": [],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [
+    "ka_vedha_gochara"
+   ],
+   "asset_throughput_rows": [
+    {
+     "chart_id": null,
+     "state": "lit",
+     "rows_written": null,
+     "last_built_at": "2026-08-02 13:50:51.989597+00",
+     "last_error": null
+    }
+   ],
+   "tables": {
+    "bg_phaladeepika_latta": {
+     "columns": [
+      "table_version:text",
+      "graha:text",
+      "count_from_graha:smallint",
+      "direction:text",
+      "effect_description:text",
+      "affliction_condition:text",
+      "source_citation:text",
+      "verse_ref:text",
+      "created_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 8,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    }
+   },
+   "registry_count_sql_result": 8
+  },
+  "bg_reference": {
+   "registry": {
+    "english_description": "The holy grail of L0 \u2014 structured properties of every classical Jyotish concept across 15 specialized typed tables.",
+    "volume_explanation": "Sum of 15 reference_* tables (per design \u00a73.2). Each table is normalized + typed; ontology resolves names, reference holds properties.",
+    "count_sql": "SELECT\n  (SELECT count(*) FROM reference_planets) +\n  (SELECT count(*) FROM reference_signs) +\n  (SELECT count(*) FROM reference_aspects) +\n  (SELECT count(*) FROM reference_vargas) +\n  (SELECT count(*) FROM reference_houses) +\n  (SELECT count(*) FROM reference_strength_systems) +\n  (SELECT count(*) FROM reference_karakas) +\n  (SELECT count(*) FROM reference_upagrahas) +\n  (SELECT count(*) FROM reference_constants) +\n  (SELECT count(*) FROM reference_topic_tags) +\n  (SELECT count(*) FROM reference_glossary) AS count",
+    "size_sql": "SELECT pg_total_relation_size('reference_nakshatras')",
+    "integrity_check_sql": null,
+    "target_floor": 1485,
+    "depends_on": [],
+    "clear_tables": [
+     "reference_planets",
+     "reference_nakshatras",
+     "reference_signs",
+     "reference_aspects",
+     "reference_vargas",
+     "reference_houses",
+     "reference_strength_systems",
+     "reference_karakas",
+     "reference_upagrahas",
+     "reference_constants",
+     "reference_topic_tags",
+     "reference_glossary",
+     "reference_yogas",
+     "reference_doshas",
+     "reference_dasha_systems"
+    ],
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [
+    "bg_compendium_index",
+    "ga_sensitive"
+   ],
+   "asset_throughput_rows": [
+    {
+     "chart_id": null,
+     "state": "lit",
+     "rows_written": 1485,
+     "last_built_at": "2026-08-07 17:43:37.313275+00",
+     "last_error": "KeyError: 0"
+    }
+   ],
+   "tables": {
+    "reference_nakshatras": {
+     "columns": [
+      "id:uuid",
+      "nakshatra_id:smallint",
+      "canonical_name_en:text",
+      "canonical_name_sa:text",
+      "lord:text",
+      "deity:text",
+      "nature:text",
+      "guna:text",
+      "start_degree:numeric(6,3)",
+      "end_degree:numeric(6,3)",
+      "pada_lords:text[]",
+      "body_part:text",
+      "source_citation:text",
+      "created_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 27,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    },
+    "reference_aspects": {
+     "columns": [
+      "id:uuid",
+      "planet_id:text",
+      "aspect_house:smallint",
+      "aspect_strength:text",
+      "strength_value:numeric(3,2)",
+      "is_special:boolean",
+      "notes:text",
+      "source_citation:text",
+      "created_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 19,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    },
+    "reference_constants": {
+     "columns": [
+      "constant_id:text",
+      "name:text",
+      "value_numeric:numeric",
+      "value_text:text",
+      "unit:text",
+      "category:text",
+      "source_citation:text",
+      "classical_context:text"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 203,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    },
+    "reference_dasha_systems": {
+     "columns": [
+      "canonical_id:text",
+      "name_en:text",
+      "school:text"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 19,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    },
+    "reference_doshas": {
+     "columns": [
+      "canonical_id:text",
+      "name_en:text",
+      "category:text"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 79,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    },
+    "reference_glossary": {
+     "columns": [
+      "term_id:text",
+      "term_sa:text",
+      "term_en:text",
+      "definition:text",
+      "category:text",
+      "classical_citation:text",
+      "related_concepts:text[]"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 364,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    },
+    "reference_houses": {
+     "columns": [
+      "house_num:integer",
+      "name_sa:text",
+      "name_en:text",
+      "category:text",
+      "natural_significations:jsonb",
+      "karakas:jsonb",
+      "classical_doctrine_jsonb:jsonb",
+      "source_citation:text"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 12,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    },
+    "reference_karakas": {
+     "columns": [
+      "karaka_id:text",
+      "name_sa:text",
+      "name_en:text",
+      "karaka_type:text",
+      "applies_to:text",
+      "classical_significations:jsonb",
+      "source_citation:text"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 77,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    },
+    "reference_planets": {
+     "columns": [
+      "id:uuid",
+      "planet_id:text",
+      "canonical_name_en:text",
+      "canonical_name_sa:text",
+      "exaltation_sign:smallint",
+      "exaltation_degree:numeric(5,2)",
+      "debilitation_sign:smallint",
+      "mooltrikona_sign:smallint",
+      "own_signs:smallint[]",
+      "natural_benefic:boolean",
+      "karak_domains:text[]",
+      "dasha_years:numeric(4,1)",
+      "source_citation:text",
+      "created_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 11,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    },
+    "reference_signs": {
+     "columns": [
+      "id:uuid",
+      "sign_id:smallint",
+      "canonical_name_en:text",
+      "canonical_name_sa:text",
+      "lord:text",
+      "element:text",
+      "modality:text",
+      "natural_house:smallint",
+      "is_odd:boolean",
+      "is_biped:boolean",
+      "significations:text[]",
+      "source_citation:text",
+      "created_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 12,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    },
+    "reference_strength_systems": {
+     "columns": [
+      "strength_id:text",
+      "name_sa:text",
+      "name_en:text",
+      "category:text",
+      "formula_text:text",
+      "max_value:numeric",
+      "units:text",
+      "classical_interpretation:text",
+      "source_citation:text"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 33,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    },
+    "reference_topic_tags": {
+     "columns": [
+      "canonical_id:text",
+      "name:text",
+      "category:text",
+      "description:text",
+      "example_chunks:jsonb"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 481,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    },
+    "reference_upagrahas": {
+     "columns": [
+      "upagraha_id:text",
+      "name_sa:text",
+      "name_en:text",
+      "parent_planet:text",
+      "computation_method:text",
+      "significations:jsonb",
+      "source_citation:text"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 11,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    },
+    "reference_vargas": {
+     "columns": [
+      "id:uuid",
+      "varga_id:text",
+      "varga_number:smallint",
+      "canonical_name_en:text",
+      "canonical_name_sa:text",
+      "division_count:smallint",
+      "primary_signification:text",
+      "secondary_signification:text",
+      "source_citation:text",
+      "created_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 19,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    },
+    "reference_yogas": {
+     "columns": [
+      "canonical_id:text",
+      "name_en:text",
+      "category:text"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 229,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    }
+   },
+   "registry_count_sql_result": 1242
+  },
+  "bg_sarvatobhadra_grid": {
+   "registry": {
+    "english_description": "ADJUDICATION-11: school-tagged Sarvatobhadra Chakra grid reference table, registered DELIBERATELY EMPTY. SBC grid geometry varies by Jyotish tradition and no single school has been source-verified; an empty school-keyed table honestly states that variants exist rather than seating one as an unqualified fact. A populated school_tag activates ka_vedha_gochara's DB-sourced-grid-first path with zero code change.",
+    "volume_explanation": null,
+    "count_sql": "SELECT COUNT(*) FROM bg_sarvatobhadra_grid",
+    "size_sql": "SELECT pg_total_relation_size('bg_sarvatobhadra_grid')",
+    "integrity_check_sql": null,
+    "target_floor": 0,
+    "depends_on": [],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [
+    "ka_vedha_gochara"
+   ],
+   "asset_throughput_rows": [
+    {
+     "chart_id": null,
+     "state": "lit",
+     "rows_written": 0,
+     "last_built_at": "2026-08-09 22:11:34.0598+00",
+     "last_error": null
+    }
+   ],
+   "tables": {
+    "bg_sarvatobhadra_grid": {
+     "columns": [
+      "id:bigint",
+      "school_tag:text",
+      "cell_index:integer",
+      "cell_kind:text",
+      "cell_value:text",
+      "source_text_id:text",
+      "source_citation:text",
+      "table_version:text",
+      "native_confirmed:boolean",
+      "created_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 0,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    }
+   },
+   "registry_count_sql_result": 0
+  },
+  "bg_sky_calendar": {
+   "registry": {
+    "english_description": "Chart-independent global sky-event diary: sign ingresses (9 grahas), planetary stations (5 classical planets), solar/lunar eclipse timing, and Jupiter-Saturn double-transit conjunction geometry, over a rolling 1900 -> today+10y horizon. Returns and per-chart/natal joins are out of scope \u2014 ka_kshetra's job. \u1e62A\u1e0c-DAR\u015aANA campaign item 3.",
+    "volume_explanation": "Live-verified 2026-07-29 against a real throwaway Postgres: 28,760 ingress + 1,674 station + 308 eclipse_solar + 312 eclipse_lunar + 10 double_transit = 31,064, over horizon 1900-01-01 -> 2036-07-29 (today+10y at verification time). A later build reads >= this count as the forward edge rolls forward (never less).",
+    "count_sql": "SELECT COUNT(*) FROM bg_sky_calendar",
+    "size_sql": "SELECT pg_total_relation_size('bg_sky_events')",
+    "integrity_check_sql": null,
+    "target_floor": 31064,
+    "depends_on": [],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [
+    "ka_gochara_v3_century_materialize"
+   ],
+   "asset_throughput_rows": [
+    {
+     "chart_id": null,
+     "state": "lit",
+     "rows_written": null,
+     "last_built_at": "2026-08-02 13:50:01.240149+00",
+     "last_error": null
+    }
+   ],
+   "tables": {
+    "bg_sky_events": {
+     "columns": [],
+     "exists": false,
+     "relkind": null
+    },
+    "bg_sky_calendar": {
+     "columns": [
+      "id:bigint",
+      "event_type:text",
+      "primary_body:text",
+      "secondary_body:text",
+      "secondary_body_key:text",
+      "event_jd:double precision",
+      "event_datetime_utc:timestamp without time zone",
+      "sign:text",
+      "nakshatra:text",
+      "longitude_deg:double precision",
+      "speed_dps:double precision",
+      "detail:jsonb",
+      "ayanamsha_key:text",
+      "sampling_method:text",
+      "source_citation:text",
+      "build_id:uuid",
+      "computed_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 31059,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    }
+   },
+   "registry_count_sql_result": 31059
+  },
+  "bg_vedha_malefic_scale": {
+   "registry": {
+    "english_description": "ADJUDICATION-11 Part 4: Phaladeepika Adh. XXVI PG353's malefic-count (1-5) -> effect-grade (fear/failure/killing/death/ignominy) vedha scale, REAL and cited, transcribed verbatim. Consumed by ka_vedha_gochara for the house_vedha malefic-count grading.",
+    "volume_explanation": null,
+    "count_sql": "SELECT COUNT(*) FROM bg_vedha_malefic_scale",
+    "size_sql": "SELECT pg_total_relation_size('bg_vedha_malefic_scale')",
+    "integrity_check_sql": null,
+    "target_floor": 5,
+    "depends_on": [],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [
+    "ka_vedha_gochara"
+   ],
+   "asset_throughput_rows": [
+    {
+     "chart_id": null,
+     "state": "lit",
+     "rows_written": null,
+     "last_built_at": "2026-08-02 13:50:51.926964+00",
+     "last_error": null
+    }
+   ],
+   "tables": {
+    "bg_vedha_malefic_scale": {
+     "columns": [
+      "table_version:text",
+      "malefic_count:smallint",
+      "effect_grade:text",
+      "effect_description:text",
+      "source_citation:text",
+      "verse_ref:text",
+      "created_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 5,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    }
+   },
+   "registry_count_sql_result": 5
+  },
+  "bg_vidhi_floors": {
+   "registry": {
+    "english_description": "Per-intent-class acharya floor + machine band header + ordered floor items \u2014 the compiled scope_tuple->contract input (D-2 Lane V-1).",
+    "volume_explanation": null,
+    "count_sql": "(SELECT COUNT(*) FROM vidhi_floor_items)",
+    "size_sql": null,
+    "integrity_check_sql": null,
+    "target_floor": 11,
+    "depends_on": [
+     "bg_vidhi_primitives"
+    ],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [],
+   "asset_throughput_rows": [
+    {
+     "chart_id": null,
+     "state": "lit",
+     "rows_written": 77,
+     "last_built_at": "2026-08-02 13:50:03.732998+00",
+     "last_error": null
+    }
+   ],
+   "tables": {
+    "vidhi_floor_items": {
+     "columns": [
+      "id:integer",
+      "intent:text",
+      "primitive_id:text",
+      "item_order:integer",
+      "band:text",
+      "args_override:jsonb",
+      "hard_floor:boolean"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 286,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    }
+   },
+   "registry_count_sql_result": 286
+  },
+  "bg_vidhi_primitives": {
+   "registry": {
+    "english_description": "Versioned vidhi primitive atoms \u2014 definition, live-tool mapping+args, fallback face, known_gap CR pointer. Global, chart-agnostic (D-2 Lane V-1).",
+    "volume_explanation": null,
+    "count_sql": "(SELECT COUNT(*) FROM vidhi_primitives)",
+    "size_sql": null,
+    "integrity_check_sql": null,
+    "target_floor": 48,
+    "depends_on": [],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [
+    "bg_vidhi_floors"
+   ],
+   "asset_throughput_rows": [
+    {
+     "chart_id": null,
+     "state": "lit",
+     "rows_written": 37,
+     "last_built_at": "2026-08-02 13:50:02.693503+00",
+     "last_error": null
+    }
+   ],
+   "tables": {
+    "vidhi_primitives": {
+     "columns": [
+      "primitive_id:text",
+      "version:integer",
+      "definition:text",
+      "category:text",
+      "live_tool:text",
+      "tool_args:jsonb",
+      "fallback_face:text",
+      "known_gap:text",
+      "mandatory_tags:text[]",
+      "cr27_prevents:text[]",
+      "updated_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 52,
+     "rows_on_native_chart": "n/a \u2014 table is not chart-scoped"
+    }
+   },
+   "registry_count_sql_result": 52
+  },
+  "bo_cdlm_summary": {
+   "registry": {
+    "english_description": "Per-chart cross-domain linkage strength summary aggregated from bodha_cdlm_cells",
+    "volume_explanation": null,
+    "count_sql": "SELECT count(*) FROM bodha_cdlm_chart_summary WHERE chart_id = $1",
+    "size_sql": null,
+    "integrity_check_sql": null,
+    "target_floor": 1,
+    "depends_on": [
+     "bo_sangati"
+    ],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [],
+   "asset_throughput_rows": [
+    {
+     "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "state": "lit",
+     "rows_written": 40,
+     "last_built_at": "2026-08-12 16:27:32.675234+00",
+     "last_error": null
+    },
+    {
+     "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+     "state": "lit",
+     "rows_written": 70,
+     "last_built_at": "2026-08-12 15:24:28.877092+00",
+     "last_error": null
+    },
+    {
+     "chart_id": "cb73cd3d-9eba-4220-9902-0de91566e980",
+     "state": "stale",
+     "rows_written": 40,
+     "last_built_at": "2026-07-27 11:37:38.189853+00",
+     "last_error": null
+    }
+   ],
+   "tables": {
+    "bodha_cdlm_chart_summary": {
+     "columns": [
+      "summary_id:uuid",
+      "chart_id:uuid",
+      "ayanamsha_id:text",
+      "build_id:uuid",
+      "snapshot_type:text",
+      "dynamic_system_id:text",
+      "dynamic_maha_lord:text",
+      "dynamic_antar_lord:text",
+      "tradition_view_id:text",
+      "chart_typology_class:text",
+      "pattern_cluster_markers_jsonb:jsonb",
+      "total_chart_linkage:numeric",
+      "contradiction_density:numeric",
+      "house_to_domain_strength_jsonb:jsonb",
+      "karaka_to_domain_strength_jsonb:jsonb",
+      "dominant_3_domains_array:text[]",
+      "weakest_3_domains_array:text[]",
+      "bridge_link_count:integer",
+      "asymmetric_link_count:integer",
+      "verification_pass_status:text",
+      "citation_ref:text",
+      "citation_human:text",
+      "computed_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 15,
+     "rows_on_native_chart": 5
+    },
+    "mv_cdlm_static_summary": {
+     "columns": [
+      "chart_id:uuid",
+      "ayanamsha_id:text",
+      "domain_row:text",
+      "domain_col:text",
+      "computed_linkage_strength:numeric",
+      "shared_signal_count:integer",
+      "cross_domain_contradiction_flag:boolean",
+      "dominant_linkage_rank_in_chart:integer",
+      "domain_relationship_class:text",
+      "chart_typology_class:text",
+      "dominant_3_domains_array:text[]",
+      "weakest_3_domains_array:text[]"
+     ],
+     "exists": true,
+     "relkind": "materialized view",
+     "total_rows": 0,
+     "rows_on_native_chart": 0
+    }
+   },
+   "registry_count_sql_result": 5
+  },
+  "bo_samskara": {
+   "registry": {
+    "english_description": "Vertex AI 768-dim vector embeddings \u2014 one per MSR signal",
+    "volume_explanation": "One embedding per signal \u2014 1:1 with Lak\u1e63a\u1e47a count; sealed at 66,738 per L2 build (chart 482012f1).",
+    "count_sql": "SELECT count(*) FROM bodha_signal_embeddings WHERE chart_id = $1",
+    "size_sql": "SELECT pg_total_relation_size('bodha_signal_embeddings')",
+    "integrity_check_sql": null,
+    "target_floor": 60000,
+    "depends_on": [
+     "bo_laksana"
+    ],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [
+    "bo_anveshana",
+    "bo_pramana_mapa",
+    "ph_nimitta"
+   ],
+   "asset_throughput_rows": [
+    {
+     "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+     "state": "lit",
+     "rows_written": 50104,
+     "last_built_at": "2026-08-12 23:43:59.172831+00",
+     "last_error": null
+    },
+    {
+     "chart_id": "cb73cd3d-9eba-4220-9902-0de91566e980",
+     "state": "lit",
+     "rows_written": 49875,
+     "last_built_at": "2026-08-07 15:11:33.96087+00",
+     "last_error": null
+    },
+    {
+     "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "state": "lit",
+     "rows_written": 50171,
+     "last_built_at": "2026-08-07 14:52:33.627566+00",
+     "last_error": null
+    }
+   ],
+   "tables": {
+    "bodha_signal_embeddings": {
+     "columns": [
+      "embedding_id:uuid",
+      "signal_id:uuid",
+      "chart_id:uuid",
+      "ayanamsha_id:text",
+      "build_id:uuid",
+      "embedding_vec:vector(768)",
+      "embedding_model:text",
+      "embedding_model_version:text",
+      "embedding_input_summary:text",
+      "computed_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 150081,
+     "rows_on_native_chart": 50104
+    }
+   },
+   "registry_count_sql_result": 50104
+  },
+  "ka_dasha_kala": {
+   "registry": {
+    "english_description": "Lazy-pruning tree-walk over chart_dashas (level-4 Sookshma) with cross-system agreement scoring. Serves all 7 da\u015b\u0101 systems; KP as Vim\u015bottar\u012b sub-level via kp_sublevel column. N\u0101r\u0101ya\u1e47a absent.",
+    "volume_explanation": "Service asset \u2014 no stored rows; eligibility bands computed on demand from chart_dashas",
+    "count_sql": null,
+    "size_sql": null,
+    "integrity_check_sql": null,
+    "target_floor": 0,
+    "depends_on": [
+     "ga_dashas"
+    ],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": "healthy",
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [
+    "ka_jivana_parva",
+    "ka_kshetra",
+    "ka_sangam"
+   ],
+   "asset_throughput_rows": [
+    {
+     "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+     "state": "lit",
+     "rows_written": 0,
+     "last_built_at": "2026-08-08 00:28:57.200368+00",
+     "last_error": null
+    },
+    {
+     "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "state": "lit",
+     "rows_written": 0,
+     "last_built_at": "2026-08-06 04:12:49.028694+00",
+     "last_error": null
+    },
+    {
+     "chart_id": "cb73cd3d-9eba-4220-9902-0de91566e980",
+     "state": "lit",
+     "rows_written": 0,
+     "last_built_at": "2026-07-27 13:58:16.540293+00",
+     "last_error": null
+    }
+   ],
+   "tables": {}
+  },
+  "ka_gochara_v3_century_materialize": {
+   "registry": {
+    "english_description": "GOCHARA-UTKARSA W3.4 heavy writer: plan_substeps returns 60 substeps (6 event classes x 10 decade slices spanning birth-century 1984-2084). Each run_substep calls gochara_v3.interval_solver.find_threshold_crossings over the decade JD range, applies delta fingerprinting (MD5 of event_class+era_slice_key+ENGINE_VERSION+resonance_targets) for skip-on-unchanged semantics, and DELETE-then-INSERTs into kala_gochara_windows_v2 with era_slice_key=g3_{year_start}_{year_end}. I2: ZERO imports from gochara_grammar/*, gochara_intensity/*, or ka_gochara_sweep/*. I4: empty resonance targets -> honest 0 rows, no fabrication.",
+    "volume_explanation": null,
+    "count_sql": "SELECT COUNT(*) FROM kala_gochara_windows_v2 WHERE chart_id=$1 AND generation LIKE 'g3_%'",
+    "size_sql": null,
+    "integrity_check_sql": null,
+    "target_floor": 0,
+    "depends_on": [
+     "ka_gochara_resonance",
+     "ka_vedha_gochara",
+     "ka_moorti_nirnaya",
+     "ka_kota_chakra",
+     "ka_tithi_pravesha",
+     "bg_sky_calendar"
+    ],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": true,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [],
+   "asset_throughput_rows": [
+    {
+     "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+     "state": "error",
+     "rows_written": 914,
+     "last_built_at": "2026-08-21 13:37:44.534065+00",
+     "last_error": "RaiseException: BUILD-PROTECTED: kala_gochara_windows row(s) for chart_id 482012f1-710e-4a25-994a-93821f5871aa (generation=3.0, asset_id=ka_gochara) are protected \u2014 DELETE is refused. Set app.allow_protected_sweep_rewrite=on for this session to override (native decision required; see build_protected_assets.reason for PARISHKARA MR-06 protection rationale).\nCONTEXT:  PL/pgSQL function build_gen3_gochara_guard_row() line 24 at RAISE\nTraceback (most recent call last):\n  File \"/app/platform/python-sidecar/pipeline/orchestrator/asset_runner.py\", line 562, in _run_data_writer\n    rows_inserted, rows_updated = _drive_substeps(conn, cur, run_id, chart_id, asset_id, writer, ctx)\n                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/app/platform/python-sidecar/pipeline/orchestrator/asset_runner.py\", line 440, in _drive_substeps\n    result = writer.run_substep(ctx, step)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/app/platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v3_century_materialize.py\", line 2166, in run_substep\n    cur.execute(\n  File \"/usr/local/lib/python3.11/site-packages/psycopg/cursor.py\", line 117, in execute\n    raise ex.with_traceback(None)\npsycopg.errors.RaiseException: BUILD-PROTECTED: kala_gochara_windows row(s) for chart_id 482012f1-710e-4a25-994a-93821f5871aa (generation=3.0, asset_id=ka_gochara) are protected \u2014 DELETE is refused. Set app.allow_protected_sweep_rewrite=on for this session to override (native decision required; see build_protected_assets.reason for PARISHKARA MR-06 protection rationale).\nCONTEXT:  PL/pgSQL function build_gen3_gochara_guard_row() line 24 at RAISE\n"
+    },
+    {
+     "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "state": "stale",
+     "rows_written": 0,
+     "last_built_at": "2026-08-11 21:48:23.532233+00",
+     "last_error": null
+    }
+   ],
+   "tables": {
+    "kala_gochara_windows_v2": {
+     "columns": [
+      "id:bigint",
+      "chart_id:uuid",
+      "event_class:text",
+      "temporal_shape:text",
+      "window_start:date",
+      "window_end:date",
+      "peak_date:date",
+      "milestone_id:text",
+      "is_irreversibility_milestone:boolean",
+      "signed_intensity:numeric",
+      "raw_intensity:numeric",
+      "valence:text",
+      "is_adverse:boolean",
+      "active_sentences:jsonb",
+      "contributing_systems:jsonb",
+      "suppression_state:jsonb",
+      "peak_basis:text",
+      "calibration_state:text",
+      "source:text",
+      "computed_at:timestamp with time zone",
+      "generation:text",
+      "era_slice_key:text",
+      "threshold_percentile:numeric(8,6)",
+      "threshold_lambda:numeric(12,8)",
+      "implied_density:numeric(10,4)",
+      "base_rate_cited:numeric(8,6)",
+      "term_breakdown:jsonb",
+      "lambda_v3_ci_low:double precision",
+      "lambda_v3_ci_high:double precision",
+      "ci_source:text",
+      "parent_window_id:bigint",
+      "resolution:text",
+      "shape_conformance:text"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 1938,
+     "rows_on_native_chart": 997
+    }
+   },
+   "registry_count_sql_result": 914
+  },
+  "ka_graha_sancara": {
+   "registry": {
+    "english_description": "Ephemeris-at-T service: sidereal positions for all 9 grahas at any datetime. Two read paths: bg_ephemeris (1900\u20132150) and live swisseph fallback. Per-call memo cache keyed on (T, ayanamsha). TRUE_NODE throughout.",
+    "volume_explanation": "Service asset \u2014 no stored rows; returns computed positions on demand",
+    "count_sql": null,
+    "size_sql": null,
+    "integrity_check_sql": null,
+    "target_floor": null,
+    "depends_on": [
+     "bg_ephemeris"
+    ],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": "unhealthy",
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [
+    "ka_muhurta_seva"
+   ],
+   "asset_throughput_rows": [
+    {
+     "chart_id": null,
+     "state": "lit",
+     "rows_written": 0,
+     "last_built_at": "2026-08-02 13:50:52.04152+00",
+     "last_error": null
+    }
+   ],
+   "tables": {}
+  },
+  "ka_kshetra": {
+   "registry": {
+    "english_description": "\u1e62A\u1e0c-DAR\u015aANA W2: the ten-stage point-process temporal field. \u03bb_e(t) as a strictly-positive hazard rate (events/day) composed multiplicatively from a classical baseline, a noisy-OR promise prior, per-da\u015b\u0101-system clock terms (proportional hazards), twelve log-linear covariates and multiplicative vighna thinning \u2014 stored as log-linear segments that integrate EXACTLY in closed form, with every factor persisted as a provenance edge that must reconstruct the value it explains. Windows are calibrated against the chart's OWN circular-shifted sky (item 23). HEAVY writer. Built BESIDE the legacy ka_gochara_sweep (strangler-fig): reads it read-only as a cross-check corpus and writes ZERO rows to any legacy table.",
+    "volume_explanation": null,
+    "count_sql": "SELECT COUNT(*) FROM kala_field WHERE chart_id=$1",
+    "size_sql": null,
+    "integrity_check_sql": null,
+    "target_floor": 0,
+    "depends_on": [
+     "ka_dasha_kala",
+     "ka_gochara_resonance",
+     "ga_panchanga",
+     "bo_pratijna",
+     "bo_sangati",
+     "bo_upaya",
+     "bg_cohort",
+     "bg_class_lifetime_counts"
+    ],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": true,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [
+    "mi_bhara",
+    "mi_sankalpa"
+   ],
+   "asset_throughput_rows": [
+    {
+     "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+     "state": "stale",
+     "rows_written": 11069325,
+     "last_built_at": "2026-08-15 06:28:11.690022+00",
+     "last_error": "orphan-watchdog: heartbeat went stale while a substep plan was in flight. 301 substep(s) committed and 8599775 data row(s) are present, but this route cannot prove the plan finished, so the asset was NOT promoted to 'lit'. Re-run the build to complete the plan (substep progress is resumable)."
+    },
+    {
+     "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "state": "lit",
+     "rows_written": 837992,
+     "last_built_at": "2026-08-12 22:26:27.922392+00",
+     "last_error": null
+    },
+    {
+     "chart_id": "cb73cd3d-9eba-4220-9902-0de91566e980",
+     "state": "error",
+     "rows_written": null,
+     "last_built_at": "2026-08-07 15:11:37.119243+00",
+     "last_error": "BLOCKED: upstream dependency(ies) bo_upaya, ka_gochara_sweep did not complete in this run; skipped to avoid building on incomplete data"
+    }
+   ],
+   "tables": {
+    "kala_field": {
+     "columns": [
+      "id:bigint",
+      "chart_id:uuid",
+      "event_class:text",
+      "segment_index:integer",
+      "t_start:double precision",
+      "t_end:double precision",
+      "alpha:double precision",
+      "gamma:double precision",
+      "lambda_start:double precision",
+      "lambda_end:double precision",
+      "integral_days:double precision",
+      "promise_term:double precision",
+      "clock_term_start:double precision",
+      "modifier_term_start:double precision",
+      "suppression_term_start:double precision",
+      "signed_obstruction_start:double precision",
+      "refinement_depth:smallint",
+      "refinement_exhausted:boolean",
+      "refinement_residual:double precision",
+      "weights_version:text",
+      "x_schema_version:text",
+      "field_snapshot_id:text",
+      "computed_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 11012657,
+     "rows_on_native_chart": 8599775
+    }
+   },
+   "registry_count_sql_result": 8599775
+  },
+  "ka_muhurta_seva": {
+   "registry": {
+    "english_description": "Deterministic panch\u0101\u1e45ga/muh\u016brta scoring service. Wraps panchang_engine; T\u0101ra Bala native-chart overlay wired (birth_nakshatra_id=25 Purva Bhadrapada). Location mandatory \u2014 no silent Bhubaneswar default. 8 event classes including upaya_ritual and sadhana_initiation.",
+    "volume_explanation": "Service asset \u2014 no stored rows; panch\u0101\u1e45ga computed live per (date, location)",
+    "count_sql": null,
+    "size_sql": null,
+    "integrity_check_sql": null,
+    "target_floor": null,
+    "depends_on": [
+     "ka_graha_sancara"
+    ],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": "healthy",
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [
+    "ka_sangam",
+    "ka_vighnakara"
+   ],
+   "asset_throughput_rows": [
+    {
+     "chart_id": null,
+     "state": "lit",
+     "rows_written": 0,
+     "last_built_at": "2026-08-02 13:50:52.126596+00",
+     "last_error": null
+    }
+   ],
+   "tables": {}
+  },
+  "ka_tulana": {
+   "registry": {
+    "english_description": "Serve-time QT-4 ranking engine. Ranks windows ACROSS patterns and life-domains by I-11 composite (convergence\u00d70.40 + rarity\u00d70.25 + confidence\u00d70.20 + proximity\u00d70.15). Provides head-to-head compare(A,B) with dissonance-aware verdicts (proceed/defer/proceed_with_mitigation) and multi-domain attention map. Pure serve-time: no stored rows.",
+    "volume_explanation": "Serve-time service \u2014 no stored rows; rankings computed on demand over kala_convergence + kala_darshana.",
+    "count_sql": null,
+    "size_sql": null,
+    "integrity_check_sql": null,
+    "target_floor": 0,
+    "depends_on": [
+     "ka_sangam",
+     "ka_vighnakara",
+     "ka_kala_darshana"
+    ],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": "healthy",
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [],
+   "asset_throughput_rows": [
+    {
+     "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+     "state": "lit",
+     "rows_written": 0,
+     "last_built_at": "2026-08-13 01:15:55.289687+00",
+     "last_error": null
+    },
+    {
+     "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "state": "lit",
+     "rows_written": 0,
+     "last_built_at": "2026-08-12 17:09:23.949211+00",
+     "last_error": null
+    },
+    {
+     "chart_id": "cb73cd3d-9eba-4220-9902-0de91566e980",
+     "state": "stale",
+     "rows_written": 0,
+     "last_built_at": "2026-07-27 14:21:47.638205+00",
+     "last_error": null
+    }
+   ],
+   "tables": {}
+  },
+  "mi_jivanaghatana": {
+   "registry": {
+    "english_description": "LEL \u2014 held-out event log isolated from generation; ground truth for prediction calibration",
+    "volume_explanation": "Deterministic given the source-of-truth file. Re-runs MUST match the file count exactly; divergence is a bug.",
+    "count_sql": "SELECT count(*) FROM mimamsa_event_provenance WHERE chart_id = $1",
+    "size_sql": "SELECT pg_total_relation_size('mimamsa_event_provenance')",
+    "integrity_check_sql": null,
+    "target_floor": 0,
+    "depends_on": [
+     "bg_ghatana"
+    ],
+    "clear_tables": null,
+    "health_probe": null,
+    "provides_apis": null,
+    "has_substeps": false,
+    "estimated_seconds": null,
+    "service_health": null,
+    "last_invoked_at": null
+   },
+   "declared_downstream_dependents": [
+    "mi_bhavisya",
+    "mi_darshana",
+    "mi_pramana"
+   ],
+   "asset_throughput_rows": [
+    {
+     "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+     "state": "lit",
+     "rows_written": 64,
+     "last_built_at": "2026-08-08 00:18:13.998786+00",
+     "last_error": null
+    },
+    {
+     "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+     "state": "lit",
+     "rows_written": 0,
+     "last_built_at": "2026-07-26 21:18:01.144158+00",
+     "last_error": null
+    }
+   ],
+   "tables": {
+    "mimamsa_event_provenance": {
+     "columns": [
+      "chart_id:uuid",
+      "event_id:text",
+      "shaped_predictor:boolean",
+      "shaped_predictor_refs:jsonb",
+      "disclosure_timing:text",
+      "disclosure_date:date",
+      "event_date:date",
+      "domain_primary:text",
+      "domain_secondary:text[]",
+      "event_magnitude:text",
+      "held_out:boolean",
+      "admissible_clean:boolean",
+      "admissibility_reason:text",
+      "partition_seed_version:text",
+      "lel_version:text",
+      "provenance_formula_ver:text",
+      "created_at:timestamp with time zone",
+      "lel_file_sha:text",
+      "lel_source:text",
+      "event_class_id:text"
+     ],
+     "exists": true,
+     "relkind": "table",
+     "total_rows": 64,
+     "rows_on_native_chart": 64
+    },
+    "vw_mimamsa_admissible_clean": {
+     "columns": [
+      "chart_id:uuid",
+      "event_id:text",
+      "shaped_predictor:boolean",
+      "shaped_predictor_refs:jsonb",
+      "disclosure_timing:text",
+      "disclosure_date:date",
+      "event_date:date",
+      "domain_primary:text",
+      "domain_secondary:text[]",
+      "event_magnitude:text",
+      "held_out:boolean",
+      "admissible_clean:boolean",
+      "admissibility_reason:text",
+      "partition_seed_version:text",
+      "lel_version:text",
+      "provenance_formula_ver:text",
+      "created_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "view",
+     "total_rows": 51,
+     "rows_on_native_chart": 51
+    },
+    "vw_mimamsa_held_out": {
+     "columns": [
+      "chart_id:uuid",
+      "event_id:text",
+      "shaped_predictor:boolean",
+      "shaped_predictor_refs:jsonb",
+      "disclosure_timing:text",
+      "disclosure_date:date",
+      "event_date:date",
+      "domain_primary:text",
+      "domain_secondary:text[]",
+      "event_magnitude:text",
+      "held_out:boolean",
+      "admissible_clean:boolean",
+      "admissibility_reason:text",
+      "partition_seed_version:text",
+      "lel_version:text",
+      "provenance_formula_ver:text",
+      "created_at:timestamp with time zone"
+     ],
+     "exists": true,
+     "relkind": "view",
+     "total_rows": 13,
+     "rows_on_native_chart": 13
+    }
+   },
+   "registry_count_sql_result": 64
+  }
+ }
+}
