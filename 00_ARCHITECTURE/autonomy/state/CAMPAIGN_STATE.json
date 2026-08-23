@@ -1142,7 +1142,8 @@
       "id": "D-60-MY-STALL-DIAGNOSIS-WAS-WRONG",
       "what": "CORRECTION AGAINST MYSELF, caught independently by ADHIKARIN. At tick 7 (~14:45Z) I diagnosed PRAHARI as 'down, 33min silent' AND SAID SO to the native. THE DIAGNOSIS CAME FROM SILENCE, WHICH IS NOT A STALL DETECTOR. ADHIKARIN captured the panes directly at 14:46Z and found PRAHARI MID-TICK ('Crunched for 2m 14s'), having just restarted LEKHAKA, and LEKHAKA actively running -- BOTH 'STALLED' AGENTS WERE ALIVE. Worse, I DID capture panes but only AFTER poking, to confirm the pokes landed rather than to decide whether a poke was warranted -- which is exactly the ordering D-60 §5 now makes a PRECONDITION. And the capture I took read 'esc to interrupt · ← 1 agent', which indicates an agent ACTIVELY RUNNING; I read it as idle-at-prompt. D-60's framing in the campaign's own vocabulary: 'agent is stalled' is asserted by a detector that only measures TIME SINCE LAST WRITE, so an agent inside one long operation is indistinguishable from a dead one -- the signal reads RED with no detector behind the specific claim it makes, and per D-39 part 2 that is the MORE corrosive form, because a detector that cries stall on working agents trains the fleet to discount it. THE COST IS ALREADY CHARGED: HEARTBEAT.jsonl carries 'KARAKA-M0-T51 ... resumed after watchdog kill; re-verifying guard + baseline', i.e. a watchdog killed a working KARAKA and the campaign paid full re-verification. WHAT REMAINS TRUE OF MY TICK 7: ADHIKARIN and PARIKSAKA both heartbeated 'resuming after machine sleep' within seconds of the poke and had genuinely unread queues, so the pokes were not harmful; but 'PRAHARI is down' was asserted, not measured, and I am recording it as an error rather than defending it. Dispatched M0-T53 (SQ-21) to measure the real false-positive rate INCLUDING this episode, and explicitly told it not to spare the conductor.",
       "owner": "SUTRADHARA",
-      "state": "self_corrected"
+      "state": "self_corrected",
+      "root_cause_found": "EXACT MECHANISM OF MY MISREAD, measured at 15:09Z by capturing four panes and diffing against my tick-7 capture. The discriminating token is `esc to interrupt`. Tick 7 PRAHARI pane: 'bypass permissions on (shift+tab to cycle) · esc to interrupt · ← 1 agent'. 15:09Z ADHIKARIN/LEKHAKA/PARIKSAKA panes: 'bypass permissions on (shift+tab to cycle) · ← 1 agent'. The token is offered precisely when there is a running turn to interrupt, so PRESENCE = mid-operation and ABSENCE = idle-at-prompt. CRITICALLY, '← 1 agent' appears in BOTH, so it is NOT a liveness signal -- and that is the token I keyed on at tick 7, which is why I read an actively-running pane as idle. So the failure was not a missing capture; I HAD the capture and read the wrong token out of it. CAUTION RECORDED AGAINST MY OWN FINDING: two captures is not a characterisation, and a detector keying on one string in a TUI status line is keying on an implementation detail of version 2.1.239 that will break silently when it changes. Sent to M0-T53 as INPUT NOT INSTRUCTION, explicitly telling it to trust its own 10-fixture harness over my one observation and to prefer a structural signal to a string match."
     },
     {
       "id": "M0-T53",
@@ -1191,10 +1192,16 @@
       "what": "SELF-REPORTED, third conductor defect recorded today. Writing M0-T55's dispatch line I used an UNQUOTED heredoc delimiter, so the shell performed command substitution on a backticked word and DELETED it: the ledger line reads 'the three falsified  strings' where it must read 'the three falsified `reason` strings'. THE JSON REMAINED VALID, so nothing errored — the line is simply less precise than it claims to be, which is the worse failure mode: a silent degradation with no detector. Correction APPENDED to WORK_QUEUE.jsonl; original left standing, quoting PARIKSAKA's own V-33 reasoning back at myself — erasing a defect one was caught in is worse than leaving it visible. Fix adopted: QUOTE THE HEREDOC DELIMITER whenever the payload can contain backticks or $, which is every dispatch line I write.",
       "owner": "SUTRADHARA",
       "state": "self_corrected"
+    },
+    {
+      "id": "EVIDENCE-BASED-NUDGE-15:09Z",
+      "what": "FIRST nudge issued under D-60's precondition rather than in violation of it. ADHIKARIN had been silent 16min with three unread items (F-G, T52's deploy-grep residual, the F-G/SQ-11 pairing proposal). I did NOT treat the silence as a stall. I captured the pane FIRST, read no `esc to interrupt` token, and only then poked -- and said so in the poke itself so ADHIKARIN can check my method against its own ruling. Same for PARIKSAKA, which had T52's report unclaimed in to_verifier since 15:00:36Z. LEKHAKA also reads idle but has no queued work, so it was NOT poked -- idleness alone is not a reason to interrupt an agent, which is the other half of D-60 and the half that is easy to forget once you have a working detector.",
+      "owner": "SUTRADHARA",
+      "state": "done"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T15:07:46Z",
+  "last_updated_ts": "2026-08-23T15:10:34Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {

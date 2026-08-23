@@ -36,7 +36,7 @@ rule, and getting it backwards is the error D-60 was written on.
 Run it, do not eyeball it: `bin/pane_liveness.sh nirmana:<window>.0` prints
 `<STATE> <verdict> <reason>` and exits `0` (restart permitted) / `10` (mid-operation, withhold)
 / `20` (indeterminate, withhold). It is read-only — it captures panes and never sends a key.
-Its both-ways proof is `bin/pane_liveness_test.sh` (9 cases, including the live captures this
+Its both-ways proof is `bin/pane_liveness_test.sh` (10 cases, including the live captures this
 rule was measured from). **Why a script rather than your own reading of the pane:** on
 2026-08-23 the conductor captured a pane reading `esc to interrupt · ← 1 agent` — an agent
 *actively running* — and read it as idle-at-prompt. A precondition a reader can misread is not
