@@ -223,15 +223,23 @@ async function mintSessionCookie(serviceUrl: string): Promise<string> {
 
 /** Tag the conversation this turn created with the harness-origin marker (STEP 4, guard 2). Best-effort — never fails the turn. */
 async function tagConversationAsHarness(conversationId: string): Promise<{ tagged: boolean; error?: string }> {
-  const dbPassword = process.env.DB_PASSWORD ?? envOrSecret('DB_PASSWORD', 'amjis-db-password')
-  const client = new Client({
-    host: '127.0.0.1',
-    port: Number(process.env.PGPORT ?? 5433),
-    user: 'amjis_app',
-    password: dbPassword,
-    database: 'amjis',
-  })
+  // Credential resolution and client construction live INSIDE the try, deliberately.
+  // `envOrSecret` shells out to `gcloud secrets versions access` when DB_PASSWORD is
+  // unset, and that THROWS on any runner without gcloud auth — GitHub Actions, for one.
+  // Resolving it above the guard meant this function killed the entire probe run,
+  // contradicting the "never fails the turn" contract on its own docstring one line up.
+  // Observed live: CI run 32612517567 died at `[ask] fatal: Command failed: gcloud ...`
+  // AFTER a successful authenticated turn, purely over best-effort telemetry.
+  let client: Client | undefined
   try {
+    const dbPassword = process.env.DB_PASSWORD ?? envOrSecret('DB_PASSWORD', 'amjis-db-password')
+    client = new Client({
+      host: '127.0.0.1',
+      port: Number(process.env.PGPORT ?? 5433),
+      user: 'amjis_app',
+      password: dbPassword,
+      database: 'amjis',
+    })
     await client.connect()
     const { rows } = await client.query('SELECT title FROM conversations WHERE id = $1', [conversationId])
     const currentTitle: string | null = rows[0]?.title ?? null
@@ -244,7 +252,7 @@ async function tagConversationAsHarness(conversationId: string): Promise<{ tagge
   } catch (err) {
     return { tagged: false, error: String(err) }
   } finally {
-    await client.end().catch(() => {})
+    await client?.end().catch(() => {})
   }
 }
 
