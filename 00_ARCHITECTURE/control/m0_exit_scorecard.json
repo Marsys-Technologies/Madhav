@@ -1,0 +1,1550 @@
+{
+ "_meta": {
+  "asset_registry_columns_present": [
+   "asset_id",
+   "asset_kind",
+   "asset_type",
+   "catalog_status",
+   "clear_tables",
+   "count_sql",
+   "created_at",
+   "depends_on",
+   "english_description",
+   "english_name",
+   "estimated_seconds",
+   "expected_volume_formula",
+   "expected_volume_inputs",
+   "has_substeps",
+   "has_writer",
+   "health_probe",
+   "integrity_check_sql",
+   "is_active",
+   "last_invoked_at",
+   "last_selftest_at",
+   "layer",
+   "layer_index",
+   "layer_name",
+   "provides_apis",
+   "rebuild_on_probe_fail",
+   "sanskrit_name",
+   "scope",
+   "selftest_detail",
+   "service_health",
+   "size_sql",
+   "sort_order",
+   "storage_type",
+   "target_floor",
+   "target_table",
+   "volume_explanation",
+   "writer_timeout_seconds"
+  ],
+  "contract_columns": {
+   "domain": false,
+   "rung": false,
+   "data_disposition": false,
+   "superseded_by": false
+  },
+  "asset_registry_rows": 128,
+  "asset_registry_active_rows": 127,
+  "task": "M0-T17",
+  "artifact": "M0_EXIT_SCORECARD_v1_0",
+  "generator": "00_ARCHITECTURE/control/m0_exit_scorecard.py",
+  "measured_at_start": "2026-08-23T05:05:53.330487+00:00",
+  "measured_at_end": "2026-08-23T05:05:59.484414+00:00",
+  "git_branch": "campaign/nirmana-autonomous",
+  "git_sha": "01397f9216de61d506e664d5fdae55b53c74df87",
+  "db_access": "READ-ONLY (default_transaction_read_only=on; SELECT only)",
+  "recent_migrations_applied": [
+   {
+    "filename": "588_samiksha_digest_journal.sql",
+    "applied_at": "2026-08-22 23:42:20.550183+00:00"
+   },
+   {
+    "filename": "587_llm_usage_events_interpretation_sets_stage.sql",
+    "applied_at": "2026-08-22 03:31:21.363948+00:00"
+   },
+   {
+    "filename": "586_f152_asset_throughput_state_audit.sql",
+    "applied_at": "2026-08-22 02:29:47.385503+00:00"
+   },
+   {
+    "filename": "585_mi_gunanaka_count_sql_accretion_fix.sql",
+    "applied_at": "2026-08-22 01:16:12.777849+00:00"
+   },
+   {
+    "filename": "584_remedy_review_queue_remedy_id_unique.sql",
+    "applied_at": "2026-08-21 23:28:39.856003+00:00"
+   }
+  ],
+  "re_measurement_at_end_of_run": {
+   "contract_columns_changed": [],
+   "asset_registry_rows_start": 128,
+   "asset_registry_rows_end": 128,
+   "criterion_6_inactive_throughput_rows_start": 3,
+   "criterion_6_inactive_throughput_rows_end": 3,
+   "anything_moved": false
+  },
+  "asset_registry_columns_at_end": [
+   "asset_id",
+   "asset_kind",
+   "asset_type",
+   "catalog_status",
+   "clear_tables",
+   "count_sql",
+   "created_at",
+   "depends_on",
+   "english_description",
+   "english_name",
+   "estimated_seconds",
+   "expected_volume_formula",
+   "expected_volume_inputs",
+   "has_substeps",
+   "has_writer",
+   "health_probe",
+   "integrity_check_sql",
+   "is_active",
+   "last_invoked_at",
+   "last_selftest_at",
+   "layer",
+   "layer_index",
+   "layer_name",
+   "provides_apis",
+   "rebuild_on_probe_fail",
+   "sanskrit_name",
+   "scope",
+   "selftest_detail",
+   "service_health",
+   "size_sql",
+   "sort_order",
+   "storage_type",
+   "target_floor",
+   "target_table",
+   "volume_explanation",
+   "writer_timeout_seconds"
+  ],
+  "delta_vs_previous_run": {
+   "previous_run": "2026-08-23T05:05:31.301710+00:00",
+   "changed": [],
+   "note": "no criterion changed status or value since the previous run"
+  },
+  "tally": {
+   "PASS": 0,
+   "FAIL": 6,
+   "NOT-MEASURABLE": 3,
+   "BLOCKED": 3
+  }
+ },
+ "criteria": {
+  "1_three_way_diff": {
+   "status": "FAIL",
+   "measured_value": 5,
+   "counts": {
+    "registry": 128,
+    "production_decorators": 123,
+    "seed": 127,
+    "in_all_three": 123
+   },
+   "buckets": {
+    "registry_only": [
+     "bg_gochara_citation_resolution"
+    ],
+    "decorator_only": [],
+    "seed_only": [],
+    "registry+decorator_not_seed": [],
+    "registry+seed_not_decorator": [
+     "bg_ephemeris_engine",
+     "bg_panchanga",
+     "bg_sarvatobhadra_grid",
+     "lel_events"
+    ],
+    "decorator+seed_not_registry": []
+   },
+   "detector": "this script: SELECT asset_id FROM asset_registry  \u00d7  AST scan of @register('<id>') under platform/python-sidecar (production files only, asset-shaped ids only)  \u00d7  regex `^\\s*asset_id:` over platform/scripts/seed/asset_registry_seed.ts read as TEXT. Violations = ids not present in all three."
+  },
+  "2_contract_violations_per_kind": {
+   "detector": "this script: every \u00a78 detection SQL of 00_ARCHITECTURE/control/ASSET_CATALOGUE_CONTRACT_v1_0.md, run live; plus C-13b (DFS) and C-23 (AST) implemented here.",
+   "status": "NOT-MEASURABLE",
+   "measured_value": 227,
+   "violations_by_asset_kind": {
+    "data": 144,
+    "artifact": 0,
+    "service": 19,
+    "source": 0
+   },
+   "failing_rules": [
+    "C-01=1",
+    "C-02=21",
+    "C-03=20",
+    "C-04=11",
+    "C-05=2",
+    "C-06=1",
+    "C-07=4",
+    "C-11=3",
+    "C-14=6",
+    "C-15=6",
+    "C-17=4",
+    "C-20=5",
+    "C-21=19",
+    "C-23=12",
+    "C-28=112"
+   ],
+   "blocked_rules": [
+    "C-08",
+    "C-09",
+    "C-10",
+    "C-18",
+    "C-19"
+   ],
+   "never_checkable_rules": [
+    "C-25",
+    "C-26",
+    "C-27"
+   ],
+   "blocked_by": "rules C-08, C-09, C-10, C-18, C-19 cannot run (migration 590 columns absent); rules C-25, C-26, C-27 have NO detector at all (contract \u00a78) and must never read green"
+  },
+  "3_prefix_mismatches": {
+   "detector": "C-01 detection SQL (asset_id prefix vs layer), run live",
+   "status": "FAIL",
+   "measured_value": 1,
+   "rows": [
+    {
+     "asset_id": "lel_events",
+     "layer": "mimamsa"
+    }
+   ],
+   "sql": "SELECT asset_id, layer FROM asset_registry WHERE asset_kind <> 'source' AND left(asset_id,3) IS DISTINCT FROM (CASE layer WHEN 'brahmagyan' THEN 'bg_' WHEN 'ganita' THEN 'ga_' WHEN 'bodha' THEN 'bo_' WHEN 'kala' THEN 'ka_' WHEN 'phala' THEN 'ph_' WHEN 'mimamsa' THEN 'mi_' END) ORDER BY asset_id"
+  },
+  "4_dangling_or_draft_edges": {
+   "detector": "C-12 (dangling: dep with no registry row) + C-11 (CURRENT depending on a non-CURRENT, non-source asset), both run live",
+   "status": "FAIL",
+   "measured_value": 3,
+   "components": {
+    "dangling_C-12": 0,
+    "draft_targeted_C-11": 3
+   },
+   "total_edges_in_registry": 284,
+   "rows": {
+    "C-12": [],
+    "C-11": [
+     {
+      "asset_id": "bo_laksana",
+      "dep": "ga_vichara",
+      "dep_status": "DRAFT"
+     },
+     {
+      "asset_id": "ka_kshetra",
+      "dep": "ka_dasha_kala",
+      "dep_status": "DRAFT"
+     },
+     {
+      "asset_id": "ka_taranga",
+      "dep": "ka_sangam",
+      "dep_status": "DRAFT"
+     }
+    ]
+   }
+  },
+  "5_multi_producer_partitions": {
+   "detector": null,
+   "status": "NOT-MEASURABLE",
+   "measured_value": null,
+   "blocked_by": "NO DETECTOR EXISTS. The criterion asserts that no two producers write the same (table \u00d7 generation \u00d7 partition). The natural-key partition declaration HAS NO COLUMN in asset_registry \u2014 contract \u00a74.9 / \u00a710.3, rule C-25, which the contract itself marks 'not checkable, never report as passing'. Under CLAUDE.md \u00a7N.8 this criterion is null, not green.",
+   "measurable_proxy": {
+    "what_it_is": "target_table shared by more than one registry row \u2014 a NECESSARY but not sufficient condition for a multi-producer partition. A shared table with correctly disjoint partitions is legitimate (co-writers), and this proxy cannot tell the two apart.",
+    "co_written_target_tables": 5,
+    "co_written_with_more_than_one_ACTIVE_producer": 4,
+    "detail": [
+     {
+      "target_table": "bodha_msr_signals",
+      "n": 7,
+      "ids": [
+       "bo_arudha",
+       "bo_laksana",
+       "bo_laksana_rerank",
+       "bo_nakshatra_semantic",
+       "bo_special_lagna",
+       "bo_sudarshana",
+       "bo_vargottama_dhana"
+      ],
+      "statuses": [
+       "CURRENT",
+       "DRAFT"
+      ],
+      "any_active": true,
+      "n_active": 7
+     },
+     {
+      "target_table": "brahma_class_priors",
+      "n": 2,
+      "ids": [
+       "bg_class_lifetime_counts",
+       "bg_class_priors"
+      ],
+      "statuses": [
+       "CURRENT"
+      ],
+      "any_active": true,
+      "n_active": 2
+     },
+     {
+      "target_table": "chart_facts",
+      "n": 5,
+      "ids": [
+       "ga_ayurdaya",
+       "ga_nakshatra",
+       "ga_panchanga",
+       "ga_positions",
+       "ga_sensitive_degree"
+      ],
+      "statuses": [
+       "CURRENT"
+      ],
+      "any_active": true,
+      "n_active": 5
+     },
+     {
+      "target_table": "classical_text_chunks",
+      "n": 2,
+      "ids": [
+       "bg_text_index",
+       "bg_texts"
+      ],
+      "statuses": [
+       "CURRENT"
+      ],
+      "any_active": true,
+      "n_active": 2
+     },
+     {
+      "target_table": "kala_gochara_windows",
+      "n": 2,
+      "ids": [
+       "ka_gochara",
+       "ka_gochara_sweep"
+      ],
+      "statuses": [
+       "CURRENT",
+       "RETIRED"
+      ],
+      "any_active": true,
+      "n_active": 1
+     }
+    ],
+    "sql": "SELECT target_table, count(*), array_agg(asset_id) FROM asset_registry WHERE target_table IS NOT NULL GROUP BY target_table HAVING count(*)>1"
+   }
+  },
+  "6_throughput_on_inactive_assets": {
+   "detector": "SELECT ... FROM asset_throughput t JOIN asset_registry r USING(asset_id) WHERE r.is_active = false  (+ throughput rows with no registry row)",
+   "status": "BLOCKED",
+   "measured_value": 3,
+   "offending_assets": [
+    "ka_gochara_sweep"
+   ],
+   "rows_on_inactive": [
+    {
+     "asset_id": "ka_gochara_sweep",
+     "rows_n": 3,
+     "states": [
+      "error"
+     ],
+     "is_active": false,
+     "catalog_status": "RETIRED"
+    }
+   ],
+   "rows_with_no_registry_row": [],
+   "blocked_by": "CHARTER \u00a72 P1 COLLISION \u2014 the only offender is `ka_gochara_sweep`, the charter's named unrecoverable asset. Any operation on it is a RESERVED power: parked, never decided by an agent. Plan \u00a714.2 assigns its lifecycle exit to rung R3, which has not opened. This criterion is therefore NOT PASS and NOT FAIL: it is blocked on a reserved decision, and this task neither marks it green nor resolves it."
+  },
+  "7_retired_without_disposition": {
+   "detector": "SELECT asset_id FROM asset_registry WHERE catalog_status='RETIRED' AND data_disposition IS NULL ORDER BY asset_id",
+   "status": "BLOCKED",
+   "measured_value": null,
+   "blocked_by": "column(s) ['data_disposition'] do not exist in asset_registry (migration 590 not applied)",
+   "retired_assets_live": [
+    {
+     "asset_id": "ka_gochara_sweep",
+     "catalog_status": "RETIRED"
+    }
+   ],
+   "note": "`data_disposition` does not exist as a column; migration 590 (platform/migrations/590_nirmana_m0_catalogue_contract_columns.sql) introduces it. Until it applies this criterion has no detector that could return non-zero. An unmeasurable criterion is not a satisfied one."
+  },
+  "8_active_without_coverage_or_dead_flag": {
+   "detector": null,
+   "status": "NOT-MEASURABLE",
+   "measured_value": null,
+   "blocked_by": "NO 'DEAD FLAG' FIELD IS DEFINED. asset_registry has no column that designates a registered-but-dead asset. `has_writer` (boolean) is the only candidate, and the contract (ASSET_CATALOGUE_CONTRACT_v1_0.md) does not designate it as the dead flag \u2014 nor does it define one. The criterion's second half therefore has no detector, so the criterion as a whole cannot return a non-zero answer honestly. Its FIRST half is measured below.",
+   "measured_components": {
+    "active_assets": 127,
+    "active_assets_with_no_production_@register": 5,
+    "of_those_carrying_has_writer=false": 5,
+    "of_those_NOT_carrying_has_writer=false": 0,
+    "detail_no_writer": [
+     {
+      "asset_id": "bg_ephemeris_engine",
+      "catalog_status": "CURRENT",
+      "asset_kind": "data",
+      "has_writer_flag": false
+     },
+     {
+      "asset_id": "bg_gochara_citation_resolution",
+      "catalog_status": "CURRENT",
+      "asset_kind": "data",
+      "has_writer_flag": false
+     },
+     {
+      "asset_id": "bg_panchanga",
+      "catalog_status": "CURRENT",
+      "asset_kind": "data",
+      "has_writer_flag": false
+     },
+     {
+      "asset_id": "bg_sarvatobhadra_grid",
+      "catalog_status": "CURRENT",
+      "asset_kind": "data",
+      "has_writer_flag": false
+     },
+     {
+      "asset_id": "lel_events",
+      "catalog_status": "DRAFT",
+      "asset_kind": "data",
+      "has_writer_flag": false
+     }
+    ],
+    "has_writer_flag_disagrees_with_decorator_scan": [
+     {
+      "asset_id": "bg_nakshatra_medical",
+      "has_writer": false,
+      "production_decorator": true
+     },
+     {
+      "asset_id": "bg_transit_engine",
+      "has_writer": false,
+      "production_decorator": true
+     }
+    ],
+    "why_the_candidate_flag_is_not_trustworthy": "2 rows have has_writer disagreeing with the live decorator scan, so even reading has_writer=false as 'dead' would be reading a flag that is itself wrong on those rows."
+   },
+   "detector_sql": "SELECT asset_id, catalog_status, asset_kind, has_writer FROM asset_registry WHERE is_active  -- minus the AST @register set"
+  },
+  "9_unresolved_zero_consumer": {
+   "detector": "count of zero-consumer packets in 00_ARCHITECTURE/control/zero_consumer_evidence.json, minus those with a recorded ADHIK\u0100RIN G1 disposition naming them in 00_ARCHITECTURE/autonomy/state/DECISIONS.jsonl",
+   "status": "FAIL",
+   "measured_value": 23,
+   "packets": 23,
+   "disposed": {},
+   "asset_ids": [
+    "bg_cohort",
+    "bg_concordance",
+    "bg_ephemeris_engine",
+    "bg_gochara_arcs",
+    "bg_kota_chakra_rings",
+    "bg_kp_sublord_division",
+    "bg_panchanga",
+    "bg_phaladeepika_latta",
+    "bg_reference",
+    "bg_sarvatobhadra_grid",
+    "bg_sky_calendar",
+    "bg_vedha_malefic_scale",
+    "bg_vidhi_floors",
+    "bg_vidhi_primitives",
+    "bo_cdlm_summary",
+    "bo_samskara",
+    "ka_dasha_kala",
+    "ka_gochara_v3_century_materialize",
+    "ka_graha_sancara",
+    "ka_kshetra",
+    "ka_muhurta_seva",
+    "ka_tulana",
+    "mi_jivanaghatana"
+   ]
+  },
+  "10_ci_guard_merged_and_blocking": {
+   "detector": "filesystem scan: does a guard implementing the Asset Catalogue Contract exist under platform/scripts/{governance,ci}; is it invoked from a .github/workflows job; is that step blocking",
+   "status": "FAIL",
+   "measured_value": {
+    "guard_scripts_found": 1,
+    "workflow_invocations_found": 0
+   },
+   "guard_scripts": [
+    "platform/scripts/governance/check_asset_catalogue_contract.py"
+   ],
+   "workflow_invocations": [],
+   "workflows_scanned": [
+    ".github/workflows/chat-v2-ci.yml",
+    ".github/workflows/ci.yml",
+    ".github/workflows/deploy.yml",
+    ".github/workflows/ekv-lints.yml",
+    ".github/workflows/elev-serving-gates.yml",
+    ".github/workflows/fresh_chart_smoke.yml",
+    ".github/workflows/gochara-smoke-probe.yml",
+    ".github/workflows/iac-apply.yml",
+    ".github/workflows/icr_weekly_scan.yml",
+    ".github/workflows/judgment-integration-nightly.yml",
+    ".github/workflows/pariprashna-ci.yml",
+    ".github/workflows/reconciliation-cadence.yml",
+    ".github/workflows/samiksha-daily.yml",
+    ".github/workflows/shad-darshana-ci-skeletons.yml",
+    ".github/workflows/shad-darshana-circularity-guard.yml",
+    ".github/workflows/tap-ci.yml",
+    ".github/workflows/verification-invariant.yml"
+   ],
+   "note": "WORK_QUEUE id M0-T9 ('CI guards, merged and BLOCKING (0.10)') is queued_not_dispatched. Nothing has been built yet, so this reads FAIL \u2014 a real detector returning a real non-zero-shortfall, not a block."
+  },
+  "11_domain_and_rung_present": {
+   "detector": "C-18 + C-19 detection SQL",
+   "status": "BLOCKED",
+   "measured_value": null,
+   "blocked_by": "columns `domain` and/or `rung` do not exist in asset_registry (migration 590 not applied). Present: {'domain': False, 'rung': False, 'data_disposition': False, 'superseded_by': False}",
+   "would_be_derived_from": {
+    "domain": "scope: global->shared, per_chart->chart (contract \u00a75.1)",
+    "rung": "layer: brahmagyan->R0 ... mimamsa->R5 (contract \u00a75.2)"
+   }
+  },
+  "12_ci_domain_coherence_green": {
+   "detector": null,
+   "status": "FAIL",
+   "measured_value": null,
+   "blocked_by": "THE ASSERTION DOES NOT EXIST. Plan \u00a711 requires the CI shape guard to assert domain coherence (a shared asset may depend only on shared assets). No CI job asserts it: 0 workflow invocations found. 'Green' cannot be read off a check that does not run \u2014 CLAUDE.md \u00a7N.8. Status FAIL is the honest reading of 'the assertion is green': it is not, because it is not.",
+   "underlying_condition_measured_here": {
+    "what": "shared-domain asset depending on a chart-domain asset",
+    "measured_via": "`scope` column (pre-590 equivalent: global<->shared, per_chart<->chart, contract \u00a75.1 is 1:1)",
+    "violations": 0,
+    "rows": []
+   },
+   "plan_named_suspects": [
+    "ka_graha_sancara",
+    "ka_muhurta_seva",
+    "mi_kula",
+    "mi_vistara"
+   ],
+   "domain_coherence_ci_scripts": [
+    "platform/scripts/governance/check_asset_catalogue_contract.py"
+   ],
+   "domain_coherence_workflow_invocations": []
+  }
+ },
+ "contract_rules": {
+  "C-01": {
+   "assertion": "asset_id prefix matches layer",
+   "severity": "BLOCKING",
+   "status": "FAIL",
+   "violations": 1,
+   "sql": "SELECT asset_id, layer FROM asset_registry WHERE asset_kind <> 'source' AND left(asset_id,3) IS DISTINCT FROM (CASE layer WHEN 'brahmagyan' THEN 'bg_' WHEN 'ganita' THEN 'ga_' WHEN 'bodha' THEN 'bo_' WHEN 'kala' THEN 'ka_' WHEN 'phala' THEN 'ph_' WHEN 'mimamsa' THEN 'mi_' END) ORDER BY asset_id",
+   "rows": [
+    {
+     "asset_id": "lel_events",
+     "layer": "mimamsa"
+    }
+   ]
+  },
+  "C-02": {
+   "assertion": "layer_index is ^L[0-5]$ and agrees with layer",
+   "severity": "BLOCKING",
+   "status": "FAIL",
+   "violations": 21,
+   "sql": "SELECT asset_id, layer, layer_index FROM asset_registry WHERE layer_index IS NULL OR layer_index !~ '^L[0-5]$' OR layer_index <> (CASE layer WHEN 'brahmagyan' THEN 'L0' WHEN 'ganita' THEN 'L1' WHEN 'bodha' THEN 'L2' WHEN 'kala' THEN 'L3' WHEN 'phala' THEN 'L4' WHEN 'mimamsa' THEN 'L5' END) ORDER BY asset_id",
+   "rows": [
+    {
+     "asset_id": "bg_sign_medical",
+     "layer": "brahmagyan",
+     "layer_index": "0"
+    },
+    {
+     "asset_id": "bg_vidhi_floors",
+     "layer": "brahmagyan",
+     "layer_index": null
+    },
+    {
+     "asset_id": "bg_vidhi_primitives",
+     "layer": "brahmagyan",
+     "layer_index": null
+    },
+    {
+     "asset_id": "bo_arudha",
+     "layer": "bodha",
+     "layer_index": null
+    },
+    {
+     "asset_id": "bo_cdlm_summary",
+     "layer": "bodha",
+     "layer_index": null
+    },
+    {
+     "asset_id": "bo_cgm_motifs",
+     "layer": "bodha",
+     "layer_index": null
+    },
+    {
+     "asset_id": "bo_cgm_paths",
+     "layer": "bodha",
+     "layer_index": null
+    },
+    {
+     "asset_id": "bo_chart_gestalt",
+     "layer": "bodha",
+     "layer_index": null
+    },
+    {
+     "asset_id": "bo_laksana_rerank",
+     "layer": "bodha",
+     "layer_index": null
+    },
+    {
+     "asset_id": "bo_nakshatra_semantic",
+     "layer": "bodha",
+     "layer_index": null
+    },
+    {
+     "asset_id": "bo_pratijna",
+     "layer": "bodha",
+     "layer_index": "2"
+    },
+    {
+     "asset_id": "bo_special_lagna",
+     "layer": "bodha",
+     "layer_index": null
+    },
+    {
+     "asset_id": "bo_sudarshana",
+     "layer": "bodha",
+     "layer_index": null
+    },
+    {
+     "asset_id": "bo_vargottama_dhana",
+     "layer": "bodha",
+     "layer_index": null
+    },
+    {
+     "asset_id": "bo_yantra_mechanism",
+     "layer": "bodha",
+     "layer_index": null
+    },
+    {
+     "asset_id": "ga_ayurdaya",
+     "layer": "ganita",
+     "layer_index": "1"
+    },
+    {
+     "asset_id": "ga_sensitive_degree",
+     "layer": "ganita",
+     "layer_index": "1"
+    },
+    {
+     "asset_id": "ga_vichara",
+     "layer": "ganita",
+     "layer_index": null
+    },
+    {
+     "asset_id": "ka_avadhi",
+     "layer": "kala",
+     "layer_index": "3"
+    },
+    {
+     "asset_id": "ka_taranga",
+     "layer": "kala",
+     "layer_index": "3"
+    },
+    {
+     "asset_id": "lel_events",
+     "layer": "mimamsa",
+     "layer_index": null
+    }
+   ]
+  },
+  "C-03": {
+   "assertion": "layer_name is the exact lexicon spelling",
+   "severity": "BLOCKING",
+   "status": "FAIL",
+   "violations": 20,
+   "sql": "SELECT asset_id, layer, layer_name FROM asset_registry WHERE layer_name IS DISTINCT FROM (CASE layer WHEN 'brahmagyan' THEN 'Brahmagyan' WHEN 'ganita' THEN 'Ga\u1e47ita' WHEN 'bodha' THEN 'Bodha' WHEN 'kala' THEN 'K\u0101la' WHEN 'phala' THEN 'Phala' WHEN 'mimamsa' THEN 'M\u012bm\u0101\u1e43s\u0101' END) ORDER BY asset_id",
+   "rows": [
+    {
+     "asset_id": "bg_vidhi_floors",
+     "layer": "brahmagyan",
+     "layer_name": null
+    },
+    {
+     "asset_id": "bg_vidhi_primitives",
+     "layer": "brahmagyan",
+     "layer_name": null
+    },
+    {
+     "asset_id": "bo_arudha",
+     "layer": "bodha",
+     "layer_name": null
+    },
+    {
+     "asset_id": "bo_cdlm_summary",
+     "layer": "bodha",
+     "layer_name": null
+    },
+    {
+     "asset_id": "bo_cgm_motifs",
+     "layer": "bodha",
+     "layer_name": null
+    },
+    {
+     "asset_id": "bo_cgm_paths",
+     "layer": "bodha",
+     "layer_name": null
+    },
+    {
+     "asset_id": "bo_chart_gestalt",
+     "layer": "bodha",
+     "layer_name": null
+    },
+    {
+     "asset_id": "bo_laksana_rerank",
+     "layer": "bodha",
+     "layer_name": null
+    },
+    {
+     "asset_id": "bo_nakshatra_semantic",
+     "layer": "bodha",
+     "layer_name": null
+    },
+    {
+     "asset_id": "bo_special_lagna",
+     "layer": "bodha",
+     "layer_name": null
+    },
+    {
+     "asset_id": "bo_sudarshana",
+     "layer": "bodha",
+     "layer_name": null
+    },
+    {
+     "asset_id": "bo_vargottama_dhana",
+     "layer": "bodha",
+     "layer_name": null
+    },
+    {
+     "asset_id": "bo_yantra_mechanism",
+     "layer": "bodha",
+     "layer_name": null
+    },
+    {
+     "asset_id": "ga_ayurdaya",
+     "layer": "ganita",
+     "layer_name": "Ganita"
+    },
+    {
+     "asset_id": "ga_sensitive_degree",
+     "layer": "ganita",
+     "layer_name": "Ganita"
+    },
+    {
+     "asset_id": "ga_vichara",
+     "layer": "ganita",
+     "layer_name": null
+    },
+    {
+     "asset_id": "ka_avadhi",
+     "layer": "kala",
+     "layer_name": "Kala"
+    },
+    {
+     "asset_id": "ka_gochara_v3_century_materialize",
+     "layer": "kala",
+     "layer_name": "Kala"
+    },
+    {
+     "asset_id": "ka_taranga",
+     "layer": "kala",
+     "layer_name": "Kala"
+    },
+    {
+     "asset_id": "lel_events",
+     "layer": "mimamsa",
+     "layer_name": null
+    }
+   ]
+  },
+  "C-04": {
+   "assertion": "data/artifact => target_table exists",
+   "severity": "BLOCKING",
+   "status": "FAIL",
+   "violations": 11,
+   "sql": "SELECT a.asset_id, a.asset_kind, a.target_table FROM asset_registry a WHERE a.asset_kind IN ('data','artifact') AND (a.target_table IS NULL OR NOT EXISTS (SELECT 1 FROM information_schema.tables t WHERE t.table_schema='public' AND t.table_name=a.target_table)) ORDER BY a.asset_id",
+   "rows": [
+    {
+     "asset_id": "bg_ephemeris_engine",
+     "asset_kind": "data",
+     "target_table": null
+    },
+    {
+     "asset_id": "bg_panchanga",
+     "asset_kind": "data",
+     "target_table": null
+    },
+    {
+     "asset_id": "bg_prashna_rules",
+     "asset_kind": "data",
+     "target_table": null
+    },
+    {
+     "asset_id": "bg_sky_calendar",
+     "asset_kind": "data",
+     "target_table": "bg_sky_events"
+    },
+    {
+     "asset_id": "bo_cdlm_summary",
+     "asset_kind": "data",
+     "target_table": null
+    },
+    {
+     "asset_id": "bo_chart_gestalt",
+     "asset_kind": "data",
+     "target_table": null
+    },
+    {
+     "asset_id": "ga_sade_sati",
+     "asset_kind": "data",
+     "target_table": null
+    },
+    {
+     "asset_id": "ga_sensitive",
+     "asset_kind": "data",
+     "target_table": null
+    },
+    {
+     "asset_id": "ga_strength",
+     "asset_kind": "data",
+     "target_table": null
+    },
+    {
+     "asset_id": "ga_structural",
+     "asset_kind": "data",
+     "target_table": null
+    },
+    {
+     "asset_id": "lel_events",
+     "asset_kind": "data",
+     "target_table": null
+    }
+   ]
+  },
+  "C-05": {
+   "assertion": "data/artifact => count_sql NOT NULL",
+   "severity": "BLOCKING",
+   "status": "FAIL",
+   "violations": 2,
+   "sql": "SELECT asset_id, asset_kind FROM asset_registry WHERE asset_kind IN ('data','artifact') AND count_sql IS NULL ORDER BY asset_id",
+   "rows": [
+    {
+     "asset_id": "bg_ephemeris_engine",
+     "asset_kind": "data"
+    },
+    {
+     "asset_id": "bg_panchanga",
+     "asset_kind": "data"
+    }
+   ]
+  },
+  "C-06": {
+   "assertion": "chart-domain count_sql is chart-scoped ($1)",
+   "severity": "BLOCKING",
+   "status": "FAIL",
+   "violations": 1,
+   "sql": "SELECT asset_id FROM asset_registry WHERE scope='per_chart' AND count_sql IS NOT NULL AND position('$1' in count_sql)=0 ORDER BY asset_id",
+   "rows": [
+    {
+     "asset_id": "mi_seva"
+    }
+   ]
+  },
+  "C-07": {
+   "assertion": "service rows carry no data-asset fields",
+   "severity": "BLOCKING",
+   "status": "FAIL",
+   "violations": 4,
+   "sql": "SELECT asset_id, target_table, target_floor FROM asset_registry WHERE asset_kind='service' AND (target_table IS NOT NULL OR count_sql IS NOT NULL OR target_floor IS NOT NULL OR clear_tables IS NOT NULL) ORDER BY asset_id",
+   "rows": [
+    {
+     "asset_id": "ka_dasha_kala",
+     "target_table": null,
+     "target_floor": 0
+    },
+    {
+     "asset_id": "ka_tulana",
+     "target_table": null,
+     "target_floor": 0
+    },
+    {
+     "asset_id": "mi_abhilekha",
+     "target_table": "mimamsa_journal",
+     "target_floor": 0
+    },
+    {
+     "asset_id": "mi_seva",
+     "target_table": "mimamsa_preferences",
+     "target_floor": 0
+    }
+   ]
+  },
+  "C-08": {
+   "assertion": "RETIRED => data_disposition NOT NULL",
+   "severity": "BLOCKING",
+   "status": "BLOCKED",
+   "blocked_by": "column(s) ['data_disposition'] do not exist in asset_registry (migration 590 not applied)",
+   "violations": null,
+   "sql": "SELECT asset_id FROM asset_registry WHERE catalog_status='RETIRED' AND data_disposition IS NULL ORDER BY asset_id",
+   "rows": null
+  },
+  "C-09": {
+   "assertion": "superseded_by resolves",
+   "severity": "BLOCKING",
+   "status": "BLOCKED",
+   "blocked_by": "column(s) ['superseded_by'] do not exist in asset_registry (migration 590 not applied)",
+   "violations": null,
+   "sql": "SELECT a.asset_id, a.superseded_by FROM asset_registry a WHERE a.superseded_by IS NOT NULL AND NOT EXISTS (SELECT 1 FROM asset_registry b WHERE b.asset_id=a.superseded_by) ORDER BY 1",
+   "rows": null
+  },
+  "C-10": {
+   "assertion": "data_disposition only on RETIRED rows",
+   "severity": "BLOCKING",
+   "status": "BLOCKED",
+   "blocked_by": "column(s) ['data_disposition'] do not exist in asset_registry (migration 590 not applied)",
+   "violations": null,
+   "sql": "SELECT asset_id FROM asset_registry WHERE data_disposition IS NOT NULL AND catalog_status<>'RETIRED' ORDER BY asset_id",
+   "rows": null
+  },
+  "C-11": {
+   "assertion": "CURRENT depends only on CURRENT/source",
+   "severity": "BLOCKING",
+   "status": "FAIL",
+   "violations": 3,
+   "sql": "SELECT a.asset_id, d AS dep, b.catalog_status AS dep_status FROM asset_registry a CROSS JOIN LATERAL unnest(a.depends_on) AS d LEFT JOIN asset_registry b ON b.asset_id=d WHERE a.catalog_status='CURRENT' AND (b.asset_id IS NULL OR (b.catalog_status<>'CURRENT' AND b.asset_kind<>'source')) ORDER BY 1,2",
+   "rows": [
+    {
+     "asset_id": "bo_laksana",
+     "dep": "ga_vichara",
+     "dep_status": "DRAFT"
+    },
+    {
+     "asset_id": "ka_kshetra",
+     "dep": "ka_dasha_kala",
+     "dep_status": "DRAFT"
+    },
+    {
+     "asset_id": "ka_taranga",
+     "dep": "ka_sangam",
+     "dep_status": "DRAFT"
+    }
+   ]
+  },
+  "C-12": {
+   "assertion": "every depends_on element resolves",
+   "severity": "BLOCKING",
+   "status": "PASS",
+   "violations": 0,
+   "sql": "SELECT a.asset_id, d AS dep FROM asset_registry a CROSS JOIN LATERAL unnest(a.depends_on) AS d WHERE NOT EXISTS (SELECT 1 FROM asset_registry b WHERE b.asset_id=d) ORDER BY 1,2",
+   "rows": []
+  },
+  "C-13a": {
+   "assertion": "no self-edge",
+   "severity": "BLOCKING",
+   "status": "PASS",
+   "violations": 0,
+   "sql": "SELECT asset_id FROM asset_registry WHERE asset_id = ANY(depends_on) ORDER BY 1",
+   "rows": []
+  },
+  "C-14": {
+   "assertion": "asset_kind / asset_type coherent",
+   "severity": "BLOCKING",
+   "status": "FAIL",
+   "violations": 6,
+   "sql": "SELECT asset_id, asset_kind, asset_type FROM asset_registry WHERE (asset_kind, asset_type) NOT IN (('data','data'),('artifact','data'),('service','service'),('source','data')) ORDER BY asset_id",
+   "rows": [
+    {
+     "asset_id": "bg_ephemeris_engine",
+     "asset_kind": "data",
+     "asset_type": "service"
+    },
+    {
+     "asset_id": "bg_panchanga",
+     "asset_kind": "data",
+     "asset_type": "service"
+    },
+    {
+     "asset_id": "ka_graha_sancara",
+     "asset_kind": "service",
+     "asset_type": "data"
+    },
+    {
+     "asset_id": "ka_muhurta_seva",
+     "asset_kind": "service",
+     "asset_type": "data"
+    },
+    {
+     "asset_id": "mi_abhilekha",
+     "asset_kind": "service",
+     "asset_type": "data"
+    },
+    {
+     "asset_id": "mi_seva",
+     "asset_kind": "service",
+     "asset_type": "data"
+    }
+   ]
+  },
+  "C-15": {
+   "assertion": "service => health_probe AND provides_apis",
+   "severity": "BLOCKING",
+   "status": "FAIL",
+   "violations": 6,
+   "sql": "SELECT asset_id FROM asset_registry WHERE asset_kind='service' AND (health_probe IS NULL OR provides_apis IS NULL) ORDER BY asset_id",
+   "rows": [
+    {
+     "asset_id": "ka_dasha_kala"
+    },
+    {
+     "asset_id": "ka_graha_sancara"
+    },
+    {
+     "asset_id": "ka_muhurta_seva"
+    },
+    {
+     "asset_id": "ka_tulana"
+    },
+    {
+     "asset_id": "mi_abhilekha"
+    },
+    {
+     "asset_id": "mi_seva"
+    }
+   ]
+  },
+  "C-16": {
+   "assertion": "non-service => service_health IS NULL",
+   "severity": "BLOCKING",
+   "status": "PASS",
+   "violations": 0,
+   "sql": "SELECT asset_id, asset_kind, service_health FROM asset_registry WHERE asset_kind<>'service' AND service_health IS NOT NULL ORDER BY asset_id",
+   "rows": []
+  },
+  "C-17": {
+   "assertion": "no graded service_health without a probe",
+   "severity": "BLOCKING",
+   "status": "FAIL",
+   "violations": 4,
+   "sql": "SELECT asset_id, service_health FROM asset_registry WHERE service_health IN ('healthy','degraded','unhealthy') AND health_probe IS NULL ORDER BY asset_id",
+   "rows": [
+    {
+     "asset_id": "ka_dasha_kala",
+     "service_health": "healthy"
+    },
+    {
+     "asset_id": "ka_graha_sancara",
+     "service_health": "unhealthy"
+    },
+    {
+     "asset_id": "ka_muhurta_seva",
+     "service_health": "healthy"
+    },
+    {
+     "asset_id": "ka_tulana",
+     "service_health": "healthy"
+    }
+   ]
+  },
+  "C-18": {
+   "assertion": "domain present and derived from scope",
+   "severity": "BLOCKING",
+   "status": "BLOCKED",
+   "blocked_by": "column(s) ['domain'] do not exist in asset_registry (migration 590 not applied)",
+   "violations": null,
+   "sql": "SELECT asset_id, scope, domain FROM asset_registry WHERE domain IS DISTINCT FROM (CASE scope WHEN 'global' THEN 'shared' WHEN 'per_chart' THEN 'chart' END) ORDER BY asset_id",
+   "rows": null
+  },
+  "C-19": {
+   "assertion": "rung present and derived from layer",
+   "severity": "BLOCKING",
+   "status": "BLOCKED",
+   "blocked_by": "column(s) ['rung'] do not exist in asset_registry (migration 590 not applied)",
+   "violations": null,
+   "sql": "SELECT asset_id, layer, rung FROM asset_registry WHERE asset_kind <> 'source' AND rung IS DISTINCT FROM (CASE layer WHEN 'brahmagyan' THEN 'R0' WHEN 'ganita' THEN 'R1' WHEN 'bodha' THEN 'R2' WHEN 'kala' THEN 'R3' WHEN 'phala' THEN 'R4' WHEN 'mimamsa' THEN 'R5' END) ORDER BY asset_id",
+   "rows": null
+  },
+  "C-20": {
+   "assertion": "CURRENT data/artifact carries a floor",
+   "severity": "BLOCKING",
+   "status": "FAIL",
+   "violations": 5,
+   "sql": "SELECT asset_id FROM asset_registry WHERE catalog_status='CURRENT' AND asset_kind IN ('data','artifact') AND target_floor IS NULL ORDER BY asset_id",
+   "rows": [
+    {
+     "asset_id": "bg_class_priors"
+    },
+    {
+     "asset_id": "bg_ephemeris_engine"
+    },
+    {
+     "asset_id": "bg_formula_constants"
+    },
+    {
+     "asset_id": "bg_ghatana"
+    },
+    {
+     "asset_id": "bg_panchanga"
+    }
+   ]
+  },
+  "C-21": {
+   "assertion": "target_floor = 0 => volume_explanation",
+   "severity": "BLOCKING",
+   "status": "FAIL",
+   "violations": 19,
+   "sql": "SELECT asset_id FROM asset_registry WHERE target_floor = 0 AND (volume_explanation IS NULL OR btrim(volume_explanation)='') ORDER BY asset_id",
+   "rows": [
+    {
+     "asset_id": "bg_class_lifetime_counts"
+    },
+    {
+     "asset_id": "bg_sarvatobhadra_grid"
+    },
+    {
+     "asset_id": "bo_cgm_motifs"
+    },
+    {
+     "asset_id": "bo_pratijna"
+    },
+    {
+     "asset_id": "ga_ayurdaya"
+    },
+    {
+     "asset_id": "ga_sensitive_degree"
+    },
+    {
+     "asset_id": "ka_avadhi"
+    },
+    {
+     "asset_id": "ka_gochara"
+    },
+    {
+     "asset_id": "ka_gochara_resonance"
+    },
+    {
+     "asset_id": "ka_gochara_sweep"
+    },
+    {
+     "asset_id": "ka_gochara_v3_century_materialize"
+    },
+    {
+     "asset_id": "ka_kota_chakra"
+    },
+    {
+     "asset_id": "ka_kshetra"
+    },
+    {
+     "asset_id": "ka_moorti_nirnaya"
+    },
+    {
+     "asset_id": "ka_sudarshana_varsha"
+    },
+    {
+     "asset_id": "ka_taranga"
+    },
+    {
+     "asset_id": "ka_tithi_pravesha"
+    },
+    {
+     "asset_id": "ka_vedha_gochara"
+    },
+    {
+     "asset_id": "lel_events"
+    }
+   ]
+  },
+  "C-24": {
+   "assertion": "clear_tables exist and include target_table",
+   "severity": "BLOCKING",
+   "status": "PASS",
+   "violations": 0,
+   "sql": "SELECT a.asset_id, t AS listed FROM asset_registry a CROSS JOIN LATERAL unnest(a.clear_tables) AS t WHERE a.clear_tables IS NOT NULL AND NOT EXISTS (SELECT 1 FROM information_schema.tables i WHERE i.table_schema='public' AND i.table_name=t) UNION ALL SELECT asset_id, target_table FROM asset_registry WHERE clear_tables IS NOT NULL AND NOT (target_table = ANY(clear_tables))",
+   "rows": []
+  },
+  "C-28": {
+   "assertion": "estimated_seconds NOT NULL where a successful build exists",
+   "severity": "BLOCKING",
+   "status": "FAIL",
+   "violations": 112,
+   "sql": "SELECT r.asset_id FROM asset_registry r WHERE r.estimated_seconds IS NULL AND EXISTS (SELECT 1 FROM asset_throughput t WHERE t.asset_id=r.asset_id AND t.state='lit') ORDER BY 1",
+   "rows": [
+    {
+     "asset_id": "bg_class_lifetime_counts"
+    },
+    {
+     "asset_id": "bg_class_priors"
+    },
+    {
+     "asset_id": "bg_cohort"
+    },
+    {
+     "asset_id": "bg_compendium_index"
+    },
+    {
+     "asset_id": "bg_concordance"
+    },
+    {
+     "asset_id": "bg_dasha_systems"
+    },
+    {
+     "asset_id": "bg_dignity_reference"
+    },
+    {
+     "asset_id": "bg_doshas"
+    },
+    {
+     "asset_id": "bg_ephemeris"
+    },
+    {
+     "asset_id": "bg_formula_constants"
+    },
+    {
+     "asset_id": "bg_ghatana"
+    },
+    {
+     "asset_id": "bg_gochara_arcs"
+    },
+    {
+     "asset_id": "bg_kota_chakra_rings"
+    },
+    {
+     "asset_id": "bg_kp_sublord_division"
+    },
+    {
+     "asset_id": "bg_medical_mappings"
+    },
+    {
+     "asset_id": "bg_muhurta_lattice"
+    },
+    {
+     "asset_id": "bg_nakshatra"
+    },
+    {
+     "asset_id": "bg_nakshatra_medical"
+    },
+    {
+     "asset_id": "bg_ontology"
+    },
+    {
+     "asset_id": "bg_panchanga"
+    },
+    {
+     "asset_id": "bg_parihara_rules"
+    },
+    {
+     "asset_id": "bg_phaladeepika_latta"
+    },
+    {
+     "asset_id": "bg_prashna_rules"
+    },
+    {
+     "asset_id": "bg_reference"
+    },
+    {
+     "asset_id": "bg_remedies"
+    },
+    {
+     "asset_id": "bg_rules"
+    },
+    {
+     "asset_id": "bg_sarvatobhadra_grid"
+    },
+    {
+     "asset_id": "bg_sign_medical"
+    },
+    {
+     "asset_id": "bg_sky_calendar"
+    },
+    {
+     "asset_id": "bg_text_index"
+    },
+    {
+     "asset_id": "bg_texts"
+    },
+    {
+     "asset_id": "bg_transit_engine"
+    },
+    {
+     "asset_id": "bg_transit_rules"
+    },
+    {
+     "asset_id": "bg_vastu_directions"
+    },
+    {
+     "asset_id": "bg_vedha_malefic_scale"
+    },
+    {
+     "asset_id": "bg_vidhi_floors"
+    },
+    {
+     "asset_id": "bg_vidhi_primitives"
+    },
+    {
+     "asset_id": "bg_yogas"
+    },
+    {
+     "asset_id": "bo_anveshana"
+    },
+    {
+     "asset_id": "bo_arudha"
+    },
+    {
+     "asset_id": "bo_bimba"
+    },
+    {
+     "asset_id": "bo_cdlm_summary"
+    },
+    {
+     "asset_id": "bo_cgm_motifs"
+    },
+    {
+     "asset_id": "bo_cgm_paths"
+    },
+    {
+     "asset_id": "bo_chart_gestalt"
+    },
+    {
+     "asset_id": "bo_drishti"
+    },
+    {
+     "asset_id": "bo_karanajala"
+    },
+    {
+     "asset_id": "bo_laksana"
+    },
+    {
+     "asset_id": "bo_laksana_rerank"
+    },
+    {
+     "asset_id": "bo_nakshatra_semantic"
+    },
+    {
+     "asset_id": "bo_pramana_mapa"
+    },
+    {
+     "asset_id": "bo_pratijna"
+    },
+    {
+     "asset_id": "bo_samskara"
+    },
+    {
+     "asset_id": "bo_samvada"
+    },
+    {
+     "asset_id": "bo_sangati"
+    },
+    {
+     "asset_id": "bo_special_lagna"
+    },
+    {
+     "asset_id": "bo_sudarshana"
+    },
+    {
+     "asset_id": "bo_upaya"
+    },
+    {
+     "asset_id": "bo_vargottama_dhana"
+    },
+    {
+     "asset_id": "bo_yantra_mechanism"
+    }
+   ]
+  }
+ },
+ "undetectable_rules": {
+  "C-13b": {
+   "assertion": "depends_on graph acyclic",
+   "reason": "measured here by DFS over the live edge set",
+   "status": "PASS",
+   "violations": 0,
+   "cycles": []
+  },
+  "C-22": {
+   "assertion": "rung-frozen data assets carry integrity_check_sql",
+   "reason": "vacuous today: 0 rungs frozen. Reported as vacuous, not as a pass.",
+   "status": "NOT-MEASURABLE"
+  },
+  "C-23": {
+   "assertion": "has_substeps equals the writer-class truth",
+   "reason": "measured here by AST: the writer class, or an ancestor OTHER THAN the frozen `WriterBase`, defines `plan_substeps` or sets `has_substeps = True`. WriterBase's OWN default plan_substeps is excluded deliberately \u2014 every writer inherits it, so counting it would make the detector a constant (CLAUDE.md \u00a7N.8). Inheritance is resolved by class NAME inside platform/python-sidecar; imports are not followed, so a base defined outside that tree is invisible.",
+   "status": "FAIL",
+   "violations": 12,
+   "rows": [
+    {
+     "asset_id": "bg_muhurta_lattice",
+     "registry_has_substeps": false,
+     "writer_class_truth": true
+    },
+    {
+     "asset_id": "bo_laksana",
+     "registry_has_substeps": false,
+     "writer_class_truth": true
+    },
+    {
+     "asset_id": "bo_samskara",
+     "registry_has_substeps": false,
+     "writer_class_truth": true
+    },
+    {
+     "asset_id": "ga_ayurdaya",
+     "registry_has_substeps": false,
+     "writer_class_truth": true
+    },
+    {
+     "asset_id": "ga_nakshatra",
+     "registry_has_substeps": false,
+     "writer_class_truth": true
+    },
+    {
+     "asset_id": "ga_sensitive",
+     "registry_has_substeps": false,
+     "writer_class_truth": true
+    },
+    {
+     "asset_id": "ga_sensitive_degree",
+     "registry_has_substeps": false,
+     "writer_class_truth": true
+    },
+    {
+     "asset_id": "ga_structural",
+     "registry_has_substeps": false,
+     "writer_class_truth": true
+    },
+    {
+     "asset_id": "ka_sangam",
+     "registry_has_substeps": false,
+     "writer_class_truth": true
+    },
+    {
+     "asset_id": "mi_darshana",
+     "registry_has_substeps": false,
+     "writer_class_truth": true
+    },
+    {
+     "asset_id": "mi_pariksha",
+     "registry_has_substeps": false,
+     "writer_class_truth": true
+    },
+    {
+     "asset_id": "mi_pramana",
+     "registry_has_substeps": false,
+     "writer_class_truth": true
+    }
+   ],
+   "assets_compared": 123
+  },
+  "C-25": {
+   "assertion": "co-written target_table => every co-writer declares its partition",
+   "reason": "NO COLUMN EXISTS. Contract \u00a74.9/\u00a710.3. \u00a7N.8: null, never green.",
+   "status": "NOT-MEASURABLE"
+  },
+  "C-26": {
+   "assertion": "generation-bearing asset declares its authority pointer",
+   "reason": "NO COLUMN EXISTS. Contract \u00a74.11/\u00a710.3. \u00a7N.8: null, never green.",
+   "status": "NOT-MEASURABLE"
+  },
+  "C-27": {
+   "assertion": "writer_timeout_seconds set from telemetry p95",
+   "reason": "ADVISORY; not checkable until M2 telemetry. \u00a7N.8: null, never green.",
+   "status": "NOT-MEASURABLE"
+  }
+ },
+ "source_scans": {
+  "decorators": {
+   "roots": [
+    "platform/python-sidecar"
+   ],
+   "files_scanned": 1033,
+   "production_ids": 123,
+   "test_only_ids": [
+    "bad_infra_writer",
+    "fixture.asset_a",
+    "fixture.crashing",
+    "fixture.success",
+    "test_infra_asset_1",
+    "test_infra_asset_dup"
+   ],
+   "unresolved_sites": [],
+   "parse_errors": []
+  },
+  "seed_ts": {
+   "path": "platform/scripts/seed/asset_registry_seed.ts",
+   "ok": true,
+   "ids": 127,
+   "reason": null
+  },
+  "ci": {
+   "guard_scripts": [
+    "platform/scripts/governance/check_asset_catalogue_contract.py"
+   ],
+   "workflow_invocations": [],
+   "domain_coherence_scripts": [
+    "platform/scripts/governance/check_asset_catalogue_contract.py"
+   ],
+   "domain_coherence_workflow_invocations": [],
+   "workflows_scanned": [
+    ".github/workflows/chat-v2-ci.yml",
+    ".github/workflows/ci.yml",
+    ".github/workflows/deploy.yml",
+    ".github/workflows/ekv-lints.yml",
+    ".github/workflows/elev-serving-gates.yml",
+    ".github/workflows/fresh_chart_smoke.yml",
+    ".github/workflows/gochara-smoke-probe.yml",
+    ".github/workflows/iac-apply.yml",
+    ".github/workflows/icr_weekly_scan.yml",
+    ".github/workflows/judgment-integration-nightly.yml",
+    ".github/workflows/pariprashna-ci.yml",
+    ".github/workflows/reconciliation-cadence.yml",
+    ".github/workflows/samiksha-daily.yml",
+    ".github/workflows/shad-darshana-ci-skeletons.yml",
+    ".github/workflows/shad-darshana-circularity-guard.yml",
+    ".github/workflows/tap-ci.yml",
+    ".github/workflows/verification-invariant.yml"
+   ]
+  }
+ },
+ "disagreements": [
+  {
+   "quantity": "C-04 \u2014 data/artifact rows failing the target_table rule",
+   "this_script": 11,
+   "other_source": "ASSET_CATALOGUE_CONTRACT_v1_0.md \u00a76, rule C-04",
+   "other_value": 10,
+   "reconciliation": "Both are right about different things. 10 is the count of data/artifact rows with target_table NULL. The rule as written (and as its own \u00a78 SQL executes) ALSO fails a row whose target_table names a table that does not exist \u2014 `bg_sky_calendar` \u2192 `bg_sky_events`, which is absent from information_schema.tables. The contract's \u00a76 count reported the NULL half only. 11 is the rule's full result.",
+   "disagreement": true
+  },
+  {
+   "quantity": "C-17 \u2014 graded service_health with no health_probe",
+   "this_script": 4,
+   "other_source": "ASSET_CATALOGUE_CONTRACT_v1_0.md \u00a76, rule C-17",
+   "other_value": 3,
+   "reconciliation": "The contract's \u00a76 cell names 3 assets, all `healthy` (ka_dasha_kala, ka_muhurta_seva, ka_tulana). Its own \u00a78 SQL matches `IN ('healthy','degraded','unhealthy')`, which also catches `ka_graha_sancara` ('unhealthy', no probe). The contract's stated count disagrees with the contract's own SQL. 4 is the SQL's result.",
+   "disagreement": true
+  },
+  {
+   "quantity": "0.6a \u2014 has_substeps false negatives (C-23)",
+   "this_script": 12,
+   "other_source": "NIRMANA_ELEVATION_PLAN v3.0 \u00a70.6a / v4.0 (states 14) vs DERIVED_FIELD_REPAIR_PROPOSAL_v1_0.md \u00a74 (M0-T8, states 12)",
+   "other_value": "plan 14 \u00b7 M0-T8 12",
+   "reconciliation": "This script's detector and M0-T8's are INDEPENDENT and differ in rule \u2014 M0-T8 uses (defines plan_substeps AND defines run_substep); this one uses (overrides plan_substeps OR sets the class attribute has_substeps=True), in both cases EXCLUDING WriterBase's own default. Two independent detectors returning 12 against the plan's 14 is corroboration; the plan's figure is the outlier and is not measured.",
+   "disagreement": true
+  },
+  {
+   "quantity": "criterion 9 \u2014 zero-consumer findings",
+   "this_script": 23,
+   "other_source": "NIRMANA_ELEVATION_PLAN \u00a71 (states 13) \u00b7 the plan's own per-asset annotations (7) \u00b7 ZERO_CONSUMER_EVIDENCE_v1_0.md (23 packets)",
+   "other_value": "plan-summary 13 \u00b7 plan-annotations 7 \u00b7 M0-T6 packets 23",
+   "reconciliation": "This script counts the M0-T6 packet set and subtracts recorded ADHIK\u0100RIN G1 dispositions; there are none, so unresolved = packets. The plan's 13 has no per-asset list behind it and does not reconcile with the plan's own annotations. Not averaged, not adopted.",
+   "disagreement": true
+  },
+  {
+   "quantity": "target_table NULL rows (all kinds)",
+   "this_script": null,
+   "other_source": "CENSUS_REPORT.md \u00a75 (M0-T1) states 14; contract \u00a76 C-04 states 10",
+   "other_value": "census 14 (all rows) \u00b7 contract 10 (data/artifact only)",
+   "reconciliation": "Not a disagreement once scoped: 14 counts every registry row, 10 counts only the data/artifact rows the rule applies to. Recorded so the two figures are not read as a conflict.",
+   "disagreement": false
+  }
+ ]
+}
