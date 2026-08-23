@@ -1149,7 +1149,11 @@ cannot disagree.
 **What:** Swiss Ephemeris (pyswisseph) with DE441 JPL file providing sidereal planetary positions from 9999 BCE to 9999 CE  
 **Now:** service · global state error
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** probe-only · **rehearsal partition:** `n/a — service probe` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** probe-only · **rehearsal partition:** `n/a — service probe` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** not-a-build · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: service probe — there is no build to measure (structural). rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
@@ -1163,12 +1167,16 @@ cannot disagree.
 **What:** Global chart-independent muhūrta factor lattice — Agnivāsa states, combination-yoga spans (Sarvārtha-siddhi, Amṛta-siddhi, Ravi/Guru-Puṣya, Tripuṣkara/Dvipuṣkar  
 **Now:** global · lit · 164,886 rows / floor 91,477
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** resumable-substep · **rehearsal partition:** `year:{year}` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** resumable-substep · **rehearsal partition:** `year:{year}` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• Substep key `year:{year}`: add per-substep input digests so a partial substrate change re-runs only the affected partition. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• Substep key `year:{year}`: add per-substep input digests so a partial substrate change re-runs only the affected partition.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • `has_substeps` is false in the registry while the writer plans substeps: derive the flag from the writer class (Phase 0.6a). Until then the §N.8 completeness gate is silently disabled for this asset.<br>• Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• A partial build can no longer be promoted to green. |
 
@@ -1177,7 +1185,11 @@ cannot disagree.
 **What:** Deterministic panchang computation service (swisseph DE441, Lahiri ayanamsha, Drik-parity)  
 **Now:** service · global state lit
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** probe-only · **rehearsal partition:** `n/a — service probe` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** probe-only · **rehearsal partition:** `n/a — service probe` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** not-a-build · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: service probe — there is no build to measure (structural). rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
@@ -1191,12 +1203,16 @@ cannot disagree.
 **What:** The holy grail of L0 — structured properties of every classical Jyotish concept across 15 specialized typed tables.  
 **Now:** global · lit · 1,242 rows / floor 1,485
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** resumable-substep · **rehearsal partition:** `{system}:{ayanamsha}` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** resumable-substep · **rehearsal partition:** `{system}:{ayanamsha}` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Below floor: 1,242 of 1,485 (84%). Either the floor is stale (re-measure and reset) or the build is incomplete — decide explicitly, never let the gap sit. |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• Substep key `{system}:{ayanamsha}`: add per-substep input digests so a partial substrate change re-runs only the affected partition. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• Substep key `{system}:{ayanamsha}`: add per-substep input digests so a partial substrate change re-runs only the affected partition.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • `has_substeps` is false in the registry while the writer plans substeps: derive the flag from the writer class (Phase 0.6a). Until then the §N.8 completeness gate is silently disabled for this asset.<br>• Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 2 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• A partial build can no longer be promoted to green. |
 
@@ -1205,12 +1221,16 @@ cannot disagree.
 **What:** Per-intent-class acharya floor + machine band header + ordered floor items — the compiled scope_tuple->contract input (D-2 Lane V-1).  
 **Now:** global · lit · 286 rows / floor 11 · median 0s, worst 1s
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 1s · **worst:** 1s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 0s · p90 1s · worst 1s · 5 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Layer position: set `layer_index = L0`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural). |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1219,12 +1239,16 @@ cannot disagree.
 **What:** Versioned vidhi primitive atoms — definition, live-tool mapping+args, fallback face, known_gap CR pointer  
 **Now:** global · lit · 52 rows / floor 48 · median 0s, worst 0s
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 0s · **worst:** 0s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 0s · p90 0s · worst 0s · 5 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Layer position: set `layer_index = L0`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural). |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1233,12 +1257,16 @@ cannot disagree.
 **What:** Life-event ontology (27 event classes keyed to LEL categories, DR-13 shape-extended 2026-07-19: point/interval/chain temporal shapes, gain-vs-loss evidence_requ  
 **Now:** global · lit · 39 rows · median 3s, worst 3s
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 3s · **p90:** 3s · **worst:** 3s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 39 (achieved on native; floors are aspirational, never fabricated — §N.4). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 3s · p90 3s · worst 3s · 1 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 5 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1247,12 +1275,16 @@ cannot disagree.
 **What:** Classical transit rules (favourable/unfavourable/vedha houses) from BPHS Ch.29 and Phaladeepika Ch.26.  
 **Now:** global · lit · 75 rows / floor 50
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 5 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1261,12 +1293,16 @@ cannot disagree.
 **What:** ṢAḌ-DARŚANA W2 (ADJUDICATION-2): N_e — the expected lifetime count of each brahma_event_ontology event class over a 100-year modelled timeline from birth, assum  
 **Now:** global · lit · 6 rows
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • `brahma_class_priors` has 2 co-writers: declare this writer's natural-key partition in the registry so the (table × generation × partition) uniqueness invariant is checkable (§3.3).<br>• Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1275,12 +1311,16 @@ cannot disagree.
 **What:** Ranked salience class-prior weights for composite query-time ranking  
 **Now:** global · lit · 177 rows · median 10s, worst 10s
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 10s · **p90:** 10s · **worst:** 10s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 177 (achieved on native; floors are aspirational, never fabricated — §N.4). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 10s · p90 10s · worst 10s · 1 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • `brahma_class_priors` has 2 co-writers: declare this writer's natural-key partition in the registry so the (table × generation × partition) uniqueness invariant is checkable (§3.3).<br>• Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1289,12 +1329,16 @@ cannot disagree.
 **What:** Synthetic (not real-person) reference population of ~10,000 birth charts' Lahiri-sidereal graha + Lagna positions (sign/nakshatra grain) — the statistical base-  
 **Now:** global · lit · 10,000 rows / floor 10,000
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• No detected serving consumer (Phase 0.8c): record the missing consumer or retire with a disposition.<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1303,12 +1347,16 @@ cannot disagree.
 **What:** Cross-reference index over the 15 classical texts — chapter summaries, topic-coverage map, significance scores  
 **Now:** global · lit · 9,538 rows / floor 9,538
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1317,12 +1365,16 @@ cannot disagree.
 **What:** Cross-school chunk-pointer index per (topic, school) — chunk refs for L1+ synthesis at query-time  
 **Now:** global · lit · 720 rows / floor 800
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 2 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 2 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Below floor: 720 of 800 (90%). Either the floor is stale (re-measure and reset) or the build is incomplete — decide explicitly, never let the gap sit. |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• No detected serving consumer (Phase 0.8c): record the missing consumer or retire with a disposition.<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1331,12 +1383,16 @@ cannot disagree.
 **What:** Classical dasha system definitions — sequence rules, computation methods, conditions for use  
 **Now:** global · lit · 20 rows / floor 18
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1345,12 +1401,16 @@ cannot disagree.
 **What:** Planetary dignity and state reference: exaltation/debilitation/own-sign boundaries, naisargika friendship matrix, avastha schemes, combustion orbs, motion state  
 **Now:** global · lit · 151 rows / floor 151
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1359,12 +1419,16 @@ cannot disagree.
 **What:** Classical dosha definitions — formation rules, effects, severity, cancellation conditions  
 **Now:** global · lit · 79 rows / floor 50
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1373,12 +1437,16 @@ cannot disagree.
 **What:** Swiss Ephemeris DE441 — raw astronomical positions for all grahas  
 **Now:** global · lit · 825,084 rows / floor 825,084
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 4 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1387,12 +1455,16 @@ cannot disagree.
 **What:** Canonical formula constants registry — combustion orbs, obstruction thresholds, magnitude tiers, dignity scores, house weights, attention budget, and engineerin  
 **Now:** global · lit · 17 rows · median 2s, worst 2s
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 2s · **p90:** 2s · **worst:** 2s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 17 (achieved on native; floors are aspirational, never fabricated — §N.4). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 2s · p90 2s · worst 2s · 1 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 3 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1401,12 +1473,16 @@ cannot disagree.
 **What:** W2G (GOCHARA-2.0, item 19)  
 **Now:** global · lit · 34,553 rows / floor 34,553
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** resumable-substep · **rehearsal partition:** `body` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** resumable-substep · **rehearsal partition:** `body` · **timeout source:** registered *(1800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• Substep key `body`: add per-substep input digests so a partial substrate change re-runs only the affected partition. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• Substep key `body`: add per-substep input digests so a partial substrate change re-runs only the affected partition.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• No detected serving consumer (Phase 0.8c): record the missing consumer or retire with a disposition.<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1415,12 +1491,16 @@ cannot disagree.
 **What:** MR-25 (PARIṢKĀRA): maps gochara citation strings (gochara_grammar/citations.py constants + primitives.py families) to classical_text_chunks verse_refs  
 **Now:** global · — · 14 rows / floor 4
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(60s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** not-a-build · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: no registered writer — nothing builds this asset (structural). rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• No registered writer: nothing builds this asset, so there is no build cost to profile. Bound class `not-a-build` (§19.4 step 3) — hotspot is null by structure, not by omission. |
 | Re-architecture & alignment | • Registered but never built: provision a writer, demote to DRAFT, or retire with a disposition (Phase 0.8a).<br>• Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1429,12 +1509,16 @@ cannot disagree.
 **What:** ADJUDICATION-9: the Kota-Chakra fort-chakra ring partition (stambha/durgantara/prakara/bahya, 1-indexed distance from janma nakshatra), moved from an inline wri  
 **Now:** global · lit · 27 rows / floor 27
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(60s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• No detected serving consumer (Phase 0.8c): record the missing consumer or retire with a disposition.<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1443,12 +1527,16 @@ cannot disagree.
 **What:** ADJUDICATION-7 Part 1: the canonical 249-fold Krishnamurti Paddhati sub-lord division of the sidereal zodiac  
 **Now:** global · lit · 249 rows / floor 249 · median 1s, worst 1s
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(120s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 1s · **worst:** 1s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 1s · worst 1s · 1 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• No detected serving consumer (Phase 0.8c): record the missing consumer or retire with a disposition.<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1457,12 +1545,16 @@ cannot disagree.
 **What:** Classical Ayurvedic graha → dosha/dhatu/organ/body-part mappings per BPHS Ch.18, Ashtanga Hridayam, Charaka Samhita  
 **Now:** global · lit · 21 rows / floor 9
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1471,12 +1563,16 @@ cannot disagree.
 **What:** Global nakshatra reference — 28 nakshatras (incl  
 **Now:** global · lit · 2,857 rows / floor 2,857
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1485,12 +1581,16 @@ cannot disagree.
 **What:** 27 nakshatras → body-part correspondences per Ashtanga Hridayam / BPHS  
 **Now:** global · lit · 27 rows / floor 27
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** not-a-build · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: no registered writer — nothing builds this asset (structural). rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• No registered writer: nothing builds this asset, so there is no build cost to profile. Bound class `not-a-build` (§19.4 step 3) — hotspot is null by structure, not by omission. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1499,12 +1599,16 @@ cannot disagree.
 **What:** Canonical entity vocabulary — grahas, signs, houses, nakshatras, dashas, domains + synonyms  
 **Now:** global · lit · 737 rows / floor 623
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 3 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1513,12 +1617,16 @@ cannot disagree.
 **What:** Global chart-independent parihāra (doṣa-cancellation) graph, per-activity muhūrta factor-quality rules, and the Muhūrta Factor Census + corpus-gap register  
 **Now:** global · lit · 449 rows / floor 447
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1527,12 +1635,16 @@ cannot disagree.
 **What:** ADJUDICATION-11 Part 4: Phaladeepika Adh  
 **Now:** global · lit · 8 rows / floor 8
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(60s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1541,12 +1653,16 @@ cannot disagree.
 **What:** Static horary astrology rules — Prashna lagna methods, Tajik yogas, significators, fructification rules, and special techniques.  
 **Now:** global · lit · 41 rows / floor 41
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Declare `target_table` (or `clear_tables` if it writes several) so clear/rebuild and size reporting stop guessing from `count_sql`.<br>• Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1555,12 +1671,16 @@ cannot disagree.
 **What:** Classical remedies: mantras, gemstones, charity, vrata, yantras, puja, tantric, ayurvedic, vastu, behavioral  
 **Now:** global · lit · 336 rows / floor 266
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1569,12 +1689,16 @@ cannot disagree.
 **What:** Classical rules extracted from text chunks via Python regex patterns — verse-traceable  
 **Now:** global · lit · 3,003 rows / floor 2,912
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 3 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1583,12 +1707,16 @@ cannot disagree.
 **What:** ADJUDICATION-11: school-tagged Sarvatobhadra Chakra grid reference table, registered DELIBERATELY EMPTY  
 **Now:** global · lit · 0 rows
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** not-a-build · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: no registered writer — nothing builds this asset (structural). rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• No registered writer: nothing builds this asset, so there is no build cost to profile. Bound class `not-a-build` (§19.4 step 3) — hotspot is null by structure, not by omission. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1597,12 +1725,16 @@ cannot disagree.
 **What:** Kalapurusha (Cosmic Man) zodiacal body-map: 12 signs → body-part / organ-systems / element / dosha (BPHS Ch.4 + Ashtanga Hridayam)  
 **Now:** global · lit · 12 rows / floor 12
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Layer position: set `layer_index = L0`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1611,12 +1743,16 @@ cannot disagree.
 **What:** Chart-independent global sky-event diary: sign ingresses (9 grahas), planetary stations (5 classical planets), solar/lunar eclipse timing, and Jupiter-Saturn do  
 **Now:** global · lit · 31,059 rows / floor 31,064
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Below floor: 31,059 of 31,064 (100%). Either the floor is stale (re-measure and reset) or the build is incomplete — decide explicitly, never let the gap sit. |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• No detected serving consumer (Phase 0.8c): record the missing consumer or retire with a disposition.<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1625,12 +1761,16 @@ cannot disagree.
 **What:** Measurement of retrieval index health — distinct topic tags across embedded + indexed chunks  
 **Now:** global · lit · 361 rows / floor 400
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Below floor: 361 of 400 (90%). Either the floor is stale (re-measure and reset) or the build is incomplete — decide explicitly, never let the gap sit.<br>• Embeddings are a deterministic transform (permitted). Pin the model id + dimension in the output digest so a model change invalidates correctly. |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • `classical_text_chunks` has 2 co-writers: declare this writer's natural-key partition in the registry so the (table × generation × partition) uniqueness invariant is checkable (§3.3).<br>• Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1639,12 +1779,16 @@ cannot disagree.
 **What:** Indexed verse chunks from BPHS, Jaimini Sutram, KP Reader, Tajaka, Phaladeepika, etc.  
 **Now:** global · lit · 10,667 rows / floor 10,651
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Embeddings are a deterministic transform (permitted). Pin the model id + dimension in the output digest so a model change invalidates correctly. |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • `classical_text_chunks` has 2 co-writers: declare this writer's natural-key partition in the registry so the (table × generation × partition) uniqueness invariant is checkable (§3.3).<br>• Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 4 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1653,12 +1797,16 @@ cannot disagree.
 **What:** L0 average graha motion parameters — daily motion, zodiac period, sign residence  
 **Now:** global · lit · 9 rows / floor 9
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** not-a-build · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: no registered writer — nothing builds this asset (structural). rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• No registered writer: nothing builds this asset, so there is no build cost to profile. Bound class `not-a-build` (§19.4 step 3) — hotspot is null by structure, not by omission. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1667,12 +1815,16 @@ cannot disagree.
 **What:** Classical Vastu Shastra direction–graha associations: 8 compass directions each mapped to a ruling graha, secondary graha, element, favorable color, and classic  
 **Now:** global · lit · 32 rows / floor 32
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1681,12 +1833,16 @@ cannot disagree.
 **What:** ADJUDICATION-11 Part 4: Phaladeepika Adh  
 **Now:** global · lit · 5 rows / floor 5
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(60s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1695,12 +1851,16 @@ cannot disagree.
 **What:** Classical yoga definitions — formation rules, significations, classical citations  
 **Now:** global · lit · 691 rows / floor 250
 
-**domain:** shared · **rung:** R0 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R0 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 unmeasured. Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1714,12 +1874,16 @@ cannot disagree.
 **What:** Ayurdaya / longevity (LCA-16): ALL THREE classical methods (Pindayu, Nisargayu, Amsayu) method-attributed, with the classical applicability rule served alongsid  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 130 / 130 / 130 · median 4s, worst 19s · 59.1% of 22 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 0 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{aya}` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 0 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{aya}` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 4s · **p90:** 18s · **worst:** 19s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `exactly one row per (chart_id, fact_key) across build_ids; verification_pass_status populated`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Verification tier: 80.7% of native chart_facts are `single` (unverified). Add a second derivation path for this writer's fact categories so rows earn `two_pass_verified`; emit tiers only via `verification_vocab` constants.<br>• Accretion guard: 15 fact_keys already exist under two build_ids on the native chart. Make the delete-then-insert scope (chart_id × this writer's fact_keys) explicit and assert single-row-per-key in the integrity check. |
-| Rebuild time | • Has a substep plan (`ayanamsha_{aya}`) but runs in 4s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Fast (median 4s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Has a substep plan (`ayanamsha_{aya}`) but runs in 4s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 4s · p90 18s · worst 19s · 22 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • `has_substeps` is false in the registry while the writer plans substeps: derive the flag from the writer class (Phase 0.6a). Until then the §N.8 completeness gate is silently disabled for this asset.<br>• Layer position: set `layer_index = L1`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• `chart_facts` has 5 co-writers: declare this writer's natural-key partition in the registry so the (table × generation × partition) uniqueness invariant is checkable (§3.3).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• Facts move from `single` toward `two_pass_verified`; downstream narration inherits a verified base.<br>• A partial build can no longer be promoted to green. |
 
@@ -1728,12 +1892,16 @@ cannot disagree.
 **What:** Per-chart parallel nakshatra chart: placement+attribute JOIN from bg_nakshatra, KP sub-lords (star/sub/sub-sub/prana) per body and house cusp, the 4-limbed KP s  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 2,847 / 2,858 / 1,813 (floor 1,802) · median 14s, worst 7m · 72.7% of 66 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha:{ay} + cross_ayanamsha` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha:{ay} + cross_ayanamsha` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 14s · **p90:** 3m · **worst:** 7m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `exactly one row per (chart_id, fact_key) across build_ids; verification_pass_status populated`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Verification tier: 80.7% of native chart_facts are `single` (unverified). Add a second derivation path for this writer's fact categories so rows earn `two_pass_verified`; emit tiers only via `verification_vocab` constants.<br>• Accretion guard: 15 fact_keys already exist under two build_ids on the native chart. Make the delete-then-insert scope (chart_id × this writer's fact_keys) explicit and assert single-row-per-key in the integrity check. |
-| Rebuild time | • Has a substep plan (`ayanamsha:{ay} + cross_ayanamsha`) but runs in 14s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Fast (median 14s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Has a substep plan (`ayanamsha:{ay} + cross_ayanamsha`) but runs in 14s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 14s · p90 3m · worst 7m · 66 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • `has_substeps` is false in the registry while the writer plans substeps: derive the flag from the writer class (Phase 0.6a). Until then the §N.8 completeness gate is silently disabled for this asset.<br>• `chart_facts` has 5 co-writers: declare this writer's natural-key partition in the registry so the (table × generation × partition) uniqueness invariant is checkable (§3.3).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 4 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Facts move from `single` toward `two_pass_verified`; downstream narration inherits a verified base.<br>• A partial build can no longer be promoted to green. |
 
@@ -1742,12 +1910,16 @@ cannot disagree.
 **What:** Per-chart sensitive point positions computed from the catalog × ayanamshas  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 8,565 / 8,565 / 8,565 (floor 8,610) · median 4m, worst 6.4h · 61.6% of 73 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha:{aya}` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha:{aya}` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 4m · **p90:** 31m · **worst:** 6.4h · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Below floor: 8,565 of 8,610 (99%). Either the floor is stale (re-measure and reset) or the build is incomplete — decide explicitly, never let the gap sit. |
-| Rebuild time | • No resume today — a 6.4h run is lost entirely on interruption. Adopt the shared `ResumableWriter` mixin (Phase 4) so committed substeps survive.<br>• Partition key `ayanamsha:{aya}`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal.<br>• Watchdog: the `NOW()` heartbeat defect reaps long substeps; switch to `clock_timestamp()` before the next full rebuild (Phase 2). Classify transient failures for auto-retry — 61.6% completion today. |
+| Rebuild time | • No resume today — a 6.4h run is lost entirely on interruption. Adopt the shared `ResumableWriter` mixin (Phase 4) so committed substeps survive.<br>• Partition key `ayanamsha:{aya}`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal.<br>• Watchdog: the `NOW()` heartbeat defect reaps long substeps; switch to `clock_timestamp()` before the next full rebuild (Phase 2). Classify transient failures for auto-retry — 61.6% completion today.<br>• **Not profiled.** Measured baseline only: p50 4m · p90 31m · worst 6.4h · 73 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 names this among the ten heavy assets where the efficiency pass concentrates. |
 | Re-architecture & alignment | • `has_substeps` is false in the registry while the writer plans substeps: derive the flag from the writer class (Phase 0.6a). Until then the §N.8 completeness gate is silently disabled for this asset.<br>• Declare `target_table` (or `clear_tables` if it writes several) so clear/rebuild and size reporting stop guessing from `count_sql`.<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 4 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Interruption stops costing up to 6.4h of committed work.<br>• A partial build can no longer be promoted to green. |
 
@@ -1756,12 +1928,16 @@ cannot disagree.
 **What:** Per-graha sensitive-degree facts (LCA-10): mrityu-bhaga, neecha-bhanga, kartari, sarvatobhadra-vedha, khareshwara (22nd drekkana + 64th navamsa), pushkara-bhaga  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 275 / 275 / 275 · median 22s, worst 56s · 60.0% of 25 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 0 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{aya}` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 0 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{aya}` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 22s · **p90:** 44s · **worst:** 56s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `exactly one row per (chart_id, fact_key) across build_ids; verification_pass_status populated`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Verification tier: 80.7% of native chart_facts are `single` (unverified). Add a second derivation path for this writer's fact categories so rows earn `two_pass_verified`; emit tiers only via `verification_vocab` constants.<br>• Accretion guard: 15 fact_keys already exist under two build_ids on the native chart. Make the delete-then-insert scope (chart_id × this writer's fact_keys) explicit and assert single-row-per-key in the integrity check. |
-| Rebuild time | • Has a substep plan (`ayanamsha_{aya}`) but runs in 22s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Fast (median 22s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Has a substep plan (`ayanamsha_{aya}`) but runs in 22s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 22s · p90 44s · worst 56s · 25 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • `has_substeps` is false in the registry while the writer plans substeps: derive the flag from the writer class (Phase 0.6a). Until then the §N.8 completeness gate is silently disabled for this asset.<br>• Layer position: set `layer_index = L1`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• `chart_facts` has 5 co-writers: declare this writer's natural-key partition in the registry so the (table × generation × partition) uniqueness invariant is checkable (§3.3).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• Facts move from `single` toward `two_pass_verified`; downstream narration inherits a verified base.<br>• A partial build can no longer be promoted to green. |
 
@@ -1770,12 +1946,16 @@ cannot disagree.
 **What:** GA8 T1 structural layer: aspects (Parāśarī + Jaimini + Tājik), yogas, doshas, graha avasthās, argala/virodha-argala, dispositor chains, composite states, kāraka  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 98,542 / 98,662 / 98,446 (floor 77,821) · median 2m, worst 38m · 40.6% of 128 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 3 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{id}` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 3 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{id}` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 2m · **p90:** 3m · **worst:** 38m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Has a substep plan (`ayanamsha_{id}`) but runs in 2m — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Median 2m: output digest + early cutoff first; profile only if it stays on the critical path after Phase 5's edge audit.<br>• Fan-out 6: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 6 dependants.<br>• Only 40.6% of 128 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • Has a substep plan (`ayanamsha_{id}`) but runs in 2m — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Fan-out 6: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 6 dependants.<br>• Only 40.6% of 128 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 2m · p90 3m · worst 38m · 128 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • `has_substeps` is false in the registry while the writer plans substeps: derive the flag from the writer class (Phase 0.6a). Until then the §N.8 completeness gate is silently disabled for this asset.<br>• Declare `target_table` (or `clear_tables` if it writes several) so clear/rebuild and size reporting stop guessing from `count_sql`.<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 6 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 40.6% as transient failures self-heal.<br>• A partial build can no longer be promoted to green. |
 
@@ -1784,12 +1964,16 @@ cannot disagree.
 **What:** Judgment layer over ga_structural: functional-lordship valence pass, varga-ratification matrix + divergence signals, continuous varga-consistency index, and lev  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 8,249 / 8,247 / 8,240 · median 30s, worst 36m · 25.7% of 70 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 0 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{a}` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 0 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{a}` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 30s · **p90:** 15m · **worst:** 36m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • No resume today — a 36m run is lost entirely on interruption. Adopt the shared `ResumableWriter` mixin (Phase 4) so committed substeps survive.<br>• Partition key `ayanamsha_{a}`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal.<br>• Only 25.7% of 70 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • No resume today — a 36m run is lost entirely on interruption. Adopt the shared `ResumableWriter` mixin (Phase 4) so committed substeps survive.<br>• Partition key `ayanamsha_{a}`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal.<br>• Only 25.7% of 70 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 30s · p90 15m · worst 36m · 70 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 names this among the ten heavy assets where the efficiency pass concentrates. |
 | Re-architecture & alignment | • Layer position: set `layer_index = L1`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 10 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Interruption stops costing up to 36m of committed work.<br>• Completion rate rises from 25.7% as transient failures self-heal. |
 
@@ -1798,12 +1982,16 @@ cannot disagree.
 **What:** Vimshottari dasha timeline: MD × AD × PD rows per ayanamsha  
 **Now:** native lit · abhinandan lit · chart3 incomplete · rows 483,859 / 471,767 / 505,348 (floor 536,471) · median 10m, worst 89m · 46.3% of 121 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `{system}:{aya}` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `{system}:{aya}` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 10m · **p90:** 48m · **worst:** 89m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Below floor: 483,859 of 536,471 (90%). Either the floor is stale (re-measure and reset) or the build is incomplete — decide explicitly, never let the gap sit. |
-| Rebuild time | • No resume today — a 89m run is lost entirely on interruption. Adopt the shared `ResumableWriter` mixin (Phase 4) so committed substeps survive.<br>• Partition key `{system}:{aya}`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal.<br>• Watchdog: the `NOW()` heartbeat defect reaps long substeps; switch to `clock_timestamp()` before the next full rebuild (Phase 2). Classify transient failures for auto-retry — 46.3% completion today.<br>• Fan-out 13: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 13 dependants.<br>• Only 46.3% of 121 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • No resume today — a 89m run is lost entirely on interruption. Adopt the shared `ResumableWriter` mixin (Phase 4) so committed substeps survive.<br>• Partition key `{system}:{aya}`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal.<br>• Watchdog: the `NOW()` heartbeat defect reaps long substeps; switch to `clock_timestamp()` before the next full rebuild (Phase 2). Classify transient failures for auto-retry — 46.3% completion today.<br>• Fan-out 13: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 13 dependants.<br>• Only 46.3% of 121 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 10m · p90 48m · worst 89m · 121 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 names this among the ten heavy assets where the efficiency pass concentrates. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 13 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Interruption stops costing up to 89m of committed work.<br>• Completion rate rises from 46.3% as transient failures self-heal. |
 
@@ -1812,12 +2000,16 @@ cannot disagree.
 **What:** Natal graha positions per ayanamsha (sidereal/tropical longitude, sign, nakshatra)  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 890 / 890 / 890 (floor 50) · median 4s, p90 58s (recorded worst 406.1h is an unclosed-run artefact — D-13) · 81.8% of 66 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 4s · **p90:** 58s · **worst:** 406.1h · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it. p50/p90 read from telemetry flagged POLLUTED (D-13, unclosed run rows).*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `exactly one row per (chart_id, fact_key) across build_ids; verification_pass_status populated`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Verification tier: 80.7% of native chart_facts are `single` (unverified). Add a second derivation path for this writer's fact categories so rows earn `two_pass_verified`; emit tiers only via `verification_vocab` constants.<br>• Accretion guard: 15 fact_keys already exist under two build_ids on the native chart. Make the delete-then-insert scope (chart_id × this writer's fact_keys) explicit and assert single-row-per-key in the integrity check. |
-| Rebuild time | • Fast (median 4s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Fan-out 30: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 30 dependants. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Fan-out 30: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 30 dependants.<br>• **Not profiled.** Measured baseline only: p50 4s · p90 58s · recorded worst 406.1h is a D-13 unclosed-run artefact · 66 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • `chart_facts` has 5 co-writers: declare this writer's natural-key partition in the registry so the (table × generation × partition) uniqueness invariant is checkable (§3.3).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 30 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Facts move from `single` toward `two_pass_verified`; downstream narration inherits a verified base. |
 
@@ -1826,12 +2018,16 @@ cannot disagree.
 **What:** Saturn transit-over-natal-Moon Sade Sati + Dhaiya window calculations per ayanamsha  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 6,287 / 6,280 / 6,120 (floor 11,019) · median 71s, p90 9m (recorded worst 105.2h is an unclosed-run artefact — D-13) · 40.2% of 127 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 4 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 4 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 71s · **p90:** 9m · **worst:** 105.2h · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it. p50/p90 read from telemetry flagged POLLUTED (D-13, unclosed run rows).*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Below floor: 6,287 of 11,019 (57%). Either the floor is stale (re-measure and reset) or the build is incomplete — decide explicitly, never let the gap sit. |
-| Rebuild time | • Median 71s: output digest + early cutoff first; profile only if it stays on the critical path after Phase 5's edge audit.<br>• Only 40.2% of 127 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 40.2% of 127 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 71s · p90 9m · recorded worst 105.2h is a D-13 unclosed-run artefact · 127 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Declare `target_table` (or `clear_tables` if it writes several) so clear/rebuild and size reporting stop guessing from `count_sql`.<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 40.2% as transient failures self-heal. |
 
@@ -1840,12 +2036,16 @@ cannot disagree.
 **What:** Shadbala, ashtakavarga, and bhava bala per ayanamsha  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 13,621 / 13,621 / 13,621 (floor 11,936) · median 2m, worst 13.1h · 65.3% of 75 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 2 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 2 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 2m · **p90:** 5m · **worst:** 13.1h · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Single-shot writer (no substep plan) with p90 5m: add a `plan_substeps` partition by ayanamsha so it becomes resumable and receipt-bearing; until then any interruption is a total loss.<br>• Watchdog: the `NOW()` heartbeat defect reaps long substeps; switch to `clock_timestamp()` before the next full rebuild (Phase 2). Classify transient failures for auto-retry — 65.3% completion today.<br>• Fan-out 5: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 5 dependants. |
+| Rebuild time | • Single-shot writer (no substep plan) with p90 5m: add a `plan_substeps` partition by ayanamsha so it becomes resumable and receipt-bearing; until then any interruption is a total loss.<br>• Watchdog: the `NOW()` heartbeat defect reaps long substeps; switch to `clock_timestamp()` before the next full rebuild (Phase 2). Classify transient failures for auto-retry — 65.3% completion today.<br>• Fan-out 5: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 5 dependants.<br>• **Not profiled.** Measured baseline only: p50 2m · p90 5m · worst 13.1h · 75 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 names this among the ten heavy assets where the efficiency pass concentrates. |
 | Re-architecture & alignment | • Declare `target_table` (or `clear_tables` if it writes several) so clear/rebuild and size reporting stop guessing from `count_sql`.<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 5 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Interruption stops costing up to 13.1h of committed work. |
 
@@ -1854,12 +2054,16 @@ cannot disagree.
 **What:** Natal panchanga (tithi, vara, nakshatra, yoga, karana) per ayanamsha  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 437 / 417 / 415 (floor 221) · median 3s, worst 56s · 74.6% of 67 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 3s · **p90:** 43s · **worst:** 56s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `exactly one row per (chart_id, fact_key) across build_ids; verification_pass_status populated`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Verification tier: 80.7% of native chart_facts are `single` (unverified). Add a second derivation path for this writer's fact categories so rows earn `two_pass_verified`; emit tiers only via `verification_vocab` constants.<br>• Accretion guard: 15 fact_keys already exist under two build_ids on the native chart. Make the delete-then-insert scope (chart_id × this writer's fact_keys) explicit and assert single-row-per-key in the integrity check. |
-| Rebuild time | • Fast (median 3s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Fan-out 5: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 5 dependants. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Fan-out 5: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 5 dependants.<br>• **Not profiled.** Measured baseline only: p50 3s · p90 43s · worst 56s · 67 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • `chart_facts` has 5 co-writers: declare this writer's natural-key partition in the registry so the (table × generation × partition) uniqueness invariant is checkable (§3.3).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 5 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Facts move from `single` toward `two_pass_verified`; downstream narration inherits a verified base. |
 
@@ -1868,12 +2072,16 @@ cannot disagree.
 **What:** D1–D60 divisional chart positions per ayanamsha  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 23,542 / 23,542 / 23,542 (floor 22,092) · median 2m, worst 59m · 69.6% of 69 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 2m · **p90:** 10m · **worst:** 59m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • No resume today — a 59m run is lost entirely on interruption. Adopt the shared `ResumableWriter` mixin (Phase 4) so committed substeps survive.<br>• Partition key `ayanamsha`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal.<br>• Fan-out 6: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 6 dependants. |
+| Rebuild time | • No resume today — a 59m run is lost entirely on interruption. Adopt the shared `ResumableWriter` mixin (Phase 4) so committed substeps survive.<br>• Partition key `ayanamsha`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal.<br>• Fan-out 6: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 6 dependants.<br>• **Not profiled.** Measured baseline only: p50 2m · p90 10m · worst 59m · 69 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 names this among the ten heavy assets where the efficiency pass concentrates. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 6 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Interruption stops costing up to 59m of committed work. |
 
@@ -1882,12 +2090,16 @@ cannot disagree.
 **What:** Unified dignity, avastha (baladi/jagradadi/deeptaadi/lajjitaadi/sayanadi), motion state, combustion, naisargika/tatkalika/panchadha friendship, graha yuddha, an  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 2,880 / 2,895 / 2,880 (floor 2,880) · median 29s, worst 5m · 50.5% of 101 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 2 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{id}` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 2 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{id}` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 29s · **p90:** 4m · **worst:** 5m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Has a substep plan (`ayanamsha_{id}`) but runs in 29s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Fast (median 29s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Has a substep plan (`ayanamsha_{id}`) but runs in 29s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 29s · p90 4m · worst 5m · 101 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 4 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1896,12 +2108,16 @@ cannot disagree.
 **What:** Per-chart Ayurvedic Jyotish indication summary: dosha aggravation, organ watch, body-part watch, and indication_strength derived from ga_condition condition_sco  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 45 / 45 / 45 (floor 45) · median 1s, worst 10s · 66.7% of 75 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 3 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{aya}` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 3 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{aya}` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 7s · **worst:** 10s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Has a substep plan (`ayanamsha_{aya}`) but runs in 1s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Has a substep plan (`ayanamsha_{aya}`) but runs in 1s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 7s · worst 10s · 75 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1910,12 +2126,16 @@ cannot disagree.
 **What:** Per-prashna-chart horary judgment: Prashna-Lagna by each method, querent/quesited significators, Tajik Ithasala/Eesarpha analysis, and fructification timing  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 0 / 0 / 0 · median 1s, worst 6s · 77.0% of 61 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{id}` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{id}` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 4s · **worst:** 6s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• **Unearned `lit`:** throughput says lit on 3 chart(s) while the table holds zero rows — a live §N.8 specimen. The integrity gate (§4.1) must fail this; then decide: empty by design (record in `volume_explanation`, floor 0) or never built (rebuild). |
-| Rebuild time | • Has a substep plan (`ayanamsha_{id}`) but runs in 1s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Has a substep plan (`ayanamsha_{id}`) but runs in 1s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 4s · worst 6s · 61 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1924,12 +2144,16 @@ cannot disagree.
 **What:** Vārṣaphal annual chart per varsha (solar-return year): Muntha position, Vārṣeśa (year-lord) by tajik_classical + panchavargiya methods with candidate scoring, a  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 240 / 235 / 305 (floor 240) · median 14s, worst 54s · 63.4% of 82 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 2 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 2 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 14s · **p90:** 34s · **worst:** 54s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Fast (median 14s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 14s · p90 34s · worst 54s · 82 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -1938,12 +2162,16 @@ cannot disagree.
 **What:** Natal position anchors for Gochara (transit) analysis: stores each graha's natal sign, natal degree absolute, and house-from-Moon for each ayanamsha  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 45 / 45 / 45 (floor 45) · median 1s, worst 13s · 77.0% of 61 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{aya}` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{aya}` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 8s · **worst:** 13s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Has a substep plan (`ayanamsha_{aya}`) but runs in 1s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Has a substep plan (`ayanamsha_{aya}`) but runs in 1s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 8s · worst 13s · 61 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1952,12 +2180,16 @@ cannot disagree.
 **What:** Maps each classical graha to its ruling Vastu direction (per bg_vastu_directions) and computes direction_impact (weakened / neutral / strengthened) using condit  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 40 / 40 / 40 (floor 40) · median 1s, worst 14s · 66.7% of 75 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 3 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{id}` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 3 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{id}` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 7s · **worst:** 14s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Has a substep plan (`ayanamsha_{id}`) but runs in 1s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Has a substep plan (`ayanamsha_{id}`) but runs in 1s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 7s · worst 14s · 75 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1966,12 +2198,16 @@ cannot disagree.
 **What:** Per-chart yoga firing table: evaluates classical Nabhasa and other yoga formation rules against L1 chart_facts  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 63 / 69 / 80 (floor 5) · median 6s, worst 36m · 42.5% of 120 attempts complete
 
-**domain:** chart · **rung:** R1 · **within-rung wave:** 4 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{a}` · **timeout source:** registered
+**domain:** chart · **rung:** R1 · **within-rung wave:** 4 · **continuation class:** resumable-substep · **rehearsal partition:** `ayanamsha_{a}` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 6s · **p90:** 22s · **worst:** 36m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Has a substep plan (`ayanamsha_{a}`) but runs in 6s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Fast (median 6s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 42.5% of 120 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • Has a substep plan (`ayanamsha_{a}`) but runs in 6s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 42.5% of 120 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 6s · p90 22s · worst 36m · 120 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 42.5% as transient failures self-heal. |
 
@@ -1985,12 +2221,16 @@ cannot disagree.
 **What:** Arudha Lagna bhava-relation, AL conjunctions, and A2/A11 (dhana/labha arudha) tenancy — pure L2 derivation over existing ga_structural/ga_positions facts; emits  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 25 / 24 / 20 (floor 15) · median 1s, worst 8s · 68.4% of 19 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 7s · **worst:** 8s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `every constituent_facts_array id resolves to chart_facts.fact_id (§N.5); one row per signal_id per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• §N.5: every signal must reference L1 `fact_id`s, never restate values — keep the constituent-facts resolution check (100% on sample today) as a blocking integrity gate. Declare this writer's natural-key partition of the shared table so co-writers cannot overwrite each other. |
-| Rebuild time | • Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 7s · worst 8s · 19 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Layer position: set `layer_index = L2`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 36 serving surface(s), so it is authoritative in practice.<br>• `bodha_msr_signals` has 7 co-writers: declare this writer's natural-key partition in the registry so the (table × generation × partition) uniqueness invariant is checkable (§3.3). |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -1999,12 +2239,16 @@ cannot disagree.
 **What:** Per-chart cross-domain linkage strength summary aggregated from bodha_cdlm_cells  
 **Now:** native lit · abhinandan lit · chart3 stale · rows 5 / 5 / 5 (floor 1) · median 1s, worst 17s · 53.1% of 81 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 10s · **worst:** 17s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• §N.7 narration fidelity: every sentence restates a cited fact_id it reads, never re-derives; add a golden-value test for the narration layer (verified fact ≠ verified prose). |
-| Rebuild time | • Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 10s · worst 17s · 81 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Layer position: set `layer_index = L2`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Declare `target_table` (or `clear_tables` if it writes several) so clear/rebuild and size reporting stop guessing from `count_sql`. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -2013,12 +2257,16 @@ cannot disagree.
 **What:** Recurring structural patterns detected over the CGM graph: mutual reception, stellium, parivartana chains  
 **Now:** native lit · abhinandan lit · chart3 stale · rows 600 / 606 / 605 · median 3s, worst 2m · 37.4% of 123 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 3s · **p90:** 66s · **worst:** 2m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Fast (median 3s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 37.4% of 123 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 37.4% of 123 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 3s · p90 66s · worst 2m · 123 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Layer position: set `layer_index = L2`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 2 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 37.4% as transient failures self-heal. |
 
@@ -2027,12 +2275,16 @@ cannot disagree.
 **What:** Dispositor chain paths and structural path analysis over CGM graph  
 **Now:** native lit · abhinandan lit · chart3 stale · rows 45 / 45 / 45 (floor 9) · median 2s, worst 20m · 56.2% of 80 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 2s · **p90:** 10s · **worst:** 20m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Fast (median 2s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 2s · p90 10s · worst 20m · 80 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Layer position: set `layer_index = L2`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 3 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -2041,12 +2293,16 @@ cannot disagree.
 **What:** Per-chart gestalt: defining threads, central dynamics, domain verdict map, zoom spine — pointer-only, no verdicts stored  
 **Now:** native lit · abhinandan lit · chart3 stale · rows 5 / 5 / 5 (floor 1) · median 2s, worst 53s · 40.0% of 95 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 2s · **p90:** 9s · **worst:** 53s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• §N.7 narration fidelity: every sentence restates a cited fact_id it reads, never re-derives; add a golden-value test for the narration layer (verified fact ≠ verified prose). |
-| Rebuild time | • Fast (median 2s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 40.0% of 95 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 12: sits in the serial tail. Audit its 5 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 40.0% of 95 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 12: sits in the serial tail. Audit its 5 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 2s · p90 9s · worst 53s · 95 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Layer position: set `layer_index = L2`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Declare `target_table` (or `clear_tables` if it writes several) so clear/rebuild and size reporting stop guessing from `count_sql`. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• Completion rate rises from 40.0% as transient failures self-heal. |
 
@@ -2055,12 +2311,16 @@ cannot disagree.
 **What:** MARSYS Signal Register — grounded signals derived from exhaustive L1 structural enumeration (ga_structural) × L1 chart_facts; primary table bodha_msr_signals  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 49,955 / 50,021 / 49,730 (floor 60,000) · median 3m, worst 19.2h · 41.2% of 136 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** resumable-substep · **rehearsal partition:** `aya_{ayanamsha}` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** resumable-substep · **rehearsal partition:** `aya_{ayanamsha}` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 3m · **p90:** 21m · **worst:** 19.2h · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `every constituent_facts_array id resolves to chart_facts.fact_id (§N.5); one row per signal_id per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Below floor: 49,955 of 60,000 (83%). Either the floor is stale (re-measure and reset) or the build is incomplete — decide explicitly, never let the gap sit.<br>• §N.5: every signal must reference L1 `fact_id`s, never restate values — keep the constituent-facts resolution check (100% on sample today) as a blocking integrity gate. Declare this writer's natural-key partition of the shared table so co-writers cannot overwrite each other. |
-| Rebuild time | • No resume today — a 19.2h run is lost entirely on interruption. Adopt the shared `ResumableWriter` mixin (Phase 4) so committed substeps survive.<br>• Partition key `aya_{ayanamsha}`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal.<br>• Watchdog: the `NOW()` heartbeat defect reaps long substeps; switch to `clock_timestamp()` before the next full rebuild (Phase 2). Classify transient failures for auto-retry — 41.2% completion today.<br>• Fan-out 20: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 20 dependants.<br>• Only 41.2% of 136 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • No resume today — a 19.2h run is lost entirely on interruption. Adopt the shared `ResumableWriter` mixin (Phase 4) so committed substeps survive.<br>• Partition key `aya_{ayanamsha}`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal.<br>• Watchdog: the `NOW()` heartbeat defect reaps long substeps; switch to `clock_timestamp()` before the next full rebuild (Phase 2). Classify transient failures for auto-retry — 41.2% completion today.<br>• Fan-out 20: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 20 dependants.<br>• Only 41.2% of 136 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 3m · p90 21m · worst 19.2h · 136 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 names this among the ten heavy assets where the efficiency pass concentrates. |
 | Re-architecture & alignment | • `has_substeps` is false in the registry while the writer plans substeps: derive the flag from the writer class (Phase 0.6a). Until then the §N.8 completeness gate is silently disabled for this asset.<br>• `bodha_msr_signals` has 7 co-writers: declare this writer's natural-key partition in the registry so the (table × generation × partition) uniqueness invariant is checkable (§3.3).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 20 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Interruption stops costing up to 19.2h of committed work.<br>• Completion rate rises from 41.2% as transient failures self-heal.<br>• A partial build can no longer be promoted to green. |
 
@@ -2069,12 +2329,16 @@ cannot disagree.
 **What:** Post-CGM structural re-rank pass: writes real CGM centrality (pagerank/eigenvector/betweenness/harmonic) onto each MSR signal's graph_node_strength_contribution  
 **Now:** native lit · abhinandan lit · chart3 stale · rows 10,824 / 10,868 / 100 (floor 1) · median 4m, worst 21m · 63.6% of 22 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** resumable-substep · **rehearsal partition:** `aya_{ayanamsha}` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** resumable-substep · **rehearsal partition:** `aya_{ayanamsha}` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** 4m · **p90:** 20m · **worst:** 21m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `every constituent_facts_array id resolves to chart_facts.fact_id (§N.5); one row per signal_id per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• §N.5: every signal must reference L1 `fact_id`s, never restate values — keep the constituent-facts resolution check (100% on sample today) as a blocking integrity gate. Declare this writer's natural-key partition of the shared table so co-writers cannot overwrite each other. |
-| Rebuild time | • No resume today — a 21m run is lost entirely on interruption. Adopt the shared `ResumableWriter` mixin (Phase 4) so committed substeps survive.<br>• Partition key `aya_{ayanamsha}`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal. |
+| Rebuild time | • No resume today — a 21m run is lost entirely on interruption. Adopt the shared `ResumableWriter` mixin (Phase 4) so committed substeps survive.<br>• Partition key `aya_{ayanamsha}`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal.<br>• **Not profiled.** Measured baseline only: p50 4m · p90 20m · worst 21m · 22 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 names this among the ten heavy assets where the efficiency pass concentrates. |
 | Re-architecture & alignment | • `has_substeps` is false in the registry while the writer plans substeps: derive the flag from the writer class (Phase 0.6a). Until then the §N.8 completeness gate is silently disabled for this asset.<br>• Layer position: set `layer_index = L2`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 36 serving surface(s), so it is authoritative in practice.<br>• `bodha_msr_signals` has 7 co-writers: declare this writer's natural-key partition in the registry so the (table × generation × partition) uniqueness invariant is checkable (§3.3). |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• Interruption stops costing up to 21m of committed work.<br>• A partial build can no longer be promoted to green. |
 
@@ -2083,12 +2347,16 @@ cannot disagree.
 **What:** Own-star identity, dispositor chain, tara bala, and gandanta/end-degree flagging per graha — pure L2 derivation over existing ga_positions/ga_nakshatra facts; e  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 45 / 45 / 45 (floor 45) · median 1s, worst 12s · 82.4% of 17 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 10s · **worst:** 12s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `every constituent_facts_array id resolves to chart_facts.fact_id (§N.5); one row per signal_id per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• §N.5: every signal must reference L1 `fact_id`s, never restate values — keep the constituent-facts resolution check (100% on sample today) as a blocking integrity gate. Declare this writer's natural-key partition of the shared table so co-writers cannot overwrite each other. |
-| Rebuild time | • Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 10s · worst 12s · 17 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Layer position: set `layer_index = L2`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 36 serving surface(s), so it is authoritative in practice.<br>• `bodha_msr_signals` has 7 co-writers: declare this writer's natural-key partition in the registry so the (table × generation × partition) uniqueness invariant is checkable (§3.3). |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -2097,12 +2365,16 @@ cannot disagree.
 **What:** Vertex AI 768-dim vector embeddings — one per MSR signal  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 50,104 / 50,102 / 49,875 (floor 60,000) · median 13m, worst 2.6h · 43.7% of 103 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `aya_{ayanamsha}` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `aya_{ayanamsha}` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 13m · **p90:** 25m · **worst:** 2.6h · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Below floor: 50,104 of 60,000 (84%). Either the floor is stale (re-measure and reset) or the build is incomplete — decide explicitly, never let the gap sit.<br>• Embeddings are a deterministic transform (permitted). Pin the model id + dimension in the output digest so a model change invalidates correctly. |
-| Rebuild time | • No resume today — a 2.6h run is lost entirely on interruption. Adopt the shared `ResumableWriter` mixin (Phase 4) so committed substeps survive.<br>• Partition key `aya_{ayanamsha}`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal.<br>• Watchdog: the `NOW()` heartbeat defect reaps long substeps; switch to `clock_timestamp()` before the next full rebuild (Phase 2). Classify transient failures for auto-retry — 43.7% completion today.<br>• Only 43.7% of 103 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • No resume today — a 2.6h run is lost entirely on interruption. Adopt the shared `ResumableWriter` mixin (Phase 4) so committed substeps survive.<br>• Partition key `aya_{ayanamsha}`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal.<br>• Watchdog: the `NOW()` heartbeat defect reaps long substeps; switch to `clock_timestamp()` before the next full rebuild (Phase 2). Classify transient failures for auto-retry — 43.7% completion today.<br>• Only 43.7% of 103 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 13m · p90 25m · worst 2.6h · 103 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 names this among the ten heavy assets where the efficiency pass concentrates. |
 | Re-architecture & alignment | • `has_substeps` is false in the registry while the writer plans substeps: derive the flag from the writer class (Phase 0.6a). Until then the §N.8 completeness gate is silently disabled for this asset.<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 3 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Interruption stops costing up to 2.6h of committed work.<br>• Completion rate rises from 43.7% as transient failures self-heal.<br>• A partial build can no longer be promoted to green. |
 
@@ -2111,12 +2383,16 @@ cannot disagree.
 **What:** Domain-scoped corroboration from the four canonical special/upapada lagnas (Indu, Sree, Ghati, Hora) — pure L2 derivation over existing ga_sensitive facts; emit  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 20 / 20 / 20 (floor 20) · median 0s, worst 9s · 68.8% of 16 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 4s · **worst:** 9s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `every constituent_facts_array id resolves to chart_facts.fact_id (§N.5); one row per signal_id per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• §N.5: every signal must reference L1 `fact_id`s, never restate values — keep the constituent-facts resolution check (100% on sample today) as a blocking integrity gate. Declare this writer's natural-key partition of the shared table so co-writers cannot overwrite each other. |
-| Rebuild time | • Fast (median 0s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 0s · p90 4s · worst 9s · 16 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Layer position: set `layer_index = L2`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 36 serving surface(s), so it is authoritative in practice.<br>• `bodha_msr_signals` has 7 co-writers: declare this writer's natural-key partition in the registry so the (table × generation × partition) uniqueness invariant is checkable (§3.3). |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -2125,12 +2401,16 @@ cannot disagree.
 **What:** Tri-frame (Lagna/Chandra/Sūrya) house assignment per graha — pure L2 derivation over existing ga_positions facts; emits sudarshana_agreement MSR signals (confir  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 45 / 45 / 45 (floor 45) · median 1s, worst 10s · 78.6% of 14 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 10s · **worst:** 10s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `every constituent_facts_array id resolves to chart_facts.fact_id (§N.5); one row per signal_id per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• §N.5: every signal must reference L1 `fact_id`s, never restate values — keep the constituent-facts resolution check (100% on sample today) as a blocking integrity gate. Declare this writer's natural-key partition of the shared table so co-writers cannot overwrite each other. |
-| Rebuild time | • Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 10s · worst 10s · 14 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Layer position: set `layer_index = L2`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 36 serving surface(s), so it is authoritative in practice.<br>• `bodha_msr_signals` has 7 co-writers: declare this writer's natural-key partition in the registry so the (table × generation × partition) uniqueness invariant is checkable (§3.3). |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -2139,12 +2419,16 @@ cannot disagree.
 **What:** Cross-frame (D1/D9) vargottama confirmation and complete 2nd/11th-house (dhana/labha) tenancy analysis — pure L2 derivation over existing ga_vargas/ga_positions  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 14 / 16 / 15 (floor 10) · median 1s, worst 8s · 80.0% of 15 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 7s · **worst:** 8s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `every constituent_facts_array id resolves to chart_facts.fact_id (§N.5); one row per signal_id per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• §N.5: every signal must reference L1 `fact_id`s, never restate values — keep the constituent-facts resolution check (100% on sample today) as a blocking integrity gate. Declare this writer's natural-key partition of the shared table so co-writers cannot overwrite each other. |
-| Rebuild time | • Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 7s · worst 8s · 15 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Layer position: set `layer_index = L2`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 36 serving surface(s), so it is authoritative in practice.<br>• `bodha_msr_signals` has 7 co-writers: declare this writer's natural-key partition in the registry so the (table × generation × partition) uniqueness invariant is checkable (§3.3). |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -2153,12 +2437,16 @@ cannot disagree.
 **What:** Named, valenced CGM subgraph — promotes CGM motifs + dispositor/house-lordship chain-and-circuit detection into first-class mechanisms with real edge-strength p  
 **Now:** native lit · abhinandan lit · chart3 stale · rows 615 / 633 / 620 (floor 1) · median 13s, worst 2m · 68.2% of 22 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** 13s · **p90:** 2m · **worst:** 2m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Fast (median 13s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 13s · p90 2m · worst 2m · 22 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Layer position: set `layer_index = L2`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 8 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -2167,12 +2455,16 @@ cannot disagree.
 **What:** CGM node registry — one node per signal; carries composite_centrality, pagerank, betweenness, VECTOR(768) embedding and igraph-computed metrics  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 385 / 356 / 360 (floor 140) · median 16s, worst 73s · 40.5% of 126 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 16s · **p90:** 38s · **worst:** 73s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Fast (median 16s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Fan-out 8: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 8 dependants.<br>• Only 40.5% of 126 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Fan-out 8: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 8 dependants.<br>• Only 40.5% of 126 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 16s · p90 38s · worst 73s · 126 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 8 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 40.5% as transient failures self-heal. |
 
@@ -2181,12 +2473,16 @@ cannot disagree.
 **What:** Causal Graph Model — valenced directed edges between CGM nodes; pre-computed igraph metrics stored as flat columns  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 849 / 838 / 830 (floor 300) · median 18s, worst 18m · 40.9% of 127 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 2 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 2 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 18s · **p90:** 2m · **worst:** 18m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Fast (median 18s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Fan-out 10: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 10 dependants.<br>• Only 40.9% of 127 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Fan-out 10: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 10 dependants.<br>• Only 40.9% of 127 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 18s · p90 2m · worst 18m · 127 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 10 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 40.9% as transient failures self-heal. |
 
@@ -2195,12 +2491,16 @@ cannot disagree.
 **What:** Per-event-class promise registry: promised/denied/conditional verdicts with grade, supporting and contradicting signal IDs, varga confirmation, derivation audit  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 135 / 135 / 135 · median 16s, worst 71s · 37.3% of 118 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 16s · **p90:** 36s · **worst:** 71s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Fast (median 16s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Fan-out 5: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 5 dependants.<br>• Only 37.3% of 118 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Fan-out 5: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 5 dependants.<br>• Only 37.3% of 118 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 16s · p90 36s · worst 71s · 118 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Layer position: set `layer_index = L2`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 5 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 37.3% as transient failures self-heal. |
 
@@ -2209,12 +2509,16 @@ cannot disagree.
 **What:** Cross-Domain Linkage Matrix — computed_linkage cells, domain rollups, pattern clusters, evolution gradients; primary table bodha_cdlm_cells  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 280 / 75 / 75 (floor 70) · median 12s, worst 25m · 39.7% of 126 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 3 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 3 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 12s · **p90:** 35s · **worst:** 25m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Cross-chart asymmetry (280 vs 75): confirm it is chart-driven, not a partial build on one chart. |
-| Rebuild time | • Fast (median 12s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Fan-out 12: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 12 dependants.<br>• Only 39.7% of 126 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Fan-out 12: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 12 dependants.<br>• Only 39.7% of 126 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 12s · p90 35s · worst 25m · 126 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 12 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 39.7% as transient failures self-heal. |
 
@@ -2223,12 +2527,16 @@ cannot disagree.
 **What:** Discovery engine: non-obviousness + graph-mining + embedding outliers + bodha_discoveries + anomalies.  
 **Now:** native lit · abhinandan lit · chart3 stale · rows 3,774 / 4,909 / 5,222 (floor 500) · median 31s, worst 9m · 41.6% of 101 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 5 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 5 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 31s · **p90:** 3m · **worst:** 9m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Fast (median 31s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 41.6% of 101 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 41.6% of 101 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 31s · p90 3m · worst 9m · 101 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 3 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 41.6% as transient failures self-heal. |
 
@@ -2237,12 +2545,16 @@ cannot disagree.
 **What:** Question-lens table: template + wildcard graph-sweep + ranks-never-caps, per question domain.  
 **Now:** native lit · abhinandan lit · chart3 stale · rows 60 / 60 / 60 (floor 60) · median 2m, worst 15m · 55.3% of 85 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 4 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 4 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 2m · **p90:** 3m · **worst:** 15m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Median 2m: output digest + early cutoff first; profile only if it stays on the critical path after Phase 5's edge audit. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 2m · p90 3m · worst 15m · 85 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 2 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -2251,12 +2563,16 @@ cannot disagree.
 **What:** Per-build synthesis quality scorecard — citation density, whole-chart coverage, derivation compliance, layer separation score; keyed by (chart_id, build_id)  
 **Now:** native stale · abhinandan lit · chart3 error · rows 1 / 1 / 1 (floor 1) · median 4s, worst 28s · 42.2% of 102 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 6 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 6 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 4s · **p90:** 19s · **worst:** 28s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Fast (median 4s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 42.2% of 102 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 12: sits in the serial tail. Audit its 8 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 42.2% of 102 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 12: sits in the serial tail. Audit its 8 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 4s · p90 19s · worst 28s · 102 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 42.2% as transient failures self-heal. |
 
@@ -2265,12 +2581,16 @@ cannot disagree.
 **What:** UCD — read-side conceptual digest (join of A8/A11/A12/A13 chart_summaries via vw_chart_digest + query_ucd)  
 **Now:** native stale · abhinandan lit · chart3 error · rows 5 / 5 / 5 (floor 5) · median 0s, worst 2s · 42.6% of 101 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 7 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 7 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 2s · **worst:** 2s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• §N.7 narration fidelity: every sentence restates a cited fact_id it reads, never re-derives; add a golden-value test for the narration layer (verified fact ≠ verified prose). |
-| Rebuild time | • Fast (median 0s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 42.6% of 101 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 13: sits in the serial tail. Audit its 5 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 42.6% of 101 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 13: sits in the serial tail. Audit its 5 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 0s · p90 2s · worst 2s · 101 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• Completion rate rises from 42.6% as transient failures self-heal. |
 
@@ -2279,12 +2599,16 @@ cannot disagree.
 **What:** Remediation Map — ALL 6 RM tables; primary table bodha_rm_resonances (resonance targets that remedies key off) + bodha_rm_remedy_prescriptions + 4 ancillary tab  
 **Now:** native lit · abhinandan lit · chart3 error · rows 180 / 180 / 180 (floor 180) · median 9s, worst 17m · 38.9% of 131 attempts complete
 
-**domain:** chart · **rung:** R2 · **within-rung wave:** 4 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R2 · **within-rung wave:** 4 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 9s · **p90:** 68s · **worst:** 17m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Fast (median 9s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 38.9% of 131 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 38.9% of 131 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 9s · p90 68s · worst 17m · 131 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 4 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 38.9% as transient failures self-heal. |
 
@@ -2298,12 +2622,16 @@ cannot disagree.
 **What:** Probabilistic forward projections (3-year horizon)  
 **Now:** native lit · abhinandan lit · chart3 error · rows 100 / 100 / 0 · median 0s, worst 2s · 37.8% of 127 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 5 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 5 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 2s · **worst:** 2s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 100 (achieved on native; floors are aspirational, never fabricated — §N.4).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject.<br>• Derivation ledger: 4 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it.<br>• §N.7 narration fidelity: every sentence restates a cited fact_id it reads, never re-derives; add a golden-value test for the narration layer (verified fact ≠ verified prose). |
-| Rebuild time | • Fast (median 0s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 37.8% of 127 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 15: sits in the serial tail. Audit its 4 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 37.8% of 127 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 15: sits in the serial tail. Audit its 4 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 0s · p90 2s · worst 2s · 127 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 6 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 37.8% as transient failures self-heal. |
 
@@ -2312,12 +2640,16 @@ cannot disagree.
 **What:** D-5 Lane G-4: birth->birth+100y daily-grid gochara (transit) intensity sweep (lambda_e via G-3's services/gochara_intensity), shape-aware (point/interval/chain   
 **Now:** native error · abhinandan error · chart3 error · rows 16,297 / 19,323 / 2,667 · median 2.1h, worst 35.6h · 9.6% of 94 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** — · **continuation class:** resumable-substep · **rehearsal partition:** `{event_class}:year:{idx}` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** — · **continuation class:** resumable-substep · **rehearsal partition:** `{event_class}:year:{idx}` · **timeout source:** registered *(21600s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 2.1h · **p90:** 6.0h · **worst:** 35.6h · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `one authoritative generation per chart via kala_gochara_authority; no window with end < start`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• RETIRED and unrebuildable: no registered writer. Correctness = the verified 2026-08-23 snapshot; chart 3 still serves these v1 rows (no authority row). Record `data_disposition = RETAINED_AS_CAPITAL`. |
-| Rebuild time | • Has a substep plan (`{event_class}:year:{idx}`) but runs in 2.1h — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Median 2.1h: output digest + early cutoff first; profile only if it stays on the critical path after Phase 5's edge audit.<br>• Only 9.6% of 94 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • Has a substep plan (`{event_class}:year:{idx}`) but runs in 2.1h — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 9.6% of 94 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 2.1h · p90 6.0h · worst 35.6h · 94 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Lifecycle: execute the supported retire operation — clear residual throughput rows, set `superseded_by` and `data_disposition`; never DELETE the registry row (I6).<br>• Generation-bearing: model generation + per-chart authority as first-class registry/UI concepts; one count and one freshness per generation (Phase 2). |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• Completion rate rises from 9.6% as transient failures self-heal. |
 
@@ -2326,7 +2658,11 @@ cannot disagree.
 **What:** Ephemeris-at-T service: sidereal positions for all 9 grahas at any datetime  
 **Now:** service · global state lit · median 0s, worst 2s · 54.2% of 59 attempts complete
 
-**domain:** shared · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** probe-only · **rehearsal partition:** `n/a — service probe` · **timeout source:** registered
+**domain:** shared · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** probe-only · **rehearsal partition:** `n/a — service probe` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 1s · **worst:** 2s · **rows/sec:** null · **bound class:** not-a-build · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: service probe — there is no build to measure (structural). rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
@@ -2340,12 +2676,16 @@ cannot disagree.
 **What:** Life-arc biographical chapter artifact  
 **Now:** native lit · abhinandan lit · chart3 stale · rows 100 / 100 / 109 · median 0s, worst 3s · 36.3% of 124 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 5 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 5 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 2s · **worst:** 3s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 100 (achieved on native; floors are aspirational, never fabricated — §N.4).<br>• Derivation ledger: 5 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it.<br>• §N.7 narration fidelity: every sentence restates a cited fact_id it reads, never re-derives; add a golden-value test for the narration layer (verified fact ≠ verified prose). |
-| Rebuild time | • Fast (median 0s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 36.3% of 124 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 15: sits in the serial tail. Audit its 5 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 36.3% of 124 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 15: sits in the serial tail. Audit its 5 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 0s · p90 2s · worst 3s · 124 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 5 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• Completion rate rises from 36.3% as transient failures self-heal. |
 
@@ -2354,12 +2694,16 @@ cannot disagree.
 **What:** Display-ready temporal view  
 **Now:** native lit · abhinandan lit · chart3 stale · rows 750 / 750 / 0 · median 0s, worst 4s · 39.3% of 122 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 4 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 4 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 3s · **worst:** 4s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 750 (achieved on native; floors are aspirational, never fabricated — §N.4).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject.<br>• §N.7 narration fidelity: every sentence restates a cited fact_id it reads, never re-derives; add a golden-value test for the narration layer (verified fact ≠ verified prose). |
-| Rebuild time | • Fast (median 0s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 39.3% of 122 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 14: sits in the serial tail. Audit its 3 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 39.3% of 122 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 14: sits in the serial tail. Audit its 3 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 0s · p90 3s · worst 4s · 122 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 4 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 3 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 39.3% as transient failures self-heal. |
 
@@ -2368,12 +2712,16 @@ cannot disagree.
 **What:** Bounded activation artifact (1 row per signal×ayanamsha)  
 **Now:** native lit · abhinandan lit · chart3 stale · rows 335,403 / 336,093 / 1,055 · median 33s, worst 41m · 39.8% of 123 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 3 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 3 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 33s · **p90:** 11m · **worst:** 41m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 335,403 (achieved on native; floors are aspirational, never fabricated — §N.4). |
-| Rebuild time | • Fast (median 33s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 39.8% of 123 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 13: sits in the serial tail. Audit its 3 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 39.8% of 123 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 13: sits in the serial tail. Audit its 3 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 33s · p90 11m · worst 41m · 123 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 12 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 2 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 39.8% as transient failures self-heal. |
 
@@ -2382,7 +2730,11 @@ cannot disagree.
 **What:** Deterministic panchāṅga/muhūrta scoring service  
 **Now:** service · global state lit · median 0s, worst 4s · 54.2% of 59 attempts complete
 
-**domain:** shared · **rung:** R3 · **within-rung wave:** 1 · **continuation class:** probe-only · **rehearsal partition:** `n/a — service probe` · **timeout source:** registered
+**domain:** shared · **rung:** R3 · **within-rung wave:** 1 · **continuation class:** probe-only · **rehearsal partition:** `n/a — service probe` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 1s · **worst:** 4s · **rows/sec:** null · **bound class:** not-a-build · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: service probe — there is no build to measure (structural). rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
@@ -2396,12 +2748,16 @@ cannot disagree.
 **What:** Rigor-scored intersection windows (Mode A daśā-prior funnel + Mode B off-daśā sweep)  
 **Now:** native lit · abhinandan lit · chart3 stale · rows 14,868 / 17,957 / 2,540 · median 8m, worst 2.8h · 43.1% of 116 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 2 · **continuation class:** resumable-substep · **rehearsal partition:** `near + lifetime:{i}` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 2 · **continuation class:** resumable-substep · **rehearsal partition:** `near + lifetime:{i}` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 8m · **p90:** 40m · **worst:** 2.8h · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 14,868 (achieved on native; floors are aspirational, never fabricated — §N.4).<br>• Derivation ledger: 10 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it. |
-| Rebuild time | • Private resume copy with a hand-bumped `_RESUME_VERSION`: migrate to the shared mixin and replace the whole-build fingerprint with per-substep INPUT digests, so a mismatch replans only the changed partitions instead of everything.<br>• Partition key `near + lifetime:{i}`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal.<br>• Watchdog: the `NOW()` heartbeat defect reaps long substeps; switch to `clock_timestamp()` before the next full rebuild (Phase 2). Classify transient failures for auto-retry — 43.1% completion today.<br>• Fan-out 11: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 11 dependants.<br>• Only 43.1% of 116 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 12: sits in the serial tail. Audit its 10 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Private resume copy with a hand-bumped `_RESUME_VERSION`: migrate to the shared mixin and replace the whole-build fingerprint with per-substep INPUT digests, so a mismatch replans only the changed partitions instead of everything.<br>• Partition key `near + lifetime:{i}`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal.<br>• Watchdog: the `NOW()` heartbeat defect reaps long substeps; switch to `clock_timestamp()` before the next full rebuild (Phase 2). Classify transient failures for auto-retry — 43.1% completion today.<br>• Fan-out 11: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 11 dependants.<br>• Only 43.1% of 116 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 12: sits in the serial tail. Audit its 10 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 8m · p90 40m · worst 2.8h · 116 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 names this among the ten heavy assets where the efficiency pass concentrates. |
 | Re-architecture & alignment | • `has_substeps` is false in the registry while the writer plans substeps: derive the flag from the writer class (Phase 0.6a). Until then the §N.8 completeness gate is silently disabled for this asset.<br>• Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 4 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 11 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Interruption stops costing up to 2.8h of committed work.<br>• Completion rate rises from 43.1% as transient failures self-heal.<br>• A partial build can no longer be promoted to green. |
 
@@ -2410,12 +2766,16 @@ cannot disagree.
 **What:** Obstruction/counter-indicator detector  
 **Now:** native lit · abhinandan lit · chart3 stale · rows 536 / 741 / 6 · median 14s, worst 32m · 40.2% of 117 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 3 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 3 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 14s · **p90:** 31s · **worst:** 32m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 536 (achieved on native; floors are aspirational, never fabricated — §N.4).<br>• Derivation ledger: 4 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it. |
-| Rebuild time | • Fast (median 14s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Fan-out 5: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 5 dependants.<br>• Only 40.2% of 117 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 13: sits in the serial tail. Audit its 4 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Fan-out 5: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 5 dependants.<br>• Only 40.2% of 117 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 13: sits in the serial tail. Audit its 4 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 14s · p90 31s · worst 32m · 117 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 3 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 5 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 40.2% as transient failures self-heal. |
 
@@ -2424,12 +2784,16 @@ cannot disagree.
 **What:** Classifies each L2 signal into a signature_class, binds the RATIFIED class template, stores concrete activation predicates for ka_sangam/ka_vighnakara to search  
 **Now:** native lit · abhinandan lit · chart3 error · rows 50,104 / 50,171 / 49,875 · median 36s, worst 2m · 49.0% of 104 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 36s · **p90:** 77s · **worst:** 2m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 50,104 (achieved on native; floors are aspirational, never fabricated — §N.4).<br>• Derivation ledger: 7 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it. |
-| Rebuild time | • Fast (median 36s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 49.0% of 104 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 49.0% of 104 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 36s · p90 77s · worst 2m · 104 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 4 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 3 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 49.0% as transient failures self-heal. |
 
@@ -2438,7 +2802,11 @@ cannot disagree.
 **What:** Lazy-pruning tree-walk over chart_dashas (level-4 Sookshma) with cross-system agreement scoring  
 **Now:** service · global state n/a · median 1s, worst 26s · 42.3% of 111 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** probe-only · **rehearsal partition:** `n/a — service probe` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** probe-only · **rehearsal partition:** `n/a — service probe` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 5s · **worst:** 26s · **rows/sec:** null · **bound class:** not-a-build · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: service probe — there is no build to measure (structural). rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
@@ -2452,12 +2820,16 @@ cannot disagree.
 **What:** Primary per-chart gochara window materializer (GOCHARA-UTKARSA)  
 **Now:** native lit · abhinandan lit · chart3 — · rows 943 / 941 / 0 · median 0s, worst 6.5h · 54.1% of 61 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `event_class` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `event_class` · **timeout source:** registered *(1800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 2s · **worst:** 6.5h · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `one authoritative generation per chart via kala_gochara_authority; no window with end < start`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject.<br>• F-52 consequence: every materialized v2 row is stale under the live scoring signature and no rebuild has been dispatched — rematerialize under the determinism harness, or mark stale honestly in the UI. |
-| Rebuild time | • Has a substep plan (`event_class`) but runs in 0s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Fast (median 0s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Has a substep plan (`event_class`) but runs in 0s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 0s · p90 2s · worst 6.5h · 61 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Generation-bearing: model generation + per-chart authority as first-class registry/UI concepts; one count and one freshness per generation (Phase 2).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 3 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -2466,12 +2838,16 @@ cannot disagree.
 **What:** ṢAḌ-DARŚANA W2: the ten-stage point-process temporal field  
 **Now:** native stale · abhinandan lit · chart3 error · rows 8,599,775 / 2,412,882 / 0 · median 39m, worst 33.8h · 11.9% of 126 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `stage{n}:{event_class}:{slice}` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `stage{n}:{event_class}:{slice}` · **timeout source:** registered *(86400s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 39m · **p90:** 2.2h · **worst:** 33.8h · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Cross-chart asymmetry (8,599,775 vs 2,412,882): confirm it is chart-driven, not a partial build on one chart.<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject.<br>• Derivation ledger: 8 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it.<br>• DHARA engine (analytic) replaced the sampled engine mid-August; `_RESUME_VERSION` is at 7. Add a build-twice determinism check at the stage level — the content hash (F-149) already exists, so compare digests across two clean builds. |
-| Rebuild time | • Private resume copy with a hand-bumped `_RESUME_VERSION`: migrate to the shared mixin and replace the whole-build fingerprint with per-substep INPUT digests, so a mismatch replans only the changed partitions instead of everything.<br>• Partition key `stage{n}:{event_class}:{slice}`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal.<br>• Watchdog: the `NOW()` heartbeat defect reaps long substeps; switch to `clock_timestamp()` before the next full rebuild (Phase 2). Classify transient failures for auto-retry — 11.9% completion today.<br>• Only 11.9% of 126 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • Private resume copy with a hand-bumped `_RESUME_VERSION`: migrate to the shared mixin and replace the whole-build fingerprint with per-substep INPUT digests, so a mismatch replans only the changed partitions instead of everything.<br>• Partition key `stage{n}:{event_class}:{slice}`: record the digest of the inputs each partition consumed. A rule/config change then re-runs only the partitions that read it.<br>• Persist the substep plan total at plan time so progress has a real denominator and the watchdog a true liveness signal.<br>• Watchdog: the `NOW()` heartbeat defect reaps long substeps; switch to `clock_timestamp()` before the next full rebuild (Phase 2). Classify transient failures for auto-retry — 11.9% completion today.<br>• Only 11.9% of 126 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 39m · p90 2.2h · worst 33.8h · 126 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 names this among the ten heavy assets where the efficiency pass concentrates. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 2 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Interruption stops costing up to 33.8h of committed work.<br>• Completion rate rises from 11.9% as transient failures self-heal. |
 
@@ -2480,7 +2856,11 @@ cannot disagree.
 **What:** Serve-time QT-4 ranking engine  
 **Now:** service · global state n/a · median 0s, worst 1s · 37.3% of 118 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 5 · **continuation class:** probe-only · **rehearsal partition:** `n/a — service probe` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 5 · **continuation class:** probe-only · **rehearsal partition:** `n/a — service probe` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 1s · **worst:** 1s · **rows/sec:** null · **bound class:** not-a-build · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: service probe — there is no build to measure (structural). rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
@@ -2494,12 +2874,16 @@ cannot disagree.
 **What:** Per-dasha-period dossiers: for each chart, dasha system, MD/AD/PD level, stores lord condition (refs to chart_facts), activated promise-register IDs (from bodha  
 **Now:** native lit · abhinandan lit · chart3 error · rows 1,169 / 1,160 / 1,291 · median 14s, worst 15m · 45.3% of 95 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 14s · **p90:** 26s · **worst:** 15m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Fast (median 14s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 45.3% of 95 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 45.3% of 95 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• **Not profiled.** Measured baseline only: p50 14s · p90 26s · worst 15m · 95 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Layer position: set `layer_index = L3`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 45.3% as transient failures self-heal. |
 
@@ -2508,12 +2892,16 @@ cannot disagree.
 **What:** D-5 Lane G-1: per-chart x event-class classical-prior-weighted target sets (bhavas, lords, karakas, mechanism nodes, sensitive degrees, arudhas, yoga constituen  
 **Now:** native lit · abhinandan lit · chart3 lit · rows 762 / 750 / 77 · median 0s, worst 17s · 78.3% of 23 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 17s · **worst:** 17s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `one authoritative generation per chart via kala_gochara_authority; no window with end < start`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Fast (median 0s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 0s · p90 17s · worst 17s · 23 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Generation-bearing: model generation + per-chart authority as first-class registry/UI concepts; one count and one freshness per generation (Phase 2).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 4 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -2522,12 +2910,16 @@ cannot disagree.
 **What:** GOCHARA-UTKARSA W3.4 heavy writer: plan_substeps returns 60 substeps (6 event classes x 10 decade slices spanning birth-century 1984-2084)  
 **Now:** native error · abhinandan stale · chart3 — · rows 914 / 916 / 0 · median 2m, worst 58m
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `{event_class}::{decade}` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 1 · **continuation class:** resumable-substep · **rehearsal partition:** `{event_class}::{decade}` · **timeout source:** registered *(3600s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 2m · **p90:** 34m · **worst:** 58m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `one authoritative generation per chart via kala_gochara_authority; no window with end < start`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject.<br>• Derivation ledger: 6 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it.<br>• F-52 consequence: every materialized v2 row is stale under the live scoring signature and no rebuild has been dispatched — rematerialize under the determinism harness, or mark stale honestly in the UI. |
-| Rebuild time | • Has a substep plan (`{event_class}::{decade}`) but runs in 2m — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Median 2m: output digest + early cutoff first; profile only if it stays on the critical path after Phase 5's edge audit. |
+| Rebuild time | • Has a substep plan (`{event_class}::{decade}`) but runs in 2m — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 2m · p90 34m · worst 58m · 7 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Generation-bearing: model generation + per-chart authority as first-class registry/UI concepts; one count and one freshness per generation (Phase 2).<br>• No detected serving consumer (Phase 0.8c): record the missing consumer or retire with a disposition.<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -2536,12 +2928,16 @@ cannot disagree.
 **What:** ṢAḌ-DARŚANA W3 item 16: transiting grahas mapped to the kota's stambha/durgantara/prakara/bahya rings relative to the janma nakshatra, with entry/exit windows a  
 **Now:** native lit · abhinandan dormant · chart3 — · rows 588 / 585 / 0 · median 1s, worst 3s · 27.3% of 11 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(120s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 3s · **worst:** 3s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject. |
-| Rebuild time | • Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 3s · worst 3s · 11 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -2550,12 +2946,16 @@ cannot disagree.
 **What:** ṢAḌ-DARŚANA W3 item 4: the classical gold/silver/copper/iron quality of a transiting graha's stay in a sign, determined by the Moon's nakshatra at the moment of  
 **Now:** native lit · abhinandan lit · chart3 — · rows 72 / 72 / 0 · median 1s, worst 4s · 33.3% of 12 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(120s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 3s · **worst:** 4s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject. |
-| Rebuild time | • Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 3s · worst 4s · 12 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -2564,12 +2964,16 @@ cannot disagree.
 **What:** ṢAḌ-DARŚANA W3 item 17: the rotating annual house-per-year progression of the tri-lagna framework (Janma/Chandra/Sūrya Lagna), full 120-year lifespan  
 **Now:** native lit · abhinandan — · chart3 — · rows 120 / 0 / 0 · median 2s, worst 2s
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(60s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 2s · **p90:** 2s · **worst:** 2s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject. |
-| Rebuild time | • Fast (median 2s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 2s · p90 2s · worst 2s · 6 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -2578,12 +2982,16 @@ cannot disagree.
 **What:** Monthly activation waveform (1950–2100): convolution of dasha × transit × promise for each domain and event class  
 **Now:** native lit · abhinandan lit · chart3 error · rows 92,412 / 92,412 / 92,412 · median 22s, worst 41m · 39.4% of 109 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 22s · **p90:** 54s · **worst:** 41m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Derivation ledger: 5 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it. |
-| Rebuild time | • Fast (median 22s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 39.4% of 109 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 13: sits in the serial tail. Audit its 5 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 39.4% of 109 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 13: sits in the serial tail. Audit its 5 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 22s · p90 54s · worst 41m · 109 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Layer position: set `layer_index = L3`, derive `layer_name` from the locked lexicon (Phase 0.5a).<br>• Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• Completion rate rises from 39.4% as transient failures self-heal. |
 
@@ -2592,12 +3000,16 @@ cannot disagree.
 **What:** ṢAḌ-DARŚANA W3 item 13: the lunar-return counterpart to Tājika Vārṣaphala (ga_tajaka) — the annual chart cast for the instant the transiting Moon returns to its  
 **Now:** native lit · abhinandan lit · chart3 — · rows 120 / 120 / 0 · median 2s, worst 2s · 33.3% of 12 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(120s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 2s · **p90:** 2s · **worst:** 2s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject. |
-| Rebuild time | • Fast (median 2s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 2s · p90 2s · worst 2s · 12 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -2606,12 +3018,16 @@ cannot disagree.
 **What:** ṢAḌ-DARŚANA W3 item 5 (closes R-19, CLOSED-PARTIAL-BY-DESIGN per ADJUDICATION-11): three classical vedha (obstruction) mechanisms applied to a chart's currently  
 **Now:** native lit · abhinandan dormant · chart3 — · rows 176 / 178 / 0 · median 3s, worst 3s · 27.3% of 11 attempts complete
 
-**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R3 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(120s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 3s · **p90:** 3s · **worst:** 3s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject.<br>• Derivation ledger: 6 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it. |
-| Rebuild time | • Fast (median 3s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 3s · p90 3s · worst 3s · 11 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Output content digest at commit (Phase 3); `built_against_*` re-pointed from timestamps to upstream digests; graded staleness. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -2625,12 +3041,16 @@ cannot disagree.
 **What:** Personalized auspicious windows: chart-strength + live-transit scored, personal-danger-avoiding, prediction-fused (rides ph_nimitta windows), honest no-good-win  
 **Now:** native lit · abhinandan lit · chart3 — · rows 134 / 49 / 0 · median 1s, worst 38s · 43.0% of 107 attempts complete
 
-**domain:** chart · **rung:** R4 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R4 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 14s · **worst:** 38s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 134 (achieved on native; floors are aspirational, never fabricated — §N.4).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject.<br>• Derivation ledger: 8 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it. |
-| Rebuild time | • Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 43.0% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 17: sits in the serial tail. Audit its 8 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 43.0% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 17: sits in the serial tail. Audit its 8 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 14s · worst 38s · 107 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 4 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 2 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 43.0% as transient failures self-heal. |
 
@@ -2639,12 +3059,16 @@ cannot disagree.
 **What:** Predictive anchors: 8 derivation axes (graph-causal, discovery-seeded, embedding-precedent, dāśā+school consensus, ayanāṃśa-robustness, subsystem) + 5 elevation  
 **Now:** native lit · abhinandan lit · chart3 error · rows 139 / 56 / 0 · median 2s, worst 68s · 42.2% of 109 attempts complete
 
-**domain:** chart · **rung:** R4 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R4 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 2s · **p90:** 46s · **worst:** 68s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 139 (achieved on native; floors are aspirational, never fabricated — §N.4).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject.<br>• Derivation ledger: 9 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it.<br>• §N.7 narration fidelity: every sentence restates a cited fact_id it reads, never re-derives; add a golden-value test for the narration layer (verified fact ≠ verified prose). |
-| Rebuild time | • Fast (median 2s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Fan-out 10: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 10 dependants.<br>• Only 42.2% of 109 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 16: sits in the serial tail. Audit its 9 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Fan-out 10: content addressing pays back most here — today any rebuild of this asset, even a no-op, invalidates all 10 dependants.<br>• Only 42.2% of 109 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 16: sits in the serial tail. Audit its 9 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 2s · p90 46s · worst 68s · 109 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 16 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 10 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 42.2% as transient failures self-heal. |
 
@@ -2653,12 +3077,16 @@ cannot disagree.
 **What:** Domain result declaration: 7 domains × 1 row  
 **Now:** native stale · abhinandan lit · chart3 error · rows 13 / 13 / 0 · median 1s, worst 8s · 39.1% of 110 attempts complete
 
-**domain:** chart · **rung:** R4 · **within-rung wave:** 4 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R4 · **within-rung wave:** 4 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 6s · **worst:** 8s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 13 (achieved on native; floors are aspirational, never fabricated — §N.4).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject.<br>• Derivation ledger: 7 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it.<br>• §N.7 narration fidelity: every sentence restates a cited fact_id it reads, never re-derives; add a golden-value test for the narration layer (verified fact ≠ verified prose). |
-| Rebuild time | • Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 39.1% of 110 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 20: sits in the serial tail. Audit its 7 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 39.1% of 110 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 20: sits in the serial tail. Audit its 7 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 6s · worst 8s · 110 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 2 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 39.1% as transient failures self-heal. |
 
@@ -2667,12 +3095,16 @@ cannot disagree.
 **What:** Unified machine-evaluable falsifiers for every L4 prediction + the L5 onboarding contract + evaluation-staging (no scoring) + portfolio/reverse-calibration chan  
 **Now:** native stale · abhinandan lit · chart3 — · rows 139 / 56 / 0 · median 1s, worst 38s · 40.2% of 107 attempts complete
 
-**domain:** chart · **rung:** R4 · **within-rung wave:** 3 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R4 · **within-rung wave:** 3 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 17s · **worst:** 38s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 139 (achieved on native; floors are aspirational, never fabricated — §N.4).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject.<br>• Derivation ledger: 6 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it. |
-| Rebuild time | • Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 40.2% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 19: sits in the serial tail. Audit its 6 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 40.2% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 19: sits in the serial tail. Audit its 6 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 17s · worst 38s · 107 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 2 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 2 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 40.2% as transient failures self-heal. |
 
@@ -2681,12 +3113,16 @@ cannot disagree.
 **What:** Managed remedy program: economics/feasibility tiers, sequenced+conflict-free schedule, muhūrta-timed initiation, severity-proportional, cross-tradition choice,   
 **Now:** native stale · abhinandan lit · chart3 — · rows 536 / 741 / 0 · median 3s, worst 73s · 43.0% of 107 attempts complete
 
-**domain:** chart · **rung:** R4 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R4 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 3s · **p90:** 52s · **worst:** 73s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 536 (achieved on native; floors are aspirational, never fabricated — §N.4).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject.<br>• Derivation ledger: 4 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it.<br>• §N.7 narration fidelity: every sentence restates a cited fact_id it reads, never re-derives; add a golden-value test for the narration layer (verified fact ≠ verified prose). |
-| Rebuild time | • Fast (median 3s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 43.0% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 17: sits in the serial tail. Audit its 4 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 43.0% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 17: sits in the serial tail. Audit its 4 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 3s · p90 52s · worst 73s · 107 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 6 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 2 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 43.0% as transient failures self-heal. |
 
@@ -2695,12 +3131,16 @@ cannot disagree.
 **What:** Birth-time rectification via PyJHora ascendant scan (±90 min, 5-min steps, 5 ayanamshas) scored against pre-2020 LEL events  
 **Now:** native lit · abhinandan lit · chart3 — · rows 186 / 186 / 0 · median 1s, worst 34s · 43.0% of 107 attempts complete
 
-**domain:** chart · **rung:** R4 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R4 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 20s · **worst:** 34s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 186 (achieved on native; floors are aspirational, never fabricated — §N.4).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject. |
-| Rebuild time | • Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 43.0% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 17: sits in the serial tail. Audit its 1 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 43.0% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 17: sits in the serial tail. Audit its 1 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 20s · worst 34s · 107 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 3 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• Completion rate rises from 43.0% as transient failures self-heal. |
 
@@ -2709,12 +3149,16 @@ cannot disagree.
 **What:** Grounded multi-hop cross-domain dynamics: lag from real activation windows + graph-bridge mechanism, A→B→C cascades, cross-domain conflicts, trajectory + mitiga  
 **Now:** native lit · abhinandan lit · chart3 — · rows 2,510 / 475 / 0 · median 4s, worst 4m · 43.0% of 107 attempts complete
 
-**domain:** chart · **rung:** R4 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R4 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 4s · **p90:** 2m · **worst:** 4m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 2,510 (achieved on native; floors are aspirational, never fabricated — §N.4).<br>• Cross-chart asymmetry (2,510 vs 475): confirm it is chart-driven, not a partial build on one chart.<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject. |
-| Rebuild time | • Fast (median 4s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 43.0% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 17: sits in the serial tail. Audit its 2 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 43.0% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 17: sits in the serial tail. Audit its 2 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 4s · p90 2m · worst 4m · 107 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 3 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 2 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 43.0% as transient failures self-heal. |
 
@@ -2723,12 +3167,16 @@ cannot disagree.
 **What:** Anomaly registry: 5 deterministic detectors (confidence inflation, magnitude drift, falsifier absent, ledger gap, layer leakage)  
 **Now:** native lit · abhinandan lit · chart3 — · rows 97 / 41 / 0 · median 0s, worst 11s · 40.2% of 107 attempts complete
 
-**domain:** chart · **rung:** R4 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R4 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 5s · **worst:** 11s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 97 (achieved on native; floors are aspirational, never fabricated — §N.4).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject. |
-| Rebuild time | • Fast (median 0s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 40.2% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 17: sits in the serial tail. Audit its 2 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 40.2% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 17: sits in the serial tail. Audit its 2 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 0s · p90 5s · worst 11s · 107 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 2 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 2 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 40.2% as transient failures self-heal. |
 
@@ -2737,12 +3185,16 @@ cannot disagree.
 **What:** Cleansed disposition: one row per phala_anchors entry, classified as clean/flagged/staged_revision  
 **Now:** native lit · abhinandan lit · chart3 — · rows 139 / 56 / 0 · median 1s, worst 32s · 40.2% of 107 attempts complete
 
-**domain:** chart · **rung:** R4 · **within-rung wave:** 2 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R4 · **within-rung wave:** 2 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 11s · **worst:** 32s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 139 (achieved on native; floors are aspirational, never fabricated — §N.4).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject. |
-| Rebuild time | • Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 40.2% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 18: sits in the serial tail. Audit its 2 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 40.2% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 18: sits in the serial tail. Audit its 2 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 11s · worst 32s · 107 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 1 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 2 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 40.2% as transient failures self-heal. |
 
@@ -2756,7 +3208,11 @@ cannot disagree.
 **What:** Journal + re-sync service: surfaces due predictions for native feedback, ingests answers as LEL events, triggers L5-only recompute  
 **Now:** service · global state n/a · median 0s, worst 2s · 42.6% of 94 attempts complete
 
-**domain:** chart · **rung:** R5 · **within-rung wave:** 2 · **continuation class:** probe-only · **rehearsal partition:** `n/a — service probe` · **timeout source:** registered
+**domain:** chart · **rung:** R5 · **within-rung wave:** 2 · **continuation class:** probe-only · **rehearsal partition:** `n/a — service probe` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 1s · **worst:** 2s · **rows/sec:** null · **bound class:** not-a-build · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: service probe — there is no build to measure (structural). rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
@@ -2770,12 +3226,16 @@ cannot disagree.
 **What:** L5 learned-weight overlay on L1–L4 base values; 4 adjustment tables + load-bearing sensitivity map (G3)  
 **Now:** native error · abhinandan lit · chart3 error · rows 112,270 / 112,481 / 0 · median 10s, worst 14m · 39.3% of 107 attempts complete
 
-**domain:** chart · **rung:** R5 · **within-rung wave:** 4 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R5 · **within-rung wave:** 4 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 10s · **p90:** 24s · **worst:** 14m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject.<br>• Derivation ledger: 5 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it. |
-| Rebuild time | • Fast (median 10s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 39.3% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 24: sits in the serial tail. Audit its 5 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 39.3% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 24: sits in the serial tail. Audit its 5 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 10s · p90 24s · worst 14m · 107 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 1 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 2 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 39.3% as transient failures self-heal. |
 
@@ -2784,12 +3244,16 @@ cannot disagree.
 **What:** Time-indexed prospective predictions with confidence + falsifiers  
 **Now:** native error · abhinandan lit · chart3 — · rows 278 / 112 / 0 · median 2s, worst 16s · 41.0% of 105 attempts complete
 
-**domain:** chart · **rung:** R5 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R5 · **within-rung wave:** 1 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 2s · **p90:** 6s · **worst:** 16s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject.<br>• Derivation ledger: 6 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it. |
-| Rebuild time | • Fast (median 2s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 41.0% of 105 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 21: sits in the serial tail. Audit its 6 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 41.0% of 105 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 21: sits in the serial tail. Audit its 6 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 2s · p90 6s · worst 16s · 105 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 8 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 3 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 41.0% as transient failures self-heal. |
 
@@ -2798,12 +3262,16 @@ cannot disagree.
 **What:** LLM-ready pre-composed insight units with embeddings + provenance chains + trust metadata (R1–R6)  
 **Now:** native error · abhinandan lit · chart3 error · rows 115 / 35 / 0 · median 1s, worst 6s · 36.1% of 108 attempts complete
 
-**domain:** chart · **rung:** R5 · **within-rung wave:** 5 · **continuation class:** resumable-substep · **rehearsal partition:** `insight_units | embeddings` · **timeout source:** registered
+**domain:** chart · **rung:** R5 · **within-rung wave:** 5 · **continuation class:** resumable-substep · **rehearsal partition:** `insight_units | embeddings` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 5s · **worst:** 6s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Cross-chart asymmetry (115 vs 35): confirm it is chart-driven, not a partial build on one chart.<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject.<br>• Derivation ledger: 8 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it.<br>• §N.7 narration fidelity: every sentence restates a cited fact_id it reads, never re-derives; add a golden-value test for the narration layer (verified fact ≠ verified prose).<br>• Embeddings are a deterministic transform (permitted). Pin the model id + dimension in the output digest so a model change invalidates correctly. |
-| Rebuild time | • Has a substep plan (`insight_units \| embeddings`) but runs in 1s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 36.1% of 108 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 25: sits in the serial tail. Audit its 8 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Has a substep plan (`insight_units \| embeddings`) but runs in 1s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 36.1% of 108 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 25: sits in the serial tail. Audit its 8 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 5s · worst 6s · 108 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • `has_substeps` is false in the registry while the writer plans substeps: derive the flag from the writer class (Phase 0.6a). Until then the §N.8 completeness gate is silently disabled for this asset.<br>• Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 4 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• Completion rate rises from 36.1% as transient failures self-heal.<br>• A partial build can no longer be promoted to green. |
 
@@ -2812,12 +3280,16 @@ cannot disagree.
 **What:** Empirical multiplier weights learned from calibration outcomes  
 **Now:** native error · abhinandan lit · chart3 — · rows 13 / 10 / 0 · median 0s, worst 2s · 41.1% of 107 attempts complete
 
-**domain:** chart · **rung:** R5 · **within-rung wave:** 3 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R5 · **within-rung wave:** 3 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 2s · **worst:** 2s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject. |
-| Rebuild time | • Fast (median 0s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 41.1% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 23: sits in the serial tail. Audit its 3 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 41.1% of 107 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 23: sits in the serial tail. Audit its 3 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 0s · p90 2s · worst 2s · 107 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 7 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 2 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 41.1% as transient failures self-heal. |
 
@@ -2826,12 +3298,16 @@ cannot disagree.
 **What:** Signal-family registry + negative-control battery — the governing catalogue of what influences a reading  
 **Now:** global · lit · 15 rows · median 0s, worst 2s · 88.4% of 43 attempts complete
 
-**domain:** shared · **rung:** R5 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R5 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 1s · **worst:** 2s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8). |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 0s · p90 1s · worst 2s · 43 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 1 serving surface(s), so it is authoritative in practice.<br>• Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural). |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 4 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -2840,12 +3316,16 @@ cannot disagree.
 **What:** Answer quality evaluation runs — automated + human QA over synthesis outputs  
 **Now:** native error · abhinandan lit · chart3 error · rows 1,664 / 6 / 0 · median 2s, worst 33s · 39.6% of 106 attempts complete
 
-**domain:** chart · **rung:** R5 · **within-rung wave:** 3 · **continuation class:** resumable-substep · **rehearsal partition:** `retrodiction | control_windows | …(7)` · **timeout source:** registered
+**domain:** chart · **rung:** R5 · **within-rung wave:** 3 · **continuation class:** resumable-substep · **rehearsal partition:** `retrodiction | control_windows | …(7)` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 2s · **p90:** 9s · **worst:** 33s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Cross-chart asymmetry (1,664 vs 6): confirm it is chart-driven, not a partial build on one chart.<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject. |
-| Rebuild time | • Has a substep plan (`retrodiction \| control_windows \| …(7)`) but runs in 2s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Fast (median 2s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 39.6% of 106 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 23: sits in the serial tail. Audit its 3 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Has a substep plan (`retrodiction \| control_windows \| …(7)`) but runs in 2s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 39.6% of 106 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 23: sits in the serial tail. Audit its 3 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 2s · p90 9s · worst 33s · 106 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • `has_substeps` is false in the registry while the writer plans substeps: derive the flag from the writer class (Phase 0.6a). Until then the §N.8 completeness gate is silently disabled for this asset.<br>• Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 2 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 2 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 39.6% as transient failures self-heal.<br>• A partial build can no longer be promoted to green. |
 
@@ -2854,12 +3334,16 @@ cannot disagree.
 **What:** Prediction outcome calibration records — confidence score vs outcome mapping  
 **Now:** native error · abhinandan lit · chart3 — · rows 63 / 0 / 0 · median 0s, worst 4s · 41.0% of 105 attempts complete
 
-**domain:** chart · **rung:** R5 · **within-rung wave:** 2 · **continuation class:** resumable-substep · **rehearsal partition:** `match | score | …(3)` · **timeout source:** registered
+**domain:** chart · **rung:** R5 · **within-rung wave:** 2 · **continuation class:** resumable-substep · **rehearsal partition:** `match | score | …(3)` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 4s · **worst:** 4s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject.<br>• Derivation ledger: 4 declared inputs — record which upstream digests each output row was built from (partition receipt) so a wrong answer is traceable to the input that produced it. |
-| Rebuild time | • Has a substep plan (`match \| score \| …(3)`) but runs in 0s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Fast (median 0s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 41.0% of 105 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 22: sits in the serial tail. Audit its 4 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Has a substep plan (`match \| score \| …(3)`) but runs in 0s — resumption is irrelevant here; per-substep input digests still matter because they give partition-scoped early cutoff downstream.<br>• Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 41.0% of 105 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 22: sits in the serial tail. Audit its 4 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 0s · p90 4s · worst 4s · 105 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • `has_substeps` is false in the registry while the writer plans substeps: derive the flag from the writer class (Phase 0.6a). Until then the §N.8 completeness gate is silently disabled for this asset.<br>• Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 11 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 4 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 41.0% as transient failures self-heal.<br>• A partial build can no longer be promoted to green. |
 
@@ -2868,12 +3352,16 @@ cannot disagree.
 **What:** Per-native grammar of how each signal/house/karaka expresses — which channel fires for THIS person (G2)  
 **Now:** native error · abhinandan lit · chart3 — · rows 24 / 23 / 0 · median 0s, worst 5s · 40.0% of 105 attempts complete
 
-**domain:** chart · **rung:** R5 · **within-rung wave:** 4 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R5 · **within-rung wave:** 4 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 2s · **worst:** 5s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject. |
-| Rebuild time | • Fast (median 0s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• Only 40.0% of 105 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 24: sits in the serial tail. Audit its 3 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• Only 40.0% of 105 attempts complete — most wall-clock is human re-dispatch. Error taxonomy + retry (Phase 4) is the fix, not faster code.<br>• DAG depth 24: sits in the serial tail. Audit its 3 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 0s · p90 2s · worst 5s · 105 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 2 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 1 direct dependant(s) stop invalidating when this asset rebuilds to identical content.<br>• Completion rate rises from 40.0% as transient failures self-heal. |
 
@@ -2882,12 +3370,16 @@ cannot disagree.
 **What:** Unified intervention ledger — every elected act (upāya · yajña · elected activity) with its adjudication record, predicted differential, performance attestation  
 **Now:** native dormant · abhinandan — · chart3 — · rows 0 / 0 / 0 · median 1s, worst 2s · 50.0% of 10 attempts complete
 
-**domain:** chart · **rung:** R5 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R5 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(300s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 1s · **p90:** 2s · **worst:** 2s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Zero rows on the native chart. Either the asset is empty by design (record it in `volume_explanation`) or it has never been built — the cockpit must not render this as lit. |
-| Rebuild time | • Fast (median 1s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• DAG depth 12: sits in the serial tail. Audit its 1 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• DAG depth 12: sits in the serial tail. Audit its 1 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 1s · p90 2s · worst 2s · 10 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Promote to CURRENT or record why it remains DRAFT (Phase 0.8b) — it is built and read by 2 serving surface(s), so it is authoritative in practice. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -2896,7 +3388,11 @@ cannot disagree.
 **What:** Serve-time contribution-control gateway: effective-value resolution, toggle gates, transit-current binding, MCP parity  
 **Now:** service · global state n/a · median 0s, worst 2s · 40.2% of 97 attempts complete
 
-**domain:** chart · **rung:** R5 · **within-rung wave:** 5 · **continuation class:** probe-only · **rehearsal partition:** `n/a — service probe` · **timeout source:** registered
+**domain:** chart · **rung:** R5 · **within-rung wave:** 5 · **continuation class:** probe-only · **rehearsal partition:** `n/a — service probe` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 2s · **worst:** 2s · **rows/sec:** null · **bound class:** not-a-build · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: service probe — there is no build to measure (structural). rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
@@ -2910,12 +3406,16 @@ cannot disagree.
 **What:** Per-chart user-authored life-event corpus (occurrence + recording dates, chart-state index)  
 **Now:** native — · abhinandan — · chart3 — · rows 64 / 0 / 0
 
-**domain:** chart · **rung:** R5 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R5 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** default *(600s equals the asset_registry column default and the runner fallback (_WRITER_TIMEOUT_SECONDS) — indistinguishable from never set)*
+
+
+**§19 efficiency ledger** · **p50:** null · **p90:** null · **worst:** null · **rows/sec:** null · **bound class:** not-a-build · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: no registered writer — nothing builds this asset (structural). rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject. |
-| Rebuild time | — |
+| Rebuild time | • No completed-run telemetry: p50 and p90 are both unmeasured, so even the §19.4 build-cost baseline is null here — measure before planning anything.<br>• No registered writer: nothing builds this asset, so there is no build cost to profile. Bound class `not-a-build` (§19.4 step 3) — hotspot is null by structure, not by omission. |
 | Re-architecture & alignment | • Contract-conformant. Inherits the platform-wide changes: content digest, graded staleness, shared resumability. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -2924,12 +3424,16 @@ cannot disagree.
 **What:** Stage 9 of the temporal-field pipeline: fits the hazard field's weights against this chart's recorded life events (blocked forward-chaining CV, shrinkage to the  
 **Now:** native error · abhinandan error · chart3 — · rows 7 / 0 / 0 · median 2s, worst 10m · 53.1% of 64 attempts complete
 
-**domain:** chart · **rung:** R5 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R5 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 2s · **p90:** 5s · **worst:** 10m · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Set `target_floor` = 7 (achieved on native; floors are aspirational, never fabricated — §N.4).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject. |
-| Rebuild time | • Fast (median 2s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds.<br>• DAG depth 12: sits in the serial tail. Audit its 1 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• DAG depth 12: sits in the serial tail. Audit its 1 declared edges for ones never actually read (Phase 5) — every removed edge is pure wall-clock.<br>• **Not profiled.** Measured baseline only: p50 2s · p90 5s · worst 10m · 64 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Contract-conformant. Inherits the platform-wide changes: content digest, graded staleness, shared resumability. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 
@@ -2938,12 +3442,16 @@ cannot disagree.
 **What:** LEL — held-out event log isolated from generation; ground truth for prediction calibration  
 **Now:** native lit · abhinandan lit · chart3 — · rows 64 / 0 / 0 · median 0s, worst 23s · 78.8% of 52 attempts complete
 
-**domain:** chart · **rung:** R5 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** chart · **rung:** R5 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 2s · **worst:** 23s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count ≥ floor AND no duplicate natural keys per chart`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Chart 3 holds zero rows — the rehearsal chart is incomplete for this asset; rebuild there first (Phase 1) so it can serve as the test subject. |
-| Rebuild time | • Fast (median 0s): no bespoke speed work. The win is early cutoff — when its output digest is unchanged, nothing downstream rebuilds. |
+| Rebuild time | • Early cutoff is the structural win: when this asset's output digest is unchanged, nothing downstream rebuilds. That is content addressing (Phase 3), not a finding about this writer's speed.<br>• **Not profiled.** Measured baseline only: p50 0s · p90 2s · worst 23s · 52 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Contract-conformant. Inherits the platform-wide changes: content digest, graded staleness, shared resumability. |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it.<br>• 3 direct dependant(s) stop invalidating when this asset rebuilds to identical content. |
 
@@ -2952,12 +3460,16 @@ cannot disagree.
 **What:** Audit log of all synthesis export events (PDF, JSON, MCP bundles)  
 **Now:** global · lit · 0 rows · median 0s, worst 2s · 86.4% of 44 attempts complete
 
-**domain:** shared · **rung:** R5 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered
+**domain:** shared · **rung:** R5 · **within-rung wave:** 0 · **continuation class:** restartable-light · **rehearsal partition:** `n/a — single-shot, whole-asset is the unit` · **timeout source:** registered *(10800s differs from the column default (600s))*
+
+
+**§19 efficiency ledger** · **p50:** 0s · **p90:** 1s · **worst:** 2s · **rows/sec:** null · **bound class:** null · **hotspot:** null · **technique:** null · **target:** null · **speedup achieved:** null · **identity proof:** null · **profiled:** no  
+*Basis: NOT PROFILED — the §19 profiling/output-identity harness is M3 (§14.1); hotspot, technique, target, achieved and identity proof are null until it runs (§19.4 step 1, §15). bound class: not profiled — §19.4 step 1: no measured hotspot, no classification. rows/sec: no per-run row count exists (build_run_assets has no rows column) and p50 spans all charts — not derivable from current telemetry; M3 profile supplies it.*
 
 | Dimension | Plan of action |
 |---|---|
 | Correctness & completeness | • Add `integrity_check_sql` (none exists on any asset today): `row count = expected volume formula AND no duplicate natural keys`. Run it as the post-build gate so `lit` is earned, not assumed (§N.8).<br>• Structural-mode L5 asset: zero rows is by design until outcome data accrues. Record that in `volume_explanation` and set `target_floor = 0` so the cockpit renders "0 rows (by design)" rather than dormant. |
-| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades. |
+| Rebuild time | • Built once, reused by every chart. Publish `substrate_version` + output digest; per-chart consumers record the version they read, so a no-op rebuild here never cascades.<br>• **Not profiled.** Measured baseline only: p50 0s · p90 1s · worst 2s · 44 run(s). Hotspot, bound class, technique, target, achieved and identity proof are NULL in the §19 ledger — §19.4 step 1 (no measured hotspot, no optimization) and §15 (an unprofiled asset reads as unknown, not as fine). The profiling harness is M3. §19.6 places this in the long tail, which receives the systemic sweep (indexes, batching, set-based rewrites) rather than a bespoke investigation — a scope decision from the plan, not a finding that it is already fast. |
 | Re-architecture & alignment | • Keep out of per-chart plans but expose completion to the per-chart readiness gate uniformly (the migration-563 class of bug, made structural). |
 | Expected benefit | • `lit` becomes an earned signal with a real detector behind it. |
 <!-- ASSET_PLANS:END -->
