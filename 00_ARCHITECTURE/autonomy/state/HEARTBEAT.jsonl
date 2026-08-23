@@ -779,3 +779,6 @@
 {"ts":"2026-08-23T14:04:25Z","agent":"KARAKA-M0-T49","status":"working","detail":"both directions verified live; running final independent diff of shipped covers vs D-54"}
 {"ts":"2026-08-23T14:04:57Z","agent":"SUTRADHARA","status":"working","detail":"tick 3: 591 APPLIED clean (ledger 451, 42 cols, 128/128 NULL). Routed T48's material finding -- migrate.ts discards ALL notices, making D-51 cond.5 unsatisfiable and silently eating V-31's F-A warnings. Owned my own typed-ts defect."}
 {"ts":"2026-08-23T14:04:58Z","agent":"KARAKA-M0-T48","status":"working","detail":"M0-T48 COMPLETE: 591 applied (ledger id 451), 1 new row exactly, 42 cols/16 constraints, 128/128 NULL; report + 2 conductor findings written; committed 47f2c641b"}
+{"ts":"2026-08-23T14:06:33Z","agent":"SUTRADHARA","status":"working","detail":"tick 3 cont: T48 complete+clean. Dispatching M0-T50 (SQ-17 silent-exit-0 guards); HOLDING SQ-11 because it edits the guard T49 is mid-verification against. KARAKA 2/4."}
+{"ts":"2026-08-23T14:07:05Z","agent":"KARAKA-M0-T50","status":"working","detail":"starting: reading binding docs for M0-T50 / SQ-17"}
+{"ts":"2026-08-23T14:07:23Z","agent":"KARAKA-M0-T49","status":"working","detail":"verification complete; writing report + queue line"}

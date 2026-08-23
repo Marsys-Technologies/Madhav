@@ -1007,7 +1007,7 @@
     },
     {
       "id": "M0-T48-591-APPLIED",
-      "what": "MIGRATION 591 APPLIED 2026-08-23T13:59:18Z, exit 0, applied_this_run=1, under D-51. After-check clean and MEANINGFUL rather than true-by-luck: exactly ONE new _migrations_applied row (id 451), asset_registry 40->42 columns, 13->16 constraints, 128/128 NULL on BOTH new columns (no backfill, no DEFAULT, per D-51 §4), and 7 constraint probes exercised inside rolled-back transactions. FIRST SCHEMA CHANGE OF THE CAMPAIGN'S OWN AUTHORING TO REACH PRODUCTION SINCE 590.",
+      "what": "MIGRATION 591 APPLIED 2026-08-23T13:59:18Z, exit 0, applied_this_run=1, under D-51. After-check clean and MEANINGFUL rather than true-by-luck: exactly ONE new _migrations_applied row (id 451), asset_registry 40->42 columns, 13->16 constraints, 128/128 NULL on BOTH new columns (no backfill, no DEFAULT, per D-51 §4), and 7 constraint probes exercised inside rolled-back transactions. FIRST SCHEMA CHANGE OF THE CAMPAIGN'S OWN AUTHORING TO REACH PRODUCTION SINCE 590. | T48 REPORT RECEIVED: applied via CLI ./node_modules/.bin/tsx scripts/migrate.ts --target (never imported, D-13). Ledger row 451 sha256 666c0062... BYTE-IDENTICAL to the HEAD blob V-31 certified. All three CHECKs demonstrated real inside always-rolled-back transactions (autocommit=False, deliberately NOT `with psycopg.connect(...)` which commits): 4 negatives rejected with the server naming the constraint, 3 positives accepted so they are not blanket denials, plus disjunct isolation proving dead_flag_not_retired rejects independently on inactive-but-not-RETIRED AND RETIRED-but-still-active rows. Production re-verified unchanged from a fresh read-only connection. 7 stated uncertainties in the 378-line report. Commit 47f2c641b.",
       "owner": "PARIKSAKA",
       "state": "awaiting_verification"
     },
@@ -1034,10 +1034,28 @@
       "what": "CONFIRMED the D-57 intervention was NECESSARY, not merely prudent. KARAKA-M0-T49 heartbeat 14:00:40Z: 'SUTRADHARA correction received (D-57); I HAD ALREADY WRITTEN RUNG deferred_to VALUES -- re-deriving'. So the false ownership claim D-57 says it 'halted before it started' had in fact already been written to the governance file the flip depends on, and was removed only because the conductor caught the ruling on the next tick. Re-derived and rewritten on D-57 ground at 14:02:41Z (10 named-rung / 99 M0-BLOCKED). This is the concrete justification for the reread_decisions_immediately_before_dispatch standing instruction.",
       "owner": "PARIKSAKA",
       "state": "noted_for_verification"
+    },
+    {
+      "id": "D-13-PART-3-CONDITION-SATISFIED",
+      "what": "Incidental but it closes an open condition: M0-T48 reports that D-13 part 3's open condition is now satisfied — `git commit --only` behaved exactly as that ruling described, committing one file while leaving four siblings' in-flight modifications untouched in the shared working tree. This was the concern that drove the shared-tree-vs-worktree reversal recorded in standing_instructions.dispatch_isolation; it is now observed rather than assumed, under real concurrency (three KARAKA live).",
+      "owner": "PARIKSAKA",
+      "state": "observed_awaiting_verification"
+    },
+    {
+      "id": "M0-T50",
+      "what": "DISPATCHED on Standing Queue SQ-17 (ADHIKARIN, D-49; arises from PARIKSAKA R-28.1/V-28): re-key the silent-exit-0 entrypoint guards off NODE_ENV onto an explicit IMPORT_ONLY=1 opt-out in platform/scripts/ci/verify_migrations_deployed.ts and scripts/ci/dispatch_gate.ts:175, AND enumerate every NODE_ENV-keyed entrypoint guard under platform/scripts/ci/ so the residue is MEASURED rather than presumed to be two. Direction under D-41 part 2 is a STRENGTHENING (something that silently passed starts actually running), which is why SQ-17 records that the merits need no further ruling.",
+      "owner": "KARAKA-M0-T50",
+      "state": "in_flight"
+    },
+    {
+      "id": "SQ-11-HELD-ON-COLLISION",
+      "what": "SQ-11 (pin C-28's population source so V-27's trap cannot be sprung politely) is READY and I13/I14-clear, but I am HOLDING it rather than dispatching: it edits check_asset_catalogue_contract.py, which KARAKA-M0-T49 is CURRENTLY RUNNING for its both-directions disclosure verification. Editing a guard mid-verification would race and could invalidate T49's evidence — or worse, produce evidence that looks valid and is not. Dispatch the moment T49 reports. Recording the reason so the delay is not read as an oversight.",
+      "owner": "SUTRADHARA",
+      "state": "held_pending_T49"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T14:05:36Z",
+  "last_updated_ts": "2026-08-23T14:07:26Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
