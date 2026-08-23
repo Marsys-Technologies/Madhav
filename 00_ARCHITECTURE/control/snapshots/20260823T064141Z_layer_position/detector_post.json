@@ -1,0 +1,116 @@
+{
+ "phase": "post",
+ "spot_checks": [
+  {
+   "asset_id": "bg_reference",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan",
+   "expected_after": [
+    "L0",
+    "Brahmagyan"
+   ],
+   "matches_expected_after": true,
+   "role": "negative_control"
+  },
+  {
+   "asset_id": "bg_sign_medical",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan",
+   "expected_after": [
+    "L0",
+    "Brahmagyan"
+   ],
+   "matches_expected_after": true,
+   "role": "discriminator"
+  },
+  {
+   "asset_id": "bo_arudha",
+   "layer_index": "L2",
+   "layer_name": "Bodha",
+   "expected_after": [
+    "L2",
+    "Bodha"
+   ],
+   "matches_expected_after": true,
+   "role": "discriminator"
+  },
+  {
+   "asset_id": "ga_vichara",
+   "layer_index": "L1",
+   "layer_name": "Gaṇita",
+   "expected_after": [
+    "L1",
+    "Gaṇita"
+   ],
+   "matches_expected_after": true,
+   "role": "discriminator"
+  },
+  {
+   "asset_id": "ka_gochara_v3_century_materialize",
+   "layer_index": "L3",
+   "layer_name": "Kāla",
+   "expected_after": [
+    "L3",
+    "Kāla"
+   ],
+   "matches_expected_after": true,
+   "role": "discriminator"
+  },
+  {
+   "asset_id": "ph_pramana",
+   "layer_index": "L4",
+   "layer_name": "Phala",
+   "expected_after": [
+    "L4",
+    "Phala"
+   ],
+   "matches_expected_after": true,
+   "role": "negative_control"
+  }
+ ],
+ "prefix_crosscheck_violations": [],
+ "C02_violations": [
+  "lel_events"
+ ],
+ "C03_violations": [
+  "lel_events"
+ ],
+ "codepoint_observed": [
+  {
+   "layer_name": "Gaṇita",
+   "chars": 6,
+   "bytes": 8
+  },
+  {
+   "layer_name": "Kāla",
+   "chars": 4,
+   "bytes": 5
+  },
+  {
+   "layer_name": "Mīmāṃsā",
+   "chars": 7,
+   "bytes": 12
+  }
+ ],
+ "codepoint_pin_expected": {
+  "Gaṇita": {
+   "chars": 6,
+   "bytes": 8
+  },
+  "Kāla": {
+   "chars": 4,
+   "bytes": 5
+  },
+  "Mīmāṃsā": {
+   "chars": 7,
+   "bytes": 12
+  }
+ },
+ "codepoint_ascii_folded_rows": [],
+ "codepoint_pin_holds": true,
+ "lel_events": {
+  "asset_id": "lel_events",
+  "layer_index": null,
+  "layer_name": null
+ }
+}

@@ -1,0 +1,33 @@
+{
+ "live_rows": 128,
+ "seed_entries": 127,
+ "columns_in_do_update_as_EXCLUDED": {
+  "layer_name": true,
+  "layer_index": true
+ },
+ "columns_CASE_guarded": {
+  "layer_name": false,
+  "layer_index": false
+ },
+ "rows_not_in_seed": [
+  "bg_gochara_citation_resolution"
+ ],
+ "divergent_cells_after_repair": [
+  {
+   "asset_id": "lel_events",
+   "column": "layer_index",
+   "live": null,
+   "reseed_writes": "L5",
+   "direction": "seed fills a live NULL"
+  },
+  {
+   "asset_id": "lel_events",
+   "column": "layer_name",
+   "live": null,
+   "reseed_writes": "Mīmāṃsā",
+   "direction": "seed fills a live NULL"
+  }
+ ],
+ "divergent_layer_index": 1,
+ "divergent_layer_name": 1
+}

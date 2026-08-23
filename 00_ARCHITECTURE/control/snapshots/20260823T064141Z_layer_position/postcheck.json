@@ -1,0 +1,190 @@
+{
+ "moved": {
+  "bg_sign_medical.layer_index": [
+   "0",
+   "L0"
+  ],
+  "bg_vidhi_floors.layer_index": [
+   null,
+   "L0"
+  ],
+  "bg_vidhi_floors.layer_name": [
+   null,
+   "Brahmagyan"
+  ],
+  "bg_vidhi_primitives.layer_index": [
+   null,
+   "L0"
+  ],
+  "bg_vidhi_primitives.layer_name": [
+   null,
+   "Brahmagyan"
+  ],
+  "bo_arudha.layer_index": [
+   null,
+   "L2"
+  ],
+  "bo_arudha.layer_name": [
+   null,
+   "Bodha"
+  ],
+  "bo_cdlm_summary.layer_index": [
+   null,
+   "L2"
+  ],
+  "bo_cdlm_summary.layer_name": [
+   null,
+   "Bodha"
+  ],
+  "bo_cgm_motifs.layer_index": [
+   null,
+   "L2"
+  ],
+  "bo_cgm_motifs.layer_name": [
+   null,
+   "Bodha"
+  ],
+  "bo_cgm_paths.layer_index": [
+   null,
+   "L2"
+  ],
+  "bo_cgm_paths.layer_name": [
+   null,
+   "Bodha"
+  ],
+  "bo_chart_gestalt.layer_index": [
+   null,
+   "L2"
+  ],
+  "bo_chart_gestalt.layer_name": [
+   null,
+   "Bodha"
+  ],
+  "bo_laksana_rerank.layer_index": [
+   null,
+   "L2"
+  ],
+  "bo_laksana_rerank.layer_name": [
+   null,
+   "Bodha"
+  ],
+  "bo_nakshatra_semantic.layer_index": [
+   null,
+   "L2"
+  ],
+  "bo_nakshatra_semantic.layer_name": [
+   null,
+   "Bodha"
+  ],
+  "bo_pratijna.layer_index": [
+   "2",
+   "L2"
+  ],
+  "bo_special_lagna.layer_index": [
+   null,
+   "L2"
+  ],
+  "bo_special_lagna.layer_name": [
+   null,
+   "Bodha"
+  ],
+  "bo_sudarshana.layer_index": [
+   null,
+   "L2"
+  ],
+  "bo_sudarshana.layer_name": [
+   null,
+   "Bodha"
+  ],
+  "bo_vargottama_dhana.layer_index": [
+   null,
+   "L2"
+  ],
+  "bo_vargottama_dhana.layer_name": [
+   null,
+   "Bodha"
+  ],
+  "bo_yantra_mechanism.layer_index": [
+   null,
+   "L2"
+  ],
+  "bo_yantra_mechanism.layer_name": [
+   null,
+   "Bodha"
+  ],
+  "ga_ayurdaya.layer_index": [
+   "1",
+   "L1"
+  ],
+  "ga_ayurdaya.layer_name": [
+   "Ganita",
+   "Gaṇita"
+  ],
+  "ga_sensitive_degree.layer_index": [
+   "1",
+   "L1"
+  ],
+  "ga_sensitive_degree.layer_name": [
+   "Ganita",
+   "Gaṇita"
+  ],
+  "ga_vichara.layer_index": [
+   null,
+   "L1"
+  ],
+  "ga_vichara.layer_name": [
+   null,
+   "Gaṇita"
+  ],
+  "ka_avadhi.layer_index": [
+   "3",
+   "L3"
+  ],
+  "ka_avadhi.layer_name": [
+   "Kala",
+   "Kāla"
+  ],
+  "ka_gochara_v3_century_materialize.layer_name": [
+   "Kala",
+   "Kāla"
+  ],
+  "ka_taranga.layer_index": [
+   "3",
+   "L3"
+  ],
+  "ka_taranga.layer_name": [
+   "Kala",
+   "Kāla"
+  ]
+ },
+ "C02_violations": [
+  "lel_events"
+ ],
+ "C03_violations": [
+  "lel_events"
+ ],
+ "codepoint_observed": [
+  [
+   "Gaṇita",
+   6,
+   8
+  ],
+  [
+   "Kāla",
+   4,
+   5
+  ],
+  [
+   "Mīmāṃsā",
+   7,
+   12
+  ]
+ ],
+ "lel_events": {
+  "asset_id": "lel_events",
+  "layer": "mimamsa",
+  "layer_index": null,
+  "layer_name": null
+ },
+ "failures": []
+}

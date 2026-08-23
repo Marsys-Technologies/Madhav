@@ -1,0 +1,384 @@
+{
+ "live_rows": 128,
+ "seed_entries": 127,
+ "seed_layerNames": {
+  "brahmagyan": "Brahmagyan",
+  "ganita": "Gaṇita",
+  "bodha": "Bodha",
+  "kala": "Kāla",
+  "phala": "Phala",
+  "mimamsa": "Mīmāṃsā"
+ },
+ "seed_layerIndices": {
+  "brahmagyan": "L0",
+  "ganita": "L1",
+  "bodha": "L2",
+  "kala": "L3",
+  "phala": "L4",
+  "mimamsa": "L5"
+ },
+ "seed_map_matches_pin": true,
+ "layer_index_repair_count": 20,
+ "layer_name_repair_count": 19,
+ "layer_index_repair": [
+  {
+   "asset_id": "bg_sign_medical",
+   "layer": "brahmagyan",
+   "now": "0",
+   "to": "L0",
+   "defect": "MALFORMED",
+   "seed_holds": "L0"
+  },
+  {
+   "asset_id": "bg_vidhi_floors",
+   "layer": "brahmagyan",
+   "now": null,
+   "to": "L0",
+   "defect": "NULL",
+   "seed_holds": "L0"
+  },
+  {
+   "asset_id": "bg_vidhi_primitives",
+   "layer": "brahmagyan",
+   "now": null,
+   "to": "L0",
+   "defect": "NULL",
+   "seed_holds": "L0"
+  },
+  {
+   "asset_id": "bo_arudha",
+   "layer": "bodha",
+   "now": null,
+   "to": "L2",
+   "defect": "NULL",
+   "seed_holds": "L2"
+  },
+  {
+   "asset_id": "bo_cdlm_summary",
+   "layer": "bodha",
+   "now": null,
+   "to": "L2",
+   "defect": "NULL",
+   "seed_holds": "L2"
+  },
+  {
+   "asset_id": "bo_cgm_motifs",
+   "layer": "bodha",
+   "now": null,
+   "to": "L2",
+   "defect": "NULL",
+   "seed_holds": "L2"
+  },
+  {
+   "asset_id": "bo_cgm_paths",
+   "layer": "bodha",
+   "now": null,
+   "to": "L2",
+   "defect": "NULL",
+   "seed_holds": "L2"
+  },
+  {
+   "asset_id": "bo_chart_gestalt",
+   "layer": "bodha",
+   "now": null,
+   "to": "L2",
+   "defect": "NULL",
+   "seed_holds": "L2"
+  },
+  {
+   "asset_id": "bo_laksana_rerank",
+   "layer": "bodha",
+   "now": null,
+   "to": "L2",
+   "defect": "NULL",
+   "seed_holds": "L2"
+  },
+  {
+   "asset_id": "bo_nakshatra_semantic",
+   "layer": "bodha",
+   "now": null,
+   "to": "L2",
+   "defect": "NULL",
+   "seed_holds": "L2"
+  },
+  {
+   "asset_id": "bo_pratijna",
+   "layer": "bodha",
+   "now": "2",
+   "to": "L2",
+   "defect": "MALFORMED",
+   "seed_holds": "L2"
+  },
+  {
+   "asset_id": "bo_special_lagna",
+   "layer": "bodha",
+   "now": null,
+   "to": "L2",
+   "defect": "NULL",
+   "seed_holds": "L2"
+  },
+  {
+   "asset_id": "bo_sudarshana",
+   "layer": "bodha",
+   "now": null,
+   "to": "L2",
+   "defect": "NULL",
+   "seed_holds": "L2"
+  },
+  {
+   "asset_id": "bo_vargottama_dhana",
+   "layer": "bodha",
+   "now": null,
+   "to": "L2",
+   "defect": "NULL",
+   "seed_holds": "L2"
+  },
+  {
+   "asset_id": "bo_yantra_mechanism",
+   "layer": "bodha",
+   "now": null,
+   "to": "L2",
+   "defect": "NULL",
+   "seed_holds": "L2"
+  },
+  {
+   "asset_id": "ga_ayurdaya",
+   "layer": "ganita",
+   "now": "1",
+   "to": "L1",
+   "defect": "MALFORMED",
+   "seed_holds": "L1"
+  },
+  {
+   "asset_id": "ga_sensitive_degree",
+   "layer": "ganita",
+   "now": "1",
+   "to": "L1",
+   "defect": "MALFORMED",
+   "seed_holds": "L1"
+  },
+  {
+   "asset_id": "ga_vichara",
+   "layer": "ganita",
+   "now": null,
+   "to": "L1",
+   "defect": "NULL",
+   "seed_holds": "L1"
+  },
+  {
+   "asset_id": "ka_avadhi",
+   "layer": "kala",
+   "now": "3",
+   "to": "L3",
+   "defect": "MALFORMED",
+   "seed_holds": "L3"
+  },
+  {
+   "asset_id": "ka_taranga",
+   "layer": "kala",
+   "now": "3",
+   "to": "L3",
+   "defect": "MALFORMED",
+   "seed_holds": "L3"
+  }
+ ],
+ "layer_name_repair": [
+  {
+   "asset_id": "bg_vidhi_floors",
+   "layer": "brahmagyan",
+   "now": null,
+   "to": "Brahmagyan",
+   "defect": "NULL",
+   "seed_holds": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_vidhi_primitives",
+   "layer": "brahmagyan",
+   "now": null,
+   "to": "Brahmagyan",
+   "defect": "NULL",
+   "seed_holds": "Brahmagyan"
+  },
+  {
+   "asset_id": "bo_arudha",
+   "layer": "bodha",
+   "now": null,
+   "to": "Bodha",
+   "defect": "NULL",
+   "seed_holds": "Bodha"
+  },
+  {
+   "asset_id": "bo_cdlm_summary",
+   "layer": "bodha",
+   "now": null,
+   "to": "Bodha",
+   "defect": "NULL",
+   "seed_holds": "Bodha"
+  },
+  {
+   "asset_id": "bo_cgm_motifs",
+   "layer": "bodha",
+   "now": null,
+   "to": "Bodha",
+   "defect": "NULL",
+   "seed_holds": "Bodha"
+  },
+  {
+   "asset_id": "bo_cgm_paths",
+   "layer": "bodha",
+   "now": null,
+   "to": "Bodha",
+   "defect": "NULL",
+   "seed_holds": "Bodha"
+  },
+  {
+   "asset_id": "bo_chart_gestalt",
+   "layer": "bodha",
+   "now": null,
+   "to": "Bodha",
+   "defect": "NULL",
+   "seed_holds": "Bodha"
+  },
+  {
+   "asset_id": "bo_laksana_rerank",
+   "layer": "bodha",
+   "now": null,
+   "to": "Bodha",
+   "defect": "NULL",
+   "seed_holds": "Bodha"
+  },
+  {
+   "asset_id": "bo_nakshatra_semantic",
+   "layer": "bodha",
+   "now": null,
+   "to": "Bodha",
+   "defect": "NULL",
+   "seed_holds": "Bodha"
+  },
+  {
+   "asset_id": "bo_special_lagna",
+   "layer": "bodha",
+   "now": null,
+   "to": "Bodha",
+   "defect": "NULL",
+   "seed_holds": "Bodha"
+  },
+  {
+   "asset_id": "bo_sudarshana",
+   "layer": "bodha",
+   "now": null,
+   "to": "Bodha",
+   "defect": "NULL",
+   "seed_holds": "Bodha"
+  },
+  {
+   "asset_id": "bo_vargottama_dhana",
+   "layer": "bodha",
+   "now": null,
+   "to": "Bodha",
+   "defect": "NULL",
+   "seed_holds": "Bodha"
+  },
+  {
+   "asset_id": "bo_yantra_mechanism",
+   "layer": "bodha",
+   "now": null,
+   "to": "Bodha",
+   "defect": "NULL",
+   "seed_holds": "Bodha"
+  },
+  {
+   "asset_id": "ga_ayurdaya",
+   "layer": "ganita",
+   "now": "Ganita",
+   "to": "Gaṇita",
+   "defect": "WRONG_SPELLING",
+   "seed_holds": "Gaṇita"
+  },
+  {
+   "asset_id": "ga_sensitive_degree",
+   "layer": "ganita",
+   "now": "Ganita",
+   "to": "Gaṇita",
+   "defect": "WRONG_SPELLING",
+   "seed_holds": "Gaṇita"
+  },
+  {
+   "asset_id": "ga_vichara",
+   "layer": "ganita",
+   "now": null,
+   "to": "Gaṇita",
+   "defect": "NULL",
+   "seed_holds": "Gaṇita"
+  },
+  {
+   "asset_id": "ka_avadhi",
+   "layer": "kala",
+   "now": "Kala",
+   "to": "Kāla",
+   "defect": "WRONG_SPELLING",
+   "seed_holds": "Kāla"
+  },
+  {
+   "asset_id": "ka_gochara_v3_century_materialize",
+   "layer": "kala",
+   "now": "Kala",
+   "to": "Kāla",
+   "defect": "WRONG_SPELLING",
+   "seed_holds": "Kāla"
+  },
+  {
+   "asset_id": "ka_taranga",
+   "layer": "kala",
+   "now": "Kala",
+   "to": "Kāla",
+   "defect": "WRONG_SPELLING",
+   "seed_holds": "Kāla"
+  }
+ ],
+ "held_rows": [
+  {
+   "asset_id": "lel_events",
+   "layer": "mimamsa",
+   "layer_index_now": null,
+   "layer_name_now": null
+  }
+ ],
+ "cross_source_disagreements": [],
+ "assets_with_no_seed_entry": [
+  "bg_gochara_citation_resolution"
+ ],
+ "layer_index_defect_classes": {
+  "MALFORMED": 6,
+  "NULL": 14
+ },
+ "layer_name_defect_classes": {
+  "NULL": 14,
+  "WRONG_SPELLING": 5
+ },
+ "seed_holds_clean_layer_index": 20,
+ "seed_holds_clean_layer_name": 19,
+ "codepoint_pin": {
+  "Gaṇita": {
+   "expect_chars": 6,
+   "expect_bytes": 8,
+   "actual_chars": 6,
+   "actual_bytes": 8,
+   "ok": true
+  },
+  "Kāla": {
+   "expect_chars": 4,
+   "expect_bytes": 5,
+   "actual_chars": 4,
+   "actual_bytes": 5,
+   "ok": true
+  },
+  "Mīmāṃsā": {
+   "expect_chars": 7,
+   "expect_bytes": 12,
+   "actual_chars": 7,
+   "actual_bytes": 12,
+   "ok": true
+  }
+ }
+}

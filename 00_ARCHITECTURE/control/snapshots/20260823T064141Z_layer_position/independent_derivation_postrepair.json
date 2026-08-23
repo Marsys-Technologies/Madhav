@@ -1,0 +1,64 @@
+{
+ "live_rows": 128,
+ "seed_entries": 127,
+ "seed_layerNames": {
+  "brahmagyan": "Brahmagyan",
+  "ganita": "Gaṇita",
+  "bodha": "Bodha",
+  "kala": "Kāla",
+  "phala": "Phala",
+  "mimamsa": "Mīmāṃsā"
+ },
+ "seed_layerIndices": {
+  "brahmagyan": "L0",
+  "ganita": "L1",
+  "bodha": "L2",
+  "kala": "L3",
+  "phala": "L4",
+  "mimamsa": "L5"
+ },
+ "seed_map_matches_pin": true,
+ "layer_index_repair_count": 0,
+ "layer_name_repair_count": 0,
+ "layer_index_repair": [],
+ "layer_name_repair": [],
+ "held_rows": [
+  {
+   "asset_id": "lel_events",
+   "layer": "mimamsa",
+   "layer_index_now": null,
+   "layer_name_now": null
+  }
+ ],
+ "cross_source_disagreements": [],
+ "assets_with_no_seed_entry": [
+  "bg_gochara_citation_resolution"
+ ],
+ "layer_index_defect_classes": {},
+ "layer_name_defect_classes": {},
+ "seed_holds_clean_layer_index": 0,
+ "seed_holds_clean_layer_name": 0,
+ "codepoint_pin": {
+  "Gaṇita": {
+   "expect_chars": 6,
+   "expect_bytes": 8,
+   "actual_chars": 6,
+   "actual_bytes": 8,
+   "ok": true
+  },
+  "Kāla": {
+   "expect_chars": 4,
+   "expect_bytes": 5,
+   "actual_chars": 4,
+   "actual_bytes": 5,
+   "ok": true
+  },
+  "Mīmāṃsā": {
+   "expect_chars": 7,
+   "expect_bytes": 12,
+   "actual_chars": 7,
+   "actual_bytes": 12,
+   "ok": true
+  }
+ }
+}

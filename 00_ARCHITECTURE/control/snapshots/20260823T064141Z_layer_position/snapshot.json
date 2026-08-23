@@ -1,0 +1,782 @@
+{
+ "task": "M0-T26",
+ "captured_at_utc": "2026-08-23T06:42:43Z",
+ "table": "asset_registry",
+ "columns": [
+  "asset_id",
+  "layer",
+  "layer_index",
+  "layer_name"
+ ],
+ "row_count": 128,
+ "rows": [
+  {
+   "asset_id": "bg_class_lifetime_counts",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_class_priors",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_cohort",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_compendium_index",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_concordance",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_dasha_systems",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_dignity_reference",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_doshas",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_ephemeris",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_ephemeris_engine",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_formula_constants",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_ghatana",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_gochara_arcs",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_gochara_citation_resolution",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_kota_chakra_rings",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_kp_sublord_division",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_medical_mappings",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_muhurta_lattice",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_nakshatra",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_nakshatra_medical",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_ontology",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_panchanga",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_parihara_rules",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_phaladeepika_latta",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_prashna_rules",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_reference",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_remedies",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_rules",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_sarvatobhadra_grid",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_sign_medical",
+   "layer": "brahmagyan",
+   "layer_index": "0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_sky_calendar",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_text_index",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_texts",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_transit_engine",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_transit_rules",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_vastu_directions",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_vedha_malefic_scale",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bg_vidhi_floors",
+   "layer": "brahmagyan",
+   "layer_index": null,
+   "layer_name": null
+  },
+  {
+   "asset_id": "bg_vidhi_primitives",
+   "layer": "brahmagyan",
+   "layer_index": null,
+   "layer_name": null
+  },
+  {
+   "asset_id": "bg_yogas",
+   "layer": "brahmagyan",
+   "layer_index": "L0",
+   "layer_name": "Brahmagyan"
+  },
+  {
+   "asset_id": "bo_anveshana",
+   "layer": "bodha",
+   "layer_index": "L2",
+   "layer_name": "Bodha"
+  },
+  {
+   "asset_id": "bo_arudha",
+   "layer": "bodha",
+   "layer_index": null,
+   "layer_name": null
+  },
+  {
+   "asset_id": "bo_bimba",
+   "layer": "bodha",
+   "layer_index": "L2",
+   "layer_name": "Bodha"
+  },
+  {
+   "asset_id": "bo_cdlm_summary",
+   "layer": "bodha",
+   "layer_index": null,
+   "layer_name": null
+  },
+  {
+   "asset_id": "bo_cgm_motifs",
+   "layer": "bodha",
+   "layer_index": null,
+   "layer_name": null
+  },
+  {
+   "asset_id": "bo_cgm_paths",
+   "layer": "bodha",
+   "layer_index": null,
+   "layer_name": null
+  },
+  {
+   "asset_id": "bo_chart_gestalt",
+   "layer": "bodha",
+   "layer_index": null,
+   "layer_name": null
+  },
+  {
+   "asset_id": "bo_drishti",
+   "layer": "bodha",
+   "layer_index": "L2",
+   "layer_name": "Bodha"
+  },
+  {
+   "asset_id": "bo_karanajala",
+   "layer": "bodha",
+   "layer_index": "L2",
+   "layer_name": "Bodha"
+  },
+  {
+   "asset_id": "bo_laksana",
+   "layer": "bodha",
+   "layer_index": "L2",
+   "layer_name": "Bodha"
+  },
+  {
+   "asset_id": "bo_laksana_rerank",
+   "layer": "bodha",
+   "layer_index": null,
+   "layer_name": null
+  },
+  {
+   "asset_id": "bo_nakshatra_semantic",
+   "layer": "bodha",
+   "layer_index": null,
+   "layer_name": null
+  },
+  {
+   "asset_id": "bo_pramana_mapa",
+   "layer": "bodha",
+   "layer_index": "L2",
+   "layer_name": "Bodha"
+  },
+  {
+   "asset_id": "bo_pratijna",
+   "layer": "bodha",
+   "layer_index": "2",
+   "layer_name": "Bodha"
+  },
+  {
+   "asset_id": "bo_samskara",
+   "layer": "bodha",
+   "layer_index": "L2",
+   "layer_name": "Bodha"
+  },
+  {
+   "asset_id": "bo_samvada",
+   "layer": "bodha",
+   "layer_index": "L2",
+   "layer_name": "Bodha"
+  },
+  {
+   "asset_id": "bo_sangati",
+   "layer": "bodha",
+   "layer_index": "L2",
+   "layer_name": "Bodha"
+  },
+  {
+   "asset_id": "bo_special_lagna",
+   "layer": "bodha",
+   "layer_index": null,
+   "layer_name": null
+  },
+  {
+   "asset_id": "bo_sudarshana",
+   "layer": "bodha",
+   "layer_index": null,
+   "layer_name": null
+  },
+  {
+   "asset_id": "bo_upaya",
+   "layer": "bodha",
+   "layer_index": "L2",
+   "layer_name": "Bodha"
+  },
+  {
+   "asset_id": "bo_vargottama_dhana",
+   "layer": "bodha",
+   "layer_index": null,
+   "layer_name": null
+  },
+  {
+   "asset_id": "bo_yantra_mechanism",
+   "layer": "bodha",
+   "layer_index": null,
+   "layer_name": null
+  },
+  {
+   "asset_id": "ga_ayurdaya",
+   "layer": "ganita",
+   "layer_index": "1",
+   "layer_name": "Ganita"
+  },
+  {
+   "asset_id": "ga_condition",
+   "layer": "ganita",
+   "layer_index": "L1",
+   "layer_name": "Gaṇita"
+  },
+  {
+   "asset_id": "ga_dashas",
+   "layer": "ganita",
+   "layer_index": "L1",
+   "layer_name": "Gaṇita"
+  },
+  {
+   "asset_id": "ga_medical",
+   "layer": "ganita",
+   "layer_index": "L1",
+   "layer_name": "Gaṇita"
+  },
+  {
+   "asset_id": "ga_nakshatra",
+   "layer": "ganita",
+   "layer_index": "L1",
+   "layer_name": "Gaṇita"
+  },
+  {
+   "asset_id": "ga_panchanga",
+   "layer": "ganita",
+   "layer_index": "L1",
+   "layer_name": "Gaṇita"
+  },
+  {
+   "asset_id": "ga_positions",
+   "layer": "ganita",
+   "layer_index": "L1",
+   "layer_name": "Gaṇita"
+  },
+  {
+   "asset_id": "ga_prashna",
+   "layer": "ganita",
+   "layer_index": "L1",
+   "layer_name": "Gaṇita"
+  },
+  {
+   "asset_id": "ga_sade_sati",
+   "layer": "ganita",
+   "layer_index": "L1",
+   "layer_name": "Gaṇita"
+  },
+  {
+   "asset_id": "ga_sensitive",
+   "layer": "ganita",
+   "layer_index": "L1",
+   "layer_name": "Gaṇita"
+  },
+  {
+   "asset_id": "ga_sensitive_degree",
+   "layer": "ganita",
+   "layer_index": "1",
+   "layer_name": "Ganita"
+  },
+  {
+   "asset_id": "ga_strength",
+   "layer": "ganita",
+   "layer_index": "L1",
+   "layer_name": "Gaṇita"
+  },
+  {
+   "asset_id": "ga_structural",
+   "layer": "ganita",
+   "layer_index": "L1",
+   "layer_name": "Gaṇita"
+  },
+  {
+   "asset_id": "ga_tajaka",
+   "layer": "ganita",
+   "layer_index": "L1",
+   "layer_name": "Gaṇita"
+  },
+  {
+   "asset_id": "ga_transit_anchors",
+   "layer": "ganita",
+   "layer_index": "L1",
+   "layer_name": "Gaṇita"
+  },
+  {
+   "asset_id": "ga_vargas",
+   "layer": "ganita",
+   "layer_index": "L1",
+   "layer_name": "Gaṇita"
+  },
+  {
+   "asset_id": "ga_vastu",
+   "layer": "ganita",
+   "layer_index": "L1",
+   "layer_name": "Gaṇita"
+  },
+  {
+   "asset_id": "ga_vichara",
+   "layer": "ganita",
+   "layer_index": null,
+   "layer_name": null
+  },
+  {
+   "asset_id": "ga_yoga",
+   "layer": "ganita",
+   "layer_index": "L1",
+   "layer_name": "Gaṇita"
+  },
+  {
+   "asset_id": "ka_avadhi",
+   "layer": "kala",
+   "layer_index": "3",
+   "layer_name": "Kala"
+  },
+  {
+   "asset_id": "ka_bhavishya_lekha",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_dasha_kala",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_gochara",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_gochara_resonance",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_gochara_sweep",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_gochara_v3_century_materialize",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kala"
+  },
+  {
+   "asset_id": "ka_graha_sancara",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_jivana_parva",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_kala_darshana",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_kalasutra",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_kota_chakra",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_kshetra",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_moorti_nirnaya",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_muhurta_seva",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_sangam",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_sudarshana_varsha",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_taranga",
+   "layer": "kala",
+   "layer_index": "3",
+   "layer_name": "Kala"
+  },
+  {
+   "asset_id": "ka_tithi_pravesha",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_tulana",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_vedha_gochara",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_vighnakara",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "ka_yojaka",
+   "layer": "kala",
+   "layer_index": "L3",
+   "layer_name": "Kāla"
+  },
+  {
+   "asset_id": "lel_events",
+   "layer": "mimamsa",
+   "layer_index": null,
+   "layer_name": null
+  },
+  {
+   "asset_id": "mi_abhilekha",
+   "layer": "mimamsa",
+   "layer_index": "L5",
+   "layer_name": "Mīmāṃsā"
+  },
+  {
+   "asset_id": "mi_adhilepa",
+   "layer": "mimamsa",
+   "layer_index": "L5",
+   "layer_name": "Mīmāṃsā"
+  },
+  {
+   "asset_id": "mi_bhara",
+   "layer": "mimamsa",
+   "layer_index": "L5",
+   "layer_name": "Mīmāṃsā"
+  },
+  {
+   "asset_id": "mi_bhavisya",
+   "layer": "mimamsa",
+   "layer_index": "L5",
+   "layer_name": "Mīmāṃsā"
+  },
+  {
+   "asset_id": "mi_darshana",
+   "layer": "mimamsa",
+   "layer_index": "L5",
+   "layer_name": "Mīmāṃsā"
+  },
+  {
+   "asset_id": "mi_gunanaka",
+   "layer": "mimamsa",
+   "layer_index": "L5",
+   "layer_name": "Mīmāṃsā"
+  },
+  {
+   "asset_id": "mi_jivanaghatana",
+   "layer": "mimamsa",
+   "layer_index": "L5",
+   "layer_name": "Mīmāṃsā"
+  },
+  {
+   "asset_id": "mi_kula",
+   "layer": "mimamsa",
+   "layer_index": "L5",
+   "layer_name": "Mīmāṃsā"
+  },
+  {
+   "asset_id": "mi_pariksha",
+   "layer": "mimamsa",
+   "layer_index": "L5",
+   "layer_name": "Mīmāṃsā"
+  },
+  {
+   "asset_id": "mi_pramana",
+   "layer": "mimamsa",
+   "layer_index": "L5",
+   "layer_name": "Mīmāṃsā"
+  },
+  {
+   "asset_id": "mi_sambandha",
+   "layer": "mimamsa",
+   "layer_index": "L5",
+   "layer_name": "Mīmāṃsā"
+  },
+  {
+   "asset_id": "mi_sankalpa",
+   "layer": "mimamsa",
+   "layer_index": "L5",
+   "layer_name": "Mīmāṃsā"
+  },
+  {
+   "asset_id": "mi_seva",
+   "layer": "mimamsa",
+   "layer_index": "L5",
+   "layer_name": "Mīmāṃsā"
+  },
+  {
+   "asset_id": "mi_vistara",
+   "layer": "mimamsa",
+   "layer_index": "L5",
+   "layer_name": "Mīmāṃsā"
+  },
+  {
+   "asset_id": "ph_muhurta",
+   "layer": "phala",
+   "layer_index": "L4",
+   "layer_name": "Phala"
+  },
+  {
+   "asset_id": "ph_nimitta",
+   "layer": "phala",
+   "layer_index": "L4",
+   "layer_name": "Phala"
+  },
+  {
+   "asset_id": "ph_phaladesa",
+   "layer": "phala",
+   "layer_index": "L4",
+   "layer_name": "Phala"
+  },
+  {
+   "asset_id": "ph_pramana",
+   "layer": "phala",
+   "layer_index": "L4",
+   "layer_name": "Phala"
+  },
+  {
+   "asset_id": "ph_pratikara",
+   "layer": "phala",
+   "layer_index": "L4",
+   "layer_name": "Phala"
+  },
+  {
+   "asset_id": "ph_rectification",
+   "layer": "phala",
+   "layer_index": "L4",
+   "layer_name": "Phala"
+  },
+  {
+   "asset_id": "ph_sankrama",
+   "layer": "phala",
+   "layer_index": "L4",
+   "layer_name": "Phala"
+  },
+  {
+   "asset_id": "ph_sodhana",
+   "layer": "phala",
+   "layer_index": "L4",
+   "layer_name": "Phala"
+  },
+  {
+   "asset_id": "ph_suddha_sodhana",
+   "layer": "phala",
+   "layer_index": "L4",
+   "layer_name": "Phala"
+  }
+ ]
+}
