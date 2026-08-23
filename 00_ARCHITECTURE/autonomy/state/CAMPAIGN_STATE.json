@@ -557,12 +557,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T30",
-      "what": "COMPLETE bdf47d0c8",
-      "owner": "PARIKSAKA",
-      "state": "awaiting_verification"
-    },
-    {
       "id": "F-ROOT-MISMATCH-DETECTOR",
       "what": "M0-T30 flagged for a second opinion: removing the C-23 ROOT workaround exposes NIRMANA_REPO to the guard, and rather than restore a coercion it added a root-mismatch DETECTOR that fails with both paths named. Verified on a constructed second checkout: EXIT=3 after, EXIT=0 before, because the re-point silently swallowed it. It asked for review rather than assuming",
       "owner": "PARIKSAKA",
@@ -623,12 +617,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T37",
-      "what": "argv half of the DRY_RUN hazard (D-28 part 3)",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "GATE-FIRES-ON-59",
       "what": "The NULL-fill gate is faithful to D-28 and blocks the first real seed run behind a 59-cell acknowledgement list. The KARAKA raised it and DID NOT NARROW IT, on the grounds that choosing which NULLs are 'deliberate' is the judgment D-28 reserved and ADHIKARIN's word was 'any'. It suggests a column-level allowance may be worth a ruling. I agree it was right not to decide. CONDUCTOR-VERIFIED SEPARATELY: the live NULL distribution across seed-written columns is 621 cells over 11 columns (provides_apis 126, health_probe 126, estimated_seconds 119, expected_volume_formula 108, size_sql 51, volume_explanation 44, target_floor 25, target_table 14, count_sql 6, layer_name 1, layer_index 1). I did NOT verify the per-column breakdown of the 59 TRANSITIONS and said so — that needs the seed projection joined against the live NULLs",
       "owner": "ADHIKARIN",
@@ -659,10 +647,34 @@
       "what": "PRAHARI disclosed unprompted that it applied an idle-unpoked fix at pane %0 some ticks ago, believing it was addressing the conductor. Since %0 is ambiguous between this session's ancestry and madhav-8e, that poke most likely landed in madhav-8e — a session OUTSIDE the fleet, and most likely the native's own interactive session, since this conductor runs as a background job launched from that pane. NOT destructive: a poke is a prompt, not a command, and %15 (the other campaign, absolutely prohibited) was never touched. But it caused a turn in a session that is not ours to drive — adjacent in spirit to P2 though no rule names it. PRAHARI was reasoning CORRECTLY from D-16's map, which was wrong; every step it took followed the ruling as written. Asked it to RECORD the literal text and timestamp so the native can see what appeared in his session, and explicitly NOT to investigate madhav-8e — not a fleet agent, not ours to read. Surfacing to the native directly; that is the right channel, not the fleet reconstructing what happened inside his session.",
       "resolved_facts": "PRAHARI filed the full disclosure to LEKHAKA (mailbox/to_scribe/20260823T080620Z-prahari-disclosure-two-pokes-to-pane-0.md). It was TWO instances, not one: ~04:47:3xZ and ~07:54:5xZ, both submitting the literal text 'keep going' via the C-u/type/Enter recipe, both timestamps anchored to its nearest heartbeat since it has no finer-grained logging — stated as a limit rather than presented as precision. It did NOT investigate madhav-8e: no capture, no read, no message. It is keeping pane-capture for %11/%12/%13/%14 and dropping only %0, as asked — no over-correction.",
       "assessment": "Benign in content: 'keep going' is about as harmless a prompt as could land, and it was sent twice over three hours. The record now carries the literal text and the times so the native can match it to his own scrollback rather than wonder."
+    },
+    {
+      "id": "M0-T37",
+      "what": "DONE df862bfd4 — argv half closed",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T38",
+      "what": "investigate the revert that verified clean and did not stick — verification integrity",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "F-ACK-GATE-ENV-ONLY",
+      "what": "M0-T37's F-1: M0-T35's SEED_ACK_NULL_FILL gate is ALSO env-only — the same two-channel shape recurring in the same file one ruling cycle later. It now FAILS SAFE, since a flag-form attempt is refused rather than ignored, so this is a shape worth naming rather than a live hazard",
+      "owner": "ADHIKARIN",
+      "state": "raised"
+    },
+    {
+      "id": "M0-T30-CLOSED",
+      "what": "M0-T30 re-reported on cleanup: its commit is an ancestor of HEAD with all three changes intact, its background notifications were its OWN leftover waiters dying to its cleanup pkill (exit 144 is signal death, not failure), and 0 DAG-CTE backends remain server-side so the contention it caused is fully cleared. It also told the verifier that its own report's F-13 caveats are now SUPERSEDED BY M0-T33's evidence rather than by its own — an agent retiring its own uncertainty on a sibling's better proof, which is exactly the behaviour I16 is for",
+      "owner": "closed",
+      "state": "clean"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T08:08:33Z",
+  "last_updated_ts": "2026-08-23T08:12:38Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
