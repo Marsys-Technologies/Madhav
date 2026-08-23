@@ -1052,10 +1052,28 @@
       "what": "SQ-11 (pin C-28's population source so V-27's trap cannot be sprung politely) is READY and I13/I14-clear, but I am HOLDING it rather than dispatching: it edits check_asset_catalogue_contract.py, which KARAKA-M0-T49 is CURRENTLY RUNNING for its both-directions disclosure verification. Editing a guard mid-verification would race and could invalidate T49's evidence — or worse, produce evidence that looks valid and is not. Dispatch the moment T49 reports. Recording the reason so the delay is not read as an oversight.",
       "owner": "SUTRADHARA",
       "state": "held_pending_T49"
+    },
+    {
+      "id": "M0-T49-BLOCKING-FAILURES-ZERO",
+      "what": "COMPLETE f5269164c. 15 disclosure entries written to asset_catalogue_disclosed_residuals.json on D-54's authorisation and D-57's CORRECTED ground (12 existing demoted, 3 created: C-11/X-03/X-05; 16->19). Zero code changed. THREE GATES RAN BEFORE ANY BYTE WAS WRITTEN, each sys.exit on failure: live blocking rule set == D-54's 15 both directions; per-rule live identity set == D-54's covers both directions 109/109 with len(violations)==violation_count asserted so --max-rows could not hide one; D-57's two classes partition covers EXACTLY (10 named-later-rung + 99 M0-BLOCKED = 109), reproducing the split from the ledger rather than from the agent. MEASURED BOTH DIRECTIONS IN ONE SCHEMA STATE: baseline file 14:05:08Z exit 1 / blocking 15 / disclosed 0 / fail 16 / 109 violations; with entries 14:05:22Z exit 0 / blocking 0 / disclosed_non_gating 15 / fail 16 / 109 violations. All 15 still status=fail with UNCHANGED counts, 0 uncovered, NO violation count dropped anywhere. Undisclosed still blocks (entry removed / violation outside covers / authorised_by naming a non-existent decision each return C-11 to BLOCKING). 591 landed at 13:58:56Z BETWEEN its first two live runs and it did NOT reason about the mixed reading -- it re-ran both sides afterwards. THE HONEST NUMBER, ITS OWN HEADING, UNPROMPTED: blocking_failures reached zero BECAUSE EVERY FAILING BLOCKING RULE WAS AUTHORISED FOR DEMOTION, NOT BECAUSE ANYTHING WAS REPAIRED -- 16 rules still fail, 4 not_checkable, 109 identities outstanding (99 M0-blocked on PARK-8). Nothing was adjusted to produce the zero. SELF-FLAGGED FOR ATTACK: 'the flip's checklist item now rests on a demotion I wrote, and I am the agent who benefits from believing D-54 part 4's ratchet argument'; it overwrote M0-T36's owner/deferred_to/reason on 12 entries (originals preserved as *_as_drafted_by_M0_T36); and its field-by-field diff is its own script reading its own output, so D-54 part 8's INDEPENDENT two-source comparison STILL NEEDS RUNNING.",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T51",
+      "what": "DISPATCHED on SQ-15, urgency RAISED by T49's finding. asset_catalogue_disclosed_residuals.json now CONTRADICTS ITSELF: deferred_rule_disclosures carries new non_gating entries for C-11/X-03/X-05 while deferred_rule_disclosures_not_drafted still asserts all three are 'REPAIRABLE-IN-M0/UNEXAMINED, not deferred'. This is the artifact the blocking-switch flip precondition rests on (D-30 part 4 as amended by D-39), so a reviewer opening it to check the disclosures meets a sibling block saying three of them should not be there. T49 recorded the contradiction in the file's own README rather than hide it. DISPATCH CARRIES A CORRECTION: D-54 part 6 says correct the three to 'DEFERRED', but D-57 is the LATER word and withdrew D-53's ground -- most identities are honestly 'M0 — BLOCKED on PARK-8', and writing a rung name would be the false ownership claim D-57 exists to prevent. Class assignment to be parsed from D-57.corrected_grounds, not hand-classified. Guard numbers must NOT move; if any does, that is a finding.",
+      "owner": "KARAKA-M0-T51",
+      "state": "in_flight"
+    },
+    {
+      "id": "D-54-PART-8-STILL-OUTSTANDING",
+      "what": "Raised by M0-T49 against its own work and NOT discharged by it: D-54 part 8 requires an INDEPENDENT two-source comparison of the shipped covers lists against the guard's live output. T49's field-by-field diff is its own script reading its own output, which it says plainly is not that. So the covers lists are gate-passed (three programmatic gates, both directions, 109/109) but NOT independently two-source compared. Belongs to PARIKSAKA (I16 -- T49 may not close it) or to a KARAKA that is not T49.",
+      "owner": "PARIKSAKA",
+      "state": "outstanding"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T14:07:26Z",
+  "last_updated_ts": "2026-08-23T14:11:35Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
