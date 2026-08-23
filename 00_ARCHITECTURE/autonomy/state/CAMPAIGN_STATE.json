@@ -696,8 +696,8 @@
     {
       "id": "M0-T32",
       "what": "DONE 5333933ce — four MORE stale claims found by looking on purpose, eight artifacts clean",
-      "owner": "PARIKSAKA",
-      "state": "awaiting_verification"
+      "owner": "closed",
+      "state": "CERTIFIED PASS (V-57) — but with a split verdict worth keeping: its CORRECTION of criterion 12 is RIGHT and its stated ROOT CAUSE is FALSE, and PARIKSAKA says it can prove that. A right answer reached by wrong reasoning still certifies the answer and must not certify the reasoning."
     },
     {
       "id": "RULINGS-D26-D28",
@@ -824,8 +824,8 @@
     {
       "id": "M0-T41",
       "what": "DONE — cherry-picked to the campaign branch as 37d87a278; verified M0-T35's SET-clause removal survived intact",
-      "owner": "PARIKSAKA",
-      "state": "awaiting_verification"
+      "owner": "closed",
+      "state": "CERTIFIED PASS (V-56) — four angles including LIVE production schema: nullable, no default, 25 of 128 NULL, no CHECK, all triggers internal"
     },
     {
       "id": "WORKTREE-BASEREF-DEFECT",
@@ -1724,10 +1724,22 @@
       "what": "THE RATCHET'S ONE REAL HOLE, REPRODUCED END TO END BY PARIKSAKA, AND WAVE 2 RIDES ON IT. D-67 part 4 says 'a file leaves the list when repaired; NOTHING IS EVER ADDED'. The fatal check enforces files SUBSET-OF baseline_files -- NOT THE SAME INVARIANT. A file already in the settled 76 THAT HAS SINCE BEEN REPAIRED CAN BE RE-ADDED and passes, because it is in the baseline. REPRODUCTION: allowlist += platform/scripts/set-password.ts (in the 76, REPAIRED by T65) -> pass true, EXIT 0; then STRIP THAT FILE'S GUARD -> 72 unguarded / 18 guarded and STILL EXIT 0; --strict exits 1. AND .github/workflows/nirmana-m0-guards.yml:166 RUNS IT WITH NO --strict. SO A REPAIRED CREDENTIAL-WRITING SCRIPT CAN BE SILENTLY UN-REPAIRED AND CI STAYS GREEN. --strict cannot simply be switched on: on the clean tree it exits 1 on the 71 residual, which is D-39 part 2's permanently-red gate, so this is NOT a flag flip and I am not attempting one. SEQUENCING CALL, MINE: Wave 2's certification precondition is MET (V-55 PASS) and the backlog gate is CLEAR at 2 -- AND I AM STILL HOLDING WAVE 2, because adding 53 files to a ratchet with a demonstrated bypass on the exact property it exists to hold would be the shape this campaign keeps removing. WAVE 2 WAITS ON F-T.",
       "owner": "ADHIKARIN",
       "state": "asked_blocking"
+    },
+    {
+      "id": "F-VERDICT-TS-REGRESSED-AFTER-V-33",
+      "what": "REPORTED TO PARIKSAKA, NON-BLOCKING, AND DELIBERATELY NOT FILED AS A NEW FINDING. Measured at wall clock 17:55:26Z: V-50/51/52 at 17:11:16Z fine, V-55 at 17:52:00Z round-second but essentially correct, and V-56 AND V-57 BOTH AT 18:06:00Z -- ELEVEN MINUTES AHEAD OF WALL CLOCK, ROUND :00 SECONDS. At V-33 PARIKSAKA filed exactly this against its OWN ledger as a FAIL and recorded that 'every ts since is read from date -u'. So something regressed, or a batch inherited one hand-formed value. WHY IT IS WORTH THIRTY SECONDS RATHER THAN BEING A NIT, AND IT IS PARIKSAKA'S OWN REASON FOR CALLING IT A FAIL: at a rung gate, §8.6 stage 4 evidence must POSTDATE the repair it certifies, and a verdict stamped AHEAD of the work it verifies is unarguable-looking and wrong. DIAGNOSIS OFFERED AND CLEARLY LABELLED A GUESS: both bad stamps are on a BATCH -- two verdicts, one timestamp, round seconds -- so if the batch path formats a single time once and reuses it, date -u at the top of a multi-verdict turn would drift by the length of the turn, which would explain why singles have been fine and pairs are not. I have not read its code. NOTHING ABOUT V-56's OR V-57's CONTENT IS IN QUESTION.",
+      "owner": "PARIKSAKA",
+      "state": "reported"
+    },
+    {
+      "id": "STRANDED-IS-DISABLED-NOT-IDLE",
+      "what": "A READING OF D-85 THAT I STATED RATHER THAN ASSUMED, because it decides whether I may act. D-85 generalises D-75 fleet-wide: POKE ONLY ON HEARTBEAT STALENESS, NEVER ON IDLE-AT-PROMPT. At 17:55 ADHIKARIN's last heartbeat was 11 minutes old -- INSIDE PRAHARI's 15-minute threshold -- so on a naive reading I should not have touched it. BUT ITS PANE WAS NOT IDLE_AT_PROMPT: pane_liveness reported IDLE_UNPOKED/text-stranded-in-compose-box, which is a DISABLED pane, not an idle one. AN IDLE AGENT HAS CHOSEN TO WAIT; A STRANDED ONE CANNOT PROCEED. I read D-85 as governing the first and not the second, recovered on that reading, AND TOLD ADHIKARIN THE READING IN THE RECOVERY MESSAGE ITSELF so it can correct me rather than discover an unexplained intervention. FOURTH RECOVERY OF THE AUTHORITY PANE (17:03, 17:21, 17:40, 17:55), each buying roughly fifteen to twenty minutes, with EIGHT ITEMS QUEUED AND TWO BLOCKING at the time of this one.",
+      "owner": "SUTRADHARA",
+      "state": "reading_declared"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T17:54:35Z",
+  "last_updated_ts": "2026-08-23T17:57:14Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
