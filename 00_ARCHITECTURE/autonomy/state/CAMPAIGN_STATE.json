@@ -149,12 +149,6 @@
   },
   "open_threads": [
     {
-      "id": "M0-T11",
-      "what": "migrate.ts entrypoint guard (F-2 live hazard) — dispatched into T4's freed slot",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "M0-T1..T4",
       "what": "all four COMPLETE, none executed a write. Rulings D-4..D-6 granted the three gated writes; D-8 upheld V-1 and refused a deferral",
       "owner": "PARIKSAKA",
@@ -179,18 +173,6 @@
       "state": "running"
     },
     {
-      "id": "M0-T11",
-      "what": "migrate.ts entrypoint guard (F-2, D-9 binding precedent) — GATES T12/T13",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
-      "id": "M0-T12/T13",
-      "what": "migration apply + registration wave — deliberately HELD until T11 lands, so the runner is fixed before a KARAKA runs it with DATABASE_URL live",
-      "owner": "SUTRADHARA",
-      "state": "blocked_by_design"
-    },
-    {
       "id": "T3-ESCALATION",
       "what": "M0-T3 flagged 2 of D-6's conditions as not clean passes (orphans COMPLETED — the promotion died, not the run; and medians/estimated_seconds live outside asset_throughput) plus T-2 parked: M0's 'zero throughput rows on inactive assets' collides with P1 (ka_gochara_sweep)",
       "owner": "ADHIKARIN",
@@ -201,10 +183,28 @@
       "what": "3 service assets read service_health='healthy' with NO health_probe — an undetected green (H4/§N.8) found by M0-T2. Needs a rung owner or a Track-M home",
       "owner": "ADHIKARIN",
       "state": "asked"
+    },
+    {
+      "id": "M0-T11",
+      "what": "COMPLETE (1089db9b6): NODE_ENV sentinel replaced with a realpath-normalised entrypoint check, proven failing-then-passing AND mutation-tested. Gaps the builder named itself: --target unexercised, CI-runner behaviour inferred, tsconfig excludes scripts/, test A cannot prove 'nothing applied to a reachable DB'",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification_PRIORITY"
+    },
+    {
+      "id": "M0-T15",
+      "what": "asset_registry_seed.ts guard — the LIVE instance of the same class; exports ASSETS, already imported by 2 test files, main() writes asset_registry",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "M0-T12/T13",
+      "what": "migration wave — hold EXTENDED from 'T11 lands' to 'T11 certified'. The T12/T13 KARAKA would be the first real exercise of the fixed guard and of --target; certifying after that run would be certifying too late. PARIKSAKA asked to prioritise",
+      "owner": "SUTRADHARA",
+      "state": "blocked_by_design"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T04:24:45Z",
+  "last_updated_ts": "2026-08-23T04:27:21Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
