@@ -1,0 +1,4437 @@
+{
+ "generated_at_utc": "2026-08-23T06:36:35Z",
+ "task": "M0-T29",
+ "generator": "00_ARCHITECTURE/control/seed_durability/seed_durability_register.py",
+ "extractor": "00_ARCHITECTURE/control/seed_durability/extract_seed_projection.mjs",
+ "read_only": true,
+ "seed_extract_meta": {
+  "seed_path": "platform/scripts/seed/asset_registry_seed.ts",
+  "seed_bytes": 197124,
+  "inertness": {
+   "checks": {
+    "no_template_substitution": true,
+    "no_call_expression": true,
+    "no_free_identifiers": true,
+    "free_identifiers_found": []
+   },
+   "ok": true
+  },
+  "assets_parsed": 127,
+  "lel_file_count": 56,
+  "lel_error": null
+ },
+ "seed_upsert": {
+  "path": "platform/scripts/seed/asset_registry_seed.ts",
+  "ok": true,
+  "insert_columns": [
+   "asset_id",
+   "layer",
+   "sort_order",
+   "sanskrit_name",
+   "english_name",
+   "english_description",
+   "storage_type",
+   "target_table",
+   "count_sql",
+   "size_sql",
+   "target_floor",
+   "expected_volume_formula",
+   "expected_volume_inputs",
+   "volume_explanation",
+   "depends_on",
+   "scope",
+   "is_active",
+   "estimated_seconds",
+   "asset_type",
+   "layer_name",
+   "layer_index",
+   "provides_apis",
+   "health_probe",
+   "catalog_status",
+   "asset_kind"
+  ],
+  "do_update_columns": [
+   "asset_kind",
+   "asset_type",
+   "catalog_status",
+   "count_sql",
+   "depends_on",
+   "english_description",
+   "english_name",
+   "expected_volume_formula",
+   "expected_volume_inputs",
+   "health_probe",
+   "is_active",
+   "layer",
+   "layer_index",
+   "layer_name",
+   "provides_apis",
+   "sanskrit_name",
+   "scope",
+   "size_sql",
+   "sort_order",
+   "storage_type",
+   "target_floor",
+   "target_table",
+   "volume_explanation"
+  ],
+  "case_guarded": [
+   "catalog_status",
+   "is_active"
+  ],
+  "unconditional": [
+   "asset_kind",
+   "asset_type",
+   "count_sql",
+   "depends_on",
+   "english_description",
+   "english_name",
+   "expected_volume_formula",
+   "expected_volume_inputs",
+   "health_probe",
+   "layer",
+   "layer_index",
+   "layer_name",
+   "provides_apis",
+   "sanskrit_name",
+   "scope",
+   "size_sql",
+   "sort_order",
+   "storage_type",
+   "target_floor",
+   "target_table",
+   "volume_explanation"
+  ],
+  "insert_only_columns": [
+   "estimated_seconds"
+  ],
+  "guard_comment_verbatim": "-- MR-06 (PARISHKARA cutover durability): RETIRED guard.\n-- A RETIRED asset (e.g. ka_gochara_sweep post W6.4 cutover) must NEVER\n-- be resurrected by a re-seed. If the existing DB row is already RETIRED,\n-- preserve that status and the corresponding is_active=false rather than\n-- blindly overwriting with whatever the seed says. This is the ON-CONFLICT\n-- analogue of migration 563's one-way transition: CURRENT→RETIRED is\n-- irreversible by the seed; only an explicit native-authorized migration\n-- can reverse it."
+ },
+ "seed_upsert_expressions": {
+  "layer": "EXCLUDED.layer",
+  "sort_order": "EXCLUDED.sort_order",
+  "sanskrit_name": "EXCLUDED.sanskrit_name",
+  "english_name": "EXCLUDED.english_name",
+  "english_description": "EXCLUDED.english_description",
+  "storage_type": "EXCLUDED.storage_type",
+  "target_table": "EXCLUDED.target_table",
+  "count_sql": "EXCLUDED.count_sql",
+  "size_sql": "EXCLUDED.size_sql",
+  "target_floor": "EXCLUDED.target_floor",
+  "expected_volume_formula": "EXCLUDED.expected_volume_formula",
+  "expected_volume_inputs": "EXCLUDED.expected_volume_inputs",
+  "volume_explanation": "EXCLUDED.volume_explanation",
+  "depends_on": "EXCLUDED.depends_on",
+  "scope": "EXCLUDED.scope",
+  "catalog_status": "CASE WHEN asset_registry.catalog_status = 'RETIRED' THEN asset_registry.catalog_status ELSE EXCLUDED.catalog_status END",
+  "is_active": "CASE WHEN asset_registry.catalog_status = 'RETIRED' THEN asset_registry.is_active ELSE EXCLUDED.is_active END",
+  "asset_type": "EXCLUDED.asset_type",
+  "layer_name": "EXCLUDED.layer_name",
+  "layer_index": "EXCLUDED.layer_index",
+  "provides_apis": "EXCLUDED.provides_apis",
+  "health_probe": "EXCLUDED.health_probe",
+  "asset_kind": "EXCLUDED.asset_kind"
+ },
+ "live": {
+  "asset_registry_columns": 40,
+  "asset_registry_rows": 128
+ },
+ "columns": {
+  "all_live": [
+   "asset_id",
+   "layer",
+   "sort_order",
+   "sanskrit_name",
+   "english_name",
+   "english_description",
+   "storage_type",
+   "target_table",
+   "count_sql",
+   "size_sql",
+   "target_floor",
+   "expected_volume_formula",
+   "expected_volume_inputs",
+   "volume_explanation",
+   "depends_on",
+   "scope",
+   "is_active",
+   "estimated_seconds",
+   "created_at",
+   "clear_tables",
+   "asset_type",
+   "layer_name",
+   "layer_index",
+   "provides_apis",
+   "health_probe",
+   "catalog_status",
+   "rebuild_on_probe_fail",
+   "integrity_check_sql",
+   "has_substeps",
+   "asset_kind",
+   "service_health",
+   "last_invoked_at",
+   "last_selftest_at",
+   "selftest_detail",
+   "has_writer",
+   "writer_timeout_seconds",
+   "domain",
+   "rung",
+   "superseded_by",
+   "data_disposition"
+  ],
+  "insert_only__written_once_never_updated": [
+   "estimated_seconds"
+  ],
+  "do_update_unconditional__the_dangerous_set": [
+   "asset_kind",
+   "asset_type",
+   "count_sql",
+   "depends_on",
+   "english_description",
+   "english_name",
+   "expected_volume_formula",
+   "expected_volume_inputs",
+   "health_probe",
+   "layer",
+   "layer_index",
+   "layer_name",
+   "provides_apis",
+   "sanskrit_name",
+   "scope",
+   "size_sql",
+   "sort_order",
+   "storage_type",
+   "target_floor",
+   "target_table",
+   "volume_explanation"
+  ],
+  "do_update_case_guarded": [
+   "catalog_status",
+   "is_active"
+  ],
+  "never_written_by_the_seed_at_all": [
+   "clear_tables",
+   "created_at",
+   "data_disposition",
+   "domain",
+   "has_substeps",
+   "has_writer",
+   "integrity_check_sql",
+   "last_invoked_at",
+   "last_selftest_at",
+   "rebuild_on_probe_fail",
+   "rung",
+   "selftest_detail",
+   "service_health",
+   "superseded_by",
+   "writer_timeout_seconds"
+  ]
+ },
+ "is_active_preflight": {
+  "what_it_models": "asset_registry_seed.ts main() mutates asset.is_active to false for any asset whose declared target_table is absent from the target DB (:3222-3231), BEFORE the upsert binds $17. Resolved here with a read-only to_regclass() per declared target_table.",
+  "assets_forced_inactive": [
+   "bg_sky_calendar"
+  ],
+  "rows": {
+   "bg_sign_medical": {
+    "target_table": "bg_sign_medical",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_ephemeris": {
+    "target_table": "ephemeris_daily",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_reference": {
+    "target_table": "reference_nakshatras",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_texts": {
+    "target_table": "classical_text_chunks",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_ontology": {
+    "target_table": "brahma_ontology",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_text_index": {
+    "target_table": "classical_text_chunks",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_rules": {
+    "target_table": "sutravali_rules",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_remedies": {
+    "target_table": "brahma_remedy_corpus",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_concordance": {
+    "target_table": "classical_attributions",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_yogas": {
+    "target_table": "brahma_yoga_catalog",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_dasha_systems": {
+    "target_table": "brahma_dasha_systems",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_doshas": {
+    "target_table": "brahma_dosha_catalog",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_compendium_index": {
+    "target_table": "brahma_compendium_index",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_panchanga": {
+    "target_table": null,
+    "exists_in_prod": null,
+    "note": "null target_table — pre-flight skips it (:3219) and preserves is_active as declared"
+   },
+   "bg_ephemeris_engine": {
+    "target_table": null,
+    "exists_in_prod": null,
+    "note": "null target_table — pre-flight skips it (:3219) and preserves is_active as declared"
+   },
+   "bg_nakshatra": {
+    "target_table": "reference_nakshatra",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_ghatana": {
+    "target_table": "brahma_event_ontology",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_cohort": {
+    "target_table": "bg_synthetic_cohort",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_class_lifetime_counts": {
+    "target_table": "brahma_class_priors",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_prashna_rules": {
+    "target_table": null,
+    "exists_in_prod": null,
+    "note": "null target_table — pre-flight skips it (:3219) and preserves is_active as declared"
+   },
+   "bg_vastu_directions": {
+    "target_table": "bg_vastu_directions",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_transit_engine": {
+    "target_table": "bg_transit_engine",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_transit_rules": {
+    "target_table": "bg_transit_rules",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_medical_mappings": {
+    "target_table": "bg_medical_mappings",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_nakshatra_medical": {
+    "target_table": "bg_nakshatra_medical",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_dignity_reference": {
+    "target_table": "bg_dignity_reference",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_class_priors": {
+    "target_table": "brahma_class_priors",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_formula_constants": {
+    "target_table": "brahma_formula_constants",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_vidhi_primitives": {
+    "target_table": "vidhi_primitives",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_vidhi_floors": {
+    "target_table": "vidhi_floor_items",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_sky_calendar": {
+    "target_table": "bg_sky_events",
+    "exists_in_prod": false,
+    "note": "target_table ABSENT in prod → pre-flight (:3228) forces is_active=false before the upsert"
+   },
+   "bg_muhurta_lattice": {
+    "target_table": "bg_muhurta_lattice",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_parihara_rules": {
+    "target_table": "bg_parihara_rules",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_kota_chakra_rings": {
+    "target_table": "bg_kota_chakra_rings",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_kp_sublord_division": {
+    "target_table": "bg_kp_sublord_division",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_sarvatobhadra_grid": {
+    "target_table": "bg_sarvatobhadra_grid",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_vedha_malefic_scale": {
+    "target_table": "bg_vedha_malefic_scale",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_phaladeepika_latta": {
+    "target_table": "bg_phaladeepika_latta",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bg_gochara_arcs": {
+    "target_table": "bg_gochara_arcs",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ga_positions": {
+    "target_table": "chart_facts",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ga_vargas": {
+    "target_table": "chart_divisionals",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ga_dashas": {
+    "target_table": "chart_dashas",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ga_strength": {
+    "target_table": null,
+    "exists_in_prod": null,
+    "note": "null target_table — pre-flight skips it (:3219) and preserves is_active as declared"
+   },
+   "ga_sensitive": {
+    "target_table": null,
+    "exists_in_prod": null,
+    "note": "null target_table — pre-flight skips it (:3219) and preserves is_active as declared"
+   },
+   "ga_sensitive_degree": {
+    "target_table": "chart_facts",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ga_ayurdaya": {
+    "target_table": "chart_facts",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ga_panchanga": {
+    "target_table": "chart_facts",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ga_sade_sati": {
+    "target_table": null,
+    "exists_in_prod": null,
+    "note": "null target_table — pre-flight skips it (:3219) and preserves is_active as declared"
+   },
+   "ga_tajaka": {
+    "target_table": "l1_tajik_varsha_year_lords",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ga_structural": {
+    "target_table": null,
+    "exists_in_prod": null,
+    "note": "null target_table — pre-flight skips it (:3219) and preserves is_active as declared"
+   },
+   "ga_vichara": {
+    "target_table": "chart_vichara",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ga_nakshatra": {
+    "target_table": "chart_facts",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ga_condition": {
+    "target_table": "ga_condition_composite",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ga_yoga": {
+    "target_table": "ga_yoga_firings",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ga_vastu": {
+    "target_table": "ga_vastu_planet_direction_map",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ga_medical": {
+    "target_table": "ga_medical",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ga_prashna": {
+    "target_table": "ga_prashna_judgment",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ga_transit_anchors": {
+    "target_table": "ga_transit_anchors",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_laksana": {
+    "target_table": "bodha_msr_signals",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_karanajala": {
+    "target_table": "bodha_cgm_edges",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_pratijna": {
+    "target_table": "bodha_pratijna",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_bimba": {
+    "target_table": "bodha_cgm_nodes",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_samskara": {
+    "target_table": "bodha_signal_embeddings",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_sangati": {
+    "target_table": "bodha_cdlm_cells",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_cdlm_summary": {
+    "target_table": "bodha_cdlm_chart_summary",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_cgm_motifs": {
+    "target_table": "bodha_cgm_motifs",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_cgm_paths": {
+    "target_table": "bodha_cgm_paths",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_upaya": {
+    "target_table": "bodha_rm_resonances",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_samvada": {
+    "target_table": "vw_chart_digest",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_chart_gestalt": {
+    "target_table": "bodha_chart_gestalt",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_pramana_mapa": {
+    "target_table": "synthesis_quality_scorecard",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_drishti": {
+    "target_table": "bodha_question_lenses",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_anveshana": {
+    "target_table": "bodha_discoveries",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_sudarshana": {
+    "target_table": "bodha_msr_signals",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_nakshatra_semantic": {
+    "target_table": "bodha_msr_signals",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_yantra_mechanism": {
+    "target_table": "bodha_mechanisms",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_arudha": {
+    "target_table": "bodha_msr_signals",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_laksana_rerank": {
+    "target_table": "bodha_msr_signals",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_special_lagna": {
+    "target_table": "bodha_msr_signals",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "bo_vargottama_dhana": {
+    "target_table": "bodha_msr_signals",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_gochara": {
+    "target_table": "kala_gochara_windows",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_gochara_resonance": {
+    "target_table": "gochara_resonance_map",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_gochara_sweep": {
+    "target_table": "kala_gochara_windows",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_gochara_v3_century_materialize": {
+    "target_table": "kala_gochara_windows_v2",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_graha_sancara": {
+    "target_table": null,
+    "exists_in_prod": null,
+    "note": "null target_table — pre-flight skips it (:3219) and preserves is_active as declared"
+   },
+   "ka_dasha_kala": {
+    "target_table": null,
+    "exists_in_prod": null,
+    "note": "null target_table — pre-flight skips it (:3219) and preserves is_active as declared"
+   },
+   "ka_muhurta_seva": {
+    "target_table": null,
+    "exists_in_prod": null,
+    "note": "null target_table — pre-flight skips it (:3219) and preserves is_active as declared"
+   },
+   "ka_kalasutra": {
+    "target_table": "kala_activation",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_sangam": {
+    "target_table": "kala_convergence",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_vighnakara": {
+    "target_table": "kala_obstruction",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_avadhi": {
+    "target_table": "kala_avadhi",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_yojaka": {
+    "target_table": "kala_activation_predicates",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_kala_darshana": {
+    "target_table": "kala_darshana",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_jivana_parva": {
+    "target_table": "kala_jivana_parva",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_bhavishya_lekha": {
+    "target_table": "kala_bhavishya",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_tulana": {
+    "target_table": null,
+    "exists_in_prod": null,
+    "note": "null target_table — pre-flight skips it (:3219) and preserves is_active as declared"
+   },
+   "ka_taranga": {
+    "target_table": "kala_taranga",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_kota_chakra": {
+    "target_table": "kala_kota_chakra",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_sudarshana_varsha": {
+    "target_table": "kala_sudarshana_varsha",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_tithi_pravesha": {
+    "target_table": "kala_tithi_pravesha",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_moorti_nirnaya": {
+    "target_table": "kala_moorti_nirnaya",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_vedha_gochara": {
+    "target_table": "kala_vedha_gochara",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ph_nimitta": {
+    "target_table": "phala_anchors",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ph_muhurta": {
+    "target_table": "phala_muhurta",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ph_sodhana": {
+    "target_table": "phala_sodhana",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ph_pratikara": {
+    "target_table": "phala_mitigation",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ph_suddha_sodhana": {
+    "target_table": "phala_suddha_sodhana",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ph_sankrama": {
+    "target_table": "phala_sankrama",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ph_pramana": {
+    "target_table": "phala_pramana",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ph_phaladesa": {
+    "target_table": "phala_phaladesa",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ph_rectification": {
+    "target_table": "phala_rectification",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "lel_events": {
+    "target_table": null,
+    "exists_in_prod": null,
+    "note": "null target_table — pre-flight skips it (:3219) and preserves is_active as declared"
+   },
+   "mi_jivanaghatana": {
+    "target_table": "mimamsa_event_provenance",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "mi_kula": {
+    "target_table": "mimamsa_signal_families",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "mi_bhavisya": {
+    "target_table": "mimamsa_predictions",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "mi_pramana": {
+    "target_table": "mimamsa_calibration",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "mi_gunanaka": {
+    "target_table": "mimamsa_multipliers",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "mi_adhilepa": {
+    "target_table": "mimamsa_signal_adjustment",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "mi_pariksha": {
+    "target_table": "mimamsa_qa_eval",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "mi_sambandha": {
+    "target_table": "mimamsa_manifestation_grammar",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "mi_darshana": {
+    "target_table": "mimamsa_insight_units",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "mi_vistara": {
+    "target_table": "mimamsa_export_log",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "mi_seva": {
+    "target_table": "mimamsa_preferences",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "mi_abhilekha": {
+    "target_table": "mimamsa_journal",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "ka_kshetra": {
+    "target_table": "kala_field",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "mi_bhara": {
+    "target_table": "kala_field_weight_versions",
+    "exists_in_prod": true,
+    "note": null
+   },
+   "mi_sankalpa": {
+    "target_table": "mimamsa_intervention_ledger",
+    "exists_in_prod": true,
+    "note": null
+   }
+  }
+ },
+ "per_column": {
+  "asset_kind": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.asset_kind",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 2,
+   "assets_changed": [
+    "bg_ephemeris_engine",
+    "bg_panchanga"
+   ],
+   "cells_unchanged": 125,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 0,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 2
+   }
+  },
+  "asset_type": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.asset_type",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 6,
+   "assets_changed": [
+    "ka_dasha_kala",
+    "ka_graha_sancara",
+    "ka_muhurta_seva",
+    "ka_tulana",
+    "mi_abhilekha",
+    "mi_seva"
+   ],
+   "cells_unchanged": 121,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 0,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 6
+   }
+  },
+  "catalog_status": {
+   "class": "CASE-guarded",
+   "set_expression": "CASE WHEN asset_registry.catalog_status = 'RETIRED' THEN asset_registry.catalog_status ELSE EXCLUDED.catalog_status END",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 4,
+   "assets_changed": [
+    "bo_cdlm_summary",
+    "bo_chart_gestalt",
+    "ga_vichara",
+    "ka_kshetra"
+   ],
+   "cells_unchanged": 123,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 0,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 4
+   }
+  },
+  "count_sql": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.count_sql",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 28,
+   "assets_changed": [
+    "bg_class_priors",
+    "bg_formula_constants",
+    "bg_ghatana",
+    "bg_reference",
+    "bg_sky_calendar",
+    "bg_texts",
+    "bg_yogas",
+    "bo_karanajala",
+    "bo_laksana",
+    "bo_pratijna",
+    "bo_sangati",
+    "bo_upaya",
+    "ga_condition",
+    "ga_panchanga",
+    "ga_prashna",
+    "ka_avadhi",
+    "ka_taranga",
+    "mi_abhilekha",
+    "mi_adhilepa",
+    "mi_bhara",
+    "mi_bhavisya",
+    "mi_darshana",
+    "mi_jivanaghatana",
+    "mi_kula",
+    "mi_pariksha",
+    "mi_pramana",
+    "mi_seva",
+    "ph_rectification"
+   ],
+   "cells_unchanged": 99,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": 3,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 0,
+    "seed NULLS a live value": 2,
+    "both non-null, values differ": 26
+   }
+  },
+  "depends_on": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.depends_on",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 25,
+   "assets_changed": [
+    "bo_anveshana",
+    "bo_karanajala",
+    "bo_laksana",
+    "bo_pramana_mapa",
+    "bo_pratijna",
+    "bo_samvada",
+    "bo_sangati",
+    "ga_sade_sati",
+    "ga_strength",
+    "ga_structural",
+    "ga_tajaka",
+    "ka_bhavishya_lekha",
+    "ka_jivana_parva",
+    "ka_kalasutra",
+    "ka_sangam",
+    "ka_vedha_gochara",
+    "ka_vighnakara",
+    "mi_adhilepa",
+    "mi_bhavisya",
+    "mi_sambandha",
+    "ph_muhurta",
+    "ph_nimitta",
+    "ph_phaladesa",
+    "ph_pratikara",
+    "ph_suddha_sodhana"
+   ],
+   "cells_unchanged": 102,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 0,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 25
+   }
+  },
+  "english_description": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.english_description",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 23,
+   "assets_changed": [
+    "bg_class_priors",
+    "bg_formula_constants",
+    "bg_ghatana",
+    "bg_gochara_arcs",
+    "bg_kp_sublord_division",
+    "bg_parihara_rules",
+    "bo_cdlm_summary",
+    "bo_cgm_motifs",
+    "bo_cgm_paths",
+    "bo_chart_gestalt",
+    "bo_pratijna",
+    "ka_avadhi",
+    "ka_gochara",
+    "ka_gochara_sweep",
+    "ka_gochara_v3_century_materialize",
+    "ka_kota_chakra",
+    "ka_moorti_nirnaya",
+    "ka_sudarshana_varsha",
+    "ka_taranga",
+    "ka_tithi_pravesha",
+    "ka_vedha_gochara",
+    "mi_sankalpa",
+    "mi_vistara"
+   ],
+   "cells_unchanged": 104,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 0,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 23
+   }
+  },
+  "english_name": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.english_name",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 8,
+   "assets_changed": [
+    "bg_ghatana",
+    "bo_cdlm_summary",
+    "bo_cgm_motifs",
+    "bo_cgm_paths",
+    "bo_chart_gestalt",
+    "ka_avadhi",
+    "ka_gochara_sweep",
+    "ka_taranga"
+   ],
+   "cells_unchanged": 119,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 0,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 8
+   }
+  },
+  "expected_volume_formula": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.expected_volume_formula",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 6,
+   "assets_changed": [
+    "bg_kp_sublord_division",
+    "bo_cdlm_summary",
+    "bo_chart_gestalt",
+    "bo_pratijna",
+    "ka_sudarshana_varsha",
+    "ka_tithi_pravesha"
+   ],
+   "cells_unchanged": 121,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 6,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 0
+   }
+  },
+  "expected_volume_inputs": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.expected_volume_inputs",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 1,
+   "assets_changed": [
+    "bo_pratijna"
+   ],
+   "cells_unchanged": 126,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 1,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 0
+   }
+  },
+  "health_probe": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.health_probe",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 0,
+   "assets_changed": [],
+   "cells_unchanged": 127,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 0,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 0
+   }
+  },
+  "is_active": {
+   "class": "CASE-guarded",
+   "set_expression": "CASE WHEN asset_registry.catalog_status = 'RETIRED' THEN asset_registry.is_active ELSE EXCLUDED.is_active END",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 1,
+   "assets_changed": [
+    "bg_sky_calendar"
+   ],
+   "cells_unchanged": 126,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 0,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 1
+   }
+  },
+  "layer": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.layer",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 0,
+   "assets_changed": [],
+   "cells_unchanged": 127,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 0,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 0
+   }
+  },
+  "layer_index": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.layer_index",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 21,
+   "assets_changed": [
+    "bg_sign_medical",
+    "bg_vidhi_floors",
+    "bg_vidhi_primitives",
+    "bo_arudha",
+    "bo_cdlm_summary",
+    "bo_cgm_motifs",
+    "bo_cgm_paths",
+    "bo_chart_gestalt",
+    "bo_laksana_rerank",
+    "bo_nakshatra_semantic",
+    "bo_pratijna",
+    "bo_special_lagna",
+    "bo_sudarshana",
+    "bo_vargottama_dhana",
+    "bo_yantra_mechanism",
+    "ga_ayurdaya",
+    "ga_sensitive_degree",
+    "ga_vichara",
+    "ka_avadhi",
+    "ka_taranga",
+    "lel_events"
+   ],
+   "cells_unchanged": 106,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 15,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 6
+   }
+  },
+  "layer_name": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.layer_name",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 20,
+   "assets_changed": [
+    "bg_vidhi_floors",
+    "bg_vidhi_primitives",
+    "bo_arudha",
+    "bo_cdlm_summary",
+    "bo_cgm_motifs",
+    "bo_cgm_paths",
+    "bo_chart_gestalt",
+    "bo_laksana_rerank",
+    "bo_nakshatra_semantic",
+    "bo_special_lagna",
+    "bo_sudarshana",
+    "bo_vargottama_dhana",
+    "bo_yantra_mechanism",
+    "ga_ayurdaya",
+    "ga_sensitive_degree",
+    "ga_vichara",
+    "ka_avadhi",
+    "ka_gochara_v3_century_materialize",
+    "ka_taranga",
+    "lel_events"
+   ],
+   "cells_unchanged": 107,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 15,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 5
+   }
+  },
+  "provides_apis": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.provides_apis",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 0,
+   "assets_changed": [],
+   "cells_unchanged": 127,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 0,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 0
+   }
+  },
+  "sanskrit_name": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.sanskrit_name",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 20,
+   "assets_changed": [
+    "bg_class_priors",
+    "bg_formula_constants",
+    "bg_ghatana",
+    "bg_vidhi_floors",
+    "bg_vidhi_primitives",
+    "bo_arudha",
+    "bo_cdlm_summary",
+    "bo_cgm_motifs",
+    "bo_cgm_paths",
+    "bo_chart_gestalt",
+    "bo_laksana_rerank",
+    "bo_nakshatra_semantic",
+    "bo_special_lagna",
+    "bo_sudarshana",
+    "bo_vargottama_dhana",
+    "bo_yantra_mechanism",
+    "ka_avadhi",
+    "ka_gochara",
+    "ka_gochara_sweep",
+    "ka_gochara_v3_century_materialize"
+   ],
+   "cells_unchanged": 107,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 0,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 20
+   }
+  },
+  "scope": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.scope",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 1,
+   "assets_changed": [
+    "mi_jivanaghatana"
+   ],
+   "cells_unchanged": 126,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 0,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 1
+   }
+  },
+  "size_sql": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.size_sql",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 7,
+   "assets_changed": [
+    "bo_cdlm_summary",
+    "bo_cgm_motifs",
+    "bo_cgm_paths",
+    "bo_chart_gestalt",
+    "bo_pratijna",
+    "ka_avadhi",
+    "ka_taranga"
+   ],
+   "cells_unchanged": 120,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": 0,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 7,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 0
+   }
+  },
+  "sort_order": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.sort_order",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 10,
+   "assets_changed": [
+    "bg_class_priors",
+    "bg_formula_constants",
+    "bg_ghatana",
+    "bg_sky_calendar",
+    "bo_cgm_motifs",
+    "bo_cgm_paths",
+    "bo_chart_gestalt",
+    "bo_pratijna",
+    "ka_avadhi",
+    "ka_taranga"
+   ],
+   "cells_unchanged": 117,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 0,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 10
+   }
+  },
+  "storage_type": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.storage_type",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 0,
+   "assets_changed": [],
+   "cells_unchanged": 127,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 0,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 0
+   }
+  },
+  "target_floor": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.target_floor",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 27,
+   "assets_changed": [
+    "bg_class_priors",
+    "bg_formula_constants",
+    "bg_ghatana",
+    "bg_parihara_rules",
+    "bo_anveshana",
+    "bo_cdlm_summary",
+    "bo_cgm_paths",
+    "bo_chart_gestalt",
+    "bo_laksana",
+    "bo_pratijna",
+    "bo_samskara",
+    "bo_sangati",
+    "ga_vargas",
+    "ka_dasha_kala",
+    "ka_tulana",
+    "mi_abhilekha",
+    "mi_adhilepa",
+    "mi_bhavisya",
+    "mi_darshana",
+    "mi_gunanaka",
+    "mi_jivanaghatana",
+    "mi_kula",
+    "mi_pariksha",
+    "mi_pramana",
+    "mi_sambandha",
+    "mi_seva",
+    "mi_vistara"
+   ],
+   "cells_unchanged": 100,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 3,
+    "seed NULLS a live value": 14,
+    "both non-null, values differ": 10
+   }
+  },
+  "target_table": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.target_table",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 3,
+   "assets_changed": [
+    "bo_cdlm_summary",
+    "bo_chart_gestalt",
+    "mi_adhilepa"
+   ],
+   "cells_unchanged": 124,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 2,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 1
+   }
+  },
+  "volume_explanation": {
+   "class": "unconditional",
+   "set_expression": "EXCLUDED.volume_explanation",
+   "assets_compared": 127,
+   "cells_a_reseed_would_change": 47,
+   "assets_changed": [
+    "bg_class_lifetime_counts",
+    "bg_class_priors",
+    "bg_formula_constants",
+    "bg_ghatana",
+    "bg_gochara_arcs",
+    "bg_kota_chakra_rings",
+    "bg_kp_sublord_division",
+    "bg_muhurta_lattice",
+    "bg_parihara_rules",
+    "bg_phaladeepika_latta",
+    "bg_remedies",
+    "bg_sarvatobhadra_grid",
+    "bg_sign_medical",
+    "bg_vedha_malefic_scale",
+    "bg_vidhi_floors",
+    "bg_vidhi_primitives",
+    "bo_arudha",
+    "bo_cdlm_summary",
+    "bo_cgm_motifs",
+    "bo_cgm_paths",
+    "bo_chart_gestalt",
+    "bo_laksana_rerank",
+    "bo_nakshatra_semantic",
+    "bo_pratijna",
+    "bo_special_lagna",
+    "bo_sudarshana",
+    "bo_vargottama_dhana",
+    "bo_yantra_mechanism",
+    "ga_ayurdaya",
+    "ga_nakshatra",
+    "ga_sensitive_degree",
+    "ga_vichara",
+    "ka_avadhi",
+    "ka_gochara",
+    "ka_gochara_resonance",
+    "ka_gochara_sweep",
+    "ka_gochara_v3_century_materialize",
+    "ka_kota_chakra",
+    "ka_kshetra",
+    "ka_moorti_nirnaya",
+    "ka_sudarshana_varsha",
+    "ka_taranga",
+    "ka_tithi_pravesha",
+    "ka_vedha_gochara",
+    "lel_events",
+    "mi_gunanaka",
+    "mi_sankalpa"
+   ],
+   "cells_unchanged": 80,
+   "cells_UNKNOWN": [],
+   "cells_differing_only_in_whitespace_or_case": null,
+   "direction_breakdown": {
+    "seed FILLS a live NULL": 41,
+    "seed NULLS a live value": 0,
+    "both non-null, values differ": 6
+   }
+  }
+ },
+ "divergent_cells": [
+  {
+   "asset_id": "bg_panchanga",
+   "column": "asset_kind",
+   "live_value": "service",
+   "seed_would_write": "data",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "bg_ephemeris_engine",
+   "column": "asset_kind",
+   "live_value": "service",
+   "seed_would_write": "data",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "ka_graha_sancara",
+   "column": "asset_type",
+   "live_value": "service",
+   "seed_would_write": "data",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "ka_dasha_kala",
+   "column": "asset_type",
+   "live_value": "service",
+   "seed_would_write": "data",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "ka_muhurta_seva",
+   "column": "asset_type",
+   "live_value": "service",
+   "seed_would_write": "data",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "ka_tulana",
+   "column": "asset_type",
+   "live_value": "service",
+   "seed_would_write": "data",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "mi_seva",
+   "column": "asset_type",
+   "live_value": "service",
+   "seed_would_write": "data",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "mi_abhilekha",
+   "column": "asset_type",
+   "live_value": "service",
+   "seed_would_write": "data",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "ga_vichara",
+   "column": "catalog_status",
+   "live_value": "DRAFT",
+   "seed_would_write": "CURRENT",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": true
+  },
+  {
+   "asset_id": "bo_cdlm_summary",
+   "column": "catalog_status",
+   "live_value": "DRAFT",
+   "seed_would_write": "CURRENT",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": true
+  },
+  {
+   "asset_id": "bo_chart_gestalt",
+   "column": "catalog_status",
+   "live_value": "DRAFT",
+   "seed_would_write": "CURRENT",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": true
+  },
+  {
+   "asset_id": "ka_kshetra",
+   "column": "catalog_status",
+   "live_value": "CURRENT",
+   "seed_would_write": "DRAFT",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": true
+  },
+  {
+   "asset_id": "bg_reference",
+   "column": "count_sql",
+   "live_value": "SELECT\n  (SELECT count(*) FROM reference_planets) +\n  (SELECT count(*) FROM reference_signs) +\n  (SELECT count(*) FROM reference_aspects) +\n  (SELECT count(*) F…[+361]",
+   "seed_would_write": "SELECT (SELECT count(*) FROM reference_planets) + (SELECT count(*) FROM reference_signs) + (SELECT count(*) FROM reference_aspects) + (SELECT count(*) FROM refe…[+471]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "bg_texts",
+   "column": "count_sql",
+   "live_value": "SELECT\n  (SELECT count(*) FROM classical_texts) +\n  (SELECT count(*) FROM classical_text_chunks) AS count",
+   "seed_would_write": "SELECT count(*) FROM classical_text_chunks",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "bg_yogas",
+   "column": "count_sql",
+   "live_value": "SELECT\n  (SELECT count(*) FROM brahma_yoga_catalog) +\n  (SELECT count(*) FROM brahma_ontology WHERE entity_class = 'yoga') +\n  (SELECT count(*) FROM reference_y…[+14]",
+   "seed_would_write": "SELECT count(*) FROM brahma_yoga_catalog",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "bg_ghatana",
+   "column": "count_sql",
+   "live_value": "SELECT (SELECT COUNT(*) FROM brahma_event_ontology) + (SELECT COUNT(*) FROM brahma_activity_ontology) AS count",
+   "seed_would_write": "SELECT (SELECT count(*) FROM brahma_event_ontology) + (SELECT count(*) FROM brahma_activity_ontology) AS count",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": true
+  },
+  {
+   "asset_id": "bg_class_priors",
+   "column": "count_sql",
+   "live_value": "SELECT COUNT(*) FROM brahma_class_priors",
+   "seed_would_write": "SELECT count(*) FROM brahma_class_priors",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": true
+  },
+  {
+   "asset_id": "bg_formula_constants",
+   "column": "count_sql",
+   "live_value": "SELECT COUNT(*) FROM brahma_formula_constants WHERE class != 'conflation_bug'",
+   "seed_would_write": "SELECT count(*) FROM brahma_formula_constants",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "bg_sky_calendar",
+   "column": "count_sql",
+   "live_value": "SELECT COUNT(*) FROM bg_sky_calendar",
+   "seed_would_write": "SELECT COUNT(*) FROM bg_sky_events",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "ga_panchanga",
+   "column": "count_sql",
+   "live_value": "\nSELECT count(*) AS count\nFROM   chart_facts\nWHERE  chart_id = $1\n  AND  (\n         fact_category LIKE 'panchanga%'\n      OR fact_category = 'bhadra_flag'\n     …[+203]",
+   "seed_would_write": "SELECT count(*) AS count FROM chart_facts WHERE chart_id = $1 AND fact_category LIKE 'panchanga%'",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "ga_condition",
+   "column": "count_sql",
+   "live_value": "SELECT (SELECT COUNT(*) FROM ga_condition_composite WHERE chart_id = $1)\n       + (SELECT count(*) FROM chart_facts\n          WHERE chart_id = $1\n            AN…[+234]",
+   "seed_would_write": "SELECT (SELECT COUNT(*) FROM ga_condition_composite WHERE chart_id = $1) + (SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category LIKE 'graha_a…[+29]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "ga_prashna",
+   "column": "count_sql",
+   "live_value": "\nSELECT (\n  (SELECT COUNT(*) FROM ga_prashna_lagna    WHERE chart_id = $1) +\n  (SELECT COUNT(*) FROM ga_prashna_judgment WHERE chart_id = $1)\n) AS count\n",
+   "seed_would_write": "SELECT COUNT(*) FROM ga_prashna_judgment WHERE chart_id = $1",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "bo_laksana",
+   "column": "count_sql",
+   "live_value": "SELECT count(*) FROM bodha_msr_signals WHERE chart_id = $1 AND signal_type_class = ANY(ARRAY[\n     'yoga','dosha','sade_sati','panchanga','karaka_alignment','tr…[+184]",
+   "seed_would_write": "SELECT count(*) FROM bodha_msr_signals WHERE chart_id = $1",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "bo_karanajala",
+   "column": "count_sql",
+   "live_value": "SELECT count(*) FROM bodha_cgm_edges WHERE chart_id = $1",
+   "seed_would_write": "SELECT (SELECT count(*) FROM bodha_cgm_edges WHERE chart_id = $1) + (SELECT count(*) FROM bodha_cgm_paths WHERE chart_id = $1) AS count",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "bo_pratijna",
+   "column": "count_sql",
+   "live_value": "SELECT COUNT(*) FROM bodha_pratijna WHERE chart_id=$1",
+   "seed_would_write": "SELECT count(*) FROM bodha_pratijna WHERE chart_id = $1",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "bo_sangati",
+   "column": "count_sql",
+   "live_value": "SELECT count(*) FROM bodha_cdlm_cells WHERE chart_id = $1",
+   "seed_would_write": "SELECT (SELECT count(*) FROM bodha_cdlm_cells WHERE chart_id = $1) + (SELECT count(*) FROM bodha_convergence WHERE chart_id = $1) + (SELECT count(*) FROM bodha_…[+44]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "bo_upaya",
+   "column": "count_sql",
+   "live_value": "\nSELECT (\n  (SELECT count(*) FROM bodha_rm_resonances           WHERE chart_id = $1) +\n  (SELECT count(*) FROM bodha_rm_remedy_prescriptions WHERE chart_id = $1…[+13]",
+   "seed_would_write": "SELECT (SELECT count(*) FROM bodha_rm_resonances WHERE chart_id = $1) + (SELECT count(*) FROM bodha_rm_remedy_prescriptions WHERE chart_id = $1) AS count",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "ka_avadhi",
+   "column": "count_sql",
+   "live_value": "SELECT COUNT(*) FROM kala_avadhi WHERE chart_id=$1",
+   "seed_would_write": "SELECT count(*) FROM kala_avadhi WHERE chart_id = $1",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "ka_taranga",
+   "column": "count_sql",
+   "live_value": "SELECT COUNT(*) FROM kala_taranga WHERE chart_id=$1",
+   "seed_would_write": "SELECT count(*) FROM kala_taranga WHERE chart_id = $1",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "ph_rectification",
+   "column": "count_sql",
+   "live_value": "SELECT (SELECT count(*) FROM phala_rectification WHERE chart_id = $1) + (SELECT count(*) FROM phala_rectification_best WHERE chart_id = $1) AS count",
+   "seed_would_write": "SELECT count(*) FROM phala_rectification WHERE chart_id = $1",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "mi_jivanaghatana",
+   "column": "count_sql",
+   "live_value": "SELECT count(*) FROM mimamsa_event_provenance WHERE chart_id = $1",
+   "seed_would_write": "SELECT count(*) FROM mimamsa_event_provenance",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "mi_kula",
+   "column": "count_sql",
+   "live_value": "SELECT\n  (SELECT count(*) FROM mimamsa_signal_families) +\n  (SELECT count(*) FROM mimamsa_negative_controls) AS count",
+   "seed_would_write": "SELECT count(*) FROM mimamsa_signal_families",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "mi_bhavisya",
+   "column": "count_sql",
+   "live_value": "SELECT (SELECT count(*) FROM mimamsa_predictions WHERE chart_id = $1) + (SELECT count(*) FROM mimamsa_manifestation_sets WHERE chart_id = $1) AS count",
+   "seed_would_write": "SELECT count(*) FROM mimamsa_predictions WHERE chart_id = $1",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "mi_pramana",
+   "column": "count_sql",
+   "live_value": "SELECT (SELECT count(*) FROM mimamsa_calibration WHERE chart_id = $1) + (SELECT count(*) FROM mimamsa_reliability WHERE chart_id = $1) AS count",
+   "seed_would_write": "SELECT count(*) FROM mimamsa_calibration WHERE chart_id = $1",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "mi_adhilepa",
+   "column": "count_sql",
+   "live_value": "SELECT\n  (SELECT count(*) FROM mimamsa_load_bearing           WHERE chart_id = $1) +\n  (SELECT count(*) FROM mimamsa_convergence_adjustment WHERE chart_id = $1)…[+243]",
+   "seed_would_write": "SELECT count(*) FROM mimamsa_signal_adjustment WHERE chart_id = $1",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "mi_pariksha",
+   "column": "count_sql",
+   "live_value": "SELECT (SELECT count(*) FROM mimamsa_qa_eval WHERE chart_id = $1) + (SELECT count(*) FROM mimamsa_attribution WHERE chart_id = $1) + (SELECT count(*) FROM mimam…[+44]",
+   "seed_would_write": "SELECT count(*) FROM mimamsa_qa_eval WHERE chart_id = $1",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "mi_darshana",
+   "column": "count_sql",
+   "live_value": "SELECT (SELECT count(*) FROM mimamsa_insight_units WHERE chart_id = $1) + (SELECT count(*) FROM mimamsa_insight_embeddings WHERE chart_id = $1) AS count",
+   "seed_would_write": "SELECT count(*) FROM mimamsa_insight_units WHERE chart_id = $1",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "mi_seva",
+   "column": "count_sql",
+   "live_value": "SELECT count(*) FROM mimamsa_preferences",
+   "seed_would_write": null,
+   "direction": "seed NULLS a live value",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "mi_abhilekha",
+   "column": "count_sql",
+   "live_value": "SELECT count(*) FROM mimamsa_journal WHERE chart_id = $1",
+   "seed_would_write": null,
+   "direction": "seed NULLS a live value",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "mi_bhara",
+   "column": "count_sql",
+   "live_value": "SELECT COUNT(*) FROM kala_field_skill WHERE chart_id = $1",
+   "seed_would_write": "SELECT count(*) FROM kala_field_skill WHERE chart_id = $1",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": true
+  },
+  {
+   "asset_id": "ga_strength",
+   "column": "depends_on",
+   "live_value": "[\"ga_positions\", \"ga_vargas\"]",
+   "seed_would_write": "[\"ga_positions\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ga_sade_sati",
+   "column": "depends_on",
+   "live_value": "[\"ga_positions\", \"ga_strength\", \"ga_panchanga\", \"ga_vargas\", \"ga_dashas\", \"ga_structural\", \"ga_nakshatra\"]",
+   "seed_would_write": "[\"ga_positions\", \"ga_strength\", \"ga_panchanga\", \"ga_vargas\", \"ga_dashas\", \"ga_structural\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ga_tajaka",
+   "column": "depends_on",
+   "live_value": "[\"ga_positions\", \"ga_dashas\", \"ga_sensitive\"]",
+   "seed_would_write": "[\"ga_positions\", \"ga_dashas\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ga_structural",
+   "column": "depends_on",
+   "live_value": "[\"ga_dashas\", \"ga_nakshatra\", \"ga_panchanga\", \"ga_positions\", \"ga_sensitive\", \"ga_strength\", \"ga_vargas\"]",
+   "seed_would_write": "[\"ga_positions\", \"ga_strength\", \"ga_panchanga\", \"ga_sensitive\", \"ga_vargas\", \"ga_dashas\", \"ga_nakshatra\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_laksana",
+   "column": "depends_on",
+   "live_value": "[\"bg_rules\", \"ga_positions\", \"ga_strength\", \"ga_sensitive\", \"ga_panchanga\", \"ga_sade_sati\", \"ga_structural\", \"ga_nakshatra\", \"ga_condition\", \"ga_vargas\", \"ga_vi…[+7]",
+   "seed_would_write": "[\"ga_structural\", \"ga_vichara\", \"bg_rules\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_karanajala",
+   "column": "depends_on",
+   "live_value": "[\"bo_laksana\", \"bo_bimba\", \"ga_positions\"]",
+   "seed_would_write": "[\"bo_laksana\", \"bo_bimba\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_pratijna",
+   "column": "depends_on",
+   "live_value": "[\"bo_laksana\", \"bo_sangati\"]",
+   "seed_would_write": "[\"bo_laksana\", \"bg_ghatana\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_sangati",
+   "column": "depends_on",
+   "live_value": "[\"bo_laksana\", \"bo_karanajala\"]",
+   "seed_would_write": "[\"bo_laksana\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_samvada",
+   "column": "depends_on",
+   "live_value": "[\"bo_laksana\", \"bo_karanajala\", \"bo_upaya\", \"bo_sangati\", \"bo_pramana_mapa\"]",
+   "seed_would_write": "[\"bo_laksana\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_pramana_mapa",
+   "column": "depends_on",
+   "live_value": "[\"bo_upaya\", \"bo_drishti\", \"bo_anveshana\", \"bo_laksana\", \"bo_sangati\", \"bo_bimba\", \"bo_karanajala\", \"bo_samskara\"]",
+   "seed_would_write": "[\"bo_upaya\", \"bo_drishti\", \"bo_anveshana\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_anveshana",
+   "column": "depends_on",
+   "live_value": "[\"bo_sangati\", \"bo_karanajala\", \"bo_samskara\", \"bo_drishti\", \"bo_bimba\", \"bo_laksana\"]",
+   "seed_would_write": "[\"bo_sangati\", \"bo_karanajala\", \"bo_samskara\", \"bo_drishti\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_kalasutra",
+   "column": "depends_on",
+   "live_value": "[\"ka_yojaka\", \"ka_sangam\", \"bo_laksana\"]",
+   "seed_would_write": "[\"ka_yojaka\", \"ka_sangam\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_sangam",
+   "column": "depends_on",
+   "live_value": "[\"ka_yojaka\", \"ka_dasha_kala\", \"ka_gochara\", \"ka_muhurta_seva\", \"bo_laksana\", \"ga_dashas\", \"ga_strength\", \"ga_positions\", \"ga_tajaka\", \"bg_transit_rules\"]",
+   "seed_would_write": "[\"ka_yojaka\", \"ka_dasha_kala\", \"ka_gochara\", \"ka_muhurta_seva\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_vighnakara",
+   "column": "depends_on",
+   "live_value": "[\"ka_sangam\", \"ka_gochara\", \"ka_muhurta_seva\", \"ga_positions\"]",
+   "seed_would_write": "[\"ka_sangam\", \"ka_gochara\", \"ka_muhurta_seva\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_jivana_parva",
+   "column": "depends_on",
+   "live_value": "[\"ka_kala_darshana\", \"ka_dasha_kala\", \"ka_sangam\", \"ka_yojaka\", \"ga_dashas\"]",
+   "seed_would_write": "[\"ka_kala_darshana\", \"ka_dasha_kala\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_bhavishya_lekha",
+   "column": "depends_on",
+   "live_value": "[\"ka_kala_darshana\", \"ka_vighnakara\", \"ka_sangam\", \"bo_laksana\"]",
+   "seed_would_write": "[\"ka_kala_darshana\", \"ka_vighnakara\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_vedha_gochara",
+   "column": "depends_on",
+   "live_value": "[\"ga_positions\", \"bg_ephemeris\", \"bg_transit_rules\", \"bg_sarvatobhadra_grid\", \"bg_vedha_malefic_scale\", \"bg_phaladeepika_latta\"]",
+   "seed_would_write": "[\"ga_positions\", \"bg_ephemeris\", \"bg_transit_rules\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ph_nimitta",
+   "column": "depends_on",
+   "live_value": "[\"ka_sangam\", \"ka_bhavishya_lekha\", \"bo_bimba\", \"bo_samskara\", \"bo_karanajala\", \"bo_sangati\", \"bo_anveshana\", \"bo_cgm_paths\", \"bo_laksana\"]",
+   "seed_would_write": "[\"ka_sangam\", \"ka_bhavishya_lekha\", \"bo_bimba\", \"bo_samskara\", \"bo_karanajala\", \"bo_sangati\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ph_muhurta",
+   "column": "depends_on",
+   "live_value": "[\"ph_nimitta\", \"ka_kalasutra\", \"ga_panchanga\", \"ka_vighnakara\", \"ga_condition\", \"ka_gochara\", \"ga_positions\", \"ka_sangam\"]",
+   "seed_would_write": "[\"ph_nimitta\", \"ka_kalasutra\", \"ga_panchanga\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ph_pratikara",
+   "column": "depends_on",
+   "live_value": "[\"ph_nimitta\", \"bo_upaya\", \"ka_vighnakara\", \"ka_sangam\"]",
+   "seed_would_write": "[\"ph_nimitta\", \"bo_upaya\", \"ka_vighnakara\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ph_suddha_sodhana",
+   "column": "depends_on",
+   "live_value": "[\"ph_sodhana\", \"ph_nimitta\"]",
+   "seed_would_write": "[\"ph_sodhana\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ph_phaladesa",
+   "column": "depends_on",
+   "live_value": "[\"ph_nimitta\", \"ph_muhurta\", \"ph_pratikara\", \"ph_suddha_sodhana\", \"ph_sankrama\", \"ph_pramana\", \"bo_laksana\"]",
+   "seed_would_write": "[\"ph_nimitta\", \"ph_muhurta\", \"ph_pratikara\", \"ph_suddha_sodhana\", \"ph_sankrama\", \"ph_pramana\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_bhavisya",
+   "column": "depends_on",
+   "live_value": "[\"ph_pramana\", \"ph_nimitta\", \"ph_phaladesa\", \"mi_kula\", \"mi_jivanaghatana\", \"bo_laksana\"]",
+   "seed_would_write": "[\"ph_pramana\", \"ph_nimitta\", \"ph_phaladesa\", \"mi_kula\", \"mi_jivanaghatana\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_adhilepa",
+   "column": "depends_on",
+   "live_value": "[\"mi_gunanaka\", \"bo_laksana\", \"ka_sangam\", \"ph_nimitta\", \"ga_positions\"]",
+   "seed_would_write": "[\"mi_gunanaka\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_sambandha",
+   "column": "depends_on",
+   "live_value": "[\"mi_pramana\", \"mi_pariksha\", \"mi_bhavisya\"]",
+   "seed_would_write": "[\"mi_pramana\", \"mi_pariksha\"]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_ghatana",
+   "column": "english_description",
+   "live_value": "Life-event ontology (27 event classes keyed to LEL categories, DR-13 shape-extended 2026-07-19: point/interval/chain temporal shapes, gain-vs-loss evidence_requ…[+367]",
+   "seed_would_write": "Global life-event + electional-activity ontology — 22 life-event classes (brahma_event_ontology) and 12 electional activity classes (brahma_activity_ontology); …[+29]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_class_priors",
+   "column": "english_description",
+   "live_value": "Ranked salience class-prior weights for composite query-time ranking. 4 axes: signal_type_class × source_subsystem × signal_tradition × varga × graha×domain. Se…[+63]",
+   "seed_would_write": "Global signal-classification priors across 5 axes — signal_type_class, source_subsystem, signal_tradition, varga, graha x domain — from W1 seed package §2-§4.",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_formula_constants",
+   "column": "english_description",
+   "live_value": "Canonical formula constants registry — combustion orbs, obstruction thresholds, magnitude tiers, dignity scores, house weights, attention budget, and engineerin…[+129]",
+   "seed_would_write": "Canonical formula constants registry — combustion orbs, obstruction thresholds, dignity scores, house weights, attention budget, calibration constants. Classifi…[+72]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_parihara_rules",
+   "column": "english_description",
+   "live_value": "Global chart-independent parihāra (doṣa-cancellation) graph, per-activity muhūrta factor-quality rules, and the Muhūrta Factor Census + corpus-gap register. Dir…[+459]",
+   "seed_would_write": "Global chart-independent parihāra (doṣa-cancellation) graph, per-activity muhūrta factor-quality rules, and the Muhūrta Factor Census + corpus-gap register. Dir…[+397]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_kp_sublord_division",
+   "column": "english_description",
+   "live_value": "ADJUDICATION-7 Part 1: the canonical 249-fold Krishnamurti Paddhati sub-lord division of the sidereal zodiac. 243 Vimshottari-proportional sub segments (sub arc…[+557]",
+   "seed_would_write": "ADJUDICATION-7 Part 1: the canonical 249-fold Krishnamurti Paddhati sub-lord division of the sidereal zodiac. 243 Vimshottari-proportional sub segments (sub arc…[+592]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_gochara_arcs",
+   "column": "english_description",
+   "live_value": "W2G (GOCHARA-2.0, item 19). Chart-independent decomposition of every graha's ecliptic-longitude history over the stored 1900-2150 ephemeris epoch into MONOTONE …[+672]",
+   "seed_would_write": "Chart-independent decomposition of every graha's ecliptic-longitude history over the stored 1900–2150 ephemeris epoch into MONOTONE ARCS: maximal intervals on w…[+698]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_pratijna",
+   "column": "english_description",
+   "live_value": "Per-event-class promise registry: promised/denied/conditional verdicts with grade, supporting and contradicting signal IDs, varga confirmation, derivation audit…[+103]",
+   "seed_would_write": "Per-event-class promise/denial grading — reads bodha_msr_signals + brahma_event_ontology, grades supporting vs. contradicting signal salience per event class; p…[+86]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cdlm_summary",
+   "column": "english_description",
+   "live_value": "Per-chart cross-domain linkage strength summary aggregated from bodha_cdlm_cells",
+   "seed_would_write": "Per-chart cross-domain linkage aggregate: total linkage, dominant/weakest 3 domains, contradiction density, bridge/asymmetric link counts, strongest linkage pai…[+84]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cgm_motifs",
+   "column": "english_description",
+   "live_value": "Recurring structural patterns detected over the CGM graph: mutual reception, stellium, parivartana chains",
+   "seed_would_write": "Recurring structural patterns in the CGM graph — mutual_reception (2-cycle dispositor), stellium (3+ mutually-conjoined nodes in a house), parivartana_chain (3-…[+105]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cgm_paths",
+   "column": "english_description",
+   "live_value": "Dispositor chain paths and structural path analysis over CGM graph",
+   "seed_would_write": "Dispositor chain path analysis over the CGM graph — for each graha node, follows the dispositor chain (current graha -> sign lord -> lord's lord...) until a sel…[+133]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_chart_gestalt",
+   "column": "english_description",
+   "live_value": "Per-chart gestalt: defining threads, central dynamics, domain verdict map, zoom spine — pointer-only, no verdicts stored",
+   "seed_would_write": "Per-chart POINTERS-ONLY synthesis (defining threads, central dynamics, center-of-gravity nodes, domain verdict map, headline, watch list, contested areas, zoom …[+422]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_gochara",
+   "column": "english_description",
+   "live_value": "Primary per-chart gochara window materializer (GOCHARA-UTKARSA). Writes kala_gochara_windows_v2 (staging surface). Renamed from ka_gochara_v2_materialize at W6.…[+19]",
+   "seed_would_write": "Primary per-chart gochara window materializer (GOCHARA-UTKARSA). Renamed from ka_gochara_v2_materialize at W6.4 cutover (UTK-R2, migration 563). Joins bg_gochar…[+338]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_gochara_sweep",
+   "column": "english_description",
+   "live_value": "D-5 Lane G-4: birth->birth+100y daily-grid gochara (transit) intensity sweep (lambda_e via G-3's services/gochara_intensity), shape-aware (point/interval/chain …[+216]",
+   "seed_would_write": "D-5 Lane G-4: birth->birth+100y daily-grid gochara (transit) intensity sweep (lambda_e via G-3's services/gochara_intensity), shape-aware (point/interval/chain …[+413]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_gochara_v3_century_materialize",
+   "column": "english_description",
+   "live_value": "GOCHARA-UTKARSA W3.4 heavy writer: plan_substeps returns 60 substeps (6 event classes x 10 decade slices spanning birth-century 1984-2084). Each run_substep cal…[+457]",
+   "seed_would_write": "GOCHARA-UTKARSA W3.4 heavy writer: plan_substeps returns 60 substeps (6 event classes × 10 decade slices spanning birth-century 1984–2084). Each run_substep cal…[+456]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_avadhi",
+   "column": "english_description",
+   "live_value": "Per-dasha-period dossiers: for each chart, dasha system, MD/AD/PD level, stores lord condition (refs to chart_facts), activated promise-register IDs (from bodha…[+115]",
+   "seed_would_write": "Per-dasha-period dossier: lord-condition fact refs (chart_facts ids only, never restated), activated bodha_pratijna ids whose domain overlaps the period window,…[+81]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_taranga",
+   "column": "english_description",
+   "live_value": "Monthly activation waveform (1950–2100): convolution of dasha × transit × promise for each domain and event class. Known Sade-Sati years show elevated obstructi…[+120]",
+   "seed_would_write": "Monthly convolution of dasha x transit x promise activation scores, stored for months 1950-01 through 2100-12 per scope (domain + event_class). activation = har…[+141]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_kota_chakra",
+   "column": "english_description",
+   "live_value": "ṢAḌ-DARŚANA W3 item 16: transiting grahas mapped to the kota's stambha/durgantara/prakara/bahya rings relative to the janma nakshatra, with entry/exit windows a…[+255]",
+   "seed_would_write": "Transiting grahas mapped to the kota's stambha/durgantara/prakara/bahya rings relative to the janma nakshatra, with entry/exit windows and an attack/defence rea…[+194]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_sudarshana_varsha",
+   "column": "english_description",
+   "live_value": "ṢAḌ-DARŚANA W3 item 17: the rotating annual house-per-year progression of the tri-lagna framework (Janma/Chandra/Sūrya Lagna), full 120-year lifespan. Pure arit…[+263]",
+   "seed_would_write": "The rotating annual house-per-year progression of the tri-lagna framework (Janma/Chandra/Sūrya Lagna), full 120-year lifespan. Pure arithmetic over natal chart_…[+42]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_tithi_pravesha",
+   "column": "english_description",
+   "live_value": "ṢAḌ-DARŚANA W3 item 13: the lunar-return counterpart to Tājika Vārṣaphala (ga_tajaka) — the annual chart cast for the instant the transiting Moon returns to its…[+330]",
+   "seed_would_write": "The lunar-return counterpart to Tājika Vārṣaphala (ga_tajaka): the annual chart cast for the instant the transiting Moon returns to its exact natal sidereal lon…[+260]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_moorti_nirnaya",
+   "column": "english_description",
+   "live_value": "ṢAḌ-DARŚANA W3 item 4: the classical gold/silver/copper/iron quality of a transiting graha's stay in a sign, determined by the Moon's nakshatra at the moment of…[+287]",
+   "seed_would_write": "The classical gold/silver/copper/iron quality of a transiting graha's stay in a sign, determined by the Moon's nakshatra at the moment of ingress, offset from t…[+245]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_vedha_gochara",
+   "column": "english_description",
+   "live_value": "ṢAḌ-DARŚANA W3 item 5 (closes R-19, CLOSED-PARTIAL-BY-DESIGN per ADJUDICATION-11): three classical vedha (obstruction) mechanisms applied to a chart's currently…[+527]",
+   "seed_would_write": "Two classical vedha (obstruction) mechanisms applied to a chart's currently-active and forward transits — house_vedha (BPHS Ch.29/Phaladeepika Ch.26, from bg_tr…[+332]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_vistara",
+   "column": "english_description",
+   "live_value": "Audit log of all synthesis export events (PDF, JSON, MCP bundles). SCOPE EXCEPTION (PD-6 / BA-P0): scope=global is correct — the writer generates zero rows and …[+261]",
+   "seed_would_write": "Audit log of all synthesis export events (PDF, JSON, MCP bundles)",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_sankalpa",
+   "column": "english_description",
+   "live_value": "Unified intervention ledger — every elected act (upāya · yajña · elected activity) with its adjudication record, predicted differential, performance attestation…[+174]",
+   "seed_would_write": "Unified intervention ledger — every elected act (upāya · yajña · elected activity) with its adjudication record (the JudgmentLedger, frozen verbatim at election…[+455]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_ghatana",
+   "column": "english_name",
+   "live_value": "Event + Activity Ontology",
+   "seed_would_write": "Event Ontology",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cdlm_summary",
+   "column": "english_name",
+   "live_value": "CDLM Summary",
+   "seed_would_write": "CDLM chart summary",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cgm_motifs",
+   "column": "english_name",
+   "live_value": "CGM Motifs",
+   "seed_would_write": "CGM structural motifs",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cgm_paths",
+   "column": "english_name",
+   "live_value": "CGM Paths",
+   "seed_would_write": "CGM dispositor chain paths",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_chart_gestalt",
+   "column": "english_name",
+   "live_value": "Chart Gestalt",
+   "seed_would_write": "Chart gestalt synthesis",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_gochara_sweep",
+   "column": "english_name",
+   "live_value": "Forward Sweep + Serving",
+   "seed_would_write": "Forward Sweep + Serving (RETIRED)",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_avadhi",
+   "column": "english_name",
+   "live_value": "Period Dossiers",
+   "seed_would_write": "Period dossiers",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_taranga",
+   "column": "english_name",
+   "live_value": "Activation Waveform",
+   "seed_would_write": "Activation waveform",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_kp_sublord_division",
+   "column": "expected_volume_formula",
+   "live_value": null,
+   "seed_would_write": "NAKSHATRAS * VIMSHOTTARI_LORDS + RASHI_BOUNDARY_SPLITS",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_pratijna",
+   "column": "expected_volume_formula",
+   "live_value": null,
+   "seed_would_write": "EVENT_CLASSES * AYANAMSHAS",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cdlm_summary",
+   "column": "expected_volume_formula",
+   "live_value": null,
+   "seed_would_write": "ACTUAL(bo_sangati)",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_chart_gestalt",
+   "column": "expected_volume_formula",
+   "live_value": null,
+   "seed_would_write": "ACTUAL(bo_laksana)",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_sudarshana_varsha",
+   "column": "expected_volume_formula",
+   "live_value": null,
+   "seed_would_write": "120",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_tithi_pravesha",
+   "column": "expected_volume_formula",
+   "live_value": null,
+   "seed_would_write": "120",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_pratijna",
+   "column": "expected_volume_inputs",
+   "live_value": null,
+   "seed_would_write": "{\"AYANAMSHAS\": 5, \"EVENT_CLASSES\": 22}",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_sky_calendar",
+   "column": "is_active",
+   "live_value": "true",
+   "seed_would_write": "false",
+   "direction": "both non-null, values differ",
+   "guard": "pre-flight forced false",
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_sign_medical",
+   "column": "layer_index",
+   "live_value": "0",
+   "seed_would_write": "L0",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "bg_vidhi_primitives",
+   "column": "layer_index",
+   "live_value": null,
+   "seed_would_write": "L0",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "bg_vidhi_floors",
+   "column": "layer_index",
+   "live_value": null,
+   "seed_would_write": "L0",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "ga_sensitive_degree",
+   "column": "layer_index",
+   "live_value": "1",
+   "seed_would_write": "L1",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "ga_ayurdaya",
+   "column": "layer_index",
+   "live_value": "1",
+   "seed_would_write": "L1",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "ga_vichara",
+   "column": "layer_index",
+   "live_value": null,
+   "seed_would_write": "L1",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "bo_pratijna",
+   "column": "layer_index",
+   "live_value": "2",
+   "seed_would_write": "L2",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "bo_cdlm_summary",
+   "column": "layer_index",
+   "live_value": null,
+   "seed_would_write": "L2",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "bo_cgm_motifs",
+   "column": "layer_index",
+   "live_value": null,
+   "seed_would_write": "L2",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "bo_cgm_paths",
+   "column": "layer_index",
+   "live_value": null,
+   "seed_would_write": "L2",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "bo_chart_gestalt",
+   "column": "layer_index",
+   "live_value": null,
+   "seed_would_write": "L2",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "bo_sudarshana",
+   "column": "layer_index",
+   "live_value": null,
+   "seed_would_write": "L2",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "bo_nakshatra_semantic",
+   "column": "layer_index",
+   "live_value": null,
+   "seed_would_write": "L2",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "bo_yantra_mechanism",
+   "column": "layer_index",
+   "live_value": null,
+   "seed_would_write": "L2",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "bo_arudha",
+   "column": "layer_index",
+   "live_value": null,
+   "seed_would_write": "L2",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "bo_laksana_rerank",
+   "column": "layer_index",
+   "live_value": null,
+   "seed_would_write": "L2",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "bo_special_lagna",
+   "column": "layer_index",
+   "live_value": null,
+   "seed_would_write": "L2",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "bo_vargottama_dhana",
+   "column": "layer_index",
+   "live_value": null,
+   "seed_would_write": "L2",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "ka_avadhi",
+   "column": "layer_index",
+   "live_value": "3",
+   "seed_would_write": "L3",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "ka_taranga",
+   "column": "layer_index",
+   "live_value": "3",
+   "seed_would_write": "L3",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "lel_events",
+   "column": "layer_index",
+   "live_value": null,
+   "seed_would_write": "L5",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false,
+   "live_wellformed_Lx": false,
+   "seed_wellformed_Lx": true
+  },
+  {
+   "asset_id": "bg_vidhi_primitives",
+   "column": "layer_name",
+   "live_value": null,
+   "seed_would_write": "Brahmagyan",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "bg_vidhi_floors",
+   "column": "layer_name",
+   "live_value": null,
+   "seed_would_write": "Brahmagyan",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "ga_sensitive_degree",
+   "column": "layer_name",
+   "live_value": "Ganita",
+   "seed_would_write": "Gaṇita",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "ga_ayurdaya",
+   "column": "layer_name",
+   "live_value": "Ganita",
+   "seed_would_write": "Gaṇita",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "ga_vichara",
+   "column": "layer_name",
+   "live_value": null,
+   "seed_would_write": "Gaṇita",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "bo_cdlm_summary",
+   "column": "layer_name",
+   "live_value": null,
+   "seed_would_write": "Bodha",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "bo_cgm_motifs",
+   "column": "layer_name",
+   "live_value": null,
+   "seed_would_write": "Bodha",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "bo_cgm_paths",
+   "column": "layer_name",
+   "live_value": null,
+   "seed_would_write": "Bodha",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "bo_chart_gestalt",
+   "column": "layer_name",
+   "live_value": null,
+   "seed_would_write": "Bodha",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "bo_sudarshana",
+   "column": "layer_name",
+   "live_value": null,
+   "seed_would_write": "Bodha",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "bo_nakshatra_semantic",
+   "column": "layer_name",
+   "live_value": null,
+   "seed_would_write": "Bodha",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "bo_yantra_mechanism",
+   "column": "layer_name",
+   "live_value": null,
+   "seed_would_write": "Bodha",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "bo_arudha",
+   "column": "layer_name",
+   "live_value": null,
+   "seed_would_write": "Bodha",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "bo_laksana_rerank",
+   "column": "layer_name",
+   "live_value": null,
+   "seed_would_write": "Bodha",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "bo_special_lagna",
+   "column": "layer_name",
+   "live_value": null,
+   "seed_would_write": "Bodha",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "bo_vargottama_dhana",
+   "column": "layer_name",
+   "live_value": null,
+   "seed_would_write": "Bodha",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "ka_gochara_v3_century_materialize",
+   "column": "layer_name",
+   "live_value": "Kala",
+   "seed_would_write": "Kāla",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "ka_avadhi",
+   "column": "layer_name",
+   "live_value": "Kala",
+   "seed_would_write": "Kāla",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "ka_taranga",
+   "column": "layer_name",
+   "live_value": "Kala",
+   "seed_would_write": "Kāla",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "lel_events",
+   "column": "layer_name",
+   "live_value": null,
+   "seed_would_write": "Mīmāṃsā",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": false
+  },
+  {
+   "asset_id": "bg_ghatana",
+   "column": "sanskrit_name",
+   "live_value": "Ghaṭanā-darśanam",
+   "seed_would_write": "Ghaṭanā",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_class_priors",
+   "column": "sanskrit_name",
+   "live_value": "Pūrva-pakṣa-mānāḥ",
+   "seed_would_write": "Varga-pūrva",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_formula_constants",
+   "column": "sanskrit_name",
+   "live_value": "Sūtra-māna-kośaḥ",
+   "seed_would_write": "Sūtra-sthirāṅka",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_vidhi_primitives",
+   "column": "sanskrit_name",
+   "live_value": "vidhi_pramana",
+   "seed_would_write": "Vidhi Pramāṇa",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_vidhi_floors",
+   "column": "sanskrit_name",
+   "live_value": "vidhi_marga",
+   "seed_would_write": "Vidhi Mārga",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cdlm_summary",
+   "column": "sanskrit_name",
+   "live_value": "bo_cdlm_summary",
+   "seed_would_write": "Saṅkalana",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cgm_motifs",
+   "column": "sanskrit_name",
+   "live_value": "bo_cgm_motifs",
+   "seed_would_write": "Ākṛti",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cgm_paths",
+   "column": "sanskrit_name",
+   "live_value": "bo_cgm_paths",
+   "seed_would_write": "Diśā",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_chart_gestalt",
+   "column": "sanskrit_name",
+   "live_value": "bo_chart_gestalt",
+   "seed_would_write": "Pratinidhi",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_sudarshana",
+   "column": "sanskrit_name",
+   "live_value": "sudarshana_chakra",
+   "seed_would_write": "Sudarśana Cakra",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_nakshatra_semantic",
+   "column": "sanskrit_name",
+   "live_value": "nakshatra_tattva",
+   "seed_would_write": "Nakṣatra Tattva",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_yantra_mechanism",
+   "column": "sanskrit_name",
+   "live_value": "yantra",
+   "seed_would_write": "Yantra",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_arudha",
+   "column": "sanskrit_name",
+   "live_value": "arudha_pada",
+   "seed_would_write": "Arudha Pāda",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_laksana_rerank",
+   "column": "sanskrit_name",
+   "live_value": "laksana_punaranka",
+   "seed_would_write": "Lakṣaṇa Punararaṅka",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_special_lagna",
+   "column": "sanskrit_name",
+   "live_value": "visesha_lagna",
+   "seed_would_write": "Viśeṣa Lagna",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_vargottama_dhana",
+   "column": "sanskrit_name",
+   "live_value": "vargottama_dhana_aksa",
+   "seed_would_write": "Vargottama Dhana Akṣa",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_gochara",
+   "column": "sanskrit_name",
+   "live_value": "Gochara Purah-Sancalana Cakra (2.0, satyapana)",
+   "seed_would_write": "Gochara Puraḥ-Sañcalana Cakra (2.0, satyapana)",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_gochara_sweep",
+   "column": "sanskrit_name",
+   "live_value": "Gochara Purah-Sancalana Cakra",
+   "seed_would_write": "Gochara Puraḥ-Sañcalana Cakra",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_gochara_v3_century_materialize",
+   "column": "sanskrit_name",
+   "live_value": "Gochara Shatabhdi Matrika (v3)",
+   "seed_would_write": "Gochara Śatābdi Mātrika (v3)",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_avadhi",
+   "column": "sanskrit_name",
+   "live_value": "Avadhī",
+   "seed_would_write": "Avadhi",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_jivanaghatana",
+   "column": "scope",
+   "live_value": "per_chart",
+   "seed_would_write": "global",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_pratijna",
+   "column": "size_sql",
+   "live_value": null,
+   "seed_would_write": "SELECT pg_total_relation_size('bodha_pratijna')",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "bo_cdlm_summary",
+   "column": "size_sql",
+   "live_value": null,
+   "seed_would_write": "SELECT pg_total_relation_size('bodha_cdlm_chart_summary')",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "bo_cgm_motifs",
+   "column": "size_sql",
+   "live_value": null,
+   "seed_would_write": "SELECT pg_total_relation_size('bodha_cgm_motifs')",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "bo_cgm_paths",
+   "column": "size_sql",
+   "live_value": null,
+   "seed_would_write": "SELECT pg_total_relation_size('bodha_cgm_paths')",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "bo_chart_gestalt",
+   "column": "size_sql",
+   "live_value": null,
+   "seed_would_write": "SELECT pg_total_relation_size('bodha_chart_gestalt')",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "ka_avadhi",
+   "column": "size_sql",
+   "live_value": null,
+   "seed_would_write": "SELECT pg_total_relation_size('kala_avadhi')",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "ka_taranga",
+   "column": "size_sql",
+   "live_value": null,
+   "seed_would_write": "SELECT pg_total_relation_size('kala_taranga')",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null,
+   "differs_only_in_whitespace_or_case": false
+  },
+  {
+   "asset_id": "bg_ghatana",
+   "column": "sort_order",
+   "live_value": "17",
+   "seed_would_write": "16",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_class_priors",
+   "column": "sort_order",
+   "live_value": "16",
+   "seed_would_write": "67",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_formula_constants",
+   "column": "sort_order",
+   "live_value": "18",
+   "seed_would_write": "68",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_sky_calendar",
+   "column": "sort_order",
+   "live_value": "21",
+   "seed_would_write": "69",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_pratijna",
+   "column": "sort_order",
+   "live_value": "18",
+   "seed_would_write": "4",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cgm_motifs",
+   "column": "sort_order",
+   "live_value": "4",
+   "seed_would_write": "5",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cgm_paths",
+   "column": "sort_order",
+   "live_value": "5",
+   "seed_would_write": "11",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_chart_gestalt",
+   "column": "sort_order",
+   "live_value": "11",
+   "seed_would_write": "15",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_avadhi",
+   "column": "sort_order",
+   "live_value": "32",
+   "seed_would_write": "4",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_taranga",
+   "column": "sort_order",
+   "live_value": "33",
+   "seed_would_write": "10",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_ghatana",
+   "column": "target_floor",
+   "live_value": null,
+   "seed_would_write": "34",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_class_priors",
+   "column": "target_floor",
+   "live_value": null,
+   "seed_would_write": "164",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_formula_constants",
+   "column": "target_floor",
+   "live_value": null,
+   "seed_would_write": "14",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_parihara_rules",
+   "column": "target_floor",
+   "live_value": "447",
+   "seed_would_write": "439",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ga_vargas",
+   "column": "target_floor",
+   "live_value": "22092",
+   "seed_would_write": "21635",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_laksana",
+   "column": "target_floor",
+   "live_value": "60000",
+   "seed_would_write": "66738",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_pratijna",
+   "column": "target_floor",
+   "live_value": "0",
+   "seed_would_write": "110",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_samskara",
+   "column": "target_floor",
+   "live_value": "60000",
+   "seed_would_write": "66738",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_sangati",
+   "column": "target_floor",
+   "live_value": "70",
+   "seed_would_write": "84",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cdlm_summary",
+   "column": "target_floor",
+   "live_value": "1",
+   "seed_would_write": "5",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cgm_paths",
+   "column": "target_floor",
+   "live_value": "9",
+   "seed_would_write": "5",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_chart_gestalt",
+   "column": "target_floor",
+   "live_value": "1",
+   "seed_would_write": "5",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_anveshana",
+   "column": "target_floor",
+   "live_value": "500",
+   "seed_would_write": "5770",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_dasha_kala",
+   "column": "target_floor",
+   "live_value": "0",
+   "seed_would_write": null,
+   "direction": "seed NULLS a live value",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_tulana",
+   "column": "target_floor",
+   "live_value": "0",
+   "seed_would_write": null,
+   "direction": "seed NULLS a live value",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_jivanaghatana",
+   "column": "target_floor",
+   "live_value": "0",
+   "seed_would_write": null,
+   "direction": "seed NULLS a live value",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_kula",
+   "column": "target_floor",
+   "live_value": "0",
+   "seed_would_write": null,
+   "direction": "seed NULLS a live value",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_bhavisya",
+   "column": "target_floor",
+   "live_value": "0",
+   "seed_would_write": null,
+   "direction": "seed NULLS a live value",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_pramana",
+   "column": "target_floor",
+   "live_value": "0",
+   "seed_would_write": null,
+   "direction": "seed NULLS a live value",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_gunanaka",
+   "column": "target_floor",
+   "live_value": "0",
+   "seed_would_write": null,
+   "direction": "seed NULLS a live value",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_adhilepa",
+   "column": "target_floor",
+   "live_value": "0",
+   "seed_would_write": null,
+   "direction": "seed NULLS a live value",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_pariksha",
+   "column": "target_floor",
+   "live_value": "0",
+   "seed_would_write": null,
+   "direction": "seed NULLS a live value",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_sambandha",
+   "column": "target_floor",
+   "live_value": "0",
+   "seed_would_write": null,
+   "direction": "seed NULLS a live value",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_darshana",
+   "column": "target_floor",
+   "live_value": "0",
+   "seed_would_write": null,
+   "direction": "seed NULLS a live value",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_vistara",
+   "column": "target_floor",
+   "live_value": "0",
+   "seed_would_write": null,
+   "direction": "seed NULLS a live value",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_seva",
+   "column": "target_floor",
+   "live_value": "0",
+   "seed_would_write": null,
+   "direction": "seed NULLS a live value",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_abhilekha",
+   "column": "target_floor",
+   "live_value": "0",
+   "seed_would_write": null,
+   "direction": "seed NULLS a live value",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cdlm_summary",
+   "column": "target_table",
+   "live_value": null,
+   "seed_would_write": "bodha_cdlm_chart_summary",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_chart_gestalt",
+   "column": "target_table",
+   "live_value": null,
+   "seed_would_write": "bodha_chart_gestalt",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_adhilepa",
+   "column": "target_table",
+   "live_value": "mimamsa_load_bearing",
+   "seed_would_write": "mimamsa_signal_adjustment",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_sign_medical",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "12 rows — one per zodiac sign. Deterministic count.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_remedies",
+   "column": "volume_explanation",
+   "live_value": "266 remedies = writer's designed deterministic ceiling: gen_planet_matrix(108) + dosha-linked(102) + legacy(54) + corpus_sweep net-new(2). Floor = achieved coun…[+306]",
+   "seed_would_write": "266 remedies = writer's designed deterministic ceiling: gen_planet_matrix(108) + dosha-linked(102) + legacy(54) + corpus_sweep net-new(2). Floor = achieved coun…[+219]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_ghatana",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "22 life-event classes + 12 electional activity classes = 34 total rows, seeded verbatim from W1 seed package §5-§6.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_class_lifetime_counts",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "One row per event class for which a Tier N-i (or Tier N-ii derived-identity) source could actually be obtained and cited. Set to the ACHIEVED count after the fi…[+137]",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_class_priors",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "17 classes + 12 subsystems + 6 traditions + 30 vargas + 99 graha x domain priors (per writer docstring 165; live-measured 164, 2026-07-05).",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_formula_constants",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "Live-measured 14 constants, 2026-07-05 (grows as new formula constants are registered, e.g. migration 408 mi_pramana_dropped_dimensions).",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_vidhi_primitives",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "48 vidhi primitive atoms — deterministic count from the D-2 Lane V-1 writer.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_vidhi_floors",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "11 intent-floor rows — deterministic count from the D-2 Lane V-1 writer.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_muhurta_lattice",
+   "column": "volume_explanation",
+   "live_value": "Live-verified 2026-07-30 against a real throwaway Postgres (pg17 + pgvector), re-verified after the Opus corpus-citation review's abhijit-Wednesday-exclusion fi…[+645]",
+   "seed_would_write": "Live-verified 2026-07-30 against a real throwaway Postgres (pg17 + pgvector), re-verified after the Opus corpus-citation review's abhijit-Wednesday-exclusion fi…[+277]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_parihara_rules",
+   "column": "volume_explanation",
+   "live_value": "Live-verified 2026-07-30 and re-counted 2026-08-02 (ṢAḌ-DARŚANA W4 Lane R): 60 parihara-graph condition rows (26 doshas in brahma_dosha_catalog carry a real, no…[+673]",
+   "seed_would_write": "Live-verified 2026-07-30: 60 parihara-graph condition rows (queried directly against REAL production brahma_dosha_catalog: 26 doshas carry a real, non-placehold…[+306]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_kota_chakra_rings",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "27 rows: the 1..27 ring_position partition (Stambha 4 + Durgantara 8 + Prakara 8 + Bahya 7 = 27), one row per nakshatra-count-from-janma. Not 28 — see migration…[+88]",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_kp_sublord_division",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "27 nakshatras × 9 Vimshottari subs = 243 sub segments; 6 of the 12 rashi boundaries fall strictly inside a sub segment and split it (the other 6 coincide with a…[+65]",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_sarvatobhadra_grid",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "Deliberately empty — no writer. Grid variants are school-specific and unverified.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_vedha_malefic_scale",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "5 rows — malefic-count scale values 1–5, per Phaladeepika PG353.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_phaladeepika_latta",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "8 rows — one per graha (Ketu deliberately absent; its counting rule was not found in the retrieved passage).",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bg_gochara_arcs",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "34,553 arcs across the nine DAILY_BODIES over 1900-01-01 → 2150-12-31 (91,676 knots each, ayanamsha_id='tropical'). Per body: Saturn 503 · Jupiter 494 · Rahu 13…[+903]",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ga_sensitive_degree",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "Per-graha sensitive-degree check rows — count depends on classical rule applicability per chart.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ga_ayurdaya",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "Ayurdaya rows — count depends on method applicability per chart.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ga_vichara",
+   "column": "volume_explanation",
+   "live_value": "Sum of valence_pass + varga_ratification (+ divergence) + varga_consistency + leverage_index rows across 5 ayanamshas",
+   "seed_would_write": "Sum of valence_pass + varga_ratification (+ divergence) + varga_consistency + leverage_index rows across 5 ayanamshas.",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ga_nakshatra",
+   "column": "volume_explanation",
+   "live_value": "357 rows per ayanamsha × 5 ayanamshas + 17 cross-ayanamsha consistency rows = 1802 total (native chart 482012f1).",
+   "seed_would_write": "357 rows per ayanamsha × 5 ayanamshas + 17 cross-ayanamsha consistency rows = 1802 total (native chart 482012f1). W3K adds 108 house-significator + ~100 planet-…[+168]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_pratijna",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "22 event classes (brahma_event_ontology) × 5 canonical ayanamshas = 110 rows per chart.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cdlm_summary",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "One row per chart per ayanamsha — 5 ayanamshas. Live-measured 5, 2026-07-05.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cgm_motifs",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "Motif count is chart-dependent (0 if no mutual-reception/stellium/parivartana pattern exists in this chart's dispositor graph). Live-measured 0 for chart 482012…[+140]",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_cgm_paths",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "Currently only self-ruling (zero-hop) paths emit — bo_karanajala does not yet write dispositor-class edges, so multi-hop chains cannot be built (documented limi…[+56]",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_chart_gestalt",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "One row per chart per ayanamsha — 5 ayanamshas. Live-measured 5, 2026-07-05.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_sudarshana",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "sudarshana_agreement signal rows — one per confirmed or contradicted 3-frame graha assignment.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_nakshatra_semantic",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "nakshatra_semantic signal rows — one per graha per relevant nakshatra quality.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_yantra_mechanism",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "One or more mechanism rows per chart — count depends on CGM motif cardinality.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_arudha",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "arudha MSR signal rows — per AL/A2/A11 analysis.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_laksana_rerank",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "Count of MSR signals that received CGM centrality scores — matches bo_laksana count for a fully-built chart.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_special_lagna",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "special_lagna MSR signal rows — per lagna per domain_salience combination.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "bo_vargottama_dhana",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "vargottama_amplification + dhana_axis MSR signal rows — per cross-frame graha analysis.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_gochara",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "Per-chart gochara materialization (generation=3.0), counted from the production surface (kala_gochara_windows) per the W5.4 UTK-R1 repoint — not the g3_utkarsha…[+45]",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_gochara_resonance",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "Per-chart resonance target rows — count depends on event-class cardinality and chart structure.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_gochara_sweep",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "RETIRED — v1 sweep data protected in kala_gochara_windows (migration 540). No new rows written.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_gochara_v3_century_materialize",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "GOCHARA-v3 century windows — count depends on active threshold-crossing intervals across 60 decade slices.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_avadhi",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "One dossier row per chart_dashas period (MD+AD, all systems) — count is chart/dasha-system dependent. Live-measured 0 for chart 482012f1, 2026-07-05 — not yet r…[+73]",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_taranga",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "One row per month (1950-01..2100-12 = 1812 months) per scope (domain x event_class) — count depends on scope cardinality. Live-measured 0 for chart 482012f1, 20…[+93]",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_kota_chakra",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "One row per (graha, contiguous same-nakshatra ring-run) over a ~460-day scanned horizon (60 days back, 400 forward) around build time — typically 15-40 rows/cha…[+121]",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_sudarshana_varsha",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "Exactly 120 rows/chart (varsha years 1..120, full-life horizon) once a real build runs — pure arithmetic, no partial-coverage failure mode. Seeded 0 per §N.4 un…[+37]",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_tithi_pravesha",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "Exactly 120 rows/chart (pravesha years 1..120, full-life horizon) once a real build runs — benchmarked ~3.4ms/row (root-find + annual-chart cast) during design,…[+101]",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_moorti_nirnaya",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "One row per (graha, contiguous same-sign occupancy window) over a ~460-day scanned horizon (60 days back, 400 forward) around build time, across the 8 grahas ot…[+145]",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_vedha_gochara",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "One row per vedha-checkable house transit (house_vedha) or per sarvatobhadra-vedha-nakshatra dwelling window, over the same ~460-day scanned horizon — small, ga…[+157]",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "lel_events",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "User-authored; grows with native engagement. Not a deterministic count.",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_gunanaka",
+   "column": "volume_explanation",
+   "live_value": "One row per multiplier type — small, stable catalog; grows only when new signal categories are added",
+   "seed_would_write": "One row per multiplier type (mimamsa_multipliers, delete-then-insert per §N.3) plus one accreted row per rebuild in mimamsa_calibration_snapshot (RATIFIED appen…[+51]",
+   "direction": "both non-null, values differ",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "ka_kshetra",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "Log-linear hazard segments per event class over a 100-year horizon; set to the ACHIEVED count after the first build (§N.4 — floors are aspirational, never fabri…[+7]",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  },
+  {
+   "asset_id": "mi_sankalpa",
+   "column": "volume_explanation",
+   "live_value": null,
+   "seed_would_write": "Accumulates as interventions are elected and attested — not a deterministic target (§N.4: floors are aspirational, set to the ACHIEVED count after first build, …[+18]",
+   "direction": "seed FILLS a live NULL",
+   "guard": null,
+   "declared_in_seed_entry": null
+  }
+ ],
+ "unknown_cells": [],
+ "rows_only_in_one_side": {
+  "live_but_no_seed_entry": [
+   "bg_gochara_citation_resolution"
+  ],
+  "seed_entry_but_not_live": [],
+  "note": "a live row with no seed entry is untouched by a re-seed — the seed neither updates nor deletes it. A seed entry with no live row is INSERTed, and every column in `never_written_by_the_seed_at_all` lands at its DB default (NULL unless a DEFAULT/NOT NULL says otherwise)."
+ },
+ "per_repair": {
+  "has_substeps__M0-T20": {
+   "columns": [
+    "has_substeps"
+   ],
+   "in_do_update_set": [],
+   "insert_only": [],
+   "not_written_by_the_seed": [
+    "has_substeps"
+   ],
+   "rows_a_reseed_would_change": {},
+   "total_rows_reverted": 0,
+   "live_true_rows": 26,
+   "verdict": "DURABLE — the column is absent from the seed's INSERT list entirely, so no seed run reads or writes it",
+   "consequence_if_reverted": "CORRECTNESS. has_substeps gates asset_runner.py's substep-plan-completeness predicate (CLAUDE.md §N.8 instance 4): plan_complete is initialised True and only recomputed inside `if has_substeps:`. A false-negative flag switches the detector OFF and lets `lit` be written on a proxy — the H4/I5 defect class."
+  },
+  "asset_kind_asset_type__M0-T21": {
+   "columns": [
+    "asset_kind",
+    "asset_type"
+   ],
+   "in_do_update_set": [
+    "asset_kind",
+    "asset_type"
+   ],
+   "insert_only": [],
+   "not_written_by_the_seed": [],
+   "rows_a_reseed_would_change": {
+    "asset_kind": [
+     "bg_ephemeris_engine",
+     "bg_panchanga"
+    ],
+    "asset_type": [
+     "ka_dasha_kala",
+     "ka_graha_sancara",
+     "ka_muhurta_seva",
+     "ka_tulana",
+     "mi_abhilekha",
+     "mi_seva"
+    ]
+   },
+   "total_rows_reverted": 8,
+   "verdict": "REVERTED — both columns are in the unconditional DO UPDATE SET list and the seed supplies a `?? 'data'` default for each, so an entry that omits the key is written with 'data', not left alone",
+   "consequence_if_reverted": "CORRECTNESS-ADJACENT. asset_kind/asset_type drive per-kind catalogue-contract rules (which required fields apply) and service-vs-data routing. Reverting a 'service' to 'data' re-opens the contract violations M0-T21 closed."
+  },
+  "domain_rung__migration_590": {
+   "columns": [
+    "domain",
+    "rung"
+   ],
+   "in_do_update_set": [],
+   "insert_only": [],
+   "not_written_by_the_seed": [
+    "domain",
+    "rung"
+   ],
+   "rows_a_reseed_would_change": {},
+   "total_rows_reverted": 0,
+   "scope_domain_pair_break": {
+    "why": "migration 590 derives domain 1:1 from scope. `scope` IS in the seed's DO UPDATE SET list; `domain` is NOT. A re-seed therefore moves one half of the pair and leaves the other, producing a row whose domain no longer matches its own scope.",
+    "rows": [
+     {
+      "asset_id": "mi_jivanaghatana",
+      "live_scope": "per_chart",
+      "seed_would_write_scope": "global",
+      "live_domain": "chart",
+      "domain_derived_from_scope_would_become": "shared",
+      "consistent_after_reseed": false
+     }
+    ]
+   },
+   "verdict": "domain/rung themselves are DURABLE (neither is written by the seed at all) — but the PAIR is not: 1 row(s) would end up internally inconsistent because `scope` moves under them",
+   "consequence_if_reverted": "CORRECTNESS. domain is the planner's split axis (plan §6.2) and rung is the layer-ladder position (§8.4). A domain that contradicts its own scope makes contract rule C-18/C-19 fire and makes I13's 'which rung owns this asset' question answerable two different ways."
+  },
+  "has_writer__generator_only": {
+   "columns": [
+    "has_writer"
+   ],
+   "in_do_update_set": [],
+   "insert_only": [],
+   "not_written_by_the_seed": [
+    "has_writer"
+   ],
+   "rows_a_reseed_would_change": {},
+   "total_rows_reverted": 0,
+   "live_non_null_rows": 128,
+   "column_exists_live": true,
+   "verdict": "DURABLE (vacuously) — the column is not in the seed's INSERT or DO UPDATE list, and no rows were written by the campaign",
+   "consequence_if_reverted": "n/a — nothing to revert; no rows written."
+  },
+  "layer_index_layer_name__phase_0.5a_NOT_PERFORMED": {
+   "columns": [
+    "layer_index",
+    "layer_name"
+   ],
+   "in_do_update_set": [
+    "layer_index",
+    "layer_name"
+   ],
+   "insert_only": [],
+   "not_written_by_the_seed": [],
+   "rows_a_reseed_would_change": {
+    "layer_index": [
+     "bg_sign_medical",
+     "bg_vidhi_floors",
+     "bg_vidhi_primitives",
+     "bo_arudha",
+     "bo_cdlm_summary",
+     "bo_cgm_motifs",
+     "bo_cgm_paths",
+     "bo_chart_gestalt",
+     "bo_laksana_rerank",
+     "bo_nakshatra_semantic",
+     "bo_pratijna",
+     "bo_special_lagna",
+     "bo_sudarshana",
+     "bo_vargottama_dhana",
+     "bo_yantra_mechanism",
+     "ga_ayurdaya",
+     "ga_sensitive_degree",
+     "ga_vichara",
+     "ka_avadhi",
+     "ka_taranga",
+     "lel_events"
+    ],
+    "layer_name": [
+     "bg_vidhi_floors",
+     "bg_vidhi_primitives",
+     "bo_arudha",
+     "bo_cdlm_summary",
+     "bo_cgm_motifs",
+     "bo_cgm_paths",
+     "bo_chart_gestalt",
+     "bo_laksana_rerank",
+     "bo_nakshatra_semantic",
+     "bo_special_lagna",
+     "bo_sudarshana",
+     "bo_vargottama_dhana",
+     "bo_yantra_mechanism",
+     "ga_ayurdaya",
+     "ga_sensitive_degree",
+     "ga_vichara",
+     "ka_avadhi",
+     "ka_gochara_v3_century_materialize",
+     "ka_taranga",
+     "lel_events"
+    ]
+   },
+   "total_rows_reverted": 41,
+   "live_dirt_today": {
+    "layer_index_null": 15,
+    "layer_index_malformed": 6,
+    "dirty_rows": [
+     {
+      "asset_id": "bg_sign_medical",
+      "layer": "brahmagyan",
+      "layer_index": "0",
+      "layer_name": "Brahmagyan"
+     },
+     {
+      "asset_id": "bg_vidhi_floors",
+      "layer": "brahmagyan",
+      "layer_index": null,
+      "layer_name": null
+     },
+     {
+      "asset_id": "bg_vidhi_primitives",
+      "layer": "brahmagyan",
+      "layer_index": null,
+      "layer_name": null
+     },
+     {
+      "asset_id": "bo_arudha",
+      "layer": "bodha",
+      "layer_index": null,
+      "layer_name": null
+     },
+     {
+      "asset_id": "bo_cdlm_summary",
+      "layer": "bodha",
+      "layer_index": null,
+      "layer_name": null
+     },
+     {
+      "asset_id": "bo_cgm_motifs",
+      "layer": "bodha",
+      "layer_index": null,
+      "layer_name": null
+     },
+     {
+      "asset_id": "bo_cgm_paths",
+      "layer": "bodha",
+      "layer_index": null,
+      "layer_name": null
+     },
+     {
+      "asset_id": "bo_chart_gestalt",
+      "layer": "bodha",
+      "layer_index": null,
+      "layer_name": null
+     },
+     {
+      "asset_id": "bo_laksana_rerank",
+      "layer": "bodha",
+      "layer_index": null,
+      "layer_name": null
+     },
+     {
+      "asset_id": "bo_nakshatra_semantic",
+      "layer": "bodha",
+      "layer_index": null,
+      "layer_name": null
+     },
+     {
+      "asset_id": "bo_pratijna",
+      "layer": "bodha",
+      "layer_index": "2",
+      "layer_name": "Bodha"
+     },
+     {
+      "asset_id": "bo_special_lagna",
+      "layer": "bodha",
+      "layer_index": null,
+      "layer_name": null
+     },
+     {
+      "asset_id": "bo_sudarshana",
+      "layer": "bodha",
+      "layer_index": null,
+      "layer_name": null
+     },
+     {
+      "asset_id": "bo_vargottama_dhana",
+      "layer": "bodha",
+      "layer_index": null,
+      "layer_name": null
+     },
+     {
+      "asset_id": "bo_yantra_mechanism",
+      "layer": "bodha",
+      "layer_index": null,
+      "layer_name": null
+     },
+     {
+      "asset_id": "ga_ayurdaya",
+      "layer": "ganita",
+      "layer_index": "1",
+      "layer_name": "Ganita"
+     },
+     {
+      "asset_id": "ga_sensitive_degree",
+      "layer": "ganita",
+      "layer_index": "1",
+      "layer_name": "Ganita"
+     },
+     {
+      "asset_id": "ga_vichara",
+      "layer": "ganita",
+      "layer_index": null,
+      "layer_name": null
+     },
+     {
+      "asset_id": "ka_avadhi",
+      "layer": "kala",
+      "layer_index": "3",
+      "layer_name": "Kala"
+     },
+     {
+      "asset_id": "ka_taranga",
+      "layer": "kala",
+      "layer_index": "3",
+      "layer_name": "Kala"
+     },
+     {
+      "asset_id": "lel_events",
+      "layer": "mimamsa",
+      "layer_index": null,
+      "layer_name": null
+     }
+    ],
+    "dirty_rows_WITH_a_seed_entry": [
+     "bg_sign_medical",
+     "bg_vidhi_floors",
+     "bg_vidhi_primitives",
+     "bo_arudha",
+     "bo_cdlm_summary",
+     "bo_cgm_motifs",
+     "bo_cgm_paths",
+     "bo_chart_gestalt",
+     "bo_laksana_rerank",
+     "bo_nakshatra_semantic",
+     "bo_pratijna",
+     "bo_special_lagna",
+     "bo_sudarshana",
+     "bo_vargottama_dhana",
+     "bo_yantra_mechanism",
+     "ga_ayurdaya",
+     "ga_sensitive_degree",
+     "ga_vichara",
+     "ka_avadhi",
+     "ka_taranga",
+     "lel_events"
+    ],
+    "dirty_rows_WITHOUT_a_seed_entry": []
+   },
+   "measured_direction": {
+    "layer_index_divergent_cells": 21,
+    "of_those_the_SEED_value_is_wellformed_Lx": 21,
+    "of_those_the_LIVE_value_is_wellformed_Lx": 0,
+    "layer_name_divergent_cells": 20,
+    "layer_name_cells_where_seed_fills_a_live_NULL": 15,
+    "reading": "On EVERY divergent cell measured, the value the seed would write is the well-formed one and the live value is the dirty one (a NULL, a bare digit, or an unaccented layer_name). The seed is not the threat to this repair — it is already performing it."
+   },
+   "if_the_repair_were_performed_today": {
+    "layer_index": "layer_index IS in the unconditional DO UPDATE SET list, so the seed rewrites it on every run — but it derives the value as `asset.layer_index ?? layerIndices[asset.layer] ?? null`, and on all 21 divergent cells that derivation yields the clean 'Lx' form (21/21 well-formed) while the LIVE value is dirty (0/21 well-formed). A Phase 0.5a repair that writes exactly `layerIndices[layer]` is therefore DURABLE BY AGREEMENT: the seed rewrites the identical value. A repair that writes anything else is reverted on the next run.",
+    "layer_name": "same mechanism, `asset.layer_name ?? layerNames[asset.layer]`. Note the seed's map carries the DIACRITICS locked by CLAUDE.md §N.1 ('Gaṇita', 'Kāla', 'Mīmāṃsā'); several live rows carry the unaccented spelling, so a repair must write the accented form or it will diverge from the seed again.",
+    "rows_with_NO_seed_entry": [],
+    "rows_where_seed_and_live_already_disagree": {
+     "layer_index": [
+      "bg_sign_medical",
+      "bg_vidhi_floors",
+      "bg_vidhi_primitives",
+      "bo_arudha",
+      "bo_cdlm_summary",
+      "bo_cgm_motifs",
+      "bo_cgm_paths",
+      "bo_chart_gestalt",
+      "bo_laksana_rerank",
+      "bo_nakshatra_semantic",
+      "bo_pratijna",
+      "bo_special_lagna",
+      "bo_sudarshana",
+      "bo_vargottama_dhana",
+      "bo_yantra_mechanism",
+      "ga_ayurdaya",
+      "ga_sensitive_degree",
+      "ga_vichara",
+      "ka_avadhi",
+      "ka_taranga",
+      "lel_events"
+     ],
+     "layer_name": [
+      "bg_vidhi_floors",
+      "bg_vidhi_primitives",
+      "bo_arudha",
+      "bo_cdlm_summary",
+      "bo_cgm_motifs",
+      "bo_cgm_paths",
+      "bo_chart_gestalt",
+      "bo_laksana_rerank",
+      "bo_nakshatra_semantic",
+      "bo_special_lagna",
+      "bo_sudarshana",
+      "bo_vargottama_dhana",
+      "bo_yantra_mechanism",
+      "ga_ayurdaya",
+      "ga_sensitive_degree",
+      "ga_vichara",
+      "ka_avadhi",
+      "ka_gochara_v3_century_materialize",
+      "ka_taranga",
+      "lel_events"
+     ]
+    }
+   },
+   "verdict": "NOT YET PERFORMED — and the measurement says the risk here runs the OPPOSITE way to the asset_kind case. Both columns are seed-owned, but on all 41 divergent cells the seed's derived value is the CLEAN one. Phase 0.5a is durable so long as it writes exactly what `layerIndices[layer]` / `layerNames[layer]` produce, diacritics included; a repair that invents its own form is reverted. 0 dirty row(s) have no seed entry and are out of the seed's reach entirely.",
+   "consequence_if_reverted": "COSMETIC. layer_index is a display/ordering label; migration 590 explicitly REFUSED to derive `rung` from it precisely because it is dirty, so no gate reads it. A reversion here is a label going wrong, not a detector switching off — categorically less serious than has_substeps or the scope/domain pair."
+  }
+ },
+ "consequence_ranking": [
+  {
+   "rank": 1,
+   "class": "CORRECTNESS — a detector switches off",
+   "columns": [
+    "has_substeps"
+   ],
+   "at_risk_today": 0,
+   "why": "a reverted has_substeps re-disables the §N.8 substep-plan-completeness predicate, letting `lit` be written on a proxy. Nothing announces it.",
+   "measured_state": "not seed-written; measured durable"
+  },
+  {
+   "rank": 2,
+   "class": "CORRECTNESS — a pair goes internally inconsistent",
+   "columns": [
+    "scope→domain"
+   ],
+   "at_risk_today": 1,
+   "why": "scope is seed-owned, domain is not, and domain was derived FROM scope. A re-seed moves one and leaves the other; the row then asserts two different answers to the same question.",
+   "measured_state": "MEASURED LIVE — see per_repair.domain_rung__migration_590"
+  },
+  {
+   "rank": 3,
+   "class": "CONTRACT — a per-kind rule set changes under the asset",
+   "columns": [
+    "asset_kind",
+    "asset_type"
+   ],
+   "at_risk_today": 8,
+   "why": "both carry a `?? 'data'` default, so an omitted key is an active write of 'data', not a no-op. A 'service' asset silently becomes 'data' and the contract rules that apply to it change.",
+   "measured_state": "MEASURED LIVE"
+  },
+  {
+   "rank": 4,
+   "class": "OPERATIONAL — build gating / floors / counting",
+   "columns": [
+    "is_active",
+    "catalog_status",
+    "count_sql",
+    "target_floor",
+    "depends_on",
+    "target_table"
+   ],
+   "at_risk_today": 88,
+   "why": "these decide whether an asset builds at all, what its cockpit count reads and what its DAG edges are. is_active and catalog_status are the TWO columns already CASE-guarded — that guard is the pattern any fix to the rest would follow.",
+   "measured_state": "MEASURED LIVE"
+  },
+  {
+   "rank": 5,
+   "class": "COSMETIC — a label goes wrong, nothing gates on it",
+   "columns": [
+    "sanskrit_name",
+    "english_name",
+    "english_description",
+    "volume_explanation",
+    "sort_order",
+    "layer_name",
+    "layer_index"
+   ],
+   "at_risk_today": 149,
+   "why": "wrong text is visible and correctable; no detector reads it.",
+   "measured_state": "MEASURED LIVE"
+  }
+ ],
+ "coverage": {
+  "columns_the_seed_writes_on_a_re_seed": 23,
+  "columns_modelled_here": 23,
+  "modelled_columns": [
+   "asset_kind",
+   "asset_type",
+   "catalog_status",
+   "count_sql",
+   "depends_on",
+   "english_description",
+   "english_name",
+   "expected_volume_formula",
+   "expected_volume_inputs",
+   "health_probe",
+   "is_active",
+   "layer",
+   "layer_index",
+   "layer_name",
+   "provides_apis",
+   "sanskrit_name",
+   "scope",
+   "size_sql",
+   "sort_order",
+   "storage_type",
+   "target_floor",
+   "target_table",
+   "volume_explanation"
+  ],
+  "unmodelled_columns": [],
+  "m0_t27_modelled": [
+   "asset_kind",
+   "asset_type",
+   "layer",
+   "scope"
+  ],
+  "unknown_cells": 0,
+  "rows_compared": 127,
+  "rows_in_live_not_compared": [
+   "bg_gochara_citation_resolution"
+  ],
+  "what_remains_UNMODELLED_and_why": [
+   "`is_active` is modelled only as far as to_regclass() can see: the pre-flight also HARD-STOPS the whole seed if more than 20 assets have absent target_tables (:3240). If that stop fires, NO column is written at all and every figure in this register is moot. The count is reported under is_active_preflight.",
+   "`expected_volume_inputs` for `mi_jivanaghatana` is overwritten by main() (:3205) with a live FILE_COUNT of the LEL file. That evaluation is replicated in the extractor and its result is reported (lel_file_count=56); if the LEL file changes, the seed's value changes with it and this cell must be re-measured.",
+   "Column ORDER-sensitivity in `depends_on` is compared as an ordered list, which is what Postgres text[] stores. A pure re-ordering counts as a change here — that is deliberate, not a false positive.",
+   "This register models the seed's INSERT/UPDATE of asset_registry ONLY. The same script also upserts asset_coefficients (:3341); that table is out of scope and unmeasured."
+  ]
+ },
+ "headline": {
+  "columns_modelled_of_columns_written": "23/23",
+  "total_cells_a_reseed_would_change": 260,
+  "columns_with_at_least_one_changed_cell": [
+   "asset_kind",
+   "asset_type",
+   "catalog_status",
+   "count_sql",
+   "depends_on",
+   "english_description",
+   "english_name",
+   "expected_volume_formula",
+   "expected_volume_inputs",
+   "is_active",
+   "layer_index",
+   "layer_name",
+   "sanskrit_name",
+   "scope",
+   "size_sql",
+   "sort_order",
+   "target_floor",
+   "target_table",
+   "volume_explanation"
+  ],
+  "distinct_assets_touched": 96,
+  "cells_UNKNOWN": 0,
+  "changed_cells_by_class": {
+   "unconditional": 255,
+   "CASE-guarded": 5
+  }
+ }
+}
