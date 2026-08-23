@@ -727,12 +727,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T41",
-      "what": "target_floor out of the INSERT list (D-35) — first worktree-isolated dispatch",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "D12-PART3-CONFLATION",
       "what": "D-12 part 3 declines re-dispatch for the orphaned throughput rows because 'ka_gochara_sweep's @register is genuinely removed' — but KA_GOCHARA_SWEEP IS NOT ONE OF THE THREE ORPHANS. They are ka_kota_chakra, ka_vedha_gochara and mi_sankalpa, and the KARAKA verified in source that ALL THREE CARRY A LIVE @register. So part 3's premise is true of a different asset, part 3 resolves into part 4 which rules only on the ka_gochara_sweep rows, and NO RULING REACHES THE THREE ORPHANS AT ALL. That left the KARAKA with no legal move — died-state is H6 (the runs COMPLETED; the promotion died), lit is H4, stale needs a G3 nobody made — so it halted and dispatched no build. The correct outcome of an incorrect premise, and the invariant held even though the ruling had drifted. Practical consequence: re-dispatch may be AVAILABLE after all, since for these three the writer is present. RELAYED, not re-derived by me",
       "owner": "ADHIKARIN",
@@ -755,10 +749,28 @@
       "what": "The shared baseline needs an operator regeneration and M0-T40 DELIBERATELY did not do it, for three reasons I am not overriding: it would erase the new staleness signal on day one, move a figure FOUR in-flight documents cite, and snapshot a registry a sibling is actively writing to. A sequencing decision rather than a technical one",
       "owner": "ADHIKARIN",
       "state": "asked"
+    },
+    {
+      "id": "M0-T41",
+      "what": "DONE — cherry-picked to the campaign branch as 37d87a278; verified M0-T35's SET-clause removal survived intact",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "WORKTREE-BASEREF-DEFECT",
+      "what": "CONDUCTOR-INTRODUCED, found by M0-T41 applying R2, and now reversed. The isolation dispatch branches from main. Likely fix is the worktree.baseRef setting, whose default 'fresh' branches from origin/<default-branch>; 'head' would branch from local HEAD. I am NOT editing settings to fix my own mistake mid-campaign — reverting to shared-tree dispatch is the lower-risk move and costs nothing but the poisoned-baseline hazard, which R2 already detects. ADHIKARIN may rule otherwise",
+      "owner": "ADHIKARIN",
+      "state": "raised"
+    },
+    {
+      "id": "F-TARGET-FLOOR-LITERALS",
+      "what": "M0-T41's flagged uncertainty: ~100 target_floor literals remain in the seed entries and are now a DECLARATION WITH NO CONSUMER. Probably R0 Conform's question. Also flagged: whether target_floor should leave SeedRow entirely is a judgement ADHIKARIN could reasonably rule differently",
+      "owner": "ADHIKARIN",
+      "state": "raised"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T08:41:59Z",
+  "last_updated_ts": "2026-08-23T08:49:05Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
@@ -776,6 +788,6 @@
   },
   "standing_instructions": {
     "mutation_restore": "REVISED after M0-T38 proved the earlier version insufficient. THE DEFECT IS THE SHAPE OF THE CHECK: 'sha256 == my-own-baseline' is a PROXY ('the file equals my copy') standing in for the CLAIM ('no mutation is present') — with a poisoned baseline it is structurally incapable of returning false. Our own §N.8 class, on the mechanism we use to trust our checks. R1 exclusivity — prefer a per-agent worktree when mutating; removes the class rather than detecting it. R2 PROVE THE BASELINE BEFORE MUTATING: its sha256 must equal the file's HEAD blob or a hash your own previous command printed; if neither, STOP — you have copied a sibling's in-flight state. IF ONLY ONE IS ADOPTED, ADOPT R2. R3 restore verification includes a MARKER SWEEP, not only baseline equality. R4 hash-bracket PRE/POST in one shell invocation for anything you will quote. R5 marker sweep immediately before committing. R6 delete the byte-copy.",
-    "dispatch_isolation": "CONDUCTOR CHANGE: mutation-heavy tasks are dispatched WORKTREE-ISOLATED from now on. R1 applied at the dispatch layer rather than asked of each agent — the shared working tree is what made two correct agents corrupt each other, and no amount of per-agent care removes a class that the dispatcher can."
+    "dispatch_isolation": "REVERSED, and the reversal is mine to own. I switched to worktree-isolated dispatch to remove the poisoned-baseline class, and INTRODUCED A WORSE ONE: the worktree branches from MAIN, not the campaign branch. M0-T41 found 00_ARCHITECTURE/autonomy/ entirely absent and its target file at the PRE-M0-T35 blob — hours stale. Had it not checked, it would have committed a change that looks correct in isolation, PASSES ITS TESTS, and SILENTLY REVERTS a sibling's landed work on merge. Note the shape: the same defect class the change was made to remove — a baseline that is not what you believe it is — RELOCATED from 'a sibling's in-flight edit' to 'the wrong branch'. I moved the hazard rather than eliminating it, and the relocated form is worse because the shared-tree version was caught by re-checking while this one passes every check an agent would think to run. NEW DISPATCHES GO SHARED-TREE with strict R2 until the base-ref question is settled. R2 GAINS A SECOND CLAUSE, from M0-T41: prove your HEAD is the CAMPAIGN TIP, not merely that your file matches your HEAD — a file can match its HEAD perfectly and still be four hours stale."
   }
 }
