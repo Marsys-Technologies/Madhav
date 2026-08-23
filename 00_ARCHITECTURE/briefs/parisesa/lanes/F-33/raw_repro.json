@@ -1,0 +1,18 @@
+{
+  "note": "raw MCP tool output, live reproduction, 2026-08-16, via mcp__marsys-jis-direct__ganita_dasha_periods_get",
+  "call_1_pre_birth": {
+    "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "as_of_date": "1980-01-01", "ayanamsha_id": "lahiri_chitrapaksha"},
+    "response_narration": "You are in Jupiter Mahadasha (ends 1991-08-18, age ~7) -> Saturn Antardasha (ends 1980-04-18, age ~-4) -> Jupiter Pratyantardasha (current, ends 1980-04-18, age ~-4). Saturn, your Antardasha lord, is exalted in your 7 house (Vishakha). Jupiter, your Pratyantardasha lord, is own in your 9 house (Mula).",
+    "judgment_flags_present": false,
+    "verification_pass_status_all_rows": "two_pass_verified",
+    "is_error": false
+  },
+  "call_2_normal_date": {
+    "args": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "as_of_date": "2020-01-01", "ayanamsha_id": "lahiri_chitrapaksha"},
+    "response_narration": "You are in Mercury Mahadasha (ends 2027-08-18, age ~43) -> Mars Antardasha (ends 2020-02-14, age ~36) -> Sun Pratyantardasha (current, ends 2020-01-15, age ~35). Mars, your Antardasha lord, is neutral in your 7 house (Swati). Sun, your Pratyantardasha lord, is neutral in your 10 house (Shravana).",
+    "judgment_flags_present": false,
+    "verification_pass_status_all_rows": "two_pass_verified",
+    "is_error": false
+  },
+  "comparison": "Identical response shape (rows[], narration, drill_pointers, no judgment_flags) in both calls. The only signal that call_1's as_of_date precedes the chart's 1984-02-05 birth date is the free-text 'age ~-4' substring inside `content.narration`; no structured field (no `pre_birth`, no judgment_flags entry, no is_error) differs between the two calls."
+}

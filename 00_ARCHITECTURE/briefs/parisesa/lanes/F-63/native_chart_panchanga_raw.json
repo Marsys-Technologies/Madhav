@@ -1,0 +1,46 @@
+Query: ganita_chart_facts_get({chart_id:'482012f1-710e-4a25-994a-93821f5871aa', category:'panchanga'})
+Captured 2026-08-16 during F-63 DIAGNOSE lane.
+Total rows returned: 38 (returned_count=38, total=38, more_available=false)
+
+Relevant row (YOGA_UNKNOWN):
+{"fact_subject":"YOGA_UNKNOWN","fact_category":"panchanga_special_yoga_combinations","active_at_birth_flag":"true","combination_name":"unknown","constituent_facts_jsonb_atomic":{"vara":"Ravivara","tithi":"Shukla Tritiya","nakshatra":"Purva Bhadrapada"},"fact_ids":{"active_at_birth_flag":"55cead964012043f","combination_name":"a59defb86b8ab9b5","constituent_facts_jsonb_atomic":"61f63ee1286a2d1d"}}
+
+Full facts list (fact_subject / fact_category only, for reference):
+ABHIJIT_MUHURTA_BIRTH_DAY / panchanga_abhijit_muhurta
+AGNI_VASA_BIRTH / panchanga_agni_vasa
+BRAHMA_MUHURTA_BIRTH_DAY / panchanga_brahma_muhurta
+CALENDRICAL_BIRTH / panchanga_calendrical
+CHOGHADIYA_BIRTH / panchanga_choghadiya_birth
+DISHA_SHUL_BIRTH / panchanga_disha_shul
+DURMUHURTA_BIRTH_DAY / panchanga_durmuhurta
+GODHULI_MUHURTA_BIRTH_DAY / panchanga_godhuli_muhurta
+GULIKA_KALAM_BIRTH_DAY / panchanga_gulika_kalam
+HORA_BIRTH / panchanga_hora_birth
+KARANA_BIRTH / panchanga_karana
+KRAKACA_BIRTH_DAY / panchanga_krakaca
+MADHYAHNA_SANDHYA_BIRTH_DAY / panchanga_madhyahna_sandhya
+NAKSHATRA_MOON_BIRTH / panchanga_nakshatra_moon
+NAKSHATRA_SHOONYA_BIRTH / panchanga_nakshatra_shoonya_rashi
+NISHITA_KALA_BIRTH_DAY / panchanga_nishita_kala
+PANCHAKA_AGNI / panchanga_panchaka_classification (active_at_birth_flag=true)
+PANCHAKA_CHORA / panchanga_panchaka_classification (false)
+PANCHAKA_MRITYU / panchanga_panchaka_classification (false)
+PANCHAKA_OVERALL / panchanga_panchaka_classification (panchaka_overall_classification=Agni)
+PANCHAKA_RAJA / panchanga_panchaka_classification (false)
+PANCHAKA_ROGA / panchanga_panchaka_classification (false)
+PRATAH_SANDHYA_BIRTH_DAY / panchanga_pratah_sandhya
+RAHU_KALAM_BIRTH_DAY / panchanga_rahu_kalam
+SASHTIGHATI_BIRTH_DAY / panchanga_sashtighati
+SAYAM_SANDHYA_BIRTH_DAY / panchanga_sayam_sandhya
+SOLAR_CONTEXT_BIRTH / panchanga_solar_context
+SUN_MOON_DYNAMICS_BIRTH / panchanga_sun_moon_dynamics
+TITHI_BIRTH / panchanga_tithi (Shukla Tritiya)
+TITHI_SHOONYA_BIRTH / panchanga_tithi_shoonya_rashi
+VARA_BIRTH / panchanga_vara (Ravivara)
+VARJYAM_BIRTH_DAY / panchanga_varjyam
+VIJAYA_MUHURTA_BIRTH_DAY / panchanga_vijaya_muhurta
+VISHA_GHATI_BIRTH_DAY / panchanga_visha_ghati
+YAMAGANDA_KALAM_BIRTH_DAY / panchanga_yamaganda_kalam
+YAMAKANTAKA_BIRTH_DAY / panchanga_yamakantaka
+YOGA_BIRTH / panchanga_yoga (Shiva)
+YOGA_UNKNOWN / panchanga_special_yoga_combinations  <-- FINDING F-63 ROW

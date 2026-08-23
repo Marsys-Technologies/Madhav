@@ -1,0 +1,25 @@
+chart_id,origin_kind,origin_ref,channel_id,domain,fire_count,opportunity_count,channel_propensity,prior_propensity,propensity_delta,n_support,confidence_band,evidence_grade,citation_ref,grammar_formula_version,updated_at,scored_count
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,relationship,ch_relationship_verbal,relationship,0,49,0,0.5,-0.5,49,"[0.4,0.6)",empirical,"{""method"": ""fire_over_opportunity""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,career,ch_career_verbal,career,0,37,0,0.4,-0.4,37,"[0.3,0.5)",empirical,"{""method"": ""fire_over_opportunity""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,transition,ch_transition_verbal,transition,0,55,0,0.5,-0.5,55,"[0.4,0.6)",empirical,"{""method"": ""fire_over_opportunity""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,wealth,ch_wealth_verbal,wealth,0,26,0,0.5,-0.5,26,"[0.4,0.6)",empirical,"{""method"": ""fire_over_opportunity""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,spirituality,ch_spirituality_verbal,spirituality,0,6,0,0.5,-0.5,6,"[0.4,0.6)",empirical,"{""method"": ""fire_over_opportunity""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,health,ch_health_verbal,health,0,5,0,0.5,-0.5,5,"[0.4,0.6)",empirical,"{""method"": ""fire_over_opportunity""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,character,ch_character_verbal,character,0,5,0,0.5,-0.5,5,"[0.4,0.6)",empirical,"{""method"": ""fire_over_opportunity""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,career,ch_career_material,career,0,0,,0.35,,0,,prior_only,"{""method"": ""prior_from_kula""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,career,ch_career_relational,career,0,0,,0.25,,0,,prior_only,"{""method"": ""prior_from_kula""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,health,ch_health_bodily,health,0,0,,0.5,,0,,prior_only,"{""method"": ""prior_from_kula""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,health,ch_health_mental,health,0,0,,0.3,,0,,prior_only,"{""method"": ""prior_from_kula""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,health,ch_health_social,health,0,0,,0.2,,0,,prior_only,"{""method"": ""prior_from_kula""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,relationship,ch_rel_partnership,relationship,0,0,,0.45,,0,,prior_only,"{""method"": ""prior_from_kula""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,relationship,ch_rel_family,relationship,0,0,,0.35,,0,,prior_only,"{""method"": ""prior_from_kula""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,relationship,ch_rel_social,relationship,0,0,,0.2,,0,,prior_only,"{""method"": ""prior_from_kula""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,wealth,ch_fin_income,wealth,0,0,,0.4,,0,,prior_only,"{""method"": ""prior_from_kula""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,wealth,ch_fin_asset,wealth,0,0,,0.35,,0,,prior_only,"{""method"": ""prior_from_kula""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,wealth,ch_fin_loss,wealth,0,0,,0.25,,0,,prior_only,"{""method"": ""prior_from_kula""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,travel,ch_travel_short,travel,0,0,,0.5,,0,,prior_only,"{""method"": ""prior_from_kula""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,travel,ch_travel_long,travel,0,0,,0.5,,0,,prior_only,"{""method"": ""prior_from_kula""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,education,ch_edu_formal,education,0,0,,0.6,,0,,prior_only,"{""method"": ""prior_from_kula""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,education,ch_edu_informal,education,0,0,,0.4,,0,,prior_only,"{""method"": ""prior_from_kula""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,spirituality,ch_spirit_practice,spirituality,0,0,,0.55,,0,,prior_only,"{""method"": ""prior_from_kula""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0
+482012f1-710e-4a25-994a-93821f5871aa,prediction_set,spirituality,ch_spirit_insight,spirituality,0,0,,0.45,,0,,prior_only,"{""method"": ""prior_from_kula""}",mi_sambandha_v1.0,2026-08-13 01:16:35.133198+00,0

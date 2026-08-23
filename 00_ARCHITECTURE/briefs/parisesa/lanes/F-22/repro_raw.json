@@ -1,0 +1,26 @@
+{
+  "call": "mcp__marsys-jis-direct__ref_dasha_systems_get({system:'vimshottari', limit:10})",
+  "timestamp": "2026-08-16T13:xx IST",
+  "observed": {
+    "structured_filter_applied": false,
+    "fallback_reason": "No structured bg_dasha_systems catalog table exists — this is a classical-text hybrid search using the system/keyword filter as the search query, not a WHERE-clause match.",
+    "content.search_mode": "hybrid_vector_keyword",
+    "content.query_used": "vimshottari dasha system",
+    "content.total": 10,
+    "sample_citations_returned": [
+      { "text_id": "nadi_navamsa_patel", "verse_ref": "PG1358:C1", "verse_text_en": "(6) Samudayashiakavarga and Dasa results (Vimshottari Dasa) :" },
+      { "text_id": "hora_sara", "verse_ref": "PG333:C2", "verse_text_en": "The effects of the asterisms (i.e. Vimshottari dasa system) is acceptable to all as stated..." },
+      { "text_id": "muhurta_chintamani", "verse_ref": "PG110:C1", "note": "IRRELEVANT — wedding-lagna dosha/apavada verses (ekargala, upagraha, pata, latta doshas in marriage muhurta context), no dasha-system content" },
+      { "text_id": "muhurta_chintamani", "verse_ref": "PG23:C2", "note": "IRRELEVANT — vara/nakshatra sarvartha-siddhi combinations for muhurta selection" },
+      { "text_id": "muhurta_chintamani", "verse_ref": "PG115:C2", "note": "IRRELEVANT — kartari-dosha apavada rules for marriage lagna" },
+      { "text_id": "muhurta_chintamani", "verse_ref": "PG17:C2", "note": "IRRELEVANT — Dagdha/Visha/Hutashana yoga-by-vara-tithi tables for muhurta timing" },
+      { "text_id": "muhurta_chintamani", "verse_ref": "PG68:C1", "note": "IRRELEVANT — graha-shanti bathing/parihara remedy recipe, not dasha structure" }
+    ],
+    "verdict_field": null,
+    "grounding.fact_ids": [],
+    "judgment_flags": [
+      { "code": "hollow_envelope_shape_not_evaluated" }
+    ]
+  },
+  "conclusion": "CONFIRMED LIVE 2026-08-16 — structured_filter_applied:false, query_used contains system value appended to static 'dasha system' string, and 4 of 10 returned citations are Muhurta Chintamani wedding-timing/muhurta verses with zero dasha-system content (period lengths, planet sequence, total years). No Vimshottari 120-year/9-planet structured data returned anywhere in the response. F-22 not yet fixed."
+  }

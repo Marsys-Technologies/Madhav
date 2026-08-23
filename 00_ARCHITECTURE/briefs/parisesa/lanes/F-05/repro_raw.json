@@ -1,0 +1,66 @@
+{
+  "call_1_no_filter": {
+    "tool": "mcp__marsys-jis-direct__ref_tantric_remedies_get",
+    "args": {},
+    "response": {
+      "type": "object",
+      "object": {
+        "ok": true,
+        "trace_id": "55c7827f-7a8b-4933-b31e-6a74953be26d",
+        "epistemics": {"surgical": true, "confidence_band": "high", "horizon_days": null, "falsifier": null},
+        "result": {
+          "tool_bundle_id": "f926f0b6-734e-47c8-9727-a43a91bf252c",
+          "tool_name": "query_tantric_remedies",
+          "tool_version": "1.0",
+          "invocation_params": {},
+          "results": [
+            {"content": "{\"remedies\":[],\"returned_count\":0,\"filters\":{},\"empty_reason\":\"No tantric-category remedies matched (deity=any, planet=any).\"}"}
+          ],
+          "served_from_cache": false,
+          "latency_ms": 31,
+          "result_hash": "sha256:3baf6b29bc17f2a3c7df26c44b5d736286f36df292dfcabbf59b099a372a452f",
+          "schema_version": "1.0"
+        },
+        "citations": [],
+        "plan": null,
+        "predictions_logged": [],
+        "synthesis_audit": null,
+        "suggested_followups": [],
+        "warnings": []
+      }
+    }
+  },
+  "call_2_planet_saturn": {
+    "tool": "mcp__marsys-jis-direct__ref_tantric_remedies_get",
+    "args": {"planet": "Saturn"},
+    "response": {
+      "type": "object",
+      "object": {
+        "ok": true,
+        "trace_id": "ea6147c4-27f1-4d8f-8f36-7cad95bffb40",
+        "epistemics": {"surgical": true, "confidence_band": "high", "horizon_days": null, "falsifier": null},
+        "result": {
+          "tool_bundle_id": "01d64f5a-8a2f-44f2-9efa-a64fcd81ed62",
+          "tool_name": "query_tantric_remedies",
+          "tool_version": "1.0",
+          "invocation_params": {"planet": "Saturn"},
+          "results": [
+            {"content": "{\"remedies\":[],\"returned_count\":0,\"filters\":{\"planet\":\"Saturn\"},\"empty_reason\":\"No tantric-category remedies matched (deity=any, planet=Saturn).\"}"}
+          ],
+          "served_from_cache": false,
+          "latency_ms": 6,
+          "result_hash": "sha256:c75bf3f8bbb254336531ccde5e13961f0f02044acc11e5f291b55d63a6c7353f",
+          "schema_version": "1.0"
+        },
+        "citations": [],
+        "plan": null,
+        "predictions_logged": [],
+        "synthesis_audit": null,
+        "suggested_followups": [],
+        "warnings": []
+      }
+    }
+  },
+  "verdict": "CONFIRMED-LIVE — both calls return returned_count:0 with an honest empty_reason. Not fixed.",
+  "note_db_side": "DB-side (tantric absent from brahma_remedy_corpus.remedy_type GROUP BY) already confirmed by CL02_CENSUS.md F-05 row; not re-run here per Stage D contract."
+}

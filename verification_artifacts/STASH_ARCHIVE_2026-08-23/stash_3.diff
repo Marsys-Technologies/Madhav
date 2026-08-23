@@ -1,0 +1,170 @@
+=== stash@{3} ===
+stash@{3}: WIP on siddhanta/lane-p1-pratijna-v3: 66fde446c campaign(siddhanta): initialize campaign ledger — SIDDHANTA_STATE.md
+
+--- stat ---
+ .../orchestrator/writers/tests/test_bo_pratijna.py | 150 +++++++++++++++++++++
+ 1 file changed, 150 insertions(+)
+
+--- full diff ---
+diff --git a/platform/python-sidecar/pipeline/orchestrator/writers/tests/test_bo_pratijna.py b/platform/python-sidecar/pipeline/orchestrator/writers/tests/test_bo_pratijna.py
+index ae6161736..a2b8e6af4 100644
+--- a/platform/python-sidecar/pipeline/orchestrator/writers/tests/test_bo_pratijna.py
++++ b/platform/python-sidecar/pipeline/orchestrator/writers/tests/test_bo_pratijna.py
+@@ -218,6 +218,156 @@ class TestSourceStructure:
+         )
+ 
+ 
++# ── Live tests (require DATABASE_URL or PROD_DB_URL; skipped otherwise) ───────
++
++# ── v3 Property Tests (SIDDHANTA campaign) ─────────────────────────────────
++
++from pipeline.orchestrator.writers.bo_pratijna_karyatva import (
++    get_karyatva,
++    KARYATVA_REGISTRY,
++)
++
++
++class TestMarriageNotEqualSeparation:
++    """REQUIRED: marriage and separation must have different karyatva routes
++    producing DIFFERENT grades on the same chart. This test would have caught
++    the domain-matching defect."""
++
++    def test_different_karyatva_maps(self):
++        """Marriage and separation have structurally different factor sets."""
++        marriage = get_karyatva("marriage")
++        separation = get_karyatva("separation")
++        assert marriage is not None
++        assert separation is not None
++        # Key structural difference: separation requires dusthana
++        assert not marriage.dusthana_required
++        assert separation.dusthana_required
++        # Different karaka grahas
++        assert set(marriage.karaka_grahas) != set(separation.karaka_grahas)
++
++    def test_marriage_separation_different_primary_bhava(self):
++        """Separation uses dusthana houses (6,8,12) that marriage does not."""
++        marriage = get_karyatva("marriage")
++        separation = get_karyatva("separation")
++        assert set(marriage.primary_bhava) != set(separation.primary_bhava)
++        # Separation includes dusthana houses
++        assert 6 in separation.primary_bhava
++        assert 8 in separation.primary_bhava
++        assert 12 in separation.primary_bhava
++
++
++class TestChildbirthIndependence:
++    """REQUIRED: childbirth routes through 5H/Jupiter/D7 and is INDEPENDENT
++    of 7H affliction."""
++
++    def test_childbirth_does_not_use_7th_house(self):
++        """Childbirth's primary bhava must NOT include house 7."""
++        cb = get_karyatva("childbirth")
++        assert cb is not None
++        assert 7 not in cb.primary_bhava
++
++    def test_childbirth_uses_5th_house_and_jupiter(self):
++        """Childbirth routes through 5H and Jupiter."""
++        cb = get_karyatva("childbirth")
++        assert 5 in cb.primary_bhava
++        assert "Jupiter" in cb.karaka_grahas
++
++    def test_childbirth_uses_d7(self):
++        """Childbirth uses D7 (saptamsha) divisional."""
++        cb = get_karyatva("childbirth")
++        assert cb.divisional == "D7"
++
++
++class TestR12TwoJudgments:
++    """REQUIRED: an afflicted-but-present 7th house yields
++    occurrence-positive AND condition-afflicted."""
++
++    def test_occurrence_grade_separate_from_condition(self):
++        """v3 produces two separate grades. The _compute_grade function
++        can produce different values for occurrence vs condition."""
++        # Strong occurrence evidence, weak condition evidence
++        occ = _compute_grade([0.8, 0.7, 0.6, 0.5, 0.4], [])
++        cond = _compute_grade([], [0.8, 0.7, 0.6])
++        # They should be different values
++        assert occ != cond
++        # Occurrence should be positive (above denied threshold)
++        assert occ >= 2.0  # Not denied
++
++    def test_afflicted_house_not_denied(self):
++        """An afflicted 7th house: occurrence-positive (house exists),
++        condition-afflicted. Status from occurrence must NOT be 'denied'."""
++        # Occurrence: house is present (supporting evidence exists)
++        occ_grade = _compute_grade([0.6, 0.5, 0.4], [])
++        status = _grade_to_status(occ_grade, supporting_empty=False, contradicting_empty=True)
++        assert status != "denied", (
++            f"An afflicted-but-present house should not be denied. "
++            f"occurrence_grade={occ_grade}, status={status}"
++        )
++
++
++class TestR13NoFitting:
++    """REQUIRED: no weight or threshold derived from the native's outcomes."""
++
++    def test_no_chart_id_in_karyatva(self):
++        """Karyatva maps must not reference any specific chart_id."""
++        import inspect
++        from pipeline.orchestrator.writers import bo_pratijna_karyatva as mod
++        src = inspect.getsource(mod)
++        assert "482012f1" not in src, "Karyatva map references native's chart_id (R13 violation)"
++        assert "1c826d5a" not in src
++        assert "cb73cd3d" not in src
++
++    def test_all_entries_have_citations(self):
++        """Every karyatva entry must have at least one classical citation (B.3)."""
++        for ec_id, km in KARYATVA_REGISTRY.items():
++            assert km.citations, f"Karyatva map for {ec_id} has no citations (B.3 violation)"
++
++    def test_uniform_weights(self):
++        """No empirical weight tuning — all weights in the matching function
++        are structural constants, not outcome-derived."""
++        import inspect
++        from pipeline.orchestrator.writers import bo_pratijna as mod
++        src = inspect.getsource(mod)
++        assert "LEL" not in src.upper() or "life_event_log" not in src.lower(), (
++            "Writer references LEL data (R13: no fitting to known outcomes)"
++        )
++
++
++class TestKaryatvaRegistry:
++    """Structural tests for the karyatva registry."""
++
++    def test_all_mapped_classes_have_primary_bhava(self):
++        for ec_id, km in KARYATVA_REGISTRY.items():
++            if not km.provisional:
++                assert km.primary_bhava, f"{ec_id} has empty primary_bhava"
++
++    def test_all_mapped_classes_have_karaka(self):
++        for ec_id, km in KARYATVA_REGISTRY.items():
++            if not km.provisional:
++                assert km.karaka_grahas, f"{ec_id} has empty karaka_grahas"
++
++    def test_provisional_classes_are_labelled(self):
++        """DR-13 provisional classes must be marked provisional=True."""
++        provisionals = {ec_id for ec_id, km in KARYATVA_REGISTRY.items() if km.provisional}
++        assert "achievement_recognition" in provisionals
++        assert "financial_deception" in provisionals
++        assert "psychological_arc" in provisionals
++        assert "birth_anchor" in provisionals
++        assert "travel_event" in provisionals
++
++
++class TestEngineVersion:
++    """v3 version markers."""
++
++    def test_engine_version_is_v3(self):
++        from pipeline.orchestrator.writers.bo_pratijna import ENGINE_VERSION
++        assert "v3" in ENGINE_VERSION.lower()
++
++    def test_formula_version_is_v3(self):
++        from pipeline.orchestrator.writers.bo_pratijna import FORMULA_VERSION
++        assert "v3" in FORMULA_VERSION.lower()
++
++
+ # ── Live tests (require DATABASE_URL or PROD_DB_URL; skipped otherwise) ───────
+ 
+ @pytest.fixture(scope="module")
+

@@ -1,0 +1,19 @@
+{
+  "finding_id": "F-01",
+  "class": "ALREADY-FIXED",
+  "status": "LIVE",
+  "original_claim": "standing_predictions_read returns is_error:true for a valid native chart relationship query.",
+  "original_mechanism": "L4 handler query_prospective_ledger.ts:191 -> deriveWindowFields (66-68) -> parseDaterange (prospective_ledger.ts:591-594) throws on PostgreSQL 'empty' literal; handler catches and leaks String(err) in content.error (query_prospective_ledger.ts:230-234).",
+  "reproduce_cmd": "MCP standing_predictions_read {chart_id:'482012f1-710e-4a25-994a-93821f5871aa'}",
+  "verified_at": "2026-08-16T12:59:00+05:30",
+  "verified_by": "SUTRADHARA (conductor), Phase 0 reconciliation, live MCP call this session",
+  "result": {
+    "is_error": false,
+    "prediction_count": 18,
+    "total_open_count": 18,
+    "other_domain_count": 0,
+    "empty_reason": null
+  },
+  "verdict": "Does not reproduce. is_error:false with a clean 18-row open ledger (up from the desk's morning count of 3 — additional predictions have since been filed; the point of the finding, the parser crash on PostgreSQL 'empty' daterange literal, is absent). Per plan Stage D-1 contract: non-reproduction is a win, not a failure. Closed, no further lane work.",
+  "note_on_count_drift": "Original desk check (prior session) reported 3 open predictions; this check reports 18. This is consistent with normal ledger growth (more predictions filed since), not evidence of a different code path — is_error:false is the load-bearing signal for this finding's claim."
+}

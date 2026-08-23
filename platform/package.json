@@ -62,6 +62,7 @@
     "pariprashna:gates": "playwright test --config=tests/pariprashna/playwright.config.ts",
     "pariprashna:gates:mobile": "playwright test --config=tests/pariprashna/playwright.config.ts --project=mobile-390x844",
     "pariprashna:selftest": "tsx scripts/replay/selftest.ts",
+    "pariprashna:dd1-battery": "tsx scripts/pariprashna/dd1_battery/index.ts",
     "pariprashna:verify-captured": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/pariprashna/verify_captured_turn.ts"
   },
   "dependencies": {

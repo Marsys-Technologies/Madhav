@@ -30,6 +30,20 @@
  * detections; `predictionCandidatesFromWireFlags` reconstructs them
  * best-effort from the flag string for replay contexts where the structured
  * detection is unavailable, and reports what it could not parse.
+ *
+ * `tool_call`/`tool_result` (lane P3-C, `route_writer_adapter.ts`) are ALSO
+ * not replayable from the wire alone — `activity.upsert` deliberately carries
+ * only the resolved reader-safe label (gate 11 [integrity]), never the raw
+ * `tool_name`/`invocation_params` a `tool_call` body requires — so this
+ * function does not attempt them; a caller comparing a wire-replayed turn
+ * against its persisted canonical parts must expect the persisted side to
+ * carry MORE than the replayed side for these two kinds. This is the same
+ * class of disclosed asymmetry as `prediction_candidate` above, not a new one.
+ *
+ * `reasoning` (lane P3-C) IS wire-derivable and IS covered here: a
+ * `block.open` event carries `role`, so a 'thinking' block's later
+ * `block.commit` can be told apart from a 'prose' one exactly the way this
+ * function already tracks `blockRoleById` for the existing prose case.
  */
 
 import type { PariprashnaEvent } from '../protocol/events'
@@ -38,6 +52,7 @@ import {
   textPartFromBlock,
   citationPartFromDetection,
   predictionCandidatePartFromDetection,
+  reasoningPartFromBlock,
   type DetectedCitation,
   type DetectedPredictionCandidate,
 } from './route_writer_adapter'
@@ -54,16 +69,18 @@ export function replayCanonicalParts(
   predictionCandidates: readonly DetectedPredictionCandidate[] = [],
 ): MessagePartInput[] {
   const blockRoleById = new Map<string, 'prose' | 'thinking'>()
-  /** Committed prose blocks in commit order — route.ts's `committedBlocks`. */
-  const committedBlocks: { block_id: string; text: string }[] = []
+  /** Committed blocks (prose AND thinking, lane P3-C), in commit order —
+   *  route.ts's `committedBlocks`. */
+  const committedBlocks: { block_id: string; text: string; role: 'prose' | 'thinking' }[] = []
   const citations: DetectedCitation[] = []
 
   for (const event of events) {
     if (event.type === 'block.open') {
       blockRoleById.set(event.block_id, event.role)
     } else if (event.type === 'block.commit') {
-      if (blockRoleById.get(event.block_id) === 'prose') {
-        committedBlocks.push({ block_id: event.block_id, text: event.text })
+      const role = blockRoleById.get(event.block_id)
+      if (role === 'prose' || role === 'thinking') {
+        committedBlocks.push({ block_id: event.block_id, text: event.text, role })
       }
     } else if (event.type === 'citation.define') {
       citations.push({
@@ -79,7 +96,10 @@ export function replayCanonicalParts(
 
   const parts: MessagePartInput[] = []
   let seq = 0
-  for (const b of committedBlocks) parts.push(textPartFromBlock(b, seq++))
+  for (const b of committedBlocks) {
+    if (b.role === 'prose') parts.push(textPartFromBlock(b, seq++))
+    else parts.push(reasoningPartFromBlock(b, seq++))
+  }
   for (const c of citations) parts.push(citationPartFromDetection(c, seq++))
   for (const c of predictionCandidates) parts.push(predictionCandidatePartFromDetection(c, seq++))
   return parts

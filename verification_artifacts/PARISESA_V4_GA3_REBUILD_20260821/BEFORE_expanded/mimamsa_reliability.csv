@@ -1,0 +1,7 @@
+chart_id,stratum_key,predicted_prob_bin,observed_rate,n,ci_low,ci_high,brier_score,log_loss,ece,hit_rate_by_tier,held_out_validity,evidence_grade,calibration_formula_ver,computed_at
+482012f1-710e-4a25-994a-93821f5871aa,"domain_all|[0.6,0.7)","[0.6,0.7)",0.285714285714286,7,,,0.296380158571429,,,0.285714285714286,pass,empirical,mi_pramana_v2.0,2026-08-13 01:16:30.2329+00
+482012f1-710e-4a25-994a-93821f5871aa,"domain_all|[0.4,0.5)","[0.4,0.5)",0,12,,,0.216367505,,,0,pass,empirical,mi_pramana_v2.0,2026-08-13 01:16:30.2329+00
+482012f1-710e-4a25-994a-93821f5871aa,"domain_all|[0.5,0.6)","[0.5,0.6)",0,18,,,0.315015568333333,,,0,pass,empirical,mi_pramana_v2.0,2026-08-13 01:16:30.2329+00
+482012f1-710e-4a25-994a-93821f5871aa,"domain_all|[0.8,0.9)","[0.8,0.9)",0,3,,,0.691967166666667,,,0,insufficient_n,prior_only,mi_pramana_v2.0,2026-08-13 01:16:30.2329+00
+482012f1-710e-4a25-994a-93821f5871aa,"domain_all|[0.3,0.4)","[0.3,0.4)",0,13,,,0.119753640769231,,,0,pass,empirical,mi_pramana_v2.0,2026-08-13 01:16:30.2329+00
+482012f1-710e-4a25-994a-93821f5871aa,"domain_all|[0.2,0.3)","[0.2,0.3)",0,4,,,0.0852937825,,,0,insufficient_n,prior_only,mi_pramana_v2.0,2026-08-13 01:16:30.2329+00

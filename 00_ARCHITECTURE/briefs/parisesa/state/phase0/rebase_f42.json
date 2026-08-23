@@ -1,0 +1,9 @@
+{
+  "finding_id": "F-42",
+  "outcome": "ALREADY_LANDED_NO_PR_NEEDED",
+  "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1348",
+  "branch": null,
+  "test_results": "Not run — no rebase/code work was needed. Verified via `gh pr view 1348` (state: MERGED, mergedAt: 2026-08-19T14:56:43Z, mergeCommit: ab83d4fcce01e242f65be4ae3bfe0dee064d76fe) and `git merge-base --is-ancestor ab83d4fcce01e242f65be4ae3bfe0dee064d76fe origin/main` returned true, confirming the fix (originally commit c1b97b2cf 'reject unknown dasha ayanamshas' on origin/codex/v4-f42-dasha-ayanamsha-validation) is present on current origin/main as commit ab83d4fcc 'fix(parisesa): reject unknown dasha ayanamshas (#1348)'.",
+  "review_notes": "F-42's premise (PR #1348 needs a live status check, commit c1b97b2cf not yet an ancestor of origin/main) was stale at time of this session. PR #1348 merged 2026-08-19, one day before this campaign session (2026-08-20). No fresh worktree, rebase, or new PR was created — doing so would have produced a duplicate/conflicting PR against already-merged code. This is the third such stale-finding case this session, after F-120 and F-116; the underlying finding corpus's STRANDED classification for F-42 is out of date and should be corrected to LANDED.",
+  "next_action": "Correct the F-42 finding record from STRANDED to LANDED in the truth-cut corpus, citing merged PR #1348 (merge commit ab83d4fcc, confirmed ancestor of origin/main). No further code action required."
+}

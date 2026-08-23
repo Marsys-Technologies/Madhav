@@ -1,0 +1,100 @@
+[
+  {
+    "finding_id": "F-18",
+    "classification": "LANDED",
+    "evidence": "Original claim: bodha_graph_traverse_get's trim_report/drill_pointers.recover_via.instrument served the literal placeholder 'unknown_tool' instead of the real tool name on a budget-trimmed response. Real fix found (not the mis-cited cfb6444c8): commit 967f08da3 'fix(parisesa): V4 control-gated assessment and calibration remediation (#1319)' (subject line 'close D-08 pointer integrity gate'), on origin/main, changes platform-mcp/src/tools/register_p1_aliases.ts:735 from `dualOutput(data)` to `dualOutput(data, 'bodha_graph_traverse_get')`, which is exactly the missing-toolName root cause (same defect class documented for the sibling kala_windows_get fix, SATYA-ŚEṢA W3, in the same file). Current source confirms the fix is live.",
+    "next_action": "None — retain as closed. No further action.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-29",
+    "classification": "LANDED",
+    "evidence": "Original claim: mimamsa_insight_get's calibration_summary always reports 0/0/0 regardless of real chart calibration state, due to a case-sensitivity SQL FILTER mismatch. Demoted this session for resting on bare unmatched cfb6444c8; real evidence found instead: commit 3deb54180 'ekv(a-05): F-29 — fix enum case mismatch in query_insights (CONFIRMED/PARTIAL/REFUTED/UNRESOLVED) (#1290)', confirmed on origin/main. Current source (platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts:118-121) uses uppercase FILTER clauses (CONFIRMED/PARTIAL/REFUTED/UNRESOLVED) that match the uppercase enum values actually written by mi_pramana.py's _verdict_v2() (CONFIRMED/PARTIAL/REFUTED/UNRESOLVED/FALSE_ALARM) — no case or vocabulary mismatch remains.",
+    "next_action": "None — retain as closed. No further action.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-37",
+    "classification": "LANDED",
+    "evidence": "Original claim: ref_yogas_get (query_yoga_catalog) reports `total` as rows.length of the current page rather than the true matching-row count. Real evidence found (not cfb6444c8): commit 22c4f50b7 'F-37: fix query_yoga_catalog total — parallel COUNT(*) instead of rows.length', folded into f003bf3af 'batch-4 (night): F-116 preamble-strip + F-35 scored-count + F-63 yoga-key + F-120 dasha-narration + F-37 catalog-total (#1316)', which IS on origin/main. Current source (platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:58-70) runs a separate `SELECT COUNT(*)` query for total_matching, independent of rows.length, plus more_available.",
+    "next_action": "None — retain as closed. No further action.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-69",
+    "classification": "STRANDED",
+    "evidence": "Original claim: mimamsa_insight_get serves full numeric rank_consequence/confidence_band/provenance_chain.grade for insight rows whose evidence_grade is permanently 'structural'/'prior_only' (no calibration-tier suppression). Verified against current origin/main source (query_insights.ts) — the defect is genuinely still present: rows are returned unfiltered/unsuppressed regardless of evidence_grade, only an evidence_grade_counts tally is computed. A candidate fix exists as commit c872d8372 'F-69: suppress numeric rank/confidence/grade under non-calibrated evidence_grade in mimamsa_insight_get' on branch origin/par/night-F-69 (confirmed via `git branch -a --contains` and `git for-each-ref`), but that branch is NOT merged into origin/main. Matches the corpus row's own note verbatim ('nonancestor c872d8372 ... quarantined pending fresh-main design/test/review').",
+    "next_action": "Pull the c872d8372 diff from origin/par/night-F-69, re-review/re-test against current main (branch has likely drifted since Aug 17), and land it via a fresh PR rather than a raw cherry-pick.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-77",
+    "classification": "LANDED",
+    "evidence": "Original claim: kala_field_snapshots.field_content_hash independently recomputed and confirmed matching (native chart hash kfh_3a8d00db..., second chart kfh_6340965c...) over ~10.5M and ~2.8M rows respectively — a positive control (CL-00), no defect asserted. Live production DB query today (`SELECT field_snapshot_id, field_content_hash, chart_id FROM kala_field_snapshots WHERE chart_id IN (...)`) confirms both stored hashes are byte-identical to the values the original claim reported, and the underlying row counts/tables have not been touched since. Did not redo the full ~1200s byte-level recompute (out of triage scope), but the stored-hash-unchanged check corroborates the control still holds.",
+    "next_action": "None required unless a future kala_field write touches these charts; if so, re-run the full independent recompute before re-closing.",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-83",
+    "classification": "LANDED",
+    "evidence": "Original claim: FK/orphan referential integrity PASS across 5 sampled tables (chart_facts, kala_field, bodha_msr_signals, phala_anchors, mimamsa_calibration) vs charts — 0 orphans. The corpus row itself raised a scope-drift flag (an automated detector in-repo only checks 4 tables, differing from this 5-table reproducer) and left it control-guarded pending a scope contract. Re-ran the ORIGINAL 5-table reproducer SQL directly against live production DB just now: 0 orphan rows returned — the claim is independently reconfirmed true today, regardless of the separate detector-scope question.",
+    "next_action": "The 4-vs-5-table automated-detector scope question (author_and_independently_review_F83_sampled_table_orphan_control_scope_contract) is a separate, lower-priority hygiene item — not blocking, since direct live verification already confirms the underlying invariant.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-87",
+    "classification": "LANDED",
+    "evidence": "Original claim: kala_field day-offset coverage spans exactly [0, 36525] with no truncation, for every event_class on both the native chart (25 classes) and a second chart (6 classes) — a positive control (CL-00). Re-ran the original per-(chart_id, event_class) contiguity SQL directly against live production DB just now: `GROUP BY chart_id, event_class HAVING min(t_start)<>0 OR max(t_end)<>36525` returns 0 rows for both charts — fully reconfirmed today with no truncation anywhere.",
+    "next_action": "None — retain as closed. No further action.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-98",
+    "classification": "LANDED",
+    "evidence": "Original claim: bo_pramana_mapa's trap1_authority_inversion_count/trap2_narration_leak_count are backed by real detectors (not a hardcoded 0), and three sibling gates correctly serve NULL rather than a fabricated True — a positive control confirming the §N.8 SATYA-DĪPA fix. Current source (platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py) confirms: line ~122 documents 'F-09 trap2_narration_leak_count — LITERAL 0 (no detector)' as the historical defect, count_narration_leaks() (line 368) is the real detector, and lines 682-688 wire its result into the served row. Matching test file present at platform/python-sidecar/tests/l2/test_n8_earned_signal_detectors.py.",
+    "next_action": "None — retain as closed. No further action.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-101",
+    "classification": "LANDED",
+    "evidence": "Original claim: judgment_query's receipt.varga_confirmed genuinely gates on real divisional-row presence, defaulting false and forced true only when rows.length>0 — a positive control. Found the exact fixing commit on origin/main: 0e89f747b 'fix(parishodhana/b1): honest varga_confirmed downgrade when checklist rows are empty (CR-2/CR-63/R-38) (#828)'. Current source (platform-mcp/src/tools/registry_bridge.ts:1639-1675, 3735-3753) implements precisely the described mechanism: re-derives varga_confirmed from what actually survived onto the wire, forces false + emits varga_confirmed_forced_false judgment flag when empty.",
+    "next_action": "None — retain as closed. No further action.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-109",
+    "classification": "DECISION_PARKED",
+    "evidence": "Original claim (from state/codex/corpus_ledger.json, not the closure-matrix's evidence citation): a 21-question wealth-domain dark-corpus qualitative re-run scored 19/21 (90.48%) BRIGHT under a new per-answer rubric, explicitly NOT comparable to the older 2026-07-25 concept-coverage metric (5.58%) it superficially resembles. This is a CONTROL/CL-00 finding — no code defect asserted, defect_or_control=CONTROL, kind of claim is a qualitative audit measurement, not a code path. CHECKED THE TASK'S HINT DIRECTLY: commit 33289b579a ('ekv(b-02): F-109 — Rahu/Ketu cast 5th/7th/9th parashari aspects...') is NOT genuinely F-109's evidence — that commit's subject line mislabels itself; its actual content (nodal special-aspect fix) matches F-65 (CL-07 nodal aspect truncation) exactly, and F-65's own corpus row already correctly cites 33289b579a and correctly describes it. This is a second, distinct instance of the citation-mislabeling root cause the task described (IF-002), now caught at the source (a commit message typo) rather than in the corpus. The real F-109 evidence artifact (pp2-audit/evidence/E1_dark_corpus_21q_results.json) does not exist in either the conductor repo or shad_overnight tree — it was an ephemeral session artifact never committed. The underlying question-set/baseline docs it references DO exist in-repo (00_ARCHITECTURE/llm_consumption_audit/ledgers/elevation_v2/DARK_CORPUS_REPLAY_SET_v1_0.json, capability_map/DARK_CORPUS_REPORT_v1_0.md).",
+    "next_action": "Not a code-fix item. Run and independently grade a fresh full 21-question wealth replay under a versioned qualitative rubric before citing any percent/trend claim from this finding; the corpus row's own next_executable_action already says this. Also flag commit 33289b579a's own subject-line mislabel (says F-109, should say F-65) as a source-of-truth hygiene fix for whoever maintains commit-message conventions.",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-112",
+    "classification": "DECISION_PARKED",
+    "evidence": "Original claim: assess_career with verbosity='concise' + max_signals_per_lens=3 returns a LARGER payload than assess_marriage at full default verbosity, because the unbudgeted domain_completeness block (13,825-concept coverage map) is appended outside the trim path regardless of the verbosity knob. Checked current origin/main source: platform-mcp/src/lib/response_budget.ts explicitly places 'domain_completeness', 'completeness', 'reading', 'completeness_directive', 'coverage_map' etc. in an immune-fields list with an extensive doctrinal comment (§N.6 Serving Density Principle / SATYA-ŚEṢA W7.4): these are 'never even declared as an auto-detected trimmable array/string site — stronger than hardFloor, not weaker: the worst-case trimmed response still carries the full digest.' This confirms the mechanism F-112 flagged is real and CURRENT, but it is a deliberate architecture decision (the densest/most-actionable layer is intentionally protected from all trimming, including under 'concise'), not an accidental bug left unfixed. Did not re-run the live byte-count reproducer today (no direct MCP access in this pass), so cannot confirm today's exact byte deltas, but the code-level mechanism causing the described behavior is confirmed intentional-by-design, matching the corpus row's own 'current-service-observed' / 'historical-stale-code-fixed-service-closed' framing.",
+    "next_action": "Not a code defect to fix under current doctrine. If the product still wants verbosity='concise' to visibly shrink total response size, that requires an explicit architecture decision to either shrink domain_completeness itself under concise mode or correct the tool's own docstring claim ('tightens ... to roughly half its normal size') to stop promising a ceiling the served payload doesn't honor for immune fields.",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-119",
+    "classification": "LANDED",
+    "evidence": "Original claim: assess_health's gochara_sweep top_windows rows (single-day acute-illness dates years out) carry no probability/confidence/resolution_disclosure, so a caller cannot distinguish a decade-era context row from an actionable timing date. Found the exact fixing commit on origin/main: cfc37fc38 'ekv(a-06): F-119 TS — withResolutionDisclosure on assess gochara_sweep rows (#1291)'. Current source (platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:55-86, 1192-1201) implements withSweepDisclosure(), explicitly commented 'F-119 (EKAVĀKYATĀ A-06): attach resolution_disclosure to gochara_sweep rows', wired into the served gochara_sweep.top_windows.",
+    "next_action": "None — retain as closed. No further action.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-127",
+    "classification": "LANDED",
+    "evidence": "Original claim: bodha_bundle_get returns DEGRADED on a plain call for the canonical chart — 5 of 8 subsystems (MSR, CGM, LEL, PANCHANG, DASHA) error with error_class=tool_error. Found the exact fixing commit on origin/main: c75400b23 'ekv(a-11): F-30/74/127 — bundle principal propagation + real upstream_status surfaced (#1302)'. Root cause matches the claim precisely: callPrimitive sent params as the flat JSON body but the primitives route reads body.params, so every per_chart sub-capability silently resolved toolParams={}, chart_id was dropped, and per-chart tools hit a CHART_REQUIRED 400 — exactly the failure pattern that would degrade 5/8 subsystems. Fix wraps the body as {params}.",
+    "next_action": "None — retain as closed. No further action.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-138",
+    "classification": "LANDED",
+    "evidence": "Original claim (positive/informational, CL-00): kala_ahead_get's period_echo mechanism cross-references the currently-active Saturn Antardasha against its prior occurrence using genuine LEL-corroborated events, served as an explicitly falsifiable 'same-dasha-lord recurrence' hypothesis with status='hypothesis_served' and confidence_basis='N=1 ...' — never asserted as confirmed. Current source (platform-mcp/src/tools/kala_views/ahead.ts:754, 933-1077, 1614-2121) fully implements this exact mechanism: PeriodEchoEntry type, status: 'hypothesis_served' | 'insufficient_data', confidence_basis strings including the N=0/N=1 same-lord-prior-occurrence framing, and period_echo_reachable coverage gating — matches the claim precisely.",
+    "next_action": "None — retain as closed. No further action.",
+    "confidence": "HIGH"
+  }
+]

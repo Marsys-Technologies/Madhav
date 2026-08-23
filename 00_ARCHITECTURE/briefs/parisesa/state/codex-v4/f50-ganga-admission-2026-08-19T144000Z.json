@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T14:40:00Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "finding_id": "F-50",
+  "pr": 1347,
+  "head": "9b3beb6dc52cac615eb725e1faa23a72b035466e",
+  "base": "45f0ddf56793a23bf5881701ee6c184f6868f20a",
+  "ruleset": {"id": 20141220, "enforcement": "active", "updated_at": "2026-08-06T03:32:33.951+05:30"},
+  "required_contexts": {
+    "TypeScript (src only)": "SUCCESS",
+    "Unit Tests": "SUCCESS",
+    "Secret Scan (unit 0b.2)": "SUCCESS",
+    "Governance Gates (drift / schema / edge / native-literal / py-sidecar)": "SUCCESS",
+    "TAP-6 — Method audit grep set": "SUCCESS"
+  },
+  "non_required_pending": ["Gate battery (chromium)"],
+  "admission": "eligible for normal protected auto-merge / Ganga queue; no bypass, force merge, or waiver authorized",
+  "next_action": "enable auto-merge matched to the exact head, then require fresh merge-group contexts on the synthetic SHA"
+}

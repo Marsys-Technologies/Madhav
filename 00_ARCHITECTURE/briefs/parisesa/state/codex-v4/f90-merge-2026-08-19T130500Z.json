@@ -1,0 +1,24 @@
+{
+  "record_type": "PARISESA_V4_MERGE_RECEIPT",
+  "recorded_at": "2026-08-19T13:05:00Z",
+  "continuation_owner": "/root",
+  "finding_id": "F90",
+  "code_commits": [
+    "cccb944ddf9ed17c85e555b773235f52efe053cb",
+    "6b6179dd2f2e88e6e2a5d286fc01fb6afd09580d"
+  ],
+  "pull_request": 1345,
+  "merge_sha": "bc7390923709ae1fc3001d3f295fc1dee2afaebc",
+  "merge_path": "normal Ganga merge queue; no bypass",
+  "merge_group_contexts": {
+    "Ganga Quality Gate": "SUCCESS",
+    "TAP CI": "SUCCESS",
+    "EKV": "SUCCESS"
+  },
+  "disposition": "CODE_MERGED_DEPLOYMENT_AND_DIRECT_MCP_CANARY_PENDING",
+  "next_safe_action": "Reconcile affected MCP deployment at 100 percent traffic for bc739092, then run the read-only sidecar-failure proof and record public-safe error behavior.",
+  "normal_v4_state_writer": {
+    "status": "unavailable",
+    "reason": "guardian approval NotSubmitted { reason: NotIdle }; operator-authorized fallback ledger is active"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T14:08:13Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "finding_id": "F-47",
+  "pr": 1343,
+  "candidate_head": "404030993ba6a8ad5cdc970d8843c5c302d37b33",
+  "base_before_merge": "a7136b467af204767a6f9b403785b84967136a84",
+  "merge_commit": "bb5c5278b5adeb1e3e9761bc1655986a0a04e177",
+  "merge_method": "normal protected Ganga squash merge",
+  "merge_group_workflow": {"run": 32261273368, "result": "SUCCESS", "completed_at": "2026-08-19T14:07:42Z"},
+  "post_merge_status": "code merged; affected sidecar deployment and direct service proof remain pending",
+  "next_action": "observe main CI/deploy and join a read-only action-sensitive canary to the deployed sidecar revision before closure."
+}

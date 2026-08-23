@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T14:41:00Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "finding_id": "F-50",
+  "pr": 1347,
+  "head": "9b3beb6dc52cac615eb725e1faa23a72b035466e",
+  "queue": {
+    "entry_id": "MQE_lQDOSFaWQs8AAAABASzp9s4AA6cUzgKUC4A",
+    "position": 1,
+    "state": "AWAITING_CHECKS"
+  },
+  "classification": "normal external Ganga wait; fresh merge-group contexts remain mandatory",
+  "next_check": "inspect synthetic merge-group check results, then reconcile the resulting main SHA before any closure claim"
+}

@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T14:27:00Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "finding_id": "F-50",
+  "candidate": {
+    "head": "9b3beb6dc",
+    "base": "45f0ddf56793a23bf5881701ee6c184f6868f20a",
+    "scope": [
+      "platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts",
+      "platform/src/lib/retrieval/registry/layers/L2_bodha/__tests__/query_remedies_graha_filter_lead.test.ts"
+    ],
+    "range_diff": "a7136b467..ba87bbe43 equals 45f0ddf567..9b3beb6dc",
+    "independent_review": "PASS; renewed after rebase",
+    "focused_regression": "3/3 PASS"
+  },
+  "paired_broad_gate_receipt": {
+    "command": "./node_modules/.bin/tsc --noEmit --skipLibCheck",
+    "typescript_version": "5.9.3",
+    "lockfile": {
+      "path": "platform/pnpm-lock.yaml",
+      "sha256": "1e9e6a3e68974e6a48805cc8083007825a68e533c0835e672b45f33734aee356",
+      "unchanged_parent_to_candidate": true
+    },
+    "parent_exit": 2,
+    "candidate_exit": 2,
+    "normalized_output_sha256_parent": "0dd616fc286d8a42fe70dbb51b16b23cda60c963a545cbfd235967c842dd208c",
+    "normalized_output_sha256_candidate": "0dd616fc286d8a42fe70dbb51b16b23cda60c963a545cbfd235967c842dd208c",
+    "identical_preexisting_errors": [
+      "src/lib/adapters/types.ts: json-schema missing declaration",
+      "src/lib/mcp/lel_event_writer.ts: uuid missing declaration",
+      "src/lib/pipeline/types.ts: json-schema missing declaration",
+      "src/lib/schemas/index.ts: ajv-formats missing declaration"
+    ],
+    "noncausality": "all four failing source blobs and the lockfile are unchanged in the F50 range; the candidate changes only remedy-lead narration and its focused test",
+    "classification": "exact documented local baseline; command remains red and is not called green or waived"
+  },
+  "next_action": "open one normal protected PR at the immutable exact head; require all live PR and merge-group contexts before Ganga admission"
+}

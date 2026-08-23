@@ -1,0 +1,23 @@
+{
+  "reproduce_cmd": "mcp__marsys-jis-direct__prashna_undertaking_get({chart_id: '1c826d5a-41cb-4450-b4dc-59d440e5f75a', domain: 'health'})",
+  "captured_at": "2026-08-16",
+  "health_domain_response": {
+    "content.action_class": "medical_procedure",
+    "content.election_windows": [
+      {"action_class": "marriage", "composite_quality": 0.25, "window_quality_verdict": "mediocre", "window_start": "2029-08-08 06:00:00+00"},
+      {"action_class": "marriage", "composite_quality": 0.25, "window_quality_verdict": "mediocre", "window_start": "2026-08-12 06:00:00+00"},
+      {"action_class": "medical", "composite_quality": 0.187, "window_quality_verdict": "mediocre", "window_start": "2028-02-08 06:00:00+00"}
+    ],
+    "judgment_flags": []
+  },
+  "career_domain_response": {
+    "content.action_class": "business_start",
+    "content.election_windows": [
+      {"action_class": "marriage", "composite_quality": 0.25, "window_quality_verdict": "mediocre", "window_start": "2029-08-08 06:00:00+00"},
+      {"action_class": "marriage", "composite_quality": 0.25, "window_quality_verdict": "mediocre", "window_start": "2026-08-12 06:00:00+00"},
+      {"action_class": "medical", "composite_quality": 0.187, "window_quality_verdict": "mediocre", "window_start": "2028-02-08 06:00:00+00"}
+    ],
+    "judgment_flags": []
+  },
+  "observation": "election_windows is IDENTICAL between domain='health' and domain='career' -- byte-for-byte same 3 rows (marriage, marriage, medical), despite content.action_class correctly differing (medical_procedure vs business_start). Confirms the muhurtaResult SQL query is completely domain-agnostic: it returns the global top-N phala_muhurta rows by composite_quality with zero dependency on the $2 domain-derived action_class. The corpus's illustrative claim that career returns all 'new_venture' windows does not match this live run (got marriage/marriage/medical for both domains) -- but this is the SAME defect, in fact demonstrated more starkly: the query result is provably domain-invariant, not merely mis-mapped."
+}

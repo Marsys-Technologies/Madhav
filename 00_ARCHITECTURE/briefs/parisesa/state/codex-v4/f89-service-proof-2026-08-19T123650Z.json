@@ -1,0 +1,26 @@
+{
+  "record_type": "PARISESA_V4_DIRECT_MCP_SERVICE_PROOF",
+  "recorded_at": "2026-08-19T12:36:50Z",
+  "continuation_owner": "/root",
+  "finding_id": "F89",
+  "merge_sha": "dddaaef2cfbe0971fe057e3c9b81756f79bfae39",
+  "service": {
+    "name": "amjis-mcp",
+    "revision": "amjis-mcp-00573-zmf",
+    "commit_sha_label": "dddaaef2cfbe0971fe057e3c9b81756f79bfae39",
+    "traffic_percent": 100
+  },
+  "canary": {
+    "tool": "ref_rules_search",
+    "input_class": "read-only malformed keyword",
+    "is_error": true,
+    "generic_internal_error_present": true,
+    "raw_backend_encoding_marker_present": false,
+    "result_serialized_length": 642
+  },
+  "disposition": "CURRENT_SERVICE_VERIFIED_CLOSURE_ELIGIBLE",
+  "normal_v4_state_writer": {
+    "status": "unavailable",
+    "reason": "guardian approval NotSubmitted { reason: NotIdle }; operator-authorized fallback ledger is active"
+  }
+}

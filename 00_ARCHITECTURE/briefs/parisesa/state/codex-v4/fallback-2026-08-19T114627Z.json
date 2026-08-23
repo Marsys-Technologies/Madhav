@@ -1,0 +1,40 @@
+{
+  "record_type": "PARISESA_V4_FALLBACK_STATE",
+  "recorded_at": "2026-08-19T11:46:27Z",
+  "recorded_by": "Codex /root",
+  "base_revision": "3fd40b61baade41862c7eecb871775d8917072f3",
+  "authority": {
+    "normal_state_writer": "functions.apply_patch targeting /Users/Dev/shad_overnight/par-night/state/codex-v4",
+    "normal_writer_failure": "Automatic approval review failed: guardian review input was not started: NotSubmitted { reason: NotIdle }",
+    "fallback_authorized_by": "operator instruction of 2026-08-19: write state inside own worktree, commit it, and append a one-line coordination status row"
+  },
+  "campaign_state": {
+    "corpus_invariant": "141 findings preserved; no finding is removed by this fallback record",
+    "tracker_writer": "unavailable through the normal state surface; this committed record is the temporary durable handoff",
+    "current_state_governance_version": "6.62"
+  },
+  "findings": {
+    "F89": {
+      "previous_projection": "CURRENT_SOURCE_CODE_FIXED_HISTORICAL_STALE / MCP-handoff-required",
+      "current_evidence": "Direct read-only ref_rules_search malformed-keyword canary was success-shaped while carrying an in-band backend error through the nested content path. The service did not emit the expected generic public error.",
+      "source_cause": "register_p1_reference.callRegistryCapability returned a capability ToolResult wrapper with is_error:true as ordinary content, bypassing the existing ref_rules_search error classifier and sanitizer.",
+      "disposition": "CURRENT_DEFECT_CONFIRMED; code repair required before service closure",
+      "next_action": "Implement and independently verify alias-boundary normalization: unwrap is_error:false content; route is_error:true through existing safe error handling; add focused regression coverage."
+    },
+    "F92": {
+      "previous_projection": "CURRENT_SOURCE_CODE_FIXED_HISTORICAL_STALE / MCP-handoff-required",
+      "current_evidence": "Two identical direct read-only judgment_query calls for the canonical chart and career domain returned stable timing_anchored=true results with six identical Kala activation rows in identical order.",
+      "disposition": "DIRECT_MCP_BEHAVIOR_VERIFIED; closure record pending normal tracker writer restoration",
+      "caveat": "The direct MCP metadata exposes a catalog version but not the deployed image or Git revision; this receipt must be joined to independent deployment evidence before final campaign closure."
+    }
+  },
+  "other_uncommitted_observations": {
+    "F30": "Partial direct MCP probe is insufficient for closure: a valid budget receipt trimmed bundle entries to zero while retaining recovery guidance.",
+    "F90": "Separate current disclosure path remains: alias-side sidecar errors can include raw upstream response text. It is not combined with F89."
+  },
+  "next_safe_actions": [
+    "Append the authorized one-line fallback notice to origin/campaign-coordination from an isolated coordination worktree.",
+    "Create a fresh F89 code worktree directly from origin/main and implement the bounded normalization repair.",
+    "Keep F92 marked behavior-verified but do not claim deployed-revision proof without the external deployment join."
+  ]
+}

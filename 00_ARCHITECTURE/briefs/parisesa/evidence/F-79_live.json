@@ -1,0 +1,23 @@
+{
+  "lane": "F-79",
+  "probe_ts": "2026-08-16T19:00:48Z",
+  "merged_sha": "51096a655645cdf640fc62e7d6ad7744656a0c7e",
+  "reproduce_cmd": "SELECT filename, applied_at, sha256 FROM _migrations_applied WHERE filename IN ('456_lel_schema_v2_event_shapes.sql','457_lel_schema_v2_event_shapes.sql')",
+  "result_rows": [
+    {
+      "filename": "456_lel_schema_v2_event_shapes.sql",
+      "applied_at": "2026-07-18 23:30:11.222088+00",
+      "sha256": "a6d30ee464d7cac18884e13724a2505182c935a6453ab00558eb0c9dc3c29339"
+    },
+    {
+      "filename": "457_lel_schema_v2_event_shapes.sql",
+      "applied_at": "2026-07-19 01:19:40.153016+00",
+      "sha256": "fdc1edb0789ac743c8d67c0f4cc9b2ad8cb995597407c724fb5d175dfc612e7f"
+    }
+  ],
+  "archive_file_on_disk": "platform/migrations/_archive/456_lel_schema_v2_event_shapes.sql",
+  "archive_file_exists_at_merged_sha": true,
+  "diff_vs_git_history": "EMPTY (byte-identical — independently verified)",
+  "no_migrations_applied_delta": true,
+  "exit_test": "PASS"
+}

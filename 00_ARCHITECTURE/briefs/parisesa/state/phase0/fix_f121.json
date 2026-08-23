@@ -1,0 +1,39 @@
+{
+  "finding_id": "F-121",
+  "outcome": "FIXED_PR_UPDATED",
+  "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1366",
+  "branch": "parisesa/repair-F121-rebase",
+  "items_fixed": [
+    {
+      "item": 1,
+      "description": "Regression-guard test's mock only inspected body.uri, never max_level -- would pass even if the core max_level 2->4 fix were reverted.",
+      "status": "FIXED",
+      "detail": "mockRegistryFetch (kala_now_get_sandhi_w1_joins.test.ts) now parses body.args.max_level and filters the returned active_chain to entries with level_n <= requestedMaxLevel, mirroring query_active_dashas.ts's real server-side filtering. Verified by locally reverting now.ts's fetchVimshottariMdAdBoundaries max_level 4->2: the 'requests max_level: 4' test failed ([2,2] does not contain 4) and the 'level-4 (Sukshma) band present' test failed (0 bands instead of >0) -- confirming the guard now actually catches the regression. Restored the fix and re-ran: 10/10 green."
+    },
+    {
+      "item": 2,
+      "description": "Test fixture was stretched from a real 12-day observed span to 100 days to force a pass.",
+      "status": "FIXED",
+      "detail": "ACTIVE_CHAIN_WITH_SUKSHMA's level_n=4 entry end_date reverted from 2026-11-21 (100d, fabricated) to 2026-08-25 (real 12-day observed span per DIAGNOSIS.md: 2026-08-13..2026-08-25). Re-verified the band-width math with honest data: spanDays=12, 3% band = round(0.36) floored to the code's own Math.max(1,...) minimum of 1 day, so the period_start band is 2026-08-12..2026-08-14. The originally-observed as_of=2026-08-16 falls OUTSIDE this honestly-computed band (it only passed before because the span was fabricated to 100d), so the test's as_of was moved to 2026-08-14, which genuinely and non-engineered-ly falls inside band_start..band_end. Confirmed via actual test run (not just math on paper)."
+    },
+    {
+      "item": 3,
+      "description": "SANDHI_BAND_CONVENTION doc comment promises band labels through Level 4 (Sukshmadasha), but query_active_dashas.ts's LEVEL_NAME map has no level-4 entry (falls back to 'L4').",
+      "status": "FIXED",
+      "detail": "Extended query_active_dashas.ts's LEVEL_NAME map to include 4: 'Sukshmadasha', mirroring the established convention already present in the sibling L1_ganita file get_dashas.ts's LEVEL_NAMES map (which already has 1:Mahadasha, 2:Antardasha, 3:Pratyantardasha, 4:Sukshmadasha, 5:Prana, 6:Anu). Chose 'extend LEVEL_NAME' over 'narrow the doc comment' because the codebase already has a live precedent for the level-4 name one file over -- narrowing would have been inconsistent with that convention. Verified no existing test in query_active_dashas.test.ts asserted the old 'L4' fallback (none did), and the sibling test suite (4 tests) still passes after the change."
+    },
+    {
+      "item": 4,
+      "description": "Doc-comment citation pointed at a string that actually lives in a test file (test_ga7_writer.py), not the production writer it named.",
+      "status": "FIXED",
+      "detail": "Replaced the loosely-quoted '(ga_dashas_writer.py \"CRITICAL OVERRIDE 1... ZERO level_n=5\")' citation in now.ts's SANDHI_BAND_CONVENTION with a citation to the actual DB-enforced authority: chart_dashas' cd_level_n_max4 CHECK (level_n BETWEEN 1 AND 4) constraint, added in migration platform/supabase/migrations/211_ga7_dashas_kp_sublevel.sql (verified present via grep), with a pointer to test_dasha_scope_cap_sentinel.py for the enforcement semantics (that test file explicitly documents 'the Prana row's level_n=5 violates chart_dashas.cd_level_n_max4 and never lands'). This is a stronger authority than a writer-file comment string since it is DB-schema-enforced, not just documented in code."
+    }
+  ],
+  "test_results": {
+    "target_suite": "platform-mcp/src/__tests__/kala_now_get_sandhi_w1_joins.test.ts: 10/10 passing after fix, with genuine (not engineered) assertions -- confirmed by locally reverting the core max_level fix and observing 2 of the 10 tests fail as expected, then restoring and re-confirming green.",
+    "sibling_suite": "platform/src/lib/retrieval/registry/layers/L3_kala/query_active_dashas.test.ts: 4/4 passing after the LEVEL_NAME change (no test asserted the old 'L4' fallback).",
+    "typecheck": "npx tsc --noEmit clean (exit 0) in both platform-mcp and platform packages.",
+    "lint": "npx eslint clean on platform/src/lib/retrieval/registry/layers/L3_kala/query_active_dashas.ts (platform-mcp has no configured lint script)."
+  },
+  "next_action": "None required from this train. PR #1366 updated in place on branch parisesa/repair-F121-rebase (force-pushed after rebasing cleanly onto current origin/main, no conflicts), remains OPEN/FROZEN per campaign scope. Owner/reviewer should re-review at morning checkpoint; merge-queue admission still held per campaign overnight scope boundary."
+}

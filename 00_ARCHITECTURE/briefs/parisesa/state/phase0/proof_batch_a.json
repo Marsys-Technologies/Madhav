@@ -1,0 +1,100 @@
+[
+  {
+    "finding_id": "F-04",
+    "verdict": "STILL_LANDED",
+    "terminal_status": null,
+    "evidence": "Commit 3e20470d ('guard proxy table functions', #1327) confirmed on current origin/main with a real, specific test file (route.test.ts, +54 lines) addressing SQL table-function proxy checks. No live deployed-service or direct-MCP call was made to prove the fix is actually being served (would need a constructed reproducing call against the affected route); code-level evidence is solid but deployment proof is still missing.",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-08",
+    "verdict": "STILL_LANDED",
+    "terminal_status": null,
+    "evidence": "Commit 3d15ea03b3 ('apply mitigation domain filter', #1329) confirmed on origin/main, touching query_phala_calibration.ts with a dedicated test (wp13j_followup_serving.test.ts). Specific and targeted, but no deployed-service verification was performed this pass.",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-09",
+    "verdict": "STILL_LANDED",
+    "terminal_status": null,
+    "evidence": "Cited commit cfb6444c8 is actually about Prashna undertaking domain filtering (#1331), not response-budget hints -- it is a baseline/pin commit, not a targeted fix for this claim. Generic budget-hint/recover_via code does exist in response_budget.ts, but nothing ties it specifically to F-09's defect. Insufficient specific evidence to promote.",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-10",
+    "verdict": "STILL_LANDED",
+    "terminal_status": null,
+    "evidence": "Cited commit cfb6444c8 ('filter undertaking elections by domain', #1331) IS specifically relevant to F-10 if F-10 concerns Prashna undertaking domain filtering -- stronger match than initially assumed (raises confidence from the original LOW). Still no deployed-MCP-revision re-verification performed this pass, so not promoted to terminal.",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-105",
+    "verdict": "TERMINAL",
+    "terminal_status": "CONTROL_CLOSED",
+    "evidence": "Actually re-ran the cited test live this time (the exact gap the ratification panel flagged): `pytest pipeline/orchestrator/writers/tests/test_mi_adhilepa_leakage.py -v` from platform/python-sidecar -- 14/14 PASSED. Confirms mi_adhilepa.py honestly emits leakage_status=not_assessed rather than a fabricated 'clean', with tests specifically asserting this (test_overlay_row_does_not_emit_clean, test_old_filter_would_silently_empty_calibration). This resolves the ratification panel's specific objection.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-117",
+    "verdict": "DATA_PARKED",
+    "terminal_status": null,
+    "evidence": "Confirmed: this is a protected-data item (governed_design_and_preflight), correctly held for the morning checkpoint per campaign scope. Not attempted as a repair target.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-12",
+    "verdict": "STILL_LANDED",
+    "terminal_status": null,
+    "evidence": "PR #1333 ('report condition facet totals') confirmed merged as f4731c8a, ancestor of origin/main. Real targeted fix across get_avasthas.ts, get_dignity.ts, get_karakas.ts plus a dedicated test file (condition_facet_totals.test.ts, 69 lines). Strong code-level evidence; no live direct-MCP spot check performed this pass (would need a real ganita_condition_get call against the canonical chart to fully close).",
+    "confidence": "MEDIUM-HIGH"
+  },
+  {
+    "finding_id": "F-124",
+    "verdict": "UNKNOWN",
+    "terminal_status": null,
+    "evidence": "REAL MISMATCH FOUND: cited commit 3fd40b61 is a docs-only PARIPRAŚNA G0-close commit (imports a doc set), completely unrelated to 'cross-cutting capability wiring' code. The second cited commit b328e4aa ('disclose empty assessment readings', #1340) touches registry_bridge.ts, which is plausibly cross-cutting, but its actual fix (disclosing empty readings) doesn't clearly match the CL-14 'uneven wiring of cross-cutting capabilities' classification either. This finding's evidence basis does not hold up on content inspection -- downgrading from LANDED to UNKNOWN rather than promoting. Needs re-investigation with the original finding description, not just a proof pass.",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-128",
+    "verdict": "UNKNOWN",
+    "terminal_status": null,
+    "evidence": "Same underlying evidence as F-16 (commit 693a7bdc20) -- see F-16 for the mismatch detail. Both should be re-investigated together, not closed.",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-132",
+    "verdict": "STILL_LANDED",
+    "terminal_status": null,
+    "evidence": "Commit 967f08da (#1319, 'V4 control-gated assessment and calibration remediation') confirmed on origin/main -- a large squash of ~11 sub-fixes (D-08 pointer integrity, assessment payload normalization, kala calibration authority, fact-category pinning, yoga verdict labels, graha aspect centralization, assessment drill pointer seam, etc). The code genuinely landed, but I cannot isolate which specific sub-bullet corresponds to F-132's 'jargon/raw-internal leak' claim without F-132's original description -- plausible but not conclusively matched to a specific hunk.",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-140",
+    "verdict": "UNKNOWN",
+    "terminal_status": null,
+    "evidence": "Confirmed genuine data gap, not a search failure on my part: the SOURCE corpus (closure-matrix.json) itself has defect_control_classification.kind='UNCLASSIFIED' and class=None for F-140 -- it was never described anywhere, including at origin. Searched /Users/Dev/shad_overnight/par-night/ (evidence/, ingested/, board.json) exhaustively for 'F-140' -- zero hits anywhere except the bare finding_id in the corpus row itself. Cannot honestly classify or verify what this finding even claims. This is a corpus data gap for the morning report, not a resolvable proof-pass item.",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-141",
+    "verdict": "DATA_PARKED",
+    "terminal_status": null,
+    "evidence": "Confirmed: protected-data item, correctly held for the morning checkpoint. Not attempted as a repair target.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-16",
+    "verdict": "UNKNOWN",
+    "terminal_status": null,
+    "evidence": "REAL MISMATCH FOUND: F-16's claimed defect is CL-21 'response-envelope shape mismatch (double-enveloping)'. The cited commit 693a7bdc20 is actually 'page remedies by category' (#1323), touching register_d7_channel.ts for remedy pagination -- I grepped its full diff for 'envelope', 'wrap', 'double' and found zero matches. This commit does not address an envelope double-wrapping defect. Downgrading from LANDED to UNKNOWN; the corpus's evidence citation appears to be wrong for this finding, not just unverified. Needs the actual CL-21 fix commit located before this can be closed either way.",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-17",
+    "verdict": "STILL_LANDED",
+    "terminal_status": null,
+    "evidence": "Cited commit cfb6444c8 does NOT contain 'D08'/'D-08' content (it's the Prashna undertaking domain-filter commit, #1331) -- the citation for F-17 looks wrong. However, a real 'D-08 pointer integrity gate' fix bullet DOES exist on origin/main, inside squash commit 967f08da (#1319: 'fix(parisesa): close D-08 pointer integrity gate'). Positive evidence the underlying claim is true exists, just under a different commit than cited -- recommend re-citing F-17's evidence to 967f08da rather than cfb6444c8. Not promoting to terminal without isolating the exact D-08 gate code change within that squash.",
+    "confidence": "MEDIUM"
+  }
+]

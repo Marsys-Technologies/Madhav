@@ -1,0 +1,1 @@
+psql:/Users/Dev/par-night/parisesa-v4-state/verification_artifacts/PARISESA_V4_GA3_REBUILD_20260821/rehearsal_schema.sql:437: ERROR:  relation "public.bodha_rm_resonances" does not exist

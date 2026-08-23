@@ -1,0 +1,19 @@
+{
+  "record_type": "PARISESA_V4_EXTERNAL_OPERATION",
+  "recorded_at": "2026-08-19T12:53:00Z",
+  "continuation_owner": "/root",
+  "finding_id": "F90",
+  "state": "waiting_external",
+  "operation": {
+    "kind": "GitHub Ganga merge queue",
+    "identifier": "PR #1345 / commit 6b6179dd2f2e88e6e2a5d286fc01fb6afd09580d",
+    "queue_position": 1,
+    "base": "dddaaef2cfbe0971fe057e3c9b81756f79bfae39",
+    "admission": "normal exact-head auto-merge; no bypass"
+  },
+  "next_safe_action": "Reconcile the synthetic merge-group SHA and all five fresh required contexts, then record the normal merge or diagnose a candidate-caused failure.",
+  "normal_v4_state_writer": {
+    "status": "unavailable",
+    "reason": "guardian approval NotSubmitted { reason: NotIdle }; operator-authorized fallback ledger is active"
+  }
+}

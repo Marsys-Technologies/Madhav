@@ -1,0 +1,16 @@
+{
+  "turn_id": "broken-06-explain",
+  "question": "Why do you say that about what's active for me right now — what's the reasoning, step by step?",
+  "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+  "conversation_id": "broken-conv-0001",
+  "partial": false,
+  "terminal_status": "ok",
+  "blocks": [{ "blockId": "b1", "kind": "paragraph", "role": "verdict" }],
+  "prose": "This traces to an unrelated career-timing signal rather than anything named in your earlier reading.",
+  "events": [
+    { "type": "block.commit", "raw": { "type": "block.commit", "block_id": "b1", "kind": "paragraph", "role": "verdict", "text": "This traces to an unrelated career-timing signal rather than anything named in your earlier reading." }, "receivedAtMs": 100 },
+    { "type": "citation.define", "raw": { "type": "citation.define", "index": 0, "signal_id": "SIG.KALA.999", "layer": "L3", "snippet": "unrelated signal", "reader_label": "unrelated", "grade": "confirmed" }, "receivedAtMs": 90 },
+    { "type": "grade", "raw": { "type": "grade", "subject": "citation_gate", "grade": "PASS" }, "receivedAtMs": 95 },
+    { "type": "turn.close", "raw": { "type": "turn.close", "status": "ok" }, "receivedAtMs": 200 }
+  ]
+}

@@ -1,0 +1,11 @@
+DB-column-level finding — no MCP reproduce_cmd exists. Live query against production DB (2026-08-16):
+
+SELECT chart_id, array_length(event_classes,1) AS ec_len, jsonb_array_length(skipped_classes) AS n_skipped,
+       event_classes, skipped_classes
+FROM kala_field_snapshots WHERE chart_id = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
+ORDER BY built_at DESC LIMIT 1;
+
+Result: ec_len=27, n_skipped=21. event_classes = full 27-item canonical list. skipped_classes = 21 entries,
+every one {"reason":"no_class_prior_row","detail":"no bg_class_priors lifetime-count row for this event
+class"}. The 6 classes in event_classes NOT present in skipped_classes: childbirth, foreign_settlement,
+marriage, relocation, separation, surgery -- exact match to the finding's claimed built set.

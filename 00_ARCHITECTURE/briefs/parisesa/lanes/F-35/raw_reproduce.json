@@ -1,0 +1,5 @@
+mimamsa_insight_get(chart_id=1c826d5a-41cb-4450-b4dc-59d440e5f75a, domain=career) -- captured 2026-08-16
+See DIAGNOSIS.md §1 for the annotated excerpt; full envelope was ~9KB, insight_units[] contains
+5 verdict_object rows (evidence_grade=structural) + 1 manifestation_grammar row
+(insight_id=gram_career_ch_career_verbal_2, evidence_grade=empirical, last_calibrated_at=2026-08-12
+17:12:31.519631+00). calibration_summary.total_matches=0 for the whole chart.

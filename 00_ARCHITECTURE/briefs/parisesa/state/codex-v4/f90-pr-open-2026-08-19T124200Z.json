@@ -1,0 +1,19 @@
+{
+  "record_type": "PARISESA_V4_EXTERNAL_OPERATION",
+  "recorded_at": "2026-08-19T12:42:00Z",
+  "continuation_owner": "/root",
+  "finding_id": "F90",
+  "state": "waiting_external",
+  "operation": {
+    "kind": "normal protected pull request",
+    "identifier": "PR #1345",
+    "head": "6b6179dd2f2e88e6e2a5d286fc01fb6afd09580d",
+    "base": "dddaaef2cfbe0971fe057e3c9b81756f79bfae39",
+    "url": "https://github.com/Marsys-Technologies/Madhav/pull/1345"
+  },
+  "next_safe_action": "Poll the five required PR contexts; admit through normal Ganga only if all succeed on this exact head.",
+  "normal_v4_state_writer": {
+    "status": "unavailable",
+    "reason": "guardian approval NotSubmitted { reason: NotIdle }; operator-authorized fallback ledger is active"
+  }
+}

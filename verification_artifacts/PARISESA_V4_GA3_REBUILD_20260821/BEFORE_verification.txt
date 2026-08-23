@@ -1,0 +1,34 @@
+=============== 2026-08-21T02:26:55Z — chart 482012f1-710e-4a25-994a-93821f5871aa ===============
+
+--- F-104  mi_darshana leakage_status: PASS iff 0 rows read 'clean' ---
+clean=115  not_assessed=0  total=115  => FAIL
+
+--- F-35  scored_count gate: PASS iff 0 rows are 'empirical' with scored_count<5 ---
+empirical=7  assignment_only=0  prior_only=17  unearned_empirical=7  => FAIL
+
+--- F-116  bo_upaya preamble strip: PASS iff every row carries the flag AND 0 labels retain 'For ...:' ---
+total=135  with_flag=0  still_preambled=20  => FAIL
+
+--- F-71  mi_bhara: PASS iff state<>'error' and no TypeError remains ---
+state=building  rows=0  err=(none)  => PASS
+    (crash precondition, independent of build state — expect 0)
+open_predictions_with_empty_window=0
+
+--- F-63  ga_panchanga special-yoga key: PASS iff 0 rows read 'unknown' (PARKED — expect FAIL) ---
+unknown_rows=5  => FAIL (packet parked, expected)
+
+--- F-143 (NOT fixed by this rebuild; recorded so the ledger is accurate either way) ---
+    discoveries with n_support>=5 that mi_darshana.py:226 grades 'empirical' unearned:
+n_support_ge_5=20 of 71
+insight_units_empirical=31 of 115
+
+--- build-state snapshot for the four in-scope assets ---
+   asset_id   |  state   | rows_written |         last_built_at         
+--------------+----------+--------------+-------------------------------
+ bo_upaya     | lit      |          235 | 2026-08-10 01:52:43.884028+00
+ ga_panchanga | lit      |          437 | 2026-08-08 00:21:16.756299+00
+ mi_bhara     | building |            0 | 2026-08-21 02:18:20.008328+00
+ mi_darshana  | lit      |          115 | 2026-08-13 01:17:22.604778+00
+ mi_sambandha | lit      |           24 | 2026-08-13 01:16:35.345857+00
+(5 rows)
+

@@ -1,0 +1,13 @@
+{
+  "sequence_id": "fixture-clean",
+  "service_url": "fixture://offline",
+  "created_at": "2026-08-23T00:00:00.000Z",
+  "turns": [
+    { "view": "NOW", "primitive_id": "now_read", "live_tool": "kala_now_get", "question": "What is my temporal state right now — what's active for me at this moment?", "transcript_path": "01_now.json", "conversation_id": "clean-conv-0001", "partial": false, "terminal_status": "ok", "ask_exit_ok": true },
+    { "view": "AHEAD", "primitive_id": "ahead_read", "live_tool": "kala_ahead_get", "question": "What is coming for me over the next few months?", "transcript_path": "02_ahead.json", "conversation_id": "clean-conv-0001", "partial": false, "terminal_status": "ok", "ask_exit_ok": true },
+    { "view": "PRIORITIZE", "primitive_id": "priority_read", "live_tool": "kala_priority_get", "question": "Of everything going on in my chart right now, what matters most?", "transcript_path": "03_prioritize.json", "conversation_id": "clean-conv-0001", "partial": false, "terminal_status": "ok", "ask_exit_ok": true },
+    { "view": "STORY", "primitive_id": "story_read", "live_tool": "kala_story_get", "question": "What has my life been like so far, as this chart tells it?", "transcript_path": "04_story.json", "conversation_id": "clean-conv-0001", "partial": false, "terminal_status": "ok", "ask_exit_ok": true },
+    { "view": "ELECT", "primitive_id": "elect_read", "live_tool": "kala_elect_get", "question": "When should I start a new business venture?", "transcript_path": "05_elect.json", "conversation_id": "clean-conv-0001", "partial": false, "terminal_status": "ok", "ask_exit_ok": true },
+    { "view": "EXPLAIN", "primitive_id": "explain_read", "live_tool": "kala_explain_get", "question": "Why do you say that about what's active for me right now — what's the reasoning, step by step?", "transcript_path": "06_explain.json", "conversation_id": "clean-conv-0001", "partial": false, "terminal_status": "ok", "ask_exit_ok": true }
+  ]
+}

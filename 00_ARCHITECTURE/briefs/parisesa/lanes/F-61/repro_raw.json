@@ -1,0 +1,27 @@
+{
+  "mcp_call": "mcp__marsys-jis-direct__ganita_strength_get({chart_id:'482012f1-710e-4a25-994a-93821f5871aa', offset:0})",
+  "observation": "content.rows include fact_category='graha_saptavargaja_bala_component' entries; served page (offset 0, trimmed to 50 rows) did not surface a saptavargaja row directly (trimmed to graha_composite_state_classification/graha_in_house_composite_strength/graha_ishta_phala/graha_kashta_phala rows), but content.categories[] confirms 'graha_saptavargaja_bala_component' is a served category for this tool. Direct chart_facts SQL below is the ground truth for the category's null pattern.",
+  "sql_1_saptavargaja_jup_sample": {
+    "query": "SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text, fact_value_jsonb FROM chart_facts WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND fact_category='graha_saptavargaja_bala_component' ORDER BY fact_subject LIMIT 10",
+    "result_summary": "All 10 sampled rows (JUP x5 ayanamshas, MAR x5 ayanamshas) have fact_value_num=null, fact_value_text=null, fact_value_jsonb={source_table:'chart_divisionals', source_category:'varga_saptavargaja_bala_component', constituent_fact_ids:[6 chart_divisionals.id UUIDs], note:'...'}"
+  },
+  "sql_2_vimsopaka_sibling_sample": {
+    "query": "SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text, fact_value_jsonb FROM chart_facts WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND fact_category='vimsopaka_bala_per_graha' ORDER BY fact_subject LIMIT 10",
+    "result_summary": "Identical pattern: all 10 sampled rows (fact_key='vimsopaka_total') have fact_value_num=null, jsonb pointer to 15 chart_divisionals.id UUIDs (shodasavarga set), source_category='varga_vimsopaka_contribution'. Confirms F-61's defect pattern is NOT unique to saptavargaja."
+  },
+  "sql_3_sun_pointer_resolution": {
+    "query_a": "SELECT fact_value_jsonb->'constituent_fact_ids' FROM chart_facts WHERE chart_id='482012f1-710e-4a25-994a-93821f5871aa' AND fact_category='graha_saptavargaja_bala_component' AND fact_subject='SUN' AND fact_value_jsonb->>'note' LIKE '%lahiri_chitrapaksha%'",
+    "result_a": ["4841c8b8-7855-4050-8a26-df239b5bf553","eea311f9-388f-4214-862d-9de5d475c598","e1c8bd69-a951-4554-9846-e2ddf3d9f3bd","e7c9fb5c-5463-4060-a038-46ace8a15e9b","e852c072-ed56-4dd4-8504-2bddbe6392b6","ffa387f9-f608-4218-8cb0-e38939939962"],
+    "query_b": "SELECT id, fact_subject, fact_value_num, fact_value_text FROM chart_divisionals WHERE id::text IN (<6 uuids above>) ORDER BY fact_subject",
+    "result_b": [
+      {"varga":"D1.SUN","value":7.5,"dignity":"Sama"},
+      {"varga":"D2.SUN","value":30,"dignity":"Own"},
+      {"varga":"D3.SUN","value":3.75,"dignity":"Shatru"},
+      {"varga":"D9.SUN","value":22.5,"dignity":"Adhi_Mitra"},
+      {"varga":"D12.SUN","value":7.5,"dignity":"Sama"},
+      {"varga":"D60.SUN","value":22.5,"dignity":"Adhi_Mitra"}
+    ],
+    "sum": 93.75,
+    "verdict": "CONFIRMED — sums to the exact classical value cited in the audit finding (93.75), all 6 rows real, non-null, individually correct. Aggregation never happens upstream; fact_value_num stays null at the graha_saptavargaja_bala_component row."
+  }
+}

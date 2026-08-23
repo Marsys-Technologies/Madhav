@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T13:27:08Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer": {
+    "target": "/Users/Dev/shad_overnight/par-night/state/codex-v4",
+    "status": "unavailable",
+    "reason": "functions.apply_patch guardian review was NotSubmitted { reason: NotIdle }"
+  },
+  "origin_main": "bc7390923709ae1fc3001d3f295fc1dee2afaebc",
+  "catalog": {
+    "catalog_version": "catalog-1+t152+r653c2a1a98c8",
+    "tool_count": 125,
+    "revision_note": "MCP metadata does not expose the deployed git/image revision; catalog_version is not a deployment SHA."
+  },
+  "finding_receipts": [
+    {
+      "finding_id": "F-92",
+      "result": "pass",
+      "method": "two read-only direct MCP judgment_query v3 calls with identical arguments",
+      "args": {
+        "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+        "domain": "career",
+        "response_format": "v3"
+      },
+      "observed_stable_fields": {
+        "verdict_grade": "convergent_strong",
+        "composite_score": 4.58,
+        "timing_anchored": true,
+        "varga_confirmed": false,
+        "yogas_checked": 13
+      },
+      "volatile_fields_excluded": ["computed_at"],
+      "no_write_assurance": "judgment_query is a read-only retrieval call; no session selection, job, adoption, rebuild, or database mutation was invoked."
+    },
+    {
+      "finding_id": "F-100",
+      "result": "pass",
+      "method": "read-only direct MCP judgment_query v3 receipt inspection",
+      "observed": {
+        "timing_anchored": true,
+        "served_current_dasha_rows": 3,
+        "served_kala_activations": 6
+      },
+      "conclusion": "The timing receipt is true only with served timing content present."
+    },
+    {
+      "finding_id": "F-101",
+      "result": "pass",
+      "method": "read-only direct MCP judgment_query v3 receipt inspection",
+      "observed": {
+        "operative_varga": "D10",
+        "served_varga_rows": 0,
+        "varga_confirmed": false,
+        "disclosure_flag": "varga_confirmed_forced_false"
+      },
+      "conclusion": "The varga receipt is downgraded honestly when served divisional evidence is empty."
+    }
+  ],
+  "next_action": "Wait for Train 1 required PR governance contexts; no queue action until exact heads are fully green."
+}

@@ -1,0 +1,21 @@
+{
+  "record_type": "PARISESA_V4_MERGE_RECEIPT",
+  "recorded_at": "2026-08-19T12:35:50Z",
+  "continuation_owner": "/root",
+  "finding_id": "F89",
+  "code_commit": "9b238ee0340f758591d1b333956f00974ce3615f",
+  "pull_request": 1344,
+  "merge_sha": "dddaaef2cfbe0971fe057e3c9b81756f79bfae39",
+  "merge_path": "normal Ganga auto-merge; no bypass",
+  "merge_group_contexts": {
+    "Ganga Quality Gate": "SUCCESS",
+    "TAP CI": "SUCCESS",
+    "EKV": "SUCCESS"
+  },
+  "disposition": "CODE_MERGED_DEPLOYMENT_AND_DIRECT_MCP_CANARY_PENDING",
+  "next_safe_action": "Wait for amjis-mcp revision labelled dddaaef2 at 100 percent traffic, then run the read-only malformed-keyword F89 canary and record the result.",
+  "normal_v4_state_writer": {
+    "status": "unavailable",
+    "reason": "guardian approval NotSubmitted { reason: NotIdle }; operator-authorized fallback ledger is active"
+  }
+}

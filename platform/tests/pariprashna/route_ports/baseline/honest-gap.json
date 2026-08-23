@@ -505,6 +505,27 @@
     {
       "fn": "writeTurn",
       "message": {
+        "id": "00000000-0000-4000-8000-000000000004",
+        "conversation_id": "00000000-0000-4000-8000-000000000001",
+        "role": "user",
+        "schema_version": 1,
+        "model_id": "n/a",
+        "provider": "user"
+      },
+      "parts": [
+        {
+          "seq": 0,
+          "kind": "text",
+          "body": {
+            "text": "How does my career unfold?"
+          },
+          "model_visible": true
+        }
+      ]
+    },
+    {
+      "fn": "writeTurn",
+      "message": {
         "id": "00000000-0000-4000-8000-000000000005",
         "conversation_id": "00000000-0000-4000-8000-000000000001",
         "role": "assistant",

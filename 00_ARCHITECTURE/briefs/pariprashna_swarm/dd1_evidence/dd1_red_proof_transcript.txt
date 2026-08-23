@@ -1,0 +1,92 @@
+MACHINE PROXY — NOT AC-15.
+This is the DD-1 automated feel-proxy battery: an explicitly-labelled machine
+substitute for the human "does the default surface feel right" seam, authorized
+for TONIGHT ONLY by native ruling 2026-08-22 (overnight charter §0 ruling 11 /
+§10.1). It is not AC-15 and it never becomes AC-15. AC-15 is the native's own
+week of use, recorded as waived-as-blocking with the verdict welcome
+asynchronously; the swarm records no AC-15 PASS. A PASS below means only that
+the enumerated machine metrics met their own stated thresholds on the named
+target. It is not a human verdict and must never be reported as one.
+
+target      : https://amjis-web-qm256lasva-el.a.run.app
+chart       : 1c826d5a-41cb-4450-b4dc-59d440e5f75a
+detector    : fca9bd30a53bb1bce254160e19615c5125ab6d65deae7c185ce9c8b9ee631f8e
+
+RUNNING THE §N.8 RED PROOF — every detector is fed a deliberately broken input
+and must be OBSERVED TO FAIL it, then observed to pass its clean counterpart.
+No PASS this battery ever emits counts until this receipt exists.
+
+── RED PROOF · M4 (m4_ttft) ─────────────────────────
+   fed:      deliberately broken corpus (BROKEN:M4/a, BROKEN:M4/b, BROKEN:M4/c)
+   observed: FAIL  ← detector fired, as required
+     · M4: p50 TTFT 22000ms exceeds the 4000ms threshold.
+     · M4: p90 TTFT 23000ms exceeds the 12000ms threshold.
+   then fed: clean counterpart (clean:M4)
+   observed: PASS  ← green counterpart clean, as required
+
+── RED PROOF · M5 (m5_id_leak) ─────────────────────────
+   fed:      deliberately broken corpus (BROKEN:M5)
+   observed: FAIL  ← detector fired, as required
+     · [BROKEN:M5] M5 leak (signal_id, verdict=redact): "SIG.MSR.413"
+     · [BROKEN:M5] M5 leak (asset_id, verdict=redact): "bo_laksana"
+     · [BROKEN:M5] M5 leak (table_name, verdict=redact): "bodha_signals"
+     · [BROKEN:M5] M5 leak (register_acronym, verdict=redact): "The MSR"
+     · [BROKEN:M5] M5 leak (register_acronym, verdict=redact): "the CGM"
+     · [BROKEN:M5] M5 leak (fact_id_namespace, verdict=redact): "PLN.SUN"
+     · [BROKEN:M5] M5: the pre-wire lint would have altered the DELIVERED prose — something the server-side lint should have caught reached the reader.
+   then fed: clean counterpart (clean:M5)
+   observed: PASS  ← green counterpart clean, as required
+
+── RED PROOF · M6-wire (m6_wire_late_define) ─────────────────────────
+   fed:      deliberately broken corpus (BROKEN:M6-wire)
+   observed: FAIL  ← detector fired, as required
+     · [BROKEN:M6-wire] M6-wire define-then-reference violated: chip ⟦3⟧ committed in block b1 at wire index 0, but its citation.define is at 1 — the chip cannot render at final geometry on first paint.
+     · [BROKEN:M6-wire] M6-wire committed block b1 re-committed with DIFFERENT text ("The tenth house is the operative one ⟦3⟧." → "The tenth house is the operative one, decisively ⟦3⟧.").
+   then fed: clean counterpart (clean:M6-wire)
+   observed: PASS  ← green counterpart clean, as required
+
+── RED PROOF · REG (reg_voice_lint) ─────────────────────────
+   fed:      deliberately broken corpus (BROKEN:REG)
+   observed: FAIL  ← detector fired, as required
+     · [BROKEN:REG] REG voice_imperative_detected (level=warn in voice_lint; FATAL in this battery): 2 second-person-imperative remedy sentence(s) detected (telemetry only — not rewritten)
+     · [BROKEN:REG] REG voice_pacing_order_violation (level=warn in voice_lint; FATAL in this battery): a severity/probability claim appears without a preceding uncertainty frame in a difficult-finding block
+   then fed: clean counterpart (clean:REG)
+   observed: PASS  ← green counterpart clean, as required
+
+── RED PROOF · PLAIN (plain_register) ─────────────────────────
+   fed:      deliberately broken corpus (BROKEN:PLAIN)
+   observed: FAIL  ← detector fired, as required
+     · [BROKEN:PLAIN] PLAIN banned_no_data — §7.3 Banned: "Unfortunately, no data…" (machine failure register) — matched: "Unfortunately, no data"
+     · [BROKEN:PLAIN] PLAIN banned_couldnt_find — §7.3 Banned: "I couldn't find…" (machine failure register) — matched: "I couldn't find"
+     · [BROKEN:PLAIN] PLAIN banned_system_unable — §7.3 Banned: "The system was unable…" (machine failure register) — matched: "the system was unable"
+     · [BROKEN:PLAIN] PLAIN banned_mystification — §7.3 Banned: "It is not for us to know…" (mystification) — matched: "It is not for us to know"
+     · [BROKEN:PLAIN] PLAIN oracular_second_person — §7.1 rule 3: "Declarative about the chart, never oracular about the person. \"The chart shows a period that…\" not \"You will…\"." — matched: "You will c"
+     · [BROKEN:PLAIN] PLAIN bare_percentage_leads_sentence — §7.4: "A bare percentage never leads a sentence (P6)." — matched: ". 68%"
+     · [BROKEN:PLAIN] PLAIN hedging_theater — §7.1 rule 5: "No hedging theater." — 3 hedges in one sentence (Perhaps, it may be, possibly): "Perhaps it may be that possibly the transit could matter."
+   then fed: clean counterpart (clean:PLAIN)
+   observed: PASS  ← green counterpart clean, as required
+
+── RED PROOF · CITE (cite_integrity) ─────────────────────────
+   fed:      deliberately broken corpus (BROKEN:CITE)
+   observed: FAIL  ← detector fired, as required
+     · [BROKEN:CITE] CITE unresolved sentinel residue at offset 37: "⟦cite: PLN.SUN⟧ and the period lord rules it [[cite: HSE.10]"
+     · [BROKEN:CITE] CITE unresolved sentinel residue at offset 82: "[[cite: HSE.10]]. A third strand ⟦7⟧ supports the same readi"
+     · [BROKEN:CITE] CITE malformed_sentinel flag: {"type":"flag","flag":"malformed_sentinel","reason":"eof_unclosed","raw":"⟦cite: PLN.SU"}
+     · [BROKEN:CITE] CITE illegal citation grade "fabricated_grade" on define n=1
+     · [BROKEN:CITE] CITE chip ⟦7⟧ rendered in block b1 with no citation.define
+   then fed: clean counterpart (clean:CITE)
+   observed: PASS  ← green counterpart clean, as required
+
+[edge] running the repo's own automated red-then-green gate selftest (npm run pariprashna:selftest) …
+[edge] selftest exit=0
+
+red-proof receipt written: /Users/Dev/.claude/jobs/26857c64/tmp/dd1_out/dd1_red_proof_receipt.json
+
+SUMMARY
+  PROVEN     m4_ttft (check M4) red_fired=true green_clean=true
+  PROVEN     m5_id_leak (check M5) red_fired=true green_clean=true
+  PROVEN     m6_wire_late_define (check M6-wire) red_fired=true green_clean=true
+  PROVEN     reg_voice_lint (check REG) red_fired=true green_clean=true
+  PROVEN     plain_register (check PLAIN) red_fired=true green_clean=true
+  PROVEN     cite_integrity (check CITE) red_fired=true green_clean=true
+  PROVEN     edge_fixture_suite (check EDGE) red_fired=true green_clean=true

@@ -1,0 +1,66 @@
+{
+  "reproduce_cmd": "mcp__marsys-jis-direct__phala_mitigation_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa'}) vs same with domain: 'career'",
+  "reproduced_live": true,
+  "reproduced_at": "2026-08-16 (Stage-D DIAGNOSE, PARISESA S5 F-08)",
+  "without_domain": {
+    "type": "object",
+    "object": {
+      "ok": true,
+      "trace_id": "d82379ea-92be-4271-b2a0-df197c556931",
+      "epistemics": {"surgical": true, "confidence_band": "high", "horizon_days": null, "falsifier": null},
+      "result": {
+        "tool_bundle_id": "2496b256-aef3-4e47-8842-2537fbc0c7db",
+        "tool_name": "query_remedy_program",
+        "tool_version": "1.0",
+        "invocation_params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa"},
+        "results": [{"content": "{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"remedies\":[{\"mitigation_id\":\"9877c64a-1f0b-4141-8c14-6cf65a1f60da\",\"…[truncated for budget]"}],
+        "served_from_cache": false,
+        "latency_ms": 44,
+        "result_hash": "sha256:abbd452f1d8000a64259ea989f13fc56bd7e2feee92f139414f64890650a4d02",
+        "schema_version": "1.0"
+      },
+      "citations": [],
+      "plan": null,
+      "predictions_logged": [],
+      "synthesis_audit": null,
+      "suggested_followups": [],
+      "warnings": [],
+      "budget_kb_applied": 40,
+      "trim_report": [{"path": "(trim_report)", "original_count": 1, "kept_count": 1, "reason": "full trim_report omitted to fit budget", "recover_via": {"instrument": "response_format:legacy", "hint": "full untrimmed response"}}],
+      "drill_pointers": []
+    }
+  },
+  "with_domain_career": {
+    "type": "object",
+    "object": {
+      "ok": true,
+      "trace_id": "d97294ad-2072-452f-98ff-ecfa9419c78c",
+      "epistemics": {"surgical": true, "confidence_band": "high", "horizon_days": null, "falsifier": null},
+      "result": {
+        "tool_bundle_id": "3e6e551f-f124-4b78-b20c-fc514fdd344e",
+        "tool_name": "query_remedy_program",
+        "tool_version": "1.0",
+        "invocation_params": {"chart_id": "482012f1-710e-4a25-994a-93821f5871aa", "domain": "career"},
+        "results": [{"content": "{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"remedies\":[{\"mitigation_id\":\"9877c64a-1f0b-4141-8c14-6cf65a1f60da\",\"…[truncated for budget]"}],
+        "served_from_cache": false,
+        "latency_ms": 15,
+        "result_hash": "sha256:abbd452f1d8000a64259ea989f13fc56bd7e2feee92f139414f64890650a4d02",
+        "schema_version": "1.0"
+      },
+      "citations": [],
+      "plan": null,
+      "predictions_logged": [],
+      "synthesis_audit": null,
+      "suggested_followups": [],
+      "warnings": [],
+      "budget_kb_applied": 40,
+      "trim_report": [{"path": "(trim_report)", "original_count": 1, "kept_count": 1, "reason": "full trim_report omitted to fit budget", "recover_via": {"instrument": "response_format:legacy", "hint": "full untrimmed response"}}],
+      "drill_pointers": []
+    }
+  },
+  "hash_comparison": {
+    "without_domain_hash": "sha256:abbd452f1d8000a64259ea989f13fc56bd7e2feee92f139414f64890650a4d02",
+    "with_domain_hash": "sha256:abbd452f1d8000a64259ea989f13fc56bd7e2feee92f139414f64890650a4d02",
+    "identical": true
+  }
+}

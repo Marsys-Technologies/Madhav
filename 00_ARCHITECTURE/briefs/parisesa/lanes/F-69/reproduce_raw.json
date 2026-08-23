@@ -1,0 +1,57 @@
+{
+  "_capture_note": "Live capture 2026-08-16, mimamsa_insight_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa, top_k=50). Full envelope truncated here to the top-level fields and the salient insight_units rows (retrodiction + verdict_object) that ground F-69's claim; the tool's own trim_report shows the server-side page was 25 of 50 total insight_units.",
+  "envelope_version": "v1",
+  "tool": "mimamsa_insight_get",
+  "content": {
+    "calibration_status": "prior_only",
+    "mode": "STRUCTURAL",
+    "note": "L5 Mīmāṃsā is SEALED in STRUCTURAL mode. Empirical calibration accrues as outcome data is recorded.",
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "insight_units_sample": [
+      {
+        "insight_id": "disc_retro_021e49f5-9c6a-5e0e-ad6c-84c8ea2ad83f-corr-20",
+        "insight_type": "retrodiction",
+        "rank_consequence": 0.95,
+        "confidence_band": null,
+        "n_support": 3,
+        "evidence_grade": "prior_only",
+        "provenance_chain": {"status": "candidate", "discovery_id": "retro_021e49f5-9c6a-5e0e-ad6c-84c8ea2ad83f-corr-2022-07-14"}
+      },
+      {
+        "insight_id": "verdict_career_setback",
+        "insight_type": "verdict_object",
+        "domain": "career",
+        "statement": "Career Setback: promised (grade 8.8/10). Strong evidence, corroborated across traditions.",
+        "rank_consequence": 0.88,
+        "confidence_band": "[0.68,0.98)",
+        "n_support": 5,
+        "evidence_grade": "structural",
+        "provenance_chain": {"grade": 8.8, "domain": "career", "activation_state": "promised"}
+      },
+      {
+        "insight_id": "verdict_career_entry",
+        "insight_type": "verdict_object",
+        "domain": "career",
+        "statement": "Career Entry: promised (grade 7.9/10). Strong evidence, corroborated across traditions.",
+        "rank_consequence": 0.786,
+        "confidence_band": "[0.59,0.89)",
+        "n_support": 5,
+        "evidence_grade": "structural",
+        "provenance_chain": {"grade": 7.86, "domain": "career", "activation_state": "promised"}
+      },
+      {
+        "insight_id": "verdict_career_change",
+        "insight_type": "verdict_object",
+        "domain": "career",
+        "statement": "Career Change: promised (grade 7.7/10). Strong evidence, corroborated across traditions.",
+        "rank_consequence": 0.774,
+        "confidence_band": "[0.57,0.87)",
+        "n_support": 5,
+        "evidence_grade": "structural",
+        "provenance_chain": {"grade": 7.74, "domain": "career", "activation_state": "promised"}
+      }
+    ],
+    "calibration_summary": {"total_matches": 57, "confirmed": "2", "partial": "23", "refuted": "7", "unresolved": "25", "mean_composite_score": 0.495}
+  },
+  "trim_report": [{"path": "insight_units", "original_count": 50, "kept_count": 25, "reason": "insight_units: trimmed to 25"}]
+}

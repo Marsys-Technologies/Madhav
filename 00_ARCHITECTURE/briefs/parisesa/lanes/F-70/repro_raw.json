@@ -1,0 +1,33 @@
+{
+  "reproduced_at": "2026-08-16",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "note": "Raw JSON captured live via mcp__marsys-jis-direct__* during F-70 Stage-D diagnosis. Contradiction CONFIRMED STILL PRESENT.",
+  "kala_now_get": {
+    "calibration_maturity": {"n_events": 0, "prospective_resolutions": 0, "event_class_coverage": 0, "weights_version": null, "skill_score": null},
+    "field_snapshot_id": "kfs_e23ba1abdf1c6fd3a1cc5c08c7538aeb",
+    "as_of_date": "2026-08-16"
+  },
+  "kala_priority_get": {
+    "calibration_maturity": {"n_events": 0, "prospective_resolutions": 0, "event_class_coverage": 0, "weights_version": null, "skill_score": null},
+    "field_snapshot_id": "kfs_e23ba1abdf1c6fd3a1cc5c08c7538aeb",
+    "signal_count": 20
+  },
+  "mimamsa_insight_get_calibrated_outlook": {
+    "calibration_summary": {
+      "total_matches": 57,
+      "confirmed": "2",
+      "partial": "23",
+      "refuted": "7",
+      "unresolved": "25",
+      "mean_composite_score": 0.495
+    },
+    "insight_units_n_support": [7, 12, 18, 3, 13, 4],
+    "n_support_sum_check": "7+12+18+3+13+4 = 57 = total_matches (confirmed exact match)",
+    "total_returned": 6,
+    "calibration_status": "prior_only",
+    "mode": "STRUCTURAL"
+  },
+  "tool_description_quotes": {
+    "kala_priority_get": "VIEW 5 — PRIORITIZE (\"of everything, what matters most right now?\"). ... 3-state coverage (honestly flags that the W2 five-axis salience vector ... is not yet built ... and calibration_maturity (always the honest zero stub at W0 — no calibration plane exists yet). ... [ṢAḌ-DARŚANA W0.4]"
+  }
+}

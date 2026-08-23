@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T14:51:00Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "finding_id": "F-50",
+  "pr": 1347,
+  "candidate_head": "9b3beb6dc52cac615eb725e1faa23a72b035466e",
+  "base_before_merge": "45f0ddf56793a23bf5881701ee6c184f6868f20a",
+  "merge_commit": "877b75d12ae1ebd900ea9b3da93194f5a3cb2ffe",
+  "merged_at": "2026-08-19T14:49:27Z",
+  "merge_method": "normal protected merge queue",
+  "merge_group_evidence": {
+    "status": "not_observed_for_F50",
+    "audit": "the immediately observed synthetic SHA ab83d4fc has parent 877b75d12 and message for F42 PR #1348; it is not F50 evidence",
+    "control_disposition": "do not credit F50 with a fresh synthetic merge-group receipt; retain this as an evidence gap and require post-merge workflow/deployment/service proof before closure"
+  },
+  "post_merge_operations": {
+    "ci_run": 32266322541,
+    "ci_status_at_record": "in_progress",
+    "web_deployment": "pending post-merge CI success"
+  },
+  "next_action": "observe post-merge main CI and affected web deployment; only then run a read-only serving canary for the remedy-lead narration"
+}

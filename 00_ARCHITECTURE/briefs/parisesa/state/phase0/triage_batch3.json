@@ -1,0 +1,93 @@
+[
+  {
+    "finding_id": "F-104",
+    "classification": "LANDED",
+    "evidence": "Corpus row: CL-09 earned-signal violation, mi_darshana leakage_status fabricated 'clean'. Commit 44d5ff5a7 ('ekv(b-04): mi honesty pair -- 6x clean->not_assessed + isempty guard', #1299) is a genuine ancestor of origin/main (git merge-base --is-ancestor confirmed). Diffed origin/main:platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py directly -- all 6 former 'clean' string-literal INSERT positions now read 'not_assessed'. Matches corpus's own code_status claim exactly.",
+    "next_action": "None -- verified fixed on main. Retain evidence.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-110",
+    "classification": "OPEN",
+    "evidence": "Corpus/ledger original claim: kala_ahead_get returns tier_1_high marriage-timing projection while kala_upaya_get returns pact_status='denied_at_promise' on the same 5 shared fact_ids -- no reconciliation; kala_ahead_get's own coverage block names the gap: 'promise_gated_forecasting: not_in_corpus'. Found commit 84c6d5586 ('ekv(a-08): F-110/49/51 -- One-Voice Spine: interpretPactJoin + INV-1 tests', #1305), confirmed ancestor of origin/main, which adds platform-mcp/src/lib/promise_spine.ts (interpretPactJoin/SaraPromiseJoin). BUT grep across platform-mcp/src/tools shows interpretPactJoin/promise_spine is never imported/consumed anywhere -- it's a standalone, unwired module. Confirmed on origin/main that ahead.ts:1858 still discloses 'promise_gated_forecasting' as not_in_corpus, and a dedicated test (kala_ahead_get.test.ts) now asserts this stays not_in_corpus. The underlying cross-tool contradiction is therefore still live; only a preparatory join-contract module landed, unconsumed.",
+    "next_action": "Wire promise_spine.ts's interpretPactJoin into kala_ahead_get (or gate its tier_1_high verdicts) so the PACT denial actually suppresses/qualifies the AHEAD forecast; add a regression test asserting no contradictory tier_1_high + denied_at_promise pair can be served together.",
+    "confidence": "MEDIUM-HIGH"
+  },
+  {
+    "finding_id": "F-115",
+    "classification": "LANDED",
+    "evidence": "Original claim (corpus_ledger.json): bodha_remedies_get names Venus as #1 remedy target; assess_career's remedies family names Ketu (actual rank 2) as #1 -- two consumption paths of the same bo_upaya data diverge. Found and read in full, directly on origin/main, the 'TRACK A / SAMAPANA section-1 root-cause fix' comment block in registry_bridge.ts (line ~1017): every registry capability handler (incl. query_remedies) returns a doubly-wrapped {content,is_error} shape; readRemediesFamily (and sibling family readers) previously read rows/narration/prescriptions one level too shallow, always finding undefined -> honest-but-false empty/mismatch. unwrapCapabilityContent() now fixes this; readRemediesFamily's current body (also verified on origin/main) derives both 'lead' and 'prescriptions[0]' from the correctly-unwrapped content -- the same object bodha_remedies_get itself serves -- so both consumption paths now read identical underlying data by construction.",
+    "next_action": "None required for the mechanism; retain as fixed. A live direct-MCP A/B call (bodha_remedies_get vs assess_career) would give terminal-grade confirmation but the source-level fix is unambiguous.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-125",
+    "classification": "OPEN",
+    "evidence": "Corpus/ingested SPEC+REVIEW (F-125.spec_writer.json/reviewer.json/ratifier.json, all verdict COMPLETE at spec stage) diagnose: fetchOrientationContext is declared without 'export' in registry_bridge.ts:2061, making it structurally unreachable from kala_upaya_get (upaya.ts) and the bodha_* regAlias family (register_p1_aliases.ts) -- B.11 orientation gate missing on those tools. Checked origin/main directly: fetchOrientationContext at registry_bridge.ts:2061 is still not exported; grep for 'orientation' in kala_views/upaya.ts returns zero hits; register_p1_aliases.ts has no requiresOrientation flag or fetchOrientationContext import; the exit test file b11_gate_f125.test.ts does not exist anywhere in the repo. The spec was fully designed and ratified but never built/merged.",
+    "next_action": "Execute the already-ratified SPEC (F-125.spec_writer.json sections 2a/2b/2c): export fetchOrientationContext, wire it into kala_upaya_get and the 4 named bodha_* regAlias tools, add the b11_gate_f125.test.ts exit test.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-136",
+    "classification": "DECISION_PARKED",
+    "evidence": "Original claim (corpus_ledger.json): gochara_activation_get and gochara_forecast_get return zero genuine day/month-resolution rows for this chart's near-term window (all rows era-scale, is_timing_window=false) -- but the claim itself states this is 'honestly disclosed each time via context_only_note (compliant with the PK-R-1 native ruling -- not a fabrication defect)'. Confirmed PK-R-1 is a real adjudicator ruling (00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md references 'MR-28's five adjudications issued (PK-R-1/2/3 + two...'). Confirmed on origin/main that the earned-signal is_timing_window mechanism (migration 567, R8.9/R8.10) is live in register_gochara_windows.ts with context_only_note disclosure. Also parked explicitly by S6 (be1ea2f22, not on main, scheduling-only note) as lowest-priority CL-23/TIER4. Corpus's own row shows code_status 'unknown' / never diagnosed live this campaign, consistent with it being an accepted honest-thinness state rather than an undiagnosed code bug.",
+    "next_action": "No code fix indicated by the finding's own text -- this is honestly-served genuine data thinness for this specific chart/window, already ruled acceptable (PK-R-1). If disputed, re-open only with a live gochara_activation_get/gochara_forecast_get call showing a fabricated (not honestly-disclosed) timing claim.",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-140",
+    "classification": "CORPUS_GAP",
+    "evidence": "Re-confirmed this session's prior finding still holds. closure-matrix.json's own row: defect_control_classification.kind='UNCLASSIFIED', class=null -- never described anywhere including at origin. Checked the tracker log (23c3d0ba7) which independently reached the identical conclusion: 'zero hits anywhere under shad_overnight/par-night for F-140 beyond the bare id.' Noted two commits that superficially mention 'F-140' in their titles (a2ce6dc37 'wire kala_field_skill into calibration_maturity', 967f08da33ce cited in the corpus row itself) but neither can be tied to an actual original claim/description for this finding_id -- consistent with the same coincidental-numbering mis-citation pattern (IF-002) already diagnosed for other findings, not new evidence resolving the gap.",
+    "next_action": "Flag as corpus data gap for the morning report; cannot self-resolve without F-140's original finding description, which does not exist in the ingested corpus.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-20",
+    "classification": "LANDED",
+    "evidence": "Corpus's own cited commit (cfb6444c8) is the known IF-001 mis-citation, so searched fresh. Found commit 33289b579 / d04f550a7 ('ekv(b-02): F-109 -- Rahu/Ketu cast 5th/7th/9th parashari aspects (not 7th only)', #1297), confirmed ancestor of origin/main. Diff touches services/gochara_grammar/primitives.py, ga_writers/ga_yoga_writer.py, ga_writers/ga_vargas_writer.py, and adds a new canonical brahmagyan/aspects.py (NODE_PARASHARI_ASPECTS) -- exactly matches F-20's classification text 'Nodal (Rahu/Ketu) special-aspect truncation to the universal 7th', with golden tests for the 5th-aspect case. Note: the commit's own title says 'F-109' (a different finding_id in this campaign's internal numbering) but its content is squarely F-20's defect class; this looks like the same commit legitimately closes both, or F-109/F-20 name the same underlying bug from two audit passes.",
+    "next_action": "None required -- verified fixed on main with dedicated golden tests. Optionally reconcile whether F-109 and F-20 are true duplicates in the corpus.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-34",
+    "classification": "LANDED",
+    "evidence": "Corpus's cited commit (cfb6444c8) is the known IF-001 mis-citation, so searched fresh. Found commit 40d008125, explicitly titled 'F-34: gochara_forecast_get/election_avoidance_get partial-horizon truncation disclosure', landed via squash-merge 7bf1bec1b ('batch-3 (night): ... + F-34 horizon-disclose (#1315)'), confirmed ancestor of origin/main. Confirmed directly on origin/main: register_gochara_windows.ts now computes partialTruncation and emits partial_truncation/truncation_note fields (2 call sites), and register_gochara_windows_cl13.test.ts (CL-13 = F-34's own classification class) exists and targets exactly this behavior. Also corroborated by ingested F-34.builder/reviser/verifier_v.json (all status OK), showing this finding went through the full build pipeline.",
+    "next_action": "None required -- verified fixed on main.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-60",
+    "classification": "OPEN",
+    "evidence": "Corpus's cited commit (cfb6444c8) is the known IF-001 mis-citation. Also found a second, distinct mis-citation: commit cd7653855 ('fix(a-12): INV-2 determinism -- stable ORDER BY + sort tiebreaker (F-92/F-60)', #1306, confirmed ancestor of origin/main) claims F-60 in its title but its actual diff only touches query_temporal_activation.ts (kala_activation LIMIT tiebreaker) and register_d9_judgment.ts (judgment_query sort tiebreaker) -- neither is ganita_strength_get/shadbala. Checked the real target directly on origin/main: platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts line 111 still has a silent `Math.min((args.limit as number) ?? 500, 2000)` cap, and line 214 still reports `total: servedRows.length` (a false post-filter page-length total, not the true row count) -- exactly the remaining defect the corpus row itself describes ('silent 2000 cap and false post-filter page-length total remain'). This is a genuinely fresh, independently-confirmed OPEN defect, not resting on any mis-cited commit.",
+    "next_action": "Fix get_strength.ts: surface the true un-capped/pre-filter row count as `total` (or a distinct `total_available` field) instead of `servedRows.length`, and disclose the 2000-row cap explicitly when hit rather than silently truncating.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-75",
+    "classification": "DECISION_PARKED",
+    "evidence": "kind=CONTROL, CL-00 (verified-PASS / positive control, no defect asserted) -- F-75: Kala field decade-seam contiguity. Confirmed on origin/main: platform/scripts/governance/ekv_controls.py contains a real, functional F-75 detector (line ~159-177, 'F-75: Kala field decade-seam contiguity (zero gaps, native chart)', executes a live SQL contiguity check and returns PASS/FAIL/CONTROL-BROKEN). Corpus's own disposition is 'data-handoff-required' -- the detector code is present and correct; only an approved read-only DB execution remains to produce the terminal PASS receipt. Not a code defect.",
+    "next_action": "Run ekv_controls.py --control F-75 against an approved read-only DB connection to record the terminal PASS/FAIL receipt.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-80",
+    "classification": "DECISION_PARKED",
+    "evidence": "kind=CONTROL, CL-00 -- F-80: no legacy_id/identity_map columns (R17 identity adoption). Confirmed on origin/main: platform/src/lib/retrieval/registry/chart_agnostic_gate.test.ts exists (corpus claims 31/31 passing), and ekv_controls.py has a real F-80 detector (line ~293-306, checks for legacy identity columns via SQL, PASS/FAIL/CONTROL-BROKEN, fail-honest SKIP without --db-url). Code-side is fully present and correct; blocked only on the same approved read-only DB execution as F-75/F-85. Not a code defect.",
+    "next_action": "Run ekv_controls.py --control F-80 against an approved read-only DB connection to record the terminal PASS/FAIL receipt.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-85",
+    "classification": "DECISION_PARKED",
+    "evidence": "kind=CONTROL, CL-00 -- F-85: chart_facts.verification_pass_status enum vocabulary. Confirmed on origin/main: migration 539_chart_facts_verification_pass_status_check.sql and platform/python-sidecar/tests/test_verification_pass_status_vocab.py both exist (corpus claims 32/32 focused tests passing), and ekv_controls.py has a real F-85 detector (line ~244-256, checks live DISTINCT verification_pass_status values against the named-constant vocabulary). Code-side fully present and correct; blocked only on approved read-only DB execution for the terminal distinct-value receipt. Not a code defect.",
+    "next_action": "Run ekv_controls.py --control F-85 against an approved read-only DB connection to record the terminal PASS/FAIL receipt.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-94",
+    "classification": "DECISION_PARKED",
+    "evidence": "kind=DEFECT, CL-22 governance/registry drift, but corpus's own current_evidence_class is 'CURRENT_GOVERNANCE_RESIDUAL_BASELINE_REPRODUCED' -- a read-only current-main drift_detector.py run reproduced 216 findings, all MEDIUM/LOW, exit code 3, matching a prior recovered-evidence count. Confirmed directly on origin/main that ONGOING_HYGIENE_POLICIES_v1_0.md Section F ('CI / cron cadence') documents exactly this discipline: exit code 3 is the normal baseline when drift_detector.py reports pre-existing whitelisted MEDIUM/LOW drift, and is governed by a known_residuals whitelist mechanism (Phase 14G Lockdown Whitelisted Residuals) rather than being an ad hoc bug. This is a documented, structurally-accepted governance residual state requiring a separately-governed registry reconciliation plan (per corpus's own control_status), not an undiagnosed code defect this triage lane should attempt to fix directly.",
+    "next_action": "Author and independently review a bounded governance registry reconciliation plan per corpus's own next_executable_action, before any registry/canonical-artifact mutation.",
+    "confidence": "HIGH"
+  }
+]
