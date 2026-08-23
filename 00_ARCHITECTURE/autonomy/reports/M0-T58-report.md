@@ -371,3 +371,57 @@ not check the git log before characterising it. The mailbox copy was real eviden
 wrote *to the mailbox* and no evidence at all about what it did *besides*. That is the same shape
 as the defect this campaign keeps finding — reading a proxy and reporting it as the claim — and I
 did it inside a report about evidence discipline. Recorded rather than quietly amended.
+
+### 9.3 — SECOND CORRECTION: §9.1 named the wrong commit and the wrong sibling
+
+Appended 2026-08-23T15:35Z. This is the last entry; I am committing the report file **alone**
+this time, without `WORK_QUEUE.jsonl`, precisely to stop the pattern §9.1 describes from
+recurring one more time.
+
+§9.1 said my second commit (`842e1484c`) carried KĀRAKA-M0-T56's ledger line. **It did not.**
+Measured per commit, insertions/deletions on `state/WORK_QUEUE.jsonl`:
+
+```
+ce21e90e5  1  0   (mine only)
+842e1484c  1  0   (mine only — T56 committed its own line in 080d4cce7 in between)
+794f7719b  2  0   (mine + one I did not author)
+```
+
+The foreign line is in my **third** commit, and it is not T56's: it is a **dispatch** line for
+`M0-T60` appended by SŪTRADHĀRA. T56 self-committed both its report and its ledger line at
+`080d4cce7`, which is the same fact §9.2 corrects and which I had still not fully absorbed when I
+wrote §9.1 — I saw `2 insertions` in a working-tree diff, correctly inferred "a sibling appended",
+and then guessed *which* sibling from what was in front of me instead of reading the commit.
+
+**Zero deletions across all three of my commits.** Nothing of any sibling's was altered or lost —
+in every case a line was carried forward intact, which is the benign half of the shape and the
+only half that occurred.
+
+The substantive point of §9.1 survives intact and is if anything better evidenced: a shared
+append-only ledger committed by whole file will carry sibling appends, three times over in one
+afternoon (M0-T53, M0-T55, and mine). What does not survive is my attribution. **That is twice in
+one report that I characterised a sibling's behaviour from local evidence without reading the git
+log — §9.2 and now §9.1.** Once is an error; twice in the same hour, in a report about evidence
+durability, is a habit worth naming. The check costs one `git show --numstat` and I did not run it
+until after I had written the claim down both times.
+
+### 10 — Closing state, measured
+
+```
+$ git ls-files 00_ARCHITECTURE/autonomy/reports/ | wc -l
+8      (T53, T54, T55, T55-addendum, T56, T57, T58, T59)
+$ git ls-files 00_ARCHITECTURE/autonomy/mailbox/ | wc -l
+0      (unchanged — mail stays mail, D-63 §3)
+$ git status --porcelain .gitignore
+       (empty — not edited, and did not need to be)
+```
+
+Of those 8, **I swept 6** (T53, T54, T55, T55-addendum, T56 — redundantly, see §9.2 — and my own).
+T56 and T59 placed their own reports there under the same convention, without a prompt edit.
+
+The mailbox is intact: all sources still present, nothing moved, nothing deleted, the `*.claimed`
+lifecycle undisturbed.
+
+Still true, and the thing to carry away: **51 reports, including M0-T48's 378-line record of
+applying migration 591 to production, were already gone before this task started, and no sweep can
+bring them back.**
