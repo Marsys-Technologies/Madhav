@@ -508,12 +508,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "G-EXTRA-CONSUMERS",
-      "what": "M0-T24: both ruled instances have consumers the rulings do not name. has_substeps also at classifyStuckCandidate.ts:71-73, where the TypeScript reaper promotes a stuck asset to lit — same defect, different language, and D-24's repair does not reach it. has_writer also at runs/route.ts:139 and recalibrationEnqueue.ts:140 — build-plan membership, not merely the efficiency pass",
-      "owner": "ADHIKARIN",
-      "state": "raised"
-    },
-    {
       "id": "G-INTEGRITY-GATE-OFF",
       "what": "integrity_check_sql NULL on 128/128 AND rebuild_on_probe_fail false on 128/128 — the integrity gate is switched off at two independent columns, neither with a detector. Tier B (no code-derived truth exists), so not the D-25 shape, but it is the condition M3's integrity-gate engine will be built to read",
       "owner": "ADHIKARIN",
@@ -604,12 +598,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T34",
-      "what": "deriveState service_ok — D-26 GRANTED as Track M",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "M0-T35",
       "what": "seed divergence report + target_floor — D-27/D-28 GRANTED",
       "owner": "KARAKA",
@@ -620,10 +608,34 @@
       "what": "All three major escalations ruled. D-26: the deriveState green is H4 IN ITS PUREST FORM — not a green with no detector, but a green OVERRIDING a detector that already ran and returned the opposite answer, which ADHIKARIN rates worse than every prior instance because in the others nobody had looked. D-27: D-19 refined into THREE classes, the missed one being DECLARED-BUT-VERIFIABLE (count_sql, depends_on) — which is why the register was right to refuse to pick a surface, since the error would have been picking. D-28: the deliberate-NULL category named and folded into D-27's report rather than special-cased; the restore drill made a STANDING requirement for this repair class, converting I2 from a ritual into a detector",
       "owner": "closed",
       "state": "ruled"
+    },
+    {
+      "id": "M0-T34",
+      "what": "DONE 344254c64 — operator-surface H4 closed",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "P3-WRITERRESULT-CHANNEL",
+      "what": "THE REAL BUILD-GATE ROOT CAUSE, and it is worse than the serving one. ka_graha_sancara.py:82 computes status = 'success' if health == 'healthy' else 'error' — AND NEVER USES IT, because WriterResult has nowhere to carry it. The writer ran its own probe, got unhealthy, wrote that verdict to the registry, computed the correct status from it — and the orchestrator lit the asset 32 MILLISECONDS LATER, because nothing in the contract could carry the answer from the writer to the promotion. Same shape as has_substeps one layer further in: a detector that runs, is right, and has no channel to the thing that decides. Carrying a status out of a writer is a change to the FROZEN writer contract = P3, RESERVED. NOT queued, not fixed",
+      "owner": "ADHIKARIN",
+      "state": "asked_P3"
+    },
+    {
+      "id": "CORRECTION-HEALTH-PROBE",
+      "what": "MY OWN CLAIM WAS WRONG and I have corrected it upward. I told ADHIKARIN three assets read 'healthy' with health_probe NULL and that no probe could have produced the word. health_probe is a probe SPECIFICATION, not a verdict — the verdict lives in service_health + last_selftest_at + selftest_detail, and all three 'healthy' values are EARNED. D-26 and I both read a specification column as evidence of a verdict: the same error the campaign keeps cataloguing, made by the two agents cataloguing it",
+      "owner": "SUTRADHARA",
+      "state": "corrected"
+    },
+    {
+      "id": "F-EPHEMERIS-66DAY",
+      "what": "bg_ephemeris_engine has sat in error since 2026-06-18 with a REAL DIAGNOSIS recorded — a damaged Swiss Ephemeris file — that nobody acted on. That is the 66-day red the plan names as R0's very first P0, and M0-T34 notes it is plausibly THE SAME ROOT CAUSE as ka_graha_sancara's failure. If that holds, R0's first repair and R3's service probe share a cause, and knowing it before R0 opens is worth more than it cost. R0 territory, untouched",
+      "owner": "ADHIKARIN",
+      "state": "raised"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T07:40:21Z",
+  "last_updated_ts": "2026-08-23T07:52:19Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
