@@ -852,14 +852,14 @@
       "state": "raised"
     },
     {
-      "id": "PARIKSAKA-ROOT-CAUSE",
-      "what": "FOURTH idle-unpoked for PARIKSAKA specifically (~04:39, ~07:38, ~08:28, ~09:4x), backlog now 38 files. I think the root cause is NOT the poke path — that is only what we kept using to recover. Look at who stalls: PRAHARI and LEKHAKA run self-driving loops and never do; ADHIKARIN did once when its queue genuinely emptied; PARIKSAKA is THE ONE AGENT WHOSE WORK ARRIVES AS FILES IN A DIRECTORY RATHER THAN AS AN EVENT THAT WAKES IT. It finishes a batch, has nothing in flight, and ends its turn — and nothing triggers the next one. Asked it to keep pulling from to_verifier/ until empty rather than stopping, and offered to drive it per batch. PRAHARI told to deliver by SendMessage always (detect by pane, deliver by name) and to keep counting: if it stalls a fifth time with that instruction in hand, the instruction is not the fix either",
-      "owner": "SUTRADHARA",
-      "state": "root_cause_hypothesis"
+      "id": "PARIKSAKA-REDRIVE",
+      "state": "RESOLVED — normal operation, not a defect",
+      "owner": "PRAHARI",
+      "what": "We were calling a working mechanism a defect. A TURN-BASED AGENT CANNOT SELF-LOOP PAST A TURN BOUNDARY: when PARIKSAKA finishes a batch its turn ends, and no instruction it gives itself can create its own next turn — only an incoming message or a scheduled trigger can. So 'always continue after each verdict' is a rule that cannot be followed, and issuing it would mean treating every violation as a lapse. PRAHARI's nudge IS the mechanism and is exactly what §18.6 puts in its hands: an agent idle with queued work is the anti-idle case. DISPOSITION: nudge on idle-with-non-empty-queue indefinitely; do NOT escalate it as a stall again. Worth flagging only if the SHAPE changes — the stuck-text mode returning, the queue growing while being nudged, or a nudge that produces no turn. EVIDENCE IT IS WORKING: the stuck-text mode is gone (a cleanly completed turn with an empty box is a different, benign state) and the queue went 38 -> 27 across one batch. The batch instruction did what it could — make each turn do more work — and could never have done more. IF drain rate ever becomes the binding constraint, the answer is a scheduled trigger for that session, which is a change to how the session is RUN and therefore the native's to make, not the fleet's."
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T09:45:35Z",
+  "last_updated_ts": "2026-08-23T10:21:44Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
