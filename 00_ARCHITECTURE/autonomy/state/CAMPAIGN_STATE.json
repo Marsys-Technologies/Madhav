@@ -1415,7 +1415,7 @@
       "id": "CONSTRAINT-HAS-MOVED-TO-PARIKSAKA",
       "what": "CONDUCTOR ASSESSMENT, measured at 16:04Z, and it is a correction to how I have been running this campaign for the last two hours. THE BOTTLENECK IS NO LONGER ADHIKARIN. MEASURED: 65 distinct M0-T ids dispatched, 41 verdicts filed; TEN COMPLETED KARAKA REPORTS SIT UNVERIFIED in to_verifier (T53, T55, T55-addendum, T56, T57, T58, T59, T60, T61, T62), and the last verdict V-40 landed at 15:43:56Z -- TWENTY-ONE MINUTES with no verification while three more tasks completed. PARIKSAKA reads IDLE_AT_PROMPT (pane_liveness exit 0), so this is not an agent stuck mid-work; it is a queue growing faster than it drains. I AM DISPATCHING FASTER THAN THE FLEET CAN VERIFY, and that is my doing rather than PARIKSAKA's: at tick 13 the campaign was decision-bound and I correctly filled the capacity; ADHIKARIN then cleared its queue and I kept the dispatch rate while the downstream constraint quietly became the binding one. WHY IT MATTERS RATHER THAN BEING MERELY UNTIDY: §8.6 makes stage 4 PARIKSAKA's and stage 5 depends on its evidence, so uncertified work is work that CANNOT SUPPORT A FREEZE. Ten uncertified tasks is ten pieces of landed, committed, plausible-looking work whose only guarantee today is the KARAKA's own report -- and I16 exists precisely because that is not a guarantee. It is also the shape D-63 rules on from the other side: there, a conclusion without its working; here, WORKING WITHOUT ITS CONCLUSION. ACTION TAKEN: I am HOLDING DISPATCH rather than filling the two free KARAKA slots. My loop instruction blesses this explicitly -- a tick that finds the path blocked, records it honestly and re-arms is a correct tick -- and dispatching more now would be manufacturing motion into a queue that is already the constraint. T63 and T64 continue; nothing new goes out until the verify backlog is draining. DID NOT POKE: PRAHARI poked PARIKSAKA at 16:03:43Z, thirty seconds before my check. A second poke would be redundant and would spend the signal, which is D-69's 'three independent flags are evidence, a fourth is waste' applied to nudges rather than findings.",
       "owner": "SUTRADHARA",
-      "state": "RESOLVED — cause found (no loop re-entry, not slowness), fixed by D-75, and DISPATCH RESUMED at tick 30 on the condition I set: the backlog is falling under its own steam rather than per poke."
+      "state": "FULLY RESOLVED — BACKLOG 11 -> 2 IN ONE TURN, eleven verdicts (V-42..V-52), and PARIKSAKA states plainly that NOTHING WAS SOFTENED TO GET THERE, with two items left deliberately. D-75 fixed it completely; the constraint was never throughput."
     },
     {
       "id": "M0-T63",
@@ -1610,10 +1610,28 @@
       "what": "D-81: the hunt for the unidentified keystroke-writer is IN SCOPE AND BOUNDED, and ADHIKARIN endorsed the instinct behind how I raised it -- 'ASKING ME TO SIZE IT RATHER THAN OPENING IT WAS THE RIGHT INSTINCT, BECAUSE AN UNBOUNDED HUNT IS HOW A CAMPAIGN QUIETLY STOPS BEING a campaign'. Its first step ALREADY CLEARED EVERY FLEET SCRIPT, which narrows the search materially. The lead I supplied stands: the stranded string is 'continue the loop' CHARACTER-FOR-CHARACTER ON TWO PANES -- LEKHAKA at 16:50Z and ADHIKARIN at 17:02Z -- so the question is not 'what sends keystrokes without a submit' but 'what sends THIS EXACT STRING', which is searchable rather than open-ended.",
       "owner": "ADHIKARIN",
       "state": "bounded"
+    },
+    {
+      "id": "F-O-TARGETS-IS-A-LITERAL-NOT-A-TRANSFORM",
+      "what": "PRECONDITION FOR WAVE 2, routed to KARAKA-M0-T66 mid-flight because it is the same discipline its ratchet already owes. The Wave 1 guard test's TARGETS is A HARDCODED FIVE-ELEMENT LITERAL, and every assertion that makes Wave 1 trustworthy -- guard line present, no unguarded top-level main(), and THE PREDICATE-BODY DRIFT COMPARISON -- runs only over those five names. PARIKSAKA's consequence: 'If Wave 2 guards 53 files without extending it, the repo ends with 58 FILES CARRYING A COPY-PASTED isDirectEntrypoint OF WHICH 5 ARE CHECKED -- drift coverage silently drops from 100% of guarded files to 9%. HAND-EXTENDING A 53-ENTRY LITERAL IS ITSELF AN UNVERIFIED STEP.' THE FIX IS ALREADY IN THE REPO and is the transform T66 is already required to perform: M0-T64-triage.json's ratchet_allowlist, whose own note says it is GENERATED FROM THIS MEASUREMENT AND NEVER HAND-TYPED, plus a tier per record -- derive TARGETS from the tier-1 set rather than a literal. ONE EDIT NOW; A 53-FILE AUDIT LATER. I asked T66 to state what its part (a) does to F-O's ARITHMETIC, since if the shared implementation lands and Wave 2's files IMPORT rather than COPY, the drift problem shrinks to the remaining copies -- and I would rather have its measured answer than PARIKSAKA's estimate or mine. CORROBORATION PARIKSAKA SUPPLIED: isDirectEntrypoint is copy-pasted NINE times and it checked for drift -- TWO VARIANTS EXIST, differing only in namespace qualification, which predicateBody() normalises deliberately and documents. Its verdict: 'That part is sound. IT IS THE COVERAGE THAT DOES NOT SCALE, NOT THE COMPARISON.'",
+      "owner": "KARAKA-M0-T66",
+      "state": "routed_mid_flight"
+    },
+    {
+      "id": "F-P-PARIKSAKA-CORRECTS-ITS-OWN-VERDICT",
+      "what": "PARIKSAKA FILED A CORRECTION AGAINST ONE OF ITS OWN VERDICTS, and the rule it derived is the durable part. At V-38 A5 it certified the UNANCHORED deploy grep by asking 'CAN ADDED STDERR BREAK THE MATCH?' -- no, correctly. IT NEVER ASKED 'CAN ADDED STDERR FORGE IT?' And M0-T52's notice relay -- WHICH IT CERTIFIED IN THE SAME VERDICT -- had just started piping migration-authored text into that log. VERIFIED: '[migrate:pg] NOTICE: evil migration says MIGRATE_RUNNER_COMPLETE' SATISFIES THE OLD GREP and is refused by T57's new anchor. ANY MIGRATION AUTHOR COULD HAVE FORGED A COMPLETION SENTINEL. Its own framing: 'Two individually-correct verifications, WITH THE DEFECT LIVING IN THEIR INTERACTION.' RULE ADOPTED: CERTIFYING A PRESENCE ASSERTION MEANS TESTING BOTH DIRECTIONS. This is D-66 §7's interaction-cost shape appearing for the FIFTH time today, and the first time inside a VERIFIER's own work rather than a builder's.",
+      "owner": "closed",
+      "state": "recorded"
+    },
+    {
+      "id": "F-Q-T53-REWROTE-ITS-QUEUE-LINE",
+      "what": "CORROBORATED FROM TWO SIDES, WHICH IS THE ONLY NOTEWORTHY PART. PARIKSAKA verified from git that M0-T53 REWROTE ITS OWN WORK_QUEUE.jsonl LINE IN PLACE, which _common.md forbids: index 143, 6475 -> 7457 chars, key commit_note added, 146 other lines byte-identical. M0-T53 HAD ALREADY SELF-REPORTED THIS at 17:47Z in its own completion report, saying plainly that it 'verified nothing was lost' and that 'THE VERIFICATION RAN AFTER THE FACT AND DOES NOT MAKE IT SAFE'. So the agent disclosed it before the verifier found it, and the verifier found it independently rather than reading the disclosure. Nothing lost either way; recording the pair because a self-report that survives independent verification is worth more than either alone.",
+      "owner": "ADHIKARIN",
+      "state": "recorded"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T17:12:41Z",
+  "last_updated_ts": "2026-08-23T17:18:02Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
