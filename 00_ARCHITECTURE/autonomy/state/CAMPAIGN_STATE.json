@@ -43,6 +43,12 @@
             "source": "KARAKA M0-T18 claim C12",
             "finding": "The plan's unearned-lit LABELS ARE SWAPPED. ga_prashna, named as THE specimen, actually carries a by-design volume_explanation. bg_sarvatobhadra_grid — parenthesised as 'by design' — has NO explanation, NO writer, and is CURRENT. mi_vistara is an unnamed third, and five more assets read lit with no count_sql at all. The specimen and the exoneration are the wrong way round."
           }
+        ],
+        "g1_0_8c_routed": [
+          {
+            "source": "D-38 0.8c adjudication",
+            "note": "per-packet dispositions from M0-T6's 23 zero-consumer packets — NO_CONSUMER_FOUND and SHADOWED readings for L0 assets route here; full packet detail in ZERO_CONSUMER_EVIDENCE_v1_0.md, cross-reference by asset_id at R0 intake"
+          }
         ]
       }
     },
@@ -150,6 +156,12 @@
             "asset": "ka_kshetra",
             "finding": "kala_ritual_resonance.ts:19 serves the literal string 'field empty — ka_kshetra has written no rows' while kala_field holds 8,599,775 rows on chart 482012f1 — the native's own chart. A hardcoded claim contradicted by production on a SERVED surface: §N.8's founding defect in the serving layer. NOT TOUCHED (I13, R3 not open). ADHIKARIN asked whether serving-layer code about one asset waits for that asset's rung or is Track M."
           }
+        ],
+        "g1_0_8c_routed": [
+          {
+            "source": "D-38 0.8c adjudication + D-37",
+            "note": "NO_CONSUMER_FOUND/SHADOWED for L3 assets route here; ALSO carries D-37's new finding: ka_gochara_sweep reads has_writer=true while its @register is genuinely removed — a 4th D-25-class registry-vs-code divergence, on the one asset the plan calls RETIRED"
+          }
         ]
       }
     },
@@ -163,7 +175,15 @@
       "layer": "L5",
       "domain": "chart+shared",
       "assets": 15,
-      "status": "not_open"
+      "status": "not_open",
+      "stage2_carry_forward": {
+        "g1_0_8c_routed": [
+          {
+            "source": "D-38 0.8c adjudication",
+            "note": "NO_CONSUMER_FOUND/SHADOWED for L5 assets route here"
+          }
+        ]
+      }
     }
   },
   "m_track": {
@@ -329,7 +349,9 @@
           ],
           "disclosures_recorded_without_effect": "all 16"
         },
-        "note": "Before this, D-30 part 4's condition was satisfiable ON PAPER and not in effect — the disclosure block was asset_id-keyed and read in exactly one rule's handler while severity was a hardcoded constant. The switch could have been flipped on a precondition never really met. It is now computed from the disclosures and reported as a fact."
+        "note": "Before this, D-30 part 4's condition was satisfiable ON PAPER and not in effect — the disclosure block was asset_id-keyed and read in exactly one rule's handler while severity was a hardcoded constant. The switch could have been flipped on a precondition never really met. It is now computed from the disclosures and reported as a fact.",
+        "amended_D39": "Every criterion at zero or deferred AND the disclosure mechanism demonstrably in effect (a disclosed rule still REPORTS while no longer GATING; an undisclosed rule still BLOCKS, proven by a two-direction fixture).",
+        "amended_D40_withdrawal": "D-39's added clause 'CI must gate against live state' is WITHDRAWN — it cannot be done, CI has no DB credential. ADHIKARIN self-corrected: ordered a fix without checking the runner could reach a database. Replaced with: CI need not gate live — it must DETECT AND REFUSE A STALE BASELINE, rule results still printed in full, only the exit changes. Adopts M0-T40's principle verbatim: 'an unmeasurable age is not a young age', and the refusal to overclaim: 'a stale snapshot still cannot detect a later defect — nothing can'. THE PRECONDITION IS HONEST, NOT SATISFIED."
       },
       "critical_path": {
         "as_of": "2026-08-23T09:15:44Z",
@@ -341,7 +363,28 @@
         },
         "detail": "Every remaining REPAIRABLE-IN-M0 item is blocked on a G1 disposition — criterion 4 (Phase 0.8b, 47 DRAFT assets), criterion 9 (Phase 0.8c, 23 zero-consumer packets) and their two rules. The deferral register's own words: 'the repair is named, the machinery is built, and the rulings have not been made.' CONDUCTOR NOTE: I let this become true without logging it, and PRAHARI detected it as silence rather than reading it in the ledger. That is the same failure I keep cataloguing in others — a state that is real and not written down. Logged at detection rather than at onset, which is late.",
         "response": "Pulling from the Standing Queue per I17 rather than idling: SQ-04 dispatched as M0-T43; SQ-06 handed to LEKHAKA, whose domain it is under §18.2."
-      }
+      },
+      "g1_dispositions": {
+        "0.8b_DRAFT_but_served": {
+          "ruling": "D-38",
+          "disposition": "REMAIN DRAFT — a decision, not a deferral",
+          "reasoning": "servedness != readiness; integrity_check_sql is NULL on 128/128, so no detector exists that could establish readiness for any of the 38. Promoting would write status from a proxy — H4/§N.8. Deliverable sentence: 'we are serving 38 assets the catalogue does not vouch for.' Bulk promotion also fails ADHIKARIN's OWN named-field test, refinement (b), fired against its own temptation: §8.4 names R2/R3/R4 promotions explicitly, so the evidence that could justify promotion is made at the rungs, not M0."
+        },
+        "0.8c_zero_consumer": {
+          "ruling": "D-38",
+          "disposition": "RESOLVED PER PACKET BY DETERMINATION, not by mutation",
+          "by_reading": {
+            "INPUT_ONLY": "closed, no action",
+            "NO_CONSUMER_FOUND": "retirement candidate, routed to owning rung",
+            "METHOD_BLIND": "NO action and explicitly NOT a retirement candidate — carried loudly as UNKNOWN, never rounded to NO_CONSUMER_FOUND (that would be H6, the mirror of promoting on servedness)",
+            "SHADOWED": "a real defect, routed to owning rung",
+            "BY_DESIGN_EMPTY_OR_MISMATCH": "closed, mismatch recorded"
+          },
+          "note": "M0's criterion 'unresolved findings = zero' is satisfied by ADJUDICATION against evidence, not by a status mutation. No DELETE (I6); retirement when a rung takes it is status + data_disposition."
+        }
+      },
+      "baseline_regeneration_ruling": "D-39: regeneration ALONE is refused — a baseline regenerated from current state cannot certify anything about current state, since by construction everything matches and both guards go green TAUTOLOGICALLY. The choice between fossil-red and tautological-green is a choice between two non-detectors. RULING: regenerate ONLY as part of moving CI to --live, and ONLY with a seeded-defect fixture proving each guard still returns red independently afterward. Both agents who declined to regenerate were right, on instinct they could not fully articulate — worth more than either declination alone.",
+      "x03_crit8_crit5": "D-39: CONFIRMED M0's — not P5. M0-T36 re-derived the named-field rule from the plan text rather than accept D-30's assertion, reproduced all 5 prior rulings, and found it reaches these 3 entries D-30 had routed elsewhere. Subject to D-4's standing conditions."
     },
     "M1": {
       "status": "not_open"
@@ -708,12 +751,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "G1-DISPOSITIONS-WAITING",
-      "what": "47 DRAFT assets with complete evidence packets and ZERO promotions; 23 zero-consumer packets with ZERO dispositions. The evidence has been complete since M0-T6/T7 hours ago. These are G1 decisions and I have not queued them because deciding them is not mine",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
       "id": "M0-T38",
       "what": "DONE — mechanism proven at byte level; no stray mutations anywhere",
       "owner": "PARIKSAKA",
@@ -730,12 +767,6 @@
       "what": "DONE 8203722cf — 93 rows, T-5 only",
       "owner": "PARIKSAKA",
       "state": "awaiting_verification"
-    },
-    {
-      "id": "D12-PART3-CONFLATION",
-      "what": "D-12 part 3 declines re-dispatch for the orphaned throughput rows because 'ka_gochara_sweep's @register is genuinely removed' — but KA_GOCHARA_SWEEP IS NOT ONE OF THE THREE ORPHANS. They are ka_kota_chakra, ka_vedha_gochara and mi_sankalpa, and the KARAKA verified in source that ALL THREE CARRY A LIVE @register. So part 3's premise is true of a different asset, part 3 resolves into part 4 which rules only on the ka_gochara_sweep rows, and NO RULING REACHES THE THREE ORPHANS AT ALL. That left the KARAKA with no legal move — died-state is H6 (the runs COMPLETED; the promotion died), lit is H4, stale needs a G3 nobody made — so it halted and dispatched no build. The correct outcome of an incorrect premise, and the invariant held even though the ruling had drifted. Practical consequence: re-dispatch may be AVAILABLE after all, since for these three the writer is present. RELAYED, not re-derived by me",
-      "owner": "ADHIKARIN",
-      "state": "asked"
     },
     {
       "id": "M0-T40",
@@ -780,12 +811,6 @@
       "state": "raised"
     },
     {
-      "id": "F-BASELINE-REGEN",
-      "what": "The shared baseline needs an operator regeneration, and TWO agents have now deliberately declined to do it. M0-T40 gave three reasons: it would erase the new staleness signal on day one, move a figure four in-flight documents cite, and snapshot a registry a sibling is actively writing to. M0-T42 adds a FOURTH the first could not have had: that file is now load-bearing for TWO guards, so ONE regeneration commit flips both from refusing to certifying at once",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
       "id": "CURRENT-STATE-REFRESHED",
       "what": "LEKHAKA took SQ-06 (e3608be6b): CURRENT_STATE 6.65 -> 6.66 written for the native cold, and SESSION_LOG given a dated STATUS entry rather than a fabricated session_open/session_close pair — it disclosed that this campaign does not run the single-session handshake that schema assumes rather than papering over it. Both files POINT BACK at the live sources rather than becoming a second thing that goes stale, which was the easy mistake to make. Verified by me: 7 'not closed' mentions, 0 overstatements, PARK-6 cited, no claim any rung has opened",
       "owner": "LEKHAKA",
@@ -816,24 +841,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "F-PROGRAM-CANNOT-REPORT-NON-EXECUTION",
-      "what": "M0-T44's boundary, refused rather than overclaimed: the grep detects 'the step ran but main() did not' — the RES-1 hazard — but NOT 'the job never ran at all' (skipped by a path filter or an if:, cancelled, step removed, or a needs: satisfied by a SKIPPED job). Its reason, worth keeping verbatim: A PROGRAM CANNOT REPORT ITS OWN NON-EXECUTION. Closing that needs a CONSUMER-SIDE assertion — a downstream job or the app at boot counting _migrations_applied against the deployed image's migrations and failing on pending > 0. Not started, not queued; it is the half that would actually catch a deploy that silently skipped migrations",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
-      "id": "CI-EDIT-SCOPE",
-      "what": "M0-T44 edited .github/workflows/deploy.yml. Flagged to ADHIKARIN rather than reversed: it STRENGTHENS (H3 forbids weakening), and it IS the fix rather than a side effect — a sentinel nothing greps for is a signal with no detector. But it is still a CI behaviour change, and the campaign has been careful to leave the catalogue guards' blocking switch to ADHIKARIN. That constraint was about THOSE guards and I did not extend it to this dispatch; if CI edits should route through ADHIKARIN as a class, I will add it to every prompt",
-      "owner": "ADHIKARIN",
-      "state": "flagged"
-    },
-    {
-      "id": "PATTERN-PROBE-BLINDSPOTS",
-      "what": "THIRD instance today of an author finding a blind spot in their OWN probe: M0-T42's schema-behind route left untested because every case reached the verdict by the age route; M0-T44's mutation C surviving 6/6 because the throw happens outside the try its tests could reach; and M0-T30's honest negatives about its own coverage. Starting to look less like three accidents and more like a property worth naming: THE MUTATIONS YOU THINK TO WRITE ARE THE ONES YOUR TESTS WERE ALREADY SHAPED TO CATCH",
-      "owner": "ADHIKARIN",
-      "state": "raised"
-    },
-    {
       "id": "M0-T43",
       "what": "DONE 59de1c355 — 35 tests, placed where they actually RUN",
       "owner": "PARIKSAKA",
@@ -846,20 +853,19 @@
       "state": "asked"
     },
     {
-      "id": "F-T43-2-SELFTESTS-DONT-RUN",
-      "what": "nirmana-m0-guards.yml is the ONLY CI caller of either guard's --self-test, and it is BOTH continue-on-error AND scoped to main — so on the campaign branch those self-tests do not run at all. M0-T43 called --self-test from vitest as a workaround for the symptom and left the trigger question open",
-      "owner": "ADHIKARIN",
-      "state": "raised"
-    },
-    {
       "id": "PARIKSAKA-REDRIVE",
       "state": "RESOLVED — normal operation, not a defect",
       "owner": "PRAHARI",
       "what": "We were calling a working mechanism a defect. A TURN-BASED AGENT CANNOT SELF-LOOP PAST A TURN BOUNDARY: when PARIKSAKA finishes a batch its turn ends, and no instruction it gives itself can create its own next turn — only an incoming message or a scheduled trigger can. So 'always continue after each verdict' is a rule that cannot be followed, and issuing it would mean treating every violation as a lapse. PRAHARI's nudge IS the mechanism and is exactly what §18.6 puts in its hands: an agent idle with queued work is the anti-idle case. DISPOSITION: nudge on idle-with-non-empty-queue indefinitely; do NOT escalate it as a stall again. Worth flagging only if the SHAPE changes — the stuck-text mode returning, the queue growing while being nudged, or a nudge that produces no turn. EVIDENCE IT IS WORKING: the stuck-text mode is gone (a cleanly completed turn with an empty box is a different, benign state) and the queue went 38 -> 27 across one batch. The batch instruction did what it could — make each turn do more work — and could never have done more. IF drain rate ever becomes the binding constraint, the answer is a scheduled trigger for that session, which is a change to how the session is RUN and therefore the native's to make, not the fleet's."
+    },
+    {
+      "id": "D37-D41-ABSORBED",
+      "state": "applied",
+      "what": "D-37 (D-12 part 3's escalation carried two different sets of three orphans, ADHIKARIN merged rather than measured them — 3rd time, same shape as D-22/D-29 — RULED: re-dispatch mechanically available, still NOT legal, I13/I14, leave dormant untouched; NEW finding: ka_gochara_sweep itself has has_writer=true with @register genuinely removed, a 4th D-25-class divergence, routed to R3; F-T36-5 resolved, V-9 STANDS — §8.6 stage 2 is the GENERIC method, refinement (b) fires only on a clause naming a SPECIFIC asset/field, else it would swallow half of refinement (a) and nothing would ever be M0's). D-38 (the two G1 blocks decided, see m_track.M0.g1_dispositions). D-39/D-40 (flip condition amended twice, live-gating withdrawn as impossible, baseline regen refused alone). D-41 (deploy.yml edit AUTHORIZED — it WAS the SQ-08 task; CI edits now class by DIRECTION not through ADHIKARIN — strengthens=proceed+report, weakens=ruling required, can't-tell=treat as weakening; the probe-blindspot pattern BECOMES DOCTRINE with 4 standing requirements; SQ-10 added for the consumer-side non-execution assertion, folding in fresh_chart_smoke.yml:219)."
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T10:21:44Z",
+  "last_updated_ts": "2026-08-23T10:42:04Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
@@ -877,6 +883,8 @@
   },
   "standing_instructions": {
     "mutation_restore": "REVISED after M0-T38 proved the earlier version insufficient. THE DEFECT IS THE SHAPE OF THE CHECK: 'sha256 == my-own-baseline' is a PROXY ('the file equals my copy') standing in for the CLAIM ('no mutation is present') — with a poisoned baseline it is structurally incapable of returning false. Our own §N.8 class, on the mechanism we use to trust our checks. R1 exclusivity — prefer a per-agent worktree when mutating; removes the class rather than detecting it. R2 PROVE THE BASELINE BEFORE MUTATING: its sha256 must equal the file's HEAD blob or a hash your own previous command printed; if neither, STOP — you have copied a sibling's in-flight state. IF ONLY ONE IS ADOPTED, ADOPT R2. R3 restore verification includes a MARKER SWEEP, not only baseline equality. R4 hash-bracket PRE/POST in one shell invocation for anything you will quote. R5 marker sweep immediately before committing. R6 delete the byte-copy. R7 (from M0-T43's near-miss against its own procedure): USE ABSOLUTE PATHS IN THE RESTORE. Its cp ran on a RELATIVE path after a cd earlier in the same compound command, SILENTLY FAILED, and left the file mutated until it read the output. Its conclusion is the sharp part and generalises to every mutation proof in this campaign: THE RESTORE IS THE ONE STEP WHOSE FAILURE THE MUTATION TEST CANNOT DETECT — the test is designed to fail while the mutation is present, so a failed restore looks exactly like a working test.",
-    "dispatch_isolation": "REVERSED, and the reversal is mine to own. I switched to worktree-isolated dispatch to remove the poisoned-baseline class, and INTRODUCED A WORSE ONE: the worktree branches from MAIN, not the campaign branch. M0-T41 found 00_ARCHITECTURE/autonomy/ entirely absent and its target file at the PRE-M0-T35 blob — hours stale. Had it not checked, it would have committed a change that looks correct in isolation, PASSES ITS TESTS, and SILENTLY REVERTS a sibling's landed work on merge. Note the shape: the same defect class the change was made to remove — a baseline that is not what you believe it is — RELOCATED from 'a sibling's in-flight edit' to 'the wrong branch'. I moved the hazard rather than eliminating it, and the relocated form is worse because the shared-tree version was caught by re-checking while this one passes every check an agent would think to run. NEW DISPATCHES GO SHARED-TREE with strict R2 until the base-ref question is settled. R2 GAINS A SECOND CLAUSE, from M0-T41: prove your HEAD is the CAMPAIGN TIP, not merely that your file matches your HEAD — a file can match its HEAD perfectly and still be four hours stale."
+    "dispatch_isolation": "REVERSED, and the reversal is mine to own. I switched to worktree-isolated dispatch to remove the poisoned-baseline class, and INTRODUCED A WORSE ONE: the worktree branches from MAIN, not the campaign branch. M0-T41 found 00_ARCHITECTURE/autonomy/ entirely absent and its target file at the PRE-M0-T35 blob — hours stale. Had it not checked, it would have committed a change that looks correct in isolation, PASSES ITS TESTS, and SILENTLY REVERTS a sibling's landed work on merge. Note the shape: the same defect class the change was made to remove — a baseline that is not what you believe it is — RELOCATED from 'a sibling's in-flight edit' to 'the wrong branch'. I moved the hazard rather than eliminating it, and the relocated form is worse because the shared-tree version was caught by re-checking while this one passes every check an agent would think to run. NEW DISPATCHES GO SHARED-TREE with strict R2 until the base-ref question is settled. R2 GAINS A SECOND CLAUSE, from M0-T41: prove your HEAD is the CAMPAIGN TIP, not merely that your file matches your HEAD — a file can match its HEAD perfectly and still be four hours stale.",
+    "mutation_proof_doctrine": "D-41, adopted verbatim as doctrine after the sentinel-on-failure finding (mutation C passed 6/6 because the throw happened outside the try its tests could reach): behavioural mutation testing is NECESSARY AND STRUCTURALLY INSUFFICIENT — it reaches only paths its author imagined, because the mutations and the tests are authored by the same mind and inherit the same assumptions about where the code can go. STANDING REQUIREMENT for every mutation proof from here: (1) pair behavioural testing with a STRUCTURAL assertion over the source (e.g. exactly one emission point, with paired positives so an empty result is not vacuous); (2) include at least one INVERSE-DIRECTION mutation — one that makes the signal fire when it should NOT, not only one that suppresses it; (3) state explicitly what the structural test does NOT establish. A proof whose limits are stated is worth more than a proof whose limits are assumed.",
+    "ci_edit_classification": "D-41: CI edits do NOT route through ADHIKARIN as a class — that would make it a bottleneck against a hazard that only runs one way. Classify by DIRECTION: could this change cause a build/deploy that previously FAILED to now PASS? STRENGTHENS (adds an assertion, removes continue-on-error, makes something fail that previously passed) = machinery, proceed and report, no ruling needed. WEAKENS (makes something pass that previously failed, disables or skips a check, adds continue-on-error, allowlists a failure, relaxes a threshold) = requires ADHIKARIN's ruling, presumptively H3. CANNOT TELL WHICH DIRECTION = treat as weakening. The catalogue-guards' blocking-switch constraint stays specific to that switch (flipping to blocking while criteria are non-zero creates H3 pressure) rather than generalising to every CI edit."
   }
 }
