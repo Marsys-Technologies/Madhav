@@ -72,6 +72,12 @@ The rules run over a *snapshot* — a plain JSON document with this shape:
       "throughput": [ {asset_id, throughput_rows, states, ...} ] | null,
       "writer_substep_truth": {asset_id: bool} | null,   # DECLARED, not authoritative
       "zero_consumer_packets": {...} | null,
+      "build_run_assets": [ {asset_id, state: "complete"} ] | null,   # X-06's key:
+                                     # DISTINCT asset_id with ≥1 COMPLETE run, only
+      "build_run_asset_ids_all": [ asset_id, ... ] | null,   # X-07's key: the FULL
+                                     # DISTINCT asset_id population from
+                                     # build_run_assets, every state — deliberately a
+                                     # separate, wider key from the one above
       "frozen_rungs": [...]
     }
 
@@ -139,6 +145,7 @@ RESIDUALS_PATH = HERE / "asset_catalogue_disclosed_residuals.json"
 COWRITERS_PATH = HERE / "asset_catalogue_declared_cowriters.json"
 BASELINE_SNAPSHOT = HERE / "asset_catalogue_baseline_20260823.json"
 UNEARNED_LIT_FLOOR_PATH = HERE / "unearned_lit_floor.json"
+LINEAGE_MANIFEST_PATH = HERE / "asset_id_lineage_manifest.json"
 DECISIONS_PATH = REPO_ROOT / "00_ARCHITECTURE" / "autonomy" / "state" / "DECISIONS.jsonl"
 MIGRATIONS_DIR = REPO_ROOT / "platform" / "migrations"
 
@@ -1407,6 +1414,105 @@ def x06(s: Snapshot) -> Result:
     })
 
 
+def x07(s: Snapshot) -> Result:
+    """D-111 (ADHIKĀRIN) — LINEAGE MANIFEST COMPLETENESS, closing PARIKṢAKA V-70 /
+    F-V70-2.
+
+    D-103 authorised `asset_id_lineage_manifest.json` (M0-T75) to record the
+    DETERMINED disposition of every `asset_id` that lives in `build_run_assets` but
+    not `asset_registry`, and — in ADHIKĀRIN's own words at D-111 — "ordered an
+    artifact and ordered nothing to read it." x06() anchors on `asset_registry` by
+    design (D-103 part 6) and structurally cannot see an orphan id; no other rule
+    compared the two id sets. A fifth orphan — a rename, a retirement, or an operator
+    naming a table instead of a registered asset_id, each of which has ALREADY
+    happened once (migration 563, migration 342, the `chart_dashas` incident) — would
+    therefore appear with nothing to notice it. The only reason the first four were
+    ever found was a verifier chasing an arithmetic mismatch by hand (PARIKṢAKA V-70's
+    own closing observation) — luck with good habits attached, not a detector.
+
+    THE INVARIANT IS COMPLETENESS, NOT MONOTONICITY (D-111 part 2 — read this before
+    touching the rule below). Every OTHER assertion this campaign shipped today
+    (the entrypoint allowlist, the X-06 unearned-lit floor) is an allowlist: amnesty
+    for a defect, and amnesty may only shrink. `asset_id_lineage_manifest.json` is NOT
+    an allowlist — it is a RECORD, and a record's job is to grow when a new fact
+    exists to record. A rename next month SHOULD add a fifth entry. Building this rule
+    as a shrink-only/frozen-population ratchet (the X-06 shape) would therefore be
+    EXACTLY BACKWARDS — it would block the very future renames this manifest exists to
+    document. So this is a SET EQUALITY assertion (D-84 set-not-count, third use
+    today), never a subset/floor comparison:
+
+        {ids in build_run_assets absent from asset_registry} == {manifest's ids}
+
+    naming any difference in EITHER direction:
+      - `orphan_missing_from_manifest`     — a live orphan the manifest does not
+        record (a new rename/retirement/operator-error happened and nobody logged its
+        disposition yet — D-111's primary failure shape).
+      - `manifest_entry_not_a_live_orphan` — a manifest entry whose id is no longer
+        (or never was) a live orphan — the manifest DELETED an entry while the orphan
+        itself still sits in `build_run_assets` (D-111's second named failure shape;
+        a one-directional "every orphan is recorded" check would miss exactly this).
+
+    THE FAILURE MODE IS UNDETERMINED-AND-FATAL, NOT ADVISORY (D-111 part 3): a set
+    mismatch here is a state the campaign cannot interpret, and per CLAUDE.md §N.8 a
+    detector that cannot answer must not return the answer that looks green. This is
+    why the rule is BLOCKING and reports FAIL (not NOT_CHECKABLE) the moment both id
+    sets are known and disagree — including when the manifest is entirely ABSENT: a
+    missing manifest file is treated as an empty enumerated set, not as "cannot
+    evaluate," because "the manifest was never created" is precisely the pre-D-103
+    state this rule exists to make loud instead of silent. NOT_CHECKABLE is reserved
+    for genuine input absence (no `build_run_assets` evidence in the snapshot at all)
+    or a manifest file that exists but fails to parse (corruption, not omission) —
+    the guard cannot compute a verdict from data it does not have, but "no manifest
+    was ever written" is data (an empty record), not a hole. The rule blocks until a
+    human/KĀRAKA task adds or corrects a manifest entry with a DETERMINED disposition
+    — derived from a migration or live evidence, never guessed, exactly as D-103
+    required of the original four and as M0-T75 actually did.
+
+    ANCHOR: the orphan population is read from `build_run_asset_ids_all` — the FULL,
+    state-independent distinct `asset_id` list from `build_run_assets` (added to
+    `read_live()` for this rule) — never from `s.raw["build_run_assets"]` alone,
+    because that key is X-06's and is deliberately scoped to COMPLETE-state evidence
+    only (X-06 only needs to know a build *succeeded*). At least one of the four known
+    orphans (`ga_pyjhora_engine`: 10 rows, states {aborted, error}, ZERO complete) has
+    NO complete-state row at all and would be invisible to a rule that reused X-06's
+    narrower key — reusing it here would silently under-count the very population
+    this rule exists to reconcile.
+    """
+    all_ids = s.raw.get("build_run_asset_ids_all")
+    if all_ids is None:
+        return Result(NOT_CHECKABLE, [], (
+            "no build_run_asset_ids_all section in this snapshot — the full, "
+            "state-independent build_run_assets id population this rule reconciles "
+            "against the manifest cannot be computed"))
+    manifest = _load_json(LINEAGE_MANIFEST_PATH)
+    if manifest is None:
+        if LINEAGE_MANIFEST_PATH.exists():
+            return Result(NOT_CHECKABLE, [], (
+                f"lineage manifest exists but is not parseable JSON: "
+                f"{LINEAGE_MANIFEST_PATH.name} — corruption, not omission; the guard "
+                f"cannot compute a verdict from data it cannot read"))
+        manifest = {"entries": []}   # ABSENT is an empty RECORD, not a null verdict —
+        # see the doc-comment above: this is the exact pre-D-103 shape the rule exists
+        # to catch, and must FAIL loudly rather than go quiet for lack of a file.
+
+    manifest_ids = {e["asset_id"] for e in (manifest.get("entries") or [])}
+    live_orphans = {aid for aid in set(all_ids) if aid not in s.by_id}
+
+    undocumented = sorted(live_orphans - manifest_ids)
+    stale = sorted(manifest_ids - live_orphans)
+    v = [{"asset_id": aid, "class": "orphan_missing_from_manifest"}
+         for aid in undocumented]
+    v += [{"asset_id": aid, "class": "manifest_entry_not_a_live_orphan"}
+          for aid in stale]
+    return verdict(v, detail={
+        "live_orphan_ids": sorted(live_orphans),
+        "manifest_ids": sorted(manifest_ids),
+        "undocumented_orphans": undocumented,
+        "stale_manifest_entries": stale,
+        "class_counts": _counts(v) if v else {},
+    })
+
+
 def _counts(rows: list[dict]) -> dict:
     out: dict[str, int] = {}
     for r in rows:
@@ -1693,6 +1799,12 @@ EXTENSION_RULES: list[Rule] = [
          "beyond the committed floor",
          x06, origin="D-94 (ADHIKĀRIN, F-Y — exit by recategorization); floor-not-"
                      "HEAD^ pattern D-95"),
+    Rule("X-07", BLOCKING,
+         "build_run_assets orphan ids (absent from asset_registry) equal "
+         "asset_id_lineage_manifest.json's enumerated set exactly, naming any "
+         "difference in either direction",
+         x07, origin="D-111 (ADHIKĀRIN), closing PARIKṢAKA V-70 / F-V70-2 — D-103 "
+                     "built the manifest and appointed no reader"),
 ]
 
 ALL_RULES = CONTRACT_RULES + EXTENSION_RULES
@@ -1780,6 +1892,14 @@ def read_live() -> dict:
                        FROM build_run_assets WHERE state='complete'
                        ORDER BY asset_id""")
         snap["build_run_assets"] = [dict(r) for r in cur.fetchall()]
+        # X-07 (D-111): the FULL, state-independent distinct asset_id population from
+        # build_run_assets — deliberately a SEPARATE key from `build_run_assets`
+        # above, which X-06 scopes to complete-state evidence only. At least one of
+        # the four known orphans (ga_pyjhora_engine: 10 rows, states {aborted, error},
+        # zero complete) would be invisible under the complete-only key; X-07 needs
+        # the whole population to reconcile against the lineage manifest.
+        cur.execute("SELECT DISTINCT asset_id FROM build_run_assets ORDER BY asset_id")
+        snap["build_run_asset_ids_all"] = [r["asset_id"] for r in cur.fetchall()]
     # The census FILE is carried into the snapshot for provenance and for C-23's
     # stale-artifact report ONLY. Since M0-T25 it is NOT C-23's truth source: C-23
     # derives the writer-class truth from source at run time, so a census file that
@@ -1976,6 +2096,7 @@ def self_test(max_rows: int) -> int:
     failures += rule_disclosure_probe()
     failures += c28_population_probe()
     failures += x06_ratchet_probe()
+    failures += x07_manifest_completeness_probe()
     failures += snapshot_staleness_probe()
 
     if failures:
@@ -2790,6 +2911,143 @@ def x06_ratchet_probe() -> int:
         print("           X-06 exists specifically because bg_panchanga (a SERVICE) "
               "escaped a DATA_KINDS-scoped rule by recategorization — a DATA_KINDS "
               "reference here would reintroduce that exact gap")
+
+    return bad
+
+
+def x07_manifest_completeness_probe() -> int:
+    """D-111 — prove X-07 catches BOTH directions of a manifest/orphan-population
+    mismatch, and prove it would have caught the REAL historical gap PARIKṢAKA found
+    (V-70 / F-V70-2): a manifest that does not exist at all, with the four real
+    orphans already sitting in `build_run_assets`. Mirrors `x06_ratchet_probe`'s
+    discipline. D-77: no live mutation window on the real committed manifest — every
+    write this probe makes lands in an isolated temp directory; the module-global
+    `LINEAGE_MANIFEST_PATH` is repointed there for the probe's duration and restored
+    in `finally`. The real `asset_id_lineage_manifest.json` and the real database are
+    never opened for writing by this function, and its 4 real committed entries are
+    never touched.
+
+    Returns the number of probe failures (0 = every case behaved).
+    """
+    print("\n  X-07 lineage-manifest-completeness probe (D-111: set equality, both "
+          "directions, and the real pre-D-103 gap reproduced):")
+    bad = 0
+
+    def registry_asset(aid: str) -> dict:
+        return {"asset_id": aid, "layer": "ganita", "asset_kind": "data",
+                "asset_type": "data", "catalog_status": "CURRENT", "is_active": True,
+                "scope": "global", "depends_on": []}
+
+    global LINEAGE_MANIFEST_PATH
+    real_path = LINEAGE_MANIFEST_PATH
+    tmpdir = tempfile.TemporaryDirectory(prefix="x07_manifest_probe_")
+    LINEAGE_MANIFEST_PATH = pathlib.Path(tmpdir.name) / "asset_id_lineage_manifest.json"
+
+    def write_manifest(ids: list[str]) -> None:
+        LINEAGE_MANIFEST_PATH.write_text(json.dumps(
+            {"entries": [{"asset_id": a} for a in ids]}), encoding="utf-8")
+
+    def check(label: str, raw: dict, want_status: str,
+              want_undoc: list[str], want_stale: list[str]) -> None:
+        nonlocal bad
+        r = x07(Snapshot(raw)).as_dict()
+        got_undoc = sorted(v["asset_id"] for v in r["violations"]
+                           if v["class"] == "orphan_missing_from_manifest")
+        got_stale = sorted(v["asset_id"] for v in r["violations"]
+                           if v["class"] == "manifest_entry_not_a_live_orphan")
+        ok = (r["status"] == want_status and got_undoc == sorted(want_undoc)
+              and got_stale == sorted(want_stale))
+        print(f"      [{'OK  ' if ok else 'BAD '}] {label}: status={r['status']} "
+              f"undocumented={got_undoc} stale={got_stale}")
+        if not ok:
+            bad += 1
+            print(f"           expected status={want_status} "
+                  f"undocumented={sorted(want_undoc)} stale={sorted(want_stale)}")
+            if r["reason"]:
+                print(f"           reason: {r['reason']}")
+
+    try:
+        # ── 1 — THE REAL HISTORICAL MOMENT. No manifest file at all (the state ────
+        # before M0-T75/D-103 ever ran) and the four REAL orphan ids, exactly as
+        # PARIKṢAKA found them by hand. This is the case the task's hard constraint
+        # names explicitly: the assertion must report UNDETERMINED-AND-FATAL here,
+        # not a silent pass.
+        real_orphans = ["ga_pyjhora_engine", "ka_gochara_v2_materialize",
+                        "chart_dashas", "ga_chart_service"]
+        raw1 = {
+            "assets": [registry_asset("ga_dashas"), registry_asset("ka_gochara")],
+            "build_run_asset_ids_all": real_orphans + ["ga_dashas", "ka_gochara"],
+        }
+        assert not LINEAGE_MANIFEST_PATH.exists(), "probe must start with no manifest"
+        check("no manifest file at all (pre-D-103 state) + the 4 real orphans "
+              "PARIKṢAKA found by hand ⇒ UNDETERMINED-AND-FATAL, all 4 named",
+              raw1, FAIL, real_orphans, [])
+
+        # ── 2 — manifest present and complete for the 4 real orphans: matches. ────
+        # (the synthetic mirror of today's real, live-DB state — see the report for
+        # the actual --live confirmation, which this DB-free self-test cannot run.)
+        write_manifest(real_orphans)
+        check("manifest present, complete, and matches the live orphan population "
+              "exactly ⇒ clean", raw1, PASS, [], [])
+
+        # ── 3 — DIRECTION 1: a live orphan with NO manifest entry (a rename/ ──────
+        # retirement/operator-error happened and nobody logged it yet).
+        raw3 = dict(raw1)
+        raw3["build_run_asset_ids_all"] = real_orphans + [
+            "ga_dashas", "ka_gochara", "ph_new_undocumented_rename"]
+        check("a 5th orphan appears with NO manifest entry ⇒ FAIL, naming only the "
+              "new id (direction 1)", raw3, FAIL, ["ph_new_undocumented_rename"], [])
+
+        # ── 4 — DIRECTION 2: a manifest entry for an id that is NO LONGER a live ──
+        # orphan — the manifest was not updated when something changed (an entry
+        # deleted from the manifest while the orphan itself remains is the named
+        # D-111 shape; this fixture is its mirror image, an entry ADDED for an id
+        # that is not/no-longer live — both are the same SET mismatch direction).
+        write_manifest(real_orphans + ["mi_stale_manifest_only"])
+        check("manifest carries an entry for an id that is not a live orphan ⇒ FAIL, "
+              "naming only the stale entry (direction 2)", raw1, FAIL, [],
+              ["mi_stale_manifest_only"])
+
+        # ── 5 — restore the correct manifest; confirm clean, no state bled forward ─
+        write_manifest(real_orphans)
+        check("re-confirm clean after restoring the correct manifest", raw1, PASS, [],
+              [])
+    finally:
+        LINEAGE_MANIFEST_PATH = real_path
+        tmpdir.cleanup()
+        assert LINEAGE_MANIFEST_PATH == real_path, (
+            "probe must restore the real manifest path exactly (D-77)")
+
+    # ── 6 — NOT_CHECKABLE is a distinct outcome from PASS: no input, no verdict ───
+    r_missing = x07(Snapshot({"assets": []})).as_dict()
+    ok = r_missing["status"] == NOT_CHECKABLE
+    print(f"      [{'OK  ' if ok else 'BAD '}] no build_run_asset_ids_all key in the "
+          f"snapshot at all ⇒ NOT_CHECKABLE, never a silent pass: "
+          f"status={r_missing['status']}")
+    if not ok:
+        bad += 1
+        print(f"           expected status={NOT_CHECKABLE}")
+
+    # ── 7 — a manifest file that exists but is not parseable JSON ⇒ NOT_CHECKABLE, ─
+    # distinct from "absent" (case 1), which is instead treated as an empty record
+    # and must FAIL. Corruption is a genuine data hole; omission is not.
+    tmpdir2 = tempfile.TemporaryDirectory(prefix="x07_manifest_probe_corrupt_")
+    LINEAGE_MANIFEST_PATH = pathlib.Path(tmpdir2.name) / "asset_id_lineage_manifest.json"
+    try:
+        LINEAGE_MANIFEST_PATH.write_text("{not valid json", encoding="utf-8")
+        r_corrupt = x07(Snapshot(raw1)).as_dict()
+        ok = r_corrupt["status"] == NOT_CHECKABLE
+        print(f"      [{'OK  ' if ok else 'BAD '}] manifest file exists but is not "
+              f"parseable JSON ⇒ NOT_CHECKABLE (never conflated with 'absent'): "
+              f"status={r_corrupt['status']}")
+        if not ok:
+            bad += 1
+            print(f"           expected status={NOT_CHECKABLE}")
+    finally:
+        LINEAGE_MANIFEST_PATH = real_path
+        tmpdir2.cleanup()
+        assert LINEAGE_MANIFEST_PATH == real_path, (
+            "probe must restore the real manifest path exactly (D-77)")
 
     return bad
 
