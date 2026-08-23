@@ -1,5 +1,5 @@
 {
- "_README": "Hand-declared BEFORE the guard was run. Clean case: all six rules pass and, critically, decorators_production is 2 \u2014 proving the module-constant @register(ASSET_ID) form in w_const.py IS resolved. A parser that dropped it would report 1 here and the fixture would fail.",
+ "_README": "Hand-declared BEFORE the guard was run. Clean case: all six rules pass and, critically, decorators_production is 2 — proving the module-constant @register(ASSET_ID) form in w_const.py IS resolved. A parser that dropped it would report 1 here and the fixture would fail.",
  "counts": {
   "registry": 2,
   "decorators_production": 2,
@@ -14,5 +14,10 @@
   "P-04": "pass",
   "P-05": "pass",
   "P-06": "pass"
- }
+ },
+ "staleness": {
+  "stale": true,
+  "enforced": true
+ },
+ "_README_staleness": "M0-T42: the fixture registry carries no `_meta.read_at` and only a token `registry_columns`, so it is correctly measured STALE and ENFORCED. Declared here rather than exempted: if run() ever stops attaching the freshness measurement, this fixture fails instead of quietly losing the check."
 }

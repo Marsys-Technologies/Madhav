@@ -1,5 +1,5 @@
 {
- "_README": "Hand-declared BEFORE the guard was run. THIS CASE EXISTS TO MAKE EVERY RULE FAIL \u2014 one violation each, so a partial regression (five of six still firing) fails the self-test instead of passing quietly. w_ok.py and writers/tests/test_fixture_ids.py are controls that must NOT fire: a detector that reports everything as broken is as useless as one that reports nothing.",
+ "_README": "Hand-declared BEFORE the guard was run. THIS CASE EXISTS TO MAKE EVERY RULE FAIL — one violation each, so a partial regression (five of six still firing) fails the self-test instead of passing quietly. w_ok.py and writers/tests/test_fixture_ids.py are controls that must NOT fire: a detector that reports everything as broken is as useless as one that reports nothing.",
  "counts": {
   "registry": 4,
   "decorators_production": 4,
@@ -33,5 +33,10 @@
    "status": "fail",
    "violation_count": 1
   }
- }
+ },
+ "staleness": {
+  "stale": true,
+  "enforced": true
+ },
+ "_README_staleness": "M0-T42: the fixture registry carries no `_meta.read_at` and only a token `registry_columns`, so it is correctly measured STALE and ENFORCED. Declared here rather than exempted: if run() ever stops attaching the freshness measurement, this fixture fails instead of quietly losing the check."
 }
