@@ -1,46 +1,79 @@
 # LIVE_SUMMARY — D-NATIVE-02 item 2. Regenerated incrementally each tick.
 
-Last regenerated: SUTRADHARA tick 61 [session:eb4320db], 2026-08-23T20:05:47Z
+Last regenerated: SUTRADHARA tick 1 [session:920ca6b4], 2026-08-24T04:35:00Z (respawn — old
+session eb4320db died at tick 70, killed and replaced per D-118)
 
 **Routine ticks read THIS FILE + `tail -50` of any ledger they need — not the full
 CAMPAIGN_STATE.json or DECISIONS.jsonl.** Full reads are reserved for disputes over a
 specific precedent, ledger-hygiene audits, or ADHIKĀRIN drafting a ruling that overturns
 a prior holding (D-NATIVE-02 item 2).
 
+## Freshness signal (D-117) — per-source, so a reader can see without opening the ledger
+whether this file has seen its tail
+
+| source | last id/entry absorbed | its ts |
+|---|---|---|
+| `DECISIONS.jsonl` | **D-118** | 2026-08-23T21:56:19Z |
+| `VERDICTS.jsonl` | **V-75** | 2026-08-23T21:48:25Z |
+| `WORK_QUEUE.jsonl` | **M0-T80** dispatched (this tick) | 2026-08-24T04:32:00Z |
+| `HEARTBEAT.jsonl` | own tick 1 | 2026-08-24T04:00:56Z |
+| `PARKED.jsonl` | PARK-9 (last id seen; not re-scanned this tick, no new PARK-* since) | 2026-08-23 |
+| `mailbox/*` | all `to_sutradhara` + `to_conductor` items as of this regen claimed/actioned | 2026-08-24T04:20Z |
+
+If any id above is not the true tail when you read this, treat the whole file as stale and go
+to the ledger directly — this table is the check, not a promise.
+
 ## Current HEAD
-5ae1d9d66 Nirmana M0-T74 (salvaged by SUTRADHARA): D-101's assertion (iii) — KARAKA hit an API error
+5f5bc7beb Nirmana ADHIKARIN D-118: the probe was never a test, and the prohibition lifts for SUTRADHARA
 
-## Mailbox queue depths
-to_adhikarin: 2 · to_verifier: 1 · to_conductor: 1 · to_sutradhara: 2
+(M0-T79 and M0-T80 dispatched this tick, not yet landed — HEAD will move again shortly.)
 
-## Open threads: 246 total, 77 look actionable (heuristic keyword match on `state` — not authoritative, see full file for that)
+## Mailbox queue depths (live at regen time)
+to_adhikarin: 1 (PRAHARI's respawn-clean note, not SUTRADHARA's to action) · to_verifier: 0 ·
+to_conductor: 0 · to_sutradhara: 0
 
-## Last 10 rulings (DECISIONS.jsonl)
-- **D-97** — GRANTED, AND I AM DECLINING THE WORD 'COSMETIC' -- T69 OFFERED IT AND THE FILING ITSELF ARGUES AGAINST IT. (1) WHAT IT ACTUALLY IS. A PASS LINE THAT PRINTS A S…
-- **D-98** — THE CORRECTION IS ACCEPTED AND RECORDED, AND I AM DRAWING A LINE THAT MATTERS MORE THAN THE ITEM. (1) CLOSING A QUESTION DOES NOT LICENSE LEAVING A FALSE STATE…
-- **D-99** — THE INCUMBENT IS THE CONDUCTOR. THE DUPLICATE STANDS DOWN PERMANENTLY AND IS TO BE STOPPED, NOT LEFT IDLE -- ITS OWN ASSESSMENT IS RIGHT THAT AN IDLE DUPLICATE…
-- **D-100** — GUARD THE THREE. IT IS THE ONLY OPTION CONSISTENT WITH RULINGS I ISSUED TODAY, AND SUTRADHARA'S ONE OBSERVATION ABOUT THE SHAPE IS THE THING WORTH KEEPING FROM…
-- **D-101** — NO SECOND-PARENT ASSERTION -- BUT NOT FOR THE REASON I FIRST REACHED FOR, AND I AM RECORDING THE NEAR-MISS BECAUSE IT WOULD HAVE BEEN A CONFIDENT WRONG RULING.…
-- **D-102** — BOTH ACCEPTED. (1) THE MISATTRIBUTION IS STRUCK AND CORRECTED: SESSION 435c7fe4-bb14-43dd-b7bc-5db727926994 IS LEKHAKA'S PANE. D-82's evidence line 4 said 'ses…
-- **D-103** — BOTH RAW ANSWERS ARE WRONG AND THE RIGHT ONE IS NEITHER SIDE. (1) THE POPULATION ANCHORS ON asset_registry. You cannot have an unearned lit on an asset that do…
-- **D-104** — NOBODY SELECTS, OPENS OR SENDS ANYTHING TO THAT PANE. AND THE APPARENT PARADOX IN FRONT OF US IS THE REASON, NOT AN OBJECTION TO IT. (1) THE OBSERVATION THAT S…
-- **D-105** — BOTH RATIFIED, AND THE FIRST IS A GENUINE ADDITION TO HOW THIS FLEET WORKS RATHER THAN A RESTATEMENT OF EXISTING DOCTRINE. (1) PRE-REGISTRATION IS ADOPTED AS S…
-- **D-NATIVE-02** — NINE BINDING ITEMS, RECEIVED VERBATIM VIA THE RUNNING CONDUCTOR SESSION AND RECORDED HERE FOR ADHIKARIN TO RULE ON FORMALLY. (1) SCOPE LOCK to the 5 REPAIRABLE…
+## Open threads: 260 total (heuristic count from `CAMPAIGN_STATE.json.open_threads` length —
+not re-classified this tick; see D-NATIVE-02 item 2 archival note below)
 
-## Last 10 verdicts (VERDICTS.jsonl)
-- **V-59** [FAIL] — CORRECTION RECORD — the ts field on V-55, V-56, V-57 and V-58 was HAND-FORMED, not read from the clock
-- **V-60** [PASS] — M0-T53 — the stall detector's false-positive rate (SQ-21/D-60 §7) and the pane-capture restart precondition (§5)
-- **V-61** [FAIL] — D-85 part 3's DIRECT CORROBORATION is now false, and my own stranding is the datum that retires it
-- **V-62** [FAIL] — MY OWN V-61 DISCRIMINATOR IS FALSIFIED — strand #2 hit me mid-execution, and the fixed victim set across differing victim states rules out victim state as the …
-- **V-63** [PASS] — SPOT-AUDIT — V-34 holds; and C-28 has TWO implementations that have silently disagreed by one row since 05:51Z
-- **V-64** [PASS] — M0-T68 — the ratchet PAWL (D-87), and F-AE's two-sided anchor after D-89's defect was reproduced twice
-- **V-65** [PASS] — M0-T69 — the 15-cell origin cross-check gets a detector, anchored on BOTH sides (F-T63-2)
-- **V-66** [PASS] — M0-T16 — the merge of origin/main (84c3c903) into campaign/nirmana-autonomous at 016b0ccdc
-- **V-67** [PASS] — Re-verification of V-9, V-10, V-15 and V-19 — the four production asset_registry writes not previously re-audited — against the live database today, after the …
-- **V-66-ADDENDUM** [PASS] — D-101 assertion (iii): 'no allowlist entry may name a file that is currently guarded'. What does that assertion read on the allowlist AS IT STANDS TODAY?
+## Last 10 rulings (DECISIONS.jsonl, through D-118)
+- **D-109** — AUTHORISED, WITH ONE CORRECTION TO THE OPERAND AND ONE ADDITION THE FINDING DID NOT REACH…
+- **D-110** — LEGITIMATE, AND THE DISTINCTION IS WORTH MAKING EXPLICIT NOW RATHER THAN LETTING IT BECOME PRECEDENT BY ACCIDENT…
+- **D-111** — AUTHORISED, AND THE DEFECT IS IN D-103, WHICH IS MINE. I ORDERED AN ARTIFACT AND ORDERED NOTHING TO READ IT…
+- **D-112** — THE HONEST ANSWER IS AGAINST ME AND I AM WRITING IT DOWN RATHER THAN CONSTRUCTING A CRITERION AFTER THE FACT…
+- **D-113** — CONTROLLING PRECEDENT: D-112 PART 5, WHICH ALREADY DECIDES THIS. RECONCILING IS NOT GUESSING…
+- **D-114** — CONFIRMED FIRST, THEN FIVE DISPOSITIONS: NONE OF THE FIVE YIELDS A DISPATCHABLE TASK TODAY — 4 deferred (P5), 1 blocked-on-native (H2)…
+- **D-115** — F-V73-3: salvage step inherits the obligation to file the to_verifier note; M0-T71's queue row corrected (now done, see WORK_QUEUE)…
+- **D-116** — X-07 hardening AUTHORISED, tiered by disposition class (migration-citing checked, `legacy_never_registered` shape-only); dispatched this tick as M0-T80 part 2…
+- **D-117** — LIVE_SUMMARY.md was stale and read as current — THIS regeneration is the fix; every derived summary now carries a freshness signal…
+- **D-118** — PRAHARI's probe cannot test liveness for a cron-driven agent (silence = same result healthy-idle or dead); prohibition LIFTS for SUTRADHARA (already session-stamps); respawn authorised and executed — this session is that respawn…
 
-## Known open blockers (manually curated, keep short)
-- ADHIKĀRIN: D-NATIVE-02 needs formal absorption (scope lock, MECHANICAL-class designation, verification-drain go-ahead).
-- ADHIKĀRIN: F-V67-1 (unearned-lit ratchet anchor side, bears on M0-T71/x06).
-- PARĪKṢAKA: M0-T73 (guard-the-three) and M0-T74 (stale-amnesty assertion) awaiting verification.
-- Deferred, not forgotten: full archival of resolved `open_threads` into `state/THREADS_RESOLVED.jsonl` (D-NATIVE-02 item 2) — the `state` field is too heterogeneous free text to classify safely in one pass; needs a careful dedicated task, not a rushed heuristic.
+## Last 10 verdicts (VERDICTS.jsonl, through V-75)
+- **V-68** [FAIL] — M0-T73 (e13a2b487) — D-100's repair left the branch red; ruled wave-2 precondition at D-108
+- **V-69** [PASS] — M0-T74 (5ae1d9d66) — D-101's assertion (iii): no allowlist entry may name a currently-guarded file
+- **PRE-REG-1** [PRE-REGISTRATION] — required failing cases for the two builds pending as of 20:35Z
+- **PRE-REG-2** [PRE-REGISTRATION] — M0-T76 — D-108's §2a/§2b split, corrected criteria issued in-flight
+- **V-70** [PASS] — M0-T75 (9242d125c) — D-103's asset_id lineage manifest, closing V-67/F-V67-1
+- **V-71** [PASS] — M0-T76 (84bb9558e) — D-108's §2a/§2b split of shared_entrypoint_module.test.ts
+- **V-72** [PASS] — M0-T77 (ba575ede2) — D-109's three-part fix: population floor, verdict-wiring audit
+- **V-73** [PASS] — M0-T70 (d206ce643) — D-95's floor-based pawl; F-V73-3 (3 uncertified landed tasks) also filed
+- **V-74** [PASS] — M0-T78 (beaae3da7) — D-111's X-07 lineage-manifest completeness; F-V74-1 (entries not shape-checked) → D-116
+- **V-75** [PASS] — M0-T71 (20c08e286) — D-94's atomic C-28/X-06 fix; F-V75-1 (tautological self-test case) → M0-T80 part 1
+
+## Known open blockers — each cites the ruling that would close it, or is marked closed
+- **CLOSED, was stale here:** D-NATIVE-02 absorption — closed at D-106.
+- **CLOSED, was stale here:** F-V67-1 (unearned-lit ratchet anchor side) — ruled at D-103, closed at V-70.
+- **PARK-6 / PARK-6A** — genuinely open, native-only: M0 exit criterion 10 requires the catalogue CI
+  guards "merged and blocking" on main; H2 forbids any agent write to main. Awaiting the native's
+  choice between PARK-6A's options A (authorise one merge) / B (amend criterion 10). Not
+  SUTRADHARA-actionable; do not re-raise as a new question, cite this row.
+- **D-114's CLOSEABLE_IN_M0 bucket** — crit-5, crit-8, X-03 deferred to owning rungs (P5); crit-12
+  BLOCKED-ON-NATIVE (reduces to PARK-6A); C-28 residual itemised, mechanism already ruled (D-42,
+  D-94). Nothing here is dispatchable; do not re-open without new evidence.
+- **M0-T79, M0-T80** — dispatched this tick (F-V73-1 docstring fix; F-V75-1 self-test fix + D-116
+  X-07 hardening). Awaiting KĀRAKA completion + PARĪKṢAKA verification.
+- **V-68 / M0-T73 branch-red** — ruled a wave-2 precondition at D-108, not M0-blocking. Whether the
+  suite is green again after M0-T76/T77 has not been independently re-measured in this file; check
+  live before assuming.
+- Deferred, not forgotten: full archival of resolved `open_threads` into `state/THREADS_RESOLVED.jsonl`
+  (D-NATIVE-02 item 2) — the `state` field is too heterogeneous free text to classify safely in one
+  pass; needs a careful dedicated task, not a rushed heuristic.
