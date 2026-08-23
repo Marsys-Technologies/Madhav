@@ -40,6 +40,7 @@ import {
   notComparable,
 } from '../../src/lib/pariprashna/store/replay_compare'
 import type { PariprashnaEvent } from '../../src/lib/pariprashna/protocol/events'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`)
@@ -132,9 +133,11 @@ async function main(): Promise<number> {
   return exitCodeFor(comparison)
 }
 
-main()
-  .then((code) => process.exit(code))
-  .catch((err) => {
-    console.error(err)
-    process.exit(2)
-  })
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main()
+    .then((code) => process.exit(code))
+    .catch((err) => {
+      console.error(err)
+      process.exit(2)
+    })
+}

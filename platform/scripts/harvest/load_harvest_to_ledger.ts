@@ -45,6 +45,7 @@ import {
   getLifecycleLayerCounts,
   type ConceptLedgerWriteInput,
 } from '@/lib/retrieval/concept_ledger/ledger'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const GENERATED_DIR = join(__dirname, '..', '..', 'src', 'generated', 'harvest')
@@ -143,7 +144,9 @@ async function main(): Promise<void> {
   console.log('[load] lifecycle x layer breakdown:', byLayerLifecycle)
 }
 
-main().catch((err) => {
-  console.error('[load] failed:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('[load] failed:', err)
+    process.exit(1)
+  })
+}

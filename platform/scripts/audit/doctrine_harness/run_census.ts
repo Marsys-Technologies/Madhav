@@ -25,6 +25,7 @@ import { runCensusSweep, summarizeCensus, DEFAULT_BATCH_SIZE, DEFAULT_INTER_BATC
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 const ABHISEK_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const DEFAULT_TARGET = 'https://amjis-mcp-qm256lasva-el.a.run.app/mcp'
@@ -131,7 +132,9 @@ async function main() {
   process.exit(0)
 }
 
-main().catch((err) => {
-  console.error('census FATAL:', err)
-  process.exit(2)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('census FATAL:', err)
+    process.exit(2)
+  })
+}

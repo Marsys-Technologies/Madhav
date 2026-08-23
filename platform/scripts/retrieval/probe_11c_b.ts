@@ -15,6 +15,7 @@
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
 import { Pool } from 'pg'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 function loadEnvFile(file: string): void {
   const p = join(process.cwd(), file)
@@ -230,7 +231,9 @@ async function main() {
   }
 }
 
-main().catch(err => {
-  console.error('PROBE FAILED:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch(err => {
+    console.error('PROBE FAILED:', err)
+    process.exit(1)
+  })
+}

@@ -19,6 +19,7 @@
 
 import * as fs from 'fs'
 import * as path from 'path'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 const ACCEPT_DISTANCE_THRESHOLD = 0.25  // cosine distance < this → auto-accept c1
 const DEFER_DISTANCE_THRESHOLD  = 0.40  // above this → reject; between → defer
@@ -260,4 +261,6 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((e) => { console.error(e); process.exit(1) })
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((e) => { console.error(e); process.exit(1) })
+}

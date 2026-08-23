@@ -28,6 +28,7 @@
 import { writeFileSync } from 'node:fs'
 import { Pool } from 'pg'
 import { fetchPopulatedEventClasses } from './lib/a3_scoring_harness/event_class_resolution'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 async function main() {
   const chartId = process.argv[2]
@@ -52,7 +53,9 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('[fetch_populated_event_classes] FATAL:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('[fetch_populated_event_classes] FATAL:', err)
+    process.exit(1)
+  })
+}

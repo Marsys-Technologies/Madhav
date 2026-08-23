@@ -38,6 +38,7 @@
 
 import * as fs from 'fs'
 import * as path from 'path'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..')
 const PLATFORM_ROOT = path.resolve(__dirname, '..', '..')
@@ -153,4 +154,6 @@ function main(): void {
   )
 }
 
-main()
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main()
+}

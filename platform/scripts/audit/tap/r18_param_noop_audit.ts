@@ -39,6 +39,7 @@
 import path from 'node:path'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { printReport, type LawResult } from './lib/tap_db'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 const REPO_ROOT = path.join(__dirname, '../../../..')
 const TOOLS_DIR = path.join(REPO_ROOT, 'platform-mcp/src/tools')
@@ -259,7 +260,9 @@ async function main() {
   process.exit(printReport('R-18 param no-op audit', results))
 }
 
-main().catch((err) => {
-  console.error('r18_param_noop_audit FATAL:', err)
-  process.exit(4)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('r18_param_noop_audit FATAL:', err)
+    process.exit(4)
+  })
+}

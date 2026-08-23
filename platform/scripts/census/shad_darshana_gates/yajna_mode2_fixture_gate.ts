@@ -53,6 +53,7 @@ import {
   envOrDefault,
 } from './_mcp_client.js'
 import { printGateReport, type GateResult } from './_report.js'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 const TOOL_TIMEOUT_MS = Number(envOrDefault('SHAD_DARSHANA_GATE_TIMEOUT_MS', '60000'))
 
@@ -667,7 +668,9 @@ async function main(): Promise<void> {
   process.exit(printGateReport('yajna_mode2_fixture_gate (LIVE)', results))
 }
 
-main().catch((err) => {
-  console.error('yajna_mode2_fixture_gate FATAL:', err)
-  process.exit(2)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('yajna_mode2_fixture_gate FATAL:', err)
+    process.exit(2)
+  })
+}

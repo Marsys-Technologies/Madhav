@@ -36,6 +36,7 @@
  * Run: npx tsx --conditions=react-server platform/scripts/audit/tap/tap7_distribution_gates.ts
  */
 import { connectTapDb, printReport, NATIVE_CHART_ID, type LawResult } from './lib/tap_db'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 async function main() {
   const db = await connectTapDb()
@@ -231,7 +232,9 @@ async function main() {
   process.exit(printReport('TAP-7 Distribution Gates (8 gates)', results))
 }
 
-main().catch((err) => {
-  console.error('tap7_distribution_gates FATAL:', err)
-  process.exit(4)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('tap7_distribution_gates FATAL:', err)
+    process.exit(4)
+  })
+}

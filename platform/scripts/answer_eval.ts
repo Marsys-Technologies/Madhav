@@ -22,6 +22,7 @@ import {
   writeEvalPerformanceRow,
   finalizeEvalRun,
 } from '../src/lib/performance/ingestion'
+import { isDirectEntrypoint } from './lib/entrypoint'
 
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:3000'
 const CHART_ID = process.env.CHART_ID ?? 'default'
@@ -441,7 +442,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(err => {
-  console.error('Fatal:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch(err => {
+    console.error('Fatal:', err)
+    process.exit(1)
+  })
+}

@@ -2,6 +2,7 @@
 // Usage: npx tsx --conditions=react-server scripts/diag/check_signal.ts SIG.MSR.150
 import 'dotenv/config'
 import { query } from '../../src/lib/db/client'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 async function main() {
   const signalId = process.argv[2]
@@ -61,7 +62,9 @@ async function main() {
   process.exit(0)
 }
 
-main().catch((err) => {
-  console.error('check_signal failed:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('check_signal failed:', err)
+    process.exit(1)
+  })
+}
