@@ -517,7 +517,7 @@
       "id": "G1-BLOCKED",
       "what": "M0-T7 found ADHIKARIN's own G1 disposition power is currently UNEXERCISABLE for two of its three outcomes: catalog_status CHECK permits only CURRENT|DRAFT|RETIRED (no SOURCE), asset_kind only data|service|artifact, and data_disposition does not exist as a column (migration 590 staged, verified NOT applied). 590 supplies data_disposition; the SOURCE reclassification additionally needs a CHECK constraint change, which 590 does NOT contain and which may be charter P5",
       "owner": "ADHIKARIN",
-      "state": "asked"
+      "state": "HALF STALE, re-measured live at M0-T47. STILL TRUE: asset_kind permits only data|service|artifact and catalog_status only CURRENT|DRAFT|RETIRED -- no SOURCE value, and migration 591 touches no CHECK. NO LONGER TRUE: data_disposition does not exist -- 590 supplied it and is applied (ledger id 450). The SOURCE reclassification remains unexercisable; the data_disposition half is closed."
     },
     {
       "id": "F-VIDHI-CONSTANT",
@@ -918,8 +918,8 @@
     {
       "id": "M0-T45",
       "what": "DONE 3825c1981 — SQ-10 / D-41 part 4 closed. The mutation doctrine caught a hidden second pass-emission point that ALL 16 behavioural tests missed — proof the doctrine is not just process, it works on the first real use",
-      "owner": "PARIKSAKA",
-      "state": "awaiting_verification"
+      "owner": "closed",
+      "state": "CERTIFIED PASS (V-28, 3 residuals). Namespace parity with migrate.ts re-derived both sides; PARIKSAKA ran its own mutation at the boundary the builder admitted its structural test could not see -- 2 of 16 tests failed, so the boundary IS covered behaviourally. Residual R-28.1 routed: NODE_ENV=test makes the gate a silent exit 0, not reachable at either committed invocation site but ci.yml already sets NODE_ENV: test on three jobs."
     },
     {
       "id": "BLOCKING-VS-WITNESS-JUDGMENT",
@@ -930,8 +930,8 @@
     {
       "id": "M0-T46",
       "what": "DONE 5c213e9ff — PASS 1->2, FAIL 7->6, UNEXAMINED 6->3",
-      "owner": "PARIKSAKA",
-      "state": "awaiting_verification"
+      "owner": "closed",
+      "state": "CERTIFIED PASS (V-29, 5 findings). Criterion 9's FAIL(23)->PASS(0) is EARNED: PARIKSAKA probed the detector three ways in memory (synthetic 24th packet -> 1; declassify one SHADOWED -> 1; remove SHADOWED disposition -> 5), so the zero has three live paths to non-zero and is not a detector shift (D-42). reading_history append-only verified by diff; generators reproduce byte-identically apart from timestamps."
     },
     {
       "id": "GIT-CHECKOUT-GAP",
@@ -950,10 +950,28 @@
       "what": "V-27: runner unification (L-03/D-19) is a PRECONDITION of R0's freeze, not a parallel workstream. 34 of R0's 40 assets have no build witness and §8.3 item 2 cannot be satisfied for them by measurement - they must be rebuilt through a run-recording runner. Absorbed into rungs.R0.freeze_precondition. Also records the confirmed trap: re-pointing c28() at build_run_assets returns 0 and silently passes every unearned lit.",
       "owner": "SUTRADHARA",
       "state": "absorbed_binding_on_R0_intake"
+    },
+    {
+      "id": "M0-T47",
+      "what": "COMPLETE 6c2eadc11 -- migration 591 AUTHORED NOT APPLIED (platform/migrations/, following the 590 precedent): asset_registry gains natural_key_partition (evaluable boolean SQL predicate, chosen over a label so C-25 can one day have a real detector -- explicitly does NOT make C-25 checkable) and dead_flag (nullable boolean, NO DEFAULT, three-state NULL/true/false). ZERO UPDATE statements: both resolve NULL 128/128, and the NULL is proved honest -- of 18 co-writer rows count_sql carries a discriminator on 14 and none on 4, so a count_sql-derived backfill is neither total nor sound. Declined DEFAULT false as 'a positive claim onto 128 rows that no detector produced'. States plainly that criteria 5 and 8 DO NOT MOVE because of this file. Verified on a throwaway PG 15.17 loaded from the live table definition incl. an inverse-direction mutation proving its own verification block returns red. Production read-only; migrate.ts never imported.",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification; APPLY GATED ON ADHIKARIN (4 named uncertainties: both column names are the KARAKA's invention and H5 makes a post-apply rename a second migration; dead_flag carries no reason and it is NOT confident the indirect mitigations suffice; two CHECKs are its reasoning not rulings; X-03 deliberately NOT taught to honour dead_flag as that is a D-41 part 2 weakening)"
+    },
+    {
+      "id": "CCD-MIGRATION-CLAIM-GAP",
+      "what": "F-T47-1, escalated with my own measurement rather than relayed: CCD claim-table ceiling on origin/campaign-coordination is 589 while disk ceiling is 591 -- BOTH 590 (applied, ledger 450) and 591 (authored) are unclaimed. reserve_migration_number.py states the CCD table is the authority over MIGRATION_DIRECTORY_POLICY, so any other workstream following the convention allocates 590 (already applied to production) or 591. I VERIFIED OUR OWN NUMBER IS SOUND: removed 591 from the tree, re-ran migration_number_guard --next, it printed 591, restored the file -- so 591 was genuinely free and the guard's 592 was post-authoring. The append is named a CONDUCTOR action by the tool's own docstring, but the file lives on origin/campaign-coordination and _common.md binds me to the campaign branch only. Unsure whether authority is granted -> it is not. ASKED, not acted.",
+      "owner": "ADHIKARIN",
+      "state": "asked"
+    },
+    {
+      "id": "F-T47-3-MIGRATION-DIR-CONFLICT",
+      "what": "Two governance documents disagree about which migration directory is live: migration_number_guard.ts's header and MIGRATION_DIRECTORY_POLICY_v1_0.md call platform/supabase/migrations/ active and platform/migrations/ 'legacy, historical continuity only', while 587/588/589/590/591 ALL live in platform/migrations/ and supabase/ tops out at 586. reserve_migration_number.py already documents the contradiction and rules live practice authoritative. The KARAKA put 591 in platform/migrations/ knowingly and said so. Recorded, not fixed -- doc reconciliation is not M0 content.",
+      "owner": "SUTRADHARA",
+      "state": "recorded"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T12:56:59Z",
+  "last_updated_ts": "2026-08-23T13:16:47Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
