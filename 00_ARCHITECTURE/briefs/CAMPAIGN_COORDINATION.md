@@ -7869,3 +7869,13 @@ the Nirmāṇa Build Tracker campaign are explicitly out of its scope and untouc
 Scope: `00_ARCHITECTURE/briefs/pariprashna_swarm/**` only (DD-50 filed, one new closing-record
 doc). No code, no credential, no deploy. `campaign/nirmana-autonomous` untouched. This is the
 final entry in the P3/P4→standdown chain; session stands down after this write.
+
+---
+
+## 2026-08-23 — lease closed: PARIPRASHNA postclose standdown
+
+PR #1519 merged (`84c3c9035`): DD-50 filed, `POSTCLOSE_STANDDOWN_2026-08-23.md` landed as the
+chain's consolidated closing record. `prp-night` and the Paripraśna tracker daemon confirmed
+retired. `campaign/nirmana-autonomous` untouched throughout. This session stands down here; no
+lane pending, no worktree with uncommitted content remains. P5 not opened; what runs next is
+open, for the native to decide live.
