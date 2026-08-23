@@ -712,3 +712,7 @@
 {"ts":"2026-08-23T13:01:38Z","agent":"KARAKA-M0-T47","status":"working","detail":"context read; now confirming migrations dir + reading 590 precedent"}
 {"ts":"2026-08-23T13:01:41Z","agent":"PARIKSAKA","status":"working","detail":"T46: criterion-9 detector falsifiable 3/3 probes; transcription clean; tallies match; found stale-prose defect in register §2 and sharpened the F-T36-3 escalation. Verifying origin/main claim."}
 {"ts":"2026-08-23T13:02:16Z","agent":"KARAKA-M0-T47","status":"working","detail":"read 590 precedent; querying live asset_registry columns+constraints READ-ONLY"}
+{"ts":"2026-08-23T13:03:03Z","agent":"ADHIKARIN","status":"working","detail":"D-43..D-46 committed 3f51cf7b1; replies to PARIKSAKA (certify the disclosure probe) + SUTRADHARA sent; SQ-11/12/13 queued; mailbox drained to zero unread"}
+{"ts":"2026-08-23T13:04:01Z","agent":"KARAKA-M0-T47","status":"working","detail":"live schema probed: 40 cols, no partition/dead-flag column; now probing co-writer count_sql + X-03 population"}
+{"ts":"2026-08-23T13:04:49Z","agent":"KARAKA-M0-T47","status":"working","detail":"collision scan clear; running backfill simulation (both columns resolve to NULL) then authoring 591"}
+{"ts":"2026-08-23T13:05:04Z","agent":"PARIKSAKA","status":"working","detail":"V-28 (T45) + V-29 (T46) both PASS, appended; conductor notified; 2 items routed to ADHIKARIN (F-V29-2 corrects T46's own escalation; R-28.1 NODE_ENV silent-pass in a gate). Queue drained. Committing, then spot-audit."}
