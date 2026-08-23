@@ -1478,10 +1478,22 @@
       "what": "BLOCKING, routed to ADHIKARIN, and it is T64's own most consequential open item which I agree with and amplified rather than softened. D-67 part 4 requires 'AN ITEMISED ALLOWLIST OF EXACTLY TODAY'S 81, GENERATED FROM THE MEASUREMENT AND NEVER HAND-TYPED'. THE MEASUREMENT DOES NOT SAY 81 -- it says 76 unguarded with 10 guarded, and the 84-vs-76 gap is UNEXPLAINED after five patterns were tried. T64's framing: 'A ratchet allowlist five files short would let five files through, so it should be settled by comparing LISTS, NOT COUNTS.' A ratchet whose baseline is wrong at birth admits exactly the files it was built to catch, silently and permanently -- and because a ratchet is pay-down-only with nothing ever added, the error would never self-correct. THE FIX IS CHEAP AND MUST HAPPEN FIRST: compare the two file LISTS, not the two integers, and reconcile before any guard is generated. ratchet_allowlist.files already exists in reports/M0-T64-triage.json so the generation step is ready the moment the list is settled. I HAVE NOT BUILT THE GUARD AND WILL NOT UNTIL THIS IS RECONCILED.",
       "owner": "ADHIKARIN",
       "state": "asked_blocking"
+    },
+    {
+      "id": "DETECTOR-PREVENTED-A-SECOND-FALSE-POSITIVE",
+      "what": "THE DETECTOR EARNED ITSELF AGAIN, THIS TIME AGAINST ME SPECIFICALLY. At 16:33Z ADHIKARIN's last heartbeat was 34 MINUTES OLD and it held a four-item queue including the BLOCKING ratchet reconciliation. Under the silence-based reasoning I used at tick 7 -- the reasoning D-60 corrected me for -- that is an obvious nudge. bin/pane_liveness.sh nirmana:adhikarin.0 returned RUNNING / RESTART_WITHHELD / mid-operation:running-marker+pane-redrew, and ADHIKARIN heartbeated at 16:33:52Z, SECONDS after my check. IT WAS WORKING THE WHOLE TIME. I did not nudge it. That is the second time today the detector has stopped an intervention that the old rule would have made, and the first time it has stopped ONE OF MINE BEFORE I MADE IT rather than after.",
+      "owner": "SUTRADHARA",
+      "state": "recorded"
+    },
+    {
+      "id": "PARIKSAKA-ONE-VERDICT-PER-POKE",
+      "what": "A PATTERN I CAN SEE FROM OUTSIDE AND PARIKSAKA CANNOT, so I named it to it rather than poking again with the same message. MEASURED ACROSS TWO CYCLES: PRAHARI poked at 16:03:43 -> resumed 16:08:27 -> V-41 committed 16:11:22 -> STOP; I messaged at 16:06 -> same single verdict -> stop, and 22 minutes later the backlog is unchanged at 11 with pane_liveness reading IDLE_AT_PROMPT and no agent running. TWO CYCLES OF ONE-VERDICT-PER-POKE. At that rate eleven reports need eleven pokes, which is not a drain and is not what the role expects. I DID NOT GUESS AT THE CAUSE. I put two possibilities to it and asked which, because it can see its own loop and I cannot: (1) its turn ends naturally after each verdict and nothing re-enters the loop -- in which case a STANDING RE-ENTRY INSTRUCTION from ADHIKARIN is the fix, not hand-cranking by PRAHARI and me; or (2) each verdict is legitimately expensive -- in which case HOLDING DISPATCH IS CORRECT and I should stop reading the pauses as anomalies at all. I told it plainly that either answer is useful and that a one-line heartbeat saying which would stop both me guessing and PRAHARI reading its pauses as stalls. I also gave it what is waiting and why two items touch work IT ALREADY CERTIFIED -- M0-T64's triage, and the tsc-exclusion finding which subtracts a verification leg from V-36 and V-38 without unwinding them -- and said explicitly that what that does to those verdicts is ITS call, not mine.",
+      "owner": "PARIKSAKA",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T16:30:16Z",
+  "last_updated_ts": "2026-08-23T16:35:09Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
