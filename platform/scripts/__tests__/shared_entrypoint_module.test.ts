@@ -16,16 +16,29 @@
  *      already had and performs NO module-scope effect. Without §1, "import the shared one"
  *      would be advice that gets worse every time someone adds a convenience to it.
  *
- *   §2 NOBODY KEEPS A PRIVATE COPY. All eight former copy-holders must import and re-export the
- *      shared symbol and define no `isDirectEntrypoint` of their own. This is the assertion that
- *      replaces M0-T65's body-equality comparison: identity, not equality.
+ *   §2 NOBODY KEEPS A PRIVATE COPY — split per ADHIKĀRIN ruling D-108 into the two obligations
+ *      that only look like one requirement:
+ *        §2a SURFACE PRESERVATION, owed ONLY by the eight former copy-holders. A historical
+ *            RECORD, not a derived scan — "was a former copy-holder" is a fact about the past
+ *            that no scan of the present tree can recover (after M0-T66's consolidation, all
+ *            guarded files look identical in the present). D-108 states this as the one
+ *            exception to "never hand-typed" (D-67 part 4 / D-89): the list is enumerated,
+ *            FROZEN AT EXACTLY 8, and cites its source. Each of the eight must import AND
+ *            re-export the shared symbol and define no `isDirectEntrypoint` of its own.
+ *        §2b ANTI-DRIFT, owed by EVERY guarded consumer, forever, growing with Wave 2. Derived
+ *            by scanning the tree (M0-T66, finding F-O) — never hand-typed. Import the shared
+ *            module, define none of your own. NO re-export requirement: a file that never
+ *            exported its own copy has no public surface to preserve, and demanding one anyway
+ *            teaches 53 more Wave-2 files the wrong pattern (D-108's decisive objection to
+ *            Option A).
+ *      Together they replace M0-T65's body-equality comparison: identity, not equality.
  *
  *   §3 THE PREDICATE STILL ANSWERS CORRECTLY, in both directions, including the wrongly-true
  *      direction that is this class's actual hazard.
  *
  *   §4 THE §1/§2 DETECTORS ARE NON-VACUOUS — each is run against a sample that must fail it.
  *
- * SAFE TO IMPORT IN-PROCESS: this module is the leaf §1 asserts it to be. None of the eight
+ * SAFE TO IMPORT IN-PROCESS: this module is the leaf §1 asserts it to be. None of the guarded
  * consumers is imported by this file, and none is executed by it.
  */
 import { describe, it, expect } from 'vitest'
@@ -61,12 +74,14 @@ function allScriptFiles(): string[] {
 }
 
 /**
- * ── `CONSUMERS` IS DERIVED, NEVER HAND-TYPED (M0-T66, finding F-O) ──────────────────────────
+ * ── `CONSUMERS` IS DERIVED, NEVER HAND-TYPED (M0-T66, finding F-O) — this is §2b's population ──
  *
  * Every production file under `platform/scripts` that uses `isDirectEntrypoint` at all — found
- * by scanning the tree, not by listing eight names. Today that is the eight former copy-holders;
- * when Wave 2 guards its 53, they enter this set with no edit here and §2 applies to all of them.
- * A hand-maintained literal is precisely what F-O was filed against.
+ * by scanning the tree, not by listing names. Today that is the eight former copy-holders plus
+ * every file Wave 1/Wave 2 has guarded since (M0-T73's three probe scripts among them); when
+ * Wave 2 guards the rest of its 53, they enter this set with no edit here and §2b applies to all
+ * of them. A hand-maintained literal is precisely what F-O was filed against. (§2a below is the
+ * one deliberate, D-108-authorized exception: a closed historical record, not a live scan.)
  *
  * `scripts/__tests__/**` is excluded ON PURPOSE and it is the one exclusion: the stand-in fixture
  * (`fixtures/entrypoint_guard_standin.fixture.ts`) carries a DELIBERATE private copy, because its
@@ -87,7 +102,12 @@ const CONSUMERS = allScriptFiles().filter(
     /\bisDirectEntrypoint\b/.test(blankComments(read(rel))),
 )
 
-/** Coverage may be paid UP, never down. 8 = the copies that existed when M0-T66 ran. */
+/**
+ * Coverage may be paid UP, never down. 8 = the copies that existed when M0-T66 ran; this is
+ * §2b's non-vacuity floor and is unrelated to §2a's FORMER_COPY_HOLDERS count below (that they
+ * are both 8 today is a coincidence of history, not the same number by definition — §2b's
+ * population already exceeds it, at 12, since M0-T73 guarded three more files).
+ */
 const CONSUMER_FLOOR = 8
 
 /** Source with `//` and `/* *\/` comment bodies blanked, newlines preserved. */
@@ -108,12 +128,16 @@ function definesOwnPredicate(src: string): boolean {
   )
 }
 
+/** §2b's check: imports the shared module. Silent on re-export — that is §2a's obligation, not this one. */
+function importsSharedModule(src: string): boolean {
+  const s = blankComments(src)
+  return /import\s*\{[^}]*\bisDirectEntrypoint\b[^}]*\}\s*from\s*'[^']*lib\/entrypoint'/.test(s)
+}
+
+/** §2a's check: imports AND re-exports — surface preservation, owed only by the eight. */
 function importsSharedPredicate(src: string): boolean {
   const s = blankComments(src)
-  return (
-    /import\s*\{[^}]*\bisDirectEntrypoint\b[^}]*\}\s*from\s*'[^']*lib\/entrypoint'/.test(s) &&
-    /export\s*\{[^}]*\bisDirectEntrypoint\b[^}]*\}/.test(s)
-  )
+  return importsSharedModule(src) && /export\s*\{[^}]*\bisDirectEntrypoint\b[^}]*\}/.test(s)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -157,9 +181,52 @@ describe('M0-T66 §1 — scripts/lib/entrypoint.ts is a leaf module', () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §2 — nobody keeps a private copy
+// §2a — the eight former copy-holders: SURFACE PRESERVATION (D-108)
 // ─────────────────────────────────────────────────────────────────────────────
-describe('M0-T66 §2 — all eight former copy-holders share the one implementation', () => {
+/**
+ * A historical RECORD, not a derived scan — see the D-108 rationale in the file header. This
+ * list can never grow: it is a closed fact about which files held a private `isDirectEntrypoint`
+ * definition before M0-T66 collapsed them into the shared module. That closure is what makes
+ * hand-enumeration safe here specifically, unlike everywhere else in this file (F-O).
+ *
+ * Source: commit cff6be47a ("Nirmāṇa M0-T66 (a): ONE shared isDirectEntrypoint — eight copies
+ * collapse to zero") — `git show --stat cff6be47a` lists exactly these eight production files as
+ * changed alongside the new `scripts/lib/entrypoint.ts`, each losing a private `function
+ * isDirectEntrypoint` and gaining the import + re-export pair. Cross-referenced against M0-T66's
+ * own F-O finding record.
+ */
+const FORMER_COPY_HOLDERS = [
+  'scripts/_archived/seed-abhisek.ts',
+  'scripts/dedupe_charts.ts',
+  'scripts/dev/mint_session_cookie.ts',
+  'scripts/migrate.ts',
+  'scripts/pariprashna/ledger_writer_worker.ts',
+  'scripts/probe/ask.ts',
+  'scripts/seed/asset_registry_seed.ts',
+  'scripts/set-password.ts',
+].map((rel) => rel.split('/').join(path.sep))
+
+describe('M0-T66 §2a — the eight former copy-holders preserve their public surface (D-108)', () => {
+  it('the record is frozen at exactly 8 and every named file exists', () => {
+    // This is a RECORD, not a scan: it must never grow, and a shrink means a listed file moved
+    // or was deleted without this list being updated to match.
+    expect(FORMER_COPY_HOLDERS.length).toBe(8)
+    for (const rel of FORMER_COPY_HOLDERS) expect(fs.existsSync(path.join(PLATFORM_DIR, rel))).toBe(true)
+  })
+
+  for (const rel of FORMER_COPY_HOLDERS) {
+    it(`${rel} imports AND re-exports the shared predicate, and defines none of its own`, () => {
+      const src = read(rel)
+      expect(definesOwnPredicate(src)).toBe(false)
+      expect(importsSharedPredicate(src)).toBe(true)
+    })
+  }
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// §2b — every guarded consumer: ANTI-DRIFT, forever, growing with Wave 2 (D-108)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('M0-T66 §2b — every guarded consumer imports the shared predicate and defines none of its own', () => {
   it('the derived list is non-vacuous and has not shrunk (F-O)', () => {
     // A broken derivation would empty CONSUMERS and the per-file blocks below would simply not
     // exist — a green suite asserting nothing. This is the floor that makes that impossible.
@@ -170,10 +237,13 @@ describe('M0-T66 §2 — all eight former copy-holders share the one implementat
   })
 
   for (const rel of CONSUMERS) {
-    it(`${rel} imports and re-exports the shared predicate, and defines none of its own`, () => {
+    it(`${rel} imports the shared predicate and defines none of its own (no re-export required)`, () => {
+      // Deliberately NOT importsSharedPredicate here — §2b owes anti-drift only. A file that
+      // never held a private copy (e.g. M0-T73's three probe scripts) has nothing to
+      // re-export, and D-108 is explicit that requiring one anyway is the wrong fix.
       const src = read(rel)
       expect(definesOwnPredicate(src)).toBe(false)
-      expect(importsSharedPredicate(src)).toBe(true)
+      expect(importsSharedModule(src)).toBe(true)
     })
   }
 })
@@ -230,10 +300,19 @@ describe('M0-T66 §4 — the §1/§2 detectors are non-vacuous', () => {
     expect(definesOwnPredicate(NO_GUARD_SAMPLE)).toBe(false)
   })
 
-  it('importsSharedPredicate rejects a private copy and an un-re-exported import', () => {
+  it('importsSharedPredicate (§2a) rejects a private copy and an un-re-exported import', () => {
     expect(importsSharedPredicate(PRIVATE_COPY_SAMPLE)).toBe(false)
     expect(importsSharedPredicate(NO_GUARD_SAMPLE)).toBe(false)
     expect(importsSharedPredicate("import { isDirectEntrypoint } from './lib/entrypoint'")).toBe(false)
+  })
+
+  it('importsSharedModule (§2b) accepts an import without re-export, and still rejects a private copy or no guard at all (D-108)', () => {
+    // This is the case D-108 exists for: T73's three probe scripts import the shared module and
+    // never re-exported anything, because they never held a private copy to preserve. §2b must
+    // stay GREEN on exactly that shape.
+    expect(importsSharedModule("import { isDirectEntrypoint } from './lib/entrypoint'")).toBe(true)
+    expect(importsSharedModule(PRIVATE_COPY_SAMPLE)).toBe(false)
+    expect(importsSharedModule(NO_GUARD_SAMPLE)).toBe(false)
   })
 
   it('a COMMENTED-OUT copy is not mistaken for a real one (prose is not code)', () => {
