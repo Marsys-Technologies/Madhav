@@ -1972,10 +1972,22 @@
       "what": "Sixth stranding of the evening, recovered via the standard C-u sequence, verified RUNNING. Recovery message carried a full status brief (D-99/D-100 landed, T73 complete and routed, my own write-bug caught and repaired, D-101's pre-registered can-fail requirement) so ADHIKARIN would not need to reconstruct context from a stale pane. No new mechanism offered.",
       "owner": "SUTRADHARA",
       "state": "recovered"
+    },
+    {
+      "id": "D-NATIVE-02-THROUGHPUT-ELEVATION-RECEIVED",
+      "what": "Native directive, nine binding items, grounded in measured throughput data (cache-read:output 314:1, ADHIKARIN p90 34min, PARIKSAKA p90 24.5min, 40/185 tasks stuck done_pending_verification). Recorded verbatim in DECISIONS.jsonl. Explicitly states no verification standard, charter power, or exit criterion is weakened -- overhead removal only. ROUTED TO ADHIKARIN for formal absorption: scope lock (item 1), MECHANICAL-class designation (item 4), and awareness before verification-drain dispatch begins (item 3) all need a ruling I cannot make myself. STARTED THIS TICK, my own explicit assignment (item 2): created state/LIVE_SUMMARY.md (<=200 lines, regenerated incrementally) and state/PRECEDENT_INDEX.md (108 rulings, one line each, append-only going forward). EXPLICITLY SUPERSEDES my own adopted reread_decisions_immediately_before_dispatch habit -- flagged to ADHIKARIN as a disclosed trade, not a silent one, per the directive's own framing.",
+      "owner": "ADHIKARIN",
+      "state": "routed_partial_begun"
+    },
+    {
+      "id": "THREAD-ARCHIVAL-DEFERRED-DELIBERATELY-NOT-RUSHED",
+      "what": "D-NATIVE-02 item 2 asks for resolved open_threads to be archived to state/THREADS_RESOLVED.jsonl, keeping only genuinely-open threads in the hot CAMPAIGN_STATE.json file. I DID NOT DO THIS THIS TICK. The 'state' field across 246 threads is free text with well over 100 distinct values, not a clean resolved/open enum -- a keyword heuristic could easily misclassify a thread that reads as closed-sounding prose but is actually still owed a follow-up (several of tonight's own threads have exactly that shape, e.g. ones that say RESOLVED but then carry a 'BUT X IS STILL OPEN' clause in the same string). Given two real self-inflicted state-writing bugs already found and fixed this session, I judged a rushed classification pass here to be a worse risk than the deferral. Recorded as its own thread rather than silently skipped, per the same disclosure discipline as the rest of this directive. NEXT STEP: either a dedicated careful pass (mine, not rushed into a single tick already carrying this much) or a KARAKA dispatch with an explicit, conservative classification rule reviewed before it runs.",
+      "owner": "SUTRADHARA",
+      "state": "deferred_disclosed"
     }
   ],
   "last_updated_by": "SUTRADHARA [session:eb4320db]",
-  "last_updated_ts": "2026-08-23T20:05:47Z",
+  "last_updated_ts": "2026-08-23T20:22:22Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
