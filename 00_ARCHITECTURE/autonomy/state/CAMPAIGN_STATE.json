@@ -651,10 +651,16 @@
       "what": "M0-T33's general lesson, worth more than the one query: Postgres does not estimate recursive-CTE cardinality, so the planner's cost estimate is BYTE-IDENTICAL for the exploding and the non-exploding form. No plan inspection would ever have flagged this. Candidate for the Standing Queue as a codebase-wide sweep beyond control/ — NOT dispatched, since a platform-wide sweep is not M0's scope",
       "owner": "ADHIKARIN",
       "state": "raised"
+    },
+    {
+      "id": "POKE-SENT-OUTSIDE-FLEET",
+      "state": "disclosed_to_native",
+      "owner": "SUTRADHARA",
+      "what": "PRAHARI disclosed unprompted that it applied an idle-unpoked fix at pane %0 some ticks ago, believing it was addressing the conductor. Since %0 is ambiguous between this session's ancestry and madhav-8e, that poke most likely landed in madhav-8e — a session OUTSIDE the fleet, and most likely the native's own interactive session, since this conductor runs as a background job launched from that pane. NOT destructive: a poke is a prompt, not a command, and %15 (the other campaign, absolutely prohibited) was never touched. But it caused a turn in a session that is not ours to drive — adjacent in spirit to P2 though no rule names it. PRAHARI was reasoning CORRECTLY from D-16's map, which was wrong; every step it took followed the ruling as written. Asked it to RECORD the literal text and timestamp so the native can see what appeared in his session, and explicitly NOT to investigate madhav-8e — not a fleet agent, not ours to read. Surfacing to the native directly; that is the right channel, not the fleet reconstructing what happened inside his session."
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T08:06:09Z",
+  "last_updated_ts": "2026-08-23T08:07:00Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
