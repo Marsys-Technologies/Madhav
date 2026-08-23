@@ -70,10 +70,20 @@ The rules run over a *snapshot* — a plain JSON document with this shape:
       "public_tables": [...] | null,  # null ⇒ table-existence conjuncts not checkable
       "assets": [ {col: value, ...} ],
       "throughput": [ {asset_id, throughput_rows, states, ...} ] | null,
-      "writer_substep_truth": {asset_id: bool} | null,
+      "writer_substep_truth": {asset_id: bool} | null,   # DECLARED, not authoritative
       "zero_consumer_packets": {...} | null,
       "frozen_rungs": [...]
     }
+
+`writer_substep_truth` is the one field in that document that is NOT trusted. C-23
+derives the writer-class truth by parsing the writer classes AT RUN TIME (M0-T25;
+ADHIKĀRIN D-25 part 3), because a truth read from a checked-in artifact is only as
+current as the last regeneration of that artifact and will report PASS on a
+divergence that appeared afterwards. The declared map is kept, ignored, and reported
+on: C-23's `detail` says whether it has gone stale against the code. Bundled
+self-test fixtures are the sole exception — their registries are imaginary, so their
+declared map is the only truth that could exist for them, and that path is reachable
+only from `--self-test`.
 
 Three ways to obtain one:
 
@@ -207,8 +217,15 @@ class Rule:
 # Snapshot
 # ─────────────────────────────────────────────────────────────────────────────
 class Snapshot:
-    def __init__(self, raw: dict):
+    def __init__(self, raw: dict, synthetic: bool = False):
         self.raw = raw
+        # `synthetic` is set ONLY by the bundled self-test loader. A self-test fixture
+        # describes an imaginary registry whose asset_ids do not exist in this repo's
+        # writer tree, so C-23's code derivation has nothing to say about it and the
+        # fixture's own declared `writer_substep_truth` is the only truth there is.
+        # It is deliberately NOT settable from `--snapshot` or `--live`: those two
+        # modes always derive C-23's truth from the writer classes (see c23).
+        self.synthetic = synthetic
         self.meta: dict = raw.get("_meta") or {}
         self.assets: list[dict] = raw.get("assets") or []
         self.columns: set[str] = set(raw.get("registry_columns") or [])
@@ -219,6 +236,10 @@ class Snapshot:
         self.throughput: dict[str, dict] | None = None
         if raw.get("throughput") is not None:
             self.throughput = {r["asset_id"]: r for r in raw["throughput"]}
+        # DECLARED truth — whatever the snapshot (or, under --live, the census FILE)
+        # says the writer classes look like. Under `--snapshot`/`--live` this is NOT
+        # C-23's truth source any more; it is carried so C-23 can REPORT when the
+        # declared artifact has gone stale against the code. See c23.
         self.writer_truth: dict[str, bool] | None = raw.get("writer_substep_truth")
         self.zero_consumer: dict | None = raw.get("zero_consumer_packets")
         self.frozen_rungs: list[str] = raw.get("frozen_rungs") or []
@@ -604,28 +625,178 @@ def c22(s: Snapshot) -> Result:
                     and a.get("integrity_check_sql") is None])
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# C-23's truth source: the writer CLASSES, parsed at run time — never a file
+# ─────────────────────────────────────────────────────────────────────────────
+_CODE_TRUTH: tuple[dict[str, bool] | None, dict] | None = None
+
+
+def code_writer_substep_truth(force: bool = False) -> tuple[dict[str, bool] | None, dict]:
+    """`{asset_id: bool}` DERIVED FROM THE WRITER CLASSES AT RUN TIME.
+
+    WHY THIS EXISTS (Nirmāṇa M0-T25). C-23 used to compare the registry against
+    `00_ARCHITECTURE/control/writer_substep_census.json` — a checked-in artifact. A
+    guard whose truth source is a file is only as current as the last time somebody
+    regenerated that file: if the writer tree changes afterwards, the guard reports
+    PASS on a divergence that really exists. That is this campaign's own defect class
+    (CLAUDE.md §N.8 — a signal must be produced by a detector that measures the claim
+    it asserts), and ADHIKĀRIN D-25 part 3 states the rule for exactly this column
+    family: *any registry boolean that gates whether a check runs must be derived from
+    code, never trusted as declared.* `has_substeps` is that boolean —
+    `asset_runner.py:620` only runs the substep-plan-completeness probe when it reads
+    true (D-24, §N.8 instance 4) — so its guard may not rest on a file either.
+
+    ONE PARSER, REUSED (D-25 part 2c). The derivation is the campaign's single
+    @register/AST census, `00_ARCHITECTURE/control/writer_substep_census.py` (M0-T8,
+    made importable by M0-T22 for precisely this kind of reuse). No fourth parser is
+    written here, and no asset id is special-cased anywhere.
+
+    STILL STDLIB-ONLY. The census imports only `ast`, `json`, `pathlib`, `sys` and
+    executes nothing it parses, so `--self-test` and `--snapshot` remain DB-free and
+    dependency-free. It also satisfies D-13 by construction: nothing is imported from
+    `platform/scripts/`, and the writer tree is read as text, never executed.
+
+    Returns `(truth, provenance)`. `truth is None` means the derivation could NOT be
+    performed, and C-23 then reports `not_checkable`. It NEVER falls back to the file:
+    a fallback would restore the exact hazard this function removes.
+    """
+    global _CODE_TRUTH
+    if _CODE_TRUTH is not None and not force:
+        return _CODE_TRUTH
+
+    census_py = REPO_ROOT / "00_ARCHITECTURE" / "control" / "writer_substep_census.py"
+    sidecar = REPO_ROOT / "platform" / "python-sidecar"
+    prov: dict[str, Any] = {
+        "truth_source": "writer classes, parsed at run time (AST)",
+        "parser": "00_ARCHITECTURE/control/writer_substep_census.py :: census()",
+        "rule": "HEAVY := the @register'd class overrides BOTH plan_substeps AND "
+                "run_substep (FROZEN contract, CLAUDE.md §N.2)",
+    }
+
+    def _null(reason: str):
+        global _CODE_TRUTH
+        prov["reason"] = reason
+        _CODE_TRUTH = (None, prov)
+        return _CODE_TRUTH
+
+    if not census_py.exists():
+        return _null(f"the writer-class census is not present at "
+                     f"{census_py.relative_to(REPO_ROOT)} — C-23's truth cannot be "
+                     f"derived from code, and it will NOT be read from a file instead")
+    if not sidecar.exists():
+        return _null(f"the writer tree {sidecar.relative_to(REPO_ROOT)} is not present "
+                     f"in this checkout — nothing to derive the truth from")
+
+    import importlib.util
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "_nirmana_writer_substep_census", census_py)
+        if spec is None or spec.loader is None:
+            return _null("could not load the writer-class census module")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        # The census module pins ROOT to an absolute developer path (it was authored as
+        # a run-once script). Re-point it at THIS checkout so the derivation is a
+        # function of the tree the guard is actually running over — otherwise on any
+        # other machine it would scan nothing and hand back an empty set, which would
+        # read as "no writer has substeps" and make C-23 unfalsifiable. Set here rather
+        # than edited there because that file is the control plane's, not the guard's.
+        mod.ROOT = REPO_ROOT
+        mod.BASE = sidecar
+        c = mod.census(force=True)
+    except Exception as e:                                   # noqa: BLE001
+        return _null(f"the writer-class census raised {type(e).__name__}: {e}")
+
+    prov.update({
+        "files_scanned": c.get("files_scanned"),
+        "registrations": c.get("n_registrations"),
+        "distinct_asset_ids": c.get("n_distinct_asset_ids"),
+    })
+    # §N.8 applied to the derivation itself: every one of these means the census does
+    # NOT know the writer set, so the truth is null rather than quietly short. A short
+    # map would silently skip assets, and a skipped asset can never produce a
+    # violation — a detector that cannot fail.
+    if c.get("parse_errors"):
+        return _null(f"{len(c['parse_errors'])} writer source file(s) failed to parse, "
+                     f"so the census is incomplete: {c['parse_errors'][:3]}")
+    if c.get("unresolved_registrations"):
+        return _null(f"{len(c['unresolved_registrations'])} @register argument(s) did "
+                     f"not resolve, so the writer set is not trustworthy: "
+                     f"{c['unresolved_registrations'][:3]}")
+    if not c.get("files_scanned") or not c.get("n_registrations"):
+        return _null(f"the census scanned {c.get('files_scanned')} file(s) and found "
+                     f"{c.get('n_registrations')} @register decorator(s) — an empty "
+                     f"writer set cannot falsify anything, so it is null, not green")
+
+    truth = {aid: bool(recs[0].get("writer_truth_has_substeps"))
+             for aid, recs in (c.get("writers") or {}).items() if recs}
+    prov["heavy"] = sum(1 for x in truth.values() if x)
+    prov["light"] = sum(1 for x in truth.values() if not x)
+    _CODE_TRUTH = (truth, prov)
+    return _CODE_TRUTH
+
+
 def c23(s: Snapshot) -> Result:
-    """has_substeps must equal the writer-class truth (plan_substeps present)."""
-    if not s.writer_truth:
-        return Result(NOT_CHECKABLE, [], (
-            "no writer_substep_truth in this snapshot — the truth source is the "
-            "writer-class census (00_ARCHITECTURE/control/writer_substep_census.json, "
-            "M0-T8); without it the registry column has nothing to be compared against"))
+    """has_substeps must equal the writer-class truth (plan_substeps + run_substep).
+
+    The truth is DERIVED FROM THE WRITER CLASSES at run time, not read from the
+    census file or from whatever the snapshot happened to bake in when it was taken
+    (M0-T25; D-25 part 3). The only exception is a bundled self-test fixture, whose
+    registry is imaginary and whose declared map is therefore the only truth that
+    could exist for it — and that path is reachable only from `--self-test`, never
+    from a caller-supplied `--snapshot`.
+    """
+    if s.synthetic:
+        if not s.writer_truth:
+            return Result(NOT_CHECKABLE, [], (
+                "self-test fixture declares no writer_substep_truth — a synthetic "
+                "registry has no writer classes to derive one from"))
+        truth: dict[str, bool] = {k: bool(v) for k, v in s.writer_truth.items()}
+        prov: dict[str, Any] = {"truth_source": "self-test fixture (synthetic registry)"}
+    else:
+        truth_or_none, prov = code_writer_substep_truth()
+        if truth_or_none is None:
+            return Result(NOT_CHECKABLE, [], (
+                "the writer-class truth could not be derived from source: "
+                + str(prov.get("reason"))
+                + " — C-23 does NOT fall back to "
+                  "00_ARCHITECTURE/control/writer_substep_census.json or to the "
+                  "snapshot's baked-in map, because a file can be stale and a guard "
+                  "that passes on a stale truth is not a detector (§N.8)"), dict(prov))
+        truth = truth_or_none
+
     v = []
     for a in s.assets:
-        truth = s.writer_truth.get(a["asset_id"])
-        if truth is None:
+        t = truth.get(a["asset_id"])
+        if t is None:
             continue          # no registered writer — C-23 has nothing to compare
-        if bool(a.get("has_substeps")) != bool(truth):
+        if bool(a.get("has_substeps")) != bool(t):
             v.append({"asset_id": a["asset_id"],
                       "registry_has_substeps": a.get("has_substeps"),
-                      "writer_truth_has_substeps": truth,
-                      "class": "false_negative" if truth else "false_positive"})
-    return verdict(v, detail={
-        "assets_with_writer_truth": len(s.writer_truth),
+                      "writer_truth_has_substeps": t,
+                      "class": "false_negative" if t else "false_positive"})
+
+    detail: dict[str, Any] = dict(prov)
+    detail.update({
+        "assets_with_writer_truth": len(truth),
         "assets_without_writer_truth_skipped":
-            sum(1 for a in s.assets if a["asset_id"] not in s.writer_truth),
+            sum(1 for a in s.assets if a["asset_id"] not in truth),
         "class_counts": _counts(v)})
+
+    # The stale-artifact report. When a declared map is present but is NOT the truth
+    # source, say so and say whether it has drifted. This is reported, not asserted:
+    # C-23's claim is about the registry, and a stale census file can no longer make
+    # this rule green — which is the whole point of the change.
+    if not s.synthetic and s.writer_truth:
+        drift = sorted(aid for aid, dv in s.writer_truth.items()
+                       if aid in truth and bool(dv) != truth[aid])
+        detail["declared_truth_ignored"] = (
+            "a writer_substep_truth map was present (snapshot or census file) and was "
+            "NOT used as the truth source")
+        detail["declared_truth_stale_vs_code"] = len(drift)
+        if drift:
+            detail["declared_truth_stale_asset_ids"] = drift[:20]
+    return verdict(v, detail=detail)
 
 
 def c24(s: Snapshot) -> Result:
@@ -1029,6 +1200,11 @@ def read_live() -> dict:
                               sum(COALESCE(rows_written,0)) AS rows_written_total
                        FROM asset_throughput GROUP BY asset_id ORDER BY asset_id""")
         snap["throughput"] = [dict(r) for r in cur.fetchall()]
+    # The census FILE is carried into the snapshot for provenance and for C-23's
+    # stale-artifact report ONLY. Since M0-T25 it is NOT C-23's truth source: C-23
+    # derives the writer-class truth from source at run time, so a census file that
+    # nobody regenerated can no longer make the rule green (see c23 /
+    # code_writer_substep_truth).
     wc = _load_json(CONTROL / "writer_substep_census.json")
     if wc and isinstance(wc.get("writers"), dict):
         snap["writer_substep_truth"] = {
@@ -1133,7 +1309,7 @@ def self_test(max_rows: int) -> int:
                   f"fixture with no expectation cannot detect a partial regression")
             failures += 1
             continue
-        results = run_rules(Snapshot(raw))
+        results = run_rules(Snapshot(raw, synthetic=True))
         summary = summarise(results)
         bad = []
         for rid, want in sorted(expect.items()):
@@ -1160,12 +1336,107 @@ def self_test(max_rows: int) -> int:
             print(f"  [FIXTURE OK  ] {rel} — {len(expect)} expectations met "
                   f"(pass={summary['pass']} fail={summary['fail']} "
                   f"not_checkable={summary['not_checkable']})")
+    failures += c23_code_derivation_probe()
+
     if failures:
-        print(f"\nSELF-TEST FAILED: {failures} fixture(s) did not behave as declared.")
+        print(f"\nSELF-TEST FAILED: {failures} check(s) did not behave as declared.")
         return 3
     print("\nself-test OK — every fixture behaved exactly as its _expect block declares, "
-          "including every fixture built to make a rule FAIL.")
+          "including every fixture built to make a rule FAIL, and C-23's code-derived "
+          "truth was proved to fail on a divergence its declared map calls clean.")
     return 0
+
+
+def c23_code_derivation_probe() -> int:
+    """Prove C-23's NEW truth source works, and prove it CAN fail (D-24 part 3).
+
+    The four bundled fixtures exercise C-23's COMPARISON on a synthetic registry with
+    a declared truth map. They cannot exercise the thing M0-T25 changed — that the
+    truth is derived from the writer classes at run time rather than read from a
+    checked-in artifact. This probe does, DB-free, against this repo's real writer
+    tree, and it is the fixture ADHIKĀRIN D-24 part 3 requires on every guard this
+    campaign ships: an assertion is not earned until something has been shown to make
+    it go red.
+
+    Case 2 is the regression test for the defect itself: the declared map agrees with
+    the registry, and the code does not. The old file-sourced C-23 called that state
+    PASS. It must now FAIL.
+
+    Returns the number of probe failures (0 = all four cases behaved).
+    """
+    global _CODE_TRUTH
+    print("\n  C-23 code-derivation probe (the truth is parsed from the writer "
+          "classes, not read from a file):")
+    bad = 0
+    truth, prov = code_writer_substep_truth(force=True)
+    if truth is None:
+        print(f"      - PROBE NOT CHECKABLE: {prov.get('reason')}")
+        print("        The writer tree ships in this repository, so a derivation that "
+              "cannot run means a broken checkout, not an excusable skip. Counted as "
+              "a failure rather than passed over (§N.8).")
+        return 1
+    heavy = sorted(a for a, t in truth.items() if t)
+    light = sorted(a for a, t in truth.items() if not t)
+    if not heavy or not light:
+        print(f"      - PROBE NOT CHECKABLE: the census found heavy={len(heavy)} "
+              f"light={len(light)}; the probe needs at least one of each to build a "
+              f"two-sided divergence")
+        return 1
+    h, l = heavy[0], light[0]
+    print(f"      derived from source: {prov.get('files_scanned')} files, "
+          f"{prov.get('registrations')} @register decorators, "
+          f"{prov.get('heavy')} heavy / {prov.get('light')} light")
+    print(f"      probe assets: heavy={h}  light={l}")
+
+    def snap(reg_h: bool, reg_l: bool, declared: dict | None) -> dict:
+        raw = {"assets": [{"asset_id": h, "has_substeps": reg_h},
+                          {"asset_id": l, "has_substeps": reg_l}]}
+        if declared is not None:
+            raw["writer_substep_truth"] = declared
+        return raw
+
+    def check(label: str, raw: dict, want_status: str, want_n: int | None,
+              want_stale: int | None = None) -> None:
+        nonlocal bad
+        r = c23(Snapshot(raw)).as_dict()
+        ok = r["status"] == want_status and (want_n is None
+                                             or r["violation_count"] == want_n)
+        if want_stale is not None:
+            ok = ok and r["detail"].get("declared_truth_stale_vs_code") == want_stale
+        print(f"      [{'OK  ' if ok else 'BAD '}] {label}: status={r['status']} "
+              f"violations={r['violation_count']} "
+              f"classes={r['detail'].get('class_counts')} "
+              f"declared_stale={r['detail'].get('declared_truth_stale_vs_code')}")
+        if not ok:
+            bad += 1
+            print(f"          expected status={want_status} violations={want_n} "
+                  f"declared_stale={want_stale}")
+            if r["reason"]:
+                print(f"          reason: {r['reason']}")
+
+    # 1 — registry agrees with the code: pass.
+    check("registry agrees with the writer classes", snap(True, False, None),
+          PASS, 0)
+    # 2 — THE DEFECT. Registry has drifted BOTH ways, and the declared map agrees with
+    #     the drifted registry, exactly as a census file that nobody regenerated would.
+    #     File-sourced C-23 passed here. Code-sourced C-23 must fail, twice.
+    check("registry drifted AND the declared map is stale in the same direction "
+          "(the old guard's blind spot)",
+          snap(False, True, {h: False, l: True}), FAIL, 2, want_stale=2)
+    # 3 — same drift with no declared map at all: still caught.
+    check("registry drifted, no declared map present", snap(False, True, None),
+          FAIL, 2)
+    # 4 — not_checkable is a distinct outcome from pass: with the derivation
+    #     unavailable, C-23 must go null even though the registry looks clean and a
+    #     declared map is sitting right there offering an answer.
+    saved = _CODE_TRUTH
+    try:
+        _CODE_TRUTH = (None, {"reason": "probe: derivation deliberately disabled"})
+        check("derivation unavailable ⇒ null, never a fallback to the declared map",
+              snap(True, False, {h: True, l: False}), NOT_CHECKABLE, 0)
+    finally:
+        _CODE_TRUTH = saved
+    return bad
 
 
 # ─────────────────────────────────────────────────────────────────────────────
