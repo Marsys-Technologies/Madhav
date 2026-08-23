@@ -16,6 +16,7 @@ import { EventEmitter } from 'events'
 
 import {
   attachNoticeListener,
+  escapeRelayedLineBreaks,
   formatServerNotice,
   PG_NOTICE_PREFIX,
   MIGRATE_COMPLETION_SENTINEL,
@@ -114,5 +115,108 @@ describe('attachNoticeListener', () => {
     expect(seen[0]).toContain(PG_NOTICE_PREFIX)
     expect(PG_NOTICE_PREFIX).not.toContain(MIGRATE_COMPLETION_SENTINEL)
     expect(seen[0]).not.toContain(MIGRATE_COMPLETION_SENTINEL)
+  })
+})
+
+/**
+ * Nirmāṇa M0-T61 / D-65 — relayed server text must not be able to SYNTHESISE A LINE BOUNDARY.
+ *
+ * M0-T57 anchored the deploy step's sentinel grep to `^\[migrate\] MIGRATE_RUNNER_COMPLETE`,
+ * which closed single-line forging. It could not close this: `message`/`detail`/`hint`/`where`
+ * are written by whoever wrote the migration's RAISE, and were relayed verbatim, so a notice
+ * carrying a newline emitted a SECOND PHYSICAL LINE beginning with the runner's own prefix —
+ * indistinguishable, to any grep of that log, from the runner's own completion claim. An anchor
+ * pins the start of a line; it cannot tell you who created the line boundary.
+ *
+ * The escaping must be LOSSLESS, not a truncation: F-A's transaction WARNINGs are the reason the
+ * relay exists (D-58), PostgreSQL genuinely emits multi-line DETAIL and multi-frame CONTEXT, and
+ * a warning mangled into unreadability would trade a forgery hole for an observability one.
+ */
+describe('escapeRelayedLineBreaks', () => {
+  it('renders LF, CR and CRLF as their two-character escapes', () => {
+    expect(escapeRelayedLineBreaks('a\nb')).toBe('a\\nb')
+    expect(escapeRelayedLineBreaks('a\rb')).toBe('a\\rb')
+    expect(escapeRelayedLineBreaks('a\r\nb')).toBe('a\\r\\nb')
+  })
+
+  it('leaves text without line breaks byte-identical', () => {
+    const plain = 'there is already a transaction in progress'
+    expect(escapeRelayedLineBreaks(plain)).toBe(plain)
+    expect(escapeRelayedLineBreaks('')).toBe('')
+  })
+
+  it('is LOSSLESS — unescaping the result reproduces the server\'s bytes exactly', () => {
+    const original = 'natural_key_partition declared on 0\ndead_flag true on 0, false on 0\r\nNULL on 128'
+    const escaped = escapeRelayedLineBreaks(original)
+    expect(escaped).not.toContain('\n')
+    expect(escaped).not.toContain('\r')
+    expect(escaped.replace(/\\r/g, '\r').replace(/\\n/g, '\n')).toBe(original)
+  })
+})
+
+describe('formatServerNotice — a relayed notice cannot forge the completion sentinel', () => {
+  const forged =
+    '[migrate] MIGRATE_RUNNER_COMPLETE mode=apply files_on_disk=443 ledger_rows=451 ' +
+    'on_disk_applied=443 pending=0 applied_this_run=0'
+
+  /** The deploy step's grep, verbatim: `grep -q '^\[migrate\] MIGRATE_RUNNER_COMPLETE'`. */
+  const anchoredMatches = (rendered: string): number =>
+    rendered.split('\n').filter(line => line.startsWith(`[migrate] ${MIGRATE_COMPLETION_SENTINEL}`))
+      .length
+
+  it('emits exactly ONE physical line however the server breaks its text', () => {
+    const cases: Array<Record<string, string>> = [
+      { severity: 'NOTICE', message: `benign first line\n${forged}` },
+      { severity: 'NOTICE', message: `benign first line\r\n${forged}` },
+      { severity: 'NOTICE', message: `benign first line\r${forged}` },
+      { severity: 'NOTICE', message: 'benign', detail: `d\n${forged}` },
+      { severity: 'NOTICE', message: 'benign', hint: `h\n${forged}` },
+      { severity: 'NOTICE', message: 'benign', where: `w\n${forged}` },
+      { severity: 'NOTICE', message: 'benign', code: `00000\n${forged}` },
+      { severity: `NOTICE\n${forged}`, message: 'benign' },
+    ]
+    for (const notice of cases) {
+      const rendered = formatServerNotice(notice)
+      // Paired positive first, so the negatives below cannot pass on an empty render.
+      expect(rendered.startsWith(PG_NOTICE_PREFIX)).toBe(true)
+      expect(rendered).toContain(MIGRATE_COMPLETION_SENTINEL) // relayed, NOT dropped
+      expect(rendered.split('\n')).toHaveLength(1)
+      expect(rendered).not.toContain('\r')
+      expect(anchoredMatches(rendered)).toBe(0)
+    }
+  })
+
+  it('relays a real multi-line NOTICE readably — every byte survives the escape', () => {
+    // Shape taken from a real PL/pgSQL notice raised through nested functions: multi-line
+    // DETAIL/HINT and a multi-frame CONTEXT stack, which is what `where` carries.
+    const detail = 'natural_key_partition declared on 0\ndead_flag true on 0, false on 0'
+    const where =
+      'PL/pgSQL function t61_inner() line 3 at RAISE\nSQL statement "SELECT t61_inner()"\n' +
+      'PL/pgSQL function t61_outer() line 3 at PERFORM'
+    const rendered = formatServerNotice({
+      severity: 'NOTICE',
+      message: 'migration 591: both columns present',
+      code: '00000',
+      detail,
+      where,
+    })
+    expect(rendered.split('\n')).toHaveLength(1)
+    const unescaped = rendered.replace(/\\r/g, '\r').replace(/\\n/g, '\n')
+    expect(unescaped).toContain(detail)
+    expect(unescaped).toContain(where)
+    expect(unescaped).toBe(
+      `${PG_NOTICE_PREFIX} NOTICE: migration 591: both columns present ` +
+        `(code=00000; detail=${detail}; where=${where})`
+    )
+  })
+
+  it('leaves a single-line notice byte-identical to what it rendered before', () => {
+    expect(
+      formatServerNotice({
+        severity: 'WARNING',
+        message: 'there is already a transaction in progress',
+        code: '25001',
+      })
+    ).toBe(`${PG_NOTICE_PREFIX} WARNING: there is already a transaction in progress (code=25001)`)
   })
 })
