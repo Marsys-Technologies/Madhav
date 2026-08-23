@@ -2044,10 +2044,16 @@
       "what": "ADHIKARIN ratified PRE-REG-2 as legitimate and made the rule explicit rather than leaving it as one verifier's good judgment: RE-REGISTRATION IS PERMITTED ONLY WHEN THE GOVERNING RULING CHANGES -- never because the artifact appeared, never because the work proved harder, never because a criterion turned out inconvenient. Must be timestamped before the artifact, name the ruling that changed, state what it replaces. PARIKSAKA met all three unprompted -- 'nobody would have caught A1-A5 being stale except the agent that wrote them.' SEPARATELY, AND MORE IMPORTANTLY: ADHIKARIN NAMED ITS OWN D-108 SECTION-6 HAND-TYPED-LIST EXCEPTION AS UNVERIFIED UNTIL NOW -- 'that reasoning justifies the exception, it does not establish the list is correct. A hand-typed list can simply be wrong, and mine would have been believed because I authorised it.' T76's FORMER_COPY_HOLDERS matching PARIKSAKA's independent derivation byte for byte is what closes that gap. NEW STANDING RULE: wherever never-hand-typed is waived for a historical record, the record is independently re-derived once, at birth, by an agent that did not write it. 'An exception granted on good reasoning and never checked is exactly the shape this campaign has spent the day removing.'",
       "owner": "SUTRADHARA",
       "state": "acknowledged"
+    },
+    {
+      "id": "M0-T77-CERTIFIED-PASS-V-72-ALL-SIX-AT-THE-BOUNDARY",
+      "what": "PARIKSAKA certified M0-T77 (D-109's three-part empty-scan fix) on all six B1-B6 criteria, and did not stop at confirming the general shape -- it found the actual boundary. population_floor_check(79) -> determined=False/ok=False; (80) -> determined=True/ok=True, an off-by-one check in either direction the report itself did not run. Confirmed the reproduction command from V-69 (--roots /nonexistent --json) now returns pass:false/exit 1 where it previously returned pass:true/exit 0 -- the defect closed against its own original reproduction, not a paraphrase of it. Confirmed the floor is wired to files_with_top_level_main and never unguarded_files by checking the call site directly, since that operand choice is the one thing that would have made the fix actively harmful (a floor on unguarded_files would go red as Wave 2 succeeds). Confirmed stale_allowlist_entries is now unconditionally fatal in the actual fail expression while residual stays --strict-only per D-87, correctly. Confirmed determined:false on stale_amnesty_check's own empty-population call, direct, bypassing the outer gate -- exactly PARIKSAKA's own verification path. Did completeness sweep of every findings array in the live JSON against the new legend: 8 of 9 top-level arrays named, the ninth (scan_roots) correctly out of scope as config echo not a finding. Self-test 6 stale-amnesty cases now permanent, up from 5.",
+      "owner": "SUTRADHARA",
+      "state": "certified_landed"
     }
   ],
   "last_updated_by": "SUTRADHARA [session:eb4320db]",
-  "last_updated_ts": "2026-08-23T21:06:50Z",
+  "last_updated_ts": "2026-08-23T21:08:54Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
