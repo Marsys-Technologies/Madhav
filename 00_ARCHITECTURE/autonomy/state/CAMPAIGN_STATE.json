@@ -832,10 +832,34 @@
       "what": "THIRD instance today of an author finding a blind spot in their OWN probe: M0-T42's schema-behind route left untested because every case reached the verdict by the age route; M0-T44's mutation C surviving 6/6 because the throw happens outside the try its tests could reach; and M0-T30's honest negatives about its own coverage. Starting to look less like three accidents and more like a property worth naming: THE MUTATIONS YOU THINK TO WRITE ARE THE ONES YOUR TESTS WERE ALREADY SHAPED TO CATCH",
       "owner": "ADHIKARIN",
       "state": "raised"
+    },
+    {
+      "id": "M0-T43",
+      "what": "DONE 59de1c355 — 35 tests, placed where they actually RUN",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "F-T43-1-FAILS-OPEN",
+      "what": "snapshot_staleness() FAILS OPEN when registry_columns is absent or empty: a five-minute-old snapshot that never names its columns measures stale=False with ZERO reasons, while one naming a single column is correctly refused. Latent — the only in-repo producer always populates it — but the shape is our own §N.8 class, in machinery built TODAY to close that class. M0-T43 DELIBERATELY LEFT IT UNCOVERED with a reason I think is right: a test on current behaviour PINS THE DEFECT IN PLACE, and a test on desired behaviour is RED ON LANDING. The disposition is a judgment it does not hold",
+      "owner": "ADHIKARIN",
+      "state": "asked"
+    },
+    {
+      "id": "F-T43-2-SELFTESTS-DONT-RUN",
+      "what": "nirmana-m0-guards.yml is the ONLY CI caller of either guard's --self-test, and it is BOTH continue-on-error AND scoped to main — so on the campaign branch those self-tests do not run at all. M0-T43 called --self-test from vitest as a workaround for the symptom and left the trigger question open",
+      "owner": "ADHIKARIN",
+      "state": "raised"
+    },
+    {
+      "id": "PARIKSAKA-ROOT-CAUSE",
+      "what": "FOURTH idle-unpoked for PARIKSAKA specifically (~04:39, ~07:38, ~08:28, ~09:4x), backlog now 38 files. I think the root cause is NOT the poke path — that is only what we kept using to recover. Look at who stalls: PRAHARI and LEKHAKA run self-driving loops and never do; ADHIKARIN did once when its queue genuinely emptied; PARIKSAKA is THE ONE AGENT WHOSE WORK ARRIVES AS FILES IN A DIRECTORY RATHER THAN AS AN EVENT THAT WAKES IT. It finishes a batch, has nothing in flight, and ends its turn — and nothing triggers the next one. Asked it to keep pulling from to_verifier/ until empty rather than stopping, and offered to drive it per batch. PRAHARI told to deliver by SendMessage always (detect by pane, deliver by name) and to keep counting: if it stalls a fifth time with that instruction in hand, the instruction is not the fix either",
+      "owner": "SUTRADHARA",
+      "state": "root_cause_hypothesis"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T09:44:05Z",
+  "last_updated_ts": "2026-08-23T09:45:35Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
@@ -852,7 +876,7 @@
     "correction_to_D16": "D-16's map records SUTRADHARA=%0 and rules pane ID authoritative. VERIFIED: ListAgents' own header says this session is 'Nirmana autonomous campaign conductor [47edb6]' and is NOT among the listed peers, while madhav-8e IS listed at prp-night:%0, started ~9h ago — before this fleet launched. So madhav-8e is a DIFFERENT session, and a keystroke to %0 lands in ITS compose box, not mine. My own earlier claim 'I am %0' was right about ancestry (my shell's parent chain resolves through %0's pane_pid 83558) and WRONG as an identity claim. NOT verified: which process in that chain is madhav-8e — ps is flooded with desktop-app helpers and the operational answer does not depend on it. READING, not a finding: this session is a background job, so madhav-8e is most likely the interactive session that launched me. %0 is therefore a SECOND case where a pane does not uniquely identify who receives input — the same failure D-16 was written to prevent, one layer over: first a window NAME that did not identify its content, now a pane ID that does not identify its occupant. Correcting D-16's map is ADHIKARIN's; the ledger is untouched."
   },
   "standing_instructions": {
-    "mutation_restore": "REVISED after M0-T38 proved the earlier version insufficient. THE DEFECT IS THE SHAPE OF THE CHECK: 'sha256 == my-own-baseline' is a PROXY ('the file equals my copy') standing in for the CLAIM ('no mutation is present') — with a poisoned baseline it is structurally incapable of returning false. Our own §N.8 class, on the mechanism we use to trust our checks. R1 exclusivity — prefer a per-agent worktree when mutating; removes the class rather than detecting it. R2 PROVE THE BASELINE BEFORE MUTATING: its sha256 must equal the file's HEAD blob or a hash your own previous command printed; if neither, STOP — you have copied a sibling's in-flight state. IF ONLY ONE IS ADOPTED, ADOPT R2. R3 restore verification includes a MARKER SWEEP, not only baseline equality. R4 hash-bracket PRE/POST in one shell invocation for anything you will quote. R5 marker sweep immediately before committing. R6 delete the byte-copy.",
+    "mutation_restore": "REVISED after M0-T38 proved the earlier version insufficient. THE DEFECT IS THE SHAPE OF THE CHECK: 'sha256 == my-own-baseline' is a PROXY ('the file equals my copy') standing in for the CLAIM ('no mutation is present') — with a poisoned baseline it is structurally incapable of returning false. Our own §N.8 class, on the mechanism we use to trust our checks. R1 exclusivity — prefer a per-agent worktree when mutating; removes the class rather than detecting it. R2 PROVE THE BASELINE BEFORE MUTATING: its sha256 must equal the file's HEAD blob or a hash your own previous command printed; if neither, STOP — you have copied a sibling's in-flight state. IF ONLY ONE IS ADOPTED, ADOPT R2. R3 restore verification includes a MARKER SWEEP, not only baseline equality. R4 hash-bracket PRE/POST in one shell invocation for anything you will quote. R5 marker sweep immediately before committing. R6 delete the byte-copy. R7 (from M0-T43's near-miss against its own procedure): USE ABSOLUTE PATHS IN THE RESTORE. Its cp ran on a RELATIVE path after a cd earlier in the same compound command, SILENTLY FAILED, and left the file mutated until it read the output. Its conclusion is the sharp part and generalises to every mutation proof in this campaign: THE RESTORE IS THE ONE STEP WHOSE FAILURE THE MUTATION TEST CANNOT DETECT — the test is designed to fail while the mutation is present, so a failed restore looks exactly like a working test.",
     "dispatch_isolation": "REVERSED, and the reversal is mine to own. I switched to worktree-isolated dispatch to remove the poisoned-baseline class, and INTRODUCED A WORSE ONE: the worktree branches from MAIN, not the campaign branch. M0-T41 found 00_ARCHITECTURE/autonomy/ entirely absent and its target file at the PRE-M0-T35 blob — hours stale. Had it not checked, it would have committed a change that looks correct in isolation, PASSES ITS TESTS, and SILENTLY REVERTS a sibling's landed work on merge. Note the shape: the same defect class the change was made to remove — a baseline that is not what you believe it is — RELOCATED from 'a sibling's in-flight edit' to 'the wrong branch'. I moved the hazard rather than eliminating it, and the relocated form is worse because the shared-tree version was caught by re-checking while this one passes every check an agent would think to run. NEW DISPATCHES GO SHARED-TREE with strict R2 until the base-ref question is settled. R2 GAINS A SECOND CLAUSE, from M0-T41: prove your HEAD is the CAMPAIGN TIP, not merely that your file matches your HEAD — a file can match its HEAD perfectly and still be four hours stale."
   }
 }
