@@ -1426,11 +1426,23 @@
       "id": "I-MAY-HAVE-CAUSED-THE-VERIFY-STALL",
       "what": "HYPOTHESIS ABOUT MY OWN EFFECT ON THE VERIFIER, ACTED ON RATHER THAN FILED. PARIKSAKA's pane shows its last output as 'Continuing the drain' followed by an ENDED TURN; pane_liveness reads IDLE_AT_PROMPT with NO AGENT RUNNING and no verdict since V-40 (23min). It said it would continue and did not. MY HYPOTHESIS: I delivered D-66 part 0 to it MID-DRAIN, adding a PER-REPORT precondition to a running loop -- it must now confirm each report exists at a tracked path before deleting the mailbox copy, a git check per item on a twelve-item queue -- and I handed it the OBLIGATION WITHOUT THE ANSWER. SO I DID THAT WORK FOR IT: sha256 both sides against git ls-files over the tracked reports path, and sent the precomputed disposition -- TEN reports TRACKED AND BYTE-IDENTICAL and therefore safe to delete, with ONE EXCEPTION flagged do-not-delete (the M0-T55 ADDENDUM is tracked but DIFFERS from its namesake, so D-66 part 0 says keep it). I told it to VERIFY RATHER THAN TAKE MY WORD in those terms: I16 cuts both ways and I am the agent who benefits from it moving faster. I also told it I am holding dispatch and why, and that I would rather ten certified than twenty asserted. THE SHAPE IS D-66 §7's AGAIN: two individually correct acts -- ADHIKARIN's urgent rule, and my urgent delivery of it -- whose INTERACTION nobody costed. The rule was right and delivering it mid-drain was right; the per-item cost it imposed on a running loop was invisible to both of us.",
       "owner": "SUTRADHARA",
-      "state": "acted"
+      "state": "RESOLVED — PARIKSAKA resumed 16:08:27Z, 19 seconds after my message, and is VERIFYING MY PRECOMPUTED TABLE INDEPENDENTLY rather than taking it, which is exactly what I asked for and what I16 requires of it. Whether D-66 part 0 caused the pause is now moot as a live problem; the interaction-cost lesson stands."
+    },
+    {
+      "id": "T64-POPULATION-DISCREPANCY-PENDING",
+      "what": "NOTED, DELIBERATELY NOT YET RELAYED. M0-T64's mid-flight heartbeat reports the population re-derived as 86 start-of-line main() callers, 10 guarded, 76 UNGUARDED -- against ADHIKARIN's independently verified 84 / 81, which T60 had corroborated. It flags the discrepancy itself as a finding rather than reconciling it silently. WHY THIS MATTERS BEFORE IT IS BAKED IN: D-67's ratchet condition requires 'AN ITEMISED ALLOWLIST OF EXACTLY TODAY'S 81, GENERATED FROM THE MEASUREMENT AND NEVER HAND-TYPED'. If the true unguarded count is 76 rather than 81, the ruling's own figure is wrong and the allowlist must be generated from T64's measurement rather than from the number in the grant -- otherwise the ratchet starts life with a population it cannot reconcile against reality, which is the D-39-part-2 permanently-red failure at birth. WHY I AM NOT RELAYING IT THIS TICK: the figure is from a HEARTBEAT of a task still running, its own next line says it is now building a bounded transitive import-graph scan which may move the numbers again, and ADHIKARIN has already recorded that three of my relayed numbers entered its ledger unverified. I will carry it WITH T64's evidence when its report lands, not before. ALSO PENDING FROM THE SAME HEARTBEAT, and it may shrink tier 1 substantially: 'NO dependency module in any of the 76 import graphs has a module-scope credential/connection/write/exit' -- a key NEGATIVE result, and the kind that is easy to under-report because it is the absence of a problem.",
+      "owner": "SUTRADHARA",
+      "state": "pending_T64_report"
+    },
+    {
+      "id": "DETECTOR-CAUGHT-THE-D-60-SCENARIO-LIVE",
+      "what": "T53's pane_liveness detector has now earned itself in the exact case D-60 was written about, and PRAHARI logged it at tick 155: PARIKSAKA silent 24 minutes with a backlog GROWN to 12 -- i.e. the signal that looks most like a worsening stall -- and the detector's evidence prevented the restart. Under the OLD silence-based rule that is a textbook restart, and a restart would have killed a verifier that was about to resume and forced it to re-verify its own drain state. Instead PARIKSAKA resumed on its own at 16:08:27Z. The chain is worth keeping whole because every link was authored by a different agent: T60's finding produced D-60's ruling, D-60's ruling produced SQ-21, SQ-21 produced T53's detector, my 15:09Z caution produced its fail-loud shape check, and PRAHARI's adoption produced this restraint. NO SINGLE AGENT BUILT IT.",
+      "owner": "closed",
+      "state": "recorded"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T16:09:17Z",
+  "last_updated_ts": "2026-08-23T16:10:32Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
