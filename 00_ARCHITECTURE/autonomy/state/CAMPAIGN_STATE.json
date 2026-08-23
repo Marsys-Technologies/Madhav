@@ -1315,9 +1315,9 @@
     },
     {
       "id": "M0-T61",
-      "what": "DISPATCHED on D-65 — escape or strip newlines AND carriage returns in formatServerNotice, closing the residual M0-T57 proved by demonstration. THREE CONDITIONS CARRIED VERBATIM, with the third flagged as the one most likely to be skimped: prove the four deploy paths still pass; prove a multi-line forge no longer matches BY THE SAME DEMONSTRATION THAT ESTABLISHED IT; and CONFIRM THE ESCAPING DOES NOT SWALLOW LEGITIMATE MULTI-LINE SERVER DETAIL, since 'a WARNING whose text is mangled into unreadability trades a security hole for an observability one, and F-A's warnings are the reason the listener exists at all'. Told to reproduce T57's method rather than invent one -- YAML-parse the step body, generate fixtures from the production formatters -- because D-65 part 1 singles that out as 'the difference between testing the thing and testing a model of the thing'. Scope hard: formatServerNotice and nothing else; D-56's transaction reservation untouched. Told to say plainly if D-62 part 4's pin still stands -- the listener has STILL never been seen working in a real deploy.",
-      "owner": "KARAKA-M0-T61",
-      "state": "in_flight"
+      "what": "COMPLETE. New exported pure escapeRelayedLineBreaks() applied inside formatServerNotice to SIX server-controlled fields -- D-65 named FOUR (message/detail/hint/where) and it added severity and code, HAVING PROVED BOTH ARE LIVE INJECTION POINTS, on the reasoning that escaping only the named four leaves the same hole one field to the right. IT FLAGGED THE WIDENING FOR ADHIKARIN RATHER THAN LETTING IT PASS SILENTLY. CONDITION 3 IS THE ONE I FLAGGED AS MOST LIKELY TO BE SKIMPED AND IT IS THE ONE MEASURED HARDEST: a real nested-PL/pgSQL NOTICE with multi-line DETAIL/HINT and multi-frame CONTEXT went 12 physical lines -> 1 prefixed line, and unescape(AFTER stderr) == BEFORE stderr BYTE-FOR-BYTE, SAME SHA256 -- lossless, not merely 'still readable'. F-A's 25001/25P01 warnings pass through byte-identical. Conditions 1 and 2 met with the step body YAML-PARSED OUT OF deploy.yml and fixtures that are REAL CAPTURED OUTPUT OF THE REAL RUNNER against a throwaway PG 17.10 cluster; forged_only 0->1, anchored 1->0, all eight injection points collapsing to one physical line; real_plus_forged stays 0/0 as the over-tightening guard. Two mutation proofs, 81/81 across five migrate test files, tsc and eslint clean, new tests in a SEPARATE SEVERABLE COMMIT per M0-T52's precedent. Scope held: 0 added lines touch client.query/BEGIN/COMMIT/ROLLBACK/SAVEPOINT or pool lifecycle, so D-56's reservation is intact.",
+      "owner": "PARIKSAKA",
+      "state": "COMPLETE 84a6b3a12 + c8374b783 + dbf611274/e10254df2 — D-65 discharged, all three conditions measured"
     },
     {
       "id": "V-39-PARIKSAKA-OWNS-THE-DELETION",
@@ -1346,18 +1346,36 @@
     {
       "id": "F-1-A3.4-RULE-5-STALE-MY-FENCE",
       "what": "SIXTH instance today of a true-when-written statement falsified by a sibling's authorised change -- AND THIS ONE IS MY DOING, not a scope failure by either agent. M0-T59 documented ledger_writer_worker.ts as still on the old NODE_ENV form in A3_env_matrix.md operator rule 5; M0-T60 then repaired it an hour later. T60 was BARRED FROM THAT FILE BY MY OWN DISPATCH FENCE -- I fenced it to protect T59's freshly-landed work -- so it correctly routed rather than fixed. The fence was right and it produced the residue; that is the cost of scope discipline, and SQ-20's doctrine is precisely that the cost must be ROUTED rather than left. It is one line and I am carrying it myself rather than spending a KARAKA on it.",
-      "owner": "SUTRADHARA",
-      "state": "to_fix"
+      "owner": "PARIKSAKA",
+      "state": "FIXED BY ME this tick, and routed to PARIKSAKA for verification rather than self-certified (I16). A3.4 operator rule 5 now records that ledger_writer_worker.ts WAS repaired to isDirectEntrypoint by M0-T60 (27769a74e), carries the re-derivation that decided it -- old guard wrong in BOTH directions, and IMPORT_ONLY would have left the import cell wide open -- quotes the superseded text VERBATIM, and is labelled as conductor-authored. The reasoning was preserved rather than replaced: that rule is the clearest statement of the hazard test the campaign has."
     },
     {
       "id": "F-STANDING-QUEUE-STATUS-HAS-NO-DETECTOR",
       "what": "CONDUCTOR FINDING, and it is the campaign's own defect class sitting in the campaign's own control plane. THE STANDING QUEUE'S status FIELD IS SET AT ADD TIME AND NEVER TRANSITIONS ON COMPLETION. Nothing updates it, so 'OPEN' means only 'nobody has appended a DISCHARGED line', not 'this work is undone'. MEASURED TODAY -- FIVE items read OPEN or pending while being ALREADY COMPLETE: SQ-09 (F-13's recursive CTE, fixed at M0-T33, certified V-13); flip-checklist item 11(c) (target_floor seed change, landed M0-T41 under D-35 §1); flip-checklist item 10's MECHANISM half (the both-directions disclosure fixture, already passing on the production code path); SQ-08 (RES-1's silent success path, closed by M0-T44 under D-41 part 1 -- the sentinel emits unconditionally at migrate.ts:801 and the MigrationRunSummary docstring states the fix in our own vocabulary: 'MEASURED after the run rather than inferred from the absence of output'); and SQ-10 (the never-ran case, closed by M0-T45 whose own dispatch CITED SQ-10 as its source and which V-28 certified -- so the queue item was discharged by the work it commissioned and still reads OPEN). WHY THIS IS NOT MERELY UNTIDY: a conductor reading the queue at face value dispatches a KARAKA onto finished work, which at best wastes a dispatch and at worst produces a SECOND implementation that diverges from the certified one. The verify_before_dispatch standing instruction is the workaround I adopted after the first instance; it is a discipline, not a detector, and it depends entirely on the conductor remembering. THE PROPER FIX IS A DETECTOR, and I am not building it on my own reading: something that fails when a queue item's status disagrees with observable reality, or -- far simpler and probably better -- a rule that whoever discharges an item appends the DISCHARGED line, which is what I have now done by hand for SQ-08, SQ-09 and SQ-10.",
       "owner": "ADHIKARIN",
       "state": "raised"
+    },
+    {
+      "id": "F-DEPLOY-PIN-IS-A-CAMPAIGN-BOUNDARY",
+      "what": "D-62 part 4's pin has now been flagged by THREE agents in a row and none can retire it: M0-T52, M0-T57 and M0-T61 each state independently that THE LISTENER HAS NEVER BEEN SEEN WORKING IN A REAL DEPLOY. T61's phrasing: 'seven simulated scenarios plus two throwaway-cluster runs are not a deploy.' THE REASON IS STRUCTURAL, NOT AN OMISSION: nothing in this campaign can run a GitHub Actions deploy. So the entire sentinel-forging sequence -- D-58's listener, D-62's anchor, D-65's escape -- is now closed as far as any simulation can establish, AND ITS ENTIRE PROOF IS SIMULATED. Recorded as a CAMPAIGN BOUNDARY so that whoever eventually observes a real deploy knows there is a specific thing to look at; it likely belongs in R0 intake or the §7.7 closing gate rather than anywhere in M0. No ask attached.",
+      "owner": "ADHIKARIN",
+      "state": "recorded"
+    },
+    {
+      "id": "F-MULTILINE-RELAY-IS-ROUTINE-NOT-RARE",
+      "what": "REVERSES THE INTUITION AND MAKES CONDITION 3 LOAD-BEARING RATHER THAN A FORMALITY. M0-T61 measured that multi-line relayed server text is NOT rare -- PostgreSQL CONTEXT stacks make it ROUTINE -- while 0 OF 443 MIGRATION FILES CONTAIN AN ESCAPE SEQUENCE. So the new escaping fires constantly in normal operation and essentially never on anything a migration author wrote. Had condition 3 been treated as a formality, the campaign would have shipped a change that mangles the ordinary case while defending against one nobody has attempted. ALSO A STANDING WARNING WORTH CARRYING INTO DOCTRINE: any future 'readability' change that reintroduces continuation lines REOPENS THIS HOLE -- the fix is one newline away from being undone by someone improving log formatting in good faith.",
+      "owner": "ADHIKARIN",
+      "state": "raised"
+    },
+    {
+      "id": "F-MAILBOX-COPY-IS-COURTESY-NOT-REDUNDANCY",
+      "what": "GOVERNANCE NOTE for D-63/D-66, surfaced by M0-T61: 00_ARCHITECTURE/autonomy/mailbox is gitignored, so the to_verifier/ copy a KARAKA drops CANNOT BE COMMITTED. The tracked reports/ path is the ONLY durable copy and the mailbox copy is COURTESY, NOT REDUNDANCY. Stated plainly because it changes what 'I filed my report' means: an agent that writes only to to_verifier/ HAS WRITTEN NOTHING DURABLE, and the dispatch brief is currently the only thing telling it otherwise -- prompts/karaka.md still points only at the mailbox (SQ-22's open second half).",
+      "owner": "ADHIKARIN",
+      "state": "raised"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T15:49:42Z",
+  "last_updated_ts": "2026-08-23T15:54:15Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {

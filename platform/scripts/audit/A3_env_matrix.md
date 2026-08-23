@@ -211,9 +211,20 @@ That property is what the old guard destroyed.
 4. **If you add a third CI gate CLI, use this contract, not `NODE_ENV` and not `isDirectEntrypoint`**
    — and add it to §A3.4.2's reader table.
 5. **A worker or a mutating script is not a gate.** Its safe default is DO NOT RUN and it should use
-   `isDirectEntrypoint()`. `platform/scripts/pariprashna/ledger_writer_worker.ts:159` still carries
-   the `NODE_ENV !== 'test'` form and is a known open item (M0-T50 routed it to the conductor
-   unfixed; its direction analysis is genuinely different and was deliberately not decided in passing).
+   `isDirectEntrypoint()`. `platform/scripts/pariprashna/ledger_writer_worker.ts` **was repaired to
+   `isDirectEntrypoint()` by M0-T60 (commit `27769a74e`, SQ-24), not to `IMPORT_ONLY`** — and the
+   re-derivation is why. M0-T60 measured the old guard wrong in *both* directions: under
+   `NODE_ENV=test` a direct run exited 0 with zero bytes (a silent no-op a scheduler records as
+   success), and a **side-effect `import` ran `main()`**, opened the pool holding the system's only
+   `role_ledger_write` credential, and `process.exit(1)` killed the importer. `IMPORT_ONLY` — whose
+   safe default is RUN on any load — would have closed the first and left the second wide open.
+   The hazard, not the shape of the neighbouring fix, decides which contract applies.
+   *(Corrected 2026-08-23 by SŪTRADHĀRA under M0-T60 finding F-1: this rule was written by M0-T59
+   while the file was still unrepaired, and M0-T60 was fenced out of this file to protect that
+   landing, so it routed rather than fixed. Superseded text, verbatim: "…`:159` still carries the
+   `NODE_ENV !== 'test'` form and is a known open item (M0-T50 routed it to the conductor unfixed;
+   its direction analysis is genuinely different and was deliberately not decided in passing)."
+   Not certified by its author — I16.)*
 
 ## A3.4.5 — The invariants this contract implies, and which of them have a detector
 
