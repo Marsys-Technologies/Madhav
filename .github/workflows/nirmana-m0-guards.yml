@@ -135,23 +135,29 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # `fetch-depth: 2` IS LOAD-BEARING FOR THE PAWL (ruling D-87), not tidiness.
-          # The guard's second assertion is "the committed allowlist ⊆ ITS OWN PREVIOUS
-          # COMMITTED VALUE", and on a clean checkout — which every CI run is — the previous
-          # value is `HEAD^`. actions/checkout@v4 defaults to fetch-depth 1: one commit, NO
-          # PARENT, so `git show HEAD^:…` cannot resolve. Two things follow, and the second is
-          # why this line is safe to rely on rather than merely necessary:
-          #   1. Depth 2 is the minimum that makes the previous value readable. On a
-          #      `pull_request` run HEAD is the ephemeral merge commit and HEAD^ is the BASE
-          #      BRANCH's tip, so the assertion made is exactly "this change may not grow the
-          #      allowlist relative to the branch it merges into".
-          #   2. If this line were ever removed, the guard does NOT go quietly green — the pawl
-          #      reports UNDETERMINED and EXITS 1, naming fetch-depth as the likely cause. An
-          #      unavailable baseline is UNKNOWN, never clean (CLAUDE.md §N.8). The verification
-          #      of this checkout is therefore in the script, not in a comment here.
-          # Verified against THIS job's own checkout step (M0-T68), not inherited from another
-          # workflow's: it had no `with:` block at all, i.e. the shallow default.
-          fetch-depth: 2
+          # FULL HISTORY, NOT `fetch-depth: 2` (ruling D-95 supersedes D-87's fetch-depth: 2
+          # here). The old assertion compared the committed allowlist to `HEAD^` — one commit
+          # of history was enough because the reference itself was "the immediately previous
+          # commit". D-95 replaced that reference with a PERSISTED FLOOR
+          # (`entrypoint_guard_floor.json`) precisely because `HEAD^` SLIDES: one commit after
+          # a growth lands, `HEAD^` has itself absorbed it and the old check went quietly
+          # green (confirmed live on M0-T16's merge). The floor's own protection against being
+          # hand-widened (`floor_monotone_check`) is a FULL-HISTORY subset check — current
+          # floor ⊆ every value its committed history has ever held, not just its parent — and
+          # that needs every commit that ever touched `entrypoint_guard_floor.json` to be
+          # present in the checkout, not merely the last one. `fetch-depth: 0` fetches full
+          # history; the script itself still bounds its own walk to `HISTORY_SCAN_LIMIT`
+          # (200 commits) regardless of how much history is present, so this line only
+          # controls what CAN be seen, not how much the script looks at.
+          #   * If this line were ever narrowed back to a shallow depth, the guard does NOT go
+          #     quietly green — `floor_monotone_check` reports UNDETERMINED and the job EXITS
+          #     1 the first time `git rev-list` cannot resolve a commit the script expected.
+          #     An unavailable value is UNKNOWN, never clean (CLAUDE.md §N.8).
+          #   * The plain containment check (current allowlist ⊆ floor) does NOT need git
+          #     history at all — both sides are read straight off the checked-out working
+          #     tree — so it is unaffected either way; this depth is purely for the floor's
+          #     OWN self-protection.
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -178,11 +184,14 @@ jobs:
       - name: Ratchet — repo scan against the generated allowlist
         # Exits 1 on (a) any unguarded top-level main() that is not on the allowlist —
         # assertion (i), which catches a NEW unguarded file; (b) any allowlist entry that is not
-        # in M0-T64's settled 76-file baseline; (c) THE PAWL, ruling D-87 — any allowlist entry
-        # that is not in the allowlist's OWN PREVIOUS COMMITTED VALUE, which is what catches an
-        # already-REPAIRED file being put back, the one thing (b) structurally cannot see
-        # because a repaired file stays a member of the settled baseline forever; (d) a previous
-        # committed value that could not be READ; or (e) any file whose brace structure the
-        # scanner could not resolve. (d) and (e) are both UNKNOWN, and UNKNOWN must never be
-        # reported as clean (§N.8).
+        # in M0-T64's settled 76-file baseline; (c) THE FLOOR, ruling D-95 (supersedes D-87's
+        # HEAD^-based pawl) — the current allowlist is not covered by `entrypoint_guard_floor.json`
+        # (the smallest allowlist ever committed), which is what catches an already-REPAIRED file
+        # being put back, the one thing (b) structurally cannot see because a repaired file stays
+        # a member of the settled baseline forever; (d) the floor itself is WIDER than some value
+        # its own committed history has ever held — a hand-widened floor, caught across the FULL
+        # history so it cannot release one commit after landing the way D-87's single-step pawl
+        # did; (e) the floor or the current allowlist could not be READ; or (f) any file whose
+        # brace structure the scanner could not resolve. (d), (e) and (f) are all UNKNOWN, and
+        # UNKNOWN must never be reported as clean (§N.8).
         run: python platform/scripts/governance/check_entrypoint_guard_ratchet.py

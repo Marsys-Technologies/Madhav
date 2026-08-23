@@ -46,16 +46,19 @@ Three mechanisms implement that, and each has a detector rather than a promise:
      loosened by editing the list it gates on.
   3. **SHRINKAGE IS VISIBLE.** The allowlist records `baseline_count`, its own `count`, and the
      itemised `paid_down` set (baseline − current). `--json` reports all three.
-  4. **THE PAWL — THE ALLOWLIST MAY ONLY SHRINK (ruling D-87, from PARĪKṢAKA's finding F-T).**
-     Mechanism 2 is MEMBERSHIP IN A STATIC BASELINE, and D-87 names the gap exactly: it asks
-     *"is every unguarded file one of the original 76?"* and **never asks "has the allowlist
-     GROWN since last time?"** — so a REPAIRED file stays a permissible member of the baseline
-     forever and can be re-added, then stripped of its guard, with nothing objecting. Every run
-     therefore ALSO asserts that the allowlist is a subset of **its own previous committed
-     value**, read from git (`HEAD` when the working tree carries an uncommitted edit, `HEAD^`
-     on a clean checkout, `HEAD` for `--regenerate`). This is what makes the ratchet a ratchet;
-     without it the ratchet is a size comparison. It looks at nothing but the DELTA, so it is
-     green today with the whole 71-file residual present — see the PAWL section below.
+  4. **THE FLOOR — THE ALLOWLIST MAY ONLY SHRINK RELATIVE TO A PERSISTED LOW-WATER MARK
+     (ruling D-95, superseding D-87 part 3).** D-87 first closed this gap by asserting the
+     allowlist is a subset of its own previous COMMITTED value, read from git (`HEAD^` on a
+     clean checkout). PARĪKṢAKA's V-64 measured that reference SLIDES: one commit after a
+     growth lands, `HEAD^` has itself absorbed it and the comparison passes vacuously —
+     caught live when `origin/main` brought three unguarded files in via M0-T16's merge; red
+     at the merge commit, green the very next one. D-95's fix: the reference is not a git
+     ref at all. It is a separate committed artifact, `entrypoint_guard_floor.json`, holding
+     the SMALLEST allowlist ever committed. Every run asserts CURRENT ⊆ FLOOR; a real
+     pay-down (current a STRICT subset of floor) makes the SAME command that records it also
+     sync the floor to match. Growth beyond the floor is RED AND STAYS RED — no ref to slide
+     behind. See THE FLOOR section below, including the floor's own protection against being
+     hand-widened.
 
 Stale entries — allowlisted files that are now clean, or that no longer exist — are REPORTED
 loudly on every run and fail only under `--strict`. They are the good direction; making them
@@ -133,10 +136,10 @@ WHAT THIS GUARD DOES **NOT** COVER — stated, because an unstated limit reads a
 5. **IT DOES NOT GRADE BLAST RADIUS.** Tier 1 / 2 / 3 live in M0-T64's triage; this guard treats
    every unguarded file identically.
 
-Exit codes: 0 = pass · 1 = a NEW (non-allowlisted) violation, an allowlist that GREW
-(either beyond the settled baseline or beyond its own previous committed value), a file the
-scanner could not parse, a previous committed value that could not be READ, or `--strict`
-with any residual.
+Exit codes: 0 = pass · 1 = a NEW (non-allowlisted) violation, an allowlist that GREW beyond
+the settled baseline OR beyond the persisted FLOOR, a floor that is WIDER than any value its
+own committed history has ever held, a file the scanner could not parse, a current-allowlist
+or floor value that could not be READ, or `--strict` with any residual.
 """
 
 from __future__ import annotations
@@ -155,6 +158,10 @@ HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parents[2]
 
 ALLOWLIST_PATH = HERE / "entrypoint_ratchet_allowlist.json"
+#: THE FLOOR (ruling D-95) — the smallest allowlist ever committed. See THE FLOOR section
+#: below for the full mechanism. Written ONLY by `write_floor` (called from `sync_floor`,
+#: itself called from `--regenerate` on a real pay-down, or standalone via `--sync-floor`).
+FLOOR_PATH = HERE / "entrypoint_guard_floor.json"
 FIXTURE_DIR = HERE / "entrypoint_ratchet_fixtures"
 BASELINE_PATH = REPO_ROOT / "00_ARCHITECTURE/autonomy/reports/M0-T64-triage.json"
 
@@ -526,7 +533,8 @@ def regenerate(root: Path, scan_roots: Sequence[str], out: Path) -> int:
     # unparsed file as UNKNOWN and fails; regeneration did not, and it is the more dangerous of
     # the two — a file the scanner mis-reads produces NO occurrences, so it drops OUT of the
     # measured set and the written allowlist SHRINKS. A shrink is the good direction, so neither
-    # the subset check nor the pawl objects, and the pay-down would be recorded as real (§N.8:
+    # the subset check nor the floor pre-check objects, and the pay-down would be recorded as
+    # real (§N.8:
     # the detector that cannot answer must not write the answer that looks like progress). This
     # is the exact failure mode M0-T66's F-Q found in this scanner: twelve of the settled 76
     # reported clean by a desynchronised blanker.
@@ -556,31 +564,33 @@ def regenerate(root: Path, scan_roots: Sequence[str], out: Path) -> int:
             print(f"  + {f}", file=sys.stderr)
         return 1
 
-    # ── ASSERTION (ii), AS A PRECONDITION OF WRITING (ruling D-87) ──────────────────────────
-    # Without this, `--regenerate` IS the exploit in one command: strip a repaired file's guard,
-    # regenerate, and the scan puts that file straight back on the list. Every name it would add
-    # is inside the settled baseline, so the subset check above has nothing to say about it.
-    pawl = pawl_check(out, measured, None, mode="regenerate")
-    if not pawl.ok:
-        if not pawl.determined:
+    # ── THE FLOOR PRE-CHECK (ruling D-95, superseding D-87's "ASSERTION (ii)" here) ─────────
+    # Without this, `--regenerate` is the exploit in one command: strip a repaired file's
+    # guard, regenerate, and the scan puts that file straight back on the list. D-87 caught
+    # this against the allowlist's own previous committed value; D-95 moves the reference to
+    # the FLOOR, which — unlike that value — does not slide one commit after a growth lands.
+    floor_on_disk = read_current_side(FLOOR_PATH)
+    if floor_on_disk is not None:
+        beyond_floor = sorted(set(measured) - set(floor_on_disk))
+        if beyond_floor:
             print(
-                "check_entrypoint_guard_ratchet: REFUSING to regenerate — "
-                f"{pawl.reason}",
+                f"check_entrypoint_guard_ratchet: REFUSING to regenerate — the scan would "
+                f"ADD {len(beyond_floor)} file(s) the FLOOR ({len(floor_on_disk)} entries) "
+                "does not carry. THE ALLOWLIST MAY ONLY SHRINK RELATIVE TO THE FLOOR (D-67 "
+                "part 4, D-95). A file the floor does not carry was either never on it or "
+                "was repaired and left it; its reappearance means the repair was UNDONE, "
+                "and regenerating would record that as permitted:",
                 file=sys.stderr,
             )
+            for f in beyond_floor:
+                print(f"  + {f}", file=sys.stderr)
             return 1
+    else:
         print(
-            f"check_entrypoint_guard_ratchet: REFUSING to regenerate — the scan would ADD "
-            f"{len(pawl.added)} file(s) that the PREVIOUS COMMITTED allowlist "
-            f"({pawl.previous_commit}, {pawl.previous_count} entries) does not carry. THE "
-            "ALLOWLIST MAY ONLY SHRINK (D-67 part 4, D-87). A file that left this list was "
-            "repaired; its reappearance means the repair was UNDONE, and regenerating would "
-            "record that as permitted:",
-            file=sys.stderr,
+            "check_entrypoint_guard_ratchet: NOTE — no floor exists yet "
+            f"({FLOOR_PATH.name} not found). Writing the allowlist below without a floor "
+            "check; run --sync-floor once it is committed."
         )
-        for f in pawl.added:
-            print(f"  + {f}", file=sys.stderr)
-        return 1
 
     paid_down = sorted(baseline - set(measured))
     payload = {
@@ -590,13 +600,16 @@ def regenerate(root: Path, scan_roots: Sequence[str], out: Path) -> int:
             "allowlist of exactly today's population, GENERATED FROM THE MEASUREMENT AND NEVER "
             "HAND-TYPED, with its count recorded so shrinkage is visible. PAY-DOWN ONLY: a file "
             "leaves this list when repaired; NOTHING IS EVER ADDED. TWO assertions enforce that "
-            "on every run of the guard, not only at regeneration (ruling D-87): (i) `files` is a "
-            "SUBSET of `baseline_files`, so a hand-added NEW name fails the build; and (ii) "
-            "`files` is a SUBSET OF ITS OWN PREVIOUS COMMITTED VALUE, read from git — the PAWL, "
-            "which is what catches an already-REPAIRED file being put back. (i) alone is "
-            "membership in a static baseline and permits a repaired file to return forever. "
-            "Regenerate with "
-            "`python platform/scripts/governance/check_entrypoint_guard_ratchet.py --regenerate`."
+            "on every run of the guard, not only at regeneration (ruling D-95, superseding "
+            "D-87 part 3): (i) `files` is a SUBSET of `baseline_files`, so a hand-added NEW "
+            "name fails the build; and (ii) `files` is a SUBSET OF THE PERSISTED FLOOR "
+            "(entrypoint_guard_floor.json — the smallest allowlist ever committed), which is "
+            "what catches an already-REPAIRED file being put back, without depending on a "
+            "git ref that slides one commit after the growth it was meant to catch. (i) "
+            "alone is membership in a static baseline and permits a repaired file to return "
+            "forever. Regenerate with "
+            "`python platform/scripts/governance/check_entrypoint_guard_ratchet.py --regenerate` "
+            "— a real pay-down syncs the floor in the same command."
         ),
         "generated_by": "check_entrypoint_guard_ratchet.py --regenerate",
         "baseline_source": "00_ARCHITECTURE/autonomy/reports/M0-T64-triage.json :: ratchet_allowlist.files",
@@ -613,60 +626,107 @@ def regenerate(root: Path, scan_roots: Sequence[str], out: Path) -> int:
         f"check_entrypoint_guard_ratchet: wrote {out.name} — "
         f"{len(measured)} allowlisted / {len(baseline)} baseline / {len(paid_down)} paid down."
     )
+
+    # ── THE SELF-UPDATE (ruling D-95 point 3): sync the floor IN THE SAME INVOCATION ─────────
+    # so the pay-down and the floor's new low-water mark land in one working-tree diff and
+    # whoever commits, commits both together — by construction, not by remembering a second
+    # step. `sync_floor` is itself shrink-only (D-96): it cannot be the path growth reaches
+    # the floor through, because it refuses outright the instant its target is not a subset
+    # of the value already on disk.
+    if floor_on_disk is not None and set(measured) < set(floor_on_disk):
+        return sync_floor(FLOOR_PATH, measured, source="--regenerate scan")
     return 0
 
 
 # ═══════════════════════════════════════════════════════════════════════════════════════════
-# THE PAWL — assertion (ii): the committed allowlist may only SHRINK  (ruling D-87)
+# THE FLOOR — assertion (ii): the current allowlist may only shrink relative to a
+# PERSISTED LOW-WATER MARK, never a sliding git ref  (ruling D-95, superseding D-87 part 3)
 # ═══════════════════════════════════════════════════════════════════════════════════════════
 #
-# PARĪKṢAKA's finding F-T, ruled on at D-87: the check above (`files ⊆ baseline_files`) is
-# MEMBERSHIP AGAINST A STATIC BASELINE, which is a strictly weaker claim than the pay-down
-# invariant D-67 part 4 and the amended SQ-29 both state. It asks "is every unguarded file one
-# of the original 76?" and NEVER asks "has the allowlist GROWN since last time?". Under it a
-# REPAIRED file stays a permissible member of the baseline forever, so it can be re-added, then
-# have its guard stripped, and nothing objects. Reproduced end to end on `set-password.ts` — a
-# credential-writing file that Wave 1 had already repaired.
+# D-87 (PARĪKṢAKA's finding F-T) first closed the gap in assertion (i): membership in the
+# static M0-T64 baseline never asks "has the allowlist grown SINCE LAST TIME", so a repaired
+# file could return, then be stripped of its guard again, forever. D-87's fix compared the
+# allowlist to ITS OWN PREVIOUS COMMITTED VALUE, read from git: `HEAD` when the working tree
+# carries an uncommitted edit, `HEAD^` (the first parent) on a clean checkout.
 #
-#     D-87: "The gate needs TWO assertions, not one: (i) CURRENT POPULATION ⊆ COMMITTED
-#      ALLOWLIST — exists today, catches a NEW unguarded file; (ii) COMMITTED ALLOWLIST ⊆ ITS
-#      OWN PREVIOUS COMMITTED VALUE — MISSING, and it is the pawl. It catches a repaired file
-#      RETURNING."
+# ADHIKĀRIN's D-95 (PARĪKṢAKA's V-64) found that reference SLIDES. `HEAD^` is the commit
+# immediately before HEAD — and one commit after a growth lands, HEAD^ IS the growth commit,
+# so "current ⊆ HEAD^" becomes a comparison against itself and passes vacuously. This is not
+# hypothetical: `origin/main` brought THREE unguarded files into this branch via M0-T16's
+# merge. The gate was red at the merge commit (HEAD^ was the campaign's pre-merge tip, which
+# did not carry them) and green the very next commit (HEAD^ became the merge commit itself,
+# which did). A pawl whose reference slides one commit behind the growth is, in D-95's words,
+# "a ratchet whose pawl engages for one commit and then releases" — most of the way back to
+# no pawl at all.
 #
-# WHERE "ITS OWN PREVIOUS COMMITTED VALUE" COMES FROM, AND WHY.
-# The allowlist is a committed artifact and git is its ledger (D-87 part 4), so the previous
-# value is read FROM GIT — never from the working tree, which proves nothing about what was
-# there before, and never from a second copy of the list, which is just the same list twice.
-# Which ref depends on what is being compared, and both cases are the same question asked from
-# the two places the guard actually runs:
+# D-95's FIX: THE REFERENCE IS NOT A GIT REF AT ALL. It is a separate, independently
+# committed artifact — `entrypoint_guard_floor.json` — holding the SMALLEST allowlist ever
+# committed. Every run of this script asserts:
 #
-#   * WORKING TREE DIFFERS FROM `HEAD` (an agent has edited the list and not yet committed):
-#     the previous value is `HEAD`. The growth is caught BEFORE it is ever committed.
-#   * WORKING TREE EQUALS `HEAD` (a clean checkout — i.e. every CI run): comparing against
-#     `HEAD` would be comparing a value with itself, which is exactly the vacuous shape this
-#     ruling exists to remove. The previous value is `HEAD^` — the FIRST PARENT. On a
-#     `pull_request` run that parent is the BASE BRANCH's tip, so the assertion made is
-#     precisely "this change may not grow the allowlist relative to the branch it merges into".
-#   * `--regenerate` writes a NEW value, so its predecessor is `HEAD`'s committed value
-#     regardless of the working tree. Without this, `--regenerate` is the whole exploit in one
-#     command: strip a repaired file's guard, regenerate, and the scan puts it back on the list
-#     — every entry it would add is in the baseline, so the (i) check has nothing to say.
+#     CURRENT ALLOWLIST  ⊆  FLOOR
 #
-# WHAT IT ASSUMES ABOUT CI, STATED BECAUSE IT IS A REAL PRECONDITION AND NOT A DETAIL.
-# `HEAD^` must exist in the checkout. `actions/checkout@v4` defaults to `fetch-depth: 1`, which
-# fetches ONE commit and no parent — under it this check could not resolve a previous value at
-# all. The job in `.github/workflows/nirmana-m0-guards.yml` therefore sets `fetch-depth: 2`
-# explicitly, and this file's own verification of that is the failure mode below: when the
-# previous value CANNOT BE READ the pawl is UNDETERMINED, and UNDETERMINED IS FATAL. It is
-# never green. A baseline that cannot be read is an unknown, and §N.8's whole subject is that a
-# check which cannot answer must not return the answer that happens to look clean — the same
-# shape M0-T66 applied to unparsed files, and the shape that caught M0-T67 when a reference
-# went `null` and a differential test compared `null` to `null`.
+# both read directly off disk (the same way `read_current_side` already reads the allowlist —
+# whatever is on disk right now, dirty or clean, IS "current"). The floor does not move on
+# its own; it moves only when something DELIBERATELY moves it (see "THE SELF-UPDATE" below).
+# A growth beyond the floor is therefore RED AND STAYS RED across every subsequent commit
+# until it is paid back — there is no adjacent commit whose HEAD^ has quietly absorbed it,
+# because the floor was never a function of HEAD^ in the first place.
 #
-# WHAT IT DOES NOT DO, which is why it can be BLOCKING TODAY (D-87 part 3): it does not look at
-# the 71 residual at all. Those are already in the committed allowlist, and this fires only when
-# the allowlist GROWS. It is green on a clean tree with the entire backlog present and
-# untouched. No `--strict`, no permanently-red gate, no waiting on the pay-down.
+# WHY THIS IS NOT D-39 PART 2's forbidden permanently-red gate (D-95's own distinction, and
+# it is about CLEARABILITY, not redness): a red on "the committed allowlist's history once
+# contained a growth" is UNCLEARABLE — no forward action erases a fact about history, and H2
+# forbids rewriting it. A red on "the CURRENT allowlist is larger than the floor" is
+# clearable by the obvious forward action: RE-GUARD THE FILE. That shrinks current back to
+# ⊆ floor and the gate goes green again, on the merits, exactly as D-84 ordered for `.mts`
+# and D-73/D-84 ordered generally: the test is always "can this be cleared by doing the
+# right thing", never "did this ever happen".
+#
+# THE SELF-UPDATE — keeping the floor equal to the smallest current has ever been, in the
+# SAME commit that earns it (see `sync_floor` below). D-96 forbids an exemption field of any
+# kind — "a bypass with a ruling-id painted on it is a bypass" — so there is NO flag anywhere
+# that lets a commit declare its own growth authorised; the ONLY way the floor is ever
+# allowed to grow is the same forward action stated above, never a data field. Concretely:
+#
+#   * `--regenerate` (T66's writer) computes `measured` from a fresh scan, same as always.
+#     If `measured` is not a subset of the FLOOR on disk, it refuses to write — the same
+#     shape as its existing refusal against the M0-T64 baseline, just against the new
+#     reference. If `measured` IS a subset, and STRICTLY smaller (a real pay-down), the SAME
+#     invocation ALSO rewrites `entrypoint_guard_floor.json` to equal `measured`. One
+#     command, one working-tree diff touching both files — whoever stages and commits does
+#     so together BY CONSTRUCTION, not by remembering a second step.
+#   * `--sync-floor` is the standalone form of the same write: it takes the currently
+#     committed allowlist (never a hand value) as its target and applies the identical
+#     shrink-only rule. It exists for the one case `--regenerate` cannot cover by itself:
+#     creating the floor for the first time (this session's own job — see the report for the
+#     measured seed value) and any future manual recovery. It is NEVER invoked automatically
+#     by a bare check run; a read-only gate never writes a file (D-77's spirit extended: a
+#     check does not mutate the tree it is checking).
+#
+# Neither writer can ever WIDEN the floor: both compute their target from a MEASUREMENT (a
+# fresh scan, or the already-validated on-disk allowlist), both refuse outright the instant
+# the target is not a subset of the floor's current on-disk value, and neither ever reads a
+# "requested" or "declared" value from anywhere a hand could reach. The only way growth ever
+# reaches the floor file is a genuine, generated shrink landing through one of these paths.
+#
+# THE FLOOR'S OWN INTEGRITY — a floor that anything could hand-widen is the same defect T68
+# built and D-89 named, one layer up (§N.8: "a signal without a real detector is null, not
+# green"). `floor_monotone_check` below is that detector, and it is deliberately NOT shaped
+# like D-87's adjacent HEAD-vs-HEAD^ comparison — an adjacent-only check on the floor's OWN
+# history would inherit the EXACT one-commit-release flaw D-95 exists to remove, one file
+# over. Instead it walks the floor's ENTIRE committed history (bounded by
+# `HISTORY_SCAN_LIMIT`, the same bound `pawl_history` below already uses) and asserts the
+# CURRENT floor is a subset of EVERY value it has ever held — a hand-widened commit is
+# caught not only at the moment it lands but at every commit after it, for as long as the
+# widening still stands, closing exactly the gap that let D-87's single-step version go
+# quiet. It is clearable the same way as the main gate: shrink the floor back to ⊆
+# everything before it, and it is green again.
+#
+# WHAT IT DOES NOT DO, stated because an unstated limit reads as coverage: it does not look
+# at the 71 residual at all — those already sit inside the floor by construction, so this
+# fires only when the current allowlist grows PAST what the floor has ever recorded. It is
+# green on a clean tree with the entire backlog present and untouched. No `--strict`, no
+# permanently-red gate, no waiting on the pay-down.
+
 
 #: How far back the NON-GATING history observation walks. Bounded so the guard's cost cannot
 #: grow with the repo's history.
@@ -674,17 +734,17 @@ HISTORY_SCAN_LIMIT = 200
 
 
 @dataclass
-class PawlResult:
-    """The outcome of assertion (ii). `determined=False` is a FAILURE, never a pass."""
+class FloorResult:
+    """The outcome of one floor-side assertion (`check` is 'containment' or 'monotonicity').
+    `determined=False` is a FAILURE, never a pass — the same §N.8 discipline `PawlResult`
+    (D-87, now superseded by D-95) was built on: an unknown must never read as clean."""
 
     determined: bool
     ok: bool
-    comparison: str
+    check: str
     added: List[str] = field(default_factory=list)
     current_count: int = 0
-    previous_ref: Optional[str] = None
-    previous_commit: Optional[str] = None
-    previous_count: Optional[int] = None
+    violations: List[Dict] = field(default_factory=list)
     reason: str = ""
 
 
@@ -732,36 +792,16 @@ def _files_of(raw: Optional[str]) -> Optional[List[str]]:
     return files
 
 
-def _nearest_existing(repo: Path, start_ref: str, rel: str) -> Tuple[Optional[str], Optional[str]]:
-    """(commit sha, blob) for the newest commit reachable from `start_ref` — inclusive — in
-    which `rel` exists.
-
-    The walk-back is not a nicety. Without it, DELETING the allowlist in one commit and
-    re-adding a grown one in the next would present "no previous value" and read as a birth;
-    with it, the deletion is walked straight through to the last commit that really had the
-    list, and the growth is caught."""
-    raw = _blob_at(repo, start_ref, rel)
-    if raw is not None:
-        rc, out = _git(repo, "rev-parse", start_ref)
-        return (out.strip() if rc == 0 else start_ref), raw
-    rc, out = _git(repo, "rev-list", f"--max-count={HISTORY_SCAN_LIMIT}", start_ref, "--", rel)
-    if rc != 0:
-        return None, None
-    for sha in out.split():
-        raw = _blob_at(repo, sha, rel)
-        if raw is not None:
-            return sha, raw
-    return None, None
-
-
 def read_current_side(allowlist_path: Path) -> Optional[List[str]]:
-    """The CURRENT side of the pawl's comparison — or **None**, meaning it could not be read.
+    """A JSON `files` list read straight off disk — or **None**, meaning it could not be read.
+    Generic over WHICH file: called on the allowlist AND on the floor, since D-95 reads both
+    "the same way" (straight off disk, dirty or clean).
 
     Deliberately NOT `load_allowlist`, which substitutes an empty `files` for a missing file so
     that the rest of a run can still report. An empty list is a well-formed operand, so handing
-    that substitution to the pawl would make DELETING the allowlist compare ∅ ⊆ previous and
-    PASS — the empty-operand pass of ruling D-89. The distinction between "absent" and "empty"
-    lives here, in one function, with a self-test case on it."""
+    that substitution to a subset comparison would make DELETING the file compare ∅ ⊆ anything
+    and PASS — the empty-operand pass ruling D-89 forbids. The distinction between "absent" and
+    "empty" lives here, in one function, with a self-test case on it."""
     if not allowlist_path.exists():
         return None
     try:
@@ -774,102 +814,206 @@ def read_current_side(allowlist_path: Path) -> Optional[List[str]]:
     return list(files)
 
 
-def pawl_check(
-    allowlist_path: Path,
-    current_files: Optional[Iterable[str]],
-    current_raw: Optional[str],
-    mode: str,
-) -> PawlResult:
-    """Assertion (ii): the value about to stand may not be a SUPERSET of the previous committed
-    one. `mode` is 'scan' (the gate) or 'regenerate' (the writer's own precondition).
+def write_floor(path: Path, files: Sequence[str], note: str) -> None:
+    """Write the floor artifact. THE ONLY WRITER is `sync_floor` — it only ever calls this
+    with a target that is a subset of (never wider than) the value already on disk, or with
+    no prior value at all (first-time creation). No other code path in this file ever writes
+    to `FLOOR_PATH`."""
+    payload = {
+        "schema_version": "1.0",
+        "$comment": (
+            "Floor for check_entrypoint_guard_ratchet.py — ruling D-95, superseding D-87 "
+            "part 3. Holds the SMALLEST allowlist ever committed. Every run asserts CURRENT "
+            "ALLOWLIST \u2286 FLOOR (floor_containment) and FLOOR \u2286 EVERY VALUE ITS OWN "
+            "COMMITTED HISTORY HAS EVER HELD (floor_monotone_check). The floor moves ONLY "
+            "via `--regenerate` (auto-sync on a real pay-down) or `--sync-floor` "
+            "(standalone) — both refuse to write anything that is not a subset of the value "
+            "already on disk. D-96: no field anywhere in this file authorises a widening — "
+            "the only sanctioned path is guard-the-file-then-shrink, or a brand new "
+            "explicitly-ruled baseline, never a flag here."
+        ),
+        "generated_by": "check_entrypoint_guard_ratchet.py --regenerate / --sync-floor",
+        "note": note,
+        "count": len(files),
+        "files": sorted(files),
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    `current_files=None` means the CURRENT side could not be read, and that is UNDETERMINED —
-    never a pass. Ruling **D-89**, issued while this check was being built and general by its
-    own terms: *"a two-sided comparison requires an anchor on EACH side independently … the
-    test asserts BOTH extractions SUCCEEDED — non-null, well-formed — BEFORE it compares
-    them."* Without this anchor, DELETING the allowlist yields ∅ ⊆ previous and the pawl passes
-    on an empty operand — the `null == null` shape D-89 was ruled on, one file away."""
-    if current_files is None:
-        return PawlResult(
+
+def sync_floor(floor_path: Path, target_files: Sequence[str], source: str) -> int:
+    """Bring the floor to equal `target_files` — SHRINK-ONLY, print+return 0/1 like the rest
+    of this file's writers. Never widens: refuses outright if `target_files` carries
+    anything the existing floor does not, so growth cannot reach the floor through this door
+    either. First-time creation (no floor on disk yet) is the one case with no prior value
+    to violate, and it is exactly this session's own act — see the report for the measured
+    seed."""
+    target = sorted(set(target_files))
+    floor_disk = read_current_side(floor_path)
+    if floor_disk is None:
+        if floor_path.exists():
+            print(
+                f"check_entrypoint_guard_ratchet: REFUSING to sync floor — {floor_path.name} "
+                "exists but is unreadable (unparsable, or missing a well-formed `files` "
+                "list). An unreadable floor is UNKNOWN, never a blank slate to overwrite "
+                "(\u00a7N.8).",
+                file=sys.stderr,
+            )
+            return 1
+        write_floor(floor_path, target, note=f"initial floor, seeded from {source}")
+        print(
+            f"check_entrypoint_guard_ratchet: created {floor_path.name} — {len(target)} "
+            f"entries (seeded from {source})."
+        )
+        return 0
+    added = sorted(set(target) - set(floor_disk))
+    if added:
+        print(
+            f"check_entrypoint_guard_ratchet: REFUSING to sync floor — {source} carries "
+            f"{len(added)} entry/entries the existing floor ({len(floor_disk)}) does not. "
+            "THE FLOOR MAY ONLY SHRINK (D-95; D-96 — no exemption exists for this). Repair "
+            "the file(s) so the source no longer needs them, or bring a NEW "
+            "explicitly-ruled baseline to ADHIKĀRIN:",
+            file=sys.stderr,
+        )
+        for f in added:
+            print(f"  + {f}", file=sys.stderr)
+        return 1
+    if set(target) == set(floor_disk):
+        print(
+            f"check_entrypoint_guard_ratchet: floor already in sync ({len(floor_disk)} "
+            "entries) — nothing to do."
+        )
+        return 0
+    write_floor(floor_path, target, note=f"pay-down synced from {source}")
+    print(
+        f"check_entrypoint_guard_ratchet: floor synced — {len(floor_disk)} \u2192 "
+        f"{len(target)} ({len(floor_disk) - len(target)} paid down, from {source})."
+    )
+    return 0
+
+
+def floor_containment(
+    current_files: Optional[Iterable[str]], floor_files: Optional[Iterable[str]]
+) -> FloorResult:
+    """Assertion: the current allowlist is a subset of the floor. D-89 anchoring: either
+    side being unreadable is UNDETERMINED, never a vacuous pass — the same rule `pawl_check`
+    (D-87, now superseded) was built on, applied here to two different files instead of one
+    file across two points in time."""
+    if current_files is None or floor_files is None:
+        return FloorResult(
             determined=False,
             ok=False,
-            comparison="none",
+            check="containment",
             reason=(
-                "the CURRENT allowlist could not be read (missing, unparsable, or carrying no "
-                "well-formed `files` list). A comparison whose current side is absent CANNOT "
-                "RETURN FALSE (D-89), so it is UNDETERMINED and fatal — not a pass."
+                "the current allowlist or the floor could not be read (missing, unparsable, "
+                "or no well-formed `files` list) — an absent operand cannot make a subset "
+                "comparison return true or false (D-89), so this is UNDETERMINED."
             ),
         )
     current = set(current_files)
-    repo = _git_toplevel(allowlist_path.parent)
-    if repo is None:
-        return PawlResult(
-            determined=False,
-            ok=False,
-            comparison="none",
-            current_count=len(current),
-            reason=(
-                "the allowlist is not inside a git working tree, so its PREVIOUS COMMITTED "
-                "VALUE cannot be read. D-87 part 4: the allowlist is a committed artifact and "
-                "git is its ledger."
-            ),
-        )
-    try:
-        rel = allowlist_path.resolve().relative_to(repo.resolve()).as_posix()
-    except ValueError:  # pragma: no cover — allowlist outside its own repo
-        return PawlResult(
-            determined=False,
-            ok=False,
-            comparison="none",
-            current_count=len(current),
-            reason="the allowlist resolves outside the git toplevel that contains it.",
-        )
-
-    head_raw = _blob_at(repo, "HEAD", rel)
-    if mode == "regenerate":
-        start_ref, comparison = "HEAD", "regenerate-vs-HEAD"
-    elif head_raw is None or head_raw != current_raw:
-        start_ref, comparison = "HEAD", "worktree-vs-HEAD"
-    else:
-        start_ref, comparison = "HEAD^", "HEAD-vs-parent"
-
-    commit, raw = _nearest_existing(repo, start_ref, rel)
-    previous = _files_of(raw)
-    if previous is None:
-        hint = (
-            "`HEAD^` did not resolve to a commit carrying the allowlist. In CI this is almost "
-            "always a SHALLOW checkout: actions/checkout@v4 defaults to fetch-depth 1, which "
-            "fetches no parent — the job must set `fetch-depth: 2`."
-            if start_ref == "HEAD^"
-            else "no commit reachable from HEAD carries a readable allowlist."
-        )
-        return PawlResult(
-            determined=False,
-            ok=False,
-            comparison=comparison,
-            current_count=len(current),
-            previous_ref=start_ref,
-            previous_commit=commit,
-            reason=(
-                f"the PREVIOUS COMMITTED VALUE could not be read ({hint}) An unavailable "
-                "baseline is UNKNOWN, never clean (§N.8), so this is a FAILURE and not a skip."
-            ),
-        )
-
-    added = sorted(current - set(previous))
-    return PawlResult(
+    floor = set(floor_files)
+    added = sorted(current - floor)
+    return FloorResult(
         determined=True,
         ok=not added,
-        comparison=comparison,
+        check="containment",
         added=added,
         current_count=len(current),
-        previous_ref=start_ref,
-        previous_commit=commit,
-        previous_count=len(previous),
         reason=(
-            "no entry was added relative to the previous committed value."
+            "the current allowlist is a subset of the floor."
             if not added
-            else f"{len(added)} entry/entries were ADDED relative to the previous committed value."
+            else f"{len(added)} entry/entries in the current allowlist are NOT covered by the floor."
+        ),
+    )
+
+
+def floor_monotone_check(floor_path: Path, current_files: Optional[Iterable[str]]) -> FloorResult:
+    """Assertion: the floor is a subset of EVERY value its own committed history has ever
+    held — not merely its immediate parent (`HEAD^`), which is precisely the shape that let
+    D-87's version of this idea slide one commit after a growth landed (D-95). Walking the
+    FULL history (bounded by `HISTORY_SCAN_LIMIT`) means a hand-widened commit stays caught
+    for as long as the widening stands, not only at the instant it lands.
+
+    `current_files=None` is UNDETERMINED, never a pass (D-89's anchor-both-sides rule)."""
+    if current_files is None:
+        return FloorResult(
+            determined=False,
+            ok=False,
+            check="monotonicity",
+            reason=(
+                "the floor could not be read from disk (missing, unparsable, or no "
+                "well-formed `files` list). An absent floor is UNKNOWN, not a pass (\u00a7N.8)."
+            ),
+        )
+    current = set(current_files)
+    repo = _git_toplevel(floor_path.parent)
+    if repo is None:
+        return FloorResult(
+            determined=False,
+            ok=False,
+            check="monotonicity",
+            current_count=len(current),
+            reason="the floor is not inside a git working tree, so its committed history cannot be read.",
+        )
+    try:
+        rel = floor_path.resolve().relative_to(repo.resolve()).as_posix()
+    except ValueError:  # pragma: no cover — floor outside its own repo
+        return FloorResult(
+            determined=False,
+            ok=False,
+            check="monotonicity",
+            current_count=len(current),
+            reason="the floor resolves outside the git toplevel that contains it.",
+        )
+    rc, out = _git(repo, "rev-list", f"--max-count={HISTORY_SCAN_LIMIT}", "HEAD", "--", rel)
+    if rc != 0:
+        return FloorResult(
+            determined=False,
+            ok=False,
+            check="monotonicity",
+            current_count=len(current),
+            reason="`git rev-list` could not walk the floor's committed history.",
+        )
+    violations: List[Dict] = []
+    for sha in out.split():
+        raw = _blob_at(repo, sha, rel)
+        if raw is None:
+            # The floor did not exist at this commit (before it was first written, or a
+            # delete-then-readd gap) — nothing to compare against. Skip, don't fail; this is
+            # the same not-a-violation shape the old delete-then-readd walk-back relied on.
+            continue
+        files = _files_of(raw)
+        if files is None:
+            # The floor EXISTED at this commit but did not parse. A PRESENT, unreadable
+            # value is not an absence — fail rather than silently treat it as agreeing.
+            return FloorResult(
+                determined=False,
+                ok=False,
+                check="monotonicity",
+                current_count=len(current),
+                reason=(
+                    f"commit {sha[:9]} carries an unreadable floor — cannot verify "
+                    "monotonicity through it."
+                ),
+            )
+        added = sorted(current - set(files))
+        if added:
+            violations.append({"commit": sha, "added": added})
+    return FloorResult(
+        determined=True,
+        ok=not violations,
+        check="monotonicity",
+        added=sorted({f for v in violations for f in v["added"]}),
+        current_count=len(current),
+        violations=violations,
+        reason=(
+            "the current floor is a subset of every value its committed history has ever held."
+            if not violations
+            else (
+                f"the current floor is WIDER than {len(violations)} historical commit(s) — "
+                "it was hand-widened and never fully paid back."
+            )
         ),
     )
 
@@ -879,9 +1023,11 @@ def pawl_history(allowlist_path: Path) -> List[Dict]:
 
     Reported, never gated, and the reason is D-39 part 2 rather than timidity: a growth step
     already in history stays in history, so gating on it would be permanently red from the
-    commit after it — the exact attrition trap the pawl above is shaped to avoid. Its value is
-    that it names a growth the gate could have missed, e.g. one committed on a branch whose
-    pushes do not run this workflow."""
+    commit after it — the exact attrition trap THE FLOOR above is shaped to avoid by testing
+    CLEARABILITY instead of "did this ever happen". Its value is that it names a growth the
+    gate could have missed, e.g. one committed on a branch whose pushes do not run this
+    workflow. Called on both `ALLOWLIST_PATH` (unchanged, D-67 part 4) and `FLOOR_PATH`
+    (`floor_history_growth_steps`, new under D-95) — same non-gating diagnostic, either file."""
     repo = _git_toplevel(allowlist_path.parent)
     if repo is None:
         return []
@@ -910,17 +1056,25 @@ def pawl_history(allowlist_path: Path) -> List[Dict]:
 # Self-test
 # ═══════════════════════════════════════════════════════════════════════════════════════════
 
-def _pawl_fixture_repo(tmp: Path, versions: Sequence[Sequence[str]]) -> Optional[Path]:
-    """A throwaway git repo whose allowlist is committed once per entry in `versions`.
+def _git_fixture_repo(
+    tmp: Path,
+    versions: Sequence[Sequence[str]],
+    filename: str = "entrypoint_ratchet_allowlist.json",
+) -> Optional[Path]:
+    """A throwaway git repo whose `filename` is committed once per entry in `versions`.
 
-    Hermetic: `git init` in a temp dir, identity passed per-command, no global config read, no
-    network, nothing outside `tmp`."""
+    Shared by the containment/monotonicity self-tests for BOTH the allowlist and the floor —
+    the mechanics of "a JSON file with a `files` list, committed N times" do not care which
+    artifact it stands in for.
+
+    Hermetic: `git init` in a temp dir, identity passed per-command, no global config read,
+    no network, nothing outside `tmp`."""
     repo = tmp / "repo"
     (repo / "platform/scripts/governance").mkdir(parents=True, exist_ok=True)
-    target = repo / "platform/scripts/governance/entrypoint_ratchet_allowlist.json"
+    target = repo / "platform/scripts/governance" / filename
     env_args = [
-        "-c", "user.name=pawl-self-test",
-        "-c", "user.email=pawl@self.test",
+        "-c", "user.name=ratchet-self-test",
+        "-c", "user.email=ratchet@self.test",
         "-c", "commit.gpgsign=false",
     ]
     if _git(repo, "init", "-q")[0] != 0:
@@ -933,164 +1087,163 @@ def _pawl_fixture_repo(tmp: Path, versions: Sequence[Sequence[str]]) -> Optional
             return None
     return target
 
-
-def run_pawl_self_test() -> Tuple[List[str], int]:
-    """Assertion (ii)'s own detector, proven in both directions on throwaway repos.
-
-    D-87 part 6: *"Where a ruling states an invariant, the test that enforces it must be named
-    in the same breath and checked against the words — otherwise the invariant lives only in
-    prose."* This is that test. Four cases, and the two that matter most are the NEGATIVE ones:
-    a repaired file RETURNING must be caught, and an unreadable previous value must FAIL rather
-    than pass."""
+def run_floor_self_test() -> Tuple[List[str], int]:
+    """THE FLOOR's own detector, proven in both directions (rulings D-95, D-96; the same
+    discipline D-87 part 6 required — 'where a ruling states an invariant, the test that
+    enforces it must be named in the same breath'). The two cases that matter most: a merge
+    that lands growth must STAY red past the next commit (closing the exact release D-95
+    found), and nothing may ever widen the floor by any path other than a genuine, measured
+    shrink landing (D-96)."""
     failures: List[str] = []
     checks = 0
+
     if _git(Path(tempfile.gettempdir()), "--version")[0] != 0:
         return (
             [
-                "git is not available, so the PAWL's self-test cannot run. That is UNKNOWN, not "
-                "clean (§N.8): the pawl reads the previous committed value from git and a run "
-                "that cannot prove its own detector must not report a pass."
+                "git is not available, so THE FLOOR's self-test cannot run. That is "
+                "UNKNOWN, not clean (\u00a7N.8)."
             ],
             0,
         )
 
-    with tempfile.TemporaryDirectory(prefix="pawl-selftest-") as td:
+    with tempfile.TemporaryDirectory(prefix="floor-selftest-") as td:
         tmp = Path(td)
 
-        # ── CASE 1 — SHRINK (a pay-down). Must PASS. ────────────────────────────────────────
-        target = _pawl_fixture_repo(tmp / "shrink", [["a.ts", "b.ts", "c.ts"], ["a.ts", "b.ts"]])
+        # ── CASE 1/2 — CONTAINMENT, direct. ─────────────────────────────────────────────
         checks += 1
-        if target is None:
-            failures.append("pawl self-test could not build the SHRINK fixture repo")
-        else:
-            r = pawl_check(target, {"a.ts", "b.ts"}, target.read_text(encoding="utf-8"), "scan")
-            if r.comparison != "HEAD-vs-parent":
-                failures.append(
-                    f"SHRINK: a CLEAN tree must compare HEAD against its parent, not "
-                    f"'{r.comparison}' — comparing HEAD with itself is vacuous"
-                )
-            if not (r.determined and r.ok):
-                failures.append(f"SHRINK: a pay-down must PASS the pawl — got {r.reason}")
+        r = floor_containment(["a.ts", "b.ts"], ["a.ts", "b.ts", "c.ts"])
+        if not (r.determined and r.ok):
+            failures.append(f"CONTAINMENT: a real subset must PASS — got {r.reason}")
+        checks += 1
+        r = floor_containment(["a.ts", "b.ts", "z.ts"], ["a.ts", "b.ts"])
+        if r.determined and r.ok:
+            failures.append("CONTAINMENT: a file beyond the floor must FAIL")
+        elif r.added != ["z.ts"]:
+            failures.append(f"CONTAINMENT: expected added=['z.ts'], got {r.added}")
 
-        # ── CASE 2 — GROWTH, COMMITTED (F-T's exact sequence). Must FAIL. ──────────────────
-        # v0 carries a repaired file's name; v1 re-adds it. This is `set-password.ts` returning.
-        target = _pawl_fixture_repo(
-            tmp / "grow", [["a.ts", "b.ts"], ["a.ts", "b.ts", "set-password.ts"]]
+        # ── CASE 3/4 — D-89 ANCHORING: either side missing is UNDETERMINED, never a pass. ─
+        checks += 1
+        r = floor_containment(None, ["a.ts"])
+        if r.determined or r.ok:
+            failures.append("CONTAINMENT: a missing CURRENT side must be UNDETERMINED and FATAL")
+        checks += 1
+        r = floor_containment(["a.ts"], None)
+        if r.determined or r.ok:
+            failures.append("CONTAINMENT: a missing FLOOR side must be UNDETERMINED and FATAL")
+
+        # ── CASE 5 — MONOTONICITY, SHRINK-ONLY HISTORY. Must PASS at every step. ─────────
+        target = _git_fixture_repo(
+            tmp / "shrink", [["a.ts", "b.ts", "c.ts"], ["a.ts", "b.ts"], ["a.ts"]],
+            filename="entrypoint_guard_floor.json",
         )
         checks += 1
         if target is None:
-            failures.append("pawl self-test could not build the GROWTH fixture repo")
+            failures.append("FLOOR self-test could not build the SHRINK fixture repo")
         else:
-            r = pawl_check(
-                target,
-                {"a.ts", "b.ts", "set-password.ts"},
-                target.read_text(encoding="utf-8"),
-                "scan",
-            )
-            if not r.determined:
-                failures.append(f"GROWTH: the pawl was undetermined — {r.reason}")
-            elif r.ok or r.added != ["set-password.ts"]:
-                failures.append(
-                    "GROWTH: a REPAIRED file returning to the allowlist must FAIL the pawl "
-                    f"(added={r.added}, ok={r.ok}). This is finding F-T and it is the whole "
-                    "reason this check exists."
-                )
+            r = floor_monotone_check(target, ["a.ts"])
+            if not (r.determined and r.ok):
+                failures.append(f"MONOTONICITY-SHRINK: a shrink-only history must PASS — got {r.reason}")
 
-        # ── CASE 3 — GROWTH, UNCOMMITTED IN THE WORKING TREE. Must FAIL. ──────────────────
-        target = _pawl_fixture_repo(tmp / "dirty", [["a.ts", "b.ts"]])
+        # ── CASE 6 — THE D-95 MOTIVATING SCENARIO: a merge lands growth, and it must STAY
+        # red one commit AFTER the merge too — not release the way D-87's version did. ────
+        # v0: shared ancestor, floor=[a,b,c]. v1: campaign branch pays down to [a,b]. v2: a
+        # merge-shaped commit that (like M0-T16's real merge) resurrects the wider value
+        # from the other side. v3: an unrelated commit that does NOT touch the floor — "the
+        # campaign kept working" — proving the check still fires with the floor untouched.
         checks += 1
-        if target is None:
-            failures.append("pawl self-test could not build the DIRTY fixture repo")
-        else:
-            grown = json.dumps({"files": ["a.ts", "b.ts", "set-password.ts"]}, indent=2) + "\n"
-            target.write_text(grown, encoding="utf-8")
-            r = pawl_check(target, {"a.ts", "b.ts", "set-password.ts"}, grown, "scan")
-            if r.comparison != "worktree-vs-HEAD":
-                failures.append(
-                    f"DIRTY: an uncommitted edit must be compared against HEAD, got '{r.comparison}'"
+        env_args = [
+            "-c", "user.name=ratchet-self-test", "-c", "user.email=ratchet@self.test",
+            "-c", "commit.gpgsign=false",
+        ]
+        repo = tmp / "merge" / "repo"
+        (repo / "platform/scripts/governance").mkdir(parents=True, exist_ok=True)
+        target = repo / "platform/scripts/governance/entrypoint_guard_floor.json"
+        ok_repo = _git(repo, "init", "-q")[0] == 0
+
+        def _commit(files_for_floor, extra_file, msg):
+            if files_for_floor is not None:
+                target.write_text(
+                    json.dumps({"files": files_for_floor}, indent=2) + "\n", encoding="utf-8"
                 )
+            if extra_file is not None:
+                (repo / extra_file).write_text("x", encoding="utf-8")
+            if _git(repo, "add", "-A")[0] != 0:
+                return False
+            return _git(repo, *env_args, "commit", "-q", "-m", msg)[0] == 0
+
+        if ok_repo:
+            ok_repo = _commit(["a.ts", "b.ts", "c.ts"], None, "v0 shared ancestor")
+        if ok_repo:
+            ok_repo = _commit(["a.ts", "b.ts"], None, "v1 campaign pays down")
+        if ok_repo:
+            ok_repo = _commit(["a.ts", "b.ts", "c.ts"], None, "v2 merge resurrects the wider value")
+        if ok_repo:
+            ok_repo = _commit(None, "README.txt", "v3 campaign keeps working, floor untouched")
+
+        if not ok_repo:
+            failures.append("FLOOR self-test could not build the MERGE fixture repo")
+        else:
+            r = floor_monotone_check(target, ["a.ts", "b.ts", "c.ts"])
+            if r.determined and r.ok:
+                failures.append(
+                    "MERGE: a floor resurrecting a wider historical value must FAIL — the "
+                    "exact M0-T16 shape (D-95) — evaluated one commit AFTER the merge with "
+                    "nothing further done, which is what this fixture actually checks"
+                )
+            if not (r.determined and not r.ok and r.violations):
+                failures.append("MERGE: expected a determined, non-ok result naming the violated commit")
+
+            # ── CASE 7 — RECOVERY. Shrinking back to ⊆ everything before it clears the
+            # check — proves this is CLEARABLE, not the D-39-part-2 permanently-red shape. ─
+            checks += 1
+            ok_recover = _commit(["a.ts", "b.ts"], None, "v4 recovery: shrink back to \u2286 v1")
+            if not ok_recover:
+                failures.append("FLOOR self-test could not extend the MERGE repo with a recovery commit")
+            else:
+                r2 = floor_monotone_check(target, ["a.ts", "b.ts"])
+                if not (r2.determined and r2.ok):
+                    failures.append(
+                        "RECOVERY: shrinking back to \u2286 every historical value must PASS "
+                        f"even though history contains a growth step — got {r2.reason}"
+                    )
+
+        # ── CASE 8 — HAND-WIDENED, UNCOMMITTED. Must FAIL before it ever lands. ──────────
+        checks += 1
+        target = _git_fixture_repo(tmp / "dirty", [["a.ts", "b.ts"]], filename="entrypoint_guard_floor.json")
+        if target is None:
+            failures.append("FLOOR self-test could not build the DIRTY fixture repo")
+        else:
+            r = floor_monotone_check(target, ["a.ts", "b.ts", "z.ts"])
             if r.ok:
-                failures.append("DIRTY: an uncommitted growth must FAIL the pawl before it lands")
+                failures.append("DIRTY: an uncommitted widening must FAIL before it is committed")
 
-        # ── CASE 4 — THE VACUOUS CASE. No previous value ⇒ FAIL, never pass. ──────────────
-        # One commit only, so `HEAD^` does not exist. This is the shape of a SHALLOW CI
-        # checkout (`fetch-depth: 1`), and it must be loud rather than clean.
-        target = _pawl_fixture_repo(tmp / "orphan", [["a.ts", "b.ts"]])
+        # ── CASE 9 — CURRENT SIDE ABSENT. Must be UNDETERMINED, never a vacuous pass. ────
         checks += 1
-        if target is None:
-            failures.append("pawl self-test could not build the ORPHAN fixture repo")
-        else:
-            r = pawl_check(target, {"a.ts", "b.ts"}, target.read_text(encoding="utf-8"), "scan")
-            if r.determined or r.ok:
-                failures.append(
-                    "VACUOUS: with no previous committed value the pawl must be UNDETERMINED "
-                    f"and FATAL, got determined={r.determined} ok={r.ok}. An unavailable "
-                    "baseline is UNKNOWN, never clean (§N.8)."
-                )
+        r = floor_monotone_check(tmp / "nonexistent" / "entrypoint_guard_floor.json", None)
+        if r.determined or r.ok:
+            failures.append("ABSENT-CURRENT: a None current side must be UNDETERMINED and FATAL (D-89)")
 
-        # ── CASE 5 — DELETE-THEN-READD must not read as a birth. Must FAIL. ───────────────
-        target = _pawl_fixture_repo(tmp / "deleted", [["a.ts", "b.ts"]])
+        # ── CASE 10 — sync_floor NEVER WIDENS (D-96). ─────────────────────────────────────
         checks += 1
-        if target is None:
-            failures.append("pawl self-test could not build the DELETE fixture repo")
-        else:
-            repo = target.parents[3]
-            target.unlink()
-            _git(repo, "add", "-A")
-            _git(
-                repo, "-c", "user.name=pawl-self-test", "-c", "user.email=pawl@self.test",
-                "-c", "commit.gpgsign=false", "commit", "-q", "-m", "delete the allowlist",
-            )
-            grown = json.dumps({"files": ["a.ts", "b.ts", "set-password.ts"]}, indent=2) + "\n"
-            target.write_text(grown, encoding="utf-8")
-            r = pawl_check(target, {"a.ts", "b.ts", "set-password.ts"}, grown, "scan")
-            if r.ok:
-                failures.append(
-                    "DELETE-THEN-READD: deleting the allowlist and re-adding a GROWN one must "
-                    "not read as a birth — the pawl must walk back to the last commit that "
-                    "carried it"
-                )
+        floor_file = tmp / "sync" / "entrypoint_guard_floor.json"
+        floor_file.parent.mkdir(parents=True, exist_ok=True)
+        write_floor(floor_file, ["a.ts", "b.ts"], note="seed")
+        rc = sync_floor(floor_file, ["a.ts", "b.ts", "z.ts"], source="self-test")
+        if rc == 0:
+            failures.append("SYNC-FLOOR: a target carrying a file the floor lacks must be REFUSED")
+        after = read_current_side(floor_file)
+        if after != ["a.ts", "b.ts"]:
+            failures.append("SYNC-FLOOR: a refused sync must leave the floor UNCHANGED on disk")
 
-        # ── CASE 6 — THE CURRENT SIDE IS ABSENT. Must FAIL, not compare ∅ to anything. ────
-        # D-89, general by its own terms: a two-sided comparison needs an anchor on EACH side.
-        # Deleting the allowlist must not read as "it shrank to nothing".
-        target = _pawl_fixture_repo(tmp / "nocurrent", [["a.ts", "b.ts"], ["a.ts"]])
+        # ── CASE 11 — sync_floor DOES shrink, and DOES create on first run. ──────────────
         checks += 1
-        if target is None:
-            failures.append("pawl self-test could not build the ABSENT-CURRENT fixture repo")
-        else:
-            target.unlink()
-            r = pawl_check(target, None, None, "scan")
-            if r.determined or r.ok:
-                failures.append(
-                    "ABSENT-CURRENT: with the current allowlist unreadable the pawl must be "
-                    f"UNDETERMINED and FATAL, got determined={r.determined} ok={r.ok}. An "
-                    "empty operand cannot make a comparison return false (D-89)."
-                )
-
-        # ── CASE 7 — the DERIVATION of the current side, which is where the defect was. ───
-        # Case 6 proves pawl_check REACTS to a None current side. It cannot prove that a
-        # deleted allowlist PRODUCES one — and the first draft's did not: it produced the empty
-        # list `load_allowlist` substitutes, and the gate passed. Assert the derivation itself.
-        checks += 1
-        probe = tmp / "current_side"
-        probe.mkdir(parents=True, exist_ok=True)
-        f = probe / "entrypoint_ratchet_allowlist.json"
-        f.write_text(json.dumps({"files": ["a.ts"]}), encoding="utf-8")
-        if read_current_side(f) != ["a.ts"]:
-            failures.append("CURRENT-SIDE: a well-formed allowlist must read back as its files")
-        f.unlink()
-        if read_current_side(f) is not None:
-            failures.append(
-                "CURRENT-SIDE: a DELETED allowlist must read as None (absent), never as an "
-                "empty list — an empty operand cannot make the comparison return false (D-89)"
-            )
-        f.write_text(json.dumps({"count": 0}), encoding="utf-8")
-        if read_current_side(f) is not None:
-            failures.append("CURRENT-SIDE: an allowlist with no `files` key must read as None")
-        f.write_text("{not json", encoding="utf-8")
-        if read_current_side(f) is not None:
-            failures.append("CURRENT-SIDE: an unparsable allowlist must read as None")
+        rc = sync_floor(floor_file, ["a.ts"], source="self-test")
+        if rc != 0 or read_current_side(floor_file) != ["a.ts"]:
+            failures.append("SYNC-FLOOR: a genuine subset target must be written")
+        fresh = tmp / "sync" / "fresh_floor.json"
+        rc = sync_floor(fresh, ["a.ts", "b.ts"], source="self-test")
+        if rc != 0 or read_current_side(fresh) != ["a.ts", "b.ts"]:
+            failures.append("SYNC-FLOOR: first-time creation (no prior floor) must succeed and write the target")
 
     return failures, checks
 
@@ -1165,9 +1318,9 @@ def run_self_test() -> int:
             "(ruling D-9 / M0-T60: it asks the wrong question)"
         )
 
-    # ── THE PAWL's OWN DETECTOR, proven in both directions (ruling D-87 part 6) ─────────────
-    pawl_failures, pawl_checks = run_pawl_self_test()
-    failures.extend(pawl_failures)
+    # ── THE FLOOR's OWN DETECTOR, proven in both directions (rulings D-95, D-96) ──────────
+    floor_failures, floor_checks = run_floor_self_test()
+    failures.extend(floor_failures)
 
     if failures:
         print("check_entrypoint_guard_ratchet: SELF-TEST FAILED", file=sys.stderr)
@@ -1178,7 +1331,7 @@ def run_self_test() -> int:
     print(
         f"check_entrypoint_guard_ratchet: SELF-TEST PASS ({n_pass} pass fixture(s) silent, "
         f"{n_fail} fail fixture(s) caught, {len(declared)}/{len(declared)} guard idioms "
-        f"exercised, {pawl_checks} pawl case(s) proven in both directions)."
+        f"exercised, {floor_checks} floor case(s) proven in both directions)."
     )
     return 0
 
@@ -1199,6 +1352,14 @@ def main(argv: List[str]) -> int:
         help="Rewrite the allowlist from the scan (pay-down only; refuses to add).",
     )
     ap.add_argument(
+        "--sync-floor",
+        action="store_true",
+        help=(
+            "Sync entrypoint_guard_floor.json to the currently on-disk allowlist "
+            "(shrink-only; creates the floor on first run). Ruling D-95."
+        ),
+    )
+    ap.add_argument(
         "--strict",
         action="store_true",
         help="Also fail on allowlisted residuals and on stale allowlist entries.",
@@ -1214,26 +1375,40 @@ def main(argv: List[str]) -> int:
     root = Path(args.root).resolve()
     scan_roots = args.roots if args.roots is not None else DEFAULT_ROOTS
 
+    if args.sync_floor:
+        target = read_current_side(ALLOWLIST_PATH)
+        if target is None:
+            print(
+                "check_entrypoint_guard_ratchet: REFUSING to sync floor — the on-disk "
+                f"allowlist ({ALLOWLIST_PATH.name}) could not be read.",
+                file=sys.stderr,
+            )
+            return 1
+        return sync_floor(FLOOR_PATH, target, source=f"on-disk {ALLOWLIST_PATH.name}")
+
     if args.regenerate:
         return regenerate(root, scan_roots, ALLOWLIST_PATH)
 
     allowlist = load_allowlist(ALLOWLIST_PATH)
     allowed = set(allowlist.get("files", []))
     baseline = set(allowlist.get("baseline_files") or load_baseline())
-    allowlist_raw = ALLOWLIST_PATH.read_text(encoding="utf-8") if ALLOWLIST_PATH.exists() else None
     # THE CURRENT SIDE'S ANCHOR (D-89) — see `read_current_side`, which is where "absent" is
     # kept distinct from "empty". The first draft of this anchor collapsed the two and a DELETED
     # allowlist still passed; it was found by deleting the file end to end, not by reading it.
     current_side = read_current_side(ALLOWLIST_PATH)
+    floor_disk = read_current_side(FLOOR_PATH)
 
     # ── ASSERTION (i): a NEW name in the allowlist. Static-baseline membership. ──────────────
     hand_added = sorted(allowed - baseline)
 
-    # ── ASSERTION (ii): THE PAWL. The allowlist ⊆ its own PREVIOUS COMMITTED value. ──────────
-    # (i) cannot see this one: a repaired file is still a member of the settled baseline, so
-    # putting it back passes (i) forever. See the PAWL section above and ruling D-87.
-    pawl = pawl_check(ALLOWLIST_PATH, current_side, allowlist_raw, mode="scan")
+    # ── ASSERTION (ii): THE FLOOR (ruling D-95, superseding D-87 part 3). Current allowlist
+    # ⊆ floor, AND floor ⊆ every value its own committed history has ever held. (i) alone
+    # cannot see a repaired file returning — it is still a member of the settled baseline.
+    # See THE FLOOR section above.
+    floor_contain = floor_containment(current_side, floor_disk)
+    floor_mono = floor_monotone_check(FLOOR_PATH, floor_disk)
     history_growth = pawl_history(ALLOWLIST_PATH)
+    floor_history_growth = pawl_history(FLOOR_PATH)
 
     results = scan(root, scan_roots)
     violating = {rel: r for rel, r in results.items() if r.unguarded}
@@ -1272,18 +1447,25 @@ def main(argv: List[str]) -> int:
         "residual_allowlisted": residual,
         "stale_allowlist_entries": stale,
         "hand_added_allowlist_entries": hand_added,
-        "pawl": {
-            "determined": pawl.determined,
-            "pass": pawl.ok,
-            "comparison": pawl.comparison,
-            "previous_ref": pawl.previous_ref,
-            "previous_commit": pawl.previous_commit,
-            "previous_count": pawl.previous_count,
-            "current_count": pawl.current_count,
-            "added_since_previous_commit": pawl.added,
-            "reason": pawl.reason,
+        "floor": {
+            "path": FLOOR_PATH.name,
+            "exists": floor_disk is not None,
+            "count": len(floor_disk) if floor_disk is not None else None,
+            "containment": {
+                "determined": floor_contain.determined,
+                "pass": floor_contain.ok,
+                "added_beyond_floor": floor_contain.added,
+                "reason": floor_contain.reason,
+            },
+            "monotonicity": {
+                "determined": floor_mono.determined,
+                "pass": floor_mono.ok,
+                "violations": floor_mono.violations,
+                "reason": floor_mono.reason,
+            },
         },
         "committed_history_growth_steps": history_growth,
+        "floor_history_growth_steps": floor_history_growth,
         "unparsed_files": unparsed,
         "out_of_scope_suffix_observations": extended,
     }
@@ -1293,7 +1475,8 @@ def main(argv: List[str]) -> int:
     fail = (
         bool(new)
         or bool(hand_added)
-        or not pawl.ok
+        or not floor_contain.ok
+        or not floor_mono.ok
         or bool(unparsed)
         or (args.strict and (residual or stale))
     )
@@ -1312,11 +1495,11 @@ def main(argv: List[str]) -> int:
         f"  ratchet: {len(allowed)} allowlisted of M0-T64's {len(baseline)} baseline "
         f"({report['paid_down_count']} paid down)."
     )
-    if pawl.determined and pawl.ok:
+    if floor_contain.determined and floor_contain.ok and floor_mono.determined and floor_mono.ok:
         print(
-            f"  pawl: allowlist ({pawl.current_count}) ⊆ its previous committed value "
-            f"({pawl.previous_ref} {(pawl.previous_commit or '')[:9]}, {pawl.previous_count}) — "
-            "it did not grow."
+            f"  floor: allowlist ({len(current_side or [])}) \u2286 floor "
+            f"({len(floor_disk or [])}), and the floor \u2286 every value its own committed "
+            "history has ever held — neither grew."
         )
 
     if unparsed:
@@ -1340,27 +1523,47 @@ def main(argv: List[str]) -> int:
         for f_ in extended:
             print(f"    ! {f_}")
 
-    if not pawl.ok:
-        if not pawl.determined:
+    if not floor_contain.ok:
+        if not floor_contain.determined:
             print(
-                "check_entrypoint_guard_ratchet: THE PAWL COULD NOT RUN — "
-                f"{pawl.reason} FAIL.",
+                "check_entrypoint_guard_ratchet: THE FLOOR CONTAINMENT CHECK COULD NOT RUN — "
+                f"{floor_contain.reason} FAIL.",
                 file=sys.stderr,
             )
         else:
             print(
-                f"check_entrypoint_guard_ratchet: {len(pawl.added)} allowlist entry/entries are "
-                f"NOT in the PREVIOUS COMMITTED allowlist "
-                f"({pawl.previous_ref} {(pawl.previous_commit or '')[:9]}, "
-                f"{pawl.previous_count} entries). THE ALLOWLIST MAY ONLY SHRINK (D-67 part 4, "
-                "D-71 part 7, D-87). Every one of these was on the list before and LEFT it, "
-                "which means it was REPAIRED; putting it back re-opens a hole that was closed, "
-                "and the static-baseline check cannot see it because a repaired file remains a "
-                "member of the settled baseline forever. FAIL.",
+                f"check_entrypoint_guard_ratchet: {len(floor_contain.added)} allowlist "
+                "entry/entries are NOT covered by the FLOOR "
+                f"({FLOOR_PATH.name}, {len(floor_disk or [])} entries). THE ALLOWLIST MAY "
+                "ONLY SHRINK RELATIVE TO THE FLOOR (D-67 part 4, D-71 part 7, D-95). Every "
+                "one of these is either NEW or a REPAIRED file returning; putting it back "
+                "re-opens a hole that was closed, and the static-baseline check cannot see "
+                "it because a repaired file remains a member of the settled baseline "
+                "forever. THIS IS RED AND STAYS RED until it is paid back — re-guard the "
+                "file(s) below, or bring a new explicitly-ruled baseline to ADHIKĀRIN (D-96: "
+                "no exemption field exists for this). FAIL.",
                 file=sys.stderr,
             )
-            for f in pawl.added:
+            for f in floor_contain.added:
                 print(f"  + {f}", file=sys.stderr)
+
+    if not floor_mono.ok:
+        if not floor_mono.determined:
+            print(
+                "check_entrypoint_guard_ratchet: THE FLOOR'S OWN MONOTONICITY CHECK COULD "
+                f"NOT RUN — {floor_mono.reason} FAIL.",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                f"check_entrypoint_guard_ratchet: the floor is WIDER than "
+                f"{len(floor_mono.violations)} commit(s) in its own committed history — it "
+                "was hand-widened and never fully paid back. THE FLOOR MAY ONLY SHRINK "
+                "(D-95, D-96). FAIL.",
+                file=sys.stderr,
+            )
+            for v in floor_mono.violations[:10]:
+                print(f"  ! {v['commit'][:9]} does not cover {', '.join(v['added'])}", file=sys.stderr)
 
     if history_growth:
         print(
@@ -1370,6 +1573,15 @@ def main(argv: List[str]) -> int:
             "(D-39 part 2). Bring it to ADHIKĀRIN:"
         )
         for g in history_growth:
+            print(f"    ! {g['commit'][:9]} added {', '.join(g['added'])}")
+
+    if floor_history_growth:
+        print(
+            f"  NOTE — the floor's OWN committed history contains {len(floor_history_growth)} "
+            "single-step growth event(s) (the gating check above walks FULL history, not "
+            "just adjacent steps). Diagnostic only:"
+        )
+        for g in floor_history_growth:
             print(f"    ! {g['commit'][:9]} added {', '.join(g['added'])}")
 
     if hand_added:
