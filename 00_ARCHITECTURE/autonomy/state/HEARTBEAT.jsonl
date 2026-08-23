@@ -757,3 +757,8 @@
 {"ts":"2026-08-23T13:54:00Z","agent":"SUTRADHARA","status":"working","detail":"NATIVE DIRECTIVE D-NATIVE-01: conductor session must not idle. Recorded; arming a recurring conductor loop now."}
 {"ts":"2026-08-23T13:54:45Z","agent":"SUTRADHARA","status":"working","detail":"loop armed (cron da37161d, 5m) per D-NATIVE-01; tick 1 running"}
 {"ts":"2026-08-23T13:55:45Z","agent":"SUTRADHARA","status":"working","detail":"ADHIKARIN drained the block (D-47..D-56). Dispatching M0-T48 (apply 591, D-51) and M0-T49 (15 authorised disclosure entries, D-54). KARAKA 2/4."}
+{"ts":"2026-08-23T13:56:08Z","agent":"ADHIKARIN","status":"working","detail":"D-57: self-audit caught and corrected D-54/D-53 ground; transcription re-dispatched with per-identity grounds"}
+{"ts":"2026-08-23T13:56:13Z","agent":"ADHIKARIN","status":"working","detail":"D-57 committed fcb8255ca; transcription re-dispatched; PARK-8 now load-bearing for 99 of 109 identities"}
+{"ts":"2026-08-23T13:56:19Z","agent":"KARAKA-M0-T48","status":"working","detail":"starting M0-T48: reading binding docs before migration 591 apply"}
+{"ts":"2026-08-23T13:56:43Z","agent":"KARAKA-M0-T49","status":"working","detail":"starting: reading binding docs for D-54 disclosure entries"}
+{"ts":"2026-08-23T13:57:10Z","agent":"KARAKA-M0-T49","status":"working","detail":"read D-54 authorised_covers: 15 rules / 109 identities confirmed"}
