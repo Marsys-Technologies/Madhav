@@ -120,7 +120,7 @@
   "m_track": {
     "M0": {
       "status": "in_progress",
-      "note": "NOT COMPLETE (PARIKSAKA V-1, FAIL). Honest split: workbook + ASSET_PLANS + defect register done FOR THE SCOPE/RUNG DIMENSION ONLY; the §19 efficiency dimension is NOT STARTED — no Efficiency sheet (§16), 5 of §15's 13 per-asset fields absent across all 128 plans (bound class, hotspot, technique, identity proof, speedup achieved), and the three generators have no emitter for them, so regeneration would reproduce the same gap. §15's null-hotspot correction also unmade: 0 assets read as unprofiled while 64 read 'No bespoke speed work'. This is a rung-freeze dependency (§8.3 item 5), so R0 is blocked behind it. In flight: M0-T1..T4. Queued not dispatched: M0-T5 (§19 ledger emitter). Remaining: consumer map (0.7), DRAFT/zero-consumer dispositions (0.8b/0.8c), derived-field repair (0.5/0.6), CI guards blocking (0.10), baseline freeze (0.11)."
+      "note": "IN PROGRESS. Census dimension: T1 six-source census, T2 catalogue contract + migration 590 (authored), T3 telemetry snapshot + proposal, T4 588/589 verification — ALL COMPLETE, ZERO WRITES EXECUTED, all awaiting PARIKSAKA. §19 efficiency dimension (V-1/D-8): T5 COMPLETE and committed a864672d7 — Efficiency sheet added (11 sheets), the 5 absent §15 fields now emitted 128/128 from an asset_profiles.json lookup that MISSES rather than a hardcoded constant, hotspot 64 false greens -> 0 with 128/128 honest nulls and profiled 0/128, timeout source 128-registered -> 107 registered / 21 default matching V-2's live distribution. Not yet certified. Safety: T11 migrate.ts entrypoint guard COMPLETE (1089db9b6); T15 running on the live sibling asset_registry_seed.ts. Running: T6 consumer map, T7 DRAFT reachability + DAG, T8 derived-field proposal, T15. Held by design: T12 (apply 590) and T13 (register 588/589) until T11 is CERTIFIED, not merely landed. Queued: T9 CI guards, T14 588 disclosure, T10 baseline freeze last."
     },
     "M1": {
       "status": "not_open"
@@ -155,12 +155,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T5",
-      "what": "§19 efficiency ledger emitter — D-8 makes this mandatory inside M0; blocks every rung freeze",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "M0-T6",
       "what": "consumer map + zero-consumer evidence packets",
       "owner": "KARAKA",
@@ -191,20 +185,38 @@
       "state": "awaiting_verification_PRIORITY"
     },
     {
-      "id": "M0-T15",
-      "what": "asset_registry_seed.ts guard — the LIVE instance of the same class; exports ASSETS, already imported by 2 test files, main() writes asset_registry",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "M0-T12/T13",
       "what": "migration wave — hold EXTENDED from 'T11 lands' to 'T11 certified'. The T12/T13 KARAKA would be the first real exercise of the fixed guard and of --target; certifying after that run would be certifying too late. PARIKSAKA asked to prioritise",
       "owner": "SUTRADHARA",
       "state": "blocked_by_design"
+    },
+    {
+      "id": "M0-T5",
+      "what": "COMPLETE a864672d7 — the §19 ledger emitter that gated every rung freeze. Uncertainties the builder named: rows/sec null on all 128 (the only available quotient mixes this chart's rows with a cross-chart median — called an inference, not a measurement); p50/p90 pooled across all charts inside a single-chart workbook",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T8",
+      "what": "derived-field repair proposal (layer position, SOURCE, has_substeps, kind) — propose only",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "M0-T15",
+      "what": "asset_registry_seed.ts guard",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "FLEET-POKE-DEFECT",
+      "what": "PARIKSAKA was NOT stalled — it was idle with an unsubmitted poke sitting in its compose box. tmux send-keys without a submit key writes to the box and stops, so PRAHARI's pokes never landed and the resulting silence read as a worsening stall: the detector manufactured the condition it detected. Same class as the launcher kick-prompt bug fixed earlier; that fix never covered the poke path. Recovered by C-u + retype + separate Enter — a bare C-m on the stranded text did NOT work. Root cause sent to PRAHARI and ADHIKARIN",
+      "owner": "PRAHARI",
+      "state": "reported"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T04:27:21Z",
+  "last_updated_ts": "2026-08-23T04:39:53Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
