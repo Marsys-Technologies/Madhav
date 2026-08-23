@@ -1,0 +1,20 @@
+⏺ Now reproducing the behaviour myself rather than trusting the report's transcript:
+
+  Read 1 file, ran 4 shell commands
+
+⏺ SŪTRADHĀRA points at a structural claim I hadn't tested. Verifying it:
+
+⏺ Verifying the structural claim that the guard never parses not_drafted
+  ⎿  $ cd /Users/Dev/Vibe-Coding/Apps/Madhav
+     G=platform/scripts/governance/check_asset_catalogue_contract.py
+     echo "=== does the guard EVER read not_drafted or the README block? ==="
+     echo -n " 'not_drafted' refs in guard: "; grep -c "not_drafted" $G
+     echo -n " 'deferred_rule_disclosures_README' refs: "; g…
+
+· Pondering… (16m 4s · ↓ 55.9k tokens)
+  ⎿  Tip: Use /btw to ask a quick side question without interrupting Claude's current work
+
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ 
+─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · esc to interrupt · ← 1 agent
