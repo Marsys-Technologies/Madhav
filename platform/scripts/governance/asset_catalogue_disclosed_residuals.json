@@ -12,9 +12,428 @@
       "disclosed_via": "00_ARCHITECTURE/autonomy/state/DECISIONS.jsonl D-12 part 4 (ADHIKĀRIN, 2026-08-23T04:46:23Z)",
       "deferred_to": "R3",
       "reason": "3 asset_throughput rows (all state='error', 4389 rows_written total, last built 2026-08-12) on a RETIRED, is_active=false asset. NIRMANA_ELEVATION_PLAN_v4_0.md §14.2 assigns these exact rows to R3 by name ('the zombie throughput rows behind its standing no-writer-registered red, and its data_disposition, are still outstanding'). D-12 verified that neither available repair is legitimate: the @register is genuinely removed (writers/ka_gochara_sweep.py:23-40) so there is no writer to re-dispatch and no substep plan to be complete about, and the M3 integrity-gate engine that could earn a state does not exist yet — so writing a died/failed state would fabricate a failure that did not happen (H6) and writing 'lit' would assert a promotion verdict from a completed-run proxy (H4, CLAUDE.md §N.8 instance 4). The asset is also charter P1's named unrecoverable asset (38,287 v1 gochara rows recoverable only from the 2026-08-23 snapshot). Leave the rows exactly as they are; state='error' is at least not a false green.",
-      "measured": {"throughput_rows": 3, "states": ["error"], "rows_written_total": 4389, "catalog_status": "RETIRED", "is_active": false},
+      "measured": {
+        "throughput_rows": 3,
+        "states": [
+          "error"
+        ],
+        "rows_written_total": 4389,
+        "catalog_status": "RETIRED",
+        "is_active": false
+      },
       "does_not_turn_the_rule_green": true
     }
   },
-  "zero_consumer_dispositions": {}
+  "zero_consumer_dispositions": {},
+  "deferred_rule_disclosures_README": "DRAFT, INERT, AND NOT READ BY ANY CODE. Drafted by KĀRAKA M0-T36 (2026-08-23) to satisfy ADHIKĀRIN ruling D-30 part 4, which amends D-24 part 3 so that the CI blocking flip additionally requires every DEFERRED rule to carry its disclosure entry, itemised and dated, in the discipline D-10 part 3 granted for migration_number_legacy_duplicates.json's `disclosed_additions`. THREE THINGS THIS BLOCK IS NOT. (1) It is not wired: check_asset_catalogue_contract.py reads `disclosed_additions` in exactly one function, x02(), and `zero_consumer_dispositions` in x05(); nothing reads this key, so writing it changes no rule's status, severity or exit code. (2) It is not a severity change: severity is a hardcoded constant in the guard's RULES table, and X-02 is non-gating because someone typed RESIDUAL there, not because it carries a disclosure. (3) It does not turn any rule green — every entry carries `does_not_turn_the_rule_green: true`, per D-12 part 4's 'never silently green'. It is kept SEPARATE from `disclosed_additions` deliberately: that block is keyed by asset_id and validated by x02(), and merging rule-keyed entries into it would change what a live guard function iterates. Making these entries honourable needs a guard code change (a per-rule disclosure reader and a disclosure-conditioned severity), which is a demotion of thirteen BLOCKING gates and therefore ADHIKĀRIN's call under H3 — not a KĀRAKA's. Source of truth: 00_ARCHITECTURE/control/m0_deferral_register.py (DISCLOSURE_DRAFT); regenerate, do not hand-edit.",
+  "deferred_rule_disclosures_count": 16,
+  "deferred_rule_disclosures_not_drafted": {
+    "C-11": "REPAIRABLE-IN-M0, not deferred — 3 CURRENT→DRAFT edges awaiting G1 dispositions. A disclosure would be the wrong instrument: this needs the repair, not a reason it cannot happen.",
+    "X-05": "REPAIRABLE-IN-M0, not deferred — 23 zero-consumer packets, 0 dispositions. The guard already has the right mechanism (`zero_consumer_dispositions`, deliberately EMPTY because resolving a packet requires a `decision_ref` into DECISIONS.jsonl and catalogue disposition is G1). No KĀRAKA may resolve a packet by writing a justification into that block, and M0-T36 did not.",
+    "X-02": "ALREADY DISCLOSED, in `disclosed_additions`, and is the pattern every entry above follows. Untouched by M0-T36.",
+    "X-03": "UNEXAMINED, not deferred — D-30's named-field test settles that the dead flag is M0's (Phase 0.8a names it, and names the asset), but no mechanism exists. Disclosing it would record a deferral that has not been granted and that the rule says is not owed."
+  },
+  "deferred_rule_disclosures": {
+    "C-01": {
+      "rule": "C-01",
+      "severity_in_the_rule_table": "BLOCKING",
+      "gates_the_exit_code_today": true,
+      "owner": "R5 (Mīmāṃsā rung), stage 2 Conform",
+      "deferred_to": "R5",
+      "landed_at": "pre-campaign (the row predates the campaign; prefix has never matched)",
+      "disclosed_via": "DECISIONS.jsonl D-23 (ADHIKĀRIN, 2026-08-23T05:04:21Z) — reverses D-21 and assigns the SOURCE reclassification to R5, not M0",
+      "reason": "One row: lel_events, prefix 'lel' against layer 'mimamsa'. C-01 EXEMPTS source rows, so the SOURCE reclassification IS the repair — there is nothing separate to fix. D-23 assigned that reclassification to R5 (§8.4's R5 row names the asset: 'lel_events reclassified SOURCE'), reversing D-21 which had briefly placed it in M0. Repairing it in M0 would re-commit the error D-23 corrected.",
+      "measured": {
+        "violations": 1,
+        "rows": [
+          "lel_events"
+        ],
+        "measured_at": "2026-08-23T08:00:51Z"
+      },
+      "disclosed_at": "2026-08-23",
+      "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
+      "certified_by": null,
+      "wired_into_the_guard": false,
+      "does_not_turn_the_rule_green": true
+    },
+    "C-02": {
+      "rule": "C-02",
+      "severity_in_the_rule_table": "BLOCKING",
+      "gates_the_exit_code_today": true,
+      "owner": "R5 (Mīmāṃsā rung), stage 2 Conform",
+      "deferred_to": "R5",
+      "landed_at": "2026-08-23T06:51-06:54Z (M0-T26 repaired 20 of 21 rows; this one was held back deliberately)",
+      "disclosed_via": "DECISIONS.jsonl D-28 part 1 (deliberate-NULL category) + D-23; write certified by PARĪKṢAKA V-10",
+      "reason": "One row: lel_events, layer_index NULL. THE NULL IS DELIBERATE AND MUST NOT BE FILLED. D-28 part 1 rules it 'THE ONLY PLACE IN THE REGISTRY WHERE THE OPENNESS OF A RESERVED DECISION IS WRITTEN DOWN': the correct value is NULL-if-source but L5-if-data, and D-23 reserved that choice to R5. Filling it in M0 would answer a reserved question by default. V-10 confirmed the row held NULL through the 39-cell layer repair, which is the deliberate NULL surviving contact with a real write.",
+      "measured": {
+        "violations": 1,
+        "rows": [
+          "lel_events"
+        ],
+        "was": 21,
+        "repaired_by": "M0-T26 (V-10)",
+        "measured_at": "2026-08-23T08:00:51Z"
+      },
+      "disclosed_at": "2026-08-23",
+      "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
+      "certified_by": null,
+      "wired_into_the_guard": false,
+      "does_not_turn_the_rule_green": true
+    },
+    "C-03": {
+      "rule": "C-03",
+      "severity_in_the_rule_table": "BLOCKING",
+      "gates_the_exit_code_today": true,
+      "owner": "R5 (Mīmāṃsā rung), stage 2 Conform",
+      "deferred_to": "R5",
+      "landed_at": "2026-08-23T06:51-06:54Z (M0-T26 repaired 19 of 20 rows; this one was held back deliberately)",
+      "disclosed_via": "DECISIONS.jsonl D-28 part 1 + D-23; write certified by PARĪKṢAKA V-10",
+      "reason": "One row: lel_events, layer_name NULL. Identical reason to C-02 and the same reserved decision: the lexicon spelling that belongs here depends on whether the row is SOURCE or L5 data, which is R5's to decide. Every other populated row now carries the §N.1 LOCKED diacritics (Gaṇita, Kāla, Mīmāṃsā), a real §N.1 violation caught PRE-write by a codepoint pin (D-28 part 6).",
+      "measured": {
+        "violations": 1,
+        "rows": [
+          "lel_events"
+        ],
+        "was": 20,
+        "repaired_by": "M0-T26 (V-10)",
+        "measured_at": "2026-08-23T08:00:51Z"
+      },
+      "disclosed_at": "2026-08-23",
+      "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
+      "certified_by": null,
+      "wired_into_the_guard": false,
+      "does_not_turn_the_rule_green": true
+    },
+    "C-04": {
+      "rule": "C-04",
+      "severity_in_the_rule_table": "BLOCKING",
+      "gates_the_exit_code_today": true,
+      "owner": "per row: R0 (bg_prashna_rules, bg_sky_calendar) · R1 (ga_sade_sati, ga_sensitive, ga_strength, ga_structural) · R2 (bo_cdlm_summary, bo_chart_gestalt) · R5 (lel_events)",
+      "deferred_to": "the owning rung's §8.6 stage-2 Conform",
+      "landed_at": "pre-campaign for all nine rows",
+      "disclosed_via": "DECISIONS.jsonl D-30 part 1 (the named-field test) — applied by M0-T36; plus D-23 (lel_events) and D-28 part 4 (bg_sky_calendar) for the two rows that already had a reason",
+      "reason": "`target_table` is named by NO Phase-0 step and NO M0 acceptance criterion. Phase 0.2 — the only step naming registry columns — names `integrity_check_sql` and `target_floor`, not this one. Clause (a) of the named-field test fails, so the column belongs to the rung that owns the asset and repairing it in M0 is the I13 breach D-30 names. Clause (b) confirms two rows independently: plan §15's per-asset entries for bo_cdlm_summary and bo_chart_gestalt each carry 'Declare target_table', and both are R2. bg_sky_calendar is separately trigger-bearing — its target_table names `bg_sky_events`, a relation ABSENT from production — and D-28 part 4 routed it to R0 intake. WHAT THIS DOES NOT SETTLE: whether a NULL target_table on the four chart_facts co-writers is deliberate. That question travels to R1 with the rows; it is not answered here and must not be read as answered.",
+      "measured": {
+        "violations": 9,
+        "rows": [
+          "bg_prashna_rules",
+          "bg_sky_calendar",
+          "bo_cdlm_summary",
+          "bo_chart_gestalt",
+          "ga_sade_sati",
+          "ga_sensitive",
+          "ga_strength",
+          "ga_structural",
+          "lel_events"
+        ],
+        "classes": {
+          "target_table_null": 8,
+          "target_table_missing": 1
+        },
+        "measured_at": "2026-08-23T08:00:51Z"
+      },
+      "disclosed_at": "2026-08-23",
+      "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
+      "certified_by": null,
+      "wired_into_the_guard": false,
+      "does_not_turn_the_rule_green": true
+    },
+    "C-06": {
+      "rule": "C-06",
+      "severity_in_the_rule_table": "BLOCKING",
+      "gates_the_exit_code_today": true,
+      "owner": "R5 (Mīmāṃsā rung), stage 2 Conform",
+      "deferred_to": "R5",
+      "landed_at": "pre-campaign",
+      "disclosed_via": "DECISIONS.jsonl D-30 part 1 — applied by M0-T36",
+      "reason": "One row: mi_seva. `count_sql` is named by no Phase-0 step and no M0 acceptance criterion — clause (a) fails. C-06 is additionally a shadow of C-07: mi_seva is asset_kind='service' and a service carries no count_sql at all, so the row disappears when C-07's row does. Same destination (R5) by two independent routes.",
+      "measured": {
+        "violations": 1,
+        "rows": [
+          "mi_seva"
+        ],
+        "measured_at": "2026-08-23T08:00:51Z"
+      },
+      "disclosed_at": "2026-08-23",
+      "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
+      "certified_by": null,
+      "wired_into_the_guard": false,
+      "does_not_turn_the_rule_green": true
+    },
+    "C-07": {
+      "rule": "C-07",
+      "severity_in_the_rule_table": "BLOCKING",
+      "gates_the_exit_code_today": true,
+      "owner": "R3 (ka_dasha_kala, ka_tulana) and R5 (mi_abhilekha, mi_seva)",
+      "deferred_to": "the owning rung's §8.6 stage-2 Conform",
+      "landed_at": "pre-campaign",
+      "disclosed_via": "DECISIONS.jsonl D-30 part 1 (named-field test) — applied by M0-T36; and D-19 part 1 + D-27 part 2a for the target_floor half",
+      "reason": "Four service rows carrying data-asset fields. THE HONEST SHAPE: three of the four columns (`target_table`, `count_sql`, `clear_tables`) are named nowhere in Phase 0, so clause (a) fails flatly. The fourth, `target_floor`, IS named by Phase 0.2 — but as a REQUIRED FIELD OF THE CONTRACT SPECIFICATION being authored, not as a population M0 performs; the clause assigning the work of setting floors is §8.6 stage 2 ('floors set to achieved (I7)'), per rung, which is refinement (b) firing. D-19 part 1 already held floors rung-owned ('a declarative source file structurally CANNOT hold a measured value') and D-27 part 2a re-affirmed it. DURABILITY, which makes the deferral load-bearing rather than merely correct: three of the four columns are SEED-OWNED, so a DB-only NULLing in M0 would be reverted by the next re-seed.",
+      "measured": {
+        "violations": 4,
+        "rows": {
+          "ka_dasha_kala": [
+            "target_floor"
+          ],
+          "ka_tulana": [
+            "target_floor"
+          ],
+          "mi_abhilekha": [
+            "count_sql",
+            "target_floor",
+            "target_table"
+          ],
+          "mi_seva": [
+            "count_sql",
+            "target_floor",
+            "target_table"
+          ]
+        },
+        "measured_at": "2026-08-23T08:00:51Z"
+      },
+      "disclosed_at": "2026-08-23",
+      "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
+      "certified_by": null,
+      "wired_into_the_guard": false,
+      "does_not_turn_the_rule_green": true
+    },
+    "C-08": {
+      "rule": "C-08",
+      "severity_in_the_rule_table": "BLOCKING",
+      "gates_the_exit_code_today": true,
+      "owner": "R3 (Kāla rung), lifecycle exit",
+      "deferred_to": "R3",
+      "landed_at": "2026-08-12T16:30:19Z (the asset's last build; RETIRED since)",
+      "disclosed_via": "DECISIONS.jsonl D-12 part 4 (ADHIKĀRIN, 2026-08-23T04:46:23Z), quoting plan §14.2 by name",
+      "reason": "One row: ka_gochara_sweep, RETIRED with data_disposition NULL. Plan §14.2 names this exact asset's data_disposition as R3 work; D-12 part 4 quotes that sentence and defers it. THE ASSET IS CHARTER P1 — its 38,287 v1 gochara rows are recoverable only from the 2026-08-23 snapshot — so any operation on it is reserved to the native, not merely deferred. H6 was respected under real temptation here: migration 590's own header says the disposition is 'almost certainly' known, and D-31 records that leaving it NULL was right, because 'almost certainly' is not a detector. THE SAME ASSET IS THE SUBJECT OF X-02, which is already disclosed and already non-gating; C-08 is the identical situation one column over, and is BLOCKING.",
+      "measured": {
+        "violations": 1,
+        "rows": [
+          "ka_gochara_sweep"
+        ],
+        "catalog_status": "RETIRED",
+        "is_active": false,
+        "charter": "P1 — unrecoverable asset",
+        "measured_at": "2026-08-23T08:00:51Z"
+      },
+      "disclosed_at": "2026-08-23",
+      "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
+      "certified_by": null,
+      "wired_into_the_guard": false,
+      "does_not_turn_the_rule_green": true
+    },
+    "C-15": {
+      "rule": "C-15",
+      "severity_in_the_rule_table": "BLOCKING",
+      "gates_the_exit_code_today": true,
+      "owner": "R3 (ka_dasha_kala, ka_graha_sancara, ka_muhurta_seva, ka_tulana) and R5 (mi_abhilekha, mi_seva)",
+      "deferred_to": "the owning rung — §8.6 stage-2 Conform for provides_apis; tier-S probe work (§9) for health_probe",
+      "landed_at": "pre-campaign",
+      "disclosed_via": "DECISIONS.jsonl D-30 part 1 — applied by M0-T36; §8.4's R3 row for the probe half",
+      "reason": "Six DRAFT service rows with health_probe and provides_apis both NULL. Neither column is named by any Phase-0 step or M0 acceptance criterion — clause (a) fails for both. THE TWO HALVES ARE NOT THE SAME KIND OF THING and the deferral matters more for one: `provides_apis` is a declaration, but `health_probe` is a DETECTOR, and §8.4's R3 row already assigns 'a real known-answer probe with an SLO' to R3 by name for two of these assets (clause (b) firing). Authoring a probe in M0 to clear C-15 would be manufacturing a detector to satisfy a criterion — the H3 shape D-29 part 5 named for the sibling rule C-17. CORRECTION TO THE CONTRACT'S OWN §6 CELL, carried from v1.0: that cell reads '6 (all 6 service rows)'. There are EIGHT service rows live since the M0-T21 kind repair; the count is unchanged for a different reason than the contract states, because the two new ones (bg_ephemeris_engine, bg_panchanga) DO carry both fields.",
+      "measured": {
+        "violations": 6,
+        "rows": [
+          "ka_dasha_kala",
+          "ka_graha_sancara",
+          "ka_muhurta_seva",
+          "ka_tulana",
+          "mi_abhilekha",
+          "mi_seva"
+        ],
+        "live_service_rows": 8,
+        "contract_s6_cell_says": 6,
+        "measured_at": "2026-08-23T08:00:51Z"
+      },
+      "disclosed_at": "2026-08-23",
+      "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
+      "certified_by": null,
+      "wired_into_the_guard": false,
+      "does_not_turn_the_rule_green": true
+    },
+    "C-17": {
+      "rule": "C-17",
+      "severity_in_the_rule_table": "BLOCKING",
+      "gates_the_exit_code_today": true,
+      "owner": "R3 (Kāla rung), stage-1 intake",
+      "deferred_to": "R3",
+      "landed_at": "the three 'healthy' rows were last written by a self-test on 2026-08-02; health_probe has always been NULL on all four",
+      "disclosed_via": "DECISIONS.jsonl D-13 part 2 AS CORRECTED AND EXTENDED BY D-29 (ADHIKĀRIN, 2026-08-23T07:44:26Z)",
+      "reason": "Four rows, and D-29 is the reason all four are now covered where v1.0 could cover only three. THREE are false greens: ka_dasha_kala, ka_muhurta_seva and ka_tulana read service_health='healthy' with no health_probe — a status with no detector, H4 / CLAUDE.md §N.8, the campaign's founding defect sitting live in the registry. THE FOURTH IS DIFFERENT IN KIND and D-29 part 3 insists it not be folded in: ka_graha_sancara reads 'unhealthy' with no probe, which is A RED WITH NO DETECTOR BEHIND IT — §N.8 in its other direction. It FAILS SAFE (it understates confidence rather than overstating it) and it must NOT be 'fixed' by clearing it to healthy or NULL when R3 opens; only a real probe may retire it. D-29 also corrected D-13's destination from R0 to R3: all four assets are ka_* / layer=kala, and ZERO ka_* assets carry rung='R0'. Independently, the named-field test reaches the same place — neither `health_probe` nor `service_health` is named by any Phase-0 step. NOTE THE DOUBLE REPORT (D-29 part 4): ka_graha_sancara also has a SERVING-side defect ruled separately at D-26 (deriveState() returns service_ok, overriding the stored 'unhealthy'). Different defects, different layers, different owners; fixing one leaves the other.",
+      "measured": {
+        "violations": 4,
+        "rows": {
+          "ka_dasha_kala": "healthy",
+          "ka_graha_sancara": "unhealthy",
+          "ka_muhurta_seva": "healthy",
+          "ka_tulana": "healthy"
+        },
+        "health_probe": "NULL on all four",
+        "measured_at": "2026-08-23T08:00:51Z"
+      },
+      "disclosed_at": "2026-08-23",
+      "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
+      "certified_by": null,
+      "wired_into_the_guard": false,
+      "does_not_turn_the_rule_green": true
+    },
+    "C-20": {
+      "rule": "C-20",
+      "severity_in_the_rule_table": "BLOCKING",
+      "gates_the_exit_code_today": true,
+      "owner": "R0 (Brahmagyan rung), §8.6 stage-2 Conform",
+      "deferred_to": "R0",
+      "landed_at": "pre-campaign",
+      "disclosed_via": "DECISIONS.jsonl D-19 part 1 and D-27 part 2a",
+      "reason": "Three R0 rows with target_floor NULL: bg_class_priors, bg_formula_constants, bg_ghatana. THIS IS THE ONE COLUMN THE CAMPAIGN HAS RULED TWICE. D-19 part 1: a floor is the MEASURED ACHIEVED COUNT (I7), 'a declarative source file structurally CANNOT hold a measured value', and measured values are written at §8.6 stage 2 Conform, per rung. D-27 part 2a re-affirmed it with a number behind it. Setting a floor in M0 would also collide with charter G2's bound — to the measured achieved count only, never an invented number — and the measurement that would justify it is R0's intake, which has not run.",
+      "measured": {
+        "violations": 3,
+        "rows": [
+          "bg_class_priors",
+          "bg_formula_constants",
+          "bg_ghatana"
+        ],
+        "measured_at": "2026-08-23T08:00:51Z"
+      },
+      "disclosed_at": "2026-08-23",
+      "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
+      "certified_by": null,
+      "wired_into_the_guard": false,
+      "does_not_turn_the_rule_green": true
+    },
+    "C-21": {
+      "rule": "C-21",
+      "severity_in_the_rule_table": "BLOCKING",
+      "gates_the_exit_code_today": true,
+      "owner": "four rungs — R0 ×2, R1 ×2, R2 ×2, R3 ×12, R5 ×1",
+      "deferred_to": "the owning rung's §8.6 stage-2 Conform",
+      "landed_at": "pre-campaign",
+      "disclosed_via": "DECISIONS.jsonl D-19 part 1 (volume_explanation named in the campaign-owned set) + charter G4",
+      "reason": "Nineteen rows with target_floor = 0 and volume_explanation NULL. A volume_explanation on a zero floor is precisely a charter G4 by-design classification, and G4 requires a WRITTEN by-design justification PER ASSET — a per-asset judgment about that asset's data, which is exactly what I14 keeps out of Track M. D-19 part 1 names it in the campaign-owned set ('volume_explanation WHERE IT RECORDS A G4 BY-DESIGN CLASSIFICATION') and places it at the owning rung's Conform. Same durability precondition as C-20: the column is seed-owned and would move on 47 cells at the next re-seed. Plan §8.4's R5 row independently names this work for its own layer ('zero-row-by-design assets recorded honestly with target_floor = 0 and a volume_explanation'), which is clause (b) firing for at least that rung.",
+      "measured": {
+        "violations": 19,
+        "by_rung": {
+          "R0": 2,
+          "R1": 2,
+          "R2": 2,
+          "R3": 12,
+          "R5": 1
+        },
+        "measured_at": "2026-08-23T08:00:51Z"
+      },
+      "disclosed_at": "2026-08-23",
+      "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
+      "certified_by": null,
+      "wired_into_the_guard": false,
+      "does_not_turn_the_rule_green": true
+    },
+    "C-22": {
+      "rule": "C-22",
+      "severity_in_the_rule_table": "RUNG",
+      "gates_the_exit_code_today": false,
+      "owner": "every rung, at its own §8.6 stage-2 Conform",
+      "deferred_to": "each rung in turn",
+      "landed_at": "n/a — the rule has never had a satisfiable antecedent",
+      "disclosed_via": "structural fact, measured; plan §8.6 stage 2 ('integrity_check_sql authored per asset') and the closing paragraph ('Stage 2 is deliberately inside the rung rather than in Track M')",
+      "reason": "VACUOUS TODAY AND REPORTED AS VACUOUS RATHER THAN AS A PASS. The antecedent is 'rung-frozen' and no rung has frozen — R0 has not opened. Measured separately and worth stating plainly: 0 of 128 live assets carry an integrity_check_sql at all. The column is NOT seed-written, so checks authored at Conform are durable. Severity RUNG, so it does not gate today; it is disclosed anyway because D-30 part 4 says every deferred rule carries its entry, and because a rule that is vacuous now will stop being vacuous the moment R0 freezes.",
+      "measured": {
+        "status": "not_checkable (vacuous — 0 rungs frozen)",
+        "assets_with_integrity_check_sql": 0,
+        "of": 128,
+        "measured_at": "2026-08-23T08:00:51Z"
+      },
+      "disclosed_at": "2026-08-23",
+      "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
+      "certified_by": null,
+      "wired_into_the_guard": false,
+      "does_not_turn_the_rule_green": true
+    },
+    "C-25": {
+      "rule": "C-25",
+      "severity_in_the_rule_table": "BLOCKING",
+      "gates_the_exit_code_today": false,
+      "owner": "UNDECIDED — the named-field test reaches it (Phase 0.4 names partition declaration) but §8.6 stage 2 assigns 'partitions declared' to every rung; see crit-5 and §9.3",
+      "deferred_to": "undecided — M0 under Phase 0.4, or each rung under §8.6 stage 2",
+      "landed_at": "n/a — no column has ever existed",
+      "disclosed_via": "ASSET_CATALOGUE_CONTRACT_v1_0.md §4.9 / §6 / §10.3 (contract-mandate: 'Rules C-25, C-26 and C-27 must never be reported as passing')",
+      "reason": "THE MODEL DEFERRAL — a reason written into the specification itself. No schema column exists for a natural-key partition declaration. The contract states in its own §6 that these rules must never be reported as passing, 'a CI guard implementing this document emits them as not_checkable with the reason, and a dashboard that renders that as a pass is itself a defect'. The shipped guard hard-wires exactly that (check_asset_catalogue_contract.py, `_no_detector`) and its own cross-check FAILS if the guard and the contract ever disagree about which rules are not_checkable. This is what a well-formed deferral looks like: a named structural fact, a specification that records it, a detector that refuses to report green, and a guard test that catches the two drifting apart. IT DOES NOT GATE TODAY because not_checkable is excluded from the exit code — but note that its severity is BLOCKING, so if a column ever appears the rule gates immediately. WHAT IS UNDECIDED IS THE WORK, NOT THE RULE: the rule's not_checkable status is correct and permanent-until-a-column-exists; whether M0 or the rungs should create that column is crit-5's open question.",
+      "measured": {
+        "status": "not_checkable",
+        "co_written_target_tables": 5,
+        "co_writer_rows": 16,
+        "X-01_undeclared_collisions": 0,
+        "measured_at": "2026-08-23T08:00:51Z"
+      },
+      "disclosed_at": "2026-08-23",
+      "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
+      "certified_by": null,
+      "wired_into_the_guard": false,
+      "does_not_turn_the_rule_green": true
+    },
+    "C-26": {
+      "rule": "C-26",
+      "severity_in_the_rule_table": "BLOCKING",
+      "gates_the_exit_code_today": false,
+      "owner": "the rung that owns each generation-bearing asset",
+      "deferred_to": "the owning rung",
+      "landed_at": "n/a — no column has ever existed",
+      "disclosed_via": "ASSET_CATALOGUE_CONTRACT_v1_0.md §4.11 / §6 / §10.3 (contract-mandate)",
+      "reason": "Same shape as C-25 — no schema column for an authority pointer / protected_generations, the contract forbids reporting it as passing, the guard hard-wires not_checkable with that reason. ONE DIFFERENCE FROM C-25 AND IT IS THE DECISIVE ONE: no Phase-0 step names an authority pointer as M0 content, so unlike C-25 BOTH the rule and the work are deferred, and the named-field test settles it cleanly rather than leaving it open.",
+      "measured": {
+        "status": "not_checkable",
+        "measured_at": "2026-08-23T08:00:51Z"
+      },
+      "disclosed_at": "2026-08-23",
+      "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
+      "certified_by": null,
+      "wired_into_the_guard": false,
+      "does_not_turn_the_rule_green": true
+    },
+    "C-27": {
+      "rule": "C-27",
+      "severity_in_the_rule_table": "ADVISORY",
+      "gates_the_exit_code_today": false,
+      "owner": "Track M2 (cleaned telemetry), then each rung's Conform",
+      "deferred_to": "M2",
+      "landed_at": "n/a",
+      "disclosed_via": "ASSET_CATALOGUE_CONTRACT_v1_0.md §6 severity column + plan §4.8",
+      "reason": "ADVISORY by the contract's own severity column, and not checkable until Track M2 produces cleaned telemetry — the p95 the rule compares against does not exist yet. Recorded, explicitly not green. Does not gate today on two independent grounds (ADVISORY severity AND not_checkable status), and is disclosed anyway for completeness with D-30 part 4.",
+      "measured": {
+        "status": "not_checkable",
+        "blocked_on": "M2 cleaned telemetry",
+        "measured_at": "2026-08-23T08:00:51Z"
+      },
+      "disclosed_at": "2026-08-23",
+      "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
+      "certified_by": null,
+      "wired_into_the_guard": false,
+      "does_not_turn_the_rule_green": true
+    },
+    "C-28_residual": {
+      "rule": "C-28",
+      "severity_in_the_rule_table": "BLOCKING",
+      "gates_the_exit_code_today": true,
+      "owner": "R0 (Brahmagyan rung) — all 31 residual rows are R0",
+      "deferred_to": "R0's own build (only a real build can retire it)",
+      "landed_at": "n/a — these assets have never completed a tracked build",
+      "disclosed_via": "DECISIONS.jsonl D-30 part 3 (G7 deferral, ADHIKĀRIN, 2026-08-23T07:46:10Z), indexed as a G7 by D-31 part 2",
+      "reason": "PARTIAL DISCLOSURE — THIS COVERS 31 OF C-28's 105 ROWS AND NOT THE OTHER 74, AND THAT DISTINCTION IS THE POINT. Re-measured read-only by M0-T36: 74 rows are backfillable from the median of their completed build_run_assets rows, which is D-6's authorised statement T-5 and is REPAIRABLE-IN-M0, not deferred. The remaining 31 have NO completed build_run_assets row at all, so no measured duration exists and D-6 condition 4 forbids inventing one ('an asset with no clean telemetry gets NULL, not a plausible number', H6). There is no path to zero for those 31 that does not pass through either a real build or a fabrication. All 31 are R0, so R0's freeze inherits this rather than rediscovering it. NOTHING HAS BEEN EXECUTED: M0-T3 produced the T-5 proposal with `writes_executed: NONE`, so C-28 reads 105 today, not 31, and any statement that C-28 is deferred is premature by 74 rows.",
+      "measured": {
+        "guard_violations_total": 105,
+        "backfillable_by_T5": 74,
+        "deferred_residual": 31,
+        "residual_by_rung": {
+          "R0": 31
+        },
+        "T5_executed": false,
+        "note_scorecard_disagrees": "the scorecard's C-28 SQL returns 112 because it does not filter by asset_kind; the 7 extra rows are all services — finding F-T36-1",
+        "measured_at": "2026-08-23T08:0xZ"
+      },
+      "disclosed_at": "2026-08-23",
+      "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
+      "certified_by": null,
+      "wired_into_the_guard": false,
+      "does_not_turn_the_rule_green": true
+    }
+  }
 }

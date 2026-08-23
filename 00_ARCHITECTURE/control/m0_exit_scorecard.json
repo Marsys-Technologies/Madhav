@@ -56,14 +56,14 @@
    "NOT-MEASURABLE": 3,
    "BLOCKED": 1
   },
-  "task": "M0-T32 (re-measurement 3)",
+  "task": "M0-T36 (re-measurement 4 \u2014 post V-8/V-9/V-10/V-11, post D-29/D-30/D-31)",
   "built_by_task": "M0-T17",
   "artifact": "M0_EXIT_SCORECARD_v1_0",
   "generator": "00_ARCHITECTURE/control/m0_exit_scorecard.py",
-  "measured_at_start": "2026-08-23T07:23:27.664487+00:00",
-  "measured_at_end": "2026-08-23T07:23:54.296317+00:00",
+  "measured_at_start": "2026-08-23T08:00:08.436624+00:00",
+  "measured_at_end": "2026-08-23T08:00:26.645600+00:00",
   "git_branch": "campaign/nirmana-autonomous",
-  "git_sha": "df78d1aa3aa416ed16e3367443d44bc0e4ee8e54",
+  "git_sha": "326e4cb372b5c2062bf60fedf6e30772306b7377",
   "db_access": "READ-ONLY (default_transaction_read_only=on; SELECT only)",
   "recent_migrations_applied": [
    {
@@ -138,38 +138,9 @@
    "writer_timeout_seconds"
   ],
   "delta_vs_previous_run": {
-   "previous_run": "2026-08-23T06:20:44.013647+00:00",
-   "changed": [
-    {
-     "criterion": "2_contract_violations_per_kind",
-     "was": {
-      "status": "NOT-MEASURABLE",
-      "measured_value": 204
-     },
-     "now": {
-      "status": "NOT-MEASURABLE",
-      "measured_value": 165
-     }
-    },
-    {
-     "criterion": "12_ci_domain_coherence_green",
-     "was": {
-      "status": "FAIL",
-      "measured_value": null
-     },
-     "now": {
-      "status": "FAIL",
-      "measured_value": {
-       "assertion_exists": true,
-       "assertion_wired_to_a_workflow": true,
-       "invocation_is_blocking": false,
-       "merged_to_default_branch": false,
-       "live_violations": 0
-      }
-     }
-    }
-   ],
-   "note": "2 change(s) since the previous run"
+   "previous_run": "2026-08-23T07:23:54.296317+00:00",
+   "changed": [],
+   "note": "no criterion changed status or value since the previous run"
   },
   "reading_history": [
    {
@@ -521,6 +492,185 @@
     "task": "M0-T32 (re-measurement 3)",
     "measured_at_end": "2026-08-23T07:23:54.296317+00:00",
     "git_sha": "df78d1aa3aa4",
+    "tally": {
+     "PASS": 1,
+     "FAIL": 7,
+     "NOT-MEASURABLE": 3,
+     "BLOCKED": 1
+    },
+    "criteria": {
+     "1_three_way_diff": {
+      "status": "FAIL",
+      "measured_value": 5,
+      "durability": "n/a \u2014 not passing"
+     },
+     "2_contract_violations_per_kind": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": 165,
+      "durability": "n/a \u2014 not passing"
+     },
+     "3_prefix_mismatches": {
+      "status": "FAIL",
+      "measured_value": 1,
+      "durability": "n/a \u2014 not passing"
+     },
+     "4_dangling_or_draft_edges": {
+      "status": "FAIL",
+      "measured_value": 3,
+      "durability": "n/a \u2014 not passing"
+     },
+     "5_multi_producer_partitions": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": null,
+      "durability": "n/a \u2014 not passing"
+     },
+     "6_throughput_on_inactive_assets": {
+      "status": "BLOCKED",
+      "measured_value": 3,
+      "durability": "n/a \u2014 not passing"
+     },
+     "7_retired_without_disposition": {
+      "status": "FAIL",
+      "measured_value": 1,
+      "durability": "n/a \u2014 not passing"
+     },
+     "8_active_without_coverage_or_dead_flag": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": null,
+      "durability": "n/a \u2014 not passing"
+     },
+     "9_unresolved_zero_consumer": {
+      "status": "FAIL",
+      "measured_value": 23,
+      "durability": "n/a \u2014 not passing"
+     },
+     "10_ci_guard_merged_and_blocking": {
+      "status": "FAIL",
+      "measured_value": {
+       "guard_scripts_found": 2,
+       "workflow_invocations_found": 3,
+       "merged_to_default_branch": false,
+       "invocation_is_blocking": false
+      },
+      "durability": "n/a \u2014 not passing"
+     },
+     "11_domain_and_rung_present": {
+      "status": "PASS",
+      "measured_value": 0,
+      "durability": "NON-DURABLE"
+     },
+     "12_ci_domain_coherence_green": {
+      "status": "FAIL",
+      "measured_value": {
+       "assertion_exists": true,
+       "assertion_wired_to_a_workflow": true,
+       "invocation_is_blocking": false,
+       "merged_to_default_branch": false,
+       "live_violations": 0
+      },
+      "durability": "n/a \u2014 not passing"
+     }
+    },
+    "contract_rules": {
+     "C-01": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-02": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-03": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-04": {
+      "status": "FAIL",
+      "violations": 9
+     },
+     "C-05": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-06": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-07": {
+      "status": "FAIL",
+      "violations": 4
+     },
+     "C-08": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-09": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-10": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-11": {
+      "status": "FAIL",
+      "violations": 3
+     },
+     "C-12": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-13a": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-14": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-15": {
+      "status": "FAIL",
+      "violations": 6
+     },
+     "C-16": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-17": {
+      "status": "FAIL",
+      "violations": 4
+     },
+     "C-18": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-19": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-20": {
+      "status": "FAIL",
+      "violations": 3
+     },
+     "C-21": {
+      "status": "FAIL",
+      "violations": 19
+     },
+     "C-24": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-28": {
+      "status": "FAIL",
+      "violations": 112
+     }
+    }
+   },
+   {
+    "label": "reading 4 \u2014 M0-T36 (re-measurement 4 \u2014 post V-8/V-9/V-10/V-11, post D-29/D-30/D-31)",
+    "task": "M0-T36 (re-measurement 4 \u2014 post V-8/V-9/V-10/V-11, post D-29/D-30/D-31)",
+    "measured_at_end": "2026-08-23T08:00:26.645600+00:00",
+    "git_sha": "326e4cb372b5",
     "tally": {
      "PASS": 1,
      "FAIL": 7,
@@ -2302,7 +2452,6 @@
     "size_sql",
     "sort_order",
     "storage_type",
-    "target_floor",
     "target_table",
     "volume_explanation"
    ],
@@ -2329,7 +2478,6 @@
    "size_sql",
    "sort_order",
    "storage_type",
-   "target_floor",
    "target_table",
    "volume_explanation"
   ],
@@ -2568,7 +2716,6 @@
     "seed_overwritable_columns": [
      "asset_kind",
      "count_sql",
-     "target_floor",
      "target_table"
     ],
     "seed_divergent_assets_among_them": [
@@ -2821,8 +2968,7 @@
     ],
     "seed_overwritable_columns": [
      "asset_kind",
-     "catalog_status",
-     "target_floor"
+     "catalog_status"
     ],
     "seed_divergent_assets_among_them": [
      "bg_ephemeris_engine",
@@ -2840,7 +2986,6 @@
      "volume_explanation"
     ],
     "seed_overwritable_columns": [
-     "target_floor",
      "volume_explanation"
     ],
     "seed_divergent_assets_among_them": [],
@@ -2927,7 +3072,6 @@
      "layer_name",
      "provides_apis",
      "scope",
-     "target_floor",
      "target_table",
      "volume_explanation"
     ],

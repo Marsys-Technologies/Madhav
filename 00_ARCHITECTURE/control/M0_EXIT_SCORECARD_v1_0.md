@@ -2,17 +2,17 @@
 artifact: M0_EXIT_SCORECARD
 version: 1.0
 status: LIVE-MEASUREMENT
-task: M0-T32 (re-measurement 3)
+task: M0-T36 (re-measurement 4 — post V-8/V-9/V-10/V-11, post D-29/D-30/D-31)
 built_by_task: M0-T17
-readings: 3
-generated: 2026-08-23T07:23:54.296317+00:00
+readings: 4
+generated: 2026-08-23T08:00:26.645600+00:00
 generator: 00_ARCHITECTURE/control/m0_exit_scorecard.py
 ---
 
 # NIRMĀṆA M0 — Exit-Criteria Scorecard v1.0
 
-**Measured:** 2026-08-23T07:23:27.664487+00:00 → 2026-08-23T07:23:54.296317+00:00 (UTC)  
-**Branch / commit:** `campaign/nirmana-autonomous` @ `df78d1aa3aa4`  
+**Measured:** 2026-08-23T08:00:08.436624+00:00 → 2026-08-23T08:00:26.645600+00:00 (UTC)  
+**Branch / commit:** `campaign/nirmana-autonomous` @ `326e4cb372b5`  
 **Database access:** READ-ONLY (default_transaction_read_only=on; SELECT only)  
 **Regenerate:** `python3 00_ARCHITECTURE/control/m0_exit_scorecard.py`  
 **Status:** measurement only. This document certifies nothing and closes nothing (I16 / charter H7). PARĪKṢAKA decides; M0-T10 re-runs the generator at freeze time rather than trusting this snapshot.
@@ -20,7 +20,7 @@ generator: 00_ARCHITECTURE/control/m0_exit_scorecard.py
 ## 0 — Tally, then and now
 
 **then** = `reading 1 — M0-T17 first measurement`, 2026-08-23T05:05:59.484414+00:00 @ `01397f9216de`  
-**now** = `reading 3 — M0-T32 (re-measurement 3)`, 2026-08-23T07:23:54.296317+00:00 @ `df78d1aa3aa4`
+**now** = `reading 4 — M0-T36 (re-measurement 4 — post V-8/V-9/V-10/V-11, post D-29/D-30/D-31)`, 2026-08-23T08:00:26.645600+00:00 @ `326e4cb372b5`
 
 | status | then | now | Δ | meaning |
 |---|--:|--:|--:|---|
@@ -57,6 +57,7 @@ Every reading this generator has taken is retained in `m0_exit_scorecard.json` u
 | reading 1 — M0-T17 first measurement | M0-T17 | 2026-08-23T05:05:59.484414+00:00 | `01397f9216de` | 0 | 6 | 3 | 3 |
 | reading 2 — M0-T27 (re-measurement) | M0-T27 (re-measurement) | 2026-08-23T06:20:44.013647+00:00 | `ee93b76e8a57` | 1 | 7 | 3 | 1 |
 | reading 3 — M0-T32 (re-measurement 3) | M0-T32 (re-measurement 3) | 2026-08-23T07:23:54.296317+00:00 | `df78d1aa3aa4` | 1 | 7 | 3 | 1 |
+| reading 4 — M0-T36 (re-measurement 4 — post V-8/V-9/V-10/V-11, post D-29/D-30/D-31) | M0-T36 (re-measurement 4 — post V-8/V-9/V-10/V-11, post D-29/D-30/D-31) | 2026-08-23T08:00:26.645600+00:00 | `326e4cb372b5` | 1 | 7 | 3 | 1 |
 
 ### Did anything move while this ran?
 
@@ -72,40 +73,7 @@ A migration wave was running concurrently, so every load-bearing quantity was re
 
 ### What changed since the previous run of this generator
 
-Previous run: `2026-08-23T06:20:44.013647+00:00`. 2 change(s) since the previous run.
-
-```json
-[
- {
-  "criterion": "2_contract_violations_per_kind",
-  "was": {
-   "status": "NOT-MEASURABLE",
-   "measured_value": 204
-  },
-  "now": {
-   "status": "NOT-MEASURABLE",
-   "measured_value": 165
-  }
- },
- {
-  "criterion": "12_ci_domain_coherence_green",
-  "was": {
-   "status": "FAIL",
-   "measured_value": null
-  },
-  "now": {
-   "status": "FAIL",
-   "measured_value": {
-    "assertion_exists": true,
-    "assertion_wired_to_a_workflow": true,
-    "invocation_is_blocking": false,
-    "merged_to_default_branch": false,
-    "live_violations": 0
-   }
-  }
- }
-]
-```
+Previous run: `2026-08-23T07:23:54.296317+00:00`. no criterion changed status or value since the previous run.
 
 Filesystem-sourced criteria (10 and 12) can move between runs without any database change, because sibling tasks are authoring the guards they look for. The block above is where that shows up; the table above it covers database movement inside a single run.
 
@@ -1109,7 +1077,7 @@ Parsed from `platform/scripts/seed/asset_registry_seed.ts` **as text** (never im
 
 | question | answer |
 |---|---|
-| columns the seed **overwrites** on every re-run (`DO UPDATE SET`) | `asset_kind, asset_type, catalog_status, count_sql, depends_on, english_description, english_name, expected_volume_formula, expected_volume_inputs, health_probe, is_active, layer, layer_index, layer_name, provides_apis, sanskrit_name, scope, size_sql, sort_order, storage_type, target_floor, target_table, volume_explanation` |
+| columns the seed **overwrites** on every re-run (`DO UPDATE SET`) | `asset_kind, asset_type, catalog_status, count_sql, depends_on, english_description, english_name, expected_volume_formula, expected_volume_inputs, health_probe, is_active, layer, layer_index, layer_name, provides_apis, sanskrit_name, scope, size_sql, sort_order, storage_type, target_table, volume_explanation` |
 | columns the seed **never inserts** (a new seed row lands NULL/default) | `clear_tables, created_at, data_disposition, domain, has_substeps, has_writer, integrity_check_sql, last_invoked_at, last_selftest_at, rebuild_on_probe_fail, rung, selftest_detail, service_health, superseded_by, writer_timeout_seconds` |
 | live cells that already differ from what the seed would write | **9** across 9 asset(s) |
 
@@ -1159,7 +1127,7 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
 | # | status | durability | columns read that the seed overwrites | why |
 |---|---|---|---|---|
 | 1 | FAIL | n/a — not passing | `—` | — |
-| 2 | NOT-MEASURABLE | n/a — not passing | `asset_kind, asset_type, catalog_status, count_sql, depends_on, health_probe, layer, layer_index, layer_name, provides_apis, scope, target_floor, target_table, volume_explanation` | — |
+| 2 | NOT-MEASURABLE | n/a — not passing | `asset_kind, asset_type, catalog_status, count_sql, depends_on, health_probe, layer, layer_index, layer_name, provides_apis, scope, target_table, volume_explanation` | — |
 | 3 | FAIL | n/a — not passing | `asset_kind, layer` | — |
 | 4 | FAIL | n/a — not passing | `asset_kind, catalog_status, depends_on` | — |
 | 5 | NOT-MEASURABLE | n/a — not passing | `—` | — |
@@ -1304,7 +1272,6 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
    "size_sql",
    "sort_order",
    "storage_type",
-   "target_floor",
    "target_table",
    "volume_explanation"
   ],
@@ -1331,7 +1298,6 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
   "size_sql",
   "sort_order",
   "storage_type",
-  "target_floor",
   "target_table",
   "volume_explanation"
  ],
@@ -1570,7 +1536,6 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
    "seed_overwritable_columns": [
     "asset_kind",
     "count_sql",
-    "target_floor",
     "target_table"
    ],
    "seed_divergent_assets_among_them": [
@@ -1823,8 +1788,7 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
    ],
    "seed_overwritable_columns": [
     "asset_kind",
-    "catalog_status",
-    "target_floor"
+    "catalog_status"
    ],
    "seed_divergent_assets_among_them": [
     "bg_ephemeris_engine",
@@ -1842,7 +1806,6 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
     "volume_explanation"
    ],
    "seed_overwritable_columns": [
-    "target_floor",
     "volume_explanation"
    ],
    "seed_divergent_assets_among_them": [],
@@ -1929,7 +1892,6 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
     "layer_name",
     "provides_apis",
     "scope",
-    "target_floor",
     "target_table",
     "volume_explanation"
    ],

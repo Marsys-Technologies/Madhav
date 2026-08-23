@@ -1750,7 +1750,7 @@ def main() -> int:
 
     rec["_meta"].update({
         "tally": tally,
-        "task": "M0-T32 (re-measurement 3)", "built_by_task": "M0-T17",
+        "task": "M0-T36 (re-measurement 4 — post V-8/V-9/V-10/V-11, post D-29/D-30/D-31)", "built_by_task": "M0-T17",
         "artifact": "M0_EXIT_SCORECARD_v1_0",
         "generator": _rel(pathlib.Path(__file__)),
         "measured_at_start": started.isoformat(), "measured_at_end": finished.isoformat(),
