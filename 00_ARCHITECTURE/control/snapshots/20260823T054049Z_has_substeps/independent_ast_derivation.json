@@ -1,0 +1,1859 @@
+{
+ "files_scanned": 579,
+ "parse_errors": [],
+ "registrations": 123,
+ "distinct_asset_ids": 123,
+ "duplicate_asset_ids": [],
+ "unresolved_register_args": [],
+ "heavy_count_override_rule": 26,
+ "light_count": 97,
+ "naive_mro_rule_would_say_heavy": 123,
+ "nonstandard_shapes": {},
+ "writers": {
+  "ka_kshetra": {
+   "asset_id": "ka_kshetra",
+   "file": "platform/python-sidecar/services/ka_kshetra/writer.py",
+   "line": 246,
+   "class": "KaKshetraWriter",
+   "resolved_from": "module-const",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/services/ka_kshetra/writer.py::KaKshetraWriter"
+   ]
+  },
+  "ka_dasha_kala": {
+   "asset_id": "ka_dasha_kala",
+   "file": "platform/python-sidecar/services/ka_dasha_kala/writer.py",
+   "line": 114,
+   "class": "KaDashaKalaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/services/ka_dasha_kala/writer.py::KaDashaKalaWriter"
+   ]
+  },
+  "ka_gochara_sweep": {
+   "asset_id": "ka_gochara_sweep",
+   "file": "platform/python-sidecar/services/ka_gochara_sweep/writer.py",
+   "line": 257,
+   "class": "KaGocharaSweepWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/services/ka_gochara_sweep/writer.py::KaGocharaSweepWriter"
+   ]
+  },
+  "ka_tulana": {
+   "asset_id": "ka_tulana",
+   "file": "platform/python-sidecar/services/ka_tulana/writer.py",
+   "line": 88,
+   "class": "KaTulanaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/services/ka_tulana/writer.py::KaTulanaWriter"
+   ]
+  },
+  "ka_moorti_nirnaya": {
+   "asset_id": "ka_moorti_nirnaya",
+   "file": "platform/python-sidecar/services/ka_moorti_nirnaya/writer.py",
+   "line": 162,
+   "class": "KaMoortiNirnayaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/services/ka_moorti_nirnaya/writer.py::KaMoortiNirnayaWriter"
+   ]
+  },
+  "ka_gochara_resonance": {
+   "asset_id": "ka_gochara_resonance",
+   "file": "platform/python-sidecar/services/ka_gochara_resonance/writer.py",
+   "line": 503,
+   "class": "KaGocharaResonanceWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/services/ka_gochara_resonance/writer.py::KaGocharaResonanceWriter"
+   ]
+  },
+  "ka_sudarshana_varsha": {
+   "asset_id": "ka_sudarshana_varsha",
+   "file": "platform/python-sidecar/services/ka_sudarshana_varsha/writer.py",
+   "line": 117,
+   "class": "KaSudarshanaVarshaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/services/ka_sudarshana_varsha/writer.py::KaSudarshanaVarshaWriter"
+   ]
+  },
+  "ka_kota_chakra": {
+   "asset_id": "ka_kota_chakra",
+   "file": "platform/python-sidecar/services/ka_kota_chakra/writer.py",
+   "line": 194,
+   "class": "KaKotaChakraWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/services/ka_kota_chakra/writer.py::KaKotaChakraWriter"
+   ]
+  },
+  "ka_vedha_gochara": {
+   "asset_id": "ka_vedha_gochara",
+   "file": "platform/python-sidecar/services/ka_vedha_gochara/writer.py",
+   "line": 251,
+   "class": "KaVedhaGocharaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/services/ka_vedha_gochara/writer.py::KaVedhaGocharaWriter"
+   ]
+  },
+  "ka_muhurta_seva": {
+   "asset_id": "ka_muhurta_seva",
+   "file": "platform/python-sidecar/services/ka_muhurta_seva/writer.py",
+   "line": 73,
+   "class": "KaMuhurtaSevaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/services/ka_muhurta_seva/writer.py::KaMuhurtaSevaWriter"
+   ]
+  },
+  "ka_tithi_pravesha": {
+   "asset_id": "ka_tithi_pravesha",
+   "file": "platform/python-sidecar/services/ka_tithi_pravesha/writer.py",
+   "line": 235,
+   "class": "KaTithiPraveshaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/services/ka_tithi_pravesha/writer.py::KaTithiPraveshaWriter"
+   ]
+  },
+  "ka_gochara": {
+   "asset_id": "ka_gochara",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py",
+   "line": 181,
+   "class": "KaGocharaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": true,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py::KaGocharaWriter"
+   ]
+  },
+  "bo_pramana_mapa": {
+   "asset_id": "bo_pramana_mapa",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py",
+   "line": 490,
+   "class": "BoPramanaMapa",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py::BoPramanaMapa"
+   ]
+  },
+  "mi_sambandha": {
+   "asset_id": "mi_sambandha",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/mi_sambandha.py",
+   "line": 101,
+   "class": "MiSambandhaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_sambandha.py::MiSambandhaWriter"
+   ]
+  },
+  "bg_yogas": {
+   "asset_id": "bg_yogas",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_yogas.py",
+   "line": 23,
+   "class": "YogasWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_yogas.py::YogasWriter"
+   ]
+  },
+  "bg_sign_medical": {
+   "asset_id": "bg_sign_medical",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py",
+   "line": 28,
+   "class": "BgMedicalMappingsWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py::BgMedicalMappingsWriter"
+   ]
+  },
+  "bg_nakshatra_medical": {
+   "asset_id": "bg_nakshatra_medical",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py",
+   "line": 28,
+   "class": "BgMedicalMappingsWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py::BgMedicalMappingsWriter"
+   ]
+  },
+  "bg_medical_mappings": {
+   "asset_id": "bg_medical_mappings",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py",
+   "line": 28,
+   "class": "BgMedicalMappingsWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_medical_mappings.py::BgMedicalMappingsWriter"
+   ]
+  },
+  "ka_bhavishya_lekha": {
+   "asset_id": "ka_bhavishya_lekha",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py",
+   "line": 9,
+   "class": "KaBhavishyaLekhaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py::KaBhavishyaLekhaWriter"
+   ]
+  },
+  "bo_anveshana": {
+   "asset_id": "bo_anveshana",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py",
+   "line": 771,
+   "class": "BoAnveshanaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py::BoAnveshanaWriter"
+   ]
+  },
+  "mi_adhilepa": {
+   "asset_id": "mi_adhilepa",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/mi_adhilepa.py",
+   "line": 183,
+   "class": "MiAdhilepaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_adhilepa.py::MiAdhilepaWriter"
+   ]
+  },
+  "bg_texts": {
+   "asset_id": "bg_texts",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py",
+   "line": 291,
+   "class": "TextsWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_texts.py::TextsWriter"
+   ]
+  },
+  "ka_yojaka": {
+   "asset_id": "ka_yojaka",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py",
+   "line": 58,
+   "class": "KaYojakaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py::KaYojakaWriter"
+   ]
+  },
+  "bo_cgm_paths": {
+   "asset_id": "bo_cgm_paths",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py",
+   "line": 354,
+   "class": "BoCgmPathsWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py::BoCgmPathsWriter"
+   ]
+  },
+  "bo_yantra_mechanism": {
+   "asset_id": "bo_yantra_mechanism",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py",
+   "line": 569,
+   "class": "BoYantraMechanismWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py::BoYantraMechanismWriter"
+   ]
+  },
+  "bo_samvada": {
+   "asset_id": "bo_samvada",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_samvada.py",
+   "line": 98,
+   "class": "BoSamvadaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_samvada.py::BoSamvadaWriter"
+   ]
+  },
+  "bo_drishti": {
+   "asset_id": "bo_drishti",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py",
+   "line": 285,
+   "class": "BoDrishtiWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py::BoDrishtiWriter"
+   ]
+  },
+  "ph_pratikara": {
+   "asset_id": "ph_pratikara",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ph_pratikara.py",
+   "line": 50,
+   "class": "PhPratikaraWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_pratikara.py::PhPratikaraWriter"
+   ]
+  },
+  "mi_abhilekha": {
+   "asset_id": "mi_abhilekha",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/mi_abhilekha.py",
+   "line": 29,
+   "class": "MiAbhilekhaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_abhilekha.py::MiAbhilekhaWriter"
+   ]
+  },
+  "ph_phaladesa": {
+   "asset_id": "ph_phaladesa",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py",
+   "line": 155,
+   "class": "PhPhaladesakWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py::PhPhaladesakWriter"
+   ]
+  },
+  "bo_karanajala": {
+   "asset_id": "bo_karanajala",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py",
+   "line": 1570,
+   "class": "BoKaranajalaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py::BoKaranajalaWriter"
+   ]
+  },
+  "mi_bhavisya": {
+   "asset_id": "mi_bhavisya",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/mi_bhavisya.py",
+   "line": 47,
+   "class": "MiBhavisyaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_bhavisya.py::MiBhavisyaWriter"
+   ]
+  },
+  "mi_vistara": {
+   "asset_id": "mi_vistara",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/mi_vistara.py",
+   "line": 30,
+   "class": "MiVistaraWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_vistara.py::MiVistaraWriter"
+   ]
+  },
+  "bg_vedha_malefic_scale": {
+   "asset_id": "bg_vedha_malefic_scale",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_phaladeepika_vedha.py",
+   "line": 27,
+   "class": "VedhaMaleficScaleWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_phaladeepika_vedha.py::VedhaMaleficScaleWriter"
+   ]
+  },
+  "bg_phaladeepika_latta": {
+   "asset_id": "bg_phaladeepika_latta",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_phaladeepika_vedha.py",
+   "line": 43,
+   "class": "PhaladeepikaLattaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_phaladeepika_vedha.py::PhaladeepikaLattaWriter"
+   ]
+  },
+  "mi_sankalpa": {
+   "asset_id": "mi_sankalpa",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/mi_sankalpa.py",
+   "line": 77,
+   "class": "MiSankalpaWriter",
+   "resolved_from": "module-const",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": false,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_sankalpa.py::MiSankalpaWriter"
+   ]
+  },
+  "ga_vastu": {
+   "asset_id": "ga_vastu",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_vastu.py",
+   "line": 13,
+   "class": "GaVastuWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_vastu.py::GaVastuWriter"
+   ]
+  },
+  "ka_kala_darshana": {
+   "asset_id": "ka_kala_darshana",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py",
+   "line": 6,
+   "class": "KaKalaDarshanaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py::KaKalaDarshanaWriter"
+   ]
+  },
+  "ph_sodhana": {
+   "asset_id": "ph_sodhana",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ph_sodhana.py",
+   "line": 38,
+   "class": "PhSodhanaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_sodhana.py::PhSodhanaWriter"
+   ]
+  },
+  "bo_sudarshana": {
+   "asset_id": "bo_sudarshana",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py",
+   "line": 88,
+   "class": "BoSudarshanaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py::BoSudarshanaWriter"
+   ]
+  },
+  "ph_muhurta": {
+   "asset_id": "ph_muhurta",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ph_muhurta.py",
+   "line": 48,
+   "class": "PhMuhurtaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_muhurta.py::PhMuhurtaWriter"
+   ]
+  },
+  "bo_bimba": {
+   "asset_id": "bo_bimba",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py",
+   "line": 530,
+   "class": "BoBimbaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py::BoBimbaWriter"
+   ]
+  },
+  "ka_jivana_parva": {
+   "asset_id": "ka_jivana_parva",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py",
+   "line": 43,
+   "class": "KaJivanaParvaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py::KaJivanaParvaWriter"
+   ]
+  },
+  "ph_pramana": {
+   "asset_id": "ph_pramana",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ph_pramana.py",
+   "line": 41,
+   "class": "PhPramanaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_pramana.py::PhPramanaWriter"
+   ]
+  },
+  "bg_prashna_rules": {
+   "asset_id": "bg_prashna_rules",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_prashna_rules.py",
+   "line": 12,
+   "class": "PrashnaRulesWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_prashna_rules.py::PrashnaRulesWriter"
+   ]
+  },
+  "bg_remedies": {
+   "asset_id": "bg_remedies",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_remedies.py",
+   "line": 29,
+   "class": "RemediesWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_remedies.py::RemediesWriter"
+   ]
+  },
+  "ga_sade_sati": {
+   "asset_id": "ga_sade_sati",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_sade_sati.py",
+   "line": 8,
+   "class": "GaSadeSatiWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_sade_sati.py::GaSadeSatiWriter"
+   ]
+  },
+  "bg_kota_chakra_rings": {
+   "asset_id": "bg_kota_chakra_rings",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_kota_chakra_rings.py",
+   "line": 29,
+   "class": "KotaChakraRingsWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_kota_chakra_rings.py::KotaChakraRingsWriter"
+   ]
+  },
+  "bo_cgm_motifs": {
+   "asset_id": "bo_cgm_motifs",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py",
+   "line": 844,
+   "class": "BoCgmMotifsWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py::BoCgmMotifsWriter"
+   ]
+  },
+  "ph_suddha_sodhana": {
+   "asset_id": "ph_suddha_sodhana",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ph_suddha_sodhana.py",
+   "line": 31,
+   "class": "PhSuddhaSodhanaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_suddha_sodhana.py::PhSuddhaSodhanaWriter"
+   ]
+  },
+  "ph_nimitta": {
+   "asset_id": "ph_nimitta",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ph_nimitta.py",
+   "line": 112,
+   "class": "PhNimittaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_nimitta.py::PhNimittaWriter"
+   ]
+  },
+  "bg_compendium_index": {
+   "asset_id": "bg_compendium_index",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py",
+   "line": 50,
+   "class": "CompendiumIndexWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py::CompendiumIndexWriter"
+   ]
+  },
+  "ga_tajaka": {
+   "asset_id": "ga_tajaka",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_tajaka.py",
+   "line": 8,
+   "class": "GaTajakaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_tajaka.py::GaTajakaWriter"
+   ]
+  },
+  "bg_muhurta_lattice": {
+   "asset_id": "bg_muhurta_lattice",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py",
+   "line": 530,
+   "class": "BgMuhurtaLatticeWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_muhurta_lattice.py::BgMuhurtaLatticeWriter"
+   ]
+  },
+  "ga_structural": {
+   "asset_id": "ga_structural",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_structural.py",
+   "line": 12,
+   "class": "GaStructuralWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_structural.py::GaStructuralWriter"
+   ]
+  },
+  "bo_samskara": {
+   "asset_id": "bo_samskara",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_samskara.py",
+   "line": 190,
+   "class": "BoSamskaraWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_samskara.py::BoSamskaraWriter"
+   ]
+  },
+  "mi_kula": {
+   "asset_id": "mi_kula",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/mi_kula.py",
+   "line": 283,
+   "class": "MiKulaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_kula.py::MiKulaWriter"
+   ]
+  },
+  "bg_sky_calendar": {
+   "asset_id": "bg_sky_calendar",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py",
+   "line": 505,
+   "class": "BgSkyCalendarWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_sky_calendar.py::BgSkyCalendarWriter"
+   ]
+  },
+  "mi_pramana": {
+   "asset_id": "mi_pramana",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/mi_pramana.py",
+   "line": 250,
+   "class": "MiPramanaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_pramana.py::MiPramanaWriter"
+   ]
+  },
+  "ka_sangam": {
+   "asset_id": "ka_sangam",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py",
+   "line": 225,
+   "class": "KaSangamWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py::KaSangamWriter"
+   ]
+  },
+  "ka_taranga": {
+   "asset_id": "ka_taranga",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_taranga.py",
+   "line": 74,
+   "class": "KaTarangaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_taranga.py::KaTarangaWriter"
+   ]
+  },
+  "mi_seva": {
+   "asset_id": "mi_seva",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/mi_seva.py",
+   "line": 26,
+   "class": "MiSevaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_seva.py::MiSevaWriter"
+   ]
+  },
+  "ga_ayurdaya": {
+   "asset_id": "ga_ayurdaya",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_ayurdaya.py",
+   "line": 22,
+   "class": "GaAyurdayaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_ayurdaya.py::GaAyurdayaWriter"
+   ]
+  },
+  "bo_pratijna": {
+   "asset_id": "bo_pratijna",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py",
+   "line": 422,
+   "class": "BoPratijnaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py::BoPratijnaWriter"
+   ]
+  },
+  "bg_concordance": {
+   "asset_id": "bg_concordance",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py",
+   "line": 59,
+   "class": "ConcordanceWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py::ConcordanceWriter"
+   ]
+  },
+  "ph_sankrama": {
+   "asset_id": "ph_sankrama",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ph_sankrama.py",
+   "line": 41,
+   "class": "PhSankramaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_sankrama.py::PhSankramaWriter"
+   ]
+  },
+  "bg_reference": {
+   "asset_id": "bg_reference",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_reference.py",
+   "line": 19,
+   "class": "ReferenceWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_reference.py::ReferenceWriter"
+   ]
+  },
+  "ga_panchanga": {
+   "asset_id": "ga_panchanga",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_panchanga.py",
+   "line": 8,
+   "class": "GaPanchangaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_panchanga.py::GaPanchangaWriter"
+   ]
+  },
+  "ga_positions": {
+   "asset_id": "ga_positions",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_positions.py",
+   "line": 16,
+   "class": "GaPositionsWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_positions.py::GaPositionsWriter"
+   ]
+  },
+  "bo_upaya": {
+   "asset_id": "bo_upaya",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py",
+   "line": 2154,
+   "class": "BoUpayaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py::BoUpayaWriter"
+   ]
+  },
+  "ga_vichara": {
+   "asset_id": "ga_vichara",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_vichara.py",
+   "line": 35,
+   "class": "GaVicharaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_vichara.py::GaVicharaWriter"
+   ]
+  },
+  "bg_nakshatra": {
+   "asset_id": "bg_nakshatra",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_nakshatra.py",
+   "line": 21,
+   "class": "NakshatraReferenceWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_nakshatra.py::NakshatraReferenceWriter"
+   ]
+  },
+  "mi_gunanaka": {
+   "asset_id": "mi_gunanaka",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/mi_gunanaka.py",
+   "line": 88,
+   "class": "MiGunakaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_gunanaka.py::MiGunakaWriter"
+   ]
+  },
+  "bg_text_index": {
+   "asset_id": "bg_text_index",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_text_index.py",
+   "line": 448,
+   "class": "TextIndexWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_text_index.py::TextIndexWriter"
+   ]
+  },
+  "bg_vidhi_primitives": {
+   "asset_id": "bg_vidhi_primitives",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_primitives.py",
+   "line": 126,
+   "class": "VidhiPrimitivesWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_primitives.py::VidhiPrimitivesWriter"
+   ]
+  },
+  "bg_dignity_reference": {
+   "asset_id": "bg_dignity_reference",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py",
+   "line": 348,
+   "class": "BgDignityReferenceWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_dignity_reference.py::BgDignityReferenceWriter"
+   ]
+  },
+  "ga_dashas": {
+   "asset_id": "ga_dashas",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_dashas.py",
+   "line": 19,
+   "class": "GaDashasWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_dashas.py::GaDashasWriter"
+   ]
+  },
+  "ga_condition": {
+   "asset_id": "ga_condition",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_condition.py",
+   "line": 13,
+   "class": "GaConditionWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_condition.py::GaConditionWriter"
+   ]
+  },
+  "bg_class_priors": {
+   "asset_id": "bg_class_priors",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_class_priors.py",
+   "line": 22,
+   "class": "ClassPriorsWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_class_priors.py::ClassPriorsWriter"
+   ]
+  },
+  "bg_formula_constants": {
+   "asset_id": "bg_formula_constants",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_formula_constants.py",
+   "line": 23,
+   "class": "FormulaConstantsWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_formula_constants.py::FormulaConstantsWriter"
+   ]
+  },
+  "bo_cdlm_summary": {
+   "asset_id": "bo_cdlm_summary",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py",
+   "line": 399,
+   "class": "BoCdlmSummaryWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py::BoCdlmSummaryWriter"
+   ]
+  },
+  "bg_cohort": {
+   "asset_id": "bg_cohort",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_cohort.py",
+   "line": 406,
+   "class": "BgCohortWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_cohort.py::BgCohortWriter"
+   ]
+  },
+  "ga_strength": {
+   "asset_id": "ga_strength",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_strength.py",
+   "line": 8,
+   "class": "GaStrengthWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_strength.py::GaStrengthWriter"
+   ]
+  },
+  "ga_vargas": {
+   "asset_id": "ga_vargas",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_vargas.py",
+   "line": 14,
+   "class": "GaVargasWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_vargas.py::GaVargasWriter"
+   ]
+  },
+  "ga_medical": {
+   "asset_id": "ga_medical",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_medical.py",
+   "line": 25,
+   "class": "GaMedicalWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_medical.py::GaMedicalWriter"
+   ]
+  },
+  "bg_doshas": {
+   "asset_id": "bg_doshas",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_doshas.py",
+   "line": 16,
+   "class": "DoshasWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_doshas.py::DoshasWriter"
+   ]
+  },
+  "bg_parihara_rules": {
+   "asset_id": "bg_parihara_rules",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py",
+   "line": 556,
+   "class": "BgPariharaRulesWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_parihara_rules.py::BgPariharaRulesWriter"
+   ]
+  },
+  "mi_bhara": {
+   "asset_id": "mi_bhara",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/mi_bhara.py",
+   "line": 88,
+   "class": "MiBharaWriter",
+   "resolved_from": "module-const",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": false,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_bhara.py::MiBharaWriter"
+   ]
+  },
+  "bo_nakshatra_semantic": {
+   "asset_id": "bo_nakshatra_semantic",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py",
+   "line": 62,
+   "class": "BoNakshatraSemanticWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py::BoNakshatraSemanticWriter"
+   ]
+  },
+  "bg_ontology": {
+   "asset_id": "bg_ontology",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_ontology.py",
+   "line": 16,
+   "class": "OntologyWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_ontology.py::OntologyWriter"
+   ]
+  },
+  "bg_dasha_systems": {
+   "asset_id": "bg_dasha_systems",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_dasha_systems.py",
+   "line": 16,
+   "class": "DashaSystemsWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_dasha_systems.py::DashaSystemsWriter"
+   ]
+  },
+  "bo_special_lagna": {
+   "asset_id": "bo_special_lagna",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py",
+   "line": 57,
+   "class": "BoSpecialLagnaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py::BoSpecialLagnaWriter"
+   ]
+  },
+  "mi_pariksha": {
+   "asset_id": "mi_pariksha",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/mi_pariksha.py",
+   "line": 91,
+   "class": "MiParikshaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_pariksha.py::MiParikshaWriter"
+   ]
+  },
+  "bg_gochara_arcs": {
+   "asset_id": "bg_gochara_arcs",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_gochara_arcs.py",
+   "line": 90,
+   "class": "GocharaArcsWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": true,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_gochara_arcs.py::GocharaArcsWriter"
+   ]
+  },
+  "ga_nakshatra": {
+   "asset_id": "ga_nakshatra",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py",
+   "line": 389,
+   "class": "NakshatraWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py::NakshatraWriter"
+   ]
+  },
+  "ka_vighnakara": {
+   "asset_id": "ka_vighnakara",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py",
+   "line": 153,
+   "class": "KaVighnakaraWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py::KaVighnakaraWriter"
+   ]
+  },
+  "ga_prashna": {
+   "asset_id": "ga_prashna",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_prashna.py",
+   "line": 21,
+   "class": "GaPrashnaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_prashna.py::GaPrashnaWriter"
+   ]
+  },
+  "bo_laksana": {
+   "asset_id": "bo_laksana",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
+   "line": 2975,
+   "class": "BoLaksanaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py::BoLaksanaWriter"
+   ]
+  },
+  "bo_laksana_rerank": {
+   "asset_id": "bo_laksana_rerank",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py",
+   "line": 3403,
+   "class": "BoLaksanaRerankWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py::BoLaksanaRerankWriter"
+   ]
+  },
+  "bg_vastu_directions": {
+   "asset_id": "bg_vastu_directions",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py",
+   "line": 23,
+   "class": "BgVastuDirectionsWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_vastu_directions.py::BgVastuDirectionsWriter"
+   ]
+  },
+  "bg_class_lifetime_counts": {
+   "asset_id": "bg_class_lifetime_counts",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_class_lifetime_counts.py",
+   "line": 45,
+   "class": "ClassLifetimeCountsWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_class_lifetime_counts.py::ClassLifetimeCountsWriter"
+   ]
+  },
+  "ka_graha_sancara": {
+   "asset_id": "ka_graha_sancara",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_graha_sancara.py",
+   "line": 48,
+   "class": "KaGrahaSancaraWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_graha_sancara.py::KaGrahaSancaraWriter"
+   ]
+  },
+  "ka_gochara_v3_century_materialize": {
+   "asset_id": "ka_gochara_v3_century_materialize",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v3_century_materialize.py",
+   "line": 1642,
+   "class": "GocharaV3CenturyMaterializeWriter",
+   "resolved_from": "module-const",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": true,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v3_century_materialize.py::GocharaV3CenturyMaterializeWriter"
+   ]
+  },
+  "ka_kalasutra": {
+   "asset_id": "ka_kalasutra",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_kalasutra.py",
+   "line": 24,
+   "class": "KaKalasutraWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kalasutra.py::KaKalasutraWriter"
+   ]
+  },
+  "mi_darshana": {
+   "asset_id": "mi_darshana",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py",
+   "line": 170,
+   "class": "MiDarshanaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py::MiDarshanaWriter"
+   ]
+  },
+  "bg_ghatana": {
+   "asset_id": "bg_ghatana",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_ghatana.py",
+   "line": 22,
+   "class": "GhatanaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_ghatana.py::GhatanaWriter"
+   ]
+  },
+  "bg_transit_rules": {
+   "asset_id": "bg_transit_rules",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py",
+   "line": 13,
+   "class": "BgTransitRulesWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py::BgTransitRulesWriter"
+   ]
+  },
+  "bg_transit_engine": {
+   "asset_id": "bg_transit_engine",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py",
+   "line": 13,
+   "class": "BgTransitRulesWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_transit_rules.py::BgTransitRulesWriter"
+   ]
+  },
+  "bo_sangati": {
+   "asset_id": "bo_sangati",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py",
+   "line": 403,
+   "class": "BoSangatiWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py::BoSangatiWriter"
+   ]
+  },
+  "bg_vidhi_floors": {
+   "asset_id": "bg_vidhi_floors",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py",
+   "line": 527,
+   "class": "VidhiFloorsWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py::VidhiFloorsWriter"
+   ]
+  },
+  "ga_sensitive_degree": {
+   "asset_id": "ga_sensitive_degree",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_sensitive_degree.py",
+   "line": 22,
+   "class": "GaSensitiveDegreeWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_sensitive_degree.py::GaSensitiveDegreeWriter"
+   ]
+  },
+  "bg_ephemeris": {
+   "asset_id": "bg_ephemeris",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_ephemeris.py",
+   "line": 40,
+   "class": "BgEphemerisWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_ephemeris.py::BgEphemerisWriter"
+   ]
+  },
+  "ga_transit_anchors": {
+   "asset_id": "ga_transit_anchors",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py",
+   "line": 71,
+   "class": "GaTransitAnchorsWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py::GaTransitAnchorsWriter"
+   ]
+  },
+  "bg_rules": {
+   "asset_id": "bg_rules",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_rules.py",
+   "line": 26,
+   "class": "RulesWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_rules.py::RulesWriter"
+   ]
+  },
+  "ga_yoga": {
+   "asset_id": "ga_yoga",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_yoga.py",
+   "line": 33,
+   "class": "GaYogaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_yoga.py::GaYogaWriter"
+   ]
+  },
+  "bg_kp_sublord_division": {
+   "asset_id": "bg_kp_sublord_division",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bg_kp_sublord_division.py",
+   "line": 37,
+   "class": "KpSublordDivisionWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_kp_sublord_division.py::KpSublordDivisionWriter"
+   ]
+  },
+  "bo_chart_gestalt": {
+   "asset_id": "bo_chart_gestalt",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_chart_gestalt.py",
+   "line": 653,
+   "class": "BoChartGestaltWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_chart_gestalt.py::BoChartGestaltWriter"
+   ]
+  },
+  "mi_jivanaghatana": {
+   "asset_id": "mi_jivanaghatana",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/mi_jivanaghatana.py",
+   "line": 153,
+   "class": "MiJivanaghatanaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_jivanaghatana.py::MiJivanaghatanaWriter"
+   ]
+  },
+  "bo_arudha": {
+   "asset_id": "bo_arudha",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py",
+   "line": 57,
+   "class": "BoArudhaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py::BoArudhaWriter"
+   ]
+  },
+  "bo_vargottama_dhana": {
+   "asset_id": "bo_vargottama_dhana",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py",
+   "line": 62,
+   "class": "BoVargottamaDhanaWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py::BoVargottamaDhanaWriter"
+   ]
+  },
+  "ga_sensitive": {
+   "asset_id": "ga_sensitive",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ga_sensitive.py",
+   "line": 14,
+   "class": "GaSensitiveWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": true,
+   "overrides_run_substep": true,
+   "defines_run": false,
+   "heavy": true,
+   "class_attr_has_substeps": true,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_sensitive.py::GaSensitiveWriter"
+   ]
+  },
+  "ka_avadhi": {
+   "asset_id": "ka_avadhi",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py",
+   "line": 152,
+   "class": "KaAvdhiWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py::KaAvdhiWriter"
+   ]
+  },
+  "ph_rectification": {
+   "asset_id": "ph_rectification",
+   "file": "platform/python-sidecar/pipeline/orchestrator/writers/ph_rectification/__init__.py",
+   "line": 213,
+   "class": "PhRectificationWriter",
+   "resolved_from": "literal",
+   "overrides_plan_substeps": false,
+   "overrides_run_substep": false,
+   "defines_run": true,
+   "heavy": false,
+   "class_attr_has_substeps": null,
+   "mro_chain_excl_writerbase": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_rectification/__init__.py::PhRectificationWriter"
+   ]
+  }
+ }
+}

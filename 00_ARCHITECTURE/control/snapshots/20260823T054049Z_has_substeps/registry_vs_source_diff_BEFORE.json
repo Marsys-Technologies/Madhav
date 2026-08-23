@@ -1,0 +1,29 @@
+{
+ "false_negatives": [
+  "bg_muhurta_lattice",
+  "bo_laksana",
+  "bo_samskara",
+  "ga_ayurdaya",
+  "ga_nakshatra",
+  "ga_sensitive",
+  "ga_sensitive_degree",
+  "ga_structural",
+  "ka_sangam",
+  "mi_darshana",
+  "mi_pariksha",
+  "mi_pramana"
+ ],
+ "false_positives": [],
+ "no_writer": [
+  "bg_ephemeris_engine",
+  "bg_gochara_citation_resolution",
+  "bg_panchanga",
+  "bg_sarvatobhadra_grid",
+  "lel_events"
+ ],
+ "agree_true": 14,
+ "agree_false": 97,
+ "registry_true_no_writer": [],
+ "crosssignal_mismatch": [],
+ "phase": "BEFORE"
+}

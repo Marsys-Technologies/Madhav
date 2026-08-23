@@ -1,0 +1,36 @@
+{
+ "phase": "AFTER",
+ "update_rowcount": 12,
+ "changed": [
+  "bg_muhurta_lattice",
+  "bo_laksana",
+  "bo_samskara",
+  "ga_ayurdaya",
+  "ga_nakshatra",
+  "ga_sensitive",
+  "ga_sensitive_degree",
+  "ga_structural",
+  "ka_sangam",
+  "mi_darshana",
+  "mi_pariksha",
+  "mi_pramana"
+ ],
+ "lost_true": [],
+ "false_negatives_after": [],
+ "false_positives_after": [],
+ "true_no_writer_after": [],
+ "d1": {
+  "bg_reference": false,
+  "bo_laksana": true,
+  "bo_laksana_rerank": false,
+  "ga_dashas": true,
+  "ka_gochara_v3_century_materialize": true,
+  "ka_kshetra": true,
+  "mi_bhara": false,
+  "mi_sankalpa": false
+ },
+ "totals_after": {
+  "false": 102,
+  "true": 26
+ }
+}

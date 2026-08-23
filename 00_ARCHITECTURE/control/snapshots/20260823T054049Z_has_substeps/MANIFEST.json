@@ -1,0 +1,21 @@
+{
+  "snapshot_id": "20260823T054049Z_has_substeps",
+  "task": "M0-T20",
+  "agent": "KARAKA-M0-T20",
+  "purpose": "pre-write snapshot of asset_registry.has_substeps for all rows (I2), before the D-24 authorized repair",
+  "captured_at_utc": "2026-08-23 05:41:08.768854",
+  "database": "amjis",
+  "table": "public.asset_registry",
+  "columns_captured": [
+    "asset_id",
+    "has_substeps"
+  ],
+  "row_count": 128,
+  "asset_registry_total_rows": 128,
+  "has_substeps_true_before": 14,
+  "has_substeps_false_before": 114,
+  "file": "asset_registry_has_substeps.csv",
+  "sha256": "05d85c8e13f1a01258f5d865d691d3e1998d8d256b718847eea36e6c0bf69280",
+  "restore_sql": "-- restore: for each row in asset_registry_has_substeps.csv\n-- UPDATE asset_registry SET has_substeps = <csv value> WHERE asset_id = <csv asset_id>;\n-- (see restore_has_substeps.sql for the generated literal form)",
+  "read_only_session": true
+}
