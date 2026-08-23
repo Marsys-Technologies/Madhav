@@ -1044,8 +1044,8 @@
     {
       "id": "M0-T50",
       "what": "COMPLETE 666cdc3f7 (SQ-17). RESIDUE MEASURED AT EXACTLY TWO with the search universe stated so the claim is falsifiable: 7 files under platform/scripts/ci/, only dispatch_gate.ts:175 and verify_migrations_deployed.ts:232 key on NODE_ENV; the third .ts already used a real isEntrypoint check and the .py uses __name__. Post-repair, zero non-comment NODE_ENV hits in that directory. Both re-keyed to IMPORT_ONLY !== '1'. PROOF NOT ASSERTION: dispatch_gate under NODE_ENV=test on must-block input went exit 0 / no output -> exit 1 with a stated verdict; verify_migrations_deployed exit 0 / no output (reproducing V-28) -> exit 2 NOT CHECKABLE; both silent under IMPORT_ONLY=1. 5/5 MUTATIONS CAUGHT INCLUDING TWO THAT REVERT EACH GUARD TO THE NODE_ENV FORM, so the new tests catch the ORIGINAL defect rather than only being newly-written-and-therefore-green. 14 files / 181 tests (baseline 177, +4 added). tsc clean. The one eslint error PROVEN pre-existing by linting the HEAD blob via --stdin rather than assumed. DESIGN CALL WORTH KEEPING: it deliberately did NOT use the isDirectEntrypoint idiom from M0-T11/T15, because FOR A GATE THE HAZARD IS FAILING TO RUN, so its safe default must be RUN — an entrypoint check is silent whenever loaded indirectly and would reintroduce the same silent-pass class keyed on load path. Distinction drawn, not pattern copied; recorded in comments at both sites. SELF-FLAGGED: vi.hoisted's correctness depends on vitest lifting it above static imports (works, but a future editor moving it would fire main() on import; a config-level env entry may be sturdier); IMPORT_ONLY is a brand-new env contract with NO PRIOR ART and undocumented in A3_env_matrix.md; and it added 4 tests SQ-17 did not ask for, which it says is readable as scope creep (its reason: the repair otherwise had no detector at all).",
-      "owner": "PARIKSAKA",
-      "state": "COMPLETE 666cdc3f7 — awaiting verification"
+      "owner": "closed",
+      "state": "CERTIFIED PASS (V-36) — and it closes PARIKSAKA's OWN residual R-28.1"
     },
     {
       "id": "SQ-11-HELD-ON-COLLISION",
@@ -1062,8 +1062,8 @@
     {
       "id": "M0-T51",
       "what": "COMPLETE ae31486c9 (SQ-15). EXACTLY FOUR STRING VALUES changed in the whole file, machine-verified against the committed diff: the three not_drafted entries plus README point (6); no key added, removed or renamed; points (1)-(5) byte-identical to HEAD. CORRECTED TO D-57, NOT D-54 PART 6 — each entry now quotes its own superseded claim verbatim, says why it is wrong, and carries 'M0 — BLOCKED on PARK-8' rather than a rung name. Split extracted PROGRAMMATICALLY from D-57.corrected_grounds with assertions that would have ABORTED on mismatch (D-57's classes partition its covers; covers set-equal to D-54's authorised_covers; both set-equal to the shipped disclosure covers): C-11 3/3 M0-BLOCKED, X-03 1/2 + lel_events->R5, X-05 22/23 + bg_ephemeris_engine->R0. GUARD NUMBERS UNMOVED with a STRUCTURAL reason rather than an observed coincidence: the guard has ZERO references to not_drafted and zero to the README key, so it never parses either block. deferred_rule_disclosures byte-identical to HEAD (19 entries); all 36 *_as_drafted_by_M0_T36 originals identical.",
-      "owner": "PARIKSAKA",
-      "state": "COMPLETE ae31486c9 — and independently confirmed by the conductor at 14:59Z: all three not_drafted entries now open \"CORRECTED 2026-08-23 BY KARAKA M0-T51 UNDER SQ-15\". V-35's F-H is therefore stale-on-arrival; PARIKSAKA told directly so it does not spend a cycle routing a closed item."
+      "owner": "closed",
+      "state": "CERTIFIED PASS (V-37 + V-37-ADDENDUM). PARIKSAKA took the conductor's steer and attacked T51's STRUCTURAL claim rather than its numbers: the guard holds ZERO references to not_drafted and ZERO to deferred_rule_disclosures_README, so the unmoved numbers are structural, not lucky. V-35's F-H closed in the addendum."
     },
     {
       "id": "D-54-PART-8-STILL-OUTSTANDING",
@@ -1123,8 +1123,8 @@
     {
       "id": "D-58-LISTENER-GRANTED",
       "what": "GRANTED AS MACHINERY, and ADHIKARIN opened the ruling AGAINST ITSELF. D-51 §5 required a report to quote output the toolchain throws away before any agent can see it -- not hard, IMPOSSIBLE, at every apply this project has ever run. ADHIKARIN names it as THE THIRD INSTANCE INSIDE ITS OWN RULINGS TODAY (D-20 asserted a property of --target with nothing checking it; D-54 asserted a doctrine it had not checked against the plan; D-51 §5 demanded a signal the transport layer discards) and states the pattern plainly: 'I CHECK OTHERS' CLAIMS AGAINST REALITY AND MY OWN AGAINST MY REASONING.' It verified the defect ITSELF rather than take it from the report. PART 2 IS THE ONE TO KEEP: the KARAKA had the SQL, the NOTICE text is fully determined by it, and reconstructing the sentence would have satisfied the impossible condition INVISIBLY AND FOREVER -- 'an impossible condition set from above is the exact pressure under which fabrication looks like diligence, and it did not bend. That is worth more to this campaign than the condition was.' GRANT SCOPE, NARROW: attach a notice listener to migrate.ts's client/pool and emit what it receives; CHANGE NOTHING about transaction handling (D-56's reservation stands in full); route to STDERR not stdout; and PROVE the deploy sentinel grep is unaffected, since surfacing new lines into a grepped stream could make a passing deploy fail and flip this from strengthening to weakening at the last inch.",
-      "owner": "KARAKA-M0-T52",
-      "state": "in_flight"
+      "owner": "PARIKSAKA",
+      "state": "DISCHARGED — 6a189e8b2 (+65/-0) and b9ecd6e68, all four conditions met WITH EVIDENCE. Condition 3 proved by running the deploy step body VERBATIM under bash -e (pending PASSED / nothing-pending PASSED / failing migration RC=1 sentinel 0). F-A CONFIRMED: before, stderr 0 lines; after, both 25001/25P01 warnings around the self-transacting probe and NEITHER around the non-self-transacting one — the discriminating negative is what makes it a measurement. Not fixed; D-56 territory, not strayed into. Awaiting PARIKSAKA."
     },
     {
       "id": "D-59-ITEM-10-NOT-DISCHARGED",
@@ -1167,10 +1167,34 @@
       "what": "CORRECTION AGAINST MY OWN REPORTING, prompted by F-G. At 13:45Z I reported the disclosure fixture to the NATIVE as proving 'the authority is checked — an authorised_by naming a nonexistent decision, OR a real decision line written by a non-ADHIKARIN agent, has NO EFFECT. A KARAKA cannot disclose its own way past a gate.' Every clause is TRUE and the framing was STRONGER THAN THE CHECK. It stops an agent INVENTING an authority; it does not stop one CITING THE WRONG REAL ONE — and the wrong-real-citation is the LIKELIER error, because it requires no bad intent at all, only a copy-paste. I presented a shallow check as a deep one. Recorded rather than left to stand, and stated to both ADHIKARIN and PARIKSAKA in the same pass.",
       "owner": "SUTRADHARA",
       "state": "self_corrected"
+    },
+    {
+      "id": "F-DEPLOY-GREP-UNANCHORED",
+      "what": "NEW ATTACK SURFACE CREATED BY AN AUTHORISED CHANGE, found by M0-T52 IN ITS OWN WORK and reported rather than papered over. The deploy sentinel grep is UNANCHORED, and the notice listener puts SERVER-CONTROLLED TEXT ON THE SUCCESS PATH FOR THE FIRST TIME — a NOTICE containing the literal MIGRATE_RUNNER_COMPLETE now matches grep -q, DEMONSTRATED not hypothesised. Reachability measured and very nearly closed: 0 of 443 migration files contain the literal, the grep runs only on exit 0, and the sentinel has one structurally-tested emission point. But the SHAPE is one this campaign refuses elsewhere: a success signal a data source can now forge. FIX is one character class in deploy.yml (anchor the grep); the KARAKA did NOT slip it in because D-58 condition 4 scoped it to migrate.ts and a workflow edit is outside that. Routed to ADHIKARIN, which authorised the last deploy.yml edit at D-41 part 1.",
+      "owner": "ADHIKARIN",
+      "state": "asked"
+    },
+    {
+      "id": "M0-T54",
+      "what": "DISPATCHED at PARIKSAKA's explicit request. It verified D-54's covers CONTENT four ways (109/109, all fifteen set-identical, only_live AND only_covers both empty, and the demotion proved a REAL RATCHET — covers naming the wrong identity makes the rule re-BLOCK) and states plainly that D-57's PER-IDENTITY OWNERSHIP SPLIT (99 M0-BLOCKED vs 10 named-later-rung) is asserted by T51's script and by nothing else: 'it is now the only unverified link in the D-54/D-57 chain. Queue it if you want it closed before the flip.' T54 must RE-DERIVE the split from D-57's corrected_grounds and THE PLAN'S OWN TEXT — not from T51's script or output — quoting the naming clause verbatim for each of the 10, and showing a falsifiable search method for the 99. Told that a DISAGREEMENT with D-57 is a FINDING that outranks agreeing with the ruling, and that D-57 is itself ADHIKARIN's correction of its own earlier ground, so it is the current best reading rather than sacred. READ-ONLY. Excluded: T51 (I16) and PARIKSAKA (it verifies this).",
+      "owner": "KARAKA-M0-T54",
+      "state": "in_flight"
+    },
+    {
+      "id": "M0-T55",
+      "what": "DISPATCHED on SQ-20: correct the three `reason` strings inside the C-11/X-03/X-05 disclosure entries, falsified by T51's own authorised fix. Cosmetic and non-gating, but SQ-20 exists for the DOCTRINE it establishes, which the task must quote: A TASK THAT CHANGES A STATE MUST SWEEP, WITHIN ITS OWN SCOPE, FOR STATEMENTS THAT ASSERT THE OLD STATE, AND ROUTE WHAT LIES OUTSIDE ITS FENCE RATHER THAN LEAVE IT. Told to sweep the WHOLE file for any other statement falsified by T49's, T51's or its own change — the README has already needed amending twice — and to establish rather than assume whether the guard parses `reason` at all.",
+      "owner": "KARAKA-M0-T55",
+      "state": "in_flight"
+    },
+    {
+      "id": "MY-HEREDOC-ATE-A-WORD",
+      "what": "SELF-REPORTED, third conductor defect recorded today. Writing M0-T55's dispatch line I used an UNQUOTED heredoc delimiter, so the shell performed command substitution on a backticked word and DELETED it: the ledger line reads 'the three falsified  strings' where it must read 'the three falsified `reason` strings'. THE JSON REMAINED VALID, so nothing errored — the line is simply less precise than it claims to be, which is the worse failure mode: a silent degradation with no detector. Correction APPENDED to WORK_QUEUE.jsonl; original left standing, quoting PARIKSAKA's own V-33 reasoning back at myself — erasing a defect one was caught in is worse than leaving it visible. Fix adopted: QUOTE THE HEREDOC DELIMITER whenever the payload can contain backticks or $, which is every dispatch line I write.",
+      "owner": "SUTRADHARA",
+      "state": "self_corrected"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T15:01:26Z",
+  "last_updated_ts": "2026-08-23T15:07:46Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {

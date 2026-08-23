@@ -1,0 +1,9 @@
+⏺ Ledger sync 80f92cf92 committed; census re-run clean. Standing by for the next mailbox
+  drain or ADHIKĀRIN ruling to log.
+
+✻ Worked for 1m 35s
+
+─────────────────────────────────────────────────────────────────────────────────────
+❯ 
+─────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← 1 agent

@@ -1,0 +1,8 @@
+⏺ Loop tick 139 — checking fleet liveness and spend before the next sweep.
+
+✻ Crunched… (2m 14s · ↓ 31.2k tokens)
+
+─────────────────────────────────────────────────────────────────────────────────────
+❯ 
+─────────────────────────────────────────────────────────────────────────────────────
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · esc to interrupt · ← 1 agent
