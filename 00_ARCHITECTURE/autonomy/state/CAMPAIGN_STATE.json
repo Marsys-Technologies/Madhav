@@ -1293,7 +1293,8 @@
       "id": "F-REPORTS-DIR-COUNT-DISAGREES",
       "what": "MINE TO CHECK, not routed. M0-T56 reports that reports/M0-T56-report.md existed UNTRACKED AND BYTE-IDENTICAL before it touched the directory, while M0-T58's sweep line names five OTHER files -- so T58's count and the directory's contents disagree. Both agents are honest and one of the two figures is measuring something different from what it says. Flagged to ADHIKARIN only so the two numbers are not read as contradictory in the ledger; the reconciliation is a conductor job and I am doing it rather than spending a KARAKA on it.",
       "owner": "SUTRADHARA",
-      "state": "to_reconcile"
+      "state": "RECONCILED — no contradiction; both agents were right about different things",
+      "what2": "RECONCILED BY THE CONDUCTOR at 16:19Z from git provenance rather than from either report. T58's sweep commit ce21e90e5 introduced EXACTLY FIVE files -- M0-T53, M0-T54, M0-T55, the M0-T55 addendum, and M0-T57 -- which matches its own '5 existed at start -> 5 copied -> 0 dropped' precisely. M0-T56's report was introduced by M0-T56's OWN commit 080d4cce7 ('report (tracked, per D-63)'), NOT by the sweep. So T56's observation that its report 'existed untracked and byte-identical before I touched the directory' and T58's count of six copied are BOTH ACCURATE: T58 did copy a sixth mid-task, and T56 had already placed it, so the copy was redundant -- which T58 itself self-corrected in its §9.2. TWO AGENTS DESCRIBING THE SAME FILE FROM OPPOSITE SIDES, neither wrong. Thread closed with no action."
     },
     {
       "id": "M0-T60",
@@ -1446,10 +1447,22 @@
       "what": "READY TO DISPATCH, DELIBERATELY NOT DISPATCHED WHILE THE VERIFY BACKLOG IS THE CONSTRAINT. M0-T63's sharpest self-directed finding: the 15/15 cross-check that validates its own work -- origin_tally() reconstructed from per-entry stamps versus M0-T31's independent v1.0 snapshot, agreeing in all 15 bucket cells with UNEXAMINED 11/11 -- HAS NO DETECTOR. It ran it BY HAND. So the strongest corroboration produced today is currently a one-off human-run comparison that nothing would re-run and nothing would notice failing. T63 estimates ~6 lines in test_m0_deferral_register_scope.py would fix it, which is §N.8 applied to the campaign's own validation step. Small, high-value, and it goes out the moment the backlog is draining rather than now -- adding a twelfth item to a queue that is already the binding constraint would be exactly the motion-for-its-own-sake I recorded against myself at tick 22.",
       "owner": "SUTRADHARA",
       "state": "ready_held_on_backlog"
+    },
+    {
+      "id": "SWEEPING-CLASS-FOURTH-INSTANCE",
+      "what": "FOUND WHILE RECONCILING SOMETHING ELSE, which is how three of the four turned up. git log over the tracked reports/ path shows M0-T60-report.md was introduced by PARIKSAKA's commit cf18ac41e ('Nirmana PARIKSAKA: route F-L to ADHIKARIN') -- an agent committing another agent's artifact under a message about something else entirely. FOURTH INSTANCE TODAY of the class M0-T53 first raised: PARIKSAKA's b6123b1ac (harmless, blobs verified identical), MY bb3a8f96f (NOT harmless -- it captured a fail-open version of T53's detector), M0-T55's 2c04409e0 (swept one of T53's in-place ledger lines), and now PARIKSAKA's cf18ac41e. NOTE WHAT IS DIFFERENT ABOUT THIS ONE AND WHY IT IS STILL WORTH COUNTING: it is BENIGN -- a finished report, byte-correct, and arguably a service, since T60's report reached the repository sooner than it otherwise would have. But the mechanism is identical to the one that put a fail-open detector in the tree, and a class that only ever announces itself through its harmless instances is a class nobody fixes. T55 named the underlying gap exactly: `--only` fences FILES, not other agents' LINES within them, and SQ-13's absent shared-write lease is the same hole. Recorded as a fourth data point for ADHIKARIN's ledger rather than re-raised as a finding -- D-69's rule is that three independent flags are evidence and a fourth is waste, and I am treating that as binding on me too: this is a COUNT, not a re-flag.",
+      "owner": "ADHIKARIN",
+      "state": "recorded_as_data_point"
+    },
+    {
+      "id": "EVIDENCE-SURFACE-AUDIT-16:19Z",
+      "what": "CHEAP AUDIT DONE WHILE HOLDING DISPATCH, so the tick did useful work without adding to the binding constraint. The tracked reports/ path now holds FOURTEEN files: twelve KARAKA reports and addenda (T53, T54, T55, T55-addendum, T56, T57, T58, T59, T60, T61, T62, T63) plus the two M0-T48 finding notes I preserved at cc36ed079 -- the last surviving trace of the migration-591 production apply, whose 378-line report is gone. EVERY TASK FROM T53 ONWARD NOW HAS ITS WORKING IN THE REPOSITORY. The convention is holding without the prompts/karaka.md edit, carried entirely by the dispatch briefs, exactly as M0-T58's correction predicted: T56, T59, T61, T62 and T63 all self-placed. WHAT IS STILL MISSING AND WILL NOT COME BACK: T44 through T52. D-66 part 1 preserved their raw transcripts out of /private/tmp, but per D-63 that preservation SATISFIES NOTHING -- it is not the repository. The pre-T53 gap is the whole of the evidence loss, and it is now precisely bounded rather than estimated.",
+      "owner": "SUTRADHARA",
+      "state": "audited"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T16:15:10Z",
+  "last_updated_ts": "2026-08-23T16:20:27Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
