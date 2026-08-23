@@ -9,7 +9,10 @@ branch: campaign/nirmana-autonomous
 measured_at_utc: 2026-08-23T04:10:49Z  # SELECT now() — Q16
 database_timezone: UTC
 writes_executed: NONE
-gate: every statement below is gated on an ADHIKĀRIN ruling that has been requested and has not come back. No UPDATE, DELETE or DDL was executed by this analysis.
+gate: ADHIKĀRIN ruling D-6 (2026-08-23T04:14:37Z) landed DURING this analysis and GRANTS the
+  repair conditionally. It is mapped condition-by-condition in §10. It did not change what this
+  task did: M0-T3's dispatch is analysis-only, so NO UPDATE, DELETE or DDL was executed here.
+  Execution is a separate task for SŪTRADHĀRA to dispatch.
 snapshot: 00_ARCHITECTURE/control/snapshots/20260823T041000Z_asset_throughput/ (I2 — verified, see §1)
 ---
 
@@ -626,3 +629,30 @@ Source: `build_run_assets` where `state='complete'` and both timestamps are non-
 *End of TELEMETRY_REPAIR_PROPOSAL v1.0. Authored by KĀRAKA on work item M0-T3. NO WRITES WERE
 EXECUTED. Every statement in §6 is gated on an ADHIKĀRIN ruling that has been requested and has
 not returned. This document certifies nothing (I16/H7).*
+
+---
+
+## 10 — Addendum: ADHIKĀRIN ruling D-6, mapped condition by condition
+
+D-6 (`state/DECISIONS.jsonl`, G9, 2026-08-23T04:14:37Z, subject *M0-T3 / asset_throughput
+telemetry repair*) was appended to the ledger **while this analysis was running** — three
+minutes before this document was written — answering SŪTRADHĀRA's Q2(b). It rules
+**GRANTED, conditionally**.
+
+**It did not cause anything to be executed, and nothing was.** M0-T3's dispatch is
+analysis-only; a ruling that the repair *may* run is not a dispatch that it *should* run, and
+condition 6 requires an independent verifier for a post-state that does not yet exist.
+Execution belongs to a task SŪTRADHĀRA dispatches, with this document as its input.
+
+| D-6 condition | status against this proposal |
+|---|---|
+| **(1) An orphaned row is closed to an honest terminal state that says the run died — never `lit`/`complete`/`service_ok`, never anything that reads as success. H4, refused not parked.** | **Satisfied, and independently arrived at.** T-1 declines to propose `lit` on exactly this reasoning (a `complete` run record is a proxy, not the promotion predicate's verdict) before D-6 was read. **But note a real divergence:** D-6 says close to a state that *says the run died*. All three orphans have a run record that says the run **completed** — what died was the promotion, not the run. `stale` (T-1b) says "data exists, freshness unproven", which is honest but is not "the run died"; `error` would say the run died, which the evidence contradicts. My recommendation stays T-1a — re-dispatch, so the state is produced by the detector rather than chosen by an agent. If ADHIKĀRIN requires a written state, the choice between `stale` and `error` is a ruling I do not have. |
+| **(2) Snapshot first; confirm readable before executing, not merely present.** | **Satisfied and exceeded.** §1.1: checksum re-verified, CSV re-parsed, live re-counted, and every cell re-compared against a live re-read — 0 mismatches, 267/267 unique keys. Honest gap recorded: no round-trip restore into a scratch database. |
+| **(3) Exact affected-row counts; executed statement must affect exactly that many; divergence halts and returns to ADHIKĀRIN.** | **Satisfied on the proposal side.** Every statement in §6 carries a count from a `SELECT count(*)` that was actually run: T-1 = 3, T-2 = 3 (parked), T-3 = 1477, T-4 = 23 (+8 deliberately untouched), T-5 = 93, T-6 = 24 (no statement). The executing task must re-measure immediately before executing — these counts are from 2026-08-23T04:10:49Z and `now()`-relative predicates drift. |
+| **(4) Medians/estimates derived from measured telemetry only; no clean telemetry ⇒ NULL, not a plausible number.** | **Satisfied.** T-5 touches only the 93 assets with a computable median and leaves the 35 with no completed run at NULL, explicitly. §5.3 also shows the 16.9-day pollution is confined to `state='error'` rows the median query already excludes. |
+| **(5) Scoped to `asset_throughput`; no asset's target table touched.** | **Partially exceeded, and this needs a ruling.** T-1 is inside `asset_throughput`. But D-6's own subject line names all three of "close orphaned rows, recompute medians, backfill estimated_seconds", and **medians and `estimated_seconds` do not live in `asset_throughput`** — the durations are in `build_run_assets` and `estimated_seconds` is a column of `asset_registry` (§5.1). T-3/T-4 (`build_run_assets`, `build_runs`) and T-5 (`asset_registry`) therefore fall outside a literal reading of condition 5 while falling inside the ruling's own subject. I flag the contradiction rather than resolve it: **T-3, T-4 and T-5 should not execute until ADHIKĀRIN confirms condition 5 is scoped to the repair's content, not to the single table named.** |
+| **(6) PARĪKṢAKA verifies the post-state independently (I16).** | **Not applicable yet — there is no post-state.** Nothing was executed. |
+
+**Net:** D-6 changes nothing this task did, and adds one question (condition 5's table scope)
+and one refinement (condition 1's "says the run died" vs. these rows' actual evidence) that the
+executing task must have settled before it runs.
