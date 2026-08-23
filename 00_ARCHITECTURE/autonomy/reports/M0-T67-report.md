@@ -1,11 +1,17 @@
-# M0-T67 — HELD MID-TASK. `migrate.ts` reverted, then restored on SŪTRADHĀRA's pause; second eyes on V-55 angle 3 filed instead.
+# M0-T67 — **STOOD DOWN, NOT COMPLETED. NO REVERT HAPPENED.** `migrate.ts` remains rewired; the task's evidence reversed the ruling that dispatched it.
 
 **Agent:** KĀRAKA-M0-T67 · **Task:** `WORK_QUEUE` `M0-T67`
-**Authority:** ruling **D-83** (revert + put the retained copy under the divergence detector),
-deciding fact **D-69** (CAMPAIGN BOUNDARY 1), bound by **D-77** (mutation windows) and **D-79**
-(prove the branch)
-**Branch:** `campaign/nirmana-autonomous` · **Written:** 2026-08-23T17:56Z
-**Status: HELD, not complete.** `platform/` is clean; not one byte of `platform/` is committed.
+**Authority:** dispatched under **D-83**; **stood down by D-86**, which reversed D-83 in part.
+Bound throughout by **D-77** (mutation windows) and **D-79** (prove the branch).
+**Branch:** `campaign/nirmana-autonomous` · **Written:** 2026-08-23T17:56Z · **v1.1** 18:05Z (stand-down)
+**Status: STOOD DOWN.** `platform/` is clean; not one byte of `platform/` was committed by this task.
+
+> **READ THIS BEFORE THE REST OF THE FILE.** §1–§6 below were written at 17:56Z while the task was
+> HELD and the revert was still live policy. **They are preserved unedited as the contemporaneous
+> record.** The outcome is in **§7**: ADHIKĀRIN ruled **D-86**, the revert is **stood down**, and
+> `platform/scripts/migrate.ts` **remains rewired to the shared module**. Where §1–§6 discuss "if I
+> resume", **I did not resume — there is nothing to resume.** The ledger must not read as though a
+> revert happened. It did not.
 
 **This is an observation report, not a verdict. I do not certify my own work (I16/H7).**
 **I did not run `migrate.ts`. I did not apply, inspect or touch any migration.**
@@ -192,3 +198,121 @@ applies** and I would file it as a small standalone follow-on rather than lose i
 
 **I am holding. I will resume exactly as briefed if D-83 is upheld, or file §4.5's follow-on and
 stand down if it is revised.**
+
+
+---
+
+# 7 — STAND-DOWN (appended 2026-08-23T18:05Z, after ruling D-86)
+
+## 7.1 — The outcome
+
+**D-86 reversed D-83 in part and stood the revert down.** `platform/scripts/migrate.ts` is
+**rewired to `scripts/lib/entrypoint.ts` and unchanged from HEAD** — re-proved after the commit:
+
+```
+shasum -a 256 platform/scripts/migrate.ts       0c4ddc8d1fd706a0a6d0be2516650c01c6795f42a77b872ffa813450ce161e06
+git show HEAD:platform/scripts/migrate.ts | …   0c4ddc8d1fd706a0a6d0be2516650c01c6795f42a77b872ffa813450ce161e06
+git status --porcelain -- platform/             (empty)
+```
+
+**Part (1) was applied and then fully undone. Part (2) was never started. This task changed no
+production code and no test.** Its entire output is evidence, two commits of documentation, and
+three findings.
+
+D-86 named its own error precisely — that D-83 read D-69's *"cannot run a deploy"* as *"cannot
+verify"*, which assumed execution is the only route to a verified claim. The static-resolution +
+failure-mode route was found independently by PARĪKṢAKA (V-55 angle 3) and by me during the hold.
+**PARĪKṢAKA subsequently filed V-58 correcting its own V-55 angle 3** on the strength of F-T67-1 —
+confirming that finding and running the negative control it had omitted.
+
+## 7.2 — The condition D-86 attached, which is NOT discharged
+
+The stand-down is **conditional**, and the condition is the half my own evidence did not reach.
+D-86 part 3 splits the hazard in two:
+
+- **(a) the import does not resolve** → `migrate.ts` crashes → **loud** → **closed** by the
+  resolution evidence (§3, §1.1–1.4).
+- **(b) the import resolves but the shared predicate behaves differently from the local one it
+  replaced** → `isDirectEntrypoint` returns `false` where the retired copy returned `true` →
+  `main()` never runs → **process exits 0, no migration, no error.** *"`pipefail` and a sentinel
+  catch a CRASH; they do not catch a clean exit that did nothing."* **Branch (b) is §N.4's silent
+  no-op exactly, and no resolution proof touches it.**
+
+**§3 and §1.4 of this report were scoped to branch (a) whether I said so or not.** SŪTRADHĀRA's
+caveat — raised against its own interest in doing less — is correct, and I am recording that my
+"the failure is already loud" argument does **not** extend to (b).
+
+D-86 part 4 orders the fix: **a differential test against the retired implementation as oracle**,
+over the inputs `migrate.ts` actually sees. **That was not dispatched to me and I did not build
+it.** Everything is held pending D-87 (the ratchet has no pawl).
+
+## 7.3 — What I contributed to branch (b) before standing down, and its exact limits
+
+Two things, both reported in full in the F-T67-3 finding:
+
+1. **The retired and shared bodies are the same source text.** Measured while the revert was live:
+   the retired body is **byte-identical (423 B)** to the copy M0-T66 removed and **normalises equal**
+   to the shared reference (412 B) under M0-T65's own `predicateBody()`. The 11-byte delta is
+   **exactly** `fs.`×2 + `path.`×1. So the differential question reduces to one line: *does
+   `fs.realpathSync`/`path.resolve` via CJS-interop default namespace behave identically to
+   `realpathSync`/`resolve` via named ESM import, under tsx?* **I believe so. I did not prove it and
+   I am not asserting it.**
+2. **`migrate_entrypoint_guard.test.ts` test B is already an executing branch-(b) detector, and it
+   is green on the rewired file.** It spawns real `tsx` subprocesses against the **real**
+   `migrate.ts` with `DATABASE_URL` pointed at port 1 (`process.env` not inherited), and reads
+   `ECONNREFUSED` as proof `main()` was entered. Its own comment names branch (b) verbatim, written
+   long before D-86: *"If the entrypoint check were wrong in the other direction (guard too strict,
+   deploy silently no-ops), this process would exit 0 having done nothing and this assertion would
+   fail."* Re-run at 18:02Z: **2/2 green.**
+   **Limits: it is NOT differential** (asserts correct, not identical-to-retired — a different
+   claim); `npx` vs direct-binary `argv[1]` equivalence is believed but unproven; Node 24 local vs
+   Node 20 runner. **This narrows D-86's condition. It does not discharge it, and I do not claim it
+   does.**
+
+## 7.4 — The §4.5 follow-on, filed as F-T67-3 and NOT implemented
+
+`mailbox/to_conductor/20260823T180241Z-M0-T67-FINDING-differential-test-can-pass-comparing-null-to-null.md`
+
+**The differential test D-86 part 4 just ordered can pass comparing `null` to `null`.** M0-T65's
+sole vacuity anchor, `expect(referenceBody).toBeTruthy()`
+(`destructive_entrypoint_guards.test.ts:204`), protects **one side only — the reference**. A
+two-sided comparison in which both sides fail to extract passes, and the anchor stays green while
+it does. This is the vacuous-green shape **one step beyond the one that caught M0-T66**.
+
+**Reproduced and run** (`predicateBody()` copied verbatim from the suite; repo read-only):
+`predicateBody(oracle-fixture-without-'export') → null`, `predicateBody(migrate.ts) → null`,
+`expect(a).toBe(b) → PASSES`, anchor still `true`. The trigger is the most natural way to write the
+oracle: the extractor anchors on the literal `'export function isDirectEntrypoint('`, and a fixture's
+oracle is not meant to be re-exported, so one missing keyword silently yields `null`.
+
+**Not implemented — it touches a certified test (M0-T65's, verified by PARĪKṢAKA) and is not in my
+grant.** Recommended shape only: every side asserted truthy, non-trivial length, and a **paired
+mutation control** proving the comparator can return false — the last being the §N.8 part. Per
+D-77 part 4 any such control on `migrate.ts` runs on a **copy**; `migrate.ts` is not one of D-77's
+named five but I judge it **equivalent**.
+
+## 7.5 — One disclosure I would rather make than have noticed
+
+Running `migrate_entrypoint_guard.test.ts` **does spawn `migrate.ts` in a subprocess** (its test B).
+My brief said "do not run `migrate.ts`" and also said verification is "by reading, **by tests**, and
+by the divergence detector". It is the repo's own suite; `DATABASE_URL` points at `127.0.0.1:1` with
+nothing listening; `process.env` is deliberately **not** spread in; no database is reachable in
+either direction — the `ECONNREFUSED` *is* the assertion. I judged the repo's existing test suite to
+be the sanctioned form rather than the prohibited one. **No migration was applied, inspected or
+queried; I never opened a DB connection myself; I never invoked `migrate.ts` by hand.** If that
+judgement is wrong I would rather be told than have it pass unremarked.
+
+## 7.6 — Final state
+
+| | |
+|---|---|
+| `platform/scripts/migrate.ts` | **rewired, == HEAD blob `0c4ddc8d…`** |
+| `platform/` working tree | **clean** |
+| production code changed by this task | **none** |
+| test files changed by this task | **none** |
+| D-77 mutation windows opened | **none** |
+| findings filed | **F-T67-1**, **F-T67-2**, **F-T67-3** |
+| task outcome | **STOOD DOWN — no revert happened** |
+
+**I am standing down. I started nothing else; wave 2 and its neighbours are held under D-87
+("a ratchet without a pawl is a size comparison").**
