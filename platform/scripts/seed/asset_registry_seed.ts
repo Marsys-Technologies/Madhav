@@ -3376,21 +3376,38 @@ export function refuseIfDryRunRequested(env: NodeJS.ProcessEnv, argv: readonly s
  *      `has_substeps`, …). Removal puts `target_floor` in that same, already-proven category
  *      rather than inventing a third mechanism for it.
  *
- * `target_floor` REMAINS in the INSERT column list. A brand-new asset has never been built, so
- * there is no measurement for a seed value to collide with, and the ruling scopes its
- * requirement to the DO UPDATE SET. An honest residual, recorded rather than silently accepted:
- * a newly-inserted asset therefore still lands with a floor someone typed. Nothing overwrites a
- * measured floor any more; the first build's Conform measures and replaces it.
+ * `target_floor` IS ALSO ABSENT FROM THE INSERT COLUMN LIST (Nirmāṇa M0-T41, ruling D-35 §1).
+ * M0-T35 kept it here and recorded the residual rather than accepting it silently, arguing that
+ * a brand-new asset has never been built and so has no measurement for a seed value to collide
+ * with. D-35 §1 accepted that the argument is TRUE and answers the wrong question: I7's harm is
+ * not collision, it is AN UNMEASURED NUMBER EXISTING AT ALL, so an asset INSERTed with a
+ * seed-declared floor is BORN CARRYING AN INVENTED ONE. A new asset must be born with
+ * `target_floor` NULL and receive its floor from its first measurement, which is exactly what I7
+ * describes. Latent rather than urgent — zero of the seed's 127 ids are absent from the live
+ * registry, so nothing INSERTs today and this fires only when someone adds a new asset — which
+ * is precisely why it is closed now: that is a normal future act, and nobody performing it will
+ * connect it to this ruling.
+ *
+ * THE OMISSION REALLY DOES YIELD NULL, AND THAT WAS CHECKED RATHER THAN ASSUMED. A column that
+ * merely LOOKS removed while a default still populates it is worse than one honestly still
+ * present — the `asset_kind` reversion counted 8 rather than 6 for exactly that reason (D-27
+ * §3(a): an absent key is an ACTIVE WRITE when a `??` supplies it). Verified read-only against
+ * production for this column: `asset_registry.target_floor` is `integer`, `is_nullable = YES`,
+ * `column_default` NULL, no CHECK constraint naming it, and no non-internal trigger on the
+ * table; and `deriveSeedRow()` applies no `??` default to it. Nothing fills the gap.
+ *
+ * Both lists are now free of it, so nothing this file executes can write `target_floor` at all.
+ * The first build's Conform measures the floor and writes it, and no seed run disturbs it.
  */
 const ASSET_UPSERT_SQL = `INSERT INTO asset_registry (
         asset_id, layer, sort_order, sanskrit_name, english_name, english_description,
-        storage_type, target_table, count_sql, size_sql, target_floor,
+        storage_type, target_table, count_sql, size_sql,
         expected_volume_formula, expected_volume_inputs, volume_explanation,
         depends_on, scope, is_active, estimated_seconds,
         asset_type, layer_name, layer_index, provides_apis, health_probe, catalog_status,
         asset_kind
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24
       ) ON CONFLICT (asset_id) DO UPDATE SET
         layer = EXCLUDED.layer,
         sort_order = EXCLUDED.sort_order,
@@ -3404,10 +3421,13 @@ const ASSET_UPSERT_SQL = `INSERT INTO asset_registry (
         -- target_floor IS INTENTIONALLY NOT ASSIGNED HERE (Nirmāṇa M0-T35, ruling D-27 §2(a),
         -- refining D-19). It is a MEASURED field: I7 sets a floor to the measured achieved
         -- count, so a re-seed that restored a typed number silently reverted every Conform
-        -- stage's measurement, at every rung, with exit 0. It stays in the INSERT list above —
-        -- a new row has no measurement to collide with — and is never overwritten again.
-        -- Do not "restore" this line: see this constant's docstring for why a CASE guard
-        -- cannot express the rule.
+        -- stage's measurement, at every rung, with exit 0.
+        -- It is ALSO absent from the INSERT column list above (M0-T41, ruling D-35 §1): I7's
+        -- harm is an unmeasured number EXISTING, not merely colliding, so a new asset is born
+        -- with a NULL floor and receives one from its first measurement. This file can no
+        -- longer write the column by any path.
+        -- Do not "restore" either: see this constant's docstring for why a CASE guard cannot
+        -- express the rule, and why omission here genuinely yields NULL.
         expected_volume_formula = EXCLUDED.expected_volume_formula,
         expected_volume_inputs = EXCLUDED.expected_volume_inputs,
         volume_explanation = EXCLUDED.volume_explanation,
@@ -3588,7 +3608,7 @@ async function main(): Promise<void> {
         row.asset_id, row.layer, row.sort_order,
         row.sanskrit_name, row.english_name, row.english_description,
         row.storage_type, row.target_table, row.count_sql, row.size_sql,
-        row.target_floor, row.expected_volume_formula,
+        row.expected_volume_formula,
         row.expected_volume_inputs ? JSON.stringify(row.expected_volume_inputs) : null,
         row.volume_explanation,
         row.depends_on, row.scope, row.is_active, row.estimated_seconds,

@@ -1,14 +1,19 @@
 /**
  * Seed divergence-report + NULL-fill-gate tests
- * (Nirmāṇa WORK_QUEUE M0-T35; implements rulings D-27 §2(a)/§2(b) and D-28 §1).
+ * (Nirmāṇa WORK_QUEUE M0-T35 and M0-T41; implements rulings D-27 §2(a)/§2(b), D-28 §1, D-35 §1).
  *
  * THE TWO DEFECTS THESE TESTS EXIST TO CATCH.
  *
- *   1. `target_floor = EXCLUDED.target_floor` in the seeder's `ON CONFLICT DO UPDATE SET`.
- *      `target_floor` is a MEASURED field — I7 sets a floor to the measured achieved count —
- *      and a declarative source file structurally cannot hold a measured value. So every seed
- *      run silently reverted every rung's Conform-stage measurement, with exit 0 (D-19; D-27
- *      §2(a)). 27 cells diverge today.
+ *   1. `target_floor` written by the seed AT ALL. It is a MEASURED field — I7 sets a floor to
+ *      the measured achieved count — and a declarative source file structurally cannot hold a
+ *      measured value.
+ *        · In the `ON CONFLICT DO UPDATE SET`, every seed run silently reverted every rung's
+ *          Conform-stage measurement, with exit 0 (D-19; D-27 §2(a)). 27 cells diverged.
+ *          Removed by M0-T35.
+ *        · In the INSERT column list, a brand-new asset was BORN CARRYING AN INVENTED FLOOR.
+ *          M0-T35 argued a never-built asset has no measurement to collide with; D-35 §1 held
+ *          the argument true but answering the wrong question — I7's harm is an unmeasured
+ *          number EXISTING, not merely colliding. Removed by M0-T41.
  *
  *   2. The upsert resolved every other divergence by execution order. Whoever ran last won,
  *      silently. For `count_sql` and `depends_on` — DECLARED-BUT-VERIFIABLE, legitimately
@@ -87,6 +92,75 @@ function seedSetClauseBody(): string {
   return stmt.slice(m!.index + m![0].length)
 }
 
+/**
+ * The column names in the upsert's `INSERT INTO asset_registry (…)` list, in order.
+ *
+ * Parsed from the hoisted statement rather than the whole file: several comments upstream
+ * paraphrase `INSERT INTO asset_registry … ON CONFLICT DO UPDATE`, and a file-wide regex is one
+ * edit away from matching prose instead of the statement.
+ */
+function seedInsertColumns(): string[] {
+  const stmt = seedUpsertStatement()
+  const m = /INSERT\s+INTO\s+asset_registry\s*\(([^)]*)\)/i.exec(stmt)
+  expect(m, 'seeder must contain INSERT INTO asset_registry (…)').not.toBeNull()
+  return m![1].split(',').map(s => s.trim()).filter(s => s.length > 0)
+}
+
+/**
+ * The column each bound parameter carries, in bind order, read from the `client.query(
+ * ASSET_UPSERT_SQL, [ … ])` argument array.
+ *
+ * Each element is an expression over the derived `row`; the FIRST `row.<column>` it mentions is
+ * the column it binds (the jsonb elements are ternaries that name their column three times).
+ *
+ * This exists because the failure mode of THIS edit is not a leftover `target_floor` — it is
+ * POSITIONAL DRIFT. Remove the column from the list but not from the bind array (or the
+ * reverse) and every later parameter shifts by one: `expected_volume_formula`'s text lands in
+ * `target_floor`'s integer slot and the rest cascade. Postgres would reject that particular pair
+ * on type grounds, but a shift between two same-typed columns would be accepted and silently
+ * write each value into its neighbour's column. Asserting the two lists are EQUAL, rather than
+ * that neither contains one name, is what makes that class detectable.
+ */
+function seedBoundParameterColumns(): string[] {
+  const tok = 'ASSET_UPSERT_SQL,'
+  const i = SEED_SRC.indexOf(tok)
+  expect(i, 'seeder must execute ASSET_UPSERT_SQL with a parameter array').toBeGreaterThan(0)
+  const rest = SEED_SRC.slice(i + tok.length)
+  const open = rest.indexOf('[')
+  expect(open, 'the executed statement must be followed by a parameter array').toBeGreaterThan(-1)
+
+  // Walk to the matching bracket so a nested array literal cannot truncate the body.
+  let depth = 0
+  let close = -1
+  for (let k = open; k < rest.length; k++) {
+    if (rest[k] === '[') depth++
+    else if (rest[k] === ']') { depth--; if (depth === 0) { close = k; break } }
+  }
+  expect(close, 'parameter array must be closed').toBeGreaterThan(open)
+
+  const body = rest.slice(open + 1, close)
+
+  // Split on commas at paren/bracket depth 0 — the ternaries contain commas inside calls.
+  const elements: string[] = []
+  let buf = ''
+  let d = 0
+  for (const ch of body) {
+    if (ch === '(' || ch === '[' || ch === '{') d++
+    else if (ch === ')' || ch === ']' || ch === '}') d--
+    if (ch === ',' && d === 0) { elements.push(buf); buf = '' } else { buf += ch }
+  }
+  elements.push(buf)
+
+  return elements
+    .map(e => e.trim())
+    .filter(e => e.length > 0)
+    .map(e => {
+      const m = /\brow\.([A-Za-z_][A-Za-z0-9_]*)/.exec(e)
+      expect(m, `every bound parameter must read from the derived row: ${e}`).not.toBeNull()
+      return m![1]
+    })
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // DELIVERABLE 1 — target_floor must stop being silently overwritten
 // ─────────────────────────────────────────────────────────────────────────────
@@ -112,10 +186,65 @@ describe('D-27 §2(a) — target_floor is a MEASURED field the seed must not ove
     expect(columns.length).toBeGreaterThan(15)
   })
 
-  it('still INSERTs target_floor — a new row has no measurement to collide with', () => {
-    const m = /INSERT\s+INTO\s+asset_registry\s*\(([^)]*)\)/i.exec(SEED_SRC)
-    expect(m).not.toBeNull()
-    expect(m![1]).toMatch(/\btarget_floor\b/)
+  // ── D-35 §1 — the residual M0-T35 flagged, now ruled on ────────────────────
+  //
+  // M0-T35 kept `target_floor` in the INSERT list and argued a never-built asset has no
+  // measurement to collide with. D-35 §1 accepted that the argument is TRUE and answers the
+  // wrong question: I7's harm is not collision, it is AN UNMEASURED NUMBER EXISTING AT ALL, so
+  // an asset INSERTed with a seed-declared floor is born carrying an invented one. A new asset
+  // must be born with `target_floor` NULL and receive its floor from its first measurement.
+  //
+  // That the omission actually YIELDS NULL is a property of the schema, not of this file:
+  // `asset_registry.target_floor` is `integer`, nullable, with NO column default, no CHECK
+  // naming it and no trigger on the table (verified read-only against production, M0-T41). Were
+  // any of those present, omitting the column would leave a default writing a number anyway —
+  // a column that LOOKS removed while something still populates it, which is worse than one
+  // honestly still there.
+
+  it('does not INSERT target_floor either — a new asset is born with a NULL floor (D-35 §1)', () => {
+    const columns = seedInsertColumns()
+    expect(columns).not.toContain('target_floor')
+    // Sanity: the parse found a real column list, so the assertion above is not vacuous.
+    expect(columns).toContain('asset_id')
+    expect(columns).toContain('count_sql')
+    expect(columns.length).toBeGreaterThan(15)
+  })
+
+  it('binds no target_floor parameter, and the bind list stays aligned with the columns', () => {
+    const columns = seedInsertColumns()
+    const bound = seedBoundParameterColumns()
+    expect(bound).not.toContain('target_floor')
+    // The real assertion: same columns, same ORDER. Catches the positional drift that removing
+    // a column from one list and not the other produces.
+    expect(bound).toEqual(columns)
+  })
+
+  it('the VALUES placeholders are $1..$N with N equal to the column count', () => {
+    const stmt = seedUpsertStatement()
+    const m = /VALUES\s*\(([^)]*)\)/i.exec(stmt)
+    expect(m, 'seeder must contain a VALUES (…) list').not.toBeNull()
+    const placeholders = m![1].match(/\$\d+/g) ?? []
+    expect(placeholders.length).toBe(seedInsertColumns().length)
+    // No gap and no repeat — a renumbering that skips one binds the wrong value.
+    expect(placeholders).toEqual(placeholders.map((_, i) => `$${i + 1}`))
+  })
+
+  it('no ?? default stands in for target_floor in the derived row (D-27 §3(a))', () => {
+    // The asset_kind reversion counted 8 rather than 6 because an ABSENT key is an ACTIVE
+    // WRITE: `?? 'data'` supplied what no entry declared. If a default were ever added here,
+    // target_floor would keep being written by a path with no name in either SQL list.
+    // Comments are stripped first, exactly as the D-25 §2(c) mechanism test does: prose is
+    // allowed to DISCUSS the absent default, and a test that a comment can fail is a test that
+    // will be silenced by rewording rather than by fixing anything.
+    const code = fs.readFileSync(
+      path.resolve(__dirname, '../seed/seed_divergence_report.ts'), 'utf8',
+    )
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .split('\n')
+      .map(l => (l.indexOf('//') < 0 ? l : l.slice(0, l.indexOf('//'))))
+      .join('\n')
+    expect(code).toMatch(/target_floor\s*:/)          // still modelled…
+    expect(code).not.toMatch(/target_floor\s*:\s*[^,\n]*\?\?/)  // …but never defaulted
   })
 })
 

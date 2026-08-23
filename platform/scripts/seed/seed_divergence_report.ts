@@ -145,6 +145,11 @@ export function deriveSeedRow(asset: SeedAssetLike): SeedRow {
     target_table: asset.target_table,
     count_sql: asset.count_sql,
     size_sql: asset.size_sql,
+    // Modelled, but no longer WRITTEN by any path: `target_floor` is absent from both the
+    // seeder's INSERT column list and its ON CONFLICT DO UPDATE SET (rulings D-27 §2(a),
+    // D-35 §1). It stays here so a derived row remains a faithful model of the entry, and
+    // deliberately takes NO `??` default — a default would write the column by a path with
+    // no name in either SQL list, which is the shape D-27 §3(a) named.
     target_floor: asset.target_floor,
     expected_volume_formula: asset.expected_volume_formula,
     expected_volume_inputs: asset.expected_volume_inputs ?? null,
