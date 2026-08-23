@@ -1008,8 +1008,8 @@
     {
       "id": "M0-T48-591-APPLIED",
       "what": "MIGRATION 591 APPLIED 2026-08-23T13:59:18Z, exit 0, applied_this_run=1, under D-51. After-check clean and MEANINGFUL rather than true-by-luck: exactly ONE new _migrations_applied row (id 451), asset_registry 40->42 columns, 13->16 constraints, 128/128 NULL on BOTH new columns (no backfill, no DEFAULT, per D-51 §4), and 7 constraint probes exercised inside rolled-back transactions. FIRST SCHEMA CHANGE OF THE CAMPAIGN'S OWN AUTHORING TO REACH PRODUCTION SINCE 590. | T48 REPORT RECEIVED: applied via CLI ./node_modules/.bin/tsx scripts/migrate.ts --target (never imported, D-13). Ledger row 451 sha256 666c0062... BYTE-IDENTICAL to the HEAD blob V-31 certified. All three CHECKs demonstrated real inside always-rolled-back transactions (autocommit=False, deliberately NOT `with psycopg.connect(...)` which commits): 4 negatives rejected with the server naming the constraint, 3 positives accepted so they are not blanket denials, plus disjunct isolation proving dead_flag_not_retired rejects independently on inactive-but-not-RETIRED AND RETIRED-but-still-active rows. Production re-verified unchanged from a fresh read-only connection. 7 stated uncertainties in the 378-line report. Commit 47f2c641b.",
-      "owner": "PARIKSAKA",
-      "state": "awaiting_verification"
+      "owner": "closed",
+      "state": "CERTIFIED PASS (V-34, 14:51:11Z) — verified against the LIVE TABLE per D-51 §6, NOT against the report"
     },
     {
       "id": "F-MIGRATE-DISCARDS-NOTICES",
@@ -1068,8 +1068,8 @@
     {
       "id": "D-54-PART-8-STILL-OUTSTANDING",
       "what": "Raised by M0-T49 against its own work and NOT discharged by it: D-54 part 8 requires an INDEPENDENT two-source comparison of the shipped covers lists against the guard's live output. T49's field-by-field diff is its own script reading its own output, which it says plainly is not that. So the covers lists are gate-passed (three programmatic gates, both directions, 109/109) but NOT independently two-source compared. Belongs to PARIKSAKA (I16 -- T49 may not close it) or to a KARAKA that is not T49.",
-      "owner": "PARIKSAKA",
-      "state": "outstanding"
+      "owner": "closed",
+      "state": "DISCHARGED INDEPENDENTLY by PARIKSAKA 14:52:52Z: 109 identities, exact set equality across D-54 / D-57 / the shipped file, zero widening. This was the precondition D-59 §3 set for flip-checklist item 10."
     },
     {
       "id": "Q-109-VS-110",
@@ -1137,10 +1137,28 @@
       "what": "PARIKSAKA filed V-33 as a FAIL AGAINST ITS OWN LEDGER, and recovered the true times from a source it did not author -- git commit timestamps. V-31 stated 13:52:00Z against a commit at 13:48:22Z (~3.6 min ahead); V-32 stated 14:02:00Z against a commit at 13:50:09Z (~11.8 min ahead). MY ESTIMATE OF ~100 SECONDS WAS GENEROUS BY ROUGHLY SEVEN TIMES on V-32. Its framing: 'a signal without a detector behind it is null, and I wrote a ts no clock produced -- the exact defect class I have spent this session certifying other agents against. No verdict's CONTENT is affected; what was fabricated is the field that says when.' NOTE FOR MY OWN LEDGER: my WORK_QUEUE dispatch lines for T48/T49 carried the same defect (MY-OWN-TYPED-TIMESTAMP thread); every dispatch line since T50 reads the clock via date -u, and every KARAKA prompt since carries the instruction explicitly.",
       "owner": "closed",
       "state": "accepted"
+    },
+    {
+      "id": "D-60-MY-STALL-DIAGNOSIS-WAS-WRONG",
+      "what": "CORRECTION AGAINST MYSELF, caught independently by ADHIKARIN. At tick 7 (~14:45Z) I diagnosed PRAHARI as 'down, 33min silent' AND SAID SO to the native. THE DIAGNOSIS CAME FROM SILENCE, WHICH IS NOT A STALL DETECTOR. ADHIKARIN captured the panes directly at 14:46Z and found PRAHARI MID-TICK ('Crunched for 2m 14s'), having just restarted LEKHAKA, and LEKHAKA actively running -- BOTH 'STALLED' AGENTS WERE ALIVE. Worse, I DID capture panes but only AFTER poking, to confirm the pokes landed rather than to decide whether a poke was warranted -- which is exactly the ordering D-60 §5 now makes a PRECONDITION. And the capture I took read 'esc to interrupt · ← 1 agent', which indicates an agent ACTIVELY RUNNING; I read it as idle-at-prompt. D-60's framing in the campaign's own vocabulary: 'agent is stalled' is asserted by a detector that only measures TIME SINCE LAST WRITE, so an agent inside one long operation is indistinguishable from a dead one -- the signal reads RED with no detector behind the specific claim it makes, and per D-39 part 2 that is the MORE corrosive form, because a detector that cries stall on working agents trains the fleet to discount it. THE COST IS ALREADY CHARGED: HEARTBEAT.jsonl carries 'KARAKA-M0-T51 ... resumed after watchdog kill; re-verifying guard + baseline', i.e. a watchdog killed a working KARAKA and the campaign paid full re-verification. WHAT REMAINS TRUE OF MY TICK 7: ADHIKARIN and PARIKSAKA both heartbeated 'resuming after machine sleep' within seconds of the poke and had genuinely unread queues, so the pokes were not harmful; but 'PRAHARI is down' was asserted, not measured, and I am recording it as an error rather than defending it. Dispatched M0-T53 (SQ-21) to measure the real false-positive rate INCLUDING this episode, and explicitly told it not to spare the conductor.",
+      "owner": "SUTRADHARA",
+      "state": "self_corrected"
+    },
+    {
+      "id": "M0-T53",
+      "what": "DISPATCHED on SQ-21 / D-60 §5+§7. Half (a): measure the stall detector's FALSE-POSITIVE RATE from HEARTBEAT.jsonl and the escalation mailboxes -- every escalation and restart enumerated and classified false/true/undeterminable, with the COST counted in forced re-verification cycles. Told explicitly to include the conductor's own tick-7 error and to decide it from evidence rather than deference. Half (b): implement D-60 §5 -- a tmux pane-liveness capture becomes a PRECONDITION of a restart, not a corroboration; pane mid-operation => escalate/wait, never restart. Told to prove the precondition CAN FAIL both ways, since a precondition with no detector is the defect the campaign exists to remove, and told that if the logic lives only in PRAHARI's prompt then the prompt is the change -- do not invent a script nobody invokes. NOT ALLOWED to suspend the watchdog (D-60 §4) or to poke any pane itself.",
+      "owner": "KARAKA-M0-T53",
+      "state": "in_flight"
+    },
+    {
+      "id": "SQ-19-IS-M0-T52",
+      "what": "BOOKKEEPING, to prevent a double dispatch. SQ-19 (attach the notice listener to migrate.ts) and M0-T52 are the SAME WORK: ADHIKARIN queued SQ-19 at the same moment it wrote D-58, and I had already dispatched T52 off D-58 directly. T52 is in flight and carries all four of D-58 part 3's conditions. SQ-19 must not be dispatched again -- it is discharged by T52's completion, not by a separate task.",
+      "owner": "SUTRADHARA",
+      "state": "recorded"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T14:52:07Z",
+  "last_updated_ts": "2026-08-23T14:56:45Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
