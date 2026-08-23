@@ -2,17 +2,17 @@
 artifact: M0_EXIT_SCORECARD
 version: 1.0
 status: LIVE-MEASUREMENT
-task: M0-T27 (re-measurement)
+task: M0-T32 (re-measurement 3)
 built_by_task: M0-T17
-readings: 2
-generated: 2026-08-23T06:20:44.013647+00:00
+readings: 3
+generated: 2026-08-23T07:23:54.296317+00:00
 generator: 00_ARCHITECTURE/control/m0_exit_scorecard.py
 ---
 
 # NIRMĀṆA M0 — Exit-Criteria Scorecard v1.0
 
-**Measured:** 2026-08-23T06:20:06.814859+00:00 → 2026-08-23T06:20:44.013647+00:00 (UTC)  
-**Branch / commit:** `campaign/nirmana-autonomous` @ `ee93b76e8a57`  
+**Measured:** 2026-08-23T07:23:27.664487+00:00 → 2026-08-23T07:23:54.296317+00:00 (UTC)  
+**Branch / commit:** `campaign/nirmana-autonomous` @ `df78d1aa3aa4`  
 **Database access:** READ-ONLY (default_transaction_read_only=on; SELECT only)  
 **Regenerate:** `python3 00_ARCHITECTURE/control/m0_exit_scorecard.py`  
 **Status:** measurement only. This document certifies nothing and closes nothing (I16 / charter H7). PARĪKṢAKA decides; M0-T10 re-runs the generator at freeze time rather than trusting this snapshot.
@@ -20,7 +20,7 @@ generator: 00_ARCHITECTURE/control/m0_exit_scorecard.py
 ## 0 — Tally, then and now
 
 **then** = `reading 1 — M0-T17 first measurement`, 2026-08-23T05:05:59.484414+00:00 @ `01397f9216de`  
-**now** = `reading 2 — M0-T27 (re-measurement)`, 2026-08-23T06:20:44.013647+00:00 @ `ee93b76e8a57`
+**now** = `reading 3 — M0-T32 (re-measurement 3)`, 2026-08-23T07:23:54.296317+00:00 @ `df78d1aa3aa4`
 
 | status | then | now | Δ | meaning |
 |---|--:|--:|--:|---|
@@ -31,14 +31,14 @@ generator: 00_ARCHITECTURE/control/m0_exit_scorecard.py
 
 **1 of 12 criteria are satisfied by a detector's output.** The other 11 are not, and none of them is green.
 
-**Criteria whose PASS rests on a NON-DURABLE repair: 1 (11_domain_and_rung_present). Criteria passing on inputs a re-seed would move (EXPOSED): 0.** A repair is *durable* only if the column it wrote is absent from `asset_registry_seed.ts`'s `ON CONFLICT (asset_id) DO UPDATE SET` list; columns in that list are restored from `EXCLUDED` on the next seed run. Contract rules resting on such a repair: `C-05, C-14`. Rules that a projected re-seed makes start firing again: `C-05, C-14, C-18`. §3b measures all of this, projects each PASSing rule forward through a simulated re-seed, and names every cell that would move.
+**Criteria whose PASS rests on a NON-DURABLE repair: 1 (11_domain_and_rung_present). Criteria passing on inputs a re-seed would move (EXPOSED): 0.** A repair is *durable* only if the column it wrote is absent from `asset_registry_seed.ts`'s `ON CONFLICT (asset_id) DO UPDATE SET` list; columns in that list are restored from `EXCLUDED` on the next seed run. Contract rules resting on such a repair: `C-05, C-14, C-18`. Rules that a projected re-seed makes start firing again: `C-05, C-14, C-18`. §3b measures all of this, projects each PASSing rule forward through a simulated re-seed, and names every cell that would move.
 
 ### At a glance — then → now
 
 | # | criterion | then | now | measured | durability | blocker |
 |---|---|---|---|--:|---|---|
 | 1 | three-way diff (registry vs `@register` vs seed) = 0 | FAIL | **FAIL** | `5` | n/a — not passing | — |
-| 2 | contract violations per kind = 0 | NOT-MEASURABLE | **NOT-MEASURABLE** | `204` | n/a — not passing | rules C-25, C-26, C-27 have NO detector at all (contract §8) and must never read green |
+| 2 | contract violations per kind = 0 | NOT-MEASURABLE | **NOT-MEASURABLE** | `165` | n/a — not passing | rules C-25, C-26, C-27 have NO detector at all (contract §8) and must never read green |
 | 3 | prefix mismatches = 0 | FAIL | **FAIL** | `1` | n/a — not passing | — |
 | 4 | dangling or DRAFT-targeted edges = 0 | FAIL | **FAIL** | `3` | n/a — not passing | — |
 | 5 | multi-producer partitions = 0 | NOT-MEASURABLE | **NOT-MEASURABLE** | `—` | n/a — not passing | NO DETECTOR EXISTS. The criterion asserts that no two producers write the same (table × generati… |
@@ -48,7 +48,7 @@ generator: 00_ARCHITECTURE/control/m0_exit_scorecard.py
 | 9 | unresolved zero-consumer findings = 0 | FAIL | **FAIL** | `23` | n/a — not passing | — |
 | 10 | CI guard merged and **blocking** | FAIL | **FAIL** | `{"guard_scripts_found": 2, "workflow_invocations_fou…` | n/a — not passing | — |
 | 11 | every asset carrying `domain` and `rung` *(v4.1)* | BLOCKED | **PASS** *(moved)* | `0` | **NON-DURABLE** | — |
-| 12 | the §11 CI domain-coherence assertion green *(v4.1)* | FAIL | **FAIL** | `—` | n/a — not passing | THE ASSERTION DOES NOT EXIST. Plan §11 requires the CI shape guard to assert domain coherence (a… |
+| 12 | the §11 CI domain-coherence assertion green *(v4.1)* | FAIL | **FAIL** | `{"assertion_exists": true, "assertion_wired_to_a_wor…` | n/a — not passing | — |
 
 Every reading this generator has taken is retained in `m0_exit_scorecard.json` under `_meta.reading_history` (oldest first), so a re-run adds a reading rather than erasing the one it replaces:
 
@@ -56,6 +56,7 @@ Every reading this generator has taken is retained in `m0_exit_scorecard.json` u
 |---|---|---|---|--:|--:|--:|--:|
 | reading 1 — M0-T17 first measurement | M0-T17 | 2026-08-23T05:05:59.484414+00:00 | `01397f9216de` | 0 | 6 | 3 | 3 |
 | reading 2 — M0-T27 (re-measurement) | M0-T27 (re-measurement) | 2026-08-23T06:20:44.013647+00:00 | `ee93b76e8a57` | 1 | 7 | 3 | 1 |
+| reading 3 — M0-T32 (re-measurement 3) | M0-T32 (re-measurement 3) | 2026-08-23T07:23:54.296317+00:00 | `df78d1aa3aa4` | 1 | 7 | 3 | 1 |
 
 ### Did anything move while this ran?
 
@@ -71,7 +72,7 @@ A migration wave was running concurrently, so every load-bearing quantity was re
 
 ### What changed since the previous run of this generator
 
-Previous run: `2026-08-23T05:05:59.484414+00:00`. 5 change(s) since the previous run.
+Previous run: `2026-08-23T06:20:44.013647+00:00`. 2 change(s) since the previous run.
 
 ```json
 [
@@ -79,60 +80,29 @@ Previous run: `2026-08-23T05:05:59.484414+00:00`. 5 change(s) since the previous
   "criterion": "2_contract_violations_per_kind",
   "was": {
    "status": "NOT-MEASURABLE",
-   "measured_value": 227
+   "measured_value": 204
   },
   "now": {
    "status": "NOT-MEASURABLE",
-   "measured_value": 204
+   "measured_value": 165
   }
  },
  {
-  "criterion": "7_retired_without_disposition",
+  "criterion": "12_ci_domain_coherence_green",
   "was": {
-   "status": "BLOCKED",
+   "status": "FAIL",
    "measured_value": null
   },
   "now": {
    "status": "FAIL",
-   "measured_value": 1
-  }
- },
- {
-  "criterion": "10_ci_guard_merged_and_blocking",
-  "was": {
-   "status": "FAIL",
    "measured_value": {
-    "guard_scripts_found": 1,
-    "workflow_invocations_found": 0
-   }
-  },
-  "now": {
-   "status": "FAIL",
-   "measured_value": {
-    "guard_scripts_found": 2,
-    "workflow_invocations_found": 3,
+    "assertion_exists": true,
+    "assertion_wired_to_a_workflow": true,
+    "invocation_is_blocking": false,
     "merged_to_default_branch": false,
-    "invocation_is_blocking": false
+    "live_violations": 0
    }
   }
- },
- {
-  "criterion": "11_domain_and_rung_present",
-  "was": {
-   "status": "BLOCKED",
-   "measured_value": null
-  },
-  "now": {
-   "status": "PASS",
-   "measured_value": 0
-  }
- },
- {
-  "criterion": "10_ci_guard_merged_and_blocking",
-  "guard_scripts_added": [
-   "platform/scripts/governance/check_asset_source_parity.py"
-  ],
-  "guard_scripts_removed": []
  }
 ]
 ```
@@ -204,7 +174,7 @@ this script: SELECT asset_id FROM asset_registry  ×  AST scan of @register('<id
 ### 2 · contract violations per kind = 0
 
 **Status: NOT-MEASURABLE → NOT-MEASURABLE**  
-**Measured value:** `227` → `204`  
+**Measured value:** `227` → `165`  
 
 **Detector**
 
@@ -220,7 +190,7 @@ this script: every §8 detection SQL of 00_ARCHITECTURE/control/ASSET_CATALOGUE_
 
 ```json
 {
- "data": 136,
+ "data": 97,
  "artifact": 0,
  "service": 16,
  "source": 0
@@ -234,8 +204,8 @@ this script: every §8 detection SQL of 00_ARCHITECTURE/control/ASSET_CATALOGUE_
 ```json
 [
  "C-01=1",
- "C-02=21",
- "C-03=20",
+ "C-02=1",
+ "C-03=1",
  "C-04=9",
  "C-06=1",
  "C-07=4",
@@ -864,13 +834,28 @@ C-18 + C-19 detection SQL
 ### 12 · the §11 CI domain-coherence assertion green *(v4.1)*
 
 **Status: FAIL → FAIL**  
-**Measured value:** `None` → `None`  
+**Measured value:** `None` → `{"assertion_exists": true, "assertion_wired_to_a_workflow": true, "invocation_is_blocking": false, "merged_to_default_branch": false, "live_violations": 0}`  
 
-**Detector: NONE.** See the blocker below. An unmeasurable criterion is not a satisfied one.
+**Detector**
 
-**Blocked by / why this is not a pass:** THE ASSERTION DOES NOT EXIST. Plan §11 requires the CI shape guard to assert domain coherence (a shared asset may depend only on shared assets). No CI job asserts it: 1 workflow invocations found. 'Green' cannot be read off a check that does not run — CLAUDE.md §N.8. Status FAIL is the honest reading of 'the assertion is green': it is not, because it is not.
+```
+rule `X-04` in platform/scripts/governance/check_asset_catalogue_contract.py — `domain coherence: a shared asset depends only on shared assets`, severity BLOCKING, origin `plan §11 (CI shape guard addition)`. PASS requires the assertion to EXIST, to be invoked from a workflow, for that invocation to be blocking and merged to `origin/main` (criterion 10's two halves), and for the underlying condition to measure zero here.
+```
+
+**Note:** Criterion 12 reduces to criterion 10. The assertion (X-04) exists and returns 0 live; what is missing is a RUN of it that gates — the same `continue-on-error: true` and the same absence from `origin/main` that hold criterion 10 at FAIL. `has_ever_run_in_ci` is null, not false: nothing in this generator queries GitHub run history for a verdict (github_run_evidence is corroboration only). Shortfall: the carrying guard/workflow is NOT on `origin/main` (criterion 10's `merged` half); the invocation is NOT blocking, so no run of it can gate anything (criterion 10's `blocking` half)
 
 **Where the number came from:** this script's own live measurement. No sibling artifact states a figure for this quantity.
+
+<details><summary><code>shortfall</code></summary>
+
+```json
+[
+ "the carrying guard/workflow is NOT on `origin/main` (criterion 10's `merged` half)",
+ "the invocation is NOT blocking, so no run of it can gate anything (criterion 10's `blocking` half)"
+]
+```
+
+</details>
 
 <details><summary><code>underlying_condition_measured_here</code></summary>
 
@@ -921,6 +906,34 @@ C-18 + C-19 detection SQL
 
 </details>
 
+<details><summary><code>corrected_claim</code></summary>
+
+```json
+{
+ "readings_1_and_2_said": "THE ASSERTION DOES NOT EXIST.",
+ "verdict": "FALSE \u2014 and false when written.",
+ "correcting_task": "M0-T32",
+ "correcting_ts": "2026-08-23",
+ "evidence": [
+  "platform/scripts/governance/check_asset_catalogue_contract.py Rule(\"X-04\", BLOCKING, \"domain coherence: a shared asset depends only on shared assets\", x04, origin=\"plan \u00a711 (CI shape guard addition)\")",
+  "M0-T31 live guard run 2026-08-23T06:58:51Z: X-04 pass, 0 violations",
+  "WORK_QUEUE M0-T9 measured_live: X-04 = 0; green_now_list includes X-04"
+ ],
+ "root_cause": "this generator's `domain_markers` tuple matched none of the guard's wording, so its absence-detector could only ever return absent \u2014 a constant wearing a detector's clothes (CLAUDE.md \u00a7N.8), inside the scorecard built to catch that class.",
+ "what_is_actually_true": "the assertion exists and measures zero; it has never RUN in CI, for exactly criterion 10's reasons. Criterion 12 therefore reduces to criterion 10."
+}
+```
+
+</details>
+
+<details><summary><code>reduces_to</code></summary>
+
+```json
+"10_ci_guard_merged_and_blocking"
+```
+
+</details>
+
 ---
 
 ## 2 — Contract rule detail (criterion 2's constituents)
@@ -928,8 +941,8 @@ C-18 + C-19 detection SQL
 | rule | assertion | severity | then | now | violations then → now | durability |
 |---|---|---|---|---|--:|---|
 | `C-01` | asset_id prefix matches layer | BLOCKING | FAIL | **FAIL** | 1 → 1 | n/a — not passing |
-| `C-02` | layer_index is ^L[0-5]$ and agrees with layer | BLOCKING | FAIL | **FAIL** | 21 → 21 | n/a — not passing |
-| `C-03` | layer_name is the exact lexicon spelling | BLOCKING | FAIL | **FAIL** | 20 → 20 | n/a — not passing |
+| `C-02` | layer_index is ^L[0-5]$ and agrees with layer | BLOCKING | FAIL | **FAIL** | 21 → 1 | n/a — not passing |
+| `C-03` | layer_name is the exact lexicon spelling | BLOCKING | FAIL | **FAIL** | 20 → 1 | n/a — not passing |
 | `C-04` | data/artifact => target_table exists | BLOCKING | FAIL | **FAIL** | 11 → 9 | n/a — not passing |
 | `C-05` | data/artifact => count_sql NOT NULL | BLOCKING | FAIL | **PASS** | 2 → 0 | **NON-DURABLE** |
 | `C-06` | chart-domain count_sql is chart-scoped ($1) | BLOCKING | FAIL | **FAIL** | 1 → 1 | n/a — not passing |
@@ -944,7 +957,7 @@ C-18 + C-19 detection SQL
 | `C-15` | service => health_probe AND provides_apis | BLOCKING | FAIL | **FAIL** | 6 → 6 | n/a — not passing |
 | `C-16` | non-service => service_health IS NULL | BLOCKING | PASS | **PASS** | 0 → 0 | **EXPOSED** |
 | `C-17` | no graded service_health without a probe | BLOCKING | FAIL | **FAIL** | 4 → 4 | n/a — not passing |
-| `C-18` | domain present and derived from scope | BLOCKING | BLOCKED | **PASS** | None → 0 | **EXPOSED** |
+| `C-18` | domain present and derived from scope | BLOCKING | BLOCKED | **PASS** | None → 0 | **NON-DURABLE** |
 | `C-19` | rung present and derived from layer | BLOCKING | BLOCKED | **PASS** | None → 0 | **EXPOSED** |
 | `C-20` | CURRENT data/artifact carries a floor | BLOCKING | FAIL | **FAIL** | 5 → 3 | n/a — not passing |
 | `C-21` | target_floor = 0 => volume_explanation | BLOCKING | FAIL | **FAIL** | 19 → 19 | n/a — not passing |
@@ -1120,10 +1133,7 @@ for each seed-overwritten column this script can model (['asset_kind', 'asset_ty
 
 ### Rules whose improvement rests on a reverted repair
 
-| rule | then | now | rows that stopped violating | verdict |
-|---|---|---|---|---|
-| `C-05` | FAIL (2) | PASS (0) | `bg_ephemeris_engine`, `bg_panchanga` | EVERY row that stopped violating this rule is a row whose live value now differs from what the seed would write. This rule's PASS rests on a repair the next seed run reverts. |
-| `C-14` | FAIL (6) | PASS (0) | `bg_ephemeris_engine`, `bg_panchanga`, `ka_graha_sancara`, `ka_muhurta_seva`, `mi_abhilekha`, `mi_seva` | EVERY row that stopped violating this rule is a row whose live value now differs from what the seed would write. This rule's PASS rests on a repair the next seed run reverts. |
+_None: no rule that newly passes had all of its former violating rows land in the seed-divergent set._
 
 ### Projected forward: what a re-seed would actually break
 
@@ -1450,7 +1460,7 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
   },
   "C-02": {
    "status": "FAIL",
-   "violations": 21,
+   "violations": 1,
    "columns_referenced": [
     "asset_id",
     "layer",
@@ -1466,7 +1476,7 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
   },
   "C-03": {
    "status": "FAIL",
-   "violations": 20,
+   "violations": 1,
    "columns_referenced": [
     "asset_id",
     "layer",
@@ -1516,14 +1526,16 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
     "bg_panchanga"
    ],
    "durability": "NON-DURABLE",
-   "attribution": {
-    "previous_status": "FAIL",
-    "previous_violations": 2,
-    "rows_that_stopped_violating": [
+   "attribution": null,
+   "non_durable_proof": {
+    "source": "post_reseed_projection",
+    "violations_now": 0,
+    "violations_after_a_reseed": 2,
+    "verdict": "this rule reads 0 today and 2 once asset_registry_seed.ts restores the columns it owns. Its zero is a repair the next seed run reverts, not a fixed defect.",
+    "reverted_by": [
      "bg_ephemeris_engine",
      "bg_panchanga"
-    ],
-    "verdict": "EVERY row that stopped violating this rule is a row whose live value now differs from what the seed would write. This rule's PASS rests on a repair the next seed run reverts."
+    ]
    }
   },
   "C-06": {
@@ -1682,18 +1694,22 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
     "mi_seva"
    ],
    "durability": "NON-DURABLE",
-   "attribution": {
-    "previous_status": "FAIL",
-    "previous_violations": 6,
-    "rows_that_stopped_violating": [
+   "attribution": null,
+   "non_durable_proof": {
+    "source": "post_reseed_projection",
+    "violations_now": 0,
+    "violations_after_a_reseed": 8,
+    "verdict": "this rule reads 0 today and 8 once asset_registry_seed.ts restores the columns it owns. Its zero is a repair the next seed run reverts, not a fixed defect.",
+    "reverted_by": [
      "bg_ephemeris_engine",
      "bg_panchanga",
+     "ka_dasha_kala",
      "ka_graha_sancara",
      "ka_muhurta_seva",
+     "ka_tulana",
      "mi_abhilekha",
      "mi_seva"
-    ],
-    "verdict": "EVERY row that stopped violating this rule is a row whose live value now differs from what the seed would write. This rule's PASS rests on a repair the next seed run reverts."
+    ]
    }
   },
   "C-15": {
@@ -1764,8 +1780,17 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
    "seed_divergent_assets_among_them": [
     "mi_jivanaghatana"
    ],
-   "durability": "EXPOSED",
-   "attribution": null
+   "durability": "NON-DURABLE",
+   "attribution": null,
+   "non_durable_proof": {
+    "source": "post_reseed_projection",
+    "violations_now": 0,
+    "violations_after_a_reseed": 1,
+    "verdict": "this rule reads 0 today and 1 once asset_registry_seed.ts restores the columns it owns. Its zero is a repair the next seed run reverts, not a fixed defect.",
+    "reverted_by": [
+     "mi_jivanaghatana"
+    ]
+   }
   },
   "C-19": {
    "status": "PASS",
@@ -1944,10 +1969,7 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
     "C-24",
     "C-28"
    ],
-   "non_durable_constituent_rules": [
-    "C-05",
-    "C-14"
-   ],
+   "non_durable_constituent_rules": [],
    "columns_the_seed_never_inserts": [
     "clear_tables",
     "data_disposition",

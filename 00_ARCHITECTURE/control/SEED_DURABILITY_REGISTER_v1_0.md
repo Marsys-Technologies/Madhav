@@ -1,7 +1,19 @@
 ---
 canonical_id: SEED_DURABILITY_REGISTER
 version: 1.0
-status: CURRENT
+status: >-
+  MEASUREMENTS SUPERSEDED IN PART — corrected 2026-08-23 (M0-T32). The METHOD, the column
+  classification (Groups A/B/C) and every finding in §2–§6 stand. Two of the per-column
+  divergence COUNTS in §1.2 do not: this register was generated 06:36:35Z and M0-T29 closed
+  06:41:35Z; M0-T26's Phase 0.5a repair was dispatched 06:41:35Z and landed 06:51:24Z, i.e.
+  entirely after the measurement. `layer_index` (stated 21) and `layer_name` (stated 20) each
+  read 1 divergent cell live, re-measured independently 2026-08-23T07:31Z — the survivor on
+  both is `lel_events`, whose NULL is deliberately held (D-28 part 1). The §0 headline "260
+  cells across 96 distinct assets" is therefore high by at least 39 cells. Regenerate via the
+  `regenerate:` command below for a current figure; this note deliberately does NOT restate a
+  new total, because M0-T32 re-measured 2 of the 23 columns and will not extrapolate the other
+  21 (H6).
+status_until_2026_08_23: CURRENT
 generated_at: 2026-08-23T06:36:35Z
 campaign: NIRMĀṆA — Track M0, task M0-T29
 authored_by: KĀRAKA (M0-T29). NOT self-certified — I16/H7. PARĪKṢAKA verifies.
@@ -26,6 +38,26 @@ BOUND. This register closes that gap.
 - Cells a re-seed would change today: **260**, across **96** distinct assets.
 - Cells this register could not determine (`UNKNOWN`): **0**.
 - Live `asset_registry`: 128 rows × 40 columns; seed entries parsed: 127.
+
+> **DATED CORRECTION — 2026-08-23 (M0-T32).** Two of the counts in this register moved after
+> it was generated, and the headline moved with them. This register measured at
+> **06:36:35Z**; M0-T26's Phase 0.5a repair was dispatched **06:41:35Z** and landed
+> **06:51:24Z** — entirely afterwards. Re-measured independently, read-only, at
+> **2026-08-23T07:31Z**, against the same seed derivation this register parsed
+> (`layer_name = asset.layer_name ?? layerNames[layer] ?? layer`,
+> `layer_index = asset.layer_index ?? layerIndices[layer]`, seed :3259-3270):
+>
+> | column | this register (06:36:35Z) | live (07:31Z) | survivor |
+> |---|--:|--:|---|
+> | `layer_index` | 21 | **1** | `lel_events` (live NULL, seed would write `L5`) |
+> | `layer_name` | 20 | **1** | `lel_events` (live NULL, seed would write `Mīmāṃsā`) |
+>
+> `lel_events` is held NULL deliberately (DECISIONS D-28 part 1), so both are expected to stay
+> at 1 rather than reach 0. The §0 headline **260 cells / 96 assets is therefore high by at
+> least 39 cells**. M0-T32 re-measured 2 of the 23 columns and does not restate a new total —
+> extrapolating the other 21 would be fabricating a measurement (H6). Run the `regenerate:`
+> command in the frontmatter for a current figure. **Nothing below this note was rewritten.**
+
 
 **The honest summary, stated before the detail:** most of what this campaign has
 repaired is durable, and the register did not have to hunt for that answer. The four
@@ -367,7 +399,22 @@ Note the asymmetry that makes it survivable: the reverse repair is *not* availab
 
 Confirmed rather than assumed: `has_writer` is in Group D (absent from both seed column lists), and the column exists live with 128 non-NULL rows — i.e. it is populated by something other than the seed. Nothing for a re-seed to revert.
 
-### 3.5 — `layer_index` / `layer_name` (Phase 0.5a — **NOT YET PERFORMED**)
+### 3.5 — `layer_index` / `layer_name` (Phase 0.5a — **PERFORMED SINCE; see correction**)
+
+> **CORRECTION — 2026-08-23 (M0-T32).** This section's heading and Verdict both read "NOT YET
+> PERFORMED". That was true at 06:36:35Z and false from **06:51:24Z**, when M0-T26 landed the
+> Phase 0.5a repair. Re-measured independently read-only at 2026-08-23T07:31Z, against this
+> register's own parse of the seed derivation (:3259-3270): `layer_index` divergent cells
+> **21 → 1**, `layer_name` **20 → 1**, i.e. the "41" below is now **2**. The survivor on both
+> is `lel_events` (live NULL, seed would write `L5` / `Mīmāṃsā`), held NULL deliberately per
+> D-28 part 1 — so 1 each is the expected floor, not a shortfall.
+>
+> **The section's actual finding was borne out and should be read as confirmed, not
+> superseded:** it predicted the repair would be durable *iff* it wrote exactly what
+> `layerIndices[layer]` / `layerNames[layer]` produce, diacritics included. Post-repair
+> divergence of 1 (and that one deliberate) is what "it wrote exactly that" looks like. The
+> counts below are M0-T29's pre-repair measurement and are left exactly as measured.
+
 
 - Columns: `layer_index`, `layer_name`
 - In the seed's `DO UPDATE SET` list: `layer_index`, `layer_name`

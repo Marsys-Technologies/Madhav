@@ -1,14 +1,46 @@
 ---
 canonical_id: DERIVED_FIELD_REPAIR_PROPOSAL
 version: 1.0
-status: DRAFT — PROPOSAL ONLY, NOTHING APPLIED
+status: >-
+  SUPERSEDED BY EVENTS — corrected 2026-08-23 (M0-T32). Three of the four sub-items this
+  document proposed have since been APPLIED by other tasks: 0.5a (layer_index / layer_name)
+  by M0-T26, 0.6a (has_substeps) by M0-T20, 0.6b (kind reconciliation) by M0-T21. Only 0.5b
+  (SOURCE classification of `lel_events`) is still unapplied — and D-23 has since DEFERRED it
+  to R5 outright (reversing D-21), so it is not M0's to apply at all. The MEASUREMENTS and the PROPOSED SQL below are untouched and remain the
+  record of what was proposed and why; what changed is that they are no longer a description
+  of the live database. See `applied_status` for the per-sub-item live reading.
+status_until_2026_08_23: DRAFT — PROPOSAL ONLY, NOTHING APPLIED
 authored_by: KĀRAKA (Nirmāṇa autonomous campaign, task M0-T8)
 authored_at: 2026-08-23T04:44:44Z
 certified_by: null   # I16/H7 — the author does not certify. PARĪKṢAKA verifies; ADHIKĀRIN rules.
 branch: campaign/nirmana-autonomous
-writes_executed: NONE. Every figure in this document comes from a read-only SELECT run against
-                 the live database with `SET default_transaction_read_only = on`. No UPDATE, no
-                 DDL, no migration authored to disk, no migration applied.
+writes_executed: >-
+  NONE BY M0-T8 (scope clarified 2026-08-23 by M0-T32 — the original field read
+  "writes_executed: NONE" unqualified). Every figure in this document comes from a read-only
+  SELECT run against the live database with `SET default_transaction_read_only = on`. No
+  UPDATE, no DDL, no migration authored to disk, no migration applied — by the task that
+  authored this document. Writes have since been executed against three of its four
+  sub-items by OTHER tasks; see `applied_status`.
+applied_status: |
+  Measured read-only 2026-08-23T07:25Z; see the §0 status-correction block.
+  0.5a layer_index / layer_name — APPLIED by M0-T26 (2026-08-23T06:51Z). C-02 21 -> 1,
+    C-03 20 -> 1; the single survivor on each is lel_events, deliberately held NULL
+    (DECISIONS D-28 part 1).
+  0.5b SOURCE classification of lel_events — NOT APPLIED, AND NO LONGER M0's TO APPLY.
+    lel_events still reads asset_kind='data', asset_type='data'; 0 rows in asset_registry
+    carry asset_kind='source'. The ruling §3 asked for has returned twice: D-21
+    (2026-08-23T05:01:44Z) GRANTED the CHECK widening as an M0 deliverable, and D-23
+    (2026-08-23T05:04:21Z) REVERSED D-21 IN FULL — plan §8.4's R5 row assigns "lel_events
+    reclassified SOURCE" to R5 by name, a specific assignment governs a general exit
+    criterion (D-12), and widening the CHECK in M0 would be pre-building for a later phase.
+    So 0.5b is DEFERRED TO R5 and recorded as unmet, not green. §3 below still reads as an
+    open question awaiting a ruling; it is not.
+  0.6a has_substeps — APPLIED by M0-T20 (2026-08-23T05:48Z). 26 rows now has_substeps=true.
+  0.6b kind reconciliation — APPLIED by M0-T21 (2026-08-23T06:03Z). C-14 reads 0 live, but
+    the reading is NON-DURABLE: asset_kind and asset_type are both in
+    asset_registry_seed.ts's ON CONFLICT DO UPDATE list, and the post-reseed projection in
+    m0_exit_scorecard.json puts C-14 back at 8 violations on the next seed run
+    (M0_EXIT_SCORECARD_v1_0.md, durability section). The repair is real; its survival is not.
 derives_from:
   - NIRMANA_ELEVATION_PLAN_v4_0.md Phase 0.5a / 0.5b / 0.6a / 0.6b
   - ASSET_CATALOGUE_CONTRACT_v1_0.md §4.2, §4.8, §5, §6 (C-02, C-03, C-14, C-23), §7, §10.1
@@ -36,9 +68,24 @@ derivation rule that produces it, the exact SQL that would apply it, and a pre-f
 that can tell a correct backfill from an incorrect one *before* it is trusted.
 
 **Is not:** an application, a certification, or an authority to proceed. **EXECUTE NO WRITE**
-was this task's constraint and it was honoured: nothing in §2–§5 has been run. Two of the four
-sub-items additionally require an ADHIKĀRIN ruling before they may be run at all (§3 and §5.5),
-and those are stated as questions, not assumed.
+was this task's constraint and it was honoured *by this task*: nothing in §2–§5 was run **by
+M0-T8**. Two of the four sub-items additionally require an ADHIKĀRIN ruling before they may be
+run at all (§3 and §5.5), and those are stated as questions, not assumed.
+
+> **STATUS CORRECTION — 2026-08-23 (M0-T32).** The sentence above used to read "nothing in
+> §2–§5 has been run," present tense, with no agent attached. That was true when authored and
+> is false now: **0.5a, 0.6a and 0.6b have all since been applied** — by M0-T26, M0-T20 and
+> M0-T21 respectively, each under its own ruling and its own verification. Only **0.5b**
+> (§3, `lel_events` → SOURCE) is still unapplied — but NOT for the reason §3 gives: D-21
+> granted it, D-23 reversed D-21 in full and DEFERRED 0.5b to R5 (plan §8.4's R5 row assigns
+> "lel_events reclassified SOURCE" to R5 by name). §3 below still reads as a question awaiting
+> a ruling. Two rulings have returned; the second is binding.
+> Re-scoped to name the agent rather than softened, because the *proposal* genuinely executed
+> nothing and that fact should survive; what could not be allowed to survive is a present-tense
+> reading of the live database that is 39 rows and three sub-items out of date. The per-sub-item
+> live measurement is in the frontmatter's `applied_status`, measured read-only at
+> 2026-08-23T07:25Z. **Nothing in §1–§8 below was rewritten** — the figures there are M0-T8's
+> measurement of 2026-08-23T04:44:44Z and are left exactly as measured.
 
 **No migration file was authored to disk, deliberately.** D-9 §2 measured the blast radius of
 the `migrate.ts` entrypoint hazard as "exactly three unapplied files on disk today, and the

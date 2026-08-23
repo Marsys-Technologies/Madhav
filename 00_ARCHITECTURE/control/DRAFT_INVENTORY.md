@@ -132,7 +132,20 @@ dispositions. It does not recommend one. `promote to CURRENT` / `retire with a
 > in the live database** — migration `590_nirmana_m0_catalogue_contract_columns.sql` (staged
 > on this branch, verified NOT applied) would add it. So "retire with a `data_disposition`"
 > requires 590 to be applied first, and "reclassify as SOURCE" requires a CHECK-constraint
-> change that no migration in this plan names (charter P5). This is a mechanical fact about
+> change that no migration in this plan names (charter P5).
+>
+> **CORRECTION — 2026-08-23 (M0-T32).** The `data_disposition` half of the paragraph above is
+> now FALSE. Migration 590 **applied at 2026-08-23T05:36:13.833986+00:00**
+> (`_migrations_applied` id 450); `data_disposition` exists live as `text` and so do `domain`,
+> `rung` and `superseded_by`. The first blocker on "retire with a `data_disposition`" is
+> therefore cleared — though 0 rows carry a non-NULL `data_disposition` today (read-only,
+> 2026-08-23T07:25Z), and the single RETIRED asset (`ka_gochara_sweep`) is still C-08's one
+> violation. **The `SOURCE` half stands and has hardened:** the CHECKs still permit only
+> `CURRENT|DRAFT|RETIRED` and `data|service|artifact`, and D-21 (which granted the widening)
+> was REVERSED IN FULL by D-23 — `lel_events` → SOURCE is assigned to **R5** by plan §8.4, not
+> to M0. So of the two options this note called inexpressible, one is now expressible and the
+> other has been deferred out of M0 entirely. Only this correction was added; the analysis
+> above and the per-asset packets below are untouched. This is a mechanical fact about
 > the schema, not an argument for or against any option; it is stated because two of the
 > three options are not currently expressible. It independently corroborates
 > `ASSET_CATALOGUE_CONTRACT_v1_0.md` §10.1.

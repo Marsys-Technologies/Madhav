@@ -13,8 +13,23 @@ derives_from:
   - CLAUDE.md §B.8 (versioning discipline), §N.1 (asset-id prefix), §N.4 (floors aspirational,
     cockpit truth), §N.8 (earned signal)
 schema_baseline: asset_registry, public schema, measured live 2026-08-23 (see §9)
-enforcement_status: NOT YET ENFORCED — no CI guard implements this document as of v1.0.
-                    §8 is written so that one can be, without interpretation.
+enforcement_status: >-
+  IMPLEMENTED, WIRED, NOT GATING — corrected 2026-08-23 (M0-T32).
+  `platform/scripts/governance/check_asset_catalogue_contract.py` (shipped by M0-T9,
+  2026-08-23T05:14:37Z) implements all 28 §6/§8 rules plus 5 campaign-extension rules
+  X-01…X-05, AND cross-checks itself against this document's §6 table (28/28 parsed,
+  0 problems, verified 2026-08-23T07:29Z). It is invoked from
+  `.github/workflows/nirmana-m0-guards.yml`. It is NOT gating: both jobs carry
+  `continue-on-error: true` (deliberately, per M0-T9; flipping it is ADHIKĀRIN's G9 call),
+  and the guard and workflow are ABSENT from `origin/main` (verified 2026-08-23T07:03Z by
+  M0-T31). So: a detector exists and runs on demand; nothing it says blocks anything yet.
+  Live verdict 2026-08-23T07:27Z: pass=13 fail=16 not_checkable=4; 15 BLOCKING failures.
+enforcement_status_superseded: >-
+  Until 2026-08-23 this field read "NOT YET ENFORCED — no CI guard implements this document
+  as of v1.0. §8 is written so that one can be, without interpretation." That was true at
+  authoring (M0-T2) and false from M0-T9 onward. Corrected in place rather than softened;
+  the replacement above states which of the three halves — implemented / wired / gating —
+  is actually true, because "enforced" collapses a distinction that matters here.
 changelog:
   - version: 1.0
     date: 2026-08-23
@@ -378,6 +393,24 @@ Each rule is an assertion. `violations` is the row count returned by the SQL. A 
 catalogue returns 0 for every rule. **Live violation counts below were measured 2026-08-23 and
 are the baseline this contract freezes, not a claim that they are acceptable.**
 
+> **DATED CORRECTION — 2026-08-23 (M0-T32).** Four cells in the table below carry the
+> parenthetical *"(column does not exist yet)"* — C-08, C-10, C-18, C-19. That parenthetical is
+> now **false**: migration `590_nirmana_m0_catalogue_contract_columns.sql` applied at
+> **2026-08-23T05:36:13.833986+00:00** (`_migrations_applied` id 450) and all four columns
+> (`domain`, `rung`, `superseded_by`, `data_disposition`) are live and populated — see the
+> corrected §11. Those four rules are now genuinely checkable, and the shipped guard
+> (`platform/scripts/governance/check_asset_catalogue_contract.py`) reports them live at
+> 2026-08-23T07:27Z as: **C-08 = 1** (`ka_gochara_sweep`, RETIRED with no `data_disposition`
+> — 0 rows in the whole table carry one), **C-10 = 0**, **C-18 = 0**, **C-19 = 0**.
+>
+> **The table's own numbers are NOT edited**, deliberately and for two reasons. First, §6 is
+> declared above as a *frozen baseline measured 2026-08-23*, and a baseline that gets quietly
+> re-pointed at today stops being a baseline. Second, this table is the spec input the guard
+> cross-checks itself against (28/28 rules parsed, 0 problems, re-verified after this edit);
+> rewriting cells in it is a deliberate act, not a passing correction. For a current figure,
+> run the guard or read `m0_exit_scorecard.json`. What is corrected here is the parenthetical
+> *claim about the schema*, which was a present-tense assertion and not a dated measurement.
+
 Severity: **BLOCKING** = must be 0 before the M0 exit criteria are met. **RUNG** = must be 0
 before the named rung freezes. **ADVISORY** = not yet mechanically checkable; recorded so it is
 not lost, and explicitly NOT reported as green.
@@ -658,7 +691,24 @@ a kind repair first (which is a separate M0 item). Recorded as the obvious follo
 `platform/migrations/590_nirmana_m0_catalogue_contract_columns.sql` adds `domain`, `rung`,
 `superseded_by` and `data_disposition` and backfills `domain` and `rung` per §5.
 
-**That migration is AUTHORED AND NOT APPLIED.** Applying it is gated on an ADHIKĀRIN ruling
-that had been requested and had not returned at the time of authoring. No DDL or DML from it has
-been executed against any database. Every claim in §9 comes from a read-only query against the
-live schema as it stands *before* that migration.
+**STATUS — CORRECTED 2026-08-23 (M0-T32). That migration is APPLIED.**
+
+`590_nirmana_m0_catalogue_contract_columns.sql` was applied at **2026-08-23T05:36:13.833986+00:00**
+(`_migrations_applied` id **450**). All four columns are live in `public.asset_registry` and
+populated on all 128 rows (`domain` 128/128, `rung` 128/128, both `text`), verified read-only at
+2026-08-23T07:25Z. `rung` distribution live: R0 40 · R1 19 · R2 22 · R3 23 · R4 9 · R5 15.
+
+> **What this section said until now, and why it was wrong.** It read: *"That migration is
+> AUTHORED AND NOT APPLIED. Applying it is gated on an ADHIKĀRIN ruling that had been requested
+> and had not returned at the time of authoring. No DDL or DML from it has been executed against
+> any database."* That was true when authored (M0-T2) and became false 05:36:13Z the same day.
+> Left standing it is the sentence a later reader consults to decide whether `domain`, `rung`,
+> `superseded_by` and `data_disposition` exist — and it answers no about four columns that do.
+> Found by M0-T31 (finding F-1), corrected here. **Only this status paragraph changed.** The
+> rules, the derivations and the analysis in §0–§10 are untouched and were, and remain, accurate.
+
+**The one claim below that this correction does NOT overturn:** *"Every claim in §9 comes from a
+read-only query against the live schema as it stands* **before** *that migration."* §9 is a dated
+pre-590 baseline and is correctly labelled as one; it is a historical measurement, not a present-
+tense assertion, and it is left exactly as measured. A reader wanting the post-590 schema should
+read the live schema or `m0_exit_scorecard.json` `_meta.asset_registry_columns_present`, not §9.

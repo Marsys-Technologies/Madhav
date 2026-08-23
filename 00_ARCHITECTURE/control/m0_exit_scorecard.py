@@ -260,7 +260,16 @@ def scan_ci_guards() -> dict:
     contract_markers = ("ASSET_CATALOGUE_CONTRACT", "catalogue_conformance",
                         "catalogue_contract", "asset_catalogue",
                         "three_way_diff", "three-way diff")
-    domain_markers = ("domain_coherence", "domain-coherence", "shared asset may depend")
+    # M0-T32: the original marker set was ("domain_coherence", "domain-coherence",
+    # "shared asset may depend") and matched NOTHING — the shipped guard spells the
+    # assertion "domain coherence: a shared asset depends only on shared assets"
+    # (X-04, check_asset_catalogue_contract.py:1146). A marker set that cannot match
+    # the artifact it is looking for is a detector that can only ever return absent,
+    # i.e. the §N.8 defect this scorecard exists to catch, inside the scorecard. The
+    # rule id is included because it is the one string that cannot drift from prose.
+    domain_markers = ("domain_coherence", "domain-coherence", "domain coherence",
+                      "shared asset may depend", "shared asset depends only on shared",
+                      '"X-04"', "'X-04'")
 
     guard_scripts, domain_scripts = [], []
     for d in (gov, ci):
@@ -1237,17 +1246,81 @@ def main() -> int:
                          JOIN asset_registry b ON b.asset_id=d
                          WHERE a.scope='global' AND b.scope<>'global' ORDER BY 1,3""")
         incoherent = [dict(r) for r in c.fetchall()]
+        # ── M0-T32 correction ────────────────────────────────────────────────
+        # Readings 1 and 2 of this scorecard recorded `blocked_by: "THE ASSERTION
+        # DOES NOT EXIST"`. That was FALSE at the time it was written and is false
+        # now: `X-04` ("domain coherence: a shared asset depends only on shared
+        # assets", origin "plan §11 (CI shape guard addition)") has been implemented
+        # in platform/scripts/governance/check_asset_catalogue_contract.py since
+        # M0-T9 (2026-08-23T05:14:37Z) and returns 0 violations against the live
+        # database. The scorecard could not see it because its own `domain_markers`
+        # tuple matched none of the guard's wording (fixed in scan_ci_guards above).
+        # A false claim in the instrument is worse than the gap it described, so it
+        # is corrected rather than softened.
+        #
+        # The criterion still does NOT pass, for a DIFFERENT and now-honest reason:
+        # the assertion has never RUN in CI. It is carried by the same guard script
+        # and the same workflow as criterion 10, under the same
+        # `continue-on-error: true`, and absent from `origin/main` for the same
+        # reason. So criterion 12 reduces entirely to criterion 10: nothing
+        # criterion-12-specific stands between here and green.
+        c12_assertion_exists = bool(ci["domain_coherence_scripts"])
+        c12_wired = bool(ci["domain_coherence_workflow_invocations"])
+        c12_pass = bool(c12_assertion_exists and c12_wired and merged and is_blocking
+                        and len(incoherent) == 0)
+        c12_shortfall = []
+        if not c12_assertion_exists:
+            c12_shortfall.append("no script implements the domain-coherence assertion")
+        if not c12_wired:
+            c12_shortfall.append("no workflow invokes a script that carries the assertion")
+        if not merged:
+            c12_shortfall.append("the carrying guard/workflow is NOT on `origin/main` "
+                                 "(criterion 10's `merged` half)")
+        if not is_blocking:
+            c12_shortfall.append("the invocation is NOT blocking, so no run of it can gate "
+                                 "anything (criterion 10's `blocking` half)")
+        if len(incoherent):
+            c12_shortfall.append(f"{len(incoherent)} live domain-coherence violation(s)")
         rec["criteria"]["12_ci_domain_coherence_green"] = {
-            "detector": None,
-            "status": FAIL,
-            "measured_value": None,
-            "blocked_by": ("THE ASSERTION DOES NOT EXIST. Plan §11 requires the CI shape guard "
-                           "to assert domain coherence (a shared asset may depend only on "
-                           "shared assets). No CI job asserts it: "
-                           f"{len(ci['domain_coherence_workflow_invocations'])} workflow "
-                           "invocations found. 'Green' cannot be read off a check that does not "
-                           "run — CLAUDE.md §N.8. Status FAIL is the honest reading of "
-                           "'the assertion is green': it is not, because it is not."),
+            "detector": ("rule `X-04` in platform/scripts/governance/"
+                         "check_asset_catalogue_contract.py — `domain coherence: a shared "
+                         "asset depends only on shared assets`, severity BLOCKING, origin "
+                         "`plan §11 (CI shape guard addition)`. PASS requires the assertion "
+                         "to EXIST, to be invoked from a workflow, for that invocation to be "
+                         "blocking and merged to `origin/main` (criterion 10's two halves), "
+                         "and for the underlying condition to measure zero here."),
+            "status": PASS if c12_pass else FAIL,
+            "measured_value": {"assertion_exists": c12_assertion_exists,
+                               "assertion_wired_to_a_workflow": c12_wired,
+                               "invocation_is_blocking": is_blocking,
+                               "merged_to_default_branch": merged,
+                               "live_violations": len(incoherent)},
+            "assertion_exists": c12_assertion_exists,
+            "has_ever_run_in_ci": None,
+            "reduces_to": "10_ci_guard_merged_and_blocking",
+            "shortfall": c12_shortfall,
+            "corrected_claim": {
+                "readings_1_and_2_said": "THE ASSERTION DOES NOT EXIST.",
+                "verdict": "FALSE — and false when written.",
+                "correcting_task": "M0-T32",
+                "correcting_ts": "2026-08-23",
+                "evidence": ["platform/scripts/governance/check_asset_catalogue_contract.py "
+                             "Rule(\"X-04\", BLOCKING, \"domain coherence: a shared asset "
+                             "depends only on shared assets\", x04, origin=\"plan §11 (CI "
+                             "shape guard addition)\")",
+                             "M0-T31 live guard run 2026-08-23T06:58:51Z: X-04 pass, "
+                             "0 violations",
+                             "WORK_QUEUE M0-T9 measured_live: X-04 = 0; green_now_list "
+                             "includes X-04"],
+                "root_cause": ("this generator's `domain_markers` tuple matched none of the "
+                               "guard's wording, so its absence-detector could only ever "
+                               "return absent — a constant wearing a detector's clothes "
+                               "(CLAUDE.md §N.8), inside the scorecard built to catch that "
+                               "class."),
+                "what_is_actually_true": ("the assertion exists and measures zero; it has "
+                                          "never RUN in CI, for exactly criterion 10's "
+                                          "reasons. Criterion 12 therefore reduces to "
+                                          "criterion 10.")},
             "underlying_condition_measured_here": {
                 "what": "shared-domain asset depending on a chart-domain asset",
                 "measured_via": ("`domain` column" if dom_col else
@@ -1258,7 +1331,14 @@ def main() -> int:
                                     "mi_kula", "mi_vistara"],
             "domain_coherence_ci_scripts": ci["domain_coherence_scripts"],
             "domain_coherence_workflow_invocations":
-                ci["domain_coherence_workflow_invocations"]}
+                ci["domain_coherence_workflow_invocations"],
+            "note": ("Criterion 12 reduces to criterion 10. The assertion (X-04) exists and "
+                     "returns 0 live; what is missing is a RUN of it that gates — the same "
+                     "`continue-on-error: true` and the same absence from `origin/main` that "
+                     "hold criterion 10 at FAIL. `has_ever_run_in_ci` is null, not false: "
+                     "nothing in this generator queries GitHub run history for a verdict "
+                     "(github_run_evidence is corroboration only). Shortfall: "
+                     + "; ".join(c12_shortfall)) if not c12_pass else None}
 
         # ── M0-T27 · falsifiability of every PASSing rule ────────────────────
         mut: dict = {}
@@ -1488,6 +1568,31 @@ def main() -> int:
                                        "would_break": None,
                                        "verdict": f"projection query error: "
                                                   f"{str(e).splitlines()[0][:160]}"}
+        # ── M0-T32 · fold the projection back into the PER-RULE durability ───
+        # `EXPOSED` says a rule reads a column the seed overwrites and that some
+        # live row already differs. The post-reseed projection says something
+        # strictly stronger and directly: re-run against the values the seed would
+        # write, the rule FIRES. When the projection has proved that, the row must
+        # read NON-DURABLE — a rule at zero only because of a repair the next seed
+        # run reverts is not passing on its merits, and the rule-detail table was
+        # reading EXPOSED for exactly such rows (C-14: 0 now → 8 after a re-seed).
+        # Upgrading a label on a detector's proof, never downgrading one.
+        for rid, pv_ in projection.items():
+            if pv_.get("would_break") is not True or rid not in per_rule:
+                continue
+            per_rule[rid]["durability"] = "NON-DURABLE"
+            per_rule[rid]["non_durable_proof"] = {
+                "source": "post_reseed_projection",
+                "violations_now": pv_.get("violations_now"),
+                "violations_after_a_reseed": pv_.get("violations_after_a_reseed"),
+                "verdict": (f"this rule reads {pv_.get('violations_now')} today and "
+                            f"{pv_.get('violations_after_a_reseed')} once "
+                            "asset_registry_seed.ts restores the columns it owns. Its zero "
+                            "is a repair the next seed run reverts, not a fixed defect."),
+                "reverted_by": sorted(set(per_rule[rid].get(
+                    "seed_divergent_assets_among_them") or [])),
+            }
+
         for k, v in per_crit.items():
             rules = v["constituent_rules"]
             breaks = [rid for rid in rules
@@ -1645,7 +1750,7 @@ def main() -> int:
 
     rec["_meta"].update({
         "tally": tally,
-        "task": "M0-T27 (re-measurement)", "built_by_task": "M0-T17",
+        "task": "M0-T32 (re-measurement 3)", "built_by_task": "M0-T17",
         "artifact": "M0_EXIT_SCORECARD_v1_0",
         "generator": _rel(pathlib.Path(__file__)),
         "measured_at_start": started.isoformat(), "measured_at_end": finished.isoformat(),
@@ -1980,7 +2085,8 @@ def render_md(rec: dict) -> None:
                     "underlying_condition_measured_here", "plan_named_suspects",
                     "disposed", "packets", "asset_ids", "total_edges_in_registry",
                     "domain_coherence_ci_scripts",
-                    "domain_coherence_workflow_invocations", "would_be_derived_from"):
+                    "domain_coherence_workflow_invocations", "would_be_derived_from",
+                    "corrected_claim", "reduces_to"):
             if key in v and v[key] not in (None, [], {}, ""):
                 w("")
                 w(f"<details><summary><code>{key}</code></summary>")
