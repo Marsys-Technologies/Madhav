@@ -52,7 +52,7 @@
   "m_track": {
     "M0": {
       "status": "in_progress",
-      "note": "workbook + ASSET_PLANS + defect register done; M0-T1 six-source census, M0-T2 contract+domain/rung migration (authored, unapplied), M0-T3 telemetry snapshot+proposal (no writes), M0-T4 mig 588/589 registration (no writes) DISPATCHED. Remaining after these: consumer map (0.7), DRAFT/zero-consumer dispositions (0.8b/0.8c), derived-field repair (0.5/0.6), CI guards blocking (0.10), baseline freeze (0.11)."
+      "note": "NOT COMPLETE (PARIKSAKA V-1, FAIL). Honest split: workbook + ASSET_PLANS + defect register done FOR THE SCOPE/RUNG DIMENSION ONLY; the §19 efficiency dimension is NOT STARTED — no Efficiency sheet (§16), 5 of §15's 13 per-asset fields absent across all 128 plans (bound class, hotspot, technique, identity proof, speedup achieved), and the three generators have no emitter for them, so regeneration would reproduce the same gap. §15's null-hotspot correction also unmade: 0 assets read as unprofiled while 64 read 'No bespoke speed work'. This is a rung-freeze dependency (§8.3 item 5), so R0 is blocked behind it. In flight: M0-T1..T4. Queued not dispatched: M0-T5 (§19 ledger emitter). Remaining: consumer map (0.7), DRAFT/zero-consumer dispositions (0.8b/0.8c), derived-field repair (0.5/0.6), CI guards blocking (0.10), baseline freeze (0.11)."
     },
     "M1": {
       "status": "not_open"
@@ -115,10 +115,22 @@
       "what": "ADHIKARIN ruling: may mig 588/589 registration + asset_throughput telemetry repair EXECUTE",
       "owner": "ADHIKARIN",
       "state": "asked"
+    },
+    {
+      "id": "V-1",
+      "what": "§19 efficiency ledger has no emitter; M0 completion claim FAILed by PARIKSAKA; M0 note corrected; ADHIKARIN to rule land-in-M0 vs G7 deferral",
+      "owner": "ADHIKARIN",
+      "state": "asked"
+    },
+    {
+      "id": "D-1",
+      "what": "heartbeat.sh script-relative root fix applied by SUTRADHARA (at KARAKA cap); verified by resolution from 3 cwds; awaiting PARIKSAKA independent check (I16)",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T04:09:12Z",
+  "last_updated_ts": "2026-08-23T04:11:27Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }

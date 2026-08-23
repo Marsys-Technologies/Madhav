@@ -95,6 +95,9 @@ launch() {  # launch <window> <role-file> <model> <agent-name>
   kick "$role" "$win" > "$pf"
   if [ "$DRY" -eq 1 ]; then echo "[dry-run] $name → window $win, model $model"; return; fi
   tmux new-window -t "$SESSION" -n "$win" -c "$REPO"
+  # Belt and braces on D-1: the script-relative default in heartbeat.sh is the real fix,
+  # but exporting the root into the pane also covers any future tool that needs it.
+  tmux send-keys -t "$SESSION:$win" "export NIRMANA_REPO='$REPO'" C-m
   # Step 1: start claude with flags only — no positional prompt. A positional
   # prompt only pre-fills/loads the TUI's compose box on this CLI version, it
   # does not auto-submit; the single C-m below just runs this shell command line.
