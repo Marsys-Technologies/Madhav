@@ -1,0 +1,781 @@
+{
+ "captured_at_utc": "2026-08-23T05:54:45.117230Z",
+ "table": "asset_registry",
+ "columns": [
+  "asset_id",
+  "asset_kind",
+  "asset_type",
+  "storage_type"
+ ],
+ "row_count": 128,
+ "rows": [
+  {
+   "asset_id": "bg_class_lifetime_counts",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_class_priors",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_cohort",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_compendium_index",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_concordance",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_dasha_systems",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_dignity_reference",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_doshas",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_ephemeris",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_ephemeris_engine",
+   "asset_kind": "data",
+   "asset_type": "service",
+   "storage_type": "service"
+  },
+  {
+   "asset_id": "bg_formula_constants",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_ghatana",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_gochara_arcs",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_gochara_citation_resolution",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_kota_chakra_rings",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_kp_sublord_division",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_medical_mappings",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_muhurta_lattice",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_nakshatra",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_nakshatra_medical",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_ontology",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_panchanga",
+   "asset_kind": "data",
+   "asset_type": "service",
+   "storage_type": "service"
+  },
+  {
+   "asset_id": "bg_parihara_rules",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_phaladeepika_latta",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_prashna_rules",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_reference",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_remedies",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_rules",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_sarvatobhadra_grid",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_sign_medical",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_sky_calendar",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_text_index",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_texts",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_transit_engine",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_transit_rules",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_vastu_directions",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_vedha_malefic_scale",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_vidhi_floors",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_vidhi_primitives",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bg_yogas",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_anveshana",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_arudha",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_bimba",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "pgvector"
+  },
+  {
+   "asset_id": "bo_cdlm_summary",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_cgm_motifs",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_cgm_paths",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_chart_gestalt",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_drishti",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_karanajala",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_laksana",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_laksana_rerank",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_nakshatra_semantic",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_pramana_mapa",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_pratijna",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_samskara",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "pgvector"
+  },
+  {
+   "asset_id": "bo_samvada",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_view"
+  },
+  {
+   "asset_id": "bo_sangati",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_special_lagna",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_sudarshana",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_upaya",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "pgvector"
+  },
+  {
+   "asset_id": "bo_vargottama_dhana",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "bo_yantra_mechanism",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_ayurdaya",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_condition",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_dashas",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_medical",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_nakshatra",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_panchanga",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_positions",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_prashna",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_sade_sati",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_sensitive",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_sensitive_degree",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_strength",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_structural",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_tajaka",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_transit_anchors",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_vargas",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_vastu",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_vichara",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ga_yoga",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_avadhi",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_bhavishya_lekha",
+   "asset_kind": "artifact",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_dasha_kala",
+   "asset_kind": "service",
+   "asset_type": "service",
+   "storage_type": "service"
+  },
+  {
+   "asset_id": "ka_gochara",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_gochara_resonance",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_gochara_sweep",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_gochara_v3_century_materialize",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_graha_sancara",
+   "asset_kind": "service",
+   "asset_type": "data",
+   "storage_type": "service"
+  },
+  {
+   "asset_id": "ka_jivana_parva",
+   "asset_kind": "artifact",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_kala_darshana",
+   "asset_kind": "artifact",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_kalasutra",
+   "asset_kind": "artifact",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_kota_chakra",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_kshetra",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_moorti_nirnaya",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_muhurta_seva",
+   "asset_kind": "service",
+   "asset_type": "data",
+   "storage_type": "service"
+  },
+  {
+   "asset_id": "ka_sangam",
+   "asset_kind": "artifact",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_sudarshana_varsha",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_taranga",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_tithi_pravesha",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_tulana",
+   "asset_kind": "service",
+   "asset_type": "service",
+   "storage_type": "service"
+  },
+  {
+   "asset_id": "ka_vedha_gochara",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_vighnakara",
+   "asset_kind": "artifact",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ka_yojaka",
+   "asset_kind": "artifact",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "lel_events",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "mi_abhilekha",
+   "asset_kind": "service",
+   "asset_type": "data",
+   "storage_type": "service"
+  },
+  {
+   "asset_id": "mi_adhilepa",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "mi_bhara",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "mi_bhavisya",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "mi_darshana",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "pgvector"
+  },
+  {
+   "asset_id": "mi_gunanaka",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "mi_jivanaghatana",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "mi_kula",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "mi_pariksha",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "mi_pramana",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "mi_sambandha",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "mi_sankalpa",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "mi_seva",
+   "asset_kind": "service",
+   "asset_type": "data",
+   "storage_type": "service"
+  },
+  {
+   "asset_id": "mi_vistara",
+   "asset_kind": "data",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ph_muhurta",
+   "asset_kind": "artifact",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ph_nimitta",
+   "asset_kind": "artifact",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ph_phaladesa",
+   "asset_kind": "artifact",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ph_pramana",
+   "asset_kind": "artifact",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ph_pratikara",
+   "asset_kind": "artifact",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ph_rectification",
+   "asset_kind": "artifact",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ph_sankrama",
+   "asset_kind": "artifact",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ph_sodhana",
+   "asset_kind": "artifact",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  },
+  {
+   "asset_id": "ph_suddha_sodhana",
+   "asset_kind": "artifact",
+   "asset_type": "data",
+   "storage_type": "postgres_table"
+  }
+ ]
+}

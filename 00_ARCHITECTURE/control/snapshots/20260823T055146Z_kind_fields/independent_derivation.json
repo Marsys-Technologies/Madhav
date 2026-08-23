@@ -1,0 +1,131 @@
+{
+ "total": 128,
+ "disagreements": [
+  {
+   "asset_id": "bg_ephemeris_engine",
+   "layer": "brahmagyan",
+   "kind": "data",
+   "type": "service",
+   "storage": "service",
+   "status": "CURRENT",
+   "verdict": "service",
+   "service_pts": 3,
+   "data_pts": 0,
+   "column_to_fix": "asset_kind",
+   "evidence": [
+    "storage_type=service",
+    "health_probe NOT NULL (contract \u00a74.10 service-only)",
+    "provides_apis NOT NULL (service-only)",
+    "@register: NONE FOUND IN SOURCE"
+   ]
+  },
+  {
+   "asset_id": "bg_panchanga",
+   "layer": "brahmagyan",
+   "kind": "data",
+   "type": "service",
+   "storage": "service",
+   "status": "CURRENT",
+   "verdict": "service",
+   "service_pts": 3,
+   "data_pts": 0,
+   "column_to_fix": "asset_kind",
+   "evidence": [
+    "storage_type=service",
+    "health_probe NOT NULL (contract \u00a74.10 service-only)",
+    "provides_apis NOT NULL (service-only)",
+    "@register: NONE FOUND IN SOURCE"
+   ]
+  },
+  {
+   "asset_id": "ka_graha_sancara",
+   "layer": "kala",
+   "kind": "service",
+   "type": "data",
+   "storage": "service",
+   "status": "DRAFT",
+   "verdict": "service",
+   "service_pts": 2,
+   "data_pts": 0,
+   "column_to_fix": "asset_type",
+   "evidence": [
+    "storage_type=service",
+    "service_health=unhealthy (C-16: non-service must be NULL)",
+    "@register: ['platform/python-sidecar/pipeline/orchestrator/writers/ka_graha_sancara.py:48']"
+   ]
+  },
+  {
+   "asset_id": "ka_muhurta_seva",
+   "layer": "kala",
+   "kind": "service",
+   "type": "data",
+   "storage": "service",
+   "status": "DRAFT",
+   "verdict": "service",
+   "service_pts": 2,
+   "data_pts": 0,
+   "column_to_fix": "asset_type",
+   "evidence": [
+    "storage_type=service",
+    "service_health=healthy (C-16: non-service must be NULL)",
+    "@register: ['platform/python-sidecar/services/ka_muhurta_seva/writer.py:73']"
+   ]
+  },
+  {
+   "asset_id": "mi_abhilekha",
+   "layer": "mimamsa",
+   "kind": "service",
+   "type": "data",
+   "storage": "service",
+   "status": "DRAFT",
+   "verdict": "data",
+   "service_pts": 1,
+   "data_pts": 3,
+   "column_to_fix": null,
+   "evidence": [
+    "storage_type=service",
+    "target_table=mimamsa_journal (data-shaped)",
+    "count_sql NOT NULL (data-shaped)",
+    "target_floor=0 (data-shaped)",
+    "@register: ['platform/python-sidecar/pipeline/orchestrator/writers/mi_abhilekha.py:29']"
+   ]
+  },
+  {
+   "asset_id": "mi_seva",
+   "layer": "mimamsa",
+   "kind": "service",
+   "type": "data",
+   "storage": "service",
+   "status": "DRAFT",
+   "verdict": "data",
+   "service_pts": 1,
+   "data_pts": 3,
+   "column_to_fix": null,
+   "evidence": [
+    "storage_type=service",
+    "target_table=mimamsa_preferences (data-shaped)",
+    "count_sql NOT NULL (data-shaped)",
+    "target_floor=0 (data-shaped)",
+    "@register: ['platform/python-sidecar/pipeline/orchestrator/writers/mi_seva.py:26']"
+   ]
+  }
+ ],
+ "triples": {
+  "data|data|postgres_table": 99,
+  "data|service|service": 2,
+  "data|data|pgvector": 4,
+  "data|data|postgres_view": 1,
+  "artifact|data|postgres_table": 16,
+  "service|service|service": 2,
+  "service|data|service": 4
+ },
+ "kind_totals": {
+  "data": 106,
+  "artifact": 16,
+  "service": 6
+ },
+ "type_totals": {
+  "data": 124,
+  "service": 4
+ }
+}

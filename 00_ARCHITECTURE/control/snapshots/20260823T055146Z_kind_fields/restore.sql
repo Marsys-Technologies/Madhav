@@ -1,0 +1,157 @@
+-- M0-T21 RESTORE SCRIPT — asset_registry kind fields, 128 rows, literal VALUES.
+-- Captured 2026-08-23T05:54:45.118396+00:00. Restores asset_kind/asset_type/storage_type ONLY.
+-- Touches NO other column, NO other table, NO DDL. Run inside the BEGIN/COMMIT as written.
+-- Rowcount assertion: the DO block raises and aborts unless exactly 128 rows are restored.
+BEGIN;
+
+CREATE TEMP TABLE _m0t21_restore(asset_id text PRIMARY KEY, asset_kind text, asset_type text, storage_type text) ON COMMIT DROP;
+INSERT INTO _m0t21_restore(asset_id, asset_kind, asset_type, storage_type) VALUES
+  ('bg_class_lifetime_counts','data','data','postgres_table'),
+  ('bg_class_priors','data','data','postgres_table'),
+  ('bg_cohort','data','data','postgres_table'),
+  ('bg_compendium_index','data','data','postgres_table'),
+  ('bg_concordance','data','data','postgres_table'),
+  ('bg_dasha_systems','data','data','postgres_table'),
+  ('bg_dignity_reference','data','data','postgres_table'),
+  ('bg_doshas','data','data','postgres_table'),
+  ('bg_ephemeris','data','data','postgres_table'),
+  ('bg_ephemeris_engine','data','service','service'),
+  ('bg_formula_constants','data','data','postgres_table'),
+  ('bg_ghatana','data','data','postgres_table'),
+  ('bg_gochara_arcs','data','data','postgres_table'),
+  ('bg_gochara_citation_resolution','data','data','postgres_table'),
+  ('bg_kota_chakra_rings','data','data','postgres_table'),
+  ('bg_kp_sublord_division','data','data','postgres_table'),
+  ('bg_medical_mappings','data','data','postgres_table'),
+  ('bg_muhurta_lattice','data','data','postgres_table'),
+  ('bg_nakshatra','data','data','postgres_table'),
+  ('bg_nakshatra_medical','data','data','postgres_table'),
+  ('bg_ontology','data','data','postgres_table'),
+  ('bg_panchanga','data','service','service'),
+  ('bg_parihara_rules','data','data','postgres_table'),
+  ('bg_phaladeepika_latta','data','data','postgres_table'),
+  ('bg_prashna_rules','data','data','postgres_table'),
+  ('bg_reference','data','data','postgres_table'),
+  ('bg_remedies','data','data','postgres_table'),
+  ('bg_rules','data','data','postgres_table'),
+  ('bg_sarvatobhadra_grid','data','data','postgres_table'),
+  ('bg_sign_medical','data','data','postgres_table'),
+  ('bg_sky_calendar','data','data','postgres_table'),
+  ('bg_text_index','data','data','postgres_table'),
+  ('bg_texts','data','data','postgres_table'),
+  ('bg_transit_engine','data','data','postgres_table'),
+  ('bg_transit_rules','data','data','postgres_table'),
+  ('bg_vastu_directions','data','data','postgres_table'),
+  ('bg_vedha_malefic_scale','data','data','postgres_table'),
+  ('bg_vidhi_floors','data','data','postgres_table'),
+  ('bg_vidhi_primitives','data','data','postgres_table'),
+  ('bg_yogas','data','data','postgres_table'),
+  ('bo_anveshana','data','data','postgres_table'),
+  ('bo_arudha','data','data','postgres_table'),
+  ('bo_bimba','data','data','pgvector'),
+  ('bo_cdlm_summary','data','data','postgres_table'),
+  ('bo_cgm_motifs','data','data','postgres_table'),
+  ('bo_cgm_paths','data','data','postgres_table'),
+  ('bo_chart_gestalt','data','data','postgres_table'),
+  ('bo_drishti','data','data','postgres_table'),
+  ('bo_karanajala','data','data','postgres_table'),
+  ('bo_laksana','data','data','postgres_table'),
+  ('bo_laksana_rerank','data','data','postgres_table'),
+  ('bo_nakshatra_semantic','data','data','postgres_table'),
+  ('bo_pramana_mapa','data','data','postgres_table'),
+  ('bo_pratijna','data','data','postgres_table'),
+  ('bo_samskara','data','data','pgvector'),
+  ('bo_samvada','data','data','postgres_view'),
+  ('bo_sangati','data','data','postgres_table'),
+  ('bo_special_lagna','data','data','postgres_table'),
+  ('bo_sudarshana','data','data','postgres_table'),
+  ('bo_upaya','data','data','pgvector'),
+  ('bo_vargottama_dhana','data','data','postgres_table'),
+  ('bo_yantra_mechanism','data','data','postgres_table'),
+  ('ga_ayurdaya','data','data','postgres_table'),
+  ('ga_condition','data','data','postgres_table'),
+  ('ga_dashas','data','data','postgres_table'),
+  ('ga_medical','data','data','postgres_table'),
+  ('ga_nakshatra','data','data','postgres_table'),
+  ('ga_panchanga','data','data','postgres_table'),
+  ('ga_positions','data','data','postgres_table'),
+  ('ga_prashna','data','data','postgres_table'),
+  ('ga_sade_sati','data','data','postgres_table'),
+  ('ga_sensitive','data','data','postgres_table'),
+  ('ga_sensitive_degree','data','data','postgres_table'),
+  ('ga_strength','data','data','postgres_table'),
+  ('ga_structural','data','data','postgres_table'),
+  ('ga_tajaka','data','data','postgres_table'),
+  ('ga_transit_anchors','data','data','postgres_table'),
+  ('ga_vargas','data','data','postgres_table'),
+  ('ga_vastu','data','data','postgres_table'),
+  ('ga_vichara','data','data','postgres_table'),
+  ('ga_yoga','data','data','postgres_table'),
+  ('ka_avadhi','data','data','postgres_table'),
+  ('ka_bhavishya_lekha','artifact','data','postgres_table'),
+  ('ka_dasha_kala','service','service','service'),
+  ('ka_gochara','data','data','postgres_table'),
+  ('ka_gochara_resonance','data','data','postgres_table'),
+  ('ka_gochara_sweep','data','data','postgres_table'),
+  ('ka_gochara_v3_century_materialize','data','data','postgres_table'),
+  ('ka_graha_sancara','service','data','service'),
+  ('ka_jivana_parva','artifact','data','postgres_table'),
+  ('ka_kala_darshana','artifact','data','postgres_table'),
+  ('ka_kalasutra','artifact','data','postgres_table'),
+  ('ka_kota_chakra','data','data','postgres_table'),
+  ('ka_kshetra','data','data','postgres_table'),
+  ('ka_moorti_nirnaya','data','data','postgres_table'),
+  ('ka_muhurta_seva','service','data','service'),
+  ('ka_sangam','artifact','data','postgres_table'),
+  ('ka_sudarshana_varsha','data','data','postgres_table'),
+  ('ka_taranga','data','data','postgres_table'),
+  ('ka_tithi_pravesha','data','data','postgres_table'),
+  ('ka_tulana','service','service','service'),
+  ('ka_vedha_gochara','data','data','postgres_table'),
+  ('ka_vighnakara','artifact','data','postgres_table'),
+  ('ka_yojaka','artifact','data','postgres_table'),
+  ('lel_events','data','data','postgres_table'),
+  ('mi_abhilekha','service','data','service'),
+  ('mi_adhilepa','data','data','postgres_table'),
+  ('mi_bhara','data','data','postgres_table'),
+  ('mi_bhavisya','data','data','postgres_table'),
+  ('mi_darshana','data','data','pgvector'),
+  ('mi_gunanaka','data','data','postgres_table'),
+  ('mi_jivanaghatana','data','data','postgres_table'),
+  ('mi_kula','data','data','postgres_table'),
+  ('mi_pariksha','data','data','postgres_table'),
+  ('mi_pramana','data','data','postgres_table'),
+  ('mi_sambandha','data','data','postgres_table'),
+  ('mi_sankalpa','data','data','postgres_table'),
+  ('mi_seva','service','data','service'),
+  ('mi_vistara','data','data','postgres_table'),
+  ('ph_muhurta','artifact','data','postgres_table'),
+  ('ph_nimitta','artifact','data','postgres_table'),
+  ('ph_phaladesa','artifact','data','postgres_table'),
+  ('ph_pramana','artifact','data','postgres_table'),
+  ('ph_pratikara','artifact','data','postgres_table'),
+  ('ph_rectification','artifact','data','postgres_table'),
+  ('ph_sankrama','artifact','data','postgres_table'),
+  ('ph_sodhana','artifact','data','postgres_table'),
+  ('ph_suddha_sodhana','artifact','data','postgres_table');
+
+DO $$
+DECLARE n_src int; n_upd int; n_missing int;
+BEGIN
+  SELECT count(*) INTO n_src FROM _m0t21_restore;
+  IF n_src <> 128 THEN RAISE EXCEPTION 'restore source has %, expected 128', n_src; END IF;
+  SELECT count(*) INTO n_missing FROM _m0t21_restore s
+    WHERE NOT EXISTS (SELECT 1 FROM asset_registry a WHERE a.asset_id = s.asset_id);
+  IF n_missing <> 0 THEN RAISE EXCEPTION 'restore: % snapshot asset_ids no longer exist in asset_registry', n_missing; END IF;
+  UPDATE asset_registry a
+     SET asset_kind = s.asset_kind, asset_type = s.asset_type, storage_type = s.storage_type
+    FROM _m0t21_restore s WHERE a.asset_id = s.asset_id;
+  GET DIAGNOSTICS n_upd = ROW_COUNT;
+  IF n_upd <> 128 THEN RAISE EXCEPTION 'restore updated % rows, expected 128', n_upd; END IF;
+  RAISE NOTICE 'restore: % rows restored', n_upd;
+END $$;
+
+-- Post-restore verification (must return 0):
+--   SELECT count(*) FROM asset_registry a JOIN _m0t21_restore s USING (asset_id)
+--   WHERE (a.asset_kind,a.asset_type,a.storage_type) IS DISTINCT FROM (s.asset_kind,s.asset_type,s.storage_type);
+COMMIT;
