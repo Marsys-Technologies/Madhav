@@ -19,6 +19,17 @@ import { Client } from 'pg'
 import { readFileSync, realpathSync } from 'fs'
 import { resolve } from 'path'
 import { fileURLToPath } from 'url'
+import {
+  buildDivergenceReport,
+  cellToken,
+  deriveSeedRow,
+  enforceNullFillGate,
+  formatDivergenceReport,
+  NULL_FILL_ACK_ENV,
+  onConflictUpdatedColumns,
+  parseNullFillAcknowledgement,
+  type SeedRow,
+} from './seed_divergence_report'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -3184,6 +3195,118 @@ export function refuseIfDryRunRequested(env: NodeJS.ProcessEnv): void {
   if (dryRunRequested(env)) throw new Error(DRY_RUN_NOT_IMPLEMENTED_MESSAGE)
 }
 
+// ── The registry upsert ──────────────────────────────────────────────────────
+
+/**
+ * The statement every seed run executes against `asset_registry`, hoisted to module scope so
+ * that ONE artefact is both the thing executed and the thing parsed.
+ *
+ * `main()` derives the divergence report's column coverage from this exact string via
+ * `onConflictUpdatedColumns()` (Nirmāṇa M0-T35, ruling D-27 §2(b)). A hand-kept list of
+ * "columns a re-run writes" would be free to drift from the SET clause; parsing the statement
+ * makes drift structurally impossible. Add a column here and the report covers it on the next
+ * run, with no second edit anywhere.
+ *
+ * ─── `target_floor` IS DELIBERATELY ABSENT FROM `DO UPDATE SET` ───────────────
+ *
+ * Ruling D-27 §2(a), refining D-19: `target_floor` is a MEASURED field. Invariant I7 sets a
+ * floor to the MEASURED ACHIEVED COUNT after a build, and a declarative source file structurally
+ * cannot hold a measured value — it can only hold a number someone typed. So seed ownership of
+ * this column collides with I7 at EVERY rung, not at one: every `§8.6 stage 2 Conform` writes
+ * floors from measurement, and every subsequent seed run silently reverted them with exit 0.
+ * That is strictly worse than a red, because nothing announces the expiry.
+ *
+ * D-27 §2(a) permitted either removal from this SET clause OR an MR-06-style CASE guard.
+ * REMOVAL was chosen, on these merits and not on diff size:
+ *
+ *   1. No guard can express the rule. MR-06's guard works because RETIRED is a TERMINAL STATE:
+ *      "is the live row RETIRED?" is a real question with a real answer in the row itself. The
+ *      rule for a floor is "is the live value MEASURED?", and the registry stores no provenance
+ *      for `target_floor` — there is nothing in the row a CASE could read. Every available
+ *      stand-in answers a different question.
+ *   2. The obvious stand-in is wrong where it matters most. `CASE WHEN … IS NOT NULL THEN
+ *      asset_registry.target_floor ELSE EXCLUDED.target_floor END` asks "is it set?", and so
+ *      still writes a typed number into the three assets whose floor is live-NULL — the exact
+ *      stale-historical-figure write I7 exists to forbid, and a NULL→value fill of the kind
+ *      D-28 §1 gates elsewhere in this file. It would leave the worst class open while looking
+ *      closed. Removal leaves none.
+ *   3. A second guard would inherit an unexercised one. D-28 §4 records that MR-06 "has never
+ *      had to choose" — its only live RETIRED row is declared RETIRED in the seed too, so both
+ *      branches agree and it is a DETECTOR WITHOUT A DECISION. Modelling a new guard on it means
+ *      copying a shape nothing has ever separated.
+ *   4. Absence is the durable class, and it is visible in a diff. Every column the campaign's
+ *      repairs survived is absent from these lists (`domain`, `rung`, `integrity_check_sql`,
+ *      `has_substeps`, …). Removal puts `target_floor` in that same, already-proven category
+ *      rather than inventing a third mechanism for it.
+ *
+ * `target_floor` REMAINS in the INSERT column list. A brand-new asset has never been built, so
+ * there is no measurement for a seed value to collide with, and the ruling scopes its
+ * requirement to the DO UPDATE SET. An honest residual, recorded rather than silently accepted:
+ * a newly-inserted asset therefore still lands with a floor someone typed. Nothing overwrites a
+ * measured floor any more; the first build's Conform measures and replaces it.
+ */
+const ASSET_UPSERT_SQL = `INSERT INTO asset_registry (
+        asset_id, layer, sort_order, sanskrit_name, english_name, english_description,
+        storage_type, target_table, count_sql, size_sql, target_floor,
+        expected_volume_formula, expected_volume_inputs, volume_explanation,
+        depends_on, scope, is_active, estimated_seconds,
+        asset_type, layer_name, layer_index, provides_apis, health_probe, catalog_status,
+        asset_kind
+      ) VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25
+      ) ON CONFLICT (asset_id) DO UPDATE SET
+        layer = EXCLUDED.layer,
+        sort_order = EXCLUDED.sort_order,
+        sanskrit_name = EXCLUDED.sanskrit_name,
+        english_name = EXCLUDED.english_name,
+        english_description = EXCLUDED.english_description,
+        storage_type = EXCLUDED.storage_type,
+        target_table = EXCLUDED.target_table,
+        count_sql = EXCLUDED.count_sql,
+        size_sql = EXCLUDED.size_sql,
+        -- target_floor IS INTENTIONALLY NOT ASSIGNED HERE (Nirmāṇa M0-T35, ruling D-27 §2(a),
+        -- refining D-19). It is a MEASURED field: I7 sets a floor to the measured achieved
+        -- count, so a re-seed that restored a typed number silently reverted every Conform
+        -- stage's measurement, at every rung, with exit 0. It stays in the INSERT list above —
+        -- a new row has no measurement to collide with — and is never overwritten again.
+        -- Do not "restore" this line: see this constant's docstring for why a CASE guard
+        -- cannot express the rule.
+        expected_volume_formula = EXCLUDED.expected_volume_formula,
+        expected_volume_inputs = EXCLUDED.expected_volume_inputs,
+        volume_explanation = EXCLUDED.volume_explanation,
+        depends_on = EXCLUDED.depends_on,
+        scope = EXCLUDED.scope,
+        -- MR-06 (PARISHKARA cutover durability): RETIRED guard.
+        -- A RETIRED asset (e.g. ka_gochara_sweep post W6.4 cutover) must NEVER
+        -- be resurrected by a re-seed. If the existing DB row is already RETIRED,
+        -- preserve that status and the corresponding is_active=false rather than
+        -- blindly overwriting with whatever the seed says. This is the ON-CONFLICT
+        -- analogue of migration 563's one-way transition: CURRENT→RETIRED is
+        -- irreversible by the seed; only an explicit native-authorized migration
+        -- can reverse it.
+        catalog_status = CASE WHEN asset_registry.catalog_status = 'RETIRED'
+                              THEN asset_registry.catalog_status
+                              ELSE EXCLUDED.catalog_status END,
+        is_active = CASE WHEN asset_registry.catalog_status = 'RETIRED'
+                         THEN asset_registry.is_active
+                         ELSE EXCLUDED.is_active END,
+        asset_type = EXCLUDED.asset_type,
+        layer_name = EXCLUDED.layer_name,
+        layer_index = EXCLUDED.layer_index,
+        provides_apis = EXCLUDED.provides_apis,
+        health_probe = EXCLUDED.health_probe,
+        asset_kind = EXCLUDED.asset_kind`
+
+/**
+ * The five columns whose value comes from a `??` default when the seed entry omits the key.
+ *
+ * Reported alongside the divergence so an operator can see that a cell is changing because
+ * NOTHING DECLARED IT, not because someone declared a different value. Ruling D-27 §3(a): the
+ * default is an ACTIVE WRITE, not a no-op, and "absent means unchanged" is the intuition
+ * everyone brings to this file and it is wrong here.
+ */
+const DEFAULTABLE_KEYS = ['asset_type', 'asset_kind', 'layer_name', 'layer_index', 'catalog_status'] as const
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
@@ -3252,83 +3375,90 @@ async function main(): Promise<void> {
     console.log()
   }
 
+  // ── Derive every bound value ONCE, then report, then write from the SAME objects ──
+  //
+  // Nirmāṇa M0-T35 (rulings D-27 §2(b), D-28 §1). `deriveSeedRow()` is the single place the
+  // `??` defaults and the layer maps are applied; the report below and the upsert further down
+  // read the identical `SeedRow` objects. A report that recomputed the values could describe a
+  // write that differs from the write (CLAUDE.md §N.7 item 3).
+  //
+  // Built AFTER the pre-flight loop above, deliberately: that loop mutates `asset.is_active`
+  // in place when a target_table is absent, and the report must show what will actually be
+  // written, not what the file declares.
+  const seedRows = new Map<string, SeedRow>()
+  const defaultedKeys = new Set<string>()
+  for (const asset of ASSETS) {
+    seedRows.set(asset.asset_id, deriveSeedRow(asset))
+    for (const k of DEFAULTABLE_KEYS) {
+      if (!Object.prototype.hasOwnProperty.call(asset, k)) {
+        defaultedKeys.add(cellToken(asset.asset_id, k))
+      }
+    }
+  }
+
+  // ── Divergence report — BEFORE writing, never after ──────────────────────────
+  //
+  // D-27 §2(b): count_sql and depends_on are DECLARED-BUT-VERIFIABLE — legitimately authored in
+  // source AND checkable against reality — so neither surface is unconditionally right and
+  // divergence must never be "silently resolved by whoever runs last". It is surfaced here and
+  // reconciled at the owning rung's Conform, on the merits, per cell.
+  //
+  // D-28 §1: a NULL→value transition is reported as its own category and GATED, because filling
+  // a NULL is not changing a value — it is where an undecided question gets answered by a
+  // default, producing a row indistinguishable from a correctly-derived one.
+  console.log('\nComputing divergence report (before any write)...')
+  const { rows: liveRegistryRows } = await client.query<Record<string, unknown>>(
+    'SELECT * FROM asset_registry',
+  )
+  const liveRows = new Map<string, SeedRow>(
+    liveRegistryRows.map(r => [r.asset_id as string, r as SeedRow]),
+  )
+  const divergence = buildDivergenceReport({
+    liveRows,
+    seedRows,
+    columns: onConflictUpdatedColumns(ASSET_UPSERT_SQL),
+    defaultedKeys,
+  })
+  console.log()
+  console.log(formatDivergenceReport(divergence))
+  console.log()
+
+  try {
+    const acknowledged = enforceNullFillGate(divergence, parseNullFillAcknowledgement(process.env))
+    if (acknowledged.length > 0) {
+      console.log(
+        `${acknowledged.length} NULL→value fill(s) explicitly acknowledged via ` +
+        `${NULL_FILL_ACK_ENV}: ${acknowledged.join(', ')}`,
+      )
+      console.log()
+    }
+  } catch (err) {
+    // Release the connection before the refusal propagates — nothing has been written; the
+    // upsert loop below has not started.
+    await client.end()
+    throw err
+  }
+
   // Insert asset_registry rows
   console.log('Seeding asset_registry...')
   for (const asset of ASSETS) {
-    // Derive layer_name / layer_index from layer code when not explicitly set
-    const layerNames: Record<string, string> = {
-      brahmagyan: 'Brahmagyan', ganita: 'Gaṇita', bodha: 'Bodha',
-      kala: 'Kāla', phala: 'Phala', mimamsa: 'Mīmāṃsā',
-    }
-    const layerIndices: Record<string, string> = {
-      brahmagyan: 'L0', ganita: 'L1', bodha: 'L2',
-      kala: 'L3', phala: 'L4', mimamsa: 'L5',
-    }
-    const assetType = asset.asset_type ?? 'data'
-    const assetKind = asset.asset_kind ?? 'data'
-    const layerName = asset.layer_name ?? layerNames[asset.layer] ?? asset.layer
-    const layerIndex = asset.layer_index ?? layerIndices[asset.layer] ?? null
-    const catalogStatus = asset.catalog_status ?? (asset.layer === 'brahmagyan' ? 'CURRENT' : 'DRAFT')
+    const row = seedRows.get(asset.asset_id)!
 
     await client.query(
-      `INSERT INTO asset_registry (
-        asset_id, layer, sort_order, sanskrit_name, english_name, english_description,
-        storage_type, target_table, count_sql, size_sql, target_floor,
-        expected_volume_formula, expected_volume_inputs, volume_explanation,
-        depends_on, scope, is_active, estimated_seconds,
-        asset_type, layer_name, layer_index, provides_apis, health_probe, catalog_status,
-        asset_kind
-      ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25
-      ) ON CONFLICT (asset_id) DO UPDATE SET
-        layer = EXCLUDED.layer,
-        sort_order = EXCLUDED.sort_order,
-        sanskrit_name = EXCLUDED.sanskrit_name,
-        english_name = EXCLUDED.english_name,
-        english_description = EXCLUDED.english_description,
-        storage_type = EXCLUDED.storage_type,
-        target_table = EXCLUDED.target_table,
-        count_sql = EXCLUDED.count_sql,
-        size_sql = EXCLUDED.size_sql,
-        target_floor = EXCLUDED.target_floor,
-        expected_volume_formula = EXCLUDED.expected_volume_formula,
-        expected_volume_inputs = EXCLUDED.expected_volume_inputs,
-        volume_explanation = EXCLUDED.volume_explanation,
-        depends_on = EXCLUDED.depends_on,
-        scope = EXCLUDED.scope,
-        -- MR-06 (PARISHKARA cutover durability): RETIRED guard.
-        -- A RETIRED asset (e.g. ka_gochara_sweep post W6.4 cutover) must NEVER
-        -- be resurrected by a re-seed. If the existing DB row is already RETIRED,
-        -- preserve that status and the corresponding is_active=false rather than
-        -- blindly overwriting with whatever the seed says. This is the ON-CONFLICT
-        -- analogue of migration 563's one-way transition: CURRENT→RETIRED is
-        -- irreversible by the seed; only an explicit native-authorized migration
-        -- can reverse it.
-        catalog_status = CASE WHEN asset_registry.catalog_status = 'RETIRED'
-                              THEN asset_registry.catalog_status
-                              ELSE EXCLUDED.catalog_status END,
-        is_active = CASE WHEN asset_registry.catalog_status = 'RETIRED'
-                         THEN asset_registry.is_active
-                         ELSE EXCLUDED.is_active END,
-        asset_type = EXCLUDED.asset_type,
-        layer_name = EXCLUDED.layer_name,
-        layer_index = EXCLUDED.layer_index,
-        provides_apis = EXCLUDED.provides_apis,
-        health_probe = EXCLUDED.health_probe,
-        asset_kind = EXCLUDED.asset_kind`,
+      ASSET_UPSERT_SQL,
       [
-        asset.asset_id, asset.layer, asset.sort_order,
-        asset.sanskrit_name, asset.english_name, asset.english_description,
-        asset.storage_type, asset.target_table, asset.count_sql, asset.size_sql,
-        asset.target_floor, asset.expected_volume_formula,
-        asset.expected_volume_inputs ? JSON.stringify(asset.expected_volume_inputs) : null,
-        asset.volume_explanation,
-        asset.depends_on, asset.scope, asset.is_active, asset.estimated_seconds,
-        assetType, layerName, layerIndex,
-        asset.provides_apis ? JSON.stringify(asset.provides_apis) : null,
-        asset.health_probe ? JSON.stringify(asset.health_probe) : null,
-        catalogStatus,
-        assetKind,
+        row.asset_id, row.layer, row.sort_order,
+        row.sanskrit_name, row.english_name, row.english_description,
+        row.storage_type, row.target_table, row.count_sql, row.size_sql,
+        row.target_floor, row.expected_volume_formula,
+        row.expected_volume_inputs ? JSON.stringify(row.expected_volume_inputs) : null,
+        row.volume_explanation,
+        row.depends_on, row.scope, row.is_active, row.estimated_seconds,
+        row.asset_type, row.layer_name, row.layer_index,
+        row.provides_apis ? JSON.stringify(row.provides_apis) : null,
+        row.health_probe ? JSON.stringify(row.health_probe) : null,
+        row.catalog_status,
+        row.asset_kind,
       ],
     )
     console.log(`  ${asset.is_active ? '✓' : '⚠'} ${asset.asset_id}`)
