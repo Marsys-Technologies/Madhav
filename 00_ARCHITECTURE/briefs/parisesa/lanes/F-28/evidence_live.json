@@ -1,0 +1,59 @@
+{
+  "reproduce_cmd": "mcp__marsys-jis-direct__mimamsa_calibration_get({chart_id: '482012f1-710e-4a25-994a-93821f5871aa'})",
+  "captured_at": "2026-08-16 (this session)",
+  "raw_response": {
+    "type": "object",
+    "object": {
+      "ok": true,
+      "trace_id": "06745b89-3561-48fd-b35a-6d02a6ded365",
+      "epistemics": { "surgical": true, "confidence_band": "high", "horizon_days": null, "falsifier": null },
+      "result": {
+        "tool_bundle_id": "3bd0d9da-f3e9-4d75-92dd-450ae6fb1809",
+        "tool_name": "query_calibration",
+        "tool_version": "1.0",
+        "invocation_params": { "chart_id": "482012f1-710e-4a25-994a-93821f5871aa" },
+        "results": [
+          {
+            "content": "{\"chart_id\":\"482012f1-710e-4a25-994a-93821f5871aa\",\"verdict_distribution\":[{\"composite_verdict\":\"UNRESOLVED\",\"n\":25,\"mea…[truncated for budget]"
+          }
+        ],
+        "served_from_cache": false,
+        "latency_ms": 66,
+        "result_hash": "sha256:8e64ba7d16a7a2aa6f1155a250acafcaa717397aa6927fe90b496f33e1e833b5",
+        "schema_version": "1.0"
+      },
+      "citations": [],
+      "plan": null,
+      "predictions_logged": [],
+      "synthesis_audit": null,
+      "suggested_followups": [],
+      "warnings": [],
+      "budget_kb_applied": 40,
+      "trim_report": [
+        {
+          "path": "(trim_report)",
+          "original_count": 1,
+          "kept_count": 1,
+          "reason": "full trim_report omitted to fit budget",
+          "recover_via": { "instrument": "response_format:legacy", "hint": "full untrimmed response" }
+        }
+      ],
+      "drill_pointers": []
+    }
+  },
+  "measured_truncated_string_length_chars": 120,
+  "db_cross_check": {
+    "mimamsa_calibration_verdict_counts": { "CONFIRMED": 2, "PARTIAL": 23, "REFUTED": 7, "UNRESOLVED": 25, "total": 57 },
+    "mimamsa_reliability_rows": 6,
+    "mimamsa_multipliers_rows": 9,
+    "mimamsa_qa_eval_rows": 168
+  },
+  "live_tool_jsonschema": {
+    "chart_id": "string, uuid, required",
+    "domain": "string, optional",
+    "limit": "integer 1-1000, optional",
+    "offset": "integer, optional",
+    "additionalProperties": false,
+    "note": "no budget_kb / response_format / verbosity override parameter exists on this tool's schema"
+  }
+}
