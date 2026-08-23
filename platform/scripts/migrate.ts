@@ -834,6 +834,70 @@ export async function runCli(
   return summary
 }
 
+/**
+ * Prefix on every line this runner relays from the server. Deliberately distinct from
+ * `MIGRATE_COMPLETION_SENTINEL` and from `[migrate]`, so a relayed line can never be mistaken
+ * for — or matched by a grep looking for — the runner's own completion assertion.
+ */
+export const PG_NOTICE_PREFIX = '[migrate:pg]'
+
+/**
+ * The subset of `pg`'s `NoticeMessage` this runner relays. Structural, not nominal, so the
+ * formatter is testable without constructing a real protocol message.
+ */
+export interface ServerNoticeLike {
+  severity?: string | undefined
+  message?: string | undefined
+  code?: string | undefined
+  detail?: string | undefined
+  hint?: string | undefined
+  where?: string | undefined
+}
+
+/** One log line for one server notice. Pure — no I/O, so it has a real unit-level detector. */
+export function formatServerNotice(notice: ServerNoticeLike | null | undefined): string {
+  const severity = notice?.severity ?? 'NOTICE'
+  const message = notice?.message ?? '(no message)'
+  const extras: string[] = []
+  if (notice?.code) extras.push(`code=${notice.code}`)
+  if (notice?.detail) extras.push(`detail=${notice.detail}`)
+  if (notice?.hint) extras.push(`hint=${notice.hint}`)
+  if (notice?.where) extras.push(`where=${notice.where}`)
+  const tail = extras.length > 0 ? ` (${extras.join('; ')})` : ''
+  return `${PG_NOTICE_PREFIX} ${severity}: ${message}${tail}`
+}
+
+/**
+ * Relay every server NOTICE/WARNING this connection receives to STDERR.
+ *
+ * Until this existed, `main()` built its pool and never attached a `notice` listener, so
+ * node-postgres dropped every `RAISE NOTICE` and every server WARNING on the floor: a migration
+ * that self-verifies, run by a runner that discards the self-verification, leaves an operator
+ * unable to tell "the detector ran and was green" from "there is no detector" — only
+ * `RAISE EXCEPTION` survived (CLAUDE.md §N.8 at the transport layer; Nirmāṇa D-58).
+ *
+ * STDERR, not stdout, and never the `log` channel: the deploy step greps its combined log for
+ * `MIGRATE_COMPLETION_SENTINEL`, and relayed server text must be incapable of being read as the
+ * runner's own completion claim.
+ *
+ * The handler cannot throw: an exception raised inside an EventEmitter callback would surface as
+ * an uncaught exception and kill a migration run, which would make an observability change into
+ * a correctness hazard. It reports transaction state nowhere and changes nothing about how this
+ * runner opens, commits or rolls back anything.
+ */
+export function attachNoticeListener(
+  client: { on(event: 'notice', listener: (notice: ServerNoticeLike) => void): unknown },
+  emit: (line: string) => void = line => console.error(line)
+): void {
+  client.on('notice', notice => {
+    try {
+      emit(formatServerNotice(notice))
+    } catch {
+      /* never let relaying a diagnostic break the run it is describing */
+    }
+  })
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2)
   const dryRun = args.includes('--dry-run')
@@ -848,6 +912,7 @@ async function main(): Promise<void> {
 
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
   const client = await pool.connect()
+  attachNoticeListener(client)
   try {
     await runCli(client, dirs, { dryRun, target })
   } catch (err) {
