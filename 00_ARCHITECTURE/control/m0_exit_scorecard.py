@@ -593,9 +593,54 @@ def github_run_evidence(workflow_files: list[str]) -> dict:
     return out
 
 
+# D-38 (ADHIKĀRIN, 2026-08-23T09:24:48Z, power G1) adjudicates Phase 0.8c PER PACKET, BY
+# READING CLASS, rather than by naming each asset_id in the ruling's subject line — the
+# ORIGINAL detector below only ever looked for the latter. The five reading classes are
+# ZERO_CONSUMER_EVIDENCE_v1_0.md's own taxonomy (§1, built by M0-T6); the per-asset reading
+# is TRANSCRIBED from that document's §2 summary table, not re-derived — D-38 rules the
+# CLASS disposition, this table only carries forward the (already-published) per-asset fact
+# of which class each packet fell into. If a future re-run of zero_consumer_packets.py adds
+# a 24th packet or reclassifies one of these 23, this table will not know about it and the
+# new/changed packet will correctly fall out as UNMAPPED / unresolved below — this dict is
+# not a live query and must be re-checked against ZERO_CONSUMER_EVIDENCE_v1_0.md §2 if that
+# artifact is ever regenerated.
+D38_ZERO_CONSUMER_READING = {
+    "bg_cohort": "INPUT-ONLY", "bg_gochara_arcs": "INPUT-ONLY",
+    "bg_kota_chakra_rings": "INPUT-ONLY", "bg_kp_sublord_division": "INPUT-ONLY",
+    "bg_phaladeepika_latta": "INPUT-ONLY", "bg_reference": "INPUT-ONLY",
+    "bg_vedha_malefic_scale": "INPUT-ONLY", "ka_gochara_v3_century_materialize": "INPUT-ONLY",
+    "bg_concordance": "NO CONSUMER FOUND",
+    "bg_ephemeris_engine": "BY DESIGN EMPTY / CATEGORY MISMATCH",
+    "bg_sarvatobhadra_grid": "BY DESIGN EMPTY / CATEGORY MISMATCH",
+    "bg_panchanga": "METHOD-BLIND", "bg_sky_calendar": "METHOD-BLIND",
+    "bo_cdlm_summary": "METHOD-BLIND", "bo_samskara": "METHOD-BLIND",
+    "ka_graha_sancara": "METHOD-BLIND", "ka_kshetra": "METHOD-BLIND",
+    "mi_jivanaghatana": "METHOD-BLIND",
+    "bg_vidhi_floors": "SHADOWED", "bg_vidhi_primitives": "SHADOWED",
+    "ka_dasha_kala": "SHADOWED", "ka_muhurta_seva": "SHADOWED", "ka_tulana": "SHADOWED",
+}
+# D-38 part 3's per-class disposition, quoted to its operative words. Every class carries a
+# recorded determination — closed, or routed to a rung as a candidate/defect — none is left
+# open, per D-38's own holding: "RESOLVED MEANS ADJUDICATED, NOT MUTATED ... a finding
+# adjudicated against its evidence with a recorded determination IS resolved."
+D38_DISPOSITION = {
+    "INPUT-ONLY": "closed, no action — absence of a serving consumer is the design",
+    "NO CONSUMER FOUND": "recorded as a retirement candidate, NOT retired — routed to the owning rung",
+    "METHOD-BLIND": "closed as UNKNOWN — explicitly NOT a retirement candidate (H6 if it were)",
+    "SHADOWED": "a real defect — routed to the owning rung",
+    "BY DESIGN EMPTY / CATEGORY MISMATCH": "closed, no action — mismatch recorded",
+}
+
+
 def zero_consumer_state() -> dict:
-    """Criterion 9's detector: packets asserted, minus packets with a recorded
-    ADHIKĀRIN disposition in DECISIONS.jsonl."""
+    """Criterion 9's detector. Per D-38 (ADHIKĀRIN, 2026-08-23, ruling on power G1), a packet
+    is RESOLVED the instant its reading class carries a recorded D-38 disposition — a closed
+    determination or a routed-to-rung determination both count, because D-38 rules that
+    adjudication IS resolution, not mutation. `n_unresolved` counts packets whose reading
+    class has NO disposition recorded (0 today, over these 23 — D-38's five classes are
+    exhaustive of what ZERO_CONSUMER_EVIDENCE_v1_0.md found); it would go non-zero the
+    moment a packet appeared that D-38's per-class rule does not cover, so this remains a
+    real, falsifiable detector rather than a constant."""
     src = CONTROL / "zero_consumer_evidence.json"
     if not src.exists():
         return {"ok": False, "reason": f"{_rel(src)} missing"}
@@ -610,23 +655,27 @@ def zero_consumer_state() -> dict:
     else:
         asset_ids = sorted({r.get("asset_id") for r in data if isinstance(r, dict)} - {None})
 
-    dec = ROOT / "00_ARCHITECTURE" / "autonomy" / "state" / "DECISIONS.jsonl"
+    by_class: dict[str, list[str]] = {}
     disposed = {}
-    if dec.exists():
-        for line in dec.read_text().splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                d = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            subj = str(d.get("subject", ""))
-            for aid in asset_ids:
-                if d.get("power") == "G1" and aid in subj:
-                    disposed.setdefault(aid, []).append(d.get("id"))
+    unresolved = []
+    for aid in asset_ids:
+        cls = D38_ZERO_CONSUMER_READING.get(aid)
+        by_class.setdefault(cls or "UNMAPPED (not in D-38's reading table)", []).append(aid)
+        disp = D38_DISPOSITION.get(cls) if cls else None
+        if disp is None:
+            unresolved.append(aid)
+        else:
+            disposed[aid] = {"reading_class": cls, "disposition": disp,
+                              "decision": "DECISIONS.jsonl D-38 part 3"}
+    routed_to_rung = sorted(a for a in asset_ids
+                            if D38_ZERO_CONSUMER_READING.get(a) in
+                               ("NO CONSUMER FOUND", "SHADOWED"))
     return {"ok": True, "asset_ids": asset_ids, "n_packets": len(asset_ids),
-            "disposed": disposed, "n_unresolved": len(asset_ids) - len(disposed)}
+            "disposed": disposed, "n_unresolved": len(unresolved), "unresolved": unresolved,
+            "adjudicated_by_reading_class": by_class,
+            "reading_class_disposition_D38": D38_DISPOSITION,
+            "routed_to_owning_rung_not_closed": routed_to_rung,
+            "ruling": "DECISIONS.jsonl D-38 part 3 (ADHIKĀRIN, 2026-08-23T09:24:48Z)"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -740,7 +789,17 @@ RULES = [
         UNION ALL
         SELECT asset_id, target_table FROM asset_registry
         WHERE clear_tables IS NOT NULL AND NOT (target_table = ANY(clear_tables))"""),
-    ("C-28", "estimated_seconds NOT NULL where a successful build exists", "BLOCKING", [], """
+    ("C-28", "estimated_seconds NOT NULL where a successful build exists "
+             "(NOTE — D-42, 2026-08-23: asset_throughput.state='lit' is a CLAIM about a build, "
+             "not evidence of one; build_run_assets is the authoritative source wherever 'was "
+             "this asset built' is asked. The 31-row R0 residual this rule cannot backfill is "
+             "therefore not '31 assets missing an estimate' but '31 assets read lit with no "
+             "completed build_run_assets record behind them' — the missing estimate is a "
+             "symptom, the unearned lit is the finding. This SQL is UNCHANGED by D-42: D-42 "
+             "explicitly forbids re-pointing this detector at build_run_assets to close it, "
+             "since that would make the BLOCKING failure pass while the 31 unearned lit states "
+             "remain exactly as they are — a weakening under D-41 part 2, presumptively H3.)",
+     "BLOCKING", [], """
         SELECT r.asset_id FROM asset_registry r
         WHERE r.estimated_seconds IS NULL AND EXISTS
           (SELECT 1 FROM asset_throughput t
@@ -978,7 +1037,14 @@ def main() -> int:
                   "(asset_registry columns they need are absent)"] if blocked_rules else []) +
                 ([f"rules {', '.join(never_green)} have NO detector at all (contract §8) "
                   "and must never read green"] if never_green else []))
-            ) if (blocked_rules or never_green) else None}
+            ) if (blocked_rules or never_green) else None,
+            "note": ("D-42 (ADHIKĀRIN, 2026-08-23T11:04:17Z) reclassifies C-28's framing within "
+                     "this rule's 'data' violations: see the C-28 rule's own text above — "
+                     "asset_throughput.state='lit' is a claim, not evidence, and build_run_assets "
+                     "is authoritative for 'was this asset built'. This does not change the "
+                     "measured_value here; D-42 forbids using its own ranking to re-point C-28's "
+                     "detector, which would silently shrink this criterion's count without "
+                     "earning it.")}
 
         # ── criterion 3 — prefix mismatches ──────────────────────────────────
         c01 = rec["contract_rules"]["C-01"]
@@ -1000,7 +1066,17 @@ def main() -> int:
             "components": {"dangling_C-12": c12["violations"],
                            "draft_targeted_C-11": c11["violations"]},
             "total_edges_in_registry": n_edges,
-            "rows": {"C-12": c12["rows"], "C-11": c11["rows"]}}
+            "rows": {"C-12": c12["rows"], "C-11": c11["rows"]},
+            "note": ("D-38 (ADHIKĀRIN, 2026-08-23T09:24:48Z) ruled Phase 0.8b's general "
+                     "disposition REMAIN DRAFT — a decision, not a promotion — for any "
+                     "DRAFT-but-served asset no rung clause names by asset_id for promote-or-"
+                     "retire. None of the three C-11 dependencies (ga_vichara R1, ka_dasha_kala "
+                     "R3, ka_sangam R3) is named by any such clause, so bulk promotion in M0 is "
+                     "refused for all three and the status here stays FAIL: the detector still "
+                     "returns 3, and D-38 explicitly forbids reading REMAIN-DRAFT as a repair. "
+                     "This criterion's own deferral (deferred to R1/R3, ruling D-38) is recorded "
+                     "in M0_DEFERRAL_REGISTER_v1_0.md, not in this scorecard's status field — "
+                     "see criteria 3 and 7 for the same convention.")}
 
         # ── criterion 5 — multi-producer partitions ──────────────────────────
         c.execute("""SELECT target_table, count(*) n,
@@ -1125,7 +1201,20 @@ def main() -> int:
                     f"decorator scan, so even reading has_writer=false as 'dead' would be "
                     f"reading a flag that is itself wrong on those rows."},
             "detector_sql": ("SELECT asset_id, catalog_status, asset_kind, has_writer FROM "
-                             "asset_registry WHERE is_active  -- minus the AST @register set")}
+                             "asset_registry WHERE is_active  -- minus the AST @register set"),
+            "note": ("D-39 (ADHIKĀRIN, 2026-08-23T09:25:50Z) CONFIRMS ownership of this "
+                     "criterion's dead-flag work to M0 (independently re-derived) and SETTLES "
+                     "that a new column is authorised under D-4's standing conditions, NOT "
+                     "reserved by charter P5 — but no column has been created and this task did "
+                     "not create one, so the criterion remains NOT-MEASURABLE here; a known "
+                     "repair now exists (add the column, backfill, verify per D-4) and nobody "
+                     "has executed it. Separately, D-42 (ADHIKĀRIN, 2026-08-23T11:04:17Z) ranks "
+                     "build_run_assets as authoritative wherever a surface asks 'was this asset "
+                     "built' — bearing on this criterion's BUILD-COVERAGE half, not its dead-flag "
+                     "half: has_writer/asset_throughput.state='lit' remain proxies for 'built', "
+                     "and this criterion's own first-half measurement above (no production "
+                     "@register) does not depend on either proxy, so D-42 does not change the "
+                     "numbers here.")}
 
         # ── criterion 9 — unresolved zero-consumer findings ─────────────────
         if not zc.get("ok"):
@@ -1135,12 +1224,27 @@ def main() -> int:
         else:
             rec["criteria"]["9_unresolved_zero_consumer"] = {
                 "detector": ("count of zero-consumer packets in "
-                             "00_ARCHITECTURE/control/zero_consumer_evidence.json, minus those "
-                             "with a recorded ADHIKĀRIN G1 disposition naming them in "
-                             "00_ARCHITECTURE/autonomy/state/DECISIONS.jsonl"),
+                             "00_ARCHITECTURE/control/zero_consumer_evidence.json whose reading "
+                             "class (ZERO_CONSUMER_EVIDENCE_v1_0.md §1/§2) carries NO D-38 "
+                             "disposition. D-38 (ADHIKĀRIN, 2026-08-23T09:24:48Z, power G1) "
+                             "adjudicated all five reading classes and rules that adjudication "
+                             "IS resolution ('RESOLVED MEANS ADJUDICATED, NOT MUTATED'); the "
+                             "prior reading (packets minus asset_id-named DECISIONS entries) is "
+                             "superseded by this task, D-38 having been made since."),
                 "status": PASS if zc["n_unresolved"] == 0 else FAIL,
                 "measured_value": zc["n_unresolved"],
                 "packets": zc["n_packets"], "disposed": zc["disposed"],
+                "unresolved": zc["unresolved"],
+                "adjudicated_by_reading_class": zc["adjudicated_by_reading_class"],
+                "reading_class_disposition_D38": zc["reading_class_disposition_D38"],
+                "note": ("ALL 23 PACKETS RESOLVED BY D-38 PART 3 — 8 INPUT-ONLY and 2 BY-DESIGN "
+                         "closed with no action; 7 METHOD-BLIND closed as unknown (explicitly "
+                         "NOT retirement candidates); 1 NO-CONSUMER-FOUND and 5 SHADOWED are "
+                         "ROUTED TO THEIR OWNING RUNGS as a retirement candidate / a real defect "
+                         "respectively — routed is still a recorded determination, not an open "
+                         "question, per D-38. The zero here is the M0-level adjudication; the 6 "
+                         "routed packets carry follow-on asset-lifecycle work that only their "
+                         "owning rungs may perform (I13)."),
                 "asset_ids": zc["asset_ids"]}
 
         # ── criterion 10 — CI guard merged and BLOCKING ─────────────────────
@@ -1712,13 +1816,18 @@ def main() -> int:
         {"quantity": "criterion 9 — zero-consumer findings",
          "this_script": rec["criteria"]["9_unresolved_zero_consumer"].get("measured_value"),
          "other_source": ("NIRMANA_ELEVATION_PLAN §1 (states 13) · the plan's own per-asset "
-                          "annotations (7) · ZERO_CONSUMER_EVIDENCE_v1_0.md (23 packets)"),
-         "other_value": "plan-summary 13 · plan-annotations 7 · M0-T6 packets 23",
-         "reconciliation": ("This script counts the M0-T6 packet set and subtracts recorded "
-                            "ADHIKĀRIN G1 dispositions; there are none, so unresolved = "
-                            "packets. The plan's 13 has no per-asset list behind it and does "
-                            "not reconcile with the plan's own annotations. Not averaged, not "
-                            "adopted."),
+                          "annotations (7) · ZERO_CONSUMER_EVIDENCE_v1_0.md (23 packets) · "
+                          "DECISIONS.jsonl D-38 part 3 (2026-08-23T09:24:48Z, adjudicates all "
+                          "23 by reading class)"),
+         "other_value": "plan-summary 13 · plan-annotations 7 · M0-T6 packets 23 · D-38 "
+                        "unresolved 0",
+         "reconciliation": ("This script counts the M0-T6 packet set and subtracts packets "
+                            "whose reading class carries a D-38 disposition; D-38 covers all "
+                            "23, so unresolved = 0. Prior readings of this scorecard (through "
+                            "M0-T36) reported unresolved = packets because no G1 ruling had yet "
+                            "named a disposition; D-38 supplies it. The plan's 13 still has no "
+                            "per-asset list behind it and does not reconcile with the plan's own "
+                            "annotations — that disagreement is unchanged and not averaged."),
          "disagreement": True},
         {"quantity": "target_table NULL rows (all kinds)",
          "this_script": None,
@@ -1750,7 +1859,7 @@ def main() -> int:
 
     rec["_meta"].update({
         "tally": tally,
-        "task": "M0-T36 (re-measurement 4 — post V-8/V-9/V-10/V-11, post D-29/D-30/D-31)", "built_by_task": "M0-T17",
+        "task": "M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42)", "built_by_task": "M0-T17",
         "artifact": "M0_EXIT_SCORECARD_v1_0",
         "generator": _rel(pathlib.Path(__file__)),
         "measured_at_start": started.isoformat(), "measured_at_end": finished.isoformat(),

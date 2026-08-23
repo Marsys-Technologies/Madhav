@@ -2,17 +2,17 @@
 artifact: M0_EXIT_SCORECARD
 version: 1.0
 status: LIVE-MEASUREMENT
-task: M0-T36 (re-measurement 4 — post V-8/V-9/V-10/V-11, post D-29/D-30/D-31)
+task: M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42)
 built_by_task: M0-T17
-readings: 4
-generated: 2026-08-23T08:00:26.645600+00:00
+readings: 5
+generated: 2026-08-23T12:26:07.136461+00:00
 generator: 00_ARCHITECTURE/control/m0_exit_scorecard.py
 ---
 
 # NIRMĀṆA M0 — Exit-Criteria Scorecard v1.0
 
-**Measured:** 2026-08-23T08:00:08.436624+00:00 → 2026-08-23T08:00:26.645600+00:00 (UTC)  
-**Branch / commit:** `campaign/nirmana-autonomous` @ `326e4cb372b5`  
+**Measured:** 2026-08-23T12:26:00.850058+00:00 → 2026-08-23T12:26:07.136461+00:00 (UTC)  
+**Branch / commit:** `campaign/nirmana-autonomous` @ `ac16535d1b67`  
 **Database access:** READ-ONLY (default_transaction_read_only=on; SELECT only)  
 **Regenerate:** `python3 00_ARCHITECTURE/control/m0_exit_scorecard.py`  
 **Status:** measurement only. This document certifies nothing and closes nothing (I16 / charter H7). PARĪKṢAKA decides; M0-T10 re-runs the generator at freeze time rather than trusting this snapshot.
@@ -20,16 +20,16 @@ generator: 00_ARCHITECTURE/control/m0_exit_scorecard.py
 ## 0 — Tally, then and now
 
 **then** = `reading 1 — M0-T17 first measurement`, 2026-08-23T05:05:59.484414+00:00 @ `01397f9216de`  
-**now** = `reading 4 — M0-T36 (re-measurement 4 — post V-8/V-9/V-10/V-11, post D-29/D-30/D-31)`, 2026-08-23T08:00:26.645600+00:00 @ `326e4cb372b5`
+**now** = `reading 5 — M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42)`, 2026-08-23T12:26:07.136461+00:00 @ `ac16535d1b67`
 
 | status | then | now | Δ | meaning |
 |---|--:|--:|--:|---|
-| PASS | 0 | 1 | +1 | a detector ran and returned zero |
-| FAIL | 6 | 7 | +1 | a detector ran and returned non-zero |
+| PASS | 0 | 2 | +2 | a detector ran and returned zero |
+| FAIL | 6 | 6 | — | a detector ran and returned non-zero |
 | NOT-MEASURABLE | 3 | 3 | — | **no detector exists that could return non-zero. Not a pass** (CLAUDE.md §N.8) |
 | BLOCKED | 3 | 1 | -2 | a detector exists but cannot run yet; the blocker is named per row |
 
-**1 of 12 criteria are satisfied by a detector's output.** The other 11 are not, and none of them is green.
+**2 of 12 criteria are satisfied by a detector's output.** The other 10 are not, and none of them is green.
 
 **Criteria whose PASS rests on a NON-DURABLE repair: 1 (11_domain_and_rung_present). Criteria passing on inputs a re-seed would move (EXPOSED): 0.** A repair is *durable* only if the column it wrote is absent from `asset_registry_seed.ts`'s `ON CONFLICT (asset_id) DO UPDATE SET` list; columns in that list are restored from `EXCLUDED` on the next seed run. Contract rules resting on such a repair: `C-05, C-14, C-18`. Rules that a projected re-seed makes start firing again: `C-05, C-14, C-18`. §3b measures all of this, projects each PASSing rule forward through a simulated re-seed, and names every cell that would move.
 
@@ -38,14 +38,14 @@ generator: 00_ARCHITECTURE/control/m0_exit_scorecard.py
 | # | criterion | then | now | measured | durability | blocker |
 |---|---|---|---|--:|---|---|
 | 1 | three-way diff (registry vs `@register` vs seed) = 0 | FAIL | **FAIL** | `5` | n/a — not passing | — |
-| 2 | contract violations per kind = 0 | NOT-MEASURABLE | **NOT-MEASURABLE** | `165` | n/a — not passing | rules C-25, C-26, C-27 have NO detector at all (contract §8) and must never read green |
+| 2 | contract violations per kind = 0 | NOT-MEASURABLE | **NOT-MEASURABLE** | `85` | n/a — not passing | rules C-25, C-26, C-27 have NO detector at all (contract §8) and must never read green |
 | 3 | prefix mismatches = 0 | FAIL | **FAIL** | `1` | n/a — not passing | — |
 | 4 | dangling or DRAFT-targeted edges = 0 | FAIL | **FAIL** | `3` | n/a — not passing | — |
 | 5 | multi-producer partitions = 0 | NOT-MEASURABLE | **NOT-MEASURABLE** | `—` | n/a — not passing | NO DETECTOR EXISTS. The criterion asserts that no two producers write the same (table × generati… |
 | 6 | throughput rows on inactive assets = 0 | BLOCKED | **BLOCKED** | `3` | n/a — not passing | CHARTER §2 P1 COLLISION — the only offender is `ka_gochara_sweep`, the charter's named unrecover… |
 | 7 | retired assets without a `data_disposition` = 0 | BLOCKED | **FAIL** *(moved)* | `1` | n/a — not passing | — |
 | 8 | active assets with neither build coverage nor a dead flag = 0 | NOT-MEASURABLE | **NOT-MEASURABLE** | `—` | n/a — not passing | NO 'DEAD FLAG' FIELD IS DEFINED. asset_registry has no column that designates a registered-but-d… |
-| 9 | unresolved zero-consumer findings = 0 | FAIL | **FAIL** | `23` | n/a — not passing | — |
+| 9 | unresolved zero-consumer findings = 0 | FAIL | **PASS** *(moved)* | `0` | durable | — |
 | 10 | CI guard merged and **blocking** | FAIL | **FAIL** | `{"guard_scripts_found": 2, "workflow_invocations_fou…` | n/a — not passing | — |
 | 11 | every asset carrying `domain` and `rung` *(v4.1)* | BLOCKED | **PASS** *(moved)* | `0` | **NON-DURABLE** | — |
 | 12 | the §11 CI domain-coherence assertion green *(v4.1)* | FAIL | **FAIL** | `{"assertion_exists": true, "assertion_wired_to_a_wor…` | n/a — not passing | — |
@@ -58,6 +58,7 @@ Every reading this generator has taken is retained in `m0_exit_scorecard.json` u
 | reading 2 — M0-T27 (re-measurement) | M0-T27 (re-measurement) | 2026-08-23T06:20:44.013647+00:00 | `ee93b76e8a57` | 1 | 7 | 3 | 1 |
 | reading 3 — M0-T32 (re-measurement 3) | M0-T32 (re-measurement 3) | 2026-08-23T07:23:54.296317+00:00 | `df78d1aa3aa4` | 1 | 7 | 3 | 1 |
 | reading 4 — M0-T36 (re-measurement 4 — post V-8/V-9/V-10/V-11, post D-29/D-30/D-31) | M0-T36 (re-measurement 4 — post V-8/V-9/V-10/V-11, post D-29/D-30/D-31) | 2026-08-23T08:00:26.645600+00:00 | `326e4cb372b5` | 1 | 7 | 3 | 1 |
+| reading 5 — M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42) | M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42) | 2026-08-23T12:26:07.136461+00:00 | `ac16535d1b67` | 2 | 6 | 3 | 1 |
 
 ### Did anything move while this ran?
 
@@ -73,7 +74,34 @@ A migration wave was running concurrently, so every load-bearing quantity was re
 
 ### What changed since the previous run of this generator
 
-Previous run: `2026-08-23T07:23:54.296317+00:00`. no criterion changed status or value since the previous run.
+Previous run: `2026-08-23T08:00:26.645600+00:00`. 2 change(s) since the previous run.
+
+```json
+[
+ {
+  "criterion": "2_contract_violations_per_kind",
+  "was": {
+   "status": "NOT-MEASURABLE",
+   "measured_value": 165
+  },
+  "now": {
+   "status": "NOT-MEASURABLE",
+   "measured_value": 85
+  }
+ },
+ {
+  "criterion": "9_unresolved_zero_consumer",
+  "was": {
+   "status": "FAIL",
+   "measured_value": 23
+  },
+  "now": {
+   "status": "PASS",
+   "measured_value": 0
+  }
+ }
+]
+```
 
 Filesystem-sourced criteria (10 and 12) can move between runs without any database change, because sibling tasks are authoring the guards they look for. The block above is where that shows up; the table above it covers database movement inside a single run.
 
@@ -142,7 +170,7 @@ this script: SELECT asset_id FROM asset_registry  ×  AST scan of @register('<id
 ### 2 · contract violations per kind = 0
 
 **Status: NOT-MEASURABLE → NOT-MEASURABLE**  
-**Measured value:** `227` → `165`  
+**Measured value:** `227` → `85`  
 
 **Detector**
 
@@ -152,13 +180,15 @@ this script: every §8 detection SQL of 00_ARCHITECTURE/control/ASSET_CATALOGUE_
 
 **Blocked by / why this is not a pass:** rules C-25, C-26, C-27 have NO detector at all (contract §8) and must never read green
 
+**Note:** D-42 (ADHIKĀRIN, 2026-08-23T11:04:17Z) reclassifies C-28's framing within this rule's 'data' violations: see the C-28 rule's own text above — asset_throughput.state='lit' is a claim, not evidence, and build_run_assets is authoritative for 'was this asset built'. This does not change the measured_value here; D-42 forbids using its own ranking to re-point C-28's detector, which would silently shrink this criterion's count without earning it.
+
 **Where the number came from:** this script's own live measurement. No sibling artifact states a figure for this quantity.
 
 <details><summary><code>violations_by_asset_kind</code></summary>
 
 ```json
 {
- "data": 97,
+ "data": 69,
  "artifact": 0,
  "service": 16,
  "source": 0
@@ -183,7 +213,7 @@ this script: every §8 detection SQL of 00_ARCHITECTURE/control/ASSET_CATALOGUE_
  "C-17=4",
  "C-20=3",
  "C-21=19",
- "C-28=112"
+ "C-28=32"
 ]
 ```
 
@@ -245,6 +275,8 @@ SELECT asset_id, layer FROM asset_registry WHERE asset_kind <> 'source' AND left
 ```
 C-12 (dangling: dep with no registry row) + C-11 (CURRENT depending on a non-CURRENT, non-source asset), both run live
 ```
+
+**Note:** D-38 (ADHIKĀRIN, 2026-08-23T09:24:48Z) ruled Phase 0.8b's general disposition REMAIN DRAFT — a decision, not a promotion — for any DRAFT-but-served asset no rung clause names by asset_id for promote-or-retire. None of the three C-11 dependencies (ga_vichara R1, ka_dasha_kala R3, ka_sangam R3) is named by any such clause, so bulk promotion in M0 is refused for all three and the status here stays FAIL: the detector still returns 3, and D-38 explicitly forbids reading REMAIN-DRAFT as a repair. This criterion's own deferral (deferred to R1/R3, ruling D-38) is recorded in M0_DEFERRAL_REGISTER_v1_0.md, not in this scorecard's status field — see criteria 3 and 7 for the same convention.
 
 **Where the number came from:** this script's own live query. A sibling artifact — DAG_AUDIT_v1_0.md §1–§2 (M0-T7) — reports: dangling 0 · CURRENT→DRAFT 3 → 3.
 
@@ -485,6 +517,8 @@ SELECT asset_id, catalog_status, asset_kind, has_writer FROM asset_registry WHER
 
 **Blocked by / why this is not a pass:** NO 'DEAD FLAG' FIELD IS DEFINED. asset_registry has no column that designates a registered-but-dead asset. `has_writer` (boolean) is the only candidate, and the contract (ASSET_CATALOGUE_CONTRACT_v1_0.md) does not designate it as the dead flag — nor does it define one. The criterion's second half therefore has no detector, so the criterion as a whole cannot return a non-zero answer honestly. Its FIRST half is measured below.
 
+**Note:** D-39 (ADHIKĀRIN, 2026-08-23T09:25:50Z) CONFIRMS ownership of this criterion's dead-flag work to M0 (independently re-derived) and SETTLES that a new column is authorised under D-4's standing conditions, NOT reserved by charter P5 — but no column has been created and this task did not create one, so the criterion remains NOT-MEASURABLE here; a known repair now exists (add the column, backfill, verify per D-4) and nobody has executed it. Separately, D-42 (ADHIKĀRIN, 2026-08-23T11:04:17Z) ranks build_run_assets as authoritative wherever a surface asks 'was this asset built' — bearing on this criterion's BUILD-COVERAGE half, not its dead-flag half: has_writer/asset_throughput.state='lit' remain proxies for 'built', and this criterion's own first-half measurement above (no production @register) does not depend on either proxy, so D-42 does not change the numbers here.
+
 **Where the number came from:** this script's own live measurement. No sibling artifact states a figure for this quantity.
 
 <details><summary><code>measured_components</code></summary>
@@ -549,16 +583,143 @@ SELECT asset_id, catalog_status, asset_kind, has_writer FROM asset_registry WHER
 
 ### 9 · unresolved zero-consumer findings = 0
 
-**Status: FAIL → FAIL**  
-**Measured value:** `23` → `23`  
+**Status: FAIL → PASS**  
+**Measured value:** `23` → `0`  
+**Durability of this reading: durable** — criterion is not sourced from asset_registry columns the seed writes  
 
 **Detector**
 
 ```
-count of zero-consumer packets in 00_ARCHITECTURE/control/zero_consumer_evidence.json, minus those with a recorded ADHIKĀRIN G1 disposition naming them in 00_ARCHITECTURE/autonomy/state/DECISIONS.jsonl
+count of zero-consumer packets in 00_ARCHITECTURE/control/zero_consumer_evidence.json whose reading class (ZERO_CONSUMER_EVIDENCE_v1_0.md §1/§2) carries NO D-38 disposition. D-38 (ADHIKĀRIN, 2026-08-23T09:24:48Z, power G1) adjudicated all five reading classes and rules that adjudication IS resolution ('RESOLVED MEANS ADJUDICATED, NOT MUTATED'); the prior reading (packets minus asset_id-named DECISIONS entries) is superseded by this task, D-38 having been made since.
 ```
 
+**Note:** ALL 23 PACKETS RESOLVED BY D-38 PART 3 — 8 INPUT-ONLY and 2 BY-DESIGN closed with no action; 7 METHOD-BLIND closed as unknown (explicitly NOT retirement candidates); 1 NO-CONSUMER-FOUND and 5 SHADOWED are ROUTED TO THEIR OWNING RUNGS as a retirement candidate / a real defect respectively — routed is still a recorded determination, not an open question, per D-38. The zero here is the M0-level adjudication; the 6 routed packets carry follow-on asset-lifecycle work that only their owning rungs may perform (I13).
+
 **Where the number came from:** this script's own live query. A sibling artifact — ZERO_CONSUMER_EVIDENCE_v1_0.md §0/§2 (M0-T6) — reports: 23 packets found live; plan §1 states 13; the plan's own per-asset annotations count 7.
+
+<details><summary><code>disposed</code></summary>
+
+```json
+{
+ "bg_cohort": {
+  "reading_class": "INPUT-ONLY",
+  "disposition": "closed, no action \u2014 absence of a serving consumer is the design",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "bg_concordance": {
+  "reading_class": "NO CONSUMER FOUND",
+  "disposition": "recorded as a retirement candidate, NOT retired \u2014 routed to the owning rung",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "bg_ephemeris_engine": {
+  "reading_class": "BY DESIGN EMPTY / CATEGORY MISMATCH",
+  "disposition": "closed, no action \u2014 mismatch recorded",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "bg_gochara_arcs": {
+  "reading_class": "INPUT-ONLY",
+  "disposition": "closed, no action \u2014 absence of a serving consumer is the design",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "bg_kota_chakra_rings": {
+  "reading_class": "INPUT-ONLY",
+  "disposition": "closed, no action \u2014 absence of a serving consumer is the design",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "bg_kp_sublord_division": {
+  "reading_class": "INPUT-ONLY",
+  "disposition": "closed, no action \u2014 absence of a serving consumer is the design",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "bg_panchanga": {
+  "reading_class": "METHOD-BLIND",
+  "disposition": "closed as UNKNOWN \u2014 explicitly NOT a retirement candidate (H6 if it were)",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "bg_phaladeepika_latta": {
+  "reading_class": "INPUT-ONLY",
+  "disposition": "closed, no action \u2014 absence of a serving consumer is the design",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "bg_reference": {
+  "reading_class": "INPUT-ONLY",
+  "disposition": "closed, no action \u2014 absence of a serving consumer is the design",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "bg_sarvatobhadra_grid": {
+  "reading_class": "BY DESIGN EMPTY / CATEGORY MISMATCH",
+  "disposition": "closed, no action \u2014 mismatch recorded",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "bg_sky_calendar": {
+  "reading_class": "METHOD-BLIND",
+  "disposition": "closed as UNKNOWN \u2014 explicitly NOT a retirement candidate (H6 if it were)",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "bg_vedha_malefic_scale": {
+  "reading_class": "INPUT-ONLY",
+  "disposition": "closed, no action \u2014 absence of a serving consumer is the design",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "bg_vidhi_floors": {
+  "reading_class": "SHADOWED",
+  "disposition": "a real defect \u2014 routed to the owning rung",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "bg_vidhi_primitives": {
+  "reading_class": "SHADOWED",
+  "disposition": "a real defect \u2014 routed to the owning rung",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "bo_cdlm_summary": {
+  "reading_class": "METHOD-BLIND",
+  "disposition": "closed as UNKNOWN \u2014 explicitly NOT a retirement candidate (H6 if it were)",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "bo_samskara": {
+  "reading_class": "METHOD-BLIND",
+  "disposition": "closed as UNKNOWN \u2014 explicitly NOT a retirement candidate (H6 if it were)",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "ka_dasha_kala": {
+  "reading_class": "SHADOWED",
+  "disposition": "a real defect \u2014 routed to the owning rung",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "ka_gochara_v3_century_materialize": {
+  "reading_class": "INPUT-ONLY",
+  "disposition": "closed, no action \u2014 absence of a serving consumer is the design",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "ka_graha_sancara": {
+  "reading_class": "METHOD-BLIND",
+  "disposition": "closed as UNKNOWN \u2014 explicitly NOT a retirement candidate (H6 if it were)",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "ka_kshetra": {
+  "reading_class": "METHOD-BLIND",
+  "disposition": "closed as UNKNOWN \u2014 explicitly NOT a retirement candidate (H6 if it were)",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "ka_muhurta_seva": {
+  "reading_class": "SHADOWED",
+  "disposition": "a real defect \u2014 routed to the owning rung",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "ka_tulana": {
+  "reading_class": "SHADOWED",
+  "disposition": "a real defect \u2014 routed to the owning rung",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ },
+ "mi_jivanaghatana": {
+  "reading_class": "METHOD-BLIND",
+  "disposition": "closed as UNKNOWN \u2014 explicitly NOT a retirement candidate (H6 if it were)",
+  "decision": "DECISIONS.jsonl D-38 part 3"
+ }
+}
+```
+
+</details>
 
 <details><summary><code>packets</code></summary>
 
@@ -930,7 +1091,7 @@ rule `X-04` in platform/scripts/governance/check_asset_catalogue_contract.py —
 | `C-20` | CURRENT data/artifact carries a floor | BLOCKING | FAIL | **FAIL** | 5 → 3 | n/a — not passing |
 | `C-21` | target_floor = 0 => volume_explanation | BLOCKING | FAIL | **FAIL** | 19 → 19 | n/a — not passing |
 | `C-24` | clear_tables exist and include target_table | BLOCKING | PASS | **PASS** | 0 → 0 | durable |
-| `C-28` | estimated_seconds NOT NULL where a successful build exists | BLOCKING | FAIL | **FAIL** | 112 → 112 | n/a — not passing |
+| `C-28` | estimated_seconds NOT NULL where a successful build exists (NOTE — D-42, 2026-08-23: asset_throughput.state='lit' is a CLAIM about a build, not evidence of one; build_run_assets is the authoritative source wherever 'was this asset built' is asked. The 31-row R0 residual this rule cannot backfill is therefore not '31 assets missing an estimate' but '31 assets read lit with no completed build_run_assets record behind them' — the missing estimate is a symptom, the unearned lit is the finding. This SQL is UNCHANGED by D-42: D-42 explicitly forbids re-pointing this detector at build_run_assets to close it, since that would make the BLOCKING failure pass while the 31 unearned lit states remain exactly as they are — a weakening under D-41 part 2, presumptively H3.) | BLOCKING | FAIL | **FAIL** | 112 → 32 | n/a — not passing |
 | `C-13b` | depends_on graph acyclic | — | — | **PASS** | — → 0 | — |
 | `C-22` | rung-frozen data assets carry integrity_check_sql | — | — | **NOT-MEASURABLE** | — → — | — |
 | `C-23` | has_substeps equals the writer-class truth | — | — | **PASS** | — → 0 | — |
@@ -956,13 +1117,13 @@ Where another artifact states a figure for a quantity measured here, both are sh
 | C-04 — data/artifact rows failing the target_table rule | `9` | ASSET_CATALOGUE_CONTRACT_v1_0.md §6, rule C-04 | 10 | **YES** |
 | C-17 — graded service_health with no health_probe | `4` | ASSET_CATALOGUE_CONTRACT_v1_0.md §6, rule C-17 | 3 | **YES** |
 | 0.6a — has_substeps false negatives (C-23) | `0` | NIRMANA_ELEVATION_PLAN v3.0 §0.6a / v4.0 (states 14) vs DERIVED_FIELD_REPAIR_PROPOSAL_v1_0.md §4 (M0-T8, states 12) | plan 14 · M0-T8 12 | **YES** |
-| criterion 9 — zero-consumer findings | `23` | NIRMANA_ELEVATION_PLAN §1 (states 13) · the plan's own per-asset annotations (7) · ZERO_CONSUMER_EVIDENCE_v1_0.md (23 packets) | plan-summary 13 · plan-annotations 7 · M0-T6 packets 23 | **YES** |
+| criterion 9 — zero-consumer findings | `0` | NIRMANA_ELEVATION_PLAN §1 (states 13) · the plan's own per-asset annotations (7) · ZERO_CONSUMER_EVIDENCE_v1_0.md (23 packets) · DECISIONS.jsonl D-38 part 3 (2026-08-23T09:24:48Z, adjudicates all 23 by reading class) | plan-summary 13 · plan-annotations 7 · M0-T6 packets 23 · D-38 unresolved 0 | **YES** |
 | target_table NULL rows (all kinds) | `None` | CENSUS_REPORT.md §5 (M0-T1) states 14; contract §6 C-04 states 10 | census 14 (all rows) · contract 10 (data/artifact only) | no |
 
 - **C-04 — data/artifact rows failing the target_table rule** — Both are right about different things. 10 is the count of data/artifact rows with target_table NULL. The rule as written (and as its own §8 SQL executes) ALSO fails a row whose target_table names a table that does not exist — `bg_sky_calendar` → `bg_sky_events`, which is absent from information_schema.tables. The contract's §6 count reported the NULL half only. 11 is the rule's full result.
 - **C-17 — graded service_health with no health_probe** — The contract's §6 cell names 3 assets, all `healthy` (ka_dasha_kala, ka_muhurta_seva, ka_tulana). Its own §8 SQL matches `IN ('healthy','degraded','unhealthy')`, which also catches `ka_graha_sancara` ('unhealthy', no probe). The contract's stated count disagrees with the contract's own SQL. 4 is the SQL's result.
 - **0.6a — has_substeps false negatives (C-23)** — This script's detector and M0-T8's are INDEPENDENT and differ in rule — M0-T8 uses (defines plan_substeps AND defines run_substep); this one uses (overrides plan_substeps OR sets the class attribute has_substeps=True), in both cases EXCLUDING WriterBase's own default. Two independent detectors returning 12 against the plan's 14 is corroboration; the plan's figure is the outlier and is not measured.
-- **criterion 9 — zero-consumer findings** — This script counts the M0-T6 packet set and subtracts recorded ADHIKĀRIN G1 dispositions; there are none, so unresolved = packets. The plan's 13 has no per-asset list behind it and does not reconcile with the plan's own annotations. Not averaged, not adopted.
+- **criterion 9 — zero-consumer findings** — This script counts the M0-T6 packet set and subtracts packets whose reading class carries a D-38 disposition; D-38 covers all 23, so unresolved = 0. Prior readings of this scorecard (through M0-T36) reported unresolved = packets because no G1 ruling had yet named a disposition; D-38 supplies it. The plan's 13 still has no per-asset list behind it and does not reconcile with the plan's own annotations — that disagreement is unchanged and not averaged.
 - **target_table NULL rows (all kinds)** — Not a disagreement once scoped: 14 counts every registry row, 10 counts only the data/artifact rows the rule applies to. Recorded so the two figures are not read as a conflict.
 
 ---
@@ -1078,7 +1239,7 @@ Parsed from `platform/scripts/seed/asset_registry_seed.ts` **as text** (never im
 | question | answer |
 |---|---|
 | columns the seed **overwrites** on every re-run (`DO UPDATE SET`) | `asset_kind, asset_type, catalog_status, count_sql, depends_on, english_description, english_name, expected_volume_formula, expected_volume_inputs, health_probe, is_active, layer, layer_index, layer_name, provides_apis, sanskrit_name, scope, size_sql, sort_order, storage_type, target_table, volume_explanation` |
-| columns the seed **never inserts** (a new seed row lands NULL/default) | `clear_tables, created_at, data_disposition, domain, has_substeps, has_writer, integrity_check_sql, last_invoked_at, last_selftest_at, rebuild_on_probe_fail, rung, selftest_detail, service_health, superseded_by, writer_timeout_seconds` |
+| columns the seed **never inserts** (a new seed row lands NULL/default) | `clear_tables, created_at, data_disposition, domain, has_substeps, has_writer, integrity_check_sql, last_invoked_at, last_selftest_at, rebuild_on_probe_fail, rung, selftest_detail, service_health, superseded_by, target_floor, writer_timeout_seconds` |
 | live cells that already differ from what the seed would write | **9** across 9 asset(s) |
 
 **Divergence detector**
@@ -1134,7 +1295,7 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
 | 6 | BLOCKED | n/a — not passing | `—` | — |
 | 7 | FAIL | n/a — not passing | `catalog_status` | — |
 | 8 | NOT-MEASURABLE | n/a — not passing | `asset_kind, catalog_status, is_active` | — |
-| 9 | FAIL | n/a — not passing | `—` | — |
+| 9 | PASS | durable | `—` | criterion is not sourced from asset_registry columns the seed writes |
 | 10 | FAIL | n/a — not passing | `—` | — |
 | 11 | PASS | **NON-DURABLE** | `asset_kind, layer, scope` | projected forward: constituent rule(s) ['C-18'] start firing once asset_registry_seed.ts restores the columns it owns |
 | 12 | FAIL | n/a — not passing | `—` | — |
@@ -1247,7 +1408,6 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
    "size_sql",
    "sort_order",
    "storage_type",
-   "target_floor",
    "target_table",
    "volume_explanation"
   ],
@@ -1316,6 +1476,7 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
   "selftest_detail",
   "service_health",
   "superseded_by",
+  "target_floor",
   "writer_timeout_seconds"
  ],
  "live_vs_seed_divergence": {
@@ -1829,7 +1990,7 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
   },
   "C-28": {
    "status": "FAIL",
-   "violations": 112,
+   "violations": 32,
    "columns_referenced": [
     "asset_id",
     "estimated_seconds"
@@ -1938,7 +2099,8 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
     "domain",
     "rung",
     "service_health",
-    "superseded_by"
+    "superseded_by",
+    "target_floor"
    ],
    "durability": "n/a \u2014 not passing",
    "why": null,
@@ -2080,15 +2242,15 @@ each PASSing rule re-run against a CTE that shadows asset_registry with the valu
    "rules_whose_projection_failed": []
   },
   "9_unresolved_zero_consumer": {
-   "status": "FAIL",
+   "status": "PASS",
    "columns_read": [],
    "seed_overwritable_columns": [],
    "seed_divergent_assets_among_them": [],
    "constituent_rules": [],
    "non_durable_constituent_rules": [],
    "columns_the_seed_never_inserts": [],
-   "durability": "n/a \u2014 not passing",
-   "why": null,
+   "durability": "durable",
+   "why": "criterion is not sourced from asset_registry columns the seed writes",
    "rules_that_break_after_a_reseed": [],
    "rules_whose_projection_failed": []
   },

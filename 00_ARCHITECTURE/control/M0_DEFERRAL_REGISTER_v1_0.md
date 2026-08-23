@@ -1,18 +1,18 @@
 ---
 canonical_id: M0_DEFERRAL_REGISTER
-version: 1.1
+version: 1.2
 status: LIVE-CLASSIFICATION
-task: M0-T36 (v1.0 authored by M0-T31; v1.1 applies D-30 and re-measures)
-generated: 2026-08-23T08:13:16.520669+00:00
+task: M0-T46 (v1.0 authored by M0-T31; v1.1 by M0-T36 applied D-30; v1.2 applies D-38/D-39/D-40/D-41/D-42)
+generated: 2026-08-23T12:25:28.883759+00:00
 generator: 00_ARCHITECTURE/control/m0_deferral_register.py
-authored_by: KĀRAKA — v1.0 by M0-T31, v1.1 by M0-T36 (Nirmāṇa autonomous campaign)
-filename_note: the file keeps its v1_0 path deliberately — canonical_id and every pointer to it are stable; the frontmatter `version` field is the version (§B.8). A v1_0 filename carrying version 1.1 is an in-place update, not registry drift.
+authored_by: KĀRAKA — v1.0 by M0-T31, v1.1 by M0-T36, v1.2 by M0-T46 (Nirmāṇa autonomous campaign)
+filename_note: the file keeps its v1_0 path deliberately — canonical_id and every pointer to it are stable; the frontmatter `version` field is the version (§B.8). A v1_0 filename carrying version 1.2 is an in-place update, not registry drift.
 certified_by: null   # I16 / charter H7 — a KĀRAKA never certifies its own work
-satisfies: DECISIONS.jsonl D-24 part 3 AS AMENDED TWICE BY D-30 part 2(a) and part 4
-applies: DECISIONS.jsonl D-30 part 1 (named-field test), part 3 (C-28 residual), D-29
+satisfies: DECISIONS.jsonl D-24 part 3 AS AMENDED BY D-30 part 2(a)+part 4, THEN BY D-39 part 1 (withdrawn) AND D-40 part 1 (final): the switch flips when every criterion is at zero or explicitly deferred AND the disclosure mechanism is demonstrably in effect (a two-direction fixture: a disclosed rule still reports its violation and only stops gating; an undisclosed rule still blocks) AND CI detects and refuses a stale baseline (NOT 'CI gates live' — D-40 withdrew that as impossible, no DB credential in CI Actions)
+applies: DECISIONS.jsonl D-30 part 1 (named-field test), part 3 (C-28 residual), D-29, D-38 (0.8b REMAIN DRAFT, 0.8c per-packet adjudication), D-39 (X-03/crit-8/crit-5 confirmed M0's, not P5), D-40 (flip condition's CI clause, final form), D-42 (C-28 reframed; build_run_assets ranking)
 ---
 
-# NIRMĀṆA M0 — Deferral Register v1.1
+# NIRMĀṆA M0 — Deferral Register v1.2
 
 **The question this document exists to answer**, verbatim from ADHIKĀRIN ruling D-24 part 3:
 
@@ -26,16 +26,18 @@ The scorecard measures; it does not separate *non-zero and repairable* from *non
 
 | bucket | criteria | contract rules | total | meaning |
 |---|--:|--:|--:|---|
-| **REPAIRABLE-IN-M0** | 3 | 3 | **6** | a known repair takes it to zero; nobody has done it. The repair and its blocker are named per entry. |
-| **DEFERRED-WITH-REASON** | 2 | 15 | **17** | it cannot reach zero inside M0, and a **ruling, plan assignment, contract mandate or measured structural fact** says why. |
+| **REPAIRABLE-IN-M0** | 3 | 2 | **5** | a known repair takes it to zero; nobody has done it. The repair and its blocker are named per entry. |
+| **DEFERRED-WITH-REASON** | 3 | 16 | **19** | it cannot reach zero inside M0, and a **ruling, plan assignment, contract mandate or measured structural fact** says why. |
 | **RESERVED** | 1 | 1 | **2** | it collides with a charter prohibition. Not the campaign's to resolve, and untouched by this task. |
-| **UNEXAMINED** | 5 | 1 | **6** | **nobody has established which of the above it is.** D-24 part 3 forbids flipping the switch on any of these. This bucket is the deliverable. |
-| **AT-ZERO-WITH-EXPOSURE** | 1 | 0 | **1** | reads zero, with a named exposure that makes that zero conditional (§5). |
+| **UNEXAMINED** | 3 | 0 | **3** | **nobody has established which of the above it is.** D-24 part 3 forbids flipping the switch on any of these. This bucket is the deliverable. |
+| **AT-ZERO-WITH-EXPOSURE** | 2 | 1 | **3** | reads zero, with a named exposure that makes that zero conditional (§5). |
 | | **12** | **20** | **32** | |
 
-**6 of 32 entries remain UNEXAMINED** after D-30 — down from 11 in v1.0. The named-field test, which v1.0 named as the largest single lever and D-30 part 1 then adopted as a rule, has been applied: it moved five rules to DEFERRED-WITH-REASON and it REACHED three further entries nobody expected it to reach. §9 is the application; §9.2 is the count reconciliation, which does not come out where the ledger says it does.
+**3 of 32 entries remain UNEXAMINED** after D-30 — down from 11 in v1.0. The named-field test, which v1.0 named as the largest single lever and D-30 part 1 then adopted as a rule, has been applied: it moved five rules to DEFERRED-WITH-REASON and it REACHED three further entries nobody expected it to reach. §9 is the application; §9.2 is the count reconciliation, which does not come out where the ledger says it does.
 
 **The one fact that stops the flip even after every ruling lands** is mechanical, and v1.1 finds it is worse than v1.0 reported. v1.0: of ten DEFERRED rules none carried a disclosure and eight were `BLOCKING`. After D-30 there are **fifteen** DEFERRED rules and **thirteen** carry `BLOCKING` severity — the deferrals grew, the disclosures did not. D-30 part 4 amended the flip condition to require every deferred rule to carry its disclosure entry, and §10 drafts all fifteen. **They are inert** (finding `F-T36-3`): the guard reads `disclosed_additions` in exactly one function, `x02()`, and severity is a hardcoded constant in the rule table — X-02 is non-gating because someone typed `RESIDUAL`, not because it carries a disclosure. And a third prerequisite nobody has recorded (`F-T36-2`): CI does not run `--live` at all. It runs `--baseline` against a snapshot frozen at 05:09:17Z, which returns **17** BLOCKING failures including three rules that pass in production today.
+
+**v1.2 (M0-T46) applies six further ADHIKĀRIN rulings — D-37 through D-42 — three of which move a bucket here.** D-38 decided Phase 0.8b (REMAIN DRAFT — a decision, not a promotion) and adjudicated all 23 Phase 0.8c packets per reading class, moving **crit-4 and C-11 to DEFERRED-WITH-REASON** (deferred to R1/R3, not repairable in M0 by promotion) and **crit-9 and X-05 to AT-ZERO-WITH-EXPOSURE** (all 23 packets adjudicated; unresolved = 0; 6 carry follow-on rung work). D-39 confirmed X-03, criterion 8 and criterion 5 as M0's and settled that their columns are authorised under D-4, not reserved by charter P5, moving **crit-5, crit-8 and X-03 to REPAIRABLE-IN-M0** (a known repair — add the column, backfill, verify — now exists; nobody has executed it). D-42 reframes C-28's residual ('31 assets read `lit` with no completed `build_run_assets` record', not '31 missing an estimate') and ranks `build_run_assets` authoritative wherever a surface asks 'was this asset built' — recorded on the C-28 entry and on criterion 8; **the bucket does not move**, and D-42 explicitly forbids re-pointing C-28's detector at `build_run_assets` to close it (that would be H3). D-40 additionally WITHDRAWS part of D-39's amended flip condition — 'CI must gate against live state' is impossible, CI Actions carries no database credential — and replaces it with a detect-and-refuse-stale-baseline requirement; §10 restates the final condition. D-37 and D-41 are read but change no bucket here (D-37 corrects D-12 part 3 on assets outside this register's scope and clarifies the named-field test's refinement (b); D-41 authorises the deploy.yml edit and a CI-edit-by-direction rule, and no 'awaiting a ruling on CI edit scope' flag was found anywhere in this file, the scorecard, or M0_CLOSE_READINESS_v1_0.md for it to resolve). See §12 for the full application and the before/after tally.
 
 ### What counts as a reason
 
@@ -81,12 +83,12 @@ Files **read and not written** by this task (a sibling task holds `writer_subste
 | 1 | three-way diff (registry vs @register vs seed) = 0 | `scorecard_detector_2026-08-23T06:20Z=5; shipped_parity_guard_P-01…P-06_2026-08-23T07:02:39Z=0` | **UNEXAMINED** | ADHIKĀRIN (G9) — then whichever rung the surviving ids belong to |
 | 2 | contract violations per kind = 0 | `scorecard_2026-08-23T06:20Z_violations_by_kind={'data': 136, 'service': 16, 'artifact': 0, 'source': 0}; guard` | **UNEXAMINED** | ADHIKĀRIN (G9) |
 | 3 | prefix mismatches = 0 | `live_2026-08-23T06:55:57Z=1; guard_C-01_2026-08-23T06:58:51Z=1` | **DEFERRED-WITH-REASON** | R5 (Mīmāṃsā rung), stage 2 Conform |
-| 4 | dangling or DRAFT-targeted edges = 0 | `dangling_C-12=0; CURRENT→DRAFT_C-11=3; at=2026-08-23T06:58:51Z` | **REPAIRABLE-IN-M0** | ADHIKĀRIN (G1 + the bound reconciliation); execution is a KĀRAKA task |
-| 5 | multi-producer partitions = 0 | `C-25=not_checkable — no schema column; X-01_undeclared_collisions_2026-08-23T06:58:51Z=0; co_written_target_ta` | **UNEXAMINED** | ADHIKĀRIN (G9, and P5 if a column is involved) |
+| 4 | dangling or DRAFT-targeted edges = 0 | `dangling_C-12=0; CURRENT→DRAFT_C-11=3; at=2026-08-23T06:58:51Z` | **DEFERRED-WITH-REASON** | R1 (ga_vichara) and R3 (ka_dasha_kala, ka_sangam) — each at its own §8.6 stage-2 Conform |
+| 5 | multi-producer partitions = 0 | `C-25=not_checkable — no schema column; X-01_undeclared_collisions_2026-08-23T06:58:51Z=0; co_written_target_ta` | **REPAIRABLE-IN-M0** | ADHIKĀRIN confirmed M0 (D-39); execution (author migration, backfill, verify) is a KĀRAKA task |
 | 6 | throughput rows on inactive assets = 0 | `live_2026-08-23T06:55:57Z={'assets': 1, 'rows': 3, 'states': ['error']}` | **RESERVED** | R3 (Kāla rung) for the lifecycle exit; the native for anything P1 reaches |
 | 7 | retired assets without a data_disposition = 0 | `live_2026-08-23T06:55:57Z=1; guard_C-08_2026-08-23T06:58:51Z=1; note=moved BLOCKED → FAIL when migration 590 s` | **DEFERRED-WITH-REASON** | R3 (Kāla rung), lifecycle exit |
-| 8 | active assets with neither build coverage nor a dead flag = 0 | `scorecard_2026-08-23T06:20Z=NOT-MEASURABLE (no dead-flag field is defined); guard_X-03_2026-08-23T06:58:51Z=2` | **UNEXAMINED** | ADHIKĀRIN (G9; P5 if a new column is the answer) |
-| 9 | unresolved zero-consumer findings = 0 | `packets=23; dispositions_recorded=0; at=2026-08-23T06:58:51Z` | **REPAIRABLE-IN-M0** | ADHIKĀRIN (G1 ×23); recording them is a KĀRAKA task |
+| 8 | active assets with neither build coverage nor a dead flag = 0 | `scorecard_2026-08-23T06:20Z=NOT-MEASURABLE (no dead-flag field is defined); guard_X-03_2026-08-23T06:58:51Z=2` | **REPAIRABLE-IN-M0** | ADHIKĀRIN confirmed M0 (D-39); execution is a KĀRAKA task |
+| 9 | unresolved zero-consumer findings = 0 | `packets=23; dispositions_recorded=0; at=2026-08-23T06:58:51Z` | **AT-ZERO-WITH-EXPOSURE** | ADHIKĀRIN (G1 ×23); recording them is a KĀRAKA task |
 | 10 | CI guard merged and blocking | `guard_scripts_found=2; workflow_invocations=4; merged_to_origin_main_2026-08-23T07:03Z=False; invocation_is_bl` | **UNEXAMINED** | ADHIKĀRIN (G9 for both halves) |
 | 11 | every asset carrying domain and rung (v4.1) | `C-18_domain_null_or_wrong=0; C-19_rung_null_or_wrong=0; at=2026-08-23T06:55:57Z` | **AT-ZERO-WITH-EXPOSURE** | ADHIKĀRIN for the scope/domain ownership fix (D-27's divergence-report mandate); the column-level backfill is done |
 | 12 | the §11 CI domain-coherence assertion green (v4.1) | `assertion_exists=True; guard_X-04_2026-08-23T06:58:51Z=0; has_ever_run_in_CI=False; note=the scorecard's readi` | **REPAIRABLE-IN-M0** | ADHIKĀRIN (via criterion 10) |
@@ -245,7 +247,7 @@ The single offender is `lel_events` (prefix 'lel', layer 'mimamsa'). C-01 exempt
 
 ### crit-4 · dangling or DRAFT-targeted edges = 0
 
-**Bucket: REPAIRABLE-IN-M0**
+**Bucket: DEFERRED-WITH-REASON** · reason kind: `ruling`
 
 **Reads now**
 
@@ -257,11 +259,15 @@ The single offender is `lel_events` (prefix 'lel', layer 'mimamsa'). C-01 exempt
 }
 ```
 
+**D-38 APPLIED (M0-T46).** Phase 0.8b's disposition is now RULED, not merely blocked on a G1 rung-bound reconciliation. D-38 part 1 decided the DRAFT-but-served set's general disposition is REMAIN DRAFT — 'a G1 decision, not a deferral' — and part 2 confirmed bulk promotion in M0 is refused outright: only where a specific rung clause names an asset for promote-or-retire (R2's nine, R3's ka_graha_sancara/ka_muhurta_seva, R4's nine, R5's lel_events) does that rung decide it; otherwise REMAIN DRAFT stands until the owning rung's own §8.6 stage-2 Conform revisits it with real integrity evidence behind it. None of this criterion's three DRAFT dependencies — ga_vichara (R1), ka_dasha_kala (R3), ka_sangam (R3) — is named by any rung-specific promotion clause, so REMAIN DRAFT is their disposition too. THE THREE C-11 EDGES THEREFORE CANNOT BE REPAIRED IN M0 BY PROMOTION: D-38 states plainly that promoting on servedness alone 'would be writing a status from a proxy rather than from its detector's verdict' — precisely H4/§N.8 — and I13 forbids the only other route (asset-lifecycle work on a dependency outside the open rung). Moved from REPAIRABLE-IN-M0 to DEFERRED-WITH-REASON: the reason is D-38 itself, the destination is each dependency's own rung, and Phase 0.8b's own 'promoted or justified' is satisfied by the justified half — REMAIN DRAFT, decided, not silently unexamined.
+
+— — — v1.1 (M0-T36, D-30 applied) classification, preserved — — —
+
 THE REPAIR IS NAMED AND NOBODY HAS DONE IT. Plan Phase 0.8b — an M0 step — reads '34 DRAFT-but-served promoted or justified; CURRENT-may-not-depend-on-DRAFT enforced'. Each of the three edges closes by promoting the DRAFT dependency to CURRENT (charter G1) or by recording why it stays DRAFT. Both are catalogue dispositions on evidence M0 already holds (DRAFT_INVENTORY / CONSUMER_MAP).
 
 **What blocks it:** G1's charter bound reads 'Only assets in the current rung, on M0 census evidence' and NO RUNG IS OPEN. Phase 0.8b assigns the work to M0; G1's bound appears to withhold the power that performs it. That collision must be ruled before any promotion is written — it is the same collision criterion 9 sits behind, so one ruling clears both.
 
-**Owner:** ADHIKĀRIN (G1 + the bound reconciliation); execution is a KĀRAKA task  
+**Owner:** R1 (ga_vichara) and R3 (ka_dasha_kala, ka_sangam) — each at its own §8.6 stage-2 Conform  
 **Closes when:** three dispositions are ruled and written: ga_vichara (R1), ka_dasha_kala (R3), ka_sangam (R3) — promoted, or the dependants justified.
 
 <details><summary>rows</summary>
@@ -301,7 +307,7 @@ THE REPAIR IS NAMED AND NOBODY HAS DONE IT. Plan Phase 0.8b — an M0 step — r
 
 ### crit-5 · multi-producer partitions = 0
 
-**Bucket: UNEXAMINED**
+**Bucket: REPAIRABLE-IN-M0**
 
 **Reads now**
 
@@ -313,13 +319,17 @@ THE REPAIR IS NAMED AND NOBODY HAS DONE IT. Plan Phase 0.8b — an M0 step — r
 }
 ```
 
+**D-39 APPLIED (M0-T46).** Criterion 5's entry additionally flagged a (b)-clause collision the other two did not carry — whether §8.6 stage 2's generic 'partitions declared' overrides Phase 0.4's specific naming. D-39 part 4 confirms criterion 5 M0's OUTRIGHT, alongside X-03 and criterion 8, resolving that collision in M0's favour rather than leaving it open. The column question is settled the same way: authorised under D-4, not reserved by P5. Moved from UNEXAMINED to REPAIRABLE-IN-M0. C-25 itself stays permanently `not_checkable` for the separate structural reason already recorded — no column exists YET — which is exactly the repair this bucket names as not yet done.
+
+— — — v1.1 (M0-T36, D-30 applied) classification, preserved — — —
+
 **D-30 PART 1 APPLIED (M0-T36).** **THE TEST REACHES THIS ENTRY TOO, AND IT WAS NOT ON D-30's LIST EITHER** (v1.0 §6 step 4 files it as a separate ruling). Clause (a) is satisfied: Phase 0.4 names 'DECLARE CO-WRITER PARTITIONS' and §14.1's M0 content line names 'semantic de-duplication with declared co-writer partitions'. Clause (b) is where this differs from X-03 and where it is genuinely harder: §8.6 stage 2 lists 'partitions declared' among each rung's Conform work, so the SAME collision documented above for has_substeps applies here — and here it is NOT forced by the verification property, because no prior ruling pins partitions either way. The working reading (§8.6 stage 2 general, Phase 0.4 specific) gives the work to M0; the opposite reading gives it to the rungs. Under either, C-25 stays permanently `not_checkable` for the same structural reason — no schema column — and that part of v1.0's entry was already well-formed. What the test changes is that the undecided question is now narrower: not 'is this M0's or the rungs'' but 'does §8.6 stage 2 override Phase 0.4, and if not, is the column authorised under D-4's reasoning or reserved under P5'.
 
 — — — v1.0 (M0-T31) classification, preserved — — —
 
 THE TEMPTING ANSWER IS 'DEFERRED — NO COLUMN EXISTS', AND IT IS WRONG. The absence of a partition column is a real structural fact and it is what makes C-25 permanently not_checkable (§4). But the CRITERION is not the rule: plan Phase 0.4 — an M0 step — reads '(table × generation × partition) invariant; correct the gochara attribution; DECLARE CO-WRITER PARTITIONS'. M0 is the phase the plan assigns this work to. Under D-4's own reasoning ('a criterion that cannot be met without a change has NAMED that change even where it numbers no migration') a partition-declaration column is arguably already authorised; under D-23's correction it may instead belong to each rung. Nobody has asked, so this is not deferred — it is undecided. What exists today is X-01, which passes and means only 'no multi-producer table that nobody declared' — its own docstring refuses the stronger reading.
 
-**Owner:** ADHIKĀRIN (G9, and P5 if a column is involved)  
+**Owner:** ADHIKĀRIN confirmed M0 (D-39); execution (author migration, backfill, verify) is a KĀRAKA task  
 **Closes when:** either a partition-declaration column is authorised and the 16 co-writer rows across 5 tables declare their partitions, or the item is deferred to the owning rungs with the reason recorded.
 
 <details><summary>rows</summary>
@@ -462,7 +472,7 @@ One RETIRED row exists and it is `ka_gochara_sweep`. Plan §14.2 names its data_
 
 ### crit-8 · active assets with neither build coverage nor a dead flag = 0
 
-**Bucket: UNEXAMINED**
+**Bucket: REPAIRABLE-IN-M0**
 
 **Reads now**
 
@@ -473,13 +483,17 @@ One RETIRED row exists and it is `ka_gochara_sweep`. Plan §14.2 names its data_
 }
 ```
 
+**D-39 APPLIED (M0-T46).** Criterion 8 is X-03's criterion and inherits D-39's finding exactly: ownership to M0 confirmed, the dead-flag column authorised under D-4 and not reserved by P5. Moved from UNEXAMINED to REPAIRABLE-IN-M0. The scorecard's own disagreement with the guard about whether this criterion is measurable at all is unaffected — no column exists yet, so the scorecard still reads NOT-MEASURABLE until the repair is executed. Separately, D-42 (2026-08-23T11:04:17Z) ranks build_run_assets as authoritative wherever a surface asks 'was this asset built' — bearing on this criterion's BUILD-COVERAGE half, not the dead-flag half D-39 just settled: has_writer and asset_throughput.state='lit' both remain proxies for 'built', and the dead-flag column D-39 authorises does not by itself decide which proxy the criterion's other half should read.
+
+— — — v1.1 (M0-T36, D-30 applied) classification, preserved — — —
+
 **D-30 PART 1 APPLIED (M0-T36).** Criterion 8 is X-03's criterion and inherits its finding exactly: Phase 0.8a and the criterion's own text both name the dead flag, so clause (a) is satisfied and the work is M0's — a result D-30 routed to a separate ruling and did not expect the named-field test to produce. What remains undecided is the mechanism (a P5 column, the `has_writer` proxy ruled sufficient, or the criterion deferred), and beneath it the fact the scorecard has recorded from its first reading: the two detectors disagree about whether this criterion is MEASURABLE at all — NOT-MEASURABLE from the scorecard, 2 violations from the guard's proxy.
 
 — — — v1.0 (M0-T31) classification, preserved — — —
 
 THE TWO DETECTORS DISAGREE ABOUT WHETHER THE CRITERION IS MEASURABLE AT ALL. The scorecard says NOT-MEASURABLE: asset_registry has no column designating a registered-but-dead asset, the contract defines none, and has_writer — the only candidate — was itself wrong on 2 rows (D-25). The shipped guard's X-03 reads has_writer as the proxy anyway and returns 2 violations. Meanwhile plan Phase 0.8a — an M0 step — reads 'Registered-but-dead FLAGGED (bg_gochara_citation_resolution)', i.e. M0 is asked to produce a flag that has nowhere to live. Defining the flag, ruling the proxy sufficient, or deferring the whole criterion are three different answers and none has been given.
 
-**Owner:** ADHIKĀRIN (G9; P5 if a new column is the answer)  
+**Owner:** ADHIKĀRIN confirmed M0 (D-39); execution is a KĀRAKA task  
 **Closes when:** the flag question is ruled, and then the two rows below are dispositioned by whoever owns them.
 
 <details><summary>rows</summary>
@@ -516,7 +530,7 @@ THE TWO DETECTORS DISAGREE ABOUT WHETHER THE CRITERION IS MEASURABLE AT ALL. The
 
 ### crit-9 · unresolved zero-consumer findings = 0
 
-**Bucket: REPAIRABLE-IN-M0**
+**Bucket: AT-ZERO-WITH-EXPOSURE** · reason kind: `ruling`
 
 **Reads now**
 
@@ -527,6 +541,10 @@ THE TWO DETECTORS DISAGREE ABOUT WHETHER THE CRITERION IS MEASURABLE AT ALL. The
  "at": "2026-08-23T06:58:51Z"
 }
 ```
+
+**D-38 APPLIED (M0-T46).** Phase 0.8c is now RULED per packet, per reading class, rather than left open pending 23 individual G1 dispositions. D-38 part 3 adjudicates each of the five reading classes ZERO_CONSUMER_EVIDENCE_v1_0.md kept apart: INPUT-ONLY -> no action, closed (the absence of a serving consumer is the design); NO CONSUMER FOUND -> recorded as a retirement candidate, NOT retired, routed to the owning rung; METHOD-BLIND -> no action, and explicitly NOT a retirement candidate (this is UNKNOWN, not zero — retiring on a method-blind absence would be H6); SHADOWED -> a real defect, routed to the owning rung; BY DESIGN EMPTY / CATEGORY MISMATCH -> no action, closed, mismatch recorded. Applied to the 23 measured packets: 8 INPUT-ONLY and 2 BY-DESIGN close with no action; 7 METHOD-BLIND close as genuinely unknown, not as retirement candidates; 1 NO-CONSUMER-FOUND (bg_concordance, R0) is recorded as a retirement candidate and routed to R0; 5 SHADOWED (bg_vidhi_floors, bg_vidhi_primitives — R0; ka_dasha_kala, ka_muhurta_seva, ka_tulana — R3) are recorded as real defects and routed to their rungs. D-38's own words govern the count: 'RESOLVED MEANS ADJUDICATED, NOT MUTATED … a finding adjudicated against its evidence with a recorded determination IS resolved. Reading that criterion to require status changes would force asset-lifecycle work on six closed rungs to satisfy a catalogue step, which I13 forbids.' ALL 23 PACKETS NOW CARRY A RECORDED DETERMINATION, so unresolved = 0 by the ruling's own definition of resolved. THE ZERO IS CONDITIONAL, NOT UNCONDITIONAL: 6 of the 23 (1 retirement candidate, 5 SHADOWED defects) carry follow-on asset-lifecycle work at their owning rung that this ruling explicitly does not perform, and 7 more are closed as UNKNOWN rather than confirmed-absent. Moved from REPAIRABLE-IN-M0 to AT-ZERO-WITH-EXPOSURE — the same shape as criterion 11 — rather than to a plain settled bucket, because the underlying rows are adjudicated, not fixed.
+
+— — — v1.1 (M0-T36, D-30 applied) classification, preserved — — —
 
 THE REPAIR IS NAMED, THE MACHINERY IS BUILT, AND THE RULINGS HAVE NOT BEEN MADE. Plan Phase 0.8c — an M0 step — reads '13 assets: record the consumer or retire with a disposition' (the measured packet count is 23; the plan's 13 has no per-asset list behind it and its own annotations count 7 — the 23 is the measured figure and the one the guard reduces). asset_catalogue_disclosed_residuals.json already carries the `zero_consumer_dispositions` block, and X-05 resolves a packet ONLY on an entry carrying a decision_ref into DECISIONS.jsonl — disposition is charter G1 and no KĀRAKA may self-serve one. The block is empty; 23 rulings are outstanding.
 
@@ -766,7 +784,7 @@ Rule statuses are the shipped guard's own output — `check_asset_catalogue_cont
 | `C-06` | BLOCKING | chart-domain count_sql contains $1 | `1` | **DEFERRED-WITH-REASON** | R5 (Mīmāṃsā rung), §8.6 stage-2 Conform — inherited from C-07, of which this rule is a shadow |
 | `C-07` | BLOCKING | service ⇒ target_table / count_sql / target_floor / clear_tables all NULL | `4` | **DEFERRED-WITH-REASON** | R3 (ka_dasha_kala, ka_tulana) and R5 (mi_abhilekha, mi_seva), §8.6 stage-2 Conform |
 | `C-08` | BLOCKING | RETIRED ⇒ data_disposition NOT NULL | `1` | **DEFERRED-WITH-REASON** | R3 |
-| `C-11` | BLOCKING | CURRENT depends only on CURRENT (or source) | `3` | **REPAIRABLE-IN-M0** | ADHIKĀRIN (G1) |
+| `C-11` | BLOCKING | CURRENT depends only on CURRENT (or source) | `3` | **DEFERRED-WITH-REASON** | R1 (ga_vichara) and R3 (ka_dasha_kala, ka_sangam) |
 | `C-15` | BLOCKING | service ⇒ health_probe AND provides_apis NOT NULL | `6` | **DEFERRED-WITH-REASON** | R3 (ka_dasha_kala, ka_graha_sancara, ka_muhurta_seva, ka_tulana) and R5 (mi_abhilekha, mi_seva) — §8.6 stage-2 Conform for provides_apis; the probe itself is tier-S rung work (§9) |
 | `C-17` | BLOCKING | graded service_health ⇒ health_probe NOT NULL | `4` | **DEFERRED-WITH-REASON** | R3 (Kāla rung) stage-1 intake — all four rows, per D-13 part 2 AS CORRECTED BY D-29 |
 | `C-20` | BLOCKING | CURRENT data/artifact ⇒ target_floor NOT NULL | `3` | **DEFERRED-WITH-REASON** | R0, stage 2 Conform |
@@ -777,8 +795,8 @@ Rule statuses are the shipped guard's own output — `check_asset_catalogue_cont
 | `C-27` | ADVISORY | writer_timeout_seconds set from telemetry where p95 ≥ 0.5× the value | `not_checkable` | **DEFERRED-WITH-REASON** | M2 (telemetry) |
 | `C-28` | BLOCKING | estimated_seconds NOT NULL where a successful build exists | `105` | **REPAIRABLE-IN-M0** | ADHIKĀRIN (confirm D-12 part 5 discharges the flag), then a KĀRAKA executes T-1…T-5 |
 | `X-02` | RESIDUAL | no asset_throughput rows on inactive/RETIRED assets | `1` | **RESERVED** | R3 / the native |
-| `X-03` | BLOCKING | no active asset with neither build coverage nor a dead flag | `2` | **UNEXAMINED** | ADHIKĀRIN (G9) |
-| `X-05` | BLOCKING | no unresolved zero-consumer finding | `23` | **REPAIRABLE-IN-M0** | ADHIKĀRIN (G1 ×23) |
+| `X-03` | BLOCKING | no active asset with neither build coverage nor a dead flag | `2` | **REPAIRABLE-IN-M0** | ADHIKĀRIN confirmed M0 (D-39); execution is a KĀRAKA task |
+| `X-05` | BLOCKING | no unresolved zero-consumer finding | `23` | **AT-ZERO-WITH-EXPOSURE** | ADHIKĀRIN (G1 ×23) |
 
 ### `C-01` — asset_id prefix matches layer, non-source rows
 
@@ -898,11 +916,15 @@ Evidence: guard C-08 live 06:58:51Z · DECISIONS.jsonl D-12 part 4
 
 ### `C-11` — CURRENT depends only on CURRENT (or source)
 
-**Severity BLOCKING · reads `3` · bucket REPAIRABLE-IN-M0**
+**Severity BLOCKING · reads `3` · bucket DEFERRED-WITH-REASON** · reason kind `ruling`
+
+**D-38 APPLIED (M0-T46).** Criterion 4's rule; see that entry. D-38 part 1 rules the general DRAFT-but-served disposition REMAIN DRAFT, and none of ga_vichara, ka_dasha_kala or ka_sangam is named by a rung-specific promotion clause, so all three stay DRAFT and these three edges cannot be closed by promotion in M0. Moved to DEFERRED-WITH-REASON.
+
+— — — v1.1 (M0-T36, D-30 applied) classification, preserved — — —
 
 criterion 4's rule; see that entry. Named by Phase 0.8b; blocked on the G1 rung-bound reconciliation, not on evidence.
 
-**Owner:** ADHIKĀRIN (G1)
+**Owner:** R1 (ga_vichara) and R3 (ka_dasha_kala, ka_sangam)
 
 Rows: `bo_laksana→ga_vichara`, `ka_kshetra→ka_dasha_kala`, `ka_taranga→ka_sangam`
 
@@ -1033,6 +1055,10 @@ Evidence: ASSET_CATALOGUE_CONTRACT_v1_0.md §4.8, §6 · guard C-27 live 06:58:5
 
 **Severity BLOCKING · reads `105` · bucket REPAIRABLE-IN-M0**
 
+**D-42 APPLIED (M0-T46).** ADHIKĀRIN ruling D-42 reclassifies this residual's FRAMING and forbids both available 'fixes'. THE OLD FRAME WAS WRONG: this is not '31 assets missing an estimated_seconds'. D-42's authoritative framing: '31 ASSETS READ lit WITH NO COMPLETED RUN RECORD BEHIND THEM' — the missing estimate is a symptom, the unearned `lit` is the finding (D-13's telemetry pollution meeting §N.8's no-op-completion class). RANKING ESTABLISHED FOR THE WHOLE REGISTER, NOT JUST THIS RULE: 'build_run_assets IS AUTHORITATIVE. asset_throughput.state="lit" IS A CLAIM ABOUT A BUILD, NOT EVIDENCE OF ONE' — applying wherever a surface asks 'was this asset built', including criterion 8's build-coverage half (see that entry). TWO FIXES ARE EXPLICITLY FORBIDDEN, NOT MERELY DISCOURAGED: backfilling estimates for the 31 (H6 — a number on a build nothing witnessed), and RE-POINTING c28()'s detector at build_run_assets to close it — 'under the authoritative definition C-28 would report zero violations and a BLOCKING failure would pass — while all 31 unearned lit states remain exactly as they are. That is a weakening under D-41 part 2 and presumptively H3.' NEITHER FIX IS THIS TASK'S TO MAKE AND NEITHER WAS MADE — no detector in m0_exit_scorecard.py or check_asset_catalogue_contract.py was re-pointed by M0-T46; a future re-pointing found inconsistent with this ruling is a finding for a separate task, not a repair for this one. THE BUCKET DOES NOT MOVE — the deferral for the 31 stands (D-30 part 3), now grounded on the definitional finding rather than the absence of estimates — and the 31 unearned lit states are additionally understood as ROUTED TO THEIR OWNING RUNGS (all R0), since D-42 holds 'each rung's own build is the only thing that can earn or refute a lit'.
+
+— — — v1.1 (M0-T36, D-30 applied) classification, preserved — — —
+
 **D-30 PART 3 APPLIED (M0-T36).** ADHIKĀRIN granted the residual deferral under G7 and D-31 part 2 indexes it as one of the three G7 deferrals on the record. M0-T36 re-measured the split read-only at 2026-08-23T08:0xZ rather than inherit it, and it reproduces exactly: of the 105 data/artifact rows the shipped guard reports, **74 are backfillable** from the median of their completed `build_run_assets` rows (D-6's authorised statement T-5) and **31 have no completed build_run_assets row at all**, so no measured duration exists and D-6 condition 4 forbids inventing one (H6). All 31 are R0. THE BUCKET DOES NOT MOVE, and that is deliberate: the rule is genuinely repairable-in-M0 for 74 rows and genuinely deferred for 31, and collapsing it to one bucket would lose whichever half was collapsed. What the flip needs from this rule is therefore TWO things, not one — T-5 executed (nothing has executed; M0-T3 produced the proposal with `writes_executed: NONE`), and the 31-row residual disclosed. Until T-5 runs, C-28 reads 105, not 31, and any statement that 'C-28 is deferred' is premature by 74 rows.
 
 — — — v1.0 (M0-T31) classification, preserved — — —
@@ -1066,7 +1092,11 @@ Evidence: guard X-02 live 06:58:51Z (fail, disclosed:true, does_not_turn_the_rul
 
 ### `X-03` — no active asset with neither build coverage nor a dead flag
 
-**Severity BLOCKING · reads `2` · bucket UNEXAMINED**
+**Severity BLOCKING · reads `2` · bucket REPAIRABLE-IN-M0**
+
+**D-39 APPLIED (M0-T46).** M0-T36's own re-derivation of the named-field test (independent of D-30's assertion) reached X-03 and found clause (a) satisfied — Phase 0.8a names the dead flag AND the asset — but left it UNEXAMINED because 'the register's definition of REPAIRABLE-IN-M0 requires a KNOWN repair; none is known', the open question being whether a new column is authorised under D-4's reasoning or reserved under charter P5. D-39 part 4 CONFIRMS ownership to M0 independently and SETTLES the P5 question: the column is 'inside the plan's naming and NOT reserved by P5 … subject to D-4's standing conditions (additive only, mechanical backfill only, NULL where not derivable, verify applied, never edit after, PARĪKṢAKA verifies)'. With ownership confirmed and the column authorised rather than reserved, a KNOWN repair now exists — even though nothing has executed it. Moved from UNEXAMINED to REPAIRABLE-IN-M0. What remains undone: authoring the migration, running the backfill, and PARĪKṢAKA's verification — none of which this task performs.
+
+— — — v1.1 (M0-T36, D-30 applied) classification, preserved — — —
 
 **D-30 PART 1 APPLIED (M0-T36).** **THE TEST REACHES THIS ENTRY AND D-30 DID NOT ANTICIPATE THAT IT WOULD.** D-30 listed X-03 and criterion 8 under a SEPARATE ruling (v1.0 §6 step 5, 'Rule Phase 0.8a — the dead flag'), not among the named-field test's reclassifications. But clause (a) is satisfied here twice over and more explicitly than in any of the five verification cases: Phase 0.8a reads 'Registered-but-dead FLAGGED (`bg_gochara_citation_resolution`)' — naming the work AND the asset — and M0 acceptance criterion 8 names 'active assets with neither build coverage nor a dead flag'. Clause (b) does not fire: no rung clause claims a dead flag. So the rule's output is unambiguous — THE DEAD FLAG IS M0's, NOT A RUNG's, and deferring it to R0/R5 would be the error in the opposite direction. WHAT THE TEST DOES NOT DECIDE, and why this entry does not move to a settled bucket: there is no column for the flag to live in. Creating one is charter P5 (a schema change outside the migrations this plan names) unless D-4's reasoning extends — 'a criterion that cannot be met without a change has NAMED that change even where it numbers no migration'. Ruling the guard's self-designated `has_writer` proxy sufficient is the other available answer, and D-25 already found that column wrong on 2 rows. The register's definition of REPAIRABLE-IN-M0 requires 'a KNOWN repair'; none is known. So the entry stays UNEXAMINED — but the question left is narrower and different in kind: not 'whose is it' (answered: M0's) but 'what is the flag'.
 
@@ -1074,7 +1104,7 @@ Evidence: guard X-02 live 06:58:51Z (fail, disclosed:true, does_not_turn_the_rul
 
 criterion 8's rule; see that entry. Both rows have plausible owners (R0 and R5); what is unexamined is the criterion itself — there is no dead-flag column, the guard uses has_writer as a proxy, and Phase 0.8a asks M0 to produce a flag with nowhere to live.
 
-**Owner:** ADHIKĀRIN (G9)
+**Owner:** ADHIKĀRIN confirmed M0 (D-39); execution is a KĀRAKA task
 
 Rows: `bg_gochara_citation_resolution`, `lel_events`
 
@@ -1084,7 +1114,11 @@ Evidence: guard X-03 live 06:58:51Z
 
 ### `X-05` — no unresolved zero-consumer finding
 
-**Severity BLOCKING · reads `23` · bucket REPAIRABLE-IN-M0**
+**Severity BLOCKING · reads `23` · bucket AT-ZERO-WITH-EXPOSURE** · reason kind `ruling`
+
+**D-38 APPLIED (M0-T46).** Criterion 9's rule; see that entry. D-38 part 3 adjudicates all 23 packets by reading class; unresolved = 0. Moved to AT-ZERO-WITH-EXPOSURE: 6 packets (1 retirement candidate, 5 SHADOWED defects) are routed to their owning rungs rather than closed outright, and 7 METHOD-BLIND packets are closed as unknown, not as confirmed-zero.
+
+— — — v1.1 (M0-T36, D-30 applied) classification, preserved — — —
 
 criterion 9's rule; see that entry. 23 packets, 0 dispositions recorded, machinery built and waiting on G1 rulings.
 
@@ -1140,21 +1174,21 @@ has_substeps is in neither seed column list, so the M0-T20 repair of 12 rows can
 
 In order. Steps 1–9 are rulings only ADHIKĀRIN can make; step 10 is mechanical and is the one that actually stops the flip; steps 11–13 are execution and verification.
 
-| # | kind | what | unblocks |
-|---|---|---|---|
-| 1 | RULING | **Record the self-reference carve-out for criterion 10** | crit-10 |
-| 2 | RULING | **Rule the NAMED-FIELD TEST** | C-04 (7 rows), C-06, C-07, C-15, C-17 (1 row), crit-1 (partly) |
-| 3 | RULING | **Rule what criterion 1 means** | crit-1 |
-| 4 | RULING | **Rule Phase 0.4 — the partition declaration** | crit-5, crit-2 (partly) |
-| 5 | RULING | **Rule Phase 0.8a — the dead flag** | crit-8, X-03 |
-| 6 | RULING | **Rule criterion 2's wording** | crit-2 |
-| 7 | RULING | **Reconcile G1's rung bound with Phase 0.8b / 0.8c** | crit-4, crit-9, C-11, X-05 |
-| 8 | RULING | **Rule H2's reach — is a PR merge to main a 'write to main'?** | crit-10, crit-12 |
-| 9 | RULING | **Correct D-13 part 2's rung, and cover its fourth row** | C-17 |
-| 10 | MECHANISM | **Give every DEFERRED item a disclosure the guard can actually read** | crit-10 in practice |
-| 11 | EXECUTION | **Execute the repairs that are already authorised** | C-28, crit-4, crit-9, C-20 durability |
-| 12 | EXECUTION | **Merge, flip, and make it RUN once** | crit-10, crit-12 |
-| 13 | VERIFICATION | **Re-measure, then let PARĪKṢAKA certify** | M0 freeze (M0-T10) |
+| # | kind | what | unblocks | resolved? |
+|---|---|---|---|---|
+| 1 | RULING | **Record the self-reference carve-out for criterion 10** | crit-10 | open |
+| 2 | RULING | **Rule the NAMED-FIELD TEST** | C-04 (7 rows), C-06, C-07, C-15, C-17 (1 row), crit-1 (partly) | open |
+| 3 | RULING | **Rule what criterion 1 means** | crit-1 | open |
+| 4 | RULING | **Rule Phase 0.4 — the partition declaration** | crit-5, crit-2 (partly) | YES — see below |
+| 5 | RULING | **Rule Phase 0.8a — the dead flag** | crit-8, X-03 | YES — see below |
+| 6 | RULING | **Rule criterion 2's wording** | crit-2 | open |
+| 7 | RULING | **Reconcile G1's rung bound with Phase 0.8b / 0.8c** | crit-4, crit-9, C-11, X-05 | YES — see below |
+| 8 | RULING | **Rule H2's reach — is a PR merge to main a 'write to main'?** | crit-10, crit-12 | open |
+| 9 | RULING | **Correct D-13 part 2's rung, and cover its fourth row** | C-17 | open |
+| 10 | MECHANISM | **Give every DEFERRED item a disclosure the guard can actually read** | crit-10 in practice | open |
+| 11 | EXECUTION | **Execute the repairs that are already authorised** | C-28, crit-4, crit-9, C-20 durability | open |
+| 12 | EXECUTION | **Merge, flip, and make it RUN once** | crit-10, crit-12 | open |
+| 13 | VERIFICATION | **Re-measure, then let PARĪKṢAKA certify** | M0 freeze (M0-T10) | open |
 
 **1. [RULING] Record the self-reference carve-out for criterion 10**
 
@@ -1172,9 +1206,13 @@ Is the three-way diff the scorecard's reading (every registry row needs a produc
 
 Phase 0.4 names 'declare co-writer partitions' as M0 content, but no schema column exists to declare them in. Authorise a column under D-4's reasoning, or defer the work to the owning rungs with the reason recorded. C-25 itself stays not_checkable either way — that part is already well-formed; what is undecided is the WORK.
 
+**RESOLVED (M0-T46 records; ruled by ADHIKĀRIN):** D-39 (2026-08-23T09:25:50Z) — CONFIRMED M0's; the column is authorised under D-4's reasoning, NOT reserved by P5. crit-5 moved UNEXAMINED → REPAIRABLE-IN-M0. The remaining work is execution (author the migration, backfill, verify), not a further ruling.
+
 **5. [RULING] Rule Phase 0.8a — the dead flag**
 
 Define a registered-but-dead flag, rule the guard's has_writer proxy sufficient, or defer the criterion. Today the scorecard calls criterion 8 NOT-MEASURABLE and the guard returns 2 violations from a proxy the contract never designated.
+
+**RESOLVED (M0-T46 records; ruled by ADHIKĀRIN):** D-39 (2026-08-23T09:25:50Z) — CONFIRMED M0's for both crit-8 and X-03; the dead-flag column is authorised under D-4's reasoning, NOT reserved by P5. Both moved UNEXAMINED → REPAIRABLE-IN-M0. The remaining work is execution — no column has been created yet.
 
 **6. [RULING] Rule criterion 2's wording**
 
@@ -1183,6 +1221,8 @@ Define a registered-but-dead flag, rule the guard's has_writer proxy sufficient,
 **7. [RULING] Reconcile G1's rung bound with Phase 0.8b / 0.8c**
 
 G1's charter bound reads 'only assets in the current rung' and no rung is open, while Phase 0.8b and 0.8c assign 3 promotions and 23 zero-consumer dispositions to M0. One ruling clears both criteria; without it, the two largest REPAIRABLE items cannot be executed by anyone.
+
+**RESOLVED (M0-T46 records; ruled by ADHIKĀRIN):** D-38 (2026-08-23T09:24:48Z) — 0.8b's disposition is REMAIN DRAFT (a decision, not a promotion): none of ga_vichara/ka_dasha_kala/ka_sangam is named by a rung-specific promotion clause, so crit-4/C-11 move to DEFERRED-WITH-REASON (R1/R3), not repaired in M0. 0.8c's 23 packets are adjudicated per reading class (INPUT-ONLY/BY-DESIGN closed, METHOD-BLIND closed-as-unknown, NO-CONSUMER-FOUND/SHADOWED routed to rung); crit-9/X-05 move to AT-ZERO-WITH-EXPOSURE, unresolved = 0.
 
 **8. [RULING] Rule H2's reach — is a PR merge to main a 'write to main'?**
 
@@ -1376,6 +1416,10 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
 
 **They are also inert, and that is finding `F-T36-3`** — see §11. Writing them satisfies D-30 part 4's letter and changes nothing the guard does, because the guard has no code path that reads a disclosure for any rule but `X-02`.
 
+**v1.2 (M0-T46) — THE FLIP CONDITION HAS BEEN AMENDED TWICE SINCE THE ABOVE WAS WRITTEN, AND THE FINAL FORM IS DIFFERENT FROM D-30 part 4's.** D-39 part 1 first amended D-30 part 4: an existing disclosure entry is not evidence the mechanism does anything — the switch flips only when the disclosure mechanism is 'DEMONSTRABLY IN EFFECT, PROVEN BY A FIXTURE THAT SHOWS BOTH DIRECTIONS — a disclosed rule's violation is still REPORTED while no longer GATING, and an UNDISCLOSED rule still BLOCKS'; D-39 also added 'CI MUST GATE AGAINST LIVE STATE, NOT A SNAPSHOT'. D-40 part 1 WITHDREW that CI clause as an impossibility M0-T40 root-caused: CI Actions carries no database credential, so `--live` is a job that cannot run there at all. D-40 replaces it: **CI need not gate against live state — it must DETECT AND REFUSE A STALE BASELINE**, with rule results still printed in full so only the exit changes. THE FINAL CONDITION, as amended twice, supersedes D-30 part 4 for this document's own §0/frontmatter: every criterion at zero or explicitly deferred, AND the disclosure mechanism demonstrably in effect (the two-direction fixture), AND CI's baseline check detects and refuses staleness. Neither half of the mechanism half is discharged by this task; both remain open per §12.
+
+**A tension this task found and does not resolve.** D-39's characterisation of `F-T36-3` as still-inert rests on SUTRADHĀRA's mailbox escalation timestamped `20260823T082157Z` (from M0-T36's own close-readiness pass). This file's own `_write_disclosure_block()` docstring and README text (below, and unchanged by this task) assert that a LATER task, M0-T40, closed `F-T36-3` by making the guard read `deferred_rule_disclosures` BY RULE ID and compute `effective_severity` from it — and M0-T46 verified, read-only, that `check_asset_catalogue_contract.py` does contain exactly that code path (`effective_severity`, a rule-id-keyed reader). D-39 is timestamped *after* that M0-T40 work would have landed but cites *pre*-M0-T40 evidence for its F-T36-3 finding. This is recorded as an open question for ADHIKĀRIN, not settled here: a KĀRAKA does not adjudicate whether a ruling used stale evidence (I13/I16). See the mailbox finding this task files alongside its report.
+
 | rule | severity | gates today | deferred to | ruling / mandate cited |
 |---|---|:--:|---|---|
 | `C-01` | BLOCKING | YES | R5 | DECISIONS.jsonl D-23 (ADHIKĀRIN, 2026-08-23T05:04:21Z) — reverses D-21 and assigns the SOURCE reclassification to R5, no |
@@ -1399,10 +1443,10 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
 
 **Deliberately NOT drafted:**
 
-- `C-11` — REPAIRABLE-IN-M0, not deferred — 3 CURRENT→DRAFT edges awaiting G1 dispositions. A disclosure would be the wrong instrument: this needs the repair, not a reason it cannot happen.
-- `X-05` — REPAIRABLE-IN-M0, not deferred — 23 zero-consumer packets, 0 dispositions. The guard already has the right mechanism (`zero_consumer_dispositions`, deliberately EMPTY because resolving a packet requires a `decision_ref` into DECISIONS.jsonl and catalogue disposition is G1). No KĀRAKA may resolve a packet by writing a justification into that block, and M0-T36 did not.
-- `X-02` — ALREADY DISCLOSED, in `disclosed_additions`, and is the pattern every entry above follows. Untouched by M0-T36.
-- `X-03` — UNEXAMINED, not deferred — D-30's named-field test settles that the dead flag is M0's (Phase 0.8a names it, and names the asset), but no mechanism exists. Disclosing it would record a deferral that has not been granted and that the rule says is not owed.
+- `C-11` — NEWLY DEFERRED-WITH-REASON BY D-38 (2026-08-23T09:24:48Z), NOT REPAIRABLE-IN-M0 any more — see the C-11 entry above. Phase 0.8b's disposition is REMAIN DRAFT for all three of this rule's DRAFT dependencies, deferred to R1/R3. A disclosure entry for this rule has NOT been drafted by M0-T46: this task is scoped to `00_ARCHITECTURE/control/` and does not write `platform/scripts/governance/asset_catalogue_disclosed_residuals.json`. Drafting one, in the same shape as the other DEFERRED rules above, is follow-up work for a task with that file in scope.
+- `X-05` — RESOLVED BY D-38 part 3 (2026-08-23T09:24:48Z), NOT REPAIRABLE-IN-M0 and NOT deferred — see the X-05 entry above. All 23 zero-consumer packets are adjudicated per reading class; unresolved = 0. A disclosure is the wrong instrument for a resolved (not deferred) rule. The guard's `zero_consumer_dispositions` block remains empty per-packet, which is correct: D-38's adjudication is by CLASS, not by writing a `decision_ref` into that per-packet block, and no KĀRAKA may write one there regardless (catalogue disposition is G1).
+- `X-02` — ALREADY DISCLOSED, in `disclosed_additions`, and is the pattern every entry above follows. Untouched by M0-T36 or M0-T46.
+- `X-03` — REPAIRABLE-IN-M0 (D-39, 2026-08-23T09:25:50Z), NOT deferred any more — see the X-03 entry above. Ownership to M0 is confirmed and the column is authorised under D-4, not reserved by P5; the repair (add the column, backfill, verify) is known but unexecuted. A disclosure would be the wrong instrument: this needs the repair, not a reason it cannot happen.
 
 ### disclosure · C-01
 
@@ -1427,7 +1471,9 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
   "disclosed_at": "2026-08-23",
   "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
   "certified_by": null,
-  "wired_into_the_guard": false,
+  "wired_into_the_guard": true,
+  "gating_effect": "none",
+  "gating_effect_reason": "recorded, read and validated by the guard; NOT demoting. Only ADHIKĀRIN may add `gating_effect=\"non_gating\"` + `authorised_by=<D-n>` + an itemised `covers` list, and even then the rule still reports every violation — a disclosure makes a residual visible and non-gating, never invisible (D-12 part 4, D-10 part 3).",
   "does_not_turn_the_rule_green": true
  }
 }
@@ -1458,7 +1504,9 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
   "disclosed_at": "2026-08-23",
   "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
   "certified_by": null,
-  "wired_into_the_guard": false,
+  "wired_into_the_guard": true,
+  "gating_effect": "none",
+  "gating_effect_reason": "recorded, read and validated by the guard; NOT demoting. Only ADHIKĀRIN may add `gating_effect=\"non_gating\"` + `authorised_by=<D-n>` + an itemised `covers` list, and even then the rule still reports every violation — a disclosure makes a residual visible and non-gating, never invisible (D-12 part 4, D-10 part 3).",
   "does_not_turn_the_rule_green": true
  }
 }
@@ -1489,7 +1537,9 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
   "disclosed_at": "2026-08-23",
   "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
   "certified_by": null,
-  "wired_into_the_guard": false,
+  "wired_into_the_guard": true,
+  "gating_effect": "none",
+  "gating_effect_reason": "recorded, read and validated by the guard; NOT demoting. Only ADHIKĀRIN may add `gating_effect=\"non_gating\"` + `authorised_by=<D-n>` + an itemised `covers` list, and even then the rule still reports every violation — a disclosure makes a residual visible and non-gating, never invisible (D-12 part 4, D-10 part 3).",
   "does_not_turn_the_rule_green": true
  }
 }
@@ -1530,7 +1580,9 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
   "disclosed_at": "2026-08-23",
   "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
   "certified_by": null,
-  "wired_into_the_guard": false,
+  "wired_into_the_guard": true,
+  "gating_effect": "none",
+  "gating_effect_reason": "recorded, read and validated by the guard; NOT demoting. Only ADHIKĀRIN may add `gating_effect=\"non_gating\"` + `authorised_by=<D-n>` + an itemised `covers` list, and even then the rule still reports every violation — a disclosure makes a residual visible and non-gating, never invisible (D-12 part 4, D-10 part 3).",
   "does_not_turn_the_rule_green": true
  }
 }
@@ -1559,7 +1611,9 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
   "disclosed_at": "2026-08-23",
   "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
   "certified_by": null,
-  "wired_into_the_guard": false,
+  "wired_into_the_guard": true,
+  "gating_effect": "none",
+  "gating_effect_reason": "recorded, read and validated by the guard; NOT demoting. Only ADHIKĀRIN may add `gating_effect=\"non_gating\"` + `authorised_by=<D-n>` + an itemised `covers` list, and even then the rule still reports every violation — a disclosure makes a residual visible and non-gating, never invisible (D-12 part 4, D-10 part 3).",
   "does_not_turn_the_rule_green": true
  }
 }
@@ -1603,7 +1657,9 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
   "disclosed_at": "2026-08-23",
   "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
   "certified_by": null,
-  "wired_into_the_guard": false,
+  "wired_into_the_guard": true,
+  "gating_effect": "none",
+  "gating_effect_reason": "recorded, read and validated by the guard; NOT demoting. Only ADHIKĀRIN may add `gating_effect=\"non_gating\"` + `authorised_by=<D-n>` + an itemised `covers` list, and even then the rule still reports every violation — a disclosure makes a residual visible and non-gating, never invisible (D-12 part 4, D-10 part 3).",
   "does_not_turn_the_rule_green": true
  }
 }
@@ -1635,7 +1691,9 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
   "disclosed_at": "2026-08-23",
   "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
   "certified_by": null,
-  "wired_into_the_guard": false,
+  "wired_into_the_guard": true,
+  "gating_effect": "none",
+  "gating_effect_reason": "recorded, read and validated by the guard; NOT demoting. Only ADHIKĀRIN may add `gating_effect=\"non_gating\"` + `authorised_by=<D-n>` + an itemised `covers` list, and even then the rule still reports every violation — a disclosure makes a residual visible and non-gating, never invisible (D-12 part 4, D-10 part 3).",
   "does_not_turn_the_rule_green": true
  }
 }
@@ -1671,7 +1729,9 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
   "disclosed_at": "2026-08-23",
   "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
   "certified_by": null,
-  "wired_into_the_guard": false,
+  "wired_into_the_guard": true,
+  "gating_effect": "none",
+  "gating_effect_reason": "recorded, read and validated by the guard; NOT demoting. Only ADHIKĀRIN may add `gating_effect=\"non_gating\"` + `authorised_by=<D-n>` + an itemised `covers` list, and even then the rule still reports every violation — a disclosure makes a residual visible and non-gating, never invisible (D-12 part 4, D-10 part 3).",
   "does_not_turn_the_rule_green": true
  }
 }
@@ -1704,7 +1764,9 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
   "disclosed_at": "2026-08-23",
   "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
   "certified_by": null,
-  "wired_into_the_guard": false,
+  "wired_into_the_guard": true,
+  "gating_effect": "none",
+  "gating_effect_reason": "recorded, read and validated by the guard; NOT demoting. Only ADHIKĀRIN may add `gating_effect=\"non_gating\"` + `authorised_by=<D-n>` + an itemised `covers` list, and even then the rule still reports every violation — a disclosure makes a residual visible and non-gating, never invisible (D-12 part 4, D-10 part 3).",
   "does_not_turn_the_rule_green": true
  }
 }
@@ -1735,7 +1797,9 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
   "disclosed_at": "2026-08-23",
   "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
   "certified_by": null,
-  "wired_into_the_guard": false,
+  "wired_into_the_guard": true,
+  "gating_effect": "none",
+  "gating_effect_reason": "recorded, read and validated by the guard; NOT demoting. Only ADHIKĀRIN may add `gating_effect=\"non_gating\"` + `authorised_by=<D-n>` + an itemised `covers` list, and even then the rule still reports every violation — a disclosure makes a residual visible and non-gating, never invisible (D-12 part 4, D-10 part 3).",
   "does_not_turn_the_rule_green": true
  }
 }
@@ -1768,7 +1832,9 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
   "disclosed_at": "2026-08-23",
   "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
   "certified_by": null,
-  "wired_into_the_guard": false,
+  "wired_into_the_guard": true,
+  "gating_effect": "none",
+  "gating_effect_reason": "recorded, read and validated by the guard; NOT demoting. Only ADHIKĀRIN may add `gating_effect=\"non_gating\"` + `authorised_by=<D-n>` + an itemised `covers` list, and even then the rule still reports every violation — a disclosure makes a residual visible and non-gating, never invisible (D-12 part 4, D-10 part 3).",
   "does_not_turn_the_rule_green": true
  }
 }
@@ -1796,7 +1862,9 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
   "disclosed_at": "2026-08-23",
   "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
   "certified_by": null,
-  "wired_into_the_guard": false,
+  "wired_into_the_guard": true,
+  "gating_effect": "none",
+  "gating_effect_reason": "recorded, read and validated by the guard; NOT demoting. Only ADHIKĀRIN may add `gating_effect=\"non_gating\"` + `authorised_by=<D-n>` + an itemised `covers` list, and even then the rule still reports every violation — a disclosure makes a residual visible and non-gating, never invisible (D-12 part 4, D-10 part 3).",
   "does_not_turn_the_rule_green": true
  }
 }
@@ -1825,7 +1893,9 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
   "disclosed_at": "2026-08-23",
   "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
   "certified_by": null,
-  "wired_into_the_guard": false,
+  "wired_into_the_guard": true,
+  "gating_effect": "none",
+  "gating_effect_reason": "recorded, read and validated by the guard; NOT demoting. Only ADHIKĀRIN may add `gating_effect=\"non_gating\"` + `authorised_by=<D-n>` + an itemised `covers` list, and even then the rule still reports every violation — a disclosure makes a residual visible and non-gating, never invisible (D-12 part 4, D-10 part 3).",
   "does_not_turn_the_rule_green": true
  }
 }
@@ -1851,7 +1921,9 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
   "disclosed_at": "2026-08-23",
   "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
   "certified_by": null,
-  "wired_into_the_guard": false,
+  "wired_into_the_guard": true,
+  "gating_effect": "none",
+  "gating_effect_reason": "recorded, read and validated by the guard; NOT demoting. Only ADHIKĀRIN may add `gating_effect=\"non_gating\"` + `authorised_by=<D-n>` + an itemised `covers` list, and even then the rule still reports every violation — a disclosure makes a residual visible and non-gating, never invisible (D-12 part 4, D-10 part 3).",
   "does_not_turn_the_rule_green": true
  }
 }
@@ -1878,7 +1950,9 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
   "disclosed_at": "2026-08-23",
   "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
   "certified_by": null,
-  "wired_into_the_guard": false,
+  "wired_into_the_guard": true,
+  "gating_effect": "none",
+  "gating_effect_reason": "recorded, read and validated by the guard; NOT demoting. Only ADHIKĀRIN may add `gating_effect=\"non_gating\"` + `authorised_by=<D-n>` + an itemised `covers` list, and even then the rule still reports every violation — a disclosure makes a residual visible and non-gating, never invisible (D-12 part 4, D-10 part 3).",
   "does_not_turn_the_rule_green": true
  }
 }
@@ -1911,7 +1985,9 @@ M0-T36 drafts all of them. They are written into a **new, inert** top-level bloc
   "disclosed_at": "2026-08-23",
   "disclosed_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T36)",
   "certified_by": null,
-  "wired_into_the_guard": false,
+  "wired_into_the_guard": true,
+  "gating_effect": "none",
+  "gating_effect_reason": "recorded, read and validated by the guard; NOT demoting. Only ADHIKĀRIN may add `gating_effect=\"non_gating\"` + `authorised_by=<D-n>` + an itemised `covers` list, and even then the rule still reports every violation — a disclosure makes a residual visible and non-gating, never invisible (D-12 part 4, D-10 part 3).",
   "does_not_turn_the_rule_green": true
  }
 }
@@ -1938,4 +2014,73 @@ Every number in this register, in the scorecard, in V-11 and in D-30 comes from 
 #### `F-T36-3` · HIGH · A disclosure entry cannot be honoured for any rule except X-02 — the guard has no code path that reads one
 
 D-30 part 4's amended flip condition requires that 'EVERY DEFERRED RULE CARRIES ITS DISCLOSURE ENTRY'. M0-T36 drafted them (see §9). THEY ARE INERT, and that must be said plainly rather than discovered at flip time. Two mechanical facts: (i) `disclosed_additions` is keyed by ASSET_ID and is read in exactly one place, check_asset_catalogue_contract.py:951 inside `x02()`; no other rule function opens the residuals file except `x05()`, which reads a different block (`zero_consumer_dispositions`). (ii) Severity is a hardcoded constant in the RULES table (line 1142: `Rule("X-02", RESIDUAL, …)`); a disclosure cannot demote a rule from BLOCKING, and X-02's docstring is explicit that a disclosure does NOT turn a rule green — 'what the disclosure buys is that the severity is RESIDUAL'. X-02 is non-gating because someone TYPED `RESIDUAL` in the rule table, not because it carries a disclosure. SO: writing the fifteen entries satisfies D-30 part 4's letter and changes nothing the guard does. Making them honourable requires a guard code change — a per-rule disclosure reader and a disclosure-conditioned severity — and that change is a demotion of thirteen BLOCKING gates, which is exactly the shape H3 exists to scrutinise. IT IS NOT A KĀRAKA's CHANGE AND M0-T36 DID NOT MAKE IT. The guard was run read-only and not edited.
+
+---
+
+## 12 — D-38 / D-39 / D-40 / D-41 / D-42 applied (M0-T46)
+
+Six ADHIKĀRIN rulings landed after v1.1 (M0-T36) closed §§0–11 above. This section documents what each did to this register; §§0–11 are left exactly as v1.1 wrote them (history), and the per-entry sections above carry the new addenda prefixed to the preserved v1.1 text, in the same discipline v1.1 used for D-30.
+
+### 12.1 — Before / after tally
+
+| | REPAIRABLE-IN-M0 | DEFERRED-WITH-REASON | RESERVED | UNEXAMINED | AT-ZERO-WITH-EXPOSURE |
+|---|--:|--:|--:|--:|--:|
+| criteria — before | 3 | 2 | 1 | 5 | 1 |
+| criteria — after | 3 | 3 | 1 | 3 | 2 |
+| rules — before | 3 | 15 | 1 | 1 | 0 |
+| rules — after | 2 | 16 | 1 | 0 | 1 |
+
+**Moved:**
+
+- crit-4 REPAIRABLE-IN-M0→DEFERRED-WITH-REASON (D-38)
+- C-11 REPAIRABLE-IN-M0→DEFERRED-WITH-REASON (D-38)
+- crit-9 REPAIRABLE-IN-M0→AT-ZERO-WITH-EXPOSURE (D-38)
+- X-05 REPAIRABLE-IN-M0→AT-ZERO-WITH-EXPOSURE (D-38)
+- crit-5 UNEXAMINED→REPAIRABLE-IN-M0 (D-39)
+- crit-8 UNEXAMINED→REPAIRABLE-IN-M0 (D-39)
+- X-03 UNEXAMINED→REPAIRABLE-IN-M0 (D-39)
+
+**Reframed, bucket held:**
+
+- C-28 — D-42 corrects the framing ('lit with no completed build_run_assets record', not 'missing estimated_seconds'); bucket held at REPAIRABLE-IN-M0, the D-30 part 3 deferral for the 31-row residual is unchanged and now better grounded
+
+6 of 32 entries were UNEXAMINED after v1.1 (M0-T36): crit-1, crit-2, crit-5, crit-8, crit-10, X-03. D-39 resolves 3 of those 6 to REPAIRABLE-IN-M0 (crit-5, crit-8, X-03). The other 3 (crit-1, crit-2, crit-10) are untouched by these six rulings and stay UNEXAMINED — 3 of 32 entries remain UNEXAMINED after v1.2.
+
+### 12.2 — D-38: Phase 0.8b and 0.8c decided
+
+**0.8b — REMAIN DRAFT, a decision not a deferral.** Neither ga_vichara (R1) nor ka_dasha_kala / ka_sangam (R3) is named by a rung-specific promote-or-retire clause (only R2's nine, R3's ka_graha_sancara/ka_muhurta_seva, R4's nine and R5's lel_events are named), so the general REMAIN-DRAFT disposition governs all three and criterion 4 / C-11 move to DEFERRED-WITH-REASON.
+
+**0.8c — all 23 packets adjudicated by reading class:**
+
+| reading class | n | D-38 disposition | assets |
+|---|--:|---|---|
+| INPUT-ONLY | 8 | no action, closed | bg_cohort, bg_gochara_arcs, bg_kota_chakra_rings, bg_kp_sublord_division, bg_phaladeepika_latta, bg_reference, bg_vedha_malefic_scale, ka_gochara_v3_century_materialize |
+| NO CONSUMER FOUND | 1 | retirement candidate, NOT retired — routed to owning rung | bg_concordance |
+| METHOD-BLIND | 7 | no action, closed as UNKNOWN — explicitly NOT a retirement candidate | bg_panchanga, bg_sky_calendar, bo_cdlm_summary, bo_samskara, ka_graha_sancara, ka_kshetra, mi_jivanaghatana |
+| SHADOWED | 5 | a real defect — routed to owning rung | bg_vidhi_floors, bg_vidhi_primitives, ka_dasha_kala, ka_muhurta_seva, ka_tulana |
+| BY DESIGN EMPTY / CATEGORY MISMATCH | 2 | no action, closed, mismatch recorded | bg_ephemeris_engine, bg_sarvatobhadra_grid |
+
+**23 of 23 packets adjudicated; 0 unresolved.** **6 of 23** (1 retirement candidate + 5 SHADOWED defects) carry follow-on asset-lifecycle work routed to their owning rung — a recorded determination, not an open question, per D-38's own holding that adjudication IS resolution. Criterion 9 / X-05 move to AT-ZERO-WITH-EXPOSURE.
+
+### 12.3 — D-39: X-03, criterion 8 and criterion 5 confirmed M0's, the P5 question settled
+
+D-39 part 4, independently re-deriving the named-field test rather than inheriting D-30's assertion of it, CONFIRMS ownership of X-03, criterion 8 and criterion 5 to M0 and settles that their columns are 'inside the plan's naming and NOT reserved by P5 … subject to D-4's standing conditions'. What v1.1 filed as UNEXAMINED ('ownership settled to M0, mechanism still undecided') has its mechanism question resolved: the column is authorised, not reserved. All three move to REPAIRABLE-IN-M0 — a known repair (add the column under D-4's conditions, backfill, verify) now exists; nobody has executed it.
+
+### 12.4 — D-40: the flip condition's CI clause, final form
+
+D-39 part 1 added 'CI MUST GATE AGAINST LIVE STATE' to the flip condition. D-40 part 1 WITHDREW that clause as an impossibility M0-T40 root-caused: CI Actions carries no database credential (`platform/.env.local` does not exist there), so `--live` cannot run. D-40 replaces it: CI must DETECT AND REFUSE A STALE BASELINE instead — two DB-free detectors (age, and schema-behind: declared columns minus baseline columns) that can run without a credential. This register's own frontmatter and §10 now state the final condition; no criterion or rule bucket in this register turns on the CI clause itself, so nothing in §§0–9 moves because of D-40 — only the STATEMENT of the condition changes.
+
+### 12.5 — D-42: C-28 reframed; the build_run_assets ranking
+
+**D-42 APPLIED (M0-T46).** ADHIKĀRIN ruling D-42 reclassifies this residual's FRAMING and forbids both available 'fixes'. THE OLD FRAME WAS WRONG: this is not '31 assets missing an estimated_seconds'. D-42's authoritative framing: '31 ASSETS READ lit WITH NO COMPLETED RUN RECORD BEHIND THEM' — the missing estimate is a symptom, the unearned `lit` is the finding (D-13's telemetry pollution meeting §N.8's no-op-completion class). RANKING ESTABLISHED FOR THE WHOLE REGISTER, NOT JUST THIS RULE: 'build_run_assets IS AUTHORITATIVE. asset_throughput.state="lit" IS A CLAIM ABOUT A BUILD, NOT EVIDENCE OF ONE' — applying wherever a surface asks 'was this asset built', including criterion 8's build-coverage half (see that entry). TWO FIXES ARE EXPLICITLY FORBIDDEN, NOT MERELY DISCOURAGED: backfilling estimates for the 31 (H6 — a number on a build nothing witnessed), and RE-POINTING c28()'s detector at build_run_assets to close it — 'under the authoritative definition C-28 would report zero violations and a BLOCKING failure would pass — while all 31 unearned lit states remain exactly as they are. That is a weakening under D-41 part 2 and presumptively H3.' NEITHER FIX IS THIS TASK'S TO MAKE AND NEITHER WAS MADE — no detector in m0_exit_scorecard.py or check_asset_catalogue_contract.py was re-pointed by M0-T46; a future re-pointing found inconsistent with this ruling is a finding for a separate task, not a repair for this one. THE BUCKET DOES NOT MOVE — the deferral for the 31 stands (D-30 part 3), now grounded on the definitional finding rather than the absence of estimates — and the 31 unearned lit states are additionally understood as ROUTED TO THEIR OWNING RUNGS (all R0), since D-42 holds 'each rung's own build is the only thing that can earn or refute a lit'.
+
+### 12.6 — D-37 and D-41: read, no bucket change
+
+**D-37** corrects D-12 part 3's premise (the three orphaned throughput rows belong to ka_kota_chakra / ka_vedha_gochara / mi_sankalpa, not ka_gochara_sweep) and clarifies the named-field test's refinement (b) fires only on a clause naming a specific asset or a specific field at a specific rung. None of the three assets or the clarified refinement changes any entry this register classifies.
+
+**D-41** authorises the deploy.yml sentinel-assertion edit and states a CI-edit-by-direction rule (strengthening changes proceed without a ruling; weakening changes are presumptively H3). M0-T46 searched this file, M0_EXIT_SCORECARD_v1_0.md and M0_CLOSE_READINESS_v1_0.md for an open 'awaiting a ruling on CI edit scope' flag and found none — D-41 has nothing to resolve in these three instruments. D-41's standing mutation-testing requirements (structural assertion + inverse-direction mutation, per part 3) bear on future guard-code changes, not on this classification register.
+
+### 12.7 — What this task did not do
+
+No `asset_registry` row was written (this generator has never queried the database directly — every `measured` value is a frozen figure from when M0-T17/M0-T36 or the guard last measured it live; the fresh live re-measurement for this task ran through `m0_exit_scorecard.py`, whose own reading 5 shows criterion 4 unchanged at 3 and criterion 9's packet count unchanged at 23). No guard file was edited — `c28()` and every other detector in `check_asset_catalogue_contract.py` and `check_asset_source_parity.py` are unchanged. No `.github/` file was touched. No new entry was added to `DISCLOSURE_DRAFT` (C-11's newly-deferred status has no disclosure drafted for it — see `DISCLOSURE_NOT_DRAFTED`), so a re-run of this generator's `_write_disclosure_block()` should not change `platform/scripts/governance/asset_catalogue_disclosed_residuals.json`'s content; if it does, M0-T46 reverted that file to keep this task's footprint inside `00_ARCHITECTURE/control/`, per its own scope instruction. No `DECISIONS.jsonl` or `state/*.jsonl` line was edited. `ka_gochara_sweep` (charter P1) was not touched. No UNEXAMINED entry this task did not name was resolved, and nothing here is certified — that is PARĪKṢAKA's (I16 / H7).
 

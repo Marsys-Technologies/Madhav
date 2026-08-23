@@ -51,19 +51,19 @@
   "asset_registry_rows": 128,
   "asset_registry_active_rows": 127,
   "tally": {
-   "PASS": 1,
-   "FAIL": 7,
+   "PASS": 2,
+   "FAIL": 6,
    "NOT-MEASURABLE": 3,
    "BLOCKED": 1
   },
-  "task": "M0-T36 (re-measurement 4 \u2014 post V-8/V-9/V-10/V-11, post D-29/D-30/D-31)",
+  "task": "M0-T46 (re-measurement 5 \u2014 applies D-38/D-39/D-40/D-41/D-42)",
   "built_by_task": "M0-T17",
   "artifact": "M0_EXIT_SCORECARD_v1_0",
   "generator": "00_ARCHITECTURE/control/m0_exit_scorecard.py",
-  "measured_at_start": "2026-08-23T08:00:08.436624+00:00",
-  "measured_at_end": "2026-08-23T08:00:26.645600+00:00",
+  "measured_at_start": "2026-08-23T12:26:00.850058+00:00",
+  "measured_at_end": "2026-08-23T12:26:07.136461+00:00",
   "git_branch": "campaign/nirmana-autonomous",
-  "git_sha": "326e4cb372b5c2062bf60fedf6e30772306b7377",
+  "git_sha": "ac16535d1b67b715d061897084fcedeb0b40f8fb",
   "db_access": "READ-ONLY (default_transaction_read_only=on; SELECT only)",
   "recent_migrations_applied": [
    {
@@ -138,9 +138,32 @@
    "writer_timeout_seconds"
   ],
   "delta_vs_previous_run": {
-   "previous_run": "2026-08-23T07:23:54.296317+00:00",
-   "changed": [],
-   "note": "no criterion changed status or value since the previous run"
+   "previous_run": "2026-08-23T08:00:26.645600+00:00",
+   "changed": [
+    {
+     "criterion": "2_contract_violations_per_kind",
+     "was": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": 165
+     },
+     "now": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": 85
+     }
+    },
+    {
+     "criterion": "9_unresolved_zero_consumer",
+     "was": {
+      "status": "FAIL",
+      "measured_value": 23
+     },
+     "now": {
+      "status": "PASS",
+      "measured_value": 0
+     }
+    }
+   ],
+   "note": "2 change(s) since the previous run"
   },
   "reading_history": [
    {
@@ -844,6 +867,185 @@
       "violations": 112
      }
     }
+   },
+   {
+    "label": "reading 5 \u2014 M0-T46 (re-measurement 5 \u2014 applies D-38/D-39/D-40/D-41/D-42)",
+    "task": "M0-T46 (re-measurement 5 \u2014 applies D-38/D-39/D-40/D-41/D-42)",
+    "measured_at_end": "2026-08-23T12:26:07.136461+00:00",
+    "git_sha": "ac16535d1b67",
+    "tally": {
+     "PASS": 2,
+     "FAIL": 6,
+     "NOT-MEASURABLE": 3,
+     "BLOCKED": 1
+    },
+    "criteria": {
+     "1_three_way_diff": {
+      "status": "FAIL",
+      "measured_value": 5,
+      "durability": "n/a \u2014 not passing"
+     },
+     "2_contract_violations_per_kind": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": 85,
+      "durability": "n/a \u2014 not passing"
+     },
+     "3_prefix_mismatches": {
+      "status": "FAIL",
+      "measured_value": 1,
+      "durability": "n/a \u2014 not passing"
+     },
+     "4_dangling_or_draft_edges": {
+      "status": "FAIL",
+      "measured_value": 3,
+      "durability": "n/a \u2014 not passing"
+     },
+     "5_multi_producer_partitions": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": null,
+      "durability": "n/a \u2014 not passing"
+     },
+     "6_throughput_on_inactive_assets": {
+      "status": "BLOCKED",
+      "measured_value": 3,
+      "durability": "n/a \u2014 not passing"
+     },
+     "7_retired_without_disposition": {
+      "status": "FAIL",
+      "measured_value": 1,
+      "durability": "n/a \u2014 not passing"
+     },
+     "8_active_without_coverage_or_dead_flag": {
+      "status": "NOT-MEASURABLE",
+      "measured_value": null,
+      "durability": "n/a \u2014 not passing"
+     },
+     "9_unresolved_zero_consumer": {
+      "status": "PASS",
+      "measured_value": 0,
+      "durability": "durable"
+     },
+     "10_ci_guard_merged_and_blocking": {
+      "status": "FAIL",
+      "measured_value": {
+       "guard_scripts_found": 2,
+       "workflow_invocations_found": 3,
+       "merged_to_default_branch": false,
+       "invocation_is_blocking": false
+      },
+      "durability": "n/a \u2014 not passing"
+     },
+     "11_domain_and_rung_present": {
+      "status": "PASS",
+      "measured_value": 0,
+      "durability": "NON-DURABLE"
+     },
+     "12_ci_domain_coherence_green": {
+      "status": "FAIL",
+      "measured_value": {
+       "assertion_exists": true,
+       "assertion_wired_to_a_workflow": true,
+       "invocation_is_blocking": false,
+       "merged_to_default_branch": false,
+       "live_violations": 0
+      },
+      "durability": "n/a \u2014 not passing"
+     }
+    },
+    "contract_rules": {
+     "C-01": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-02": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-03": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-04": {
+      "status": "FAIL",
+      "violations": 9
+     },
+     "C-05": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-06": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-07": {
+      "status": "FAIL",
+      "violations": 4
+     },
+     "C-08": {
+      "status": "FAIL",
+      "violations": 1
+     },
+     "C-09": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-10": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-11": {
+      "status": "FAIL",
+      "violations": 3
+     },
+     "C-12": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-13a": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-14": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-15": {
+      "status": "FAIL",
+      "violations": 6
+     },
+     "C-16": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-17": {
+      "status": "FAIL",
+      "violations": 4
+     },
+     "C-18": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-19": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-20": {
+      "status": "FAIL",
+      "violations": 3
+     },
+     "C-21": {
+      "status": "FAIL",
+      "violations": 19
+     },
+     "C-24": {
+      "status": "PASS",
+      "violations": 0
+     },
+     "C-28": {
+      "status": "FAIL",
+      "violations": 32
+     }
+    }
    }
   ],
   "baseline_reading": {
@@ -1049,9 +1251,9 @@
   "2_contract_violations_per_kind": {
    "detector": "this script: every \u00a78 detection SQL of 00_ARCHITECTURE/control/ASSET_CATALOGUE_CONTRACT_v1_0.md, run live; plus C-13b (DFS) and C-23 (AST) implemented here.",
    "status": "NOT-MEASURABLE",
-   "measured_value": 165,
+   "measured_value": 85,
    "violations_by_asset_kind": {
-    "data": 97,
+    "data": 69,
     "artifact": 0,
     "service": 16,
     "source": 0
@@ -1069,7 +1271,7 @@
     "C-17=4",
     "C-20=3",
     "C-21=19",
-    "C-28=112"
+    "C-28=32"
    ],
    "blocked_rules": [],
    "never_checkable_rules": [
@@ -1078,6 +1280,7 @@
     "C-27"
    ],
    "blocked_by": "rules C-25, C-26, C-27 have NO detector at all (contract \u00a78) and must never read green",
+   "note": "D-42 (ADHIK\u0100RIN, 2026-08-23T11:04:17Z) reclassifies C-28's framing within this rule's 'data' violations: see the C-28 rule's own text above \u2014 asset_throughput.state='lit' is a claim, not evidence, and build_run_assets is authoritative for 'was this asset built'. This does not change the measured_value here; D-42 forbids using its own ranking to re-point C-28's detector, which would silently shrink this criterion's count without earning it.",
    "durability": "n/a \u2014 not passing"
   },
   "3_prefix_mismatches": {
@@ -1122,6 +1325,7 @@
      }
     ]
    },
+   "note": "D-38 (ADHIK\u0100RIN, 2026-08-23T09:24:48Z) ruled Phase 0.8b's general disposition REMAIN DRAFT \u2014 a decision, not a promotion \u2014 for any DRAFT-but-served asset no rung clause names by asset_id for promote-or-retire. None of the three C-11 dependencies (ga_vichara R1, ka_dasha_kala R3, ka_sangam R3) is named by any such clause, so bulk promotion in M0 is refused for all three and the status here stays FAIL: the detector still returns 3, and D-38 explicitly forbids reading REMAIN-DRAFT as a repair. This criterion's own deferral (deferred to R1/R3, ruling D-38) is recorded in M0_DEFERRAL_REGISTER_v1_0.md, not in this scorecard's status field \u2014 see criteria 3 and 7 for the same convention.",
    "durability": "n/a \u2014 not passing"
   },
   "5_multi_producer_partitions": {
@@ -1307,14 +1511,175 @@
     "why_the_candidate_flag_is_not_trustworthy": "2 rows have has_writer disagreeing with the live decorator scan, so even reading has_writer=false as 'dead' would be reading a flag that is itself wrong on those rows."
    },
    "detector_sql": "SELECT asset_id, catalog_status, asset_kind, has_writer FROM asset_registry WHERE is_active  -- minus the AST @register set",
+   "note": "D-39 (ADHIK\u0100RIN, 2026-08-23T09:25:50Z) CONFIRMS ownership of this criterion's dead-flag work to M0 (independently re-derived) and SETTLES that a new column is authorised under D-4's standing conditions, NOT reserved by charter P5 \u2014 but no column has been created and this task did not create one, so the criterion remains NOT-MEASURABLE here; a known repair now exists (add the column, backfill, verify per D-4) and nobody has executed it. Separately, D-42 (ADHIK\u0100RIN, 2026-08-23T11:04:17Z) ranks build_run_assets as authoritative wherever a surface asks 'was this asset built' \u2014 bearing on this criterion's BUILD-COVERAGE half, not its dead-flag half: has_writer/asset_throughput.state='lit' remain proxies for 'built', and this criterion's own first-half measurement above (no production @register) does not depend on either proxy, so D-42 does not change the numbers here.",
    "durability": "n/a \u2014 not passing"
   },
   "9_unresolved_zero_consumer": {
-   "detector": "count of zero-consumer packets in 00_ARCHITECTURE/control/zero_consumer_evidence.json, minus those with a recorded ADHIK\u0100RIN G1 disposition naming them in 00_ARCHITECTURE/autonomy/state/DECISIONS.jsonl",
-   "status": "FAIL",
-   "measured_value": 23,
+   "detector": "count of zero-consumer packets in 00_ARCHITECTURE/control/zero_consumer_evidence.json whose reading class (ZERO_CONSUMER_EVIDENCE_v1_0.md \u00a71/\u00a72) carries NO D-38 disposition. D-38 (ADHIK\u0100RIN, 2026-08-23T09:24:48Z, power G1) adjudicated all five reading classes and rules that adjudication IS resolution ('RESOLVED MEANS ADJUDICATED, NOT MUTATED'); the prior reading (packets minus asset_id-named DECISIONS entries) is superseded by this task, D-38 having been made since.",
+   "status": "PASS",
+   "measured_value": 0,
    "packets": 23,
-   "disposed": {},
+   "disposed": {
+    "bg_cohort": {
+     "reading_class": "INPUT-ONLY",
+     "disposition": "closed, no action \u2014 absence of a serving consumer is the design",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "bg_concordance": {
+     "reading_class": "NO CONSUMER FOUND",
+     "disposition": "recorded as a retirement candidate, NOT retired \u2014 routed to the owning rung",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "bg_ephemeris_engine": {
+     "reading_class": "BY DESIGN EMPTY / CATEGORY MISMATCH",
+     "disposition": "closed, no action \u2014 mismatch recorded",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "bg_gochara_arcs": {
+     "reading_class": "INPUT-ONLY",
+     "disposition": "closed, no action \u2014 absence of a serving consumer is the design",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "bg_kota_chakra_rings": {
+     "reading_class": "INPUT-ONLY",
+     "disposition": "closed, no action \u2014 absence of a serving consumer is the design",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "bg_kp_sublord_division": {
+     "reading_class": "INPUT-ONLY",
+     "disposition": "closed, no action \u2014 absence of a serving consumer is the design",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "bg_panchanga": {
+     "reading_class": "METHOD-BLIND",
+     "disposition": "closed as UNKNOWN \u2014 explicitly NOT a retirement candidate (H6 if it were)",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "bg_phaladeepika_latta": {
+     "reading_class": "INPUT-ONLY",
+     "disposition": "closed, no action \u2014 absence of a serving consumer is the design",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "bg_reference": {
+     "reading_class": "INPUT-ONLY",
+     "disposition": "closed, no action \u2014 absence of a serving consumer is the design",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "bg_sarvatobhadra_grid": {
+     "reading_class": "BY DESIGN EMPTY / CATEGORY MISMATCH",
+     "disposition": "closed, no action \u2014 mismatch recorded",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "bg_sky_calendar": {
+     "reading_class": "METHOD-BLIND",
+     "disposition": "closed as UNKNOWN \u2014 explicitly NOT a retirement candidate (H6 if it were)",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "bg_vedha_malefic_scale": {
+     "reading_class": "INPUT-ONLY",
+     "disposition": "closed, no action \u2014 absence of a serving consumer is the design",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "bg_vidhi_floors": {
+     "reading_class": "SHADOWED",
+     "disposition": "a real defect \u2014 routed to the owning rung",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "bg_vidhi_primitives": {
+     "reading_class": "SHADOWED",
+     "disposition": "a real defect \u2014 routed to the owning rung",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "bo_cdlm_summary": {
+     "reading_class": "METHOD-BLIND",
+     "disposition": "closed as UNKNOWN \u2014 explicitly NOT a retirement candidate (H6 if it were)",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "bo_samskara": {
+     "reading_class": "METHOD-BLIND",
+     "disposition": "closed as UNKNOWN \u2014 explicitly NOT a retirement candidate (H6 if it were)",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "ka_dasha_kala": {
+     "reading_class": "SHADOWED",
+     "disposition": "a real defect \u2014 routed to the owning rung",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "ka_gochara_v3_century_materialize": {
+     "reading_class": "INPUT-ONLY",
+     "disposition": "closed, no action \u2014 absence of a serving consumer is the design",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "ka_graha_sancara": {
+     "reading_class": "METHOD-BLIND",
+     "disposition": "closed as UNKNOWN \u2014 explicitly NOT a retirement candidate (H6 if it were)",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "ka_kshetra": {
+     "reading_class": "METHOD-BLIND",
+     "disposition": "closed as UNKNOWN \u2014 explicitly NOT a retirement candidate (H6 if it were)",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "ka_muhurta_seva": {
+     "reading_class": "SHADOWED",
+     "disposition": "a real defect \u2014 routed to the owning rung",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "ka_tulana": {
+     "reading_class": "SHADOWED",
+     "disposition": "a real defect \u2014 routed to the owning rung",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    },
+    "mi_jivanaghatana": {
+     "reading_class": "METHOD-BLIND",
+     "disposition": "closed as UNKNOWN \u2014 explicitly NOT a retirement candidate (H6 if it were)",
+     "decision": "DECISIONS.jsonl D-38 part 3"
+    }
+   },
+   "unresolved": [],
+   "adjudicated_by_reading_class": {
+    "INPUT-ONLY": [
+     "bg_cohort",
+     "bg_gochara_arcs",
+     "bg_kota_chakra_rings",
+     "bg_kp_sublord_division",
+     "bg_phaladeepika_latta",
+     "bg_reference",
+     "bg_vedha_malefic_scale",
+     "ka_gochara_v3_century_materialize"
+    ],
+    "NO CONSUMER FOUND": [
+     "bg_concordance"
+    ],
+    "BY DESIGN EMPTY / CATEGORY MISMATCH": [
+     "bg_ephemeris_engine",
+     "bg_sarvatobhadra_grid"
+    ],
+    "METHOD-BLIND": [
+     "bg_panchanga",
+     "bg_sky_calendar",
+     "bo_cdlm_summary",
+     "bo_samskara",
+     "ka_graha_sancara",
+     "ka_kshetra",
+     "mi_jivanaghatana"
+    ],
+    "SHADOWED": [
+     "bg_vidhi_floors",
+     "bg_vidhi_primitives",
+     "ka_dasha_kala",
+     "ka_muhurta_seva",
+     "ka_tulana"
+    ]
+   },
+   "reading_class_disposition_D38": {
+    "INPUT-ONLY": "closed, no action \u2014 absence of a serving consumer is the design",
+    "NO CONSUMER FOUND": "recorded as a retirement candidate, NOT retired \u2014 routed to the owning rung",
+    "METHOD-BLIND": "closed as UNKNOWN \u2014 explicitly NOT a retirement candidate (H6 if it were)",
+    "SHADOWED": "a real defect \u2014 routed to the owning rung",
+    "BY DESIGN EMPTY / CATEGORY MISMATCH": "closed, no action \u2014 mismatch recorded"
+   },
+   "note": "ALL 23 PACKETS RESOLVED BY D-38 PART 3 \u2014 8 INPUT-ONLY and 2 BY-DESIGN closed with no action; 7 METHOD-BLIND closed as unknown (explicitly NOT retirement candidates); 1 NO-CONSUMER-FOUND and 5 SHADOWED are ROUTED TO THEIR OWNING RUNGS as a retirement candidate / a real defect respectively \u2014 routed is still a recorded determination, not an open question, per D-38. The zero here is the M0-level adjudication; the 6 routed packets carry follow-on asset-lifecycle work that only their owning rungs may perform (I13).",
    "asset_ids": [
     "bg_cohort",
     "bg_concordance",
@@ -1340,7 +1705,8 @@
     "ka_tulana",
     "mi_jivanaghatana"
    ],
-   "durability": "n/a \u2014 not passing"
+   "durability": "durable",
+   "durability_note": "criterion is not sourced from asset_registry columns the seed writes"
   },
   "10_ci_guard_merged_and_blocking": {
    "detector": "(a) does a guard implementing the Asset Catalogue Contract exist under platform/scripts/{governance,ci}; (b) is it invoked from a .github/workflows job; (c) is that job/step BLOCKING \u2014 no `continue-on-error: true`, no `|| true` on the run line; and is the guard MERGED, i.e. present on `origin/main` per `git ls-tree`. PASS requires all four. GitHub run history is corroboration, not the verdict.",
@@ -1934,17 +2300,14 @@
    "rows": []
   },
   "C-28": {
-   "assertion": "estimated_seconds NOT NULL where a successful build exists",
+   "assertion": "estimated_seconds NOT NULL where a successful build exists (NOTE \u2014 D-42, 2026-08-23: asset_throughput.state='lit' is a CLAIM about a build, not evidence of one; build_run_assets is the authoritative source wherever 'was this asset built' is asked. The 31-row R0 residual this rule cannot backfill is therefore not '31 assets missing an estimate' but '31 assets read lit with no completed build_run_assets record behind them' \u2014 the missing estimate is a symptom, the unearned lit is the finding. This SQL is UNCHANGED by D-42: D-42 explicitly forbids re-pointing this detector at build_run_assets to close it, since that would make the BLOCKING failure pass while the 31 unearned lit states remain exactly as they are \u2014 a weakening under D-41 part 2, presumptively H3.)",
    "severity": "BLOCKING",
    "status": "FAIL",
-   "violations": 112,
+   "violations": 32,
    "sql": "SELECT r.asset_id FROM asset_registry r WHERE r.estimated_seconds IS NULL AND EXISTS (SELECT 1 FROM asset_throughput t WHERE t.asset_id=r.asset_id AND t.state='lit') ORDER BY 1",
    "rows": [
     {
      "asset_id": "bg_class_lifetime_counts"
-    },
-    {
-     "asset_id": "bg_class_priors"
     },
     {
      "asset_id": "bg_cohort"
@@ -1968,19 +2331,10 @@
      "asset_id": "bg_ephemeris"
     },
     {
-     "asset_id": "bg_formula_constants"
-    },
-    {
-     "asset_id": "bg_ghatana"
-    },
-    {
      "asset_id": "bg_gochara_arcs"
     },
     {
      "asset_id": "bg_kota_chakra_rings"
-    },
-    {
-     "asset_id": "bg_kp_sublord_division"
     },
     {
      "asset_id": "bg_medical_mappings"
@@ -2046,79 +2400,7 @@
      "asset_id": "bg_vedha_malefic_scale"
     },
     {
-     "asset_id": "bg_vidhi_floors"
-    },
-    {
-     "asset_id": "bg_vidhi_primitives"
-    },
-    {
      "asset_id": "bg_yogas"
-    },
-    {
-     "asset_id": "bo_anveshana"
-    },
-    {
-     "asset_id": "bo_arudha"
-    },
-    {
-     "asset_id": "bo_bimba"
-    },
-    {
-     "asset_id": "bo_cdlm_summary"
-    },
-    {
-     "asset_id": "bo_cgm_motifs"
-    },
-    {
-     "asset_id": "bo_cgm_paths"
-    },
-    {
-     "asset_id": "bo_chart_gestalt"
-    },
-    {
-     "asset_id": "bo_drishti"
-    },
-    {
-     "asset_id": "bo_karanajala"
-    },
-    {
-     "asset_id": "bo_laksana"
-    },
-    {
-     "asset_id": "bo_laksana_rerank"
-    },
-    {
-     "asset_id": "bo_nakshatra_semantic"
-    },
-    {
-     "asset_id": "bo_pramana_mapa"
-    },
-    {
-     "asset_id": "bo_pratijna"
-    },
-    {
-     "asset_id": "bo_samskara"
-    },
-    {
-     "asset_id": "bo_samvada"
-    },
-    {
-     "asset_id": "bo_sangati"
-    },
-    {
-     "asset_id": "bo_special_lagna"
-    },
-    {
-     "asset_id": "bo_sudarshana"
-    },
-    {
-     "asset_id": "bo_upaya"
-    },
-    {
-     "asset_id": "bo_vargottama_dhana"
-    },
-    {
-     "asset_id": "bo_yantra_mechanism"
     }
    ]
   }
@@ -2427,7 +2709,6 @@
     "size_sql",
     "sort_order",
     "storage_type",
-    "target_floor",
     "target_table",
     "volume_explanation"
    ],
@@ -2496,6 +2777,7 @@
    "selftest_detail",
    "service_health",
    "superseded_by",
+   "target_floor",
    "writer_timeout_seconds"
   ],
   "live_vs_seed_divergence": {
@@ -3009,7 +3291,7 @@
    },
    "C-28": {
     "status": "FAIL",
-    "violations": 112,
+    "violations": 32,
     "columns_referenced": [
      "asset_id",
      "estimated_seconds"
@@ -3118,7 +3400,8 @@
      "domain",
      "rung",
      "service_health",
-     "superseded_by"
+     "superseded_by",
+     "target_floor"
     ],
     "durability": "n/a \u2014 not passing",
     "why": null,
@@ -3260,15 +3543,15 @@
     "rules_whose_projection_failed": []
    },
    "9_unresolved_zero_consumer": {
-    "status": "FAIL",
+    "status": "PASS",
     "columns_read": [],
     "seed_overwritable_columns": [],
     "seed_divergent_assets_among_them": [],
     "constituent_rules": [],
     "non_durable_constituent_rules": [],
     "columns_the_seed_never_inserts": [],
-    "durability": "n/a \u2014 not passing",
-    "why": null,
+    "durability": "durable",
+    "why": "criterion is not sourced from asset_registry columns the seed writes",
     "rules_that_break_after_a_reseed": [],
     "rules_whose_projection_failed": []
    },
@@ -3363,10 +3646,10 @@
   },
   {
    "quantity": "criterion 9 \u2014 zero-consumer findings",
-   "this_script": 23,
-   "other_source": "NIRMANA_ELEVATION_PLAN \u00a71 (states 13) \u00b7 the plan's own per-asset annotations (7) \u00b7 ZERO_CONSUMER_EVIDENCE_v1_0.md (23 packets)",
-   "other_value": "plan-summary 13 \u00b7 plan-annotations 7 \u00b7 M0-T6 packets 23",
-   "reconciliation": "This script counts the M0-T6 packet set and subtracts recorded ADHIK\u0100RIN G1 dispositions; there are none, so unresolved = packets. The plan's 13 has no per-asset list behind it and does not reconcile with the plan's own annotations. Not averaged, not adopted.",
+   "this_script": 0,
+   "other_source": "NIRMANA_ELEVATION_PLAN \u00a71 (states 13) \u00b7 the plan's own per-asset annotations (7) \u00b7 ZERO_CONSUMER_EVIDENCE_v1_0.md (23 packets) \u00b7 DECISIONS.jsonl D-38 part 3 (2026-08-23T09:24:48Z, adjudicates all 23 by reading class)",
+   "other_value": "plan-summary 13 \u00b7 plan-annotations 7 \u00b7 M0-T6 packets 23 \u00b7 D-38 unresolved 0",
+   "reconciliation": "This script counts the M0-T6 packet set and subtracts packets whose reading class carries a D-38 disposition; D-38 covers all 23, so unresolved = 0. Prior readings of this scorecard (through M0-T36) reported unresolved = packets because no G1 ruling had yet named a disposition; D-38 supplies it. The plan's 13 still has no per-asset list behind it and does not reconcile with the plan's own annotations \u2014 that disagreement is unchanged and not averaged.",
    "disagreement": true
   },
   {

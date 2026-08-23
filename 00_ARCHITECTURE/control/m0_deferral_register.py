@@ -39,7 +39,8 @@ BUCKETS = [REPAIRABLE, DEFERRED, RESERVED, UNEXAMINED, AT_ZERO]
 
 # ── provenance ───────────────────────────────────────────────────────────────
 PROVENANCE = {
-    "authored_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T31)",
+    "authored_by": "KĀRAKA (Nirmāṇa autonomous campaign, WORK_QUEUE id M0-T31; v1.1 by "
+                   "M0-T36; v1.2 by M0-T46, applying D-38/D-39/D-40/D-41/D-42)",
     "certified_by": None,
     "branch": "campaign/nirmana-autonomous",
     "db_access": "READ-ONLY throughout (SET default_transaction_read_only=on; SELECT only). "
@@ -814,12 +815,18 @@ FLIP_CHECKLIST = [
      "exists to declare them in. Authorise a column under D-4's reasoning, or defer the work to "
      "the owning rungs with the reason recorded. C-25 itself stays not_checkable either way — "
      "that part is already well-formed; what is undecided is the WORK.",
-   unblocks=["crit-5","crit-2 (partly)"]),
+   unblocks=["crit-5","crit-2 (partly)"],
+   resolved="D-39 (2026-08-23T09:25:50Z) — CONFIRMED M0's; the column is authorised under D-4's "
+     "reasoning, NOT reserved by P5. crit-5 moved UNEXAMINED → REPAIRABLE-IN-M0. The remaining "
+     "work is execution (author the migration, backfill, verify), not a further ruling."),
  dict(n=5, kind="RULING", title="Rule Phase 0.8a — the dead flag",
    what="Define a registered-but-dead flag, rule the guard's has_writer proxy sufficient, or "
      "defer the criterion. Today the scorecard calls criterion 8 NOT-MEASURABLE and the guard "
      "returns 2 violations from a proxy the contract never designated.",
-   unblocks=["crit-8","X-03"]),
+   unblocks=["crit-8","X-03"],
+   resolved="D-39 (2026-08-23T09:25:50Z) — CONFIRMED M0's for both crit-8 and X-03; the dead-flag "
+     "column is authorised under D-4's reasoning, NOT reserved by P5. Both moved UNEXAMINED → "
+     "REPAIRABLE-IN-M0. The remaining work is execution — no column has been created yet."),
  dict(n=6, kind="RULING", title="Rule criterion 2's wording",
    what="'contract violations per kind = 0' cannot be satisfied while C-25/C-26/C-27 have no "
      "detector and must never read green. Re-word it to 'every CHECKABLE rule at zero, the "
@@ -830,7 +837,13 @@ FLIP_CHECKLIST = [
      "Phase 0.8b and 0.8c assign 3 promotions and 23 zero-consumer dispositions to M0. One "
      "ruling clears both criteria; without it, the two largest REPAIRABLE items cannot be "
      "executed by anyone.",
-   unblocks=["crit-4","crit-9","C-11","X-05"]),
+   unblocks=["crit-4","crit-9","C-11","X-05"],
+   resolved="D-38 (2026-08-23T09:24:48Z) — 0.8b's disposition is REMAIN DRAFT (a decision, not a "
+     "promotion): none of ga_vichara/ka_dasha_kala/ka_sangam is named by a rung-specific "
+     "promotion clause, so crit-4/C-11 move to DEFERRED-WITH-REASON (R1/R3), not repaired in M0. "
+     "0.8c's 23 packets are adjudicated per reading class (INPUT-ONLY/BY-DESIGN closed, "
+     "METHOD-BLIND closed-as-unknown, NO-CONSUMER-FOUND/SHADOWED routed to rung); "
+     "crit-9/X-05 move to AT-ZERO-WITH-EXPOSURE, unresolved = 0."),
  dict(n=8, kind="RULING", title="Rule H2's reach — is a PR merge to main a 'write to main'?",
    what="Criterion 10's 'merged' half requires the guards to reach origin/main (verified absent "
      "at 07:03Z). Charter H3 forbids weakening a gate; charter H2 forbids 'any write to main'. "
@@ -1340,6 +1353,274 @@ REMEASUREMENT = dict(
 )
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+# D-38 / D-39 / D-40 / D-41 / D-42 APPLICATION LAYER — added by M0-T46, 2026-08-23
+# ═════════════════════════════════════════════════════════════════════════════
+# Six ADHIKĀRIN rulings landed after v1.1 (M0-T36) closed this register. Of the six, D-38,
+# D-39 and D-42 change a classification here; D-37 is background (it corrects D-12 part 3
+# and the named-field test's refinement (b), neither of which this register's live entries
+# rest on); D-40 amends the flip condition's CI clause (§10 below) without moving a bucket;
+# D-41 authorises the deploy.yml edit and a CI-edit-by-direction rule that this register
+# does not itself need to act on (checked: no "awaiting a ruling on CI edit scope" flag
+# exists anywhere in this file, the scorecard, or M0_CLOSE_READINESS_v1_0.md).
+#
+# This layer does NOT rewrite what v1.1 decided: every entry it moves keeps its v1.1 bucket
+# under a new `prior_bucket_v1_1` key, and the appended addendum is prefixed to the
+# (already D-30-layered) reason text — the same discipline `_apply_d30()` used above.
+
+# ── D-38 part 1 on Phase 0.8b, quoted verbatim (the ruling governs, not this gloss) ──
+#   "PHASE 0.8b — THE DISPOSITION FOR THE DRAFT-BUT-SERVED SET IS: REMAIN DRAFT. THIS IS A
+#    G1 DECISION, NOT A DEFERRAL. ... Promoting assets to CURRENT on the strength of
+#    servedness would be writing a status from a proxy rather than from its detector's
+#    verdict ... promotion for at least R2's nine, R3's two named, R4's nine and R5's
+#    lel_events belongs to those rungs BY NAME."
+# None of criterion 4 / C-11's three DRAFT dependencies (ga_vichara R1, ka_dasha_kala R3,
+# ka_sangam R3) is named by any of those rung-specific promotion clauses, so the general
+# REMAIN-DRAFT disposition governs all three and the C-11 edges cannot be repaired in M0.
+D38_CRIT4_ADDENDUM = (
+ "**D-38 APPLIED (M0-T46).** Phase 0.8b's disposition is now RULED, not merely blocked on "
+ "a G1 rung-bound reconciliation. D-38 part 1 decided the DRAFT-but-served set's general "
+ "disposition is REMAIN DRAFT — 'a G1 decision, not a deferral' — and part 2 confirmed bulk "
+ "promotion in M0 is refused outright: only where a specific rung clause names an asset for "
+ "promote-or-retire (R2's nine, R3's ka_graha_sancara/ka_muhurta_seva, R4's nine, R5's "
+ "lel_events) does that rung decide it; otherwise REMAIN DRAFT stands until the owning "
+ "rung's own §8.6 stage-2 Conform revisits it with real integrity evidence behind it. None "
+ "of this criterion's three DRAFT dependencies — ga_vichara (R1), ka_dasha_kala (R3), "
+ "ka_sangam (R3) — is named by any rung-specific promotion clause, so REMAIN DRAFT is their "
+ "disposition too. THE THREE C-11 EDGES THEREFORE CANNOT BE REPAIRED IN M0 BY PROMOTION: "
+ "D-38 states plainly that promoting on servedness alone 'would be writing a status from a "
+ "proxy rather than from its detector's verdict' — precisely H4/§N.8 — and I13 forbids the "
+ "only other route (asset-lifecycle work on a dependency outside the open rung). Moved from "
+ "REPAIRABLE-IN-M0 to DEFERRED-WITH-REASON: the reason is D-38 itself, the destination is "
+ "each dependency's own rung, and Phase 0.8b's own 'promoted or justified' is satisfied by "
+ "the justified half — REMAIN DRAFT, decided, not silently unexamined.")
+D38_C11_ADDENDUM = (
+ "**D-38 APPLIED (M0-T46).** Criterion 4's rule; see that entry. D-38 part 1 rules the "
+ "general DRAFT-but-served disposition REMAIN DRAFT, and none of ga_vichara, ka_dasha_kala "
+ "or ka_sangam is named by a rung-specific promotion clause, so all three stay DRAFT and "
+ "these three edges cannot be closed by promotion in M0. Moved to DEFERRED-WITH-REASON.")
+
+# ── D-38 part 3 on Phase 0.8c, quoted verbatim ──
+#   "THE 23 ZERO-CONSUMER PACKETS ARE RESOLVED NOW, PER PACKET, BY DETERMINATION RATHER
+#    THAN BY MUTATION ... RESOLVED MEANS ADJUDICATED, NOT MUTATED: M0's exit criterion is
+#    'unresolved zero-consumer findings all zero', and a finding adjudicated against its
+#    evidence with a recorded determination IS resolved."
+# Applied to the 23 measured packets by reading class (ZERO_CONSUMER_EVIDENCE_v1_0.md §1/§2,
+# M0-T6) — transcribed from that document's own summary table, not re-derived; D-38 rules
+# the CLASS disposition, this table only carries the already-published per-asset fact.
+D38_ZERO_CONSUMER_DISPOSITION_TABLE = {
+ "INPUT-ONLY": dict(rule="no action, closed", n=8,
+   assets=["bg_cohort", "bg_gochara_arcs", "bg_kota_chakra_rings", "bg_kp_sublord_division",
+           "bg_phaladeepika_latta", "bg_reference", "bg_vedha_malefic_scale",
+           "ka_gochara_v3_century_materialize"]),
+ "NO CONSUMER FOUND": dict(rule="retirement candidate, NOT retired — routed to owning rung",
+   n=1, assets=["bg_concordance"]),
+ "METHOD-BLIND": dict(rule="no action, closed as UNKNOWN — explicitly NOT a retirement candidate",
+   n=7, assets=["bg_panchanga", "bg_sky_calendar", "bo_cdlm_summary", "bo_samskara",
+                "ka_graha_sancara", "ka_kshetra", "mi_jivanaghatana"]),
+ "SHADOWED": dict(rule="a real defect — routed to owning rung", n=5,
+   assets=["bg_vidhi_floors", "bg_vidhi_primitives", "ka_dasha_kala", "ka_muhurta_seva",
+           "ka_tulana"]),
+ "BY DESIGN EMPTY / CATEGORY MISMATCH": dict(rule="no action, closed, mismatch recorded", n=2,
+   assets=["bg_ephemeris_engine", "bg_sarvatobhadra_grid"]),
+}
+D38_ROUTED_TO_RUNG = (D38_ZERO_CONSUMER_DISPOSITION_TABLE["NO CONSUMER FOUND"]["assets"] +
+                      D38_ZERO_CONSUMER_DISPOSITION_TABLE["SHADOWED"]["assets"])
+D38_CRIT9_ADDENDUM = (
+ "**D-38 APPLIED (M0-T46).** Phase 0.8c is now RULED per packet, per reading class, rather "
+ "than left open pending 23 individual G1 dispositions. D-38 part 3 adjudicates each of the "
+ "five reading classes ZERO_CONSUMER_EVIDENCE_v1_0.md kept apart: INPUT-ONLY -> no action, "
+ "closed (the absence of a serving consumer is the design); NO CONSUMER FOUND -> recorded "
+ "as a retirement candidate, NOT retired, routed to the owning rung; METHOD-BLIND -> no "
+ "action, and explicitly NOT a retirement candidate (this is UNKNOWN, not zero — retiring "
+ "on a method-blind absence would be H6); SHADOWED -> a real defect, routed to the owning "
+ "rung; BY DESIGN EMPTY / CATEGORY MISMATCH -> no action, closed, mismatch recorded. Applied "
+ "to the 23 measured packets: 8 INPUT-ONLY and 2 BY-DESIGN close with no action; 7 "
+ "METHOD-BLIND close as genuinely unknown, not as retirement candidates; 1 NO-CONSUMER-FOUND "
+ "(bg_concordance, R0) is recorded as a retirement candidate and routed to R0; 5 SHADOWED "
+ "(bg_vidhi_floors, bg_vidhi_primitives — R0; ka_dasha_kala, ka_muhurta_seva, ka_tulana — R3) "
+ "are recorded as real defects and routed to their rungs. D-38's own words govern the "
+ "count: 'RESOLVED MEANS ADJUDICATED, NOT MUTATED … a finding adjudicated against its "
+ "evidence with a recorded determination IS resolved. Reading that criterion to require "
+ "status changes would force asset-lifecycle work on six closed rungs to satisfy a "
+ "catalogue step, which I13 forbids.' ALL 23 PACKETS NOW CARRY A RECORDED DETERMINATION, so "
+ "unresolved = 0 by the ruling's own definition of resolved. THE ZERO IS CONDITIONAL, NOT "
+ "UNCONDITIONAL: 6 of the 23 (1 retirement candidate, 5 SHADOWED defects) carry follow-on "
+ "asset-lifecycle work at their owning rung that this ruling explicitly does not perform, "
+ "and 7 more are closed as UNKNOWN rather than confirmed-absent. Moved from "
+ "REPAIRABLE-IN-M0 to AT-ZERO-WITH-EXPOSURE — the same shape as criterion 11 — rather than "
+ "to a plain settled bucket, because the underlying rows are adjudicated, not fixed.")
+D38_X05_ADDENDUM = (
+ "**D-38 APPLIED (M0-T46).** Criterion 9's rule; see that entry. D-38 part 3 adjudicates "
+ "all 23 packets by reading class; unresolved = 0. Moved to AT-ZERO-WITH-EXPOSURE: 6 "
+ "packets (1 retirement candidate, 5 SHADOWED defects) are routed to their owning rungs "
+ "rather than closed outright, and 7 METHOD-BLIND packets are closed as unknown, not as "
+ "confirmed-zero.")
+
+# ── D-39 part 4 on X-03, criterion 8, criterion 5, quoted verbatim ──
+#   "CONFIRMED: all three are M0's. Both need a column, and by D-4's reasoning a Phase-0
+#    step that names the thing has named the change that creates it, so the columns are
+#    inside the plan's naming and NOT reserved by P5 — subject to D-4's standing conditions
+#    (additive only, mechanical backfill only, NULL where not derivable, verify applied,
+#    never edit after, PARIKSAKA verifies). It was right not to move them to a settled
+#    bucket while no mechanism exists."
+# "No mechanism exists" described v1.1's moment, when whether a column was even AUTHORISED
+# (D-4) or RESERVED (P5) was still open. D-39 settles that. What remains is execution —
+# author the migration, backfill, verify — which nobody has done: exactly
+# REPAIRABLE-IN-M0's own definition ("a known repair takes it to zero; nobody has done
+# it"), so these three move there from UNEXAMINED.
+_D39 = "**D-39 APPLIED (M0-T46).** "
+D39_X03_ADDENDUM = (
+ _D39 + "M0-T36's own re-derivation of the named-field test (independent of D-30's "
+ "assertion) reached X-03 and found clause (a) satisfied — Phase 0.8a names the dead flag "
+ "AND the asset — but left it UNEXAMINED because 'the register's definition of "
+ "REPAIRABLE-IN-M0 requires a KNOWN repair; none is known', the open question being whether "
+ "a new column is authorised under D-4's reasoning or reserved under charter P5. D-39 part "
+ "4 CONFIRMS ownership to M0 independently and SETTLES the P5 question: the column is "
+ "'inside the plan's naming and NOT reserved by P5 … subject to D-4's standing conditions "
+ "(additive only, mechanical backfill only, NULL where not derivable, verify applied, "
+ "never edit after, PARĪKṢAKA verifies)'. With ownership confirmed and the column "
+ "authorised rather than reserved, a KNOWN repair now exists — even though nothing has "
+ "executed it. Moved from UNEXAMINED to REPAIRABLE-IN-M0. What remains undone: authoring "
+ "the migration, running the backfill, and PARĪKṢAKA's verification — none of which this "
+ "task performs.")
+D39_CRIT8_ADDENDUM = (
+ _D39 + "Criterion 8 is X-03's criterion and inherits D-39's finding exactly: ownership to "
+ "M0 confirmed, the dead-flag column authorised under D-4 and not reserved by P5. Moved "
+ "from UNEXAMINED to REPAIRABLE-IN-M0. The scorecard's own disagreement with the guard "
+ "about whether this criterion is measurable at all is unaffected — no column exists yet, "
+ "so the scorecard still reads NOT-MEASURABLE until the repair is executed. Separately, "
+ "D-42 (2026-08-23T11:04:17Z) ranks build_run_assets as authoritative wherever a surface "
+ "asks 'was this asset built' — bearing on this criterion's BUILD-COVERAGE half, not the "
+ "dead-flag half D-39 just settled: has_writer and asset_throughput.state='lit' both "
+ "remain proxies for 'built', and the dead-flag column D-39 authorises does not by itself "
+ "decide which proxy the criterion's other half should read.")
+D39_CRIT5_ADDENDUM = (
+ _D39 + "Criterion 5's entry additionally flagged a (b)-clause collision the other two did "
+ "not carry — whether §8.6 stage 2's generic 'partitions declared' overrides Phase 0.4's "
+ "specific naming. D-39 part 4 confirms criterion 5 M0's OUTRIGHT, alongside X-03 and "
+ "criterion 8, resolving that collision in M0's favour rather than leaving it open. The "
+ "column question is settled the same way: authorised under D-4, not reserved by P5. Moved "
+ "from UNEXAMINED to REPAIRABLE-IN-M0. C-25 itself stays permanently `not_checkable` for "
+ "the separate structural reason already recorded — no column exists YET — which is "
+ "exactly the repair this bucket names as not yet done.")
+
+# ── D-42 on C-28, quoted verbatim ──
+#   "It is not '31 assets missing an estimated_seconds'. It is '31 ASSETS READ lit WITH NO
+#    COMPLETED RUN RECORD BEHIND THEM'." And: "build_run_assets IS AUTHORITATIVE.
+#    asset_throughput.state='lit' IS A CLAIM ABOUT A BUILD, NOT EVIDENCE OF ONE … THE SAME
+#    RANKING THEREFORE APPLIES WHEREVER THE QUESTION IS ASKED." And on the two forbidden
+#    fixes: backfilling the 31 is H6; RE-POINTING c28() at build_run_assets to close it is
+#    a weakening under D-41 part 2, presumptively H3, and is explicitly refused.
+D42_C28_ADDENDUM = (
+ "**D-42 APPLIED (M0-T46).** ADHIKĀRIN ruling D-42 reclassifies this residual's FRAMING and "
+ "forbids both available 'fixes'. THE OLD FRAME WAS WRONG: this is not '31 assets missing "
+ "an estimated_seconds'. D-42's authoritative framing: '31 ASSETS READ lit WITH NO "
+ "COMPLETED RUN RECORD BEHIND THEM' — the missing estimate is a symptom, the unearned "
+ "`lit` is the finding (D-13's telemetry pollution meeting §N.8's no-op-completion class). "
+ "RANKING ESTABLISHED FOR THE WHOLE REGISTER, NOT JUST THIS RULE: 'build_run_assets IS "
+ "AUTHORITATIVE. asset_throughput.state=\"lit\" IS A CLAIM ABOUT A BUILD, NOT EVIDENCE OF "
+ "ONE' — applying wherever a surface asks 'was this asset built', including criterion 8's "
+ "build-coverage half (see that entry). TWO FIXES ARE EXPLICITLY FORBIDDEN, NOT MERELY "
+ "DISCOURAGED: backfilling estimates for the 31 (H6 — a number on a build nothing "
+ "witnessed), and RE-POINTING c28()'s detector at build_run_assets to close it — 'under "
+ "the authoritative definition C-28 would report zero violations and a BLOCKING failure "
+ "would pass — while all 31 unearned lit states remain exactly as they are. That is a "
+ "weakening under D-41 part 2 and presumptively H3.' NEITHER FIX IS THIS TASK'S TO MAKE "
+ "AND NEITHER WAS MADE — no detector in m0_exit_scorecard.py or "
+ "check_asset_catalogue_contract.py was re-pointed by M0-T46; a future re-pointing found "
+ "inconsistent with this ruling is a finding for a separate task, not a repair for this "
+ "one. THE BUCKET DOES NOT MOVE — the deferral for the 31 stands (D-30 part 3), now "
+ "grounded on the definitional finding rather than the absence of estimates — and the 31 "
+ "unearned lit states are additionally understood as ROUTED TO THEIR OWNING RUNGS (all "
+ "R0), since D-42 holds 'each rung's own build is the only thing that can earn or refute a "
+ "lit'.")
+
+# ── the reclassifications themselves, applied by _apply_d3842() below ────────
+D3842_TO_DEFERRED = {
+ "crit-4": dict(new_bucket=DEFERRED, reason_kind="ruling",
+   owner="R1 (ga_vichara) and R3 (ka_dasha_kala, ka_sangam) — each at its own §8.6 "
+         "stage-2 Conform",
+   addendum=D38_CRIT4_ADDENDUM),
+ "C-11": dict(new_bucket=DEFERRED, reason_kind="ruling",
+   owner="R1 (ga_vichara) and R3 (ka_dasha_kala, ka_sangam)",
+   addendum=D38_C11_ADDENDUM),
+}
+D3842_TO_AT_ZERO = {
+ "crit-9": dict(new_bucket=AT_ZERO, reason_kind="ruling", addendum=D38_CRIT9_ADDENDUM),
+ "X-05": dict(new_bucket=AT_ZERO, reason_kind="ruling", addendum=D38_X05_ADDENDUM),
+}
+D3842_TO_REPAIRABLE = {
+ "crit-5": dict(new_bucket=REPAIRABLE, reason_kind=None,
+   owner="ADHIKĀRIN confirmed M0 (D-39); execution (author migration, backfill, verify) "
+         "is a KĀRAKA task",
+   addendum=D39_CRIT5_ADDENDUM),
+ "crit-8": dict(new_bucket=REPAIRABLE, reason_kind=None,
+   owner="ADHIKĀRIN confirmed M0 (D-39); execution is a KĀRAKA task",
+   addendum=D39_CRIT8_ADDENDUM),
+ "X-03": dict(new_bucket=REPAIRABLE, reason_kind=None,
+   owner="ADHIKĀRIN confirmed M0 (D-39); execution is a KĀRAKA task",
+   addendum=D39_X03_ADDENDUM),
+}
+D3842_ADDENDUM_ONLY = {
+ "C-28": D42_C28_ADDENDUM,   # bucket unchanged — D-30 part 3's deferral stands, reframed
+}
+
+D3842_TALLY_DELTA = dict(
+ rules_before={REPAIRABLE: 3, DEFERRED: 15, RESERVED: 1, UNEXAMINED: 1, AT_ZERO: 0},
+ rules_after={REPAIRABLE: 2, DEFERRED: 16, RESERVED: 1, UNEXAMINED: 0, AT_ZERO: 1},
+ criteria_before={REPAIRABLE: 3, DEFERRED: 2, RESERVED: 1, UNEXAMINED: 5, AT_ZERO: 1},
+ criteria_after={REPAIRABLE: 3, DEFERRED: 3, RESERVED: 1, UNEXAMINED: 3, AT_ZERO: 2},
+ moved=["crit-4 REPAIRABLE-IN-M0→DEFERRED-WITH-REASON (D-38)",
+        "C-11 REPAIRABLE-IN-M0→DEFERRED-WITH-REASON (D-38)",
+        "crit-9 REPAIRABLE-IN-M0→AT-ZERO-WITH-EXPOSURE (D-38)",
+        "X-05 REPAIRABLE-IN-M0→AT-ZERO-WITH-EXPOSURE (D-38)",
+        "crit-5 UNEXAMINED→REPAIRABLE-IN-M0 (D-39)",
+        "crit-8 UNEXAMINED→REPAIRABLE-IN-M0 (D-39)",
+        "X-03 UNEXAMINED→REPAIRABLE-IN-M0 (D-39)"],
+ reframed_not_moved=["C-28 — D-42 corrects the framing ('lit with no completed "
+                     "build_run_assets record', not 'missing estimated_seconds'); bucket "
+                     "held at REPAIRABLE-IN-M0, the D-30 part 3 deferral for the 31-row "
+                     "residual is unchanged and now better grounded"],
+ net_unexamined="6 of 32 entries were UNEXAMINED after v1.1 (M0-T36): crit-1, crit-2, "
+               "crit-5, crit-8, crit-10, X-03. D-39 resolves 3 of those 6 to "
+               "REPAIRABLE-IN-M0 (crit-5, crit-8, X-03). The other 3 (crit-1, crit-2, "
+               "crit-10) are untouched by these six rulings and stay UNEXAMINED — 3 of "
+               "32 entries remain UNEXAMINED after v1.2.",
+)
+
+def _apply_d3842():
+    """Apply D-38 (0.8b/0.8c), D-39 (X-03/crit-8/crit-5 ownership) and D-42 (C-28 framing) to
+    the v1.1 (D-30-applied) entries, preserving what v1.1 decided. Mirrors `_apply_d30()`."""
+    for e in CRITERIA + RULES:
+        for table in (D3842_TO_DEFERRED, D3842_TO_AT_ZERO, D3842_TO_REPAIRABLE):
+            a = table.get(e["id"])
+            if a:
+                e["prior_bucket_v1_1"] = e["bucket"]
+                e["bucket"] = a["new_bucket"]
+                if a.get("reason_kind"):
+                    e["prior_reason_kind_v1_1"] = e.get("reason_kind")
+                    e["reason_kind"] = a["reason_kind"]
+                if a.get("owner"):
+                    e["prior_owner_v1_1"] = e.get("owner")
+                    e["owner"] = a["owner"]
+                e["reason"] = (a["addendum"] +
+                    "\n\n— — — v1.1 (M0-T36, D-30 applied) classification, preserved — — —\n\n"
+                    + e["reason"])
+                e["reclassified_by"] = ("DECISIONS.jsonl D-38/D-39 (ADHIKĀRIN, 2026-08-23); "
+                    "applied by M0-T46. Ruling: ADHIKĀRIN. Application: KĀRAKA. "
+                    "Certification: none (I16 / H7).")
+        add = D3842_ADDENDUM_ONLY.get(e["id"])
+        if add:
+            e["reason"] = (add +
+                "\n\n— — — v1.1 (M0-T36, D-30 applied) classification, preserved — — —\n\n"
+                + e["reason"])
+    return True
+
+# NOTE: called after `_apply_d30()` below, not here — this function's addenda assume the
+# v1.1 (D-30-applied) reason text is already in place, so it must run second.
+
+
 # ── §9 — the disclosure entries, DRAFTED (M0-T36) ────────────────────────────
 # D-30 part 4 amends D-24 part 3: "the switch flips when every criterion is at zero or
 # deferred AND EVERY DEFERRED RULE CARRIES ITS DISCLOSURE ENTRY, itemized and dated, in
@@ -1629,17 +1910,28 @@ DISCLOSURE_DRAFT = {
 }
 
 DISCLOSURE_NOT_DRAFTED = {
- "C-11": "REPAIRABLE-IN-M0, not deferred — 3 CURRENT→DRAFT edges awaiting G1 dispositions. A disclosure "
-         "would be the wrong instrument: this needs the repair, not a reason it cannot happen.",
- "X-05": "REPAIRABLE-IN-M0, not deferred — 23 zero-consumer packets, 0 dispositions. The guard already "
-         "has the right mechanism (`zero_consumer_dispositions`, deliberately EMPTY because resolving a "
-         "packet requires a `decision_ref` into DECISIONS.jsonl and catalogue disposition is G1). No "
-         "KĀRAKA may resolve a packet by writing a justification into that block, and M0-T36 did not.",
+ "C-11": "NEWLY DEFERRED-WITH-REASON BY D-38 (2026-08-23T09:24:48Z), NOT REPAIRABLE-IN-M0 "
+         "any more — see the C-11 entry above. Phase 0.8b's disposition is REMAIN DRAFT for "
+         "all three of this rule's DRAFT dependencies, deferred to R1/R3. A disclosure entry "
+         "for this rule has NOT been drafted by M0-T46: this task is scoped to "
+         "`00_ARCHITECTURE/control/` and does not write "
+         "`platform/scripts/governance/asset_catalogue_disclosed_residuals.json`. Drafting "
+         "one, in the same shape as the other DEFERRED rules above, is follow-up work for a "
+         "task with that file in scope.",
+ "X-05": "RESOLVED BY D-38 part 3 (2026-08-23T09:24:48Z), NOT REPAIRABLE-IN-M0 and NOT "
+         "deferred — see the X-05 entry above. All 23 zero-consumer packets are adjudicated "
+         "per reading class; unresolved = 0. A disclosure is the wrong instrument for a "
+         "resolved (not deferred) rule. The guard's `zero_consumer_dispositions` block "
+         "remains empty per-packet, which is correct: D-38's adjudication is by CLASS, not "
+         "by writing a `decision_ref` into that per-packet block, and no KĀRAKA may write one "
+         "there regardless (catalogue disposition is G1).",
  "X-02": "ALREADY DISCLOSED, in `disclosed_additions`, and is the pattern every entry above follows. "
-         "Untouched by M0-T36.",
- "X-03": "UNEXAMINED, not deferred — D-30's named-field test settles that the dead flag is M0's "
-         "(Phase 0.8a names it, and names the asset), but no mechanism exists. Disclosing it would "
-         "record a deferral that has not been granted and that the rule says is not owed.",
+         "Untouched by M0-T36 or M0-T46.",
+ "X-03": "REPAIRABLE-IN-M0 (D-39, 2026-08-23T09:25:50Z), NOT deferred any more — see the X-03 "
+         "entry above. Ownership to M0 is confirmed and the column is authorised under D-4, "
+         "not reserved by P5; the repair (add the column, backfill, verify) is known but "
+         "unexecuted. A disclosure would be the wrong instrument: this needs the repair, not "
+         "a reason it cannot happen.",
 }
 
 def _apply_d30():
@@ -1666,6 +1958,7 @@ def _apply_d30():
     return True
 
 _apply_d30()
+_apply_d3842()
 
 # ── render ───────────────────────────────────────────────────────────────────
 def tally(entries):
@@ -1684,21 +1977,32 @@ def render() -> str:
     A = L.append
     A("---")
     A("canonical_id: M0_DEFERRAL_REGISTER")
-    A("version: 1.1")
+    A("version: 1.2")
     A("status: LIVE-CLASSIFICATION")
-    A("task: M0-T36 (v1.0 authored by M0-T31; v1.1 applies D-30 and re-measures)")
+    A("task: M0-T46 (v1.0 authored by M0-T31; v1.1 by M0-T36 applied D-30; v1.2 applies "
+      "D-38/D-39/D-40/D-41/D-42)")
     A(f"generated: {datetime.datetime.now(datetime.UTC).isoformat()}")
     A("generator: 00_ARCHITECTURE/control/m0_deferral_register.py")
-    A("authored_by: KĀRAKA — v1.0 by M0-T31, v1.1 by M0-T36 (Nirmāṇa autonomous campaign)")
+    A("authored_by: KĀRAKA — v1.0 by M0-T31, v1.1 by M0-T36, v1.2 by M0-T46 (Nirmāṇa "
+      "autonomous campaign)")
     A("filename_note: the file keeps its v1_0 path deliberately — canonical_id and every "
       "pointer to it are stable; the frontmatter `version` field is the version (§B.8). "
-      "A v1_0 filename carrying version 1.1 is an in-place update, not registry drift.")
+      "A v1_0 filename carrying version 1.2 is an in-place update, not registry drift.")
     A("certified_by: null   # I16 / charter H7 — a KĀRAKA never certifies its own work")
-    A("satisfies: DECISIONS.jsonl D-24 part 3 AS AMENDED TWICE BY D-30 part 2(a) and part 4")
-    A("applies: DECISIONS.jsonl D-30 part 1 (named-field test), part 3 (C-28 residual), D-29")
+    A("satisfies: DECISIONS.jsonl D-24 part 3 AS AMENDED BY D-30 part 2(a)+part 4, THEN BY "
+      "D-39 part 1 (withdrawn) AND D-40 part 1 (final): the switch flips when every "
+      "criterion is at zero or explicitly deferred AND the disclosure mechanism is "
+      "demonstrably in effect (a two-direction fixture: a disclosed rule still reports its "
+      "violation and only stops gating; an undisclosed rule still blocks) AND CI detects "
+      "and refuses a stale baseline (NOT 'CI gates live' — D-40 withdrew that as impossible, "
+      "no DB credential in CI Actions)")
+    A("applies: DECISIONS.jsonl D-30 part 1 (named-field test), part 3 (C-28 residual), "
+      "D-29, D-38 (0.8b REMAIN DRAFT, 0.8c per-packet adjudication), D-39 (X-03/crit-8/"
+      "crit-5 confirmed M0's, not P5), D-40 (flip condition's CI clause, final form), D-42 "
+      "(C-28 reframed; build_run_assets ranking)")
     A("---")
     A("")
-    A("# NIRMĀṆA M0 — Deferral Register v1.1")
+    A("# NIRMĀṆA M0 — Deferral Register v1.2")
     A("")
     A("**The question this document exists to answer**, verbatim from ADHIKĀRIN ruling D-24 "
       "part 3:")
@@ -1754,6 +2058,30 @@ def render() -> str:
       "recorded (`F-T36-2`): CI does not run `--live` at all. It runs `--baseline` against a "
       "snapshot frozen at 05:09:17Z, which returns **17** BLOCKING failures including three rules "
       "that pass in production today.")
+    A("")
+    A("**v1.2 (M0-T46) applies six further ADHIKĀRIN rulings — D-37 through D-42 — three of "
+      "which move a bucket here.** D-38 decided Phase 0.8b (REMAIN DRAFT — a decision, not a "
+      "promotion) and adjudicated all 23 Phase 0.8c packets per reading class, moving "
+      "**crit-4 and C-11 to DEFERRED-WITH-REASON** (deferred to R1/R3, not repairable in M0 "
+      "by promotion) and **crit-9 and X-05 to AT-ZERO-WITH-EXPOSURE** (all 23 packets "
+      "adjudicated; unresolved = 0; 6 carry follow-on rung work). D-39 confirmed X-03, "
+      "criterion 8 and criterion 5 as M0's and settled that their columns are authorised "
+      "under D-4, not reserved by charter P5, moving **crit-5, crit-8 and X-03 to "
+      "REPAIRABLE-IN-M0** (a known repair — add the column, backfill, verify — now exists; "
+      "nobody has executed it). D-42 reframes C-28's residual ('31 assets read `lit` with no "
+      "completed `build_run_assets` record', not '31 missing an estimate') and ranks "
+      "`build_run_assets` authoritative wherever a surface asks 'was this asset built' — "
+      "recorded on the C-28 entry and on criterion 8; **the bucket does not move**, and D-42 "
+      "explicitly forbids re-pointing C-28's detector at `build_run_assets` to close it "
+      "(that would be H3). D-40 additionally WITHDRAWS part of D-39's amended flip "
+      "condition — 'CI must gate against live state' is impossible, CI Actions carries no "
+      "database credential — and replaces it with a detect-and-refuse-stale-baseline "
+      "requirement; §10 restates the final condition. D-37 and D-41 are read but change no "
+      "bucket here (D-37 corrects D-12 part 3 on assets outside this register's scope and "
+      "clarifies the named-field test's refinement (b); D-41 authorises the deploy.yml edit "
+      "and a CI-edit-by-direction rule, and no 'awaiting a ruling on CI edit scope' flag was "
+      "found anywhere in this file, the scorecard, or M0_CLOSE_READINESS_v1_0.md for it to "
+      "resolve). See §12 for the full application and the before/after tally.")
     A("")
     A("### What counts as a reason")
     A("")
@@ -1927,16 +2255,20 @@ def render() -> str:
     A("In order. Steps 1–9 are rulings only ADHIKĀRIN can make; step 10 is mechanical and is the "
       "one that actually stops the flip; steps 11–13 are execution and verification.")
     A("")
-    A("| # | kind | what | unblocks |")
-    A("|---|---|---|---|")
+    A("| # | kind | what | unblocks | resolved? |")
+    A("|---|---|---|---|---|")
     for s in FLIP_CHECKLIST:
-        A(f"| {s['n']} | {s['kind']} | **{esc(s['title'])}** | {esc(', '.join(s['unblocks']))} |")
+        A(f"| {s['n']} | {s['kind']} | **{esc(s['title'])}** | {esc(', '.join(s['unblocks']))} | "
+          f"{'YES — see below' if s.get('resolved') else 'open'} |")
     A("")
     for s in FLIP_CHECKLIST:
         A(f"**{s['n']}. [{s['kind']}] {s['title']}**")
         A("")
         A(s["what"])
         A("")
+        if s.get("resolved"):
+            A(f"**RESOLVED (M0-T46 records; ruled by ADHIKĀRIN):** {s['resolved']}")
+            A("")
     A("**What this list is not.** It is not a claim that M0 exits when the thirteen are done — "
       "M0's freeze is M0-T10's and its certification is PARĪKṢAKA's. It is the answer to one "
       "narrower question: what has to become true before D-24 part 3's precondition is honestly "
@@ -2093,6 +2425,35 @@ def render() -> str:
       "D-30 part 4's letter and changes nothing the guard does, because the guard has no code path "
       "that reads a disclosure for any rule but `X-02`.")
     A("")
+    A("**v1.2 (M0-T46) — THE FLIP CONDITION HAS BEEN AMENDED TWICE SINCE THE ABOVE WAS WRITTEN, "
+      "AND THE FINAL FORM IS DIFFERENT FROM D-30 part 4's.** D-39 part 1 first amended D-30 part "
+      "4: an existing disclosure entry is not evidence the mechanism does anything — the switch "
+      "flips only when the disclosure mechanism is 'DEMONSTRABLY IN EFFECT, PROVEN BY A FIXTURE "
+      "THAT SHOWS BOTH DIRECTIONS — a disclosed rule's violation is still REPORTED while no "
+      "longer GATING, and an UNDISCLOSED rule still BLOCKS'; D-39 also added 'CI MUST GATE "
+      "AGAINST LIVE STATE, NOT A SNAPSHOT'. D-40 part 1 WITHDREW that CI clause as an "
+      "impossibility M0-T40 root-caused: CI Actions carries no database credential, so "
+      "`--live` is a job that cannot run there at all. D-40 replaces it: **CI need not gate "
+      "against live state — it must DETECT AND REFUSE A STALE BASELINE**, with rule results "
+      "still printed in full so only the exit changes. THE FINAL CONDITION, as amended twice, "
+      "supersedes D-30 part 4 for this document's own §0/frontmatter: every criterion at zero "
+      "or explicitly deferred, AND the disclosure mechanism demonstrably in effect (the "
+      "two-direction fixture), AND CI's baseline check detects and refuses staleness. Neither "
+      "half of the mechanism half is discharged by this task; both remain open per §12.")
+    A("")
+    A("**A tension this task found and does not resolve.** D-39's characterisation of "
+      "`F-T36-3` as still-inert rests on SUTRADHĀRA's mailbox escalation timestamped "
+      "`20260823T082157Z` (from M0-T36's own close-readiness pass). This file's own "
+      "`_write_disclosure_block()` docstring and README text (below, and unchanged by this "
+      "task) assert that a LATER task, M0-T40, closed `F-T36-3` by making the guard read "
+      "`deferred_rule_disclosures` BY RULE ID and compute `effective_severity` from it — and "
+      "M0-T46 verified, read-only, that `check_asset_catalogue_contract.py` does contain "
+      "exactly that code path (`effective_severity`, a rule-id-keyed reader). D-39 is timestamped "
+      "*after* that M0-T40 work would have landed but cites *pre*-M0-T40 evidence for its "
+      "F-T36-3 finding. This is recorded as an open question for ADHIKĀRIN, not settled here: "
+      "a KĀRAKA does not adjudicate whether a ruling used stale evidence (I13/I16). See the "
+      "mailbox finding this task files alongside its report.")
+    A("")
     A("| rule | severity | gates today | deferred to | ruling / mandate cited |")
     A("|---|---|:--:|---|---|")
     for k, d in DISCLOSURE_DRAFT.items():
@@ -2131,17 +2492,145 @@ def render() -> str:
         A(f["detail"])
         A("")
 
+    # ── §12 — D-38/D-39/D-40/D-41/D-42 applied (M0-T46) ──────────────────────
+    A("---")
+    A("")
+    A("## 12 — D-38 / D-39 / D-40 / D-41 / D-42 applied (M0-T46)")
+    A("")
+    A("Six ADHIKĀRIN rulings landed after v1.1 (M0-T36) closed §§0–11 above. This section "
+      "documents what each did to this register; §§0–11 are left exactly as v1.1 wrote "
+      "them (history), and the per-entry sections above carry the new addenda prefixed to "
+      "the preserved v1.1 text, in the same discipline v1.1 used for D-30.")
+    A("")
+    A("### 12.1 — Before / after tally")
+    A("")
+    d = D3842_TALLY_DELTA
+    A("| | REPAIRABLE-IN-M0 | DEFERRED-WITH-REASON | RESERVED | UNEXAMINED | "
+      "AT-ZERO-WITH-EXPOSURE |")
+    A("|---|--:|--:|--:|--:|--:|")
+    A(f"| criteria — before | {d['criteria_before'][REPAIRABLE]} | "
+      f"{d['criteria_before'][DEFERRED]} | {d['criteria_before'][RESERVED]} | "
+      f"{d['criteria_before'][UNEXAMINED]} | {d['criteria_before'][AT_ZERO]} |")
+    A(f"| criteria — after | {d['criteria_after'][REPAIRABLE]} | "
+      f"{d['criteria_after'][DEFERRED]} | {d['criteria_after'][RESERVED]} | "
+      f"{d['criteria_after'][UNEXAMINED]} | {d['criteria_after'][AT_ZERO]} |")
+    A(f"| rules — before | {d['rules_before'][REPAIRABLE]} | {d['rules_before'][DEFERRED]} | "
+      f"{d['rules_before'][RESERVED]} | {d['rules_before'][UNEXAMINED]} | "
+      f"{d['rules_before'][AT_ZERO]} |")
+    A(f"| rules — after | {d['rules_after'][REPAIRABLE]} | {d['rules_after'][DEFERRED]} | "
+      f"{d['rules_after'][RESERVED]} | {d['rules_after'][UNEXAMINED]} | "
+      f"{d['rules_after'][AT_ZERO]} |")
+    A("")
+    A("**Moved:**")
+    A("")
+    for item in d["moved"]:
+        A(f"- {item}")
+    A("")
+    A("**Reframed, bucket held:**")
+    A("")
+    for item in d["reframed_not_moved"]:
+        A(f"- {item}")
+    A("")
+    A(d["net_unexamined"])
+    A("")
+    A("### 12.2 — D-38: Phase 0.8b and 0.8c decided")
+    A("")
+    A("**0.8b — REMAIN DRAFT, a decision not a deferral.** Neither ga_vichara (R1) nor "
+      "ka_dasha_kala / ka_sangam (R3) is named by a rung-specific promote-or-retire clause "
+      "(only R2's nine, R3's ka_graha_sancara/ka_muhurta_seva, R4's nine and R5's "
+      "lel_events are named), so the general REMAIN-DRAFT disposition governs all three and "
+      "criterion 4 / C-11 move to DEFERRED-WITH-REASON.")
+    A("")
+    A("**0.8c — all 23 packets adjudicated by reading class:**")
+    A("")
+    A("| reading class | n | D-38 disposition | assets |")
+    A("|---|--:|---|---|")
+    for cls, v in D38_ZERO_CONSUMER_DISPOSITION_TABLE.items():
+        A(f"| {cls} | {v['n']} | {esc(v['rule'])} | {esc(', '.join(v['assets']))} |")
+    A("")
+    A(f"**{sum(v['n'] for v in D38_ZERO_CONSUMER_DISPOSITION_TABLE.values())} of 23 packets "
+      "adjudicated; 0 unresolved.** "
+      f"**{len(D38_ROUTED_TO_RUNG)} of 23** (1 retirement candidate + 5 SHADOWED defects) "
+      "carry follow-on asset-lifecycle work routed to their owning rung — a recorded "
+      "determination, not an open question, per D-38's own holding that adjudication IS "
+      "resolution. Criterion 9 / X-05 move to AT-ZERO-WITH-EXPOSURE.")
+    A("")
+    A("### 12.3 — D-39: X-03, criterion 8 and criterion 5 confirmed M0's, the P5 question settled")
+    A("")
+    A("D-39 part 4, independently re-deriving the named-field test rather than inheriting "
+      "D-30's assertion of it, CONFIRMS ownership of X-03, criterion 8 and criterion 5 to "
+      "M0 and settles that their columns are 'inside the plan's naming and NOT reserved by "
+      "P5 … subject to D-4's standing conditions'. What v1.1 filed as UNEXAMINED "
+      "('ownership settled to M0, mechanism still undecided') has its mechanism question "
+      "resolved: the column is authorised, not reserved. All three move to "
+      "REPAIRABLE-IN-M0 — a known repair (add the column under D-4's conditions, backfill, "
+      "verify) now exists; nobody has executed it.")
+    A("")
+    A("### 12.4 — D-40: the flip condition's CI clause, final form")
+    A("")
+    A("D-39 part 1 added 'CI MUST GATE AGAINST LIVE STATE' to the flip condition. D-40 part "
+      "1 WITHDREW that clause as an impossibility M0-T40 root-caused: CI Actions carries no "
+      "database credential (`platform/.env.local` does not exist there), so `--live` cannot "
+      "run. D-40 replaces it: CI must DETECT AND REFUSE A STALE BASELINE instead — two "
+      "DB-free detectors (age, and schema-behind: declared columns minus baseline columns) "
+      "that can run without a credential. This register's own frontmatter and §10 now state "
+      "the final condition; no criterion or rule bucket in this register turns on the CI "
+      "clause itself, so nothing in §§0–9 moves because of D-40 — only the STATEMENT of the "
+      "condition changes.")
+    A("")
+    A("### 12.5 — D-42: C-28 reframed; the build_run_assets ranking")
+    A("")
+    A(D42_C28_ADDENDUM)
+    A("")
+    A("### 12.6 — D-37 and D-41: read, no bucket change")
+    A("")
+    A("**D-37** corrects D-12 part 3's premise (the three orphaned throughput rows belong "
+      "to ka_kota_chakra / ka_vedha_gochara / mi_sankalpa, not ka_gochara_sweep) and "
+      "clarifies the named-field test's refinement (b) fires only on a clause naming a "
+      "specific asset or a specific field at a specific rung. None of the three assets or "
+      "the clarified refinement changes any entry this register classifies.")
+    A("")
+    A("**D-41** authorises the deploy.yml sentinel-assertion edit and states a CI-edit-by-"
+      "direction rule (strengthening changes proceed without a ruling; weakening changes "
+      "are presumptively H3). M0-T46 searched this file, M0_EXIT_SCORECARD_v1_0.md and "
+      "M0_CLOSE_READINESS_v1_0.md for an open 'awaiting a ruling on CI edit scope' flag and "
+      "found none — D-41 has nothing to resolve in these three instruments. D-41's "
+      "standing mutation-testing requirements (structural assertion + inverse-direction "
+      "mutation, per part 3) bear on future guard-code changes, not on this classification "
+      "register.")
+    A("")
+    A("### 12.7 — What this task did not do")
+    A("")
+    A("No `asset_registry` row was written (this generator has never queried the database "
+      "directly — every `measured` value is a frozen figure from when M0-T17/M0-T36 or the "
+      "guard last measured it live; the fresh live re-measurement for this task ran through "
+      "`m0_exit_scorecard.py`, whose own reading 5 shows criterion 4 unchanged at 3 and "
+      "criterion 9's packet count unchanged at 23). No guard file was edited — `c28()` and "
+      "every other detector in `check_asset_catalogue_contract.py` and "
+      "`check_asset_source_parity.py` are unchanged. No `.github/` file was touched. No new "
+      "entry was added to `DISCLOSURE_DRAFT` (C-11's newly-deferred status has no disclosure "
+      "drafted for it — see `DISCLOSURE_NOT_DRAFTED`), so a re-run of this generator's "
+      "`_write_disclosure_block()` should not change "
+      "`platform/scripts/governance/asset_catalogue_disclosed_residuals.json`'s content; if "
+      "it does, M0-T46 reverted that file to keep this task's footprint inside "
+      "`00_ARCHITECTURE/control/`, per its own scope instruction. No `DECISIONS.jsonl` or "
+      "`state/*.jsonl` line was edited. `ka_gochara_sweep` (charter P1) was not touched. No "
+      "UNEXAMINED entry this task did not name was resolved, and nothing here is certified "
+      "— that is PARĪKṢAKA's (I16 / H7).")
+    A("")
+
     return "\n".join(L) + "\n"
 
 def payload() -> dict:
     ct, rt = tally(CRITERIA), tally(RULES)
     return {
         "_meta": {
-            "canonical_id": "M0_DEFERRAL_REGISTER", "version": "1.1",
-            "task": "M0-T36", "v1_0_task": "M0-T31",
+            "canonical_id": "M0_DEFERRAL_REGISTER", "version": "1.2",
+            "task": "M0-T46", "v1_0_task": "M0-T31", "v1_1_task": "M0-T36",
             "generated": datetime.datetime.now(datetime.UTC).isoformat(),
             "generator": "00_ARCHITECTURE/control/m0_deferral_register.py",
-            "satisfies": "DECISIONS.jsonl D-24 part 3",
+            "satisfies": "DECISIONS.jsonl D-24 part 3 as amended by D-30 part 2(a)+part 4, "
+                        "then D-39 part 1 (withdrawn) and D-40 part 1 (final)",
             "certified_by": None,
             "provenance": PROVENANCE, "reason_kinds": REASON_KINDS,
         },
@@ -2160,6 +2649,20 @@ def payload() -> dict:
             "phase_86_stage2_collision": PHASE_86_STAGE2_COLLISION,
             "tally_delta": D30_TALLY_DELTA,
             "narrowed_not_moved": {k: v["result"] for k, v in D30_NARROWED.items()},
+        },
+        "d38_d39_d40_d41_d42_application": {
+            "tally_delta": D3842_TALLY_DELTA,
+            "moved_to_deferred": {k: v["addendum"] for k, v in D3842_TO_DEFERRED.items()},
+            "moved_to_at_zero": {k: v["addendum"] for k, v in D3842_TO_AT_ZERO.items()},
+            "moved_to_repairable": {k: v["addendum"] for k, v in D3842_TO_REPAIRABLE.items()},
+            "reframed_not_moved": D3842_ADDENDUM_ONLY,
+            "zero_consumer_disposition_table_D38": D38_ZERO_CONSUMER_DISPOSITION_TABLE,
+            "flip_condition_final_form": "DECISIONS.jsonl D-40 part 1: the switch flips when "
+                "every criterion is at zero or explicitly deferred AND the disclosure "
+                "mechanism is demonstrably in effect (a two-direction fixture) AND CI "
+                "detects and refuses a stale baseline (not: CI gates live — withdrawn as "
+                "impossible, no DB credential in CI Actions).",
+            "d37_and_d41_reviewed_no_bucket_change": True,
         },
         "disclosure_draft": DISCLOSURE_DRAFT,
         "disclosure_not_drafted": DISCLOSURE_NOT_DRAFTED,
@@ -2240,7 +2743,7 @@ if __name__ == "__main__":
                     "version": ((prior.get("_meta") or {}).get("version")),
                     "tally": prior.get("tally")}]
     entry = {"label": f"reading {len(history) + 1} — {rec['_meta']['task']} "
-                      f"(D-30 applied; re-measured)",
+                      f"(D-38/D-39/D-40/D-41/D-42 applied)",
              "task": rec["_meta"]["task"], "generated": rec["_meta"]["generated"],
              "version": rec["_meta"]["version"], "tally": rec["tally"]}
     # reading_history is append-only across TASKS, not across re-runs of one task. A second
