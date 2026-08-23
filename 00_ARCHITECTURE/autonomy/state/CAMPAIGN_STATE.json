@@ -167,12 +167,6 @@
       "state": "running"
     },
     {
-      "id": "M0-T4",
-      "what": "migrations 588/589 applied-state verify + registration proposal, no writes",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "Q1",
       "what": "ADHIKARIN ruling: may the domain/rung/lifecycle migration be APPLIED under M0 (charter P5 boundary)",
       "owner": "ADHIKARIN",
@@ -201,10 +195,28 @@
       "what": "L-12/D-28 evidence false (timeouts non-default on 107/128, not 2); real defect is 7 assets timed out below their own measured worst. Carry-forward recorded on R1/R2/R3. ADHIKARIN to rule whether D-28's evidence cell is corrected now or per-rung",
       "owner": "ADHIKARIN",
       "state": "asked"
+    },
+    {
+      "id": "M0-T4",
+      "what": "COMPLETE, no writes executed: 588 APPLIED (objects inspected), 589 APPLIED BY INFERENCE (DROP IF EXISTS leaves no positive trace — chain of four facts, not a witnessed event). Neither has a _migrations_applied row; they are the only 2 of 441 on-disk files the runner considers unapplied. Awaiting PARIKSAKA + ADHIKARIN Q2",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T11",
+      "what": "migrate.ts entrypoint guard (F-2 live hazard) — dispatched into T4's freed slot",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "F-1",
+      "what": "migration number 588 claimed twice: this branch's 588_remove_asset_build_protection.sql and 588_samiksha_digest_journal.sql (applied to prod from an unmerged pariprashna/p4-i worktree, ledger id 447). migration_number_guard E2 hard-fails whichever PR merges second. Cross-campaign coordination — ADHIKARIN's",
+      "owner": "ADHIKARIN",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T04:13:13Z",
+  "last_updated_ts": "2026-08-23T04:16:53Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
