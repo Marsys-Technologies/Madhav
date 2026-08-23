@@ -795,3 +795,7 @@
 {"ts":"2026-08-23T14:13:32Z","agent":"SUTRADHARA","status":"working","detail":"tick 5: reading deltas since 14:10"}
 {"ts":"2026-08-23T14:14:36Z","agent":"KARAKA-M0-T50","status":"working","detail":"5/5 mutations caught, all restores sha-verified, marker sweep clean; suite 14 files/181 tests pass; tsc clean; writing report"}
 {"ts":"2026-08-23T14:14:46Z","agent":"KARAKA-M0-T51","status":"working","detail":"110 = 109 (15 disclosed rules, all set-equal to D-54) + X-02's 1 RESIDUAL row; no unauthorised violation; edit applied, guard numbers unmoved"}
+{"ts":"2026-08-23T14:28:58Z","agent":"SUTRADHARA","status":"working","detail":"tick 6: reading deltas since 14:13"}
+{"ts":"2026-08-23T14:40:53Z","agent":"KARAKA-M0-T50","status":"working","detail":"RESUMED after API-error termination; re-verifying every claim from scratch before writing the report (not restating from memory)"}
+{"ts":"2026-08-23T14:41:12Z","agent":"KARAKA-M0-T51","status":"working","detail":"resumed after watchdog kill; re-verifying guard + baseline before writing report and committing"}
+{"ts":"2026-08-23T14:41:37Z","agent":"KARAKA-M0-T50","status":"working","detail":"re-verify after resume: 4 file hashes identical, residue re-enumerated (2), both-directions direct runs reproduced exactly; re-running 5 mutations"}
