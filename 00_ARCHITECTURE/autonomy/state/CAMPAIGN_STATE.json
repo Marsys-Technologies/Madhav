@@ -272,6 +272,21 @@
         },
         "risk_runs_opposite": "layer_index/layer_name — 41 divergent cells and on EVERY ONE the seed holds the clean value. A re-seed would REPAIR these. This refutes the conductor's hold on Phase 0.5a.",
         "cannot_settle": "80 cells of count_sql / target_floor / depends_on move on a re-seed and there is no basis to say which side is right. That is D-19's ownership question with a number attached. Two consequences: MEASURED FLOORS LIVE IN A SEED-OWNED COLUMN, so I7's requirement collides structurally with the seed's ownership at EVERY rung's stage 2, not just M0; and the reverse repair is not available either — writing scope='per_chart' to the DB does not stick, so any durable correction is in the seed file or a CASE guard, never a DB write."
+      },
+      "deferral_register": {
+        "by": "KARAKA M0-T31, commit 0c02dea5c",
+        "purpose": "the precondition D-24 part 3 sets for flipping the CI blocking switch",
+        "tally": {
+          "REPAIRABLE_IN_M0": 6,
+          "DEFERRED_WITH_REASON": 12,
+          "RESERVED": 2,
+          "UNEXAMINED": 11,
+          "AT_ZERO_WITH_EXPOSURE": 1
+        },
+        "one_lever": "THE NAMED-FIELD TEST — is a registry column M0's to repair iff a Phase-0 step names it? ADHIKARIN has already reasoned both halves without stating it as a rule (D-24 authorized has_substeps BECAUSE 0.6a names it; D-25 part 2b pinned the has_writer ROW repair to R0 BECAUSE 0.6a does not). Stated as a rule it reclassifies 6 rules and 2 criteria at once — one ruling instead of eight.",
+        "criterion_10_unsatisfiable": "Requires the guards MERGED AND BLOCKING. (a) Circular: it asks whether the guards are blocking while D-24 part 3 conditions the flip on the criteria — each waits on the other, so without an explicit self-reference carve-out the precondition cannot be met. (b) The MERGED half collides with charter H2, which prohibits ANY write to main absolutely. So M0's own exit criterion cannot be satisfied by this campaign. Per the charter's own clause — where charter and plan disagree the plan wins and the disagreement is a DEFECT TO BE PARKED — read as a park, not a decision.",
+        "C28_no_authorised_route": "31 assets are lit with NO completed build_run_assets row, so no measured duration exists and D-6 condition 4 forbids inventing one. Every path to zero passes through either a real build or a fabrication, and the second is H6. Still true at R0's freeze.",
+        "mechanical_blocker": "Of the ten DEFERRED rules, NOT ONE has an entry in asset_catalogue_disclosed_residuals.json and eight are BLOCKING severity. Flipping today reds the branch on 15 live BLOCKING failures, and the pressure that follows is to weaken a criterion to get moving — which is H3. The DISCLOSURE ENTRIES are the real prerequisite, not the deferrals."
       }
     },
     "M1": {
@@ -571,12 +586,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T31",
-      "what": "deferral register — the precondition D-24 part 3 sets for flipping the CI blocking switch",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "F-DELIBERATE-NULL-FILLED",
       "what": "A NEW CATEGORY, distinct from the durability problem. D-23 ruled the SOURCE question is R5's, and two KARAKA deliberately held lel_events's layer_index and layer_name at NULL because the value is not mechanically derivable. A RE-SEED FILLS THAT NULL with L5/Mimamsa — answering by default a question ADHIKARIN declined to decide. The deliberate NULL is not absent data; it is the only place in the registry where that openness is written down. No value-drift measurement would flag it, because nothing is 'wrong' before or after — the row would look correctly derived",
       "owner": "ADHIKARIN",
@@ -587,10 +596,34 @@
       "what": "M0-T26 EXECUTED its restore drill (transaction, 0 rows differed, rolled back) and disclosed it unprompted as the one action it expected to be challenged. My read: it closes the gap D-7 named — a snapshot whose restore was never verified is not a snapshot, and every prior repair left that authored-but-unexercised. But I set the constraint it may have exceeded, so my reading is self-serving. Asked ADHIKARIN whether to make the drill a STANDING requirement for this repair class",
       "owner": "ADHIKARIN",
       "state": "asked"
+    },
+    {
+      "id": "M0-T31",
+      "what": "DONE 0c02dea5c — the blocking-switch precondition is now a checklist rather than a judgement",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T32",
+      "what": "control-surface truth pass — our own artifacts have drifted while we worked",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "CRIT-10-H2-COLLISION",
+      "what": "M0's exit criterion 10 requires the guards MERGED to main; charter H2 prohibits any write to main. An exit criterion the charter forbids satisfying. Nobody had asked this; the KARAKA surfaced it and said correctly it was not a KARAKA's to answer. Charter's own clause makes it a PARK",
+      "owner": "ADHIKARIN",
+      "state": "asked"
+    },
+    {
+      "id": "NAMED-FIELD-TEST",
+      "what": "the one ruling that reclassifies 6 rules and 2 criteria at once",
+      "owner": "ADHIKARIN",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T06:54:42Z",
+  "last_updated_ts": "2026-08-23T07:19:52Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
