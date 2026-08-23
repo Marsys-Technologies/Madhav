@@ -1266,3 +1266,5 @@
 {"ts":"2026-08-23T20:33:37Z","agent":"KARAKA-M0-T75","status":"working","detail":"anchor doc-comment added to x06(), syntax verified; running the governance guard live to confirm no regression before drafting report"}
 {"ts":"2026-08-23T20:33:45Z","agent":"PARIKSAKA","status":"working","detail":"V-69: M0-T74 assertion (iii) PASS against pre-registered criteria; F-V69-1 — the whole ratchet gate passes on an empty scan"}
 {"ts":"2026-08-23T20:33:51Z","agent":"KARAKA-M0-T75","status":"working","detail":"guard verified green, no regression; writing M0-T75-report.md"}
+{"ts":"2026-08-23T20:34:51Z","agent":"PARIKSAKA","status":"working","detail":"pre-registered acceptance criteria (D-105) for the F-V68-1 fix and the F-V69-1 floor, before either build starts"}
+{"ts":"2026-08-23T20:36:10Z","agent":"KARAKA-M0-T75","status":"done","detail":"M0-T75 COMPLETE: D-103 asset_id lineage manifest built, x06() anchor declared, mailbox pointer filed, WORK_QUEUE appended. Commit 9242d125c."}
