@@ -1018,6 +1018,90 @@ def floor_monotone_check(floor_path: Path, current_files: Optional[Iterable[str]
     )
 
 
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+# STALE AMNESTY — assertion (iii): no allowlist entry may name a file that is CURRENTLY
+# GUARDED (ruling D-101, adopting PARĪKṢAKA's framing over ADHIKĀRIN's own near-miss: D-95's
+# floor does NOT close this — the floor is OUR artifact, consistent with our own list
+# regardless of what a merge's other parent does, so a paid-down-then-resurrected entry stays
+# inside both the current allowlist AND the floor and both (i) and (ii) stay green).
+# ═══════════════════════════════════════════════════════════════════════════════════════════
+#
+# THE ALLOWLIST IS AMNESTY FOR AN UNGUARDED FILE — PARĪKṢAKA's framing, adopted whole. An
+# entry naming a file that is now guarded is STALE AMNESTY: if that file's guard were ever
+# removed (a real regression), assertion (i) — "the live unguarded population is a subset of
+# the allowlist" — would stay SILENT, because the file is still a member of the very allowlist
+# it is being checked against. The regressed file would need to hand-add itself to get caught,
+# and it already has the amnesty it needs.
+#
+# PARENT-INDEPENDENT BY DESIGN. Unlike a second-parent assertion (the alternative D-101 came
+# within one sentence of ruling instead), this needs no merge topology, no `HEAD^`, no special
+# case for two-parent commits — it re-derives "currently guarded" from THE SAME `scan()` /
+# `analyse()` this file already runs for assertion (i) (one rule id, one implementation —
+# D-94's lesson, applied here), and compares that against whatever is on disk RIGHT NOW. It
+# catches stale amnesty from ANY cause: merge resurrection, a hand-edit, or another party
+# guarding the file first.
+#
+# SELF-CORRECTING IN THE SAFE DIRECTION. It forces the allowlist to SHRINK the instant
+# anything gets guarded — monotone in the same direction the ratchet already wants. D-67 part
+# 4 / D-96 still bind: this assertion never WRITES to the allowlist or the floor. A real
+# stale-amnesty finding is a pay-down, and a pay-down follows the EXISTING `--regenerate` /
+# `sync_floor` discipline exactly like any other repaired file — this function only DETECTS,
+# it never removes.
+
+
+def stale_amnesty_check(
+    allowed: Optional[Iterable[str]], results: Dict[str, FileResult]
+) -> FloorResult:
+    """Assertion (iii) (D-101). `allowed=None` is UNDETERMINED, never a pass — the same D-89
+    anchor `floor_containment` / `floor_monotone_check` are built on: an absent operand cannot
+    make this determination.
+
+    "Currently guarded" means the file scanned CLEAN this run: at least one guarded top-level
+    `main()` occurrence, ZERO unguarded ones, and its brace-stack analysis did NOT error (a
+    file whose analysis errored is UNKNOWN, not clean — the main gate already fails the whole
+    run on `unparsed` separately; this function must not additionally read an unknown as
+    "guarded", which would make an unparsable file's allowlist entry look like a finding
+    instead of the pre-existing FAIL it already causes elsewhere).
+
+    Deliberately reuses `results` — the SAME `scan()` output the live population and the
+    existing `stale_allowlist_entries` (`--strict`-only) reporting already use — rather than
+    re-deriving "is this file guarded" a second time (D-94: one rule id, one implementation)."""
+    if allowed is None:
+        return FloorResult(
+            determined=False,
+            ok=False,
+            check="stale_amnesty",
+            reason=(
+                "the current allowlist could not be read (missing, unparsable, or no "
+                "well-formed `files` list) — an absent operand cannot make this "
+                "determination (D-89), so this is UNDETERMINED."
+            ),
+        )
+    currently_guarded = {
+        rel
+        for rel, r in results.items()
+        if r.guarded and not r.unguarded and not r.analysis_error
+    }
+    allowed_set = set(allowed)
+    stale = sorted(allowed_set & currently_guarded)
+    return FloorResult(
+        determined=True,
+        ok=not stale,
+        check="stale_amnesty",
+        added=stale,
+        current_count=len(allowed_set),
+        reason=(
+            "no allowlist entry names a file that is currently guarded."
+            if not stale
+            else (
+                f"{len(stale)} allowlist entry/entries name a file that is now GUARDED — "
+                "STALE AMNESTY (D-101): if the guard ever regressed, assertion (i) would "
+                "stay silent because the file is still allowlisted."
+            )
+        ),
+    )
+
+
 def pawl_history(allowlist_path: Path) -> List[Dict]:
     """NON-GATING. Every step in the allowlist's committed history where the list GREW.
 
@@ -1247,6 +1331,82 @@ def run_floor_self_test() -> Tuple[List[str], int]:
 
     return failures, checks
 
+
+def run_stale_amnesty_self_test() -> Tuple[List[str], int]:
+    """Assertion (iii)'s own detector, proven in both directions (ruling D-101). Hermetic — no
+    git and no temp repo needed, since `stale_amnesty_check` reads no history at all; it only
+    ever compares `allowed` against one `results` dict from a single scan. PARĪKṢAKA required
+    the can-fail proof to be mandatory, not assumed from a green run (§N.8; the exact shape
+    D-89 and D-95 were both issued over) — CASE 1 below is that proof, permanently in the
+    suite rather than only in a one-off session transcript."""
+    failures: List[str] = []
+    checks = 0
+
+    def _fr(rel: str, unguarded: bool, guarded: bool, broken: bool = False) -> FileResult:
+        return FileResult(
+            path=rel,
+            unguarded=[Occurrence(line=1, guarded_by=None, context="x")] if unguarded else [],
+            guarded=[Occurrence(line=1, guarded_by="isDirectEntrypoint", context="x")] if guarded else [],
+            analysis_error=broken,
+        )
+
+    # ── CASE 1 — THE CAN-FAIL PROOF: a file that IS currently guarded, allowlisted anyway,
+    # must turn the assertion RED and name the file. This is the exact shape PARĪKṢAKA
+    # pre-registered as mandatory before certifying (iii) — see the mailbox baseline and the
+    # M0-T74 report's live proof against the real 71-entry allowlist. ─────────────────────
+    checks += 1
+    results = {"guarded_now.ts": _fr("guarded_now.ts", unguarded=False, guarded=True)}
+    r = stale_amnesty_check(["guarded_now.ts"], results)
+    if r.determined and r.ok:
+        failures.append(
+            "STALE-AMNESTY: an allowlist entry naming a currently-guarded file must FAIL "
+            "(the can-fail proof D-101/§N.8 requires) — got a pass"
+        )
+    if r.added != ["guarded_now.ts"]:
+        failures.append(f"STALE-AMNESTY: expected added=['guarded_now.ts'], got {r.added}")
+
+    # ── CASE 2 — THE ORDINARY GREEN: a genuinely still-unguarded allowlisted file must PASS.
+    # This is today's real shape (0/71 stale, per PARĪKṢAKA's baseline) and must stay green. ─
+    checks += 1
+    results = {"still_unguarded.ts": _fr("still_unguarded.ts", unguarded=True, guarded=False)}
+    r = stale_amnesty_check(["still_unguarded.ts"], results)
+    if not (r.determined and r.ok):
+        failures.append(f"STALE-AMNESTY: a still-unguarded allowlisted file must PASS — got {r.reason}")
+
+    # ── CASE 3 — AN UNPARSABLE FILE MUST NOT BE READ AS "GUARDED". The main gate already
+    # fails the whole run on `unparsed` separately; this assertion must not double-count an
+    # UNKNOWN as a stale-amnesty finding, which would misreport a parse failure as a repair. ─
+    checks += 1
+    results = {"broken.ts": _fr("broken.ts", unguarded=False, guarded=True, broken=True)}
+    r = stale_amnesty_check(["broken.ts"], results)
+    if not (r.determined and r.ok):
+        failures.append(
+            "STALE-AMNESTY: a file whose analysis errored must NOT be treated as "
+            f"'currently guarded' (it is UNKNOWN, handled by `unparsed` instead) — got {r.reason}"
+        )
+
+    # ── CASE 4 — A FILE ABSENT FROM `results` ENTIRELY (no main() call left at all) is NOT
+    # "currently guarded" either — D-101 scopes assertion (iii) to guarded files specifically,
+    # distinct from "file no longer exists"/"no main() left", which PARĪKṢAKA's baseline
+    # measured and reported as its own separate, always-zero category. ──────────────────────
+    checks += 1
+    r = stale_amnesty_check(["vanished.ts"], {})
+    if not (r.determined and r.ok):
+        failures.append(
+            f"STALE-AMNESTY: a file with no main() at all must not be flagged as stale "
+            f"amnesty — got {r.reason}"
+        )
+
+    # ── CASE 5 — D-89 ANCHORING: a missing/unreadable allowlist is UNDETERMINED, never a
+    # vacuous pass. ───────────────────────────────────────────────────────────────────────
+    checks += 1
+    r = stale_amnesty_check(None, {})
+    if r.determined or r.ok:
+        failures.append("STALE-AMNESTY: a missing allowlist (None) must be UNDETERMINED and FATAL (D-89)")
+
+    return failures, checks
+
+
 _EXPECT_RE = re.compile(r"EXPECT-VIOLATIONS:\s*(\d+)")
 _EXPECT_GUARD_RE = re.compile(r"EXPECT-GUARD:\s*([\w./=~-]+)")
 
@@ -1322,6 +1482,10 @@ def run_self_test() -> int:
     floor_failures, floor_checks = run_floor_self_test()
     failures.extend(floor_failures)
 
+    # ── ASSERTION (iii)'s OWN DETECTOR, proven in both directions (ruling D-101) ───────────
+    stale_amnesty_failures, stale_amnesty_checks = run_stale_amnesty_self_test()
+    failures.extend(stale_amnesty_failures)
+
     if failures:
         print("check_entrypoint_guard_ratchet: SELF-TEST FAILED", file=sys.stderr)
         for line in failures:
@@ -1331,7 +1495,8 @@ def run_self_test() -> int:
     print(
         f"check_entrypoint_guard_ratchet: SELF-TEST PASS ({n_pass} pass fixture(s) silent, "
         f"{n_fail} fail fixture(s) caught, {len(declared)}/{len(declared)} guard idioms "
-        f"exercised, {floor_checks} floor case(s) proven in both directions)."
+        f"exercised, {floor_checks} floor case(s) proven in both directions, "
+        f"{stale_amnesty_checks} stale-amnesty case(s) proven in both directions)."
     )
     return 0
 
@@ -1418,6 +1583,13 @@ def main(argv: List[str]) -> int:
     residual = sorted(rel for rel in violating if rel in allowed)
     stale = sorted(f for f in allowed if f not in violating)
 
+    # ── ASSERTION (iii): STALE AMNESTY (ruling D-101). No allowlist entry may name a file
+    # that is currently guarded. See THE STALE AMNESTY CHECK section above for why this is
+    # neither (i) nor the floor (ii) — it is a third, independent, always-gating check (not
+    # `--strict`-only like the generic `stale_allowlist_entries` reporting above, which also
+    # counts files that simply lost their `main()` call entirely, a different condition).
+    stale_amnesty = stale_amnesty_check(current_side, results)
+
     # ── OUT-OF-SCOPE SUFFIXES, REPORTED BUT NOT GATED ───────────────────────────────────────
     # M0-T64's population command ends `| grep '\.ts$'`, which does not match `.mts` or `.cts`.
     # The gated population is therefore `.ts` only, so that it matches the settled baseline
@@ -1468,6 +1640,12 @@ def main(argv: List[str]) -> int:
         "floor_history_growth_steps": floor_history_growth,
         "unparsed_files": unparsed,
         "out_of_scope_suffix_observations": extended,
+        "stale_amnesty": {
+            "determined": stale_amnesty.determined,
+            "pass": stale_amnesty.ok,
+            "stale_entries": stale_amnesty.added,
+            "reason": stale_amnesty.reason,
+        },
     }
 
     # An unparsed file is UNKNOWN, not clean, and is therefore blocking. See §N.8: a detector
@@ -1477,6 +1655,7 @@ def main(argv: List[str]) -> int:
         or bool(hand_added)
         or not floor_contain.ok
         or not floor_mono.ok
+        or not stale_amnesty.ok
         or bool(unparsed)
         or (args.strict and (residual or stale))
     )
@@ -1500,6 +1679,11 @@ def main(argv: List[str]) -> int:
             f"  floor: allowlist ({len(current_side or [])}) \u2286 floor "
             f"({len(floor_disk or [])}), and the floor \u2286 every value its own committed "
             "history has ever held — neither grew."
+        )
+    if stale_amnesty.determined and stale_amnesty.ok:
+        print(
+            "  stale_amnesty: 0 allowlist entries name a currently-guarded file "
+            "(assertion iii, D-101)."
         )
 
     if unparsed:
@@ -1564,6 +1748,28 @@ def main(argv: List[str]) -> int:
             )
             for v in floor_mono.violations[:10]:
                 print(f"  ! {v['commit'][:9]} does not cover {', '.join(v['added'])}", file=sys.stderr)
+
+    if not stale_amnesty.ok:
+        if not stale_amnesty.determined:
+            print(
+                "check_entrypoint_guard_ratchet: THE STALE-AMNESTY CHECK COULD NOT RUN — "
+                f"{stale_amnesty.reason} FAIL.",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                f"check_entrypoint_guard_ratchet: {len(stale_amnesty.added)} allowlist "
+                "entry/entries name a file that is now GUARDED — STALE AMNESTY (D-101, "
+                "assertion iii). The allowlist is amnesty for an UNGUARDED file; an entry "
+                "for a file that is now guarded is stale, and dangerous: if the guard were "
+                "ever removed, assertion (i) would stay SILENT because the file is still "
+                "allowlisted. Remove the entry/entries below via the same committed pay-down "
+                "discipline `--regenerate` already uses (D-67 part 4, D-96: no exemption "
+                "field exists for this). FAIL.",
+                file=sys.stderr,
+            )
+            for f in stale_amnesty.added:
+                print(f"  ! {f}", file=sys.stderr)
 
     if history_growth:
         print(
