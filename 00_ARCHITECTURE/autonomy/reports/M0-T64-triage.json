@@ -1,0 +1,2825 @@
+{
+ "schema": "nirmana.M0-T64.import_blast_radius_triage/1",
+ "task": "M0-T64",
+ "authority": "D-67 part 2",
+ "generated_by": "KARAKA-M0-T64",
+ "generated_at_utc": "2026-08-23T16:23:12Z",
+ "status": "MEASUREMENT ONLY \u2014 nothing in this population was edited. Tier assignments are observations, not verdicts (I16/H7).",
+ "population": {
+  "definition": "tracked .ts files under platform/scripts whose module top level (column 0, no enclosing block) calls main()",
+  "command": "git grep -lP \"^(void\\\\s+|await\\\\s+)?main\\\\s*\\\\(\" -- platform/scripts | grep '\\\\.ts$' | sort",
+  "size": 76,
+  "superset_command": "git grep -lP \"^\\\\s*(void\\\\s+|await\\\\s+)?main\\\\s*\\\\(\" -- platform/scripts | grep '\\\\.ts$'",
+  "superset_size": 86,
+  "already_guarded": 10,
+  "exclusions_applied": [
+   "pathspec limited to platform/scripts (no markdown, no 00_ARCHITECTURE prose, no 99_ARCHIVE)",
+   "filtered to *.ts",
+   "every property detector ran over source with // and /* */ comments blanked out first, so a documented form cannot produce a hit",
+   "string and template-literal contents were NOT blanked, deliberately: SQL only ever appears inside strings, so blanking them would blind the (b) database detector. All 26 database-write hits were read individually and none is prose."
+  ],
+  "included_despite_path": [
+   "platform/scripts/_archived/seed-abhisek.ts \u2014 under an _archived/ directory but a live tracked .ts file matching the population definition; flagged rather than silently dropped"
+  ]
+ },
+ "criterion": {
+  "source": "D-67 part 2, taking it from M0-T60 finding rather than from file count",
+  "statement": "THE HAZARD IS NOT \"NO GUARD\". IT IS WHAT HAPPENS ON INCIDENTAL IMPORT.",
+  "a": "does importing it acquire a credential or open a connection",
+  "b": "does importing it WRITE \u2014 database, filesystem or network",
+  "c": "does importing it call process.exit",
+  "tier1": "(a) or (c)",
+  "tier2": "(b) alone",
+  "tier3": "neither"
+ },
+ "method_note": "Because main() is called at module top level with no guard, importing the file EXECUTES the program. So the three properties are properties of the program, not only of its module-scope statements. A separate scan confirmed that NO module in any of the 76 import graphs performs a credential acquisition, connection open, filesystem write, network call or process.exit at ITS OWN module scope \u2014 every effect measured here is reached through the entry file main().",
+ "counts": {
+  "tier_1": 58,
+  "tier_2": 6,
+  "tier_3": 12,
+  "undetermined": 0,
+  "tier1_because": {
+   "a+c": 44,
+   "c": 9,
+   "a": 5
+  },
+  "dead_on_load": 9,
+  "tier_1_if_the_dead_scripts_imports_were_restored": 67
+ },
+ "ratchet_allowlist": {
+  "note": "D-67 part 4 requires an itemised allowlist of exactly today population, GENERATED from this measurement and never hand-typed, with its count recorded so shrinkage is visible. PAY-DOWN ONLY: a file leaves the list when repaired; nothing is ever added.",
+  "count": 76,
+  "files": [
+   "platform/scripts/_archived/seed-abhisek.ts",
+   "platform/scripts/aiops/cutover_smoke.ts",
+   "platform/scripts/aiops/probe_health_cron.ts",
+   "platform/scripts/answer_eval.ts",
+   "platform/scripts/audit/alias_conformance_check.ts",
+   "platform/scripts/audit/capability_map/generate_capability_map.ts",
+   "platform/scripts/audit/density_harness/run.ts",
+   "platform/scripts/audit/doctrine_harness/run.ts",
+   "platform/scripts/audit/doctrine_harness/run_census.ts",
+   "platform/scripts/audit/doctrine_harness/run_master_gate.ts",
+   "platform/scripts/audit/replay.ts",
+   "platform/scripts/audit/smoke.ts",
+   "platform/scripts/audit/t0_retrodiction/fetch_populated_event_classes.ts",
+   "platform/scripts/audit/t0_retrodiction/run_a5_dry_run.ts",
+   "platform/scripts/audit/t0_retrodiction/run_t0.ts",
+   "platform/scripts/audit/tap/mcp_tool_smoke.ts",
+   "platform/scripts/audit/tap/r18_param_noop_audit.ts",
+   "platform/scripts/audit/tap/s13_coverage_matrix_live.ts",
+   "platform/scripts/audit/tap/tap5_seam_conservation.ts",
+   "platform/scripts/audit/tap/tap6_method_grep.ts",
+   "platform/scripts/audit/tap/tap7_distribution_gates.ts",
+   "platform/scripts/backfill_conversation_embeddings.ts",
+   "platform/scripts/bootstrap/bootstrap_classical_texts_bphs.ts",
+   "platform/scripts/bootstrap/bootstrap_classical_texts_jaimini.ts",
+   "platform/scripts/bootstrap/bootstrap_classical_texts_kp.ts",
+   "platform/scripts/bootstrap/bootstrap_classical_texts_tajaka.ts",
+   "platform/scripts/bootstrap/bootstrap_multi_school_tajaka.ts",
+   "platform/scripts/census/elev_gates/absence_lint_gate.ts",
+   "platform/scripts/census/elev_gates/budget_census_gate.ts",
+   "platform/scripts/census/elev_gates/receipt_gate.ts",
+   "platform/scripts/census/elev_gates/smoke_gate.ts",
+   "platform/scripts/census/elev_gates/w1_bare_empty_census_gate.ts",
+   "platform/scripts/census/generate_tci.ts",
+   "platform/scripts/census/generate_tool_census.ts",
+   "platform/scripts/census/rescan_dark_tables_widened_surface.ts",
+   "platform/scripts/census/shad_darshana_gates/authority_basis_census_seed.ts",
+   "platform/scripts/census/shad_darshana_gates/mode3_single_route_gate.ts",
+   "platform/scripts/census/shad_darshana_gates/tri_plane_no_dead_end_gate.ts",
+   "platform/scripts/census/shad_darshana_gates/yajna_mode2_fixture_gate.ts",
+   "platform/scripts/cleanup_orphaned_firebase_users.ts",
+   "platform/scripts/corpus/apply_muhurta_chintamani_translations.ts",
+   "platform/scripts/cutover/stage1_smoke.ts",
+   "platform/scripts/dedupe_charts.ts",
+   "platform/scripts/dev/mint_session_cookie.ts",
+   "platform/scripts/diag/check_signal.ts",
+   "platform/scripts/gochara/smoke_probe.ts",
+   "platform/scripts/governance/run_icr_propose_patch.ts",
+   "platform/scripts/governance/seed_tool_registry.ts",
+   "platform/scripts/grounding/grounding_review_queue.ts",
+   "platform/scripts/harvest/cross_diff_adjudication.ts",
+   "platform/scripts/harvest/e1_registry_extractor.ts",
+   "platform/scripts/harvest/e2_db_truth_extractor.ts",
+   "platform/scripts/harvest/e3_fact_category_extractor.ts",
+   "platform/scripts/harvest/e4_signal_class_extractor.ts",
+   "platform/scripts/harvest/load_harvest_to_ledger.ts",
+   "platform/scripts/lint/no_hardcoded_concept_lists.ts",
+   "platform/scripts/manifest/backfill_descriptor_fields.ts",
+   "platform/scripts/manifest/generate_concept_projections.ts",
+   "platform/scripts/manifest/generate_projections.ts",
+   "platform/scripts/nim_one_shot_planner.ts",
+   "platform/scripts/observatory/smoke_test.ts",
+   "platform/scripts/pariprashna/verify_captured_turn.ts",
+   "platform/scripts/probe/ask.ts",
+   "platform/scripts/probe/dd16_outbox_recovery_test.ts",
+   "platform/scripts/probe/dd20_e2e_verify.ts",
+   "platform/scripts/replay/build_fixtures.ts",
+   "platform/scripts/replay/selftest.ts",
+   "platform/scripts/retrieval/embedding_freshness_check.ts",
+   "platform/scripts/retrieval/probe_11c_b.ts",
+   "platform/scripts/retrieval/test_classify.ts",
+   "platform/scripts/samiksha/daily_job.ts",
+   "platform/scripts/set-password.ts",
+   "platform/scripts/sla_probe_planner_blind_tools.ts",
+   "platform/scripts/sla_probe_temporal.ts",
+   "platform/scripts/trace/trace_smoke.ts",
+   "platform/scripts/verify_classical_texts_data.ts"
+  ]
+ },
+ "records": [
+  {
+   "file": "platform/scripts/_archived/seed-abhisek.ts",
+   "entrypoint_line": 325,
+   "entrypoint_form": "main().catch(err => {",
+   "lines": 329,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/_archived/seed-abhisek.ts:27 [pg-Pool] const pool = new Pool({ connectionString: process.env.DATABASE_URL! })",
+     "platform/scripts/_archived/seed-abhisek.ts:21 [pg-import] import { Pool } from 'pg'",
+     "platform/scripts/_archived/seed-abhisek.ts:33 [query-fn] const { rows } = await pool.query(sql, params)",
+     "platform/scripts/_archived/seed-abhisek.ts:27 [DATABASE_URL] const pool = new Pool({ connectionString: process.env.DATABASE_URL! })",
+     "platform/scripts/_archived/seed-abhisek.ts:306 [DATABASE_URL] if (!process.env.DATABASE_URL) {",
+     "platform/scripts/_archived/seed-abhisek.ts:40 [firebase-admin] const { initializeApp, getApps, cert } = await import('firebase-admin/app')"
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "database"
+    ],
+    "evidence": [
+     "platform/scripts/_archived/seed-abhisek.ts:191 [sql-insert] `INSERT INTO profiles (id, role, name)",
+     "platform/scripts/_archived/seed-abhisek.ts:212 [sql-insert] `INSERT INTO charts (client_id, name, birth_date, birth_time, birth_place, birth_lat, birth_lng, ayanamsa, house_system)",
+     "platform/scripts/_archived/seed-abhisek.ts:240 [sql-insert] `INSERT INTO pyramid_layers (chart_id, layer, sublayer, status)",
+     "platform/scripts/_archived/seed-abhisek.ts:290 [sql-insert] `INSERT INTO documents (chart_id, layer, name, storage_path, version)",
+     "platform/scripts/_archived/seed-abhisek.ts:193 [sql-onconflict] ON CONFLICT (id) DO UPDATE SET role='super_admin', name='Abhisek Mohanty'`,",
+     "platform/scripts/_archived/seed-abhisek.ts:241 [sql-onconflict] VALUES ($1,$2,$3,'not_started') ON CONFLICT DO NOTHING`,"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/_archived/seed-abhisek.ts:308 process.exit(1)",
+     "platform/scripts/_archived/seed-abhisek.ts:327 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/aiops/cutover_smoke.ts",
+   "entrypoint_line": 115,
+   "entrypoint_form": "main().catch(err => {",
+   "lines": 119,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: the only connection path is a DYNAMIC import of ../../src/lib/aiops/probe/runner, which does not exist -- so it throws instead of connecting. The module body and main() DO run (the broken import is dynamic, inside main), so (c) still fires.",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "filesystem"
+    ],
+    "evidence": [
+     "platform/scripts/aiops/cutover_smoke.ts:107 [fs-writeFileSync] writeFileSync(REPORT_PATH, JSON.stringify(existing, null, 2))"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/aiops/cutover_smoke.ts:112 process.exit(nonAnthropicFails.length > 0 ? 1 : 0)",
+     "platform/scripts/aiops/cutover_smoke.ts:117 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "c"
+  },
+  {
+   "file": "platform/scripts/aiops/probe_health_cron.ts",
+   "entrypoint_line": 35,
+   "entrypoint_form": "main().catch(err => {",
+   "lines": 39,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": true,
+   "static_import_unresolvable_detail": "../../src/lib/aiops/health/bulk (platform/src/lib/aiops/ does not exist)",
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "tier": 3,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier_note": "TIER 3 ONLY BECAUSE THE MODULE CANNOT LOAD. Not a safe one-shot script -- a dead one. If the missing module is ever restored this file becomes TIER 1 with no further change."
+  },
+  {
+   "file": "platform/scripts/answer_eval.ts",
+   "entrypoint_line": 444,
+   "entrypoint_form": "main().catch(err => {",
+   "lines": 448,
+   "import_graph_modules": 67,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/answer_eval.ts:196 [env-secret] const AUTH_TOKEN = process.env.AUTH_TOKEN",
+     "platform/scripts/answer_eval.ts:206 [fetch] const res = await fetch(url, {"
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "network"
+    ],
+    "evidence": [
+     "platform/scripts/answer_eval.ts:207 [http-post] method: 'POST',"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/answer_eval.ts:338 process.exit(1)",
+     "platform/scripts/answer_eval.ts:446 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/audit/alias_conformance_check.ts",
+   "entrypoint_line": 184,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 188,
+   "import_graph_modules": 2,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: new McpClient(url, bearer) -> HTTP fetch with a bearer token",
+    "evidence": [
+     "platform/scripts/audit/alias_conformance_check.ts:121",
+     "platform/scripts/audit/doctrine_harness/lib/mcp_client.ts:114"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/audit/alias_conformance_check.ts:118 process.exit(2)",
+     "platform/scripts/audit/alias_conformance_check.ts:180 process.exit(1)",
+     "platform/scripts/audit/alias_conformance_check.ts:186 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/audit/capability_map/generate_capability_map.ts",
+   "entrypoint_line": 386,
+   "entrypoint_form": "main()",
+   "lines": 387,
+   "import_graph_modules": 214,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: main() calls loadMatrix()/scanRegistrySources() (fs reads) and getAllCapabilities() -- an in-memory Array.from(_registry.values()). No dependency in the 205-module graph performs a module-scope credential/connection effect.",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "filesystem"
+    ],
+    "evidence": [
+     "platform/scripts/audit/capability_map/generate_capability_map.ts:353 [fs-writeFileSync] writeFileSync(OUT_MAP, JSON.stringify({ map_version: MAP_VERSION, generated_at: summary.generated_at, families }, null, 2))",
+     "platform/scripts/audit/capability_map/generate_capability_map.ts:354 [fs-writeFileSync] writeFileSync(OUT_SUMMARY, JSON.stringify(summary, null, 2))"
+    ]
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "no process.exit in the entry file",
+    "evidence": []
+   },
+   "tier": 2,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 2
+  },
+  {
+   "file": "platform/scripts/audit/density_harness/run.ts",
+   "entrypoint_line": 235,
+   "entrypoint_form": "main()",
+   "lines": 236,
+   "import_graph_modules": 3,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: main() runs in-memory assertion functions over fs-read fixtures.",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "inside main()/helpers, which run on import because main() is called at top level",
+    "evidence": [
+     "platform/scripts/audit/density_harness/run.ts:215 process.exit(2)",
+     "platform/scripts/audit/density_harness/run.ts:232 process.exit(red.length > 0 ? 1 : 0)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "c"
+  },
+  {
+   "file": "platform/scripts/audit/doctrine_harness/run.ts",
+   "entrypoint_line": 132,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 136,
+   "import_graph_modules": 4,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/audit/doctrine_harness/run.ts:67 [env-secret] const apiKey = process.env.MARSYS_MCP_API_KEY",
+     "platform/scripts/audit/doctrine_harness/run.ts:72 [env-secret] const bearer = process.env.MARSYS_MCP_KEY || process.env.MCP_SMOKE_BEARER_TOKEN"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/audit/doctrine_harness/run.ts:83 process.exit(2)",
+     "platform/scripts/audit/doctrine_harness/run.ts:96 process.exit(2)",
+     "platform/scripts/audit/doctrine_harness/run.ts:129 process.exit(red.length > 0 ? 1 : 0)",
+     "platform/scripts/audit/doctrine_harness/run.ts:134 process.exit(2)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/audit/doctrine_harness/run_census.ts",
+   "entrypoint_line": 134,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 138,
+   "import_graph_modules": 3,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/audit/doctrine_harness/run_census.ts:63 [env-secret] const apiKey = process.env.MARSYS_MCP_API_KEY",
+     "platform/scripts/audit/doctrine_harness/run_census.ts:68 [env-secret] const bearer = process.env.MARSYS_MCP_KEY || process.env.MCP_SMOKE_BEARER_TOKEN"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/audit/doctrine_harness/run_census.ts:77 process.exit(2)",
+     "platform/scripts/audit/doctrine_harness/run_census.ts:129 process.exit(1)",
+     "platform/scripts/audit/doctrine_harness/run_census.ts:131 process.exit(0)",
+     "platform/scripts/audit/doctrine_harness/run_census.ts:136 process.exit(2)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/audit/doctrine_harness/run_master_gate.ts",
+   "entrypoint_line": 157,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 161,
+   "import_graph_modules": 8,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/audit/doctrine_harness/run_master_gate.ts:62 [env-secret] const apiKey = process.env.MARSYS_MCP_API_KEY",
+     "platform/scripts/audit/doctrine_harness/run_master_gate.ts:67 [env-secret] const bearer = process.env.MARSYS_MCP_KEY || process.env.MCP_SMOKE_BEARER_TOKEN"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/audit/doctrine_harness/run_master_gate.ts:70 process.exit(2)",
+     "platform/scripts/audit/doctrine_harness/run_master_gate.ts:154 process.exit(ok ? 0 : 1)",
+     "platform/scripts/audit/doctrine_harness/run_master_gate.ts:159 process.exit(2)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/audit/replay.ts",
+   "entrypoint_line": 162,
+   "entrypoint_form": "main().catch(err => {",
+   "lines": 166,
+   "import_graph_modules": 2,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/audit/replay.ts:57 [pg-Pool] const pool = new Pool({ connectionString: process.env.DATABASE_URL })",
+     "platform/scripts/audit/replay.ts:35 [pg-import] import { Pool } from 'pg'",
+     "platform/scripts/audit/replay.ts:52 [DATABASE_URL] if (!process.env.DATABASE_URL) {",
+     "platform/scripts/audit/replay.ts:57 [DATABASE_URL] const pool = new Pool({ connectionString: process.env.DATABASE_URL })"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/audit/replay.ts:47 process.exit(1)",
+     "platform/scripts/audit/replay.ts:54 process.exit(1)",
+     "platform/scripts/audit/replay.ts:128 process.exit(1)",
+     "platform/scripts/audit/replay.ts:164 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/audit/smoke.ts",
+   "entrypoint_line": 146,
+   "entrypoint_form": "main()",
+   "lines": 152,
+   "import_graph_modules": 2,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/audit/smoke.ts:40 [pg-Pool] const pool = new Pool({ connectionString: process.env.DATABASE_URL })",
+     "platform/scripts/audit/smoke.ts:31 [pg-import] import { Pool } from 'pg'",
+     "platform/scripts/audit/smoke.ts:91 [query-fn] await pool.query(",
+     "platform/scripts/audit/smoke.ts:35 [DATABASE_URL] if (!process.env.DATABASE_URL) {",
+     "platform/scripts/audit/smoke.ts:40 [DATABASE_URL] const pool = new Pool({ connectionString: process.env.DATABASE_URL })"
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "database"
+    ],
+    "evidence": [
+     "platform/scripts/audit/smoke.ts:92 [sql-insert] `INSERT INTO audit_log",
+     "platform/scripts/audit/smoke.ts:112 [sql-insert] `INSERT INTO prediction_ledger",
+     "platform/scripts/audit/smoke.ts:97 [sql-onconflict] ON CONFLICT ON CONSTRAINT uq_audit_log_query_id DO UPDATE"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/audit/smoke.ts:37 process.exit(1)",
+     "platform/scripts/audit/smoke.ts:143 if (!pass) process.exit(1)",
+     "platform/scripts/audit/smoke.ts:149 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/audit/t0_retrodiction/fetch_populated_event_classes.ts",
+   "entrypoint_line": 55,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 59,
+   "import_graph_modules": 4,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/audit/t0_retrodiction/fetch_populated_event_classes.ts:40 [pg-Pool] const pool = new Pool({ connectionString: process.env.DATABASE_URL })",
+     "platform/scripts/audit/t0_retrodiction/fetch_populated_event_classes.ts:29 [pg-import] import { Pool } from 'pg'",
+     "platform/scripts/audit/t0_retrodiction/fetch_populated_event_classes.ts:40 [DATABASE_URL] const pool = new Pool({ connectionString: process.env.DATABASE_URL })"
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "filesystem"
+    ],
+    "evidence": [
+     "platform/scripts/audit/t0_retrodiction/fetch_populated_event_classes.ts:45 [fs-writeFileSync] writeFileSync(outFile, json)"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/audit/t0_retrodiction/fetch_populated_event_classes.ts:37 process.exit(1)",
+     "platform/scripts/audit/t0_retrodiction/fetch_populated_event_classes.ts:57 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/audit/t0_retrodiction/run_a5_dry_run.ts",
+   "entrypoint_line": 202,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 206,
+   "import_graph_modules": 10,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/audit/t0_retrodiction/run_a5_dry_run.ts:155 [pg-Pool] const pool = new Pool({ connectionString: process.env.DATABASE_URL })",
+     "platform/scripts/audit/t0_retrodiction/run_a5_dry_run.ts:35 [pg-import] import { Pool } from 'pg'",
+     "platform/scripts/audit/t0_retrodiction/run_a5_dry_run.ts:155 [DATABASE_URL] const pool = new Pool({ connectionString: process.env.DATABASE_URL })"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/audit/t0_retrodiction/run_a5_dry_run.ts:204 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/audit/t0_retrodiction/run_t0.ts",
+   "entrypoint_line": 187,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 191,
+   "import_graph_modules": 8,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/audit/t0_retrodiction/run_t0.ts:56 [env-secret] const apiKey = process.env.MARSYS_MCP_API_KEY",
+     "platform/scripts/audit/t0_retrodiction/run_t0.ts:61 [env-secret] const bearer = process.env.MARSYS_MCP_KEY || process.env.MCP_SMOKE_BEARER_TOKEN"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/audit/t0_retrodiction/run_t0.ts:69 process.exit(2)",
+     "platform/scripts/audit/t0_retrodiction/run_t0.ts:184 process.exit(0)",
+     "platform/scripts/audit/t0_retrodiction/run_t0.ts:189 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/audit/tap/mcp_tool_smoke.ts",
+   "entrypoint_line": 204,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 208,
+   "import_graph_modules": 4,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/audit/tap/mcp_tool_smoke.ts:137 [env-secret] const bearer = process.env.MCP_SMOKE_BEARER_TOKEN",
+     "platform/scripts/audit/tap/mcp_tool_smoke.ts:90 [fetch] const res = await fetch(baseUrl, {",
+     "platform/scripts/audit/tap/mcp_tool_smoke.ts:124 [fetch] const res = await fetch(baseUrl, {"
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "network"
+    ],
+    "evidence": [
+     "platform/scripts/audit/tap/mcp_tool_smoke.ts:91 [http-post] method: 'POST',",
+     "platform/scripts/audit/tap/mcp_tool_smoke.ts:125 [http-post] method: 'POST',"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/audit/tap/mcp_tool_smoke.ts:162 process.exit(printReport('MCP per-tool smoke battery', results, reason))",
+     "platform/scripts/audit/tap/mcp_tool_smoke.ts:201 process.exit(printReport('MCP per-tool smoke battery (LIVE)', results))",
+     "platform/scripts/audit/tap/mcp_tool_smoke.ts:206 process.exit(4)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/audit/tap/r18_param_noop_audit.ts",
+   "entrypoint_line": 262,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 266,
+   "import_graph_modules": 3,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: imports tap_db but calls only printReport; the audit is readFileSync-based.",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/audit/tap/r18_param_noop_audit.ts:259 process.exit(printReport('R-18 param no-op audit', results))",
+     "platform/scripts/audit/tap/r18_param_noop_audit.ts:264 process.exit(4)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "c"
+  },
+  {
+   "file": "platform/scripts/audit/tap/s13_coverage_matrix_live.ts",
+   "entrypoint_line": 87,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 91,
+   "import_graph_modules": 3,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: connectTapDb() -> dynamic import of src/lib/db/client -> getPool()",
+    "evidence": [
+     "platform/scripts/audit/tap/s13_coverage_matrix_live.ts:44",
+     "platform/scripts/audit/tap/lib/tap_db.ts:47"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/audit/tap/s13_coverage_matrix_live.ts:49 process.exit(printReport('S-13 live coverage matrix', [], db.reason))",
+     "platform/scripts/audit/tap/s13_coverage_matrix_live.ts:84 process.exit(printReport('S-13 live coverage matrix', results))",
+     "platform/scripts/audit/tap/s13_coverage_matrix_live.ts:89 process.exit(4)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/audit/tap/tap5_seam_conservation.ts",
+   "entrypoint_line": 323,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 327,
+   "import_graph_modules": 5,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: connectTapDb() -> getPool(); also execSync grep",
+    "evidence": [
+     "platform/scripts/audit/tap/tap5_seam_conservation.ts:98",
+     "platform/scripts/audit/tap/lib/tap_db.ts:47"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/audit/tap/tap5_seam_conservation.ts:320 process.exit(printReport('TAP-5 Seam Conservation (7 laws)', results))",
+     "platform/scripts/audit/tap/tap5_seam_conservation.ts:325 process.exit(4)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/audit/tap/tap6_method_grep.ts",
+   "entrypoint_line": 231,
+   "entrypoint_form": "main()",
+   "lines": 232,
+   "import_graph_modules": 3,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: imports tap_db but calls only printReport/lineHash; runSearch() is a walk()+readFileSync scan.",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "inside main()/helpers, which run on import because main() is called at top level",
+    "evidence": [
+     "platform/scripts/audit/tap/tap6_method_grep.ts:228 process.exit(printReport('TAP-6 Method Audit (grep set)', results))"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "c"
+  },
+  {
+   "file": "platform/scripts/audit/tap/tap7_distribution_gates.ts",
+   "entrypoint_line": 234,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 238,
+   "import_graph_modules": 3,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: connectTapDb() -> getPool()",
+    "evidence": [
+     "platform/scripts/audit/tap/tap7_distribution_gates.ts:41",
+     "platform/scripts/audit/tap/lib/tap_db.ts:47"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/audit/tap/tap7_distribution_gates.ts:46 process.exit(printReport('TAP-7 distribution gates', [], db.reason))",
+     "platform/scripts/audit/tap/tap7_distribution_gates.ts:231 process.exit(printReport('TAP-7 Distribution Gates (8 gates)', results))",
+     "platform/scripts/audit/tap/tap7_distribution_gates.ts:236 process.exit(4)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/backfill_conversation_embeddings.ts",
+   "entrypoint_line": 327,
+   "entrypoint_form": "main().catch(err => {",
+   "lines": 331,
+   "import_graph_modules": 4,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/backfill_conversation_embeddings.ts:81 [pg-Pool] const pool = new Pool({ connectionString: DATABASE_URL })",
+     "platform/scripts/backfill_conversation_embeddings.ts:66 [pg-import] import { Pool } from 'pg'",
+     "platform/scripts/backfill_conversation_embeddings.ts:125 [query-fn] await client.query(",
+     "platform/scripts/backfill_conversation_embeddings.ts:78 [DATABASE_URL] process.env.DATABASE_URL ??",
+     "platform/scripts/backfill_conversation_embeddings.ts:92 [fetch] const res = await fetch(endpoint, {"
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "database",
+     "network"
+    ],
+    "evidence": [
+     "platform/scripts/backfill_conversation_embeddings.ts:126 [sql-insert] `INSERT INTO conversation_message_embeddings (message_id, embedding)",
+     "platform/scripts/backfill_conversation_embeddings.ts:128 [sql-onconflict] ON CONFLICT (message_id) DO NOTHING`,",
+     "platform/scripts/backfill_conversation_embeddings.ts:93 [http-post] method: 'POST',"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/backfill_conversation_embeddings.ts:319 process.exit(1)",
+     "platform/scripts/backfill_conversation_embeddings.ts:329 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/bootstrap/bootstrap_classical_texts_bphs.ts",
+   "entrypoint_line": 266,
+   "entrypoint_form": "main().catch(err => {",
+   "lines": 270,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": true,
+   "static_import_unresolvable_detail": "./lib/classical_text_chunker + ./lib/classical_text_embedder (platform/scripts/bootstrap/lib/ holds only tajaka_corpus.ts)",
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "tier": 3,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier_note": "TIER 3 ONLY BECAUSE THE MODULE CANNOT LOAD. Not a safe one-shot script -- a dead one. If the missing module is ever restored this file becomes TIER 1 with no further change."
+  },
+  {
+   "file": "platform/scripts/bootstrap/bootstrap_classical_texts_jaimini.ts",
+   "entrypoint_line": 444,
+   "entrypoint_form": "main().catch(err => {",
+   "lines": 448,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": true,
+   "static_import_unresolvable_detail": "./lib/classical_text_chunker.js + ./lib/classical_text_embedder.js",
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "tier": 3,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier_note": "TIER 3 ONLY BECAUSE THE MODULE CANNOT LOAD. Not a safe one-shot script -- a dead one. If the missing module is ever restored this file becomes TIER 1 with no further change."
+  },
+  {
+   "file": "platform/scripts/bootstrap/bootstrap_classical_texts_kp.ts",
+   "entrypoint_line": 411,
+   "entrypoint_form": "main().catch(err => {",
+   "lines": 415,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": true,
+   "static_import_unresolvable_detail": "./lib/classical_text_chunker.js + ./lib/classical_text_embedder.js",
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "tier": 3,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier_note": "TIER 3 ONLY BECAUSE THE MODULE CANNOT LOAD. Not a safe one-shot script -- a dead one. If the missing module is ever restored this file becomes TIER 1 with no further change."
+  },
+  {
+   "file": "platform/scripts/bootstrap/bootstrap_classical_texts_tajaka.ts",
+   "entrypoint_line": 126,
+   "entrypoint_form": "main();",
+   "lines": 127,
+   "import_graph_modules": 2,
+   "static_import_unresolvable": true,
+   "static_import_unresolvable_detail": "./lib/classical_text_chunker.js + ./lib/classical_text_embedder.js",
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "tier": 3,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier_note": "TIER 3 ONLY BECAUSE THE MODULE CANNOT LOAD. Not a safe one-shot script -- a dead one. If the missing module is ever restored this file becomes TIER 1 with no further change."
+  },
+  {
+   "file": "platform/scripts/bootstrap/bootstrap_multi_school_tajaka.ts",
+   "entrypoint_line": 576,
+   "entrypoint_form": "main().catch(err => {",
+   "lines": 580,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/bootstrap/bootstrap_multi_school_tajaka.ts:427 [pg-Pool] const pool = new Pool({ connectionString: DATABASE_URL });",
+     "platform/scripts/bootstrap/bootstrap_multi_school_tajaka.ts:25 [pg-import] import { Pool } from 'pg';",
+     "platform/scripts/bootstrap/bootstrap_multi_school_tajaka.ts:436 [query-fn] const mvCheck = await pool.query(`",
+     "platform/scripts/bootstrap/bootstrap_multi_school_tajaka.ts:448 [query-fn] await pool.query(migrationSql);",
+     "platform/scripts/bootstrap/bootstrap_multi_school_tajaka.ts:456 [query-fn] const existingCheck = await pool.query(",
+     "platform/scripts/bootstrap/bootstrap_multi_school_tajaka.ts:473 [query-fn] const result = await pool.query("
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "database"
+    ],
+    "evidence": [
+     "platform/scripts/bootstrap/bootstrap_multi_school_tajaka.ts:474 [sql-insert] `INSERT INTO school_signal_coverage (signal_id, school, coverage_type, notes)",
+     "platform/scripts/bootstrap/bootstrap_multi_school_tajaka.ts:516 [sql-insert] `INSERT INTO tajaka_annual (native_year, varsha_number, muntha_sign, notes)",
+     "platform/scripts/bootstrap/bootstrap_multi_school_tajaka.ts:476 [sql-onconflict] ON CONFLICT (signal_id, school)",
+     "platform/scripts/bootstrap/bootstrap_multi_school_tajaka.ts:518 [sql-onconflict] ON CONFLICT (native_year) DO UPDATE"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/bootstrap/bootstrap_multi_school_tajaka.ts:30 process.exit(1);",
+     "platform/scripts/bootstrap/bootstrap_multi_school_tajaka.ts:578 process.exit(1);"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/census/elev_gates/absence_lint_gate.ts",
+   "entrypoint_line": 215,
+   "entrypoint_form": "main()",
+   "lines": 216,
+   "import_graph_modules": 5,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: imports _mcp_client but calls only envOrDefault; the gate is a static grep over source.",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "no process.exit in the entry file",
+    "evidence": []
+   },
+   "tier": 3,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 3
+  },
+  {
+   "file": "platform/scripts/census/elev_gates/budget_census_gate.ts",
+   "entrypoint_line": 180,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 184,
+   "import_graph_modules": 4,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: ElevMcpClient -> fetch, with MCP_BEARER; LIVE mode only (PLAN mode when MCP_SERVER_URL unset)",
+    "evidence": [
+     "platform/scripts/census/elev_gates/_mcp_client.ts:78"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/census/elev_gates/budget_census_gate.ts:112 process.exit(printGateReport('budget_census_gate (PLAN mode)', results, reason))",
+     "platform/scripts/census/elev_gates/budget_census_gate.ts:177 process.exit(printGateReport('budget_census_gate (LIVE)', results))",
+     "platform/scripts/census/elev_gates/budget_census_gate.ts:182 process.exit(2)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": true,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/census/elev_gates/receipt_gate.ts",
+   "entrypoint_line": 447,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 451,
+   "import_graph_modules": 5,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: ElevMcpClient -> fetch, with MCP_BEARER; LIVE mode only",
+    "evidence": [
+     "platform/scripts/census/elev_gates/_mcp_client.ts:78"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "no process.exit in the entry file",
+    "evidence": []
+   },
+   "tier": 1,
+   "a_conditional_on_env": true,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a"
+  },
+  {
+   "file": "platform/scripts/census/elev_gates/smoke_gate.ts",
+   "entrypoint_line": 155,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 159,
+   "import_graph_modules": 4,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: new ElevMcpClient(target.baseUrl, target.bearer) -> fetch; LIVE mode only",
+    "evidence": [
+     "platform/scripts/census/elev_gates/smoke_gate.ts:114",
+     "platform/scripts/census/elev_gates/_mcp_client.ts:78"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "no process.exit in the entry file",
+    "evidence": []
+   },
+   "tier": 1,
+   "a_conditional_on_env": true,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a"
+  },
+  {
+   "file": "platform/scripts/census/elev_gates/w1_bare_empty_census_gate.ts",
+   "entrypoint_line": 276,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 280,
+   "import_graph_modules": 3,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: ElevMcpClient -> fetch; LIVE mode only",
+    "evidence": [
+     "platform/scripts/census/elev_gates/_mcp_client.ts:78"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/census/elev_gates/w1_bare_empty_census_gate.ts:256 process.exit(printGateReport(",
+     "platform/scripts/census/elev_gates/w1_bare_empty_census_gate.ts:273 process.exit(printGateReport('w1_bare_empty_census_gate (LIVE)', [...primary, ...crossCheck]))",
+     "platform/scripts/census/elev_gates/w1_bare_empty_census_gate.ts:278 process.exit(2)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": true,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/census/generate_tci.ts",
+   "entrypoint_line": 648,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 652,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/census/generate_tci.ts:567 [pg-Pool] pool = new Pool({ connectionString: dbUrl, max: 4 })",
+     "platform/scripts/census/generate_tci.ts:28 [pg-import] import { Pool } from 'pg'",
+     "platform/scripts/census/generate_tci.ts:91 [query-fn] const r = await pool.query(sql, params)",
+     "platform/scripts/census/generate_tci.ts:562 [DATABASE_URL] const dbUrl = process.env.DATABASE_URL"
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "filesystem"
+    ],
+    "evidence": [
+     "platform/scripts/census/generate_tci.ts:632 [fs-writeFileSync] writeFileSync(blockedPath, JSON.stringify(artifact, null, 2))",
+     "platform/scripts/census/generate_tci.ts:638 [fs-writeFileSync] writeFileSync(outPath, JSON.stringify(artifact, null, 2))",
+     "platform/scripts/census/generate_tci.ts:629 [fs-mkdir] mkdirSync(dirname(outPath), { recursive: true })"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/census/generate_tci.ts:565 process.exit(2)",
+     "platform/scripts/census/generate_tci.ts:636 process.exit(3)",
+     "platform/scripts/census/generate_tci.ts:650 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/census/generate_tool_census.ts",
+   "entrypoint_line": 596,
+   "entrypoint_form": "main()",
+   "lines": 597,
+   "import_graph_modules": 213,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: main() calls getAllCapabilities() + readFileSync. Same in-memory registry read.",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "filesystem"
+    ],
+    "evidence": [
+     "platform/scripts/census/generate_tool_census.ts:471 [fs-writeFileSync] writeFileSync(",
+     "platform/scripts/census/generate_tool_census.ts:592 [fs-writeFileSync] writeFileSync(MD_OUTPUT_PATH, lines.join('\\n') + '\\n')",
+     "platform/scripts/census/generate_tool_census.ts:470 [fs-mkdir] mkdirSync(dirname(JSON_OUTPUT_PATH), { recursive: true })",
+     "platform/scripts/census/generate_tool_census.ts:591 [fs-mkdir] mkdirSync(dirname(MD_OUTPUT_PATH), { recursive: true })"
+    ]
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "no process.exit in the entry file",
+    "evidence": []
+   },
+   "tier": 2,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 2
+  },
+  {
+   "file": "platform/scripts/census/rescan_dark_tables_widened_surface.ts",
+   "entrypoint_line": 156,
+   "entrypoint_form": "main()",
+   "lines": 157,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: fs read of a harvest queue + fs write of a report.",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "filesystem"
+    ],
+    "evidence": [
+     "platform/scripts/census/rescan_dark_tables_widened_surface.ts:148 [fs-writeFileSync] fs.writeFileSync(outPath, JSON.stringify(summary, null, 2))",
+     "platform/scripts/census/rescan_dark_tables_widened_surface.ts:147 [fs-mkdir] fs.mkdirSync(path.dirname(outPath), { recursive: true })"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "inside main()/helpers, which run on import because main() is called at top level",
+    "evidence": [
+     "platform/scripts/census/rescan_dark_tables_widened_surface.ts:99 process.exit(1)",
+     "platform/scripts/census/rescan_dark_tables_widened_surface.ts:120 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "c"
+  },
+  {
+   "file": "platform/scripts/census/shad_darshana_gates/authority_basis_census_seed.ts",
+   "entrypoint_line": 344,
+   "entrypoint_form": "main()",
+   "lines": 345,
+   "import_graph_modules": 2,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: main() is process.exit(printGateReport(..., validate())) -- source-level validation only.",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "inside main()/helpers, which run on import because main() is called at top level",
+    "evidence": [
+     "platform/scripts/census/shad_darshana_gates/authority_basis_census_seed.ts:341 process.exit(printGateReport('authority_basis_census_seed', validate()))"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "c"
+  },
+  {
+   "file": "platform/scripts/census/shad_darshana_gates/mode3_single_route_gate.ts",
+   "entrypoint_line": 177,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 181,
+   "import_graph_modules": 4,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: ShadDarshanaMcpClient -> fetch; LIVE mode only",
+    "evidence": [
+     "platform/scripts/census/shad_darshana_gates/_mcp_client.ts:78"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/census/shad_darshana_gates/mode3_single_route_gate.ts:165 process.exit(printGateReport(",
+     "platform/scripts/census/shad_darshana_gates/mode3_single_route_gate.ts:174 process.exit(printGateReport('mode3_single_route_gate (LIVE)', [await liveResult(client)]))",
+     "platform/scripts/census/shad_darshana_gates/mode3_single_route_gate.ts:179 process.exit(2)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": true,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/census/shad_darshana_gates/tri_plane_no_dead_end_gate.ts",
+   "entrypoint_line": 156,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 160,
+   "import_graph_modules": 4,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: ShadDarshanaMcpClient -> fetch; LIVE mode only",
+    "evidence": [
+     "platform/scripts/census/shad_darshana_gates/_mcp_client.ts:78"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/census/shad_darshana_gates/tri_plane_no_dead_end_gate.ts:144 process.exit(printGateReport(",
+     "platform/scripts/census/shad_darshana_gates/tri_plane_no_dead_end_gate.ts:153 process.exit(printGateReport('tri_plane_no_dead_end_gate (LIVE)', await liveResults(client)))",
+     "platform/scripts/census/shad_darshana_gates/tri_plane_no_dead_end_gate.ts:158 process.exit(2)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": true,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/census/shad_darshana_gates/yajna_mode2_fixture_gate.ts",
+   "entrypoint_line": 670,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 674,
+   "import_graph_modules": 3,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: resolveMcpTarget()/ShadDarshanaMcpClient -> fetch; LIVE mode only",
+    "evidence": [
+     "platform/scripts/census/shad_darshana_gates/yajna_mode2_fixture_gate.ts:598",
+     "platform/scripts/census/shad_darshana_gates/_mcp_client.ts:78"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/census/shad_darshana_gates/yajna_mode2_fixture_gate.ts:600 process.exit(",
+     "platform/scripts/census/shad_darshana_gates/yajna_mode2_fixture_gate.ts:623 process.exit(printGateReport('yajna_mode2_fixture_gate (LIVE)', results))",
+     "platform/scripts/census/shad_darshana_gates/yajna_mode2_fixture_gate.ts:642 process.exit(printGateReport('yajna_mode2_fixture_gate (LIVE)', results))",
+     "platform/scripts/census/shad_darshana_gates/yajna_mode2_fixture_gate.ts:667 process.exit(printGateReport('yajna_mode2_fixture_gate (LIVE)', results))",
+     "platform/scripts/census/shad_darshana_gates/yajna_mode2_fixture_gate.ts:672 process.exit(2)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": true,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/cleanup_orphaned_firebase_users.ts",
+   "entrypoint_line": 69,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 73,
+   "import_graph_modules": 3,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/cleanup_orphaned_firebase_users.ts:14 [db-lib-import] import { query } from '../src/lib/db/client'"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/cleanup_orphaned_firebase_users.ts:71 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/corpus/apply_muhurta_chintamani_translations.ts",
+   "entrypoint_line": 318,
+   "entrypoint_form": "main().catch(err => {",
+   "lines": 322,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/corpus/apply_muhurta_chintamani_translations.ts:233 [pg-Pool] const pool = new Pool({ connectionString: DATABASE_URL })",
+     "platform/scripts/corpus/apply_muhurta_chintamani_translations.ts:34 [pg-import] import { Pool, type PoolClient } from 'pg'",
+     "platform/scripts/corpus/apply_muhurta_chintamani_translations.ts:160 [query-fn] const result = await client.query(",
+     "platform/scripts/corpus/apply_muhurta_chintamani_translations.ts:186 [query-fn] const result = await client.query(",
+     "platform/scripts/corpus/apply_muhurta_chintamani_translations.ts:238 [query-fn] const { rows } = await client.query(",
+     "platform/scripts/corpus/apply_muhurta_chintamani_translations.ts:279 [query-fn] const { rows: verifyRows } = await client.query("
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "database",
+     "network"
+    ],
+    "evidence": [
+     "platform/scripts/corpus/apply_muhurta_chintamani_translations.ts:161 [sql-update] `UPDATE classical_text_chunks",
+     "platform/scripts/corpus/apply_muhurta_chintamani_translations.ts:187 [sql-update] `UPDATE classical_text_chunks",
+     "platform/scripts/corpus/apply_muhurta_chintamani_translations.ts:103 [http-post] method: 'POST',"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/corpus/apply_muhurta_chintamani_translations.ts:310 process.exit(1)",
+     "platform/scripts/corpus/apply_muhurta_chintamani_translations.ts:314 process.exit(2)",
+     "platform/scripts/corpus/apply_muhurta_chintamani_translations.ts:320 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/cutover/stage1_smoke.ts",
+   "entrypoint_line": 494,
+   "entrypoint_form": "main().catch(err => {",
+   "lines": 498,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/cutover/stage1_smoke.ts:373 [pg-Pool] const pool = new Pool({ connectionString: process.env.DATABASE_URL! })",
+     "platform/scripts/cutover/stage1_smoke.ts:54 [pg-import] import { Pool } from 'pg'",
+     "platform/scripts/cutover/stage1_smoke.ts:336 [query-fn] await pool.query('SELECT 1')",
+     "platform/scripts/cutover/stage1_smoke.ts:323 [DATABASE_URL] if (!process.env.DATABASE_URL) errors.push('DATABASE_URL is not set. Start Cloud SQL Auth Proxy.')",
+     "platform/scripts/cutover/stage1_smoke.ts:373 [DATABASE_URL] const pool = new Pool({ connectionString: process.env.DATABASE_URL! })",
+     "platform/scripts/cutover/stage1_smoke.ts:318 [env-secret] if (!process.env.ANTHROPIC_API_KEY) errors.push('ANTHROPIC_API_KEY is not set.')"
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "network"
+    ],
+    "evidence": [
+     "platform/scripts/cutover/stage1_smoke.ts:173 [http-post] method: 'POST',"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/cutover/stage1_smoke.ts:370 process.exit(1)",
+     "platform/scripts/cutover/stage1_smoke.ts:379 process.exit(1)",
+     "platform/scripts/cutover/stage1_smoke.ts:386 process.exit(1)",
+     "platform/scripts/cutover/stage1_smoke.ts:491 process.exit(failures.length > 0 ? 1 : 0)",
+     "platform/scripts/cutover/stage1_smoke.ts:496 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/dedupe_charts.ts",
+   "entrypoint_line": 268,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 272,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/dedupe_charts.ts:39 [pg-Pool] const pool = new Pool({ connectionString: process.env.DATABASE_URL! })",
+     "platform/scripts/dedupe_charts.ts:29 [pg-import] import { Pool, PoolClient } from 'pg'",
+     "platform/scripts/dedupe_charts.ts:173 [query-fn] await client.query('BEGIN')",
+     "platform/scripts/dedupe_charts.ts:177 [query-fn] const result = await client.query(",
+     "platform/scripts/dedupe_charts.ts:193 [query-fn] await client.query('DELETE FROM charts WHERE chart_id = $1', [dup.chart_id])",
+     "platform/scripts/dedupe_charts.ts:198 [query-fn] await client.query('COMMIT')"
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "database"
+    ],
+    "evidence": [
+     "platform/scripts/dedupe_charts.ts:193 [sql-delete] await client.query('DELETE FROM charts WHERE chart_id = $1', [dup.chart_id])"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/dedupe_charts.ts:270 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/dev/mint_session_cookie.ts",
+   "entrypoint_line": 114,
+   "entrypoint_form": "main().catch((e) => {",
+   "lines": 118,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/dev/mint_session_cookie.ts:58 [env-secret] const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY",
+     "platform/scripts/dev/mint_session_cookie.ts:45 [firebase-admin] import { initializeApp, getApps, cert } from 'firebase-admin/app'",
+     "platform/scripts/dev/mint_session_cookie.ts:46 [firebase-admin] import { getAuth } from 'firebase-admin/auth'",
+     "platform/scripts/dev/mint_session_cookie.ts:52 [firebase-admin] const app = getApps().length > 0 ? getApps()[0] : initializeApp({ credential: cert(CREDS) })",
+     "platform/scripts/dev/mint_session_cookie.ts:53 [firebase-admin] const auth = getAuth(app)",
+     "platform/scripts/dev/mint_session_cookie.ts:65 [fetch] const fbResp = await fetch("
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "filesystem",
+     "network"
+    ],
+    "evidence": [
+     "platform/scripts/dev/mint_session_cookie.ts:107 [fs-writeFileSync] writeFileSync(outputFile, match[1])",
+     "platform/scripts/dev/mint_session_cookie.ts:68 [http-post] method: 'POST',",
+     "platform/scripts/dev/mint_session_cookie.ts:81 [http-post] method: 'POST',"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/dev/mint_session_cookie.ts:76 process.exit(1)",
+     "platform/scripts/dev/mint_session_cookie.ts:89 process.exit(1)",
+     "platform/scripts/dev/mint_session_cookie.ts:102 process.exit(1)",
+     "platform/scripts/dev/mint_session_cookie.ts:116 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/diag/check_signal.ts",
+   "entrypoint_line": 64,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 68,
+   "import_graph_modules": 2,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/diag/check_signal.ts:4 [db-lib-import] import { query } from '../../src/lib/db/client'"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/diag/check_signal.ts:10 process.exit(2)",
+     "platform/scripts/diag/check_signal.ts:61 process.exit(0)",
+     "platform/scripts/diag/check_signal.ts:66 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/gochara/smoke_probe.ts",
+   "entrypoint_line": 417,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 421,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/gochara/smoke_probe.ts:114 [fetch] const res = await fetch(baseUrl, {"
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "network"
+    ],
+    "evidence": [
+     "platform/scripts/gochara/smoke_probe.ts:115 [http-post] method: 'POST',"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/gochara/smoke_probe.ts:332 process.exit(0)",
+     "platform/scripts/gochara/smoke_probe.ts:374 process.exit(1)",
+     "platform/scripts/gochara/smoke_probe.ts:414 process.exit(hasFail ? 1 : 0)",
+     "platform/scripts/gochara/smoke_probe.ts:419 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/governance/run_icr_propose_patch.ts",
+   "entrypoint_line": 167,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 171,
+   "import_graph_modules": 4,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: fs read of detector output + fs write of proposed patches.",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "filesystem"
+    ],
+    "evidence": [
+     "platform/scripts/governance/run_icr_propose_patch.ts:154 [fs-writeFileSync] writeFileSync(outputPath, toYaml(artifact), 'utf-8');",
+     "platform/scripts/governance/run_icr_propose_patch.ts:134 [fs-mkdir] mkdirSync(PROPOSED_DIR, { recursive: true });"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/governance/run_icr_propose_patch.ts:121 process.exit(1);",
+     "platform/scripts/governance/run_icr_propose_patch.ts:130 process.exit(0);",
+     "platform/scripts/governance/run_icr_propose_patch.ts:159 process.exit(1);",
+     "platform/scripts/governance/run_icr_propose_patch.ts:169 process.exit(1);"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "c"
+  },
+  {
+   "file": "platform/scripts/governance/seed_tool_registry.ts",
+   "entrypoint_line": 217,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 221,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/governance/seed_tool_registry.ts:134 [pg-Pool] const pool = new Pool({ connectionString: process.env.DATABASE_URL })",
+     "platform/scripts/governance/seed_tool_registry.ts:19 [pg-import] import { Pool } from 'pg'",
+     "platform/scripts/governance/seed_tool_registry.ts:138 [query-fn] await pool.query(",
+     "platform/scripts/governance/seed_tool_registry.ts:166 [query-fn] await pool.query(",
+     "platform/scripts/governance/seed_tool_registry.ts:134 [DATABASE_URL] const pool = new Pool({ connectionString: process.env.DATABASE_URL })"
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "database"
+    ],
+    "evidence": [
+     "platform/scripts/governance/seed_tool_registry.ts:139 [sql-insert] `INSERT INTO capability_tool_registry",
+     "platform/scripts/governance/seed_tool_registry.ts:167 [sql-insert] `INSERT INTO capability_asset_tool_bindings",
+     "platform/scripts/governance/seed_tool_registry.ts:142 [sql-onconflict] ON CONFLICT (tool_name) DO UPDATE SET",
+     "platform/scripts/governance/seed_tool_registry.ts:170 [sql-onconflict] ON CONFLICT (asset_canonical_id, tool_name) DO UPDATE SET"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/governance/seed_tool_registry.ts:211 process.exit(1)",
+     "platform/scripts/governance/seed_tool_registry.ts:214 process.exit(0)",
+     "platform/scripts/governance/seed_tool_registry.ts:219 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/grounding/grounding_review_queue.ts",
+   "entrypoint_line": 263,
+   "entrypoint_form": "main().catch((e) => { console.error(e); process.exit(1) })",
+   "lines": 264,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: fs read of a CSV + fs write of a report.",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "filesystem"
+    ],
+    "evidence": [
+     "platform/scripts/grounding/grounding_review_queue.ts:132 [fs-writeFileSync] fs.writeFileSync(summaryPath, summary, 'utf8')",
+     "platform/scripts/grounding/grounding_review_queue.ts:215 [fs-writeFileSync] fs.writeFileSync(htmlPath, html, 'utf8')",
+     "platform/scripts/grounding/grounding_review_queue.ts:252 [fs-writeFileSync] fs.writeFileSync(absPath, lines.join('\\n'), 'utf8')"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/grounding/grounding_review_queue.ts:228 process.exit(1)",
+     "platform/scripts/grounding/grounding_review_queue.ts:234 process.exit(1)",
+     "platform/scripts/grounding/grounding_review_queue.ts:263 main().catch((e) => { console.error(e); process.exit(1) })"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "c"
+  },
+  {
+   "file": "platform/scripts/harvest/cross_diff_adjudication.ts",
+   "entrypoint_line": 380,
+   "entrypoint_form": "main()",
+   "lines": 381,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: fs reads of e1/e2/e3 JSON + fs write.",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "filesystem"
+    ],
+    "evidence": [
+     "platform/scripts/harvest/cross_diff_adjudication.ts:265 [fs-writeFileSync] writeFileSync(OUT_JSON, JSON.stringify(jsonOut, null, 2) + '\\n')",
+     "platform/scripts/harvest/cross_diff_adjudication.ts:376 [fs-writeFileSync] writeFileSync(OUT_MD, lines.join('\\n') + '\\n')",
+     "platform/scripts/harvest/cross_diff_adjudication.ts:264 [fs-mkdir] mkdirSync(dirname(OUT_JSON), { recursive: true })",
+     "platform/scripts/harvest/cross_diff_adjudication.ts:375 [fs-mkdir] mkdirSync(dirname(OUT_MD), { recursive: true })"
+    ]
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "no process.exit in the entry file",
+    "evidence": []
+   },
+   "tier": 2,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 2
+  },
+  {
+   "file": "platform/scripts/harvest/e1_registry_extractor.ts",
+   "entrypoint_line": 205,
+   "entrypoint_form": "main()",
+   "lines": 206,
+   "import_graph_modules": 213,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: main() calls getAllCapabilities() + scanSources() (fs).",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "filesystem"
+    ],
+    "evidence": [
+     "platform/scripts/harvest/e1_registry_extractor.ts:196 [fs-writeFileSync] writeFileSync(OUTPUT_PATH, JSON.stringify(out, null, 2) + '\\n')",
+     "platform/scripts/harvest/e1_registry_extractor.ts:195 [fs-mkdir] mkdirSync(dirname(OUTPUT_PATH), { recursive: true })"
+    ]
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "no process.exit in the entry file",
+    "evidence": []
+   },
+   "tier": 2,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 2
+  },
+  {
+   "file": "platform/scripts/harvest/e2_db_truth_extractor.ts",
+   "entrypoint_line": 160,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 164,
+   "import_graph_modules": 2,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: openHarvestClient() -> new Client(harvestDbConfig()) with HARVEST_DB_PASSWORD, then .connect()",
+    "evidence": [
+     "platform/scripts/harvest/e2_db_truth_extractor.ts:68",
+     "platform/scripts/harvest/_db.ts:32",
+     "platform/scripts/harvest/_db.ts:52"
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "filesystem"
+    ],
+    "evidence": [
+     "platform/scripts/harvest/e2_db_truth_extractor.ts:152 [fs-writeFileSync] writeFileSync(OUTPUT_PATH, JSON.stringify(out, null, 2) + '\\n')",
+     "platform/scripts/harvest/e2_db_truth_extractor.ts:151 [fs-mkdir] mkdirSync(dirname(OUTPUT_PATH), { recursive: true })"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/harvest/e2_db_truth_extractor.ts:162 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/harvest/e3_fact_category_extractor.ts",
+   "entrypoint_line": 213,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 217,
+   "import_graph_modules": 2,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: openHarvestClient() -> credentialed pg Client; also execSync grep",
+    "evidence": [
+     "platform/scripts/harvest/e3_fact_category_extractor.ts:105",
+     "platform/scripts/harvest/_db.ts:32"
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "filesystem"
+    ],
+    "evidence": [
+     "platform/scripts/harvest/e3_fact_category_extractor.ts:208 [fs-writeFileSync] writeFileSync(OUTPUT_PATH, JSON.stringify(out, null, 2) + '\\n')",
+     "platform/scripts/harvest/e3_fact_category_extractor.ts:207 [fs-mkdir] mkdirSync(dirname(OUTPUT_PATH), { recursive: true })"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/harvest/e3_fact_category_extractor.ts:215 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/harvest/e4_signal_class_extractor.ts",
+   "entrypoint_line": 208,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 212,
+   "import_graph_modules": 2,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: openHarvestClient() -> credentialed pg Client",
+    "evidence": [
+     "platform/scripts/harvest/e4_signal_class_extractor.ts:72",
+     "platform/scripts/harvest/_db.ts:32"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "no process.exit in the entry file",
+    "evidence": []
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a"
+  },
+  {
+   "file": "platform/scripts/harvest/load_harvest_to_ledger.ts",
+   "entrypoint_line": 146,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 150,
+   "import_graph_modules": 3,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: upsertConcepts()/countConcepts() -> @/lib/retrieval/concept_ledger/ledger -> query() from @/lib/db/client",
+    "evidence": [
+     "platform/scripts/harvest/load_harvest_to_ledger.ts:42",
+     "platform/src/lib/retrieval/concept_ledger/ledger.ts:17"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/harvest/load_harvest_to_ledger.ts:148 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/lint/no_hardcoded_concept_lists.ts",
+   "entrypoint_line": 168,
+   "entrypoint_form": "main()",
+   "lines": 169,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: walk() + readFileSync + console output only.",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "no process.exit in the entry file",
+    "evidence": []
+   },
+   "tier": 3,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 3
+  },
+  {
+   "file": "platform/scripts/manifest/backfill_descriptor_fields.ts",
+   "entrypoint_line": 131,
+   "entrypoint_form": "main()",
+   "lines": 132,
+   "import_graph_modules": 213,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: main() calls getCatalog() only; getCatalog() is Array.from(_registry.values()) + applyDescriptorDefaults().",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "no process.exit in the entry file",
+    "evidence": []
+   },
+   "tier": 3,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 3
+  },
+  {
+   "file": "platform/scripts/manifest/generate_concept_projections.ts",
+   "entrypoint_line": 89,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 93,
+   "import_graph_modules": 3,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: countConcepts()/getLifecycleLayerCounts() -> concept_ledger -> @/lib/db/client",
+    "evidence": [
+     "platform/scripts/manifest/generate_concept_projections.ts:46",
+     "platform/src/lib/retrieval/concept_ledger/ledger.ts:17"
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "filesystem"
+    ],
+    "evidence": [
+     "platform/scripts/manifest/generate_concept_projections.ts:84 [fs-writeFileSync] writeFileSync(OUTPUT_PATH, JSON.stringify(census, null, 2) + '\\n', 'utf-8')",
+     "platform/scripts/manifest/generate_concept_projections.ts:83 [fs-mkdir] mkdirSync(dirname(OUTPUT_PATH), { recursive: true })"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/manifest/generate_concept_projections.ts:91 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/manifest/generate_projections.ts",
+   "entrypoint_line": 647,
+   "entrypoint_form": "main()",
+   "lines": 648,
+   "import_graph_modules": 228,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: main() calls getCatalog() + writeJson(); no connection helper is called.",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "filesystem"
+    ],
+    "evidence": [
+     "platform/scripts/manifest/generate_projections.ts:85 [fs-writeFileSync] writeFileSync(path, JSON.stringify(data, null, 2) + '\\n', 'utf-8')",
+     "platform/scripts/manifest/generate_projections.ts:304 [fs-writeFileSync] writeFileSync(MCP_PROFILES_MIRROR_PATH, mcpProfilesMirrorSource, 'utf-8')",
+     "platform/scripts/manifest/generate_projections.ts:643 [fs-writeFileSync] writeFileSync(REPORT_PATH, report, 'utf-8')",
+     "platform/scripts/manifest/generate_projections.ts:84 [fs-mkdir] mkdirSync(dirname(path), { recursive: true })",
+     "platform/scripts/manifest/generate_projections.ts:303 [fs-mkdir] mkdirSync(dirname(MCP_PROFILES_MIRROR_PATH), { recursive: true })",
+     "platform/scripts/manifest/generate_projections.ts:642 [fs-mkdir] mkdirSync(dirname(REPORT_PATH), { recursive: true })"
+    ]
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "no process.exit in the entry file",
+    "evidence": []
+   },
+   "tier": 2,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 2
+  },
+  {
+   "file": "platform/scripts/nim_one_shot_planner.ts",
+   "entrypoint_line": 59,
+   "entrypoint_form": "main().catch(err => {",
+   "lines": 63,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: the only connection path is a DYNAMIC import of @/lib/pipeline/manifest_planner, which does not exist -- throws instead of connecting. Module body and main() DO run, so (c) still fires.",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/nim_one_shot_planner.ts:42 process.exit(0)",
+     "platform/scripts/nim_one_shot_planner.ts:55 process.exit(1)",
+     "platform/scripts/nim_one_shot_planner.ts:61 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "c"
+  },
+  {
+   "file": "platform/scripts/observatory/smoke_test.ts",
+   "entrypoint_line": 189,
+   "entrypoint_form": "void main().catch((err) => {",
+   "lines": 192,
+   "import_graph_modules": 7,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/observatory/smoke_test.ts:103 [pg-Pool] const pool = new Pool({ connectionString: process.env.DATABASE_URL })",
+     "platform/scripts/observatory/smoke_test.ts:45 [pg-import] import { Pool } from 'pg'",
+     "platform/scripts/observatory/smoke_test.ts:105 [query-fn] query: async (sql, params) => pool.query(sql, params),",
+     "platform/scripts/observatory/smoke_test.ts:103 [DATABASE_URL] const pool = new Pool({ connectionString: process.env.DATABASE_URL })",
+     "platform/scripts/observatory/smoke_test.ts:140 [fetch] res = await fetch(url, {"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "inside main()/helpers, which run on import because main() is called at top level",
+    "evidence": [
+     "platform/scripts/observatory/smoke_test.ts:178 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/pariprashna/verify_captured_turn.ts",
+   "entrypoint_line": 135,
+   "entrypoint_form": "main()",
+   "lines": 141,
+   "import_graph_modules": 10,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: pariprashna store reader/purge helpers -> db pool",
+    "evidence": [
+     "platform/scripts/pariprashna/verify_captured_turn.ts:35",
+     "platform/scripts/pariprashna/verify_captured_turn.ts:54"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/pariprashna/verify_captured_turn.ts:136 .then((code) => process.exit(code))",
+     "platform/scripts/pariprashna/verify_captured_turn.ts:139 process.exit(2)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/probe/ask.ts",
+   "entrypoint_line": 414,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 418,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/probe/ask.ts:227 [pg-Client] const client = new Client({",
+     "platform/scripts/probe/ask.ts:109 [pg-import] import { Client } from 'pg'",
+     "platform/scripts/probe/ask.ts:236 [query-fn] const { rows } = await client.query('SELECT title FROM conversations WHERE id = $1', [conversationId])",
+     "platform/scripts/probe/ask.ts:239 [query-fn] await client.query(",
+     "platform/scripts/probe/ask.ts:226 [env-secret] const dbPassword = process.env.DB_PASSWORD ?? envOrSecret('DB_PASSWORD', 'amjis-db-password')",
+     "platform/scripts/probe/ask.ts:110 [firebase-admin] import { initializeApp, getApps, cert } from 'firebase-admin/app'"
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "filesystem",
+     "database",
+     "network"
+    ],
+    "evidence": [
+     "platform/scripts/probe/ask.ts:410 [fs-writeFileSync] writeFileSync(outPath, JSON.stringify(record, null, 2))",
+     "platform/scripts/probe/ask.ts:270 [fs-mkdir] mkdirSync(OUT_DIR, { recursive: true })",
+     "platform/scripts/probe/ask.ts:240 [sql-update] 'UPDATE conversations SET title = $2 WHERE id = $1',",
+     "platform/scripts/probe/ask.ts:202 [http-post] { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: customToken, returnSecureToken: true }) },",
+     "platform/scripts/probe/ask.ts:210 [http-post] method: 'POST',",
+     "platform/scripts/probe/ask.ts:290 [http-post] method: 'POST',"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/probe/ask.ts:153 process.exit(2)",
+     "platform/scripts/probe/ask.ts:303 process.exit(1)",
+     "platform/scripts/probe/ask.ts:310 process.exit(1)",
+     "platform/scripts/probe/ask.ts:374 if (partial) process.exit(1)",
+     "platform/scripts/probe/ask.ts:416 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/probe/dd16_outbox_recovery_test.ts",
+   "entrypoint_line": 149,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 153,
+   "import_graph_modules": 3,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/probe/dd16_outbox_recovery_test.ts:32 [pg-Pool] const pool = new Pool({ connectionString: process.env.DATABASE_URL })",
+     "platform/scripts/probe/dd16_outbox_recovery_test.ts:20 [pg-import] import { Pool } from 'pg'",
+     "platform/scripts/probe/dd16_outbox_recovery_test.ts:62 [query-fn] const pendingCheck = await pool.query(",
+     "platform/scripts/probe/dd16_outbox_recovery_test.ts:110 [query-fn] const postCheck = await pool.query(",
+     "platform/scripts/probe/dd16_outbox_recovery_test.ts:139 [query-fn] await pool.query(`DELETE FROM pariprashna_persistence_outbox WHERE message_id = $1`, [messageId])",
+     "platform/scripts/probe/dd16_outbox_recovery_test.ts:140 [query-fn] const cleanupCheck = await pool.query("
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "database"
+    ],
+    "evidence": [
+     "platform/scripts/probe/dd16_outbox_recovery_test.ts:139 [sql-delete] await pool.query(`DELETE FROM pariprashna_persistence_outbox WHERE message_id = $1`, [messageId])"
+    ]
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "no process.exit in the entry file",
+    "evidence": []
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a"
+  },
+  {
+   "file": "platform/scripts/probe/dd20_e2e_verify.ts",
+   "entrypoint_line": 49,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 53,
+   "import_graph_modules": 58,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: generateInterpretationSets() -- the file says \"the REAL ... default caller, real model\"",
+    "evidence": [
+     "platform/scripts/probe/dd20_e2e_verify.ts:29",
+     "platform/scripts/probe/dd20_e2e_verify.ts:30"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "no process.exit in the entry file",
+    "evidence": []
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a"
+  },
+  {
+   "file": "platform/scripts/replay/build_fixtures.ts",
+   "entrypoint_line": 405,
+   "entrypoint_form": "main()",
+   "lines": 406,
+   "import_graph_modules": 4,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "read: mkdirSync + writeFileSync of fixtures only.",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "filesystem"
+    ],
+    "evidence": [
+     "platform/scripts/replay/build_fixtures.ts:399 [fs-writeFileSync] writeFileSync(path, JSON.stringify(spec, null, 2) + '\\n', 'utf8')",
+     "platform/scripts/replay/build_fixtures.ts:395 [fs-mkdir] mkdirSync(OUT_DIR, { recursive: true })"
+    ]
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "no process.exit in the entry file",
+    "evidence": []
+   },
+   "tier": 2,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 2
+  },
+  {
+   "file": "platform/scripts/replay/selftest.ts",
+   "entrypoint_line": 117,
+   "entrypoint_form": "main()",
+   "lines": 118,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: spawnSync(\"npx\", [\"playwright\",\"test\",...]) -- launches a browser test suite as a child process",
+    "evidence": [
+     "platform/scripts/replay/selftest.ts:54"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "inside main()/helpers, which run on import because main() is called at top level",
+    "evidence": [
+     "platform/scripts/replay/selftest.ts:114 process.exit(allOk ? 0 : 1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/retrieval/embedding_freshness_check.ts",
+   "entrypoint_line": 69,
+   "entrypoint_form": "main().catch(err => {",
+   "lines": 73,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": true,
+   "static_import_unresolvable_detail": "../src/lib/storage resolves to platform/scripts/src/lib/storage, which does not exist (the module is at platform/src/lib/storage/index.ts; the specifier is one ../ short)",
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "tier": 3,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier_note": "TIER 3 ONLY BECAUSE THE MODULE CANNOT LOAD. Not a safe one-shot script -- a dead one. If the missing module is ever restored this file becomes TIER 1 with no further change."
+  },
+  {
+   "file": "platform/scripts/retrieval/probe_11c_b.ts",
+   "entrypoint_line": 233,
+   "entrypoint_form": "main().catch(err => {",
+   "lines": 237,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/retrieval/probe_11c_b.ts:167 [pg-Pool] const pool = new Pool({ connectionString: DB_URL })",
+     "platform/scripts/retrieval/probe_11c_b.ts:17 [pg-import] import { Pool } from 'pg'",
+     "platform/scripts/retrieval/probe_11c_b.ts:39 [DATABASE_URL] const DB_URL = process.env.DATABASE_URL ?? ''",
+     "platform/scripts/retrieval/probe_11c_b.ts:36 [env-secret] const FIREBASE_API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? ''",
+     "platform/scripts/retrieval/probe_11c_b.ts:51 [firebase-admin] const { initializeApp, getApps, cert } = require('firebase-admin/app')",
+     "platform/scripts/retrieval/probe_11c_b.ts:53 [firebase-admin] const { getAuth } = require('firebase-admin/auth')"
+    ]
+   },
+   "b_write": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "kinds": [
+     "network"
+    ],
+    "evidence": [
+     "platform/scripts/retrieval/probe_11c_b.ts:65 [http-post] method: 'POST',",
+     "platform/scripts/retrieval/probe_11c_b.ts:77 [http-post] method: 'POST',",
+     "platform/scripts/retrieval/probe_11c_b.ts:96 [http-post] method: 'POST',"
+    ]
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/retrieval/probe_11c_b.ts:235 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/retrieval/test_classify.ts",
+   "entrypoint_line": 75,
+   "entrypoint_form": "main().catch(err => {",
+   "lines": 79,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": true,
+   "static_import_unresolvable_detail": "../../src/lib/router/prompt.js (platform/src/lib/router/ has no prompt module)",
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "tier": 3,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier_note": "TIER 3 ONLY BECAUSE THE MODULE CANNOT LOAD. Not a safe one-shot script -- a dead one. If the missing module is ever restored this file becomes TIER 1 with no further change."
+  },
+  {
+   "file": "platform/scripts/samiksha/daily_job.ts",
+   "entrypoint_line": 78,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 82,
+   "import_graph_modules": 8,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "via a helper main() calls: runDailyJob() -> samiksha daily_job -> db pool; FileDigestJournal writes state",
+    "evidence": [
+     "platform/scripts/samiksha/daily_job.ts:22"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/samiksha/daily_job.ts:80 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/set-password.ts",
+   "entrypoint_line": 72,
+   "entrypoint_form": "main().catch(err => { console.error(err); process.exit(1) })",
+   "lines": 73,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/set-password.ts:15 [env-secret] const PASSWORD = process.argv[2] ?? process.env.NEW_USER_PASSWORD ?? ''",
+     "platform/scripts/set-password.ts:31 [firebase-admin] const { initializeApp, getApps, cert } = await import('firebase-admin/app')",
+     "platform/scripts/set-password.ts:32 [firebase-admin] const { getAuth } = await import('firebase-admin/auth')",
+     "platform/scripts/set-password.ts:45 [firebase-admin] : initializeApp({ credential: cert(serviceAccount) })",
+     "platform/scripts/set-password.ts:47 [firebase-admin] const auth = getAuth(app)"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/set-password.ts:20 process.exit(1)",
+     "platform/scripts/set-password.ts:27 process.exit(1)",
+     "platform/scripts/set-password.ts:39 process.exit(1)",
+     "platform/scripts/set-password.ts:56 process.exit(1)",
+     "platform/scripts/set-password.ts:65 process.exit(1)",
+     "platform/scripts/set-password.ts:72 main().catch(err => { console.error(err); process.exit(1) })"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/sla_probe_planner_blind_tools.ts",
+   "entrypoint_line": 478,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 494,
+   "import_graph_modules": 2,
+   "static_import_unresolvable": true,
+   "static_import_unresolvable_detail": "six ../src/lib/retrieve/* specifiers, none of which exist",
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "tier": 3,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier_note": "TIER 3 ONLY BECAUSE THE MODULE CANNOT LOAD. Not a safe one-shot script -- a dead one. If the missing module is ever restored this file becomes TIER 1 with no further change."
+  },
+  {
+   "file": "platform/scripts/sla_probe_temporal.ts",
+   "entrypoint_line": 348,
+   "entrypoint_form": "main().catch((err) => {",
+   "lines": 360,
+   "import_graph_modules": 2,
+   "static_import_unresolvable": true,
+   "static_import_unresolvable_detail": "../src/lib/retrieve/temporal (and the path is one level short: from scripts/ it would need ../src, from scripts/<dir>/ it needs ../../src)",
+   "a_credential_or_connection": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "NO",
+    "basis": "module body never executes (static import specifier unresolvable)",
+    "evidence": []
+   },
+   "tier": 3,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier_note": "TIER 3 ONLY BECAUSE THE MODULE CANNOT LOAD. Not a safe one-shot script -- a dead one. If the missing module is ever restored this file becomes TIER 1 with no further change."
+  },
+  {
+   "file": "platform/scripts/trace/trace_smoke.ts",
+   "entrypoint_line": 280,
+   "entrypoint_form": "main()",
+   "lines": 303,
+   "import_graph_modules": 1,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/trace/trace_smoke.ts:102 [pg-Pool] const pool = new Pool({ connectionString: process.env.DATABASE_URL })",
+     "platform/scripts/trace/trace_smoke.ts:36 [pg-import] import { Pool } from 'pg'",
+     "platform/scripts/trace/trace_smoke.ts:251 [query-fn] const { rows } = await pool.query(",
+     "platform/scripts/trace/trace_smoke.ts:102 [DATABASE_URL] const pool = new Pool({ connectionString: process.env.DATABASE_URL })",
+     "platform/scripts/trace/trace_smoke.ts:63 [env-secret] const PASSWORD    = process.env.SMOKE_PASSWORD    ?? ''"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/trace/trace_smoke.ts:91 if (!EMAIL)    { console.error('ERROR: SMOKE_EMAIL not set'); process.exit(1) }",
+     "platform/scripts/trace/trace_smoke.ts:92 if (!PASSWORD) { console.error('ERROR: SMOKE_PASSWORD not set'); process.exit(1) }",
+     "platform/scripts/trace/trace_smoke.ts:93 if (!CHART_ID) { console.error('ERROR: SMOKE_CHART_ID not set\\n  Find it: psql ... -c \"SELECT id FROM charts LIMIT 3;\"'); process.exit(1) }",
+     "platform/scripts/trace/trace_smoke.ts:291 process.exit(failed.length > 0 ? 1 : 0)",
+     "platform/scripts/trace/trace_smoke.ts:301 process.exit(1)"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  },
+  {
+   "file": "platform/scripts/verify_classical_texts_data.ts",
+   "entrypoint_line": 71,
+   "entrypoint_form": "main().catch(e => { console.error(e); process.exit(1) })",
+   "lines": 72,
+   "import_graph_modules": 2,
+   "static_import_unresolvable": false,
+   "a_credential_or_connection": {
+    "value": "YES",
+    "basis": "direct, in the entry file",
+    "evidence": [
+     "platform/scripts/verify_classical_texts_data.ts:13 [db-lib-import] import { query } from '../src/lib/db/client'"
+    ]
+   },
+   "b_write": {
+    "value": "NO",
+    "basis": "no write detector in the entry file",
+    "kinds": [],
+    "evidence": []
+   },
+   "c_process_exit": {
+    "value": "YES",
+    "basis": "in the top-level entrypoint tail (fires on any rejection of the import-time main())",
+    "evidence": [
+     "platform/scripts/verify_classical_texts_data.ts:68 process.exit(allPass ? 0 : 1)",
+     "platform/scripts/verify_classical_texts_data.ts:71 main().catch(e => { console.error(e); process.exit(1) })"
+    ]
+   },
+   "tier": 1,
+   "a_conditional_on_env": false,
+   "tier_if_import_resolved": 1,
+   "tier1_because": "a+c"
+  }
+ ]
+}
