@@ -16,8 +16,9 @@
  */
 
 import { Client } from 'pg'
-import { readFileSync } from 'fs'
+import { readFileSync, realpathSync } from 'fs'
 import { resolve } from 'path'
+import { fileURLToPath } from 'url'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -3336,7 +3337,62 @@ async function main(): Promise<void> {
   console.log()
 }
 
-if (process.env.NODE_ENV !== 'test') {
+/**
+ * Is THIS module the process entrypoint, or was it merely imported by something else?
+ *
+ * Exported so the question has a real, directly-testable detector behind it rather than an
+ * inline expression nothing can exercise (CLAUDE.md §N.8).
+ *
+ * Compares the module's own URL against `process.argv[1]`, the path the runtime was told to
+ * execute. Both sides are normalised through `fs.realpathSync` where possible, so a symlinked
+ * checkout, a `./`-prefixed spelling, or a `/tmp` → `/private/tmp` style realpath difference
+ * does not make a direct run look like an import. Any failure to resolve either side answers
+ * `false`: the safe direction is "assume imported", because a wrongly-false answer makes an
+ * explicit `npx tsx scripts/seed/asset_registry_seed.ts` exit silently having done nothing —
+ * loud and recoverable — while a wrongly-true answer rewrites `asset_registry` as an import
+ * side effect.
+ *
+ * MIRRORED, NOT IMPORTED, from `scripts/migrate.ts`'s function of the same name (Nirmāṇa
+ * M0-T11). It is deliberately a copy: Nirmāṇa ruling D-9 standing-instructs every agent not to
+ * import from `scripts/migrate.ts` ("read it, or copy a helper's body"), and importing the
+ * migration runner from the registry seeder would wire the seeder's module graph to the
+ * migrator — the exact class of latent coupling this guard exists to remove. Behaviour is
+ * intended to stay identical to that copy; both have their own tests.
+ */
+export function isDirectEntrypoint(moduleUrl: string, argv1: string | undefined): boolean {
+  if (!argv1) return false
+  let modulePath: string
+  try {
+    modulePath = fileURLToPath(moduleUrl)
+  } catch {
+    return false
+  }
+  const entryPath = resolve(argv1)
+  if (modulePath === entryPath) return true
+  try {
+    return realpathSync(modulePath) === realpathSync(entryPath)
+  } catch {
+    return false
+  }
+}
+
+// Guard: only execute when this module IS the entrypoint — never as an import side effect.
+//
+// This used to read `if (process.env.NODE_ENV !== 'test')`, which asks the wrong question
+// (Nirmāṇa WORK_QUEUE M0-T15; the live member of the defect class ruling D-9 elevated to
+// binding precedent, sibling of M0-T11 / finding F-2 in scripts/migrate.ts). An environment
+// sentinel says nothing about how the module was loaded. This module deliberately EXPORTS
+// `ASSETS` — it is the authoritative in-repo asset catalogue, and two test files already import
+// it (scripts/__tests__/catalog_reconciliation.test.ts,
+// tests/unit/build/w2_weights_acyclicity.test.ts) — while `main()` runs
+// `INSERT INTO asset_registry … ON CONFLICT DO UPDATE` and the same upsert against
+// `asset_coefficients`. So in ANY shell with NODE_ENV unset (every ordinary developer and agent
+// shell) and DATABASE_URL exported, an `import` rewrote control-plane registry rows silently.
+//
+// The entrypoint check answers the actual question and is environment-independent, so the test
+// suite no longer relies on vitest happening to set NODE_ENV either. Both directions are covered
+// by `scripts/__tests__/asset_registry_seed_entrypoint_guard.test.ts`.
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
   main().catch(err => {
     console.error('\nSeed failed:', err.message)
     process.exit(1)
