@@ -1940,7 +1940,8 @@
       "id": "D-100-GUARD-THE-THREE-DISPATCHED-AS-T73-URGENT",
       "what": "ADHIKARIN ruled F-T16-1/F-P as ONE question with ONE answer: GUARD THE THREE unguarded probe scripts main brought in via M0-T16's merge, ahead of everything else in the queue (D-39 part 2 urgency). ADHIKARIN took the omission on itself: D-93's seven merge conditions did not include re-running the ratchet -- so D-93 gains an EIGHTH condition binding every future merge: run the ratchet after, guard any unguarded arrivals before calling the merge complete. THE REFRAME: the red is the MERGE BEING INCOMPLETE, not a growth to authorise -- disposes of F-AG's exemption worry entirely. MY OWN OBSERVATION FROM TICK 57 WAS KEPT AS THE DURABLE PART: 'the pay-down-only rule assumes the population is ours. It is not.' -- resolved by guarding upstream arrivals ON ARRIVAL; the allowlist stays closed and pay-down-only, every growth is repaired rather than admitted. Also folded in: D-101 added a THIRD pawl assertion (no allowlist entry may name a currently-guarded file -- 'stale amnesty') after ADHIKARIN caught itself one sentence from wrongly ruling D-95's floor already covered a two-parent merge case it does not touch; D-102 struck a misattribution in D-82's evidence using LEKHAKA's own harness-issued scratchpad path as unforgeable identity proof. DISPATCHED as M0-T73, urgent, ahead of the pawl/C-28/Wave2 queue.",
       "owner": "SUTRADHARA",
-      "state": "dispatched"
+      "state": "COMPLETE -- commit e13a2b487, routed to PARIKSAKA",
+      "completion": "Confirmed RED before (ratchet exit 1, all three named in new_violations), applied the identical Wave-1 isDirectEntrypoint idiom imported from the shared module (not mirrored) to all three files, confirmed GREEN after (exit 0, new_violations empty, unguarded_files 74->71, guarded_files 20->23 -- exactly the three that moved, proving the fix caused the green rather than an accidental effect). Two of the three files had a real network/deploy-adjacent top-level path reachable under conditions the KARAKA could not rule out beforehand, so per D-89/D-90 it never executed any of the three in any mode -- repair from static reading alone. Wave 1's five files and probe/ask.ts confirmed byte-unchanged."
     },
     {
       "id": "V-67-BUILD-RUN-ASSETS-ORPHAN-IDS-BEARS-ON-T71",
@@ -1959,10 +1960,22 @@
       "what": "FOUND AND FIXED (on the second, corrected attempt after my own rebind bug lost the first): two open_threads entries both keyed 'M0-T63', one stale (pre-certification, owner PARIKSAKA, state awaiting_verification) and one current (post-certification V-51, owner closed, state CERTIFIED PASS). Removed the stale copy in place; the certification remains fully preserved in the append-only VERDICTS.jsonl regardless. Kept as its own thread because D-99's whole ruling this tick is exactly this defect class -- one name, two states, no detector -- found one layer down in my own file.",
       "owner": "SUTRADHARA",
       "state": "fixed"
+    },
+    {
+      "id": "D-101-ASSERTION-III-STALE-AMNESTY-BASELINE-SET-BEFORE-BUILD",
+      "what": "PARIKSAKA measured D-101's assertion (iii) baseline BEFORE any KARAKA touched it, using the ratchet's own analyse() rather than a reimplementation: of all 71 allowlisted files, ZERO are currently stale amnesty (fully guarded while still allowlisted) and zero name a file that no longer exists. Recorded as V-66-ADDENDUM. CONSEQUENCE STATED IN ADVANCE, BEFORE THE BUILDER COULD SEE ITS OWN RESULT: (iii) will land green on day one with no pay-down burden -- expected and fine -- BUT a new BLOCKING assertion green on its first run is indistinguishable from one that cannot fire at all (SN.8, the same shape D-89 and D-95 were both issued over). PARIKSAKA STATED PLAINLY IT WILL NOT CERTIFY (iii) ON A GREEN RUN ALONE: the KARAKA must mutate a sandbox allowlist to add an entry naming an already-guarded file (one of Wave 1's five), show (iii) turns RED naming that file, then show GREEN again on the real unmutated list. Dispatched as M0-T74 with this exact requirement baked into the grant so the builder cannot choose its own baseline after seeing the result.",
+      "owner": "SUTRADHARA",
+      "state": "dispatched"
+    },
+    {
+      "id": "ADHIKARIN-SIXTH-STRANDING-20-03Z",
+      "what": "Sixth stranding of the evening, recovered via the standard C-u sequence, verified RUNNING. Recovery message carried a full status brief (D-99/D-100 landed, T73 complete and routed, my own write-bug caught and repaired, D-101's pre-registered can-fail requirement) so ADHIKARIN would not need to reconstruct context from a stale pane. No new mechanism offered.",
+      "owner": "SUTRADHARA",
+      "state": "recovered"
     }
   ],
   "last_updated_by": "SUTRADHARA [session:eb4320db]",
-  "last_updated_ts": "2026-08-23T20:02:20Z",
+  "last_updated_ts": "2026-08-23T20:05:47Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
