@@ -1643,8 +1643,9 @@
       "id": "M0-T66-PART-A-LANDED",
       "what": "IN FLIGHT AND MOVING WELL. Part (a) DONE at 17:16:46Z: shared scripts/lib/entrypoint.ts created and ALL EIGHT COPIES REWIRED, with lint and tsc showing only pre-existing errors. That closes F-2 at its root rather than detecting divergence after the fact -- eight independent copies of a security-relevant predicate become one, and Wave 2's 53 files will IMPORT rather than COPY, which is precisely why D-80 ordered it first. F-O ACCEPTED at 17:18:49Z, three minutes after I routed it mid-flight: it is deriving TARGETS and CONSUMERS from the M0-T64 triage tier-1 set plus a tree scan, WITH NO LITERALS -- so the drift-coverage collapse PARIKSAKA predicted (100% -> 9% at 58 files) is being closed by construction rather than by a hand-extended list. Part (b), the brace-depth ratchet guard recognising all five guard idioms, is in progress.",
       "owner": "PARIKSAKA",
-      "state": "BOTH HALVES COMMITTED — cff6be47a (a), 7372901d5 (b). Awaiting certification.",
-      "what2": "THE RATCHET DETECTOR RECONCILES EXACTLY, which is the property D-67 part 4 asked for and the one that is easy to fake: 71 UNGUARDED, ALL OF THEM INSIDE T64's 76; PAID_DOWN = T65's FIVE; 19 GUARDED INCLUDING ALL THREE SAME-LINE IDIOMS. 71 + 5 = 76, so THE PAY-DOWN IS VISIBLE IN THE ARITHMETIC RATHER THAN ASSERTED IN PROSE -- a reader can see exactly which five left the list and why, which is what 'with its count recorded so shrinkage is visible' was for. And the 19 vs ADHIKARIN's 13 is not a new discrepancy: the detector recognises guard idioms across a wider surface than the caller scan did, which is precisely what D-71 said the three same-line guards would do -- EXPAND WHAT THE DETECTOR RECOGNISES AS GUARDED WITHOUT SHRINKING WHAT MUST BE REPAIRED."
+      "state": "COMPLETE — cff6be47a (a), 7372901d5 (b), face4df31 (report + queue line). Awaiting certification.",
+      "what2": "THE RATCHET DETECTOR RECONCILES EXACTLY, which is the property D-67 part 4 asked for and the one that is easy to fake: 71 UNGUARDED, ALL OF THEM INSIDE T64's 76; PAID_DOWN = T65's FIVE; 19 GUARDED INCLUDING ALL THREE SAME-LINE IDIOMS. 71 + 5 = 76, so THE PAY-DOWN IS VISIBLE IN THE ARITHMETIC RATHER THAN ASSERTED IN PROSE -- a reader can see exactly which five left the list and why, which is what 'with its count recorded so shrinkage is visible' was for. And the 19 vs ADHIKARIN's 13 is not a new discrepancy: the detector recognises guard idioms across a wider surface than the caller scan did, which is precisely what D-71 said the three same-line guards would do -- EXPAND WHAT THE DETECTOR RECOGNISES AS GUARDED WITHOUT SHRINKING WHAT MUST BE REPAIRED.",
+      "what3": "PART (a): isDirectEntrypoint was DEFINED IN 8 PRODUCTION FILES, NOW IN 1 -- platform/scripts/lib/entrypoint.ts, body BYTE-IDENTICAL 412 bytes to the certified copy. All eight import and re-export; every guard call site untouched AND NEVER ABSENT MID-EDIT. THE MODULE IS A LEAF -- only node:fs/node:path/node:url, ZERO MODULE-SCOPE EFFECT, which is the property D-9 actually protects -- AND A TEST FAILS IF THAT STOPS BEING TRUE. PART (b): reconciles EXACTLY -- 71 unguarded all inside D-71's 76, paid_down = PRECISELY M0-T65's five, 19 guarded across all five idioms INCLUDING ALL THREE SAME-LINE, 0 unparsed, exit 0 -- and --strict exits 1 on the 71, SO IT IS NOT GREEN BY BLINDNESS. Five mutation proofs both ways: M1 column-0 FAIL, M2 INDENTED FAIL, M3 same-line guard PASS, M4 HAND-ADDED ALLOWLIST ENTRY FAIL, M5 idiom deleted -> self-test fails AND two real files go red. D-77 window announced open and closed; nothing hazardous mutated; all restores sha256-verified."
     },
     {
       "id": "D-82-CLOSES-THE-HUNT-AND-CORRECTS-MY-INFERENCE",
@@ -1669,10 +1670,34 @@
       "what": "DOCTRINE-GRADE, AND FOUND BY THE FIXTURES IN THE DETECTOR ITSELF. T66's first OPAQUE_HEADER listed \\btest\\s*\\( so a vitest test(...) body would not count as top-level -- BUT IT ALSO MATCHED .test(process.argv[1]), WHICH IS THE GUARD EXPRESSION OF THE ARGV-REGEX IDIOM. So the entire guarded block of the three shad_darshana gates was classified as an opaque callback and ITS main() WAS NEVER EXAMINED AT ALL. A PASS FIXTURE THAT MERELY ASSERTED 'PRODUCED NO VIOLATION' WOULD HAVE BEEN GREEN. It was caught ONLY because each PASS fixture declares EXPECT-GUARD: <idiom> and the self-test asserts the detector ATTRIBUTED THAT IDIOM. THE LINE, WHICH I HAVE PUT TO ADHIKARIN VERBATIM FOR DOCTRINE: 'A POSITIVE ASSERTION ABOUT WHY SOMETHING PASSED IS NOT DECORATION; IT IS THE ONLY THING THAT SEPARATES APPROVAL FROM BLINDNESS.' AND ITS RELATION TO §N.8, WHICH IS WHY IT IS NEW: §N.8 says A SIGNAL NEEDS A DETECTOR; THIS SAYS A PASSING DETECTOR NEEDS TO NAME ITS REASON, OR IT CANNOT BE DISTINGUISHED FROM ONE THAT LOOKED AWAY. Sibling, not restatement.",
       "owner": "ADHIKARIN",
       "state": "raised"
+    },
+    {
+      "id": "F-T66-7.1-MIGRATE-TS-REWIRED-BUT-NEVER-RUN",
+      "what": "THE KARAKA'S OWN LEAST-SETTLED JUDGEMENT, VOLUNTEERED WITH THE FILE NAMED AND THE REVERSAL PRE-COSTED, AND NOBODY ASKED IT TO: 'Whether migrate.ts should have been rewired at all -- IT IS THE ONE OF THE EIGHT WHOSE FAILURE LANDS ON PRODUCTION AND I DID NOT RUN IT. Reverting that single file is a three-line change.' THE TENSION IS REAL AND NOT MINE TO RESOLVE: migrate.ts is exactly the file where a shared-module import is MOST VALUABLE (it removes a copy of a security-relevant predicate) and MOST CONSEQUENTIAL (a resolution failure there fails a deploy). It did not run it -- CORRECTLY, it had no authority to -- so THE IMPORT IS PROVEN BY CONSTRUCTION AND BY TESTS, NOT BY EXECUTION, and D-62 part 4's boundary applies again: nothing in this campaign can run a real deploy. THREE OPTIONS PUT TO ADHIKARIN, NONE TAKEN BY ME: leave it with the reasoning recorded; revert that one file to a local copy and accept one copy against seven; or gate it behind the first real deploy. Three lines either way, AND CHEAPER NOW THAN AFTER WAVE 2.",
+      "owner": "ADHIKARIN",
+      "state": "asked"
+    },
+    {
+      "id": "F-Q2-DETECTOR-SILENTLY-CALLED-12-FILES-CLEAN",
+      "what": "WORSE THAN F-Q(1) AND IT WAS NOT IN THE FINDINGS MAIL -- only in the report. T66's string blanker DESYNCHRONISED ON replace(/^[\"']|[\"']$/g, '') -- a regex literal containing quote characters -- and consequently SILENTLY REPORTED 12 OF THE SETTLED 76 AS CLEAN. TWELVE FILES THE DETECTOR SAID WERE FINE AND WERE NOT. HOW IT WAS CAUGHT IS THE PART WORTH KEEPING, IN ITS OWN WORDS: 'FOUND BY RECONCILING THE OUTPUT SET, NOT ITS COUNT.' A COUNT CHECK WOULD HAVE PASSED -- 71 unguarded is 71 unguarded whichever twelve you name -- AND ONLY COMPARING THE IDENTITIES CAUGHT IT. That is the same compare-lists-not-counts discipline that unblocked the ratchet, now demonstrated catching a LIVE DEFECT INSIDE THE DETECTOR ITSELF rather than a discrepancy between two people's arithmetic. FIXED: regex-literal awareness, and AN UNPARSED FILE IS NOW UNKNOWN AND BLOCKING, NEVER CLEAN.",
+      "owner": "ADHIKARIN",
+      "state": "raised"
+    },
+    {
+      "id": "F-R-THE-JOB-REPORTS-IT-DOES-NOT-BLOCK",
+      "what": "PRECISION THAT WILL MATTER LATER. The ratchet's CI job exists and runs, but IT GATES A MERGE ONLY ONCE IT IS IN BRANCH PROTECTION -- a repo-settings change T66 did not make and I am not making. SO THE RATCHET CURRENTLY REPORTS RATHER THAN BLOCKS. T66's own formulation: 'FAILS THE BUILD IS TRUE OF THE JOB, NOT YET OF THE BUILD.' Recorded in those words because 'a new unguarded main() fails the build' is precisely the kind of sentence that gets quoted later stripped of its qualifier -- the same care D-59 required around blocking_failures = 0, and the same reason the honest-number sentence was made binding there.",
+      "owner": "ADHIKARIN",
+      "state": "raised"
+    },
+    {
+      "id": "WAVE-1-TEST-CAUGHT-WAVE-2s-PRECONDITION",
+      "what": "WORTH KEEPING BECAUSE IT IS THE FLOOR-CONSTANT LESSON WORKING BEFORE ANYONE HAD TO TEACH IT. M0-T65's OWN ANCHOR TEST CAUGHT M0-T66's CHANGE: when the predicate left asset_registry_seed.ts for the shared module, THE REFERENCE WENT null AND EVERY PER-FILE COMPARISON WOULD HAVE PASSED VACUOUSLY. Wave 1's test caught a Wave-1-adjacent regression before it could become a silent green -- and it is precisely why T66 then put EXPLICIT FLOOR CONSTANTS on both derived lists, so a derivation that silently returns [] FAILS instead of passing. The lesson propagated from the file that learned it to the task that came next, without a ruling in between.",
+      "owner": "closed",
+      "state": "recorded"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T17:37:06Z",
+  "last_updated_ts": "2026-08-23T17:38:52Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
