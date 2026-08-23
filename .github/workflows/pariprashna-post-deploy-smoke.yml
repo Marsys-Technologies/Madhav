@@ -188,7 +188,56 @@ jobs:
           if [ "$fail" -ne 0 ]; then exit 1; fi
           echo "[p3-e-smoke] required secrets present and well-shaped."
 
+      # ── BLOCKING-2 (completeness audit 2026-08-23) ────────────────────────
+      # A `workflow_run`-triggered job checks out the DEFAULT BRANCH TIP, not
+      # the commit whose deploy triggered it. Observed: smoke 32615193678
+      # labelled itself `0253f5e8e` at 03:22:42Z while production was serving
+      # the deploy of `97d2b7312` — and `0253f5e8e`'s own deploy did not start
+      # until 03:30:21Z, eight minutes LATER. Three more runs showed the same
+      # 7-9 minute skew.
+      #
+      # Two things were wrong at once: the run was ATTRIBUTED to a commit that
+      # was never on the serving revision, and it ran PROBE CODE from a
+      # different commit than the artifact under test. The DD-7 green×7 counter
+      # — which gates THE FLIP and the irreversible P4-B deletion — is read off
+      # that attribution, so both would have counted greens against the wrong
+      # artifact.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      # The attribution the DD-7 green×7 counter must be read against. This is
+      # a detector, not a label: if the pin above ever silently stops working
+      # (action upgrade, expression change), HEAD and the intended SHA diverge
+      # and this step goes RED instead of quietly mis-attributing another green.
+      - name: Record and verify smoke attribution (DD-7 counter reads THIS sha)
+        working-directory: .
+        run: |
+          set -euo pipefail
+          INTENDED='${{ github.event.workflow_run.head_sha || github.sha }}'
+          ACTUAL="$(git rev-parse HEAD)"
+          TRIGGER='${{ github.event_name }}'
+          echo "attributed_sha=$INTENDED"
+          echo "checked_out_sha=$ACTUAL"
+          echo "trigger=$TRIGGER"
+          {
+            echo "### Paripraśna smoke attribution"
+            echo ""
+            echo "| field | value |"
+            echo "|---|---|"
+            echo "| trigger | \`$TRIGGER\` |"
+            echo "| attributed sha (count greens against this) | \`$INTENDED\` |"
+            echo "| checked-out sha | \`$ACTUAL\` |"
+            if [ "$TRIGGER" = 'workflow_run' ]; then
+              echo "| triggering deploy run | \`${{ github.event.workflow_run.id }}\` |"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$INTENDED" != "$ACTUAL" ]; then
+            echo "::error::Attribution skew: intended $INTENDED but checked out $ACTUAL." \
+                 "The DD-7 counter would credit the wrong artifact. Failing loud (BLOCKING-2)."
+            exit 1
+          fi
+          echo "attribution verified: smoke is running the code that was deployed."
 
       - uses: actions/setup-node@v4
         with:
