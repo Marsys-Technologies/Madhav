@@ -29,6 +29,7 @@ import { Pool } from 'pg'
 import { writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 // platform/scripts/census -> repo root is three up
@@ -645,7 +646,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err) => {
-  console.error('generate_tci FAILED:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('generate_tci FAILED:', err)
+    process.exit(1)
+  })
+}

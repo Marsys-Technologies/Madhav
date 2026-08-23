@@ -15,6 +15,7 @@ process.env.NEXT_RUNTIME = 'nodejs'
 
 import { writeFileSync, readFileSync, existsSync } from 'fs'
 import { join } from 'path'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 const REPORT_PATH = join(
   (typeof __dirname !== 'undefined' ? __dirname : new URL('.', import.meta.url).pathname),
@@ -112,7 +113,9 @@ async function main() {
   process.exit(nonAnthropicFails.length > 0 ? 1 : 0)
 }
 
-main().catch(err => {
-  console.error('[aiops:cutover-smoke] Fatal:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch(err => {
+    console.error('[aiops:cutover-smoke] Fatal:', err)
+    process.exit(1)
+  })
+}

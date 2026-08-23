@@ -11,6 +11,7 @@
  *   - Spot-check: BPHS text present with chunk_count > 0
  */
 import { query } from '../src/lib/db/client'
+import { isDirectEntrypoint } from './lib/entrypoint'
 
 async function main() {
   console.log('=== classical_texts data verification ===\n')
@@ -68,4 +69,6 @@ async function main() {
   process.exit(allPass ? 0 : 1)
 }
 
-main().catch(e => { console.error(e); process.exit(1) })
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch(e => { console.error(e); process.exit(1) })
+}

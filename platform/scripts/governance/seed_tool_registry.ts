@@ -17,6 +17,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as dotenv from 'dotenv'
 import { Pool } from 'pg'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 dotenv.config({ path: path.join(process.cwd(), '.env.local') })
 
@@ -214,7 +215,9 @@ async function main() {
   process.exit(0)
 }
 
-main().catch((err) => {
-  console.error('Seed failed:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('Seed failed:', err)
+    process.exit(1)
+  })
+}

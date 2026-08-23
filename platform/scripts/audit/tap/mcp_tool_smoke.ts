@@ -38,6 +38,7 @@
  */
 import { NATIVE_CHART_ID, printReport, type LawResult } from './lib/tap_db'
 import { collectRegisteredTools } from './lib/mcp_registered_tools'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 const AYANAMSHA_ID = 'lahiri_chitrapaksha'
 
@@ -201,7 +202,9 @@ async function main() {
   process.exit(printReport('MCP per-tool smoke battery (LIVE)', results))
 }
 
-main().catch((err) => {
-  console.error('mcp_tool_smoke FATAL:', err)
-  process.exit(4)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('mcp_tool_smoke FATAL:', err)
+    process.exit(4)
+  })
+}

@@ -22,6 +22,7 @@
  * run doesn't pass).
  */
 import { spawnSync } from 'child_process'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 interface GateCase {
   gate: string
@@ -114,4 +115,6 @@ function main(): void {
   process.exit(allOk ? 0 : 1)
 }
 
-main()
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main()
+}

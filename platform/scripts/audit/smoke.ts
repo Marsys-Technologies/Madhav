@@ -9,6 +9,7 @@
 
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 function loadEnv(file: string): void {
   const p = join(process.cwd(), file)
@@ -143,9 +144,11 @@ async function main(): Promise<void> {
   if (!pass) process.exit(1)
 }
 
-main()
-  .catch(err => {
-    console.error('smoke failed:', err)
-    process.exit(1)
-  })
-  .finally(() => pool.end())
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main()
+    .catch(err => {
+      console.error('smoke failed:', err)
+      process.exit(1)
+    })
+    .finally(() => pool.end())
+}

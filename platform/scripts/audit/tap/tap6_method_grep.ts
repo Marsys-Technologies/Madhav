@@ -33,6 +33,7 @@ import path from 'node:path'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import type { LawResult } from './lib/tap_db'
 import { printReport, lineHash } from './lib/tap_db'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 const REPO_ROOT = path.join(__dirname, '../../../..')
 
@@ -228,4 +229,6 @@ function main() {
   process.exit(printReport('TAP-6 Method Audit (grep set)', results))
 }
 
-main()
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main()
+}

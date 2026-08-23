@@ -31,6 +31,7 @@
 
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 // ── Env loader ────────────────────────────────────────────────────────────────
 
@@ -491,7 +492,9 @@ async function main(): Promise<void> {
   process.exit(failures.length > 0 ? 1 : 0)
 }
 
-main().catch(err => {
-  console.error('Smoke script crashed:', err)
-  process.exit(1)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch(err => {
+    console.error('Smoke script crashed:', err)
+    process.exit(1)
+  })
+}

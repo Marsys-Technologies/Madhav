@@ -31,6 +31,7 @@
 import { McpClient } from './lib/mcp_client'
 import { ALL_ASSERTIONS, runAssertion } from './lib/assertions'
 import type { AssertionResult, RunContext } from './lib/types'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 const ABHISEK_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 const ABHINANDAN_CHART_ID = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
@@ -129,7 +130,9 @@ async function main() {
   process.exit(red.length > 0 ? 1 : 0)
 }
 
-main().catch((err) => {
-  console.error('doctrine_harness FATAL:', err)
-  process.exit(2)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('doctrine_harness FATAL:', err)
+    process.exit(2)
+  })
+}

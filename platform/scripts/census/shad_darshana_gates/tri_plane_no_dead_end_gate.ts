@@ -42,6 +42,7 @@
 import { ShadDarshanaMcpClient, resolveMcpTarget, unwrapToolPayload, envOrDefault, DEFAULT_TOOL_TIMEOUT_MS, CANONICAL_CHART_ID, CROSS_CHECK_CHART_ID } from './_mcp_client'
 import { printGateReport, type GateResult } from './_report'
 import { SHAD_DARSHANA_EIGHT_TOOLS, collectShadDarshanaRegistration, isKalaToolRegistered } from './_kala_tool_registration'
+import { isDirectEntrypoint } from '../../lib/entrypoint'
 
 const TOOL_TIMEOUT_MS = Number(envOrDefault('TRI_PLANE_GATE_TOOL_TIMEOUT_MS', String(DEFAULT_TOOL_TIMEOUT_MS)))
 const MIN_GAP_MS = Number(envOrDefault('TRI_PLANE_GATE_MIN_GAP_MS', '300'))
@@ -153,7 +154,9 @@ async function main(): Promise<void> {
   process.exit(printGateReport('tri_plane_no_dead_end_gate (LIVE)', await liveResults(client)))
 }
 
-main().catch((err) => {
-  console.error('tri_plane_no_dead_end_gate FATAL:', err)
-  process.exit(2)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  main().catch((err) => {
+    console.error('tri_plane_no_dead_end_gate FATAL:', err)
+    process.exit(2)
+  })
+}

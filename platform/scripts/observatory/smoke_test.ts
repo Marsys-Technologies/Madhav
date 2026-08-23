@@ -49,6 +49,7 @@ import type {
   ObservedLLMRequest,
   TokenUsage,
 } from '../../src/lib/llm/observability/types'
+import { isDirectEntrypoint } from '../lib/entrypoint'
 
 const DRY_RUN = process.argv.includes('--dry-run')
 
@@ -186,6 +187,8 @@ async function main(): Promise<void> {
   await fullRun()
 }
 
-void main().catch((err) => {
-  fail(`unhandled error: ${(err as Error).message ?? String(err)}`)
-})
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
+  void main().catch((err) => {
+    fail(`unhandled error: ${(err as Error).message ?? String(err)}`)
+  })
+}
