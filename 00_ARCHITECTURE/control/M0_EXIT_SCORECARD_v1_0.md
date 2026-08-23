@@ -4,15 +4,15 @@ version: 1.0
 status: LIVE-MEASUREMENT
 task: M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42)
 built_by_task: M0-T17
-readings: 6
-generated: 2026-08-23T21:08:40.089548+00:00
+readings: 7
+generated: 2026-08-23T23:19:36.402996+00:00
 generator: 00_ARCHITECTURE/control/m0_exit_scorecard.py
 ---
 
 # NIRMĀṆA M0 — Exit-Criteria Scorecard v1.0
 
-**Measured:** 2026-08-23T21:08:30.785302+00:00 → 2026-08-23T21:08:40.089548+00:00 (UTC)  
-**Branch / commit:** `campaign/nirmana-autonomous` @ `68cb017d69da`  
+**Measured:** 2026-08-23T23:19:28.106490+00:00 → 2026-08-23T23:19:36.402996+00:00 (UTC)  
+**Branch / commit:** `campaign/nirmana-autonomous` @ `4d1b679d54f4`  
 **Database access:** READ-ONLY (default_transaction_read_only=on; SELECT only)  
 **Regenerate:** `python3 00_ARCHITECTURE/control/m0_exit_scorecard.py`  
 **Status:** measurement only. This document certifies nothing and closes nothing (I16 / charter H7). PARĪKṢAKA decides; M0-T10 re-runs the generator at freeze time rather than trusting this snapshot.
@@ -20,7 +20,7 @@ generator: 00_ARCHITECTURE/control/m0_exit_scorecard.py
 ## 0 — Tally, then and now
 
 **then** = `reading 1 — M0-T17 first measurement`, 2026-08-23T05:05:59.484414+00:00 @ `01397f9216de`  
-**now** = `reading 6 — M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42)`, 2026-08-23T21:08:40.089548+00:00 @ `68cb017d69da`
+**now** = `reading 7 — M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42)`, 2026-08-23T23:19:36.402996+00:00 @ `4d1b679d54f4`
 
 | status | then | now | Δ | meaning |
 |---|--:|--:|--:|---|
@@ -60,6 +60,7 @@ Every reading this generator has taken is retained in `m0_exit_scorecard.json` u
 | reading 4 — M0-T36 (re-measurement 4 — post V-8/V-9/V-10/V-11, post D-29/D-30/D-31) | M0-T36 (re-measurement 4 — post V-8/V-9/V-10/V-11, post D-29/D-30/D-31) | 2026-08-23T08:00:26.645600+00:00 | `326e4cb372b5` | 1 | 7 | 3 | 1 |
 | reading 5 — M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42) | M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42) | 2026-08-23T12:26:07.136461+00:00 | `ac16535d1b67` | 2 | 6 | 3 | 1 |
 | reading 6 — M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42) | M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42) | 2026-08-23T21:08:40.089548+00:00 | `68cb017d69da` | 2 | 6 | 3 | 1 |
+| reading 7 — M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42) | M0-T46 (re-measurement 5 — applies D-38/D-39/D-40/D-41/D-42) | 2026-08-23T23:19:36.402996+00:00 | `4d1b679d54f4` | 2 | 6 | 3 | 1 |
 
 ### Did anything move while this ran?
 
@@ -75,23 +76,7 @@ A migration wave was running concurrently, so every load-bearing quantity was re
 
 ### What changed since the previous run of this generator
 
-Previous run: `2026-08-23T12:26:07.136461+00:00`. 1 change(s) since the previous run.
-
-```json
-[
- {
-  "criterion": "2_contract_violations_per_kind",
-  "was": {
-   "status": "NOT-MEASURABLE",
-   "measured_value": 85
-  },
-  "now": {
-   "status": "NOT-MEASURABLE",
-   "measured_value": 84
-  }
- }
-]
-```
+Previous run: `2026-08-23T21:08:40.089548+00:00`. no criterion changed status or value since the previous run.
 
 Filesystem-sourced criteria (10 and 12) can move between runs without any database change, because sibling tasks are authoring the guards they look for. The block above is where that shows up; the table above it covers database movement inside a single run.
 
