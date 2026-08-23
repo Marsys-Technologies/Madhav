@@ -23,6 +23,7 @@ import json
 import psycopg
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from asset_plans import derive, derive_v41_columns
+from writer_substep_census import registered_asset_ids
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
@@ -143,6 +144,33 @@ def fetch():
     return d
 
 
+def code_registered_asset_ids():
+    """The code-derived `has_writer`, from the M0-T8 AST census (D-25 part 2a).
+
+    NOT read from asset_registry.has_writer, and NOT re-parsed here. D-25 part 3's
+    standing rule: any registry boolean that gates whether a check runs must be derived
+    from code, never trusted as declared. `has_writer=false` gates the §19 efficiency
+    pass — `_bound_class()` reads it as "nothing builds this asset" and returns
+    `not-a-build`, which exempts the asset from §8.3 item 5 ALTOGETHER. A registry row
+    that is wrong therefore walks a genuinely-built asset through a freeze gate
+    unexamined. That is what V-6 caught on two R0 assets.
+
+    Reuses `writer_substep_census.registered_asset_ids()` — the same AST parser that
+    already produces the `Substeps (code)` truth — rather than adding a parser. The
+    regex in `scan_code()` below is retained ONLY for `writer_file` /
+    `code_has_plan_substeps` / `resume_mechanism`, which are T5-certified outputs this
+    task does not touch; it is not the authority for has_writer, because a regex counts
+    docstring mentions of `@register(` and a naive AST pass drops
+    `@register(ASSET_ID)`.
+
+    NO ASSET ID IS SPECIAL-CASED here or anywhere downstream (D-25 part 2c): the two
+    known cases are secondary decorators stacked on a shared writer class, which is the
+    general shape, and the census collects registrations per-decorator so that shape
+    resolves without naming anything.
+    """
+    return registered_asset_ids()
+
+
 def scan_code():
     """asset_id -> {writer_file, code_has_plan_substeps, resume_mechanism}"""
     sidecar = ROOT / 'platform/python-sidecar'
@@ -238,6 +266,10 @@ def fmt_dur(s):
 
 # ------------------------------------------------------------------ build rows
 def build_rows(d, code, consumers):
+    # D-25 part 2(a): `has_writer` is DERIVED FROM THE WRITER CLASS, exactly as
+    # `has_substeps` already is, and both readings are carried so the divergence is
+    # visible instead of silently authoritative (D-25 part 3). Computed once per run.
+    code_writers = code_registered_asset_ids()
     rows = []
     for r in d['registry']:
         aid = r['asset_id']
@@ -250,6 +282,13 @@ def build_rows(d, code, consumers):
         is_service = 'service' in (r['asset_kind'], r['asset_type'], r['storage_type'])
         reg_sub, code_sub = bool(r['has_substeps']), bool(cf.get('code_has_plan_substeps'))
         sub_mismatch = code_sub and not reg_sub
+        # has_writer, the registry-vs-code pair. `code_hw` is the one that gates:
+        # everything downstream (_bound_class, the Rebuild-Time Plan narrative, the
+        # Writer File placeholder) reads the CODE flag. `reg_hw` is carried for the
+        # divergence column only — repairing the asset_registry rows is R0 stage 2's
+        # (D-25 part 2b), not this generator's.
+        reg_hw, code_hw = bool(r['has_writer']), aid in code_writers
+        writer_mismatch = code_hw != reg_hw
         resume = cf.get('resume_mechanism', 'none') if code_sub else 'n/a'
         down = num(d['fanout'].get(aid, 0)) or 0
         gen_bearing = aid.startswith('ka_gochara')
@@ -394,8 +433,12 @@ def build_rows(d, code, consumers):
             'Median': fmt_dur(med_s), 'P90': fmt_dur(num(t.get('p90'))), 'Worst': fmt_dur(max_s),
             'Worst (h)': round(max_s / 3600, 2) if max_s else None,
             'Runs': runs, 'Success %': succ,
-            'Writer File': cf.get('writer_file', '') or ('— no writer —' if not r['has_writer'] else ''),
-            '_has_writer': bool(r['has_writer']),
+            'Writer File': cf.get('writer_file', '') or ('— no writer —' if not code_hw else ''),
+            'has_writer (registry)': 'yes' if reg_hw else 'no',
+            'has_writer (code)': 'yes' if code_hw else 'no',
+            '_has_writer': code_hw,
+            '_has_writer_registry': reg_hw,
+            '_has_writer_divergent': writer_mismatch,
             'Elevation Actions': '\n'.join(f'• {a}' for a in acts),
             'Expected Benefit': '\n'.join(f'• {b}' for b in bens),
         }
@@ -424,7 +467,7 @@ def build_rows(d, code, consumers):
             aid=aid, layer=lx, scope=r['scope'] or '', tier_letter=tier[0],
             reg_sub=reg_sub, code_sub=code_sub, writer_timeout_seconds=r['writer_timeout_seconds'],
             med_s=med_s, p90_s=p90_s, wave=d['wave'].get(aid),
-            has_writer=bool(r['has_writer']),
+            has_writer=code_hw,
             timeout_column_default=d.get('timeout_column_default'),
             polluted=polluted, max_s=max_s))
         rows.append(rec)
@@ -608,7 +651,8 @@ def main():
     cols = ['Layer', 'Layer Name', 'Asset ID', 'Sanskrit', 'English', 'Tier', 'Priority', 'Lifecycle',
             'Superseded By', 'Data Disposition', 'Conformant', 'Contract Violations', 'Advisory',
             'Scope', 'Kind', 'Catalog', 'DAG Depth', 'Deps', 'Downstream', 'Consumers', 'Consumer Surfaces',
-            'Target Table', 'count_sql', 'Substeps (registry)', 'Substeps (code)', 'Resume',
+            'Target Table', 'count_sql', 'has_writer (registry)', 'has_writer (code)',
+            'Substeps (registry)', 'Substeps (code)', 'Resume',
             'Median', 'P90', 'Worst', 'Worst (h)', 'Telemetry', 'Runs', 'Success %',
             'Rows (native)', 'Rows (abhinandan)', 'Rows (chart 3)', 'Floor', 'Completeness %', 'Integrity Check',
             CHARTS[0][1], CHARTS[1][1], CHARTS[2][1], 'Global',
@@ -635,6 +679,11 @@ def main():
         cf.font = Font(size=9, bold=True, color='2E7A57' if cf.value == 'YES' else '9E3438')
         row[idx['Contract Violations']].font = Font(size=8, color='9E3438')
         row[idx['Contract Violations']].alignment = Alignment(wrap_text=True, vertical='top')
+        # D-25 part 3 — the registry-vs-code pair must be VISIBLE, not silently
+        # authoritative. Red on the registry cell wherever it disagrees with the code.
+        if row[idx['has_writer (registry)']].value != row[idx['has_writer (code)']].value:
+            row[idx['has_writer (registry)']].font = Font(size=9, bold=True, color='9E3438')
+            row[idx['has_writer (code)']].font = Font(size=9, bold=True, color='2E7A57')
         row[idx['Advisory']].font = Font(size=8, color='8E6210')
         row[idx['Advisory']].alignment = Alignment(wrap_text=True, vertical='top')
         for cn in [CHARTS[0][1], CHARTS[1][1], CHARTS[2][1], 'Global']:
@@ -652,8 +701,8 @@ def main():
         cp = row[idx['Completeness %']]
         if isinstance(cp.value, (int, float)) and cp.value < 95:
             cp.font = Font(size=9, bold=True, color='8E6210')
-    widths(ws, [6, 11, 34, 20, 28, 22, 18, 15, 30, 42, 11, 40, 30, 10, 9, 9, 7, 6, 11, 10, 40,
-                30, 9, 10, 10, 20, 9, 9, 9, 9, 20, 7, 9, 12, 12, 12, 11, 11, 10, 15, 13, 11, 8, 46, 78, 88])
+    widths(ws, [6, 11, 34, 20, 28, 22, 18, 15, 30, 42, 11, 40, 30, 10, 9, 9, 7, 6, 11, 10, 40, 30,
+                9, 17, 15, 10, 10, 20, 9, 9, 9, 9, 20, 7, 9, 12, 12, 12, 11, 11, 10, 15, 13, 11, 8, 46, 78, 88])
     ws.freeze_panes = 'C2'
     ws.auto_filter.ref = f'A1:{get_column_letter(len(cols))}{ws.max_row}'
 
@@ -986,6 +1035,10 @@ DEFECTS = [
      'asset_throughput_state_audit (migration 586) holds a handful of rows and is read by nothing.',
      'No build history surface, even though the substrate for one now exists.',
      'Adopt it as the event spine for run history, provenance and the timeline view.', 'P6'),
+    ('D-29', 'has_writer false negative — a registry boolean that exempts an asset from the efficiency gate', 'CRITICAL',
+     'The AST @register census finds 123 asset_ids bound to a writer class in production source; asset_registry carries has_writer=true on 121. Measured 2026-08-23 against live production: exactly 2 false negatives (bg_nakshatra_medical, @register at brahmagyan/writers/bg_medical_mappings.py:26; bg_transit_engine, @register at brahmagyan/writers/bg_transit_rules.py:12) and 0 false positives. Both are SECONDARY decorators stacked on a shared writer class — the general shape, not two special cases.',
+     "D-01's sibling, one column over: a registry boolean that DISAGREES WITH THE CODE and, when false, silently disables a check. _bound_class() reads has_writer=false as \"no registered writer -> nothing builds this asset\" and returns bound class `not-a-build`, which exempts the asset from the §8.3 item 5 efficiency pass ALTOGETHER — not \"optimized with an identity proof\", not \"examined, already efficient\", but unexamined. Two genuinely-built R0 assets would have walked through the campaign's first freeze gate on that exemption.",
+     'Generator side, done (M0-T22 / D-25 part 2a): the workbook DERIVES has_writer from the writer class via the M0-T8 AST census and carries `has_writer (registry)` + `has_writer (code)` as a visible pair, so the two assets now read bound class = null and are back inside the efficiency gate. Registry side, NOT done and deliberately deferred (D-25 part 2b): correcting the two asset_registry.has_writer ROWS belongs to R0 stage 2 (Conform), which owns R0 registry metadata, and opens there with this measurement in hand. STANDING RULE (D-25 part 3): any registry boolean that gates whether a check runs must be derived from code, never trusted as declared, and surfaced as a registry-vs-code pair.', 'R0'),
     ('D-16', 'Hash spill directory is RAM-backed on Cloud Run', 'HIGH',
      'KA_KSHETRA_HASH_SPILL_DIR is pinned to /tmp, which on Cloud Run is a tmpfs. A 3–4.2 GB spill counts against the 8Gi limit, inverting the bounded-memory guarantee the spill was built to provide.',
      'OOM risk on the single largest asset; the compensating fix was doubling job memory rather than fixing the substrate.',

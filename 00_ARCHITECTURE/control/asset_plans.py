@@ -156,6 +156,12 @@ def _bound_class(is_service: bool, has_writer: bool, prof: dict) -> tuple:
     "legitimately true for a service asset" and is derivable structurally without profiling.
     Two structural detectors produce it: the asset is a service probe (nothing builds), or no
     writer is registered for it (nothing can build it). Everything else is null until profiled.
+
+    `has_writer` REACHING THIS FUNCTION IS CODE-DERIVED (D-25 part 2a, M0-T22). The logic below
+    was always sound; its INPUT used to be `asset_registry.has_writer`, which was wrong on two
+    R0 assets, and `not-a-build` EXEMPTS an asset from the §8.3 item 5 efficiency pass
+    altogether — so a false `has_writer` walked a genuinely-built asset through the campaign's
+    first freeze gate unexamined. The caller now passes the AST @register census's verdict.
     """
     if prof.get('bound_class'):
         return prof['bound_class'], f"profiled {prof.get('profiled_at', 'no timestamp')}"

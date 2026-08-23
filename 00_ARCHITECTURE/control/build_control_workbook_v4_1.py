@@ -258,7 +258,18 @@ def main():
         ('LEGEND — §19 efficiency ledger (Efficiency sheet)', 'h'),
         ('bound class', 'round-trip | I/O | CPU | algorithmic | not-a-build (§19.4 step 3). A profiling '
                          'result, EXCEPT not-a-build, which is derivable structurally (service probe, or '
-                         'no registered writer) and is emitted on that evidence.'),
+                         'no registered writer) and is emitted on that evidence. "No registered writer" '
+                         'is read from the CODE (the AST @register census), never from '
+                         'asset_registry.has_writer — see has_writer (registry) / has_writer (code) on the '
+                         'Asset Register, and D-29. not-a-build EXEMPTS an asset from the §8.3 item 5 '
+                         'efficiency pass, so a wrong input here walks a real build through a freeze gate '
+                         'unexamined (D-25).'),
+        ('has_writer (registry) / (code)',
+         'The registry-vs-code PAIR for has_writer, carried exactly as Substeps (registry)/(code) is. '
+         'D-25 part 3 standing rule: any registry boolean that gates whether a check runs must be derived '
+         'from code, never trusted as declared, and must be surfaced as a pair so the divergence is '
+         'visible rather than silently authoritative. A red registry cell means the two disagree; the CODE '
+         'column is what every derived field reads.'),
         ('hotspot', 'The measured dominant cost, named. NULL UNTIL PROFILED (§15, verbatim). No asset has '
                      'been profiled, so it is null on all of them — that is the correct M0 answer, not a gap.'),
         ('technique / target / achieved / identity proof',
@@ -358,7 +369,8 @@ def main():
             'Domain', 'Rung', 'Within-Rung Wave', 'Continuation Class', 'Rehearsal Partition', 'Timeout Source',
             'Superseded By', 'Data Disposition', 'Conformant', 'Contract Violations', 'Advisory',
             'Scope', 'Kind', 'Catalog', 'DAG Depth', 'Deps', 'Downstream', 'Consumers', 'Consumer Surfaces',
-            'Target Table', 'count_sql', 'Substeps (registry)', 'Substeps (code)', 'Resume',
+            'Target Table', 'count_sql', 'has_writer (registry)', 'has_writer (code)',
+            'Substeps (registry)', 'Substeps (code)', 'Resume',
             'Median', 'P90', 'Worst', 'Worst (h)', 'Telemetry', 'Runs', 'Success %',
             'Rows (native)', 'Floor', 'Completeness %', 'Integrity Check',
             NATIVE_LABEL, 'Global',
@@ -388,6 +400,11 @@ def main():
         cf.font = Font(size=9, bold=True, color='2E7A57' if cf.value == 'YES' else '9E3438')
         row[idx['Contract Violations']].font = Font(size=8, color='9E3438')
         row[idx['Contract Violations']].alignment = Alignment(wrap_text=True, vertical='top')
+        # D-25 part 3 — the registry-vs-code pair must be VISIBLE, not silently
+        # authoritative. Red on the registry cell wherever it disagrees with the code.
+        if row[idx['has_writer (registry)']].value != row[idx['has_writer (code)']].value:
+            row[idx['has_writer (registry)']].font = Font(size=9, bold=True, color='9E3438')
+            row[idx['has_writer (code)']].font = Font(size=9, bold=True, color='2E7A57')
         row[idx['Advisory']].font = Font(size=8, color='8E6210')
         row[idx['Advisory']].alignment = Alignment(wrap_text=True, vertical='top')
         for cn in [NATIVE_LABEL, 'Global']:
@@ -405,8 +422,8 @@ def main():
         cp = row[idx['Completeness %']]
         if isinstance(cp.value, (int, float)) and cp.value < 95:
             cp.font = Font(size=9, bold=True, color='8E6210')
-    widths(ws, [6, 11, 34, 20, 28, 22, 18, 15, 8, 6, 8, 20, 34, 16, 30, 42, 11, 40, 30, 10, 9, 9, 7, 6, 11, 10, 40,
-                30, 9, 10, 10, 20, 9, 9, 9, 9, 20, 7, 9, 12, 11, 11, 10, 15, 13, 11, 46, 78, 88])
+    widths(ws, [6, 11, 34, 20, 28, 22, 18, 15, 8, 6, 8, 20, 34, 16, 30, 42, 11, 40, 30, 10, 9, 9,
+                7, 6, 11, 10, 40, 30, 9, 17, 15, 10, 10, 20, 9, 9, 9, 9, 20, 7, 9, 12, 11, 11, 10, 15, 13, 11, 46, 78, 88])
     ws.freeze_panes = 'D2'
     ws.auto_filter.ref = f'A1:{get_column_letter(len(cols))}{ws.max_row}'
 
@@ -506,7 +523,9 @@ def main():
     cols = ['ID', 'Defect', 'Severity', 'Evidence', 'Consequence', 'Fix', 'Phase']
     ws.append(cols)
     head(ws, len(cols))
-    for x in list(DEFECTS) + LOOPHOLE_DEFECTS:
+    # sorted by ID so D-29 (M0-T22, appended to the v3 DEFECTS list) lands after D-28
+    # rather than in the middle of the loophole block.
+    for x in sorted(list(DEFECTS) + LOOPHOLE_DEFECTS, key=lambda t: t[0]):
         ws.append(list(x))
     for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
         for c in row:
