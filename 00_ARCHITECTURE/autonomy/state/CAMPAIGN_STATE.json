@@ -287,6 +287,13 @@
         "criterion_10_unsatisfiable": "Requires the guards MERGED AND BLOCKING. (a) Circular: it asks whether the guards are blocking while D-24 part 3 conditions the flip on the criteria — each waits on the other, so without an explicit self-reference carve-out the precondition cannot be met. (b) The MERGED half collides with charter H2, which prohibits ANY write to main absolutely. So M0's own exit criterion cannot be satisfied by this campaign. Per the charter's own clause — where charter and plan disagree the plan wins and the disagreement is a DEFECT TO BE PARKED — read as a park, not a decision.",
         "C28_no_authorised_route": "31 assets are lit with NO completed build_run_assets row, so no measured duration exists and D-6 condition 4 forbids inventing one. Every path to zero passes through either a real build or a fabrication, and the second is H6. Still true at R0's freeze.",
         "mechanical_blocker": "Of the ten DEFERRED rules, NOT ONE has an entry in asset_catalogue_disclosed_residuals.json and eight are BLOCKING severity. Flipping today reds the branch on 15 live BLOCKING failures, and the pressure that follows is to weaken a criterion to get moving — which is H3. The DISCLOSURE ENTRIES are the real prerequisite, not the deferrals."
+      },
+      "certified": {
+        "note": "All three production writes and the deferral register are now INDEPENDENTLY CERTIFIED by PARIKSAKA (I16).",
+        "V-8": "M0-T12B — three migrations applied to production (588, 589, 590)",
+        "V-9": "M0-T20 — asset_registry.has_substeps repair",
+        "V-10": "M0-T26 — asset_registry.layer_index / layer_name repair",
+        "V-11": "M0-T31 — the deferral register"
       }
     },
     "M1": {
@@ -556,12 +563,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "CRIT-10-H2-COLLISION",
-      "what": "M0's exit criterion 10 requires the guards MERGED to main; charter H2 prohibits any write to main. An exit criterion the charter forbids satisfying. Nobody had asked this; the KARAKA surfaced it and said correctly it was not a KARAKA's to answer. Charter's own clause makes it a PARK",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
       "id": "M0-T30",
       "what": "COMPLETE bdf47d0c8",
       "owner": "PARIKSAKA",
@@ -572,18 +573,6 @@
       "what": "the generator's exponential DAG CTE — a live production hazard at every rung",
       "owner": "KARAKA",
       "state": "running"
-    },
-    {
-      "id": "VERIFIER-IS-CRITICAL-PATH",
-      "what": "7 verdicts filed against ~22 items awaiting verification. M0 CANNOT CLOSE without PARIKSAKA's evidence (I16). It is the campaign's bottleneck, and three of the stalls costing it time were the poke defect rather than the agent",
-      "owner": "SUTRADHARA",
-      "state": "monitoring"
-    },
-    {
-      "id": "FLEET-POKE-THIRD",
-      "what": "THIRD occurrence of D-14 idle-unpoked: PARIKSAKA ~05:00Z, ADHIKARIN ~06:50Z, PARIKSAKA again ~07:30Z. All three submitted by hand, by pane ID per D-16. D-14 named this defect over an hour ago, so the poke PATH itself was never changed. Sent PRAHARI the exact working sequence, the reason the obvious C-m repair fails, and an offer to take poking over entirely rather than keep remedying it by hand",
-      "owner": "PRAHARI",
-      "state": "escalated_third_time"
     },
     {
       "id": "F-ROOT-MISMATCH-DETECTOR",
@@ -632,10 +621,28 @@
       "what": "bg_ephemeris_engine has sat in error since 2026-06-18 with a REAL DIAGNOSIS recorded — a damaged Swiss Ephemeris file — that nobody acted on. That is the 66-day red the plan names as R0's very first P0, and M0-T34 notes it is plausibly THE SAME ROOT CAUSE as ka_graha_sancara's failure. If that holds, R0's first repair and R3's service probe share a cause, and knowing it before R0 opens is worth more than it cost. R0 territory, untouched",
       "owner": "ADHIKARIN",
       "state": "raised"
+    },
+    {
+      "id": "M0-T36",
+      "what": "apply D-30's named-field test, re-measure, and produce the ordered flip checklist + M0 close-readiness",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "CONDUCTOR-PRACTICE-CHANGE",
+      "what": "D-29 part 2 named the cause of its own wrong-rung ruling as MY hedged claim, adopted without checking: 'A hedge is an invitation to verify and I treated it as a finding.' The other half is mine — I hedged INSTEAD of checking, and the check was one query. It has happened twice in an hour (the rung claim; the health_probe-as-verdict reading), both caught by agents below me. CHANGED, effective now: I verify a factual claim before it goes into an escalation or I send it as an explicit question with the query that would settle it; a hedge from me IS a request for verification and I say so in those words; and when relaying a sibling's finding I state whether I verified it or am passing it through. The difference in the two cases was not difficulty — one FELT like it needed checking and the other FELT obvious, and feeling obvious is exactly when this fails",
+      "owner": "SUTRADHARA",
+      "state": "adopted"
+    },
+    {
+      "id": "T35-59-NULLS",
+      "what": "EARLY SIGNAL from M0-T35's live demo, flagged before its report lands: the divergence report finds 59 NULL->value transitions, not the one lel_events case D-28 was written about. Whatever gate ADHIKARIN settles on will fire on a great deal more than expected",
+      "owner": "ADHIKARIN",
+      "state": "flagged_early"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T07:52:19Z",
+  "last_updated_ts": "2026-08-23T07:56:57Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
