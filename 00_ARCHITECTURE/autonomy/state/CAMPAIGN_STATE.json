@@ -234,6 +234,18 @@
           },
           "trap_avoided": "both bg_* rows read service/service — applying the plan's wording literally as a repair rule would have written 'data' over a correct 'service'",
           "DURABILITY_WARNING": "THIS REPAIR IS NOT DURABLE. asset_registry_seed.ts's ON CONFLICT DO UPDATE overwrites asset_kind and asset_type from EXCLUDED, and both default to 'data' when omitted — each of the six rows declares one of the pair and omits the other. The next seed run reverts all six. Correct in the database today; not correct after a re-seed."
+        },
+        "layer_position_0_5a": {
+          "ts": "2026-08-23T06:54:42Z",
+          "by": "KARAKA M0-T26",
+          "commit": "dc4499f9d",
+          "rows": {
+            "layer_index": 20,
+            "layer_name": 19
+          },
+          "durability": "divergence vs seed 21->1 and 20->1; the repaired DB now agrees with the seed on every repaired row",
+          "codepoint_pin": "came back FALSE pre-write — live held ASCII-folded 'Ganita'/'Kala' against §N.1's 'Gaṇita'/'Kāla'. Caught before the write, now TRUE.",
+          "restore": "PROVEN BY EXECUTION — first in the campaign. restore.sql run in a transaction, 0 of 128 rows differed, rolled back, post-checks re-run after. Closes the gap ADHIKARIN named in D-7."
         }
       },
       "seed_revert_blast_radius": {
@@ -517,12 +529,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T26",
-      "what": "Phase 0.5a layer repair — UNBLOCKED by the register, which refuted my own hold",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "SEED-OWNERSHIP",
       "what": "Now evidenced rather than argued: 80 cells of count_sql/target_floor/depends_on move on a re-seed with no basis to say which side is right. Sharpened by two structural facts — measured floors live in a seed-owned column so I7 collides with seed ownership at every rung, and there is no DB-side fix available for seed-owned columns",
       "owner": "ADHIKARIN",
@@ -557,10 +563,34 @@
       "what": "ADHIKARIN was found in the D-14 IDLE-UNPOKED state — a completed turn with an unsubmitted 'keep going' in its compose box, with five escalations waiting. Remedied with the one-keystroke sequence D-14 records (C-u, retype, separate Enter), addressed by PANE ID per D-16, never by window name. Never a restart. The poke mechanism defect is therefore still live somewhere in the fleet despite D-14 naming it",
       "owner": "PRAHARI",
       "state": "recurred"
+    },
+    {
+      "id": "M0-T26",
+      "what": "DONE dc4499f9d",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T31",
+      "what": "deferral register — the precondition D-24 part 3 sets for flipping the CI blocking switch",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "F-DELIBERATE-NULL-FILLED",
+      "what": "A NEW CATEGORY, distinct from the durability problem. D-23 ruled the SOURCE question is R5's, and two KARAKA deliberately held lel_events's layer_index and layer_name at NULL because the value is not mechanically derivable. A RE-SEED FILLS THAT NULL with L5/Mimamsa — answering by default a question ADHIKARIN declined to decide. The deliberate NULL is not absent data; it is the only place in the registry where that openness is written down. No value-drift measurement would flag it, because nothing is 'wrong' before or after — the row would look correctly derived",
+      "owner": "ADHIKARIN",
+      "state": "asked"
+    },
+    {
+      "id": "RESTORE-DRILL-RULING",
+      "what": "M0-T26 EXECUTED its restore drill (transaction, 0 rows differed, rolled back) and disclosed it unprompted as the one action it expected to be challenged. My read: it closes the gap D-7 named — a snapshot whose restore was never verified is not a snapshot, and every prior repair left that authored-but-unexercised. But I set the constraint it may have exceeded, so my reading is self-serving. Asked ADHIKARIN whether to make the drill a STANDING requirement for this repair class",
+      "owner": "ADHIKARIN",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T06:49:51Z",
+  "last_updated_ts": "2026-08-23T06:54:42Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
