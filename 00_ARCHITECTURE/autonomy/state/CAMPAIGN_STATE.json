@@ -786,12 +786,6 @@
       "state": "asked"
     },
     {
-      "id": "M0-T43",
-      "what": "SQ-04 machinery coverage — the day's machinery has authors' proofs but no regression tests",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "CURRENT-STATE-REFRESHED",
       "what": "LEKHAKA took SQ-06 (e3608be6b): CURRENT_STATE 6.65 -> 6.66 written for the native cold, and SESSION_LOG given a dated STATUS entry rather than a fabricated session_open/session_close pair — it disclosed that this campaign does not run the single-session handshake that schema assumes rather than papering over it. Both files POINT BACK at the live sources rather than becoming a second thing that goes stale, which was the easy mistake to make. Verified by me: 7 'not closed' mentions, 0 overstatements, PARK-6 cited, no claim any rung has opened",
       "owner": "LEKHAKA",
@@ -810,14 +804,14 @@
       "state": "working"
     },
     {
-      "id": "M0-T44",
-      "what": "SQ-08 / RES-1 — the runner's silent success path",
-      "owner": "KARAKA",
-      "state": "running"
+      "id": "SLEEP-INCIDENT",
+      "state": "diagnosed_and_recovered",
+      "owner": "NATIVE",
+      "what": "Both running KARAKA (M0-T43, M0-T44) were killed at ~09:30Z by an API error reading 'Your computer went to sleep mid-response'. DIAGNOSED FROM pmset -g log, not guessed: 'Entering Sleep state due to CLAMSHELL SLEEP' at 15:00:16 IST on BATTERY (72%), then Maintenance Sleep for 377s, then 'Wake ... due to lid' at 15:06:49. THE LID WAS CLOSED for about six and a half minutes. caffeinate WAS running and did its job: `caffeinate -i` prevents IDLE sleep and cannot prevent CLAMSHELL sleep, and on battery a lid close sleeps regardless — clamshell operation needs external power AND an external display. So this is an environment constraint, not a tooling defect, and no fleet change would fix it. RECOVERY: swept for stray mutations first (T44 was mid-mutation-test) — NONE anywhere; migrate.ts dirty but the diff is T44's legitimate MIGRATE_COMPLETION_SENTINEL work, not a remnant; the other target clean and matching HEAD. Both agents RESUMED rather than re-dispatched, each told to re-establish its baseline and re-run rather than write a report from recollection — a summary written from memory after an interrupted response is exactly the class of claim this campaign refuses."
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T09:21:35Z",
+  "last_updated_ts": "2026-08-23T09:38:38Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
