@@ -19,15 +19,26 @@
  * executing, the task stops and parks rather than improvising a way to test it. So the proof is
  * deliberately split, and the split is stated rather than blurred:
  *
- *   STRUCTURAL, over the five real files' source text (§1). Proves the guard is present, that it
- *   is the exact `isDirectEntrypoint(import.meta.url, process.argv[1])` form, that the ONLY
- *   top-level `main()` invocation sits inside it, and — since M0-T66 (ruling D-67 part 3) — that
- *   the file defines NO private `isDirectEntrypoint` at all but imports and re-exports THE shared
- *   one in `scripts/lib/entrypoint.ts`. That replaces the original text-equality assertion
- *   against `scripts/seed/asset_registry_seed.ts`'s copy with an identity assertion, which is
- *   what finding F-2 asked for: eight copies that CAN diverge, versus one that cannot. Proven
- *   non-vacuous by paired fixtures in §3: an unguarded sample — including an INDENTED one — must
- *   be rejected by the same helpers that accept the repaired files.
+ *   STRUCTURAL, over every currently-guarded tier-1 file's source text (§1), not only the five —
+ *   Wave 2 (M0-T78, ratified D-122) guarded 53 more, and `TARGETS` is derived so they enter this
+ *   suite with no edit here (finding F-O). Proves the guard is present, that it is the exact
+ *   `isDirectEntrypoint(import.meta.url, process.argv[1])` form, that the ONLY top-level `main()`
+ *   invocation sits inside it, and — since M0-T66 (ruling D-67 part 3) — that the file defines NO
+ *   private `isDirectEntrypoint` at all but imports THE shared one in `scripts/lib/entrypoint.ts`.
+ *   That replaces the original text-equality assertion against
+ *   `scripts/seed/asset_registry_seed.ts`'s copy with an identity assertion, which is what
+ *   finding F-2 asked for: eight copies that CAN diverge, versus one that cannot.
+ *
+ *   §1 splits, per ADHIKĀRIN ruling D-108 (transferred whole to this suite by D-122 after V-81
+ *   caught the same conjunction failing here for the same reason it failed in
+ *   `shared_entrypoint_module.test.ts`), into the two obligations that only look like one:
+ *     §1a SURFACE PRESERVATION — owed ONLY by the five files this suite repaired (they held a
+ *         private copy before M0-T66; re-exporting keeps their public surface unchanged).
+ *     §1b ANTI-DRIFT — owed by every guarded tier-1 file, including all 53 of Wave 2, which never
+ *         held a private copy and so have no surface to preserve. NO re-export requirement.
+ *   Proven non-vacuous by paired fixtures in §3: an unguarded sample — including an INDENTED
+ *   one — must be rejected by the same helpers that accept the repaired files, and a Wave-2-shaped
+ *   sample (import, no re-export) must be accepted by §1b's helper and rejected by §1a's.
  *
  *   BEHAVIOURAL, over a harmless stand-in that carries the identical idiom (§2), never over the
  *   five. `fixtures/entrypoint_guard_standin.fixture.ts` proves the idiom itself resolves
@@ -103,11 +114,14 @@ const carriesGuard = (rel: string): boolean => read(rel).includes(GUARD_LINE)
 const TARGETS = TIER1.filter((rel) => fs.existsSync(path.join(PLATFORM_DIR, rel)) && carriesGuard(rel))
 
 /**
- * Coverage may be paid UP, never down. 5 is M0-T65's wave 1; after wave 2 this is 58 and the
- * floor should be raised to match. A derivation that silently returned [] would make every
- * assertion below vacuous, which is the failure mode this constant exists to catch.
+ * Coverage may be paid UP, never down. 5 was M0-T65's wave 1; Wave 2 has now landed (M0-T78
+ * dispatch, ratified D-122) and TARGETS measures 58 — the floor is raised to match, per the
+ * floors-aspirational discipline (CLAUDE.md §N.4): a floor is the measured achieved count, never
+ * an invented number. A derivation that silently returned [] (or regressed below 58) would make
+ * every assertion below vacuous or short a repaired file, which is the failure mode this
+ * constant exists to catch.
  */
-const COVERAGE_FLOOR = 5
+const COVERAGE_FLOOR = 58
 
 /**
  * THE one shared implementation (M0-T66, ruling D-67 part 3). Until M0-T66 this constant named
@@ -149,14 +163,25 @@ function predicateBody(src: string): string | null {
 }
 
 /**
- * True when the file gets `isDirectEntrypoint` from THE shared module rather than defining its
- * own copy — an `import` of the symbol from a `lib/entrypoint` specifier, plus a re-export so
- * the module's public surface is unchanged. (M0-T66 / ruling D-67 part 3.)
+ * ANTI-DRIFT (§1b's obligation, owed by EVERY guarded file): gets `isDirectEntrypoint` from THE
+ * shared module rather than defining its own copy. Silent on re-export — that is §1a's
+ * obligation, not this one. (M0-T66 / ruling D-67 part 3; split from SURFACE PRESERVATION per
+ * D-108 / D-122 — see the §1a/§1b split below.)
+ */
+function importsSharedModule(src: string): boolean {
+  return /import\s*\{[^}]*\bisDirectEntrypoint\b[^}]*\}\s*from\s*'[^']*lib\/entrypoint'/.test(src)
+}
+
+/**
+ * SURFACE PRESERVATION (§1a's obligation, owed ONLY by the five former copy-holders this suite
+ * repaired): imports the shared module AND re-exports it, so the module's public surface is
+ * unchanged. (M0-T66 / ruling D-67 part 3.) Do NOT use this for §1b's population — D-108 ruled
+ * that requiring a re-export from a file that never held a private copy is the wrong pattern,
+ * and D-122 confirmed the ruling transfers whole to this suite.
  */
 function importsSharedPredicate(src: string): boolean {
-  const imports = /import\s*\{[^}]*\bisDirectEntrypoint\b[^}]*\}\s*from\s*'[^']*lib\/entrypoint'/.test(src)
   const reexports = /export\s*\{[^}]*\bisDirectEntrypoint\b[^}]*\}/.test(src)
-  return imports && reexports
+  return importsSharedModule(src) && reexports
 }
 
 /** Lines that INVOKE `main()` (not the declaration) at column 0 — i.e. unguarded top level. */
@@ -184,9 +209,25 @@ function everyMainCallIsAfterGuard(src: string): boolean {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// §1 — STRUCTURAL: the five real files. Read as text; never imported, never executed.
+// §1 — STRUCTURAL: every currently-guarded tier-1 file. Read as text; never imported, never
+// executed. Split per ADHIKĀRIN ruling D-108 (and D-122, which transferred D-108 whole to this
+// suite after V-81 caught the same conjunction — imports && reexports — failing here for the
+// same reason) into the two obligations that only look like one requirement:
+//
+//   §1a SURFACE PRESERVATION, owed ONLY by the five destructive scripts THIS suite's own
+//       docstring names (M0-T65 / D-74 part 1) — the files that carried a private
+//       `isDirectEntrypoint` copy before M0-T66 collapsed them into the shared module. A
+//       historical RECORD, not a derived scan, frozen at exactly 5 (D-108's one sanctioned
+//       exception to "never hand-typed"). Each must import AND re-export the shared symbol.
+//
+//   §1b ANTI-DRIFT, owed by EVERY guarded tier-1 file, forever, growing with Wave 2 (M0-T78,
+//       ratified D-122) — derived from TARGETS, never hand-typed. Import the shared module,
+//       define none of your own. NO re-export requirement: a Wave-2 file never exported its own
+//       copy, so it has no public surface to preserve, and requiring one anyway teaches the
+//       wrong pattern at scale (D-108's decisive objection, restated verbatim by D-122 for this
+//       suite: "THE 53 FAIL FOR LACKING A RE-EXPORT THEY NEVER OWED").
 // ─────────────────────────────────────────────────────────────────────────────
-describe('M0-T65 §1 — structural: the five destructive scripts carry the guard', () => {
+describe('M0-T65 §1 — structural: every guarded tier-1 destructive script carries the guard', () => {
   const referenceBody = predicateBody(read(REFERENCE))
 
   it('the derived TARGETS list is non-vacuous and has not shrunk (F-O)', () => {
@@ -212,8 +253,42 @@ describe('M0-T65 §1 — structural: the five destructive scripts carry the guar
       expect(importsSharedPredicate(read(rel))).toBe(true)
     }
   })
+})
 
-  for (const rel of TARGETS) {
+/**
+ * ── THE FIVE DESTRUCTIVE SCRIPTS THIS SUITE REPAIRED (M0-T65 / D-74 part 1) — §1a's population ──
+ *
+ * A historical RECORD, not a derived scan — same D-108 rationale as `shared_entrypoint_module
+ * .test.ts`'s `FORMER_COPY_HOLDERS`, narrowed to the subset this suite's own docstring names
+ * (lines 6-10 above). These five held a private `isDirectEntrypoint` copy before M0-T66
+ * collapsed all eight former copy-holders into the shared module; this suite's obligation is
+ * only to the five it repaired, not the other three (`scripts/migrate.ts`,
+ * `scripts/seed/asset_registry_seed.ts`, `scripts/pariprashna/ledger_writer_worker.ts`), which
+ * `shared_entrypoint_module.test.ts` covers directly. The list is enumerated, FROZEN AT EXACTLY
+ * 5, and cites its source: the same commit cited by the sibling suite's `FORMER_COPY_HOLDERS`.
+ * It can never grow.
+ */
+const WAVE1_FIVE = [
+  'scripts/_archived/seed-abhisek.ts',
+  'scripts/dedupe_charts.ts',
+  'scripts/dev/mint_session_cookie.ts',
+  'scripts/probe/ask.ts',
+  'scripts/set-password.ts',
+].map((rel) => rel.split('/').join(path.sep))
+
+describe('M0-T65 §1a — the five destructive scripts preserve their public surface (D-108/D-122)', () => {
+  it('the record is frozen at exactly 5 and every named file is a current TARGET', () => {
+    // This is a RECORD, not a scan: it must never grow, and a shrink (or a file falling out of
+    // TARGETS) means a listed file moved, lost its guard, or was deleted without this list being
+    // updated to match.
+    expect(WAVE1_FIVE.length).toBe(5)
+    for (const rel of WAVE1_FIVE) {
+      expect(fs.existsSync(path.join(PLATFORM_DIR, rel))).toBe(true)
+      expect(TARGETS).toContain(rel)
+    }
+  })
+
+  for (const rel of WAVE1_FIVE) {
     describe(rel, () => {
       const src = read(rel)
 
@@ -238,9 +313,59 @@ describe('M0-T65 §1 — structural: the five destructive scripts carry the guar
       it('defines NO private predicate — it imports and re-exports the shared one', () => {
         // M0-T66 / D-67 part 3. Was "body identical to the certified copy"; identity of
         // implementation replaces equality of text, so divergence is now impossible rather
-        // than merely detected.
+        // than merely detected. Re-export required: this file previously exported its own copy
+        // (D-108 SURFACE PRESERVATION).
         expect(predicateBody(src)).toBeNull()
         expect(importsSharedPredicate(src)).toBe(true)
+      })
+
+      it('the guard block closes at end of file (nothing runs after it)', () => {
+        const lines = src.split('\n').filter((l) => l.trim() !== '')
+        expect(lines[lines.length - 1].trim()).toBe('}')
+      })
+    })
+  }
+})
+
+describe('M0-T65 §1b — every guarded tier-1 file carries the guard and defines no private predicate (D-108/D-122)', () => {
+  const OTHERS = TARGETS.filter((rel) => !WAVE1_FIVE.includes(rel))
+
+  it('the derived (non-Wave-1) population is non-vacuous and has not shrunk (F-O)', () => {
+    // A broken derivation would empty this and the per-file blocks below would simply not exist
+    // — a green suite asserting nothing. Wave 2 (M0-T78, ratified D-122) guarded 53 files; this
+    // is the floor that makes a silent regression below that impossible.
+    expect(OTHERS.length).toBeGreaterThanOrEqual(53)
+  })
+
+  for (const rel of OTHERS) {
+    describe(rel, () => {
+      const src = read(rel)
+
+      it('has NO unguarded top-level main() call', () => {
+        expect(unguardedTopLevelMainCalls(src)).toEqual([])
+      })
+
+      it('calls main() exactly once, and only after the guard line', () => {
+        expect(allMainCalls(src)).toHaveLength(1)
+        expect(everyMainCallIsAfterGuard(src)).toBe(true)
+      })
+
+      it('uses the exact isDirectEntrypoint guard form, exactly once', () => {
+        const occurrences = src.split(GUARD_LINE).length - 1
+        expect(occurrences).toBe(1)
+        // Not the CI-gate contract — opposite hazard, opposite default (A3.4 rule 5).
+        expect(src).not.toMatch(/process\.env\.IMPORT_ONLY/)
+        // Not the retired environment-sentinel form either (ruling D-9 / M0-T60).
+        expect(src).not.toMatch(/^\s*if \(process\.env\.NODE_ENV/m)
+      })
+
+      it('defines NO private predicate — it imports the shared one (no re-export required)', () => {
+        // Deliberately NOT importsSharedPredicate here — §1b owes ANTI-DRIFT only. A file that
+        // never held a private copy (every Wave-2 file) has nothing to re-export, and D-108
+        // (transferred whole to this suite by D-122) is explicit that requiring one anyway is
+        // the wrong fix — it teaches 53 files the wrong pattern.
+        expect(predicateBody(src)).toBeNull()
+        expect(importsSharedModule(src)).toBe(true)
       })
 
       it('the guard block closes at end of file (nothing runs after it)', () => {
@@ -359,7 +484,7 @@ describe('M0-T65 §3 — the structural detectors are non-vacuous', () => {
     expect(predicateBody(GUARDED_SAMPLE)).not.toBe(predicateBody(read(REFERENCE)))
   })
 
-  it('importsSharedPredicate rejects a private copy and a bare import (M0-T66)', () => {
+  it('importsSharedPredicate (§1a) rejects a private copy and an un-re-exported import (M0-T66)', () => {
     // Without these, "defines NO private predicate" could pass on a file that has neither the
     // predicate NOR the import — i.e. on a file with no guard at all.
     expect(importsSharedPredicate(GUARDED_SAMPLE)).toBe(false)
@@ -372,6 +497,16 @@ describe('M0-T65 §3 — the structural detectors are non-vacuous', () => {
         "import { isDirectEntrypoint } from '../lib/entrypoint'\nexport { isDirectEntrypoint }\n",
       ),
     ).toBe(true)
+  })
+
+  it('importsSharedModule (§1b) accepts an import without re-export, and still rejects a private copy or no guard at all (D-108/D-122)', () => {
+    // This is the case D-108 exists for, transferred whole to this suite by D-122: Wave-2 files
+    // import the shared module and never re-exported anything, because they never held a
+    // private copy to preserve. §1b must stay GREEN on exactly that shape — this is the
+    // non-vacuity proof that V-81's fix does not simply relax §1a's check into a no-op.
+    expect(importsSharedModule("import { isDirectEntrypoint } from './lib/entrypoint'\n")).toBe(true)
+    expect(importsSharedModule(GUARDED_SAMPLE)).toBe(false)
+    expect(importsSharedModule(UNGUARDED_SAMPLE)).toBe(false)
   })
 
   it('F — under vitest the stand-in module is never the entrypoint', () => {
