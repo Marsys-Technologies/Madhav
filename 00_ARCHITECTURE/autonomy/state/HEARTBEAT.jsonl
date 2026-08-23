@@ -12,3 +12,12 @@
 {"ts":"2026-08-23T04:08:56Z","agent":"KARAKA-M0-T3","status":"working","detail":"starting M0-T3: reading asset_throughput schema"}
 {"ts":"2026-08-23T04:09:11Z","agent":"KARAKA-M0-T4","status":"working","detail":"read charter+prompts+588/589; locating migrate.ts ledger"}
 {"ts":"2026-08-23T04:09:12Z","agent":"SUTRADHARA","status":"working","detail":"4 KARAKA dispatched (M0-T1..T4) at cap; 2 authority questions to ADHIKARIN; state updated"}
+{"ts":"2026-08-23T04:10:22Z","agent":"KARAKA-M0-T2","status":"working","detail":"live schema queried: all 4 columns missing; scope/layer value sets captured; authoring contract doc"}
+{"ts":"2026-08-23T04:10:22Z","agent":"PRAHARI","status":"working","detail":"loop tick 3: all 4 KARAKA (M0-T1..T4) heartbeated+working, D-3 filed by ADHIKARIN (stale index.lock cleared, path-scoped-add precedent set for shared tree — informational, no PRAHARI action). 2 to_conductor msgs 2-3min old, within SLA. No build_runs (matches census). Spend nominal: output 311.3k/60M campaign, all-class 48.7M/15B."}
+{"ts":"2026-08-23T04:10:27Z","agent":"KARAKA-M0-T3","status":"working","detail":"snapshot verified (267 rows, cell-exact); measuring orphans/durations"}
+{"ts":"2026-08-23T04:10:33Z","agent":"PARIKSAKA","status":"working","detail":"V-2 written: L-12 timeout evidence REFUTED live (107/128 set, not ~2); 7 assets have timeouts below own measured worst (up to 13x); §15 timeout-source field can never emit 'default'"}
+{"ts":"2026-08-23T04:10:45Z","agent":"D1-PROBE","status":"working","detail":"resolution probe from /"}
+{"ts":"2026-08-23T04:10:45Z","agent":"D1-PROBE","status":"working","detail":"resolution probe from /tmp"}
+{"ts":"2026-08-23T04:10:45Z","agent":"D1-PROBE","status":"working","detail":"resolution probe from /Users/Dev"}
+{"ts":"2026-08-23T04:10:45Z","agent":"D1-PROBE","status":"working","detail":"override path still works"}
+{"ts":"2026-08-23T04:11:01Z","agent":"KARAKA-M0-T4","status":"working","detail":"DB verified read-only: 588 applied, 589 applied; found 588 number collision with 588_samiksha_digest_journal"}
