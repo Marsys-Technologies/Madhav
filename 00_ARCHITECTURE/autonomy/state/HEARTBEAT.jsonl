@@ -928,3 +928,5 @@
 {"ts":"2026-08-23T15:39:25Z","agent":"KARAKA-M0-T60","status":"working","detail":"repair applied + 6/6 direct-run proofs both directions; writing paired detector test"}
 {"ts":"2026-08-23T15:39:30Z","agent":"KARAKA-M0-T61","status":"working","detail":"starting: reading binding docs for formatServerNotice newline escape"}
 {"ts":"2026-08-23T15:39:52Z","agent":"KARAKA-M0-T61","status":"working","detail":"read D-65/D-62/D-58/D-56; reading M0-T57 report + migrate.ts formatServerNotice"}
+{"ts":"2026-08-23T15:40:47Z","agent":"KARAKA-M0-T60","status":"working","detail":"7/7 new guard tests pass; 3 mutations incl. 2 inverse-direction all caught; running wider suites"}
+{"ts":"2026-08-23T15:41:11Z","agent":"KARAKA-M0-T61","status":"working","detail":"editing formatServerNotice: escape CR/LF in every relayed server-controlled field"}
