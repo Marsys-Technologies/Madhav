@@ -60,7 +60,7 @@
         "00_ARCHITECTURE/L1_GANITA_CLOSURE_v1_0.md §2.1 (SUPERSEDED) lists ga_chart_service as '(service; no direct table)' in its 10-row table",
         "00_ARCHITECTURE/L1_GANITA_CLOSURE_v2_0.md §2.1 (CURRENT) 'full 15-asset picture' has no ga_chart_service row",
         "00_ARCHITECTURE/RETRIEVAL_STRATEGY_v1_0.md §5.3 (native ruling, 2026-07-19) — 'Coverage is stored assets + service assets ... ga_chart_service, the panchanga service, the ephemeris/python sidecars ... Computed responses ... cannot carry [a build_id]'",
-        "platform/src/lib/retrieval/registry/types.ts:330 and multiple retrieval-layer files reference ga_chart_service as a live, consulted computation path (not historical/dead code)",
+        "platform/src/lib/retrieval/registry/types.ts:330 documents ga_chart_service in a comment explaining `data_source: computed` — the only occurrence of the literal string in platform's .ts/.py outside this manifest's own docstring (verified by grep; not a second code reference). Liveness itself rests on 00_ARCHITECTURE/PRE_REGEN_AUDIT_FINDINGS_REGISTER_v1_0.md:376, which maps `brahmagyan/ganita/engine.py` to `ga_chart_service` as an L1 service, and on RETRIEVAL_STRATEGY_v1_0.md §5.3 above",
         "Live DB (read-only): build_run_assets has 1 row for 'ga_chart_service' (state=aborted, error='guardian_cleanup', started_at=null, ended_at=2026-07-13T21:13:41Z); build_runs row 92133010-9f35-43b6-b126-552cb8dc9b8f — chart_id=1c826d5a-41cb-4450-b4dc-59d440e5f75a, action='build', scope_target='ga_chart_service', plan=['ga_chart_service'], created_at=2026-06-26T15:31:48Z, triggered_by=xl2wYZRPwsVgPSAgtn9XJ80Xkub2 (same principal + same day as the chart_dashas runs), state='failed'"
       ]
     }
