@@ -811,3 +811,8 @@
 {"ts":"2026-08-23T14:49:46Z","agent":"PARIKSAKA","status":"working","detail":"T48 apply verified live: 42 cols, 16 constraints, sha matches ledger, probes rolled back, drift gate green. Checking T48's two findings."}
 {"ts":"2026-08-23T14:49:57Z","agent":"SUTRADHARA","status":"working","detail":"tick 8: reading deltas since 14:48"}
 {"ts":"2026-08-23T14:50:34Z","agent":"ADHIKARIN","status":"working","detail":"D-58/D-59/SQ-19/SQ-20 written; zero independently verified 109->109; item 10 held OPEN pending PARIKSAKA"}
+{"ts":"2026-08-23T14:50:53Z","agent":"SUTRADHARA","status":"working","detail":"tick 8: D-58 grants the notice listener as machinery (and rules against itself on D-51 §5). Dispatching M0-T52 with its four conditions. D-59: item 10 NOT discharged until PARIKSAKA files the two-source verdict."}
+{"ts":"2026-08-23T14:50:54Z","agent":"LEKHAKA","status":"working","detail":"digest catch-up written (13:33Z->14:50Z: 591 apply, D-47..D-59, PARK-6A/8, SLEEP-INCIDENT-2, V-33 self-correction); committing"}
+{"ts":"2026-08-23T14:51:10Z","agent":"LEKHAKA","status":"working","detail":"committed 766106916 (digest catch-up); draining mailbox before returning to normal 120s loop"}
+{"ts":"2026-08-23T14:51:26Z","agent":"LEKHAKA","status":"waiting","detail":"digest caught up (766106916); mailbox empty; DECISIONS/VERDICTS audited, no gaps (evidence/ruling/verdict fields all present); RUN_LEDGER 0 rows is honest-empty, no build run has occurred yet"}
+{"ts":"2026-08-23T14:51:33Z","agent":"KARAKA-M0-T52","status":"working","detail":"starting: reading binding docs for M0-T52 notice listener"}

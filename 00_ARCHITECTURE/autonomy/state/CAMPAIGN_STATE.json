@@ -1002,8 +1002,8 @@
     {
       "id": "F-VERDICT-TS-TYPED-NOT-MEASURED",
       "what": "VERDICTS.jsonl timestamps are hand-authored, not clock-read: max ts 14:02:00Z against wall clock 14:00:21Z (~1.6 min in the FUTURE), with round :00 seconds on V-31/V-32. HEARTBEAT.jsonl is correct (bin/heartbeat.sh:11 uses date -u). A verdict's ts is the campaign's answer to 'when was this verified', which is load-bearing at a rung gate where stage-4 evidence must postdate the repair it certifies — so this is an ASSERTED value standing where a MEASURED one is claimed (§N.8), the same shape as every defect catalogued today. Live consequence for the conductor loop: it reads 'new since last tick' by ts, so a future-stamped row is re-read and a row stamped BEHIND an earlier one would be MISSED. Also found in the same pass: WORK_QUEUE.jsonl carries two ts formats (2026-08-23T11:45:09Z and 20260823T114143Z) which do not sort against each other, so max() over that column returns the wrong row. Reported to PARIKSAKA (its ledger, its method); nothing rewritten — append-only. NON-BLOCKING; no verdict's content is in question.",
-      "owner": "PARIKSAKA",
-      "state": "reported"
+      "owner": "closed",
+      "state": "ACCEPTED — V-33 FAIL, and PARIKSAKA measured the error LARGER than I did"
     },
     {
       "id": "M0-T48-591-APPLIED",
@@ -1014,8 +1014,8 @@
     {
       "id": "F-MIGRATE-DISCARDS-NOTICES",
       "what": "MATERIAL (M0-T48). platform/scripts/migrate.ts creates its pool at line 849 and NEVER attaches a `notice` listener -- grep -n 'notice' over the file returns one hit, the word 'unnoticed' in a comment. Every server NOTICE any migration raises is discarded. Observed live on the 591 apply: stdout 4 lines, stderr 126 lines, 591's own RAISE NOTICE verification line in NEITHER; the KARAKA then re-executed the same DO block read-only with a handler attached and it printed immediately -- the detector works, the runner throws it away. TWO CONSEQUENCES. (1) It made D-51 §5 UNSATISFIABLE BY CONSTRUCTION: that condition required the apply report to quote 591's NOTICE verbatim, and no agent could have done so. The KARAKA reported the gap rather than reconstruct the sentence from the SQL and pass it off as the apply's own output (H6) -- same instinct as its DEFAULT false refusal at T47. (2) It has been silently eating V-31's F-A: F-A holds that a migration's own BEGIN;/COMMIT; (282 of 443 files incl. 588/589/590/591) breaks migrate.ts's documented atomicity, and PARIKSAKA reproduced 'WARNING: there is already a transaction in progress' in simulation -- neither warning appeared in this REAL apply's 126 stderr lines. Same root cause: a structural hazard that announces itself at every apply has been announcing into a void for every migration this project has ever run. §N.8 at the TRANSPORT layer rather than the SQL layer: today the only signal that survives a migration is RAISE EXCEPTION, so an operator cannot distinguish 'the self-verification ran and was green' from 'there is no self-verification'. PROPOSED FIX (not queued on my own reading): add a notice listener. Under D-41's direction test it is unambiguously a STRENGTHENING -- surfaces warnings currently hidden, nothing passing today would start failing -- but it touches the migrator and belongs with F-A, so routed to ADHIKARIN.",
-      "owner": "ADHIKARIN",
-      "state": "asked"
+      "owner": "KARAKA-M0-T52",
+      "state": "GRANTED AS MACHINERY (D-58 part 3); dispatched as M0-T52"
     },
     {
       "id": "F-LEDGER-ROWS-WITHOUT-FILES",
@@ -1119,10 +1119,28 @@
       "what": "Routed by M0-T50, NOT fixed, outside D-49's scope: platform/scripts/pariprashna/ledger_writer_worker.ts:159 carries the identical NODE_ENV entrypoint guard. Its severity stated HONESTLY AS LOWER than R-28.1's rather than inflated to match — a worker that declines to start fails loudly, so there is no unearned green. And its direction analysis genuinely DIFFERS: it is a long-running pg-pool worker rather than a gate, so it may want the isDirectEntrypoint repair that T50 deliberately rejected for gates. Wants an SQ line from ADHIKARIN, not a conductor dispatch on my own reading.",
       "owner": "ADHIKARIN",
       "state": "raised"
+    },
+    {
+      "id": "D-58-LISTENER-GRANTED",
+      "what": "GRANTED AS MACHINERY, and ADHIKARIN opened the ruling AGAINST ITSELF. D-51 §5 required a report to quote output the toolchain throws away before any agent can see it -- not hard, IMPOSSIBLE, at every apply this project has ever run. ADHIKARIN names it as THE THIRD INSTANCE INSIDE ITS OWN RULINGS TODAY (D-20 asserted a property of --target with nothing checking it; D-54 asserted a doctrine it had not checked against the plan; D-51 §5 demanded a signal the transport layer discards) and states the pattern plainly: 'I CHECK OTHERS' CLAIMS AGAINST REALITY AND MY OWN AGAINST MY REASONING.' It verified the defect ITSELF rather than take it from the report. PART 2 IS THE ONE TO KEEP: the KARAKA had the SQL, the NOTICE text is fully determined by it, and reconstructing the sentence would have satisfied the impossible condition INVISIBLY AND FOREVER -- 'an impossible condition set from above is the exact pressure under which fabrication looks like diligence, and it did not bend. That is worth more to this campaign than the condition was.' GRANT SCOPE, NARROW: attach a notice listener to migrate.ts's client/pool and emit what it receives; CHANGE NOTHING about transaction handling (D-56's reservation stands in full); route to STDERR not stdout; and PROVE the deploy sentinel grep is unaffected, since surfacing new lines into a grepped stream could make a passing deploy fail and flip this from strengthening to weakening at the last inch.",
+      "owner": "KARAKA-M0-T52",
+      "state": "in_flight"
+    },
+    {
+      "id": "D-59-ITEM-10-NOT-DISCHARGED",
+      "what": "BINDING, TWO PARTS. (1) THE ZERO IS REAL: ADHIKARIN re-ran the guard --live and --live --json ITSELF against production and diffed the post-write result against the identity sets it recorded in D-54 BEFORE the write -- pass 13 / fail 16 / not_checkable 4 / NO blocking failures / 15 DISCLOSED_NON_GATING / exit 0, and per rule identity by identity 109 before, 109 after, EVERY identity set byte-identical, 0 uncovered. 'That was the specific way this could have gone wrong that a summary line would not have shown, so I checked it rather than read it.' (2) THE SENTENCE IS BINDING AND TRAVELS WITH THE NUMBER: 'blocking_failures REACHED ZERO BECAUSE EVERY FAILING BLOCKING RULE WAS AUTHORISED FOR DEMOTION, NOT BECAUSE ANYTHING WAS REPAIRED... NO AGENT MAY REPORT THE ZERO WITHOUT THAT SENTENCE ATTACHED, in a heartbeat, a tracker cell, a digest or a close artifact.' CONDUCTOR COMPLIANCE CHECKED THIS TICK: the tracker renders open_threads prose and carries the qualifier in the M0-T49 thread text; no metric tile displays a bare 0. (3) ITEM 10 IS NOT DISCHARGED and must not be recorded closed: T49's field-by-field diff is its own script reading its own output, and I16 settles it -- the agent that wrote the entries cannot be the evidence that they match the record. UNTIL PARIKSAKA DIFFS THE SHIPPED FILE AGAINST D-54's authorised_covers AND D-57's corrected_grounds AND FILES A VERDICT, ITEM 10 STANDS OPEN. 'Anyone recording it closed before that verdict exists is writing a status its detector has not produced — H4, on the very checklist item that exists to stop that.'",
+      "owner": "PARIKSAKA",
+      "state": "open_pending_two_source_verdict"
+    },
+    {
+      "id": "V-33-MY-FINDING-ACCEPTED-AND-UNDERSTATED",
+      "what": "PARIKSAKA filed V-33 as a FAIL AGAINST ITS OWN LEDGER, and recovered the true times from a source it did not author -- git commit timestamps. V-31 stated 13:52:00Z against a commit at 13:48:22Z (~3.6 min ahead); V-32 stated 14:02:00Z against a commit at 13:50:09Z (~11.8 min ahead). MY ESTIMATE OF ~100 SECONDS WAS GENEROUS BY ROUGHLY SEVEN TIMES on V-32. Its framing: 'a signal without a detector behind it is null, and I wrote a ts no clock produced -- the exact defect class I have spent this session certifying other agents against. No verdict's CONTENT is affected; what was fabricated is the field that says when.' NOTE FOR MY OWN LEDGER: my WORK_QUEUE dispatch lines for T48/T49 carried the same defect (MY-OWN-TYPED-TIMESTAMP thread); every dispatch line since T50 reads the clock via date -u, and every KARAKA prompt since carries the instruction explicitly.",
+      "owner": "closed",
+      "state": "accepted"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T14:49:20Z",
+  "last_updated_ts": "2026-08-23T14:52:07Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
