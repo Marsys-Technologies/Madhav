@@ -384,12 +384,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T22",
-      "what": "has_writer derived from code — closes a gate BYPASS at R0's first freeze, where two genuinely-built assets would have been exempted from the efficiency pass entirely",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "F-ARGV-DRYRUN",
       "what": "M0-T19's F-1: SIX sibling scripts spell dry-run as an ARGV flag (--dry-run) — migrate.ts:691, cleanup_orphaned_firebase_users.ts:16, observatory/smoke_test.ts:53, three bootstrap scripts, icr_pr_gate.ts:175. Typed at the seeder, --dry-run is silently ignored and the live upsert proceeds. So the hazard D-17 closed is only half closed: it returns by the spelling the codebase ITSELF taught the operator. The KARAKA declined to widen D-17 on its own and recommends ADHIKARIN extend it. I agree and have not queued it",
       "owner": "ADHIKARIN",
@@ -412,10 +406,22 @@
       "what": "0.6b kind repair — held one more beat so only ONE agent writes asset_registry at a time; dispatches when T20 lands",
       "owner": "SUTRADHARA",
       "state": "queued_blocked"
+    },
+    {
+      "id": "M0-T22",
+      "what": "COMPLETE bb089baf6 — the R0 freeze-gate bypass is closed at its mechanism rather than at its two symptoms. It also reported three things unprompted: it edited a T5-owned file (docstring only), it sorted the Defect Register without being asked, and it had NOT swept for other registry booleans of this shape — which is why M0-T24 now exists",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T24",
+      "what": "D-25 part 3 sweep — find the remaining gating fields BEFORE they are tripped over. Both known instances were discovered by accident while doing something else",
+      "owner": "KARAKA",
+      "state": "running"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T05:41:14Z",
+  "last_updated_ts": "2026-08-23T05:50:03Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
