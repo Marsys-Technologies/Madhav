@@ -262,12 +262,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "PHANTOM-DRYRUN",
-      "what": "DRY_RUN=1 is documented for asset_registry_seed.ts in two archived L0/cockpit briefs and is NOT IMPLEMENTED. An operator following the documentation performs a full live upsert against asset_registry in production. §N.8 inverted: a SAFETY MECHANISM with no implementation, failing in the direction that does damage, and harming the careful operator rather than the careless one. Two defensible repairs (implement it / strike the claim) so the choice is a scope decision, not a KARAKA's. Escalated, not dispatched",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
       "id": "M0-T11",
       "what": "CERTIFIED PASS (V-3, 10 angles). Residual RES-1 raised separately: silent deploy no-op has no detector. Does not block the wave",
       "owner": "closed",
@@ -328,18 +322,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "HAS-SUBSTEPS-LIVE",
-      "what": "SATYA-DIPA's §N.8 instance 4, still live on 12 assets, 8 of them CURRENT. asset_runner.py:620 reads has_substeps FROM asset_registry and plan_complete is initialised True, only recomputed inside `if has_substeps:`. So a false-negative row means the substep-plan-completeness re-probe NEVER RUNS and a partial build is promoted lit. The 2026-07-29 code fix landed; the registry rows that switch the question off were never repaired, so for these 12 the fix is inert — the detector exists and is being told not to run. Repair NOT queued: it is the one M0 write that changes build-promotion behaviour rather than metadata. ADHIKARIN asked",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
-      "id": "KIND-ORDER-TRAP",
-      "what": "the plan's 0.6b wording, applied literally as a repair rule, corrupts two rows: all 6 kind disagreements resolve to service, but 2 need asset_kind corrected and 4 need asset_type. Repair values FIRST, then make the column authoritative. A runtime no-op today because both live consumers read the pair as an OR — which is why nothing broke and why nothing would have noticed",
-      "owner": "ADHIKARIN",
-      "state": "raised"
-    },
-    {
       "id": "F-3-CASELAW",
       "what": "D-9 part 2's condition — pin --target 'so the run cannot sweep anything else' — states a property the flag does not deliver; it bounds the tail, never the head. V-3 does not cover it: angle 5 proved --target 590 ENTERS main(), a correct proof about the entrypoint guard and silent on selection semantics. So it was an asserted property with no detector behind it, INSIDE A BINDING RULING — §N.8's defect class in the campaign's own case law rather than in the catalogue it audits. My share: I read it, believed it, built a sequence on it, and did not check the mechanism",
       "owner": "ADHIKARIN",
@@ -382,26 +364,44 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T19",
-      "what": "make the seeder REFUSE when DRY_RUN is set (D-17's third option, better than either I proposed)",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
-      "id": "WAVE-F3",
-      "what": "wave still HELD. D-18 part 1 cleared it on V-3, but was written BEFORE M0-T12 found F-3 and still instructs '--target pinned' as though the flag selects one migration. Dispatching on D-18's letter would repeat the exact error that halted the wave. Awaiting the F-3 ruling; ADHIKARIN told it can say D-18 already covers it and I dispatch Option A immediately",
-      "owner": "ADHIKARIN",
-      "state": "held_pending_ruling"
-    },
-    {
       "id": "D16-COMPLIANCE",
       "what": "I verified my own pane from process ancestry: I am %0 in prp-night:conductor, NOT the window named nirmana:conductor (%15, another campaign, live). DISCLOSED: I did take three tmux send-keys addressed by WINDOW NAME (nirmana:verifier) before D-16 existed. It reached the right agent — %12 — but by luck of that name matching its content, which is exactly what D-16 says may not be relied on. I never touched %15. A failed 'scribe-' capture earlier was my first evidence the naming was wrong and I treated it as a typo; it was a signal. All tmux actions now pane-ID addressed, re-verified at use",
       "owner": "SUTRADHARA",
       "state": "disclosed"
+    },
+    {
+      "id": "M0-T19",
+      "what": "COMPLETE 4154888f3 — the seeder now REFUSES when DRY_RUN is present at all (presence, not truthiness: refusing someone who meant 'off' costs one error message; honouring a falsey spelling someone typed expecting a preview costs a production upsert). Three mutations each caught, including one proving the ORDERING is load-bearing: moved after validateFormulas() it produced no refusal at all, because the bg_cohort abort reached the operator first",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T12+T13",
+      "what": "RE-DISPATCHED under D-20 Option A, ascending, one --target per run",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "M0-T22",
+      "what": "has_writer derived from code — closes a gate BYPASS at R0's first freeze, where two genuinely-built assets would have been exempted from the efficiency pass entirely",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "M0-T20/T21",
+      "what": "registry repairs (has_substeps; kind values-then-authoritative) — AUTHORIZED by D-24 and held on SEQUENCING not authority: 590's ALTER TABLE takes an ACCESS EXCLUSIVE lock on asset_registry and a concurrent UPDATE would contend with it. Dispatch when the wave lands",
+      "owner": "SUTRADHARA",
+      "state": "queued_blocked"
+    },
+    {
+      "id": "F-ARGV-DRYRUN",
+      "what": "M0-T19's F-1: SIX sibling scripts spell dry-run as an ARGV flag (--dry-run) — migrate.ts:691, cleanup_orphaned_firebase_users.ts:16, observatory/smoke_test.ts:53, three bootstrap scripts, icr_pr_gate.ts:175. Typed at the seeder, --dry-run is silently ignored and the live upsert proceeds. So the hazard D-17 closed is only half closed: it returns by the spelling the codebase ITSELF taught the operator. The KARAKA declined to widen D-17 on its own and recommends ADHIKARIN extend it. I agree and have not queued it",
+      "owner": "ADHIKARIN",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T05:21:26Z",
+  "last_updated_ts": "2026-08-23T05:31:40Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
