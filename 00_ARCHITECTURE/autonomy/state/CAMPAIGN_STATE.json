@@ -671,12 +671,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T38",
-      "what": "investigate the revert that verified clean and did not stick — verification integrity",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
       "id": "F-ACK-GATE-ENV-ONLY",
       "what": "M0-T37's F-1: M0-T35's SEED_ACK_NULL_FILL gate is ALSO env-only — the same two-channel shape recurring in the same file one ruling cycle later. It now FAILS SAFE, since a flag-form attempt is refused rather than ignored, so this is a shape worth naming rather than a live hazard",
       "owner": "ADHIKARIN",
@@ -711,10 +705,22 @@
       "what": "47 DRAFT assets with complete evidence packets and ZERO promotions; 23 zero-consumer packets with ZERO dispositions. The evidence has been complete since M0-T6/T7 hours ago. These are G1 decisions and I have not queued them because deciding them is not mine",
       "owner": "ADHIKARIN",
       "state": "asked"
+    },
+    {
+      "id": "M0-T38",
+      "what": "DONE — mechanism proven at byte level; no stray mutations anywhere",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "V-12-BASELINE-POISONED",
+      "what": "PARIKSAKA verified M0-T35 while holding a baseline that already carried M0-T37's mutation. M0-T38 recorded it and explicitly DECLINED to judge whether V-12's substantive conclusion is affected (I16). Sent to PARIKSAKA with my read offered as INPUT NOT A FINDING — that V-12's conclusion rested on an empirical re-measurement of the target_floor argument, a property of the registry and the seed's declarations rather than of the file bytes being mutated, so the poison likely touched the mutation-test leg and not the substantive one. Asked it to CHECK rather than accept my reading, because this is exactly the inference I have been wrong about twice today",
+      "owner": "PARIKSAKA",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T08:22:44Z",
+  "last_updated_ts": "2026-08-23T08:24:43Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
@@ -731,6 +737,7 @@
     "correction_to_D16": "D-16's map records SUTRADHARA=%0 and rules pane ID authoritative. VERIFIED: ListAgents' own header says this session is 'Nirmana autonomous campaign conductor [47edb6]' and is NOT among the listed peers, while madhav-8e IS listed at prp-night:%0, started ~9h ago — before this fleet launched. So madhav-8e is a DIFFERENT session, and a keystroke to %0 lands in ITS compose box, not mine. My own earlier claim 'I am %0' was right about ancestry (my shell's parent chain resolves through %0's pane_pid 83558) and WRONG as an identity claim. NOT verified: which process in that chain is madhav-8e — ps is flooded with desktop-app helpers and the operational answer does not depend on it. READING, not a finding: this session is a background job, so madhav-8e is most likely the interactive session that launched me. %0 is therefore a SECOND case where a pane does not uniquely identify who receives input — the same failure D-16 was written to prevent, one layer over: first a window NAME that did not identify its content, now a pane ID that does not identify its occupant. Correcting D-16's map is ADHIKARIN's; the ledger is untouched."
   },
   "standing_instructions": {
-    "mutation_restore": "Restore a mutation from a BYTE-COPY, never from git. Forbidden: git checkout/restore/stash for this purpose — each restores from GIT's idea of the file, not yours, and in a shared working tree that silently discards a sibling's uncommitted edits. Same class as the three commit races earlier today, except a lost edit leaves no artifact to notice. Required: cp before, mutate, test, cp back, PROVE the restore by cmp/sha256 in the report, delete the copy. Raised by PARIKSAKA during V-12; already the practice of six agents today, now explicit. Related: an on-disk fixture must be removed via trap/finally so an aborted run cannot leave it, and the removal proved (M0-T14's standard)."
+    "mutation_restore": "REVISED after M0-T38 proved the earlier version insufficient. THE DEFECT IS THE SHAPE OF THE CHECK: 'sha256 == my-own-baseline' is a PROXY ('the file equals my copy') standing in for the CLAIM ('no mutation is present') — with a poisoned baseline it is structurally incapable of returning false. Our own §N.8 class, on the mechanism we use to trust our checks. R1 exclusivity — prefer a per-agent worktree when mutating; removes the class rather than detecting it. R2 PROVE THE BASELINE BEFORE MUTATING: its sha256 must equal the file's HEAD blob or a hash your own previous command printed; if neither, STOP — you have copied a sibling's in-flight state. IF ONLY ONE IS ADOPTED, ADOPT R2. R3 restore verification includes a MARKER SWEEP, not only baseline equality. R4 hash-bracket PRE/POST in one shell invocation for anything you will quote. R5 marker sweep immediately before committing. R6 delete the byte-copy.",
+    "dispatch_isolation": "CONDUCTOR CHANGE: mutation-heavy tasks are dispatched WORKTREE-ISOLATED from now on. R1 applied at the dispatch layer rather than asked of each agent — the shared working tree is what made two correct agents corrupt each other, and no amount of per-agent care removes a class that the dispatcher can."
   }
 }
