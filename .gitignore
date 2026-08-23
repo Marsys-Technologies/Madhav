@@ -130,3 +130,13 @@ platform/scripts/probe/out/
 # Cowork context-upload bundles — re-tars of files already committed in this repo;
 # reproducible, never a source of truth
 /_cowork_tmp/
+
+# --- Nirmāṇa autonomous campaign (setup, 2026-08-23) ---
+# Campaign worktrees: transient, per-lane, never part of a commit.
+.clone/worktrees/
+# Holds an unrotated production MCP key. Charter P4: adjacent debris —
+# not to be opened, printed, or fixed. Git must simply never see it.
+.codex/config.toml
+# Inter-agent mailbox: runtime coordination traffic, not an audit artifact.
+# (state/*.jsonl ledgers ARE committed — they are the audit trail.)
+00_ARCHITECTURE/autonomy/mailbox/

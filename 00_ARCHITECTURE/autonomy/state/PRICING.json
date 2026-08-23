@@ -1,0 +1,19 @@
+{
+  "_note": "Fill with current published rates, USD per 1M tokens, per model. The meter multiplies each class by its rate; preflight does not check the numbers are correct, only that they are present and positive — keeping them here makes them auditable and updatable rather than baked into code.",
+  "_source": "set by the native from current Anthropic pricing; record the date you set it",
+  "_set_on": null,
+  "models": {
+    "<opus-model-id>": {
+      "input": null,
+      "output": null,
+      "cache_creation": null,
+      "cache_read": null
+    },
+    "<sonnet-model-id>": {
+      "input": null,
+      "output": null,
+      "cache_creation": null,
+      "cache_read": null
+    }
+  }
+}

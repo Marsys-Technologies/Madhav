@@ -1,0 +1,87 @@
+{
+  "campaign": "NIRMANA-ELEVATION",
+  "plan": "00_ARCHITECTURE/NIRMANA_ELEVATION_PLAN_v4_0.md",
+  "plan_version": "4.2",
+  "chart_id": "482012f1",
+  "chart_label": "Abhisek Mohanty (the chart)",
+  "execution_mode": "AUTONOMOUS",
+  "branch": "campaign/nirmana-autonomous",
+  "track": "M",
+  "campaign_slice": "M0",
+  "rung": null,
+  "wave": null,
+  "stage": "census",
+  "rungs": {
+    "R0": {
+      "layer": "L0",
+      "domain": "shared",
+      "assets": 40,
+      "status": "not_open"
+    },
+    "R1": {
+      "layer": "L1",
+      "domain": "chart",
+      "assets": 19,
+      "status": "not_open"
+    },
+    "R2": {
+      "layer": "L2",
+      "domain": "chart",
+      "assets": 22,
+      "status": "not_open"
+    },
+    "R3": {
+      "layer": "L3",
+      "domain": "chart+shared",
+      "assets": 23,
+      "status": "not_open"
+    },
+    "R4": {
+      "layer": "L4",
+      "domain": "chart",
+      "assets": 9,
+      "status": "not_open"
+    },
+    "R5": {
+      "layer": "L5",
+      "domain": "chart+shared",
+      "assets": 15,
+      "status": "not_open"
+    }
+  },
+  "m_track": {
+    "M0": {
+      "status": "in_progress",
+      "note": "workbook + ASSET_PLANS + defect register done; six-source census + CI guard remaining"
+    },
+    "M1": {
+      "status": "not_open"
+    },
+    "M2": {
+      "status": "not_open"
+    },
+    "M3": {
+      "status": "not_open"
+    }
+  },
+  "ceilings": {
+    "_token_definition": "input_tokens + output_tokens + cache_creation_input_tokens + cache_read_input_tokens, summed across every fleet session in ~/.claude/projects/*Madhav*/ whose first message is at or after campaign_started_ts. Measured by bin/spend_meter.py into state/SPEND.jsonl. This is the raw four-class sum; it is dominated by cache_read (~97% of recent volume) and is therefore an AUDIT total, not a cost proxy and not a good runaway detector — see output_tokens_* for the tripwire that binds first in a loop.",
+    "tokens_campaign": 15000000000,
+    "tokens_per_rung": 4000000000,
+    "_output_definition": "output_tokens only, same sessions and window. Output is the best single proxy for work actually generated: cache_read scales with context size and session count, output scales with generation, so a fleet stuck in a loop trips this before the raw sum.",
+    "output_tokens_campaign": 60000000,
+    "output_tokens_per_rung": 16000000,
+    "cost_usd_campaign": null,
+    "cost_usd_per_rung": null,
+    "_cost_note": "The ceiling that actually means money. NULL until state/PRICING.json carries current per-model, per-class rates — the four token classes differ by roughly an order of magnitude in price, so no single token count is a cost proxy. PRAHARI trips on whichever ceiling binds first; a null cost ceiling is simply not one of them yet.",
+    "max_concurrent_runs": 6,
+    "worker_limit": 4,
+    "max_concurrent_karaka": 4,
+    "max_continuation_generations": 10
+  },
+  "open_threads": [],
+  "last_updated_by": "bootstrap",
+  "last_updated_ts": null,
+  "campaign_started_ts": null,
+  "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
+}

@@ -1,0 +1,7 @@
+{"id":"SQ-01","added_by":"bootstrap","i13_i14_safe":true,"rationale":"plan §14.3 continuous track; touches no asset data","task":"DAG audit: edge provenance + declared-vs-read reconciliation for the open rung's layer; report over-declared edges"}
+{"id":"SQ-02","added_by":"bootstrap","i13_i14_safe":true,"rationale":"CI guard work is machinery; no asset data","task":"Extend CI shape guards: cycles, orphans, DRAFT-targeted edges, domain coherence (§11), registry-to-throughput completeness"}
+{"id":"SQ-03","added_by":"bootstrap","i13_i14_safe":true,"rationale":"§13 item 6; observability only","task":"Per-substep tracing and build metrics emission"}
+{"id":"SQ-04","added_by":"bootstrap","i13_i14_safe":true,"rationale":"tests for machinery already built","task":"Unit + integration coverage for the split-rule resolver, run groups, and the continuation path"}
+{"id":"SQ-05","added_by":"bootstrap","i13_i14_safe":true,"rationale":"§12 progressive UX; read surfaces only","task":"Operator-experience work not yet delivered: provenance panel, run timeline, cascade-root collapse"}
+{"id":"SQ-06","added_by":"bootstrap","i13_i14_safe":true,"rationale":"documentation and ledger catch-up","task":"Corpus hygiene: SESSION_LOG entries, CURRENT_STATE §2 refresh, CAMPAIGN_COORDINATION sync"}
+{"id":"SQ-07","added_by":"bootstrap","i13_i14_safe":true,"rationale":"§8.6 stage 2 for the OPEN rung only — registry metadata, no asset data","task":"Conform work for the next wave of the currently open rung: floors proposed from measurement, integrity SQL drafted, timeouts derived"}
