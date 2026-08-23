@@ -54,7 +54,20 @@ set -uo pipefail
 
 DELAY="${PANE_LIVENESS_DELAY:-8}"
 
+# The TUI version this detector's markers were measured against. The markers are an
+# implementation detail of a TUI version, so the version is recorded rather than assumed
+# stable, and a drift is stamped loudly into the reason string.
+CALIBRATED_TUI="${PANE_LIVENESS_CALIBRATED_TUI:-2.1.239}"
+
 emit() { printf '%s %s %s\n' "$1" "$2" "$3"; exit "$4"; }
+
+# The status line's stable chrome. If a capture contains NO recognisable status line, this
+# detector's markers say nothing about it — and the failure direction matters: without this
+# check an unrecognised TUI would fall through to IDLE_AT_PROMPT and PERMIT a restart of a
+# running agent. That is the one wrong answer that costs something. Fail loudly instead.
+known_status_line() {    # $1 = file
+  grep -Eq 'shift\+tab to cycle|esc to interrupt|bypass permissions' "$1"
+}
 
 has_running_marker() {   # $1 = file
   grep -q 'esc to interrupt' "$1" && return 0
@@ -85,6 +98,10 @@ classify() {             # $1 = capture A, $2 = capture B (may equal $1)
   local a="$1" b="$2"
   if [ ! -s "$a" ]; then
     emit UNKNOWN RESTART_WITHHELD "capture-empty:precondition-not-evaluable" 20
+  fi
+  if ! known_status_line "$a" && ! known_status_line "$b"; then
+    emit UNKNOWN RESTART_WITHHELD \
+      "status-line-shape-unrecognised:markers-calibrated-against-TUI-${CALIBRATED_TUI};withhold-and-escalate" 20
   fi
   if has_running_marker "$a" || has_running_marker "$b"; then
     if [ "$a" != "$b" ] && ! cmp -s "$a" "$b"; then
@@ -137,6 +154,11 @@ case "${1:-}" in
     fi
     if [ "$dead" = "1" ]; then
       emit DEAD RESTART_PERMITTED "tmux-reports-pane_dead=1" 0
+    fi
+    tui="$(tmux display-message -p -t "$TARGET" '#{pane_current_command}' 2>/dev/null || true)"
+    if [ -n "$tui" ] && [ "$tui" != "$CALIBRATED_TUI" ]; then
+      printf 'NOTE tui-version-drift: pane runs %s, markers calibrated against %s\n' \
+        "$tui" "$CALIBRATED_TUI" >&2
     fi
     A="$(mktemp -t paneliv.XXXXXX)"; B="$(mktemp -t paneliv.XXXXXX)"
     trap 'rm -f "$A" "$B"' EXIT

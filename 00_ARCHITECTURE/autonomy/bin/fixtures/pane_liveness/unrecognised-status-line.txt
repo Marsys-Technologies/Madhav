@@ -1,0 +1,7 @@
+⏺ Some future TUI that renamed or removed its status line entirely.
+
+  Working on the next step.
+
+─────────────────────────────────────────────────────────────
+❯ 
+─────────────────────────────────────────────────────────────

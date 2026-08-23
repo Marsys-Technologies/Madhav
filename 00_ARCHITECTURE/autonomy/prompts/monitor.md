@@ -36,7 +36,7 @@ rule, and getting it backwards is the error D-60 was written on.
 Run it, do not eyeball it: `bin/pane_liveness.sh nirmana:<window>.0` prints
 `<STATE> <verdict> <reason>` and exits `0` (restart permitted) / `10` (mid-operation, withhold)
 / `20` (indeterminate, withhold). It is read-only — it captures panes and never sends a key.
-Its both-ways proof is `bin/pane_liveness_test.sh` (10 cases, including the live captures this
+Its both-ways proof is `bin/pane_liveness_test.sh` (11 cases, including the live captures this
 rule was measured from). **Why a script rather than your own reading of the pane:** on
 2026-08-23 the conductor captured a pane reading `esc to interrupt · ← 1 agent` — an agent
 *actively running* — and read it as idle-at-prompt. A precondition a reader can misread is not
@@ -44,6 +44,12 @@ a precondition. Two markers in particular are traps the detector exists to keep 
 `← 1 agent` appears on **every** pane, running and idle alike, and the past-tense spinner line
 (`✻ Cooked for 6m 5s`) is the *residue* of a finished turn, so it does **not** prove an agent
 is mid-operation. `esc to interrupt`, and the live `…(elapsed)` spinner form, are what do.
+
+Those markers are an implementation detail of a TUI version (calibrated against `2.1.239`), so
+the detector checks the status line's **shape** first: a capture whose status line it does not
+recognise returns `UNKNOWN` and withholds, rather than falling through to "idle" and permitting
+the restart of a running agent. If you start seeing `status-line-shape-unrecognised`, the TUI
+changed — escalate it, do not work around it.
 
 **Unchanged by this rule:** the escalation path and the 3-restarts-per-hour cap. Both are
 working, and D-60 §4 is explicit that a stall detector with false positives is far better than

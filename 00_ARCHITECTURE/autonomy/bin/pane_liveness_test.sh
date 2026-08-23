@@ -59,6 +59,15 @@ echo "=== DIRECTION 3: precondition not evaluable => WITHHELD, never a default-p
 check "capture returned nothing"              empty-capture.txt                      UNKNOWN 20
 
 echo
+echo "=== DIRECTION 4: unrecognised TUI => FAIL LOUD, never a silent permit (exit 20) ==="
+# The dangerous direction. Without a shape check, a TUI that drops "esc to interrupt" would fall
+# through to IDLE_AT_PROMPT and PERMIT restarting a RUNNING agent — the detector would break
+# silently, in the one direction that costs something. Raised by SUTRADHARA at 15:09Z: "a
+# detector that keys on one string in a TUI status line is keying on an implementation detail of
+# a version, and it will break silently when that changes."
+check "unrecognised status line fails closed"  unrecognised-status-line.txt           UNKNOWN 20
+
+echo
 echo "=== NEGATIVE CONTROL: the marker that is NOT a liveness signal ==="
 # "← 1 agent" appeared on ALL FIVE live panes, running and idle alike. If the detector were
 # keying off it, the two LIVE fixtures above could not have come out differently. They did.
