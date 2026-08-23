@@ -395,6 +395,16 @@
         },
         "deferral": "STANDS, better grounded — no path to zero exists that is not a real build or a fabrication. The 31 are ROUTED TO THEIR OWNING RUNGS; each rung's own build is the only thing that can earn or refute a lit; I13 forbids touching them now.",
         "pariksaka_self_correction": "ACCEPTED, distinction is the valuable part: 'zero assets have a successful build but a NULL estimate' is TRUE under the new definition and must NOT be read as 'C-28 is satisfied' — retracting an inference without retracting the fact. It also nearly filed a false unearned-signal defect against the guard itself before finding the fault was its OWN JSON reader (violations/violation_count, not offenders) — the guard was honest, its reader was wrong. 4th instrument error self-caught before filing today; its errors concentrate in PARSING other tools' output, not in DB reads or mutation work."
+      },
+      "exit_scorecard_latest": {
+        "by": "M0-T46, commit 5c213e9ff",
+        "tally": {
+          "PASS": 2,
+          "FAIL": 6,
+          "NOT_MEASURABLE": 3,
+          "BLOCKED": 1
+        },
+        "note": "criterion 9 (0.8c) moved FAIL(23)->PASS(0) now that all 23 zero-consumer packets are adjudicated per D-38. criterion 4 (0.8b) stays FAIL(3) correctly — REMAIN DRAFT is a decision with no path to zero inside M0."
       }
     },
     "M1": {
@@ -890,10 +900,28 @@
       "what": "M0-T45 left open rather than deciding: should verify_migrations_deployed become a hard BLOCKING gate on deploy-web/deploy-mcp, or stay a parallel witness job? Per D-41's own direction test this is presumptively a STRENGTHENING move if made blocking (adds a failure mode that did not exist), so it likely does not need a ruling under the new rule — but the KARAKA correctly left it for PARIKSAKA/ADHIKARIN rather than deciding a deploy-blocking change unilaterally on its own dispatch",
       "owner": "ADHIKARIN",
       "state": "asked"
+    },
+    {
+      "id": "M0-T46",
+      "what": "DONE 5c213e9ff — PASS 1->2, FAIL 7->6, UNEXAMINED 6->3",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "GIT-CHECKOUT-GAP",
+      "what": "M0-T46 used 'git checkout --' to revert an UNINTENDED out-of-scope side-effect write (a generator wrote outside its declared 00_ARCHITECTURE/control/ scope) — the exact command the standing restore rule names as forbidden. VERIFIED NO HARM: file matches HEAD, no sibling touched it in the window. But the rule was written for restoring a DELIBERATE mutation in a shared tree, and this was undoing an UNINTENDED side-effect write — same mechanical risk (git checkout -- cannot tell 'nothing here' from 'a sibling's uncommitted work'), arguably different enough to need its own clause. Proposed, not decided: permit this specific case ONLY if the agent verifies the file clean against HEAD BEFORE running anything that might write to it, not only after",
+      "owner": "ADHIKARIN",
+      "state": "asked"
+    },
+    {
+      "id": "D39-TIMING-QUESTION",
+      "what": "D-39 (09:25:50Z) may have characterised the disclosure mechanism as inert using evidence that predates M0-T40's report (08:41:22Z) fixing exactly that inertness — verified read-only that check_asset_catalogue_contract.py DOES now carry a rule-id-keyed reader and computed effective_severity. Does not move D-38/39/42's classifications either way, but bears on D-40's flip condition since the two-direction fixture proving the mechanism demonstrably in effect has not been built under either reading",
+      "owner": "ADHIKARIN",
+      "state": "asked"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T11:45:09Z",
+  "last_updated_ts": "2026-08-23T12:31:51Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
