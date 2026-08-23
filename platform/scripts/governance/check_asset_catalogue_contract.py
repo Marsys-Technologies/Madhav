@@ -1414,6 +1414,102 @@ def x06(s: Snapshot) -> Result:
     })
 
 
+REQUIRED_MANIFEST_ENTRY_FIELDS = ("asset_id", "disposition", "evidence")
+
+
+def _check_manifest_entry_shape(entry: dict, vocab: set[str]) -> list[dict]:
+    """D-116 (ADHIKĀRIN, F-V74-1) — per-entry shape/evidence check for ONE
+    `asset_id_lineage_manifest.json` entry, TIERED by disposition class exactly as
+    D-116 specifies. Returns a list of violation dicts (empty = this entry passed).
+
+    TIER 1 — `legacy_never_registered` (the evidence is a NEGATIVE claim — "this id
+    was never a valid asset_registry.asset_id" — and no cheap mechanical check
+    establishes a negative): SHAPE ONLY. `disposition` must be a key of the
+    manifest's OWN declared `disposition_vocabulary` (read from the manifest file,
+    never hardcoded here), `evidence` must be a non-empty array, and the required
+    fields must be present. An EMPTY evidence array is INCOMPLETE, not a partial
+    pass — mirrors `migration_number_guard.ts`'s E4 INCOMPLETE-DISCLOSURE class, the
+    in-repo precedent D-116 names.
+
+    TIER 2 — any other disposition (`renamed`, `deleted` in the manifest's current
+    vocabulary — identified by carrying a `renamed_by_migration` or
+    `deleted_by_migration` citation field, D-116's own phrasing for this tier): the
+    evidence IS machine-checkable and IS checked for real — the cited migration file
+    must actually exist under `REPO_ROOT` AND its content must reference this
+    entry's `asset_id` (a substring check over the migration's own source text). A
+    migration that does not exist, or exists but never mentions the id, is the
+    `manifest_entry_unverifiable_migration_citation` violation class.
+
+    THE CHECK MUST NOT OVERCLAIM (D-116 part 4): a GREEN result for a TIER 1
+    (`legacy_never_registered`) entry means only that a disposition and non-empty
+    evidence were SUPPLIED — it does NOT mean the evidence was independently
+    verified, because no cheap mechanical check can establish a negative. Only the
+    TIER 2 (migration-citing) classes get their citation actually resolved against a
+    real file on disk. Callers (x07's own doc-comment, any cockpit signal reading
+    X-07) must carry this same distinction forward rather than reading X-07 green as
+    "every disposition is verified."
+    """
+    aid = entry.get("asset_id", "<missing asset_id>")
+
+    missing = [f for f in REQUIRED_MANIFEST_ENTRY_FIELDS if f not in entry]
+    if missing:
+        return [{"asset_id": aid, "class": "manifest_entry_missing_required_field",
+                 "detail": f"missing required field(s): {missing}"}]
+
+    disposition = entry["disposition"]
+    if disposition not in vocab:
+        return [{"asset_id": aid,
+                 "class": "manifest_entry_disposition_not_in_vocabulary",
+                 "detail": (f"disposition {disposition!r} is not a key of the "
+                            f"manifest's own disposition_vocabulary "
+                            f"{sorted(vocab)}")}]
+
+    evidence = entry["evidence"]
+    if not isinstance(evidence, list) or len(evidence) == 0:
+        return [{"asset_id": aid, "class": "manifest_entry_evidence_empty",
+                 "detail": ("evidence array is empty — INCOMPLETE, not a partial "
+                            "pass (migration_number_guard E4 INCOMPLETE-DISCLOSURE "
+                            "precedent)")}]
+
+    if disposition == "legacy_never_registered":
+        return []   # TIER 1: shape-only — no migration to check against a negative
+
+    # TIER 2 — a migration-citing disposition: the citation must actually resolve.
+    if "deleted_by_migration" in entry:
+        migration_field = "deleted_by_migration"
+    elif "renamed_by_migration" in entry:
+        migration_field = "renamed_by_migration"
+    else:
+        return [{"asset_id": aid,
+                 "class": "manifest_entry_unverifiable_migration_citation",
+                 "detail": (f"disposition {disposition!r} is not "
+                            f"legacy_never_registered but the entry carries neither "
+                            f"a deleted_by_migration nor a renamed_by_migration "
+                            f"citation field")}]
+
+    migration_rel = entry[migration_field]
+    migration_path = REPO_ROOT / migration_rel
+    if not migration_path.is_file():
+        return [{"asset_id": aid,
+                 "class": "manifest_entry_unverifiable_migration_citation",
+                 "detail": f"cited migration does not exist: {migration_rel}"}]
+
+    try:
+        migration_text = migration_path.read_text(encoding="utf-8")
+    except OSError as e:
+        return [{"asset_id": aid,
+                 "class": "manifest_entry_unverifiable_migration_citation",
+                 "detail": f"cited migration {migration_rel} could not be read: {e}"}]
+
+    if aid not in migration_text:
+        return [{"asset_id": aid,
+                 "class": "manifest_entry_unverifiable_migration_citation",
+                 "detail": (f"cited migration {migration_rel} exists but its "
+                            f"content does not reference {aid!r}")}]
+
+    return []
+
+
 def x07(s: Snapshot) -> Result:
     """D-111 (ADHIKĀRIN) — LINEAGE MANIFEST COMPLETENESS, closing PARIKṢAKA V-70 /
     F-V70-2.
@@ -1477,6 +1573,27 @@ def x07(s: Snapshot) -> Result:
     NO complete-state row at all and would be invisible to a rule that reused X-06's
     narrower key — reusing it here would silently under-count the very population
     this rule exists to reconcile.
+
+    PER-ENTRY SHAPE/EVIDENCE CHECK (D-116, ADHIKĀRIN, closing PARIKṢAKA V-74 /
+    F-V74-1) — the set-equality assertion above makes the POPULATION complete; it
+    reads nothing about any individual entry, so D-111's own "the manifest may grow"
+    ruling made GROWTH the sanctioned way to clear a future failure: add an entry
+    with the right `asset_id` and any content at all. `_check_manifest_entry_shape`
+    (above) closes that by checking each entry, TIERED by disposition class. READ
+    THIS PLAINLY, BECAUSE IT IS THE PART MOST LIKELY TO BE OVERCLAIMED: a GREEN
+    result from this rule means, for a `legacy_never_registered` entry, ONLY that a
+    disposition (a key of the manifest's own `disposition_vocabulary`) and a
+    non-empty `evidence` array were SUPPLIED — it does NOT mean that evidence was
+    independently verified, because no cheap mechanical check can establish a
+    negative ("this id was never a valid asset_registry.asset_id"). For a
+    migration-citing entry (`renamed`/`deleted` — identified by a
+    `renamed_by_migration`/`deleted_by_migration` field), green DOES mean the cited
+    migration file exists and its content references the entry's `asset_id` — a real
+    evidence assertion, not a shape assertion, because that evidence is genuinely
+    machine-checkable. NEVER read an X-07 PASS, in this artifact or any cockpit
+    signal downstream of it, as "every disposition is verified" — for
+    `legacy_never_registered` entries it means only that a disposition and evidence
+    were supplied.
     """
     all_ids = s.raw.get("build_run_asset_ids_all")
     if all_ids is None:
@@ -1495,7 +1612,8 @@ def x07(s: Snapshot) -> Result:
         # see the doc-comment above: this is the exact pre-D-103 shape the rule exists
         # to catch, and must FAIL loudly rather than go quiet for lack of a file.
 
-    manifest_ids = {e["asset_id"] for e in (manifest.get("entries") or [])}
+    manifest_entries = manifest.get("entries") or []
+    manifest_ids = {e["asset_id"] for e in manifest_entries}
     live_orphans = {aid for aid in set(all_ids) if aid not in s.by_id}
 
     undocumented = sorted(live_orphans - manifest_ids)
@@ -1504,11 +1622,22 @@ def x07(s: Snapshot) -> Result:
          for aid in undocumented]
     v += [{"asset_id": aid, "class": "manifest_entry_not_a_live_orphan"}
           for aid in stale]
+
+    # D-116 / F-V74-1 — per-entry shape/evidence check, TIERED by disposition class.
+    # `vocab` is read from the manifest's OWN declared `disposition_vocabulary`,
+    # never hardcoded here (an absent/empty vocabulary means every entry fails the
+    # membership check, which is correct: an undeclared vocabulary cannot vouch for
+    # any disposition).
+    vocab = set((manifest.get("disposition_vocabulary") or {}).keys())
+    for entry in manifest_entries:
+        v += _check_manifest_entry_shape(entry, vocab)
+
     return verdict(v, detail={
         "live_orphan_ids": sorted(live_orphans),
         "manifest_ids": sorted(manifest_ids),
         "undocumented_orphans": undocumented,
         "stale_manifest_entries": stale,
+        "disposition_vocabulary_keys": sorted(vocab),
         "class_counts": _counts(v) if v else {},
     })
 
@@ -2889,6 +3018,32 @@ def x06_ratchet_probe() -> int:
               "without something else covering exactly the members it drops (D-94 "
               "part 5) — this is that invariant, re-measured, not just cited")
 
+    # ── 4b — PARIKṢAKA F-V75-1: the check above proves (X∩D) ∪ (X∩¬D) == X, which ──
+    # is TRUE BY SET ALGEBRA FOR EVERY POSSIBLE INPUT (measured by PARIKṢAKA across 64
+    # fixture combinations — the conjunct failed in zero) and, worse, it never calls
+    # x06() at all — it cannot detect the exact coverage-loss it claims to guard
+    # against even in principle. ADD a DIRECT measurement against x06()'s own
+    # population (do NOT replace the check above — it is not wrong, only
+    # insufficient, per F-V75-1's own framing): call x06() on the SAME fixture and
+    # assert every member c28() drops for being outside DATA_KINDS actually appears
+    # in x06()'s own `current_population_ids` detail field — the real sibling rule's
+    # real output, not an algebraic restatement of the input.
+    r6 = x06(snap4).as_dict()
+    x06_population = set(r6["detail"].get("current_population_ids") or [])
+    covered = non_data_kind_members.issubset(x06_population)
+    ok = r6["status"] != NOT_CHECKABLE and covered
+    print(f"      [{'OK  ' if ok else 'BAD '}] x06() itself covers what c28() drops "
+          f"(direct measurement, not algebra): non-DATA_KINDS members "
+          f"{sorted(non_data_kind_members)} ⊆ x06(snap4) current_population_ids "
+          f"{sorted(x06_population)} (x06 status={r6['status']})")
+    if not ok:
+        bad += 1
+        print("           F-V75-1: the set-algebra check above can never fail for any "
+              "input and never calls x06() — this calls x06() on the SAME fixture and "
+              "reads its OWN detail field, turning 'something else covers exactly the "
+              "members c28 drops' from a tautology into a measurement against the "
+              "actual sibling rule")
+
     # Structural anchor (D-89 shape, one-sided by construction — X-06's whole point is
     # having NO asset_kind predicate; a future edit adding one recreates the exact gap
     # F-Y found and must fail this line): x06's EXECUTABLE body must not reference
@@ -2927,6 +3082,12 @@ def x07_manifest_completeness_probe() -> int:
     never opened for writing by this function, and its 4 real committed entries are
     never touched.
 
+    ALSO covers D-116 / F-V74-1's per-entry shape/evidence check: the four
+    pre-registered failing cases D-116 part 5 names (migration cited does not exist;
+    real migration that never references the id; empty evidence array; disposition
+    outside the declared vocabulary), a positive control proving the check does not
+    just fail everything, and a missing-required-field case.
+
     Returns the number of probe failures (0 = every case behaved).
     """
     print("\n  X-07 lineage-manifest-completeness probe (D-111: set equality, both "
@@ -2943,9 +3104,20 @@ def x07_manifest_completeness_probe() -> int:
     tmpdir = tempfile.TemporaryDirectory(prefix="x07_manifest_probe_")
     LINEAGE_MANIFEST_PATH = pathlib.Path(tmpdir.name) / "asset_id_lineage_manifest.json"
 
+    # NOTE (D-116 / F-V74-1): entries written by this helper must carry valid shape
+    # — a disposition_vocabulary, a disposition that is a member of it, and a
+    # non-empty evidence array — or the NEW per-entry shape check added to x07()
+    # below would fail cases 2/4/5 on shape alone and mask the SET-completeness
+    # behaviour this part of the probe exists to isolate. `legacy_never_registered`
+    # is used as the neutral synthetic disposition: it needs no migration citation,
+    # so it does not couple this SET-completeness fixture to any real migration file.
     def write_manifest(ids: list[str]) -> None:
-        LINEAGE_MANIFEST_PATH.write_text(json.dumps(
-            {"entries": [{"asset_id": a} for a in ids]}), encoding="utf-8")
+        LINEAGE_MANIFEST_PATH.write_text(json.dumps({
+            "disposition_vocabulary": {
+                "legacy_never_registered": "synthetic fixture disposition"},
+            "entries": [{"asset_id": a, "disposition": "legacy_never_registered",
+                        "evidence": ["synthetic fixture evidence"]} for a in ids],
+        }), encoding="utf-8")
 
     def check(label: str, raw: dict, want_status: str,
               want_undoc: list[str], want_stale: list[str]) -> None:
@@ -3015,6 +3187,114 @@ def x07_manifest_completeness_probe() -> int:
     finally:
         LINEAGE_MANIFEST_PATH = real_path
         tmpdir.cleanup()
+        assert LINEAGE_MANIFEST_PATH == real_path, (
+            "probe must restore the real manifest path exactly (D-77)")
+
+    # ── 5b..5g — D-116 / F-V74-1 PER-ENTRY SHAPE checks. D-105 pre-registration: ──
+    # these are the FOUR failing cases D-116 part 5 names explicitly, stated before
+    # the fix's own behaviour is trusted, plus a positive control (the real
+    # migration-citing shape must actually PASS, not just fail everything) and one
+    # missing-required-field case. Each fixture's `build_run_asset_ids_all` is set
+    # to exactly the fixture's own entry ids, so the SET-completeness half of x07
+    # (already proven in 1-5 above) contributes zero violations here — every
+    # violation reported below is a SHAPE violation, isolated on purpose.
+    tmpdir3 = tempfile.TemporaryDirectory(prefix="x07_manifest_probe_shape_")
+    LINEAGE_MANIFEST_PATH = pathlib.Path(tmpdir3.name) / "asset_id_lineage_manifest.json"
+    SHAPE_VOCAB = {
+        "renamed": "synthetic — old id UPDATEd to a new id by a cited migration",
+        "deleted": "synthetic — id DELETEd by a cited migration, no successor",
+        "legacy_never_registered": "synthetic — never a valid asset_registry id",
+    }
+
+    def write_shape_manifest(entries: list[dict]) -> None:
+        LINEAGE_MANIFEST_PATH.write_text(json.dumps(
+            {"disposition_vocabulary": SHAPE_VOCAB, "entries": entries}),
+            encoding="utf-8")
+
+    def check_shape(label: str, entries: list[dict], want_status: str,
+                    want_classes: list[str]) -> None:
+        nonlocal bad
+        write_shape_manifest(entries)
+        raw_shape = {"assets": [],
+                     "build_run_asset_ids_all": [e["asset_id"] for e in entries]}
+        r = x07(Snapshot(raw_shape)).as_dict()
+        got_classes = sorted(v["class"] for v in r["violations"])
+        ok = r["status"] == want_status and got_classes == sorted(want_classes)
+        print(f"      [{'OK  ' if ok else 'BAD '}] {label}: status={r['status']} "
+              f"classes={got_classes}")
+        if not ok:
+            bad += 1
+            print(f"           expected status={want_status} "
+                  f"classes={sorted(want_classes)}")
+            if r["reason"]:
+                print(f"           reason: {r['reason']}")
+
+    try:
+        # ── 5b — D-116 pre-registered case 1: migration cited does not exist ──────
+        check_shape(
+            "renamed entry cites a migration file that does not exist ⇒ FAIL "
+            "(D-116 pre-registered case 1)",
+            [{"asset_id": "ph_probe_bad_migration_path", "disposition": "renamed",
+              "renamed_to": "ph_probe_new",
+              "renamed_by_migration": "platform/migrations/999999_does_not_exist.sql",
+              "evidence": ["synthetic"]}],
+            FAIL, ["manifest_entry_unverifiable_migration_citation"])
+
+        # ── 5c — D-116 pre-registered case 2: a REAL migration that never ─────────
+        # mentions the id.
+        check_shape(
+            "deleted entry cites a REAL migration that never references the id ⇒ "
+            "FAIL (D-116 pre-registered case 2)",
+            [{"asset_id": "ph_probe_not_in_migration", "disposition": "deleted",
+              "deleted_by_migration":
+                  "platform/migrations/342_retire_ga_pyjhora_engine.sql",
+              "evidence": ["synthetic"]}],
+            FAIL, ["manifest_entry_unverifiable_migration_citation"])
+
+        # ── 5d — D-116 pre-registered case 3: empty evidence array ⇒ INCOMPLETE, ──
+        # never a partial pass (migration_number_guard E4 precedent).
+        check_shape(
+            "legacy_never_registered entry with an EMPTY evidence array ⇒ FAIL "
+            "(D-116 pre-registered case 3)",
+            [{"asset_id": "ph_probe_empty_evidence",
+              "disposition": "legacy_never_registered", "evidence": []}],
+            FAIL, ["manifest_entry_evidence_empty"])
+
+        # ── 5e — D-116 pre-registered case 4: disposition outside the declared ────
+        # vocabulary.
+        check_shape(
+            "entry with a disposition that is not a key of the manifest's own "
+            "disposition_vocabulary ⇒ FAIL (D-116 pre-registered case 4)",
+            [{"asset_id": "ph_probe_bad_disposition", "disposition": "guessed",
+              "evidence": ["synthetic"]}],
+            FAIL, ["manifest_entry_disposition_not_in_vocabulary"])
+
+        # ── 5f — POSITIVE CONTROL, not part of D-116's four but required to prove ──
+        # the check does not just fail everything: the REAL committed manifest's own
+        # migration-citing shape (disposition=renamed, citing migration 563, which
+        # DOES reference ka_gochara_v2_materialize — confirmed by grep, 13 hits)
+        # reproduced verbatim must PASS clean.
+        check_shape(
+            "renamed entry citing the REAL migration 563, which DOES reference the "
+            "id ⇒ clean (positive control — the check does not fail everything)",
+            [{"asset_id": "ka_gochara_v2_materialize", "disposition": "renamed",
+              "renamed_to": "ka_gochara",
+              "renamed_by_migration":
+                  "platform/migrations/563_utkarsha_w64_asset_rename.sql",
+              "evidence": ["synthetic"]}],
+            PASS, [])
+
+        # ── 5g — required-field-missing (the KEY absent, not merely an empty ──────
+        # value) is its own class, distinct from an empty evidence array.
+        check_shape(
+            "entry missing the evidence field entirely ⇒ FAIL, "
+            "manifest_entry_missing_required_field",
+            [{"asset_id": "ph_probe_no_evidence_field",
+              "disposition": "legacy_never_registered"}],
+            FAIL, ["manifest_entry_missing_required_field"])
+    finally:
+        LINEAGE_MANIFEST_PATH = real_path
+        tmpdir3.cleanup()
         assert LINEAGE_MANIFEST_PATH == real_path, (
             "probe must restore the real manifest path exactly (D-77)")
 
