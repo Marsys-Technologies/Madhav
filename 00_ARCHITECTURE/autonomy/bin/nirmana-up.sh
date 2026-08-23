@@ -24,6 +24,22 @@ if { [ -z "${DATABASE_URL:-}" ] || printf '%s' "${DATABASE_URL:-}" | grep -qE 'â
   [ -n "$LOADED" ] && DATABASE_URL="$LOADED" && export DATABASE_URL
 fi
 
+# Stamp the campaign window before anything reads the meter. Without this the meter counts
+# every historical session in the repo and every token ceiling reads as breached at launch.
+PYBIN="$REPO/.venv/bin/python"; [ -x "$PYBIN" ] || PYBIN="$(command -v python3)"
+"$PYBIN" - "$A/state/CAMPAIGN_STATE.json" <<'PYS'
+import json,sys,datetime
+p=sys.argv[1]; st=json.load(open(p))
+if not st.get("campaign_started_ts"):
+    st["campaign_started_ts"]=datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    json.dump(st,open(p,"w"),indent=2,ensure_ascii=False)
+    print("[nirmana-up] campaign window opened at "+st["campaign_started_ts"])
+else:
+    print("[nirmana-up] campaign window already open since "+st["campaign_started_ts"])
+PYS
+# Baseline reading inside the new window, so preflight compares campaign spend, not history.
+"$PYBIN" "$A/bin/spend_meter.py" >/dev/null 2>&1 || echo "[nirmana-up] WARNING: spend meter produced no reading"
+
 "$A/bin/preflight.sh" || exit 1
 
 # Build one agent's kickoff prompt: common ground + role prompt + standing order.

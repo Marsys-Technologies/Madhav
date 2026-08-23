@@ -138,6 +138,34 @@ PY
   else say "ceilings set and coherent" "$CEIL_ERR"; fail=1; fi
 fi
 
+  # The meter window, and whether we would launch already over a ceiling.
+  # campaign_started_ts=null makes the meter count EVERY session it can discover — 1,689
+  # of them here, i.e. the repo lifetime — so both token ceilings read as breached before
+  # the campaign has done anything, and PRAHARI would park it on its first loop.
+  WIN_ERR="$("$PYBIN" - "$ST" "$SPEND" <<'PYW'
+import json,sys
+st=json.load(open(sys.argv[1])); c=st.get("ceilings",{}); errs=[]
+if not st.get("campaign_started_ts"):
+    errs.append("campaign_started_ts is null - meter would count all historical sessions, "
+                "not this campaign; nirmana-up.sh stamps it at launch")
+try:
+    rows=[json.loads(l) for l in open(sys.argv[2]) if l.strip()]
+except Exception as e:
+    rows=[]; errs.append("SPEND.jsonl unreadable: %s" % e)
+if rows:
+    r=rows[-1]; t=r.get("totals",{})
+    if r.get("window_from") is None and st.get("campaign_started_ts"):
+        errs.append("latest SPEND reading predates the window - re-run bin/spend_meter.py")
+    for ck,tk in (("tokens_campaign","tokens_all"),("output_tokens_campaign","output_tokens")):
+        ceil=c.get(ck); cur=t.get(tk)
+        if isinstance(ceil,int) and isinstance(cur,int) and cur>=ceil:
+            errs.append("%s already at/over ceiling at launch (%s >= %s)" % (ck,format(cur,","),format(ceil,",")))
+print("; ".join(errs))
+PYW
+)"
+  if [ -z "$WIN_ERR" ]; then say "meter windowed + within ceilings" "OK"
+  else say "meter windowed + within ceilings" "$WIN_ERR"; fail=1; fi
+
 # A ceiling without a meter is a claim with no detector behind it (I5 / §N.8).
 if [ ! -x "$METER" ] && [ ! -f "$METER" ]; then
   say "spend meter present" "MISSING — bin/spend_meter.py; ceilings are unenforceable without it"; fail=1
