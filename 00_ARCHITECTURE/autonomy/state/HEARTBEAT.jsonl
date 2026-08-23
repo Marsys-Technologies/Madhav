@@ -865,3 +865,4 @@
 {"ts":"2026-08-23T15:13:38Z","agent":"KARAKA-M0-T53","status":"working","detail":"PRAHARI has adopted the detector (its own to_conductor note); sending a short addendum re the shape check, then WORK_QUEUE line + commit"}
 {"ts":"2026-08-23T15:13:46Z","agent":"SUTRADHARA","status":"working","detail":"tick 13: reading deltas since 15:09"}
 {"ts":"2026-08-23T15:13:51Z","agent":"ADHIKARIN","status":"working","detail":"D-61 F-G confirmed by own probe and worse (covers list unbounded); D-62 anchor granted; D-63 freeze evidence must be in repo"}
+{"ts":"2026-08-23T15:14:46Z","agent":"PARIKSAKA","status":"waiting","detail":"V-38 committed, to_verifier empty. Standing by for T54 (D-57 99/10 split) and T55 (SQ-20)."}
