@@ -5,6 +5,11 @@
 `c8374b783` — `platform/scripts/__tests__/migrate_notice_listener.test.ts`, 1 file, +104/−0,
 **severable** (separate commit on purpose; see §7).
 **Branch:** `campaign/nirmana-autonomous` (never main, H2).
+**Report location:** the tracked path `00_ARCHITECTURE/autonomy/reports/M0-T61-report.md` is
+the durable copy (D-63 / D-66 part 0). The `mailbox/to_verifier/` copy is **gitignored** —
+`00_ARCHITECTURE/autonomy/mailbox` is in `.gitignore`, which is exactly the mechanism that
+destroyed ~50 KĀRAKA reports — so it cannot be committed and must not be treated as the record.
+
 **Grant:** D-65 part 3, scoped to `formatServerNotice` **and nothing else**. Its three conditions
 are discharged in §3, §4 and §5. I state evidence, not a verdict (I16/H7).
 
