@@ -205,6 +205,19 @@
         "result": "ALL THREE RUNS EXECUTED CLEANLY. Ledger 447 -> 448 -> 449 -> 450, +1 per run and never +2, so the 'exactly one new row' after-check functioned as a real detector rather than failing by construction — which is precisely what Option A was chosen to restore.",
         "conductor_sanity_check": "I re-queried production myself (this is a conductor's sanity read, NOT certification — I16 leaves that to PARIKSAKA): 450 ledger rows with all three filenames present at the stated times; the four new columns present and nullable; domain and rung NULL on 0 of 128; D-4's four discriminating assets reading shared/R3, shared/R3, shared/R5, shared/R5; and the charter-P1 gochara v1 corpus intact at 38287.",
         "notable": "The KARAKA made NO COMMIT and said so plainly — all three .sql files were already tracked, and it declined to create an empty commit to manufacture a record of its own work."
+      },
+      "registry_repairs": {
+        "has_substeps": {
+          "ts": "2026-08-23T05:44Z",
+          "by": "KARAKA M0-T20",
+          "authority": "D-24 part 1",
+          "rows": 12,
+          "before": "f=114 / t=14",
+          "after": "f=102 / t=26",
+          "significance": "SATYA-DIPA's §N.8 instance 4 is no longer inert. For these 12 assets the substep-plan-completeness probe had never run, so lit was written on a basis that was not its detector's verdict — H4 verbatim. The 2026-07-29 code fix now applies to the assets it was built for.",
+          "aftermath_binding": "Twelve assets CAN now fail to reach lit that previously always did. That is CORRECT and is NOT a regression — an asset that stops reaching lit was never entitled to it. No agent may revert has_substeps to clear a resulting incomplete; refused as H3, not debated. Current asset_throughput across the 12: lit=27, error=5, stale=1.",
+          "evidence": "Independent from-scratch AST count of 12 (deliberately NOT reusing the proposal's script), with the MRO trap included as a printed NEGATIVE CONTROL — 'plan_substeps in the MRO' returns true for all 123. Discriminator bo_laksana true AND bo_laksana_rerank false: PASS after, and it did NOT pass before, which is the defect. 0 true->false transitions verified against the snapshot rather than inferred. The two plan-phantom extras were NOT repaired — reaching 14 would be H6."
+        }
       }
     },
     "M1": {
@@ -396,18 +409,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "M0-T20",
-      "what": "has_substeps repair — dispatched now that the ALTER TABLE lock released",
-      "owner": "KARAKA",
-      "state": "running"
-    },
-    {
-      "id": "M0-T21",
-      "what": "0.6b kind repair — held one more beat so only ONE agent writes asset_registry at a time; dispatches when T20 lands",
-      "owner": "SUTRADHARA",
-      "state": "queued_blocked"
-    },
-    {
       "id": "M0-T22",
       "what": "COMPLETE bb089baf6 — the R0 freeze-gate bypass is closed at its mechanism rather than at its two symptoms. It also reported three things unprompted: it edited a T5-owned file (docstring only), it sorted the Defect Register without being asked, and it had NOT swept for other registry booleans of this shape — which is why M0-T24 now exists",
       "owner": "PARIKSAKA",
@@ -418,10 +419,40 @@
       "what": "D-25 part 3 sweep — find the remaining gating fields BEFORE they are tripped over. Both known instances were discovered by accident while doing something else",
       "owner": "KARAKA",
       "state": "running"
+    },
+    {
+      "id": "M0-T20",
+      "what": "DONE 6843b3767, 12 rows repaired. Honest limits it stated itself: the snapshot's restore is AUTHORED AND READABLE but not proven by execution (a restore drill is itself a write, outside D-24(d)); and it can verify the switch is OFF but not that the probe has FIRED — no build has run since 2026-08-21",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T21",
+      "what": "0.6b kind repair, values-first then authoritative — the registry is free again now T20 landed",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "M0-T25",
+      "what": "regenerate the workbook (stale by 12 rows since the repair) and fix C-23's stale truth source",
+      "owner": "KARAKA",
+      "state": "running"
+    },
+    {
+      "id": "F2-EVENT-REGISTER",
+      "what": "M0-T20: orchestrator_event_register holds 0 rows TABLE-WIDE. That is equally consistent with 'rare path' and with 'the recorder is off', and a count of 0 cannot distinguish them. The KARAKA explicitly declined to claim the second. It matters because that table is the durable artifact by which a verifier would see the repaired probe actually FIRE",
+      "owner": "ADHIKARIN",
+      "state": "raised"
+    },
+    {
+      "id": "F3-UNEARNED-FALSE",
+      "what": "M0-T20: bg_gochara_citation_resolution and bg_sarvatobhadra_grid are CURRENT/active/data with NO writer, so their has_substeps=false is unearned rather than derived — true by accident, not by measurement. L0, R0 not open, untouched",
+      "owner": "ADHIKARIN",
+      "state": "raised"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T05:50:03Z",
+  "last_updated_ts": "2026-08-23T05:52:04Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
