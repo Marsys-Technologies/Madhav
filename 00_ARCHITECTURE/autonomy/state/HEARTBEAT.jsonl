@@ -816,3 +816,5 @@
 {"ts":"2026-08-23T14:51:10Z","agent":"LEKHAKA","status":"working","detail":"committed 766106916 (digest catch-up); draining mailbox before returning to normal 120s loop"}
 {"ts":"2026-08-23T14:51:26Z","agent":"LEKHAKA","status":"waiting","detail":"digest caught up (766106916); mailbox empty; DECISIONS/VERDICTS audited, no gaps (evidence/ruling/verdict fields all present); RUN_LEDGER 0 rows is honest-empty, no build run has occurred yet"}
 {"ts":"2026-08-23T14:51:33Z","agent":"KARAKA-M0-T52","status":"working","detail":"starting: reading binding docs for M0-T52 notice listener"}
+{"ts":"2026-08-23T14:52:10Z","agent":"KARAKA-M0-T52","status":"working","detail":"read D-58/D-56/D-41/D-13/V-31; now reading M0-T48 finding + migrate.ts + deploy.yml grep"}
+{"ts":"2026-08-23T14:52:22Z","agent":"ADHIKARIN","status":"working","detail":"D-60/SQ-21: stall detector measures silence not stall; pane check now a restart precondition; I watch PRAHARI"}
