@@ -3119,9 +3119,77 @@ function checkNoCycles(assets: AssetDef[]): void {
   console.log('Dependency cycle check passed.\n')
 }
 
+// ── DRY_RUN refusal (Nirmāṇa M0-T19, ruling D-17) ─────────────────────────────
+
+/**
+ * The diagnostic printed when a `DRY_RUN` run is refused. Exported so the words themselves are
+ * a fixed, inspectable artefact rather than an inline string, and so a future implementation of
+ * a REAL dry run has one obvious place to delete.
+ */
+export const DRY_RUN_NOT_IMPLEMENTED_MESSAGE = [
+  'REFUSING TO RUN — DRY_RUN is set in this environment, but DRY_RUN is not implemented in this seeder.',
+  '',
+  'There is no preview mode here. This script only ever performs a LIVE',
+  '`INSERT INTO asset_registry … ON CONFLICT DO UPDATE` (and the same upsert against',
+  '`asset_coefficients`) against whatever DATABASE_URL points at. Two retired briefs document',
+  '`DRY_RUN=1` on the same command line as $PROD_DB_URL. That documentation was never true:',
+  'the flag was silently ignored, so following it performed the live production write the',
+  'operator was trying to avoid. Refusing is the honest answer; proceeding was not.',
+  '',
+  'NOTHING HAS BEEN READ OR WRITTEN. No database connection was attempted.',
+  '',
+  'To see what is in the registry now, read it directly, e.g.',
+  "  psql \"$DATABASE_URL\" -c 'SELECT asset_id, catalog_status, is_active, target_floor FROM asset_registry ORDER BY asset_id'",
+  'To actually seed, remove DRY_RUN from the environment (`unset DRY_RUN`) and re-run —',
+  'after confirming DATABASE_URL is the database you intend to write to.',
+  '',
+  'PRESENCE of DRY_RUN is the trigger, whatever its value: DRY_RUN=0 and DRY_RUN=false are',
+  'refused too. An operator who meant "off" loses one error message; an operator who typed a',
+  'falsey spelling expecting a preview would otherwise have written to production, and guessing',
+  'which of the two they meant is worse than refusing both.',
+].join('\n')
+
+/**
+ * Is a dry run being asked for? Exported so the question has a real, directly-testable detector
+ * behind it rather than an inline expression nothing can exercise (CLAUDE.md §N.8) — the same
+ * discipline as `isDirectEntrypoint` below.
+ *
+ * Answers on PRESENCE, not on value. `DRY_RUN=`, `DRY_RUN=0` and `DRY_RUN=false` all count as
+ * asked-for. See `DRY_RUN_NOT_IMPLEMENTED_MESSAGE` for why.
+ */
+export function dryRunRequested(env: NodeJS.ProcessEnv): boolean {
+  return Object.prototype.hasOwnProperty.call(env, 'DRY_RUN')
+}
+
+/**
+ * Refuse, loudly and before anything else happens, rather than silently ignoring a safety flag.
+ *
+ * This is CLAUDE.md §N.8 read backwards. §N.8 forbids a green with no detector behind it; this
+ * was a SAFETY MECHANISM WITH NO IMPLEMENTATION, which fails in the direction that does damage —
+ * it harms the operator who is being careful, not the one making a mistake. Nirmāṇa ruling D-17
+ * authorises this refusal in preference to both implementing dry-run (an unplanned capability,
+ * and a hastily-built preview that is subtly wrong would be a NEW unearned safety signal) and
+ * striking the two archived briefs (retain-in-place hygiene, and it would only fix the copies we
+ * know about — a refusal at the point of danger protects the operator whichever document sent
+ * them, including ones nobody has found).
+ *
+ * MUST be called before the `DATABASE_URL` check, before `validateFormulas()`, and therefore
+ * before any `pg.Client` can exist. It deliberately does NOT depend on the seeder's current
+ * inability to complete a run (`validateFormulas()` aborts on `bg_cohort`'s `COHORT_SIZE`): that
+ * unrelated defect is the only thing standing between the documented DRY_RUN command and a live
+ * production upsert today, and repairing it — pinned to R0 carry-forward — ARMS this script.
+ * D-17 §2: the refusal lands now, not after R0.
+ */
+export function refuseIfDryRunRequested(env: NodeJS.ProcessEnv): void {
+  if (dryRunRequested(env)) throw new Error(DRY_RUN_NOT_IMPLEMENTED_MESSAGE)
+}
+
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
+  // FIRST, before anything at all — see refuseIfDryRunRequested's docstring (ruling D-17).
+  refuseIfDryRunRequested(process.env)
+
   const dbUrl = process.env.DATABASE_URL
   if (!dbUrl) throw new Error('DATABASE_URL env var required')
 
