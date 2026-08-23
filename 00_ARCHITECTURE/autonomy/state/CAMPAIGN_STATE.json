@@ -384,7 +384,18 @@
         }
       },
       "baseline_regeneration_ruling": "D-39: regeneration ALONE is refused — a baseline regenerated from current state cannot certify anything about current state, since by construction everything matches and both guards go green TAUTOLOGICALLY. The choice between fossil-red and tautological-green is a choice between two non-detectors. RULING: regenerate ONLY as part of moving CI to --live, and ONLY with a seeded-defect fixture proving each guard still returns red independently afterward. Both agents who declined to regenerate were right, on instinct they could not fully articulate — worth more than either declination alone.",
-      "x03_crit8_crit5": "D-39: CONFIRMED M0's — not P5. M0-T36 re-derived the named-field rule from the plan text rather than accept D-30's assertion, reproduced all 5 prior rulings, and found it reaches these 3 entries D-30 had routed elsewhere. Subject to D-4's standing conditions."
+      "x03_crit8_crit5": "D-39: CONFIRMED M0's — not P5. M0-T36 re-derived the named-field rule from the plan text rather than accept D-30's assertion, reproduced all 5 prior rulings, and found it reaches these 3 entries D-30 had routed elsewhere. Subject to D-4's standing conditions.",
+      "c28_authoritative_definition": {
+        "ruling": "D-42",
+        "principle": "build_run_assets IS AUTHORITATIVE over asset_throughput.state as evidence a build ran — forced by D-32's own doctrine: a column specifying HOW to check is not evidence a check RAN; the evidence is the run record (timestamp + payload), never the flag describing it. asset_throughput.state='lit' is a PROMOTION DECISION about a run, not the run itself, and the predicate that writes it is one D-24 already found switched off on 12 assets. SAME RANKING APPLIES WHEREVER THE QUESTION IS ASKED: rung gate §8.3 item 3, preflight, the cockpit, this guard. Any surface answering from asset_throughput ALONE is a defect to record, not a second opinion to average.",
+        "reclassified_finding": "NOT '31 assets missing estimated_seconds'. IS '31 ASSETS READ lit WITH NO COMPLETED RUN RECORD BEHIND THEM' — D-13's telemetry pollution and §N.8's no-op-completion class meeting each other. The missing estimate is a symptom; the unearned lit is the finding.",
+        "both_fixes_refused": {
+          "backfill": "H6 — a number on a build nothing witnessed, D-6 condition 4 / I7 wearing a different hat",
+          "repoint_c28": "THE MORE TEMPTING REFUSAL, because it looks like applying this very ruling. Under the authoritative definition c28() would report ZERO and a BLOCKING check would PASS while all 31 unearned lit states remain exactly as they are — H3 under D-41's direction test. Adopting a better definition must never be the mechanism by which a finding disappears. IF c28() is ever re-pointed, a check for 'lit with no completed run' must land in the SAME change and must be BLOCKING, so the count moves surfaces rather than vanishing."
+        },
+        "deferral": "STANDS, better grounded — no path to zero exists that is not a real build or a fabrication. The 31 are ROUTED TO THEIR OWNING RUNGS; each rung's own build is the only thing that can earn or refute a lit; I13 forbids touching them now.",
+        "pariksaka_self_correction": "ACCEPTED, distinction is the valuable part: 'zero assets have a successful build but a NULL estimate' is TRUE under the new definition and must NOT be read as 'C-28 is satisfied' — retracting an inference without retracting the fact. It also nearly filed a false unearned-signal defect against the guard itself before finding the fault was its OWN JSON reader (violations/violation_count, not offenders) — the guard was honest, its reader was wrong. 4th instrument error self-caught before filing today; its errors concentrate in PARSING other tools' output, not in DB reads or mutation work."
+      }
     },
     "M1": {
       "status": "not_open"
@@ -847,12 +858,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "F-T43-1-FAILS-OPEN",
-      "what": "snapshot_staleness() FAILS OPEN when registry_columns is absent or empty: a five-minute-old snapshot that never names its columns measures stale=False with ZERO reasons, while one naming a single column is correctly refused. Latent — the only in-repo producer always populates it — but the shape is our own §N.8 class, in machinery built TODAY to close that class. M0-T43 DELIBERATELY LEFT IT UNCOVERED with a reason I think is right: a test on current behaviour PINS THE DEFECT IN PLACE, and a test on desired behaviour is RED ON LANDING. The disposition is a judgment it does not hold",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
       "id": "PARIKSAKA-REDRIVE",
       "state": "RESOLVED — normal operation, not a defect",
       "owner": "PRAHARI",
@@ -862,10 +867,21 @@
       "id": "D37-D41-ABSORBED",
       "state": "applied",
       "what": "D-37 (D-12 part 3's escalation carried two different sets of three orphans, ADHIKARIN merged rather than measured them — 3rd time, same shape as D-22/D-29 — RULED: re-dispatch mechanically available, still NOT legal, I13/I14, leave dormant untouched; NEW finding: ka_gochara_sweep itself has has_writer=true with @register genuinely removed, a 4th D-25-class divergence, routed to R3; F-T36-5 resolved, V-9 STANDS — §8.6 stage 2 is the GENERIC method, refinement (b) fires only on a clause naming a SPECIFIC asset/field, else it would swallow half of refinement (a) and nothing would ever be M0's). D-38 (the two G1 blocks decided, see m_track.M0.g1_dispositions). D-39/D-40 (flip condition amended twice, live-gating withdrawn as impossible, baseline regen refused alone). D-41 (deploy.yml edit AUTHORIZED — it WAS the SQ-08 task; CI edits now class by DIRECTION not through ADHIKARIN — strengthens=proceed+report, weakens=ruling required, can't-tell=treat as weakening; the probe-blindspot pattern BECOMES DOCTRINE with 4 standing requirements; SQ-10 added for the consumer-side non-execution assertion, folding in fresh_chart_smoke.yml:219)."
+    },
+    {
+      "id": "D42-ABSORBED",
+      "state": "applied",
+      "what": "C-28 reclassified and routed to rungs per D-42; see m_track.M0.c28_authoritative_definition"
+    },
+    {
+      "id": "SESSION-CONTINUITY-NOTE",
+      "state": "noted, no action needed",
+      "what": "PRAHARI observed this session's ListAgents ref changed 47edb6 -> f5d814 between ticks, and confirmed via SendMessage that this is registered as a NEW session under the same name. My own HEARTBEAT.jsonl entries are continuous with no gap through the period in question, and my own conversation context is unbroken — so whatever restart occurred at the process/registration level did not cost campaign state or context from where I sit. Recorded per §18.8 (every long-lived agent restartable from CAMPAIGN_STATE + ledgers alone) as evidence the design held, not as an incident needing recovery.",
+      "owner": "SUTRADHARA"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T10:42:04Z",
+  "last_updated_ts": "2026-08-23T11:29:58Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can.",
   "fleet_addressing": {
