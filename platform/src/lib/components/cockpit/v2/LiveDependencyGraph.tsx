@@ -12,7 +12,9 @@ import type { ActiveRun } from '@/hooks/useActiveRun'
 // AssetWithState type the whole v2 cockpit renders from, so the two must stay in step).
 // 'incomplete' added by SAMĀPTI B-COCKPIT-INCOMPLETE (DVA Ruling 24) — the widened stats
 // contract does not type-check into this surface without it.
-type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok'
+// 'service_down' added by NIRMĀṆA M0-T34 (D-26): deriveState now renders a service whose
+// own health detector recorded an adverse verdict as service_down rather than service_ok.
+type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok' | 'service_down'
 
 interface AssetWithState extends AssetRow {
   state: AssetState

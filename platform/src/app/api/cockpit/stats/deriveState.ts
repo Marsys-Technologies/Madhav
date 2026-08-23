@@ -2,7 +2,7 @@
 // export more than GET/POST/route-config — Next's build-time route-shape check forbids any
 // other export from a route.ts file, which is why this logic cannot live there directly).
 
-export type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok'
+export type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok' | 'service_down'
 
 // Badge-honesty defect (pre-D-4b readiness pass, native-flagged, 2026-07-21): a HEAVY
 // (has_substeps=true) writer whose build hit its own writer_timeout_seconds mid-materialization
@@ -52,19 +52,69 @@ export type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'p
 // arithmetic (`plan_substeps(ctx)` returning zero remaining) and persist the ANSWER as
 // `asset_throughput.state`. Reading that answer IS deriving from substep completeness;
 // re-deriving it here from an incomplete input would not be.
+// ── NIRMĀṆA M0-T34 (D-26, G-03) ───────────────────────────────────────────────────────
+// The service branch below used to be the FIRST statement in this function and read:
+//     if (asset.asset_type === 'service' || asset.asset_kind === 'service') return 'service_ok'
+// with a comment asserting "they are healthy when registered + CURRENT" while checking
+// neither `catalog_status` nor any health signal. Two defects followed from that:
+//
+//   1. H4 in its purest form (CHARTER §3, CLAUDE.md §N.8). `ka_graha_sancara` ran its own
+//      self-test on 2026-08-02, recorded {"check":"ephemeris_computes","passed":false} in
+//      `selftest_detail` and wrote `asset_registry.service_health = 'unhealthy'` — and the
+//      badge still rendered green. This is not a green with no detector behind it; it is a
+//      green OVERRIDING a detector that ran and returned the opposite answer.
+//   2. Because it preceded the `is_active` check, an INACTIVE service also rendered
+//      `service_ok` — a distinct bug from an unhealthy one rendering ready.
+//
+// The declared `asset_type`/`asset_kind` selects WHICH check applies. It may never BE the
+// answer. So the branch now consults the stored verdict and sits below `is_active`.
+//
+// Where the verdict actually lives: `service_health` (values fixed by the CHECK constraint
+// asset_registry_service_health_check: healthy | degraded | unhealthy | unknown), stamped by
+// `last_selftest_at` + `selftest_detail`. NOT `health_probe` — that column holds a probe
+// SPECIFICATION, not a result, which is why a NULL `health_probe` next to a non-null
+// `service_health` is not a contradiction.
+//
+// DELIBERATELY NOT DECIDED HERE (D-26 item 3, reserved to M3's integrity-gate engine):
+// what a service with NO verdict should render, and whether that state satisfies a
+// dependency. Four of the eight registered services have never been probed at all
+// (`service_health` NULL, `last_selftest_at` NULL). The honest word for them is "unknown",
+// but coining that state and deciding its dependency semantics is §14.1's M3 work, and
+// pre-building it here is the D-23 lesson. They therefore keep rendering `service_ok` —
+// unchanged, and not thereby endorsed. `deriveState.serviceHealth.test.ts` pins that status
+// quo explicitly so M3 has to change it on purpose rather than inherit it by accident.
+//
+// `service_down` is not a new word: it is already in `platform/src/lib/build/plan.ts`'s
+// AssetState union (and deliberately absent from its READY_STATES), already styled by
+// BuildBlockedModal.tsx, and already mapped to 'failed' by AssetNode.tsx. Only this cockpit
+// union had not caught up.
 export function deriveState(
-  asset: { is_active?: boolean; target_floor?: number | null; asset_type?: string | null; asset_kind?: string | null; has_substeps?: boolean },
+  asset: {
+    is_active?: boolean
+    target_floor?: number | null
+    asset_type?: string | null
+    asset_kind?: string | null
+    has_substeps?: boolean
+    // The health detector's stored verdict. Undefined when a caller does not supply it —
+    // which is treated as "no verdict", never as a pass.
+    service_health?: string | null
+  },
   actualRows: number | null,
   error: string | null,
   throughputState: string | null,
   substepsCommitted: number | null = null
 ): AssetState {
-  // Service assets have no count_sql/target_table by design — they are healthy
-  // when registered + CURRENT. They must never fall through to the data-asset
-  // dormant/error logic below. Check both asset_type (L1/L2 legacy) and
-  // asset_kind (L3+ canonical) so new-layer service registrations are caught.
-  if (asset.asset_type === 'service' || asset.asset_kind === 'service') return 'service_ok'
+  // `is_active` binds first: an asset that is not migrated is not anything else, service or
+  // otherwise.
   if (asset.is_active === false) return 'not_migrated'
+  // Service assets have no count_sql/target_table by design, so they must not fall through
+  // to the data-asset dormant/error logic below. Check both asset_type (L1/L2 legacy) and
+  // asset_kind (L3+ canonical) so new-layer service registrations are caught.
+  if (asset.asset_type === 'service' || asset.asset_kind === 'service') {
+    // An adverse verdict from the asset's own health detector outranks the declaration.
+    if (asset.service_health === 'unhealthy' || asset.service_health === 'degraded') return 'service_down'
+    return 'service_ok'
+  }
   // SAMĀPTI B-COCKPIT-INCOMPLETE (DVA Ruling 24): first-class, and FIRST — ahead of the
   // `error` block and the `actualRows > 0` fallthrough alike. 'incomplete' (migration 474)
   // means "ran; some data IS present from committed substeps; the writer's own substep plan

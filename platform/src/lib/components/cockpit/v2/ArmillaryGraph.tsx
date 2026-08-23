@@ -73,12 +73,17 @@ function arcPath(cx: number, cy: number, r: number, frac: number): string {
 // ── Per-layer aggregate ─────────────────────────────────────────────────────
 export type LayerAgg = { count: number; state: string; builtFrac: number }
 export function aggregate(assets: AssetWithState[]): LayerAgg {
-  // Service assets (service_ok) are excluded from the built/total calculation.
-  // They are always service_ok regardless of build state and would permanently
-  // inflate builtFrac after a clear — e.g. Kāla's 5 service assets would show
-  // as "5/12 built" even when all data has been wiped. Service health is shown
-  // separately via service_health field; it does not reflect data build state.
-  const dataAssets = assets.filter(a => a.state !== 'service_ok')
+  // Service assets are excluded from the built/total calculation.
+  // They carry no data build state and would permanently inflate builtFrac after a
+  // clear — e.g. Kāla's 5 service assets would show as "5/12 built" even when all
+  // data has been wiped. Service health is shown separately via the service_health
+  // field; it does not reflect data build state.
+  // 'service_down' (NIRMĀṆA M0-T34, D-26) is excluded on the SAME grounds and for the
+  // same reason: it is a service, so it has no data build state either. Excluding only
+  // 'service_ok' would have quietly moved an unhealthy service into the DATA denominator
+  // — permanently deflating builtFrac for a reason that has nothing to do with data.
+  // The unhealthy verdict is reported on that asset's own row, not by deflating a ring.
+  const dataAssets = assets.filter(a => a.state !== 'service_ok' && a.state !== 'service_down')
   const total = dataAssets.length || 1
   const building = dataAssets.some(a => a.state === 'building')
   // build_state_stale counts as built (rows are present; throughput ledger is behind, not absent).
