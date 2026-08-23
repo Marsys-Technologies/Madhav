@@ -13,6 +13,17 @@ SESSION="${NIRMANA_SESSION:-nirmana}"
 CLAUDE_BIN="${CLAUDE_BIN:-claude}"
 DRY=0; [ "${1:-}" = "--dry-run" ] && DRY=1
 
+# Fallback only: if the calling shell didn't export a real DATABASE_URL, load one
+# from a local, gitignored .env so tmux panes spawned below inherit it (panes get
+# this process's environment at spawn time). Reads only the DATABASE_URL= line,
+# never sources the file, so its content can't run as shell.
+ENV_FILE="$A/.env"
+if { [ -z "${DATABASE_URL:-}" ] || printf '%s' "${DATABASE_URL:-}" | grep -qE '…|\.\.\.|<|>|user:pass|example\.com'; } \
+   && [ -f "$ENV_FILE" ]; then
+  LOADED="$(grep -m1 '^DATABASE_URL=' "$ENV_FILE" | cut -d= -f2-)"
+  [ -n "$LOADED" ] && DATABASE_URL="$LOADED" && export DATABASE_URL
+fi
+
 "$A/bin/preflight.sh" || exit 1
 
 # Build one agent's kickoff prompt: common ground + role prompt + standing order.

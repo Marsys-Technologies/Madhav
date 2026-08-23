@@ -37,9 +37,21 @@ fi
 # The previous version of this check tested [ -n "$DATABASE_URL" ], which passes on a
 # pasted placeholder. That is the same defect the campaign exists to cure, in the
 # launcher itself. It now connects or it fails.
+PLACEHOLDER_RE='…|\.\.\.|<|>|user:pass|example\.com'
+
+# Fallback only: if the calling shell didn't export a real DATABASE_URL, load one
+# from a local, gitignored .env (never committed — see .gitignore). Reads only the
+# DATABASE_URL= line, never sources the file, so its content can't run as shell.
+ENV_FILE="$REPO/00_ARCHITECTURE/autonomy/.env"
+if { [ -z "${DATABASE_URL:-}" ] || printf '%s' "${DATABASE_URL:-}" | grep -qE "$PLACEHOLDER_RE"; } \
+   && [ -f "$ENV_FILE" ]; then
+  LOADED="$(grep -m1 '^DATABASE_URL=' "$ENV_FILE" | cut -d= -f2-)"
+  [ -n "$LOADED" ] && DATABASE_URL="$LOADED" && export DATABASE_URL
+fi
+
 if [ -z "${DATABASE_URL:-}" ]; then
   say "DATABASE_URL set" "MISSING"; fail=1
-elif printf '%s' "$DATABASE_URL" | grep -qE '…|\.\.\.|<|>|user:pass|example\.com'; then
+elif printf '%s' "$DATABASE_URL" | grep -qE "$PLACEHOLDER_RE"; then
   say "DATABASE_URL set" "PLACEHOLDER — paste the real connection string"; fail=1
 else
   say "DATABASE_URL set" "OK"
