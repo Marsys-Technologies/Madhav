@@ -37204,8 +37204,11 @@ control-surface staleness this campaign has spent its day removing everywhere el
 allows: a dated status entry, not a close.*
 
 **What is true as of this entry:** Track M sub-phase M0 (machinery repair, data-neutral) is open
-and NOT closed — measured by a real exit scorecard, most recent reading 2 pass / 6 fail / 3
-not-measurable / 1 blocked, improved from an initial 0/12. One exit criterion (C-10) is
+and NOT closed — measured by a real exit scorecard, most recent reading 1 pass / 7 fail / 3
+not-measurable / 1 blocked, improved from an initial 0/12 (FAIL rose 6→7 partway through for a
+good reason: criterion 7 moved BLOCKED→FAIL once migration 590 gave it a working detector,
+which immediately found a real defect — a newly-visible failure, not a new one). One exit
+criterion (C-10) is
 structurally unsatisfiable by the fleet itself (requires a merge to `main`, forbidden absolutely
 by charter rule H2) and is parked as PARK-6 for the native. Three production writes so far, each
 independently certified by PARĪKṢAKA rather than trusted from the executing agent's own report:

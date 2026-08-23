@@ -5870,8 +5870,11 @@ block (post-rebuild era), and proceeds.
 > **As of this entry (~2026-08-23T09:15Z, ~6h in): Track M / M0 (machinery-only,
 > data-neutral) is NOT closed, and cannot close yet** — an exit scorecard exists precisely so
 > this is measured rather than asserted, and it still reads far from clean (early readings:
-> 0/12 criteria passing; most recent reading before this entry: 2 pass / 6 fail / 3
-> not-measurable / 1 blocked, with several criteria structurally deferred). One exit criterion
+> 0/12 criteria passing; most recent reading before this entry: 1 pass / 7 fail / 3
+> not-measurable / 1 blocked — the FAIL count rose from 6 to 7 partway through for a good
+> reason, not a regression: one criterion moved BLOCKED→FAIL once a migration gave it a
+> working detector for the first time, which immediately found a real defect it couldn't see
+> before — several criteria remain structurally deferred). One exit criterion
 > (C-10, CI catalogue guards "merged and blocking") is parked as **PARK-6**: it requires a
 > merge to `main`, which the charter's H2 rule forbids the fleet from ever doing itself — it
 > needs the native to merge one PR whenever convenient. No rung (R0–R5, the actual per-layer
