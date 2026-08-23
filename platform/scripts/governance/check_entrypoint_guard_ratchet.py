@@ -740,8 +740,10 @@ def regenerate(root: Path, scan_roots: Sequence[str], out: Path) -> int:
 # permanently-red gate, no waiting on the pay-down.
 
 
-#: How far back the NON-GATING history observation walks. Bounded so the guard's cost cannot
-#: grow with the repo's history.
+#: How far back history is walked, bounding the guard's cost so it cannot grow with the
+#: repo's history. Used by BOTH the GATING `floor_monotone_check` (line ~981) and the
+#: NON-GATING `pawl_history` observation (line ~1234) — this constant narrows a blocking
+#: gate's coverage, not only a diagnostic.
 HISTORY_SCAN_LIMIT = 200
 
 
