@@ -1,0 +1,4722 @@
+{
+ "_meta": {
+  "task": "M0-T7",
+  "generated_at": "2026-08-23T04:41:20.013140+00:00",
+  "git_head": "b833c1adb6ca68d7e975795c63c2e45ced8bccfd",
+  "git_branch": "campaign/nirmana-autonomous",
+  "database_access": "READ-ONLY (SELECT only, autocommit)",
+  "registry_rows": 128,
+  "registry_edges": 284,
+  "assets_with_deps": 94,
+  "assets_without_deps": 34,
+  "seed_assets": 127,
+  "seed_edges": 226,
+  "seed_coefficient_edges": 5,
+  "seed_assets_not_in_registry": [],
+  "registry_assets_not_in_seed": [
+   "bg_gochara_citation_resolution"
+  ],
+  "writers_resolved": 123
+ },
+ "q1_current_depends_on_draft": [
+  [
+   "bo_laksana",
+   "ga_vichara"
+  ],
+  [
+   "ka_kshetra",
+   "ka_dasha_kala"
+  ],
+  [
+   "ka_taranga",
+   "ka_sangam"
+  ]
+ ],
+ "q1_current_depends_on_retired": [],
+ "q1_current_depends_on_inactive": [],
+ "q2_dangling_registry": [],
+ "q2_dangling_seed_vs_registry": [],
+ "q2_dangling_seed_vs_seed": [],
+ "edges_only_in_registry": [
+  [
+   "bg_gochara_citation_resolution",
+   "bg_texts"
+  ],
+  [
+   "bo_anveshana",
+   "bo_bimba"
+  ],
+  [
+   "bo_anveshana",
+   "bo_laksana"
+  ],
+  [
+   "bo_karanajala",
+   "ga_positions"
+  ],
+  [
+   "bo_laksana",
+   "ga_condition"
+  ],
+  [
+   "bo_laksana",
+   "ga_nakshatra"
+  ],
+  [
+   "bo_laksana",
+   "ga_panchanga"
+  ],
+  [
+   "bo_laksana",
+   "ga_positions"
+  ],
+  [
+   "bo_laksana",
+   "ga_sade_sati"
+  ],
+  [
+   "bo_laksana",
+   "ga_sensitive"
+  ],
+  [
+   "bo_laksana",
+   "ga_strength"
+  ],
+  [
+   "bo_laksana",
+   "ga_vargas"
+  ],
+  [
+   "bo_pramana_mapa",
+   "bo_bimba"
+  ],
+  [
+   "bo_pramana_mapa",
+   "bo_karanajala"
+  ],
+  [
+   "bo_pramana_mapa",
+   "bo_laksana"
+  ],
+  [
+   "bo_pramana_mapa",
+   "bo_samskara"
+  ],
+  [
+   "bo_pramana_mapa",
+   "bo_sangati"
+  ],
+  [
+   "bo_pratijna",
+   "bo_sangati"
+  ],
+  [
+   "bo_samvada",
+   "bo_karanajala"
+  ],
+  [
+   "bo_samvada",
+   "bo_pramana_mapa"
+  ],
+  [
+   "bo_samvada",
+   "bo_sangati"
+  ],
+  [
+   "bo_samvada",
+   "bo_upaya"
+  ],
+  [
+   "bo_sangati",
+   "bo_karanajala"
+  ],
+  [
+   "ga_sade_sati",
+   "ga_nakshatra"
+  ],
+  [
+   "ga_strength",
+   "ga_vargas"
+  ],
+  [
+   "ga_tajaka",
+   "ga_sensitive"
+  ],
+  [
+   "ka_bhavishya_lekha",
+   "bo_laksana"
+  ],
+  [
+   "ka_bhavishya_lekha",
+   "ka_sangam"
+  ],
+  [
+   "ka_jivana_parva",
+   "ga_dashas"
+  ],
+  [
+   "ka_jivana_parva",
+   "ka_sangam"
+  ],
+  [
+   "ka_jivana_parva",
+   "ka_yojaka"
+  ],
+  [
+   "ka_kalasutra",
+   "bo_laksana"
+  ],
+  [
+   "ka_sangam",
+   "bg_transit_rules"
+  ],
+  [
+   "ka_sangam",
+   "bo_laksana"
+  ],
+  [
+   "ka_sangam",
+   "ga_dashas"
+  ],
+  [
+   "ka_sangam",
+   "ga_positions"
+  ],
+  [
+   "ka_sangam",
+   "ga_strength"
+  ],
+  [
+   "ka_sangam",
+   "ga_tajaka"
+  ],
+  [
+   "ka_vedha_gochara",
+   "bg_phaladeepika_latta"
+  ],
+  [
+   "ka_vedha_gochara",
+   "bg_sarvatobhadra_grid"
+  ],
+  [
+   "ka_vedha_gochara",
+   "bg_vedha_malefic_scale"
+  ],
+  [
+   "ka_vighnakara",
+   "ga_positions"
+  ],
+  [
+   "mi_adhilepa",
+   "bo_laksana"
+  ],
+  [
+   "mi_adhilepa",
+   "ga_positions"
+  ],
+  [
+   "mi_adhilepa",
+   "ka_sangam"
+  ],
+  [
+   "mi_adhilepa",
+   "ph_nimitta"
+  ],
+  [
+   "mi_bhavisya",
+   "bo_laksana"
+  ],
+  [
+   "mi_sambandha",
+   "mi_bhavisya"
+  ],
+  [
+   "ph_muhurta",
+   "ga_condition"
+  ],
+  [
+   "ph_muhurta",
+   "ga_positions"
+  ],
+  [
+   "ph_muhurta",
+   "ka_gochara"
+  ],
+  [
+   "ph_muhurta",
+   "ka_sangam"
+  ],
+  [
+   "ph_muhurta",
+   "ka_vighnakara"
+  ],
+  [
+   "ph_nimitta",
+   "bo_anveshana"
+  ],
+  [
+   "ph_nimitta",
+   "bo_cgm_paths"
+  ],
+  [
+   "ph_nimitta",
+   "bo_laksana"
+  ],
+  [
+   "ph_phaladesa",
+   "bo_laksana"
+  ],
+  [
+   "ph_pratikara",
+   "ka_sangam"
+  ],
+  [
+   "ph_suddha_sodhana",
+   "ph_nimitta"
+  ]
+ ],
+ "edges_only_in_seed": [
+  [
+   "bo_pratijna",
+   "bg_ghatana"
+  ]
+ ],
+ "seed_coefficient_edges": [
+  [
+   "bg_rules",
+   "bo_laksana"
+  ],
+  [
+   "bo_laksana",
+   "bo_karanajala"
+  ],
+  [
+   "ka_sangam",
+   "ph_nimitta"
+  ],
+  [
+   "bg_ephemeris",
+   "ka_kalasutra"
+  ],
+  [
+   "bg_rules",
+   "bg_concordance"
+  ]
+ ],
+ "seed_coefficient_dangling": [],
+ "cycles": [],
+ "self_edges": [],
+ "duplicate_edges": [],
+ "q3_over_declaration": [
+  {
+   "asset": "bg_compendium_index",
+   "dep": "bg_texts",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "classical_text_chunks",
+    "classical_texts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "bg_compendium_index",
+   "dep": "bg_reference",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "reference_aspects",
+    "reference_constants",
+    "reference_dasha_systems",
+    "reference_doshas",
+    "reference_glossary",
+    "reference_houses",
+    "reference_karakas",
+    "reference_nakshatras",
+    "reference_planets",
+    "reference_signs",
+    "reference_strength_systems",
+    "reference_topic_tags",
+    "reference_upagrahas",
+    "reference_vargas",
+    "reference_yogas"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_compendium_index.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "bg_concordance",
+   "dep": "bg_rules",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "sutravali_rules"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_concordance.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "bg_dasha_systems",
+   "dep": "bg_ontology",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "mentioned_not_read",
+   "dep_tables": [
+    "brahma_ontology"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_dasha_systems.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "bg_doshas",
+   "dep": "bg_ontology",
+   "tight": "mentioned_not_read",
+   "loose": "mentioned_not_read",
+   "dep_tables": [
+    "brahma_ontology"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_doshas.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "bg_gochara_citation_resolution",
+   "dep": "bg_texts",
+   "tight": "UNKNOWN_no_writer_source",
+   "loose": "UNKNOWN_no_writer_source"
+  },
+  {
+   "asset": "bg_rules",
+   "dep": "bg_texts",
+   "tight": "mentioned_not_read",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "classical_text_chunks",
+    "classical_texts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_rules.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "bg_text_index",
+   "dep": "bg_texts",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "classical_text_chunks",
+    "classical_texts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_text_index.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "bg_vidhi_floors",
+   "dep": "bg_vidhi_primitives",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "mentioned_not_read",
+   "dep_tables": [
+    "vidhi_primitives"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_vidhi_floors.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "bg_yogas",
+   "dep": "bg_ontology",
+   "tight": "mentioned_not_read",
+   "loose": "mentioned_not_read",
+   "dep_tables": [
+    "brahma_ontology"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bg_yogas.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "bo_anveshana",
+   "dep": "bo_sangati",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cdlm_cells"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_anveshana",
+   "dep": "bo_karanajala",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_edges"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_anveshana",
+   "dep": "bo_samskara",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_signal_embeddings"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_anveshana",
+   "dep": "bo_drishti",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_question_lenses"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_anveshana",
+   "dep": "bo_bimba",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_nodes"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_anveshana",
+   "dep": "bo_laksana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_anveshana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_arudha",
+   "dep": "ga_structural",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts",
+    "fact_category_ownership"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_arudha",
+   "dep": "ga_positions",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_arudha.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_bimba",
+   "dep": "bo_laksana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_bimba.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_cdlm_summary",
+   "dep": "bo_sangati",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cdlm_cells"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cdlm_summary.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_cgm_motifs",
+   "dep": "bo_bimba",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_nodes"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_cgm_motifs",
+   "dep": "bo_karanajala",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_edges"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_motifs.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_cgm_paths",
+   "dep": "bo_bimba",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_nodes"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_cgm_paths",
+   "dep": "bo_karanajala",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_edges"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_cgm_paths.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_chart_gestalt",
+   "dep": "bo_laksana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_chart_gestalt.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_chart_gestalt",
+   "dep": "bo_sangati",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cdlm_cells"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_chart_gestalt.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_chart_gestalt",
+   "dep": "bo_bimba",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_nodes"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_chart_gestalt.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_chart_gestalt",
+   "dep": "bo_cgm_paths",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_paths"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_chart_gestalt.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_chart_gestalt",
+   "dep": "bo_anveshana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_anomalies",
+    "bodha_discoveries"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_chart_gestalt.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_drishti",
+   "dep": "bo_laksana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_drishti",
+   "dep": "bo_sangati",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cdlm_cells"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_drishti",
+   "dep": "bo_karanajala",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_edges"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_drishti.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_karanajala",
+   "dep": "bo_laksana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_karanajala",
+   "dep": "bo_bimba",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_nodes"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_karanajala",
+   "dep": "ga_positions",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_karanajala.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_laksana",
+   "dep": "bg_rules",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "sutravali_rules"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_laksana",
+   "dep": "ga_positions",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_laksana",
+   "dep": "ga_strength",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_laksana",
+   "dep": "ga_sensitive",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_laksana",
+   "dep": "ga_panchanga",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_laksana",
+   "dep": "ga_sade_sati",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_laksana",
+   "dep": "ga_structural",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts",
+    "fact_category_ownership"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_laksana",
+   "dep": "ga_nakshatra",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_laksana",
+   "dep": "ga_condition",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts",
+    "ga_condition_composite"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_laksana",
+   "dep": "ga_vargas",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_divisionals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_laksana",
+   "dep": "ga_vichara",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_vichara"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_laksana_rerank",
+   "dep": "bo_karanajala",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_edges"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_laksana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_nakshatra_semantic",
+   "dep": "ga_positions",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_nakshatra_semantic",
+   "dep": "ga_nakshatra",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_nakshatra_semantic.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_pramana_mapa",
+   "dep": "bo_upaya",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_rm_remedy_prescriptions",
+    "bodha_rm_resonances"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_pramana_mapa",
+   "dep": "bo_drishti",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_question_lenses"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_pramana_mapa",
+   "dep": "bo_anveshana",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_anomalies",
+    "bodha_discoveries"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_pramana_mapa",
+   "dep": "bo_laksana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_pramana_mapa",
+   "dep": "bo_sangati",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cdlm_cells"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_pramana_mapa",
+   "dep": "bo_bimba",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_nodes"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_pramana_mapa",
+   "dep": "bo_karanajala",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_edges"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_pramana_mapa",
+   "dep": "bo_samskara",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_signal_embeddings"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_pramana_mapa.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_pratijna",
+   "dep": "bo_laksana",
+   "tight": "mentioned_not_read",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_pratijna",
+   "dep": "bo_sangati",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cdlm_cells"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_pratijna.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_samskara",
+   "dep": "bo_laksana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_samskara.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_samvada",
+   "dep": "bo_laksana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_samvada.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_samvada",
+   "dep": "bo_karanajala",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_edges"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_samvada.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_samvada",
+   "dep": "bo_upaya",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_rm_remedy_prescriptions",
+    "bodha_rm_resonances"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_samvada.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_samvada",
+   "dep": "bo_sangati",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cdlm_cells"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_samvada.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_samvada",
+   "dep": "bo_pramana_mapa",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "synthesis_quality_scorecard"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_samvada.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_sangati",
+   "dep": "bo_laksana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_sangati",
+   "dep": "bo_karanajala",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_edges"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_sangati.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_special_lagna",
+   "dep": "ga_sensitive",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_special_lagna.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_sudarshana",
+   "dep": "ga_positions",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_sudarshana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_upaya",
+   "dep": "bo_laksana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_upaya",
+   "dep": "bo_sangati",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cdlm_cells"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_upaya",
+   "dep": "ga_structural",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts",
+    "fact_category_ownership"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_upaya",
+   "dep": "ga_dashas",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_dashas"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_upaya",
+   "dep": "bo_cgm_motifs",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_motifs"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_upaya.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_vargottama_dhana",
+   "dep": "ga_vargas",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_divisionals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_vargottama_dhana",
+   "dep": "ga_positions",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_vargottama_dhana.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_yantra_mechanism",
+   "dep": "bo_karanajala",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_edges"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_yantra_mechanism",
+   "dep": "bo_cgm_motifs",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_motifs"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "bo_yantra_mechanism",
+   "dep": "bo_cgm_paths",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_paths"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/bo_yantra_mechanism.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_ayurdaya",
+   "dep": "ga_positions",
+   "tight": "mentioned_not_read",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_ayurdaya.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_condition",
+   "dep": "ga_positions",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_condition.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_condition",
+   "dep": "ga_vargas",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_divisionals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_condition.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_condition",
+   "dep": "ga_dashas",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_dashas"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_condition.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_dashas",
+   "dep": "ga_positions",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_dashas.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_medical",
+   "dep": "ga_condition",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts",
+    "ga_condition_composite"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_medical.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_medical",
+   "dep": "ga_positions",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_medical.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_nakshatra",
+   "dep": "bg_nakshatra",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "reference_nakshatra",
+    "reference_nakshatra_matrix",
+    "reference_nakshatra_pada"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py"
+   ],
+   "loose_scan_files": 128
+  },
+  {
+   "asset": "ga_nakshatra",
+   "dep": "ga_positions",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py"
+   ],
+   "loose_scan_files": 128
+  },
+  {
+   "asset": "ga_nakshatra",
+   "dep": "bg_kp_sublord_division",
+   "tight": "mentioned_not_read",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bg_kp_sublord_division"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_nakshatra.py"
+   ],
+   "loose_scan_files": 128
+  },
+  {
+   "asset": "ga_panchanga",
+   "dep": "ga_positions",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_panchanga.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_prashna",
+   "dep": "ga_positions",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_prashna.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ga_sade_sati",
+   "dep": "ga_positions",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_sade_sati.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_sade_sati",
+   "dep": "ga_strength",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_sade_sati.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_sade_sati",
+   "dep": "ga_panchanga",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_sade_sati.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_sade_sati",
+   "dep": "ga_vargas",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_divisionals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_sade_sati.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_sade_sati",
+   "dep": "ga_dashas",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_dashas"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_sade_sati.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_sade_sati",
+   "dep": "ga_structural",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts",
+    "fact_category_ownership"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_sade_sati.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_sade_sati",
+   "dep": "ga_nakshatra",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_sade_sati.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_sensitive",
+   "dep": "ga_positions",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_sensitive.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_sensitive",
+   "dep": "bg_reference",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "reference_aspects",
+    "reference_constants",
+    "reference_dasha_systems",
+    "reference_doshas",
+    "reference_glossary",
+    "reference_houses",
+    "reference_karakas",
+    "reference_nakshatras",
+    "reference_planets",
+    "reference_signs",
+    "reference_strength_systems",
+    "reference_topic_tags",
+    "reference_upagrahas",
+    "reference_vargas",
+    "reference_yogas"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_sensitive.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_sensitive_degree",
+   "dep": "ga_positions",
+   "tight": "mentioned_not_read",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_sensitive_degree.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_strength",
+   "dep": "ga_positions",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_strength.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_strength",
+   "dep": "ga_vargas",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_divisionals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_strength.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_structural",
+   "dep": "ga_dashas",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_dashas"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_structural.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_structural",
+   "dep": "ga_nakshatra",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_structural.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_structural",
+   "dep": "ga_panchanga",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_structural.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_structural",
+   "dep": "ga_positions",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_structural.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_structural",
+   "dep": "ga_sensitive",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_structural.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_structural",
+   "dep": "ga_strength",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_structural.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_structural",
+   "dep": "ga_vargas",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_divisionals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_structural.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_tajaka",
+   "dep": "ga_positions",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_tajaka.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_tajaka",
+   "dep": "ga_dashas",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_dashas"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_tajaka.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_tajaka",
+   "dep": "ga_sensitive",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_tajaka.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_transit_anchors",
+   "dep": "ga_positions",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_transit_anchors.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_vargas",
+   "dep": "ga_positions",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_vargas.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_vastu",
+   "dep": "ga_condition",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts",
+    "ga_condition_composite"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_vastu.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ga_vichara",
+   "dep": "ga_structural",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts",
+    "fact_category_ownership"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_vichara.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ga_vichara",
+   "dep": "ga_strength",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_vichara.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ga_vichara",
+   "dep": "ga_dashas",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_dashas"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_vichara.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ga_vichara",
+   "dep": "ga_yoga",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "ga_yoga_firings"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_vichara.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ga_yoga",
+   "dep": "ga_structural",
+   "tight": "mentioned_not_read",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts",
+    "fact_category_ownership"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_yoga.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ga_yoga",
+   "dep": "ga_dashas",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_dashas"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ga_yoga.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ka_avadhi",
+   "dep": "ga_dashas",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_dashas"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "ka_avadhi",
+   "dep": "bo_pratijna",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_pratijna"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "ka_avadhi",
+   "dep": "bg_ghatana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "brahma_activity_ontology",
+    "brahma_event_ontology"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_avadhi.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "ka_bhavishya_lekha",
+   "dep": "ka_kala_darshana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_darshana"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ka_bhavishya_lekha",
+   "dep": "ka_vighnakara",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_obstruction"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ka_bhavishya_lekha",
+   "dep": "ka_sangam",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_convergence"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ka_bhavishya_lekha",
+   "dep": "bo_laksana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_bhavishya_lekha.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ka_dasha_kala",
+   "dep": "ga_dashas",
+   "tight": "mentioned_not_read",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_dashas"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/services/ka_dasha_kala/writer.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ka_gochara",
+   "dep": "bg_gochara_arcs",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bg_gochara_arcs"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py",
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_sweep.py",
+    "platform/python-sidecar/services/ka_gochara/service.py"
+   ],
+   "loose_scan_files": 136
+  },
+  {
+   "asset": "ka_gochara",
+   "dep": "ka_gochara_resonance",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "gochara_resonance_map"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara.py",
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_sweep.py",
+    "platform/python-sidecar/services/ka_gochara/service.py"
+   ],
+   "loose_scan_files": 136
+  },
+  {
+   "asset": "ka_gochara_resonance",
+   "dep": "bg_transit_rules",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bg_transit_rules"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_resonance.py",
+    "platform/python-sidecar/services/ka_gochara_resonance/writer.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ka_gochara_sweep",
+   "dep": "ka_gochara_resonance",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "gochara_resonance_map"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_sweep.py",
+    "platform/python-sidecar/services/ka_gochara_sweep/__init__.py",
+    "platform/python-sidecar/services/ka_gochara_sweep/writer.py"
+   ],
+   "loose_scan_files": 125
+  },
+  {
+   "asset": "ka_gochara_v3_century_materialize",
+   "dep": "ka_gochara_resonance",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "gochara_resonance_map"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v3_century_materialize.py"
+   ],
+   "loose_scan_files": 142
+  },
+  {
+   "asset": "ka_gochara_v3_century_materialize",
+   "dep": "ka_vedha_gochara",
+   "tight": "mentioned_not_read",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_vedha_gochara"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v3_century_materialize.py"
+   ],
+   "loose_scan_files": 142
+  },
+  {
+   "asset": "ka_gochara_v3_century_materialize",
+   "dep": "ka_moorti_nirnaya",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "mentioned_not_read",
+   "dep_tables": [
+    "kala_moorti_nirnaya"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v3_century_materialize.py"
+   ],
+   "loose_scan_files": 142
+  },
+  {
+   "asset": "ka_gochara_v3_century_materialize",
+   "dep": "ka_kota_chakra",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "mentioned_not_read",
+   "dep_tables": [
+    "kala_kota_chakra"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v3_century_materialize.py"
+   ],
+   "loose_scan_files": 142
+  },
+  {
+   "asset": "ka_gochara_v3_century_materialize",
+   "dep": "ka_tithi_pravesha",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_tithi_pravesha"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v3_century_materialize.py"
+   ],
+   "loose_scan_files": 142
+  },
+  {
+   "asset": "ka_gochara_v3_century_materialize",
+   "dep": "bg_sky_calendar",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bg_sky_calendar",
+    "bg_sky_events"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_v3_century_materialize.py"
+   ],
+   "loose_scan_files": 142
+  },
+  {
+   "asset": "ka_graha_sancara",
+   "dep": "bg_ephemeris",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "ephemeris_daily"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_graha_sancara.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ka_jivana_parva",
+   "dep": "ka_kala_darshana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_darshana"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "ka_jivana_parva",
+   "dep": "ka_dasha_kala",
+   "tight": "UNKNOWN_dep_declares_no_table",
+   "loose": "UNKNOWN_dep_declares_no_table",
+   "dep_tables": []
+  },
+  {
+   "asset": "ka_jivana_parva",
+   "dep": "ka_sangam",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_convergence"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "ka_jivana_parva",
+   "dep": "ka_yojaka",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_activation_predicates"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "ka_jivana_parva",
+   "dep": "ga_dashas",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_dashas"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_jivana_parva.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "ka_kala_darshana",
+   "dep": "ka_sangam",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_convergence"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "ka_kala_darshana",
+   "dep": "ka_vighnakara",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_obstruction"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "ka_kala_darshana",
+   "dep": "ka_kalasutra",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_activation"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kala_darshana.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "ka_kalasutra",
+   "dep": "ka_yojaka",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_activation_predicates"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kalasutra.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ka_kalasutra",
+   "dep": "ka_sangam",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_convergence"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kalasutra.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ka_kalasutra",
+   "dep": "bo_laksana",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kalasutra.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ka_kota_chakra",
+   "dep": "ga_positions",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kota_chakra.py",
+    "platform/python-sidecar/services/ka_kota_chakra/writer.py"
+   ],
+   "loose_scan_files": 125
+  },
+  {
+   "asset": "ka_kota_chakra",
+   "dep": "bg_ephemeris",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "ephemeris_daily"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kota_chakra.py",
+    "platform/python-sidecar/services/ka_kota_chakra/writer.py"
+   ],
+   "loose_scan_files": 125
+  },
+  {
+   "asset": "ka_kota_chakra",
+   "dep": "bg_kota_chakra_rings",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bg_kota_chakra_rings"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kota_chakra.py",
+    "platform/python-sidecar/services/ka_kota_chakra/writer.py"
+   ],
+   "loose_scan_files": 125
+  },
+  {
+   "asset": "ka_kshetra",
+   "dep": "ka_dasha_kala",
+   "tight": "UNKNOWN_dep_declares_no_table",
+   "loose": "UNKNOWN_dep_declares_no_table",
+   "dep_tables": []
+  },
+  {
+   "asset": "ka_kshetra",
+   "dep": "ka_gochara_resonance",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "gochara_resonance_map"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kshetra.py",
+    "platform/python-sidecar/services/ka_kshetra/__init__.py",
+    "platform/python-sidecar/services/ka_kshetra/writer.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ka_kshetra",
+   "dep": "ga_panchanga",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kshetra.py",
+    "platform/python-sidecar/services/ka_kshetra/__init__.py",
+    "platform/python-sidecar/services/ka_kshetra/writer.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ka_kshetra",
+   "dep": "bo_pratijna",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_pratijna"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kshetra.py",
+    "platform/python-sidecar/services/ka_kshetra/__init__.py",
+    "platform/python-sidecar/services/ka_kshetra/writer.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ka_kshetra",
+   "dep": "bo_sangati",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cdlm_cells"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kshetra.py",
+    "platform/python-sidecar/services/ka_kshetra/__init__.py",
+    "platform/python-sidecar/services/ka_kshetra/writer.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ka_kshetra",
+   "dep": "bo_upaya",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_rm_remedy_prescriptions",
+    "bodha_rm_resonances"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kshetra.py",
+    "platform/python-sidecar/services/ka_kshetra/__init__.py",
+    "platform/python-sidecar/services/ka_kshetra/writer.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ka_kshetra",
+   "dep": "bg_cohort",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bg_synthetic_cohort"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kshetra.py",
+    "platform/python-sidecar/services/ka_kshetra/__init__.py",
+    "platform/python-sidecar/services/ka_kshetra/writer.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ka_kshetra",
+   "dep": "bg_class_lifetime_counts",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "brahma_class_priors"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_kshetra.py",
+    "platform/python-sidecar/services/ka_kshetra/__init__.py",
+    "platform/python-sidecar/services/ka_kshetra/writer.py"
+   ],
+   "loose_scan_files": 452
+  },
+  {
+   "asset": "ka_moorti_nirnaya",
+   "dep": "ga_positions",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_moorti_nirnaya.py",
+    "platform/python-sidecar/services/ka_moorti_nirnaya/writer.py"
+   ],
+   "loose_scan_files": 125
+  },
+  {
+   "asset": "ka_moorti_nirnaya",
+   "dep": "bg_ephemeris",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "ephemeris_daily"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_moorti_nirnaya.py",
+    "platform/python-sidecar/services/ka_moorti_nirnaya/writer.py"
+   ],
+   "loose_scan_files": 125
+  },
+  {
+   "asset": "ka_moorti_nirnaya",
+   "dep": "bg_transit_rules",
+   "tight": "mentioned_not_read",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bg_transit_rules"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_moorti_nirnaya.py",
+    "platform/python-sidecar/services/ka_moorti_nirnaya/writer.py"
+   ],
+   "loose_scan_files": 125
+  },
+  {
+   "asset": "ka_muhurta_seva",
+   "dep": "ka_graha_sancara",
+   "tight": "UNKNOWN_dep_declares_no_table",
+   "loose": "UNKNOWN_dep_declares_no_table",
+   "dep_tables": []
+  },
+  {
+   "asset": "ka_sangam",
+   "dep": "ka_yojaka",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_activation_predicates"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py"
+   ],
+   "loose_scan_files": 126
+  },
+  {
+   "asset": "ka_sangam",
+   "dep": "ka_dasha_kala",
+   "tight": "UNKNOWN_dep_declares_no_table",
+   "loose": "UNKNOWN_dep_declares_no_table",
+   "dep_tables": []
+  },
+  {
+   "asset": "ka_sangam",
+   "dep": "ka_gochara",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "mentioned_not_read",
+   "dep_tables": [
+    "kala_gochara_windows"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py"
+   ],
+   "loose_scan_files": 126
+  },
+  {
+   "asset": "ka_sangam",
+   "dep": "ka_muhurta_seva",
+   "tight": "UNKNOWN_dep_declares_no_table",
+   "loose": "UNKNOWN_dep_declares_no_table",
+   "dep_tables": []
+  },
+  {
+   "asset": "ka_sangam",
+   "dep": "bo_laksana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py"
+   ],
+   "loose_scan_files": 126
+  },
+  {
+   "asset": "ka_sangam",
+   "dep": "ga_dashas",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_dashas"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py"
+   ],
+   "loose_scan_files": 126
+  },
+  {
+   "asset": "ka_sangam",
+   "dep": "ga_strength",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py"
+   ],
+   "loose_scan_files": 126
+  },
+  {
+   "asset": "ka_sangam",
+   "dep": "ga_positions",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py"
+   ],
+   "loose_scan_files": 126
+  },
+  {
+   "asset": "ka_sangam",
+   "dep": "ga_tajaka",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "l1_tajik_varsha_year_lords"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py"
+   ],
+   "loose_scan_files": 126
+  },
+  {
+   "asset": "ka_sangam",
+   "dep": "bg_transit_rules",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bg_transit_rules"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_sangam.py"
+   ],
+   "loose_scan_files": 126
+  },
+  {
+   "asset": "ka_sudarshana_varsha",
+   "dep": "ga_positions",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_sudarshana_varsha.py",
+    "platform/python-sidecar/services/ka_sudarshana_varsha/writer.py"
+   ],
+   "loose_scan_files": 124
+  },
+  {
+   "asset": "ka_taranga",
+   "dep": "ka_avadhi",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_avadhi"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_taranga.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ka_taranga",
+   "dep": "bo_pratijna",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_pratijna"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_taranga.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ka_taranga",
+   "dep": "ka_sangam",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_convergence"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_taranga.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ka_taranga",
+   "dep": "ga_dashas",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_dashas"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_taranga.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ka_taranga",
+   "dep": "bg_ghatana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "brahma_activity_ontology",
+    "brahma_event_ontology"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_taranga.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ka_tithi_pravesha",
+   "dep": "ga_positions",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_tithi_pravesha.py",
+    "platform/python-sidecar/services/ka_tithi_pravesha/writer.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ka_tulana",
+   "dep": "ka_sangam",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_convergence"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_tulana.py",
+    "platform/python-sidecar/services/ka_tulana/writer.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ka_tulana",
+   "dep": "ka_vighnakara",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_obstruction"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_tulana.py",
+    "platform/python-sidecar/services/ka_tulana/writer.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ka_tulana",
+   "dep": "ka_kala_darshana",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_darshana"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_tulana.py",
+    "platform/python-sidecar/services/ka_tulana/writer.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ka_vedha_gochara",
+   "dep": "ga_positions",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_vedha_gochara.py",
+    "platform/python-sidecar/services/ka_vedha_gochara/writer.py"
+   ],
+   "loose_scan_files": 134
+  },
+  {
+   "asset": "ka_vedha_gochara",
+   "dep": "bg_ephemeris",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "ephemeris_daily"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_vedha_gochara.py",
+    "platform/python-sidecar/services/ka_vedha_gochara/writer.py"
+   ],
+   "loose_scan_files": 134
+  },
+  {
+   "asset": "ka_vedha_gochara",
+   "dep": "bg_transit_rules",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bg_transit_rules"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_vedha_gochara.py",
+    "platform/python-sidecar/services/ka_vedha_gochara/writer.py"
+   ],
+   "loose_scan_files": 134
+  },
+  {
+   "asset": "ka_vedha_gochara",
+   "dep": "bg_sarvatobhadra_grid",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bg_sarvatobhadra_grid"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_vedha_gochara.py",
+    "platform/python-sidecar/services/ka_vedha_gochara/writer.py"
+   ],
+   "loose_scan_files": 134
+  },
+  {
+   "asset": "ka_vedha_gochara",
+   "dep": "bg_vedha_malefic_scale",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bg_vedha_malefic_scale"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_vedha_gochara.py",
+    "platform/python-sidecar/services/ka_vedha_gochara/writer.py"
+   ],
+   "loose_scan_files": 134
+  },
+  {
+   "asset": "ka_vedha_gochara",
+   "dep": "bg_phaladeepika_latta",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bg_phaladeepika_latta"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_vedha_gochara.py",
+    "platform/python-sidecar/services/ka_vedha_gochara/writer.py"
+   ],
+   "loose_scan_files": 134
+  },
+  {
+   "asset": "ka_vighnakara",
+   "dep": "ka_sangam",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_convergence"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py"
+   ],
+   "loose_scan_files": 124
+  },
+  {
+   "asset": "ka_vighnakara",
+   "dep": "ka_gochara",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "mentioned_not_read",
+   "dep_tables": [
+    "kala_gochara_windows"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py"
+   ],
+   "loose_scan_files": 124
+  },
+  {
+   "asset": "ka_vighnakara",
+   "dep": "ka_muhurta_seva",
+   "tight": "UNKNOWN_dep_declares_no_table",
+   "loose": "UNKNOWN_dep_declares_no_table",
+   "dep_tables": []
+  },
+  {
+   "asset": "ka_vighnakara",
+   "dep": "ga_positions",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_vighnakara.py"
+   ],
+   "loose_scan_files": 124
+  },
+  {
+   "asset": "ka_yojaka",
+   "dep": "bo_laksana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py"
+   ],
+   "loose_scan_files": 127
+  },
+  {
+   "asset": "ka_yojaka",
+   "dep": "bg_transit_rules",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bg_transit_rules"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py"
+   ],
+   "loose_scan_files": 127
+  },
+  {
+   "asset": "ka_yojaka",
+   "dep": "ga_dashas",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_dashas"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py"
+   ],
+   "loose_scan_files": 127
+  },
+  {
+   "asset": "ka_yojaka",
+   "dep": "bo_bimba",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_nodes"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py"
+   ],
+   "loose_scan_files": 127
+  },
+  {
+   "asset": "ka_yojaka",
+   "dep": "bo_sangati",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cdlm_cells"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py"
+   ],
+   "loose_scan_files": 127
+  },
+  {
+   "asset": "ka_yojaka",
+   "dep": "bo_pratijna",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_pratijna"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py"
+   ],
+   "loose_scan_files": 127
+  },
+  {
+   "asset": "ka_yojaka",
+   "dep": "bg_ghatana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "brahma_activity_ontology",
+    "brahma_event_ontology"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py"
+   ],
+   "loose_scan_files": 127
+  },
+  {
+   "asset": "mi_abhilekha",
+   "dep": "mi_bhavisya",
+   "tight": "mentioned_not_read",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_manifestation_sets",
+    "mimamsa_predictions"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_abhilekha.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_adhilepa",
+   "dep": "mi_gunanaka",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_calibration_snapshot",
+    "mimamsa_multipliers"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_adhilepa.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_adhilepa",
+   "dep": "bo_laksana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_adhilepa.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_adhilepa",
+   "dep": "ka_sangam",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_convergence"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_adhilepa.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_adhilepa",
+   "dep": "ph_nimitta",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_anchors"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_adhilepa.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_adhilepa",
+   "dep": "ga_positions",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_adhilepa.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_bhara",
+   "dep": "ka_kshetra",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_field"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_bhara.py"
+   ],
+   "loose_scan_files": 131
+  },
+  {
+   "asset": "mi_bhavisya",
+   "dep": "ph_pramana",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_pramana"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_bhavisya.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_bhavisya",
+   "dep": "ph_nimitta",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_anchors"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_bhavisya.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_bhavisya",
+   "dep": "ph_phaladesa",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_phaladesa"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_bhavisya.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_bhavisya",
+   "dep": "mi_kula",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_negative_controls",
+    "mimamsa_signal_families"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_bhavisya.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_bhavisya",
+   "dep": "mi_jivanaghatana",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_event_provenance"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_bhavisya.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_bhavisya",
+   "dep": "bo_laksana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_bhavisya.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_darshana",
+   "dep": "mi_pramana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_calibration",
+    "mimamsa_reliability"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_darshana",
+   "dep": "mi_adhilepa",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_anchor_adjustment",
+    "mimamsa_convergence_adjustment",
+    "mimamsa_fact_adjustment",
+    "mimamsa_load_bearing",
+    "mimamsa_signal_adjustment"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_darshana",
+   "dep": "mi_sambandha",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_manifestation_grammar"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_darshana",
+   "dep": "mi_pariksha",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_attribution",
+    "mimamsa_discoveries",
+    "mimamsa_qa_eval"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_darshana",
+   "dep": "mi_gunanaka",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_calibration_snapshot",
+    "mimamsa_multipliers"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_darshana",
+   "dep": "mi_kula",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_negative_controls",
+    "mimamsa_signal_families"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_darshana",
+   "dep": "mi_jivanaghatana",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_event_provenance"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_darshana",
+   "dep": "bo_pratijna",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_pratijna"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_darshana.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_gunanaka",
+   "dep": "mi_pramana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_calibration",
+    "mimamsa_reliability"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_gunanaka.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_gunanaka",
+   "dep": "mi_kula",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_negative_controls",
+    "mimamsa_signal_families"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_gunanaka.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_gunanaka",
+   "dep": "bg_formula_constants",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "brahma_formula_constants"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_gunanaka.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_jivanaghatana",
+   "dep": "bg_ghatana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "brahma_activity_ontology",
+    "brahma_event_ontology"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_jivanaghatana.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "mi_kula",
+   "dep": "bg_rules",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "sutravali_rules"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_kula.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_kula",
+   "dep": "bg_class_priors",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "brahma_class_priors"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_kula.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_pariksha",
+   "dep": "mi_pramana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_calibration",
+    "mimamsa_reliability"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_pariksha.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_pariksha",
+   "dep": "mi_kula",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_negative_controls",
+    "mimamsa_signal_families"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_pariksha.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_pariksha",
+   "dep": "bg_formula_constants",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "brahma_formula_constants"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_pariksha.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_pramana",
+   "dep": "mi_bhavisya",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_manifestation_sets",
+    "mimamsa_predictions"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_pramana.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_pramana",
+   "dep": "mi_jivanaghatana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_event_provenance"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_pramana.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_pramana",
+   "dep": "bg_ghatana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "brahma_activity_ontology",
+    "brahma_event_ontology"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_pramana.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_pramana",
+   "dep": "bg_formula_constants",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "brahma_formula_constants"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_pramana.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_sambandha",
+   "dep": "mi_pramana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_calibration",
+    "mimamsa_reliability"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_sambandha.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_sambandha",
+   "dep": "mi_pariksha",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_attribution",
+    "mimamsa_discoveries",
+    "mimamsa_qa_eval"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_sambandha.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_sambandha",
+   "dep": "mi_bhavisya",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_manifestation_sets",
+    "mimamsa_predictions"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_sambandha.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "mi_sankalpa",
+   "dep": "ka_kshetra",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_field"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_sankalpa.py"
+   ],
+   "loose_scan_files": 125
+  },
+  {
+   "asset": "mi_seva",
+   "dep": "mi_adhilepa",
+   "tight": "mentioned_not_read",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "mimamsa_anchor_adjustment",
+    "mimamsa_convergence_adjustment",
+    "mimamsa_fact_adjustment",
+    "mimamsa_load_bearing",
+    "mimamsa_signal_adjustment"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/mi_seva.py"
+   ],
+   "loose_scan_files": 121
+  },
+  {
+   "asset": "ph_muhurta",
+   "dep": "ph_nimitta",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_anchors"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_muhurta.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_muhurta",
+   "dep": "ka_kalasutra",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_activation"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_muhurta.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_muhurta",
+   "dep": "ga_panchanga",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_muhurta.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_muhurta",
+   "dep": "ka_vighnakara",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_obstruction"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_muhurta.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_muhurta",
+   "dep": "ga_condition",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts",
+    "ga_condition_composite"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_muhurta.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_muhurta",
+   "dep": "ka_gochara",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "mentioned_not_read",
+   "dep_tables": [
+    "kala_gochara_windows"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_muhurta.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_muhurta",
+   "dep": "ga_positions",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "chart_facts"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_muhurta.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_muhurta",
+   "dep": "ka_sangam",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_convergence"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_muhurta.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_nimitta",
+   "dep": "ka_sangam",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_convergence"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_nimitta.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ph_nimitta",
+   "dep": "ka_bhavishya_lekha",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_bhavishya"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_nimitta.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ph_nimitta",
+   "dep": "bo_bimba",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_nodes"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_nimitta.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ph_nimitta",
+   "dep": "bo_samskara",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_signal_embeddings"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_nimitta.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ph_nimitta",
+   "dep": "bo_karanajala",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_edges"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_nimitta.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ph_nimitta",
+   "dep": "bo_sangati",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cdlm_cells"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_nimitta.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ph_nimitta",
+   "dep": "bo_anveshana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_anomalies",
+    "bodha_discoveries"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_nimitta.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ph_nimitta",
+   "dep": "bo_cgm_paths",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cgm_paths"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_nimitta.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ph_nimitta",
+   "dep": "bo_laksana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_nimitta.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ph_phaladesa",
+   "dep": "ph_nimitta",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_anchors"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_phaladesa",
+   "dep": "ph_muhurta",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_muhurta"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_phaladesa",
+   "dep": "ph_pratikara",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_mitigation"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_phaladesa",
+   "dep": "ph_suddha_sodhana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_suddha_sodhana"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_phaladesa",
+   "dep": "ph_sankrama",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_sankrama"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_phaladesa",
+   "dep": "ph_pramana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_pramana"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_phaladesa",
+   "dep": "bo_laksana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_phaladesa.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_pramana",
+   "dep": "ph_nimitta",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_anchors"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_pramana.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_pramana",
+   "dep": "ph_sankrama",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_sankrama"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_pramana.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_pramana",
+   "dep": "ph_muhurta",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_muhurta"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_pramana.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_pramana",
+   "dep": "ph_pratikara",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_mitigation"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_pramana.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_pramana",
+   "dep": "ph_sodhana",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_sodhana"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_pramana.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_pramana",
+   "dep": "ph_suddha_sodhana",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_suddha_sodhana"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_pramana.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_pratikara",
+   "dep": "ph_nimitta",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_anchors"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_pratikara.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_pratikara",
+   "dep": "bo_upaya",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_rm_remedy_prescriptions",
+    "bodha_rm_resonances"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_pratikara.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_pratikara",
+   "dep": "ka_vighnakara",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_obstruction"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_pratikara.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_pratikara",
+   "dep": "ka_sangam",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "kala_convergence"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_pratikara.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_rectification",
+   "dep": "ph_nimitta",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_anchors"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_rectification/__init__.py"
+   ],
+   "loose_scan_files": 123
+  },
+  {
+   "asset": "ph_sankrama",
+   "dep": "ph_nimitta",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_anchors"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_sankrama.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_sankrama",
+   "dep": "bo_sangati",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_cdlm_cells"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_sankrama.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_sodhana",
+   "dep": "ph_nimitta",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_anchors"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_sodhana.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_sodhana",
+   "dep": "bo_laksana",
+   "tight": "NO_TEXTUAL_READ_EVIDENCE",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "bodha_msr_signals"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_sodhana.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_suddha_sodhana",
+   "dep": "ph_sodhana",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_sodhana"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_suddha_sodhana.py"
+   ],
+   "loose_scan_files": 122
+  },
+  {
+   "asset": "ph_suddha_sodhana",
+   "dep": "ph_nimitta",
+   "tight": "read_evidence",
+   "loose": "read_evidence",
+   "dep_tables": [
+    "phala_anchors"
+   ],
+   "writer_files": [
+    "platform/python-sidecar/pipeline/orchestrator/writers/ph_suddha_sodhana.py"
+   ],
+   "loose_scan_files": 122
+  }
+ ],
+ "registry_status": {
+  "bg_class_lifetime_counts": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_class_priors": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_cohort": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_compendium_index": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_concordance": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_dasha_systems": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_dignity_reference": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_doshas": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_ephemeris": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_ephemeris_engine": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_formula_constants": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_ghatana": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_gochara_arcs": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_gochara_citation_resolution": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_kota_chakra_rings": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_kp_sublord_division": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_medical_mappings": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_muhurta_lattice": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_nakshatra": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_nakshatra_medical": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_ontology": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_panchanga": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_parihara_rules": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_phaladeepika_latta": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_prashna_rules": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_reference": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_remedies": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_rules": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_sarvatobhadra_grid": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_sign_medical": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_sky_calendar": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_text_index": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_texts": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_transit_engine": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_transit_rules": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_vastu_directions": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_vedha_malefic_scale": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_vidhi_floors": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_vidhi_primitives": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bg_yogas": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "brahmagyan"
+  },
+  "bo_anveshana": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_arudha": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_bimba": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_cdlm_summary": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_cgm_motifs": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_cgm_paths": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_chart_gestalt": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_drishti": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_karanajala": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_laksana": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_laksana_rerank": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_nakshatra_semantic": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_pramana_mapa": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_pratijna": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_samskara": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_samvada": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_sangati": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_special_lagna": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_sudarshana": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_upaya": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_vargottama_dhana": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "bo_yantra_mechanism": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "bodha"
+  },
+  "ga_ayurdaya": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_condition": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_dashas": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_medical": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_nakshatra": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_panchanga": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_positions": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_prashna": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_sade_sati": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_sensitive": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_sensitive_degree": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_strength": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_structural": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_tajaka": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_transit_anchors": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_vargas": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_vastu": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_vichara": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ga_yoga": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "ganita"
+  },
+  "ka_avadhi": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_bhavishya_lekha": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_dasha_kala": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_gochara": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_gochara_resonance": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_gochara_sweep": {
+   "catalog_status": "RETIRED",
+   "is_active": false,
+   "layer": "kala"
+  },
+  "ka_gochara_v3_century_materialize": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_graha_sancara": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_jivana_parva": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_kala_darshana": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_kalasutra": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_kota_chakra": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_kshetra": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_moorti_nirnaya": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_muhurta_seva": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_sangam": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_sudarshana_varsha": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_taranga": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_tithi_pravesha": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_tulana": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_vedha_gochara": {
+   "catalog_status": "CURRENT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_vighnakara": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "ka_yojaka": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "kala"
+  },
+  "lel_events": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "mimamsa"
+  },
+  "mi_abhilekha": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "mimamsa"
+  },
+  "mi_adhilepa": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "mimamsa"
+  },
+  "mi_bhara": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "mimamsa"
+  },
+  "mi_bhavisya": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "mimamsa"
+  },
+  "mi_darshana": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "mimamsa"
+  },
+  "mi_gunanaka": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "mimamsa"
+  },
+  "mi_jivanaghatana": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "mimamsa"
+  },
+  "mi_kula": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "mimamsa"
+  },
+  "mi_pariksha": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "mimamsa"
+  },
+  "mi_pramana": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "mimamsa"
+  },
+  "mi_sambandha": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "mimamsa"
+  },
+  "mi_sankalpa": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "mimamsa"
+  },
+  "mi_seva": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "mimamsa"
+  },
+  "mi_vistara": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "mimamsa"
+  },
+  "ph_muhurta": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "phala"
+  },
+  "ph_nimitta": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "phala"
+  },
+  "ph_phaladesa": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "phala"
+  },
+  "ph_pramana": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "phala"
+  },
+  "ph_pratikara": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "phala"
+  },
+  "ph_rectification": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "phala"
+  },
+  "ph_sankrama": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "phala"
+  },
+  "ph_sodhana": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "phala"
+  },
+  "ph_suddha_sodhana": {
+   "catalog_status": "DRAFT",
+   "is_active": true,
+   "layer": "phala"
+  }
+ }
+}
