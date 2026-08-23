@@ -1,0 +1,41 @@
+{
+ "snapshot_utc": "20260823T041000Z",
+ "table": "asset_throughput",
+ "select_sql": "SELECT * FROM asset_throughput ORDER BY asset_id, chart_id NULLS FIRST",
+ "live_row_count_at_snapshot": 267,
+ "csv_data_rows": 267,
+ "columns": [
+  "asset_id",
+  "rows_per_second",
+  "measurement_count",
+  "last_measured_at",
+  "last_measured_build_id",
+  "history",
+  "chart_id",
+  "state",
+  "built_against_upstream_hash",
+  "built_against_writer_hash",
+  "last_built_at",
+  "last_error",
+  "rows_written",
+  "expected_rows"
+ ],
+ "csv_file": "asset_throughput.csv",
+ "csv_sha256": "f5b0c2bb4890af7838acc9c5ddc1a125a77390f10255d762725fa99fdaf621f7",
+ "csv_bytes": 46230,
+ "null_encoding": "empty string; jsonb columns encoded as JSON text",
+ "created_by": "KARAKA-M0-T3",
+ "invariant": "I2",
+ "verification": {
+  "verified_at_utc": "20260823T041400Z",
+  "checksum_recomputed_match": true,
+  "csv_parses": true,
+  "csv_header_matches_manifest_columns": true,
+  "csv_data_rows": 267,
+  "live_count_at_verification": 267,
+  "cell_level_mismatched_rows_vs_live_reread": 0,
+  "distinct_asset_id_chart_id_pairs": 267,
+  "method": "re-ran the exact SELECT, re-encoded every value with the same encoder, compared cell-by-cell against the parsed CSV",
+  "verified_by": "KARAKA-M0-T3"
+ }
+}
