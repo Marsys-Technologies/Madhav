@@ -41,6 +41,9 @@
  */
 
 import { Pool } from 'pg'
+import { realpathSync } from 'fs'
+import { resolve } from 'path'
+import { fileURLToPath } from 'url'
 
 import { drainOutbox } from '../../src/lib/pariprashna/arm3/drain'
 import { outboxDepth, type OutboxDb } from '../../src/lib/pariprashna/arm3/outbox'
@@ -155,7 +158,69 @@ async function main(): Promise<void> {
   await pool.end()
 }
 
-// Guard: only run when invoked directly, so a test may import this file.
-if (process.env.NODE_ENV !== 'test') {
+/**
+ * Is THIS module the process entrypoint, or was it merely imported by something else?
+ *
+ * Exported so the question has a real, directly-testable detector behind it rather than an
+ * inline expression nothing can exercise (CLAUDE.md §N.8). It is also this module's FIRST
+ * export — the old guard's comment invited a test to import this file while the file exported
+ * nothing at all, so the invitation could only ever be taken up as a side-effect import.
+ *
+ * Compares the module's own URL against `process.argv[1]`, the path the runtime was told to
+ * execute. Both sides are normalised through `realpathSync` where possible, so a symlinked
+ * checkout, a `./`-prefixed spelling, or a `/tmp` → `/private/tmp` style realpath difference
+ * does not make a direct run look like an import. Any failure to resolve either side answers
+ * `false`: the safe direction is "assume imported", because a wrongly-false answer makes the
+ * documented `npx tsx platform/scripts/pariprashna/ledger_writer_worker.ts --once` exit having
+ * drained nothing — recoverable, and visible in `pariprashna_ledger_outbox`'s depth — while a
+ * wrongly-true answer drains the outbox and writes `brahma_mimamsa_prediction_ledger` as an
+ * import side effect, holding the only `role_ledger_write` credential while it does so.
+ *
+ * MIRRORED, NOT IMPORTED, from `scripts/migrate.ts` and `scripts/seed/asset_registry_seed.ts`,
+ * which carry the same function. Deliberately a copy: Nirmāṇa ruling D-9 standing-instructs
+ * agents not to import from `scripts/migrate.ts`, and this worker's whole design premise is that
+ * it stays OUT of other module graphs (see the header — it does not import `@/lib/db/client`
+ * either). Behaviour is intended to stay identical to those copies; each has its own tests.
+ */
+export function isDirectEntrypoint(moduleUrl: string, argv1: string | undefined): boolean {
+  if (!argv1) return false
+  let modulePath: string
+  try {
+    modulePath = fileURLToPath(moduleUrl)
+  } catch {
+    return false
+  }
+  const entryPath = resolve(argv1)
+  if (modulePath === entryPath) return true
+  try {
+    return realpathSync(modulePath) === realpathSync(entryPath)
+  } catch {
+    return false
+  }
+}
+
+// Guard: only execute when this module IS the entrypoint — never as an import side effect.
+//
+// This used to read `if (process.env.NODE_ENV !== 'test')` (Nirmāṇa WORK_QUEUE M0-T60,
+// Standing Queue SQ-24; same defect class as ruling D-9 / finding F-2 in `scripts/migrate.ts`
+// and M0-T15 in `scripts/seed/asset_registry_seed.ts`). An environment sentinel says nothing
+// about how the module was loaded, and it was wrong in BOTH directions here:
+//
+//   · it RAN on import in any shell with NODE_ENV unset — every ordinary developer and agent
+//     shell. `main()` opens a pool on the sole `role_ledger_write` credential, drains
+//     `pariprashna_ledger_outbox` into `brahma_mimamsa_prediction_ledger`, and calls
+//     `process.exit()`, so the import both mutated the ledger and killed its importer;
+//   · it DID NOT RUN on the documented direct invocation whenever the surrounding environment
+//     happened to export NODE_ENV=test — exiting 0 having printed nothing, so a scheduler would
+//     have recorded a success over a drain that never happened.
+//
+// Note this is NOT the `IMPORT_ONLY !== '1'` contract the two CI gates use (M0-T50 / D-49,
+// documented at `platform/scripts/audit/A3_env_matrix.md` Addendum A3.4). A gate's hazard is
+// FAILING to run, so its safe default is RUN. A mutating worker's hazard is RUNNING, so its safe
+// default is DO NOT RUN — A3.4 operator rule 5, applied here.
+//
+// Both directions are covered by
+// `scripts/__tests__/ledger_writer_worker_entrypoint_guard.test.ts`.
+if (isDirectEntrypoint(import.meta.url, process.argv[1])) {
   void main()
 }
