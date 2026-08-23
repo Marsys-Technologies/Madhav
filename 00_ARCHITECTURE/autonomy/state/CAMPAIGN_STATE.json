@@ -237,30 +237,29 @@
         }
       },
       "seed_revert_blast_radius": {
-        "measured_by": "SUTRADHARA, reading asset_registry_seed.ts directly after M0-T21's F-1",
-        "overwritten_from_EXCLUDED": [
-          "asset_type",
-          "layer_name",
-          "layer_index",
-          "provides_apis",
-          "health_probe",
-          "asset_kind"
+        "superseded_by": "control/SEED_DURABILITY_REGISTER_v1_0.md (M0-T29, commit da16fe797) — 23/23 columns, 0 UNKNOWN",
+        "note": "My earlier hand-read of the upsert was directionally right on asset_kind and WRONG on layer_index. Keeping the pointer rather than the superseded numbers."
+      },
+      "durability_register": {
+        "coverage": "23 of 23 seed-overwritten columns, 0 cells UNKNOWN; a re-seed would move 260 cells across 96 assets",
+        "durable": [
+          "has_substeps (structurally — not in the INSERT list, so no seed run can name it)",
+          "domain",
+          "rung",
+          "superseded_by",
+          "data_disposition",
+          "has_writer",
+          "integrity_check_sql",
+          "clear_tables",
+          "service_health",
+          "writer_timeout_seconds"
         ],
-        "guarded_by_CASE": [
-          "catalog_status",
-          "is_active"
-        ],
-        "at_risk": {
-          "M0-T21 asset_kind/asset_type": "REVERTED by next seed run",
-          "Phase 0.5a layer_index/layer_name": "WOULD BE reverted — not yet dispatched, and now gated on this"
+        "exposed": {
+          "asset_kind/asset_type": "REVERTED on all 8 divergent rows — 8 not 6, because not one of the eight seed entries declares the key and the ?? 'data' default is an ACTIVE WRITE",
+          "scope->domain pair": "breaks on mi_jivanaghatana"
         },
-        "safe": {
-          "M0-T20 has_substeps": "not in the update list at all",
-          "M0-T22 has_writer": "seed does not emit it",
-          "590 domain/rung/data_disposition/superseded_by": "not emitted"
-        },
-        "note": "The campaign's two landed repairs are in OPPOSITE states and I would not have known which without checking. The file already contains the correct pattern: catalog_status and is_active use a CASE that preserves the DB value, with a comment saying a RETIRED asset must never be resurrected by a re-seed. The precedent, the reasoning and the comment style are already there.",
-        "accidental_protection": "The seeder currently cannot complete a run at all — the bg_cohort formula abort. A third defect is holding this line, the same way it held the DRY_RUN line, for the same accidental reason."
+        "risk_runs_opposite": "layer_index/layer_name — 41 divergent cells and on EVERY ONE the seed holds the clean value. A re-seed would REPAIR these. This refutes the conductor's hold on Phase 0.5a.",
+        "cannot_settle": "80 cells of count_sql / target_floor / depends_on move on a re-seed and there is no basis to say which side is right. That is D-19's ownership question with a number attached. Two consequences: MEASURED FLOORS LIVE IN A SEED-OWNED COLUMN, so I7's requirement collides structurally with the seed's ownership at EVERY rung's stage 2, not just M0; and the reverse repair is not available either — writing scope='per_chart' to the DB does not stick, so any durable correction is in the seed file or a CASE guard, never a DB write."
       }
     },
     "M1": {
@@ -476,12 +475,6 @@
       "state": "awaiting_verification"
     },
     {
-      "id": "SEED-OWNERSHIP",
-      "what": "URGENT: the seed reverts asset_kind/asset_type (landed repair) and would revert layer_index/layer_name (not yet dispatched). Escalated with the measured column list. Editing the seed's upsert semantics decides WHICH SURFACE OWNS registry metadata — the subject of D-19 — so not mine to settle from a repair ticket. Phase 0.5a is HELD on it",
-      "owner": "ADHIKARIN",
-      "state": "asked"
-    },
-    {
       "id": "M0-T24",
       "what": "COMPLETE bca42d2cd — the sweep D-25 part 3 asked for. Its own first scan reported 3 has_writer divergences against PARIKSAKA's measured 0 false positives; it checked its SCANNER rather than the registry, found the module-constant @register form its regex could not match, discarded the phantom and wrote the trap into both deliverables. Third time that exact form caught an agent today",
       "owner": "PARIKSAKA",
@@ -531,13 +524,37 @@
     },
     {
       "id": "M0-T29",
-      "what": "full seed-durability register across all overwritten columns — closes M0-T27's declared lower bound so the ownership ruling rests on the whole picture",
+      "what": "COMPLETE da16fe797 — the durability register, with a re-runnable generator",
+      "owner": "PARIKSAKA",
+      "state": "awaiting_verification"
+    },
+    {
+      "id": "M0-T26",
+      "what": "Phase 0.5a layer repair — UNBLOCKED by the register, which refuted my own hold",
       "owner": "KARAKA",
       "state": "running"
+    },
+    {
+      "id": "SEED-OWNERSHIP",
+      "what": "Now evidenced rather than argued: 80 cells of count_sql/target_floor/depends_on move on a re-seed with no basis to say which side is right. Sharpened by two structural facts — measured floors live in a seed-owned column so I7 collides with seed ownership at every rung, and there is no DB-side fix available for seed-owned columns",
+      "owner": "ADHIKARIN",
+      "state": "asked"
+    },
+    {
+      "id": "F-SKY-CALENDAR-DEACTIVATES",
+      "what": "M0-T29: a routine re-seed would DEACTIVATE bg_sky_calendar. Live is_active=true, but its declared target_table bg_sky_events does not exist in production and the seed's pre-flight forces is_active=false for a missing table. The MR-06 guard is RETIRED-keyed and does not cover it. Second consequence of the phantom target_table M0-T6 found; the first was that every count and integrity check would inherit a pointer to nothing. R0's, untouched — but now a defect with a trigger, not a latent one",
+      "owner": "ADHIKARIN",
+      "state": "raised"
+    },
+    {
+      "id": "F-MR06-NEVER-EXERCISED",
+      "what": "M0-T29: the MR-06 deactivation guard has never been exercised — its only live RETIRED row is declared RETIRED in the seed too, so both branches agree and it has never had to choose. A guard that has never had to choose is not yet a detector",
+      "owner": "ADHIKARIN",
+      "state": "raised"
     }
   ],
   "last_updated_by": "SUTRADHARA",
-  "last_updated_ts": "2026-08-23T06:25:21Z",
+  "last_updated_ts": "2026-08-23T06:41:35Z",
   "campaign_started_ts": "2026-08-23T03:19:14Z",
   "_campaign_started_note": "Set by SUTRADHARA at launch, ISO8601 UTC. The spend meter counts only sessions whose first message is at or after this timestamp. Transcripts do not record a git branch, so 'filtered to the campaign branch' cannot be implemented honestly — this timestamp is the filter that can."
 }
